@@ -422,13 +422,11 @@ body > header {
     top: 0px; */
     width: 100%;
     min-height: 60px;
-
     z-index: 50;
     background-color: white;
     transform: translateY(0px);
     transition: background-color 0.5s ease-in-out, transform 0.25s cubic-bezier(0.18, 0.89, 0.49, 1.13);
     border-bottom: solid 1px rgba(0, 0, 0, 0.1);
-
     font-family: "Roboto Mono", monospace;
     font-weight: 400;
     font-size: 0.75rem;
@@ -737,20 +735,38 @@ nav#at_the_top > #process_status:empty {
 loading-bar {
     height: 6px;
     width: 10vw;
-    background-color: #b1c9dd;
+    /* background-color: #b1c9dd; */
+    background: linear-gradient(90deg, #f1dba9, #d7d7d0, #f1dba9);
+    background-size: 100vw 100%;
     position: fixed;
     top: 0px;
+    left: 0px;
     display: block;
-    transition: width cubic-bezier(0.14, 0.71, 0, 0.99) 10s, opacity linear 0.5s;
+    transition: width cubic-bezier(0.14, 0.71, 0, 0.99) 2s, opacity linear 0.2s;
     opacity: 0;
-    pointer-events: none;
+    z-index: 9999;
+    animation: move-background 2s ease-in-out infinite;
+}
+loading-bar.slow {
+    transition: width cubic-bezier(0.14, 0.71, 0, 0.99) 10s, opacity linear 0.5s;
+}
+@media (prefers-reduced-motion) {
+    loading-bar {
+        transition: none;
+    }
 }
 
 body.binder.loading #binder_spinners {
     opacity: 0.25;
 }
-body.binder.loading loading-bar {
-    opacity: 1;
+
+@keyframes move-background {
+    0% {
+        background-position-x: 0vw;
+    }
+    100% {
+        background-position-x: 100vw;
+    }
 }
 
 /* PREAMBLE */
@@ -908,6 +924,15 @@ pluto-output:not(.rich_output) > div > pre {
 pluto-display > div {
     display: inline-block;
 }
+
+/* isolated cell view */
+.isolated-cell > pluto-output {
+    padding: 0;
+}
+.hidden-cell {
+    display: none;
+}
+
 /* SELECTION */
 
 pluto-cell.selected {
@@ -964,10 +989,11 @@ pluto-input .cm-editor {
     border-bottom-right-radius: 4px;
     border: 1px solid rgba(0, 0, 0, 0.1);
     border-left: none;
-    transition: border 0.15s ease-in-out;
+    transition: border-color 0.15s ease-in-out;
 
     /* Make sure that scrolling an editor into view gives some breathing room */
     scroll-margin-block: 20vh;
+    min-height: 25px;
 }
 pluto-input:focus-within .cm-editor {
     /* z-index increased by 1 to make sure that the autocomplete window shows above all other editors, see https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context */
@@ -1123,31 +1149,31 @@ body:not(.___) pluto-cell:focus-within > pluto-trafficlight {
     border-left-width: 4px;
     border-left-style: solid;
     margin-left: -4px;
-    background-clip: content-box;
+    background-clip: padding-box;
     background-color: rgba(0, 0, 0, 0.1);
 }
 
 body:not(.___) pluto-cell.selected > pluto-trafficlight {
     background: rgba(40, 78, 189, 0.4);
     border-left-color: rgba(40, 78, 189, 0.4);
-    background-clip: content-box;
+    background-clip: padding-box;
 }
 
 body:not(.___) pluto-cell.code_differs > pluto-trafficlight {
     background: hsla(46, 70%, 37%, 0.68);
     border-left-color: hsla(46, 70%, 37%, 0.68);
-    background-clip: content-box;
+    background-clip: padding-box;
 }
 
 body:not(.___) pluto-cell.errored > pluto-trafficlight {
     background: hsla(0, 70%, 80%, 0.7);
     border-left-color: hsla(0, 70%, 80%, 0.7);
-    background-clip: content-box;
+    background-clip: padding-box;
 }
 
 body:not(.___) pluto-cell.queued > pluto-trafficlight::after {
     background: repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0) 8px, rgba(0, 0, 0, 0.1) 8px, rgba(0, 0, 0, 0.1) 16px);
-    background-clip: content-box;
+    background-clip: padding-box;
     /* [1]
     Queued, Running, Errored are really fast changing props.
     We make sure to on-off the gradients with opacity and not toggle the animation
@@ -1335,7 +1361,7 @@ pluto-cell > button.add_cell > span::after {
     /* background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/add-circle-outline.svg); */
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/add-outline.svg);
 }
-pluto-input > button.delete_cell ul.input_context_menu {
+pluto-input > button.input_context_menu ul {
     --width: 156px;
     left: 100%;
     top: -8px;
@@ -1348,15 +1374,15 @@ pluto-input > button.delete_cell ul.input_context_menu {
     background-color: white;
 }
 @media screen and (min-width: 921px) {
-    pluto-input > button.delete_cell ul.input_context_menu {
+    pluto-input > button.input_context_menu ul {
         left: calc(100% - 3px);
     }
 }
 @media screen and (max-width: 920px) {
-    pluto-input > button.delete_cell {
+    pluto-input > button.input_context_menu {
         z-index: 31;
     }
-    pluto-input > button.delete_cell ul.input_context_menu {
+    pluto-input > button.input_context_menu ul {
         left: calc(100% - var(--width) - 36px);
     }
 }
@@ -1429,14 +1455,18 @@ pluto-input > button.delete_cell ul.input_context_menu {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle-outline.svg);
 }
 
-pluto-input > button.delete_cell {
+pluto-input > button.input_context_menu {
     /* top: 3px; */
     /* left: -26px; */
     right: 0px;
     padding: 5px;
 }
 
-pluto-input > button.delete_cell > span.icon::after {
+pluto-input > button.input_context_menu.open {
+    opacity: 1;
+}
+
+pluto-input > button.input_context_menu > span.icon::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ellipsis-horizontal-circle-outline.svg);
 }
 
@@ -2078,6 +2108,9 @@ pluto-input .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
     color: white;
     background: #16659d;
 }
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionLabel {
+    border-color: transparent;
+}
 
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete li.c_notexported {
     color: rgba(0, 0, 0, 0.5);
@@ -2108,12 +2141,36 @@ Based on "Paraíso (Light)" by Jan T. Sott:
 */
 
 [data-pluto-variable] {
-    text-decoration: none;
+    /* text-decoration-thickness: 3px; */
     font-weight: inherit;
 }
-body.ctrl_down [data-pluto-variable]:hover {
+
+[data-pluto-variable],
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete li.c_from_notebook .cm-completionLabel {
+    font-weight: bold;
     text-decoration: underline;
+    text-decoration-color: #ced2ef;
+    text-decoration-thickness: 3px;
+    text-decoration-skip-ink: none;
+}
+
+body.ctrl_down [data-pluto-variable] {
+    text-decoration-color: #d177e6;
     cursor: pointer;
+}
+body.ctrl_down [data-pluto-variable]:hover,
+body.ctrl_down [data-pluto-variable]:hover * {
+    color: #af5bc3 !important;
+}
+
+/* Variable that is declared in the same cell */
+[data-cell-variable] {
+    /* Can give this cool styles later as well, but not for now nahhh */
+    text-decoration: none;
+    cursor: pointer;
+}
+body.ctrl_down [data-cell-variable]:hover * {
+    color: #af5bc3 !important;
 }
 
 .cm-tooltip.cm-tooltip-autocomplete {
@@ -2128,6 +2185,10 @@ pluto-input .cm-editor .cm-scroller,
     font-family: JuliaMono, monospace !important;
     font-variant-ligatures: none;
     font-size: 0.75rem;
+}
+
+pluto-input .cm-editor .cm-content {
+    padding: 2px 0px;
 }
 
 .cm-editor {
@@ -2282,4 +2343,36 @@ pluto-input:focus-within .cm-editor .cm-matchingBracket {
 .awesome-wrapping-plugin-indent > * {
     /* text-indent apparently cascades... which I think is pretty stupid but this is the fix */
     text-indent: initial;
+}
+
+/* PLUTO HOOKS - special styling for cell that runs hook */
+/* New feature, new section in the css! */
+pluto-cell.hooked_up {
+    --pluto-cell-force-color: #00b9ff7a;
+}
+
+pluto-cell.hooked_up pluto-trafficlight {
+    background-color: var(--pluto-cell-force-color) !important;
+}
+
+pluto-cell.hooked_up pluto-input .cm-editor {
+    border-color: var(--pluto-cell-force-color);
+    border-width: 2px;
+    border-left: none;
+}
+
+pluto-cell.hooked_up > pluto-runarea {
+    opacity: 1;
+    background-color: var(--pluto-cell-force-color);
+}
+
+pluto-cell.hooked_up pluto-runarea > span {
+    color: #0000004f;
+}
+
+pluto-cell.hooked_up pluto-output {
+    border-right: solid 2px;
+    border-top: solid 2px;
+    border-top-right-radius: 4px;
+    border-color: var(--pluto-cell-force-color);
 }

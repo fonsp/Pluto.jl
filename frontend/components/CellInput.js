@@ -4,7 +4,7 @@ import _ from "../imports/lodash.js"
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 import { get_selected_doc_from_state } from "./CellInput/LiveDocsFromCursor.js"
-import { go_to_definition_plugin, UsedVariablesFacet } from "./CellInput/go_to_definition_plugin.js"
+import { go_to_definition_plugin, ScopeStateField, UsedVariablesFacet } from "./CellInput/go_to_definition_plugin.js"
 import { detect_deserializer } from "../common/Serialization.js"
 
 import {
@@ -30,6 +30,7 @@ import {
     indentOnInput,
     defaultHighlightStyle,
     closeBrackets,
+    rectangularSelection,
     highlightSelectionMatches,
     closeBracketsKeymap,
     searchKeymap,
@@ -52,6 +53,7 @@ import { drag_n_drop_plugin } from "./useDropHandler.js"
 import { cell_movement_plugin } from "./CellInput/cell_movement_plugin.js"
 import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
+import { cl } from "../common/ClassTable.js"
 
 export const pluto_syntax_colors = HighlightStyle.define([
     /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
@@ -121,6 +123,7 @@ let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPluto
  *  remote_code: string,
  *  scroll_into_view_after_creation: boolean,
  *  cell_dependencies: import("./Editor.js").CellDependencyData,
+ *  variables_in_all_notebook: { [variable_name: string]: string },
  *  [key: string]: any,
  * }} props
  */
@@ -144,6 +147,7 @@ export const CellInput = ({
     notebook_id,
     running_disabled,
     cell_dependencies,
+    variables_in_all_notebook,
 }) => {
     let pluto_actions = useContext(PlutoContext)
 
@@ -154,7 +158,7 @@ export const CellInput = ({
     on_change_ref.current = on_change
 
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
-    let used_variables_compartment = useCompartment(newcm_ref, UsedVariablesFacet.of(cell_dependencies.upstream_cells_map))
+    let used_variables_compartment = useCompartment(newcm_ref, UsedVariablesFacet.of(variables_in_all_notebook))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
 
     let on_change_compartment = useCompartment(
@@ -341,6 +345,7 @@ export const CellInput = ({
                     editable_compartment,
 
                     pkgBubblePlugin({ pluto_actions, notebook_id }),
+                    ScopeStateField,
                     pluto_syntax_colors,
                     lineNumbers(),
                     highlightSpecialChars(),
@@ -348,15 +353,18 @@ export const CellInput = ({
                     drawSelection(),
                     EditorState.allowMultipleSelections.of(true),
                     // Multiple cursors with `alt` instead of the default `ctrl` (which we use for go to definition)
-                    EditorView.clickAddsSelectionRange.of((event) => event.altKey),
+                    EditorView.clickAddsSelectionRange.of((event) => event.altKey && !event.shiftKey),
                     indentOnInput(),
                     defaultHighlightStyle.fallback,
                     // Experimental: Also add closing brackets for tripple string
                     // TODO also add closing string when typing a string macro
                     EditorState.languageData.of((state, pos, side) => {
-                        return [{ closeBrackets: { brackets: ["(", "[", "{", "'", '"', '"""'] } }]
+                        return [{ closeBrackets: { brackets: ["(", "[", "{"] } }]
                     }),
                     closeBrackets(),
+                    rectangularSelection({
+                        eventFilter: (e) => e.altKey && e.shiftKey && e.button == 0,
+                    }),
                     highlightSelectionMatches(),
                     bracketMatching(),
                     docs_updater,
@@ -422,7 +430,8 @@ export const CellInput = ({
         // For use from useDropHandler
         // @ts-ignore
         newcm.dom.CodeMirror = {
-            getValue: () => newcm.state.doc.toString(),
+            getValue: () => getValue6(newcm),
+            setValue: (x) => setValue6(newcm, x),
         }
 
         if (focus_after_creation) {
@@ -476,6 +485,17 @@ export const CellInput = ({
                 head: line_and_ch_to_cm6_position(cm.state.doc, cm_forced_focus[1]),
             }
 
+            if (cm_forced_focus[2]?.definition_of) {
+                let scopestate = cm.state.field(ScopeStateField)
+                let definition = scopestate?.definitions.get(cm_forced_focus[2]?.definition_of)
+                if (definition) {
+                    new_selection = {
+                        anchor: definition.from,
+                        head: definition.to,
+                    }
+                }
+            }
+
             let dom = /** @type {HTMLElement} */ (cm.dom)
             dom.scrollIntoView({
                 behavior: "smooth",
@@ -492,7 +512,7 @@ export const CellInput = ({
     }, [cm_forced_focus])
 
     return html`
-        <pluto-input ref=${dom_node_ref}>
+        <pluto-input ref=${dom_node_ref} translate=${false}>
             <${InputContextMenu} on_delete=${on_delete} cell_id=${cell_id} run_cell=${on_submit} running_disabled=${running_disabled} />
         </pluto-input>
     `
@@ -505,9 +525,6 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled }) =>
     const mouseenter = () => {
         clearTimeout(timeout.current)
     }
-    const mouseleave = () => {
-        timeout.current = setTimeout(() => setOpen(false), 250)
-    }
     const toggle_running_disabled = async (e) => {
         const new_val = !running_disabled
         e.preventDefault()
@@ -519,10 +536,18 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled }) =>
         await run_cell()
     }
 
-    return html` <button onMouseleave=${mouseleave} onClick=${() => setOpen(!open)} onBlur=${() => setOpen(false)} class="delete_cell" title="Actions">
+    return html` <button
+        onClick=${() => setOpen(!open)}
+        onBlur=${() => setOpen(false)}
+        class=${cl({
+            input_context_menu: true,
+            open,
+        })}
+        title="Actions"
+    >
         <span class="icon"></span>
         ${open
-            ? html`<ul onMouseenter=${mouseenter} class="input_context_menu">
+            ? html`<ul onMouseenter=${mouseenter}>
                   <li onClick=${on_delete} title="Delete"><span class="delete_icon" />Delete cell</li>
                   <li
                       onClick=${toggle_running_disabled}

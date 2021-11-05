@@ -174,15 +174,20 @@ all_underscores(s::Symbol) = all(isequal('_'), string(s))
 
 # TODO: this should return a FunctionName, and use `split_funcname`.
 "Turn :(A{T}) into :A."
-function uncurly!(ex::Expr, scopestate::ScopeState)::Symbol
+function uncurly!(ex::Expr, scopestate::ScopeState)::Tuple{Symbol,SymbolsState}
     @assert ex.head == :curly
-    push!(scopestate.hiddenglobals, (a for a in ex.args[2:end] if a isa Symbol)...)
-    Symbol(ex.args[1])
+    symstate = SymbolsState()
+    for curly_arg in ex.args[2:end]
+        arg_name, arg_symstate = explore_funcdef!(curly_arg, scopestate)
+        push!(scopestate.hiddenglobals, join_funcname_parts(arg_name))
+        union!(symstate, arg_symstate)
+    end
+    Symbol(ex.args[1]), symstate
 end
 
-uncurly!(ex::Expr)::Symbol = ex.args[1]
+uncurly!(ex::Expr)::Tuple{Symbol,SymbolsState} = ex.args[1], SymbolsState()
 
-uncurly!(s::Symbol, scopestate=nothing)::Symbol = s
+uncurly!(s::Symbol, scopestate=nothing)::Tuple{Symbol,SymbolsState} = s, SymbolsState()
 
 "Turn `:(Base.Submodule.f)` into `[:Base, :Submodule, :f]` and `:f` into `[:f]`."
 function split_funcname(funcname_ex::Expr)::FunctionName
@@ -235,6 +240,25 @@ function without_dotsuffix(funcname::Symbol)::Symbol
     else
         funcname
     end
+end
+
+"""Generates a vector of all possible variants from a function name
+
+```
+julia> generate_funcnames([:Base, :Foo, :bar])
+3-element Vector{Symbol}:
+ Symbol("Base.Foo.bar")
+ Symbol("Foo.bar")
+ :bar
+```
+
+"""
+function generate_funcnames(funccall::FunctionName)
+      calls = Vector{FunctionName}(undef, length(funccall) - 1)
+      for i in length(funccall):-1:2
+          calls[i-1] = funccall[i:end]
+      end
+      calls
 end
         
 """Turn `Symbol[:Module, :func]` into Symbol("Module.func").
@@ -289,7 +313,7 @@ module MacroHasSpecialHeuristicInside
             codes=Pluto.DefaultDict(Pluto.ExprAnalysisCache, Dict(fake_cell => fake_expranalysiscache))
         )
 
-        return Pluto.cell_precedence_heuristic(fake_topology, fake_cell) < 8
+        return Pluto.cell_precedence_heuristic(fake_topology, fake_cell) < 9
     end
     # Having written this... I know I said I was lazy... I was wrong
 end
@@ -444,6 +468,8 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
                 else
                     SymbolsState(funccalls=Set{FunctionName}([funcname]))
                 end
+            elseif funcname[1] ∈ scopestate.hiddenglobals
+                SymbolsState()
             else
                 SymbolsState(references=Set{Symbol}([funcname[1]]), funccalls=Set{FunctionName}([funcname]))
             end
@@ -582,6 +608,11 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
     elseif ex.head == :global
         # Does not create scope
 
+        # global x, y, z
+        if length(ex.args) > 1
+            return mapfoldl(arg -> explore!(Expr(:global, arg), scopestate), union!, ex.args; init=SymbolsState())
+        end
+
         # We have one of:
         # global x;
         # global x = 1;
@@ -610,6 +641,11 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         return symstate
     elseif ex.head == :local
         # Does not create scope
+
+        # Turn `local x, y` in `local x; local y
+        if length(ex.args) > 1
+            return mapfoldl(arg -> explore!(Expr(:local, arg), scopestate), union!, ex.args; init=SymbolsState())
+        end
 
         localisee = ex.args[1]
 
@@ -703,6 +739,9 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         symstate = explore_module_definition!(ex, scopestate)
 
         return union(symstate, SymbolsState(assignments=Set{Symbol}([ex.args[2]])))
+    elseif Meta.isexpr(ex, Symbol("'"), 1)
+        # a' corresponds to adjoint(a)
+        return explore!(Expr(:call, :adjoint, ex.args[1]), scopestate)
     else
         # fallback, includes:
         # begin, block, do, toplevel, const
@@ -849,17 +888,15 @@ function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FunctionName,
 
     elseif ex.head == :(<:)
         # for use in `struct` and `abstract`
-        name = uncurly!(ex.args[1], scopestate)
-        symstate = if length(ex.args) == 1
-            SymbolsState()
-        else
-            explore!(ex.args[2], scopestate)
+        name, symstate = uncurly!(ex.args[1], scopestate)
+        if length(ex.args) != 1
+            union!(symstate, explore!(ex.args[2], scopestate))
         end
         return Symbol[name], symstate
 
     elseif ex.head == :curly
-        name = uncurly!(ex, scopestate)
-        return Symbol[name], SymbolsState()
+        name, symstate = uncurly!(ex, scopestate)
+        return Symbol[name], symstate
 
     elseif ex.head == :parameters || ex.head == :tuple
         return mapfoldl(a -> explore_funcdef!(a, scopestate), union!, ex.args, init=(Symbol[], SymbolsState()))
@@ -1112,6 +1149,26 @@ Base.@kwdef struct UsingsImports
     imports::Set{Expr}=Set{Expr}()
 end
 
+is_implicit_using(ex::Expr) = Meta.isexpr(ex, :using) && length(ex.args) >= 1 && !Meta.isexpr(ex.args[1], :(:))
+function transform_dot_notation(ex::Expr)
+    if Meta.isexpr(ex, :(.))
+        Expr(:block, ex.args[end])
+    else
+        ex
+    end
+end
+
+function collect_implicit_usings(ex::Expr)
+    if is_implicit_using(ex)
+        Set{Expr}(transform_dot_notation.(ex.args))
+    else
+        return Set{Expr}()
+    end
+end
+
+collect_implicit_usings(usings::Set{Expr}) = mapreduce(collect_implicit_usings, union!, usings; init=Set{Expr}())
+collect_implicit_usings(usings_imports::UsingsImports) = collect_implicit_usings(usings_imports.usings)
+
 # Performance analysis: https://gist.github.com/fonsp/280f6e883f419fb3a59231b2b1b95cab
 "Preallocated version of [`compute_usings_imports`](@ref)."
 function compute_usings_imports!(out::UsingsImports, ex::Any)
@@ -1139,6 +1196,9 @@ function external_package_names(ex::Expr)::Set{Symbol}
 	else
 		out = Set{Symbol}()
 		for a in ex.args
+            if Meta.isexpr(a, :as)
+                a = a.args[1]
+            end
 			if Meta.isexpr(a, :(.))
 				if a.args[1] != :(.)
 					push!(out, a.args[1])
@@ -1167,6 +1227,9 @@ is_toplevel_expr(::Any)::Bool = false
 function get_rootassignee(ex::Expr, recurse::Bool=true)::Union{Symbol,Nothing}
     if is_toplevel_expr(ex) && recurse
         get_rootassignee(ex.args[2], false)
+    elseif Meta.isexpr(ex, :const, 1)
+        rooter_assignee = get_rootassignee(ex.args[1], false)
+        Symbol("const " * String(rooter_assignee))
     elseif ex.head == :(=) && ex.args[1] isa Symbol
         ex.args[1]
     else
@@ -1182,9 +1245,13 @@ function can_be_function_wrapped(x::Expr)
         x.head === :using ||
         x.head === :import ||
         x.head === :module ||
-        x.head === :function ||
+        # Only bail on named functions, but anonymous functions (args[1].head == :tuple) are fine.
+        # TODO Named functions INSIDE other functions should be fine too
+        (x.head === :function && !Meta.isexpr(x.args[1], :tuple)) ||
         x.head === :macro ||
-        x.head === :macrocall || # we might want to get rid of this one, but that requires some work
+        # Cells containing macrocalls will actually be function wrapped using the expanded version of the expression
+        # See https://github.com/fonsp/Pluto.jl/pull/1597
+        x.head === :macrocall ||
         x.head === :struct ||
         x.head === :abstract ||
         (x.head === :(=) && is_function_assignment(x)) || # f(x) = ...

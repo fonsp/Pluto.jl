@@ -65,7 +65,7 @@ end
 
 "Return the cells that reference any of the symbols defined by the given cell. Non-recursive: only direct dependencies are found."
 function where_referenced(notebook::Notebook, topology::NotebookTopology, myself::Cell)::Array{Cell,1}
-	to_compare = union(topology.nodes[myself].definitions, topology.nodes[myself].funcdefs_without_signatures)
+	to_compare = union(topology.nodes[myself].definitions, topology.nodes[myself].soft_definitions, topology.nodes[myself].funcdefs_without_signatures)
 	where_referenced(notebook, topology, to_compare)
 end
 "Return the cells that reference any of the given symbols. Non-recursive: only direct dependencies are found."
@@ -123,32 +123,36 @@ function cell_precedence_heuristic(topology::NotebookTopology, cell::Cell)::Real
 	top = topology.nodes[cell]
 	if :Pkg ∈ top.definitions
 		1
+	elseif :DrWatson ∈ top.definitions
+		2
 	elseif Symbol("Pkg.API.activate") ∈ top.references || 
 		Symbol("Pkg.activate") ∈ top.references ||
 		Symbol("@pkg_str") ∈ top.references ||
 		# https://juliadynamics.github.io/DrWatson.jl/dev/project/#DrWatson.quickactivate
 		Symbol("quickactivate") ∈ top.references ||
-		Symbol("@quickactivate") ∈ top.references
-		2
+		Symbol("@quickactivate") ∈ top.references ||
+		Symbol("DrWatson.@quickactivate") ∈ top.references ||
+		Symbol("DrWatson.quickactivate") ∈ top.references
+		3
 	elseif Symbol("Pkg.API.add") ∈ top.references ||
 		Symbol("Pkg.add") ∈ top.references ||
 		Symbol("Pkg.API.develop") ∈ top.references ||
 		Symbol("Pkg.develop") ∈ top.references
-		3
+		4
 	elseif :LOAD_PATH ∈ top.references
 		# https://github.com/fonsp/Pluto.jl/issues/323
-		4
+		5
 	elseif :Revise ∈ top.definitions
 		# Load Revise before other packages so that it can properly `revise` them.
-		5
+		6
 	elseif !isempty(topology.codes[cell].module_usings_imports.usings)
 		# always do `using X` before other cells, because we don't (yet) know which cells depend on it (we only know it with `import X` and `import X: y, z`)
-		6
+		7
 	elseif :include ∈ top.references
 		# https://github.com/fonsp/Pluto.jl/issues/193
 		# because we don't (yet) know which cells depend on it
-		7
-	else
 		8
+	else
+		9
 	end
 end

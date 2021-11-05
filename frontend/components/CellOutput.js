@@ -1,7 +1,7 @@
 import { html, Component, useRef, useLayoutEffect, useContext, useEffect, useMemo } from "../imports/Preact.js"
 
 import { ErrorMessage } from "./ErrorMessage.js"
-import { TreeView, TableView } from "./TreeView.js"
+import { TreeView, TableView, DivElement } from "./TreeView.js"
 
 import { add_bonds_listener, set_bound_elements_to_their_value } from "../common/Bond.js"
 import { cl } from "../common/ClassTable.js"
@@ -12,6 +12,9 @@ import register from "../imports/PreactCustomElement.js"
 
 import { EditorState, EditorView, julia_andrey, defaultHighlightStyle } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_syntax_colors } from "./CellInput.js"
+import { useState } from "../imports/Preact.js"
+
+import hljs from "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.2.0/build/es/highlight.min.js"
 
 export class CellOutput extends Component {
     constructor() {
@@ -53,20 +56,23 @@ export class CellOutput extends Component {
     }
 
     render() {
+        const rich_output =
+            this.props.errored ||
+            !this.props.body ||
+            (this.props.mime !== "application/vnd.pluto.tree+object" &&
+                this.props.mime !== "application/vnd.pluto.table+object" &&
+                this.props.mime !== "text/plain")
+        const allow_translate = !this.props.errored && rich_output
         return html`
             <pluto-output
                 class=${cl({
-                    rich_output:
-                        this.props.errored ||
-                        !this.props.body ||
-                        (this.props.mime !== "application/vnd.pluto.tree+object" &&
-                            this.props.mime !== "application/vnd.pluto.table+object" &&
-                            this.props.mime !== "text/plain"),
+                    rich_output,
                     scroll_y: this.props.mime === "application/vnd.pluto.table+object" || this.props.mime === "text/plain",
                 })}
+                translate=${allow_translate}
                 mime=${this.props.mime}
             >
-                <assignee>${this.props.rootassignee}</assignee>
+                <assignee translate=${false}>${this.props.rootassignee}</assignee>
                 ${this.state.error ? html`<div>${this.state.error.message}</div>` : html`<${OutputBody} ...${this.props} />`}
             </pluto-output>
         `
@@ -138,7 +144,10 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
         case "application/vnd.pluto.stacktrace+object":
             return html`<div><${ErrorMessage} cell_id=${cell_id} ...${body} /></div>`
             break
-
+            body.cell_id
+        case "application/vnd.pluto.divelement+object":
+            return DivElement({ cell_id, ...body })
+            break
         case "text/plain":
             if (body) {
                 return html`<div>
@@ -259,32 +268,65 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                 let script_id = node.id
                 let old_result = script_id ? previous_results_map.get(script_id) : null
 
-                if (is_displayable(old_result)) {
-                    node.parentElement.insertBefore(old_result, node)
+                if (node.type === "module") {
+                    throw new Error("We don't (yet) support <script type=module> (loading modules with <script type=module src=...> is fine)")
                 }
 
-                const cell = node.closest("pluto-cell")
-                let result = await execute_dynamic_function({
-                    environment: {
-                        this: script_id ? old_result : window,
-                        currentScript: node,
-                        invalidation: invalidation,
-                        getPublishedObject: (id) => cell.getPublishedObject(id),
-                        ...observablehq_for_cells,
-                    },
-                    code: node.innerText,
-                })
-                // Save result for next run
-                if (script_id != null) {
-                    results_map.set(script_id, result)
-                }
-                // Insert returned element
-                if (result !== old_result) {
+                if (node.type === "" || node.type === "text/javascript") {
                     if (is_displayable(old_result)) {
-                        old_result.remove()
+                        node.parentElement.insertBefore(old_result, node)
                     }
-                    if (is_displayable(result)) {
-                        node.parentElement.insertBefore(result, node)
+
+                    // This is, as far as I know, a very safe way to wrap document and window.
+                    // And this all, because people expect document.currentScript to exist...
+                    let custom_document = new Proxy(window, {
+                        get: (target, key) => {
+                            if (key === "currentScript") {
+                                return node
+                            }
+                            return Reflect.get(target, key)
+                        },
+                        set: (target, key, value) => {
+                            return Reflect.set(target, key, value)
+                        },
+                    })
+                    let custom_window = new Proxy(window, {
+                        get: (target, key) => {
+                            if (key === "document") {
+                                return custom_document
+                            }
+                            return Reflect.get(target, key)
+                        },
+                        set: (target, key, value) => {
+                            return Reflect.set(target, key, value)
+                        },
+                    })
+
+                    const cell = node.closest("pluto-cell")
+                    let result = await execute_dynamic_function({
+                        environment: {
+                            this: script_id ? old_result : window,
+                            currentScript: node,
+                            invalidation: invalidation,
+                            getPublishedObject: (id) => cell.getPublishedObject(id),
+                            window: custom_window,
+                            document: custom_document,
+                            ...observablehq_for_cells,
+                        },
+                        code: node.innerText,
+                    })
+                    // Save result for next run
+                    if (script_id != null) {
+                        results_map.set(script_id, result)
+                    }
+                    // Insert returned element
+                    if (result !== old_result) {
+                        if (is_displayable(old_result)) {
+                            old_result.remove()
+                        }
+                        if (is_displayable(result)) {
+                            node.parentElement.insertBefore(result, node)
+                        }
                     }
                 }
             } catch (err) {
@@ -388,25 +430,36 @@ export let highlight = (code_element, language) => {
     language = language === "jl" ? "julia" : language
 
     if (code_element.children.length === 0) {
-        const editorview = new EditorView({
-            state: EditorState.create({
-                doc: code_element.innerText.trim(),
+        if (language === "julia") {
+            const editorview = new EditorView({
+                state: EditorState.create({
+                    // Remove references to `Main.workspace#xx.` in the docs since
+                    // its shows up as a comment and can be confusing
+                    doc: code_element.innerText
+                        .trim()
+                        .replace(/Main.workspace#\d+\./, "")
+                        .replace(/Main.workspace#(\d+)/, 'Main.var"workspace#$1"'),
 
-                extensions: [
-                    pluto_syntax_colors,
-                    defaultHighlightStyle.fallback,
-                    EditorState.tabSize.of(4),
-                    // TODO Other languages possibly?
-                    language === "julia" ? julia_andrey() : null,
-                    EditorView.lineWrapping,
-                    EditorView.editable.of(false),
-                ].filter((x) => x != null),
-            }),
-        })
-        code_element.replaceChildren(editorview.dom)
-        // Weird hack to make it work inline 🤷‍♀️
-        // Probably should be using [HighlightTree](https://codemirror.net/6/docs/ref/#highlight.highlightTree)
-        editorview.dom.style.setProperty("display", "inline-flex", "important")
-        editorview.dom.style.setProperty("background-color", "transparent", "important")
+                    extensions: [
+                        pluto_syntax_colors,
+                        defaultHighlightStyle.fallback,
+                        EditorState.tabSize.of(4),
+                        // TODO Other languages possibly?
+                        language === "julia" ? julia_andrey() : null,
+                        EditorView.lineWrapping,
+                        EditorView.editable.of(false),
+                    ].filter((x) => x != null),
+                }),
+            })
+            code_element.replaceChildren(editorview.dom)
+            // Weird hack to make it work inline 🤷‍♀️
+            // Probably should be using [HighlightTree](https://codemirror.net/6/docs/ref/#highlight.highlightTree)
+            editorview.dom.style.setProperty("display", "inline-flex", "important")
+            editorview.dom.style.setProperty("background-color", "transparent", "important")
+        } else {
+            window.hljs = hljs
+            console.log(code_element)
+            hljs.highlightElement(code_element)
+        }
     }
 }

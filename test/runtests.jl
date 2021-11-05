@@ -3,6 +3,7 @@ include("./helpers.jl")
 # tests that start new processes:
 include("./WorkspaceManager.jl")
 include("./packages/Basic.jl")
+include("./Bonds.jl")
 VERSION > v"1.6.99" || include("./RichOutput.jl")
 include("./React.jl")
 include("./Dynamic.jl")
