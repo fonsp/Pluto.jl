@@ -277,40 +277,13 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                         node.parentElement.insertBefore(old_result, node)
                     }
 
-                    // This is, as far as I know, a very safe way to wrap document and window.
-                    // And this all, because people expect document.currentScript to exist...
-                    let custom_document = new Proxy(window, {
-                        get: (target, key) => {
-                            if (key === "currentScript") {
-                                return node
-                            }
-                            return Reflect.get(target, key)
-                        },
-                        set: (target, key, value) => {
-                            return Reflect.set(target, key, value)
-                        },
-                    })
-                    let custom_window = new Proxy(window, {
-                        get: (target, key) => {
-                            if (key === "document") {
-                                return custom_document
-                            }
-                            return Reflect.get(target, key)
-                        },
-                        set: (target, key, value) => {
-                            return Reflect.set(target, key, value)
-                        },
-                    })
-
-                    const cell = node.closest("pluto-cell")
+                    const cell = root_node.closest("pluto-cell")
                     let result = await execute_dynamic_function({
                         environment: {
                             this: script_id ? old_result : window,
                             currentScript: node,
                             invalidation: invalidation,
                             getPublishedObject: (id) => cell.getPublishedObject(id),
-                            window: custom_window,
-                            document: custom_document,
                             ...observablehq_for_cells,
                         },
                         code: node.innerText,
