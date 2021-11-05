@@ -215,7 +215,6 @@ export class Welcome extends Component {
 
         this.on_open_path = async (new_path) => {
             const processed = await process_path_or_url(new_path)
-            console.log(processed)
             if (processed.type === "path") {
                 document.body.classList.add("loading")
                 window.location.href = link_open_path(processed.path_or_url)
