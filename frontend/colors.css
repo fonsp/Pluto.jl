@@ -1,10 +1,12 @@
 :root {
-    --main-bg-color: rgb(42, 43, 46);
+    --invert-image-colors: 1;
+
     --main-bg-color: white;
     --rule-color: rgba(0,0,0,0.15);
     --kbd-border-color: #dfdfdf;
     --header-border-color: rgba(0,0,0,0.1);
     --atag-color: black;
+    --ui-button-color: black;
     
     /*Cells*/
     --normal-cell-color: rgba(0,0,0,0.1);
@@ -32,7 +34,7 @@
     /*Pluto output styling */
     --pluto-output-color: hsl(0, 0%, 25%);
     --pluto-output-h-color: hsl(0, 0%, 12%);
-    --pluto-output-bg-color: #f2f2f2;
+    --pluto-output-bg-color: white;
     --blockquote-color: #555;
     --admonition-bg-color: rgba(68, 149, 28, 0.2);
     --admonition-focus-color: rgb(158, 200, 137);
@@ -83,16 +85,80 @@
     --input-context-menu-bg-color: white;
     --input-context-menu-soon-color: #55555544;
     --input-context-menu-hover-bg-color: rgba(0,0,0,0.1);
+    --input-context-menu-li-color: #6b6a6a; 
 
     /*Pkg status*/
     --pkg-status-bg-color: #d3752538;
     --pkg-status-color: #00000060;
+    --pkg-status-mark-option-color: black;
+    --pkg-popup-border-color: #f0e4ee;
+    --pkg-popup-bg-color: rgb(255,255,255);
+    --pkg-popup-buttons-bg-color: white;
+    --pkg-terminal-color: #ffffff;
+    --pkg-terminal-bg-color: #232433;
+    --pkg-terminal-border-color: #c3c3c3;
+    
+    /* run area*/
+    --pluto-runarea-bg-color: hsl(0,0,97%);
+    --pluto-runarea-span-color: hsl(353,5%,64%);
+
+    /*drop ruler*/
+    --dropruler-bg-color: rgba(0,0,0,0.5);
+
+    /* helpbox */
+    --helpbox-bg-color: white;
+    --helpbox-box-shadow-color: #00000010;
+    --helpbox-header-bg-color: #eef1f7;
+    --helpbox-header-color: hsl(230,14%,11%);
+    --helpbox-notfound-header-color: rgb(139,139,139);
+    --code-section-bg-color: whitesmoke;
+    --code-section-bg-color: #dbdbdb;
+
+    
+    /*footer*/
+    --footer-color: #333333;
+    --footer-bg-color: #d7dcd3;
+    --footer-atag-color: black;
+    --footer-input-border-color: #818181;
+    --footer-filepicker-button-color: white;
+    --footer-filepicler-focus-color: #896c6c;
+
+    /* undo delete cell*/
+    --undo-delete-color: white;
+    --undo-delete-box-shadow-color: #0083;
+
+    /*codemirror hints*/
+    --cm-editor-tooltip-border-color: rgba(0,0,0,0.2);
+    --cm-editor-li-aria-selected-bg-color: #16659d;
+    --cm-editor-li-aria-selected-color: white;
+    --cm-editor-li-notexported-color: rgba(0,0,0,0.5);
+    --cm-editor-bg-color: hsla(46,90%,98%,1);
+    --cm-editor-text-color: #41323f;
+    --cm-code-changed-gutters-color: rgba(214,172,35,0.2);
+    --cm-line-numbers-color: #8d86875e;
+
+    --cm-comment-color: #e96ba8;
+    --cm-atom-color: #815ba4;
+    --cm-number-color: #815ba4;
+    --cm-property-color: #48b685;
+    --cm-keyword-color: #ef6155;
+    --cm-string-color: #da5616;
+    --cm-var-color: #5668a4;
+    --cm-var2-color: #06b6ef;
+    --cm-builtin-color: #5e7ad3;
+    --cm-def-color: #f99b15;
+    --cm-bracket-color: #41323f;
+    --cm-tag-color: #ef6155;
+    --cm-link-color: #815ba4;
+    --cm-error-bg-color: #ef6155;
+    --cm-error-color: #f7f7f7;
+    --cm-matchingBracket-color: black;
+    --cm-matchingBracket-bg-color: #1b4bbb21;
+    --cm-placeholder-text-color: rgba(0,0,0,0.2);
+
+    /*autocomplete menu*/
+    --autocomplete-menu-bg-color: white;
 }
 
-/*
-@media (prefers-color-scheme: dark) {
-    :root {
-        --main-bg-color: rgb(42, 43, 46);
-    }
-}
-*/
+
+

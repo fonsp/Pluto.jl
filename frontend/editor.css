@@ -203,7 +203,7 @@ a {
 pluto-output code {
     font-family: JuliaMono, monospace;
     font-size: 0.75em; /* not rem */
-    font-variant-ligatures: none;
+    font-variant-ligatures: none; 
 }
 
 pluto-output code .cm-editor .cm-line {
@@ -1028,7 +1028,7 @@ nav#slide_controls > button {
     background: none;
     cursor: pointer;
     /* color: hsl(204, 86%, 35%); */
-    color: black;
+    color: var(--ui-button-color);
     font-family: "Segoe UI Emoji", "Roboto Mono", monospace;
     font-size: 0.75rem;
     z-index: 30;
@@ -1403,7 +1403,7 @@ pluto-input > button.input_context_menu ul {
     font-size: 0.8rem;
     margin-block-end: 0px;
     letter-spacing: -0.02em;
-    color: #6b6a6a;
+    color: var(--input-context-menu-li-color);
     position: relative;
     list-style: none;
     padding: 8px;
@@ -1558,7 +1558,7 @@ pkg-status-mark option {
 }
 pkg-status-mark option.installed {
     background: unset;
-    color: black;
+    color: var(--pkg-status-mark-option-color);
 }
 
 pkg-popup {
@@ -1571,8 +1571,8 @@ pkg-popup {
     /* min-height: 80px; */
     margin-left: 1.1rem;
     margin-top: calc(0.5 * (1rem - 80px));
-    background: rgb(255, 255, 255);
-    border: 3px solid #f0e4ee;
+    background: var(--pkg-popup-bg-color);
+    border: 3px solid var(--pkg-popup-border-color);
     border-radius: 10px;
     padding: 8px;
     overflow-wrap: break-word;
@@ -1616,7 +1616,7 @@ pkg-popup .pkg-buttons > * {
     height: 17px;
     padding: 4px;
     box-sizing: content-box;
-    background: white;
+    background: var(--pkg-popup-buttons-bg-color);
     border-radius: 10px;
     z-index: 52;
     margin-left: -4px;
@@ -1631,10 +1631,10 @@ pkg-terminal {
     /* width: 20rem; */
     cursor: text;
     margin-top: 6px;
-    background: #232433;
-    color: #ffffff;
+    background: var(--pkg-terminal-bg-color);
+    color: var(--pkg-terminal-color);
     border-radius: 6px;
-    border: 3px solid #c3c3c3;
+    border: 3px solid var(--pkg-terminal-border-color);
     padding: 3px;
 }
 
@@ -1688,7 +1688,7 @@ pluto-runarea {
     position: absolute;
     right: 0px;
     min-width: 75px;
-    background-color: hsl(0, 0%, 97%);
+    background-color: var(--pluto-runarea-bg-color);
     /* border: 2px solid hsla(0, 0%, 0%, 0.1); */
     border-bottom-left-radius: 5px;
     border-bottom-right-radius: 5px;
@@ -1705,7 +1705,7 @@ pluto-runarea > span {
     font-family: "Roboto Mono", monospace;
     font-size: 0.6em;
     font-style: italic;
-    color: hsl(353, 5%, 64%);
+    color: var(--pluto-runarea-span-color);
     text-align: center;
 }
 
@@ -1766,7 +1766,7 @@ dropruler {
     right: 0px;
     height: 4px;
     margin-top: calc(-2px - 0.5 * var(--pluto-cell-spacing));
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--dropruler-bg-color);
 }
 
 /* LIVE DOCS */
@@ -1796,19 +1796,19 @@ pluto-helpbox {
     height: 70vh; /* compat */
     height: min(70vh, 900px);
     /* overflow: hidden; */
-    background-color: white;
+    background-color: var(--helpbox-bg-color);
     /* border: 2px solid darkgray; */
     border-right: none;
     border-bottom: none;
     border-top-left-radius: 9px;
     border-top-right-radius: 9px;
-    box-shadow: 0 0 11px 0px #00000010;
+    box-shadow: 0 0 11px 0px var(--helpbox-box-shadow-color);
 }
 pluto-helpbox > header {
     display: flex;
     padding: 15px;
-    background-color: #eef1f7;
-    color: hsl(230, 14%, 11%);
+    background-color: var(--helpbox-header-bg-color);
+    color: var(--helpbox-header-color);
     font-family: "Roboto Mono", monospace;
     font-weight: 700;
     border-top-left-radius: 6px;
@@ -1837,7 +1837,7 @@ pluto-helpbox > header > input {
     border: none;
 }
 pluto-helpbox.notfound > header > input {
-    color: rgb(139, 139, 139);
+    color: var(--helpbox-notfound-header-color);
 }
 pluto-helpbox > header > input:focus {
     outline: none;
@@ -1909,8 +1909,8 @@ pluto-helpbox > section pre {
     padding: 0.7rem 0.5rem;
     -webkit-overflow-scrolling: touch;
     overflow-x: auto;
-    background: whitesmoke;
-    border: 1px solid #dbdbdb;
+    background: var(--code-section-bg-color);
+    border: 1px solid var(--code-section-border-color);
     white-space: pre;
     word-wrap: normal;
 }
@@ -1920,7 +1920,7 @@ pluto-helpbox > section pre {
 } */
 pluto-helpbox > section hr {
     border: none;
-    border-top: 3px solid rgba(0, 0, 0, 0.15);
+    border-top: 3px solid var(--rule-color);
 }
 
 /* FOOTER */
@@ -1930,8 +1930,8 @@ footer {
     height: 3.5rem;
     font-family: "Roboto Mono", monospace;
     font-size: 0.75rem;
-    background-color: #d7dcd3;
-    color: #333333;
+    background-color: var(--footer-bg-color);
+    color: var(--footer-color);
     z-index: 70;
 }
 
@@ -1960,7 +1960,7 @@ footer form > a {
 }
 
 footer a {
-    color: black;
+    color: var(--footer-atag-color);
     opacity: 0.6;
     font-weight: 700;
 }
@@ -1973,7 +1973,7 @@ footer a {
 
 footer input {
     margin: 0px;
-    border: 2px solid #818181;
+    border: 2px solid var(--footer-input-border-color);
     font-family: inherit;
     font-size: inherit;
     border-radius: 3px 0 0 3px;
@@ -1984,10 +1984,10 @@ footer input {
 body > header pluto-filepicker button,
 footer button {
     margin: 0px;
-    background: #896c6c;
+    background: var(--footer-filepicler-focus-color);
     border-radius: 0 3px 3px 0;
-    border: 2px solid #896c6c;
-    color: white;
+    border: 2px solid var(--footer-filepicler-focus-color);
+    color: var(--footer-filepicker-button-color);
     /* border: none; */
     font-family: inherit;
     font-weight: 600;
@@ -2015,24 +2015,24 @@ nav#undo_delete {
     font-family: "Roboto Mono", monospace;
     font-size: 0.75rem;
 
-    background: white;
+    background: var(--undo-delete-color);
     border-radius: 3px;
 
-    box-shadow: 00px 00px 10px 2px #0003;
+    box-shadow: 00px 00px 10px 2px var(--undo-delete-box-shadow-color);
     opacity: 1;
     transition: 0.2s linear box-shadow, 0.2s ease-out margin-bottom, 0.05s linear opacity;
 }
 
 nav#undo_delete.hidden {
     margin-bottom: 0px;
-    box-shadow: 00px 00px 10px -5px #0003;
+    box-shadow: 00px 00px 10px -5px var(--undo-delete-box-shadow-color);
     opacity: 0;
     pointer-events: none;
 }
 
 @keyframes shadow-fadeout {
     0% {
-        box-shadow: 00px 00px 10px 2px #0003;
+        box-shadow: 00px 00px 10px 2px var(--undo-delete-box-shadow-color);
         opacity: 1;
     }
     80% {
@@ -2089,7 +2089,7 @@ body > nav#slide_controls > button.next > span::after {
 /* CODEMIRROR HINTS */
 
 .cm-editor .cm-tooltip {
-    border: 1px solid rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--cm-editor-tooltip-border-color);
     box-shadow: 3px 3px 4px rgb(0 0 0 / 20%);
     border-radius: 4px;
 }
@@ -2117,12 +2117,12 @@ pluto-input .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
 }
 
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] {
-    color: white;
-    background: #16659d;
+    color: var(--cm-editor-li-aria-selected-color);
+    background: var(--cm-editor-li-aria-selected-bg-color);
 }
 
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete li.c_notexported {
-    color: rgba(0, 0, 0, 0.5);
+    color: var(--cm-editor-li-notexported-color);
 }
 
 .cm-editor .cm-completionIcon {
@@ -2161,7 +2161,7 @@ body.ctrl_down [data-pluto-variable]:hover {
 .cm-tooltip.cm-tooltip-autocomplete {
     padding: 0;
     margin-left: -1.5em;
-    background: white;
+    background: var(--autocomplete-menu-bg-color);
 }
 
 pluto-input .cm-editor .cm-content,
@@ -2177,8 +2177,8 @@ pluto-input .cm-editor .cm-content {
 }
 
 .cm-editor {
-    background: hsla(46, 90%, 98%, 1);
-    color: #41323f;
+    background: var(--cm-editor-bg-color);
+    color: var(--cm-editor-text-color);
 }
 .cm-editor.cm-focused {
     outline: unset;
@@ -2196,11 +2196,11 @@ pluto-input .cm-editor .cm-content {
 
 pluto-cell.code_differs .cm-editor .cm-gutters {
     /* background: hsla(46, 70%, 88%, 1); */
-    background-color: rgba(214, 172, 35, 0.2);
+    background-color: var(--cm-code-changed-gutters-color);
 }
 
 .cm-editor .cm-lineNumbers .cm-gutterElement {
-    color: #8d86875e;
+    color: var(--cm-line-numbers-color);
 }
 
 .cm-editor .cm-lineNumbers .cm-gutterElement::after {
@@ -2221,31 +2221,31 @@ pluto-cell.code_differs .cm-editor .cm-gutters {
 }
 
 .cm-s-default span.cm-comment {
-    color: #e96ba8;
+    color: var(--cm-comment-color);
     font-style: italic;
 }
 
 .cm-s-default span.cm-atom {
-    color: #815ba4;
+    color: var(--cm-atom-color);
 }
 
 .cm-completionIcon-c_Number::before,
 .cm-s-default span.cm-number {
-    color: #815ba4;
+    color: var(--cm-number-color);
 }
 
 .cm-s-default span.cm-property,
 .cm-s-default span.cm-attribute {
-    color: #48b685;
+    color: var(--cm-property-color);
 }
 
 .cm-s-default span.cm-keyword {
-    color: #ef6155;
+    color: var(--cm-keyword-color);
 }
 
 .cm-completionIcon-c_String::before,
 .cm-s-default span.cm-string {
-    color: #da5616;
+    color: var(--cm-string-color);
 }
 
 .cm-s-default span.cm-operator {
@@ -2255,42 +2255,42 @@ pluto-cell.code_differs .cm-editor .cm-gutters {
 .cm-completionIcon-c_Any::before,
 pluto-output > assignee,
 .cm-s-default span.cm-variable {
-    color: #5668a4;
+    color: var(--cm-var-color);
     font-weight: 700;
 }
 
 .cm-s-default span.cm-builtin {
-    color: #5e7ad3;
+    color: var(--cm-builtin-color);
     font-weight: 700;
 }
 
 .cm-s-default span.cm-variable-2 {
-    color: #06b6ef;
+    color: var(--cm-var2-color);
 }
 
 .cm-completionIcon-c_Function::before,
 .cm-s-default span.cm-def {
-    color: #f99b15;
+    color: var(--cm-def-color);
 }
 
 .cm-completionIcon-c_Array::before,
 .cm-s-default span.cm-bracket {
-    color: #41323f;
+    color: var(--cm-bracket-color);
 }
 
 .cm-s-default span.cm-tag {
-    color: #ef6155;
+    color: var(--cm-tag-color);
 }
 
 .cm-completionIcon-c_package::before,
 .cm-completionIcon-c_Module::before,
 .cm-s-default span.cm-link {
-    color: #815ba4;
+    color: var(--cm-link-color);
 }
 
 .cm-s-default span.cm-error {
-    background: #ef6155;
-    color: #f7f7f7;
+    background: var(--cm-error-bg-color);
+    color: var(--cm-error-color);
 }
 .cm-editor .cm-activeLine {
     background: unset;
@@ -2302,14 +2302,14 @@ pluto-output > assignee,
     color: unset;
 }
 pluto-input:focus-within .cm-editor .cm-matchingBracket {
-    color: black !important;
+    color: var(--cm-matchingBracket-color) !important;
     font-weight: 700;
-    background-color: #1b4bbb21;
+    background-color: var(--cm-matchingBracket-bg-color);
     border-radius: 2px;
 }
 
 .cm-editor .cm-placeholder {
-    color: rgba(0, 0, 0, 0.2);
+    color: var(--cm-placeholder-text-color);
     font-style: italic;
 }
 
