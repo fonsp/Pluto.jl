@@ -268,32 +268,65 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                 let script_id = node.id
                 let old_result = script_id ? previous_results_map.get(script_id) : null
 
-                if (is_displayable(old_result)) {
-                    node.parentElement.insertBefore(old_result, node)
+                if (node.type === "module") {
+                    throw new Error("We don't (yet) support <script type=module> (loading modules with <script type=module src=...> is fine)")
                 }
 
-                const cell = node.closest("pluto-cell")
-                let result = await execute_dynamic_function({
-                    environment: {
-                        this: script_id ? old_result : window,
-                        currentScript: node,
-                        invalidation: invalidation,
-                        getPublishedObject: (id) => cell.getPublishedObject(id),
-                        ...observablehq_for_cells,
-                    },
-                    code: node.innerText,
-                })
-                // Save result for next run
-                if (script_id != null) {
-                    results_map.set(script_id, result)
-                }
-                // Insert returned element
-                if (result !== old_result) {
+                if (node.type === "" || node.type === "text/javascript") {
                     if (is_displayable(old_result)) {
-                        old_result.remove()
+                        node.parentElement.insertBefore(old_result, node)
                     }
-                    if (is_displayable(result)) {
-                        node.parentElement.insertBefore(result, node)
+
+                    // This is, as far as I know, a very safe way to wrap document and window.
+                    // And this all, because people expect document.currentScript to exist...
+                    let custom_document = new Proxy(window, {
+                        get: (target, key) => {
+                            if (key === "currentScript") {
+                                return node
+                            }
+                            return Reflect.get(target, key)
+                        },
+                        set: (target, key, value) => {
+                            return Reflect.set(target, key, value)
+                        },
+                    })
+                    let custom_window = new Proxy(window, {
+                        get: (target, key) => {
+                            if (key === "document") {
+                                return custom_document
+                            }
+                            return Reflect.get(target, key)
+                        },
+                        set: (target, key, value) => {
+                            return Reflect.set(target, key, value)
+                        },
+                    })
+
+                    const cell = node.closest("pluto-cell")
+                    let result = await execute_dynamic_function({
+                        environment: {
+                            this: script_id ? old_result : window,
+                            currentScript: node,
+                            invalidation: invalidation,
+                            getPublishedObject: (id) => cell.getPublishedObject(id),
+                            window: custom_window,
+                            document: custom_document,
+                            ...observablehq_for_cells,
+                        },
+                        code: node.innerText,
+                    })
+                    // Save result for next run
+                    if (script_id != null) {
+                        results_map.set(script_id, result)
+                    }
+                    // Insert returned element
+                    if (result !== old_result) {
+                        if (is_displayable(old_result)) {
+                            old_result.remove()
+                        }
+                        if (is_displayable(result)) {
+                            node.parentElement.insertBefore(result, node)
+                        }
                     }
                 }
             } catch (err) {
