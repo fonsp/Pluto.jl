@@ -15,8 +15,13 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             # Ignore the build changes from previous run
-            - run: git reset --hard
             - uses: actions/checkout@v2
+            - name: Make Sure Release Is Reset To Main
+              run: |
+                  git checkout release
+                  git reset --hard main
+                  git push -f # force push the branch
+
             - uses: actions/setup-node@v2
               with:
                   node-version: 17.x
