@@ -31,16 +31,14 @@ jobs:
             - name: The Actual Build
               working-directory: frontend-bundler
               run: npm run build
-            - uses: JamesIves/github-pages-deploy-action@4.1.5
-              with:
-                  branch: release
-                  folder: frontend-dist
-                  target-folder: frontend-dist
-            # - uses: EndBug/add-and-commit@v7 # You can change this to use a specific version.
+            # - uses: JamesIves/github-pages-deploy-action@4.1.5
             #   with:
-            #       # Needs --force because frontend-dist is normally .gitignore'd
-            #       add: "frontend-dist --force"
             #       branch: release
-            #       # Arguments for the git pull command. Use NO-PULL to avoid the action pulling at all.
-            #       # Default: '--no-rebase'
-            #       # pull: 'NO-PULL or --rebase --autostash ...'
+            #       folder: frontend-dist
+            #       target-folder: frontend-dist
+            - uses: EndBug/add-and-commit@v7 # You can change this to use a specific version.
+              with:
+                  # Needs --force because frontend-dist is normally .gitignore'd
+                  add: "frontend-dist --force"
+                  branch: release
+                  push: "origin release --force"
