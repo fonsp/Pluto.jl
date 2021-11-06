@@ -3,8 +3,8 @@ name: Bundle Web Assets
 on:
     push:
         paths:
-            - "frontend"
-            - "frontend-bundler"
+            - "frontend/**"
+            - "frontend-bundler/**"
             - ".github/workflows/Bundle.yml"
         branches:
             - bundled
