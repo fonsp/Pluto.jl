@@ -174,15 +174,20 @@ all_underscores(s::Symbol) = all(isequal('_'), string(s))
 
 # TODO: this should return a FunctionName, and use `split_funcname`.
 "Turn :(A{T}) into :A."
-function uncurly!(ex::Expr, scopestate::ScopeState)::Symbol
+function uncurly!(ex::Expr, scopestate::ScopeState)::Tuple{Symbol,SymbolsState}
     @assert ex.head == :curly
-    push!(scopestate.hiddenglobals, (a for a in ex.args[2:end] if a isa Symbol)...)
-    Symbol(ex.args[1])
+    symstate = SymbolsState()
+    for curly_arg in ex.args[2:end]
+        arg_name, arg_symstate = explore_funcdef!(curly_arg, scopestate)
+        push!(scopestate.hiddenglobals, join_funcname_parts(arg_name))
+        union!(symstate, arg_symstate)
+    end
+    Symbol(ex.args[1]), symstate
 end
 
-uncurly!(ex::Expr)::Symbol = ex.args[1]
+uncurly!(ex::Expr)::Tuple{Symbol,SymbolsState} = ex.args[1], SymbolsState()
 
-uncurly!(s::Symbol, scopestate=nothing)::Symbol = s
+uncurly!(s::Symbol, scopestate=nothing)::Tuple{Symbol,SymbolsState} = s, SymbolsState()
 
 "Turn `:(Base.Submodule.f)` into `[:Base, :Submodule, :f]` and `:f` into `[:f]`."
 function split_funcname(funcname_ex::Expr)::FunctionName
@@ -463,6 +468,8 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
                 else
                     SymbolsState(funccalls=Set{FunctionName}([funcname]))
                 end
+            elseif funcname[1] ∈ scopestate.hiddenglobals
+                SymbolsState()
             else
                 SymbolsState(references=Set{Symbol}([funcname[1]]), funccalls=Set{FunctionName}([funcname]))
             end
@@ -601,6 +608,11 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
     elseif ex.head == :global
         # Does not create scope
 
+        # global x, y, z
+        if length(ex.args) > 1
+            return mapfoldl(arg -> explore!(Expr(:global, arg), scopestate), union!, ex.args; init=SymbolsState())
+        end
+
         # We have one of:
         # global x;
         # global x = 1;
@@ -629,6 +641,11 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         return symstate
     elseif ex.head == :local
         # Does not create scope
+
+        # Turn `local x, y` in `local x; local y
+        if length(ex.args) > 1
+            return mapfoldl(arg -> explore!(Expr(:local, arg), scopestate), union!, ex.args; init=SymbolsState())
+        end
 
         localisee = ex.args[1]
 
@@ -871,17 +888,15 @@ function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FunctionName,
 
     elseif ex.head == :(<:)
         # for use in `struct` and `abstract`
-        name = uncurly!(ex.args[1], scopestate)
-        symstate = if length(ex.args) == 1
-            SymbolsState()
-        else
-            explore!(ex.args[2], scopestate)
+        name, symstate = uncurly!(ex.args[1], scopestate)
+        if length(ex.args) != 1
+            union!(symstate, explore!(ex.args[2], scopestate))
         end
         return Symbol[name], symstate
 
     elseif ex.head == :curly
-        name = uncurly!(ex, scopestate)
-        return Symbol[name], SymbolsState()
+        name, symstate = uncurly!(ex, scopestate)
+        return Symbol[name], symstate
 
     elseif ex.head == :parameters || ex.head == :tuple
         return mapfoldl(a -> explore_funcdef!(a, scopestate), union!, ex.args, init=(Symbol[], SymbolsState()))
@@ -1181,6 +1196,9 @@ function external_package_names(ex::Expr)::Set{Symbol}
 	else
 		out = Set{Symbol}()
 		for a in ex.args
+            if Meta.isexpr(a, :as)
+                a = a.args[1]
+            end
 			if Meta.isexpr(a, :(.))
 				if a.args[1] != :(.)
 					push!(out, a.args[1])
@@ -1209,6 +1227,9 @@ is_toplevel_expr(::Any)::Bool = false
 function get_rootassignee(ex::Expr, recurse::Bool=true)::Union{Symbol,Nothing}
     if is_toplevel_expr(ex) && recurse
         get_rootassignee(ex.args[2], false)
+    elseif Meta.isexpr(ex, :const, 1)
+        rooter_assignee = get_rootassignee(ex.args[1], false)
+        Symbol("const " * String(rooter_assignee))
     elseif ex.head == :(=) && ex.args[1] isa Symbol
         ex.args[1]
     else
@@ -1224,9 +1245,13 @@ function can_be_function_wrapped(x::Expr)
         x.head === :using ||
         x.head === :import ||
         x.head === :module ||
-        x.head === :function ||
+        # Only bail on named functions, but anonymous functions (args[1].head == :tuple) are fine.
+        # TODO Named functions INSIDE other functions should be fine too
+        (x.head === :function && !Meta.isexpr(x.args[1], :tuple)) ||
         x.head === :macro ||
-        x.head === :macrocall || # we might want to get rid of this one, but that requires some work
+        # Cells containing macrocalls will actually be function wrapped using the expanded version of the expression
+        # See https://github.com/fonsp/Pluto.jl/pull/1597
+        x.head === :macrocall ||
         x.head === :struct ||
         x.head === :abstract ||
         (x.head === :(=) && is_function_assignment(x)) || # f(x) = ...

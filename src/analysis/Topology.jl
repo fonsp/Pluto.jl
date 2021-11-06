@@ -4,8 +4,9 @@ import .ExpressionExplorer: UsingsImports, SymbolsState
 Base.@kwdef struct ExprAnalysisCache
     code::String=""
     parsedcode::Expr=Expr(:toplevel, LineNumberNode(1), Expr(:block))
-	module_usings_imports::UsingsImports = UsingsImports()
+    module_usings_imports::UsingsImports = UsingsImports()
     function_wrapped::Bool=false
+    forced_expr_id::Union{PlutoRunner.ObjectID,Nothing}=nothing
 end
 
 ExprAnalysisCache(notebook, cell::Cell) = let
@@ -18,6 +19,11 @@ ExprAnalysisCache(notebook, cell::Cell) = let
     )
 end
 
+function ExprAnalysisCache(old_cache::ExprAnalysisCache; new_properties...)
+    properties = Dict{Symbol,Any}(field => getproperty(old_cache, field) for field in fieldnames(ExprAnalysisCache))
+    merge!(properties, Dict{Symbol,Any}(new_properties))
+    ExprAnalysisCache(;properties...)
+end
 
 struct DefaultDict{K,V} <: AbstractDict{K,V}
     default::Union{Function,DataType}
@@ -30,11 +36,16 @@ Base.@kwdef struct NotebookTopology
     nodes::DefaultDict{Cell,ReactiveNode} = DefaultDict{Cell,ReactiveNode}(ReactiveNode)
     codes::DefaultDict{Cell,ExprAnalysisCache}=DefaultDict{Cell,ExprAnalysisCache}(ExprAnalysisCache)
 
-    unresolved_cells::Dict{Cell,SymbolsState} = Dict{Cell,SymbolsState}()
+    unresolved_cells::Set{Cell} = Set{Cell}()
 end
 
 
 is_resolved(topology::NotebookTopology) = isempty(topology.unresolved_cells)
+
+function set_unresolved(topology::NotebookTopology, unresolved_cells::Vector{Cell})
+    codes = Dict{Cell,ExprAnalysisCache}(cell => ExprAnalysisCache(topology.codes[cell]; function_wrapped=false, forced_expr_id=nothing) for cell in unresolved_cells)
+    NotebookTopology(nodes=topology.nodes, codes=merge(topology.codes, codes), unresolved_cells=union(topology.unresolved_cells, unresolved_cells))
+end
 
 DefaultDict{K,V}(default::Union{Function,DataType}) where {K,V} = DefaultDict{K,V}(default, Dict{K,V}())
 

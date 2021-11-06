@@ -924,6 +924,15 @@ pluto-output:not(.rich_output) > div > pre {
 pluto-display > div {
     display: inline-block;
 }
+
+/* isolated cell view */
+.isolated-cell > pluto-output {
+    padding: 0;
+}
+.hidden-cell {
+    display: none;
+}
+
 /* SELECTION */
 
 pluto-cell.selected {
@@ -980,7 +989,7 @@ pluto-input .cm-editor {
     border-bottom-right-radius: 4px;
     border: 1px solid rgba(0, 0, 0, 0.1);
     border-left: none;
-    transition: border 0.15s ease-in-out;
+    transition: border-color 0.15s ease-in-out;
 
     /* Make sure that scrolling an editor into view gives some breathing room */
     scroll-margin-block: 20vh;
@@ -2099,6 +2108,9 @@ pluto-input .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
     color: white;
     background: #16659d;
 }
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionLabel {
+    border-color: transparent;
+}
 
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete li.c_notexported {
     color: rgba(0, 0, 0, 0.5);
@@ -2129,12 +2141,36 @@ Based on "Paraíso (Light)" by Jan T. Sott:
 */
 
 [data-pluto-variable] {
-    text-decoration: none;
+    /* text-decoration-thickness: 3px; */
     font-weight: inherit;
 }
-body.ctrl_down [data-pluto-variable]:hover {
+
+[data-pluto-variable],
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete li.c_from_notebook .cm-completionLabel {
+    font-weight: bold;
     text-decoration: underline;
+    text-decoration-color: #ced2ef;
+    text-decoration-thickness: 3px;
+    text-decoration-skip-ink: none;
+}
+
+body.ctrl_down [data-pluto-variable] {
+    text-decoration-color: #d177e6;
     cursor: pointer;
+}
+body.ctrl_down [data-pluto-variable]:hover,
+body.ctrl_down [data-pluto-variable]:hover * {
+    color: #af5bc3 !important;
+}
+
+/* Variable that is declared in the same cell */
+[data-cell-variable] {
+    /* Can give this cool styles later as well, but not for now nahhh */
+    text-decoration: none;
+    cursor: pointer;
+}
+body.ctrl_down [data-cell-variable]:hover * {
+    color: #af5bc3 !important;
 }
 
 .cm-tooltip.cm-tooltip-autocomplete {
@@ -2307,4 +2343,36 @@ pluto-input:focus-within .cm-editor .cm-matchingBracket {
 .awesome-wrapping-plugin-indent > * {
     /* text-indent apparently cascades... which I think is pretty stupid but this is the fix */
     text-indent: initial;
+}
+
+/* PLUTO HOOKS - special styling for cell that runs hook */
+/* New feature, new section in the css! */
+pluto-cell.hooked_up {
+    --pluto-cell-force-color: #00b9ff7a;
+}
+
+pluto-cell.hooked_up pluto-trafficlight {
+    background-color: var(--pluto-cell-force-color) !important;
+}
+
+pluto-cell.hooked_up pluto-input .cm-editor {
+    border-color: var(--pluto-cell-force-color);
+    border-width: 2px;
+    border-left: none;
+}
+
+pluto-cell.hooked_up > pluto-runarea {
+    opacity: 1;
+    background-color: var(--pluto-cell-force-color);
+}
+
+pluto-cell.hooked_up pluto-runarea > span {
+    color: #0000004f;
+}
+
+pluto-cell.hooked_up pluto-output {
+    border-right: solid 2px;
+    border-top: solid 2px;
+    border-top-right-radius: 4px;
+    border-color: var(--pluto-cell-force-color);
 }
