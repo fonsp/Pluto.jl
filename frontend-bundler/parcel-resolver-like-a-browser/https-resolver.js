@@ -34,10 +34,7 @@ module.exports = new Resolver({
         }
 
         if (specifier.startsWith("sample")) {
-            return {
-                code: "",
-                filePath: "/" + specifier,
-            }
+            return { isExcluded: true }
         }
 
         if (specifier.startsWith("https://") || specifier.startsWith("http://")) {
