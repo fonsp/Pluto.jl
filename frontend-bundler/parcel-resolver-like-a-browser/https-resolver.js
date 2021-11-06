@@ -5,13 +5,15 @@ let os = require("os")
 let fs = require("fs/promises")
 let mkdirp = require("mkdirp")
 
-let { default: NodeResolver } = require("@parcel/node-resolver-core")
-
-let my_temp_cave = path.join(os.tmpdir(), "parcel-resolver-like-a-browser")
 let DONT_INCLUDE = { isExcluded: true }
+
+const fileExists = async (path) => !!(await fs.stat(path).catch((e) => false))
 
 module.exports = new Resolver({
     async resolve({ specifier, dependency, options }) {
+        let my_temp_cave = path.join(options.cacheDir, ".net")
+
+        await new Promise((resolve) => setTimeout(resolve, 10000))
         if (dependency.specifierType === "commonjs") {
             if (specifier === "process") {
                 return { filePath: "/dev/null.js", code: "" }
@@ -36,14 +38,6 @@ module.exports = new Resolver({
         }
 
         if (specifier.startsWith("https://") || specifier.startsWith("http://")) {
-            let response = await fetch(specifier)
-            if (response.status !== 200) {
-                throw new Error(`${specifier} returned ${response.status}`)
-            }
-            // Can't directly use the value from the request, as parcel really wants a string,
-            // and converting binary assets into strings and then passing them doesn't work 🤷‍♀️.
-            let buffer = await response.buffer()
-
             let url = new URL(specifier)
 
             if (url.port !== "") throw new Error(`Port in urls not supported yet (${specifier})`)
@@ -56,8 +50,18 @@ module.exports = new Resolver({
             let fullpath = path.join(my_temp_cave, url_to_path)
             let folder = path.dirname(fullpath)
 
-            await mkdirp(folder)
-            await fs.writeFile(fullpath, buffer)
+            if (!(await fileExists(fullpath))) {
+                let response = await fetch(specifier)
+                if (response.status !== 200) {
+                    throw new Error(`${specifier} returned ${response.status}`)
+                }
+                // Can't directly use the value from the request, as parcel really wants a string,
+                // and converting binary assets into strings and then passing them doesn't work 🤷‍♀️.
+                let buffer = await response.buffer()
+
+                await mkdirp(folder)
+                await fs.writeFile(fullpath, buffer)
+            }
 
             return { filePath: fullpath }
         }

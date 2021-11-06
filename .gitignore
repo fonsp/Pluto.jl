@@ -14,3 +14,5 @@ frontend-dist
 node_modules
 .parcel-cache
 frontend/dist
+.net
+net
