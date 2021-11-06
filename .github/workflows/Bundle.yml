@@ -18,6 +18,8 @@ jobs:
             - uses: actions/setup-node@v1
               with:
                   node-version: 17.x
+                  cache: "npm"
+                  cache-dependency-path: frontend-bundler/package-lock.json
             - run: npm install
               working-directory: frontend-bundler
             - name: The Actual Build
@@ -25,7 +27,8 @@ jobs:
               run: npm run build
             - uses: EndBug/add-and-commit@v7 # You can change this to use a specific version.
               with:
-                  add: "frontend-dist"
+                  # Needs --force because frontend-dist is normally .gitignore'd
+                  add: "frontend-dist --force"
                   branch: release
                   # Arguments for the git pull command. Use NO-PULL to avoid the action pulling at all.
                   # Default: '--no-rebase'
