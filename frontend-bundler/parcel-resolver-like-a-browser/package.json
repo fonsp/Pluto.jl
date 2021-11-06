@@ -1,5 +1,5 @@
 {
-    "name": "parcel-resolver-http",
+    "name": "parcel-resolver-like-a-browser",
     "version": "1.0.0",
     "description": "",
     "main": "https-resolver.js",

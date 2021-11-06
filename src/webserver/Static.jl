@@ -2,6 +2,23 @@ import HTTP
 import Markdown: htmlesc
 import UUIDs: UUID
 
+function frontend_directory()
+    if isdir(project_relative_path("frontend-dist"))
+        "frontend-dist"
+    else
+        "frontend"
+    end
+end
+
+module DoWeRunBundledOrNot
+    import ..project_relative_path
+    function __init__()
+        if !isdir(project_relative_path("frontend-dist"))
+            @warn "FYI, running unbundled (dev) frontend"
+        end
+    end
+end
+
 # Serve everything from `/frontend`, and create HTTP endpoints to open notebooks.
 
 "Attempts to find the MIME pair corresponding to the extension of a filename. Defaults to `text/plain`."
@@ -33,7 +50,7 @@ function asset_response(path; target=nothing)
 end
 
 function error_response(status_code::Integer, title, advice, body="")
-    template = read(project_relative_path("frontend", "error.jl.html"), String)
+    template = read(project_relative_path(frontend_directory(), "error.jl.html"), String)
 
     body_title = body == "" ? "" : "Error message:"
     filled_in = replace(replace(replace(replace(template, "\$TITLE" => title), "\$ADVICE" => advice), "\$BODYTITLE" => body_title), "\$BODY" => htmlesc(body))
@@ -126,14 +143,14 @@ function http_router_for(session::ServerSession)
     # Access to all 'risky' endpoints is still restricted to requests that have the secret cookie, but visiting `/` is allowed, and it will set the cookie. From then on the security situation is identical to 
     #    secret_for_access == true
     HTTP.@register(router, "GET", "/", with_authentication(
-        create_serve_onefile(project_relative_path("frontend", "index.html"));
+        create_serve_onefile(project_relative_path(frontend_directory(), "index.html"));
         required=security.require_secret_for_access
         ))
-    # HTTP.@register(router, "GET", "/edit", with_authentication(
-    #     create_serve_onefile(project_relative_path("frontend", "editor.html"));
-    #     required=security.require_secret_for_access || 
-    #     security.require_secret_for_open_links,
-    # ))
+    HTTP.@register(router, "GET", "/edit", with_authentication(
+        create_serve_onefile(project_relative_path(frontend_directory(), "editor.html"));
+        required=security.require_secret_for_access || 
+        security.require_secret_for_open_links,
+    ))
     # the /edit page also uses with_authentication, but this is not how access to notebooks is secured: this is done by requiring the WS connection to be authenticated.
     # we still use it for /edit to do the cookie stuff, and show a more helpful error, instead of the WS never connecting.
     
@@ -277,11 +294,11 @@ function http_router_for(session::ServerSession)
     function serve_asset(request::HTTP.Request)
         uri = HTTP.URI(request.target)
         
-        filepath = project_relative_path("frontend", relpath(HTTP.unescapeuri(uri.path), "/"))
-        asset_response(filepath, target=request.target)
+        filepath = project_relative_path(frontend_directory(), relpath(HTTP.unescapeuri(uri.path), "/"))
+        asset_response(filepath)
     end
     HTTP.@register(router, "GET", "/*", serve_asset)
-    HTTP.@register(router, "GET", "/favicon.ico", create_serve_onefile(project_relative_path("frontend", "img", "favicon.ico")))
+    HTTP.@register(router, "GET", "/favicon.ico", create_serve_onefile(project_relative_path(frontend_directory(), "img", "favicon.ico")))
 
     return router
 end
