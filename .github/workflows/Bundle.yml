@@ -20,7 +20,7 @@ jobs:
               run: |
                   git checkout -b release
                   git reset --hard $GITHUB_SHA
-                  git push -f # force push the branch
+                  git push -f origin release # force push the branch
             - uses: actions/setup-node@v2
               with:
                   node-version: 17.x
