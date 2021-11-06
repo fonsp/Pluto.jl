@@ -33,5 +33,5 @@
     src: url("https://cdn.jsdelivr.net/gh/cormullion/juliamono@0.043/webfonts/JuliaMono-RegularItalic.woff2") format("woff2");
     font-display: swap;
     font-weight: 400;
-    font-style: italic, oblique;
+    font-style: italic;
 }
