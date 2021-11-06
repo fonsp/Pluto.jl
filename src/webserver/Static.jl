@@ -10,15 +10,6 @@ function frontend_directory()
     end
 end
 
-module DoWeRunBundledOrNot
-    import ..project_relative_path
-    function __init__()
-        if !isdir(project_relative_path("frontend-dist"))
-            @warn "FYI, running unbundled (dev) frontend"
-        end
-    end
-end
-
 # Serve everything from `/frontend`, and create HTTP endpoints to open notebooks.
 
 "Attempts to find the MIME pair corresponding to the extension of a filename. Defaults to `text/plain`."
