@@ -20,9 +20,9 @@ function mime_fromfilename(filename)
     MIME(mimepairs[file_extension])
 end
 
-function asset_response(path; target=nothing)
+function asset_response(path)
     if !isfile(path) && !endswith(path, ".html")
-        return asset_response(path * ".html", target=target)
+        return asset_response(path * ".html")
     end
     try
         @assert isfile(path)
@@ -32,11 +32,7 @@ function asset_response(path; target=nothing)
         push!(response.headers, "Access-Control-Allow-Origin" => "*")
         response
     catch e
-        if target === nothing
-            HTTP.Response(404, "Not found!")
-        else
-            return HTTP.get("http://localhost:1234$(target)")
-        end
+        HTTP.Response(404, "Not found!")
     end
 end
 

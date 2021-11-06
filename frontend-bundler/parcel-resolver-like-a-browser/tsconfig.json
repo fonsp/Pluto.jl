@@ -2,9 +2,12 @@
     "compilerOptions": {
         "allowSyntheticDefaultImports": true,
         "lib": ["ES2021"],
-        "module": "ES2020",
+        "allowJs": true,
+        "checkJs": true,
+        "module": "commonjs",
         "moduleResolution": "node",
         "target": "ES2021",
         "noEmit": true
-    }
+    },
+    "include": ["./https-resolver.js"]
 }

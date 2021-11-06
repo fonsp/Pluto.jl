@@ -20,6 +20,7 @@
     },
     "devDependencies": {
         "@parcel/optimizer-data-url": "^2.0.0",
-        "@parcel/transformer-inline-string": "^2.0.0"
+        "@parcel/transformer-inline-string": "^2.0.0",
+        "@types/node": "^16.11.6"
     }
 }

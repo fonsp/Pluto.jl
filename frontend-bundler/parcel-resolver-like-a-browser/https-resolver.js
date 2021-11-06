@@ -1,9 +1,9 @@
 let { Resolver } = require("@parcel/plugin")
 let path = require("path")
 let fetch = require("node-fetch")
-let os = require("os")
 let fs = require("fs/promises")
 let mkdirp = require("mkdirp")
+let { URL } = require("url")
 
 let DONT_INCLUDE = { isExcluded: true }
 
