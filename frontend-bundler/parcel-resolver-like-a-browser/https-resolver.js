@@ -20,31 +20,17 @@ let BROWSER_LIKE_PREFIX = "like-browser-"
 module.exports = new Resolver({
     async resolve({ specifier, dependency, options }) {
         if (specifier.startsWith(".")) {
-            if (dependency.sourcePath?.startsWith?.(path.join(os.tmpdir(), BROWSER_LIKE_PREFIX))) {
-                let [without_extension, extension] = split_extension(dependency.sourcePath)
-                let base64_url = without_extension.slice(BROWSER_LIKE_PREFIX.length)
+            let path_prefix = path.join(os.tmpdir(), BROWSER_LIKE_PREFIX)
+            if (dependency.sourcePath?.startsWith?.(path_prefix)) {
+                let folder_things = dependency.sourcePath.slice(path_prefix.length).split("/")
+                let base64_url = folder_things[0]
 
                 let url = new URL(btoa(base64_url))
-                url.pathname = path.join(url.pathname, specifier)
+                url.pathname = path.join(path.dirname(url.pathname), specifier)
                 let fullurl = url.toString()
 
                 specifier = fullurl
             }
-
-            // console.log(`dependency.sourcePath:`, dependency.sourcePath)
-            // await new Promise((resolve) => setTimeout(resolve, 10000))
-
-            // if (dependency.sourcePath?.startsWith?.("/https")) {
-            //     specifier = "https://" + path.join(path.dirname(dependency.sourcePath), specifier).slice("/https:/".length)
-            //     // console.log(`specifier:`, specifier)
-            //     // await new Promise((resolve) => setTimeout(resolve, 2000))
-            // }
-
-            // if (dependency.sourcePath?.startsWith?.("/http")) {
-            //     specifier = "http://" + path.join(path.dirname(dependency.sourcePath), specifier).slice("/http:/".length)
-            //     // console.log(`specifier:`, specifier)
-            //     // await new Promise((resolve) => setTimeout(resolve, 2000))
-            // }
         }
 
         if (specifier.startsWith("sample")) {
@@ -55,16 +41,31 @@ module.exports = new Resolver({
         }
 
         if (specifier.startsWith("https://") || specifier.startsWith("http://")) {
+            // if (specifier.endsWith(".woff") || specifier.endsWith(".woff2")) {
+            //     return null
+            // }
+
             let response = await fetch(specifier)
+
+            if (response.status !== 200) {
+                throw new Error(`${specifier} returned ${response.status}`)
+            }
+
             // let body = await response.text()
             let buffer = await response.buffer()
 
             let url = new URL(specifier)
             let [filename, extensions] = split_extension(url.pathname)
             let tmpdir = os.tmpdir()
-            let fullpath = path.join(tmpdir, BROWSER_LIKE_PREFIX + atob(specifier) + "." + extensions)
+            let folder = path.join(tmpdir, BROWSER_LIKE_PREFIX + atob(specifier))
+            try {
+                await fs.mkdir(folder)
+            } catch (error) {}
+            let fullpath = path.join(folder, filename + "." + extensions)
 
-            await fs.writeFile(fullpath, buffer)
+            try {
+                await fs.writeFile(fullpath, buffer)
+            } catch (error) {}
 
             return {
                 filePath: fullpath,
@@ -78,15 +79,6 @@ module.exports = new Resolver({
         }
 
         if (specifier.startsWith("@parcel") || dependency.specifierType === "commonjs") {
-            // console.log("WHUUUUT", specifier)
-            // console.log(`dependency:`, {
-            //     specifier: dependency.specifier,
-            //     specifierType: dependency.specifierType,
-            //     sourcePath: dependency.sourcePath,
-            // })
-
-            // await new Promise((resolve) => setTimeout(resolve, 10000))
-
             const resolver = new NodeResolver({
                 fs: options.inputFS,
                 projectRoot: options.projectRoot,
