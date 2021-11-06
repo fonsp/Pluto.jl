@@ -66,7 +66,7 @@ export const pluto_syntax_colors = HighlightStyle.define([
     { tag: tags.bool, color: "#5e7ad3", fontWeight: 700 },
 
     { tag: tags.keyword, color: "#fc6" },
-    { tag: tags.comment, color: "#e96ba8", fontFamily: "JuliaMono-RegularItalic" },
+    { tag: tags.comment, color: "#e96ba8", fontStyle: "italic" },
     { tag: tags.atom, color: "#815ba4" },
     { tag: tags.number, color: "#815ba4" },
     // { tag: tags.property, color: "#48b685" },
