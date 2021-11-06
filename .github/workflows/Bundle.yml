@@ -8,26 +8,25 @@ on:
         branches:
             - bundled
 
-
 jobs:
     trigger:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v2
             - uses: actions/setup-node@v1
-                with:
-                    node-version: 17.x
+              with:
+                  node-version: 17.x
             - name: The Actual Build
-                working-directory: frontend-bundler
-                run: npm run build
-            # - uses: EndBug/add-and-commit@v7 # You can change this to use a specific version.
-            #     with:
-            #         add: 'frontend-dist'
-            #         branch: release
-            #         # Arguments for the git pull command. Use NO-PULL to avoid the action pulling at all.
-            #         # Default: '--no-rebase'
-            #         # pull: 'NO-PULL or --rebase --autostash ...'
+              working-directory: frontend-bundler
+              run: npm run build
+              # - uses: EndBug/add-and-commit@v7 # You can change this to use a specific version.
+              #     with:
+              #         add: 'frontend-dist'
+              #         branch: release
+              #         # Arguments for the git pull command. Use NO-PULL to avoid the action pulling at all.
+              #         # Default: '--no-rebase'
+              #         # pull: 'NO-PULL or --rebase --autostash ...'
 
-            #         # Whether to push the commit and, if any, its tags to the repo. It can also be used to set the git push arguments (see the paragraph below for more info)
-            #         # Default: true
-            #         push: false
+              #         # Whether to push the commit and, if any, its tags to the repo. It can also be used to set the git push arguments (see the paragraph below for more info)
+              #         # Default: true
+              #         push: false
