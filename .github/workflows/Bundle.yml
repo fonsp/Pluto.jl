@@ -32,11 +32,6 @@ jobs:
             - name: The Actual Build
               working-directory: frontend-bundler
               run: npm run build
-            # - uses: JamesIves/github-pages-deploy-action@4.1.5
-            #   with:
-            #       branch: release
-            #       folder: frontend-dist
-            #       target-folder: frontend-dist
             - uses: EndBug/add-and-commit@v7 # You can change this to use a specific version.
               with:
                   # Needs --force because frontend-dist is normally .gitignore'd
