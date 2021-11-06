@@ -236,6 +236,25 @@ function without_dotsuffix(funcname::Symbol)::Symbol
         funcname
     end
 end
+
+"""Generates a vector of all possible variants from a function name
+
+```
+julia> generate_funcnames([:Base, :Foo, :bar])
+3-element Vector{Symbol}:
+ Symbol("Base.Foo.bar")
+ Symbol("Foo.bar")
+ :bar
+```
+
+"""
+function generate_funcnames(funccall::FunctionName)
+      calls = Vector{FunctionName}(undef, length(funccall) - 1)
+      for i in length(funccall):-1:2
+          calls[i-1] = funccall[i:end]
+      end
+      calls
+end
         
 """Turn `Symbol[:Module, :func]` into Symbol("Module.func").
 
@@ -289,7 +308,7 @@ module MacroHasSpecialHeuristicInside
             codes=Pluto.DefaultDict(Pluto.ExprAnalysisCache, Dict(fake_cell => fake_expranalysiscache))
         )
 
-        return Pluto.cell_precedence_heuristic(fake_topology, fake_cell) < 8
+        return Pluto.cell_precedence_heuristic(fake_topology, fake_cell) < 9
     end
     # Having written this... I know I said I was lazy... I was wrong
 end
@@ -703,6 +722,9 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         symstate = explore_module_definition!(ex, scopestate)
 
         return union(symstate, SymbolsState(assignments=Set{Symbol}([ex.args[2]])))
+    elseif Meta.isexpr(ex, Symbol("'"), 1)
+        # a' corresponds to adjoint(a)
+        return explore!(Expr(:call, :adjoint, ex.args[1]), scopestate)
     else
         # fallback, includes:
         # begin, block, do, toplevel, const
