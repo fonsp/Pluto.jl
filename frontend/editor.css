@@ -1925,9 +1925,9 @@ footer {
 
 footer form {
     height: 1.5rem;
-    display: flex;
-    flex-direction: row;
-    justify-content: flex-end;
+
+    opacity: 1;
+    transition: opacity 5s;
 }
 
 footer form > * {
@@ -1987,6 +1987,12 @@ footer button {
     margin: 0 auto;
     padding: 1rem;
     text-align: right;
+
+    /* height: 1.5rem; */
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
 }
 
 /* UNDO DELETED CELL */

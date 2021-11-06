@@ -1251,9 +1251,9 @@ patch: ${JSON.stringify(
                     <${SlideControls} />
                     <footer>
                         <div id="info">
+                            <a href="https://github.com/fonsp/Pluto.jl/wiki" target="_blank">FAQ</a>
+                            <span style="flex: 1"></span>
                             <form id="feedback" action="#" method="post">
-                                <a href="https://github.com/fonsp/Pluto.jl/wiki" target="_blank">FAQ</a>
-                                <span style="flex: 1"></span>
                                 <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl" target="_blank">Pluto.jl</a> better?</label>
                                 <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
                                 <button>Send</button>
