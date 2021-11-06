@@ -30,7 +30,7 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
     end
 
     for nb in values(session.notebooks)
-        if realpath(nb.path) == realpath(tamepath(path))
+        if isfile(nb.path) && realpath(nb.path) == realpath(tamepath(path))
             throw(NotebookIsRunningException(nb))
         end
     end
