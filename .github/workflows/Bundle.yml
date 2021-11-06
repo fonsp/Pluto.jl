@@ -7,6 +7,7 @@ on:
             - "frontend-bundler"
         branches:
             - bundled
+    workflow_dispatch:
 
 jobs:
     trigger:
