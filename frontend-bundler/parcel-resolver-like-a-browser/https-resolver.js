@@ -3,113 +3,78 @@ let path = require("path")
 let fetch = require("node-fetch")
 let os = require("os")
 let fs = require("fs/promises")
+let mkdirp = require("mkdirp")
 
 let { default: NodeResolver } = require("@parcel/node-resolver-core")
 
-let atob = (text) => Buffer.from(text).toString("base64")
-let btoa = (binary) => Buffer.from(binary, "base64").toString()
-
-let split_extension = (_path) => {
-    let filename = path.basename(_path)
-    let [without_extension, ...extensions] = filename.split(".")
-    return [without_extension, extensions.join(".")]
-}
-
-let BROWSER_LIKE_PREFIX = "like-browser-"
+let my_temp_cave = path.join(os.tmpdir(), "parcel-resolver-like-a-browser")
+let DONT_INCLUDE = { isExcluded: true }
 
 module.exports = new Resolver({
     async resolve({ specifier, dependency, options }) {
-        if (specifier.startsWith(".")) {
-            let path_prefix = path.join(os.tmpdir(), BROWSER_LIKE_PREFIX)
-            if (dependency.sourcePath?.startsWith?.(path_prefix)) {
-                let folder_things = dependency.sourcePath.slice(path_prefix.length).split("/")
-                let base64_url = folder_things[0]
-
-                let url = new URL(btoa(base64_url))
-                url.pathname = path.join(path.dirname(url.pathname), specifier)
-                let fullurl = url.toString()
-
-                specifier = fullurl
+        if (dependency.specifierType === "commonjs") {
+            if (specifier === "process") {
+                return { filePath: "/dev/null.js", code: "" }
             }
+            if (specifier.startsWith("@parcel") || dependency.sourcePath.includes("node_modules/@parcel")) {
+                return null
+            }
+            console.error(`Unrecognized commonjs import:`, dependency)
+            return DONT_INCLUDE
         }
 
+        // So yeah, our sample urls aren't real urls....
         if (specifier.startsWith("sample")) {
-            return { isExcluded: true }
+            return DONT_INCLUDE
+        }
+
+        // Translate my cool directory structure into a real url
+        if (dependency.sourcePath?.startsWith?.(my_temp_cave)) {
+            let [protocol, hostname, ...path] = dependency.sourcePath.slice(my_temp_cave.length).slice(1).split("/")
+            let url_object = new URL(specifier, `${protocol}://${hostname}/${path.join("/")}`)
+            specifier = url_object.toString()
         }
 
         if (specifier.startsWith("https://") || specifier.startsWith("http://")) {
-            // if (specifier.endsWith(".woff") || specifier.endsWith(".woff2")) {
-            //     return null
-            // }
-
             let response = await fetch(specifier)
-
             if (response.status !== 200) {
                 throw new Error(`${specifier} returned ${response.status}`)
             }
-
-            // let body = await response.text()
+            // Can't directly use the value from the request, as parcel really wants a string,
+            // and converting binary assets into strings and then passing them doesn't work 🤷‍♀️.
             let buffer = await response.buffer()
 
             let url = new URL(specifier)
-            let [filename, extensions] = split_extension(url.pathname)
-            let tmpdir = os.tmpdir()
-            let folder = path.join(tmpdir, BROWSER_LIKE_PREFIX + atob(specifier))
-            try {
-                await fs.mkdir(folder)
-            } catch (error) {}
-            let fullpath = path.join(folder, filename + "." + extensions)
 
-            try {
-                await fs.writeFile(fullpath, buffer)
-            } catch (error) {}
+            if (url.port !== "") throw new Error(`Port in urls not supported yet (${specifier})`)
+            if (url.search !== "") throw new Error(`Search in urls not supported yet (${specifier})`)
+            if (url.hash !== "") throw new Error(`Hash in urls not supported yet (${specifier})`)
+            if (url.username !== "") throw new Error(`Username in urls not supported (${specifier})`)
+            if (url.password !== "") throw new Error(`Password in urls not supported (${specifier})`)
 
+            let url_to_path = path.join(url.protocol.slice(0, -1), url.hostname, ...url.pathname.slice(1).split("/"))
+            let fullpath = path.join(my_temp_cave, url_to_path)
+            let folder = path.dirname(fullpath)
+
+            await mkdirp(folder)
+            await fs.writeFile(fullpath, buffer)
+
+            return { filePath: fullpath }
+        }
+
+        if (dependency.specifierType === "esm" || dependency.specifierType === "url") {
             return {
-                filePath: fullpath,
+                filePath: path.join(path.dirname(dependency.sourcePath ?? "/"), specifier),
             }
         }
 
-        if (specifier.startsWith("/")) {
-            return {
-                filePath: specifier,
-            }
-        }
-
-        if (specifier.startsWith("@parcel") || dependency.specifierType === "commonjs") {
-            const resolver = new NodeResolver({
-                fs: options.inputFS,
-                projectRoot: options.projectRoot,
-                // Extensions are always required in URL dependencies.
-                extensions: dependency.specifierType === "commonjs" || dependency.specifierType === "esm" ? ["ts", "tsx", "js", "jsx", "json"] : [],
-                mainFields: ["source", "browser", "module", "main"],
-            })
-
-            return resolver.resolve({
-                filename: specifier,
-                specifierType: dependency.specifierType,
-                parent: dependency.resolveFrom,
-                env: dependency.env,
-                sourcePath: dependency.sourcePath,
-            })
-        }
-
-        if (specifier.startsWith(".") || dependency.specifierType === "url") {
-            return {
-                filePath: path.join(path.dirname(dependency.sourcePath), specifier),
-            }
-        }
-
-        console.log("WHAAAAAT", specifier)
-        console.log(`dependency:`, {
+        console.error(`Dependency unrecognized:`, {
             specifier: dependency.specifier,
             specifierType: dependency.specifierType,
             sourcePath: dependency.sourcePath,
         })
 
-        await new Promise((resolve) => setTimeout(resolve, 10000))
-
-        // Let the next resolver in the pipeline handle
-        // this dependency.
-        return null
+        // This shouldn't lead to an error, but this does make the bundle unusable
+        return DONT_INCLUDE
     },
 })

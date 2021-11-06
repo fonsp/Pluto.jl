@@ -11,9 +11,6 @@
         "build": "cd ../frontend && parcel build --dist-dir ../frontend-dist --config ../frontend-bundler/.parcelrc --no-optimize editor.html index.html error.jl.html sample.html",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
-    "engines": {
-        "parcel": "2.x"
-    },
     "author": "",
     "license": "ISC",
     "dependencies": {
