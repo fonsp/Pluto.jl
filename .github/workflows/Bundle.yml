@@ -14,6 +14,8 @@ jobs:
     trigger:
         runs-on: ubuntu-latest
         steps:
+            # Ignore the build changes from previous run
+            - run: git reset --hard
             - uses: actions/checkout@v2
             - uses: actions/setup-node@v2
               with:
