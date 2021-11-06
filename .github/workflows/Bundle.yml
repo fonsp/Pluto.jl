@@ -20,6 +20,8 @@ jobs:
                   node-version: 17.x
             - run: npm install
               working-directory: frontend-bundler
+            - run: parcel --version
+              working-directory: frontend-bundler
             - name: The Actual Build
               working-directory: frontend-bundler
               run: npm run build
