@@ -42,3 +42,4 @@ jobs:
                   add: "frontend-dist --force"
                   branch: release
                   push: "origin release --force"
+                  pull: "NO-PULL"
