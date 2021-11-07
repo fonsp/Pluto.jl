@@ -103,11 +103,11 @@ function get_notebook_output(session::ServerSession, notebook::Notebook, topolog
         where_referenced(notebook, notebook.topology, Set{Symbol}(to_set))...,
     ]
 
-    function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Notebook}, old_workspace_name::Symbol, new_workspace_name::Union{Nothing,Symbol}, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}; to_run::AbstractVector{Cell})
+    function custom_deletion_hook(session_notebook::Union{WorkspaceManager.SN, WorkspaceManager.Workspace}, old_workspace_name::Symbol, new_workspace_name::Union{Nothing,Symbol}, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}; to_run::AbstractVector{Cell})
         to_delete_vars = Set{Symbol}([to_delete_vars..., to_set...]) # also delete the bound symbols
-        WorkspaceManager.move_vars((session, notebook), old_workspace_name, new_workspace_name, to_delete_vars, funcs_to_delete, to_reimport)
+        WorkspaceManager.move_vars(session_notebook, old_workspace_name, new_workspace_name, to_delete_vars, funcs_to_delete, to_reimport, true)
 
-        workspace = WorkspaceManager.get_workspace((session, notebook))
+        workspace = WorkspaceManager.get_workspace(session_notebook)
         eval_workspace = workspace.module_name
 
         for (sym, new_value) in zip(to_set, new_values)
@@ -116,11 +116,18 @@ function get_notebook_output(session::ServerSession, notebook::Notebook, topolog
         end
     end
 
-    update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, dependency_mod=Cell[intersection_path...], run_async=false, save=false)
-    out = Dict(out_symbol => WorkspaceManager.eval_fetch_in_workspace((session, notebook), out_symbol) for out_symbol in outputs)
-    update_save_run!(session, notebook, where_assigned(notebook, notebook.topology, Set{Symbol}(to_set)); dependency_mod=Cell[intersection_path...])
+    current_workspace = WorkspaceManager.get_workspace((session, notebook))
+    new_workspace_name = WorkspaceManager.create_emptyworkspacemodule(current_workspace.pid)
+    workspace = WorkspaceManager.Workspace(;
+        pid=current_workspace.pid,
+        log_channel=current_workspace.log_channel, 
+        module_name=new_workspace_name,
+        original_LOAD_PATH=current_workspace.original_LOAD_PATH,
+        original_ACTIVE_PROJECT=current_workspace.original_ACTIVE_PROJECT,
+    )
+    update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, dependency_mod=Cell[intersection_path...], workspace_override=workspace, old_workspace_name_override=current_workspace.module_name, send_notebook_changes=false, run_async=false, save=false)
 
-    out
+    Dict(out_symbol => WorkspaceManager.eval_fetch_in_workspace(workspace, out_symbol) for out_symbol in outputs)
 end
 get_notebook_output(session::ServerSession, notebook::Notebook, topology::NotebookTopology, inputs::Dict{Symbol, Any}, outputs::Vector{Symbol}) = get_notebook_output(session, notebook, topology, inputs, Set(outputs))
 
