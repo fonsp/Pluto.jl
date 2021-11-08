@@ -31,7 +31,7 @@ import { BinderButton } from './BinderButton.js'
 import { slider_server_actions, nothing_actions } from '../common/SliderServerClient.js'
 import { ProgressBar } from './ProgressBar.js'
 import { IsolatedCell } from './Cell.js'
-import { available as vscode_available } from '../common/VSCodeApi.js'
+import { available as vscode_available, api as vscode } from '../common/VSCodeApi.js'
 
 const default_path = '...'
 import { alert, confirm } from '../common/alert_confirm.js'
@@ -211,7 +211,7 @@ export class Editor extends Component {
 
         this.state = {
             notebook: /** @type {NotebookData} */ initial_notebook(),
-            cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
+            cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ vscode.init_cell_inputs_local(),
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
             last_update_time: 0,
@@ -249,6 +249,7 @@ export class Editor extends Component {
             update_notebook: (...args) => this.update_notebook(...args),
             set_doc_query: (query) => this.setState({ desired_doc_query: query }),
             set_local_cell: (cell_id, new_val) => {
+                vscode.set_local_cell(cell_id, new_val)
                 return this.setStatePromise(
                     immer((state) => {
                         state.cell_inputs_local[cell_id] = {
