@@ -1721,7 +1721,7 @@ Don't use this!!
 @fons you using this anywhere? Else I'd like to put it in a module
 so people don't use it accidentally.
 """
-function publish(x, id_start)::String
+function _publish(x, id_start)::String
     assertpackable(x)
     
     id = string(notebook_id[], "/", currently_running_cell_id[], "/", id_start)
@@ -1730,7 +1730,7 @@ function publish(x, id_start)::String
     return id
 end
 
-publish(x) = publish(x, string(objectid(x), base=16))
+_publish(x) = _publish(x, string(objectid(x), base=16))
 
 # TODO? Possibly move this to it's own package, with fallback that actually msgpack?
 # ..... Ideally we'd make this require `await` on the javascript side too...
@@ -1778,7 +1778,7 @@ end
 """
 function publish_to_js(args...)
     PublishedToJavascript(
-        published_id=publish(args...),
+        published_id=_publish(args...),
         cell_id=currently_running_cell_id[],
     )
 end
