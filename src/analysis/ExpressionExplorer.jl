@@ -1229,7 +1229,11 @@ function get_rootassignee(ex::Expr, recurse::Bool=true)::Union{Symbol,Nothing}
         get_rootassignee(ex.args[2], false)
     elseif Meta.isexpr(ex, :const, 1)
         rooter_assignee = get_rootassignee(ex.args[1], false)
-        Symbol("const " * String(rooter_assignee))
+        if rooter_assignee !== nothing
+            Symbol("const " * String(rooter_assignee))
+        else
+            nothing
+        end
     elseif ex.head == :(=) && ex.args[1] isa Symbol
         ex.args[1]
     else
