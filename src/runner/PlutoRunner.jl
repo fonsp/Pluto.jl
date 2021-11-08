@@ -1715,12 +1715,6 @@ end"""
 
 const currently_running_cell_id = Ref{UUID}(uuid4())
 
-"""
-Don't use this!!
-
-@fons you using this anywhere? Else I'd like to put it in a module
-so people don't use it accidentally.
-"""
 function _publish(x, id_start)::String
     assertpackable(x)
     
