@@ -20,12 +20,7 @@ function open_url(session::ServerSession, url::AbstractString; kwargs...)
     open(session, path; kwargs...)
 end
 
-"""
-	open(session::ServerSession, path::AbstractString; run_async=true, compiler_options=nothing, as_sample=false)
-
-Open `path` into `session`.
-By default, this method also runs the notebook cells.
-"""
+"Open `path` into `session`. By default, this method also runs the notebook cells."
 function open(session::ServerSession, path::AbstractString; run_async=true, compiler_options=nothing, as_sample=false)
     if as_sample
         new_filename = "sample " * without_pluto_file_extension(basename(path))
@@ -61,11 +56,7 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
     nb
 end
 
-"""
-	add(session::ServerSession, nb::Notebook; run_async::Bool=true)
-
-Add `nb` into `session`.
-"""
+"Add `nb` into `session`."
 function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
     session.notebooks[nb.notebook_id] = nb
     
@@ -132,11 +123,7 @@ function save_upload(content::Vector{UInt8})
     save_path
 end
 
-"""
-    new(session::ServerSession; run_async=true)
-
-Create a new empty notebook inside `session`.
-"""
+"Create a new empty notebook inside `session`."
 function new(session::ServerSession; run_async=true)
     nb = if session.options.server.init_with_file_viewer
         
@@ -182,11 +169,7 @@ function new(session::ServerSession; run_async=true)
     nb
 end
 
-"""
-    shutdown(session::ServerSession, notebook::Notebook; keep_in_session=false, async=false)		
-
-Shutdown `notebook` inside 
-"""
+"Shutdown `notebook` inside `session`."
 function shutdown(session::ServerSession, notebook::Notebook; keep_in_session=false, async=false)
     notebook.nbpkg_restart_recommended_msg = nothing
     notebook.nbpkg_restart_required_msg = nothing
