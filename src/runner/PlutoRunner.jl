@@ -1715,6 +1715,12 @@ end"""
 
 const currently_running_cell_id = Ref{UUID}(uuid4())
 
+"""
+Don't use this!!
+
+@fons you using this anywhere? Else I'd like to put it in a module
+so people don't use it accidentally.
+"""
 function publish(x, id_start)::String
     assertpackable(x)
     
@@ -1725,6 +1731,22 @@ function publish(x, id_start)::String
 end
 
 publish(x) = publish(x, string(objectid(x), base=16))
+
+# TODO? Possibly move this to it's own package, with fallback that actually msgpack?
+# ..... Ideally we'd make this require `await` on the javascript side too...
+Base.@kwdef struct PublishedToJavascript
+    published_id
+    cell_id
+end
+function Base.show(io::IO, ::MIME"text/javascript", published::PublishedToJavascript)
+    @info "::" published.cell_id currently_running_cell_id[]
+    if published.cell_id != currently_running_cell_id[]
+        error("Showing result from PlutoRunner.publish_to_js() in a cell different from where it was created, not (yet?) supported.")
+    end
+    write(io, "/* See the documentation for PlutoRunner.publish_to_js */ getPublishedObject(\"$(published.published_id)\")")
+end
+Base.show(io::IO, ::MIME"text/plain", published::PublishedToJavascript) = show(io, MIME("text/javascript"), published)    
+Base.show(io::IO, published::PublishedToJavascript) = show(io, MIME("text/javascript"), published)    
 
 """
     publish_to_js(x)
@@ -1754,9 +1776,11 @@ let
 end
 ```
 """
-function publish_to_js(args...)::String
-    id = publish(args...)
-    return "/* See the documentation for PlutoRunner.publish_to_js */ getPublishedObject(\"$(id)\")"
+function publish_to_js(args...)
+    PublishedToJavascript(
+        published_id=publish(args...),
+        cell_id=currently_running_cell_id[],
+    )
 end
 
 const Packable = Union{Nothing,Missing,String,Symbol,Int64,Int32,Int16,Int8,UInt64,UInt32,UInt16,UInt8,Float32,Float64,Bool,MIME,UUID,DateTime}
