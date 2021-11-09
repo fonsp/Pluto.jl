@@ -435,13 +435,6 @@ end
 contains_macrocall(other) = false
 
 
-function eval_expr(mod::Module, expr::Expr, expansion_runtime=nothing)
-    toplevel_expr = Expr(:toplevel, expr)
-    wrapped = timed_expr(toplevel_expr)
-    ans, runtime = run_inside_trycatch(mod, wrapped)
-    (ans, add_runtimes(runtime, expansion_runtime))
-end
-
 """
 Run the given expression in the current workspace module. If the third argument is `nothing`, then the expression will be `Core.eval`ed. The result and runtime are stored inside [`cell_results`](@ref) and [`cell_runtimes`](@ref).
 
@@ -458,7 +451,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
     end
 
     currently_running_cell_id[] = cell_id
-    
+
     # reset published objects
     cell_published_objects[cell_id] = Dict{String,Any}()
 
@@ -467,7 +460,6 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
         delete!(registered_bond_elements, s)
     end
     cell_registered_bond_names[cell_id] = Set{Symbol}()
-
 
     # If the cell contains macro calls, we want those macro calls to preserve their identity,
     # so we macroexpand this earlier (during expression explorer stuff), and then we find it here.
@@ -487,6 +479,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
 
     # We can be sure there is a cached expression now, yay
     expanded_cache = cell_expanded_exprs[cell_id]
+    original_expr = expr
     expr = expanded_cache.expanded_expr
 
     # We add the time it took to macroexpand to the time for the first call,
@@ -511,7 +504,10 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
     end
 
     result, runtime = if function_wrapped_info === nothing
-        eval_expr(m, expr, expansion_runtime)
+        toplevel_expr = Expr(:toplevel, expr)
+        wrapped = timed_expr(toplevel_expr)
+        ans, runtime = run_inside_trycatch(m, wrapped)
+        (ans, add_runtimes(runtime, expansion_runtime))
     else
         expr_id = forced_expr_id !== nothing ? forced_expr_id : expr_hash(expr)
         local computer = get(computers, cell_id, nothing)
@@ -520,7 +516,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
                 computer = register_computer(expr, expr_id, cell_id, collect.(function_wrapped_info)...)
             catch e
                 # @error "Failed to generate computer function" expr exception=(e,stacktrace(catch_backtrace()))
-                return run_expression(m, expr, cell_id, nothing; user_requested_run=user_requested_run)
+                return run_expression(m, original_expr, cell_id, nothing; user_requested_run=user_requested_run)
             end
         end
 
@@ -529,7 +525,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
         ans, runtime = if any(name -> !isdefined(m, name), computer.input_globals)
             # Do run_expression but with function_wrapped_info=nothing so it doesn't go in a Computer()
             # @warn "Got variables that don't exist, running outside of computer" not_existing=filter(name -> !isdefined(m, name), computer.input_globals)
-            eval_expr(m, expr, expansion_runtime)
+            run_expression(m, original_expr, cell_id; user_requested_run)
         else
             run_inside_trycatch(m, () -> compute(m, computer))
         end
