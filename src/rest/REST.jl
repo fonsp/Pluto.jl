@@ -6,25 +6,6 @@ import Distributed
 
 WYSIWYR_VERSION = "v1"
 
-"Return the given cells, and all cells that depend on them (recursively)."
-function downstream_recursive(notebook::Notebook, topology::NotebookTopology, from::Union{Vector{Cell},Set{Cell}})
-    found = Set{Cell}(copy(from))
-    downstream_recursive!(found, notebook, topology, from)
-    found
-end
-
-function downstream_recursive!(found::Set{Cell}, notebook::Notebook, topology::NotebookTopology, from::Vector{Cell})
-    for cell in from
-        one_down = where_referenced(notebook, topology, cell)
-        for next in one_down
-            if next ∉ found
-                push!(found, next)
-                downstream_recursive!(found, notebook, topology, Cell[next])
-            end
-        end
-    end
-end
-
 
 "Return all cells that are depended upon by any of the given cells."
 function upstream_recursive(notebook::Notebook, topology::NotebookTopology, from::Union{Vector{Cell},Set{Cell}})
@@ -100,7 +81,7 @@ function get_notebook_output(session::ServerSession, notebook::Notebook, topolog
 
     to_reeval = Cell[
         # Re-evaluate all cells that reference the modified input parameters
-        where_referenced(notebook, notebook.topology, Set{Symbol}(to_set))...,
+        where_referenced(notebook, notebook.topology, Set{Symbol}(to_set))...
     ]
 
     function custom_deletion_hook(session_notebook::Union{WorkspaceManager.SN, WorkspaceManager.Workspace}, old_workspace_name::Symbol, new_workspace_name::Union{Nothing,Symbol}, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}; to_run::AbstractVector{Cell})
@@ -161,14 +142,4 @@ function get_notebook_static_function(session::ServerSession, notebook::Notebook
     )
 end
 
-end
-
-
-PlutoNotebook = PlutoRunner.PlutoNotebook
-PlutoNotebookWithArgs = PlutoRunner.PlutoNotebookWithArgs
-
-macro resolve(notebook, inputs, output)
-    :(
-        eval(REST.static_function($(esc(output)), [$(esc(inputs))...], Base.getfield($(esc(notebook)), :filename), Base.getfield($(esc(notebook)), :host)))
-    )
 end

@@ -11,10 +11,13 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		# make sure that we're the only `run_reactive!` being executed - like a semaphor
 		take!(notebook.executetoken)
 		
+		# is the workspace being overridden?
 		if isnothing(workspace_override)
+			# if not, then bump the workspace module
 			old_workspace_name, new_workspace_name = WorkspaceManager.bump_workspace_module((session, notebook))
 			workspace = WorkspaceManager.get_workspace((session, notebook))
 		else
+			# otherwise use the provided workspace instead
 			workspace = workspace_override
 			old_workspace_name = old_workspace_name_override
 			new_workspace_name = workspace.module_name
@@ -71,8 +74,8 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 	to_run = setdiff(to_run_raw, indirectly_deactivated, already_run)
 
-	# custom dependency to_run modification through a set intersection
-	#   can "trim" down the amount of code execution necessary in cases such as treating notebooks as functions
+	# custom dependency modification through a set intersection
+	#   "trim" down the amount of code to run for REST API
 	if !isnothing(dependency_mod)
 		to_run = intersect(to_run, dependency_mod)
 	end
@@ -95,6 +98,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 			send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 		end
 	else
+		# don't do anything when asked to send notebook changes
 		do_nothing = (args...; kwargs...) -> ()
 		do_nothing, do_nothing
 	end

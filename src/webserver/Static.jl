@@ -242,77 +242,77 @@ function http_router_for(session::ServerSession)
 
 
 
-    function get_notebook_from_api_request(request::HTTP.Request)
-        uri = HTTP.URI(request.target)
-        query = HTTP.queryparams(uri)
-        splitpath = HTTP.URIs.splitpath(request.target)
-
-        sess_id = get(query, "session", splitpath[3])
-        file = get(query, "file", HTTP.unescapeuri(splitpath[3]))
-
-        notebook = nothing
-        if !isnothing(file)
-            notebook_id = findfirst(session.notebooks) do nb
-                basename(nb.path) == file
-            end
-
-            if !isnothing(notebook_id)
-                notebook = session.notebooks[notebook_id]
-            end
-        else
-            uid = UUID(sess_id)
-            if uid ∈ keys(session.notebooks)
-                notebook = session.notebooks[uid]
-            end
-        end
-
-        notebook
-    end
-    function rest_parse(body::Vector{UInt8}, mime_type::Union{AbstractString, Nothing})
-        if mime_type == "application/x-msgpack"
-            return MsgPack.unpack(body)
-        elseif mime_type == "application/x-julia"
-            return Serialization.deserialize(IOBuffer(body))
-        else
-            # For some reason JSON.parse mutates body
-            # so we need to make a copy of it
-            jsonstr = String(copy(body))
-            return JSON.parse(jsonstr)
-        end
-    end
-    function rest_parameter(request::HTTP.Request, key::AbstractString, default=nothing)
-        uri = HTTP.URI(request.target)
-        query = HTTP.queryparams(uri)
-
-        content_type = get_header(request, "Content-Type")
-        if haskey(query, key)
-            return rest_parse(Vector{UInt8}(get(query, key, "")), content_type)
-        end
-
-        parsed_body = rest_parse(request.body, content_type)
-        get(parsed_body, key, default)
-    end
-    function rest_serialize(request::HTTP.Request, body)
-        accept_type = get_header(request, "Accept")
-        try
-            if accept_type == "application/x-msgpack"
-                return HTTP.Response(200, Pluto.pack(body)) |> with_msgpack! |> with_cors!
-            elseif accept_type == "application/x-julia"
-                out_io = IOBuffer()
-                Serialization.serialize(out_io, body)
-                serialized_msg = take!(out_io)
-                return HTTP.Response(200, serialized_msg) |> with_julia! |> with_cors!
-            else 
-                return HTTP.Response(200, JSON.json(body)) |> with_json! |> with_cors!
-            end
-        catch e
-            # Likely an error serializing the object
-            showerror(stderr, e)
-            return HTTP.Response(400, "Cannot serialize requested output. See server logs for details")
-        end
-    end
-
     if session.options.server.enable_rest
+        function get_notebook_from_api_request(request::HTTP.Request)
+            uri = HTTP.URI(request.target)
+            query = HTTP.queryparams(uri)
+            splitpath = HTTP.URIs.splitpath(request.target)
+    
+            sess_id = get(query, "session", splitpath[3])
+            file = get(query, "file", HTTP.unescapeuri(splitpath[3]))
+    
+            notebook = nothing
+            if !isnothing(file)
+                notebook_id = findfirst(session.notebooks) do nb
+                    basename(nb.path) == file
+                end
+    
+                if !isnothing(notebook_id)
+                    notebook = session.notebooks[notebook_id]
+                end
+            else
+                uid = UUID(sess_id)
+                if uid ∈ keys(session.notebooks)
+                    notebook = session.notebooks[uid]
+                end
+            end
+    
+            notebook
+        end
+        function rest_parse(body::Vector{UInt8}, mime_type::Union{AbstractString, Nothing})
+            if mime_type == "application/x-msgpack"
+                return MsgPack.unpack(body)
+            elseif mime_type == "application/x-julia"
+                return Serialization.deserialize(IOBuffer(body))
+            else
+                # For some reason JSON.parse mutates body
+                # so we need to make a copy of it
+                jsonstr = String(copy(body))
+                return JSON.parse(jsonstr)
+            end
+        end
+        function rest_parameter(request::HTTP.Request, key::AbstractString, default=nothing)
+            uri = HTTP.URI(request.target)
+            query = HTTP.queryparams(uri)
+    
+            content_type = get_header(request, "Content-Type")
+            if haskey(query, key)
+                return rest_parse(Vector{UInt8}(get(query, key, "")), content_type)
+            end
+    
+            parsed_body = rest_parse(request.body, content_type)
+            get(parsed_body, key, default)
+        end
+        function rest_serialize(request::HTTP.Request, body)
+            accept_type = get_header(request, "Accept")
+            try
+                if accept_type == "application/x-msgpack"
+                    return HTTP.Response(200, Pluto.pack(body)) |> with_msgpack! |> with_cors!
+                elseif accept_type == "application/x-julia"
+                    out_io = IOBuffer()
+                    Serialization.serialize(out_io, body)
+                    serialized_msg = take!(out_io)
+                    return HTTP.Response(200, serialized_msg) |> with_julia! |> with_cors!
+                else 
+                    return HTTP.Response(200, JSON.json(body)) |> with_json! |> with_cors!
+                end
+            catch e
+                # Likely an error serializing the object
+                showerror(stderr, e)
+                return HTTP.Response(400, "Cannot serialize requested output. See server logs for details")
+            end
+        end
+        
         function serve_notebook_eval(request::HTTP.Request)
             out_symbols = Symbol.(rest_parameter(request, "outputs"))
 

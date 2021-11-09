@@ -12,7 +12,6 @@ module Pluto
 project_relative_path(xs...) = normpath(joinpath(dirname(dirname(pathof(Pluto))), xs...))
 
 import Pkg
-export PlutoNotebook, @resolve
 
 include_dependency("../Project.toml")
 const PLUTO_VERSION = VersionNumber(Pkg.TOML.parsefile(project_relative_path("Project.toml"))["version"])

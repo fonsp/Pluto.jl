@@ -1709,12 +1709,6 @@ end"""
 
 
 
-###
-# REST (move elsewhere?)
-###
-
-# include("../rest/RESTClient.jl")
-
 
 
 
