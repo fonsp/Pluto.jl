@@ -2,9 +2,29 @@
 
 // @ts-ignore
 export const available = window.acquireVsCodeApi != null
-export const api = available
-    ? // @ts-ignore
-      window.acquireVsCodeApi()
-    : {
-          postMessage: console.error,
-      }
+// @ts-ignore
+const vscode = window.acquireVsCodeApi?.() ?? {}
+const store_cell_input_in_vscode_state = (cell_id, new_val) => {
+    if (available) {
+        const currentVSCodeState = vscode.getState() ?? {}
+        const { cell_inputs_local, ...rest } = currentVSCodeState ?? {}
+        console.log("This is happening", currentVSCodeState)
+        api.setState({ cell_inputs_local: { ...(cell_inputs_local || {}), [cell_id]: { code: new_val } }, ...(rest ?? {}) })
+    }
+}
+
+const load_cell_inputs_from_vscode_state = () => {
+    if (available) {
+        const state = vscode.getState() ?? {}
+        console.log("This is also happening", state)
+        return state.cell_inputs_local ?? {}
+    }
+    return {}
+}
+
+export const api = {
+    postMessage: console.error,
+    ...vscode,
+    store_cell_input_in_vscode_state,
+    load_cell_inputs_from_vscode_state,
+}
