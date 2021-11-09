@@ -236,7 +236,7 @@ function try_macroexpand(mod, cell_uuid, expr)
     expr_not_toplevel = if expr.head == :toplevel || expr.head == :block
         Expr(:block, expr.args...)
     else
-        @warn "try_macroexpression expression not :toplevel or :block" expr
+        @warn "try_macroexpand expression not :toplevel or :block" expr
         Expr(:block, expr)
     end
     
@@ -435,6 +435,13 @@ end
 contains_macrocall(other) = false
 
 
+function eval_expr(mod::Module, expr::Expr, expansion_runtime=nothing)
+    toplevel_expr = Expr(:toplevel, expr)
+    wrapped = timed_expr(toplevel_expr)
+    ans, runtime = run_inside_trycatch(mod, wrapped)
+    (ans, add_runtimes(runtime, expansion_runtime))
+end
+
 """
 Run the given expression in the current workspace module. If the third argument is `nothing`, then the expression will be `Core.eval`ed. The result and runtime are stored inside [`cell_results`](@ref) and [`cell_runtimes`](@ref).
 
@@ -454,13 +461,13 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
     
     # reset published objects
     cell_published_objects[cell_id] = Dict{String,Any}()
-    
+
     # reset registered bonds
     for s in get(cell_registered_bond_names, cell_id, Set{Symbol}())
         delete!(registered_bond_elements, s)
     end
     cell_registered_bond_names[cell_id] = Set{Symbol}()
-    
+
 
     # If the cell contains macro calls, we want those macro calls to preserve their identity,
     # so we macroexpand this earlier (during expression explorer stuff), and then we find it here.
@@ -504,11 +511,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
     end
 
     result, runtime = if function_wrapped_info === nothing
-
-        toplevel_expr = Expr(:toplevel, expr)
-        wrapped = timed_expr(toplevel_expr)
-        ans, runtime = run_inside_trycatch(m, wrapped)
-        (ans, add_runtimes(runtime, expansion_runtime))
+        eval_expr(m, expr, expansion_runtime)
     else
         expr_id = forced_expr_id !== nothing ? forced_expr_id : expr_hash(expr)
         local computer = get(computers, cell_id, nothing)
@@ -526,7 +529,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
         ans, runtime = if any(name -> !isdefined(m, name), computer.input_globals)
             # Do run_expression but with function_wrapped_info=nothing so it doesn't go in a Computer()
             # @warn "Got variables that don't exist, running outside of computer" not_existing=filter(name -> !isdefined(m, name), computer.input_globals)
-            run_expression(m, expr, cell_id, nothing; user_requested_run=user_requested_run)
+            eval_expr(m, expr, expansion_runtime)
         else
             run_inside_trycatch(m, () -> compute(m, computer))
         end
