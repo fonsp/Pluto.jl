@@ -112,7 +112,6 @@ function get_notebook_output(session::ServerSession, notebook::Notebook, topolog
 end
 get_notebook_output(session::ServerSession, notebook::Notebook, topology::NotebookTopology, inputs::Dict{Symbol, Any}, outputs::Vector{Symbol}) = get_notebook_output(session, notebook, topology, inputs, Set(outputs))
 
-#fn_result = REST.get_notebook_call(session, notebook, fn_name, args, kwargs)
 function get_notebook_call(session::ServerSession, notebook::Notebook, name::Symbol, args, kwargs)
     fn_symbol = :($(name)($(args...); $([:($k=$v) for (k, v) ∈ kwargs]...)))
     return WorkspaceManager.eval_fetch_in_workspace((session, notebook), fn_symbol)
