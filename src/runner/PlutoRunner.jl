@@ -629,7 +629,7 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
             # var will not be redefined in the new workspace, move it over
             if !(symbol == :eval || symbol == :include || string(symbol)[1] == '#' || startswith(string(symbol), "workspace#"))
                 try
-                    val = getfield(old_workspace, symbol)
+                    getfield(old_workspace, symbol)
 
                     # Expose the variable in the scope of `new_workspace`
                     Core.eval(new_workspace, :(import ..($(old_workspace_name)).$(symbol)))
