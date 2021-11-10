@@ -236,7 +236,7 @@ function try_macroexpand(mod, cell_uuid, expr)
     expr_not_toplevel = if expr.head == :toplevel || expr.head == :block
         Expr(:block, expr.args...)
     else
-        @warn "try_macroexpression expression not :toplevel or :block" expr
+        @warn "try_macroexpand expression not :toplevel or :block" expr
         Expr(:block, expr)
     end
     
@@ -451,16 +451,15 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
     end
 
     currently_running_cell_id[] = cell_id
-    
+
     # reset published objects
     cell_published_objects[cell_id] = Dict{String,Any}()
-    
+
     # reset registered bonds
     for s in get(cell_registered_bond_names, cell_id, Set{Symbol}())
         delete!(registered_bond_elements, s)
     end
     cell_registered_bond_names[cell_id] = Set{Symbol}()
-    
 
     # If the cell contains macro calls, we want those macro calls to preserve their identity,
     # so we macroexpand this earlier (during expression explorer stuff), and then we find it here.
@@ -480,6 +479,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
 
     # We can be sure there is a cached expression now, yay
     expanded_cache = cell_expanded_exprs[cell_id]
+    original_expr = expr
     expr = expanded_cache.expanded_expr
 
     # We add the time it took to macroexpand to the time for the first call,
@@ -504,7 +504,6 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
     end
 
     result, runtime = if function_wrapped_info === nothing
-
         toplevel_expr = Expr(:toplevel, expr)
         wrapped = timed_expr(toplevel_expr)
         ans, runtime = run_inside_trycatch(m, wrapped)
@@ -517,7 +516,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
                 computer = register_computer(expr, expr_id, cell_id, collect.(function_wrapped_info)...)
             catch e
                 # @error "Failed to generate computer function" expr exception=(e,stacktrace(catch_backtrace()))
-                return run_expression(m, expr, cell_id, nothing; user_requested_run=user_requested_run)
+                return run_expression(m, original_expr, cell_id, nothing; user_requested_run=user_requested_run)
             end
         end
 
@@ -526,7 +525,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
         ans, runtime = if any(name -> !isdefined(m, name), computer.input_globals)
             # Do run_expression but with function_wrapped_info=nothing so it doesn't go in a Computer()
             # @warn "Got variables that don't exist, running outside of computer" not_existing=filter(name -> !isdefined(m, name), computer.input_globals)
-            run_expression(m, expr, cell_id, nothing; user_requested_run=user_requested_run)
+            run_expression(m, original_expr, cell_id; user_requested_run)
         else
             run_inside_trycatch(m, () -> compute(m, computer))
         end
@@ -629,7 +628,7 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
             # var will not be redefined in the new workspace, move it over
             if !(symbol == :eval || symbol == :include || string(symbol)[1] == '#' || startswith(string(symbol), "workspace#"))
                 try
-                    val = getfield(old_workspace, symbol)
+                    getfield(old_workspace, symbol)
 
                     # Expose the variable in the scope of `new_workspace`
                     Core.eval(new_workspace, :(import ..($(old_workspace_name)).$(symbol)))
@@ -1715,13 +1714,7 @@ end"""
 
 const currently_running_cell_id = Ref{UUID}(uuid4())
 
-"""
-Don't use this!!
-
-@fons you using this anywhere? Else I'd like to put it in a module
-so people don't use it accidentally.
-"""
-function publish(x, id_start)::String
+function _publish(x, id_start)::String
     assertpackable(x)
     
     id = string(notebook_id[], "/", currently_running_cell_id[], "/", id_start)
@@ -1730,7 +1723,7 @@ function publish(x, id_start)::String
     return id
 end
 
-publish(x) = publish(x, string(objectid(x), base=16))
+_publish(x) = _publish(x, string(objectid(x), base=16))
 
 # TODO? Possibly move this to it's own package, with fallback that actually msgpack?
 # ..... Ideally we'd make this require `await` on the javascript side too...
@@ -1778,7 +1771,7 @@ end
 """
 function publish_to_js(args...)
     PublishedToJavascript(
-        published_id=publish(args...),
+        published_id=_publish(args...),
         cell_id=currently_running_cell_id[],
     )
 end
