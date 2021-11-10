@@ -1732,7 +1732,6 @@ Base.@kwdef struct PublishedToJavascript
     cell_id
 end
 function Base.show(io::IO, ::MIME"text/javascript", published::PublishedToJavascript)
-    @info "::" published.cell_id currently_running_cell_id[]
     if published.cell_id != currently_running_cell_id[]
         error("Showing result from PlutoRunner.publish_to_js() in a cell different from where it was created, not (yet?) supported.")
     end
