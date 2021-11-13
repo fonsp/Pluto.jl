@@ -1,0 +1,206 @@
+@media (prefers-color-scheme: dark) {
+    :root {
+        --image-filters: invert(1) hue-rotate(180deg) contrast(0.85);
+    
+        /* Dracula */
+        --background: 40, 42, 54;
+        --current-line: 68, 71, 90;
+        --selection: 68, 71, 90;
+        --foreground: 248, 248, 242;
+        --comment: 98, 114, 164;
+        --cyan: 139, 233, 253;
+        --green: 80, 250, 123;
+        --orange: 255, 184, 108;
+        --pink: 255, 121, 198;
+        --purple: 189, 147, 249;
+        --red: 255, 85, 85;
+        --yellow: 241, 250, 140;
+        
+
+        --main-bg-color: hsl(225, 7%, 11%);
+        --rule-color: rgba(255, 255, 255, 0.15);
+        --kbd-border-color: #222222;
+        --header-border-color: rgba(255, 255, 255, 0.1);
+        --atag-color: white;
+        --ui-button-color: rgb(255, 255, 255);
+        
+        /* Cells */
+        --normal-cell: 0,0,0;
+        --code-differs: var(--yellow);
+        --differs: rgb(255, 235, 60);
+        --error-color: 235, 67, 67;
+        --error-color: var(--red);
+
+        --normal-cell-color: rgba(var(--normal-cell),0.2);
+        --dark-normal-cell-color: rgba(var(--normal-cell),0.4);
+        --selected-cell-color: rgba(40, 78, 189, 0.4);
+        --code-differs-cell-color: rgba(var(--code-differs), 0.8);
+        --error-cell-color: rgba(var(--error-color),0.6);
+        --bright-error-cell-color: rgba(var(--error-color),0.9);
+        --light-error-cell-color: rgba(var(--error-color),0);
+        --drop-target-bg-color: rgba(255,255,255,0.75);
+        --drop-target-text-color: black;
+        --drop-target-saving-file-color: white;
+        --drop-target-saving-file-bg-color: rgba(3, 92, 151, 0.75);
+        --drop-invalid-color: rgba(0,0,0,0.85);
+        --drop-invalid-bg-color: #ece5e5bf;
+    
+        /*Export styling*/
+        --export-bg-color: hsl(225, 7%, 20%);
+        --export-color: rgba(255, 255, 255, 0.897);
+        --export-card-bg-color: rgba(20, 20, 20, 0.8);
+        --export-card-title-color: rgba(255, 255, 255, 0.85);
+        --export-card-text-color: rgba(255, 255, 255, 0.7);
+        --export-card-shadow-color: #96969629;
+    
+        /*Pluto output styling */
+        --pluto-schema-types-color: rgba(255, 255, 255, 0.6);
+        --pluto-schema-types-border-color: rgba(255, 255, 255, 0.2);
+        --pluto-dim-output-color: hsl(0,0,70%);
+        --pluto-output-color: hsl(0, 0%, 85%);
+        --pluto-output-h-color: hsl(0, 0%, 90%);
+        --pluto-output-bg-color: var(--main-bg-color);
+        --blockquote-color: #555;
+        --admonition-title-color: black;
+        --admonition-bg-color: rgba(147, 149, 28, 0.2);
+        --admonition-focus-color: rgb(255, 246, 126);
+        --admonition-note-main-color: rgba(50, 115, 200, 0.2);
+        --admonition-note-focus-color: rgb(108, 169, 250);
+        --admonition-warn-main-color: rgba(162, 148, 30, 0.2);
+        --admonition-warn-focus-color: rgb(255, 246, 126);
+        --admonition-danger-main-color: rgba(200, 67, 50, 0.2);
+        --admonition-danger-focus-color: rgb(255, 117, 98);
+        --table-border-color: rgba(255, 255, 255, 0.2);
+        --table-bg-hover-color: rgba(193, 192, 235, 0.15);
+        --pluto-tree-color: rgba(191, 191, 191, 0.507);
+        
+        /*pluto cell styling*/
+        --disabled-cell-bg-color: rgba(139, 139, 139, 0.25);
+        --selected-cell-bg-color: rgba(116, 165, 230, 0.24);
+        --hover-scrollbar-color-1: rgba(0, 0, 0, 0.15);
+        --hover-scrollbar-color-2: rgba(0, 0, 0, 0.05);
+        --code-differs-border-color: rgba(var(--code-differs), 0.7);
+    
+        /* Pluto shoulders */
+        --shoulder-hover-bg-color: rgba(255, 255, 255, 0.05);
+    
+        /*Top navbar styling*/
+        --nav-h1-text-color: white;
+        --nav-filepicker-color: #b6b6b6;
+        --nav-filepicker-border-color: #c7c7c7;
+        --nav-process-status-bg-color: rgb(82, 82, 82);
+        --nav-process-status-color: var(--pluto-output-h-color);
+    
+        /*header*/
+        --restart-recc-header-color: rgba(72, 173, 255, 0.56);
+        --restart-req-header-color: rgba(233, 48, 35, 0.56);
+        --dead-process-header-color: rgba(250, 75, 21, 0.473);
+        --loading-header-color: hsla(290, 10%, 80%, 0.5);
+        --disconnected-header-color: rgba(255, 169, 114, 0.56);
+        --binder-loading-header-color:  hsl(51deg 64% 90% / 50%);
+    
+        /*loading bar*/
+        --loading-grad-color-1: #a9d4f1;
+        --loading-grad-color-2: #d0d4d7;
+        /*saveall container*/
+        --saveall-bg-color: #645f5f;
+        --saveall-border-color: #e3e3e3;
+    
+        /*input_context_menu*/
+        --input-context-menu-border-color: rgba(255, 255, 255, 0.1);
+        --input-context-menu-bg-color: rgb(39,40,47);
+        --input-context-menu-soon-color: #b1b1b144;
+        --input-context-menu-hover-bg-color: rgba(255, 255, 255, 0.1);
+        --input-context-menu-li-color: #c7c7c7; 
+    
+        /*Pkg status*/
+        --pkg-status-bg-color: #d3752538;
+        --pkg-status-color: #00000060;
+        --pkg-status-mark-option-color: black;
+        --pkg-popup-border-color: #f0e4ee;
+        --pkg-popup-bg-color: var(--input-context-menu-bg-color);
+        --pkg-popup-buttons-bg-color: var(--input-context-menu-bg-color);
+        --pkg-popup-color: white;
+        --pkg-terminal-color: #ffffff;
+        --pkg-terminal-bg-color: #252627;
+        --pkg-terminal-border-color: #c3c3c388;
+        
+        /* run area*/
+        --pluto-runarea-bg-color: hsl(0,0,97%);
+        --pluto-runarea-span-color: hsl(353,5%,64%);
+    
+        /*drop ruler*/
+        --dropruler-bg-color: rgba(255, 255, 255, 0.1);
+
+        /* jlerror */
+        --jlerror-header-color: rgb(var(--error-color));
+        --jlerror-mark-bg-color: rgb(42, 44, 51);
+        --jlerror-a-bg-color: rgba(82, 58, 58,0.5);
+        --jlerror-a-border-left-color: #704141;
+        --jlerror-mark-color: white;
+    
+        /* helpbox */
+        --helpbox-bg-color: rgb(20, 20, 20);
+        --helpbox-box-shadow-color: #e9e9e910;
+        --helpbox-header-bg-color: #474a4e;
+        --helpbox-header-color: rgb(255, 251, 244);
+        --helpbox-notfound-header-color: rgb(139,139,139);
+        --helpbox-text-color: rgb(230,230,230);
+        --code-section-bg-color: rgb(44, 44, 44);
+        --code-section-border-color: #555a64;
+    
+        
+        /*footer*/
+        --footer-color: #cacaca;
+        --footer-bg-color: rgb(38, 39, 44);
+        --footer-atag-color: rgb(114, 161, 223);
+        --footer-input-border-color: #818181;
+        --footer-filepicker-button-color: white;
+        --footer-filepicker-focus-color: #3271e7;
+        --footnote-border-color: rgba(114, 225, 231, 0.15);
+    
+        /* undo delete cell*/
+        --undo-delete-color: white;
+        --undo-delete-box-shadow-color: rgba(213, 213, 214, 0.2);
+        --undo-delete-bg-color: #474a4e;
+    
+        /*codemirror hints*/
+        --cm-editor-tooltip-border-color: rgba(0,0,0,0.2);
+        --cm-editor-li-aria-selected-bg-color: #3271e7;
+        --cm-editor-li-aria-selected-color: white;
+        --cm-editor-li-notexported-color: rgba(0,0,0,0.5);
+        --cm-editor-bg-color: rgb(20, 20, 20);
+        --cm-editor-text-color: rgb(var(--foreground));
+        --cm-code-changed-gutters-color: rgba(235, 221, 28, 0.2);
+        --cm-line-numbers-color: #8d86875e;
+    
+        /* code highlighting */
+        --cm-comment-color: rgb(var(--comment));
+        --cm-atom-color: rgb(var(--purple));
+        --cm-number-color: #815ba4;
+        --cm-property-color: #48b685;
+        --cm-keyword-color: rgb(var(--orange));
+        --cm-string-color: rgb(var(--green));
+        --cm-var-color: rgb(var(--cyan));
+        --cm-var2-color: #06b6ef;
+        --cm-builtin-color: rgb(var(--cyan));
+        --cm-def-color: rgb(var(--orange));
+        --cm-bracket-color: #41323f;
+        --cm-tag-color: #ef6155;
+        --cm-link-color: #815ba4;
+        --cm-error-bg-color: #ef6155;
+        --cm-error-color: #f7f7f7;
+        --cm-matchingBracket-color: rgba(250, 248, 108, 0.712);
+        --cm-matchingBracket-bg-color: #454966e0;
+        --cm-placeholder-text-color: rgba(239, 245, 255, 0.507);
+    
+        /*autocomplete menu*/
+        --autocomplete-menu-bg-color: var(--input-context-menu-bg-color);
+
+        /* Landing colors */
+        --index-text-color: rgb(199, 199, 199);
+        --index-clickable-text-color: rgb(235, 235, 235);
+
+    }
+}
+
