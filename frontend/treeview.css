@@ -3,7 +3,9 @@
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/700.css");
 
 @import url("juliamono.css");
-@import url("colors.css");
+
+@import url("light_color.css");
+@import url("dark_color.css");
 
 /*  */
 
