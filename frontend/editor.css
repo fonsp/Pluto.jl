@@ -18,7 +18,8 @@
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/lato@4.4.5/400.css");
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/lato@4.4.5/400-italic.css");
 
-@import url("colors.css");
+@import url("light_color.css");
+@import url("dark_color.css");
 
 /* VARIABLES */
 
@@ -555,7 +556,7 @@ nav#at_the_top > a {
 nav#at_the_top img {
     height: 39px;
     margin-bottom: -8px;
-    filter: invert(var(--invert-image-colors)) hue-rotate(180deg) contrast(0.85);
+    filter: var(--image-filters);
 }
 
 nav#at_the_top h1 {
@@ -634,12 +635,12 @@ button.toggle_export span {
 
 nav#at_the_top button.toggle_export span {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/shapes-outline.svg);
-    filter: invert(var(--invert-image-colors));
+    filter: var(--image-filters);
 
 }
 aside#export button.toggle_export span {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-outline.svg);
-    filter: invert(var(--invert-image-colors));
+    filter: var(--image-filters);
 }
 nav#at_the_top:after {
     margin-left: auto;
@@ -832,12 +833,12 @@ main > preamble span.saving-icon::after {
     background-repeat: no-repeat;
     background-position-x: right;
     background-position-y: 1px;
-    filter: invert(var(--invert-image-colors));
+    filter: var(--image-filters);
 }
 
 main > preamble span.saved-icon::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/checkmark-outline.svg);
-    filter: invert(var(--invert-image-colors));
+    filter: var(--image-filters);
 }
 main > preamble button {
     position: relative;
@@ -1086,12 +1087,12 @@ pluto-cell:focus-within > pluto-shoulder > button {
 
 pluto-shoulder > button > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/eye-outline.svg);
-    filter: invert(var(--invert-image-colors));
+    filter: var(--image-filters);
 }
 
 pluto-cell.code_folded > pluto-shoulder > button > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/eye-off-outline.svg);
-    filter: invert(var(--invert-image-colors));
+    filter: var(--image-filters);
 }
 
 /* TRAFFIC LIGHT */
@@ -1380,7 +1381,7 @@ pluto-cell > button.add_cell.after {
 pluto-cell > button.add_cell > span::after {
     /* background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/add-circle-outline.svg); */
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/add-outline.svg);
-    filter: invert(var(--invert-image-colors));
+    filter: var(--image-filters);
 
 }
 pluto-input > button.input_context_menu ul {
@@ -1463,22 +1464,22 @@ pluto-input > button.input_context_menu ul {
 .bandage_icon {
     filter: opacity(0.3);
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/bandage-outline.svg);
-    filter: invert(var(--invert-image-colors));
+    filter: var(--image-filters);
 }
 .enable_cell_icon {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg);
-    filter: invert(var(--invert-image-colors));
+    filter: var(--image-filters);
 }
 
 .disable_cell_icon {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ban-outline.svg);
     background-size: 15px;
     background-repeat: no-repeat;
-    filter: invert(var(--invert-image-colors));
+    filter: var(--image-filters);
 }
 .delete_icon {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle-outline.svg);
-    filter: invert(var(--invert-image-colors));
+    filter: var(--image-filters);
 }
 
 pluto-input > button.input_context_menu {
@@ -1494,7 +1495,7 @@ pluto-input > button.input_context_menu.open {
 
 pluto-input > button.input_context_menu > span.icon::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ellipsis-horizontal-circle-outline.svg);
-    filter: invert(var(--invert-image-colors));
+    filter: var(--image-filters);
 }
 
 /* PKG UI */
@@ -1533,32 +1534,33 @@ pkg-status-mark > button > span::after {
 
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/time-outline.svg);
     opacity: 0.3;
-    filter: invert(var(--invert-image-colors));
+    filter: var(--image-filters);
 }
 
 pkg-status-mark.installed > button > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/checkmark-outline.svg);
     /* background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/cloud-done-outline.svg); */
-    filter: invert(var(--invert-image-colors));
+    filter: var(--image-filters);
 }
 pkg-status-mark.busy > button > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sync-outline.svg);
     animation: loadspin 3s ease-in-out infinite;
+    filter: var(--image-filters)
 }
 pkg-status-mark.not_found > button > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/cloud-offline-outline.svg);
     opacity: 0.6;
-    filter: invert(var(--invert-image-colors));
+    filter: var(--image-filters);
 }
 pkg-status-mark.will_be_installed > button > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/cloud-download-outline.svg);
     opacity: 0.6;
-    filter: invert(var(--invert-image-colors));
+    filter: var(--image-filters);
 }
 pkg-status-mark.disable_pkg > button > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chatbox-ellipses-outline.svg);
     opacity: 0.6;
-    filter: invert(var(--invert-image-colors));
+    filter: var(--image-filters);
 }
 pkg-status-mark select {
     width: 100%;
@@ -1633,7 +1635,7 @@ pkg-popup .pkg-buttons {
 }
 
 pkg-popup .pkg-buttons img {
-    filter: invert(var(--invert-image-colors));
+    filter: var(--image-filters);
 
 }
 
@@ -1742,21 +1744,21 @@ pluto-runarea > button.runcell {
 
 pluto-runarea > button.runcell > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg);
-    filter: invert(var(--invert-image-colors));
+    filter: var(--image-filters);
 }
 
 pluto-runarea.interrupt > button.runcell > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/stop-circle-outline.svg);
-    filter: invert(var(--invert-image-colors));
+    filter: var(--image-filters);
 }
 
 pluto-runarea.jump > button.runcell > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-redo-circle-outline.svg);
-    filter: invert(var(--invert-image-colors));
+    filter: var(--image-filters);
 }
 pluto-runarea.save > button.runcell > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chevron-forward-circle-outline.svg);
-    filter: invert(var(--invert-image-colors));
+    filter: var(--image-filters);
 }
 
 pluto-cell:not(.show_input) > pluto-runarea {
@@ -1889,7 +1891,7 @@ pluto-helpbox > header > button > span {
     height: 1em;
     width: 1em;
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chevron-down-outline.svg");
-    filter: invert(var(--invert-image-colors));
+    filter: var(--image-filters);
 }
 pluto-helpbox.hidden {
     height: initial;
@@ -2114,11 +2116,11 @@ body > nav#slide_controls > button > span::after {
 }
 body > nav#slide_controls > button.prev > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-back-outline.svg);
-    filter: invert(var(--invert-image-colors));
+    filter: var(--image-filters);
 }
 body > nav#slide_controls > button.next > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-forward-outline.svg);
-    filter: invert(var(--invert-image-colors));
+    filter: var(--image-filters);
 }
 
 /* CODEMIRROR HINTS */
