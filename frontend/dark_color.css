@@ -25,7 +25,7 @@
         --ui-button-color: rgb(255, 255, 255);
         
         /* Cells */
-        --normal-cell: 0,0,0;
+        --normal-cell: 100,100,100;
         --code-differs: var(--yellow);
         --differs: rgb(255, 235, 60);
         --error-color: 235, 67, 67;
@@ -33,7 +33,7 @@
 
         --normal-cell-color: rgba(var(--normal-cell),0.2);
         --dark-normal-cell-color: rgba(var(--normal-cell),0.4);
-        --selected-cell-color: rgba(40, 78, 189, 0.4);
+        --selected-cell-color: rgba(57, 189, 40, 0.185);
         --code-differs-cell-color: rgba(var(--code-differs), 0.8);
         --error-cell-color: rgba(var(--error-color),0.6);
         --bright-error-cell-color: rgba(var(--error-color),0.9);
@@ -179,20 +179,20 @@
         --cm-atom-color: rgb(var(--purple));
         --cm-number-color: #815ba4;
         --cm-property-color: #48b685;
-        --cm-keyword-color: rgb(var(--orange));
-        --cm-string-color: rgb(var(--green));
+        --cm-keyword-color: rgb(var(--red));
+        --cm-string-color: rgb(var(--yellow));
         --cm-var-color: rgb(var(--cyan));
         --cm-var2-color: #06b6ef;
         --cm-builtin-color: rgb(var(--cyan));
         --cm-def-color: rgb(var(--orange));
         --cm-bracket-color: #41323f;
         --cm-tag-color: #ef6155;
-        --cm-link-color: #815ba4;
+        --cm-link-color: rgb(var(--green));
         --cm-error-bg-color: #ef6155;
         --cm-error-color: #f7f7f7;
-        --cm-matchingBracket-color: rgba(250, 248, 108, 0.712);
-        --cm-matchingBracket-bg-color: #454966e0;
-        --cm-placeholder-text-color: rgba(239, 245, 255, 0.507);
+        --cm-matchingBracket-color: rgb(var(--yellow),0.6);
+        --cm-matchingBracket-bg-color: rgba(var(--current-line), 0.875);
+        --cm-placeholder-text-color: rgba(var(--foreground), 0.5);
     
         /*autocomplete menu*/
         --autocomplete-menu-bg-color: var(--input-context-menu-bg-color);
