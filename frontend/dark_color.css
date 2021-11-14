@@ -23,6 +23,7 @@
         --header-border-color: rgba(255, 255, 255, 0.1);
         --atag-color: white;
         --ui-button-color: rgb(255, 255, 255);
+        --cursor-color: white;
         
         /* Cells */
         --normal-cell: 100,100,100;

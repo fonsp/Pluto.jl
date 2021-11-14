@@ -8,6 +8,7 @@
         --header-border-color: rgba(0,0,0,0.1);
         --atag-color: black;
         --ui-button-color: black;
+        --cursor-color: black;
 
         --normal-cell: 0, 0, 0;
         --code-differs: 160, 130, 28;

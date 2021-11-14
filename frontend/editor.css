@@ -201,6 +201,11 @@ a {
     font-weight: bold;
 }
 
+.cm-cursor {
+    border-left: 1.2px solid var(--cursor-color) !important;
+}
+
+
 pluto-output code {
     font-family: JuliaMono, monospace;
     font-size: 0.75em; /* not rem */
