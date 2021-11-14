@@ -184,5 +184,10 @@
         --index-text-color: hsl(0,0,60);
         --index-clickable-text-color: hsl(0,0,30);
 
+        --docs-binding-bg-color: #8383830a;
+        --docs-binding-color: var(--pluto-output-color);
+        --docs-binding-title-bg-color: white;
+        --docs-binding-title-color: #646464;
+
     }
 }

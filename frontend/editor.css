@@ -1957,6 +1957,16 @@ pluto-helpbox > section hr {
     border-top: 3px solid var(--rule-color);
 }
 
+.pluto-docs-binding {
+    background: var(--docs-binding-bg-color) !important;
+    color: var(--docs-binding-color) !important;
+}
+
+.pluto-docs-binding > span {
+    background: var(--docs-binding-title-bg-color) !important;
+    color: var(--docs-binding-title-color) !important;
+}
+
 /* FOOTER */
 
 footer {

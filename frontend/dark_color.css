@@ -126,7 +126,7 @@
         --pkg-terminal-border-color: #c3c3c388;
         
         /* run area*/
-        --pluto-runarea-bg-color: hsl(0,0,97%);
+        --pluto-runarea-bg-color: rgb(43, 43, 43);
         --pluto-runarea-span-color: hsl(353,5%,64%);
     
         /*drop ruler*/
@@ -201,6 +201,11 @@
         --index-text-color: rgb(199, 199, 199);
         --index-clickable-text-color: rgb(235, 235, 235);
 
+        /* docs binding */
+        --docs-binding-bg-color: rgb(var(--background));
+        --docs-binding-color: var(--pluto-output-color);
+        --docs-binding-title-bg-color: rgb(100,100,100);
+        --docs-binding-title-color: white;
     }
 }
 
