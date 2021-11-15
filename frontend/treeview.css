@@ -219,14 +219,12 @@ pluto-tree.collapsed pluto-tree-more::before {
 
 /*  */
 
-pluto-tree.collapsed img,
-pluto-tree.collapsed svg {
+pluto-tree.collapsed img {
     max-width: 4rem;
     max-height: 4rem;
 }
 
-pluto-tree img,
-pluto-tree svg {
+pluto-tree img {
     max-width: 12rem;
     max-height: 8rem;
 }
