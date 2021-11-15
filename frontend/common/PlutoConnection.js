@@ -198,7 +198,7 @@ const create_vscode_connection = (address, { on_message, on_socket_close }, time
                         const message = unpack(new Uint8Array(buffer))
 
                         try {
-                            console.info("message received!", message)
+                            window.DEBUG && console.info("message received!", message)
                             on_message(message)
                         } catch (process_err) {
                             console.error("Failed to process message from websocket", process_err, { message })
@@ -216,7 +216,7 @@ const create_vscode_connection = (address, { on_message, on_socket_close }, time
         })
 
         const send_encoded = async (message) => {
-            console.log("Sending message!", message)
+            window.DEBUG && console.log("Sending message!", message)
             const encoded = pack(message)
             await vscode_api.postMessage({ type: "ws_proxy", base64_encoded: await base64_arraybuffer(encoded) })
         }

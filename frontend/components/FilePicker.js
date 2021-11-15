@@ -2,7 +2,7 @@ import { html, Component } from "../imports/Preact.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
-
+import { available } from "../common/VSCodeApi.js"
 import {
     EditorState,
     EditorSelection,
@@ -187,7 +187,7 @@ export class FilePicker extends Component {
         // })
     }
     render() {
-        return html`
+        return available ? null : html`
             <pluto-filepicker>
                 <button onClick=${this.on_submit}>${this.props.button_label}</button>
             </pluto-filepicker>
