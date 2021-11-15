@@ -269,7 +269,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                 let old_result = script_id ? previous_results_map.get(script_id) : null
 
                 if (node.type === "module") {
-                    throw new Error("We don't (yet) support <script type=module> (loading modules with <script type=module src=...> is fine)")
+                    console.warn("We don't (yet) fully support <script type=module> (loading modules with <script type=module src=...> is fine).")
                 }
 
                 if (node.type === "" || node.type === "text/javascript") {
