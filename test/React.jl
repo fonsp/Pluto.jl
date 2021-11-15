@@ -685,15 +685,15 @@ import Distributed
         
         
         update_run!(🍭, notebook, notebook.cells[6:end])
-        @test_broken noerror(notebook.cells[6]; verbose=false)
-        @test_broken noerror(notebook.cells[7]; verbose=false)
-        @test_broken noerror(notebook.cells[8]; verbose=false)
-        @test_broken noerror(notebook.cells[9]; verbose=false)
-        @test_broken noerror(notebook.cells[10]; verbose=false)
+        @test noerror(notebook.cells[6])
+        @test noerror(notebook.cells[7])
+        @test noerror(notebook.cells[8])
+        @test noerror(notebook.cells[9])
+        @test noerror(notebook.cells[10])
         @test noerror(notebook.cells[11])
         @test noerror(notebook.cells[12])
-        @test_broken noerror(notebook.cells[13]; verbose=false)
-        @test_broken noerror(notebook.cells[14]; verbose=false)
+        @test noerror(notebook.cells[13])
+        @test noerror(notebook.cells[14])
         @test noerror(notebook.cells[15])
         @test noerror(notebook.cells[16])
         @test noerror(notebook.cells[17])
@@ -701,11 +701,11 @@ import Distributed
         @test noerror(notebook.cells[19])
         @test noerror(notebook.cells[20])
         @test noerror(notebook.cells[21])
-        @test_broken noerror(notebook.cells[22]; verbose=false)
-        @test_broken noerror(notebook.cells[23]; verbose=false)
+        @test noerror(notebook.cells[22])
+        @test noerror(notebook.cells[23])
         @test noerror(notebook.cells[24])
-        @test_broken noerror(notebook.cells[25]; verbose=false)
-        @test_broken noerror(notebook.cells[26]; verbose=false)
+        @test noerror(notebook.cells[25])
+        @test noerror(notebook.cells[26])
         
         @assert length(notebook.cells) == 26
         
