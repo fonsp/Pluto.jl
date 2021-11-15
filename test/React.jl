@@ -381,7 +381,7 @@ import Distributed
         WorkspaceManager.unmake_workspace((🍭, notebook))
         🍭.options.evaluation.workspace_use_distributed = false
     end
-    
+
     @testset "Function use inv in its def but also has a method on inv" begin
         notebook = Notebook(Cell.([
             """
@@ -403,6 +403,71 @@ import Distributed
         @test cell(1) |> noerror
         @test cell(2) |> noerror
         @test cell(3) |> noerror
+    end
+
+    @testset "More challenging reactivity of extended function" begin
+        notebook = Notebook(Cell.([
+            "Base.inv(s::String) = s",
+            """
+            struct MyStruct
+                x
+                MyStruct(s::String) = new(inv(s))
+            end
+            """,
+            "Base.inv(ms::MyStruct) = inv(ms.x)",
+            "MyStruct(\"hoho\")",
+            "a = MyStruct(\"blahblah\")",
+            "inv(a)",
+        ]))
+        cell(idx) = notebook.cells[idx]
+        fakeclient.connected_notebook = notebook
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test all(noerror, notebook.cells)
+        @test notebook.cells[end].output.body == "\"blahblah\""
+
+        setcode(cell(1), "Base.inv(s::String) = s * \"suffix\"")
+        update_run!(🍭, notebook, cell(1))
+
+        @test all(noerror, notebook.cells)
+        @test notebook.cells[end].output.body == "\"blahblahsuffixsuffix\"" # 2 invs, 1 in constructor, 1 in inv(::MyStruct)
+
+        setcode(cell(3), "Base.inv(ms::MyStruct) = ms.x") # remove inv in inv(::MyStruct)
+        update_run!(🍭, notebook, cell(3))
+
+        @test all(noerror, notebook.cells)
+        @test notebook.cells[end].output.body == "\"blahblahsuffix\"" # only one inv
+    end
+
+    @testset "multiple cells cycle" begin
+        notebook = Notebook(Cell.([
+            "a = inv(1)",
+            "b = a",
+            "c = b",
+            "Base.inv(x::Float64) = a",
+            "d = Float64(c)",
+        ]))
+        fakeclient.connected_notebook = notebook
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test all(noerror, notebook.cells)
+        @test notebook.cells[end].output.body == "1.0" # a
+    end
+
+    @testset "one cell in two different cycles where one is not a real cycle" begin
+        notebook = Notebook(Cell.([
+            "x = inv(1) + z",
+            "y = x",
+            "z = y",
+            "Base.inv(::Float64) = y",
+            "inv(1.0)",
+        ]))
+        fakeclient.connected_notebook = notebook
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test notebook.cells[end].errored == true
+        @test contains(notebook.cells[1].output.body[:msg], "Cyclic")
+        @test contains(notebook.cells[end].output.body[:msg], "UndefVarError: y") # this is an UndefVarError and not a CyclicError
     end
 
     @testset "Reactive methods definitions" begin
