@@ -403,6 +403,12 @@ import Distributed
         @test cell(1) |> noerror
         @test cell(2) |> noerror
         @test cell(3) |> noerror
+
+        # Empty and run cells to remove the Base overloads that we created, just to be sure
+        setcode.(notebook.cells, [""])
+        update_run!(🍭, notebook, notebook.cells)
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
     @testset "More challenging reactivity of extended function" begin
@@ -437,6 +443,11 @@ import Distributed
 
         @test all(noerror, notebook.cells)
         @test notebook.cells[end].output.body == "\"blahblahsuffix\"" # only one inv
+
+        # Empty and run cells to remove the Base overloads that we created, just to be sure
+        setcode.(notebook.cells, [""])
+        update_run!(🍭, notebook, notebook.cells)
+        WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
     @testset "multiple cells cycle" begin
@@ -466,8 +477,12 @@ import Distributed
         update_run!(🍭, notebook, notebook.cells)
 
         @test notebook.cells[end].errored == true
-        @test contains(notebook.cells[1].output.body[:msg], "Cyclic")
-        @test contains(notebook.cells[end].output.body[:msg], "UndefVarError: y") # this is an UndefVarError and not a CyclicError
+        @test occursinerror("Cyclic", notebook.cells[1])
+        @test occursinerror("UndefVarError: y", notebook.cells[end]) # this is an UndefVarError and not a CyclicError
+
+        setcode.(notebook.cells, [""])
+        update_run!(🍭, notebook, notebook.cells)
+        WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
     @testset "Reactive methods definitions" begin
@@ -498,6 +513,10 @@ import Distributed
         @test cell(1) |> noerror
         @test output_21 != output_22 # cell2 re-run
         @test contains(output_22, "sqrt(🍕)")
+
+        setcode.(notebook.cells, [""])
+        update_run!(🍭, notebook, notebook.cells)
+        WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
     @testset "Multiple methods across cells" begin
@@ -748,6 +767,14 @@ import Distributed
             # 25
             Cell("Base.digits(x::ArgumentError) = Base.digits() + Base.isconst()")
             Cell("Base.isconst(x::InterruptException) = digits()")
+
+            # 27
+            Cell("f(x) = g(x-1)")
+            Cell("g(x) = h(x-1)")
+            Cell("h(x) = i(x-1)")
+            Cell("i(x) = j(x-1)")
+            Cell("j(x) = (x > 0) ? f(x-1) : :done")
+            Cell("f(8)")
         ])
         fakeclient.connected_notebook = notebook
 
@@ -824,8 +851,17 @@ import Distributed
         @test noerror(notebook.cells[24])
         @test noerror(notebook.cells[25])
         @test noerror(notebook.cells[26])
-        
-        @assert length(notebook.cells) == 26
+
+        ##
+        @test noerror(notebook.cells[27])
+        @test noerror(notebook.cells[28])
+        @test noerror(notebook.cells[29])
+        @test noerror(notebook.cells[30])
+        @test noerror(notebook.cells[31])
+        @test noerror(notebook.cells[32])
+        @test notebook.cells[32].output.body == ":done"
+
+        @assert length(notebook.cells) == 32
         
         # Empty and run cells to remove the Base overloads that we created, just to be sure
         setcode.(notebook.cells, [""])
