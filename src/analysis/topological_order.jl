@@ -35,7 +35,7 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 
 		# used for cleanups of wrong cycles
 		current_entries_num = length(entries)
-		current_exits_num = length(exists)
+		current_exits_num = length(exits)
 
 		assigners = where_assigned(notebook, topology, cell)
 		if !allow_multiple_defs && length(assigners) > 1
