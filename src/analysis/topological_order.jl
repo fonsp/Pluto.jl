@@ -15,13 +15,17 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 		elseif cell in entries
 			currently_in = setdiff(entries, exits)
 			cycle = currently_in[findfirst(isequal(cell), currently_in):end]
-			for cell in cycle
-				errable[cell] = CyclicReferenceError(topology, cycle...)
+			
+			if !cycle_is_among_functions(topology, cycle)
+				for cell in cycle
+					errable[cell] = CyclicReferenceError(topology, cycle)
+				end
+				return
 			end
-			return
+		else
+			push!(entries, cell)
 		end
 
-		push!(entries, cell)
 		assigners = where_assigned(notebook, topology, cell)
 		if !allow_multiple_defs && length(assigners) > 1
 			for c in assigners
@@ -113,6 +117,22 @@ function is_assigned_anywhere(notebook::Notebook, topology::NotebookTopology, sy
 	any(notebook.cells) do cell
 		sym ∈ topology.nodes[cell].definitions
 	end
+end
+
+function cyclic_variables(topology::NotebookTopology, cycle::AbstractVector{Cell})::Set{Symbol}
+	referenced_during_cycle = union!(Set{Symbol}(), (topology.nodes[c].references for c in cycle)...)
+	assigned_during_cycle = union!(Set{Symbol}(), (topology.nodes[c].definitions ∪ topology.nodes[c].funcdefs_without_signatures for c in cycle)...)
+	
+	referenced_during_cycle ∩ assigned_during_cycle
+end
+
+function cycle_is_among_functions(topology::NotebookTopology, cycle::AbstractVector{Cell})::Bool
+	cyclics = cyclic_variables(topology, cycle)
+	
+	all(
+		any(s ∈ topology.nodes[c].funcdefs_without_signatures for c in cycle)
+		for s in cyclics
+	)
 end
 
 
