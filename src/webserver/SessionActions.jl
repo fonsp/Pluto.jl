@@ -78,7 +78,7 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
             
             # call update_from_file. If it returns false, that means that the notebook file was corrupt, so we try again, a maximum of 10 times.
             for i in 1:10
-                if update_from_file(nb)
+                if update_from_file(session, nb)
                     break
                 end
             end
