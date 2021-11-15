@@ -588,12 +588,48 @@ import Distributed
 
     @testset "Cyclic" begin
         notebook = Notebook([
-            Cell("xxx = yyy"),
-            Cell("yyy = xxx"),
-            Cell("zzz = yyy"),
+            Cell("xxx = yyy")
+            Cell("yyy = xxx")
+            Cell("zzz = yyy")
 
-            Cell("aaa() = bbb"),
-            Cell("bbb = aaa()"),
+            Cell("aaa() = bbb")
+            Cell("bbb = aaa()")
+            
+            Cell("w1(x) = w2(x - 1) + 1")
+            Cell("w2(x) = x > 0 ? w1(x) : x")
+            Cell("w1(8)")
+            
+            Cell("p1(x) = p2(x) + p1(x)")
+            Cell("p2(x) = p1(x)")
+
+            # 11
+            Cell("z(x::String) = z(1)")
+            Cell("z(x::Integer) = z()")
+            
+            # 13
+            # some random Base function that we are overloading 
+            Cell("Base.get(x::InterruptException) = Base.get(1)")
+            Cell("Base.get(x::ArgumentError) = Base.get()")
+            
+            Cell("Base.step(x::InterruptException) = step(1)")
+            Cell("Base.step(x::ArgumentError) = step()")
+            
+            Cell("Base.exponent(x::InterruptException) = Base.exponent(1)")
+            Cell("Base.exponent(x::ArgumentError) = exponent()")
+            
+            # 19
+            Cell("Base.chomp(x::InterruptException) = split() + chomp()")
+            Cell("Base.chomp(x::ArgumentError) = chomp()")
+            Cell("Base.split(x::InterruptException) = split()")
+            
+            # 22
+            Cell("Base.transpose(x::InterruptException) = Base.trylock() + Base.transpose()")
+            Cell("Base.transpose(x::ArgumentError) = Base.transpose()")
+            Cell("Base.trylock(x::InterruptException) = Base.trylock()")
+
+            # 25
+            Cell("Base.digits(x::ArgumentError) = Base.digits() + Base.isconst()")
+            Cell("Base.isconst(x::InterruptException) = digits()")
         ])
         fakeclient.connected_notebook = notebook
 
@@ -633,6 +669,9 @@ import Distributed
         @test notebook.cells[2].output.body == "3"
         @test notebook.cells[3].output.body == "3"
 
+        ##
+        
+        
         update_run!(🍭, notebook, notebook.cells[4:5])
         @test occursinerror("Cyclic reference", notebook.cells[4])
         @test occursinerror("aaa", notebook.cells[4])
@@ -641,6 +680,39 @@ import Distributed
         @test occursinerror("aaa", notebook.cells[5])
         @test occursinerror("bbb", notebook.cells[5])
 
+        
+        
+        
+        
+        update_run!(🍭, notebook, notebook.cells[6:end])
+        @test_broken noerror(notebook.cells[6]; verbose=false)
+        @test_broken noerror(notebook.cells[7]; verbose=false)
+        @test_broken noerror(notebook.cells[8]; verbose=false)
+        @test_broken noerror(notebook.cells[9]; verbose=false)
+        @test_broken noerror(notebook.cells[10]; verbose=false)
+        @test noerror(notebook.cells[11])
+        @test noerror(notebook.cells[12])
+        @test_broken noerror(notebook.cells[13]; verbose=false)
+        @test_broken noerror(notebook.cells[14]; verbose=false)
+        @test noerror(notebook.cells[15])
+        @test noerror(notebook.cells[16])
+        @test noerror(notebook.cells[17])
+        @test noerror(notebook.cells[18])
+        @test noerror(notebook.cells[19])
+        @test noerror(notebook.cells[20])
+        @test noerror(notebook.cells[21])
+        @test_broken noerror(notebook.cells[22]; verbose=false)
+        @test_broken noerror(notebook.cells[23]; verbose=false)
+        @test noerror(notebook.cells[24])
+        @test_broken noerror(notebook.cells[25]; verbose=false)
+        @test_broken noerror(notebook.cells[26]; verbose=false)
+        
+        @assert length(notebook.cells) == 26
+        
+        # Empty and run cells to remove the Base overloads that we created, just to be sure
+        setcode.(notebook.cells, [""])
+        update_run!(🍭, notebook, notebook.cells)
+        
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
