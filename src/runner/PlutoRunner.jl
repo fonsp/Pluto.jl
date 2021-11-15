@@ -1664,7 +1664,7 @@ end
 
 const initial_value_getter_ref = Ref{Function}(element -> missing)
 const transform_value_ref = Ref{Function}((element, x) -> x)
-const possible_bond_values_ref = Ref{Function}(_ -> throw("AbstractPlutoDingetjes is not loaded, could not collect possible bind values"))
+const possible_bond_values_ref = Ref{Function}((_args...; _kwargs...) -> throw("AbstractPlutoDingetjes is not loaded, could not collect possible bind values"))
 
 """
     `@bind symbol element`
