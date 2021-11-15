@@ -1,3 +1,10 @@
+abstract type ChildExplorationResult end
+
+struct Ok <: ChildExplorationResult end
+struct Cycle <: ChildExplorationResult
+	cycled_cells::Vector{Cell}
+end
+
 "Return a `TopologicalOrder` that lists the cells to be evaluated in a single reactive run, in topological order. Includes the given roots."
 function topological_order(notebook::Notebook, topology::NotebookTopology, roots::Array{Cell,1}; allow_multiple_defs=false)::TopologicalOrder
 	entries = Cell[]
@@ -5,23 +12,28 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 	errable = Dict{Cell,ReactivityError}()
 
 	# https://xkcd.com/2407/
-	function dfs(cell::Cell)
+	function dfs(cell::Cell)::ChildExplorationResult
 		if cell in exits
-			return
+			return Ok()
 		elseif haskey(errable, cell)
-			return
+			return Ok()
 		elseif length(entries) > 0 && entries[end] == cell
-			return # a cell referencing itself is legal
+			return Ok() # a cell referencing itself is legal
 		elseif cell in entries
 			currently_in = setdiff(entries, exits)
 			cycle = currently_in[findfirst(isequal(cell), currently_in):end]
 			for cell in cycle
 				errable[cell] = CyclicReferenceError(topology, cycle...)
 			end
-			return
+			return Cycle(cycle)
 		end
 
 		push!(entries, cell)
+
+		# used for cleanups of wrong cycles
+		current_entries_num = length(entries)
+		current_exits_num = length(exists)
+
 		assigners = where_assigned(notebook, topology, cell)
 		if !allow_multiple_defs && length(assigners) > 1
 			for c in assigners
@@ -31,15 +43,41 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 		referencers = where_referenced(notebook, topology, cell) |> Iterators.reverse
 		for c in (allow_multiple_defs ? referencers : union(assigners, referencers))
 			if c != cell
-				dfs(c)
+				child_result = dfs(c)
+
+				# No cycle for this child or the cycle has no soft edges
+				if child_result isa Ok || cell ∉ child_result.cycled_cells
+					continue
+				end
+
+				# Can we cleanup the cycle from here or is it caused by a parent cell ?
+				# if the edge to the child cell is composed of soft assigments only then we can try to "break"
+				# it else we bubble the result up to the parent until it is
+				# either out of the cycle or a soft-edge is found
+				if !is_soft_edge(topology, cell, c)
+					# Cleanup all entries & child exits
+					deleteat!(entries, current_entries_num+1:length(entries))
+					deleteat!(exits, current_exits_num+1:length(exits))
+					return child_result
+				end
+
+				# Cancel exploring this child (c)
+				# 1. Cleanup the errables
+				for cycled_cell in child_result.cycled_cells
+					delete!(errable, cycled_cell)
+				end
+				deleteat!(entries, length(entries)) # 2. Remove the current child (c)
+
+				continue # the cycle was created by us so we can keep exploring other childs
 			end
 		end
 		push!(exits, cell)
+		Ok()
 	end
 
 	# we first move cells to the front if they call `import` or `using`
-    # we use MergeSort because it is a stable sort: leaves cells in order if they are in the same category
-    prelim_order_1 = sort(roots, alg=MergeSort, by=c -> cell_precedence_heuristic(topology, c))
+	# we use MergeSort because it is a stable sort: leaves cells in order if they are in the same category
+	prelim_order_1 = sort(roots, alg=MergeSort, by=c -> cell_precedence_heuristic(topology, c))
 	# reversing because our search returns reversed order
 	prelim_order_2 = Iterators.reverse(prelim_order_1)
 	dfs.(prelim_order_2)
@@ -58,7 +96,6 @@ end
 
 Base.collect(notebook_topo_order::TopologicalOrder) = union(notebook_topo_order.runnable, keys(notebook_topo_order.errable))
 
-
 function disjoint(a::Set, b::Set)
 	!any(x in a for x in b)
 end
@@ -74,6 +111,17 @@ function where_referenced(notebook::Notebook, topology::NotebookTopology, to_com
 		!disjoint(to_compare, topology.nodes[cell].references)
 	end
 end
+
+"Returns whether or not the edge between two cells is composed only of \"soft\"-definitions"
+function is_soft_edge(topology::NotebookTopology, parent_cell::Cell, child_cell::Cell)
+	hard_definitions = union(topology.nodes[parent_cell].definitions, topology.nodes[parent_cell].funcdefs_without_signatures)
+	soft_definitions = topology.nodes[parent_cell].soft_definitions
+
+	child_references = topology.nodes[child_cell].references
+
+	disjoint(hard_definitions, child_references) && !disjoint(soft_definitions, child_references)
+end
+
 
 "Return the cells that also assign to any variable or method defined by the given cell. If more than one cell is returned (besides the given cell), then all of them should throw a `MultipleDefinitionsError`. Non-recursive: only direct dependencies are found."
 function where_assigned(notebook::Notebook, topology::NotebookTopology, myself::Cell)::Array{Cell,1}
