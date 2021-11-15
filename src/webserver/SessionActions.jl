@@ -89,6 +89,7 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
             running[] = false
         end
     end
+    
 
     in_session() = get(session.notebooks, nb.notebook_id, nothing) === nb
     session.options.server.auto_reload_from_file && @asynclog while in_session()
