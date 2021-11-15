@@ -468,8 +468,11 @@ export let highlight = (code_element, language) => {
             editorview.dom.style.setProperty("display", "inline-flex", "important")
             editorview.dom.style.setProperty("background-color", "transparent", "important")
         } else {
-            window.hljs = hljs
-            console.log(code_element)
+            console.log(language)
+            if (language === "htmlmixed") {
+                code_element.classList.remove("language-htmlmixed")
+                code_element.classList.add("language-html")
+            }
             hljs.highlightElement(code_element)
         }
     }
