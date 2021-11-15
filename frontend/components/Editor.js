@@ -1057,6 +1057,13 @@ patch: ${JSON.stringify(
         if (old_state.disable_ui !== this.state.disable_ui) {
             this.on_disable_ui()
         }
+
+        if (old_state.notebook.nbpkg?.restart_recommended_msg !== new_state.notebook.nbpkg?.restart_recommended_msg) {
+            console.warn(`New restart recommended message: ${new_state.notebook.nbpkg?.restart_recommended_msg}`)
+        }
+        if (old_state.notebook.nbpkg?.restart_required_msg !== new_state.notebook.nbpkg?.restart_required_msg) {
+            console.warn(`New restart required message: ${new_state.notebook.nbpkg?.restart_required_msg}`)
+        }
     }
 
     componentWillUpdate(new_props, new_state) {

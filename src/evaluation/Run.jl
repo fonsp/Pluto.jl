@@ -520,7 +520,7 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 			write(PkgCompat.project_file(notebook), PkgCompat.read_project_file(just_loaded))
 			write(PkgCompat.manifest_file(notebook), PkgCompat.read_manifest_file(just_loaded))
 		end
-		notebook.nbpkg_restart_required_msg = "yes"
+		notebook.nbpkg_restart_required_msg = "Yes, because the file was changed externally and the embedded Pkg changed."
 	end
 	
 	if something_changed
