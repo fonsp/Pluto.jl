@@ -461,6 +461,11 @@ end
 
 notebook_differences(from_filename::String, to_filename::String) = notebook_differences(load_notebook_nobackup(from_filename), load_notebook_nobackup(to_filename))
 
+"""
+Read the notebook file at `notebook.path`, and compare the read result with the notebook's current state. Any changes will be applied to the running notebook, i.e. code changes are run, removed cells are removed, etc.
+
+Returns `false` if the file could not be parsed, `true` otherwise.
+"""
 function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)::Bool
 	include_nbpg = !session.options.server.auto_reload_from_file_ignore_pkg
 	
