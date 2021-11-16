@@ -18,12 +18,12 @@ jobs:
               body: `
               ## Try this Pull Request!
               Open Julia, and type:
-              \`\`\`
+              \`\`\`jl
               julia> ]
               (@v1.6) pkg> activate --temp
               (@v1.6) pkg> add ${context.payload.pull_request.head.repo.html_url}#${context.payload.pull_request.head.ref}
               (@v1.6) pkg> # press backspace/delete to go back
-              julia> using ${context.repository.name.replace(/\.jl$/,"")}
+              julia> using ${context.payload.repository.name.replace(/\.jl$/,"")}
               \`\`\`
               `
             })
