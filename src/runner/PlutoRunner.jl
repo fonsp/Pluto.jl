@@ -44,6 +44,20 @@ struct GiveMeCellID <: SpecialPlutoExprValue end
 struct GiveMeRerunCellFunction <: SpecialPlutoExprValue end
 struct GiveMeRegisterCleanupFunction <: SpecialPlutoExprValue end
 
+module RecursiveMacroExpand
+    include("/Users/michiel/Projects/Notebooks/RecursiveMacroExpand.jl")
+end
+
+const pluto_context = gensym("PlutoRunner Context")
+
+macro skip_as_script(expr)
+    if parentmodule(__module__) == Main
+        Expr(:toplevel, esc(expr))
+    else
+        nothing
+    end
+end
+
 ###
 # WORKSPACE MANAGER
 ###
@@ -107,8 +121,7 @@ We don't re-build the macro in every workspace, so we need to remove these refs 
 TODO? Don't remove the refs, but instead replace them with a new ref pointing to the new module?
 """
 function collect_and_eliminate_globalrefs!(ref::GlobalRef, mutable_ref_list=[])
-    test_mod_name = nameof(ref.mod) |> string
-    if startswith(test_mod_name, "workspace#")
+    if is_pluto_workspace(ref.mod)
         new_name = gensym(ref.name)
         push!(mutable_ref_list, ref.name => new_name)
         new_name
@@ -156,6 +169,53 @@ function globalref_to_workspaceref(expr)
         new_expr,
     )
 end
+
+function is_hard_scope(expr)
+    Meta.isexpr(expr, :do) ||
+    Meta.isexpr(expr, :let) ||
+    Meta.isexpr(expr, :generator) ||
+    Meta.isexpr(expr, :comprehension) ||
+    Meta.isexpr(expr, :function) ||
+    Meta.isexpr(expr, :macro) ||
+    Meta.isexpr(expr, :(->))
+end
+
+function has_assignment_to_pluto_context(expr)
+    if Meta.isexpr(expr, :(=), 2) && expr.args[begin] == pluto_context
+        true
+    elseif is_hard_scope(expr)
+        false
+    else
+        any(arg -> has_assignment_to_pluto_context(arg), expr.args)
+    end
+end
+
+function replace_pluto_context_in_expr(expr::Expr, context)
+    if is_hard_scope(expr) && has_assignment_to_pluto_context(expr)
+        # If we're in a hard scope, we can't replace the pluto_context variable,
+        #   because it's a local variable in the scope.
+        # So we just return the original expr.
+        expr
+    elseif Meta.isexpr(expr, :islocal) || Meta.isexpr(expr, :isdefined)
+        if expr.args[begin] == pluto_context
+            true
+        else
+            expr
+        end
+    elseif Meta.isexpr(expr, :(=))
+        # Don't replace in the left hand side of an assignment
+        Expr(
+            expr.head,
+            expr.args[begin],
+            map(arg -> replace_pluto_context_in_expr(arg, context), expr.args[begin+1:end])...,
+        )
+    else
+        # TODO? Qouting >_>?
+        Expr(expr.head, map(arg -> replace_pluto_context_in_expr(arg, context), expr.args)...)
+    end
+end
+replace_pluto_context_in_expr(s::Symbol, context) = s == pluto_context ? context : s
+replace_pluto_context_in_expr(other::Any, context) = other
 
 
 replace_pluto_properties_in_expr(::GiveMeCellID; cell_id, kwargs...) = cell_id
@@ -230,6 +290,33 @@ module CantReturnInPluto
     replace_returns_with_error_in_interpolation(ex) = ex
 end
 
+function has_macrodefinition(expr::Expr)
+    # TODO Visit interpolations explicitly
+    if Meta.isexpr(expr, :macro)
+        return true
+    else
+        any(has_macrodefinition, expr.args)
+    end
+end
+has_macrodefinition(anything) = false
+
+function has_plutocontext_usage(expr::Expr, context)
+    # Don't ever care about quoted here, if you somehow get the pluto context
+    # inside a quoted expression... it's still a pluto context usage.
+    any(arg -> has_plutocontext_usage(arg, context), expr.args)
+end
+has_plutocontext_usage(anything, context) = anything == context
+
+function wrap_with_context(expr, varname, context)
+    @info "expr" expr
+
+    quote
+       let
+            $(varname) = $(context)
+            $(expr)
+       end
+    end
+end
 
 function try_macroexpand(mod, cell_uuid, expr)
     # Remove toplevel block, as that screws with the computer and everything
@@ -241,20 +328,50 @@ function try_macroexpand(mod, cell_uuid, expr)
     end
     
     elapsed_ns = time_ns()
-    expanded_expr = macroexpand(mod, expr_not_toplevel)
+    metadata = RecursiveMacroExpand.MacroexpandMetadata()
+    expanded_expr = RecursiveMacroExpand.recursive_macroexpand1(
+        mod=mod,
+        expr=expr_not_toplevel,
+        metadata=metadata,
+    )
+    # expanded_expr = macroexpand(mod, expr_not_toplevel)
+
     elapsed_ns = time_ns() - elapsed_ns
 
     # Removes baked in references to the module this was macroexpanded in.
     # Fix for https://github.com/fonsp/Pluto.jl/issues/1112
-    expr_without_return = CantReturnInPluto.replace_returns_with_error(expanded_expr)
-    expr_without_globalrefs = globalref_to_workspaceref(expr_without_return)
+    expr_to_save = CantReturnInPluto.replace_returns_with_error(expanded_expr)
+    expr_to_save = globalref_to_workspaceref(expr_to_save)
 
-    has_pluto_hook_features = has_hook_style_pluto_properties_in_expr(expr_without_globalrefs)
-    expr_to_save = replace_pluto_properties_in_expr(expr_without_globalrefs,
+    # has_pluto_hook_features = has_hook_style_pluto_properties_in_expr(expr_to_save)
+    expr_to_save = replace_pluto_properties_in_expr(expr_to_save,
         cell_id=cell_uuid,
         rerun_cell_function=() -> rerun_cell_from_notebook(cell_uuid),
         register_cleanup_function=(fn) -> UseEffectCleanups.register_cleanup(fn, cell_uuid),
     )
+
+    context = Dict(
+        :cell_id => cell_uuid,
+        :rerun_cell_function => () -> rerun_cell_from_notebook(cell_uuid),
+        :register_cleanup_function => (fn) -> UseEffectCleanups.register_cleanup(fn, cell_uuid),
+    )
+    expr_to_save = replace_pluto_context_in_expr(expr_to_save, context)
+
+    has_pluto_hook_features = has_plutocontext_usage(expr_to_save, context)
+    # @info "has_pluto_hook_features" has_plutocontext_usage(expr_to_save) has_macrodefinition(expr_to_save)
+    # expr_to_save = if has_macrodefinition(expr_to_save)
+    #     if has_pluto_hook_features
+    #         :(error("Can't use PlutoHooks within macro definitions"))
+    #     else
+    #        expr_to_save
+    #     end
+    # else
+    #     wrap_with_context(expr_to_save, pluto_context, Dict(
+    #         :cell_id => cell_uuid,
+    #         :rerun_cell_function => () -> rerun_cell_from_notebook(cell_uuid),
+    #         :register_cleanup_function => (fn) -> UseEffectCleanups.register_cleanup(fn, cell_uuid),
+    #     ))
+    # end
 
     cell_expanded_exprs[cell_uuid] = CachedMacroExpansion(
         original_expr_hash=expr_hash(expr),
@@ -263,7 +380,25 @@ function try_macroexpand(mod, cell_uuid, expr)
         has_pluto_hook_features=has_pluto_hook_features,
     )
 
-    return (sanitize_expr(expr_to_save), expr_hash(expr_to_save))
+    # macrocalls_sanitized = collect_and_eliminate_globalrefs!(ref::GlobalRef, mutable_ref_list=[])
+    # sanitize_expr.(metadata.macrocalls)
+    extra_macrocalls = map(collect(metadata.macrocalls)) do globalref
+        name_parts = fullname(globalref.mod)
+        i = findfirst(name_parts) do part
+            PlutoRunner.is_pluto_workspace(part)
+        end
+    
+        if i === nothing
+            PlutoRunner.wrap_dot(globalref)
+        else
+            PlutoRunner.wrap_dot([
+                name_parts[i+1:end]...,
+                globalref.name
+            ])
+        end
+    end
+
+    return (sanitize_expr(expr_to_save), expr_hash(expr_to_save), extra_macrocalls)
 end
 
 function get_module_names(workspace_module, module_ex::Expr)
@@ -1459,9 +1594,11 @@ catch
 end
 completion_description(::Completion) = nothing
 
+function is_pluto_workspace(s::Symbol)
+    startswith(string(s), "workspace#")
+end
 function is_pluto_workspace(m::Module)
-    mod_name = nameof(m) |> string
-    startswith(mod_name, "workspace#")
+    is_pluto_workspace(nameof(m))
 end
 
 function completions_exported(cs::Vector{<:Completion})
