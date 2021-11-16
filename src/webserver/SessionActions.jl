@@ -43,12 +43,10 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
     end
 
     session.notebooks[nb.notebook_id] = nb
-    if session.options.evaluation.run_notebook_on_load
-        for c in nb.cells
-            c.queued = true
-        end
-        update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
+    for c in nb.cells
+        c.queued = session.options.evaluation.run_notebook_on_load
     end
+    update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
     
     add(session, nb; run_async=run_async)
 
@@ -75,7 +73,14 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
             
 		    sleep(0.1) ## There seems to be a synchronization issue if your OS is VERYFAST
             wait_until_file_unchanged(nb.path, .3)
-            update_from_file(session, nb)
+            
+            # call update_from_file. If it returns false, that means that the notebook file was corrupt, so we try again, a maximum of 10 times.
+            for i in 1:10
+                if update_from_file(session, nb)
+                    break
+                end
+            end
+            
             
             @info "Updating from file done!"
             
@@ -93,7 +98,7 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
             # the above call is blocking until the file changes
             
             local modified_time = mtime(nb.path)
-            local _tries = 1
+            local _tries = 0
             
             # mtime might return zero if the file is temporarily removed
             while modified_time == 0.0 && _tries < 10

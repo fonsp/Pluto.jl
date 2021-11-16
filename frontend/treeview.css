@@ -13,7 +13,7 @@ pluto-tree-pair {
 }
 pluto-tree {
     color: hsl(0, 0%, 25%, 0.7);
-    /* white-space: pre; */
+    white-space: pre;
     cursor: pointer;
 }
 
