@@ -906,6 +906,9 @@ patch: ${JSON.stringify(
                 }
                 e.preventDefault()
             } else if (e.key.toLowerCase() === "s" && has_ctrl_or_cmd_pressed(e)) {
+                // If VSCode is around, we shouldn't 'Set and run all remote changed remote cells.
+                // Control + Save sends VSCode save
+                if (vscode_available) return this.run_selected()
                 const some_cells_ran = this.actions.set_and_run_all_changed_remote_cells()
                 if (!some_cells_ran) {
                     // all cells were in sync allready
