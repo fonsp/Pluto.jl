@@ -2,6 +2,7 @@ name: "Automatic PR comment: Try this PR!"
 
 on:
   pull_request:
+    types: [opened]
 
 jobs:
   comment:
