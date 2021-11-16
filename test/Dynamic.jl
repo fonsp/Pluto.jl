@@ -182,11 +182,12 @@ end
             Cell("PlutoRunner.notebook_id[] |> Text"),
             Cell("""
             let
-                a = PlutoRunner.publish(Dict(
+                # not actually public API but we test it anyways
+                a = PlutoRunner._publish(Dict(
                     "hello" => "world",
                     "xx" => UInt8[6,7,8],
                 ))
-                b = PlutoRunner.publish("cool")
+                b = PlutoRunner._publish("cool")
                 Text((a, b))
             end
             """),

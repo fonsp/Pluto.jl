@@ -214,7 +214,16 @@ function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache; persist_js_
 	cell.output = CellOutput(
 		body=run.output_formatted[1],
 		mime=run.output_formatted[2],
-		rootassignee=ends_with_semicolon(expr_cache.code) ? nothing : ExpressionExplorer.get_rootassignee(expr_cache.parsedcode),
+		rootassignee=if ends_with_semicolon(expr_cache.code)
+			nothing
+		else
+			try 
+				ExpressionExplorer.get_rootassignee(expr_cache.parsedcode)
+			catch _
+				# @warn "Error in get_rootassignee" expr=expr_cache.parsedcode
+				nothing
+			end
+		end,
 		last_run_timestamp=time(),
 		persist_js_state=persist_js_state,
 		has_pluto_hook_features=run.has_pluto_hook_features,
@@ -511,7 +520,7 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 			write(PkgCompat.project_file(notebook), PkgCompat.read_project_file(just_loaded))
 			write(PkgCompat.manifest_file(notebook), PkgCompat.read_manifest_file(just_loaded))
 		end
-		notebook.nbpkg_restart_required_msg = "yes"
+		notebook.nbpkg_restart_required_msg = "Yes, because the file was changed externally and the embedded Pkg changed."
 	end
 	
 	if something_changed
