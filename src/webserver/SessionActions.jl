@@ -84,6 +84,7 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
             end
             
             
+            
             @info "Updating from file done!"
             
             running[] = false
