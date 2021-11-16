@@ -12,7 +12,7 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 	errable = Dict{Cell,ReactivityError}()
 
 	# https://xkcd.com/2407/
-	function dfs(cell::Cell)::ChildExplorationResult
+	function bfs(cell::Cell)::ChildExplorationResult
 		if cell in exits
 			return Ok()
 		elseif haskey(errable, cell)
@@ -46,7 +46,7 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 		referencers = where_referenced(notebook, topology, cell) |> Iterators.reverse
 		for c in (allow_multiple_defs ? referencers : union(assigners, referencers))
 			if c != cell
-				child_result = dfs(c)
+				child_result = bfs(c)
 
 				# No cycle for this child or the cycle has no soft edges
 				if child_result isa Ok || cell ∉ child_result.cycled_cells
@@ -83,7 +83,7 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 	prelim_order_1 = sort(roots, alg=MergeSort, by=c -> cell_precedence_heuristic(topology, c))
 	# reversing because our search returns reversed order
 	prelim_order_2 = Iterators.reverse(prelim_order_1)
-	dfs.(prelim_order_2)
+	bfs.(prelim_order_2)
 	ordered = reverse(exits)
 	TopologicalOrder(topology, setdiff(ordered, keys(errable)), errable)
 end
