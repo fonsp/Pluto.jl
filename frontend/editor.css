@@ -2044,11 +2044,12 @@ footer button {
     margin: 0px;
     background: var(--footer-filepicker-focus-color);
     border-radius: 0 3px 3px 0;
-    border: 2px solid var(--footer-filepicker-focus-color);
+    border: 3px solid var(--footer-filepicker-focus-color);
     color: var(--footer-filepicker-button-color);
     /* border: none; */
     font-family: inherit;
     font-weight: 600;
+    height: 100%;
     font-size: 0.75rem;
 }
 

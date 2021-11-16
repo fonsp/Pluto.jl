@@ -7,7 +7,7 @@
         --kbd-border-color: #dfdfdf;
         --header-border-color: rgba(0,0,0,0.1);
         --atag-color: black;
-        --ui-button-color: black;
+        --ui-button-color: #2a2a2b;
         --cursor-color: black;
 
         --normal-cell: 0, 0, 0;
@@ -88,8 +88,8 @@
         --loading-grad-color-2: #d7d7d0;
     
         /*saveall container*/
-        --saveall-bg-color: #645f5f;
-        --saveall-border-color: #e3e3e3;
+        --saveall-bg-color: #e4e3e3;
+        --saveall-border-color: #f3f2f2;
     
         /*input_context_menu*/
         --input-context-menu-border-color: rgba(0,0,0,0.1);
