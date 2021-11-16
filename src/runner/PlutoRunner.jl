@@ -232,6 +232,10 @@ end
 
 
 function try_macroexpand(mod, cell_uuid, expr)
+    # Remove the precvious cached expansion, so when we error somewhere before we update,
+    # the old one won't linger around and get run accidentally.
+    delete!(cell_expanded_exprs, cell_uuid)
+
     # Remove toplevel block, as that screws with the computer and everything
     expr_not_toplevel = if expr.head == :toplevel || expr.head == :block
         Expr(:block, expr.args...)
@@ -465,13 +469,14 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
     # so we macroexpand this earlier (during expression explorer stuff), and then we find it here.
     # NOTE Turns out sometimes there is no macroexpanded version even though the expression contains macro calls...
     # .... So I macroexpand when there is no cached version just to be sure 🤷‍♀️
+    # NOTE Errors during try_macroexpand will cause no expanded version to be stored.
+    # .... This is fine, because it allows us to try again here and throw the error...
+    # .... But ideally we wouldn't re-macroexpand and store the error the first time (TODO-ish)
     if !haskey(cell_expanded_exprs, cell_id) || cell_expanded_exprs[cell_id].original_expr_hash != expr_hash(expr)
         try
             try_macroexpand(m, cell_id, expr)
         catch e
-            # On error during macroexpand, we override the stacktrace with this faux one
-            bt = [StackTraces.StackFrame(Symbol("Macro Expansion"), Symbol("pluto-cell"), 1, nothing, false, false, 0)]
-            result = CapturedException(e, bt)
+            result = CapturedException(e, stacktrace(catch_backtrace()))
             cell_results[cell_id], cell_runtimes[cell_id] = (result, nothing)
             return (result, nothing)
         end

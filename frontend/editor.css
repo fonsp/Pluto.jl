@@ -2160,7 +2160,8 @@ Based on "Paraíso (Light)" by Jan T. Sott:
     text-decoration-skip-ink: none;
 }
 
-body.ctrl_down [data-pluto-variable] {
+body.ctrl_down [data-pluto-variable],
+body.ctrl_down [data-cell-variable] {
     text-decoration-color: #d177e6;
     cursor: pointer;
 }
@@ -2173,7 +2174,6 @@ body.ctrl_down [data-pluto-variable]:hover * {
 [data-cell-variable] {
     /* Can give this cool styles later as well, but not for now nahhh */
     text-decoration: none;
-    cursor: pointer;
 }
 body.ctrl_down [data-cell-variable]:hover * {
     color: #af5bc3 !important;
@@ -2365,6 +2365,7 @@ pluto-cell.hooked_up pluto-input .cm-editor {
     border-color: var(--pluto-cell-force-color);
     border-width: 2px;
     border-left: none;
+    border-top: none;
 }
 
 pluto-cell.hooked_up > pluto-runarea {
@@ -2380,5 +2381,6 @@ pluto-cell.hooked_up pluto-output {
     border-right: solid 2px;
     border-top: solid 2px;
     border-top-right-radius: 4px;
+    border-bottom: solid 2px;
     border-color: var(--pluto-cell-force-color);
 }

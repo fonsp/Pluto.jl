@@ -421,6 +421,24 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		cd(original_pwd)
 		setdiff(cells, to_run_offline)
 	end
+	
+	# this setting is not officially supported (default is `false`), so you can skip this block when reading the code
+	if !session.options.evaluation.run_notebook_on_load && prerender_text
+		# these cells do something like settings up an environment, we should always run them
+		setup_cells = filter(notebook.cells) do c
+			cell_precedence_heuristic(notebook.topology, c) < DEFAULT_PRECEDENCE_HEURISTIC
+		end
+		
+		# for the remaining cells, clear their topology info so that they won't run as dependencies
+		for cell in setdiff(to_run_online, setup_cells)
+			delete!(notebook.topology.nodes, cell)
+			delete!(notebook.topology.codes, cell)
+			delete!(notebook.topology.unresolved_cells, cell)
+		end
+		
+		# and don't run them
+		to_run_online = to_run_online ∩ setup_cells
+	end
 
 	maybe_async(run_async) do
 		sync_nbpkg(session, notebook; save=(save && !session.options.server.disable_writing_notebook_files))
@@ -461,14 +479,19 @@ end
 
 notebook_differences(from_filename::String, to_filename::String) = notebook_differences(load_notebook_nobackup(from_filename), load_notebook_nobackup(to_filename))
 
-function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
+"""
+Read the notebook file at `notebook.path`, and compare the read result with the notebook's current state. Any changes will be applied to the running notebook, i.e. code changes are run, removed cells are removed, etc.
+
+Returns `false` if the file could not be parsed, `true` otherwise.
+"""
+function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)::Bool
 	include_nbpg = !session.options.server.auto_reload_from_file_ignore_pkg
 	
 	just_loaded = try
 		load_notebook_nobackup(notebook.path)
 	catch e
 		@error "Skipping hot reload because loading the file went wrong" exception=(e,catch_backtrace())
-		return
+		return false
 	end::Notebook
 	
 	new_codes = Dict(
@@ -526,6 +549,8 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 	if something_changed
 		update_save_run!(session, notebook, Cell[notebook.cells_dict[c] for c in union(added, changed)]; kwargs...) # this will also update nbpkg
 	end
+	
+	return true
 end
 
 
