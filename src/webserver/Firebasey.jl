@@ -647,7 +647,7 @@ begin
 	# Do nothing inside pluto (so we don't need to have Test as dependency)
 	# test/Firebasey is `using Test` before including this file
 	@only_as_script begin
-		if !@isdefined(var"@test")
+		if !isdefined(@__MODULE__, Symbol("@test"))
 			macro test(e...) nothing; end
 			macro test_throws(e...) nothing; end
 			macro test_broken(e...) nothing; end

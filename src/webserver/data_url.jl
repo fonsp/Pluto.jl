@@ -46,7 +46,7 @@ begin
 		Pkg.activate(Base.current_project(@__FILE__))
 		using PlutoTest
 	else
-		if !@isdefined(var"@test")
+		if !isdefined(@__MODULE__, Symbol("@test"))
 			macro test(e...) nothing; end
 			macro test_throws(e...) nothing; end
 			macro test_broken(e...) nothing; end
@@ -81,7 +81,7 @@ function download_cool(url::AbstractString, path::AbstractString=tempname())
 		mime = MIME(first(metadata_parts))
 		is_base64 = length(metadata_parts) == 2
 
-		data_str = @view(url[comma_index+1:end])
+		data_str = SubString(url, comma_index+1)
 		
 		data = is_base64 ? 
 			Base64.base64decode(data_str) : 
