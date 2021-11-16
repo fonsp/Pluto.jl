@@ -153,8 +153,6 @@ function cell_precedence_heuristic(topology::NotebookTopology, cell::Cell)::Real
 		# because we don't (yet) know which cells depend on it
 		8
 	else
-		DEFAULT_PRECEDENCE_HEURISTIC
+		9
 	end
 end
-
-const DEFAULT_PRECEDENCE_HEURISTIC = 9

@@ -54,33 +54,50 @@ import { cell_movement_plugin } from "./CellInput/cell_movement_plugin.js"
 import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
 import { cl } from "../common/ClassTable.js"
+import { literal, 
+    macroName,
+    std_variableName,
+    bool,
+    comment,
+    atom,
+    number,
+    keyword,
+    string,
+    variableName,
+    def_variableName,
+    bracket,
+    brace,
+    tagName,
+    link,
+    invalid,
+    invalid_bg } from "./SyntaxColorsParser.js"
 
 export const pluto_syntax_colors = HighlightStyle.define([
     /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
     // Symbol
-    { tag: tags.literal, color: "#5e7ad3", fontWeight: 700 },
-    { tag: tags.macroName, color: "#5668a4", fontWeight: 700 },
+    { tag: tags.literal, color: literal, fontWeight: 700 },
+    { tag: tags.macroName, color: macroName, fontWeight: 700 },
     // `nothing` I guess... Any others?
-    { tag: tags.standard(tags.variableName), color: "#5e7ad3", fontWeight: 700 },
+    { tag: tags.standard(tags.variableName), color: std_variableName, fontWeight: 700 },
 
-    { tag: tags.bool, color: "#5e7ad3", fontWeight: 700 },
+    { tag: tags.bool, color: bool, fontWeight: 700 },
 
-    { tag: tags.keyword, color: "#fc6" },
-    { tag: tags.comment, color: "#e96ba8", fontStyle: "italic" },
-    { tag: tags.atom, color: "#815ba4" },
-    { tag: tags.number, color: "#815ba4" },
+    { tag: tags.keyword, color: keyword },
+    { tag: tags.comment, color: comment, fontStyle: "italic" },
+    { tag: tags.atom, color: atom },
+    { tag: tags.number, color: number },
     // { tag: tags.property, color: "#48b685" },
     // { tag: tags.attribute, color: "#48b685" },
-    { tag: tags.keyword, color: "#ef6155" },
-    { tag: tags.string, color: "#da5616" },
-    { tag: tags.variableName, color: "#5668a4", fontWeight: 700 },
+    { tag: tags.keyword, color: keyword },
+    { tag: tags.string, color: string },
+    { tag: tags.variableName, color: variableName, fontWeight: 700 },
     // { tag: tags.variable2, color: "#06b6ef" },
-    { tag: tags.definition(tags.variableName), color: "#f99b15" },
-    { tag: tags.bracket, color: "#41323f" },
-    { tag: tags.brace, color: "#41323f" },
-    { tag: tags.tagName, color: "#ef6155" },
-    { tag: tags.link, color: "#815ba4" },
-    { tag: tags.invalid, color: "#000", background: "#ef6155" },
+    { tag: tags.definition(tags.variableName), color: def_variableName },
+    { tag: tags.bracket, color: bracket },
+    { tag: tags.brace, color: brace },
+    { tag: tags.tagName, color: tagName },
+    { tag: tags.link, color: link },
+    { tag: tags.invalid, color: invalid, background: invalid_bg },
     // ...Object.keys(tags).map((x) => ({ tag: x, color: x })),
 ])
 
@@ -333,12 +350,14 @@ export const CellInput = ({
         // TODO remove me
         //@ts-ignore
         window.tags = tags
+        const usesDarkTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
         const newcm = (newcm_ref.current = new EditorView({
             /** Migration #0: New */
             state: EditorState.create({
                 doc: local_code,
 
                 extensions: [
+                    EditorView.theme({}, { dark: usesDarkTheme }),
                     // Compartments coming from react state/props
                     nbpkg_compartment,
                     used_variables_compartment,
