@@ -167,17 +167,15 @@ function save_notebook(io, notebook::Notebook)
     notebook
 end
 
-function open_safe_write(fn::Function, path, mode)
+function write_buffered(fn::Function, path)
     file_content = sprint(fn)
-    open(path, mode) do io
-        print(io, file_content)
-    end
+    write(path, file_content)
 end
     
 function save_notebook(notebook::Notebook, path::String)
     # @warn "Saving to file!!" exception=(ErrorException(""), backtrace())
     notebook.last_save_time = time()
-    open_safe_write(path, "w") do io
+    write_buffered(path) do io
         save_notebook(io, notebook)
     end
 end
