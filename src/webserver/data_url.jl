@@ -46,8 +46,12 @@ begin
 		Pkg.activate(Base.current_project(@__FILE__))
 		using PlutoTest
 	else
-		macro test(e...) nothing; end
-		macro test_throws(e...) nothing; end
+		if !@isdefined(var"@test")
+			macro test(e...) nothing; end
+			macro test_throws(e...) nothing; end
+			macro test_broken(e...) nothing; end
+			macro testset(e...) nothing; end
+		end
 	end
 	import HTTP.URIs
 	import Base64
