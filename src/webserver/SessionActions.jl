@@ -30,7 +30,7 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
     end
 
     for nb in values(session.notebooks)
-        if realpath(nb.path) == realpath(tamepath(path))
+        if isfile(nb.path) && realpath(nb.path) == realpath(tamepath(path))
             throw(NotebookIsRunningException(nb))
         end
     end
@@ -92,8 +92,17 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
             watch_file(nb.path)
             # the above call is blocking until the file changes
             
+            local modified_time = mtime(nb.path)
+            local _tries = 1
+            
+            # mtime might return zero if the file is temporarily removed
+            while modified_time == 0.0 && _tries < 10
+                modified_time = mtime(nb.path)
+                _tries += 1
+                sleep(.05)
+            end
+            
             # current_time = time()
-            modified_time = mtime(nb.path)
             # @info "File changed" (current_time - nb.last_save_time) (modified_time - nb.last_save_time) (current_time - modified_time)
             if !in_session()
                 break
@@ -101,7 +110,9 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
             
             # if current_time - nb.last_save_time < 2.0
                 # @info "Notebook was saved by me very recently, not reloading from file."
-            if modified_time - nb.last_save_time < session.options.server.auto_reload_from_file_cooldown
+            if modified_time == 0.0
+                # @warn "Failed to hot reload: file no longer exists."
+            elseif modified_time - nb.last_save_time < session.options.server.auto_reload_from_file_cooldown
                 # @info "Modified time is very close to my last save time, not reloading from file."
             else
                 update_from_file_throttled()
@@ -153,7 +164,11 @@ function new(session::ServerSession; run_async=true)
         Notebook([Cell(), Cell(code=file_viewer_code, code_folded=true)])
 
     else
-        emptynotebook()
+        if session.options.compiler.sysimage === nothing
+            emptynotebook()
+        else
+            Notebook([Cell("import Pkg"), Cell("# This cell disables Pluto's package manager and activates the global environment. Click on ? inside the bubble next to Pkg.activate to learn more.\n# (added automatically because a sysimage is used)\nPkg.activate()"), Cell()])
+        end
     end
     update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
     

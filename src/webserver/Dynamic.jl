@@ -133,6 +133,7 @@ function notebook_to_js(notebook::Notebook)
                     "rootassignee" => cell.output.rootassignee,
                     "last_run_timestamp" => cell.output.last_run_timestamp,
                     "persist_js_state" => cell.output.persist_js_state,
+                    "has_pluto_hook_features" => cell.output.has_pluto_hook_features,
                 ),
                 "published_objects" => cell.published_objects,
                 "queued" => cell.queued,

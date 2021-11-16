@@ -256,6 +256,10 @@ function run(session::ServerSession)
     println("Press Ctrl+C in this terminal to stop Pluto")
     println()
 
+    if !isdir(project_relative_path("frontend-dist"))
+        @warn "FYI, running unbundled (dev) frontend"
+    end
+
     shutdown_server[] = () -> @sync begin
         println("\n\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈")
         @async swallow_exception(() -> close(serversocket), Base.IOError)
@@ -360,7 +364,7 @@ function process_ws_message(session::ServerSession, parentbody::Dict, clientstre
         try
             responsefunc(ClientRequest(session, notebook, body, Initiator(client, request_id)))
         catch ex
-            @warn "Response function to message of type $(messagetype) failed"
+            @warn "Response function to message of type $(repr(messagetype)) failed"
             rethrow(ex)
         end
     else

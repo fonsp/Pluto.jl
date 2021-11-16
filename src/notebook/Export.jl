@@ -20,6 +20,8 @@ function generate_html(;
         disable_ui=true, notebook_id_js="undefined",
     )::String
 
+    # Here we don't use frontend-dist (bundled code) yet, might want to
+    # use a separate Parcel pipeline to make UBER-BUNDLED html exports (TODO DRAL)
     original = read(project_relative_path("frontend", "editor.html"), String)
 
     cdn_root = if pluto_cdn_root === nothing

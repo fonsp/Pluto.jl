@@ -173,7 +173,7 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
     @testset "Expr sanitization" begin
         struct A; end
         f(x) = x
-        unserializable_expr = Expr(:call, f, A(), A[A(), A(), A()], PlutoRunner, PlutoRunner.sanitize_expr)
+        unserializable_expr = :($(f)(A(), A[A(), A(), A()], PlutoRunner, PlutoRunner.sanitize_expr))
 
         get_expr_types(other) = typeof(other)
         get_expr_types(ex::Expr) = get_expr_types.(ex.args)
@@ -185,11 +185,7 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         types = sanitized_expr |> get_expr_types |> flatten |> Set
 
         # Checks that no fancy type is part of the serialized expression
-        @test Set([Symbol, QuoteNode]) == types
-
-        @test Meta.isexpr(sanitized_expr.args[3], :vect, 3)
-        @test sanitized_expr.args[2] == :A
-        @test sanitized_expr.args[1] == :(Main.f)
+        @test Set([Nothing, Symbol, QuoteNode]) == types
     end
 
     @testset "Macrodef cells not root of run" begin
@@ -280,6 +276,203 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         @test cell(1).output.body == "42"
     end
 
+    @testset "Redefines macro with new SymbolsState" begin
+        notebook = Notebook(Cell.([
+            "@b x",
+            raw"""macro b(sym)
+                esc(:($sym = 42))
+            end""",
+            "x",
+            "y",
+        ]))
+        cell(idx) = notebook.cells[idx]
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test cell(3).output.body == "42"
+        @test cell(4).errored == true
+
+        setcode(cell(2), """macro b(_)
+            esc(:(y = 42))
+        end""")
+        update_run!(🍭, notebook, cell(2))
+
+        @test cell(4).output.body == "42"
+        @test cell(3).errored == true
+
+        notebook = Notebook(Cell.([
+            "@b x",
+            raw"""macro b(sym)
+                esc(:($sym = 42))
+            end""",
+            "x",
+            "y",
+        ]))
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test cell(3).output.body == "42"
+        @test cell(4).errored == true
+
+        setcode(cell(2), """macro b(_)
+            esc(:(y = 42))
+        end""")
+        update_run!(🍭, notebook, [cell(1), cell(2)])
+
+        # Cell 4 is executed even because cell(1) is in the root
+        # of the reactive run because the expansion is done with the new version
+        # of the macro in the new workspace because of the current_roots parameter of `resolve_topology`.
+        # See Run.jl#resolve_topology.
+        @test cell(4).output.body == "42"
+        @test cell(3).errored == true
+    end
+
+    @testset "Reactive macro update does not invalidate the macro calls" begin
+        notebook = Notebook(Cell.([
+            raw"""macro b(sym)
+                if z > 40
+                    esc(:($sym = $z))
+                else
+                    esc(:(y = $z))
+                end
+            end""",
+            "z = 42",
+            "@b(x)",
+            "x",
+            "y",
+        ]))
+        cell(idx) = notebook.cells[idx]
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test cell(1) |> noerror        
+        @test cell(2) |> noerror        
+        @test cell(3) |> noerror        
+        @test cell(4) |> noerror        
+        @test cell(5).errored == true
+
+        setcode(cell(2), "z = 39")
+
+        # running only 2, running all cells here works however
+        update_run!(🍭, notebook, cell(2))
+
+        @test cell(1) |> noerror        
+        @test cell(2) |> noerror        
+        @test cell(3) |> noerror
+        @test cell(4).output.body != "42"
+        @test cell(4).errored == true
+        @test cell(5) |> noerror
+    end
+
+    @testset "Explicitely running macrocalls updates the reactive node" begin
+        notebook = Notebook(Cell.([
+            "@b()",
+            "ref = Ref{Int}(0)",
+            raw"""macro b()
+                ex = if iseven(ref[])
+                    :(x = 10)
+                else
+                    :(y = 10)
+                end |> esc
+                ref[] += 1
+                ex
+            end""",
+            "x",
+            "y",
+        ]))
+        cell(i) = notebook.cells[i]
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test cell(1) |> noerror
+        @test cell(2) |> noerror
+        @test cell(3) |> noerror
+        @test cell(4) |> noerror
+        @test cell(5).errored == true
+
+        update_run!(🍭, notebook, cell(1))
+
+        @test cell(4).errored == true
+        @test cell(5) |> noerror
+    end
+
+    @testset "Implicitely running macrocalls updates the reactive node" begin
+        notebook = Notebook(Cell.([
+            "updater; @b()",
+            "ref = Ref{Int}(0)",
+            raw"""macro b()
+                ex = if iseven(ref[])
+                    :(x = 10)
+                else
+                    :(y = 10)
+                end |> esc
+                ref[] += 1
+                ex
+            end""",
+            "x",
+            "y",
+            "updater = 1",
+        ]))
+        cell(i) = notebook.cells[i]
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test cell(1) |> noerror
+        @test cell(2) |> noerror
+        @test cell(3) |> noerror
+        @test cell(4) |> noerror
+        output_1 = cell(4).output.body
+        @test cell(5).errored == true
+        @test cell(6) |> noerror
+
+        setcode(cell(6), "updater = 2")
+        update_run!(🍭, notebook, cell(6))
+
+        # the output of cell 4 has not changed since the underlying computer
+        # has not been regenerated. To update the reactive node and macrocall
+        # an explicit run of @b() must be done.
+        @test cell(4).output.body == output_1
+        @test cell(5).errored == true
+    end
+
+    @testset "Weird behavior" begin
+        # https://github.com/fonsp/Pluto.jl/issues/1591
+
+        notebook = Notebook(Cell.([
+            "macro huh(_) throw(\"Fail!\") end",
+            "huh(e) = e",
+            "@huh(z)",
+            "z = 101010",
+        ]))
+        cell(idx) = notebook.cells[idx]
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test cell(3).errored == true
+
+        setcode(cell(3), "huh(z)")
+        update_run!(🍭, notebook, cell(3))
+
+        @test cell(3) |> noerror
+        @test cell(3).output.body == "101010"
+
+        setcode(cell(4), "z = 1234")
+        update_run!(🍭, notebook, cell(4))
+
+        @test cell(3) |> noerror
+        @test cell(3).output.body == "1234"
+    end
+
+
+    @testset "Cell failing first not re-run?" begin
+        notebook = Notebook(Cell.([
+            "x",
+            "@b x",
+            raw"macro b(sym) esc(:($sym = 42)) end",
+        ]))
+        update_run!(🍭, notebook, notebook.cells)
+
+        # CELL 1 "x" was run first and failed because the definition
+        # of x was not yet found. However, it was not run re-run when the definition of
+        # x ("@b(x)") was run. Should it? Maybe set a higher precedence to cells that define
+        # macros inside the notebook.
+        @test_broken noerror(notebook.cells[1]; verbose=false)
+    end
+
     @testset "@a defines @b initial loading" begin
         notebook = Notebook(Cell.([
             "x",
@@ -301,6 +494,52 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         @test cell(3) |> noerror
         @test cell(4) |> noerror
         @test cell(1).output.body == "42"
+    end
+
+    @testset "Macro with long compile time gets function wrapped" begin
+        ms = 1e-3
+        ns = 1e-9
+        sleep_time = 40ms
+
+        notebook = Notebook(Cell.([
+            "updater; @b()",
+            """macro b()
+                x = rand()
+                sleep($sleep_time)
+                :(1+\$x)
+            end""",
+            "updater = :slow",
+        ]))
+        cell(idx) = notebook.cells[idx]
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test noerror(cell(1))
+        runtime = cell(1).runtime*ns
+        output_1 = cell(1).output.body
+        @test sleep_time <= runtime
+
+        setcode(cell(3), "updater = :fast")
+        update_run!(🍭, notebook, cell(3))
+
+        @test noerror(cell(1))
+        runtime = cell(1).runtime*ns
+        @test runtime < sleep_time # no recompilation!
+
+        # output is the same because no new compilation happens
+        @test output_1 == cell(1).output.body
+
+        # force recompilation by explicitely running the cell
+        update_run!(🍭, notebook, cell(1))
+
+        @test cell(1) |> noerror
+        @test output_1 != cell(1).output.body
+        output_3 = cell(1).output.body
+
+        setcode(cell(1), "@b()") # changing code generates a new 💻
+        update_run!(🍭, notebook, cell(1))
+
+        @test cell(1) |> noerror
+        @test output_3 != cell(1).output.body
     end
 
     @testset "Macro Prefix" begin
@@ -461,7 +700,6 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         @test ":hello" == cell(4).output.body
         @test :b ∈ notebook.topology.nodes[cell(3)].definitions
         @test [:c, Symbol("@my_assign")] ⊆ notebook.topology.nodes[cell(3)].references
-        @test cell(3).cell_dependencies.contains_user_defined_macrocalls == true
 
         setcode(notebook.cells[2], "c = :world")
         update_run!(🍭, notebook, cell(2))
@@ -486,5 +724,54 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
 
         @test :option_type ∈ notebook.topology.nodes[cell(1)].references
         @test cell(1) |> noerror
+    end
+
+    @testset "GlobalRefs in macros should be respected" begin
+        notebook = Notebook(Cell.([
+            """
+            macro identity(expr)
+                expr
+            end
+            """,
+            """
+            x = 20
+            """,
+            """
+            let x = 10
+                @identity(x)
+            end
+            """,
+        ]))
+        cell(idx) = notebook.cells[idx]
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test all(cell.([1,2,3]) .|> noerror)
+        @test cell(3).output.body == "20"
+    end
+
+    @testset "GlobalRefs shouldn't break unreached undefined references" begin
+        notebook = Notebook(Cell.([
+            """
+            macro get_x_but_actually_not()
+                quote
+                    if false
+                        x
+                    else
+                        :this_should_be_returned
+                    end
+                end
+            end
+            """,
+            """
+            @get_x_but_actually_not()
+            """,
+        ]))
+        cell(idx) = notebook.cells[idx]
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test all(cell.([1,2]) .|> noerror)
+        @test cell(2).output.body == ":this_should_be_returned"
     end
 end

@@ -267,11 +267,11 @@ function sync_nbpkg(session, notebook; save::Bool=true)
 
 			if pkg_result.restart_recommended
 				@debug "PlutoPkg: Notebook restart recommended"
-				notebook.nbpkg_restart_recommended_msg = "yes"
+				notebook.nbpkg_restart_recommended_msg = "Yes, something changed during regular sync."
 			end
 			if pkg_result.restart_required
 				@debug "PlutoPkg: Notebook restart REQUIRED"
-				notebook.nbpkg_restart_required_msg = "yes"
+				notebook.nbpkg_restart_required_msg = "Yes, something changed during regular sync."
 			end
 
 			notebook.nbpkg_busy_packages = String[]
@@ -299,7 +299,7 @@ function sync_nbpkg(session, notebook; save::Bool=true)
 
 		# Clear the embedded Project and Manifest and require a restart from the user.
 		reset_nbpkg(notebook; keep_project=false, save=save)
-		notebook.nbpkg_restart_required_msg = "yes"
+		notebook.nbpkg_restart_required_msg = "Yes, because sync_nbpkg_core failed. \n\n$(error_text)"
         notebook.nbpkg_ctx_instantiated = false
         update_nbpkg_cache!(notebook)
 		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
@@ -427,11 +427,11 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
 		if pkg_result.did_something
 			if pkg_result.restart_recommended
 				@debug "PlutoPkg: Notebook restart recommended"
-				notebook.nbpkg_restart_recommended_msg = "yes"
+				notebook.nbpkg_restart_recommended_msg = "Yes, something changed during regular update_nbpkg."
 			end
 			if pkg_result.restart_required
 				@debug "PlutoPkg: Notebook restart REQUIRED"
-				notebook.nbpkg_restart_required_msg = "yes"
+				notebook.nbpkg_restart_required_msg = "Yes, something changed during regular update_nbpkg."
 			end
 		else
             isfile(bp) && rm(bp)

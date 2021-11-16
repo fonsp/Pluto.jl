@@ -1,0 +1,41 @@
+name: Bundle Web Assets
+
+on:
+    push:
+        paths:
+            - "frontend/**"
+            - "frontend-bundler/**"
+            - ".github/workflows/Bundle.yml"
+        branches:
+            - bundled
+            - main
+    workflow_dispatch:
+
+jobs:
+    trigger:
+        runs-on: ubuntu-latest
+        steps:
+            # Ignore the build changes from previous run
+            - uses: actions/checkout@v2
+            - name: Make Sure Release Is Reset To Main
+              run: |
+                  git checkout -b release
+                  git reset --hard $GITHUB_SHA
+                  git push -f origin release # force push the branch
+            - uses: actions/setup-node@v2
+              with:
+                  node-version: 17.x
+                  cache: "npm"
+                  cache-dependency-path: frontend-bundler/package-lock.json
+            - run: npm install
+              working-directory: frontend-bundler
+            - name: The Actual Build
+              working-directory: frontend-bundler
+              run: npm run build
+            - uses: EndBug/add-and-commit@v7 # You can change this to use a specific version.
+              with:
+                  # Needs --force because frontend-dist is normally .gitignore'd
+                  add: "frontend-dist --force"
+                  branch: release
+                  push: "origin release --force"
+                  pull: "NO-PULL"

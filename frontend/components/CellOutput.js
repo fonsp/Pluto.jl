@@ -268,32 +268,38 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                 let script_id = node.id
                 let old_result = script_id ? previous_results_map.get(script_id) : null
 
-                if (is_displayable(old_result)) {
-                    node.parentElement.insertBefore(old_result, node)
+                if (node.type === "module") {
+                    console.warn("We don't (yet) fully support <script type=module> (loading modules with <script type=module src=...> is fine).")
                 }
 
-                const cell = node.closest("pluto-cell")
-                let result = await execute_dynamic_function({
-                    environment: {
-                        this: script_id ? old_result : window,
-                        currentScript: node,
-                        invalidation: invalidation,
-                        getPublishedObject: (id) => cell.getPublishedObject(id),
-                        ...observablehq_for_cells,
-                    },
-                    code: node.innerText,
-                })
-                // Save result for next run
-                if (script_id != null) {
-                    results_map.set(script_id, result)
-                }
-                // Insert returned element
-                if (result !== old_result) {
+                if (node.type === "" || node.type === "text/javascript") {
                     if (is_displayable(old_result)) {
-                        old_result.remove()
+                        node.parentElement.insertBefore(old_result, node)
                     }
-                    if (is_displayable(result)) {
-                        node.parentElement.insertBefore(result, node)
+
+                    const cell = root_node.closest("pluto-cell")
+                    let result = await execute_dynamic_function({
+                        environment: {
+                            this: script_id ? old_result : window,
+                            currentScript: node,
+                            invalidation: invalidation,
+                            getPublishedObject: (id) => cell.getPublishedObject(id),
+                            ...observablehq_for_cells,
+                        },
+                        code: node.innerText,
+                    })
+                    // Save result for next run
+                    if (script_id != null) {
+                        results_map.set(script_id, result)
+                    }
+                    // Insert returned element
+                    if (result !== old_result) {
+                        if (is_displayable(old_result)) {
+                            old_result.remove()
+                        }
+                        if (is_displayable(result)) {
+                            node.parentElement.insertBefore(result, node)
+                        }
                     }
                 }
             } catch (err) {
@@ -308,6 +314,38 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
 }
 
 let run = (f) => f()
+
+/** @param {HTMLTemplateElement} template */
+let declarative_shadow_dom_polyfill = (template) => {
+    // Support declarative shadowroot 😼
+    // https://web.dev/declarative-shadow-dom/
+    // The polyfill they mention on the page is nice and all, but we need more.
+    // For one, we need the polyfill anyway as we're adding html using innerHTML (just like we need to run the scripts ourselves)
+    // Also, we want to run the scripts inside the shadow roots, ideally in the same order that a browser would.
+    // And we want nested shadowroots, which their polyfill doesn't provide (and I hope the spec does)
+    try {
+        const mode = template.getAttribute("shadowroot")
+        // @ts-ignore
+        const shadowRoot = template.parentElement.attachShadow({ mode })
+        // @ts-ignore
+        shadowRoot.appendChild(template.content)
+        template.remove()
+
+        // To mimick as much as possible the browser behavior, I
+        const scripts_or_shadowroots = Array.from(shadowRoot.querySelectorAll("script, template[shadowroot]"))
+        return scripts_or_shadowroots.flatMap((script_or_shadowroot) => {
+            if (script_or_shadowroot.nodeName === "SCRIPT") {
+                return [script_or_shadowroot]
+            } else if (script_or_shadowroot.nodeName === "TEMPLATE") {
+                // @ts-ignore
+                return declarative_shadow_dom_polyfill(script_or_shadowroot)
+            }
+        })
+    } catch (error) {
+        console.error(`Couldn't attach declarative shadow dom to`, template, `because of`, error)
+        return []
+    }
+}
 
 export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timestamp }) => {
     let pluto_actions = useContext(PlutoContext)
@@ -332,13 +370,19 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
         })
 
         const dump = document.createElement("p-dumpster")
+        // @ts-ignore
         dump.append(...container.current.childNodes)
 
         // Actually "load" the html
         container.current.innerHTML = body
 
+        let scripts_in_shadowroots = Array.from(container.current.querySelectorAll("template[shadowroot]")).flatMap((template) => {
+            // @ts-ignore
+            return declarative_shadow_dom_polyfill(template)
+        })
+
         // do this synchronously after loading HTML
-        const new_scripts = Array.from(container.current.querySelectorAll("script"))
+        const new_scripts = [...scripts_in_shadowroots, ...Array.from(container.current.querySelectorAll("script"))]
 
         run(async () => {
             js_init_set?.add(container.current)
@@ -424,8 +468,10 @@ export let highlight = (code_element, language) => {
             editorview.dom.style.setProperty("display", "inline-flex", "important")
             editorview.dom.style.setProperty("background-color", "transparent", "important")
         } else {
-            window.hljs = hljs
-            console.log(code_element)
+            if (language === "htmlmixed") {
+                code_element.classList.remove("language-htmlmixed")
+                code_element.classList.add("language-html")
+            }
             hljs.highlightElement(code_element)
         }
     }
