@@ -24,7 +24,7 @@ jobs:
             # Makes thes `julia` command available
             - uses: julia-actions/setup-julia@v1
               with:
-                  version: "1.5"
+                  version: "nightly"
 
             - name: Install Pluto.jl packages
               run: |
