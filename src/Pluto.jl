@@ -42,6 +42,7 @@ include("./analysis/topological_order.jl")
 include("./analysis/is_just_text.jl")
 include("./analysis/TopologyUpdate.jl")
 include("./analysis/DependencyCache.jl")
+include("./analysis/MoreAnalysis.jl")
 
 include("./evaluation/WorkspaceManager.jl")
 include("./packages/Packages.jl")
