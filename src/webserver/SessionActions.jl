@@ -43,12 +43,10 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
     end
 
     session.notebooks[nb.notebook_id] = nb
-    if session.options.evaluation.run_notebook_on_load
-        for c in nb.cells
-            c.queued = true
-        end
-        update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
+    for c in nb.cells
+        c.queued = session.options.evaluation.run_notebook_on_load
     end
+    update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
     
     add(session, nb; run_async=run_async)
 
