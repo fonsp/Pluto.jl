@@ -2,6 +2,7 @@ module SessionActions
 
 import ..Pluto: ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, readwrite, update_save_run!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, @asynclog
 using FileWatching
+import ..Pluto.DownloadCool: download_cool
 
 struct NotebookIsRunningException <: Exception
     notebook::Notebook
@@ -16,7 +17,7 @@ function Base.showerror(io::IO, e::UserError)
 end
 
 function open_url(session::ServerSession, url::AbstractString; kwargs...)
-    path = download(url, emptynotebook().path)
+    path = download_cool(url, emptynotebook().path)
     open(session, path; kwargs...)
 end
 
