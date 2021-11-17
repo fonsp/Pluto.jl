@@ -117,11 +117,15 @@ end
 Specifiy the [`Pluto.ServerSession`](@ref) to run the web server on, which includes the configuration. Passing a session as argument allows you to start the web server with some notebooks already running. See [`SessionActions`](@ref) to learn more about manipulating a `ServerSession`.
 """
 function run(session::ServerSession)
+    pluto_router = http_router_for(session)
+    Base.invokelatest(run, session, pluto_router)
+end
+
+function run(session::ServerSession, pluto_router)
 
     notebook_at_startup = session.options.server.notebook
     open_notebook!(session, notebook_at_startup)
 
-    pluto_router = http_router_for(session)
     host = session.options.server.host
     port = session.options.server.port
 
