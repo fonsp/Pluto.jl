@@ -36,6 +36,9 @@ using Test
         @test cell_indices(MoreAnalysis.downstream_recursive(notebook, notebook.topology, notebook.cells[1:2])) == 1:7
         @test cell_indices(MoreAnalysis.upstream_recursive(notebook, notebook.topology, notebook.cells[1:7])) == 1:7
         
+        @test MoreAnalysis.upstream_recursive(notebook, notebook.topology, Cell[]) == Set{Cell}()
+        @test MoreAnalysis.downstream_recursive(notebook, notebook.topology, Cell[]) == Set{Cell}()
+        
     end
     
     @testset "Bond connections" begin
