@@ -4,6 +4,8 @@ import ..Pluto: ServerSession, Notebook, Cell, emptynotebook, tamepath, new_note
 using FileWatching
 import ..Pluto.DownloadCool: download_cool
 
+import UUIDs: UUID, uuid1
+
 struct NotebookIsRunningException <: Exception
     notebook::Notebook
 end
@@ -22,7 +24,7 @@ function open_url(session::ServerSession, url::AbstractString; kwargs...)
 end
 
 "Open the notebook at `path` into `session::ServerSession` and run it. Returns the `Notebook`."
-function open(session::ServerSession, path::AbstractString; run_async=true, compiler_options=nothing, as_sample=false)
+function open(session::ServerSession, path::AbstractString; run_async=true, compiler_options=nothing, as_sample=false, notebook_id::UUID=uuid1())
     if as_sample
         new_filename = "sample " * without_pluto_file_extension(basename(path))
         new_path = numbered_until_new(joinpath(new_notebooks_directory(), new_filename); suffix=".jl")
@@ -38,6 +40,7 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
     end
     
     nb = load_notebook(tamepath(path); disable_writing_notebook_files=session.options.server.disable_writing_notebook_files)
+    nb.notebook_id = notebook_id
 
     # overwrites the notebook environment if specified
     if compiler_options !== nothing
@@ -140,7 +143,7 @@ function save_upload(content::Vector{UInt8})
 end
 
 "Create a new empty notebook inside `session::ServerSession`. Returns the `Notebook`."
-function new(session::ServerSession; run_async=true)
+function new(session::ServerSession; run_async=true, notebook_id::UUID=uuid1())
     nb = if session.options.server.init_with_file_viewer
         
         @warn "DEPRECATED: init_with_file_viewer will be removed soon."
@@ -178,6 +181,7 @@ function new(session::ServerSession; run_async=true)
             Notebook([Cell("import Pkg"), Cell("# This cell disables Pluto's package manager and activates the global environment. Click on ? inside the bubble next to Pkg.activate to learn more.\n# (added automatically because a sysimage is used)\nPkg.activate()"), Cell()])
         end
     end
+    nb.notebook_id = notebook_id
     update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
     
     add(session, nb; run_async=run_async)
