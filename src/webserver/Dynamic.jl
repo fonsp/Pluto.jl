@@ -281,7 +281,7 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
         patches = (Base.convert(Firebasey.JSONPatch, update) for update in 🙋.body["updates"])
 
         if length(patches) == 0
-            @info "Empty patches"
+            # @info "Empty patches"
             send_notebook_changes!(🙋)
             return nothing
         end
