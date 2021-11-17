@@ -6,36 +6,38 @@ function updated_topology(old_topology::NotebookTopology, notebook::Notebook, ce
 	
 	updated_codes = Dict{Cell,ExprAnalysisCache}()
 	updated_nodes = Dict{Cell,ReactiveNode}()
-	unresolved_cells = Dict{Cell,SymbolsState}()
+	unresolved_cells = copy(old_topology.unresolved_cells)
 	for cell in cells
-		if !(
-			haskey(old_topology.codes, cell) && 
-			old_topology.codes[cell].code === cell.code
-		)
+		old_code = old_topology.codes[cell]
+		if old_code.code !== cell.code
 			new_code = updated_codes[cell] = ExprAnalysisCache(notebook, cell)
 			new_symstate = new_code.parsedcode |>
 				ExpressionExplorer.try_compute_symbolreferences
 			new_reactive_node = ReactiveNode(new_symstate)
 
-			if isempty(new_reactive_node.macrocalls)
-				updated_nodes[cell] = new_reactive_node
-			else
-				# The unresolved cells are the cells for wich we cannot create
-				# a ReactiveNode yet, because they contains macrocalls.
-				updated_nodes[cell] = new_reactive_node
-				unresolved_cells[cell] = new_symstate
-			end
+			updated_nodes[cell] = new_reactive_node
+		elseif old_code.forced_expr_id !== nothing
+			# reset computer code
+			updated_codes[cell] = ExprAnalysisCache(old_code; forced_expr_id=nothing, function_wrapped=false)
+		end
+
+		new_reactive_node = get(updated_nodes, cell, old_topology.nodes[cell])
+		if !isempty(new_reactive_node.macrocalls)
+			# The unresolved cells are the cells for wich we cannot create
+			# a ReactiveNode yet, because they contains macrocalls.
+			push!(unresolved_cells, cell) 
+		else
+			pop!(unresolved_cells, cell, nothing)
 		end
 	end
 	new_codes = merge(old_topology.codes, updated_codes)
 	new_nodes = merge(old_topology.nodes, updated_nodes)
-	new_unresolved_cells = merge(old_topology.unresolved_cells, unresolved_cells)
 
 	for removed_cell in setdiff(keys(old_topology.nodes), notebook.cells)
 		delete!(new_nodes, removed_cell)
 		delete!(new_codes, removed_cell)
-		delete!(new_unresolved_cells, removed_cell)
+		delete!(unresolved_cells, removed_cell)
 	end
 
-	NotebookTopology(nodes=new_nodes, codes=new_codes, unresolved_cells=new_unresolved_cells)
+	NotebookTopology(nodes=new_nodes, codes=new_codes, unresolved_cells=unresolved_cells)
 end

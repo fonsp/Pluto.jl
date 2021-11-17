@@ -74,6 +74,11 @@ export const process_path_or_url = async (path_or_url) => {
             path_or_url: u.href,
         }
     } catch (ex) {
+        /* Remove eventual single/double quotes from the path if they surround it, see
+          https://github.com/fonsp/Pluto.jl/issues/1639 */
+        if (path_or_url[path_or_url.length - 1] === '"' && path_or_url[0] === '"') {
+            path_or_url = path_or_url.slice(1, -1) /* Remove first and last character */
+        }
         return {
             type: "path",
             path_or_url: path_or_url,

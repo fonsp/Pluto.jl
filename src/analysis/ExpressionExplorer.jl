@@ -1218,7 +1218,7 @@ compute_usings_imports(ex) = compute_usings_imports!(UsingsImports(), ex)
 
 "Return whether the expression is of the form `Expr(:toplevel, LineNumberNode(..), any)`."
 function is_toplevel_expr(ex::Expr)::Bool
-    (ex.head == :toplevel) && (length(ex.args) == 2) && (ex.args[1] isa LineNumberNode)
+    Meta.isexpr(ex, :toplevel, 2) && (ex.args[1] isa LineNumberNode)
 end
 
 is_toplevel_expr(::Any)::Bool = false
@@ -1227,6 +1227,20 @@ is_toplevel_expr(::Any)::Bool = false
 function get_rootassignee(ex::Expr, recurse::Bool=true)::Union{Symbol,Nothing}
     if is_toplevel_expr(ex) && recurse
         get_rootassignee(ex.args[2], false)
+    elseif Meta.isexpr(ex, :macrocall, 3)
+        rooter_assignee = get_rootassignee(ex.args[3], true)
+        if rooter_assignee !== nothing
+            Symbol(string(ex.args[1]) * " " * string(rooter_assignee))
+        else
+            nothing
+        end
+    elseif Meta.isexpr(ex, :const, 1)
+        rooter_assignee = get_rootassignee(ex.args[1], false)
+        if rooter_assignee !== nothing
+            Symbol("const " * string(rooter_assignee))
+        else
+            nothing
+        end
     elseif ex.head == :(=) && ex.args[1] isa Symbol
         ex.args[1]
     else
@@ -1242,9 +1256,13 @@ function can_be_function_wrapped(x::Expr)
         x.head === :using ||
         x.head === :import ||
         x.head === :module ||
-        x.head === :function ||
+        # Only bail on named functions, but anonymous functions (args[1].head == :tuple) are fine.
+        # TODO Named functions INSIDE other functions should be fine too
+        (x.head === :function && !Meta.isexpr(x.args[1], :tuple)) ||
         x.head === :macro ||
-        x.head === :macrocall || # we might want to get rid of this one, but that requires some work
+        # Cells containing macrocalls will actually be function wrapped using the expanded version of the expression
+        # See https://github.com/fonsp/Pluto.jl/pull/1597
+        x.head === :macrocall ||
         x.head === :struct ||
         x.head === :abstract ||
         (x.head === :(=) && is_function_assignment(x)) || # f(x) = ...

@@ -1,0 +1,19 @@
+{
+    "extends": "@parcel/config-default",
+    "resolvers": [
+        "parcel-resolver-like-a-browser",
+        "..."
+    ],
+    "transformers": {
+        "*.svg": [
+            "...",
+            "@parcel/transformer-inline-string"
+        ]
+    },
+    "optimizers": {
+        "*.svg": [
+            "...",
+            "@parcel/optimizer-data-url"
+        ]
+    }
+}
