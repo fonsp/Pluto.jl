@@ -91,6 +91,13 @@ export const PkgPopup = ({ notebook }) => {
 
     const showupdate = pkg_status?.offer_update ?? false
 
+    // This funny thing is a way to tell parcel to bundle these files..
+    // Eventually I'll write a plugin that is able to parse html`...`, but this is it for now.
+    // https://parceljs.org/languages/javascript/#url-dependencies
+    const circle_outline_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-up-circle-outline.svg", import.meta.url)
+    const document_text_outline_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-text-outline.svg", import.meta.url)
+    const help_circle_outline_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/help-circle-outline.svg", import.meta.url)
+
     // <header>${recent_event?.package_name}</header>
     return html`<pkg-popup
         class=${cl({
@@ -120,7 +127,7 @@ export const PkgPopup = ({ notebook }) => {
                     }
                     e.preventDefault()
                 }}
-                ><img alt="i" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-up-circle-outline.svg" width="17"
+                ><img alt="i" src=${circle_outline_icon} width="17"
             /></a>
             <a
                 class="toggle-terminal"
@@ -132,10 +139,10 @@ export const PkgPopup = ({ notebook }) => {
                     set_showterminal(!showterminal)
                     e.preventDefault()
                 }}
-                ><img alt="i" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-text-outline.svg" width="17"
+                ><img alt="i" src=${document_text_outline_icon} width="17"
             /></a>
             <a class="help" target="_blank" title="Go to help page" href="https://github.com/fonsp/Pluto.jl/wiki/%F0%9F%8E%81-Package-management"
-                ><img alt="i" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/help-circle-outline.svg" width="17"
+                ><img alt="i" src=${help_circle_outline_icon} width="17"
             /></a>
         </div>
         <${PkgTerminalView} value=${terminal_value ?? "Loading..."} />
