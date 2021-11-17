@@ -5,8 +5,9 @@ on:
     types: [opened]
 
 jobs:
-  comment:
+  write-comment:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/github-script@v5
         with:
