@@ -1,0 +1,24 @@
+{
+    "name": "pluto-frontend-bundler-test",
+    "version": "1.0.0",
+    "description": "",
+    "scripts": {
+        "build": "parcel build --dist-dir ./frontend-dist --public-url ./ --config .parcelrc index.html",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "@parcel/config-default": "^2.0.0",
+        "mkdirp": "^1.0.4",
+        "parcel": "^2.0.0",
+        "parcel-resolver-like-a-browser": "file:../parcel-resolver-like-a-browser",
+        "parcel-transformer-html-string-literal": "file:../parcel-transformer-html-string-literal",
+        "serve": "^13.0.2"
+    },
+    "devDependencies": {
+        "@parcel/optimizer-data-url": "^2.0.0",
+        "@parcel/transformer-inline-string": "^2.0.0",
+        "@types/node": "^16.11.6"
+    }
+}
