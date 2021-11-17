@@ -9,19 +9,24 @@ on:
         branches:
             - bundled
             - main
+            - bundle-with-more-clearity
     workflow_dispatch:
 
 jobs:
     trigger:
         runs-on: ubuntu-latest
         steps:
-            # Ignore the build changes from previous run
             - uses: actions/checkout@v2
+            # Ignore the build changes from previous run.
+            # This "just" hard resets to the latest commit on main.
+            # The previous bundle commit will still exist, but will be "dangling", unless we made a tag for it.
+            # Github will eventually clean dangling commits, which is fine because again, the ones with a tag will stay around.
             - name: Make Sure Release Is Reset To Main
               run: |
-                  git checkout -b release
+                  git checkout -b release-with-more-clearity
                   git reset --hard $GITHUB_SHA
-                  git push -f origin release # force push the branch
+                  git push -f origin release-with-more-clearity # force push the branch
+            # Do the actual bundling
             - uses: actions/setup-node@v2
               with:
                   node-version: 17.x
@@ -32,10 +37,12 @@ jobs:
             - name: The Actual Build
               working-directory: frontend-bundler
               run: npm run build
+            # I _think_ this "just" does `git add frontend-dist --force && git commit -m "Something" && git push origin release --force
+            # Might try that out later
             - uses: EndBug/add-and-commit@v7 # You can change this to use a specific version.
               with:
                   # Needs --force because frontend-dist is normally .gitignore'd
                   add: "frontend-dist --force"
                   branch: release
-                  push: "origin release --force"
+                  push: "origin release-with-more-clearity --force"
                   pull: "NO-PULL"
