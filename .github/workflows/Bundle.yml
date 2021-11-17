@@ -9,7 +9,6 @@ on:
         branches:
             - bundled
             - main
-            - bundle-with-more-clearity
     workflow_dispatch:
 
 jobs:
@@ -25,7 +24,7 @@ jobs:
             # Github will eventually clean dangling commits, which is fine because again, the ones with a tag will stay around.
             - name: Make Sure Release Is Reset To Main
               run: |
-                  git checkout -b release-with-more-clearity
+                  git checkout -b release
                   git reset --hard $GITHUB_SHA
 
             # Do the actual bundling
@@ -47,4 +46,4 @@ jobs:
               run: |
                   git add frontend-dist --force
                   git commit -m "$GITHUB_WORKFLOW"
-                  git push origin release-with-more-clearity --force
+                  git push origin release --force
