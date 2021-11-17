@@ -17,6 +17,10 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v2
+            - name: Git Config
+              run: |
+                  git config --global user.email "github-action@users.noreply.github.com"
+                  git config --global user.name "GitHub Action"
             # Ignore the build changes from previous run.
             # This "just" hard resets to the latest commit on main.
             # The previous bundle commit will still exist, but will be "dangling", unless we made a tag for it.
