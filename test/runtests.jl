@@ -1,24 +1,25 @@
 include("./helpers.jl")
 
 # tests that start new processes:
-# include("./WorkspaceManager.jl")
-# include("./packages/Basic.jl")
-# include("./Bonds.jl")
-# VERSION > v"1.6.99" || include("./RichOutput.jl")
-# include("./React.jl")
-# include("./Dynamic.jl")
-# include("./MacroAnalysis.jl")
+include("./WorkspaceManager.jl")
+include("./packages/Basic.jl")
+include("./Bonds.jl")
+VERSION > v"1.6.99" || include("./RichOutput.jl")
+include("./React.jl")
+include("./Dynamic.jl")
+include("./MacroAnalysis.jl")
 
-# # for SOME reason 😞 the Notebook.jl tests need to run AFTER all the tests above, or the Github Actions runner on Windows gets internal julia errors.
-# include("./Notebook.jl")
+# for SOME reason 😞 the Notebook.jl tests need to run AFTER all the tests above, or the Github Actions runner on Windows gets internal julia errors.
+include("./Notebook.jl")
 
-# # tests that don't start new processes:
-# include("./ReloadFromFile.jl")
-# include("./packages/PkgCompat.jl")
-# include("./ExpressionExplorer.jl")
-# include("./MethodSignatures.jl")
-# VERSION > v"1.6.99" || include("./Configuration.jl")
-# include("./Analysis.jl")
+# tests that don't start new processes:
+include("./ReloadFromFile.jl")
+include("./packages/PkgCompat.jl")
+include("./ExpressionExplorer.jl")
+include("./MethodSignatures.jl")
+VERSION > v"1.6.99" || include("./Configuration.jl")
+include("./MoreAnalysis.jl")
+include("./Analysis.jl")
 include("./webserver_utils.jl")
 include("./DependencyCache.jl")
 include("./Throttled.jl")
