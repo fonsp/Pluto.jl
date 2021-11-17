@@ -46,5 +46,5 @@ jobs:
             - name: Force push frontend-dist changes
               run: |
                   git add frontend-dist --force
-                  git commit -m "Parcel Bundle"
+                  git commit -m "$GITHUB_WORKFLOW"
                   git push origin release-with-more-clearity --force
