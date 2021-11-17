@@ -2,6 +2,7 @@ module SessionActions
 
 import ..Pluto: ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, readwrite, update_save_run!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, @asynclog
 using FileWatching
+import ..Pluto.DownloadCool: download_cool
 
 struct NotebookIsRunningException <: Exception
     notebook::Notebook
@@ -16,10 +17,11 @@ function Base.showerror(io::IO, e::UserError)
 end
 
 function open_url(session::ServerSession, url::AbstractString; kwargs...)
-    path = download(url, emptynotebook().path)
+    path = download_cool(url, emptynotebook().path)
     open(session, path; kwargs...)
 end
 
+"Open the notebook at `path` into `session::ServerSession` and run it. Returns the `Notebook`."
 function open(session::ServerSession, path::AbstractString; run_async=true, compiler_options=nothing, as_sample=false)
     if as_sample
         new_filename = "sample " * without_pluto_file_extension(basename(path))
@@ -71,7 +73,7 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
             @info "Updating from file..."
             
             
-		    sleep(0.1) ## There seems to be a synchronization issue if your OS is VERYFAST
+            sleep(0.1) ## There seems to be a synchronization issue if your OS is VERYFAST
             wait_until_file_unchanged(nb.path, .3)
             
             # call update_from_file. If it returns false, that means that the notebook file was corrupt, so we try again, a maximum of 10 times.
@@ -137,6 +139,7 @@ function save_upload(content::Vector{UInt8})
     save_path
 end
 
+"Create a new empty notebook inside `session::ServerSession`. Returns the `Notebook`."
 function new(session::ServerSession; run_async=true)
     nb = if session.options.server.init_with_file_viewer
         
@@ -182,6 +185,7 @@ function new(session::ServerSession; run_async=true)
     nb
 end
 
+"Shut down `notebook` inside `session`."
 function shutdown(session::ServerSession, notebook::Notebook; keep_in_session=false, async=false)
     notebook.nbpkg_restart_recommended_msg = nothing
     notebook.nbpkg_restart_required_msg = nothing
