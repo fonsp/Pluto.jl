@@ -25,7 +25,7 @@ function generate_html(;
         
         disable_ui::Bool=true, 
         notebook_id_js::AbstractString="undefined", 
-        isolated_cell_id_js::AbstractString="undefined",
+        isolated_cell_ids_js::AbstractString="undefined",
     )::String
 
     # Here we don't use frontend-dist (bundled code) yet, might want to
@@ -53,7 +53,7 @@ function generate_html(;
         """
         <script data-pluto-file="launch-parameters">
         window.pluto_notebook_id = $(notebook_id_js);
-        window.pluto_isolated_cell_id = $(isolated_cell_id_js);
+        window.pluto_isolated_cell_ids = $(isolated_cell_ids_js);
         window.pluto_notebookfile = $(notebookfile_js);
         window.pluto_disable_ui = $(disable_ui ? "true" : "false");
         window.pluto_slider_server_url = $(slider_server_url_js);
