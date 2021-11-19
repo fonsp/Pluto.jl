@@ -174,7 +174,7 @@ const launch_params = {
     //@ts-ignore
     disable_ui: !!(url_params.get("disable_ui") ?? window.pluto_disable_ui),
     //@ts-ignore
-    isolated_cell_ids: url_params.getAll("isolated_cell_id") ?? window.isolated_cell_id,
+    isolated_cell_ids: url_params.getAll("isolated_cell_id") ?? window.pluto_isolated_cell_id,
     //@ts-ignore
     binder_url: url_params.get("binder_url") ?? window.pluto_binder_url,
     //@ts-ignore
