@@ -29,9 +29,11 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 				end
 				return Cycle(cycle)
 			end
-		else
-			push!(entries, cell)
+
+			return Ok()
 		end
+
+		push!(entries, cell)
 
 		# used for cleanups of wrong cycles
 		current_entries_num = length(entries)
