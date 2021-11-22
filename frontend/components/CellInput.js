@@ -95,8 +95,6 @@ const replaceRange6 = (/** @type {EditorView} */ cm, text, from, to) =>
     })
 
 // Compartments: https://codemirror.net/6/examples/config/
-let editable = new Compartment()
-
 let useCompartment = (/** @type {import("../imports/Preact.js").Ref<EditorView>} */ codemirror_ref, value) => {
     let compartment = useRef(new Compartment())
     let initial_value = useRef(compartment.current.of(value))
