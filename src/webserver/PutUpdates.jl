@@ -53,6 +53,12 @@ end
 
 "Send `messages` to the `ClientSession` who initiated."
 function putclientupdates!(session::ServerSession, initiator::Initiator, messages::UpdateMessage...)
+    # Prevent long, scary looking, error.
+    if !haskey(session.connected_clients, initiator.client_id)
+        @warn "Trying to send clientupdate to disconnected client." messages=map(x -> x.type, messages)
+        return
+    end
+
     putclientupdates!(session.connected_clients[initiator.client_id], messages...)
 end
 

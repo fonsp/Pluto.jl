@@ -167,17 +167,15 @@ function save_notebook(io, notebook::Notebook)
     notebook
 end
 
-function open_safe_write(fn::Function, path, mode)
+function write_buffered(fn::Function, path)
     file_content = sprint(fn)
-    open(path, mode) do io
-        print(io, file_content)
-    end
+    write(path, file_content)
 end
     
 function save_notebook(notebook::Notebook, path::String)
     # @warn "Saving to file!!" exception=(ErrorException(""), backtrace())
     notebook.last_save_time = time()
-    open_safe_write(path, "w") do io
+    write_buffered(path) do io
         save_notebook(io, notebook)
     end
 end
@@ -202,7 +200,6 @@ function load_notebook_nobackup(io, path)::Notebook
     # ignore first bits of file
     readuntil(io, _cell_id_delimiter)
 
-    last_read = ""
     while !eof(io)
         cell_id_str = String(readline(io))
         if cell_id_str == "Cell order:"
@@ -223,7 +220,7 @@ function load_notebook_nobackup(io, path)::Notebook
     cell_order = UUID[]
     while !eof(io)
         cell_id_str = String(readline(io))
-        if length(cell_id_str) >= 36
+        if length(cell_id_str) >= 36 && (startswith(cell_id_str, _order_delimiter_folded) || startswith(cell_id_str, _order_delimiter))
             cell_id = let
                 UUID(cell_id_str[end - 35:end])
             end
@@ -314,17 +311,19 @@ function load_notebook(path::String; disable_writing_notebook_files::Bool=false)
     loaded
 end
 
+_after_first_cell(lines) = lines[something(findfirst(startswith(_cell_id_delimiter), lines), 1):end]
+
 """
 Check if two savefiles are identical, up to their version numbers and a possible line shuffle.
 
 If a notebook has not yet had all of its cells analysed, we can't deduce the topological cell order. (but can we ever??) (no)
 """
 function only_versions_or_lineorder_differ(pathA::AbstractString, pathB::AbstractString)::Bool
-    Set(readlines(pathA)[3:end]) == Set(readlines(pathB)[3:end])
+    Set(readlines(pathA) |> _after_first_cell) == Set(readlines(pathB) |> _after_first_cell)
 end
 
 function only_versions_differ(pathA::AbstractString, pathB::AbstractString)::Bool
-    readlines(pathA)[3:end] == readlines(pathB)[3:end]
+    readlines(pathA) |> _after_first_cell == readlines(pathB) |> _after_first_cell
 end
 
 "Set `notebook.path` to the new value, save the notebook, verify file integrity, and if all OK, delete the old savefile. Normalizes the given path to make it absolute. Moving is always hard. 😢"

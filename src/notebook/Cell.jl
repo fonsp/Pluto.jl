@@ -11,13 +11,15 @@ Base.@kwdef struct CellOutput
     
     "Whether `this` inside `<script id=something>` should refer to the previously returned object in HTML output. This is used for fancy animations. true iff a cell runs as a reactive consequence."
     persist_js_state::Bool=false
+
+    "Whether this cell uses @use_state or @use_effect"
+    has_pluto_hook_features::Bool=false
 end
 
 struct CellDependencies{T} # T == Cell, but this has to be parametric to avoid a circular dependency of the structs
     downstream_cells_map::Dict{Symbol,Vector{T}}
     upstream_cells_map::Dict{Symbol,Vector{T}}
     precedence_heuristic::Int
-    contains_user_defined_macrocalls::Bool
 end
 
 "The building block of a `Notebook`. Contains code, output, reactivity data, mitochondria and ribosomes."
@@ -40,7 +42,7 @@ Base.@kwdef mutable struct Cell
     runtime::Union{Nothing,UInt64}=nothing
 
     # note that this field might be moved somewhere else later. If you are interested in visualizing the cell dependencies, take a look at the cell_dependencies field in the frontend instead.
-    cell_dependencies::CellDependencies{Cell}=CellDependencies{Cell}(Dict{Symbol,Vector{Cell}}(), Dict{Symbol,Vector{Cell}}(), 99, false)
+    cell_dependencies::CellDependencies{Cell}=CellDependencies{Cell}(Dict{Symbol,Vector{Cell}}(), Dict{Symbol,Vector{Cell}}(), 99)
 
     running_disabled::Bool=false
     depends_on_disabled_cells::Bool=false

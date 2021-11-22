@@ -43,6 +43,7 @@ include("./analysis/topological_order.jl")
 include("./analysis/is_just_text.jl")
 include("./analysis/TopologyUpdate.jl")
 include("./analysis/DependencyCache.jl")
+include("./analysis/MoreAnalysis.jl")
 
 include("./evaluation/WorkspaceManager.jl")
 include("./packages/Packages.jl")
@@ -50,6 +51,7 @@ include("./packages/PkgUtils.jl")
 include("./evaluation/Run.jl")
 include("./evaluation/RunBonds.jl")
 
+module DownloadCool include("./webserver/data_url.jl") end
 include("./webserver/MsgPack.jl")
 include("./webserver/SessionActions.jl")
 include("./webserver/Static.jl")

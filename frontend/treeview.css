@@ -49,7 +49,7 @@ pluto-tree > pluto-tree-prefix::before {
     bottom: -2px;
     opacity: 0.5;
     cursor: pointer;
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-down-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-down-outline.svg");
 }
 
 pluto-tree.collapsed pluto-tree > pluto-tree-prefix::before {
@@ -57,7 +57,7 @@ pluto-tree.collapsed pluto-tree > pluto-tree-prefix::before {
 }
 
 pluto-tree.collapsed > pluto-tree-prefix::before {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-outline.svg");
 }
 
 pluto-tree p-r > p-v {
@@ -184,11 +184,11 @@ pluto-tree-more::before {
     height: 1em;
     width: 1em;
     opacity: 0.5;
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ellipsis-vertical.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ellipsis-vertical.svg");
 }
 
 pluto-tree-more.loading::before {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sync-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sync-outline.svg");
     animation: loadspin 3s ease-in-out infinite;
 }
 
@@ -214,19 +214,17 @@ pluto-tree.collapsed pluto-tree-more {
     margin: 0em;
 }
 pluto-tree.collapsed pluto-tree-more::before {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ellipsis-horizontal.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ellipsis-horizontal.svg");
 }
 
 /*  */
 
-pluto-tree.collapsed img,
-pluto-tree.collapsed svg {
+pluto-tree.collapsed img {
     max-width: 4rem;
     max-height: 4rem;
 }
 
-pluto-tree img,
-pluto-tree svg {
+pluto-tree img {
     max-width: 12rem;
     max-height: 8rem;
 }
