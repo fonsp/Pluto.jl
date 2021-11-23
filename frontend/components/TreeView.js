@@ -31,6 +31,9 @@ const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state }) => {
         case "application/vnd.pluto.divelement+object":
             return DivElement({ cell_id, ...body })
             break
+        case "application/vnd.pluto.celloutputmirror+object":
+            return CellOutputMirror({ cell_id: body.cell_id })
+            break
         case "text/plain":
             return html`<pre class="no-block">${body}</pre>`
         default:

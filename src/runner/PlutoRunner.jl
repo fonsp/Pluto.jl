@@ -829,7 +829,7 @@ The MIMEs that Pluto supports, in order of how much I like them.
 
 `text/plain` should always match - the difference between `show(::IO, ::MIME"text/plain", x)` and `show(::IO, x)` is an unsolved mystery.
 """
-const allmimes = [MIME"application/vnd.pluto.table+object"(); MIME"application/vnd.pluto.divelement+object"(); MIME"text/html"(); imagemimes; MIME"application/vnd.pluto.tree+object"(); MIME"text/latex"(); MIME"text/plain"()]
+const allmimes = [MIME"application/vnd.pluto.table+object"(); MIME"application/vnd.pluto.celloutputmirror+object"(); MIME"application/vnd.pluto.divelement+object"(); MIME"text/html"(); imagemimes; MIME"application/vnd.pluto.tree+object"(); MIME"text/latex"(); MIME"text/plain"()]
 
 
 """
@@ -997,6 +997,8 @@ function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
         table_data(x, IOContext(io, :compact => true)), mime
     elseif mime isa MIME"application/vnd.pluto.divelement+object"
         tree_data(x, io), mime
+    elseif mime isa MIME"application/vnd.pluto.celloutputmirror+object"
+        tree_data(x, IOContext(io, :compact => true)), mime
     elseif mime ∈ imagemimes
         show(io, mime, x)
         nothing, mime
@@ -1876,6 +1878,16 @@ format_output_default(@nospecialize(val::EmbeddableDisplay), @nospecialize(conte
 ###
 # EMBEDDED CELL OUTPUT
 ###
+
+struct CellOutputMirror
+    cell_id::UUID
+end
+
+EmbeddableCellOutput = CellOutputMirror
+
+tree_data(@nospecialize(e::CellOutputMirror), context::IOContext) = Dict{Symbol, Any}(:cell_id => e.cell_id)
+pluto_showable(::MIME"application/vnd.pluto.celloutputmirror+object", ::CellOutputMirror) = true
+
 
 Base.@kwdef struct DivElement
     children::Vector
