@@ -22,3 +22,29 @@ jobs:
                   # Triggering a workflow from a workflow is only allowed if the relaying event is signed with a PAT.
                   # See https://docs.github.com/en/actions/reference/events-that-trigger-workflows#triggering-new-workflows-using-a-personal-access-token
                   token: ${{ secrets.PAT_TOKEN }}
+                  changelog: |
+                    ## {{ package }} {{ version }}
+                    
+                    > Try this release in your browser! https://binder.plutojl.org/{{ version }}/
+
+                    {% if previous_release %}
+                    [Diff since {{ previous_release }}]({{ compare_url }})
+                    {% endif %}
+
+                    {% if custom %}
+                    {{ custom }}
+                    {% endif %}
+
+                    {% if pulls %}
+                    **Merged pull requests:**
+                    {% for pull in pulls %}
+                    - {{ pull.title }} (#{{ pull.number }}) (@{{ pull.author.username }})
+                    {% endfor %}
+                    {% endif %}
+
+                    {% if issues %}
+                    **Closed issues:**
+                    {% for issue in issues %}
+                    - {{ issue.title }} (#{{ issue.number }})
+                    {% endfor %}
+                    {% endif %}
