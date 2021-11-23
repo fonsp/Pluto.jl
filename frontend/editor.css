@@ -2206,7 +2206,7 @@ pluto-input .cm-editor .cm-content {
     background: hsla(46, 90%, 98%, 1);
     color: #41323f;
 }
-.cm-editor.cm-focused {
+.cm-editor.cm-focused:not(.__) {
     outline: unset;
 }
 
