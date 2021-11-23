@@ -1184,6 +1184,7 @@ body:not(.___) pluto-cell.queued > pluto-trafficlight::after {
     */
     opacity: 0.99;
     background-size: 4px var(--patternHeight);
+    animation-duration: 20s;
 }
 
 body:not(.___) pluto-cell.running > pluto-trafficlight::after {
