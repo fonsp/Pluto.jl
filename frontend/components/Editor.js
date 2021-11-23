@@ -31,6 +31,7 @@ import { BinderButton } from "./BinderButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
 import { ProgressBar } from "./ProgressBar.js"
 import { IsolatedCell } from "./Cell.js"
+import { RawHTMLContainer } from "./CellOutput.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -174,6 +175,8 @@ const launch_params = {
     //@ts-ignore
     disable_ui: !!(url_params.get("disable_ui") ?? window.pluto_disable_ui),
     //@ts-ignore
+    preamble_html: url_params.get("preamble_html") ?? window.pluto_preamble_html,
+    //@ts-ignore
     isolated_cell_ids: url_params.has("isolated_cell_id") ? url_params.getAll("isolated_cell_id") : window.pluto_isolated_cell_ids,
     //@ts-ignore
     binder_url: url_params.get("binder_url") ?? window.pluto_binder_url,
@@ -217,6 +220,7 @@ export class Editor extends Component {
             disable_ui: launch_params.disable_ui,
             static_preview: launch_params.statefile != null,
             statefile_download_progress: null,
+            preamble_html_contents: null,
             offer_binder: launch_params.notebookfile != null && launch_params.binder_url != null,
             binder_phase: null,
             binder_session_url: null,
@@ -707,6 +711,15 @@ patch: ${JSON.stringify(
             this.actions = this.state.disable_ui || (launch_params.slider_server_url != null && !this.state.connected) ? this.fake_actions : this.real_actions //heyo
         }
         this.on_disable_ui()
+        if (launch_params.preamble_html) {
+            fetch(launch_params.preamble_html)
+                .then((r) => r.text())
+                .then((t) =>
+                    this.setState({
+                        preamble_html_contents: t,
+                    })
+                )
+        }
 
         this.original_state = null
         if (this.state.static_preview) {
@@ -1191,6 +1204,11 @@ patch: ${JSON.stringify(
             launch_params.notebookfile == null ? null : new URL(launch_params.notebookfile, window.location.href).href
         } />
                     <${FetchProgress} progress=${this.state.statefile_download_progress} />
+                    ${
+                        this.state.preamble_html_contents
+                            ? html`<${RawHTMLContainer} body=${this.state.preamble_html_contents} className=${"preamble"} />`
+                            : null
+                    }
                     <${Main}>
                         <${Preamble}
                             last_update_time=${this.state.last_update_time}
