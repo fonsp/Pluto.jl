@@ -58,11 +58,23 @@ export const ProgressBar = ({ notebook, binder_phase, status }) => {
     return html`<loading-bar
         class=${binder_loading ? "slow" : "fast"}
         style=${`
-        width: ${100 * progress}vw; 
-        opacity: ${anything && anything_for_a_short_while ? 1 : 0}; 
-        ${anything || anything_for_a_short_while ? "" : "transition: none;"}
-        pointer-events: ${anything ? "auto" : "none"};
+            width: ${100 * progress}vw; 
+            opacity: ${anything && anything_for_a_short_while ? 1 : 0}; 
+            ${anything || anything_for_a_short_while ? "" : "transition: none;"}
+            pointer-events: ${anything ? "auto" : "none"};
+            cursor: ${!binder_loading && anything ? "pointer" : "auto"};
         `}
+        onClick=${(e) => {
+            if (!binder_loading) {
+                const running_cell = Object.values(notebook.cell_results).find((c) => c.running) ?? Object.values(notebook.cell_results).find((c) => c.queued)
+                if (running_cell) {
+                    document.getElementById(running_cell.cell_id).scrollIntoView({
+                        block: "center",
+                        behavior: "smooth",
+                    })
+                }
+            }
+        }}
         aria-valuenow=${100 * progress}
         aria-valuemin="0"
         aria-valuemax="100"
