@@ -124,7 +124,8 @@ const first_true_key = (obj) => {
  *      last_run_timestamp: number,
  *      mime: string,
  *      rootassignee: ?string,
- *  }
+ *      has_pluto_hook_features: boolean,
+ *  },
  *  published_objects: object,
  * }}
  */
@@ -173,12 +174,13 @@ const launch_params = {
     //@ts-ignore
     disable_ui: !!(url_params.get("disable_ui") ?? window.pluto_disable_ui),
     //@ts-ignore
-    isolated_cell_ids: url_params.getAll("isolated_cell_id") ?? window.isolated_cell_id,
+    isolated_cell_ids: url_params.has("isolated_cell_id") ? url_params.getAll("isolated_cell_id") : window.pluto_isolated_cell_ids,
     //@ts-ignore
     binder_url: url_params.get("binder_url") ?? window.pluto_binder_url,
     //@ts-ignore
     slider_server_url: url_params.get("slider_server_url") ?? window.pluto_slider_server_url,
 }
+console.log("Launch parameters: ", launch_params)
 
 /**
  *
@@ -651,7 +653,9 @@ patch: ${JSON.stringify(
             // @ts-ignore
             window.version_info = this.client.version_info // for debugging
 
+            console.debug("Sending update_notebook request...")
             await this.client.send("update_notebook", { updates: [] }, { notebook_id: this.state.notebook.notebook_id }, false)
+            console.debug("Received update_notebook request")
 
             this.setState({ initializing: false, static_preview: false, binder_phase: this.state.binder_phase == null ? null : BinderPhase.ready })
 
@@ -882,6 +886,9 @@ patch: ${JSON.stringify(
         })
         document.addEventListener("visibilitychange", (e) => {
             document.body.classList.toggle("ctrl_down", false)
+            setTimeout(() => {
+                document.body.classList.toggle("ctrl_down", false)
+            }, 100)
         })
 
         document.addEventListener("keydown", (e) => {
@@ -1051,6 +1058,13 @@ patch: ${JSON.stringify(
         if (old_state.disable_ui !== this.state.disable_ui) {
             this.on_disable_ui()
         }
+
+        if (old_state.notebook.nbpkg?.restart_recommended_msg !== new_state.notebook.nbpkg?.restart_recommended_msg) {
+            console.warn(`New restart recommended message: ${new_state.notebook.nbpkg?.restart_recommended_msg}`)
+        }
+        if (old_state.notebook.nbpkg?.restart_required_msg !== new_state.notebook.nbpkg?.restart_required_msg) {
+            console.warn(`New restart required message: ${new_state.notebook.nbpkg?.restart_required_msg}`)
+        }
     }
 
     componentWillUpdate(new_props, new_state) {
@@ -1063,19 +1077,21 @@ patch: ${JSON.stringify(
         const status = this.cached_status ?? statusmap(this.state)
         const statusval = first_true_key(status)
 
-        if(launch_params.isolated_cell_ids.length > 0) {
+        if (launch_params.isolated_cell_ids && launch_params.isolated_cell_ids.length > 0) {
             return html`
                 <${PlutoContext.Provider} value=${this.actions}>
                     <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                         <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
                             <div style="width: 100%">
-                                ${this.state.notebook.cell_order.map((cell_id, i) => html`
-                                    <${IsolatedCell}
-                                        cell_id=${cell_id}
-                                        cell_results=${this.state.notebook.cell_results[cell_id]}
-                                        hidden=${!launch_params.isolated_cell_ids.includes(cell_id)}
-                                    />
-                                `)}
+                                ${this.state.notebook.cell_order.map(
+                                    (cell_id, i) => html`
+                                        <${IsolatedCell}
+                                            cell_id=${cell_id}
+                                            cell_results=${this.state.notebook.cell_results[cell_id]}
+                                            hidden=${!launch_params.isolated_cell_ids.includes(cell_id)}
+                                        />
+                                    `
+                                )}
                             </div>
                         </${PlutoJSInitializingContext.Provider}>
                     </${PlutoBondsContext.Provider}>
@@ -1247,9 +1263,9 @@ patch: ${JSON.stringify(
                     <${SlideControls} />
                     <footer>
                         <div id="info">
+                            <a href="https://github.com/fonsp/Pluto.jl/wiki" target="_blank">FAQ</a>
+                            <span style="flex: 1"></span>
                             <form id="feedback" action="#" method="post">
-                                <a href="https://github.com/fonsp/Pluto.jl/wiki" target="_blank">FAQ</a>
-                                <span style="flex: 1"></span>
                                 <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl" target="_blank">Pluto.jl</a> better?</label>
                                 <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
                                 <button>Send</button>

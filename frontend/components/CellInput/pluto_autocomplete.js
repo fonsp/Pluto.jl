@@ -15,6 +15,7 @@ import {
     StateEffect,
 } from "../../imports/CodemirrorPlutoSetup.js"
 import { get_selected_doc_from_state } from "./LiveDocsFromCursor.js"
+import { cl } from "../../common/ClassTable.js"
 
 // These should be imported from  @codemirror/autocomplete
 let completionState = autocompletion()[0]
@@ -251,7 +252,7 @@ const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ reque
         //      If we backspace however, to `Math.a`, `a` does no longer match! So it will re-query this function.
         span: RegExp(`^${_.escapeRegExp(ctx.state.sliceDoc(start, stop))}[^\\s"'()\\[\\].{}]*`),
         options: [
-            ...results.map(([text, type_description, is_exported], i) => {
+            ...results.map(([text, type_description, is_exported, is_from_notebook], i) => {
                 // (quick) fix for identifiers that need to be escaped
                 // Ideally this is done with Meta.isoperator on the julia side
                 let text_to_apply = is_field_expression ? override_text_to_apply_in_field_expression(text) ?? text : text
@@ -259,10 +260,12 @@ const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ reque
                 return {
                     label: text,
                     apply: text_to_apply,
-                    type: (is_exported ? "" : "c_notexported ") + (type_description == null ? "" : "c_" + type_description),
+                    type: cl({
+                        c_notexported: !is_exported,
+                        [`c_${type_description}`]: type_description != null,
+                        c_from_notebook: is_from_notebook,
+                    }),
                     boost: 99 - i / results.length,
-                    // Non-standard
-                    is_not_exported: !is_exported,
                 }
             }),
             // This is a small thing that I really want:
@@ -290,7 +293,7 @@ const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ reque
 
 /**
  * @typedef PlutoAutocompleteResults
- * @type {{ start: number, stop: number, results: Array<[string, (string | null), boolean]> }}
+ * @type {{ start: number, stop: number, results: Array<[string, (string | null), boolean, boolean]> }}
  *
  * @typedef PlutoRequestAutocomplete
  * @type {(options: { text: string }) => Promise<PlutoAutocompleteResults>}
@@ -313,8 +316,7 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
             ],
             defaultKeymap: false, // We add these manually later, so we can override them if necessary
             maxRenderedOptions: 512, // fons's magic number
-            // @ts-ignore
-            optionClass: (c) => (c.is_not_exported ? "c_notexported" : ""),
+            optionClass: (c) => c.type,
         }),
 
         // If there is just one autocomplete result, apply it directly
