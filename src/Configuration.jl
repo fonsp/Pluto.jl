@@ -54,7 +54,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
     launch_browser::Bool = true
     dismiss_update_notification::Bool = false
     show_file_system::Bool = true
-    notebook_path_suggestion::Union{Nothing,String} = nothing
+    notebook_path_suggestion::String = notebook_path_suggestion()
     disable_writing_notebook_files::Bool = false
     auto_reload_from_file::Bool = false
     auto_reload_from_file_cooldown::Real = 0.4
