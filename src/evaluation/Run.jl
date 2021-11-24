@@ -352,7 +352,9 @@ function resolve_topology(
 				# set function_wrapped to the function wrapped analysis of the expanded expression.
 				new_codes[cell] = ExprAnalysisCache(unresolved_topology.codes[cell]; forced_expr_id, function_wrapped)
 			else
-				@debug "Expansion failed" err=result.error
+				if result isa Failure
+					@debug "Expansion failed" err=result.error
+				end
 				push!(still_unresolved_nodes, cell)
 			end
 	end
