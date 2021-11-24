@@ -266,6 +266,7 @@ end
 struct Failure <: Result
 	error
 end
+struct Skipped <: Result end
 
 """We still have 'unresolved' macrocalls, use the current and maybe previous workspace to do macro-expansions.
 
@@ -309,7 +310,7 @@ function resolve_topology(
 
 	function analyze_macrocell(cell::Cell)
 		if unresolved_topology.nodes[cell].macrocalls ⊆ ExpressionExplorer.can_macroexpand
-			return nothing
+			return Skipped()
 		end
 
 		result = macroexpand_cell(cell)
@@ -352,7 +353,9 @@ function resolve_topology(
 				# set function_wrapped to the function wrapped analysis of the expanded expression.
 				new_codes[cell] = ExprAnalysisCache(unresolved_topology.codes[cell]; forced_expr_id, function_wrapped)
 			else
-				@debug "Expansion failed" err=result.error
+				if result isa Failure
+					@debug "Expansion failed" err=result.error
+				end
 				push!(still_unresolved_nodes, cell)
 			end
 	end
