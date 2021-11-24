@@ -43,3 +43,5 @@ declare class ReactContext<T> {
 }
 export declare function createContext<T>(initialValue: T | void): ReactContext<T>
 export declare function useContext<T>(context: ReactContext<T>): T
+
+export declare function Fragment(props: any): ValidRenderResult

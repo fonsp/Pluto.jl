@@ -3,8 +3,9 @@ import immer from "../imports/immer.js"
 import observablehq from "../common/SetupCellEnvironment.js"
 import { cl } from "../common/ClassTable.js"
 
-import { RawHTMLContainer, highlight } from "./CellOutput.js"
 import { PlutoContext } from "../common/PlutoContext.js"
+import { highlight } from "./CellOutput/highlight.js"
+import { PlutoHTML } from "./CellOutput/PlutoHTML.js"
 
 const without_workspace_stuff = (str) =>
     str
@@ -93,7 +94,7 @@ export let LiveDocs = ({ desired_doc_query, on_update_doc_query, notebook }) => 
         })
     }
 
-    let docs_element = useMemo(() => html` <${RawHTMLContainer} body=${without_workspace_stuff(state.body)} /> `, [state.body])
+    let docs_element = useMemo(() => html`<${PlutoHTML} body=${without_workspace_stuff(state.body)} /> `, [state.body])
     let no_docs_found = state.loading === false && state.searched_query !== "" && state.searched_query !== state.shown_query
 
     return html`

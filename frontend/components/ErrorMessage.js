@@ -1,5 +1,6 @@
 import { PlutoContext } from "../common/PlutoContext.js"
 import { html, useContext } from "../imports/Preact.js"
+import { CellOutputContext } from "./CellOutput.js"
 
 const StackFrameFilename = ({ frame, cell_id }) => {
     const sep_index = frame.file.indexOf("#==#")
@@ -36,8 +37,11 @@ const Funccall = ({ frame }) => {
     }
 }
 
-export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
-    let pluto_actions = useContext(PlutoContext)
+/** @param {{ msg: string, stacktrace: Array }} props */
+export const ErrorMessage = ({ msg, stacktrace }) => {
+    const pluto_actions = useContext(PlutoContext)
+    const { cell_id } = useContext(CellOutputContext)
+
     const rewriters = [
         {
             pattern: /syntax: extra token after end of expression/,
