@@ -248,7 +248,7 @@ collect_implicit_usings(topology::NotebookTopology, cell::Cell) = ExpressionExpl
 
 "Returns the set of macros names defined by this cell"
 defined_macros(topology::NotebookTopology, cell::Cell) = defined_macros(topology.nodes[cell])
-defined_macros(node::ReactiveNode) = filter(is_macro_identifier, node.funcdefs_without_signatures)
+defined_macros(node::ReactiveNode) = filter(is_macro_identifier, node.funcdefs_without_signatures) ∪ filter(is_macro_identifier, node.definitions) # macro definitions can come from imports
 
 "Tells whether or not a cell can 'unlock' the resolution of other cells"
 function can_help_resolve_cells(topology::NotebookTopology, cell::Cell)
