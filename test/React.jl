@@ -519,6 +519,32 @@ import Distributed
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
+    @testset "Two inter-twined cycles" begin
+        notebook = Notebook(Cell.([
+            """
+            struct A
+                x
+                A(x) = A(inv(x))
+            end
+            """,
+            "Base.inv(::A) = A(1)",
+            """
+            struct B
+                x
+                B(x) = B(inv(x))
+            end
+            """,
+            "Base.inv(::B) = B(1)",
+        ]))
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test all(noerror, notebook.cells)
+
+        setcode.(notebook.cells, [""])
+        update_run!(🍭, notebook, notebook.cells)
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
+
     @testset "Multiple methods across cells" begin
         notebook = Notebook([
             Cell("a(x) = 1"),

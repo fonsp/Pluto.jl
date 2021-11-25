@@ -22,7 +22,7 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 		elseif cell in entries
 			currently_in = setdiff(entries, exits)
 			cycle = currently_in[findfirst(isequal(cell), currently_in):end]
-			
+
 			if !cycle_is_among_functions(topology, cycle)
 				for cell in cycle
 					errable[cell] = CyclicReferenceError(topology, cycle)
@@ -33,11 +33,11 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 			return Ok()
 		end
 
-		push!(entries, cell)
-
 		# used for cleanups of wrong cycles
 		current_entries_num = length(entries)
 		current_exits_num = length(exits)
+
+		push!(entries, cell)
 
 		assigners = where_assigned(notebook, topology, cell)
 		if !allow_multiple_defs && length(assigners) > 1
@@ -55,7 +55,7 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 					continue
 				end
 
-				# Can we cleanup the cycle from here or is it caused by a parent cell ?
+				# Can we cleanup the cycle from here or is it caused by a parent cell?
 				# if the edge to the child cell is composed of soft assigments only then we can try to "break"
 				# it else we bubble the result up to the parent until it is
 				# either out of the cycle or a soft-edge is found
@@ -71,7 +71,10 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 				for cycled_cell in child_result.cycled_cells
 					delete!(errable, cycled_cell)
 				end
-				deleteat!(entries, length(entries)) # 2. Remove the current child (c)
+				# 2. Remove the current child (c) from the entries if it was just added
+				if entries[end] == c
+					pop!(entries)
+				end
 
 				continue # the cycle was created by us so we can keep exploring other childs
 			end
