@@ -31,6 +31,7 @@ import { BinderButton } from "./BinderButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
 import { ProgressBar } from "./ProgressBar.js"
 import { IsolatedCell } from "./Cell.js"
+import { CellDependenciesGraph } from "./CellDependenciesGraph.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -1210,6 +1211,7 @@ patch: ${JSON.stringify(
                             is_initializing=${this.state.initializing}
                             is_process_ready=${this.is_process_ready()}
                         />
+                        <${CellDependenciesGraph} notebook=${this.state.notebook} all_cell_dependencies=${notebook.cell_dependencies} cell_id=${null}/>
                         <${DropRuler} 
                             actions=${this.actions}
                             selected_cells=${this.state.selected_cells}

@@ -1,3 +1,4 @@
+import _ from "../imports/lodash.js"
 import { html, useState, useEffect, useMemo, useRef, useContext, useLayoutEffect } from "../imports/Preact.js"
 
 import { CellOutput } from "./CellOutput.js"
@@ -11,7 +12,7 @@ const useCellApi = (node_ref, published_objects, pluto_actions) => {
     const [cell_api_ready, set_cell_api_ready] = useState(false)
     const published_objects_ref = useRef(published_objects)
     published_objects_ref.current = published_objects
-    
+
     useLayoutEffect(() => {
         Object.assign(node_ref.current, {
             getPublishedObject: (id) => published_objects_ref.current[id],
@@ -30,6 +31,7 @@ const useCellApi = (node_ref, published_objects, pluto_actions) => {
  *  cell_input: import("./Editor.js").CellInputData,
  *  cell_input_local: import("./Editor.js").CellInputData,
  *  cell_dependencies: import("./Editor.js").CellDependencyData
+ *  all_cell_dependencies: { [uuid: string]: import("./Editor.js").CellDependencyData }
  *  selected: boolean,
  *  selected_cells: Array<string>,
  *  force_hide_input: boolean,
@@ -41,6 +43,7 @@ export const Cell = ({
     cell_input: { cell_id, code, code_folded, running_disabled },
     cell_result: { queued, running, runtime, errored, output, published_objects, depends_on_disabled_cells },
     cell_dependencies,
+    all_cell_dependencies,
     cell_input_local,
     notebook_id,
     on_update_doc_query,
@@ -238,22 +241,13 @@ export const Cell = ({
     `
 }
 
-
-export const IsolatedCell = ({
-    cell_id,
-    cell_results: { output, published_objects },
-    hidden
-}) => {
+export const IsolatedCell = ({ cell_id, cell_results: { output, published_objects }, hidden }) => {
     const node_ref = useRef(null)
     let pluto_actions = useContext(PlutoContext)
     const cell_api_ready = useCellApi(node_ref, published_objects, pluto_actions)
 
     return html`
-        <pluto-cell
-            ref=${node_ref}
-            id=${cell_id}
-            class=${hidden ? 'hidden-cell' : 'isolated-cell'}
-        >
+        <pluto-cell ref=${node_ref} id=${cell_id} class=${hidden ? "hidden-cell" : "isolated-cell"}>
             ${cell_api_ready ? html`<${CellOutput} ...${output} cell_id=${cell_id} />` : html``}
         </pluto-cell>
     `

@@ -95,7 +95,7 @@ const replaceRange6 = (/** @type {EditorView} */ cm, text, from, to) =>
     })
 
 // Compartments: https://codemirror.net/6/examples/config/
-let useCompartment = (/** @type {import("../imports/Preact.js").Ref<EditorView>} */ codemirror_ref, value) => {
+export let useCompartment = (/** @type {import("../imports/Preact.js").Ref<EditorView>} */ codemirror_ref, value) => {
     let compartment = useRef(new Compartment())
     let initial_value = useRef(compartment.current.of(value))
 
@@ -559,4 +559,65 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled }) =>
               </ul>`
             : html``}
     </button>`
+}
+
+/**
+ * @param {{
+ *  remote_code: string,
+ * }} props
+ */
+export const CellInputView = ({ remote_code }) => {
+    const newcm_ref = useRef(/** @type {EditorView} */ (null))
+    const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))
+    const remote_code_ref = useRef(null)
+
+    let editable_compartment = useCompartment(newcm_ref, EditorView.editable.of(false))
+
+    useLayoutEffect(() => {
+        const newcm = (newcm_ref.current = new EditorView({
+            /** Migration #0: New */
+            state: EditorState.create({
+                doc: remote_code,
+
+                extensions: [
+                    editable_compartment,
+                    pluto_syntax_colors,
+                    lineNumbers(),
+                    highlightSpecialChars(),
+                    drawSelection(),
+                    defaultHighlightStyle.fallback,
+                    highlightSelectionMatches(),
+                    bracketMatching(),
+                    EditorState.tabSize.of(4),
+                    indentUnit.of("\t"),
+                    julia_andrey(),
+
+                    EditorView.lineWrapping,
+                    // Disabled awesome_line_wrapping because it still fails in a lot of cases
+                    // awesome_line_wrapping,
+                ],
+            }),
+            parent: dom_node_ref.current,
+        }))
+    }, [])
+
+    // Effect to apply "remote_code" to the cell when it changes...
+    // ideally this won't be necessary as we'll have actual multiplayer,
+    // or something to tell the user that the cell is out of sync.
+    useEffect(() => {
+        if (newcm_ref.current == null) return // Not sure when and why this gave an error, but now it doesn't
+
+        const current_value = getValue6(newcm_ref.current) ?? ""
+        if (remote_code_ref.current == null && remote_code === "" && current_value !== "") {
+            // this cell is being initialized with empty code, but it already has local code set.
+            // this happens when pasting or dropping cells
+            return
+        }
+        remote_code_ref.current = remote_code
+        if (current_value !== remote_code) {
+            setValue6(newcm_ref.current, remote_code)
+        }
+    }, [remote_code])
+
+    return html` <pluto-input ref=${dom_node_ref} translate=${false}> </pluto-input> `
 }

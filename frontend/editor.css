@@ -1746,6 +1746,89 @@ pluto-cell.code_differs > pluto-runarea > button {
     }
 }
 
+/* CELL DEPENDENCIES */
+
+dependencies-graph {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 50%;
+    right: 1em;
+    font-family: "JuliaMono", monospace;
+    font-size: 0.75rem;
+    opacity: 0.5;
+    transition: opacity 200ms ease-in-out;
+    align-items: end;
+    z-index: 600;
+}
+dependencies-graph:hover,
+dependencies-graph.active {
+    opacity: 1;
+}
+
+@keyframes funk {
+    0% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    49% {
+        transform: translateX(-50%);
+        opacity: 0;
+    }
+    50% {
+        transform: translateX(50%);
+        opacity: 0;
+    }
+    100% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* pluto-notebook:hover pluto-cell:not(:hover) {
+    animation-name: funk;
+    animation-duration: 1s;
+    animation-iteration-count: 1;
+    animation-timing-function: ease-in-out;
+} */
+
+pl-dependency-list {
+    display: flex;
+    flex-direction: column;
+}
+pl-dependency-preview {
+    width: 20em;
+}
+
+pl-dependency {
+    display: flex;
+    flex-direction: row;
+    width: 10em;
+    height: 1.5em;
+    cursor: pointer;
+    align-content: center;
+    align-items: center;
+}
+
+pl-dependency .d-link {
+    direction: rtl;
+    transform: translate(-0.4em, 0px);
+    width: 0;
+    opacity: 0;
+    transition: opacity 200ms ease-in-out;
+}
+pl-dependency:hover .d-link {
+    opacity: 0.5;
+}
+pl-dependency .d-dot {
+    display: block;
+    width: 0.6em;
+    margin-right: 0.3em;
+    height: 0.6em;
+    border-radius: 100%;
+    background-color: hsl(0, 0%, 0%);
+}
+
 /* DRAG DROP */
 
 dropruler {
