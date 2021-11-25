@@ -522,9 +522,12 @@ import Distributed
     @testset "Two inter-twined cycles" begin
         notebook = Notebook(Cell.([
             """
-            struct A
-                x
-                A(x) = A(inv(x))
+            begin
+                struct A
+                    x
+                    A(x) = A(inv(x))
+                end
+                rand()
             end
             """,
             "Base.inv(::A) = A(1)",
@@ -539,6 +542,13 @@ import Distributed
         update_run!(🍭, notebook, notebook.cells)
 
         @test all(noerror, notebook.cells)
+        output_1 = notebook.cells[begin].output.body
+
+        update_run!(🍭, notebook, notebook.cells[2])
+
+        @test noerror(notebook.cells[1])
+        @test notebook.cells[1].output.body == output_1
+        @test noerror(notebook.cells[2])
 
         setcode.(notebook.cells, [""])
         update_run!(🍭, notebook, notebook.cells)
