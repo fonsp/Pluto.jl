@@ -1140,9 +1140,12 @@ function try_compute_symbolreferences(ex::Any)::SymbolsState
 	try
 		compute_symbolreferences(ex)
 	catch e
-		@error "Expression explorer failed on: " ex
-		showerror(stderr, e, stacktrace(catch_backtrace()))
-		SymbolsState(references=Set{Symbol}([:fake_reference_to_prevent_it_from_looking_like_a_text_only_cell]))
+        if e isa InterruptException
+            rethrow(e)
+        end
+        @error "Expression explorer failed on: " ex
+        showerror(stderr, e, stacktrace(catch_backtrace()))
+        SymbolsState(references=Set{Symbol}([:fake_reference_to_prevent_it_from_looking_like_a_text_only_cell]))
 	end
 end
 
