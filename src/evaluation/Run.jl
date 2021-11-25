@@ -256,9 +256,8 @@ function can_help_resolve_cells(topology::NotebookTopology, cell::Cell)
     cell_node = topology.nodes[cell]
     macros = defined_macros(cell_node)
 
-    !isempty(cell_code.module_usings_imports.imports) || # <-- TODO(paul): check explicitely for `import Pkg: @macro` instead of any imports
 	!isempty(cell_code.module_usings_imports.usings) ||
-	(!isempty(macros) && any(calls -> !disjoint(calls, macros), topology.nodes[c].macrocalls for c in topology.unresolved_cells))
+		(!isempty(macros) && any(calls -> !disjoint(calls, macros), topology.nodes[c].macrocalls for c in topology.unresolved_cells))
 end
 
 # Sorry couldn't help myself - DRAL
