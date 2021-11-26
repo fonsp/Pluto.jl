@@ -530,30 +530,28 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         innerscopestate.inglobalscope = false
 
         funcname, innersymstate = explore_funcdef!(funcroot, innerscopestate)
+
         # Macro are called using @funcname, but defined with funcname. We need to change that in our scopestate
         # (The `!= 0` is for when the function named couldn't be parsed)
         if ex.head == :macro && length(funcname) != 0
-            setdiff!(innerscopestate.hiddenglobals, funcname)
             funcname = Symbol[Symbol("@$(funcname[1])")]
-            push!(innerscopestate.hiddenglobals, funcname...)
-        end
-
-        union!(innersymstate, explore!(Expr(:block, ex.args[2:end]...), innerscopestate))
-        
-        funcnamesig = FunctionNameSignaturePair(funcname, canonalize(funcroot))
-
-        if length(funcname) == 1
+            push!(innerscopestate.hiddenglobals, only(funcname))
+        elseif length(funcname) == 1
             push!(scopestate.definedfuncs, funcname[end])
             push!(scopestate.hiddenglobals, funcname[end])
         elseif length(funcname) > 1
             push!(symstate.references, funcname[end - 1]) # reference the module of the extended function
+            push!(scopestate.hiddenglobals, funcname[end - 1])
         end
+
+        union!(innersymstate, explore!(Expr(:block, ex.args[2:end]...), innerscopestate))
+        funcnamesig = FunctionNameSignaturePair(funcname, canonalize(funcroot))
 
         if will_assign_global(funcname, scopestate)
             symstate.funcdefs[funcnamesig] = innersymstate
         else
             # The function is not defined globally. However, the function can still modify the global scope or reference globals, e.g.
-            
+
             # let
             #     function f(x)
             #         global z = x + a
