@@ -1614,12 +1614,15 @@ end
 
 function possible_bond_values(s::Symbol)
     element = get(registered_bond_elements, s, nothing)
-    return try
-        possible_bond_values_ref[](element)
-    catch e
-        @error "Could not collect possible bond values for $s" exception=(e, catch_backtrace())
-        rethrow("Could not collect possible bond values for $s, err = $(string(e))")
+    possible_values = possible_bond_values_ref[](element)
+
+    if possible_values isa AbstractPlutoDingetjes.Bonds.InfinitePossibilities
+      error("Bond \"$s\" has an unlimited number of possible values, try changing the `@bind` to something with a finite number of possible values like `PlutoUI.CheckBox(...)` or `PlutoUI.Slider(...)` instead.")
+    elseif possible_values isa AbstractPlutoDingetjes.Bonds.NotGiven
+      error("Bond \"$s\" did not specify its possible values with `AbstractPlutoDingetjes.Bond.possible_values()`. Try using PlutoUI for the `@bind` values.")
     end
+
+    possible_values
 end
 
 """
