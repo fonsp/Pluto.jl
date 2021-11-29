@@ -162,8 +162,6 @@ function possible_bond_values(session_notebook::SN, n::Symbol)
         PlutoRunner.possible_bond_values($(QuoteNode(n)))
     end)
 
-    @assert possible_values !== nothing "Tried to collect possible bind values when collection of possible bind values was not enabled"
-
     possible_values
 end
 
