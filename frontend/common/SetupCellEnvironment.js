@@ -1,16 +1,32 @@
-// import Library from "https://unpkg.com/@observablehq/stdlib@3.3.1/src/library.js?module"
+// import { Library } from "https://esm.sh/@observablehq/stdlib@3.15.0/"
 
 export let make_library = () => {
-    let library = new window.observablehq.Library()
+    // let library = new Library()
+    // return {
+    //     DOM: library.DOM,
+    //     Files: library.Files,
+    //     Generators: library.Generators,
+    //     Promises: library.Promises,
+    //     now: library.now,
+    //     svg: library.svg(),
+    //     html: library.html(),
+    //     require: library.require(),
+    //     _: library._(),
+    //     Inputs: library.Inputs(),
+    // }
+
+    // let library = new Library()
     return {
-        DOM: library.DOM,
-        Files: library.Files,
-        Generators: library.Generators,
-        Promises: library.Promises,
-        now: library.now,
-        svg: library.svg(),
-        html: library.html(),
-        require: library.require(),
+        DOM: {},
+        Files: {},
+        Generators: {},
+        Promises: {},
+        now: {},
+        svg: {},
+        html: {},
+        require: {},
+        _: {},
+        Inputs: {},
     }
 
     // TODO

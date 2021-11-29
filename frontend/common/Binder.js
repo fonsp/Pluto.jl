@@ -80,7 +80,9 @@ export const request_binder = (build_url) =>
 
 // view stats on https://stats.plutojl.org/
 export const count_stat = (page) =>
-    fetch(`https://stats.plutojl.org/count?p=/${page}&s=${screen.width},${screen.height},${devicePixelRatio}#skip_sw`, { cache: "no-cache" }).catch(() => {})
+    fetch(`https://stats.plutojl.org/count?p=/${page}${window?.screen ? `&s=${screen.width},${screen.height},${devicePixelRatio}` : ""}#skip_sw`, {
+        cache: "no-cache",
+    }).catch(() => {})
 
 export const start_binder = async ({ setStatePromise, connect, launch_params }) => {
     try {

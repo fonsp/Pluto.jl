@@ -1,1 +1,1 @@
-deno bundle Preact.original.js Preact.js
+deno bundle preact/dist/index.bundle.js Preact.js

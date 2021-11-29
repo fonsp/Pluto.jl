@@ -32,6 +32,26 @@ import { slider_server_actions, nothing_actions } from "../common/SliderServerCl
 import { ProgressBar } from "./ProgressBar.js"
 import { IsolatedCell } from "./Cell.js"
 
+let ssr = !window?.document?.head?.querySelector
+
+let document = window?.document
+if (!document) {
+    let body = document?.body
+        ? document.body
+        : {
+              addEventListener: () => {},
+              removeEventListener: () => {},
+              classList: {
+                  add: () => {},
+                  remove: () => {},
+                  toggle: () => {},
+                  contains: () => {},
+              },
+          }
+    //@ts-ignore
+    document = { body, head: body, addEventListener: () => {}, removeEventListener: () => {} }
+}
+
 const default_path = "..."
 const DEBUG_DIFFING = false
 let pending_local_updates = 0
@@ -163,8 +183,8 @@ const first_true_key = (obj) => {
  * }}
  */
 
-const url_logo_big = document.head.querySelector("link[rel='pluto-logo-big']").getAttribute("href")
-const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']").getAttribute("href")
+const url_logo_big = ssr ? "" : document.head.querySelector("link[rel='pluto-logo-big']").getAttribute("href")
+const url_logo_small = ssr ? "" : document.head.querySelector("link[rel='pluto-logo-small']").getAttribute("href")
 
 const url_params = new URLSearchParams(window.location.search)
 const launch_params = {
@@ -704,8 +724,8 @@ patch: ${JSON.stringify(
                   })
 
         this.on_disable_ui = () => {
-            document.body.classList.toggle("disable_ui", this.state.disable_ui)
-            document.head.querySelector("link[data-pluto-file='hide-ui']").setAttribute("media", this.state.disable_ui ? "all" : "print")
+            if (!ssr) document.body.classList.toggle("disable_ui", this.state.disable_ui)
+            if (!ssr) document.head.querySelector("link[data-pluto-file='hide-ui']").setAttribute("media", this.state.disable_ui ? "all" : "print")
             //@ts-ignore
             this.actions = this.state.disable_ui || (launch_params.slider_server_url != null && !this.state.connected) ? this.fake_actions : this.real_actions //heyo
         }
