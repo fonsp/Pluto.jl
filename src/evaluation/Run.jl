@@ -214,7 +214,16 @@ function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache; persist_js_
 	cell.output = CellOutput(
 		body=run.output_formatted[1],
 		mime=run.output_formatted[2],
-		rootassignee=ends_with_semicolon(expr_cache.code) ? nothing : ExpressionExplorer.get_rootassignee(expr_cache.parsedcode),
+		rootassignee=if ends_with_semicolon(expr_cache.code)
+			nothing
+		else
+			try 
+				ExpressionExplorer.get_rootassignee(expr_cache.parsedcode)
+			catch _
+				# @warn "Error in get_rootassignee" expr=expr_cache.parsedcode
+				nothing
+			end
+		end,
 		last_run_timestamp=time(),
 		persist_js_state=persist_js_state,
 		has_pluto_hook_features=run.has_pluto_hook_features,
@@ -238,15 +247,17 @@ end
 collect_implicit_usings(topology::NotebookTopology, cell::Cell) = ExpressionExplorer.collect_implicit_usings(topology.codes[cell].module_usings_imports)
 
 "Returns the set of macros names defined by this cell"
-defined_macros(topology::NotebookTopology, cell::Cell) = filter(is_macro_identifier, topology.nodes[cell].funcdefs_without_signatures)
+defined_macros(topology::NotebookTopology, cell::Cell) = defined_macros(topology.nodes[cell])
+defined_macros(node::ReactiveNode) = filter(is_macro_identifier, node.funcdefs_without_signatures) ∪ filter(is_macro_identifier, node.definitions) # macro definitions can come from imports
 
 "Tells whether or not a cell can 'unlock' the resolution of other cells"
 function can_help_resolve_cells(topology::NotebookTopology, cell::Cell)
     cell_code = topology.codes[cell]
     cell_node = topology.nodes[cell]
-    !isempty(cell_code.module_usings_imports.imports) || # <-- TODO(paul): check explicitely for `import Pkg: @macro` instead of any imports
+    macros = defined_macros(cell_node)
+
 	!isempty(cell_code.module_usings_imports.usings) ||
-	any(is_macro_identifier, cell_node.funcdefs_without_signatures)
+		(!isempty(macros) && any(calls -> !disjoint(calls, macros), topology.nodes[c].macrocalls for c in topology.unresolved_cells))
 end
 
 # Sorry couldn't help myself - DRAL
@@ -257,6 +268,7 @@ end
 struct Failure <: Result
 	error
 end
+struct Skipped <: Result end
 
 """We still have 'unresolved' macrocalls, use the current and maybe previous workspace to do macro-expansions.
 
@@ -300,7 +312,7 @@ function resolve_topology(
 
 	function analyze_macrocell(cell::Cell)
 		if unresolved_topology.nodes[cell].macrocalls ⊆ ExpressionExplorer.can_macroexpand
-			return nothing
+			return Skipped()
 		end
 
 		result = macroexpand_cell(cell)
@@ -343,7 +355,9 @@ function resolve_topology(
 				# set function_wrapped to the function wrapped analysis of the expanded expression.
 				new_codes[cell] = ExprAnalysisCache(unresolved_topology.codes[cell]; forced_expr_id, function_wrapped)
 			else
-				@debug "Expansion failed" err=result.error
+				if result isa Failure
+					@debug "Expansion failed" err=result.error
+				end
 				push!(still_unresolved_nodes, cell)
 			end
 	end
@@ -412,6 +426,24 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		cd(original_pwd)
 		setdiff(cells, to_run_offline)
 	end
+	
+	# this setting is not officially supported (default is `false`), so you can skip this block when reading the code
+	if !session.options.evaluation.run_notebook_on_load && prerender_text
+		# these cells do something like settings up an environment, we should always run them
+		setup_cells = filter(notebook.cells) do c
+			cell_precedence_heuristic(notebook.topology, c) < DEFAULT_PRECEDENCE_HEURISTIC
+		end
+		
+		# for the remaining cells, clear their topology info so that they won't run as dependencies
+		for cell in setdiff(to_run_online, setup_cells)
+			delete!(notebook.topology.nodes, cell)
+			delete!(notebook.topology.codes, cell)
+			delete!(notebook.topology.unresolved_cells, cell)
+		end
+		
+		# and don't run them
+		to_run_online = to_run_online ∩ setup_cells
+	end
 
 	maybe_async(run_async) do
 		sync_nbpkg(session, notebook; save=(save && !session.options.server.disable_writing_notebook_files))
@@ -452,14 +484,19 @@ end
 
 notebook_differences(from_filename::String, to_filename::String) = notebook_differences(load_notebook_nobackup(from_filename), load_notebook_nobackup(to_filename))
 
-function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
+"""
+Read the notebook file at `notebook.path`, and compare the read result with the notebook's current state. Any changes will be applied to the running notebook, i.e. code changes are run, removed cells are removed, etc.
+
+Returns `false` if the file could not be parsed, `true` otherwise.
+"""
+function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)::Bool
 	include_nbpg = !session.options.server.auto_reload_from_file_ignore_pkg
 	
 	just_loaded = try
 		load_notebook_nobackup(notebook.path)
 	catch e
 		@error "Skipping hot reload because loading the file went wrong" exception=(e,catch_backtrace())
-		return
+		return false
 	end::Notebook
 	
 	new_codes = Dict(
@@ -511,12 +548,14 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 			write(PkgCompat.project_file(notebook), PkgCompat.read_project_file(just_loaded))
 			write(PkgCompat.manifest_file(notebook), PkgCompat.read_manifest_file(just_loaded))
 		end
-		notebook.nbpkg_restart_required_msg = "yes"
+		notebook.nbpkg_restart_required_msg = "Yes, because the file was changed externally and the embedded Pkg changed."
 	end
 	
 	if something_changed
 		update_save_run!(session, notebook, Cell[notebook.cells_dict[c] for c in union(added, changed)]; kwargs...) # this will also update nbpkg
 	end
+	
+	return true
 end
 
 

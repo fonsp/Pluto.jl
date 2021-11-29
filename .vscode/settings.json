@@ -3,6 +3,7 @@
     "prettier.tabWidth": 4,
     "prettier.semi": false,
     "prettier.quoteProps": "consistent",
+    "prettier.singleQuote": false,
     "julia.format.calls": false,
     "julia.format.comments": false,
     "julia.format.curly": false,

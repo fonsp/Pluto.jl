@@ -1,4 +1,4 @@
-import { syntaxTree, Facet, ViewPlugin, Decoration, StateField, EditorView, EditorSelection } from "../../imports/CodemirrorPlutoSetup.js"
+import { syntaxTree, Facet, ViewPlugin, Decoration, StateField, EditorView, EditorSelection, EditorState } from "../../imports/CodemirrorPlutoSetup.js"
 import { ctrl_or_cmd_name, has_ctrl_or_cmd_pressed } from "../../common/KeyboardShortcuts.js"
 import _ from "../../imports/lodash.js"
 
@@ -150,15 +150,33 @@ let get_variables_from_assignment = (cursor) => {
     return []
 }
 
+let children = function* (cursor) {
+    if (cursor.firstChild()) {
+        try {
+            do {
+                yield cursor
+            } while (cursor.nextSibling())
+        } finally {
+            cursor.parent()
+        }
+    }
+}
+
+let all_children = function* (cursor) {
+    for (let child of children(cursor)) {
+        yield* all_children(child)
+    }
+}
+
 /**
  * @param {import("../../imports/CodemirrorPlutoSetup.js").TreeCursor} cursor
  */
 let go_through_quoted_expression_looking_for_interpolations = function* (cursor) {
     if (cursor.name !== "QuoteExpression") throw new Error("Expected QuotedExpression")
 
-    while (cursor.next()) {
+    for (let child of all_children(cursor)) {
         // @ts-ignore
-        if (cursor.name === "InterpolationExpression") {
+        if (child.name === "InterpolationExpression") {
             yield cursor
         }
     }
@@ -176,9 +194,15 @@ let explore_variable_usage = (
     scopestate = {
         usages: new Set(),
         definitions: new Map(),
-    }
+    },
+    verbose = false
 ) => {
-    // console.group(`Explorer: ${cursor.toString()}`)
+    let start_node = null
+    if (verbose) {
+        verbose && console.group(`Explorer: ${cursor.toString()}`)
+        verbose && console.log("Full text:", doc.sliceString(cursor.from, cursor.to))
+        start_node = cursor.node
+    }
     try {
         if (cursor.name === "Symbol") {
             // Nothing, ha!
@@ -264,6 +288,7 @@ let explore_variable_usage = (
             for (let interpolation_cursor of go_through_quoted_expression_looking_for_interpolations(cursor)) {
                 scopestate = merge_scope_state(scopestate, explore_variable_usage(interpolation_cursor, doc, scopestate))
             }
+            verbose && console.log("Interpolating over")
         } else if (cursor.name === "ModuleDefinition" && cursor.firstChild()) {
             // Ugh..
             try {
@@ -354,9 +379,9 @@ let explore_variable_usage = (
                 }
 
                 // @ts-ignore
-                if (cursor.name === "SelectedImport" && cursor.firstChild()) {
+                if (cursor.name === "SelectedImport") {
                     // First child is the module we are importing from, so we skip to the next child
-                    do {
+                    for (let child of children(cursor)) {
                         let node = cursor.node
                         if (cursor.name === "Identifier") {
                             // node = node 🤷‍♀️
@@ -369,7 +394,7 @@ let explore_variable_usage = (
                             from: cursor.from,
                             to: cursor.to,
                         })
-                    } while (cursor.nextSibling())
+                    }
                 }
             } finally {
                 cursor.parent()
@@ -662,9 +687,18 @@ let explore_variable_usage = (
                 }
             }
         }
+
+        if (verbose) {
+            if (cursor.from !== start_node.from || cursor.to !== start_node.to) {
+                console.log(`start_node:`, start_node.toString(), doc.sliceString(start_node.from, start_node.to))
+                console.log(`cursor:`, cursor.toString(), doc.sliceString(cursor.from, cursor.to))
+                throw new Error("Cursor is at a different node at the end of explore_variable_usage :O")
+            }
+        }
+
         return scopestate
     } finally {
-        // console.groupEnd()
+        verbose && console.groupEnd()
     }
 }
 
