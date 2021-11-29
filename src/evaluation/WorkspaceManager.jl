@@ -154,19 +154,6 @@ function bump_workspace_module(session_notebook::SN)
     old_name, new_name
 end
 
-function possible_bond_values(session_notebook::SN, n::Symbol)
-    workspace = get_workspace(session_notebook)
-    pid = workspace.pid
-
-    possible_values = Distributed.remotecall_eval(Main, pid, quote
-        PlutoRunner.possible_bond_values($(QuoteNode(n)))
-    end)
-
-    @assert possible_values !== nothing "Tried to collect possible bind values when collection of possible bind values was not enabled"
-
-    possible_values
-end
-
 function create_emptyworkspacemodule(pid::Integer)::Symbol
     Distributed.remotecall_eval(Main, pid, :(PlutoRunner.increment_current_module()))
 end
