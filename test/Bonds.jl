@@ -90,8 +90,6 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                     Base.show(io::IO, m::MIME"text/html", os::NewSlider) = write(io, "<input type=range value=1>")
                     
                     Bonds.initial_value(os::NewSlider) = 1
-
-                    Bonds.possible_values(s::NewSlider) = [1,2,3]
                 end
                 """),
                 Cell("""
@@ -174,8 +172,9 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
         @test notebook.cells[7].output.body == "false"
         @test notebook.cells[8].output.body == "false"
         
-        @test Pluto.possible_bond_values(🍭, notebook, :x_new) == [1,2,3]
-
+        
+        
+        
         @test noerror(notebook.cells[9])
         @test noerror(notebook.cells[10])
         @test noerror(notebook.cells[11])
