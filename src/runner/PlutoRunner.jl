@@ -1301,14 +1301,12 @@ const integrations = Integration[
             @assert v"1.0.0" <= AbstractPlutoDingetjes.MY_VERSION < v"2.0.0"
             initial_value_getter_ref[] = AbstractPlutoDingetjes.Bonds.initial_value
             transform_value_ref[] = AbstractPlutoDingetjes.Bonds.transform_value
-            possible_bond_values_ref[] = AbstractPlutoDingetjes.Bonds.possible_values
-
+            
             push!(supported_integration_features,
                 AbstractPlutoDingetjes,
                 AbstractPlutoDingetjes.Bonds,
                 AbstractPlutoDingetjes.Bonds.initial_value,
                 AbstractPlutoDingetjes.Bonds.transform_value,
-                AbstractPlutoDingetjes.Bonds.possible_values,
             )
         end,
     ),
@@ -1616,19 +1614,6 @@ function transform_bond_value(s::Symbol, value_from_js)
     end
 end
 
-function possible_bond_values(s::Symbol)
-    element = get(registered_bond_elements, s, nothing)
-    possible_values = possible_bond_values_ref[](element)
-
-    if possible_values isa AbstractPlutoDingetjes.Bonds.InfinitePossibilities
-      error("Bond \"$s\" has an unlimited number of possible values, try changing the `@bind` to something with a finite number of possible values like `PlutoUI.CheckBox(...)` or `PlutoUI.Slider(...)` instead.")
-    elseif possible_values isa AbstractPlutoDingetjes.Bonds.NotGiven
-      error("Bond \"$s\" did not specify its possible values with `AbstractPlutoDingetjes.Bond.possible_values()`. Try using PlutoUI for the `@bind` values.")
-    end
-
-    possible_values
-end
-
 """
 _“The name is Bond, James Bond.”_
 
@@ -1671,7 +1656,6 @@ end
 
 const initial_value_getter_ref = Ref{Function}(element -> missing)
 const transform_value_ref = Ref{Function}((element, x) -> x)
-const possible_bond_values_ref = Ref{Function}((_args...; _kwargs...) -> throw("AbstractPlutoDingetjes is not loaded, could not collect possible bind values"))
 
 """
     `@bind symbol element`
