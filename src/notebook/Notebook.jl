@@ -200,9 +200,8 @@ function save_notebook(notebook::Notebook, path::String)
         foreach(notebook.listeners) do f
             try
                 f(event)
-                @info "Successfully run listener!"
             catch
-                @warn "Listener failed: " f
+                @warn "FileSaveEvent Listener failed: " f
             end
         end
         notebook.write_out_fs && write(path, new_file_content)
