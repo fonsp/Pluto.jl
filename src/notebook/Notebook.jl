@@ -54,8 +54,24 @@ Base.@kwdef mutable struct Notebook
     wants_to_interrupt::Bool=false
     last_save_time::typeof(time())=time()
     last_hot_reload_time::typeof(time())=zero(time())
+    last_serialized_version::String = ""
+    write_out_fs::Bool=true
+    # Listeners should get PlutoEvent as first argument
+    # Hook up event listeners to execute custom functionality when
+    # a Pluto event happens
+    # Current Pluto Events:
+    #  - FileSave  (Doing)
+    #  - DirtyFileUpdate (TODO)
+    listeners::Vector{Function} = []
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
+end
+
+abstract type PlutoEvent end
+
+struct FileSaveEvent <: PlutoEvent
+    fileContent::String
+    path::String
 end
 
 Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = Notebook(
@@ -175,8 +191,22 @@ end
 function save_notebook(notebook::Notebook, path::String)
     # @warn "Saving to file!!" exception=(ErrorException(""), backtrace())
     notebook.last_save_time = time()
-    write_buffered(path) do io
+    new_file_content = sprint() do io
         save_notebook(io, notebook)
+    end
+    differs = new_file_content != notebook.last_serialized_version
+    if differs
+        event = FileSaveEvent(new_file_content, notebook.path)
+        foreach(notebook.listeners) do f
+            try
+                f(event)
+                @info "Successfully run listener!"
+            catch
+                @warn "Listener failed: " f
+            end
+        end
+        notebook.write_out_fs && write(path, new_file_content)
+        notebook.last_serialized_version = new_file_content
     end
 end
 
