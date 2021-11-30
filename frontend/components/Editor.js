@@ -75,7 +75,10 @@ const ProcessStatus = {
  */
 const statusmap = (state) => ({
     disconnected: !(state.connected || state.initializing || state.static_preview),
-    loading: (BinderPhase.wait_for_user < state.binder_phase && state.binder_phase < BinderPhase.ready) || state.initializing || state.moving_file,
+    loading:
+        (state.binder_phase != null && BinderPhase.wait_for_user < state.binder_phase && state.binder_phase < BinderPhase.ready) ||
+        state.initializing ||
+        state.moving_file,
     process_restarting: state.notebook.process_status === ProcessStatus.waiting_to_restart,
     process_dead: state.notebook.process_status === ProcessStatus.no_process || state.notebook.process_status === ProcessStatus.waiting_to_restart,
     nbpkg_restart_required: state.notebook.nbpkg?.restart_required_msg != null,
@@ -1162,7 +1165,7 @@ patch: ${JSON.stringify(
                             </a>
                             <div class="flex_grow_1"></div>
                             ${
-                                this.state.binder_phase === BinderPhase.ready
+                                status.binder
                                     ? html`<pluto-filepicker><a href=${export_url("notebookfile")} target="_blank">Save notebook...</a></pluto-filepicker>`
                                     : html`<${FilePicker}
                                           client=${this.client}

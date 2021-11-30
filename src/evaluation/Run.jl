@@ -247,15 +247,17 @@ end
 collect_implicit_usings(topology::NotebookTopology, cell::Cell) = ExpressionExplorer.collect_implicit_usings(topology.codes[cell].module_usings_imports)
 
 "Returns the set of macros names defined by this cell"
-defined_macros(topology::NotebookTopology, cell::Cell) = filter(is_macro_identifier, topology.nodes[cell].funcdefs_without_signatures)
+defined_macros(topology::NotebookTopology, cell::Cell) = defined_macros(topology.nodes[cell])
+defined_macros(node::ReactiveNode) = filter(is_macro_identifier, node.funcdefs_without_signatures) ∪ filter(is_macro_identifier, node.definitions) # macro definitions can come from imports
 
 "Tells whether or not a cell can 'unlock' the resolution of other cells"
 function can_help_resolve_cells(topology::NotebookTopology, cell::Cell)
     cell_code = topology.codes[cell]
     cell_node = topology.nodes[cell]
-    !isempty(cell_code.module_usings_imports.imports) || # <-- TODO(paul): check explicitely for `import Pkg: @macro` instead of any imports
+    macros = defined_macros(cell_node)
+
 	!isempty(cell_code.module_usings_imports.usings) ||
-	any(is_macro_identifier, cell_node.funcdefs_without_signatures)
+		(!isempty(macros) && any(calls -> !disjoint(calls, macros), topology.nodes[c].macrocalls for c in topology.unresolved_cells))
 end
 
 # Sorry couldn't help myself - DRAL
@@ -266,6 +268,7 @@ end
 struct Failure <: Result
 	error
 end
+struct Skipped <: Result end
 
 """We still have 'unresolved' macrocalls, use the current and maybe previous workspace to do macro-expansions.
 
@@ -309,7 +312,7 @@ function resolve_topology(
 
 	function analyze_macrocell(cell::Cell)
 		if unresolved_topology.nodes[cell].macrocalls ⊆ ExpressionExplorer.can_macroexpand
-			return nothing
+			return Skipped()
 		end
 
 		result = macroexpand_cell(cell)
@@ -352,7 +355,9 @@ function resolve_topology(
 				# set function_wrapped to the function wrapped analysis of the expanded expression.
 				new_codes[cell] = ExprAnalysisCache(unresolved_topology.codes[cell]; forced_expr_id, function_wrapped)
 			else
-				@debug "Expansion failed" err=result.error
+				if result isa Failure
+					@debug "Expansion failed" err=result.error
+				end
 				push!(still_unresolved_nodes, cell)
 			end
 	end
