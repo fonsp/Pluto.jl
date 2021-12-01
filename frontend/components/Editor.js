@@ -129,7 +129,7 @@ const first_true_key = (obj) => {
  *      rootassignee: ?string,
  *      has_pluto_hook_features: boolean,
  *  },
- *  published_objects: object,
+ *  published_object_keys: [string],
  * }}
  */
 
@@ -158,6 +158,7 @@ const first_true_key = (obj) => {
  *  cell_dependencies: { [uuid: string]: CellDependencyData },
  *  cell_order: Array<string>,
  *  cell_execution_order: Array<string>,
+ *  published_objects: { [objectid: string]: any},
  *  bonds: { [name: string]: any },
  *  nbpkg: Object,
  * }}
@@ -202,6 +203,7 @@ const initial_notebook = () => ({
     cell_dependencies: {},
     cell_order: [],
     cell_execution_order: [],
+    published_objects: {},
     bonds: {},
     nbpkg: null,
 })
@@ -246,6 +248,7 @@ export class Editor extends Component {
         this.actions = {
             get_notebook: () => this?.state?.notebook || {},
             send: (...args) => this.client.send(...args),
+            get_published_object: (objectid) => this.state.notebook.published_objects[objectid],
             //@ts-ignore
             update_notebook: (...args) => this.update_notebook(...args),
             set_doc_query: (query) => this.setState({ desired_doc_query: query }),
