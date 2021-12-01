@@ -28,6 +28,7 @@ Base.@kwdef mutable struct Cell
     cell_id::UUID=uuid1()
 
     code::String=""
+    local_code::String=""
     code_folded::Bool=false
     
     output::CellOutput=CellOutput()

@@ -101,9 +101,10 @@ function notebook_to_js(notebook::Notebook)
         "process_status" => notebook.process_status,
         "last_save_time" => notebook.last_save_time,
         "last_hot_reload_time" => notebook.last_hot_reload_time,
-        "cell_inputs" => Dict{UUID,Dict{String,Any}}(
+        "cell_inputs" => Dict{UUID, Dict{String,Any}}(
             id => Dict{String,Any}(
                 "cell_id" => cell.cell_id,
+                "local_code" => cell.local_code,
                 "code" => cell.code,
                 "code_folded" => cell.code_folded,
                 "running_disabled" => cell.running_disabled,

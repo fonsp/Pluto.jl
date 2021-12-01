@@ -25,7 +25,7 @@ Base.@kwdef mutable struct Notebook
     "Cells are ordered in a `Notebook`, and this order can be changed by the user. Cells will always have a constant UUID."
     cells_dict::Dict{UUID,Cell}
     cell_order::Array{UUID,1}
-    
+
     path::String
     notebook_id::UUID=uuid1()
     topology::NotebookTopology=NotebookTopology()
