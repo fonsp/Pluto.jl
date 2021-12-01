@@ -86,7 +86,8 @@ const statusmap = (state) => ({
     static_preview: state.static_preview,
     binder: state.offer_binder || state.binder_phase != null,
     code_differs: state.notebook.cell_order.some(
-        (cell_id) => state.cell_inputs_local[cell_id] != null && state.notebook.cell_inputs[cell_id].code !== state.cell_inputs_local[cell_id].code
+        (cell_id) =>
+            state.notebook.cell_inputs[cell_id] != null && state.notebook.cell_inputs[cell_id].code !== state.notebook.cell_inputs[cell_id].local_code
     ),
 })
 
@@ -103,6 +104,7 @@ const first_true_key = (obj) => {
  * @type {{
  *  cell_id: string,
  *  code: string,
+ *  local_code: string,
  *  code_folded: boolean,
  *  running_disabled: boolean,
  * }}
@@ -189,7 +191,7 @@ console.log("Launch parameters: ", launch_params)
  *
  * @returns {NotebookData}
  */
-const initial_notebook = () => ({
+const initial_notebook = (initialLocalCells = {}) => ({
     notebook_id: launch_params.notebook_id,
     path: default_path,
     shortpath: "",
@@ -197,7 +199,7 @@ const initial_notebook = () => ({
     process_status: "starting",
     last_save_time: 0.0,
     last_hot_reload_time: 0.0,
-    cell_inputs: {},
+    cell_inputs: Object.keys(initialLocalCells).reduce((p, c) => ({ ...p, [c]: { code: "", local_code: initialLocalCells[c] } }), {}),
     cell_results: {},
     cell_dependencies: {},
     cell_order: [],
@@ -211,8 +213,7 @@ export class Editor extends Component {
         super()
 
         this.state = {
-            notebook: /** @type {NotebookData} */ initial_notebook(),
-            cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ vscode.load_cell_inputs_from_vscode_state(),
+            notebook: /** @type {NotebookData} */ initial_notebook(vscode.load_cell_inputs_from_vscode_state()),
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
             last_update_time: 0,
@@ -253,8 +254,9 @@ export class Editor extends Component {
                 vscode.store_cell_input_in_vscode_state(cell_id, new_val)
                 return this.setStatePromise(
                     immer((state) => {
-                        state.cell_inputs_local[cell_id] = {
-                            code: new_val,
+                        state.notebook.cell_inputs[cell_id] = {
+                            ...state.notebook.cell_inputs[cell_id],
+                            local_code: new_val,
                         }
                         state.selected_cells = []
                     })
@@ -313,7 +315,7 @@ export class Editor extends Component {
                         state.selected_cells = []
 
                         for (let cell of new_cells) {
-                            state.cell_inputs_local[cell.cell_id] = cell
+                            state.notebook.cell_inputs[cell.cell_id] = cell
                         }
                         state.last_created_cell = new_cells[0]?.cell_id
                     })
@@ -329,6 +331,7 @@ export class Editor extends Component {
                             ...cell,
                             // Fill the cell with empty code remotely, so it doesn't run unsafe code
                             code: "",
+                            local_code: cell.code,
                         }
                     }
                     notebook.cell_order = [
@@ -344,10 +347,10 @@ export class Editor extends Component {
 
                 await this.setStatePromise(
                     immer((state) => {
-                        state.cell_inputs_local[cell_id] = {
+                        state.notebook.cell_inputs[cell_id] = {
                             ...cell,
-                            ...state.cell_inputs_local[cell_id],
-                            code: new_code,
+                            ...state.notebook.cell_inputs[cell_id],
+                            local_code: new_code,
                         }
                     })
                 )
@@ -365,6 +368,7 @@ export class Editor extends Component {
                     return {
                         cell_id: uuidv4(),
                         code: code,
+                        local_code: code,
                         code_folded: false,
                         running_disabled: false,
                     }
@@ -373,7 +377,7 @@ export class Editor extends Component {
                 this.setState(
                     immer((state) => {
                         for (let cell of cells_to_add) {
-                            state.cell_inputs_local[cell.cell_id] = cell
+                            state.notebook.cell_inputs[cell.cell_id] = cell
                         }
                     })
                 )
@@ -423,6 +427,7 @@ export class Editor extends Component {
                     notebook.cell_inputs[id] = {
                         cell_id: id,
                         code,
+                        local_code: code,
                         code_folded: false,
                         running_disabled: false,
                     }
@@ -473,8 +478,8 @@ export class Editor extends Component {
             set_and_run_all_changed_remote_cells: () => {
                 const changed = this.state.notebook.cell_order.filter(
                     (cell_id) =>
-                        this.state.cell_inputs_local[cell_id] != null &&
-                        this.state.notebook.cell_inputs[cell_id].code !== this.state.cell_inputs_local[cell_id]?.code
+                        this.state.notebook.cell_inputs[cell_id] != null &&
+                        this.state.notebook.cell_inputs[cell_id].code !== this.state.notebook.cell_inputs[cell_id]?.local_code
                 )
                 this.actions.set_and_run_multiple(changed)
                 return changed.length > 0
@@ -484,8 +489,8 @@ export class Editor extends Component {
                 if (cell_ids.length > 0) {
                     await update_notebook((notebook) => {
                         for (let cell_id of cell_ids) {
-                            if (this.state.cell_inputs_local[cell_id]) {
-                                notebook.cell_inputs[cell_id].code = this.state.cell_inputs_local[cell_id].code
+                            if (this.state.notebook.cell_inputs[cell_id]?.local_code) {
+                                notebook.cell_inputs[cell_id].code = this.state.notebook.cell_inputs[cell_id].local_code
                             }
                         }
                     })
@@ -629,7 +634,7 @@ patch: ${JSON.stringify(
                         if (message?.response?.from_reset) {
                             console.log("Trying to reset state after failure")
                             try {
-                                apply_notebook_patches(message.patches, initial_notebook())
+                                apply_notebook_patches(message.patches, initial_notebook(vscode.load_cell_inputs_from_vscode_state()))
                             } catch (exception) {
                                 alert("Oopsie!! please refresh your browser and everything will be alright!")
                             }
@@ -999,7 +1004,7 @@ patch: ${JSON.stringify(
 
         window.addEventListener("beforeunload", (event) => {
             const unsaved_cells = this.state.notebook.cell_order.filter(
-                (id) => this.state.cell_inputs_local[id] && this.state.notebook.cell_inputs[id].code !== this.state.cell_inputs_local[id].code
+                (id) => this.state.notebook.cell_inputs[id] && this.state.notebook.cell_inputs[id].code !== this.state.notebook.cell_inputs[id].local_code
             )
             const first_unsaved = unsaved_cells[0]
             if (first_unsaved != null) {
@@ -1204,7 +1209,7 @@ patch: ${JSON.stringify(
                         />
                         <${Notebook}
                             notebook=${this.state.notebook}
-                            cell_inputs_local=${this.state.cell_inputs_local}
+                            cell_inputs_local=${this.state.notebook.cell_inputs}
                             on_update_doc_query=${this.actions.set_doc_query}
                             on_cell_input=${this.actions.set_local_cell}
                             on_focus_neighbor=${this.actions.focus_on_neighbor}
