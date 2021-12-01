@@ -431,7 +431,7 @@ end
 
 without_initiator(🙋::ClientRequest) = ClientRequest(session=🙋.session, notebook=🙋.notebook)
 
-responses[:restart_process] = function response_restrart_process(🙋::ClientRequest; run_async::Bool=true)
+responses[:restart_process] = function response_restart_process(🙋::ClientRequest; run_async::Bool=true)
     require_notebook(🙋)
 
     
