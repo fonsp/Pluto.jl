@@ -152,6 +152,7 @@ export const CellInput = ({
     const newcm_ref = useRef(/** @type {EditorView} */ (null))
     const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))
     const remote_code_ref = useRef(null)
+    const own_local_code_ref = useRef(null)
     const on_change_ref = useRef(null)
     on_change_ref.current = on_change
 
@@ -165,7 +166,8 @@ export const CellInput = ({
         useMemo(() => {
             return EditorView.updateListener.of((update) => {
                 if (update.docChanged) {
-                    on_change(update.state.doc.toString())
+                    const text = own_local_code_ref.current = update.state.doc.toString()
+                    on_change(text)
                 }
             })
         }, [on_change])
@@ -468,6 +470,16 @@ export const CellInput = ({
             setValue6(newcm_ref.current, remote_code)
         }
     }, [remote_code])
+
+    useEffect(() => {
+        if (newcm_ref.current == null) return // Not sure when and why this gave an error, but now it doesn't
+
+        const current_value = getValue6(newcm_ref.current) ?? ""
+        
+        if (current_value !== local_code && own_local_code_ref.current !== local_code ) {
+            setValue6(newcm_ref.current, local_code)
+        }
+    }, [local_code])
 
     useEffect(() => {
         const cm = newcm_ref.current
