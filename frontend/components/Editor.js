@@ -86,8 +86,7 @@ const statusmap = (state) => ({
     static_preview: state.static_preview,
     binder: state.offer_binder || state.binder_phase != null,
     code_differs: state.notebook.cell_order.some(
-        (cell_id) =>
-            state.notebook.cell_inputs[cell_id] != null && state.notebook.cell_inputs[cell_id].code !== state.notebook.cell_inputs[cell_id].local_code
+        (cell_id) => state.notebook.cell_inputs[cell_id] != null && state.notebook.cell_inputs[cell_id].code !== state.notebook.cell_inputs[cell_id].local_code
     ),
 })
 
@@ -243,6 +242,13 @@ export class Editor extends Component {
 
         this.setStatePromise = (fn) => new Promise((r) => this.setState(fn, r))
 
+        const throttledSetLocalNotebook = _.throttle((cell_id, new_val) => {
+            update_notebook((notebook) => {
+                console.log("Executing throttled thing")
+                notebook.cell_inputs[cell_id].local_code = new_val
+            })
+        }, 120)
+
         // these are things that can be done to the local notebook
         this.actions = {
             get_notebook: () => this?.state?.notebook || {},
@@ -252,6 +258,7 @@ export class Editor extends Component {
             set_doc_query: (query) => this.setState({ desired_doc_query: query }),
             set_local_cell: (cell_id, new_val) => {
                 vscode.store_cell_input_in_vscode_state(cell_id, new_val)
+                throttledSetLocalNotebook(cell_id, new_val)
                 return this.setStatePromise(
                     immer((state) => {
                         state.notebook.cell_inputs[cell_id] = {
