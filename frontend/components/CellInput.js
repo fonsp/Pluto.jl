@@ -155,7 +155,7 @@ export const CellInput = ({
     const newcm_ref = useRef(/** @type {EditorView} */ (null))
     const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))
     const remote_code_ref = useRef(null)
-    const suppress_next_event = useRef(time_arrow || 0)
+    const suppress_next_event = useRef(false)
     const on_change_ref = useRef(null)
     on_change_ref.current = on_change
 
@@ -475,14 +475,14 @@ export const CellInput = ({
 
     useEffect(() => {
         const current_value = getValue6(newcm_ref.current) ?? ""
-        const will_update_code = local_code_owner_uuid !== client_id && current_value !== local_code && suppress_next_event.current < time_arrow
+        const will_update_code = local_code_owner_uuid !== client_id && current_value !== local_code
         if (will_update_code) {
             // This is terrible, but it's basically, if we're updating the local code,
             // the next event shouldn't fire at all.
             suppress_next_event.current = false
             setValue6(newcm_ref.current, local_code)
         }
-    }, [local_code, time_arrow])
+    }, [local_code])
 
     useEffect(() => {
         const cm = newcm_ref.current
