@@ -126,7 +126,7 @@ let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPluto
  * }} props
  */
 export const CellInput = ({
-    local_code,
+    cell_input_local,
     remote_code,
     disable_input,
     focus_after_creation,
@@ -148,11 +148,12 @@ export const CellInput = ({
     variables_in_all_notebook,
 }) => {
     let pluto_actions = useContext(PlutoContext)
-
+    const client_id = pluto_actions.get_client_id()
+    const { code: local_code, local_code_owner_uuid, time_arrow } = cell_input_local || {}
     const newcm_ref = useRef(/** @type {EditorView} */ (null))
     const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))
     const remote_code_ref = useRef(null)
-    const own_local_code_ref = useRef(null)
+    const suppress_next_event = useRef(time_arrow || 0)
     const on_change_ref = useRef(null)
     on_change_ref.current = on_change
 
@@ -166,8 +167,8 @@ export const CellInput = ({
         useMemo(() => {
             return EditorView.updateListener.of((update) => {
                 if (update.docChanged) {
-                    const text = own_local_code_ref.current = update.state.doc.toString()
-                    on_change(text)
+                    if (suppress_next_event.current === true) on_change(update.state.doc.toString())
+                    else suppress_next_event.current = true
                 }
             })
         }, [on_change])
@@ -472,14 +473,15 @@ export const CellInput = ({
     }, [remote_code])
 
     useEffect(() => {
-        if (newcm_ref.current == null) return // Not sure when and why this gave an error, but now it doesn't
-
         const current_value = getValue6(newcm_ref.current) ?? ""
-        
-        if (current_value !== local_code && own_local_code_ref.current !== local_code ) {
+        const will_update_code = local_code_owner_uuid !== client_id && current_value !== local_code && suppress_next_event.current < time_arrow
+        if (will_update_code) {
+            // This is terrible, but it's basically, if we're updating the local code,
+            // the next event shouldn't fire at all.
+            suppress_next_event.current = false
             setValue6(newcm_ref.current, local_code)
         }
-    }, [local_code])
+    }, [local_code, time_arrow])
 
     useEffect(() => {
         const cm = newcm_ref.current

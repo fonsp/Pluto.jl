@@ -29,6 +29,8 @@ Base.@kwdef mutable struct Cell
 
     code::String=""
     local_code::String=""
+    local_code_owner_uuid::String=""
+    time_arrow::Integer=0
     code_folded::Bool=false
     
     output::CellOutput=CellOutput()
