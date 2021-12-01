@@ -331,7 +331,7 @@ function reset_nbpkg(notebook::Notebook; keep_project::Bool=false, backup::Bool=
         notebook.nbpkg_ctx = use_plutopkg(notebook.topology) ? PkgCompat.create_empty_ctx() : nothing
     end
 
-    save && save_notebook(session, notebook)
+    save && save_notebook(notebook)
 end
 
 function update_nbpkg_core(notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEVEL_MAJOR, on_terminal_output::Function=((args...) -> nothing))
