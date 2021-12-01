@@ -1,7 +1,8 @@
-import { html, useRef, useState, useContext } from "../imports/Preact.js"
+import { html, useRef, useState, useContext, Fragment } from "../imports/Preact.js"
 
-import { PlutoImage, RawHTMLContainer } from "./CellOutput.js"
+import { CellOutputContext, PlutoImage } from "./CellOutput.js"
 import { PlutoContext } from "../common/PlutoContext.js"
+import { PlutoHTML } from "./CellOutput/PlutoHTML.js"
 
 // this is different from OutputBody because:
 // it does not wrap in <div>. We want to do that in OutputBody for reasons that I forgot (feel free to try and remove it), but we dont want it here
@@ -9,7 +10,8 @@ import { PlutoContext } from "../common/PlutoContext.js"
 // whatever
 //
 // TODO: remove this, use OutputBody instead, and fix the CSS classes so that i all looks nice again
-const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state }) => {
+/** @param {import("./CellOutput.js").MimeResult} props */
+const SimpleOutputBody = ({ mime, body }) => {
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -20,16 +22,19 @@ const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state }) => {
             return html`<${PlutoImage} mime=${mime} body=${body} />`
             break
         case "text/html":
-            return html`<${RawHTMLContainer} body=${body} persist_js_state=${persist_js_state} />`
+            return html`<${PlutoHTML} body=${body} />`
             break
         case "application/vnd.pluto.tree+object":
-            return html`<${TreeView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`
+            return html`<${TreeView} body=${body} />`
             break
         case "application/vnd.pluto.table+object":
-            return html` <${TableView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`
+            return html` <${TableView} body=${body} />`
             break
-        case "application/vnd.pluto.divelement+object":
-            return DivElement({ cell_id, ...body })
+        case "application/vnd.pluto.element+object":
+            return html`<${PlutoHTMLElement} ...${body} />`
+            break
+        case "application/vnd.pluto.elementlist+object":
+            return html`<${PlutoFragmentElement} ...${body} />`
             break
         case "text/plain":
             return html`<pre class="no-block">${body}</pre>`
@@ -58,8 +63,11 @@ const More = ({ on_click_more }) => {
 const prefix = ({ prefix, prefix_short }) =>
     html`<pluto-tree-prefix><span class="long">${prefix}</span><span class="short">${prefix_short}</span></pluto-tree-prefix>`
 
-export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
-    let pluto_actions = useContext(PlutoContext)
+/** @param {{ body: any }} props */
+export const TreeView = ({ body }) => {
+    const pluto_actions = useContext(PlutoContext)
+    const { cell_id, persist_js_state } = useContext(CellOutputContext)
+
     const node_ref = useRef(null)
     const onclick = (e) => {
         // TODO: this could be reactified but no rush
@@ -83,7 +91,7 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
         actions.reshow_cell(cell_id ?? node_ref.current.closest("pluto-cell").id, body.objectid, 1)
     }
 
-    const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${persist_js_state} />`
+    const mimepair_output = (pair) => html`<${SimpleOutputBody} mime=${pair[1]} body=${pair[0]} />`
     const more = html`<p-r><${More} on_click_more=${on_click_more} /></p-r>`
 
     var inner = null
@@ -128,11 +136,14 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
     return html`<pluto-tree class="collapsed ${body.type}" onclick=${onclick} ref=${node_ref}>${inner}</pluto-tree>`
 }
 
-export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
-    let pluto_actions = useContext(PlutoContext)
+/** @param {{ body: any }} props */
+export const TableView = ({ body }) => {
+    const pluto_actions = useContext(PlutoContext)
+    const { cell_id, persist_js_state } = useContext(CellOutputContext)
+
     const node_ref = useRef(null)
 
-    const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${persist_js_state} />`
+    const mimepair_output = (pair) => html`<${SimpleOutputBody} mime=${pair[1]} body=${pair[0]} />`
     const more = (dim) => html`<${More}
         on_click_more=${() => {
             const actions = pluto_actions ?? node_ref.current.closest("pluto-cell")._internal_pluto_actions
@@ -168,8 +179,18 @@ export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
     </table>`
 }
 
-export let DivElement = ({ cell_id, style, classname, children }) => {
-    const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${false} />`
+export let PlutoFragmentElement = ({ children }) => {
+    return Object.entries(children).map(([key, [body, mime]]) => {
+        return html`
+            <${Fragment} key=${key}>
+                <${SimpleOutputBody} mime=${mime} body=${body}  />
+            </${Fragment}>
+        `
+    })
+}
 
-    return html`<div style=${style} class=${classname}>${children.map(mimepair_output)}</div>`
+export let PlutoHTMLElement = ({ tagname, attributes, children }) => {
+    const mimepair_output = (pair) => html`<${SimpleOutputBody} mime=${pair[1]} body=${pair[0]} />`
+
+    return html`<${tagname} ...${attributes}>${children.map(mimepair_output)}</div>`
 }

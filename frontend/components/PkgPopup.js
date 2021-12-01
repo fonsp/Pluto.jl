@@ -1,9 +1,6 @@
 import { html, useState, useRef, useLayoutEffect, useEffect, useMemo, useContext } from "../imports/Preact.js"
-import immer from "../imports/immer.js"
-import observablehq from "../common/SetupCellEnvironment.js"
 import { cl } from "../common/ClassTable.js"
 
-import { RawHTMLContainer, highlight } from "./CellOutput.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 import { package_status, nbpkg_fingerprint_without_terminal } from "./PkgStatusMark.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"

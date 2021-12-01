@@ -829,7 +829,7 @@ The MIMEs that Pluto supports, in order of how much I like them.
 
 `text/plain` should always match - the difference between `show(::IO, ::MIME"text/plain", x)` and `show(::IO, x)` is an unsolved mystery.
 """
-const allmimes = [MIME"application/vnd.pluto.table+object"(); MIME"application/vnd.pluto.divelement+object"(); MIME"text/html"(); imagemimes; MIME"application/vnd.pluto.tree+object"(); MIME"text/latex"(); MIME"text/plain"()]
+const allmimes = [MIME"application/vnd.pluto.table+object"(); MIME"application/vnd.pluto.elementlist+object"(); MIME"application/vnd.pluto.element+object"(); MIME"text/html"(); imagemimes; MIME"application/vnd.pluto.tree+object"(); MIME"text/latex"(); MIME"text/plain"()]
 
 
 """
@@ -995,7 +995,9 @@ function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
         tree_data(x, IOContext(io, :compact => true)), mime
     elseif mime isa MIME"application/vnd.pluto.table+object"
         table_data(x, IOContext(io, :compact => true)), mime
-    elseif mime isa MIME"application/vnd.pluto.divelement+object"
+    elseif mime isa MIME"application/vnd.pluto.element+object"
+        tree_data(x, io), mime
+    elseif mime isa MIME"application/vnd.pluto.elementlist+object"
         tree_data(x, io), mime
     elseif mime ∈ imagemimes
         show(io, mime, x)
@@ -1793,105 +1795,171 @@ end
 assertpackable(t::Tuple) = foreach(assertpackable, t)
 assertpackable(t::NamedTuple) = foreach(assertpackable, t)
 
-struct EmbeddableDisplay
-    x
-    script_id
-end
-
-function Base.show(io::IO, m::MIME"text/html", e::EmbeddableDisplay)
-    body, mime = format_output_default(e.x, io)
-	
-    write(io, """
-    <pluto-display></pluto-display>
-    <script id=$(e.script_id)>
-
-        // see https://plutocon2021-demos.netlify.app/fonsp%20%E2%80%94%20javascript%20inside%20pluto to learn about the techniques used in this script
-        
-        const body = $(publish_to_js(body, e.script_id))
-        const mime = "$(string(mime))"
-        
-        const create_new = this == null || this._mime !== mime
-        
-        const display = create_new ? currentScript.previousElementSibling : this
-        
-        display.persist_js_state = true
-        display.body = body
-        if(create_new) {
-            // only set the mime if necessary, it triggers a second preact update
-            display.mime = mime
-            // add it also as unwatched property to prevent interference from Preact
-            display._mime = mime
-        }
-        return display
-
-    </script>
-	""")
-end
-
-export embed_display
 
 """
-    embed_display(x)
+> ⚠️ Do not use this!
+> This will be usable through either PlutoUI or some other package.
 
-A wrapper around any object that will display it using Pluto's interactive multimedia viewer (images, arrays, tables, etc.), the same system used to display cell output. The returned object can be **embedded in HTML output** (we recommend [HypertextLiteral.jl](https://github.com/MechanicalRabbit/HypertextLiteral.jl) or [HyperScript.jl](https://github.com/yurivish/Hyperscript.jl)), which means that you can use it to create things like _"table viewer left, plot right"_. 
-
-# Example
-
-Markdown can interpolate HTML-showable objects, including the embedded display:
-
-```julia
-md"\""
-# Cool data
-
-\$(embed_display(rand(10)))
-
-Wow!
-"\""
-```
-
-You can use HTML templating packages to create cool layouts, like two arrays side-by-side:
-
-```julia
-using HypertextLiteral
-```
-
-```julia
-@htl("\""
-
-<div style="display: flex;">
-\$(embed_display(rand(4)))
-\$(embed_display(rand(4)))
-</div>
-
-"\"")
-```
-
-"""
-embed_display(x) = EmbeddableDisplay(x, rand('a':'z',16) |> join)
-
-# if an embedded display is being rendered _directly by Pluto's viewer_, then rendered the embedded object directly. When interpolating an embedded display into HTML, the user code will render the embedded display to HTML using the HTML show method above, and this shortcut is not called.
-# We add this short-circuit to increase performance for UI that uses an embedded display when it is not necessary.
-format_output_default(@nospecialize(val::EmbeddableDisplay), @nospecialize(context=default_iocontext)) = format_output_default(val.x, context)
-
-###
 # EMBEDDED CELL OUTPUT
-###
 
-Base.@kwdef struct DivElement
-    children::Vector
-    style::String=""
-    class::Union{String,Nothing}=nothing
+This module provides two structs, [PlutoHTMLElement](@ref) and [PlutoHTMLElementList](@ref).
+These can be used to pass react-like virtual dom elements to the JS runtime.
+The javascript side will then render them with diffing so the elements don't have to refresh.
+"""
+module PlutoHTML
+    import ..publish_to_js
+    
+    import ..tree_data
+    import ..pluto_showable
+    import ..format_output_default
+
+
+    """
+        PlutoHTMLElement(tagname::String, children::Vector, attributes::Dict{String,String})
+
+    > ⚠️ Do not use this!
+    > This will be usable through either PlutoUI or some other package.
+
+    Returns a struct that can be used to pass a react-like virtual dom element to the JS runtime.
+    In Pluto this will render with Preact.
+    Don't use this directly, we'll provide a package that has the ability to also run outside of Pluto.
+    """
+    Base.@kwdef struct PlutoHTMLElement
+        tagname::String="div"
+        children::Vector
+        attributes::Dict{String, String}
+    end
+    tree_data(@nospecialize(e::PlutoHTMLElement), context::IOContext) = Dict{Symbol, Any}(
+        :tagname => e.tagname,
+        :children => Any[
+            format_output_default(value, context) for value in e.children
+        ],
+        :attributes => e.attributes,
+    )
+    pluto_showable(::MIME"application/vnd.pluto.element+object", ::PlutoHTMLElement) = true
+
+
+    """
+        PlutoHTMLElementList(children::Dict{String, Any})
+
+    > ⚠️ Do not use this!
+    > This will be usable through either PlutoUI or some other package.
+
+    This might not be the most liked struct, but it is very necessary.
+    It might be very temping to just spread children into a PlutoHMTMLElement, but don't do that!
+    You'll want to assign a key per list item so preact can figure out their identity for diffing.
+    I hope this is a good explainer:
+    https://dev.to/francodalessio/understanding-the-importance-of-the-key-prop-in-react-3ag7
+    """
+    Base.@kwdef struct PlutoHTMLElementList
+        children::Dict{String, Any}
+    end
+    tree_data(@nospecialize(e::PlutoHTMLElementList), context::IOContext) = Dict{Symbol, Any}(
+        :children => Dict{String, Any}(Iterators.map(e.children) do (key, child)
+            key => format_output_default(child, context)
+        end)
+    )
+    pluto_showable(::MIME"application/vnd.pluto.elementlist+object", ::PlutoHTMLElementList) = true
+
+
+    """
+    Kept around for legacy reasons.
+    This way we can first update Pluto, then remove this from PlutoUI.Experimental and then remove it here.
+    TODO: Remove this
+    """
+    DivElement(children::Vector, style::String="", class::Union{String,Nothing}=nothing) = DivElement(children=children, style=style, class=class)
+    function DivElement(; children::Vector, style::String="", class::Union{String,Nothing}=nothing)
+        PlutoElement(
+            tagname="div",
+            children=children,
+            attributes=Dict(
+                "style" => style,
+                "class" => class,
+            )
+        )
+    end
+
+
+    struct EmbeddableDisplay
+        x
+        script_id
+    end
+    function Base.show(io::IO, m::MIME"text/html", e::EmbeddableDisplay)
+        body, mime = format_output_default(e.x, io)
+        
+        write(io, """
+        <pluto-display></pluto-display>
+        <script id=$(e.script_id)>
+    
+            // see https://plutocon2021-demos.netlify.app/fonsp%20%E2%80%94%20javascript%20inside%20pluto to learn about the techniques used in this script
+            
+            const body = $(publish_to_js(body, e.script_id))
+            const mime = "$(string(mime))"
+            
+            const create_new = this == null || this._mime !== mime
+            
+            const display = create_new ? currentScript.previousElementSibling : this
+            
+            display.persist_js_state = true
+            display.body = body
+            if(create_new) {
+                // only set the mime if necessary, it triggers a second preact update
+                display.mime = mime
+                // add it also as unwatched property to prevent interference from Preact
+                display._mime = mime
+            }
+            return display
+    
+        </script>
+        """)
+    end
+    """
+        embed_display(x)
+
+    A wrapper around any object that will display it using Pluto's interactive multimedia viewer (images, arrays, tables, etc.),the same system used to display cell output.
+    The returned object can be **embedded in HTML output** (we recommend [HypertextLiteral.jl](https://github.com/MechanicalRabbit/HypertextLiteral.jl) or [HyperScript.jl](https://github.com/yurivish/Hyperscript.jl)),
+    which means that you can use it to create things like _"table viewer left, plot right"_. 
+
+    # Example
+
+    Markdown can interpolate HTML-showable objects, including the embedded display:
+
+    ```julia
+    md"\""
+    # Cool data
+
+    \$(embed_display(rand(10)))
+
+    Wow!
+    "\""
+    ```
+
+    You can use HTML templating packages to create cool layouts, like two arrays side-by-side:
+
+    ```julia
+    using HypertextLiteral
+    ```
+
+    ```julia
+    @htl(\"""
+
+    <div style="display: flex;">
+    \$(embed_display(rand(4)))
+    \$(embed_display(rand(4)))
+    </div>
+
+    \""")
+    ```
+    """
+    embed_display(x) = EmbeddableDisplay(x, rand('a':'z',16) |> join)
+
+    # if an embedded display is being rendered _directly by Pluto's viewer_, then rendered the embedded object directly. When interpolating an embedded display into HTML, the user code will render the embedded display to HTML using the HTML show method above, and this shortcut is not called.
+    # We add this short-circuit to increase performance for UI that uses an embedded display when it is not necessary.
+    format_output_default(@nospecialize(val::EmbeddableDisplay), @nospecialize(context=default_iocontext)) = format_output_default(val.x, context)
 end
 
-tree_data(@nospecialize(e::DivElement), context::IOContext) = Dict{Symbol, Any}(
-    :style => e.style, 
-    :classname => e.class, 
-    :children => Any[
-        format_output_default(value, context) for value in e.children
-    ],
-)
-pluto_showable(::MIME"application/vnd.pluto.divelement+object", ::DivElement) = true
-
+import .PlutoHTML: DivElement, embed_display
+export embed_display
 
 ###
 # LOGGING
