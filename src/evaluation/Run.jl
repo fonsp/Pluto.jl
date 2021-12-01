@@ -19,7 +19,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 			# update cache and save notebook because the dependencies might have changed after expanding macros
 			update_dependency_cache!(notebook)
-			session.options.server.disable_writing_notebook_files || save_notebook(notebook)
+			save_notebook(session, notebook)
 		end
 	else
 		workspace = WorkspaceManager.get_workspace((session, notebook))
@@ -139,7 +139,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 			# update cache and save notebook because the dependencies might have changed after expanding macros
 			update_dependency_cache!(notebook)
-			session.options.server.disable_writing_notebook_files || save_notebook(notebook)
+			save_notebook(session, notebook)
 
 			return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook=deletion_hook, user_requested_run=user_requested_run, already_in_run=true, already_run=to_run[1:i])
 		elseif !isempty(implicit_usings)
@@ -148,7 +148,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 			# update cache and save notebook because the dependencies might have changed after expanding macros
 			update_dependency_cache!(notebook)
-			session.options.server.disable_writing_notebook_files || save_notebook(notebook)
+			save_notebook(session, notebook)
 
 			return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook=deletion_hook, user_requested_run=user_requested_run, already_in_run=true, already_run=to_run[1:i])
 		end
@@ -398,7 +398,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	new = notebook.topology = updated_topology(old, notebook, cells) # macros are not yet resolved
 
 	update_dependency_cache!(notebook)
-	session.options.server.disable_writing_notebook_files || (save && save_notebook(notebook))
+	save && save_notebook(session, notebook)
 
 	# _assume `prerender_text == false` if you want to skip some details_
 	to_run_online = if !prerender_text

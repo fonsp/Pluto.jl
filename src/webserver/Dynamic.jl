@@ -310,7 +310,7 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
         # In the future, we should get rid of that request, and save the file here. For now, we don't save the file here, to prevent unnecessary file IO.
         # (You can put a log in save_notebook to track how often the file is saved)
         if FileChanged() ∈ changes && CodeChanged() ∉ changes
-             🙋.session.options.server.disable_writing_notebook_files || save_notebook(notebook)
+             save_notebook(🙋.session, notebook)
         end
 
         let bond_changes = filter(x -> x isa BondChanged, changes)
