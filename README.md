@@ -112,8 +112,6 @@ julia> ]
 (v1.7) pkg> add Pluto
 ```
 
-_Using the package manager for the first time after installing Julia can take up to 15 minutes - hang in there!_
-
 _Tip for new Julia users: To return to the `julia>` prompt from the Pkg REPL,
 either press backspace when the input line is empty or press Ctrl+C._
 
