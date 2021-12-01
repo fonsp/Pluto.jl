@@ -169,7 +169,7 @@ export const Cell = ({
             </button>
             ${cell_api_ready ? html`<${CellOutput} errored=${errored} ...${output} cell_id=${cell_id} />` : html``}
             <${CellInput}
-                local_code=${cell_input_local?.code ?? code}
+                cell_input_local=${cell_input_local}
                 remote_code=${code}
                 cell_dependencies=${cell_dependencies}
                 variables_in_all_notebook=${variables_in_all_notebook}

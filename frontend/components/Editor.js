@@ -104,6 +104,8 @@ const first_true_key = (obj) => {
  *  cell_id: string,
  *  code: string,
  *  local_code: string,
+ *  local_code_owner_uuid?: string,
+ *  time_arrow?: number,
  *  code_folded: boolean,
  *  running_disabled: boolean,
  * }}
@@ -212,6 +214,7 @@ export class Editor extends Component {
         super()
 
         this.state = {
+            client_id: uuidv4(),
             notebook: /** @type {NotebookData} */ initial_notebook(vscode.load_cell_inputs_from_vscode_state()),
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
@@ -242,15 +245,9 @@ export class Editor extends Component {
 
         this.setStatePromise = (fn) => new Promise((r) => this.setState(fn, r))
 
-        const throttledSetLocalNotebook = _.throttle((cell_id, new_val) => {
-            update_notebook((notebook) => {
-                console.log("Executing throttled thing")
-                notebook.cell_inputs[cell_id].local_code = new_val
-            })
-        }, 120)
-
         // these are things that can be done to the local notebook
         this.actions = {
+            get_client_id: () => this?.state?.client_id,
             get_notebook: () => this?.state?.notebook || {},
             send: (...args) => this.client.send(...args),
             //@ts-ignore
@@ -258,16 +255,13 @@ export class Editor extends Component {
             set_doc_query: (query) => this.setState({ desired_doc_query: query }),
             set_local_cell: (cell_id, new_val) => {
                 vscode.store_cell_input_in_vscode_state(cell_id, new_val)
-                throttledSetLocalNotebook(cell_id, new_val)
-                return this.setStatePromise(
-                    immer((state) => {
-                        state.notebook.cell_inputs[cell_id] = {
-                            ...state.notebook.cell_inputs[cell_id],
-                            local_code: new_val,
-                        }
-                        state.selected_cells = []
-                    })
-                )
+                update_notebook((notebook) => {
+                    if (notebook.cell_inputs[cell_id].local_code !== new_val) {
+                        notebook.cell_inputs[cell_id].local_code = new_val
+                        notebook.cell_inputs[cell_id].local_code_owner_uuid = this.state.client_id
+                        notebook.cell_inputs[cell_id].time_arrow += 1
+                    }
+                })
             },
             focus_on_neighbor: (cell_id, delta, line = delta === -1 ? Infinity : -1, ch = 0) => {
                 const i = this.state.notebook.cell_order.indexOf(cell_id)
