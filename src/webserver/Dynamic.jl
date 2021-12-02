@@ -455,7 +455,12 @@ responses[:reshow_cell] = function response_reshow_cell(🙋::ClientRequest)
         cell_id = UUID(🙋.body["cell_id"])
         🙋.notebook.cells_dict[cell_id]
     end
-    run = WorkspaceManager.format_fetch_in_workspace((🙋.session, 🙋.notebook), cell.cell_id, ends_with_semicolon(cell.code), (parse(PlutoRunner.ObjectID, 🙋.body["objectid"], base=16), convert(Int64, 🙋.body["dim"])))
+    run = WorkspaceManager.format_fetch_in_workspace(
+        (🙋.session, 🙋.notebook), 
+        cell.cell_id, 
+        ends_with_semicolon(cell.code), 
+        (parse(PlutoRunner.ObjectID, 🙋.body["objectid"], base=16), convert(Int64, 🙋.body["dim"])),
+    )
     set_output!(cell, run, ExprAnalysisCache(🙋.notebook, cell); persist_js_state=true)
     # send to all clients, why not
     send_notebook_changes!(🙋 |> without_initiator)

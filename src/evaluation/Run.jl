@@ -413,7 +413,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 				ServerSession(),
 				notebook,
 			),
-			force_offline=true,
+			is_offline_renderer=true,
 		)
 
 		new = notebook.topology = static_resolve_topology(new)
