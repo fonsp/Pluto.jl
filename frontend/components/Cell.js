@@ -249,11 +249,7 @@ export const IsolatedCell = ({
     const cell_api_ready = useCellApi(node_ref, published_objects, pluto_actions)
 
     return html`
-        <pluto-cell
-            ref=${node_ref}
-            id=${cell_id}
-            class=${hidden ? 'hidden-cell' : 'isolated-cell'}
-        >
+        <pluto-cell ref=${node_ref} id=${cell_id} class=${hidden ? "hidden-cell" : "isolated-cell"}>
             ${cell_api_ready ? html`<${CellOutput} ...${output} cell_id=${cell_id} />` : html``}
         </pluto-cell>
     `

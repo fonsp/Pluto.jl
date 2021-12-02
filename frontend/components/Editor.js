@@ -74,7 +74,10 @@ const ProcessStatus = {
  */
 const statusmap = (state) => ({
     disconnected: !(state.connected || state.initializing || state.static_preview),
-    loading: (BinderPhase.wait_for_user < state.binder_phase && state.binder_phase < BinderPhase.ready) || state.initializing || state.moving_file,
+    loading:
+        (state.binder_phase != null && BinderPhase.wait_for_user < state.binder_phase && state.binder_phase < BinderPhase.ready) ||
+        state.initializing ||
+        state.moving_file,
     process_restarting: state.notebook.process_status === ProcessStatus.waiting_to_restart,
     process_dead: state.notebook.process_status === ProcessStatus.no_process || state.notebook.process_status === ProcessStatus.waiting_to_restart,
     nbpkg_restart_required: state.notebook.nbpkg?.restart_required_msg != null,
@@ -174,12 +177,13 @@ const launch_params = {
     //@ts-ignore
     disable_ui: !!(url_params.get("disable_ui") ?? window.pluto_disable_ui),
     //@ts-ignore
-    isolated_cell_ids: url_params.getAll("isolated_cell_id") ?? window.isolated_cell_id,
+    isolated_cell_ids: url_params.has("isolated_cell_id") ? url_params.getAll("isolated_cell_id") : window.pluto_isolated_cell_ids,
     //@ts-ignore
     binder_url: url_params.get("binder_url") ?? window.pluto_binder_url,
     //@ts-ignore
     slider_server_url: url_params.get("slider_server_url") ?? window.pluto_slider_server_url,
 }
+console.log("Launch parameters: ", launch_params)
 
 /**
  *
@@ -618,6 +622,7 @@ patch: ${JSON.stringify(
         // these are update message that are _not_ a response to a `send(*, *, {create_promise: true})`
         const on_update = (update, by_me) => {
             if (this.state.notebook.notebook_id === update.notebook_id) {
+                if (this.state.binder_phase != null) console.debug("on_update", update, by_me)
                 const message = update.message
                 switch (update.type) {
                     case "notebook_diff":
@@ -640,6 +645,7 @@ patch: ${JSON.stringify(
                         // alert("Something went wrong 🙈\n Try clearing your browser cache and refreshing the page")
                         break
                 }
+                if (this.state.binder_phase != null) console.debug("on_update done")
             } else {
                 // Update for a different notebook, TODO maybe log this as it shouldn't happen
             }
@@ -1076,7 +1082,7 @@ patch: ${JSON.stringify(
         const status = this.cached_status ?? statusmap(this.state)
         const statusval = first_true_key(status)
 
-        if (launch_params.isolated_cell_ids.length > 0) {
+        if (launch_params.isolated_cell_ids && launch_params.isolated_cell_ids.length > 0) {
             return html`
                 <${PlutoContext.Provider} value=${this.actions}>
                     <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
@@ -1148,7 +1154,7 @@ patch: ${JSON.stringify(
                             </a>
                             <div class="flex_grow_1"></div>
                             ${
-                                this.state.binder_phase === BinderPhase.ready
+                                status.binder
                                     ? html`<pluto-filepicker><a href=${export_url("notebookfile")} target="_blank">Save notebook...</a></pluto-filepicker>`
                                     : html`<${FilePicker}
                                           client=${this.client}

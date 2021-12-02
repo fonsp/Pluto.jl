@@ -2,12 +2,7 @@ name: Bundle Web Assets
 
 on:
     push:
-        paths:
-            - "frontend/**"
-            - "frontend-bundler/**"
-            - ".github/workflows/Bundle.yml"
         branches:
-            - bundled
             - main
     workflow_dispatch:
 
@@ -15,13 +10,19 @@ jobs:
     trigger:
         runs-on: ubuntu-latest
         steps:
-            # Ignore the build changes from previous run
             - uses: actions/checkout@v2
+            - uses: fregante/setup-git-user@v1
+
+            # Ignore the build changes from previous run.
+            # This "just" hard resets to the latest commit on main.
+            # The previous bundle commit will still exist, but will be "dangling", unless we made a tag for it.
+            # Github will eventually clean dangling commits, which is fine because again, the ones with a tag will stay around.
             - name: Make Sure Release Is Reset To Main
               run: |
                   git checkout -b release
                   git reset --hard $GITHUB_SHA
-                  git push -f origin release # force push the branch
+
+            # Do the actual bundling
             - uses: actions/setup-node@v2
               with:
                   node-version: 17.x
@@ -32,10 +33,12 @@ jobs:
             - name: The Actual Build
               working-directory: frontend-bundler
               run: npm run build
-            - uses: EndBug/add-and-commit@v7 # You can change this to use a specific version.
-              with:
-                  # Needs --force because frontend-dist is normally .gitignore'd
-                  add: "frontend-dist --force"
-                  branch: release
-                  push: "origin release --force"
-                  pull: "NO-PULL"
+
+            # Push the rebuild frontend-dist to the release branch.
+            # Needs to be `add --force` because frontend-dist is normally gitignored.
+            # Also needs `push --force` because we reset to main (which doesn't contain the previous frontend-dist)
+            - name: Force push frontend-dist changes
+              run: |
+                  git add frontend-dist --force
+                  git commit -m "$GITHUB_WORKFLOW"
+                  git push origin release --force
