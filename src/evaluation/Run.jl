@@ -193,7 +193,7 @@ function defined_functions(topology::NotebookTopology, cells)
 end
 
 "Run a single cell non-reactively, set its output, return run information."
-function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell, reactive_node::ReactiveNode, expr_cache::ExprAnalysisCache; user_requested_run::Bool=true)
+function run_single!(session_notebook::Tuple{ServerSession,Notebook}, cell::Cell, reactive_node::ReactiveNode, expr_cache::ExprAnalysisCache; user_requested_run::Bool=true)
 	run = WorkspaceManager.eval_format_fetch_in_workspace(
 		session_notebook, 
 		expr_cache.parsedcode, 
@@ -204,7 +204,7 @@ function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},Works
 		user_requested_run,
 	)
 	set_output!(cell, run, expr_cache; persist_js_state=!user_requested_run)
-	if session_notebook isa Tuple && run.process_exited
+	if run.process_exited
 		session_notebook[2].process_status = ProcessStatus.no_process
 	end
 	return run
@@ -413,7 +413,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 				ServerSession(),
 				notebook,
 			),
-			force_offline=true,
+			is_offline_renderer=true,
 		)
 
 		new = notebook.topology = static_resolve_topology(new)
