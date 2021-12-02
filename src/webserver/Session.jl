@@ -52,11 +52,11 @@ end
 
 function save_notebook(session::ServerSession, notebook::Notebook)
     
-    # FUTURE: fire on_save event here
+    # Notify event_listener from here
     try
         session.event_listener(FileSaveEvent(notebook))
-    catch
-        @warn "Couldn't run event listener"
+    catch e
+        @warn "Couldn't run event listener" e
     end
     
     if !session.options.server.disable_writing_notebook_files
