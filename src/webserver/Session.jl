@@ -47,6 +47,21 @@ Base.@kwdef mutable struct ServerSession
     secret::String = String(rand(('a':'z') ∪ ('A':'Z') ∪ ('0':'9'), 8))
     binder_token::Union{String,Nothing} = nothing
     options::Configuration.Options = Configuration.Options()
+    event_listener::Function = function(a::PlutoEvent) end
+end
+
+function save_notebook(session::ServerSession, notebook::Notebook)
+    
+    # Notify event_listener from here
+    try
+        session.event_listener(FileSaveEvent(notebook))
+    catch e
+        @warn "Couldn't run event listener" e
+    end
+    
+    if !session.options.server.disable_writing_notebook_files
+        save_notebook(notebook, notebook.path)
+    end
 end
 
 ###

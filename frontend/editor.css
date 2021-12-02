@@ -1186,6 +1186,7 @@ body:not(.___) pluto-cell.queued > pluto-trafficlight::after {
     */
     opacity: 0.99;
     background-size: 4px var(--patternHeight);
+    animation-duration: 20s;
 }
 
 body:not(.___) pluto-cell.running > pluto-trafficlight::after {
@@ -2203,7 +2204,7 @@ pluto-input .cm-editor .cm-content {
     background: hsla(46, 90%, 98%, 1);
     color: #41323f;
 }
-.cm-editor.cm-focused {
+.cm-editor.cm-focused:not(.__) {
     outline: unset;
 }
 

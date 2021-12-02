@@ -494,6 +494,9 @@ Some of these @test_broken lines are commented out to prevent printing to the te
             expr=:(@parent begin @child 1 + @grandchild 10 end),
             macrocalls=[Symbol("@parent"), Symbol("@child"), Symbol("@grandchild")],
         )
+        @test testee(macroexpand(Main, :(@noinline f(x) = x)), [], [], [], [
+            Symbol("f") => ([], [], [], [])
+        ])
     end
     @testset "Macros and heuristics" begin
         @test test_expression_explorer(

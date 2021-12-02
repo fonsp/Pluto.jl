@@ -12,5 +12,13 @@
     "julia.format.iterOps": false,
     "julia.format.ops": false,
     "julia.format.tuples": false,
-    "julia.format.kwarg": "off"
+    "julia.format.kwarg": "off",
+    
+    "editor.formatOnSave": false,
+    "[javascript]": {
+        "editor.formatOnSave": true
+    },
+    "[css]": {
+        "editor.formatOnSave": true
+    }
 }

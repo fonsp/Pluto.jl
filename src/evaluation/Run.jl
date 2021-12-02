@@ -19,7 +19,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 			# update cache and save notebook because the dependencies might have changed after expanding macros
 			update_dependency_cache!(notebook)
-			session.options.server.disable_writing_notebook_files || save_notebook(notebook)
+			save_notebook(session, notebook)
 		end
 	else
 		workspace = WorkspaceManager.get_workspace((session, notebook))
@@ -139,7 +139,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 			# update cache and save notebook because the dependencies might have changed after expanding macros
 			update_dependency_cache!(notebook)
-			session.options.server.disable_writing_notebook_files || save_notebook(notebook)
+			save_notebook(session, notebook)
 
 			return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook=deletion_hook, user_requested_run=user_requested_run, already_in_run=true, already_run=to_run[1:i])
 		elseif !isempty(implicit_usings)
@@ -148,7 +148,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 			# update cache and save notebook because the dependencies might have changed after expanding macros
 			update_dependency_cache!(notebook)
-			session.options.server.disable_writing_notebook_files || save_notebook(notebook)
+			save_notebook(session, notebook)
 
 			return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook=deletion_hook, user_requested_run=user_requested_run, already_in_run=true, already_run=to_run[1:i])
 		end
@@ -247,15 +247,17 @@ end
 collect_implicit_usings(topology::NotebookTopology, cell::Cell) = ExpressionExplorer.collect_implicit_usings(topology.codes[cell].module_usings_imports)
 
 "Returns the set of macros names defined by this cell"
-defined_macros(topology::NotebookTopology, cell::Cell) = filter(is_macro_identifier, topology.nodes[cell].funcdefs_without_signatures)
+defined_macros(topology::NotebookTopology, cell::Cell) = defined_macros(topology.nodes[cell])
+defined_macros(node::ReactiveNode) = filter(is_macro_identifier, node.funcdefs_without_signatures) ∪ filter(is_macro_identifier, node.definitions) # macro definitions can come from imports
 
 "Tells whether or not a cell can 'unlock' the resolution of other cells"
 function can_help_resolve_cells(topology::NotebookTopology, cell::Cell)
     cell_code = topology.codes[cell]
     cell_node = topology.nodes[cell]
-    !isempty(cell_code.module_usings_imports.imports) || # <-- TODO(paul): check explicitely for `import Pkg: @macro` instead of any imports
+    macros = defined_macros(cell_node)
+
 	!isempty(cell_code.module_usings_imports.usings) ||
-	any(is_macro_identifier, cell_node.funcdefs_without_signatures)
+		(!isempty(macros) && any(calls -> !disjoint(calls, macros), topology.nodes[c].macrocalls for c in topology.unresolved_cells))
 end
 
 # Sorry couldn't help myself - DRAL
@@ -266,6 +268,7 @@ end
 struct Failure <: Result
 	error
 end
+struct Skipped <: Result end
 
 """We still have 'unresolved' macrocalls, use the current and maybe previous workspace to do macro-expansions.
 
@@ -309,7 +312,7 @@ function resolve_topology(
 
 	function analyze_macrocell(cell::Cell)
 		if unresolved_topology.nodes[cell].macrocalls ⊆ ExpressionExplorer.can_macroexpand
-			return nothing
+			return Skipped()
 		end
 
 		result = macroexpand_cell(cell)
@@ -352,7 +355,9 @@ function resolve_topology(
 				# set function_wrapped to the function wrapped analysis of the expanded expression.
 				new_codes[cell] = ExprAnalysisCache(unresolved_topology.codes[cell]; forced_expr_id, function_wrapped)
 			else
-				@debug "Expansion failed" err=result.error
+				if result isa Failure
+					@debug "Expansion failed" err=result.error
+				end
 				push!(still_unresolved_nodes, cell)
 			end
 	end
@@ -393,7 +398,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	new = notebook.topology = updated_topology(old, notebook, cells) # macros are not yet resolved
 
 	update_dependency_cache!(notebook)
-	session.options.server.disable_writing_notebook_files || (save && save_notebook(notebook))
+	save && save_notebook(session, notebook)
 
 	# _assume `prerender_text == false` if you want to skip some details_
 	to_run_online = if !prerender_text
@@ -408,7 +413,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 				ServerSession(),
 				notebook,
 			),
-			force_offline=true,
+			is_offline_renderer=true,
 		)
 
 		new = notebook.topology = static_resolve_topology(new)

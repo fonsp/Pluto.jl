@@ -316,7 +316,7 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
         # In the future, we should get rid of that request, and save the file here. For now, we don't save the file here, to prevent unnecessary file IO.
         # (You can put a log in save_notebook to track how often the file is saved)
         if FileChanged() ∈ changes && CodeChanged() ∉ changes
-             🙋.session.options.server.disable_writing_notebook_files || save_notebook(notebook)
+             save_notebook(🙋.session, notebook)
         end
 
         let bond_changes = filter(x -> x isa BondChanged, changes)
@@ -437,7 +437,7 @@ end
 
 without_initiator(🙋::ClientRequest) = ClientRequest(session=🙋.session, notebook=🙋.notebook)
 
-responses[:restart_process] = function response_restrart_process(🙋::ClientRequest; run_async::Bool=true)
+responses[:restart_process] = function response_restart_process(🙋::ClientRequest; run_async::Bool=true)
     require_notebook(🙋)
 
     
@@ -461,7 +461,12 @@ responses[:reshow_cell] = function response_reshow_cell(🙋::ClientRequest)
         cell_id = UUID(🙋.body["cell_id"])
         🙋.notebook.cells_dict[cell_id]
     end
-    run = WorkspaceManager.format_fetch_in_workspace((🙋.session, 🙋.notebook), cell.cell_id, ends_with_semicolon(cell.code), (parse(PlutoRunner.ObjectID, 🙋.body["objectid"], base=16), convert(Int64, 🙋.body["dim"])))
+    run = WorkspaceManager.format_fetch_in_workspace(
+        (🙋.session, 🙋.notebook), 
+        cell.cell_id, 
+        ends_with_semicolon(cell.code), 
+        (parse(PlutoRunner.ObjectID, 🙋.body["objectid"], base=16), convert(Int64, 🙋.body["dim"])),
+    )
     set_output!(cell, run, ExprAnalysisCache(🙋.notebook, cell); persist_js_state=true)
     # send to all clients, why not
     send_notebook_changes!(🙋 |> without_initiator)

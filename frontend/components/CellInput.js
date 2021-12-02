@@ -95,8 +95,6 @@ const replaceRange6 = (/** @type {EditorView} */ cm, text, from, to) =>
     })
 
 // Compartments: https://codemirror.net/6/examples/config/
-let editable = new Compartment()
-
 let useCompartment = (/** @type {import("../imports/Preact.js").Ref<EditorView>} */ codemirror_ref, value) => {
     let compartment = useRef(new Compartment())
     let initial_value = useRef(compartment.current.of(value))
@@ -292,7 +290,8 @@ export const CellInput = ({
             // But I found out that keyboard events have a `.repeated` property which is perfect for what we want...
             // So now this is just the cell deleting logic (and the repeated stuff is in a separate plugin)
             if (cm.state.doc.length === 0) {
-                on_focus_neighbor(cell_id, -1)
+                // `Infinity, Infinity` means: last line, last character
+                on_focus_neighbor(cell_id, -1, Infinity, Infinity)
                 on_delete()
                 return true
             }

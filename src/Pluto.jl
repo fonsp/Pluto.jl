@@ -34,6 +34,7 @@ include("./analysis/Topology.jl")
 include("./analysis/Errors.jl")
 include("./analysis/TopologicalOrder.jl")
 include("./notebook/Notebook.jl")
+include("./notebook/Events.jl")
 include("./webserver/Session.jl")
 include("./webserver/PutUpdates.jl")
 
