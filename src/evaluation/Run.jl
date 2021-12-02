@@ -202,6 +202,7 @@ function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},Works
 		expr_cache.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing,
 		expr_cache.forced_expr_id,
 		user_requested_run,
+		collect(keys(cell.published_objects)),
 	)
 	set_output!(cell, run, expr_cache; persist_js_state=!user_requested_run)
 	if session_notebook isa Tuple && run.process_exited
@@ -228,7 +229,17 @@ function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache; persist_js_
 		persist_js_state=persist_js_state,
 		has_pluto_hook_features=run.has_pluto_hook_features,
 	)
-	cell.published_objects = run.published_objects
+	cell.published_objects = let
+		old_published = cell.published_objects
+		new_published = run.published_objects
+		for (k,v) in old_published
+			if haskey(new_published, k)
+				new_published[k] = v
+			end
+		end
+		new_published
+	end
+	
 	cell.runtime = run.runtime
 	cell.errored = run.errored
 	cell.running = cell.queued = false

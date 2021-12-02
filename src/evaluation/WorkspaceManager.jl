@@ -284,6 +284,7 @@ function eval_format_fetch_in_workspace(
     function_wrapped_info::Union{Nothing,Tuple}=nothing,
     forced_expr_id::Union{PlutoRunner.ObjectID,Nothing}=nothing,
     user_requested_run::Bool=true,
+    known_published_objects::Vector{String}=String[],
 )::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
 
     workspace = get_workspace(session_notebook)
@@ -319,7 +320,7 @@ function eval_format_fetch_in_workspace(
     end
 
     early_result === nothing ?
-        format_fetch_in_workspace(workspace, cell_id, ends_with_semicolon) :
+        format_fetch_in_workspace(workspace, cell_id, ends_with_semicolon, known_published_objects) :
         early_result
 end
 
@@ -335,6 +336,7 @@ function format_fetch_in_workspace(
     session_notebook::Union{SN,Workspace}, 
     cell_id, 
     ends_with_semicolon, 
+    known_published_objects::Vector{String}=String[],
     showmore_id::Union{PlutoRunner.ObjectDimPair,Nothing}=nothing,
 )::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
     workspace = get_workspace(session_notebook)
@@ -345,6 +347,7 @@ function format_fetch_in_workspace(
             Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.formatted_result_of(
                 $cell_id, 
                 $ends_with_semicolon, 
+                $known_published_objects,
                 $showmore_id,
                 getfield(Main, $(QuoteNode(workspace.module_name))),
                 )))

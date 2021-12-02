@@ -757,6 +757,7 @@ const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 function formatted_result_of(
     cell_id::UUID, 
     ends_with_semicolon::Bool, 
+    known_published_objects::Vector{String}=String[],
     showmore::Union{ObjectDimPair,Nothing}=nothing, 
     workspace::Module=Main,
 )::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
@@ -780,13 +781,22 @@ function formatted_result_of(
     else
         ("", MIME"text/plain"())
     end
+    
+    published_objects = get(cell_published_objects, cell_id, Dict{String,Any}())
+    
+    for k in known_published_objects
+        if haskey(published_objects, k)
+            published_objects[k] = nothing
+        end
+    end
+    
     return (
         output_formatted = output_formatted,
         errored = errored, 
         interrupted = false, 
         process_exited = false, 
         runtime = get(cell_runtimes, cell_id, nothing),
-        published_objects = get(cell_published_objects, cell_id, Dict{String,Any}()),
+        published_objects = published_objects,
         has_pluto_hook_features = has_pluto_hook_features,
     )
 end
