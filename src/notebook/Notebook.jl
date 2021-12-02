@@ -111,11 +111,9 @@ function save_notebook(io, notebook::Notebook, serialize_temp=false)
     println(io, "using Markdown")
     println(io, "using InteractiveUtils")
     # Super Advanced Code Analysis™ to add the @bind macro to the saved file if it's used somewhere.
-    if any(occursin("@bind", serialize_temp ? c.local_code : c.code) for c in notebook.cells)
-        println(io, "")
-        println(io, "# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).")
-        println(io, PlutoRunner.fake_bind)
-    end
+    println(io, "")
+    println(io, "# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).")
+    println(io, PlutoRunner.fake_bind)
     println(io)
 
     cells_ordered = collect(topological_order(notebook))

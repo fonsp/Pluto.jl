@@ -44,7 +44,8 @@ import {
     indentUnit,
     combineConfig,
     NodeProp,
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@0.19.2/dist/index.es.min.js"
+    Annotation,
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@582d0ba6d0e6ed485549eb89c2869c0fe0c8b142/dist/index.es.min.js"
 
 export {
     EditorState,
@@ -92,4 +93,5 @@ export {
     indentUnit,
     combineConfig,
     NodeProp,
+    Annotation,
 }

@@ -45,6 +45,7 @@ import {
     indentUnit,
     StateField,
     StateEffect,
+    Annotation,
 } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
@@ -54,6 +55,8 @@ import { cell_movement_plugin } from "./CellInput/cell_movement_plugin.js"
 import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
 import { cl } from "../common/ClassTable.js"
+
+const remoteAnnotation = Annotation.define()
 
 export const pluto_syntax_colors = HighlightStyle.define([
     /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
@@ -153,7 +156,6 @@ export const CellInput = ({
     const newcm_ref = useRef(/** @type {EditorView} */ (null))
     const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))
     const remote_code_ref = useRef(null)
-    const suppress_next_event = useRef(false)
     const on_change_ref = useRef(null)
     on_change_ref.current = on_change
 
@@ -166,9 +168,8 @@ export const CellInput = ({
         // Functions are hard to compare, so I useMemo manually
         useMemo(() => {
             return EditorView.updateListener.of((update) => {
-                if (update.docChanged) {
-                    if (suppress_next_event.current === true) on_change(update.state.doc.toString())
-                    else suppress_next_event.current = true
+                if (update.docChanged && !update.transactions.some((t) => t.annotation(remoteAnnotation))) {
+                    on_change(update.state.doc.toString())
                 }
             })
         }, [on_change])
@@ -476,10 +477,10 @@ export const CellInput = ({
         const current_value = getValue6(newcm_ref.current) ?? ""
         const will_update_code = local_code_owner_uuid !== client_id && current_value !== local_code
         if (will_update_code) {
-            // This is terrible, but it's basically, if we're updating the local code,
-            // the next event shouldn't fire at all.
-            suppress_next_event.current = false
-            setValue6(newcm_ref.current, local_code)
+            newcm_ref.current.dispatch({
+                changes: { from: 0, to: newcm_ref.current.state.doc.length, insert: local_code },
+                annotations: [remoteAnnotation.of(1)], // Maybe cursor in the future??
+            })
         }
     }, [local_code])
 
