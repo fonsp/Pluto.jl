@@ -189,13 +189,15 @@ export class Welcome extends Component {
                         const recommended_updates = updates.filter((r) => r.body.toLowerCase().includes("recommended update"))
                         if (recommended_updates.length > 0) {
                             console.log(`Newer version ${latest} is available`)
-                            alert(
-                                "A new version of Pluto.jl is available! 🎉\n\n    You have " +
-                                    local +
-                                    ", the latest is " +
-                                    latest +
-                                    '.\n\nYou can update Pluto.jl using the julia package manager:\n    import Pkg; Pkg.update("Pluto")\nAfterwards, exit Pluto.jl and restart julia.'
-                            )
+                            if (!this.client.version_info.dismiss_update_notification) {
+                                alert(
+                                    "A new version of Pluto.jl is available! 🎉\n\n    You have " +
+                                        local +
+                                        ", the latest is " +
+                                        latest +
+                                        '.\n\nYou can update Pluto.jl using the julia package manager:\n    import Pkg; Pkg.update("Pluto")\nAfterwards, exit Pluto.jl and restart julia.'
+                                )
+                            }
                         }
                     }
                 })
