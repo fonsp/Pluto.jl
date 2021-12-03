@@ -135,7 +135,7 @@ function notebook_to_js(notebook::Notebook)
                     "persist_js_state" => cell.output.persist_js_state,
                     "has_pluto_hook_features" => cell.output.has_pluto_hook_features,
                 ),
-                "published_objects" => cell.published_objects,
+                "published_object_keys" => keys(cell.published_objects),
                 "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,
@@ -143,6 +143,7 @@ function notebook_to_js(notebook::Notebook)
             )
         for (id, cell) in notebook.cells_dict),
         "cell_order" => notebook.cell_order,
+        "published_objects" => merge!(Dict{String,Any}(), (c.published_objects for c in values(notebook.cells_dict))...),
         "bonds" => Dict{String,Dict{String,Any}}(
             String(key) => Dict(
                 "value" => bondvalue.value, 
