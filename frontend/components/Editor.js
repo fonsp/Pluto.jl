@@ -31,6 +31,7 @@ import { BinderButton } from "./BinderButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
 import { ProgressBar } from "./ProgressBar.js"
 import { IsolatedCell } from "./Cell.js"
+import { RawHTMLContainer } from "./CellOutput.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -177,6 +178,8 @@ const launch_params = {
     notebookfile: url_params.get("notebookfile") ?? window.pluto_notebookfile,
     //@ts-ignore
     disable_ui: !!(url_params.get("disable_ui") ?? window.pluto_disable_ui),
+    //@ts-ignore
+    preamble_html: url_params.get("preamble_html") ?? window.pluto_preamble_html,
     //@ts-ignore
     isolated_cell_ids: url_params.has("isolated_cell_id") ? url_params.getAll("isolated_cell_id") : window.pluto_isolated_cell_ids,
     //@ts-ignore
@@ -1199,6 +1202,7 @@ patch: ${JSON.stringify(
             launch_params.notebookfile == null ? null : new URL(launch_params.notebookfile, window.location.href).href
         } />
                     <${FetchProgress} progress=${this.state.statefile_download_progress} />
+                    ${launch_params.preamble_html ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />` : null}
                     <${Main}>
                         <${Preamble}
                             last_update_time=${this.state.last_update_time}
