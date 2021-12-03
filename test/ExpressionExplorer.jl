@@ -125,8 +125,11 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(a .+= b), [:b, :a], [], [:+], [])
         @test testee(:(a[i] .+= b), [:b, :a, :i], [], [:+], [])
         @test testee(:(a .+ b ./ sqrt.(c, d)), [:a, :b, :c, :d], [], [:+, :/, :sqrt], [])
-        @test testee(:(f = .+), [:+], [:f], [], [])
-        @test testee(:(reduce(.==, foo)), [:(==), :foo], [], [:reduce], [])
+
+        # in 1.5 :(.+) is a symbol, in 1.6 its Expr:(:(.), :+)
+        broadcasted_add = :(.+) isa Symbol ? :(.+) : :+
+        @test testee(:(f = .+), [broadcasted_add], [:f], [], [])
+        @test testee(:(reduce(.+, foo)), [broadcasted_add, :foo], [], [:reduce], [])
     end
     @testset "`for` & `while`" begin
         @test testee(:(for k in 1:n; k + s; end), [:n, :s], [], [:+, :(:)], [])
