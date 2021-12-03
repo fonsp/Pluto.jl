@@ -223,7 +223,6 @@ export class Editor extends Component {
             disable_ui: launch_params.disable_ui,
             static_preview: launch_params.statefile != null,
             statefile_download_progress: null,
-            preamble_html_contents: null,
             offer_binder: launch_params.notebookfile != null && launch_params.binder_url != null,
             binder_phase: null,
             binder_session_url: null,
@@ -714,15 +713,6 @@ patch: ${JSON.stringify(
             this.actions = this.state.disable_ui || (launch_params.slider_server_url != null && !this.state.connected) ? this.fake_actions : this.real_actions //heyo
         }
         this.on_disable_ui()
-        if (launch_params.preamble_html) {
-            fetch(launch_params.preamble_html)
-                .then((r) => r.text())
-                .then((t) =>
-                    this.setState({
-                        preamble_html_contents: t,
-                    })
-                )
-        }
 
         this.original_state = null
         if (this.state.static_preview) {
@@ -1207,11 +1197,7 @@ patch: ${JSON.stringify(
             launch_params.notebookfile == null ? null : new URL(launch_params.notebookfile, window.location.href).href
         } />
                     <${FetchProgress} progress=${this.state.statefile_download_progress} />
-                    ${
-                        this.state.preamble_html_contents
-                            ? html`<${RawHTMLContainer} body=${this.state.preamble_html_contents} className=${"preamble"} />`
-                            : null
-                    }
+                    ${launch_params.preamble_html ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />` : null}
                     <${Main}>
                         <${Preamble}
                             last_update_time=${this.state.last_update_time}
