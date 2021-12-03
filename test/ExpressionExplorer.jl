@@ -125,6 +125,8 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(a .+= b), [:b, :a], [], [:+], [])
         @test testee(:(a[i] .+= b), [:b, :a, :i], [], [:+], [])
         @test testee(:(a .+ b ./ sqrt.(c, d)), [:a, :b, :c, :d], [], [:+, :/, :sqrt], [])
+        @test testee(:(f = .+), [:+], [:f], [], [])
+        @test testee(:(reduce(.==, foo)), [:(==), :foo], [], [:reduce], [])
     end
     @testset "`for` & `while`" begin
         @test testee(:(for k in 1:n; k + s; end), [:n, :s], [], [:+, :(:)], [])
