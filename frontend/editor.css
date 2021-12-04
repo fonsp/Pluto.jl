@@ -784,6 +784,10 @@ body.binder.loading #binder_spinners {
 
 /* PREAMBLE */
 
+.raw-html-wrapper.preamble {
+    width: 100%;
+}
+
 main > preamble {
     display: flex;
     height: 20px;
@@ -1208,6 +1212,7 @@ body:not(.___) pluto-cell.queued > pluto-trafficlight::after {
     */
     opacity: 0.99;
     background-size: 4px var(--patternHeight);
+    animation-duration: 20s;
 }
 
 body:not(.___) pluto-cell.running > pluto-trafficlight::after {
@@ -2275,7 +2280,7 @@ pluto-input .cm-editor .cm-content {
     background: var(--cm-editor-bg-color);
     color: var(--cm-editor-text-color);
 }
-.cm-editor.cm-focused {
+.cm-editor.cm-focused:not(.__) {
     outline: unset;
 }
 

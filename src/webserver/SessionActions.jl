@@ -2,6 +2,9 @@ module SessionActions
 
 import ..Pluto: ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, readwrite, update_save_run!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, @asynclog
 using FileWatching
+import ..Pluto.DownloadCool: download_cool
+
+import UUIDs: UUID, uuid1
 
 struct NotebookIsRunningException <: Exception
     notebook::Notebook
@@ -16,11 +19,12 @@ function Base.showerror(io::IO, e::UserError)
 end
 
 function open_url(session::ServerSession, url::AbstractString; kwargs...)
-    path = download(url, emptynotebook().path)
+    path = download_cool(url, emptynotebook().path)
     open(session, path; kwargs...)
 end
 
-function open(session::ServerSession, path::AbstractString; run_async=true, compiler_options=nothing, as_sample=false)
+"Open the notebook at `path` into `session::ServerSession` and run it. Returns the `Notebook`."
+function open(session::ServerSession, path::AbstractString; run_async=true, compiler_options=nothing, as_sample=false, notebook_id::UUID=uuid1())
     if as_sample
         new_filename = "sample " * without_pluto_file_extension(basename(path))
         new_path = numbered_until_new(joinpath(new_notebooks_directory(), new_filename); suffix=".jl")
@@ -36,6 +40,7 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
     end
     
     nb = load_notebook(tamepath(path); disable_writing_notebook_files=session.options.server.disable_writing_notebook_files)
+    nb.notebook_id = notebook_id
 
     # overwrites the notebook environment if specified
     if compiler_options !== nothing
@@ -73,7 +78,7 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
             @info "Updating from file..."
             
             
-		    sleep(0.1) ## There seems to be a synchronization issue if your OS is VERYFAST
+            sleep(0.1) ## There seems to be a synchronization issue if your OS is VERYFAST
             wait_until_file_unchanged(nb.path, .3)
             
             # call update_from_file. If it returns false, that means that the notebook file was corrupt, so we try again, a maximum of 10 times.
@@ -139,7 +144,8 @@ function save_upload(content::Vector{UInt8})
     save_path
 end
 
-function new(session::ServerSession; run_async=true)
+"Create a new empty notebook inside `session::ServerSession`. Returns the `Notebook`."
+function new(session::ServerSession; run_async=true, notebook_id::UUID=uuid1())
     nb = if session.options.server.init_with_file_viewer
         
         @warn "DEPRECATED: init_with_file_viewer will be removed soon."
@@ -177,6 +183,7 @@ function new(session::ServerSession; run_async=true)
             Notebook([Cell("import Pkg"), Cell("# This cell disables Pluto's package manager and activates the global environment. Click on ? inside the bubble next to Pkg.activate to learn more.\n# (added automatically because a sysimage is used)\nPkg.activate()"), Cell()])
         end
     end
+    nb.notebook_id = notebook_id
     update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
     
     add(session, nb; run_async=run_async)
@@ -184,6 +191,7 @@ function new(session::ServerSession; run_async=true)
     nb
 end
 
+"Shut down `notebook` inside `session`."
 function shutdown(session::ServerSession, notebook::Notebook; keep_in_session=false, async=false)
     notebook.nbpkg_restart_recommended_msg = nothing
     notebook.nbpkg_restart_required_msg = nothing
