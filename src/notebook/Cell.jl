@@ -58,6 +58,7 @@ function Base.convert(::Type{Cell}, cell::Dict)
 	Cell(
         cell_id=UUID(cell["cell_id"]),
         code=cell["code"],
+        local_code=get(cell, "local_code", get(cell, "code", "")),
         code_folded=cell["code_folded"],
         running_disabled=cell["running_disabled"],
     )
