@@ -9,9 +9,6 @@ import { PasteHandler } from "./PasteHandler.js"
 const get_path = (p) => (typeof p === "object" ? p.path : p) ?? ""
 const get_url = (p) => (typeof p === "object" ? p.url : p) ?? ""
 
-const get_path = (p) => (typeof p === "object" ? p.path : p) ?? ""
-const get_url = (p) => (typeof p === "object" ? p.url : p) ?? ""
-
 const create_empty_notebook = (path, notebook_id = null) => {
     return {
         transitioning: false, // between running and being shut down
