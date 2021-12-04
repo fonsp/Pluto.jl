@@ -57,6 +57,7 @@ const tabCompletionState = StateField.define({
 
 /** @param {EditorView} cm */
 const tab_completion_command = (cm) => {
+    console.log("Running command")
     // This will return true if the autocomplete select popup is open
     if (select_autocomplete_command.run(cm)) {
         return true

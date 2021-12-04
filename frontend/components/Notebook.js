@@ -150,11 +150,6 @@ export const Notebook = ({
                         }}
                         cell_input=${notebook.cell_inputs[cell_id]}
                         cell_dependencies=${notebook.cell_dependencies[cell_id] ?? {}}
-                        cell_input_local=${{
-                            code: notebook.cell_inputs[cell_id].local_code,
-                            local_code_owner_uuid: notebook.cell_inputs[cell_id].local_code_owner_uuid,
-                            time_arrow: notebook.cell_inputs[cell_id].time_arrow,
-                        }}
                         notebook_id=${notebook.notebook_id}
                         on_update_doc_query=${on_update_doc_query}
                         on_cell_input=${on_cell_input}

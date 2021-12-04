@@ -41,10 +41,9 @@ const useCellApi = (node_ref, published_object_keys, pluto_actions) => {
  * }} props
  * */
 export const Cell = ({
-    cell_input: { cell_id, code, code_folded, running_disabled },
+    cell_input: { cell_id, code, code_folded, running_disabled, local_code, time_arrow, local_code_owner_uuid },
     cell_result: { queued, running, runtime, errored, output, published_object_keys, depends_on_disabled_cells },
     cell_dependencies,
-    cell_input_local,
     notebook_id,
     on_update_doc_query,
     on_change,
@@ -102,8 +101,12 @@ export const Cell = ({
     // We activate animations instantly BUT deactivate them NSeconds later.
     // We then toggle animation visibility using opacity. This saves a bunch of repaints.
     const activate_animation = useDebouncedTruth(running || queued || waiting_to_run)
-
-    const class_code_differs = code !== (cell_input_local?.code ?? code)
+    /* {
+        code: notebook.cell_inputs[cell_id].local_code,
+        local_code_owner_uuid: notebook.cell_inputs[cell_id].local_code_owner_uuid,
+        time_arrow: notebook.cell_inputs[cell_id].time_arrow,
+    }*/
+    const class_code_differs = code !== (local_code ?? code)
     const class_code_folded = code_folded && cm_forced_focus == null
 
     // during the initial page load, force_hide_input === true, so that cell outputs render fast, and codemirrors are loaded after
@@ -172,7 +175,9 @@ export const Cell = ({
             </button>
             ${cell_api_ready ? html`<${CellOutput} errored=${errored} ...${output} cell_id=${cell_id} />` : html``}
             <${CellInput}
-                cell_input_local=${cell_input_local}
+                local_code=${local_code}
+                local_code_owner_uuid=${local_code_owner_uuid}
+                time_arrow=${time_arrow}
                 remote_code=${code}
                 cell_dependencies=${cell_dependencies}
                 variables_in_all_notebook=${variables_in_all_notebook}

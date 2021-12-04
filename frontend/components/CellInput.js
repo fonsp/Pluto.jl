@@ -129,7 +129,9 @@ let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPluto
  * }} props
  */
 export const CellInput = ({
-    cell_input_local,
+    local_code,
+    local_code_owner_uuid,
+    time_arrow,
     remote_code,
     disable_input,
     focus_after_creation,
@@ -152,14 +154,13 @@ export const CellInput = ({
 }) => {
     let pluto_actions = useContext(PlutoContext)
     const client_id = pluto_actions.get_client_id()
-    const { code: local_code, local_code_owner_uuid, time_arrow } = cell_input_local || {}
     const newcm_ref = useRef(/** @type {EditorView} */ (null))
     const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))
     const remote_code_ref = useRef(null)
     const on_change_ref = useRef(null)
     const last_time_arrow_ref = useRef(time_arrow)
     on_change_ref.current = on_change
-
+    console.log("RENDERS")
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
     let used_variables_compartment = useCompartment(newcm_ref, UsedVariablesFacet.of(variables_in_all_notebook))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
@@ -203,18 +204,21 @@ export const CellInput = ({
         let keyMapTab = (/** @type {EditorView} */ cm) => {
             // This will return true if the autocomplete select popup is open
             if (select_autocomplete_command.run(cm)) {
+                console.log("Will Run autocomplete - nope")
                 return true
             }
 
             // TODO Multicursor?
             let selection = cm.state.selection.main
             if (!selection.empty) {
+                console.log("Will Run autocomplete - Empty")
                 return indentMore(cm)
             } else {
                 cm.dispatch({
                     changes: { from: selection.from, to: selection.to, insert: "\t" },
                     selection: EditorSelection.cursor(selection.from + 1),
                 })
+                console.log("Adding tab")
                 return true
             }
         }
@@ -406,7 +410,9 @@ export const CellInput = ({
                     go_to_definition_plugin,
                     pluto_autocomplete({
                         request_autocomplete: async ({ text }) => {
+                            console.log("Requesting autocomplete", text)
                             let { message } = await pluto_actions.send("complete", { query: text }, { notebook_id: notebook_id })
+                            console.log("Got autocomplete:" + JSON.stringify(message))
                             return {
                                 start: utf8index_to_ut16index(text, message.start),
                                 stop: utf8index_to_ut16index(text, message.stop),
@@ -477,7 +483,7 @@ export const CellInput = ({
             setValue6(newcm_ref.current, remote_code)
         }
     }, [remote_code])
-
+    /*
     useEffect(() => {
         if (newcm_ref.current == null) return // Not sure when and why this gave an error, but now it doesn't
         const current_value = getValue6(newcm_ref.current) ?? ""
@@ -490,7 +496,7 @@ export const CellInput = ({
             })
         }
     }, [local_code, client_id, local_code_owner_uuid, time_arrow])
-
+*/
     useEffect(() => {
         const cm = newcm_ref.current
         if (cm_forced_focus == null) {
