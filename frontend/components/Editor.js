@@ -641,7 +641,7 @@ patch: ${JSON.stringify(
                         if (message?.response?.from_reset) {
                             console.log("Trying to reset state after failure")
                             try {
-                                apply_notebook_patches(message.patches, initial_notebook(vscode.load_cell_inputs_from_vscode_state()))
+                                apply_notebook_patches(message.patches, initial_notebook())
                             } catch (exception) {
                                 alert("Oopsie!! please refresh your browser and everything will be alright!")
                             }
