@@ -477,7 +477,7 @@ export const CellInput = ({
             setValue6(newcm_ref.current, remote_code)
         }
     }, [remote_code])
-    /*
+
     useEffect(() => {
         if (newcm_ref.current == null) return // Not sure when and why this gave an error, but now it doesn't
         const current_value = getValue6(newcm_ref.current) ?? ""
@@ -490,7 +490,7 @@ export const CellInput = ({
             })
         }
     }, [local_code, client_id, local_code_owner_uuid, time_arrow])
-*/
+
     useEffect(() => {
         const cm = newcm_ref.current
         if (cm_forced_focus == null) {
