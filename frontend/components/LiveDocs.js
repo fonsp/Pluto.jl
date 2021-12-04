@@ -132,6 +132,7 @@ export let LiveDocs = ({ desired_doc_query, on_update_doc_query, notebook }) => 
                             set_state((state) => ({ ...state, hidden: true }))
                             e.stopPropagation()
                             setTimeout(() => live_doc_search_ref.current && live_doc_search_ref.current.focus(), 0)
+                            location.reload()
                         }}><span></span></button>
                     `}
                 </header>
