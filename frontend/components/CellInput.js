@@ -160,7 +160,6 @@ export const CellInput = ({
     const on_change_ref = useRef(null)
     const last_time_arrow_ref = useRef(time_arrow)
     on_change_ref.current = on_change
-    console.log("RENDERS")
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
     let used_variables_compartment = useCompartment(newcm_ref, UsedVariablesFacet.of(variables_in_all_notebook))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
@@ -204,21 +203,18 @@ export const CellInput = ({
         let keyMapTab = (/** @type {EditorView} */ cm) => {
             // This will return true if the autocomplete select popup is open
             if (select_autocomplete_command.run(cm)) {
-                console.log("Will Run autocomplete - nope")
                 return true
             }
 
             // TODO Multicursor?
             let selection = cm.state.selection.main
             if (!selection.empty) {
-                console.log("Will Run autocomplete - Empty")
                 return indentMore(cm)
             } else {
                 cm.dispatch({
                     changes: { from: selection.from, to: selection.to, insert: "\t" },
                     selection: EditorSelection.cursor(selection.from + 1),
                 })
-                console.log("Adding tab")
                 return true
             }
         }
@@ -410,9 +406,7 @@ export const CellInput = ({
                     go_to_definition_plugin,
                     pluto_autocomplete({
                         request_autocomplete: async ({ text }) => {
-                            console.log("Requesting autocomplete", text)
                             let { message } = await pluto_actions.send("complete", { query: text }, { notebook_id: notebook_id })
-                            console.log("Got autocomplete:" + JSON.stringify(message))
                             return {
                                 start: utf8index_to_ut16index(text, message.start),
                                 stop: utf8index_to_ut16index(text, message.stop),
