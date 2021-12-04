@@ -1,7 +1,7 @@
 import { html, Component, useRef, useLayoutEffect, useContext, useEffect, useMemo } from "../imports/Preact.js"
 
 import { ErrorMessage } from "./ErrorMessage.js"
-import { TreeView, TableView } from "./TreeView.js"
+import { TreeView, TableView, DivElement } from "./TreeView.js"
 
 import { add_bonds_listener, set_bound_elements_to_their_value } from "../common/Bond.js"
 import { cl } from "../common/ClassTable.js"
@@ -12,6 +12,7 @@ import register from "../imports/PreactCustomElement.js"
 
 import { EditorState, EditorView, julia_andrey, defaultHighlightStyle } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_syntax_colors } from "./CellInput.js"
+import { useState } from "../imports/Preact.js"
 
 import hljs from "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.2.0/build/es/highlight.min.js"
 
@@ -55,20 +56,23 @@ export class CellOutput extends Component {
     }
 
     render() {
+        const rich_output =
+            this.props.errored ||
+            !this.props.body ||
+            (this.props.mime !== "application/vnd.pluto.tree+object" &&
+                this.props.mime !== "application/vnd.pluto.table+object" &&
+                this.props.mime !== "text/plain")
+        const allow_translate = !this.props.errored && rich_output
         return html`
             <pluto-output
                 class=${cl({
-                    rich_output:
-                        this.props.errored ||
-                        !this.props.body ||
-                        (this.props.mime !== "application/vnd.pluto.tree+object" &&
-                            this.props.mime !== "application/vnd.pluto.table+object" &&
-                            this.props.mime !== "text/plain"),
+                    rich_output,
                     scroll_y: this.props.mime === "application/vnd.pluto.table+object" || this.props.mime === "text/plain",
                 })}
+                translate=${allow_translate}
                 mime=${this.props.mime}
             >
-                <assignee>${this.props.rootassignee}</assignee>
+                <assignee translate=${false}>${this.props.rootassignee}</assignee>
                 ${this.state.error ? html`<div>${this.state.error.message}</div>` : html`<${OutputBody} ...${this.props} />`}
             </pluto-output>
         `
@@ -140,7 +144,10 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
         case "application/vnd.pluto.stacktrace+object":
             return html`<div><${ErrorMessage} cell_id=${cell_id} ...${body} /></div>`
             break
-
+            body.cell_id
+        case "application/vnd.pluto.divelement+object":
+            return DivElement({ cell_id, ...body })
+            break
         case "text/plain":
             if (body) {
                 return html`<div>
@@ -166,17 +173,20 @@ let IframeContainer = ({ body }) => {
 
         run(async () => {
             await new Promise((resolve) => iframeref.current.addEventListener("load", () => resolve()))
-            let iframeDocument = iframeref.current.contentWindow.document
 
-            // Insert iframe resizer inside the iframe
-            let x = iframeDocument.createElement("script")
-            x.src = "https://cdn.jsdelivr.net/npm/iframe-resizer@4.2.11/js/iframeResizer.contentWindow.min.js"
-            x.integrity = "sha256-EH+7IdRixWtW5tdBwMkTXL+HvW5tAqV4of/HbAZ7nEc="
-            x.crossOrigin = "anonymous"
-            iframeDocument.head.appendChild(x)
+            /** @type {Document} */
+            let iframeDocument = iframeref.current.contentWindow.document
+            /** Grab the <script> tag for the iframe content window resizer
+             * @type {HTMLScriptElement} */
+            let original_script_element = document.querySelector("#iframe-resizer-content-window-script")
+            // Clone it into the iframe document, so we have the exact same script tag there
+            let iframe_resizer_content_script = iframeDocument.importNode(original_script_element)
+            // Fix the `src` so it isn't relative to the iframes url, but this documents url
+            iframe_resizer_content_script.src = new URL(iframe_resizer_content_script.src, original_script_element.baseURI).toString()
+            iframeDocument.head.appendChild(iframe_resizer_content_script)
 
             // Apply iframe resizer from the host side
-            new Promise((resolve) => x.addEventListener("load", () => resolve()))
+            new Promise((resolve) => iframe_resizer_content_script.addEventListener("load", () => resolve()))
             // @ts-ignore
             window.iFrameResize({ checkOrigin: false }, iframeref.current)
         })
@@ -261,32 +271,38 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                 let script_id = node.id
                 let old_result = script_id ? previous_results_map.get(script_id) : null
 
-                if (is_displayable(old_result)) {
-                    node.parentElement.insertBefore(old_result, node)
+                if (node.type === "module") {
+                    console.warn("We don't (yet) fully support <script type=module> (loading modules with <script type=module src=...> is fine).")
                 }
 
-                const cell = node.closest("pluto-cell")
-                let result = await execute_dynamic_function({
-                    environment: {
-                        this: script_id ? old_result : window,
-                        currentScript: node,
-                        invalidation: invalidation,
-                        getPublishedObject: (id) => cell.getPublishedObject(id),
-                        ...observablehq_for_cells,
-                    },
-                    code: node.innerText,
-                })
-                // Save result for next run
-                if (script_id != null) {
-                    results_map.set(script_id, result)
-                }
-                // Insert returned element
-                if (result !== old_result) {
+                if (node.type === "" || node.type === "text/javascript") {
                     if (is_displayable(old_result)) {
-                        old_result.remove()
+                        node.parentElement.insertBefore(old_result, node)
                     }
-                    if (is_displayable(result)) {
-                        node.parentElement.insertBefore(result, node)
+
+                    const cell = root_node.closest("pluto-cell")
+                    let result = await execute_dynamic_function({
+                        environment: {
+                            this: script_id ? old_result : window,
+                            currentScript: node,
+                            invalidation: invalidation,
+                            getPublishedObject: (id) => cell.getPublishedObject(id),
+                            ...observablehq_for_cells,
+                        },
+                        code: node.innerText,
+                    })
+                    // Save result for next run
+                    if (script_id != null) {
+                        results_map.set(script_id, result)
+                    }
+                    // Insert returned element
+                    if (result !== old_result) {
+                        if (is_displayable(old_result)) {
+                            old_result.remove()
+                        }
+                        if (is_displayable(result)) {
+                            node.parentElement.insertBefore(result, node)
+                        }
                     }
                 }
             } catch (err) {
@@ -302,7 +318,39 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
 
 let run = (f) => f()
 
-export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timestamp }) => {
+/** @param {HTMLTemplateElement} template */
+let declarative_shadow_dom_polyfill = (template) => {
+    // Support declarative shadowroot 😼
+    // https://web.dev/declarative-shadow-dom/
+    // The polyfill they mention on the page is nice and all, but we need more.
+    // For one, we need the polyfill anyway as we're adding html using innerHTML (just like we need to run the scripts ourselves)
+    // Also, we want to run the scripts inside the shadow roots, ideally in the same order that a browser would.
+    // And we want nested shadowroots, which their polyfill doesn't provide (and I hope the spec does)
+    try {
+        const mode = template.getAttribute("shadowroot")
+        // @ts-ignore
+        const shadowRoot = template.parentElement.attachShadow({ mode })
+        // @ts-ignore
+        shadowRoot.appendChild(template.content)
+        template.remove()
+
+        // To mimick as much as possible the browser behavior, I
+        const scripts_or_shadowroots = Array.from(shadowRoot.querySelectorAll("script, template[shadowroot]"))
+        return scripts_or_shadowroots.flatMap((script_or_shadowroot) => {
+            if (script_or_shadowroot.nodeName === "SCRIPT") {
+                return [script_or_shadowroot]
+            } else if (script_or_shadowroot.nodeName === "TEMPLATE") {
+                // @ts-ignore
+                return declarative_shadow_dom_polyfill(script_or_shadowroot)
+            }
+        })
+    } catch (error) {
+        console.error(`Couldn't attach declarative shadow dom to`, template, `because of`, error)
+        return []
+    }
+}
+
+export let RawHTMLContainer = ({ body, className = "", persist_js_state = false, last_run_timestamp }) => {
     let pluto_actions = useContext(PlutoContext)
     let pluto_bonds = useContext(PlutoBondsContext)
     let js_init_set = useContext(PlutoJSInitializingContext)
@@ -325,13 +373,19 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
         })
 
         const dump = document.createElement("p-dumpster")
+        // @ts-ignore
         dump.append(...container.current.childNodes)
 
         // Actually "load" the html
         container.current.innerHTML = body
 
+        let scripts_in_shadowroots = Array.from(container.current.querySelectorAll("template[shadowroot]")).flatMap((template) => {
+            // @ts-ignore
+            return declarative_shadow_dom_polyfill(template)
+        })
+
         // do this synchronously after loading HTML
-        const new_scripts = Array.from(container.current.querySelectorAll("script"))
+        const new_scripts = [...scripts_in_shadowroots, ...Array.from(container.current.querySelectorAll("script"))]
 
         run(async () => {
             js_init_set?.add(container.current)
@@ -381,7 +435,7 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
         }
     }, [body, persist_js_state, last_run_timestamp, pluto_actions])
 
-    return html`<div class="raw-html-wrapper" ref=${container}></div>`
+    return html`<div class="raw-html-wrapper ${className}" ref=${container}></div>`
 }
 
 /** @param {HTMLElement} code_element */
@@ -393,7 +447,12 @@ export let highlight = (code_element, language) => {
         if (language === "julia") {
             const editorview = new EditorView({
                 state: EditorState.create({
-                    doc: code_element.innerText.trim(),
+                    // Remove references to `Main.workspace#xx.` in the docs since
+                    // its shows up as a comment and can be confusing
+                    doc: code_element.innerText
+                        .trim()
+                        .replace(/Main.workspace#\d+\./, "")
+                        .replace(/Main.workspace#(\d+)/, 'Main.var"workspace#$1"'),
 
                     extensions: [
                         pluto_syntax_colors,
@@ -412,8 +471,10 @@ export let highlight = (code_element, language) => {
             editorview.dom.style.setProperty("display", "inline-flex", "important")
             editorview.dom.style.setProperty("background-color", "transparent", "important")
         } else {
-            window.hljs = hljs
-            console.log(code_element)
+            if (language === "htmlmixed") {
+                code_element.classList.remove("language-htmlmixed")
+                code_element.classList.add("language-html")
+            }
             hljs.highlightElement(code_element)
         }
     }

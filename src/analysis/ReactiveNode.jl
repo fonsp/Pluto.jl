@@ -52,7 +52,16 @@ function ReactiveNode(symstate::SymbolsState)
 
 	for (namesig, body_symstate) in symstate.funcdefs
 		push!(result.funcdefs_with_signatures, namesig)
-		union!(result.funcdefs_without_signatures, generate_funcnames(namesig.name))
+		push!(result.funcdefs_without_signatures, join_funcname_parts(namesig.name))
+
+		generated_names = generate_funcnames(namesig.name)
+		generated_names_syms = Set{Symbol}(join_funcname_parts.(generated_names))
+
+		# add the generated names so that they are added as soft definitions
+		# this means that they will not be used if a cycle is created
+		union!(result.soft_definitions, generated_names_syms)
+
+		filter!(!∈(generated_names_syms), result.references) # don't reference defined functions (simulated recursive calls)
 	end
 
 	return result

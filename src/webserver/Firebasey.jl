@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.15.0
+# v0.16.1
 
 using Markdown
 using InteractiveUtils
@@ -609,7 +609,7 @@ end
 md"## `@skip_as_script`"
 
 # ╔═╡ e907d862-2de1-11eb-11a9-4b3ac37cb0f3
-function skip_as_script(m::Module)
+function is_inside_pluto(m::Module)
 	if isdefined(m, :PlutoForceDisplay)
 		return m.PlutoForceDisplay
 	else
@@ -619,15 +619,21 @@ end
 
 # ╔═╡ e924a0be-2de1-11eb-2170-71d56e117af2
 """
-	@displayonly expression
+	@skip_as_script expression
 
 Marks a expression as Pluto-only, which means that it won't be executed when running outside Pluto. Do not use this for your own projects.
 """
-macro skip_as_script(ex) skip_as_script(__module__) ? esc(ex) : nothing end
+macro skip_as_script(ex)
+	if is_inside_pluto(__module__)
+		esc(ex)
+	else
+		nothing
+	end
+end
 
 # ╔═╡ c2c2b057-a88f-4cc6-ada4-fc55ac29931e
 "The opposite of `@skip_as_script`"
-macro only_as_script(ex) skip_as_script(__module__) ? nothing : esc(ex) end
+macro only_as_script(ex) is_inside_pluto(__module__) ? nothing : esc(ex) end
 
 # ╔═╡ e748600a-2de1-11eb-24be-d5f0ecab8fa4
 # Only define this in Pluto - assume we are `using Test` otherwise
@@ -640,7 +646,14 @@ begin
 	end
 	# Do nothing inside pluto (so we don't need to have Test as dependency)
 	# test/Firebasey is `using Test` before including this file
-	@only_as_script ((@isdefined Test) ? nothing : macro test(expr) quote nothing end end)
+	@only_as_script begin
+		if !isdefined(@__MODULE__, Symbol("@test"))
+			macro test(e...) nothing; end
+			macro test_throws(e...) nothing; end
+			macro test_broken(e...) nothing; end
+			macro testset(e...) nothing; end
+		end
+	end
 end
 
 # ╔═╡ 5ddfd616-db20-451b-bc1e-2ad52e0e2777
@@ -718,7 +731,7 @@ end
 @skip_as_script @test 1 + 1 + 1 == x
 
 # ╔═╡ ea934d9c-2de1-11eb-3f1d-3b60465decde
-@skip_as_script @test throw("Oh my god") == x
+@skip_as_script @test_throws String throw("Oh my god") == x
 
 # ╔═╡ ee70e282-36d5-4772-8585-f50b9a67ca54
 md"## Track"

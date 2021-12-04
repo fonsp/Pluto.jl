@@ -629,10 +629,10 @@ button.toggle_export span {
 }
 
 nav#at_the_top button.toggle_export span {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/shapes-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/shapes-outline.svg");
 }
 aside#export button.toggle_export span {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-outline.svg");
     filter: invert();
 }
 nav#at_the_top:after {
@@ -771,6 +771,10 @@ body.binder.loading #binder_spinners {
 
 /* PREAMBLE */
 
+.raw-html-wrapper.preamble {
+    width: 100%;
+}
+
 main > preamble {
     display: flex;
     height: 20px;
@@ -821,14 +825,14 @@ main > preamble span.saving-icon::after {
     height: 17px;
     margin-bottom: -3px;
     background-size: 17px 17px;
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sync-circle-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sync-circle-outline.svg");
     background-repeat: no-repeat;
     background-position-x: right;
     background-position-y: 1px;
 }
 
 main > preamble span.saved-icon::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/checkmark-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/checkmark-outline.svg");
 }
 main > preamble button {
     position: relative;
@@ -924,6 +928,15 @@ pluto-output:not(.rich_output) > div > pre {
 pluto-display > div {
     display: inline-block;
 }
+
+/* isolated cell view */
+.isolated-cell > pluto-output {
+    padding: 0;
+}
+.hidden-cell {
+    display: none;
+}
+
 /* SELECTION */
 
 pluto-cell.selected {
@@ -980,10 +993,11 @@ pluto-input .cm-editor {
     border-bottom-right-radius: 4px;
     border: 1px solid rgba(0, 0, 0, 0.1);
     border-left: none;
-    transition: border 0.15s ease-in-out;
+    transition: border-color 0.15s ease-in-out;
 
     /* Make sure that scrolling an editor into view gives some breathing room */
     scroll-margin-block: 20vh;
+    min-height: 25px;
 }
 pluto-input:focus-within .cm-editor {
     /* z-index increased by 1 to make sure that the autocomplete window shows above all other editors, see https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context */
@@ -1075,11 +1089,11 @@ pluto-cell:focus-within > pluto-shoulder > button {
 } */
 
 pluto-shoulder > button > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/eye-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/eye-outline.svg");
 }
 
 pluto-cell.code_folded > pluto-shoulder > button > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/eye-off-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/eye-off-outline.svg");
 }
 
 /* TRAFFIC LIGHT */
@@ -1139,31 +1153,31 @@ body:not(.___) pluto-cell:focus-within > pluto-trafficlight {
     border-left-width: 4px;
     border-left-style: solid;
     margin-left: -4px;
-    background-clip: content-box;
+    background-clip: padding-box;
     background-color: rgba(0, 0, 0, 0.1);
 }
 
 body:not(.___) pluto-cell.selected > pluto-trafficlight {
     background: rgba(40, 78, 189, 0.4);
     border-left-color: rgba(40, 78, 189, 0.4);
-    background-clip: content-box;
+    background-clip: padding-box;
 }
 
 body:not(.___) pluto-cell.code_differs > pluto-trafficlight {
     background: hsla(46, 70%, 37%, 0.68);
     border-left-color: hsla(46, 70%, 37%, 0.68);
-    background-clip: content-box;
+    background-clip: padding-box;
 }
 
 body:not(.___) pluto-cell.errored > pluto-trafficlight {
     background: hsla(0, 70%, 80%, 0.7);
     border-left-color: hsla(0, 70%, 80%, 0.7);
-    background-clip: content-box;
+    background-clip: padding-box;
 }
 
 body:not(.___) pluto-cell.queued > pluto-trafficlight::after {
     background: repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0) 8px, rgba(0, 0, 0, 0.1) 8px, rgba(0, 0, 0, 0.1) 16px);
-    background-clip: content-box;
+    background-clip: padding-box;
     /* [1]
     Queued, Running, Errored are really fast changing props.
     We make sure to on-off the gradients with opacity and not toggle the animation
@@ -1174,6 +1188,7 @@ body:not(.___) pluto-cell.queued > pluto-trafficlight::after {
     */
     opacity: 0.99;
     background-size: 4px var(--patternHeight);
+    animation-duration: 20s;
 }
 
 body:not(.___) pluto-cell.running > pluto-trafficlight::after {
@@ -1348,10 +1363,10 @@ pluto-cell > button.add_cell.after {
 }
 
 pluto-cell > button.add_cell > span::after {
-    /* background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/add-circle-outline.svg); */
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/add-outline.svg);
+    /* background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/add-circle-outline.svg"); */
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/add-outline.svg");
 }
-pluto-input > button.delete_cell ul.input_context_menu {
+pluto-input > button.input_context_menu ul {
     --width: 156px;
     left: 100%;
     top: -8px;
@@ -1364,15 +1379,15 @@ pluto-input > button.delete_cell ul.input_context_menu {
     background-color: white;
 }
 @media screen and (min-width: 921px) {
-    pluto-input > button.delete_cell ul.input_context_menu {
+    pluto-input > button.input_context_menu ul {
         left: calc(100% - 3px);
     }
 }
 @media screen and (max-width: 920px) {
-    pluto-input > button.delete_cell {
+    pluto-input > button.input_context_menu {
         z-index: 31;
     }
-    pluto-input > button.delete_cell ul.input_context_menu {
+    pluto-input > button.input_context_menu ul {
         left: calc(100% - var(--width) - 36px);
     }
 }
@@ -1430,30 +1445,34 @@ pluto-input > button.delete_cell ul.input_context_menu {
 }
 .bandage_icon {
     filter: opacity(0.3);
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/bandage-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/bandage-outline.svg");
 }
 .enable_cell_icon {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg");
 }
 
 .disable_cell_icon {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ban-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ban-outline.svg");
     background-size: 15px;
     background-repeat: no-repeat;
 }
 .delete_icon {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle-outline.svg");
 }
 
-pluto-input > button.delete_cell {
+pluto-input > button.input_context_menu {
     /* top: 3px; */
     /* left: -26px; */
     right: 0px;
     padding: 5px;
 }
 
-pluto-input > button.delete_cell > span.icon::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ellipsis-horizontal-circle-outline.svg);
+pluto-input > button.input_context_menu.open {
+    opacity: 1;
+}
+
+pluto-input > button.input_context_menu > span.icon::after {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ellipsis-horizontal-circle-outline.svg");
 }
 
 /* PKG UI */
@@ -1490,28 +1509,28 @@ pkg-status-mark > button > span::after {
     height: 1.5em;
     width: 1.5em;
 
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/time-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/time-outline.svg");
     opacity: 0.3;
 }
 
 pkg-status-mark.installed > button > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/checkmark-outline.svg);
-    /* background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/cloud-done-outline.svg); */
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/checkmark-outline.svg");
+    /* background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/cloud-done-outline.svg); "*/
 }
 pkg-status-mark.busy > button > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sync-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sync-outline.svg");
     animation: loadspin 3s ease-in-out infinite;
 }
 pkg-status-mark.not_found > button > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/cloud-offline-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/cloud-offline-outline.svg");
     opacity: 0.6;
 }
 pkg-status-mark.will_be_installed > button > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/cloud-download-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/cloud-download-outline.svg");
     opacity: 0.6;
 }
 pkg-status-mark.disable_pkg > button > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chatbox-ellipses-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chatbox-ellipses-outline.svg");
     opacity: 0.6;
 }
 pkg-status-mark select {
@@ -1689,18 +1708,18 @@ pluto-runarea > button.runcell {
 }
 
 pluto-runarea > button.runcell > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg");
 }
 
 pluto-runarea.interrupt > button.runcell > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/stop-circle-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/stop-circle-outline.svg");
 }
 
 pluto-runarea.jump > button.runcell > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-redo-circle-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-redo-circle-outline.svg");
 }
 pluto-runarea.save > button.runcell > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chevron-forward-circle-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chevron-forward-circle-outline.svg");
 }
 
 pluto-cell:not(.show_input) > pluto-runarea {
@@ -1766,7 +1785,7 @@ pluto-helpbox {
     display: flex;
     flex-direction: column;
     width: calc(100vw - 50px - (700px + 25px + 6px)); /* compat */
-    width: calc(max(min(100vw - 50px - (700px + 25px + 6px), 450px), 300px));
+    width: clamp(300px, calc(100vw - 50px - (700px + 25px + 6px)), 450px);
     height: 70vh; /* compat */
     height: min(70vh, 900px);
     /* overflow: hidden; */
@@ -1911,9 +1930,9 @@ footer {
 
 footer form {
     height: 1.5rem;
-    display: flex;
-    flex-direction: row;
-    justify-content: flex-end;
+
+    opacity: 1;
+    transition: opacity 5s;
 }
 
 footer form > * {
@@ -1973,6 +1992,12 @@ footer button {
     margin: 0 auto;
     padding: 1rem;
     text-align: right;
+
+    /* height: 1.5rem; */
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
 }
 
 /* UNDO DELETED CELL */
@@ -2054,10 +2079,10 @@ body > nav#slide_controls > button > span::after {
     background-size: 30px 30px;
 }
 body > nav#slide_controls > button.prev > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-back-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-back-outline.svg");
 }
 body > nav#slide_controls > button.next > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-forward-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-forward-outline.svg");
 }
 
 /* CODEMIRROR HINTS */
@@ -2094,6 +2119,9 @@ pluto-input .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
     color: white;
     background: #16659d;
 }
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionLabel {
+    border-color: transparent;
+}
 
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete li.c_notexported {
     color: rgba(0, 0, 0, 0.5);
@@ -2124,12 +2152,36 @@ Based on "Paraíso (Light)" by Jan T. Sott:
 */
 
 [data-pluto-variable] {
-    text-decoration: none;
+    /* text-decoration-thickness: 3px; */
     font-weight: inherit;
 }
-body.ctrl_down [data-pluto-variable]:hover {
+
+[data-pluto-variable],
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete li.c_from_notebook .cm-completionLabel {
+    font-weight: bold;
     text-decoration: underline;
+    text-decoration-color: #ced2ef;
+    text-decoration-thickness: 3px;
+    text-decoration-skip-ink: none;
+}
+
+body.ctrl_down [data-pluto-variable],
+body.ctrl_down [data-cell-variable] {
+    text-decoration-color: #d177e6;
     cursor: pointer;
+}
+body.ctrl_down [data-pluto-variable]:hover,
+body.ctrl_down [data-pluto-variable]:hover * {
+    color: #af5bc3 !important;
+}
+
+/* Variable that is declared in the same cell */
+[data-cell-variable] {
+    /* Can give this cool styles later as well, but not for now nahhh */
+    text-decoration: none;
+}
+body.ctrl_down [data-cell-variable]:hover * {
+    color: #af5bc3 !important;
 }
 
 .cm-tooltip.cm-tooltip-autocomplete {
@@ -2146,11 +2198,15 @@ pluto-input .cm-editor .cm-scroller,
     font-size: 0.75rem;
 }
 
+pluto-input .cm-editor .cm-content {
+    padding: 2px 0px;
+}
+
 .cm-editor {
     background: hsla(46, 90%, 98%, 1);
     color: #41323f;
 }
-.cm-editor.cm-focused {
+.cm-editor.cm-focused:not(.__) {
     outline: unset;
 }
 
@@ -2298,4 +2354,38 @@ pluto-input:focus-within .cm-editor .cm-matchingBracket {
 .awesome-wrapping-plugin-indent > * {
     /* text-indent apparently cascades... which I think is pretty stupid but this is the fix */
     text-indent: initial;
+}
+
+/* PLUTO HOOKS - special styling for cell that runs hook */
+/* New feature, new section in the css! */
+pluto-cell.hooked_up {
+    --pluto-cell-force-color: #00b9ff7a;
+}
+
+pluto-cell.hooked_up pluto-trafficlight {
+    background-color: var(--pluto-cell-force-color) !important;
+}
+
+pluto-cell.hooked_up pluto-input .cm-editor {
+    border-color: var(--pluto-cell-force-color);
+    border-width: 2px;
+    border-left: none;
+    border-top: none;
+}
+
+pluto-cell.hooked_up > pluto-runarea {
+    opacity: 1;
+    background-color: var(--pluto-cell-force-color);
+}
+
+pluto-cell.hooked_up pluto-runarea > span {
+    color: #0000004f;
+}
+
+pluto-cell.hooked_up pluto-output {
+    border-right: solid 2px;
+    border-top: solid 2px;
+    border-top-right-radius: 4px;
+    border-bottom: solid 2px;
+    border-color: var(--pluto-cell-force-color);
 }

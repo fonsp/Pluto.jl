@@ -6,6 +6,12 @@ import { cl } from "../common/ClassTable.js"
 import { RawHTMLContainer, highlight } from "./CellOutput.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 
+const without_workspace_stuff = (str) =>
+    str
+        .replace(/Main\.workspace\#\d+\./g, "") // remove workspace modules from variable names
+        .replace(/ in Main\.workspace\#\d+/g, "") // remove workspace modules from method lists
+        .replace(/#&#61;&#61;#[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\:\d+/g, "") // remove UUIDs from filenames
+
 export let LiveDocs = ({ desired_doc_query, on_update_doc_query, notebook }) => {
     let pluto_actions = useContext(PlutoContext)
     let container_ref = useRef()
@@ -87,13 +93,14 @@ export let LiveDocs = ({ desired_doc_query, on_update_doc_query, notebook }) => 
         })
     }
 
-    let docs_element = useMemo(() => html` <${RawHTMLContainer} body=${state.body} /> `, [state.body])
+    let docs_element = useMemo(() => html` <${RawHTMLContainer} body=${without_workspace_stuff(state.body)} /> `, [state.body])
     let no_docs_found = state.loading === false && state.searched_query !== "" && state.searched_query !== state.shown_query
 
     return html`
         <aside id="helpbox-wrapper" ref=${container_ref}>
             <pluto-helpbox class=${cl({ hidden: state.hidden, loading: state.loading, notfound: no_docs_found })}>
                 <header
+                    translate=${false}
                     onClick=${() => {
                         if (state.hidden) {
                             set_state((state) => ({ ...state, hidden: false }))

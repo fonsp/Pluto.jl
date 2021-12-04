@@ -55,7 +55,7 @@ import {
     PostgreSQL,
     python,
     pythonLanguage,
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@c241428/dist/index.es.min.js"
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@0.19.2/dist/index.es.min.js"
 
 const htmlParser = htmlLanguage.parser
 const mdParser = markdownLanguage.parser
@@ -64,12 +64,12 @@ const sqlLang = sql({ config: { dialect: PostgreSQL } })
 const pythonParser = pythonLanguage.parser
 
 const juliaWrapper = parseMixed((node, input) => {
-    console.log({...input}, {...node})
+    console.log({ ...input }, { ...node })
     if (!["TripleString", "String", "CommandString"].includes(node.type.name)) {
         return null
     }
     const offset = node.name === "TripleString" ? 3 : 1
-    const defaultOverlay = [{ from: node.from + offset, to: Math.min(node.to - offset, input.length)}]
+    const defaultOverlay = [{ from: node.from + offset, to: Math.min(node.to - offset, input.length) }]
     console.log(JSON.stringify(defaultOverlay))
 
     if (defaultOverlay[0].from >= defaultOverlay[0].to) {

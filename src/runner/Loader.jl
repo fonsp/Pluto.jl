@@ -7,11 +7,11 @@ popfirst!(LOAD_PATH)
 local my_dir = @__DIR__
 local pluto_dir = joinpath(my_dir, "..", "..")
 
-local runner_env_dir = mkpath(joinpath(Pkg.envdir(Pkg.depots()[1]), "__pluto_boot_" * string(VERSION)))
+local runner_env_dir = mkpath(joinpath(Pkg.envdir(Pkg.depots()[1]), "__pluto_boot_v2_" * string(VERSION)))
 local new_ptoml_path = joinpath(runner_env_dir, "Project.toml")
 
-local ptoml_contents = read(joinpath(pluto_dir, "Project.toml"), String)
-write(new_ptoml_path, ptoml_contents[findfirst("[deps]", ptoml_contents)[1]:end])
+local ptoml_contents = read(joinpath(my_dir, "NotebookProcessProject.toml"), String)
+write(new_ptoml_path, ptoml_contents)
 
 local pkg_ctx = Pkg.Types.Context(env=Pkg.Types.EnvCache(new_ptoml_path))
 

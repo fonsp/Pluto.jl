@@ -116,8 +116,8 @@ function setcode(cell, newcode)
     cell.code = newcode
 end
 
-function noerror(cell)
-    if cell.errored
+function noerror(cell; verbose=true)
+    if cell.errored && verbose
         @show cell.output.body
     end
     !cell.errored

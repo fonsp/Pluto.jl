@@ -75,12 +75,12 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
             },
         },
         {
-            pattern: /LoadError: cannot assign a value to variable workspace\d+\..+ from module workspace\d+/,
+            pattern: /LoadError: cannot assign a value to variable workspace#\d+\..+ from module workspace#\d+/,
             display: () =>
                 html`<p>Tried to reevaluate an <code>include</code> call, this is not supported. You might need to restart this notebook from the main menu.</p>
                     <p>
                         For a workaround, use the alternative version of <code>include</code> described here:
-                        <a href="https://github.com/fonsp/Pluto.jl/issues/115#issuecomment-661722426">GH issue 115</a>
+                        <a target="_blank" href="https://github.com/fonsp/Pluto.jl/issues/115#issuecomment-661722426">GH issue 115</a>
                     </p>
                     <p>In the future, <code>include</code> will be deprecated, and this will be the default.</p>`,
         },

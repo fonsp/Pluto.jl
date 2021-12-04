@@ -23,7 +23,9 @@ function use_plutopkg(topology::NotebookTopology)
         Symbol("Pkg.API.add") ∈ node.references ||
         # https://juliadynamics.github.io/DrWatson.jl/dev/project/#DrWatson.quickactivate
         Symbol("quickactivate") ∈ node.references ||
-        Symbol("@quickactivate") ∈ node.references
+        Symbol("@quickactivate") ∈ node.references ||
+        Symbol("DrWatson.@quickactivate") ∈ node.references ||
+        Symbol("DrWatson.quickactivate") ∈ node.references
     end
 end
 
@@ -265,17 +267,17 @@ function sync_nbpkg(session, notebook; save::Bool=true)
 
 			if pkg_result.restart_recommended
 				@debug "PlutoPkg: Notebook restart recommended"
-				notebook.nbpkg_restart_recommended_msg = "yes"
+				notebook.nbpkg_restart_recommended_msg = "Yes, something changed during regular sync."
 			end
 			if pkg_result.restart_required
 				@debug "PlutoPkg: Notebook restart REQUIRED"
-				notebook.nbpkg_restart_required_msg = "yes"
+				notebook.nbpkg_restart_required_msg = "Yes, something changed during regular sync."
 			end
 
 			notebook.nbpkg_busy_packages = String[]
             update_nbpkg_cache!(notebook)
 			send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
-			save && save_notebook(notebook)
+			save && save_notebook(session, notebook)
 		end
 	catch e
 		bt = catch_backtrace()
@@ -297,12 +299,12 @@ function sync_nbpkg(session, notebook; save::Bool=true)
 
 		# Clear the embedded Project and Manifest and require a restart from the user.
 		reset_nbpkg(notebook; keep_project=false, save=save)
-		notebook.nbpkg_restart_required_msg = "yes"
+		notebook.nbpkg_restart_required_msg = "Yes, because sync_nbpkg_core failed. \n\n$(error_text)"
         notebook.nbpkg_ctx_instantiated = false
         update_nbpkg_cache!(notebook)
 		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 
-		save && save_notebook(notebook)
+		save && save_notebook(session, notebook)
 	end
 end
 
@@ -425,11 +427,11 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
 		if pkg_result.did_something
 			if pkg_result.restart_recommended
 				@debug "PlutoPkg: Notebook restart recommended"
-				notebook.nbpkg_restart_recommended_msg = "yes"
+				notebook.nbpkg_restart_recommended_msg = "Yes, something changed during regular update_nbpkg."
 			end
 			if pkg_result.restart_required
 				@debug "PlutoPkg: Notebook restart REQUIRED"
-				notebook.nbpkg_restart_required_msg = "yes"
+				notebook.nbpkg_restart_required_msg = "Yes, something changed during regular update_nbpkg."
 			end
 		else
             isfile(bp) && rm(bp)
@@ -438,7 +440,7 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
 		notebook.nbpkg_busy_packages = String[]
         update_nbpkg_cache!(notebook)
 		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
-		save && save_notebook(notebook)
+		save && save_notebook(session, notebook)
 	end
 end
 
@@ -453,7 +455,18 @@ end
 
 function is_nbpkg_equal(a::Union{Nothing,PkgContext}, b::Union{Nothing,PkgContext})::Bool
     if (a isa Nothing) != (b isa Nothing)
-        false
+        the_other = something(a, b)
+        
+        ptoml_contents = PkgCompat.read_project_file(the_other)
+        the_other_is_empty = isempty(strip(ptoml_contents))
+        
+        if the_other_is_empty
+            # then both are essentially 'empty' environments, i.e. equal
+            true
+        else
+            # they are different
+            false
+        end
     elseif a isa Nothing
         true
     else
