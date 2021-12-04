@@ -49,7 +49,7 @@ Base.@kwdef mutable struct Cell
     depends_on_disabled_cells::Bool=false
 end
 
-Cell(cell_id, code) = Cell(cell_id=cell_id, code=code)
+Cell(cell_id, code) = Cell(cell_id=cell_id, code=code, local_code=code)
 Cell(code) = Cell(uuid1(), code)
 
 cell_id(cell::Cell) = cell.cell_id
