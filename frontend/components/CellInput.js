@@ -482,14 +482,13 @@ export const CellInput = ({
         if (newcm_ref.current == null) return // Not sure when and why this gave an error, but now it doesn't
         const current_value = getValue6(newcm_ref.current) ?? ""
         const will_update_code = local_code_owner_uuid !== client_id && current_value !== local_code
-        console.log(`Wants to update code: ${will_update_code} ${time_arrow}/${last_time_arrow_ref.current} || ${local_code}, ${current_value}`)
         if (will_update_code) {
             newcm_ref.current.dispatch({
                 changes: { from: 0, to: newcm_ref.current.state.doc.length, insert: local_code },
                 annotations: [remoteAnnotation.of(1)], // Maybe cursor in the future??
             })
         }
-    }, [local_code, client_id, local_code_owner_uuid, time_arrow])
+    }, [local_code])
 
     useEffect(() => {
         const cm = newcm_ref.current
