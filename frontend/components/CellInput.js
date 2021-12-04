@@ -157,6 +157,7 @@ export const CellInput = ({
     const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))
     const remote_code_ref = useRef(null)
     const on_change_ref = useRef(null)
+    const last_time_arrow_ref = useRef(time_arrow)
     on_change_ref.current = on_change
 
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
@@ -170,6 +171,7 @@ export const CellInput = ({
             return EditorView.updateListener.of((update) => {
                 if (update.docChanged && !update.transactions.some((t) => t.annotation(remoteAnnotation))) {
                     on_change(update.state.doc.toString())
+                    last_time_arrow_ref.current = time_arrow + 1
                 }
             })
         }, [on_change])
@@ -474,15 +476,17 @@ export const CellInput = ({
     }, [remote_code])
 
     useEffect(() => {
+        if (newcm_ref.current == null) return // Not sure when and why this gave an error, but now it doesn't
         const current_value = getValue6(newcm_ref.current) ?? ""
         const will_update_code = local_code_owner_uuid !== client_id && current_value !== local_code
+        console.log(`Wants to update code: ${will_update_code} ${time_arrow}/${last_time_arrow_ref.current} || ${local_code}, ${current_value}`)
         if (will_update_code) {
             newcm_ref.current.dispatch({
                 changes: { from: 0, to: newcm_ref.current.state.doc.length, insert: local_code },
                 annotations: [remoteAnnotation.of(1)], // Maybe cursor in the future??
             })
         }
-    }, [local_code])
+    }, [local_code, client_id, local_code_owner_uuid, time_arrow])
 
     useEffect(() => {
         const cm = newcm_ref.current
