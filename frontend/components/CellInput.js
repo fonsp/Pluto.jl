@@ -167,14 +167,17 @@ export const CellInput = ({
     let on_change_compartment = useCompartment(
         newcm_ref,
         // Functions are hard to compare, so I useMemo manually
-        useMemo(() => {
-            return EditorView.updateListener.of((update) => {
-                if (update.docChanged && !update.transactions.some((t) => t.annotation(remoteAnnotation))) {
-                    on_change(update.state.doc.toString())
-                    last_time_arrow_ref.current = time_arrow + 1
-                }
-            })
-        }, [on_change])
+        useMemo(
+            _.throttle(() => {
+                return EditorView.updateListener.of((update) => {
+                    if (update.docChanged && !update.transactions.some((t) => t.annotation(remoteAnnotation))) {
+                        on_change(update.state.doc.toString())
+                        last_time_arrow_ref.current = time_arrow + 1
+                    }
+                })
+            }, 200),
+            [on_change]
+        )
     )
 
     useLayoutEffect(() => {

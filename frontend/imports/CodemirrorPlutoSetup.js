@@ -45,7 +45,7 @@ import {
     combineConfig,
     NodeProp,
     Annotation,
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@582d0ba6d0e6ed485549eb89c2869c0fe0c8b142/dist/index.es.min.js"
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@bc1b84e0eb4cbe38f20fa7e6dcb63e8f801a346e/dist/index.es.min.js"
 
 export {
     EditorState,
