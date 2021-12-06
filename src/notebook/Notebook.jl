@@ -6,11 +6,9 @@ import Pkg
 
 mutable struct BondValue
     value::Any
-    # This is only so the client can send this, the updater will always put this to `false`
-    is_first_value::Bool
 end
 function Base.convert(::Type{BondValue}, dict::AbstractDict)
-    BondValue(dict["value"], something(get(dict, "is_first_value", false), false))
+    BondValue(dict["value"])
 end
 
 const ProcessStatus = (

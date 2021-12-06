@@ -24,6 +24,7 @@ function generate_html(;
         binder_url_js::AbstractString=repr(default_binder_url),
         
         disable_ui::Bool=true, 
+        preamble_html_js::AbstractString="undefined",
         notebook_id_js::AbstractString="undefined", 
         isolated_cell_ids_js::AbstractString="undefined",
     )::String
@@ -59,6 +60,7 @@ function generate_html(;
         window.pluto_slider_server_url = $(slider_server_url_js);
         window.pluto_binder_url = $(binder_url_js);
         window.pluto_statefile = $(statefile_js);
+        window.pluto_preamble_html = $(preamble_html_js);
         </script>
         <!-- [automatically generated launch parameters can be inserted here] -->
         """

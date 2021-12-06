@@ -350,7 +350,7 @@ let declarative_shadow_dom_polyfill = (template) => {
     }
 }
 
-export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timestamp }) => {
+export let RawHTMLContainer = ({ body, className = "", persist_js_state = false, last_run_timestamp }) => {
     let pluto_actions = useContext(PlutoContext)
     let pluto_bonds = useContext(PlutoBondsContext)
     let js_init_set = useContext(PlutoJSInitializingContext)
@@ -398,7 +398,7 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
 
             if (pluto_actions != null) {
                 set_bound_elements_to_their_value(container.current, pluto_bonds)
-                let remove_bonds_listener = add_bonds_listener(container.current, pluto_actions.set_bond)
+                let remove_bonds_listener = add_bonds_listener(container.current, pluto_actions.set_bond, pluto_bonds)
                 invalidation.then(remove_bonds_listener)
             }
 
@@ -435,7 +435,7 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
         }
     }, [body, persist_js_state, last_run_timestamp, pluto_actions])
 
-    return html`<div class="raw-html-wrapper" ref=${container}></div>`
+    return html`<div class="raw-html-wrapper ${className}" ref=${container}></div>`
 }
 
 /** @param {HTMLElement} code_element */

@@ -277,7 +277,7 @@ function sync_nbpkg(session, notebook; save::Bool=true)
 			notebook.nbpkg_busy_packages = String[]
             update_nbpkg_cache!(notebook)
 			send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
-			save && save_notebook(notebook)
+			save && save_notebook(session, notebook)
 		end
 	catch e
 		bt = catch_backtrace()
@@ -304,7 +304,7 @@ function sync_nbpkg(session, notebook; save::Bool=true)
         update_nbpkg_cache!(notebook)
 		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 
-		save && save_notebook(notebook)
+		save && save_notebook(session, notebook)
 	end
 end
 
@@ -440,7 +440,7 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
 		notebook.nbpkg_busy_packages = String[]
         update_nbpkg_cache!(notebook)
 		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
-		save && save_notebook(notebook)
+		save && save_notebook(session, notebook)
 	end
 end
 

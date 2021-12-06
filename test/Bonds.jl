@@ -182,11 +182,12 @@ import Distributed
         
         
         function set_bond_value(name, value, is_first_value=false)
-            notebook.bonds[name] = Dict("value" => value, "is_first_value" => is_first_value)
+            notebook.bonds[name] = Dict("value" => value)
             Pluto.set_bond_values_reactive(;
                 session=🍭,
                 notebook=notebook,
                 bound_sym_names=[name],
+                is_first_values=[is_first_value],
                 run_async=false,
             )
         end
@@ -257,8 +258,6 @@ import Distributed
         @test Pluto.possible_bond_values(🍭, notebook, :pv4) == 2:11
         @test Pluto.possible_bond_values(🍭, notebook, :pv5) === 1:10
 
-        
-        
         
         
         @test notebook.cells[10].output.body == "missing"

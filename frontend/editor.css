@@ -281,17 +281,18 @@ pluto-output div.admonition .admonition-title {
 pluto-output div.admonition .admonition-title ~ * {
     margin-block-end: 0.5em;
     margin-block-start: 0.5em;
-    padding-left: 0.5em;
     transition: filter linear 0.1s;
 }
 
 pluto-output div.admonition {
+    padding-left: 0.5rem;
     background: rgba(68, 149, 28, 0.2);
     border: 5px solid rgb(158, 200, 137);
 }
 pluto-output div.admonition .admonition-title {
     background: rgb(158, 200, 137);
     margin: -1px; /* Fixes a rendering glitch in Chrome */
+    margin-left: -.55rem;
 }
 pluto-output div.admonition.note,
 pluto-output div.admonition.info,
@@ -770,6 +771,10 @@ body.binder.loading #binder_spinners {
 }
 
 /* PREAMBLE */
+
+.raw-html-wrapper.preamble {
+    width: 100%;
+}
 
 main > preamble {
     display: flex;

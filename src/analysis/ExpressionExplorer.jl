@@ -709,7 +709,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             # good ol' tuple
             return explore!(Expr(:block, ex.args...), scopestate)
         end
-    elseif ex.head == :(.) && ex.args[2] isa Expr && ex.args[2].head == :tuple
+    elseif Meta.isexpr(ex, :(.), 2) && ex.args[2] isa Expr && ex.args[2].head == :tuple
         # pointwise function call, e.g. sqrt.(nums)
         # we rewrite to a regular call
 
