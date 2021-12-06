@@ -126,7 +126,17 @@ export const setupPage = (page) => {
   dismissBeforeUnloadDialogs(page);
   dismissVersionDialogs(page);
   
-  page.setOfflineMode(should_be_offline);
+  if(should_be_offline) {
+    page.setRequestInterception(true);
+    page.on("request", (request) => {
+      if(["cdn.jsdelivr.net", "unpkg.com", "cdn.skypack.dev", "esm.sh", "firebase.google.com"].some(domain => request.url().includes(domain))) {
+        console.error(`Blocking request to ${request.url()}`)
+        request.abort();
+      } else {
+        request.continue();
+      }
+    });
+  }
 };
 
 let testname = () => expect.getState().currentTestName.replace(/ /g, "_");
