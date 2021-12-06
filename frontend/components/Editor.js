@@ -514,15 +514,11 @@ export class Editor extends Component {
              *
              * @param {string} name         | bond name
              * @param {*} value             | bond value
-             * @param {boolean} is_first_value    | true during initialization
              */
-            set_bond: async (name, value, is_first_value) => {
-                // For now I discard is_first_value, basing it on if there
-                // is a value already present in the state.
-                // Keep an eye on https://github.com/fonsp/Pluto.jl/issues/275
+            set_bond: async (name, value) => {
                 await update_notebook((notebook) => {
                     // Wrap the bond value in an object so immer assumes it is changed
-                    let new_bond = { value: value, is_first_value: is_first_value }
+                    let new_bond = { value: value }
                     notebook.bonds[name] = new_bond
                 })
             },

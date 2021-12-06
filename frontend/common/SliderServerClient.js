@@ -77,14 +77,14 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
 
     return {
         ...nothing_actions({ actions }),
-        set_bond: async (symbol, value, is_first_value) => {
+        set_bond: async (symbol, value) => {
             setStatePromise(
                 immer((state) => {
-                    state.notebook.bonds[symbol] = { value: value, is_first_value: true }
+                    state.notebook.bonds[symbol] = { value: value }
                 })
             )
             if (mybonds[symbol] == null || !_.isEqual(mybonds[symbol].value, value)) {
-                mybonds[symbol] = { value: _.cloneDeep(value), is_first_value: true }
+                mybonds[symbol] = { value: _.cloneDeep(value) }
                 bonds_to_set.current.add(symbol)
                 await request_bond_response()
             }
