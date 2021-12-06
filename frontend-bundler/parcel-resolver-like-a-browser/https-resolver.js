@@ -46,7 +46,10 @@ module.exports = new Resolver({
             if (url.username !== "") throw new Error(`Username in urls not supported (${specifier})`)
             if (url.password !== "") throw new Error(`Password in urls not supported (${specifier})`)
 
-            let url_to_path = path.join(url.protocol.slice(0, -1), url.hostname, ...url.pathname.slice(1).split("/"))
+            let path_parts = url.pathname.slice(1).split("/")
+            if (!path_parts[path_parts.length - 1].includes(".")) throw new Error(`No extension in filename (${specifier})`)
+
+            let url_to_path = path.join(url.protocol.slice(0, -1), url.hostname, ...path_parts)
             let fullpath = path.join(my_temp_cave, url_to_path)
             let folder = path.dirname(fullpath)
 
