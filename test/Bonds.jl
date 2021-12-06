@@ -153,6 +153,18 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                 """),
             ])
         fakeclient.connected_notebook = notebook
+        
+        
+        function set_bond_value(name, value, is_first_value=false)
+            notebook.bonds[name] = Dict("value" => value)
+            Pluto.set_bond_values_reactive(;
+                session=🍭,
+                notebook=notebook,
+                bound_sym_names=[name],
+                is_first_values=[is_first_value],
+                run_async=false,
+            )
+        end
 
         update_run!(🍭, notebook, notebook.cells)
 
@@ -195,17 +207,6 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
         @test noerror(notebook.cells[26])
         @test noerror(notebook.cells[27])
         @test noerror(notebook.cells[28])
-        
-        
-        function set_bond_value(name, value, is_first_value=false)
-            notebook.bonds[name] = Dict("value" => value, "is_first_value" => is_first_value)
-            Pluto.set_bond_values_reactive(;
-                session=🍭,
-                notebook=notebook,
-                bound_sym_names=[name],
-                run_async=false,
-            )
-        end
         
         
         @test notebook.cells[10].output.body == "missing"
