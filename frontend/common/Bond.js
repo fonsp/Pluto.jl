@@ -1,6 +1,7 @@
 // import Generators_input from "https://unpkg.com/@observablehq/stdlib@3.3.1/src/generators/input.js"
 // import Generators_input from "https://unpkg.com/@observablehq/stdlib@3.3.1/src/generators/input.js"
 
+import _ from "../imports/lodash.js"
 import observablehq from "./SetupCellEnvironment.js"
 
 /**
@@ -138,15 +139,19 @@ export const set_bound_elements_to_their_value = (node, bond_values) => {
 /**
  * @param {Element} node
  * @param {(name: string, value: any) => Promise} on_bond_change
+ * @param {{[name: string]: any}} known_values Object of variable names that already have a value in the state, which we may not want to send the initial bond value for. When reloading the page, bonds are set to their values from the state, and we don't want to trigger a change event for those.
  */
-export const add_bonds_listener = (node, on_bond_change) => {
+export const add_bonds_listener = (node, on_bond_change, known_values) => {
     // the <bond> node will be invalidated when the cell re-evaluates. when this happens, we need to stop processing input events
     let node_is_invalidated = false
 
     node.querySelectorAll("bond").forEach(async (bond_node) => {
+        const name = bond_node.getAttribute("def")
         const initial_value = get_input_value(bond_node.firstElementChild)
+
+        let skip_initialize = Object.keys(known_values).includes(name) && _.isEqual(known_values[name]?.value, initial_value)
         // Initialize the bond. This will send the data to the backend for the first time. If it's already there, and the value is the same, cells won't rerun.
-        const init_promise = on_bond_change(bond_node.getAttribute("def"), initial_value).catch(console.error)
+        const init_promise = skip_initialize ? null : on_bond_change(name, initial_value).catch(console.error)
 
         // see the docs on Generators.input from observablehq/stdlib
         let skippped_first = false
@@ -164,7 +169,7 @@ export const add_bonds_listener = (node, on_bond_change) => {
             // await the setter to avoid collisions
             //TODO : get this from state
             await init_promise
-            await on_bond_change(bond_node.getAttribute("def"), to_send).catch(console.error)
+            await on_bond_change(name, to_send).catch(console.error)
         }
     })
 
