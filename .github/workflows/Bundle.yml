@@ -11,6 +11,8 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v2
+              with:
+                token: ${{ secrets.PAT_TOKEN }}
             - uses: fregante/setup-git-user@v1
 
             # Ignore the build changes from previous run.
