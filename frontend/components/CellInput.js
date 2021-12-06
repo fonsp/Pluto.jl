@@ -56,7 +56,7 @@ import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
 import { cl } from "../common/ClassTable.js"
 
-const remoteAnnotation = Annotation.define()
+const change_is_from_remote_annotation = Annotation.define()
 
 export const pluto_syntax_colors = HighlightStyle.define([
     /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
@@ -168,7 +168,7 @@ export const CellInput = ({
         useMemo(
             _.throttle(() => {
                 return EditorView.updateListener.of((update) => {
-                    if (update.docChanged && !update.transactions.some((t) => t.annotation(remoteAnnotation))) {
+                    if (update.docChanged && !update.transactions.some((t) => t.annotation(change_is_from_remote_annotation))) {
                         on_change(update.state.doc.toString())
                     }
                 })
@@ -482,7 +482,7 @@ export const CellInput = ({
         if (will_update_code) {
             newcm_ref.current.dispatch({
                 changes: { from: 0, to: newcm_ref.current.state.doc.length, insert: local_code },
-                annotations: [remoteAnnotation.of(1)], // Maybe cursor in the future??
+                annotations: [change_is_from_remote_annotation.of(1)], // Maybe cursor in the future??
             })
         }
     }, [local_code])
