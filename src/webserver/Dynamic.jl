@@ -105,7 +105,7 @@ function notebook_to_js(notebook::Notebook)
             id => Dict{String,Any}(
                 "cell_id" => cell.cell_id,
                 "local_code" => cell.local_code,
-                "local_code_owner_uuid" => cell.local_code_owner_uuid,
+                "local_code_author_id" => cell.local_code_author_id,
                 "time_arrow" => cell.time_arrow,
                 "code" => cell.code,
                 "code_folded" => cell.code_folded,

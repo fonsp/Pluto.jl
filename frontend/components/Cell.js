@@ -41,7 +41,7 @@ const useCellApi = (node_ref, published_object_keys, pluto_actions) => {
  * }} props
  * */
 export const Cell = ({
-    cell_input: { cell_id, code, code_folded, running_disabled, local_code, time_arrow, local_code_owner_uuid },
+    cell_input: { cell_id, code, code_folded, running_disabled, local_code, time_arrow, local_code_author_id },
     cell_result: { queued, running, runtime, errored, output, published_object_keys, depends_on_disabled_cells },
     cell_dependencies,
     notebook_id,
@@ -103,7 +103,7 @@ export const Cell = ({
     const activate_animation = useDebouncedTruth(running || queued || waiting_to_run)
     /* {
         code: notebook.cell_inputs[cell_id].local_code,
-        local_code_owner_uuid: notebook.cell_inputs[cell_id].local_code_owner_uuid,
+        local_code_author_id: notebook.cell_inputs[cell_id].local_code_author_id,
         time_arrow: notebook.cell_inputs[cell_id].time_arrow,
     }*/
     const class_code_differs = code !== (local_code ?? code)
@@ -176,7 +176,7 @@ export const Cell = ({
             ${cell_api_ready ? html`<${CellOutput} errored=${errored} ...${output} cell_id=${cell_id} />` : html``}
             <${CellInput}
                 local_code=${local_code}
-                local_code_owner_uuid=${local_code_owner_uuid}
+                local_code_author_id=${local_code_author_id}
                 time_arrow=${time_arrow}
                 remote_code=${code}
                 cell_dependencies=${cell_dependencies}

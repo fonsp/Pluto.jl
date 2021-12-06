@@ -105,7 +105,7 @@ const first_true_key = (obj) => {
  *  cell_id: string,
  *  code: string,
  *  local_code: string,
- *  local_code_owner_uuid?: string,
+ *  local_code_author_id?: string,
  *  time_arrow?: number,
  *  code_folded: boolean,
  *  running_disabled: boolean,
@@ -263,7 +263,7 @@ export class Editor extends Component {
                 update_notebook((notebook) => {
                     if (notebook.cell_inputs[cell_id].local_code !== new_val) {
                         notebook.cell_inputs[cell_id].local_code = new_val
-                        notebook.cell_inputs[cell_id].local_code_owner_uuid = this.state.client_id
+                        notebook.cell_inputs[cell_id].local_code_author_id = this.state.client_id
                         notebook.cell_inputs[cell_id].time_arrow += 1
                     }
                 })
