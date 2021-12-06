@@ -106,7 +106,6 @@ function notebook_to_js(notebook::Notebook)
                 "cell_id" => cell.cell_id,
                 "local_code" => cell.local_code,
                 "local_code_author_id" => cell.local_code_author_id,
-                "time_arrow" => cell.time_arrow,
                 "code" => cell.code,
                 "code_folded" => cell.code_folded,
                 "running_disabled" => cell.running_disabled,

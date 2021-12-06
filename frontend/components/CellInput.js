@@ -131,7 +131,6 @@ let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPluto
 export const CellInput = ({
     local_code,
     local_code_author_id,
-    time_arrow,
     remote_code,
     disable_input,
     focus_after_creation,
@@ -158,7 +157,6 @@ export const CellInput = ({
     const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))
     const remote_code_ref = useRef(null)
     const on_change_ref = useRef(null)
-    const last_time_arrow_ref = useRef(time_arrow)
     on_change_ref.current = on_change
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
     let used_variables_compartment = useCompartment(newcm_ref, UsedVariablesFacet.of(variables_in_all_notebook))
@@ -172,7 +170,6 @@ export const CellInput = ({
                 return EditorView.updateListener.of((update) => {
                     if (update.docChanged && !update.transactions.some((t) => t.annotation(remoteAnnotation))) {
                         on_change(update.state.doc.toString())
-                        last_time_arrow_ref.current = time_arrow + 1
                     }
                 })
             }, 200),

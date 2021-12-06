@@ -30,7 +30,6 @@ Base.@kwdef mutable struct Cell
     code::String=""
     local_code::String=""
     local_code_author_id::String=""
-    time_arrow::Integer=0
     code_folded::Bool=false
     
     output::CellOutput=CellOutput()
