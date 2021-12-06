@@ -1,9 +1,27 @@
 import HTTP
 import Markdown: htmlesc
 import UUIDs: UUID
+import Pkg
+
+const found_is_pluto_dev = Ref{Union{Nothing,Bool}}(nothing)
+function is_pluto_dev()
+    if found_is_pluto_dev[] !== nothing
+        return found_is_pluto_dev[]
+    end
+    found_is_pluto_dev[] = try
+        deps = Pkg.dependencies()
+
+        p_index = findfirst(p -> p.name == "Pluto", deps)
+        p = deps[p_index]
+
+        return p.is_tracking_path
+    catch
+        false
+    end
+end
 
 function frontend_directory()
-    if isdir(project_relative_path("frontend-dist"))
+    if isdir(project_relative_path("frontend-dist")) && !is_pluto_dev()
         "frontend-dist"
     else
         "frontend"

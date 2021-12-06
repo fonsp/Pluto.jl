@@ -260,8 +260,8 @@ function run(session::ServerSession, pluto_router)
     println("Press Ctrl+C in this terminal to stop Pluto")
     println()
 
-    if !isdir(project_relative_path("frontend-dist"))
-        @warn "FYI, running unbundled (dev) frontend"
+    if frontend_directory() == "frontend"
+        @info "It looks like you are developing the Pluto package, using the unbundled frontend..."
     end
 
     shutdown_server[] = () -> @sync begin
