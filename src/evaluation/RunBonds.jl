@@ -21,7 +21,7 @@ function set_bond_values_reactive(; session::ServerSession, notebook::Notebook, 
         # if `Base.get` was defined to give an initial value (read more about this in the Interactivity sample notebook), then we want to skip the first value sent back from the bond. (if `Base.get` was not defined, then the variable has value `missing`)
         # Check if the variable does not already have that value.
         # because if the initial value is already set, then we don't want to run dependent cells again.
-        eq_tester = :(try !ismissing($bound_sym) && ($bound_sym == $new_value) catch; false end) # not just a === comparison because JS might send back the same value but with a different type (Float64 becomes Int64 in JS when it's an integer.)
+        eq_tester = :(try !ismissing($bound_sym) && ($bound_sym == Main.PlutoRunner.transform_bond_value($(QuoteNode(bound_sym)), $(new_value))) catch; false end) # not just a === comparison because JS might send back the same value but with a different type (Float64 becomes Int64 in JS when it's an integer.)
         if is_first_value && WorkspaceManager.eval_fetch_in_workspace((session, notebook), eq_tester)
             return false
         end
