@@ -14,7 +14,7 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
     notebookfile_hash.then((x) => console.log("Notebook file hash:", x))
 
     const bond_connections = notebookfile_hash
-        .then((hash) => fetch(trailingslash(launch_params.slider_server_url) + "bondconnections/" + encodeURIComponent(hash) + "/"))
+        .then((hash) => fetch(trailingslash(launch_params.slider_server_url) + "bondconnections/" + encodeURIComponent(hash)))
         .then((r) => r.arrayBuffer())
         .then((b) => unpack(new Uint8Array(b)))
 
@@ -35,7 +35,12 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
             console.debug("Requesting bonds", bonds_to_set.current, to_send)
             bonds_to_set.current = new Set()
 
-            const mybonds_filtered = Object.fromEntries(Object.entries(mybonds).filter(([k, v]) => to_send.has(k)))
+            const mybonds_filtered = Object.fromEntries(
+                _.sortBy(
+                    Object.entries(mybonds).filter(([k, v]) => to_send.has(k)),
+                    ([k, v]) => k
+                )
+            )
 
             const packed = pack(mybonds_filtered)
 
