@@ -149,8 +149,6 @@ function notebook_to_js(notebook::Notebook)
         "bonds" => Dict{String,Dict{String,Any}}(
             String(key) => Dict(
                 "value" => bondvalue.value, 
-                # SHOULD always be false, but still putting it in here for completeness
-                "is_first_value" => bondvalue.is_first_value
             )
         for (key, bondvalue) in notebook.bonds),
         "nbpkg" => let
@@ -220,6 +218,7 @@ struct CodeChanged <: Changed end
 struct FileChanged <: Changed end
 struct BondChanged <: Changed
     bond_name::Symbol
+    is_first_value::Bool
 end
 
 # to support push!(x, y...) # with y = []
@@ -269,7 +268,7 @@ const effects_of_changed_state = Dict(
         Wildcard() => function(name; request::ClientRequest, patch::Firebasey.JSONPatch)
             name = Symbol(name)
             Firebasey.applypatch!(request.notebook, patch)
-            [BondChanged(name)]
+            [BondChanged(name, patch isa Firebasey.AddPatch)]
         end,
     )
 )
@@ -318,10 +317,12 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
 
         let bond_changes = filter(x -> x isa BondChanged, changes)
             bound_sym_names = Symbol[x.bond_name for x in bond_changes]
+            is_first_values = Bool[x.is_first_value for x in bond_changes]
             set_bond_values_reactive(;
                 session=🙋.session,
                 notebook=🙋.notebook,
                 bound_sym_names=bound_sym_names,
+                is_first_values=is_first_values,
                 run_async=true,
             )
         end
