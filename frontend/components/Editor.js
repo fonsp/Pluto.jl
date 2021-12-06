@@ -1160,6 +1160,8 @@ patch: ${JSON.stringify(
                             ${
                                 status.binder
                                     ? html`<pluto-filepicker><a href=${export_url("notebookfile")} target="_blank">Save notebook...</a></pluto-filepicker>`
+                                    : vscode_available
+                                    ? null
                                     : html`<${FilePicker}
                                           client=${this.client}
                                           value=${notebook.in_temp_dir ? "" : notebook.path}
