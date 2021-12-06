@@ -771,6 +771,10 @@ body.binder.loading #binder_spinners {
 
 /* PREAMBLE */
 
+.raw-html-wrapper.preamble {
+    width: 100%;
+}
+
 main > preamble {
     display: flex;
     height: 20px;

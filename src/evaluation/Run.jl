@@ -19,7 +19,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 			# update cache and save notebook because the dependencies might have changed after expanding macros
 			update_dependency_cache!(notebook)
-			session.options.server.disable_writing_notebook_files || save_notebook(notebook)
+			save_notebook(session, notebook)
 		end
 	else
 		workspace = WorkspaceManager.get_workspace((session, notebook))
@@ -139,7 +139,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 			# update cache and save notebook because the dependencies might have changed after expanding macros
 			update_dependency_cache!(notebook)
-			session.options.server.disable_writing_notebook_files || save_notebook(notebook)
+			save_notebook(session, notebook)
 
 			return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook=deletion_hook, user_requested_run=user_requested_run, already_in_run=true, already_run=to_run[1:i])
 		elseif !isempty(implicit_usings)
@@ -148,7 +148,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 			# update cache and save notebook because the dependencies might have changed after expanding macros
 			update_dependency_cache!(notebook)
-			session.options.server.disable_writing_notebook_files || save_notebook(notebook)
+			save_notebook(session, notebook)
 
 			return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook=deletion_hook, user_requested_run=user_requested_run, already_in_run=true, already_run=to_run[1:i])
 		end
@@ -202,6 +202,7 @@ function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},Works
 		expr_cache.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing,
 		expr_cache.forced_expr_id,
 		user_requested_run,
+		collect(keys(cell.published_objects)),
 	)
 	set_output!(cell, run, expr_cache; persist_js_state=!user_requested_run)
 	if session_notebook isa Tuple && run.process_exited
@@ -228,7 +229,17 @@ function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache; persist_js_
 		persist_js_state=persist_js_state,
 		has_pluto_hook_features=run.has_pluto_hook_features,
 	)
-	cell.published_objects = run.published_objects
+	cell.published_objects = let
+		old_published = cell.published_objects
+		new_published = run.published_objects
+		for (k,v) in old_published
+			if haskey(new_published, k)
+				new_published[k] = v
+			end
+		end
+		new_published
+	end
+	
 	cell.runtime = run.runtime
 	cell.errored = run.errored
 	cell.running = cell.queued = false
@@ -398,7 +409,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	new = notebook.topology = updated_topology(old, notebook, cells) # macros are not yet resolved
 
 	update_dependency_cache!(notebook)
-	session.options.server.disable_writing_notebook_files || (save && save_notebook(notebook))
+	save && save_notebook(session, notebook)
 
 	# _assume `prerender_text == false` if you want to skip some details_
 	to_run_online = if !prerender_text
@@ -413,7 +424,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 				ServerSession(),
 				notebook,
 			),
-			force_offline=true,
+			is_offline_renderer=true,
 		)
 
 		new = notebook.topology = static_resolve_topology(new)

@@ -31,6 +31,7 @@ import { BinderButton } from "./BinderButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
 import { ProgressBar } from "./ProgressBar.js"
 import { IsolatedCell } from "./Cell.js"
+import { RawHTMLContainer } from "./CellOutput.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -129,7 +130,7 @@ const first_true_key = (obj) => {
  *      rootassignee: ?string,
  *      has_pluto_hook_features: boolean,
  *  },
- *  published_objects: object,
+ *  published_object_keys: [string],
  * }}
  */
 
@@ -158,6 +159,7 @@ const first_true_key = (obj) => {
  *  cell_dependencies: { [uuid: string]: CellDependencyData },
  *  cell_order: Array<string>,
  *  cell_execution_order: Array<string>,
+ *  published_objects: { [objectid: string]: any},
  *  bonds: { [name: string]: any },
  *  nbpkg: Object,
  * }}
@@ -176,6 +178,8 @@ const launch_params = {
     notebookfile: url_params.get("notebookfile") ?? window.pluto_notebookfile,
     //@ts-ignore
     disable_ui: !!(url_params.get("disable_ui") ?? window.pluto_disable_ui),
+    //@ts-ignore
+    preamble_html: url_params.get("preamble_html") ?? window.pluto_preamble_html,
     //@ts-ignore
     isolated_cell_ids: url_params.has("isolated_cell_id") ? url_params.getAll("isolated_cell_id") : window.pluto_isolated_cell_ids,
     //@ts-ignore
@@ -202,6 +206,7 @@ const initial_notebook = () => ({
     cell_dependencies: {},
     cell_order: [],
     cell_execution_order: [],
+    published_objects: {},
     bonds: {},
     nbpkg: null,
 })
@@ -246,6 +251,7 @@ export class Editor extends Component {
         this.actions = {
             get_notebook: () => this?.state?.notebook || {},
             send: (...args) => this.client.send(...args),
+            get_published_object: (objectid) => this.state.notebook.published_objects[objectid],
             //@ts-ignore
             update_notebook: (...args) => this.update_notebook(...args),
             set_doc_query: (query) => this.setState({ desired_doc_query: query }),
@@ -622,6 +628,7 @@ patch: ${JSON.stringify(
         // these are update message that are _not_ a response to a `send(*, *, {create_promise: true})`
         const on_update = (update, by_me) => {
             if (this.state.notebook.notebook_id === update.notebook_id) {
+                if (this.state.binder_phase != null) console.debug("on_update", update, by_me)
                 const message = update.message
                 switch (update.type) {
                     case "notebook_diff":
@@ -644,6 +651,7 @@ patch: ${JSON.stringify(
                         // alert("Something went wrong 🙈\n Try clearing your browser cache and refreshing the page")
                         break
                 }
+                if (this.state.binder_phase != null) console.debug("on_update done")
             } else {
                 // Update for a different notebook, TODO maybe log this as it shouldn't happen
             }
@@ -1194,6 +1202,7 @@ patch: ${JSON.stringify(
             launch_params.notebookfile == null ? null : new URL(launch_params.notebookfile, window.location.href).href
         } />
                     <${FetchProgress} progress=${this.state.statefile_download_progress} />
+                    ${launch_params.preamble_html ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />` : null}
                     <${Main}>
                         <${Preamble}
                             last_update_time=${this.state.last_update_time}
