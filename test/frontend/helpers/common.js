@@ -1,5 +1,6 @@
 import path from "path";
 import mkdirp from "mkdirp";
+import * as process from "process";
 
 export const getTextContent = (page, selector) => {
   // https://developer.mozilla.org/en-US/docs/Web/API/Node/textContent#differences_from_innertext
@@ -115,10 +116,17 @@ const failOnError = (page) => {
   });
 };
 
+
+let should_be_offline_input = process.env["PLUTO_TEST_OFFLINE"]?.toLowerCase() ?? "false"
+let should_be_offline = [true, 1, "true", "1"].includes(should_be_offline_input)
+console.log(`Offline mode enabled: ${should_be_offline}`)
+
 export const setupPage = (page) => {
   failOnError(page);
   dismissBeforeUnloadDialogs(page);
   dismissVersionDialogs(page);
+  
+  page.setOfflineMode(should_be_offline);
 };
 
 let testname = () => expect.getState().currentTestName.replace(/ /g, "_");
