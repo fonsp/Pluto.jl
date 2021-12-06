@@ -146,7 +146,7 @@ export const add_bonds_listener = (node, on_bond_change) => {
     node.querySelectorAll("bond").forEach(async (bond_node) => {
         const initial_value = get_input_value(bond_node.firstElementChild)
         // Initialize the bond. This will send the data to the backend for the first time. If it's already there, and the value is the same, cells won't rerun.
-        const init_promise = on_bond_change(bond_node.getAttribute("def"), initial_value)
+        const init_promise = on_bond_change(bond_node.getAttribute("def"), initial_value).catch(console.error)
 
         // see the docs on Generators.input from observablehq/stdlib
         let skippped_first = false
