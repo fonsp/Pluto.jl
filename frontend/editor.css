@@ -793,12 +793,12 @@ body.binder.loading #binder_spinners {
 body.recording_waiting_to_start #outline-frame {
     border: 12px solid #be6f6fba;
 }
-body.recording #outline-frame {
+body.is_recording #outline-frame {
     border: 12px solid #dc3535ba;
 }
 
 body.recording_waiting_to_start header,
-body.recording header {
+body.is_recording header {
     display: none;
 }
 

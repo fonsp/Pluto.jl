@@ -1,8 +1,8 @@
-import { html, createRef, Component, useState, useEffect, useMemo } from "../imports/Preact.js"
+import { html, Component, useState, useEffect, useMemo } from "../imports/Preact.js"
 import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
-import { create_pluto_connection, timeout_promise } from "../common/PlutoConnection.js"
+import { create_pluto_connection } from "../common/PlutoConnection.js"
 import { init_feedback } from "../common/Feedback.js"
 import { serialize_cells, deserialize_cells, detect_deserializer } from "../common/Serialization.js"
 
@@ -22,7 +22,7 @@ import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { handle_log } from "../common/Logging.js"
 import { PlutoContext, PlutoBondsContext, PlutoJSInitializingContext } from "../common/PlutoContext.js"
-import { pack, unpack } from "../common/MsgPack.js"
+import { unpack } from "../common/MsgPack.js"
 import { useDropHandler } from "./useDropHandler.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
 import { start_binder, BinderPhase, count_stat } from "../common/Binder.js"
@@ -30,9 +30,6 @@ import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js
 import { BinderButton } from "./BinderButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
 import { ProgressBar } from "./ProgressBar.js"
-import { base64_arraybuffer, blob_url_to_data_url } from "../common/PlutoHash.js"
-import { create_recorder } from "../common/AudioRecording.js"
-import { AudioPlayer } from "./AudioPlayer.js"
 import { IsolatedCell } from "./Cell.js"
 import { RawHTMLContainer } from "./CellOutput.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
@@ -94,7 +91,7 @@ const statusmap = (state) => ({
         (cell_id) => state.cell_inputs_local[cell_id] != null && state.notebook.cell_inputs[cell_id].code !== state.cell_inputs_local[cell_id].code
     ),
     recording_waiting_to_start: state.recording_waiting_to_start,
-    recording: state.is_recording,
+    is_recording: state.is_recording,
 })
 
 const first_true_key = (obj) => {
@@ -193,7 +190,7 @@ const launch_params = {
     //@ts-ignore
     slider_server_url: url_params.get("slider_server_url") ?? window.pluto_slider_server_url,
     //@ts-ignore
-    recording: url_params.get("recording") ?? window.pluto_recording,
+    recording_url: url_params.get("recording_url") ?? window.pluto_recording_url,
     //@ts-ignore
     recording_audio_url: url_params.get("recording_audio_url") ?? window.pluto_recording_audio_url,
 }
@@ -1237,7 +1234,7 @@ patch: ${JSON.stringify(
                         export_url=${this.export_url}
                     />
                     <${RecordingPlaybackUI} 
-                        recording_url=${launch_params.recording}
+                        recording_url=${launch_params.recording_url}
                         audio_src=${launch_params.recording_audio_url}
                         initializing=${this.state.initializing}
                         apply_notebook_patches=${this.apply_notebook_patches}

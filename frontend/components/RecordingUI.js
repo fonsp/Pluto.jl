@@ -123,7 +123,7 @@ export const RecordingUI = ({ is_recording, recording_waiting_to_start, set_reco
                 magic_tag,
                 `
                 <script>
-                window.pluto_recording = "data:;base64,${await base64_arraybuffer(pack({ steps: steps, scrolls: scrolls }))}";
+                window.pluto_recording_url = "data:;base64,${await base64_arraybuffer(pack({ steps: steps, scrolls: scrolls }))}";
                 window.pluto_recording_audio_url = ${audio_data_url == null ? null : `"${audio_data_url}"`};
                 </script>
                 ${magic_tag}`
