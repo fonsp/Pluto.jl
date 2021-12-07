@@ -778,7 +778,7 @@ body.binder.loading #binder_spinners {
     }
 }
 
-#outline-frame {
+.outline-frame {
     z-index: 9999;
     pointer-events: none;
     position: fixed;
@@ -790,11 +790,17 @@ body.binder.loading #binder_spinners {
     box-sizing: border-box;
 }
 
-body.recording_waiting_to_start #outline-frame {
+body.recording_waiting_to_start .outline-frame.recording {
     border: 12px solid #be6f6fba;
 }
-body.is_recording #outline-frame {
+body.is_recording .outline-frame.recording {
     border: 12px solid #dc3535ba;
+}
+.outline-frame.playback {
+    opacity: 1;
+    position: absolute;
+    transition: top 0.3s ease-in-out, opacity 0.3s ease-in-out;
+    border: 12px solid #357ddcba;
 }
 
 body.recording_waiting_to_start > header,

@@ -148,7 +148,7 @@ export const RecordingUI = ({ is_recording, recording_waiting_to_start, set_reco
     }
 
     return html`
-        <div id="outline-frame"></div>
+        <div class="outline-frame recording"></div>
         ${recording_waiting_to_start
             ? html`<div id="record-ui-container">
                   <div class="overlay-button">
@@ -186,11 +186,14 @@ export const RecordingUI = ({ is_recording, recording_waiting_to_start, set_reco
     `
 }
 
-const goto_scroll_position = ({ cell_id, relative_distance }, smooth = true) => {
-    const cell = document.getElementById(cell_id)
+let get_scroll_top = ({ cell_id, relative_distance }) => {
+    let cell = document.getElementById(cell_id)
+    return cell.offsetTop + relative_distance * cell.offsetHeight - window.innerHeight / 2
+}
 
+const goto_scroll_position = ({ cell_id, relative_distance }, smooth = true) => {
     window.scrollTo({
-        top: cell.offsetTop + relative_distance * cell.offsetHeight - window.innerHeight / 2,
+        top: get_scroll_top({ cell_id, relative_distance }),
         behavior: smooth ? "smooth" : "auto",
     })
 }
@@ -217,6 +220,16 @@ export const RecordingPlaybackUI = ({ recording_url, audio_src, initializing, ap
     let match_state_to_playback_running_ref = useRef(false)
     let current_state_timestamp_ref = useRef(0)
 
+    let [current_scroll_position, set_current_scroll_position] = useState(null)
+    let following_scroll_ref = useRef(true)
+
+    let on_scroll = (value, x) => {
+        set_current_scroll_position(value)
+        if (following_scroll_ref.current) {
+            goto_scroll_position(value, x)
+        }
+    }
+
     const match_state_to_playback_ref = useRef(() => {})
     match_state_to_playback_ref.current = async () => {
         match_state_to_playback_running_ref.current = true
@@ -232,7 +245,7 @@ export const RecordingPlaybackUI = ({ recording_url, audio_src, initializing, ap
         if (scrolls_in_time_window.length > 0) {
             let scroll_state = (new_timestamp > current_state_timestamp_ref.current ? _.last : _.first)(scrolls_in_time_window)[1]
 
-            goto_scroll_position(scroll_state)
+            on_scroll(scroll_state)
         }
 
         if (new_timestamp < current_state_timestamp_ref.current) {
@@ -308,11 +321,13 @@ export const RecordingPlaybackUI = ({ recording_url, audio_src, initializing, ap
 
     return html`
         ${recording_url
-            ? html`<${AudioPlayer}
-                                  audio_element_ref=${recording_audio_player_ref}
-                                  src=${audio_src}
-                                  loaded_recording=${loaded_recording}
-                              ></${AudioPlayer}>`
+            ? html`<div
+                      class="outline-frame playback"
+                      style=${{
+                          top: `${current_scroll_position ? get_scroll_top(current_scroll_position) : 0}px`,
+                      }}
+                  ></div>
+                  <${AudioPlayer} audio_element_ref=${recording_audio_player_ref} src=${audio_src} loaded_recording=${loaded_recording} />`
             : null}
     `
 }
