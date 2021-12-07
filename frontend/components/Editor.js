@@ -251,7 +251,6 @@ export class Editor extends Component {
 
         // these are things that can be done to the local notebook
         this.actions = {
-            get_client_id: () => this?.state?.client_id,
             get_notebook: () => this?.state?.notebook || {},
             send: (...args) => this.client.send(...args),
             get_published_object: (objectid) => this.state.notebook.published_objects[objectid],
@@ -1087,10 +1086,10 @@ patch: ${JSON.stringify(
 
         const status = this.cached_status ?? statusmap(this.state)
         const statusval = first_true_key(status)
-
+        const pluto_actions_with_client_id = useMemo(() => ({ ...this.actions, client_id: this.state.client_id }), [this.actions, this.state.client_id])
         if (launch_params.isolated_cell_ids && launch_params.isolated_cell_ids.length > 0) {
             return html`
-                <${PlutoContext.Provider} value=${this.actions}>
+                <${PlutoContext.Provider} value=${pluto_actions_with_client_id}>
                     <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                         <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
                             <div style="width: 100%">
@@ -1129,7 +1128,7 @@ patch: ${JSON.stringify(
                 : `${this.state.binder_session_url}${u}?id=${this.state.notebook.notebook_id}&token=${this.state.binder_session_token}`
 
         return html`
-            <${PlutoContext.Provider} value=${this.actions}>
+            <${PlutoContext.Provider} value=${pluto_actions_with_client_id}>
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                     <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
                     <${Scroller} active=${this.state.scroller} />

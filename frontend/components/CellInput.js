@@ -152,7 +152,7 @@ export const CellInput = ({
     variables_in_all_notebook,
 }) => {
     let pluto_actions = useContext(PlutoContext)
-    const client_id = pluto_actions.get_client_id()
+    const client_id = pluto_actions.client_id
     const newcm_ref = useRef(/** @type {EditorView} */ (null))
     const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))
     const remote_code_ref = useRef(null)
