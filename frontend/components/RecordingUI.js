@@ -224,45 +224,36 @@ export const RecordingPlaybackUI = ({ recording_url, audio_src, initializing, ap
 
         const deserialized = await loaded_recording
 
-        computed_reverse_patches_ref.current = computed_reverse_patches_ref.current ?? deserialized.steps.map((s) => null)
+        computed_reverse_patches_ref.current = computed_reverse_patches_ref.current ?? deserialized.steps.map(([t, s]) => [t, null])
 
         const audio = recording_audio_player_ref.current
         let new_timestamp = audio.currentTime
-        let forward = new_timestamp > current_state_timestamp_ref.current
+        let forward = new_timestamp >= current_state_timestamp_ref.current
+        let directed = forward ? _.identity : _.reverse
 
-        let scrolls_in_time_window = deserialized.scrolls.filter(
-            ([t, s]) => Math.min(current_state_timestamp_ref.current, new_timestamp) < t && t <= Math.max(current_state_timestamp_ref.current, new_timestamp)
-        )
+        let lower = Math.min(current_state_timestamp_ref.current, new_timestamp)
+        let upper = Math.max(current_state_timestamp_ref.current, new_timestamp)
+
+        let scrolls_in_time_window = deserialized.scrolls.filter(([t, s]) => lower < t && t <= upper)
         if (scrolls_in_time_window.length > 0) {
-            let scroll_state = (forward ? _.last : _.first)(scrolls_in_time_window)[1]
+            let scroll_state = _.last(directed(scrolls_in_time_window))[1]
 
             goto_scroll_position(scroll_state)
         }
 
-        if (new_timestamp < current_state_timestamp_ref.current) {
-            console.warn("audio went back in time... WHOOPS")
+        let steps_in_current_direction = forward ? deserialized.steps : computed_reverse_patches_ref.current
+        let steps_and_indices = steps_in_current_direction.map((x, i) => [x, i])
+        let steps_and_indices_in_time_window = steps_and_indices.filter(([[t, s], i]) => lower < t && t <= upper)
 
-            await reset_notebook_state()
-            current_state_timestamp_ref.current = 0
-        }
-        let steps_and_indices_in_time_window = deserialized.steps
-            .map((x, i) => [x, i])
-            .filter(([[t, s], i]) => current_state_timestamp_ref.current < t && t <= new_timestamp)
-
-        let steps_in_time_window = steps_and_indices_in_time_window.map(_.first)
-
-        let patches = steps_in_time_window.flatMap(([t, s]) => s)
         let reverse_patches = []
-
-        if (patches.length > 0) {
-            reverse_patches = await apply_notebook_patches(patches, undefined, true)
+        for (let [[t, patches], i] of directed(steps_and_indices_in_time_window)) {
+            reverse_patches = await apply_notebook_patches(patches, undefined, forward)
             if (forward) {
-                steps_and_indices_in_time_window.forEach(([[t, s], i], j) => {
-                    computed_reverse_patches_ref.current[i] = [t, reverse_patches[j]]
-                })
-                console.log(computed_reverse_patches_ref.current)
+                computed_reverse_patches_ref.current[i] = [t, reverse_patches]
             }
         }
+        // if (!_.isEmpty(steps_and_indices_in_time_window)) console.log(computed_reverse_patches_ref.current)
+
         current_state_timestamp_ref.current = new_timestamp
 
         if (audio.paused) {
