@@ -207,6 +207,7 @@ export const RecordingPlaybackUI = ({ recording_url, audio_src, initializing, ap
             }),
         [recording_url]
     )
+    let computed_reverse_patches_ref = useRef(null)
 
     useEffect(() => {
         loaded_recording.then(console.log)
@@ -223,14 +224,17 @@ export const RecordingPlaybackUI = ({ recording_url, audio_src, initializing, ap
 
         const deserialized = await loaded_recording
 
+        computed_reverse_patches_ref.current = computed_reverse_patches_ref.current ?? deserialized.steps.map((s) => null)
+
         const audio = recording_audio_player_ref.current
         let new_timestamp = audio.currentTime
+        let forward = new_timestamp > current_state_timestamp_ref.current
 
         let scrolls_in_time_window = deserialized.scrolls.filter(
             ([t, s]) => Math.min(current_state_timestamp_ref.current, new_timestamp) < t && t <= Math.max(current_state_timestamp_ref.current, new_timestamp)
         )
         if (scrolls_in_time_window.length > 0) {
-            let scroll_state = (new_timestamp > current_state_timestamp_ref.current ? _.last : _.first)(scrolls_in_time_window)[1]
+            let scroll_state = (forward ? _.last : _.first)(scrolls_in_time_window)[1]
 
             goto_scroll_position(scroll_state)
         }
@@ -241,11 +245,23 @@ export const RecordingPlaybackUI = ({ recording_url, audio_src, initializing, ap
             await reset_notebook_state()
             current_state_timestamp_ref.current = 0
         }
-        let steps_in_time_window = deserialized.steps.filter(([t, s]) => current_state_timestamp_ref.current < t && t <= new_timestamp)
+        let steps_and_indices_in_time_window = deserialized.steps
+            .map((x, i) => [x, i])
+            .filter(([[t, s], i]) => current_state_timestamp_ref.current < t && t <= new_timestamp)
+
+        let steps_in_time_window = steps_and_indices_in_time_window.map(_.first)
 
         let patches = steps_in_time_window.flatMap(([t, s]) => s)
+        let reverse_patches = []
+
         if (patches.length > 0) {
-            await apply_notebook_patches(patches)
+            reverse_patches = await apply_notebook_patches(patches, undefined, true)
+            if (forward) {
+                steps_and_indices_in_time_window.forEach(([[t, s], i], j) => {
+                    computed_reverse_patches_ref.current[i] = [t, reverse_patches[j]]
+                })
+                console.log(computed_reverse_patches_ref.current)
+            }
         }
         current_state_timestamp_ref.current = new_timestamp
 
