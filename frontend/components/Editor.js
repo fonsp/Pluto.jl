@@ -934,7 +934,7 @@ patch: ${JSON.stringify(
 
             initial_html = initial_html.replaceAll(
                 "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.3/frontend/",
-                "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@90a47a1/frontend/"
+                "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@5fb878c/frontend/"
             )
 
             const scroll_handler = _.debounce(() => {
