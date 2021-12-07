@@ -567,9 +567,11 @@ export class Editor extends Component {
             },
         }
 
-        const apply_notebook_patches = (patches, old_state = undefined) =>
+        const apply_notebook_patches = (patches, old_state = undefined, get_reverse_patches = false) =>
             new Promise((resolve) => {
                 if (patches.length !== 0) {
+                    let copy_of_patches,
+                        reverse_of_patches = []
                     this.setState(
                         immer((state) => {
                             let new_notebook
@@ -578,7 +580,15 @@ export class Editor extends Component {
                                 // if (Math.random() < 0.25) {
                                 //     throw new Error(`Error: [Immer] minified error nr: 15 '${patches?.[0]?.path?.join("/")}'    .`)
                                 // }
-                                new_notebook = applyPatches(old_state ?? state.notebook, patches)
+
+                                // altijd `true` om te testen, behalve performance (?) zou dit geen verschil moeten maken MAAR PLUTO IS NU HELEMAAL KAPOT :(
+                                if (true || get_reverse_patches) {
+                                    ;[new_notebook, copy_of_patches, reverse_of_patches] = produceWithPatches(old_state ?? state.notebook, (state) => {
+                                        applyPatches(state, patches)
+                                    })
+                                } else {
+                                    new_notebook = applyPatches(old_state ?? state.notebook, patches)
+                                }
                             } catch (exception) {
                                 const failing_path = String(exception).match(".*'(.*)'.*")[1].replace(/\//gi, ".")
                                 const path_value = _.get(this.state.notebook, failing_path, "Not Found")
@@ -631,10 +641,10 @@ patch: ${JSON.stringify(
                             this.on_patches_hook(patches)
                             state.notebook = new_notebook
                         }),
-                        resolve
+                        () => resolve(reverse_of_patches)
                     )
                 } else {
-                    resolve()
+                    resolve([])
                 }
             })
 
