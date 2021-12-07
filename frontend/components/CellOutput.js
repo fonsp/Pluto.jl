@@ -275,7 +275,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                     console.warn("We don't (yet) fully support <script type=module> (loading modules with <script type=module src=...> is fine).")
                 }
 
-                if (node.type === "" || node.type === "text/javascript") {
+                if (node.type === "" || node.type === "text/javascript" || node.type === "module") {
                     if (is_displayable(old_result)) {
                         node.parentElement.insertBefore(old_result, node)
                     }
