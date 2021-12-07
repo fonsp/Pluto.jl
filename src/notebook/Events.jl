@@ -70,7 +70,7 @@ end
 # before opening the notebook
 # Should return a notebook (use Pluto.open)
 struct CustomLaunchEvent <: PlutoEvent
-    params::Dict{Any, Any} = Dict()
+    params::Dict{Any, Any}
 end
 
 # Triggered when a notebook has shut down.
