@@ -1321,6 +1321,26 @@ patch: ${JSON.stringify(
         if (old_state.notebook.nbpkg?.restart_required_msg !== new_state.notebook.nbpkg?.restart_required_msg) {
             console.warn(`New restart required message: ${new_state.notebook.nbpkg?.restart_required_msg}`)
         }
+        if (old_state.initializing && !new_state.initializing) {
+            // if we are playing a recording, fix the initial scroll position
+            this.loaded_recording.then((x) => {
+                let first_scroll = _.first(x?.scrolls)
+                if (first_scroll) {
+                    let obs = new ResizeObserver(() => {
+                        console.log("Scrolling back to first recorded scroll position...")
+                        this.goto_scroll_position(first_scroll[1], false)
+                    })
+                    let old_value = history.scrollRestoration
+                    history.scrollRestoration = "manual"
+                    obs.observe(document.body)
+                    setTimeout(() => {
+                        history.scrollRestoration = old_value
+                        obs.disconnect()
+                    }, 3000)
+                    this.goto_scroll_position(first_scroll[1], false)
+                }
+            })
+        }
     }
 
     componentWillUpdate(new_props, new_state) {
