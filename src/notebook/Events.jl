@@ -35,7 +35,7 @@ Finally, assing the listener to your session
 julia > pluto_server_session.event_listener = yourfunction
 
 =#
-
+import HTTP
 abstract type PlutoEvent end
 
 # Triggered when a notebook is saved
