@@ -30,6 +30,7 @@ type Ref<T> = { current: T }
 export declare function useRef<T = any>(initialValue?: T): Ref<T>
 
 export declare function useMemo<T = any>(calculate: () => T, deps?: Array<any>): T
+export declare function useCallback<T = any>(callback: T, deps?: Array<any>): T
 
 type UnsubscribeFn = () => void
 type EffectFn = () => void | UnsubscribeFn
@@ -43,4 +44,5 @@ declare class ReactContext<T> {
     Consumer: any // You're on your own with this one
 }
 export declare function createContext<T>(initialValue: T | void): ReactContext<T>
+export declare function createRef<T = any>(): Ref<T>
 export declare function useContext<T>(context: ReactContext<T>): T
