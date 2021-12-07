@@ -69,7 +69,7 @@ end
 # Useful if you want to create a file in a custom way,
 # before opening the notebook
 # Should return a notebook (use Pluto.open)
-struct CustomLaunch <: PlutoEvent
+struct CustomLaunchEvent <: PlutoEvent
     params::Dict{Any, Any} = Dict()
 end
 

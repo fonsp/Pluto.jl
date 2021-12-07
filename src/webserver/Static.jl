@@ -214,7 +214,7 @@ function http_router_for(session::ServerSession)
                 # See Events.jl for types and explanation
                 #
                 maybeNotebook = try
-                    session.event_listener(CustomLaunch(query))
+                    session.event_listener(CustomLaunchEvent(query))
                 catch
                     nothing
                 end
