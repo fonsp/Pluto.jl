@@ -87,13 +87,13 @@ export const Preamble = ({ any_code_differs, last_update_time, last_hot_reload_t
             state === "saved" || state === "saving"
             ? html`
                   <div id="saveall-container" class="overlay-button ${state}">
-                      <span><span class="only-on-hover">Saved </span><span class="saved-icon"></span></span>
+                      <span><span class="only-on-hover">Saved </span><span class="saved-icon pluto-icon"></span></span>
                   </div>
               `
             : reload_state === "reloaded_from_file"
             ? html`
                   <div id="saveall-container" class="overlay-button ${state}">
-                      <span>File change detected, <b>notebook updated </b><span class="saved-icon"></span></span>
+                      <span>File change detected, <b>notebook updated </b><span class="saved-icon pluto-icon"></span></span>
                   </div>
               `
             : null}

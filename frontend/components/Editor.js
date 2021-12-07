@@ -92,6 +92,7 @@ const statusmap = (state) => ({
     code_differs: state.notebook.cell_order.some(
         (cell_id) => state.cell_inputs_local[cell_id] != null && state.notebook.cell_inputs[cell_id].code !== state.cell_inputs_local[cell_id].code
     ),
+    recording_waiting_to_start: state.recording_waiting_to_start,
     recording: !!state.recording,
 })
 
@@ -253,7 +254,8 @@ export class Editor extends Component {
             update_is_ongoing: false,
 
             recording: null,
-            recording_start: null,
+            recording_waiting_to_start: false,
+            recording_start_time: null,
         }
 
         // const original_setState = this.setState
@@ -630,7 +632,7 @@ patch: ${JSON.stringify(
                                 new_notebook.cell_order = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] != null)
                             }
                             if (state.recording != null) {
-                                state.recording.steps = [...state.recording.steps, [(Date.now() - state.recording_start) / 1000, patches]]
+                                state.recording.steps = [...state.recording.steps, [(Date.now() - state.recording_start_time) / 1000, patches]]
                             }
                             state.notebook = new_notebook
                         }),
@@ -849,7 +851,7 @@ patch: ${JSON.stringify(
                                     ? null
                                     : {
                                           ...this.state.recording,
-                                          steps: [...this.state.recording.steps, [(Date.now() - this.state.recording_start) / 1000, changes]],
+                                          steps: [...this.state.recording.steps, [(Date.now() - this.state.recording_start_time) / 1000, changes]],
                                       },
                         }),
                     ])
@@ -920,24 +922,35 @@ patch: ${JSON.stringify(
             }
         }
 
-        this.start_recording = async () => {
-            let audio_recorder, audio_record_start_promise
-            try {
-                audio_recorder = await create_recorder()
-                audio_record_start_promise = audio_recorder.start()
-            } catch (e) {
-                console.warn("Failed to create audio recorder ", e)
-                audio_recorder = null
+        this.start_recording = async ({ want_audio }) => {
+            let audio_recorder = null,
+                audio_record_start_promise
+
+            let abort = async (e) => {
+                alert(
+                    `We were unable to activate your microphone. Make sure that it is connected, and that this site (${
+                        window.location.protocol + "//" + window.location.host
+                    }) has permission to use the microphone.`
+                )
+                console.warn("Failed to create audio recorder asdfasdf ", e)
+                await this.stop_recording()
+            }
+
+            if (want_audio) {
+                try {
+                    audio_recorder = await create_recorder()
+                    audio_record_start_promise = audio_recorder.start()
+                } catch (e) {
+                    await abort(e)
+                    return
+                }
             }
 
             let initial_html = await (await fetch(this.export_url("notebookexport"))).text()
 
-            initial_html = initial_html.replaceAll(
-                "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.3/frontend/",
-                "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@5fb878c/frontend/"
-            )
+            initial_html = initial_html.replaceAll("https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.3/frontend/", "http://localhost:1234/")
 
-            const scroll_handler = _.debounce(() => {
+            const scroll_handler_direct = () => {
                 let y = window.scrollY + window.innerHeight / 2
 
                 /** @type {Array<HTMLElement>} */
@@ -959,7 +972,7 @@ patch: ${JSON.stringify(
                         state.recording.scrolls = [
                             ...state.recording.scrolls,
                             [
-                                (Date.now() - state.recording_start) / 1000,
+                                (Date.now() - state.recording_start_time) / 1000,
                                 {
                                     cell_id: best_index,
                                     relative_distance,
@@ -968,61 +981,72 @@ patch: ${JSON.stringify(
                         ]
                     })
                 )
-            }, 500)
-
-            window.addEventListener("scroll", scroll_handler)
+            }
+            const scroll_handler = _.debounce(scroll_handler_direct, 500)
 
             try {
                 await audio_record_start_promise
             } catch (e) {
-                console.warn("Failed to create audio recorder ", e)
-                audio_recorder = null
+                await abort(e)
+                return
             }
-            this.setState({
-                recording: {
-                    initial_html,
-                    initial_state: this.state.notebook,
-                    steps: [],
-                    scrolls: [],
-                    scroll_handler,
-                    audio_recorder,
+
+            this.setState(
+                {
+                    recording: {
+                        initial_html,
+                        initial_state: this.state.notebook,
+                        steps: [],
+                        scrolls: [],
+                        scroll_handler,
+                        audio_recorder,
+                    },
+                    recording_waiting_to_start: false,
+                    recording_start_time: Date.now(),
                 },
-                recording_start: Date.now(),
-            })
+                () => {
+                    // call it once to record the start scroll position
+                    scroll_handler_direct()
+                    window.addEventListener("scroll", scroll_handler)
+                }
+            )
         }
 
         this.stop_recording = async () => {
-            const { audio_recorder, initial_html, steps, scrolls, scroll_handler } = this.state.recording
-            window.removeEventListener("scroll", scroll_handler)
+            if (this.state.recording != null) {
+                const { audio_recorder, initial_html, steps, scrolls, scroll_handler } = this.state.recording
+                window.removeEventListener("scroll", scroll_handler)
 
-            const audio_blob_url = await audio_recorder?.stop()
-            const audio_data_url = audio_blob_url == null ? null : await blob_url_to_data_url(audio_blob_url)
+                const audio_blob_url = await audio_recorder?.stop()
+                const audio_data_url = audio_blob_url == null ? null : await blob_url_to_data_url(audio_blob_url)
 
-            const magic_tag = "<!-- [automatically generated launch parameters can be inserted here] -->"
-            const output_html = initial_html.replace(
-                magic_tag,
-                `
-                <script>
-            window.pluto_recording = "data:;base64,${await base64_arraybuffer(pack({ steps: steps, scrolls: scrolls }))}";
-            window.pluto_recording_audio_url = ${audio_data_url == null ? null : `"${audio_data_url}"`};
-            </script>
-            ${magic_tag}`
-            )
+                const magic_tag = "<!-- [automatically generated launch parameters can be inserted here] -->"
+                const output_html = initial_html.replace(
+                    magic_tag,
+                    `
+                    <script>
+                    window.pluto_recording = "data:;base64,${await base64_arraybuffer(pack({ steps: steps, scrolls: scrolls }))}";
+                    window.pluto_recording_audio_url = ${audio_data_url == null ? null : `"${audio_data_url}"`};
+                    </script>
+                    ${magic_tag}`
+                )
 
-            console.log(this.state.recording)
+                console.log(this.state.recording)
 
-            let element = document.createElement("a")
-            element.setAttribute("href", "data:text/html;charset=utf-8," + encodeURIComponent(output_html))
-            element.setAttribute("download", "recording.html")
+                let element = document.createElement("a")
+                element.setAttribute("href", "data:text/html;charset=utf-8," + encodeURIComponent(output_html))
+                element.setAttribute("download", "recording.html")
 
-            element.style.display = "none"
-            document.body.appendChild(element)
-            element.click()
-            document.body.removeChild(element)
+                element.style.display = "none"
+                document.body.appendChild(element)
+                element.click()
+                document.body.removeChild(element)
+            }
 
             this.setState({
                 recording: null,
-                recording_start: null,
+                recording_waiting_to_start: false,
+                recording_start_time: null,
             })
         }
 
@@ -1041,6 +1065,14 @@ patch: ${JSON.stringify(
         let match_state_to_playback_running = false
         let current_state_timestamp = 0
 
+        this.goto_scroll_position = ({ cell_id, relative_distance }, smooth = true) => {
+            const cell = document.getElementById(cell_id)
+            window.scrollTo({
+                top: cell.offsetTop + relative_distance * cell.offsetHeight - window.innerHeight / 2,
+                behavior: smooth ? "smooth" : "auto",
+            })
+        }
+
         const match_state_to_playback = async () => {
             match_state_to_playback_running = true
 
@@ -1053,13 +1085,9 @@ patch: ${JSON.stringify(
                 ([t, s]) => Math.min(current_state_timestamp, new_timestamp) < t && t <= Math.max(current_state_timestamp, new_timestamp)
             )
             if (scrolls_in_time_window.length > 0) {
-                let { cell_id, relative_distance } = (new_timestamp > current_state_timestamp ? _.last : _.first)(scrolls_in_time_window)[1]
+                let scroll_state = (new_timestamp > current_state_timestamp ? _.last : _.first)(scrolls_in_time_window)[1]
 
-                const cell = document.getElementById(cell_id)
-                window.scrollTo({
-                    top: cell.offsetTop + relative_distance * cell.offsetHeight - window.innerHeight / 2,
-                    behavior: "smooth",
-                })
+                this.goto_scroll_position(scroll_state)
             }
 
             if (new_timestamp < current_state_timestamp) {
@@ -1155,6 +1183,12 @@ patch: ${JSON.stringify(
     The notebook file saves every time you run a cell.`
                 )
                 e.preventDefault()
+            } else if (e.key === "Escape") {
+                this.setState({
+                    recording_waiting_to_start: false,
+                    selected_cells: [],
+                    export_menu_open: false,
+                })
             }
 
             if (this.state.disable_ui && this.state.offer_binder) {
@@ -1347,7 +1381,7 @@ patch: ${JSON.stringify(
                             notebookexport_url=${this.export_url("notebookexport")}
                             open=${export_menu_open}
                             onClose=${() => this.setState({ export_menu_open: false })}
-                            start_recording=${this.start_recording}
+                            start_recording=${() => this.setState({ recording_waiting_to_start: true })}
                         />
                         ${
                             status.binder
@@ -1493,15 +1527,38 @@ patch: ${JSON.stringify(
                     />
                     <div id="outline-frame"></div>
                     ${
-                        this.state.recording
-                            ? html`<div id="stop-record-container" class="overlay-button">
-                                  <button
-                                      onclick=${() => {
-                                          this.stop_recording()
-                                      }}
-                                  >
-                                      <span><b>Stop recording</b><span class="stop-recording-icon"></span></span>
-                                  </button>
+                        this.state.recording_waiting_to_start
+                            ? html`<div id="record-ui-container">
+                                  <div class="overlay-button">
+                                      <button
+                                          onclick=${() => {
+                                              this.start_recording({ want_audio: true })
+                                          }}
+                                      >
+                                          <span><b>Start recording</b><span class="microphone-icon pluto-icon"></span></span>
+                                      </button>
+                                  </div>
+                                  <div class="overlay-button record-no-audio">
+                                      <button
+                                          onclick=${() => {
+                                              this.start_recording({ want_audio: false })
+                                          }}
+                                      >
+                                          <span><b>Start recording</b> (no audio)<span class="mute-icon pluto-icon"></span></span>
+                                      </button>
+                                  </div>
+                              </div>`
+                            : this.state.recording
+                            ? html`<div id="record-ui-container">
+                                  <div class="overlay-button">
+                                      <button
+                                          onclick=${() => {
+                                              this.stop_recording()
+                                          }}
+                                      >
+                                          <span><b>Stop recording</b><span class="stop-recording-icon pluto-icon"></span></span>
+                                      </button>
+                                  </div>
                               </div>`
                             : null
                     }
