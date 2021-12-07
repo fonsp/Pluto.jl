@@ -117,11 +117,15 @@ end
 Specifiy the [`Pluto.ServerSession`](@ref) to run the web server on, which includes the configuration. Passing a session as argument allows you to start the web server with some notebooks already running. See [`SessionActions`](@ref) to learn more about manipulating a `ServerSession`.
 """
 function run(session::ServerSession)
+    pluto_router = http_router_for(session)
+    Base.invokelatest(run, session, pluto_router)
+end
+
+function run(session::ServerSession, pluto_router)
 
     notebook_at_startup = session.options.server.notebook
     open_notebook!(session, notebook_at_startup)
 
-    pluto_router = http_router_for(session)
     host = session.options.server.host
     port = session.options.server.port
 
@@ -256,6 +260,10 @@ function run(session::ServerSession)
     println("Press Ctrl+C in this terminal to stop Pluto")
     println()
 
+    if PLUTO_VERSION >= v"0.18.0" && frontend_directory() == "frontend"
+        @info "It looks like you are developing the Pluto package, using the unbundled frontend..."
+    end
+
     shutdown_server[] = () -> @sync begin
         println("\n\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈")
         @async swallow_exception(() -> close(serversocket), Base.IOError)
@@ -360,7 +368,7 @@ function process_ws_message(session::ServerSession, parentbody::Dict, clientstre
         try
             responsefunc(ClientRequest(session, notebook, body, Initiator(client, request_id)))
         catch ex
-            @warn "Response function to message of type $(messagetype) failed"
+            @warn "Response function to message of type $(repr(messagetype)) failed"
             rethrow(ex)
         end
     else

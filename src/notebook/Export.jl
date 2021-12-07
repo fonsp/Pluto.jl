@@ -14,12 +14,23 @@ end
 See [PlutoSliderServer.jl](https://github.com/JuliaPluto/PlutoSliderServer.jl) if you are interested in exporting notebooks programatically.
 """
 function generate_html(;
-        version=nothing, pluto_cdn_root=nothing,
-        notebookfile_js="undefined", statefile_js="undefined", 
-        slider_server_url_js="undefined", binder_url_js=repr(default_binder_url),
-        disable_ui=true, notebook_id_js="undefined",
+        version::Union{Nothing,VersionNumber,AbstractString}=nothing, 
+        pluto_cdn_root::Union{Nothing,AbstractString}=nothing,
+        
+        notebookfile_js::AbstractString="undefined", 
+        statefile_js::AbstractString="undefined", 
+        
+        slider_server_url_js::AbstractString="undefined", 
+        binder_url_js::AbstractString=repr(default_binder_url),
+        
+        disable_ui::Bool=true, 
+        preamble_html_js::AbstractString="undefined",
+        notebook_id_js::AbstractString="undefined", 
+        isolated_cell_ids_js::AbstractString="undefined",
     )::String
 
+    # Here we don't use frontend-dist (bundled code) yet, might want to
+    # use a separate Parcel pipeline to make UBER-BUNDLED html exports (TODO DRAL)
     original = read(project_relative_path("frontend", "editor.html"), String)
 
     cdn_root = if pluto_cdn_root === nothing
@@ -43,11 +54,13 @@ function generate_html(;
         """
         <script data-pluto-file="launch-parameters">
         window.pluto_notebook_id = $(notebook_id_js);
+        window.pluto_isolated_cell_ids = $(isolated_cell_ids_js);
         window.pluto_notebookfile = $(notebookfile_js);
         window.pluto_disable_ui = $(disable_ui ? "true" : "false");
         window.pluto_slider_server_url = $(slider_server_url_js);
         window.pluto_binder_url = $(binder_url_js);
         window.pluto_statefile = $(statefile_js);
+        window.pluto_preamble_html = $(preamble_html_js);
         </script>
         <!-- [automatically generated launch parameters can be inserted here] -->
         """

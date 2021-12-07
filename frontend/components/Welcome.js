@@ -6,6 +6,9 @@ import { create_pluto_connection, fetch_pluto_releases } from "../common/PlutoCo
 import { cl } from "../common/ClassTable.js"
 import { PasteHandler } from "./PasteHandler.js"
 
+const get_path = (p) => (typeof p === "object" ? p.path : p) ?? ""
+const get_url = (p) => (typeof p === "object" ? p.url : p) ?? ""
+
 const create_empty_notebook = (path, notebook_id = null) => {
     return {
         transitioning: false, // between running and being shut down
@@ -14,13 +17,17 @@ const create_empty_notebook = (path, notebook_id = null) => {
     }
 }
 
-const split_at_level = (path, level) => path.split(/\/|\\/).slice(-level).join("/")
+const split_at_level = (path = "", level = 1) => {
+    return get_path(path).split(/\/|\\/)?.slice(-level)?.join("/")
+}
 
-const shortest_path = (path, allpaths) => {
+const shortest_path = (maybepath, allpaths) => {
+    const path = get_path(maybepath)
+    const paths = allpaths.map(get_path)
     let level = 1
-    for (const otherpath of allpaths) {
+    for (const otherpath of paths) {
         if (otherpath !== path) {
-            while (split_at_level(path, level) === split_at_level(otherpath, level)) {
+            while (split_at_level(String(path), level) === split_at_level(String(otherpath), level)) {
                 level++
             }
         }
@@ -74,6 +81,11 @@ export const process_path_or_url = async (path_or_url) => {
             path_or_url: u.href,
         }
     } catch (ex) {
+        /* Remove eventual single/double quotes from the path if they surround it, see
+          https://github.com/fonsp/Pluto.jl/issues/1639 */
+        if (path_or_url[path_or_url.length - 1] === '"' && path_or_url[0] === '"') {
+            path_or_url = path_or_url.slice(1, -1) /* Remove first and last character */
+        }
         return {
             type: "path",
             path_or_url: path_or_url,
@@ -82,8 +94,8 @@ export const process_path_or_url = async (path_or_url) => {
 }
 
 // /open will execute a script from your hard drive, so we include a token in the URL to prevent a mean person from getting a bad file on your computer _using another hypothetical intrusion_, and executing it using Pluto
-export const link_open_path = (path) => "open?" + new URLSearchParams({ path: path }).toString()
-export const link_open_url = (url) => "open?" + new URLSearchParams({ url: url }).toString()
+export const link_open_path = (path) => "open?" + new URLSearchParams({ path: get_path(path) }).toString()
+export const link_open_url = (url) => "open?" + new URLSearchParams({ url: get_url(url) }).toString()
 export const link_edit = (notebook_id) => "edit?id=" + notebook_id
 
 export class Welcome extends Component {
@@ -183,13 +195,15 @@ export class Welcome extends Component {
                         const recommended_updates = updates.filter((r) => r.body.toLowerCase().includes("recommended update"))
                         if (recommended_updates.length > 0) {
                             console.log(`Newer version ${latest} is available`)
-                            alert(
-                                "A new version of Pluto.jl is available! 🎉\n\n    You have " +
-                                    local +
-                                    ", the latest is " +
-                                    latest +
-                                    '.\n\nYou can update Pluto.jl using the julia package manager:\n    import Pkg; Pkg.update("Pluto")\nAfterwards, exit Pluto.jl and restart julia.'
-                            )
+                            if (!this.client.version_info.dismiss_update_notification) {
+                                alert(
+                                    "A new version of Pluto.jl is available! 🎉\n\n    You have " +
+                                        local +
+                                        ", the latest is " +
+                                        latest +
+                                        '.\n\nYou can update Pluto.jl using the julia package manager:\n    import Pkg; Pkg.update("Pluto")\nAfterwards, exit Pluto.jl and restart julia.'
+                                )
+                            }
                         }
                     }
                 })
@@ -296,7 +310,7 @@ export class Welcome extends Component {
                     </button>
                     <a
                         href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path)}
-                        title=${nb.path}
+                        title=${get_path(nb.path)}
                         onClick=${(e) => {
                             document.body.classList.add("loading")
                             this.set_notebook_state(nb.path, {

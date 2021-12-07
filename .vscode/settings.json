@@ -3,6 +3,7 @@
     "prettier.tabWidth": 4,
     "prettier.semi": false,
     "prettier.quoteProps": "consistent",
+    "prettier.singleQuote": false,
     "julia.format.calls": false,
     "julia.format.comments": false,
     "julia.format.curly": false,
@@ -11,5 +12,13 @@
     "julia.format.iterOps": false,
     "julia.format.ops": false,
     "julia.format.tuples": false,
-    "julia.format.kwarg": "off"
+    "julia.format.kwarg": "off",
+    
+    "editor.formatOnSave": false,
+    "[javascript]": {
+        "editor.formatOnSave": true
+    },
+    "[css]": {
+        "editor.formatOnSave": true
+    }
 }

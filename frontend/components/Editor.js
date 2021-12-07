@@ -31,9 +31,10 @@ import { BinderButton } from "./BinderButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
 import { ProgressBar } from "./ProgressBar.js"
 import { base64_arraybuffer, blob_url_to_data_url } from "../common/PlutoHash.js"
-import { now, require } from "../common/SetupCellEnvironment.js"
 import { create_recorder } from "../common/AudioRecording.js"
 import { AudioPlayer } from "./AudioPlayer.js"
+import { IsolatedCell } from "./Cell.js"
+import { RawHTMLContainer } from "./CellOutput.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -77,7 +78,10 @@ const ProcessStatus = {
  */
 const statusmap = (state) => ({
     disconnected: !(state.connected || state.initializing || state.static_preview),
-    loading: (BinderPhase.wait_for_user < state.binder_phase && state.binder_phase < BinderPhase.ready) || state.initializing || state.moving_file,
+    loading:
+        (state.binder_phase != null && BinderPhase.wait_for_user < state.binder_phase && state.binder_phase < BinderPhase.ready) ||
+        state.initializing ||
+        state.moving_file,
     process_restarting: state.notebook.process_status === ProcessStatus.waiting_to_restart,
     process_dead: state.notebook.process_status === ProcessStatus.no_process || state.notebook.process_status === ProcessStatus.waiting_to_restart,
     nbpkg_restart_required: state.notebook.nbpkg?.restart_required_msg != null,
@@ -128,8 +132,9 @@ const first_true_key = (obj) => {
  *      last_run_timestamp: number,
  *      mime: string,
  *      rootassignee: ?string,
- *  }
- *  published_objects: object,
+ *      has_pluto_hook_features: boolean,
+ *  },
+ *  published_object_keys: [string],
  * }}
  */
 
@@ -158,6 +163,7 @@ const first_true_key = (obj) => {
  *  cell_dependencies: { [uuid: string]: CellDependencyData },
  *  cell_order: Array<string>,
  *  cell_execution_order: Array<string>,
+ *  published_objects: { [objectid: string]: any},
  *  bonds: { [name: string]: any },
  *  nbpkg: Object,
  * }}
@@ -177,6 +183,10 @@ const launch_params = {
     //@ts-ignore
     disable_ui: !!(url_params.get("disable_ui") ?? window.pluto_disable_ui),
     //@ts-ignore
+    preamble_html: url_params.get("preamble_html") ?? window.pluto_preamble_html,
+    //@ts-ignore
+    isolated_cell_ids: url_params.has("isolated_cell_id") ? url_params.getAll("isolated_cell_id") : window.pluto_isolated_cell_ids,
+    //@ts-ignore
     binder_url: url_params.get("binder_url") ?? window.pluto_binder_url,
     //@ts-ignore
     slider_server_url: url_params.get("slider_server_url") ?? window.pluto_slider_server_url,
@@ -185,6 +195,7 @@ const launch_params = {
     //@ts-ignore
     recording_audio_url: url_params.get("recording_audio_url") ?? window.pluto_recording_audio_url,
 }
+console.log("Launch parameters: ", launch_params)
 
 /**
  *
@@ -203,6 +214,7 @@ const initial_notebook = () => ({
     cell_dependencies: {},
     cell_order: [],
     cell_execution_order: [],
+    published_objects: {},
     bonds: {},
     nbpkg: null,
 })
@@ -256,6 +268,7 @@ export class Editor extends Component {
         this.actions = {
             get_notebook: () => this?.state?.notebook || {},
             send: (...args) => this.client.send(...args),
+            get_published_object: (objectid) => this.state.notebook.published_objects[objectid],
             //@ts-ignore
             update_notebook: (...args) => this.update_notebook(...args),
             set_doc_query: (query) => this.setState({ desired_doc_query: query }),
@@ -518,15 +531,11 @@ export class Editor extends Component {
              *
              * @param {string} name         | bond name
              * @param {*} value             | bond value
-             * @param {boolean} is_first_value    | true during initialization
              */
-            set_bond: async (name, value, is_first_value) => {
-                // For now I discard is_first_value, basing it on if there
-                // is a value already present in the state.
-                // Keep an eye on https://github.com/fonsp/Pluto.jl/issues/275
+            set_bond: async (name, value) => {
                 await update_notebook((notebook) => {
                     // Wrap the bond value in an object so immer assumes it is changed
-                    let new_bond = { value: value, is_first_value: is_first_value }
+                    let new_bond = { value: value }
                     notebook.bonds[name] = new_bond
                 })
             },
@@ -635,6 +644,7 @@ patch: ${JSON.stringify(
         // these are update message that are _not_ a response to a `send(*, *, {create_promise: true})`
         const on_update = (update, by_me) => {
             if (this.state.notebook.notebook_id === update.notebook_id) {
+                if (this.state.binder_phase != null) console.debug("on_update", update, by_me)
                 const message = update.message
                 switch (update.type) {
                     case "notebook_diff":
@@ -657,6 +667,7 @@ patch: ${JSON.stringify(
                         // alert("Something went wrong 🙈\n Try clearing your browser cache and refreshing the page")
                         break
                 }
+                if (this.state.binder_phase != null) console.debug("on_update done")
             } else {
                 // Update for a different notebook, TODO maybe log this as it shouldn't happen
             }
@@ -669,7 +680,9 @@ patch: ${JSON.stringify(
             // @ts-ignore
             window.version_info = this.client.version_info // for debugging
 
+            console.debug("Sending update_notebook request...")
             await this.client.send("update_notebook", { updates: [] }, { notebook_id: this.state.notebook.notebook_id }, false)
+            console.debug("Received update_notebook request")
 
             this.setState({ initializing: false, static_preview: false, binder_phase: this.state.binder_phase == null ? null : BinderPhase.ready })
 
@@ -919,9 +932,11 @@ patch: ${JSON.stringify(
 
             let initial_html = await (await fetch(this.export_url("notebookexport"))).text()
 
-            initial_html = initial_html.replaceAll("https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.0/frontend/", "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@90a47a1/frontend/")
+            initial_html = initial_html.replaceAll(
+                "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.0/frontend/",
+                "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@90a47a1/frontend/"
+            )
 
-            
             const scroll_handler = _.debounce(() => {
                 let y = window.scrollY + window.innerHeight / 2
 
@@ -1085,6 +1100,9 @@ patch: ${JSON.stringify(
         })
         document.addEventListener("visibilitychange", (e) => {
             document.body.classList.toggle("ctrl_down", false)
+            setTimeout(() => {
+                document.body.classList.toggle("ctrl_down", false)
+            }, 100)
         })
 
         document.addEventListener("keydown", (e) => {
@@ -1262,6 +1280,13 @@ patch: ${JSON.stringify(
         if (old_state.disable_ui !== this.state.disable_ui) {
             this.on_disable_ui()
         }
+
+        if (old_state.notebook.nbpkg?.restart_recommended_msg !== new_state.notebook.nbpkg?.restart_recommended_msg) {
+            console.warn(`New restart recommended message: ${new_state.notebook.nbpkg?.restart_recommended_msg}`)
+        }
+        if (old_state.notebook.nbpkg?.restart_required_msg !== new_state.notebook.nbpkg?.restart_required_msg) {
+            console.warn(`New restart required message: ${new_state.notebook.nbpkg?.restart_required_msg}`)
+        }
     }
 
     componentWillUpdate(new_props, new_state) {
@@ -1273,6 +1298,28 @@ patch: ${JSON.stringify(
 
         const status = this.cached_status ?? statusmap(this.state)
         const statusval = first_true_key(status)
+
+        if (launch_params.isolated_cell_ids && launch_params.isolated_cell_ids.length > 0) {
+            return html`
+                <${PlutoContext.Provider} value=${this.actions}>
+                    <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
+                        <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
+                            <div style="width: 100%">
+                                ${this.state.notebook.cell_order.map(
+                                    (cell_id, i) => html`
+                                        <${IsolatedCell}
+                                            cell_id=${cell_id}
+                                            cell_results=${this.state.notebook.cell_results[cell_id]}
+                                            hidden=${!launch_params.isolated_cell_ids.includes(cell_id)}
+                                        />
+                                    `
+                                )}
+                            </div>
+                        </${PlutoJSInitializingContext.Provider}>
+                    </${PlutoBondsContext.Provider}>
+                </${PlutoContext.Provider}>
+            `
+        }
 
         const restart_button = (text) => html`<a
             href="#"
@@ -1321,7 +1368,7 @@ patch: ${JSON.stringify(
                             </a>
                             <div class="flex_grow_1"></div>
                             ${
-                                this.state.binder_phase === BinderPhase.ready
+                                status.binder
                                     ? html`<pluto-filepicker><a href=${this.export_url("notebookfile")} target="_blank">Save notebook...</a></pluto-filepicker>`
                                     : html`<${FilePicker}
                                           client=${this.client}
@@ -1374,6 +1421,7 @@ patch: ${JSON.stringify(
             launch_params.notebookfile == null ? null : new URL(launch_params.notebookfile, window.location.href).href
         } />
                     <${FetchProgress} progress=${this.state.statefile_download_progress} />
+                    ${launch_params.preamble_html ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />` : null}
                     <${Main}>
                         <${Preamble}
                             last_update_time=${this.state.last_update_time}
@@ -1460,9 +1508,9 @@ patch: ${JSON.stringify(
                     <${SlideControls} />
                     <footer>
                         <div id="info">
+                            <a href="https://github.com/fonsp/Pluto.jl/wiki" target="_blank">FAQ</a>
+                            <span style="flex: 1"></span>
                             <form id="feedback" action="#" method="post">
-                                <a href="https://github.com/fonsp/Pluto.jl/wiki" target="_blank">FAQ</a>
-                                <span style="flex: 1"></span>
                                 <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl" target="_blank">Pluto.jl</a> better?</label>
                                 <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
                                 <button>Send</button>

@@ -1,6 +1,32 @@
 import HTTP
 import Markdown: htmlesc
 import UUIDs: UUID
+import Pkg
+
+const found_is_pluto_dev = Ref{Union{Nothing,Bool}}(nothing)
+function is_pluto_dev()
+    if found_is_pluto_dev[] !== nothing
+        return found_is_pluto_dev[]
+    end
+    found_is_pluto_dev[] = try
+        deps = Pkg.dependencies()
+
+        p_index = findfirst(p -> p.name == "Pluto", deps)
+        p = deps[p_index]
+
+        return p.is_tracking_path
+    catch
+        false
+    end
+end
+
+function frontend_directory()
+    if isdir(project_relative_path("frontend-dist")) && !is_pluto_dev()
+        "frontend-dist"
+    else
+        "frontend"
+    end
+end
 
 # Serve everything from `/frontend`, and create HTTP endpoints to open notebooks.
 
@@ -29,7 +55,7 @@ function asset_response(path)
 end
 
 function error_response(status_code::Integer, title, advice, body="")
-    template = read(project_relative_path("frontend", "error.jl.html"), String)
+    template = read(project_relative_path(frontend_directory(), "error.jl.html"), String)
 
     body_title = body == "" ? "" : "Error message:"
     filled_in = replace(replace(replace(replace(replace(template, 
@@ -127,11 +153,11 @@ function http_router_for(session::ServerSession)
     # Access to all 'risky' endpoints is still restricted to requests that have the secret cookie, but visiting `/` is allowed, and it will set the cookie. From then on the security situation is identical to 
     #    secret_for_access == true
     HTTP.@register(router, "GET", "/", with_authentication(
-        create_serve_onefile(project_relative_path("frontend", "index.html"));
+        create_serve_onefile(project_relative_path(frontend_directory(), "index.html"));
         required=security.require_secret_for_access
         ))
     HTTP.@register(router, "GET", "/edit", with_authentication(
-        create_serve_onefile(project_relative_path("frontend", "editor.html"));
+        create_serve_onefile(project_relative_path(frontend_directory(), "editor.html"));
         required=security.require_secret_for_access || 
         security.require_secret_for_open_links,
     ))
@@ -278,11 +304,11 @@ function http_router_for(session::ServerSession)
     function serve_asset(request::HTTP.Request)
         uri = HTTP.URI(request.target)
         
-        filepath = project_relative_path("frontend", relpath(HTTP.unescapeuri(uri.path), "/"))
+        filepath = project_relative_path(frontend_directory(), relpath(HTTP.unescapeuri(uri.path), "/"))
         asset_response(filepath)
     end
     HTTP.@register(router, "GET", "/*", serve_asset)
-    HTTP.@register(router, "GET", "/favicon.ico", create_serve_onefile(project_relative_path("frontend", "img", "favicon.ico")))
+    HTTP.@register(router, "GET", "/favicon.ico", create_serve_onefile(project_relative_path(frontend_directory(), "img", "favicon.ico")))
 
     return router
 end
