@@ -71,6 +71,7 @@ end
 # Should return a notebook (use Pluto.open)
 struct CustomLaunchEvent <: PlutoEvent
     params::Dict{Any, Any}
+    request::HTTP.Request
 end
 
 # Triggered when a notebook has shut down.
