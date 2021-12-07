@@ -470,10 +470,11 @@ export const CellInput = ({
             return
         }
         remote_code_ref.current = remote_code
-        if (current_value !== remote_code) {
+        // If remote_code !== local_code, the other effect below will set CM
+        if (current_value !== remote_code && remote_code === local_code) {
             setValue6(newcm_ref.current, remote_code)
         }
-    }, [remote_code])
+    }, [remote_code, local_code])
 
     useEffect(() => {
         if (newcm_ref.current == null) return // Not sure when and why this gave an error, but now it doesn't
@@ -485,7 +486,7 @@ export const CellInput = ({
                 annotations: [change_is_from_remote_annotation.of(1)], // Maybe cursor in the future??
             })
         }
-    }, [local_code])
+    }, [local_code, client_id])
 
     useEffect(() => {
         const cm = newcm_ref.current
