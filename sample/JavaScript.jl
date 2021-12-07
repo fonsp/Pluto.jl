@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.15.0
+# v0.17.3
 
 using Markdown
 using InteractiveUtils
@@ -7,8 +7,9 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
-        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
     end
 end
@@ -34,7 +35,7 @@ This document assumes that you have used HTML, CSS and JavaScript before in anot
 """
 
 # ╔═╡ 28ae1424-67dc-4b76-a172-1185cc76cb59
-html"""
+@htl("""
 
 <article class="learning">
 	<h4>
@@ -67,7 +68,7 @@ html"""
 	}
 
 </style>
-"""
+""")
 
 # ╔═╡ ea39c63f-7466-4015-a66c-08bd9c716343
 md"""
@@ -95,161 +96,50 @@ If you chose to learn JavaScript using Pluto, let me know how it went, and how w
 # ╔═╡ d70a3a02-ef3a-450f-bf5a-4a0d7f6262e2
 TableOfContents()
 
-# ╔═╡ 5c5d2489-e48b-432f-94f8-b15333134e24
+# ╔═╡ 10cf6ed1-8276-4a4a-ad06-097d10335512
 md"""
 # Essentials
 
-## Custom `@bind` output
+## Using HTML, CSS and JavaScript
+
+To use web languages inside Pluto, we recomend the small package `HypertextLiteral.jl`, which provides a `@htl` macro.
+
+You wrap `@htl` around a string expression, to mark it as an *HTML literal*. When a cell outputs an HTML-showable object, it is rendered directly in your browser.
 """
 
-# ╔═╡ 75e1a973-7ef0-4ac5-b3e2-5edb63577927
+# ╔═╡ d967cdf9-3df9-40bb-9b08-09cae95a5ca7
+@htl(" <b> Hello! </b> ")
+
+# ╔═╡ 858745a9-cd59-43a6-a296-803515518e57
 md"""
-**You can use JavaScript to write input widgets.** The `input` event can be triggered on any object using
+### CSS and JavaScript
 
-```javascript
-obj.value = ...
-obj.dispatchEvent(new CustomEvent("input"))
-```
+You can use CSS and JavaScript by including it inside HTML, just like you do when writing a web page.
 
-For example, here is a button widget that will send the number of times it has been clicked as the value:
-
+For example, here we use `<script>` to include some JavaScript, and `<style>` to include CSS.
 """
 
-# ╔═╡ e8d8a60e-489b-467a-b49c-1fa844807751
-ClickCounter(text="Click") = @htl("""
-<div>
-<button>$(text)</button>
-
-<script>
-
-	// Select elements relative to `currentScript`
-	var div = currentScript.parentElement
-	var button = div.querySelector("button")
-
-	// we wrapped the button in a `div` to hide its default behaviour from Pluto
-
-	var count = 0
-
-	button.addEventListener("click", (e) => {
-		count += 1
-
-		// we dispatch the input event on the div, not the button, because 
-		// Pluto's `@bind` mechanism listens for events on the **first element** in the
-		// HTML output. In our case, that's the div.
-
-		div.value = count
-		div.dispatchEvent(new CustomEvent("input"))
-		e.preventDefault()
-	})
-
-	// Set the initial value
-	div.value = count
-
-</script>
-</div>
-""")
-
-# ╔═╡ 9346d8e2-9ba0-4475-a21f-11bdd018bc60
-@bind num_clicks ClickCounter()
-
-# ╔═╡ 7822fdb7-bee6-40cc-a089-56bb32d77fe6
-num_clicks
-
-# ╔═╡ 701de4b8-42d3-46a3-a399-d7761dccd83d
-md"""
-As an exercise to get familiar with these techniques, you can try the following:
-- 👉 Add a "reset to zero" button to the widget above.
-- 👉 Make the bound value an array that increases size when you click, instead of a single number.
-- 👉 Create a "two sliders" widget: combine two sliders (`<input type=range>`) into a single widget, where the bound value is the two-element array with both values.
-- 👉 Create a "click to send" widget: combine a text input and a button, and only send the contents of the text field when the button is clicked, not on every keystroke.
-
-Questions? Ask them on our [GitHub Discussions](https://github.com/fonsp/Pluto.jl/discussions)!
-"""
-
-# ╔═╡ 88120468-a43d-4d58-ac04-9cc7c86ca179
-md"""
-## Debugging
-
-The HTML, CSS and JavaScript that you write run in the browser, so you should use the [browser's built-in developer tools](https://developer.mozilla.org/en-US/docs/Learn/Common_questions/What_are_browser_developer_tools) to debug your code. 
-"""
-
-# ╔═╡ ea4b2da1-4c83-4a1f-8fc3-c71a120e58e1
-html"""
-
-<script>
-
-console.info("Can you find this message in the console?")
-
-</script>
-
-"""
-
-# ╔═╡ 08bdeaff-5bfb-49ab-b4cc-3a3446c63edc
+# ╔═╡ 21a9e3e6-92f4-475d-9c8e-21e15c09336b
 @htl("""
-	<style>
-	.cool-class {
-		font-size: 1.3rem;
-		color: purple;
-		background: lightBlue;
-		padding: 1rem;
-		border-radius: 1rem;
-	}
-	
-	
-	</style>
-	
-	<div class="cool-class">Can you find out which CSS class this is?</div>
-	""")
 
-# ╔═╡ 9b6b5da9-8372-4ebf-9c66-ae9fcfc45d47
-md"""
-## Selecting elements
-
-When writing the javascript code for a widget, it is common to **select elements inside the widgets** to manipulate them. In the number-of-clicks example above, we selected the `<div>` and `<button>` elements in our code, to trigger the input event, and attach event listeners, respectively.
-
-There are a numbers of ways to do this, and the recommended strategy is to **create a wrapper `<div>`, and use `currentScript.parentElement` to select it**.
-
-### `currentScript`
-
-When Pluto runs the code inside `<script>` tags, it assigns a reference to that script element to a variable called `currentScript`. You can then use properties like `previousElementSibling` or `parentElement` to "navigate to other elements".
-
-Let's look at the "wrapper div strategy" again.
-
-```htmlmixed
-@htl("\""
-
-<!-- the wrapper div -->
-<div>
-
-	<button id="first">Hello</button>
-	<button id="second">Julians!</button>
-	
-	<script>
-		var wrapper_div = currentScript.parentElement
-		// we can now use querySelector to select anything we want
-		var first_button = wrapper_div.querySelector("button#first")
-
-		console.log(first_button)
-	</script>
+<div class='blue-background'>
+Hello!
 </div>
-"\"")
-```
-"""
 
-# ╔═╡ f18b98f7-1e0f-4273-896f-8a667d15605b
-md"""
-#### Why not just select on `document.body`?
+<script>
+// more about selecting elements later!
+currentScript.previousElementSibling.innerText = "Hello from JavaScript!"
 
-In the example above, it would have been easier to just select the button directly, using:
-```javascript
-// ⛔ do no use:
-var first_button = document.body.querySelector("button#first")
-```
+</script>
 
-However, this becomes a problem when **combining using the widget multiple times in the same notebook**, since all selectors will point to the first instance. 
+<style>
+.blue-background {
+	padding: .5em;
+	background: lightblue;
+}
+</style>
 
-Similarly, try not to search relative to the `<pluto-cell>` or `<pluto-output>` element, because users might want to combine multiple instances of the widget in a single cell.
-"""
+""")
 
 # ╔═╡ 4a3398be-ee86-45f3-ac8b-f627a38c00b8
 md"""
@@ -340,9 +230,9 @@ HTML("""
 md"""
 ### Interpolating into JS -- _HypertextLiteral.jl_
 
-As we see above, using HypertextLiteral.jl, we can interpolate objects (numbers, string, images) into HTML output, great! Next, we want to **interpolate _data_ into _scripts_**. Although you could use `JSON.jl`, HypertextLiteral.jl actually has this abality built-in! 
+As we see above, using HypertextLiteral.jl, we can interpolate objects (numbers, string, images) into HTML output, great! Next, we want to **interpolate _data_ into _scripts_**. Although you could use `JSON.jl`, HypertextLiteral.jl actually has this ability built-in! 
 
-> When you **interpolate Julia objects into a `<script>` tag** using the `@htl` macro, it be converted to a JS object _automatically_. 
+> When you **interpolate Julia objects into a `<script>` tag** using the `@htl` macro, it will be converted to a JS object _automatically_. 
 """
 
 # ╔═╡ b226da72-9512-4d14-8582-2f7787c25028
@@ -407,6 +297,160 @@ md"""
 In the future, you will be able to embed data directly into JavaScript, using Pluto's built-in, optimized data transfer. See [the Pull Request](https://github.com/fonsp/Pluto.jl/pull/1124) for more info.
 """
 
+# ╔═╡ 0866afc2-fd42-42b7-a572-9d824cf8b83b
+md"""
+## Custom `@bind` output
+"""
+
+# ╔═╡ 75e1a973-7ef0-4ac5-b3e2-5edb63577927
+md"""
+**You can use JavaScript to write input widgets.** The `input` event can be triggered on any object using
+
+```javascript
+obj.value = ...
+obj.dispatchEvent(new CustomEvent("input"))
+```
+
+For example, here is a button widget that will send the number of times it has been clicked as the value:
+
+"""
+
+# ╔═╡ e8d8a60e-489b-467a-b49c-1fa844807751
+ClickCounter(text="Click") = @htl("""
+<span>
+<button>$(text)</button>
+
+<script>
+
+	// Select elements relative to `currentScript`
+	var span = currentScript.parentElement
+	var button = span.querySelector("button")
+
+	// we wrapped the button in a `span` to hide its default behaviour from Pluto
+
+	var count = 0
+
+	button.addEventListener("click", (e) => {
+		count += 1
+
+		// we dispatch the input event on the span, not the button, because 
+		// Pluto's `@bind` mechanism listens for events on the **first element** in the
+		// HTML output. In our case, that's the span.
+
+		span.value = count
+		span.dispatchEvent(new CustomEvent("input"))
+		e.preventDefault()
+	})
+
+	// Set the initial value
+	span.value = count
+
+</script>
+</span>
+""")
+
+# ╔═╡ 9346d8e2-9ba0-4475-a21f-11bdd018bc60
+@bind num_clicks ClickCounter()
+
+# ╔═╡ 7822fdb7-bee6-40cc-a089-56bb32d77fe6
+num_clicks
+
+# ╔═╡ 701de4b8-42d3-46a3-a399-d7761dccd83d
+md"""
+As an exercise to get familiar with these techniques, you can try the following:
+- 👉 Add a "reset to zero" button to the widget above.
+- 👉 Make the bound value an array that increases size when you click, instead of a single number.
+- 👉 Create a "two sliders" widget: combine two sliders (`<input type=range>`) into a single widget, where the bound value is the two-element array with both values.
+- 👉 Create a "click to send" widget: combine a text input and a button, and only send the contents of the text field when the button is clicked, not on every keystroke.
+
+Questions? Ask them on our [GitHub Discussions](https://github.com/fonsp/Pluto.jl/discussions)!
+"""
+
+# ╔═╡ 88120468-a43d-4d58-ac04-9cc7c86ca179
+md"""
+## Debugging
+
+The HTML, CSS and JavaScript that you write run in the browser, so you should use the [browser's built-in developer tools](https://developer.mozilla.org/en-US/docs/Learn/Common_questions/What_are_browser_developer_tools) to debug your code. 
+"""
+
+# ╔═╡ ea4b2da1-4c83-4a1f-8fc3-c71a120e58e1
+@htl("""
+
+<script>
+
+console.info("Can you find this message in the console?")
+
+</script>
+
+""")
+
+# ╔═╡ 08bdeaff-5bfb-49ab-b4cc-3a3446c63edc
+@htl("""
+	<style>
+	.cool-class {
+		font-size: 1.3rem;
+		color: purple;
+		background: lightBlue;
+		padding: 1rem;
+		border-radius: 1rem;
+	}
+	
+	
+	</style>
+	
+	<div class="cool-class">Can you find out which CSS class this is?</div>
+	""")
+
+# ╔═╡ 9b6b5da9-8372-4ebf-9c66-ae9fcfc45d47
+md"""
+## Selecting elements
+
+When writing the javascript code for a widget, it is common to **select elements inside the widgets** to manipulate them. In the number-of-clicks example above, we selected the `<span>` and `<button>` elements in our code, to trigger the input event, and attach event listeners, respectively.
+
+There are a numbers of ways to do this, and the recommended strategy is to **create a wrapper `<span>`, and use `currentScript.parentElement` to select it**.
+
+### `currentScript`
+
+When Pluto runs the code inside `<script>` tags, it assigns a reference to that script element to a variable called `currentScript`. You can then use properties like `previousElementSibling` or `parentElement` to "navigate to other elements".
+
+Let's look at the "wrapper span strategy" again.
+
+```htmlmixed
+@htl("\""
+
+<!-- the wrapper span -->
+<span>
+
+	<button id="first">Hello</button>
+	<button id="second">Julians!</button>
+	
+	<script>
+		var wrapper_span = currentScript.parentElement
+		// we can now use querySelector to select anything we want
+		var first_button = wrapper_span.querySelector("button#first")
+
+		console.log(first_button)
+	</script>
+</span>
+"\"")
+```
+"""
+
+# ╔═╡ f18b98f7-1e0f-4273-896f-8a667d15605b
+md"""
+#### Why not just select on `document.body`?
+
+In the example above, it would have been easier to just select the button directly, using:
+```javascript
+// ⛔ do no use:
+var first_button = document.body.querySelector("button#first")
+```
+
+However, this becomes a problem when **combining using the widget multiple times in the same notebook**, since all selectors will point to the first instance. 
+
+Similarly, try not to search relative to the `<pluto-cell>` or `<pluto-output>` element, because users might want to combine multiple instances of the widget in a single cell.
+"""
+
 # ╔═╡ d83d57e2-4787-4b8d-8669-64ed73d79e73
 md"""
 ## Script loading
@@ -444,7 +488,7 @@ md"""
 
 `<script src="...">` tags with a `src` attribute set, like this tag to import the d3.js library:
 
-```css
+```html
 <script src="https://cdn.jsdelivr.net/npm/d3@6.2.0/dist/d3.min.js"></script>
 ```
 
@@ -480,6 +524,7 @@ The following is different in Pluto:
 # ╔═╡ 5721ad33-a51a-4a91-adb2-0915ea0efa13
 md"""
 ### Example: 
+(Though using `HypertextLiteral.jl` would make more sense for this purpose.)
 """
 
 # ╔═╡ 846354c8-ba3b-4be7-926c-d3c9cc9add5f
@@ -628,7 +673,7 @@ state = Dict(
 
 # ╔═╡ 9e37c18c-3ebb-443a-9663-bb4064391d6e
 @htl("""
-<script type="module" id="asdf">
+<script id="asdf">
 	//await new Promise(r => setTimeout(r, 1000))
 	
 	const { html, render, Component, useEffect, useLayoutEffect, useState, useRef, useMemo, createContext, useContext, } = await import( "https://cdn.jsdelivr.net/npm/htm@3.0.4/preact/standalone.mjs")
@@ -736,42 +781,6 @@ details(md"""
 	```
 	""", "Show with syntax highlighting")
 
-# ╔═╡ b0c246ed-b871-461b-9541-280e49b49136
-details(md"""
-```htmlmixed
-<div>
-<button>$(text)</button>
-
-<script>
-
-	// Select elements relative to `currentScript`
-	var div = currentScript.parentElement
-	var button = div.querySelector("button")
-
-	// we wrapped the button in a `div` to hide its default behaviour from Pluto
-
-	var count = 0
-
-	button.addEventListener("click", (e) => {
-		count += 1
-
-		// we dispatch the input event on the div, not the button, because 
-		// Pluto's `@bind` mechanism listens for events on the **first element** in the
-		// HTML output. In our case, that's the div.
-
-		div.value = count
-		div.dispatchEvent(new CustomEvent("input"))
-		e.preventDefault()
-	})
-
-	// Set the initial value
-	div.value = count
-
-</script>
-</div>
-```
-""", "Show with syntax highlighting")
-
 # ╔═╡ d12b98df-8c3f-4620-ba3c-2f3dadac521b
 details(md"""
 	```htmlmixed
@@ -812,6 +821,42 @@ details(md"""
 	</script>
 	```
 	""", "Show with syntax highlighting")
+
+# ╔═╡ b0c246ed-b871-461b-9541-280e49b49136
+details(md"""
+```htmlmixed
+<div>
+<button>$(text)</button>
+
+<script>
+
+	// Select elements relative to `currentScript`
+	var div = currentScript.parentElement
+	var button = div.querySelector("button")
+
+	// we wrapped the button in a `div` to hide its default behaviour from Pluto
+
+	var count = 0
+
+	button.addEventListener("click", (e) => {
+		count += 1
+
+		// we dispatch the input event on the div, not the button, because 
+		// Pluto's `@bind` mechanism listens for events on the **first element** in the
+		// HTML output. In our case, that's the div.
+
+		div.value = count
+		div.dispatchEvent(new CustomEvent("input"))
+		e.preventDefault()
+	})
+
+	// Set the initial value
+	div.value = count
+
+</script>
+</div>
+```
+""", "Show with syntax highlighting")
 
 # ╔═╡ d121e085-c69b-490f-b315-c11a9abd57a6
 details(md"""
@@ -1082,18 +1127,10 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 # ╟─ea39c63f-7466-4015-a66c-08bd9c716343
 # ╟─8b082f9a-073e-4112-9422-4087850fc89e
 # ╟─d70a3a02-ef3a-450f-bf5a-4a0d7f6262e2
-# ╟─5c5d2489-e48b-432f-94f8-b15333134e24
-# ╟─75e1a973-7ef0-4ac5-b3e2-5edb63577927
-# ╠═e8d8a60e-489b-467a-b49c-1fa844807751
-# ╟─b0c246ed-b871-461b-9541-280e49b49136
-# ╠═9346d8e2-9ba0-4475-a21f-11bdd018bc60
-# ╠═7822fdb7-bee6-40cc-a089-56bb32d77fe6
-# ╟─701de4b8-42d3-46a3-a399-d7761dccd83d
-# ╟─88120468-a43d-4d58-ac04-9cc7c86ca179
-# ╠═ea4b2da1-4c83-4a1f-8fc3-c71a120e58e1
-# ╟─08bdeaff-5bfb-49ab-b4cc-3a3446c63edc
-# ╟─9b6b5da9-8372-4ebf-9c66-ae9fcfc45d47
-# ╟─f18b98f7-1e0f-4273-896f-8a667d15605b
+# ╟─10cf6ed1-8276-4a4a-ad06-097d10335512
+# ╠═d967cdf9-3df9-40bb-9b08-09cae95a5ca7
+# ╟─858745a9-cd59-43a6-a296-803515518e57
+# ╠═21a9e3e6-92f4-475d-9c8e-21e15c09336b
 # ╟─4a3398be-ee86-45f3-ac8b-f627a38c00b8
 # ╠═2d5fd611-284b-4428-b6a5-8909203990b9
 # ╠═82de4674-9ecc-46c4-8a57-0b4453c579c3
@@ -1119,6 +1156,18 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 # ╠═21f57310-9ceb-423c-a9ce-5beb1060a5a3
 # ╟─94561cb1-2325-49b6-8b22-943923fdd91b
 # ╟─7d9d6c28-131a-4b2a-84f8-5c085f387e85
+# ╟─0866afc2-fd42-42b7-a572-9d824cf8b83b
+# ╟─75e1a973-7ef0-4ac5-b3e2-5edb63577927
+# ╠═e8d8a60e-489b-467a-b49c-1fa844807751
+# ╟─b0c246ed-b871-461b-9541-280e49b49136
+# ╠═9346d8e2-9ba0-4475-a21f-11bdd018bc60
+# ╠═7822fdb7-bee6-40cc-a089-56bb32d77fe6
+# ╟─701de4b8-42d3-46a3-a399-d7761dccd83d
+# ╟─88120468-a43d-4d58-ac04-9cc7c86ca179
+# ╠═ea4b2da1-4c83-4a1f-8fc3-c71a120e58e1
+# ╟─08bdeaff-5bfb-49ab-b4cc-3a3446c63edc
+# ╟─9b6b5da9-8372-4ebf-9c66-ae9fcfc45d47
+# ╟─f18b98f7-1e0f-4273-896f-8a667d15605b
 # ╟─d83d57e2-4787-4b8d-8669-64ed73d79e73
 # ╟─077c95cf-2a1b-459f-830e-c29c11a2c5cc
 # ╟─8388a833-d535-4cbd-a27b-de323cea60e8
