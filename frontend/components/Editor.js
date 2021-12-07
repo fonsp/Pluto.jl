@@ -581,14 +581,14 @@ export class Editor extends Component {
                                 //     throw new Error(`Error: [Immer] minified error nr: 15 '${patches?.[0]?.path?.join("/")}'    .`)
                                 // }
 
-                                // altijd `true` om te testen, behalve performance (?) zou dit geen verschil moeten maken MAAR PLUTO IS NU HELEMAAL KAPOT :(
-                                if (true || get_reverse_patches) {
+                                if (get_reverse_patches) {
                                     ;[new_notebook, copy_of_patches, reverse_of_patches] = produceWithPatches(old_state ?? state.notebook, (state) => {
                                         applyPatches(state, patches)
                                     })
-                                } else {
-                                    new_notebook = applyPatches(old_state ?? state.notebook, patches)
+                                    // TODO: why was `new_notebook` not updated?
+                                    // this is why the line below is also called when `get_reverse_patches === true`
                                 }
+                                new_notebook = applyPatches(old_state ?? state.notebook, patches)
                             } catch (exception) {
                                 const failing_path = String(exception).match(".*'(.*)'.*")[1].replace(/\//gi, ".")
                                 const path_value = _.get(this.state.notebook, failing_path, "Not Found")
@@ -596,6 +596,7 @@ export class Editor extends Component {
                                 // The alert below is not catastrophic: the editor will try to recover.
                                 // Deactivating to be user-friendly!
                                 // alert(`Ooopsiee.`)
+
                                 console.error(
                                     `#######################**************************########################
 PlutoError: StateOutOfSync: Failed to apply patches.
