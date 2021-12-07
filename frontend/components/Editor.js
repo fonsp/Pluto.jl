@@ -933,7 +933,7 @@ patch: ${JSON.stringify(
             let initial_html = await (await fetch(this.export_url("notebookexport"))).text()
 
             initial_html = initial_html.replaceAll(
-                "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.0/frontend/",
+                "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.3/frontend/",
                 "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@90a47a1/frontend/"
             )
 
