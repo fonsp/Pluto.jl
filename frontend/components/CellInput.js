@@ -457,25 +457,6 @@ export const CellInput = ({
         }
     }, [])
 
-    // Effect to apply "remote_code" to the cell when it changes...
-    // ideally this won't be necessary as we'll have actual multiplayer,
-    // or something to tell the user that the cell is out of sync.
-    useEffect(() => {
-        if (newcm_ref.current == null) return // Not sure when and why this gave an error, but now it doesn't
-
-        const current_value = getValue6(newcm_ref.current) ?? ""
-        if (remote_code_ref.current == null && remote_code === "" && current_value !== "") {
-            // this cell is being initialized with empty code, but it already has local code set.
-            // this happens when pasting or dropping cells
-            return
-        }
-        remote_code_ref.current = remote_code
-        // If remote_code !== local_code, the other effect below will set CM
-        if (current_value !== remote_code && remote_code === local_code) {
-            setValue6(newcm_ref.current, remote_code)
-        }
-    }, [remote_code, local_code])
-
     useEffect(() => {
         if (newcm_ref.current == null) return // Not sure when and why this gave an error, but now it doesn't
         const current_value = getValue6(newcm_ref.current) ?? ""
