@@ -54,7 +54,7 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
     update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
     
     add(session, nb; run_async=run_async)
-
+    try session.event_listener(OpenNotebookEvent(notebook)) catch end
     nb
 end
 
@@ -203,6 +203,7 @@ function shutdown(session::ServerSession, notebook::Notebook; keep_in_session=fa
         end
     end
     WorkspaceManager.unmake_workspace((session, notebook); async=async)
+    try session.event_listener(ShutdownNotebookEvent(notebook)) catch end
 end
 
 end

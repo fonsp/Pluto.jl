@@ -208,7 +208,18 @@ function http_router_for(session::ServerSession)
                 url = query["url"]
                 return try_launch_notebook_response(SessionActions.open_url, url, as_redirect=(request.method == "GET"), as_sample=as_sample, title="Failed to load notebook", advice="The notebook from <code>$(htmlesc(url))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
             else
-                error("Empty request")
+                # You can ask Pluto to handle CustomLaunch events
+                # and do some magic with how you open files.
+                # You are responsible to keep this up to date.
+                # See Events.jl for types and explanation
+                #
+                maybeNotebook = try
+                    session.event_listener(CustomLaunch(query))
+                catch
+                    nothing
+                end
+                isnothing(maybeNotebook) && return error("Empty request")
+                return maybeNotebook
             end
         catch e
             return error_response(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", sprint(showerror, e, stacktrace(catch_backtrace())))
