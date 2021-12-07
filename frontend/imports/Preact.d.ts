@@ -18,7 +18,6 @@ export declare function html(strings: TemplateStringsArray, ...interpolations: A
 export declare function render(vnode: ValidRenderResult, parent: Element | Document | ShadowRoot | DocumentFragment, replaceNode?: Element | Text): void
 export declare function hydrate(vnode: ValidRenderResult, parent: Element | Document | ShadowRoot | DocumentFragment): void
 export declare function cloneElement(vnode: ReactElement, props?: any, ...children: ValidRenderResult[]): ReactElement
-export declare function createRef<T = any>(): Ref<T>
 export declare function h(type: string, props: any, ...children: any[]): ReactElement
 
 declare function SetState<T>(value: T): void
