@@ -11,6 +11,7 @@ import Distributed
 "Contains the Julia process (in the sense of `Distributed.addprocs`) to evaluate code in. Each notebook gets at most one `Workspace` at any time, but it can also have no `Workspace` (it cannot `eval` code in this case)."
 Base.@kwdef mutable struct Workspace
     pid::Integer
+    notebook_id::UUID
     discarded::Bool=false
     log_channel::Distributed.RemoteChannel
     module_name::Symbol
@@ -55,18 +56,24 @@ function make_workspace((session, notebook)::SN; force_offline::Bool=false)::Wor
         pid
     end
 
-    Distributed.remotecall_eval(Main, [pid], :(PlutoRunner.notebook_id[] = $(notebook.notebook_id)))
+    # This now happens in run_expression, as we want to be able to share a PlutoRunner with multiple notebooks
+    # Distributed.remotecall_eval(Main, [pid], :(PlutoRunner.current_running_notebook_id[] = $(notebook.notebook_id)))
     log_channel = Core.eval(Main, quote
-        $(Distributed).RemoteChannel(() -> eval(:(Main.PlutoRunner.log_channel)), $pid)
+        $(Distributed).RemoteChannel(() -> eval(quote
+            Main.PlutoRunner.log_channel($$(notebook.notebook_id))
+        end), $pid)
     end)
     run_channel = Core.eval(Main, quote
-        $(Distributed).RemoteChannel(() -> eval(:(Main.PlutoRunner.run_channel)), $pid)
+        $(Distributed).RemoteChannel(() -> eval(quote
+            Main.PlutoRunner.run_channel($$(notebook.notebook_id))
+        end), $pid)
     end)
     module_name = create_emptyworkspacemodule(pid)
     
     original_LOAD_PATH, original_ACTIVE_PROJECT = Distributed.remotecall_eval(Main, pid, :(Base.LOAD_PATH, Base.ACTIVE_PROJECT[]))
     
     workspace = Workspace(;
+        notebook_id=notebook.notebook_id,
         pid=pid,
         log_channel=log_channel, 
         module_name=module_name,
@@ -277,6 +284,7 @@ end
 function eval_format_fetch_in_workspace(
     session_notebook::Union{SN,Workspace},
     expr::Expr,
+    notebook_id::UUID,
     cell_id::UUID,
     ends_with_semicolon::Bool=false,
     function_wrapped_info::Union{Nothing,Tuple}=nothing,
@@ -293,7 +301,7 @@ function eval_format_fetch_in_workspace(
         end
         use_nbpkg_environment(session_notebook, workspace)
     end
-    
+        
     # run the code 🏃‍♀️
     
     # a try block (on this process) to catch an InterruptException
@@ -301,11 +309,12 @@ function eval_format_fetch_in_workspace(
     early_result = try
         # we use [pid] instead of pid to prevent fetching output
         Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.run_expression(
-            getfield(Main, $(QuoteNode(workspace.module_name))), 
-            $(QuoteNode(expr)), 
-            $cell_id, 
-            $function_wrapped_info,
-            $forced_expr_id,
+            workspace_module=getfield(Main, $(QuoteNode(workspace.module_name))),
+            expr=$(QuoteNode(expr)),
+            cell_id=$cell_id,
+            notebook_id=$notebook_id,
+            function_wrapped_info=$function_wrapped_info,
+            forced_expr_id=$forced_expr_id,
             user_requested_run=$user_requested_run,
         )))
         put!(workspace.dowork_token)
@@ -357,13 +366,19 @@ function collect_soft_definitions(session_notebook::SN, modules::Set{Expr})
 end
 
 
-function macroexpand_in_workspace(session_notebook::Union{SN,Workspace}, macrocall, cell_uuid, module_name = nothing)::Tuple{Bool, Any}
+function macroexpand_in_workspace(session_notebook::SN, macrocall, cell_uuid, module_name = nothing)::Tuple{Bool, Any}
     workspace = get_workspace(session_notebook)
+    _, notebook = session_notebook
     module_name = module_name === nothing ? workspace.module_name : module_name
 
     Distributed.remotecall_eval(Main, workspace.pid, quote
         try
-            (true, PlutoRunner.try_macroexpand($(module_name), $(cell_uuid), $(macrocall |> QuoteNode)))
+            (true, PlutoRunner.try_macroexpand(
+                workspace_module=$(module_name),
+                cell_id=$(cell_uuid),
+                notebook_id=$(notebook.notebook_id),
+                expr=$(macrocall |> QuoteNode),
+            ))
         catch error
             # We have to be careful here, for example a thrown `MethodError()` will contain the called method and arguments.
             # which normally would be very useful for debugging, but we can't serialize it!

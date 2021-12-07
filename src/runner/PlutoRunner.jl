@@ -49,9 +49,9 @@ struct GiveMeRegisterCleanupFunction <: SpecialPlutoExprValue end
 ###
 
 """
-`PlutoRunner.notebook_id[]` gives you the notebook ID used to identify a session.
+`PlutoRunner.currently_running_notebook_id[]` gives you the notebook ID used to identify a session.
 """
-const notebook_id = Ref{UUID}(uuid4())
+const currently_running_notebook_id = Ref{UUID}(uuid4())
 
 function revise_if_possible(m::Module)
     # Revise.jl support
@@ -231,7 +231,15 @@ module CantReturnInPluto
 end
 
 
-function try_macroexpand(mod, cell_uuid, expr)
+function try_macroexpand(;
+    workspace_module,
+    cell_id,
+    notebook_id,
+    expr,
+)
+    mod = workspace_module
+    cell_uuid = cell_id
+
     # Remove the precvious cached expansion, so when we error somewhere before we update,
     # the old one won't linger around and get run accidentally.
     delete!(cell_expanded_exprs, cell_uuid)
@@ -256,7 +264,7 @@ function try_macroexpand(mod, cell_uuid, expr)
     has_pluto_hook_features = has_hook_style_pluto_properties_in_expr(expr_without_globalrefs)
     expr_to_save = replace_pluto_properties_in_expr(expr_without_globalrefs,
         cell_id=cell_uuid,
-        rerun_cell_function=() -> rerun_cell_from_notebook(cell_uuid),
+        rerun_cell_function=() -> rerun_cell_from_notebook(cell_id=cell_uuid, notebook_id=notebook_id),
         register_cleanup_function=(fn) -> UseEffectCleanups.register_cleanup(fn, cell_uuid),
     )
 
@@ -446,7 +454,15 @@ If the third argument is a `Tuple{Set{Symbol}, Set{Symbol}}` containing the refe
 
 This function is memoized: running the same expression a second time will simply call the same generated function again. This is much faster than evaluating the expression, because the function only needs to be Julia-compiled once. See https://github.com/fonsp/Pluto.jl/pull/720
 """
-function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing, forced_expr_id::Union{ObjectID,Nothing}=nothing; user_requested_run::Bool=true)
+function run_expression(;
+    workspace_module::Module,
+    expr::Any,
+    cell_id::UUID,
+    notebook_id::UUID,
+    function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing,
+    forced_expr_id::Union{ObjectID,Nothing}=nothing,
+    user_requested_run::Bool=true,
+)
     if user_requested_run
         # TODO Time elapsed? Possibly relays errors in cleanup function?
         UseEffectCleanups.trigger_cleanup(cell_id)
@@ -454,6 +470,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
         # TODO Could also put explicit `try_macroexpand` here, to make clear that user_requested_run => fresh macro identity
     end
 
+    currently_running_notebook_id[] = notebook_id
     currently_running_cell_id[] = cell_id
 
     # reset published objects
@@ -474,7 +491,12 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
     # .... But ideally we wouldn't re-macroexpand and store the error the first time (TODO-ish)
     if !haskey(cell_expanded_exprs, cell_id) || cell_expanded_exprs[cell_id].original_expr_hash != expr_hash(expr)
         try
-            try_macroexpand(m, cell_id, expr)
+            try_macroexpand(
+                workspace_module=workspace_module,
+                cell_id=cell_id,
+                notebook_id=notebook_id,
+                expr=expr,
+            )
         catch e
             result = CapturedException(e, stacktrace(catch_backtrace()))
             cell_results[cell_id], cell_runtimes[cell_id] = (result, nothing)
@@ -511,7 +533,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
     result, runtime = if function_wrapped_info === nothing
         toplevel_expr = Expr(:toplevel, expr)
         wrapped = timed_expr(toplevel_expr)
-        ans, runtime = run_inside_trycatch(m, wrapped)
+        ans, runtime = run_inside_trycatch(workspace_module, wrapped)
         (ans, add_runtimes(runtime, expansion_runtime))
     else
         expr_id = forced_expr_id !== nothing ? forced_expr_id : expr_hash(expr)
@@ -521,18 +543,34 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
                 computer = register_computer(expr, expr_id, cell_id, collect.(function_wrapped_info)...)
             catch e
                 # @error "Failed to generate computer function" expr exception=(e,stacktrace(catch_backtrace()))
-                return run_expression(m, original_expr, cell_id, nothing; user_requested_run=user_requested_run)
+                return run_expression(
+                    workspace_module=workspace_module,
+                    expr=original_expr,
+                    cell_id=cell_id,
+                    notebook_id=notebook_id,
+                    function_wrapped_info=nothing,
+                    forced_expr_id=nothing,
+                    user_requested_run=user_requested_run,
+                )
             end
         end
 
         # This check solves the problem of a cell like `false && variable_that_does_not_exist`. This should run without error, but will fail in our function-wrapping-magic because we get the value of `variable_that_does_not_exist` before calling the generated function.
         # The fix is to detect this situation and run the expression in the classical way.
-        ans, runtime = if any(name -> !isdefined(m, name), computer.input_globals)
+        ans, runtime = if any(name -> !isdefined(workspace_module, name), computer.input_globals)
             # Do run_expression but with function_wrapped_info=nothing so it doesn't go in a Computer()
             # @warn "Got variables that don't exist, running outside of computer" not_existing=filter(name -> !isdefined(m, name), computer.input_globals)
-            run_expression(m, original_expr, cell_id; user_requested_run)
+            run_expression(
+                workspace_module=workspace_module,
+                expr=original_expr,
+                cell_id=cell_id,
+                notebook_id=notebook_id,
+                function_wrapped_info=nothing,
+                forced_expr_id=nothing,
+                user_requested_run=user_requested_run,
+            )
         else
-            run_inside_trycatch(m, () -> compute(m, computer))
+            run_inside_trycatch(workspace_module, () -> compute(workspace_module, computer))
         end
 
         ans, add_runtimes(runtime, expansion_runtime)
@@ -546,24 +584,30 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
 end
 
 # Channel to trigger implicits run
-const run_channel = Channel{UUID}(10)
+const run_channel_per_notebook = Dict{UUID,Channel{UUID}}()
+function run_channel(notebook_id=currently_running_notebook_id[])
+    get!(run_channel_per_notebook, notebook_id, Channel{UUID}(10))
+end
 
-function rerun_cell_from_notebook(cell_id::UUID)
+function rerun_cell_from_notebook(; cell_id::UUID, notebook_id::UUID)
     # make sure only one of this cell_id is in the run channel
     # by emptying it and filling it again
     new_uuids = UUID[]
-    while isready(run_channel)
-        uuid = take!(run_channel)
+
+    current_run_channel = run_channel(notebook_id)
+
+    while isready(current_run_channel)
+        uuid = take!(current_run_channel)
         if uuid != cell_id
             push!(new_uuids, uuid)
         end
     end
     size = length(new_uuids)
     for uuid in new_uuids
-        put!(run_channel, uuid)
+        put!(current_run_channel, uuid)
     end
 
-    put!(run_channel, cell_id)
+    put!(current_run_channel, cell_id)
 end
 
 
@@ -1722,7 +1766,7 @@ const currently_running_cell_id = Ref{UUID}(uuid4())
 function _publish(x, id_start)::String
     assertpackable(x)
     
-    id = string(notebook_id[], "/", currently_running_cell_id[], "/", id_start)
+    id = string(currently_running_notebook_id[], "/", currently_running_cell_id[], "/", id_start)
     d = get!(Dict{String,Any}, cell_published_objects, currently_running_cell_id[])
     d[id] = x
     return id
@@ -1897,7 +1941,10 @@ pluto_showable(::MIME"application/vnd.pluto.divelement+object", ::DivElement) = 
 # LOGGING
 ###
 
-const log_channel = Channel{Any}(10)
+const log_channel_per_notebook = Dict{UUID,Channel{Any}}()
+function log_channel(notebook_id=currently_running_notebook_id[])
+    get!(log_channel_per_notebook, notebook_id, Channel{Any}(10))
+end
 const old_logger = Ref{Any}(nothing)
 
 struct PlutoLogger <: Logging.AbstractLogger
@@ -1914,7 +1961,7 @@ Logging.min_enabled_level(::PlutoLogger) = Logging.Debug
 Logging.catch_exceptions(::PlutoLogger) = false
 function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, file, line; kwargs...)
     try
-        put!(log_channel, (level=string(level),
+        put!(log_channel(), (level=string(level),
             msg=(msg isa String) ? msg : repr(msg),
             group=group,
             # id=id,

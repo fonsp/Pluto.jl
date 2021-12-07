@@ -111,7 +111,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 			relay_reactivity_error!(cell, InterruptException())
 		else
 			run = run_single!(
-				(session, notebook), cell, 
+				(session, notebook), notebook, cell, 
 				new_topology.nodes[cell], new_topology.codes[cell]; 
 				user_requested_run=(user_requested_run && cell ∈ roots)
 			)
@@ -193,10 +193,11 @@ function defined_functions(topology::NotebookTopology, cells)
 end
 
 "Run a single cell non-reactively, set its output, return run information."
-function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell, reactive_node::ReactiveNode, expr_cache::ExprAnalysisCache; user_requested_run::Bool=true)
+function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, notebook::Notebook, cell::Cell, reactive_node::ReactiveNode, expr_cache::ExprAnalysisCache; user_requested_run::Bool=true)
 	run = WorkspaceManager.eval_format_fetch_in_workspace(
-		session_notebook, 
+		session_notebook,
 		expr_cache.parsedcode, 
+		notebook.notebook_id,
 		cell.cell_id, 
 		ends_with_semicolon(cell.code), 
 		expr_cache.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing,
@@ -420,7 +421,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 
 		to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)
 		for cell in to_run_offline
-			run_single!(offline_workspace, cell, new.nodes[cell], new.codes[cell])
+			run_single!(offline_workspace, notebook, cell, new.nodes[cell], new.codes[cell])
 		end
 		
 		cd(original_pwd)
