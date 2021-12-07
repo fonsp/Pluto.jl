@@ -33,6 +33,8 @@ import { ProgressBar } from "./ProgressBar.js"
 import { IsolatedCell } from "./Cell.js"
 import { RawHTMLContainer } from "./CellOutput.js"
 
+import custom_env from "../common/Environment.js"
+
 const default_path = "..."
 const DEBUG_DIFFING = false
 let pending_local_updates = 0
@@ -844,6 +846,10 @@ patch: ${JSON.stringify(
             )
         }
         this.submit_file_change = async (new_path, reset_cm_value) => {
+            try {
+                // Environment can reject normal file move
+                if (custom_env?.on_move?.()) return
+            } catch (e) {}
             const old_path = this.state.notebook.path
             if (old_path === new_path) {
                 return
@@ -1025,6 +1031,9 @@ patch: ${JSON.stringify(
                 // and don't prevent the unload
             }
         })
+        try {
+            custom_env?.on_mount?.()
+        } catch (e) {}
     }
 
     componentDidUpdate(old_props, old_state) {
