@@ -87,8 +87,9 @@ end
 For each key (a bound symbol), the value is the list of (other) bound variables whose values need to be known to compute the result of setting the bond."
 function bound_variable_connections_graph(notebook::Notebook)::Dict{Symbol,Vector{Symbol}}
     topology = notebook.topology
+    
     bound_variables = union(map(notebook.cells) do cell
-        find_bound_variables(topology.codes[cell].parsedcode)
+        find_bound_variables(topology.codes[cell].parsedcode) ∩ topology.nodes[cell].definitions # just to be sure
     end...)
     Dict{Symbol,Vector{Symbol}}(
         var => let

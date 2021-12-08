@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.1
+# v0.17.3
 
 using Markdown
 using InteractiveUtils
@@ -208,6 +208,32 @@ md"""
 # ╔═╡ 22659c85-700f-4dad-a22a-7aafa71225c0
 # boring is never referenced
 
+# ╔═╡ 2f272c87-c2ba-454e-b9df-3e9dea2ba046
+md"""
+## Path 12
+"""
+
+# ╔═╡ 97c5be26-6f33-4c3c-85e9-bee1236bb06a
+@bind defined_twice html"<input>"
+
+# ╔═╡ 04687abd-1137-4531-a360-ada13c42f1b8
+@bind defined_twice html"<input>"
+
+# ╔═╡ 00000000-0000-0000-0000-000000000001
+PLUTO_PROJECT_TOML_CONTENTS = """
+[deps]
+"""
+
+# ╔═╡ 00000000-0000-0000-0000-000000000002
+PLUTO_MANIFEST_TOML_CONTENTS = """
+# This file is machine-generated - editing it directly is not advised
+
+julia_version = "1.7.0"
+manifest_format = "2.0"
+
+[deps]
+"""
+
 # ╔═╡ Cell order:
 # ╠═e36eee87-a354-4eab-a156-734dee28b71f
 # ╠═de01d226-7fbb-4d6b-a044-7252415564ea
@@ -255,3 +281,8 @@ md"""
 # ╟─c143b2de-78c5-46ad-852f-3c2a9115cb72
 # ╠═cf628a57-933b-4984-a317-63360c345534
 # ╠═22659c85-700f-4dad-a22a-7aafa71225c0
+# ╟─2f272c87-c2ba-454e-b9df-3e9dea2ba046
+# ╠═97c5be26-6f33-4c3c-85e9-bee1236bb06a
+# ╠═04687abd-1137-4531-a360-ada13c42f1b8
+# ╟─00000000-0000-0000-0000-000000000001
+# ╟─00000000-0000-0000-0000-000000000002
