@@ -50,7 +50,7 @@ import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
 import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"
 import { drag_n_drop_plugin } from "./useDropHandler.js"
-import { cell_movement_plugin } from "./CellInput/cell_movement_plugin.js"
+import { cell_movement_plugin, prevent_holding_a_key_from_doing_things_across_cells } from "./CellInput/cell_movement_plugin.js"
 import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
 import { cl } from "../common/ClassTable.js"
@@ -342,6 +342,13 @@ export const CellInput = ({
                     nbpkg_compartment,
                     used_variables_compartment,
                     editable_compartment,
+
+                    // This is waaaay in front of the keys it is supposed to override,
+                    // Which is necessary because it needs to run before *any* keymap,
+                    // as the first keymap will activate the keymap extension which will attach the
+                    // keymap handlers at that point, which is likely before this extension.
+                    // TODO Use https://codemirror.net/6/docs/ref/#state.Prec when added to pluto-codemirror-setup
+                    prevent_holding_a_key_from_doing_things_across_cells,
 
                     pkgBubblePlugin({ pluto_actions, notebook_id }),
                     ScopeStateField,
