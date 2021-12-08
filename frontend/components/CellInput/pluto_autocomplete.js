@@ -8,14 +8,15 @@ import {
     EditorView,
     keymap,
     indentMore,
-    autocompletion,
-    completionKeymap,
+    autocomplete,
     syntaxTree,
     StateField,
     StateEffect,
 } from "../../imports/CodemirrorPlutoSetup.js"
 import { get_selected_doc_from_state } from "./LiveDocsFromCursor.js"
 import { cl } from "../../common/ClassTable.js"
+
+let { autocompletion, completionKeymap } = autocomplete
 
 // These should be imported from  @codemirror/autocomplete
 let completionState = autocompletion()[0]
