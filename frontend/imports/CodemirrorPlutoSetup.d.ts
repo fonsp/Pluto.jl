@@ -3,7 +3,7 @@ A text iterator iterates over a sequence of strings. When
 iterating over a [`Text`](https://codemirror.net/6/docs/ref/#text.Text) document, result values will
 either be lines or line breaks.
 */
-interface TextIterator extends Iterator<string> {
+interface TextIterator extends Iterator<string>, Iterable<string> {
     /**
     Retrieve the next string. Optionally skip a given number of
     positions after the current position. Always returns the object
@@ -84,7 +84,7 @@ declare abstract class Text implements Iterable<string> {
     
     When `from` and `to` are given, they should be 1-based line numbers.
     */
-    iterLines(from?: number, to?: number): LineCursor;
+    iterLines(from?: number, to?: number): TextIterator;
     /**
     Convert the document to an array of lines (which can be
     deserialized again via [`Text.of`](https://codemirror.net/6/docs/ref/#text.Text^of)).
@@ -104,15 +104,6 @@ declare abstract class Text implements Iterable<string> {
     The empty document.
     */
     static empty: Text;
-}
-declare class LineCursor implements TextIterator {
-    readonly inner: TextIterator;
-    afterBreak: boolean;
-    value: string;
-    done: boolean;
-    constructor(inner: TextIterator);
-    next(skip?: number): this;
-    get lineBreak(): boolean;
 }
 /**
 This type describes a line in the document. It is created
@@ -638,54 +629,6 @@ arbitrarily deep—they will be flattened when processed.
 declare type Extension = {
     extension: Extension;
 } | readonly Extension[];
-/**
-By default extensions are registered in the order they are found
-in the flattened form of nested array that was provided.
-Individual extension values can be assigned a precedence to
-override this. Extensions that do not have a precedence set get
-the precedence of the nearest parent with a precedence, or
-[`default`](https://codemirror.net/6/docs/ref/#state.Prec.default) if there is no such parent. The
-final ordering of extensions is determined by first sorting by
-precedence and then by order within each precedence.
-*/
-declare const Prec: {
-    /**
-    The lowest precedence level. Meant for things that should end up
-    near the end of the extension order.
-    */
-    lowest: (ext: Extension) => Extension;
-    /**
-    A lower-than-default precedence, for extensions.
-    */
-    low: (ext: Extension) => Extension;
-    /**
-    The default precedence, which is also used for extensions
-    without an explicit precedence.
-    */
-    default: (ext: Extension) => Extension;
-    /**
-    A higher-than-default precedence, for extensions that should
-    come before those with default precedence.
-    */
-    high: (ext: Extension) => Extension;
-    /**
-    The highest precedence level, for extensions that should end up
-    near the start of the precedence ordering.
-    */
-    highest: (ext: Extension) => Extension;
-    /**
-    Backwards-compatible synonym for `Prec.lowest`.
-    */
-    fallback: (ext: Extension) => Extension;
-    /**
-    Backwards-compatible synonym for `Prec.high`.
-    */
-    extend: (ext: Extension) => Extension;
-    /**
-    Backwards-compatible synonym for `Prec.highest`.
-    */
-    override: (ext: Extension) => Extension;
-};
 /**
 Extension compartments can be used to make a configuration
 dynamic. By [wrapping](https://codemirror.net/6/docs/ref/#state.Compartment.of) part of your
@@ -1325,6 +1268,296 @@ combine?: {
     [P in keyof Config]?: (first: Config[P], second: Config[P]) => Config[P];
 }): Config;
 
+interface ChangedRange {
+    fromA: number;
+    toA: number;
+    fromB: number;
+    toB: number;
+}
+declare class TreeFragment {
+    readonly from: number;
+    readonly to: number;
+    readonly tree: Tree;
+    readonly offset: number;
+    constructor(from: number, to: number, tree: Tree, offset: number, openStart?: boolean, openEnd?: boolean);
+    get openStart(): boolean;
+    get openEnd(): boolean;
+    static addTree(tree: Tree, fragments?: readonly TreeFragment[], partial?: boolean): TreeFragment[];
+    static applyChanges(fragments: readonly TreeFragment[], changes: readonly ChangedRange[], minGap?: number): readonly TreeFragment[];
+}
+interface PartialParse {
+    advance(): Tree | null;
+    readonly parsedPos: number;
+    stopAt(pos: number): void;
+    readonly stoppedAt: number | null;
+}
+declare abstract class Parser {
+    abstract createParse(input: Input, fragments: readonly TreeFragment[], ranges: readonly {
+        from: number;
+        to: number;
+    }[]): PartialParse;
+    startParse(input: Input | string, fragments?: readonly TreeFragment[], ranges?: readonly {
+        from: number;
+        to: number;
+    }[]): PartialParse;
+    parse(input: Input | string, fragments?: readonly TreeFragment[], ranges?: readonly {
+        from: number;
+        to: number;
+    }[]): Tree;
+}
+interface Input {
+    readonly length: number;
+    chunk(from: number): string;
+    readonly lineChunks: boolean;
+    read(from: number, to: number): string;
+}
+declare type ParseWrapper = (inner: PartialParse, input: Input, fragments: readonly TreeFragment[], ranges: readonly {
+    from: number;
+    to: number;
+}[]) => PartialParse;
+
+declare class NodeProp<T> {
+    perNode: boolean;
+    deserialize: (str: string) => T;
+    constructor(config?: {
+        deserialize?: (str: string) => T;
+        perNode?: boolean;
+    });
+    add(match: {
+        [selector: string]: T;
+    } | ((type: NodeType) => T | undefined)): NodePropSource;
+    static closedBy: NodeProp<readonly string[]>;
+    static openedBy: NodeProp<readonly string[]>;
+    static group: NodeProp<readonly string[]>;
+    static contextHash: NodeProp<number>;
+    static lookAhead: NodeProp<number>;
+    static mounted: NodeProp<MountedTree>;
+}
+declare class MountedTree {
+    readonly tree: Tree;
+    readonly overlay: readonly {
+        from: number;
+        to: number;
+    }[] | null;
+    readonly parser: Parser;
+    constructor(tree: Tree, overlay: readonly {
+        from: number;
+        to: number;
+    }[] | null, parser: Parser);
+}
+declare type NodePropSource = (type: NodeType) => null | [NodeProp<any>, any];
+declare class NodeType {
+    readonly name: string;
+    readonly id: number;
+    static define(spec: {
+        id: number;
+        name?: string;
+        props?: readonly ([NodeProp<any>, any] | NodePropSource)[];
+        top?: boolean;
+        error?: boolean;
+        skipped?: boolean;
+    }): NodeType;
+    prop<T>(prop: NodeProp<T>): T | undefined;
+    get isTop(): boolean;
+    get isSkipped(): boolean;
+    get isError(): boolean;
+    get isAnonymous(): boolean;
+    is(name: string | number): boolean;
+    static none: NodeType;
+    static match<T>(map: {
+        [selector: string]: T;
+    }): (node: NodeType) => T | undefined;
+}
+declare class NodeSet {
+    readonly types: readonly NodeType[];
+    constructor(types: readonly NodeType[]);
+    extend(...props: NodePropSource[]): NodeSet;
+}
+declare class Tree {
+    readonly type: NodeType;
+    readonly children: readonly (Tree | TreeBuffer)[];
+    readonly positions: readonly number[];
+    readonly length: number;
+    constructor(type: NodeType, children: readonly (Tree | TreeBuffer)[], positions: readonly number[], length: number, props?: readonly [NodeProp<any> | number, any][]);
+    static empty: Tree;
+    cursor(pos?: number, side?: -1 | 0 | 1): TreeCursor;
+    fullCursor(): TreeCursor;
+    get topNode(): SyntaxNode;
+    resolve(pos: number, side?: -1 | 0 | 1): SyntaxNode;
+    resolveInner(pos: number, side?: -1 | 0 | 1): SyntaxNode;
+    iterate(spec: {
+        enter(type: NodeType, from: number, to: number, get: () => SyntaxNode): false | void;
+        leave?(type: NodeType, from: number, to: number, get: () => SyntaxNode): void;
+        from?: number;
+        to?: number;
+    }): void;
+    prop<T>(prop: NodeProp<T>): T | undefined;
+    get propValues(): readonly [NodeProp<any> | number, any][];
+    balance(config?: {
+        makeTree?: (children: readonly (Tree | TreeBuffer)[], positions: readonly number[], length: number) => Tree;
+    }): Tree;
+    static build(data: BuildData): Tree;
+}
+declare type BuildData = {
+    buffer: BufferCursor | readonly number[];
+    nodeSet: NodeSet;
+    topID: number;
+    start?: number;
+    bufferStart?: number;
+    length?: number;
+    maxBufferLength?: number;
+    reused?: readonly Tree[];
+    minRepeatType?: number;
+};
+interface BufferCursor {
+    pos: number;
+    id: number;
+    start: number;
+    end: number;
+    size: number;
+    next(): void;
+    fork(): BufferCursor;
+}
+declare class TreeBuffer {
+    readonly buffer: Uint16Array;
+    readonly length: number;
+    readonly set: NodeSet;
+    constructor(buffer: Uint16Array, length: number, set: NodeSet);
+}
+interface SyntaxNode {
+    type: NodeType;
+    name: string;
+    from: number;
+    to: number;
+    parent: SyntaxNode | null;
+    firstChild: SyntaxNode | null;
+    lastChild: SyntaxNode | null;
+    childAfter(pos: number): SyntaxNode | null;
+    childBefore(pos: number): SyntaxNode | null;
+    enter(pos: number, side: -1 | 0 | 1, overlays?: boolean, buffers?: boolean): SyntaxNode | null;
+    nextSibling: SyntaxNode | null;
+    prevSibling: SyntaxNode | null;
+    cursor: TreeCursor;
+    resolve(pos: number, side?: -1 | 0 | 1): SyntaxNode;
+    resolveInner(pos: number, side?: -1 | 0 | 1): SyntaxNode;
+    enterUnfinishedNodesBefore(pos: number): SyntaxNode;
+    tree: Tree | null;
+    toTree(): Tree;
+    getChild(type: string | number, before?: string | number | null, after?: string | number | null): SyntaxNode | null;
+    getChildren(type: string | number, before?: string | number | null, after?: string | number | null): SyntaxNode[];
+}
+declare class TreeCursor {
+    type: NodeType;
+    get name(): string;
+    from: number;
+    to: number;
+    private buffer;
+    private stack;
+    private index;
+    private bufferNode;
+    private yieldNode;
+    private yieldBuf;
+    private yield;
+    firstChild(): boolean;
+    lastChild(): boolean;
+    childAfter(pos: number): boolean;
+    childBefore(pos: number): boolean;
+    enter(pos: number, side: -1 | 0 | 1, overlays?: boolean, buffers?: boolean): boolean;
+    parent(): boolean;
+    nextSibling(): boolean;
+    prevSibling(): boolean;
+    private atLastNode;
+    private move;
+    next(enter?: boolean): boolean;
+    prev(enter?: boolean): boolean;
+    moveTo(pos: number, side?: -1 | 0 | 1): this;
+    get node(): SyntaxNode;
+    get tree(): Tree | null;
+}
+
+interface NestedParse {
+    parser: Parser;
+    overlay?: readonly {
+        from: number;
+        to: number;
+    }[] | ((node: TreeCursor) => {
+        from: number;
+        to: number;
+    } | boolean);
+}
+declare function parseMixed(nest: (node: TreeCursor, input: Input) => NestedParse | null): ParseWrapper;
+
+declare class Stack {
+    pos: number;
+    get context(): any;
+    canShift(term: number): boolean;
+    get parser(): LRParser;
+    dialectEnabled(dialectID: number): boolean;
+    private shiftContext;
+    private reduceContext;
+    private updateContext;
+}
+
+declare class InputStream {
+    private chunk2;
+    private chunk2Pos;
+    next: number;
+    pos: number;
+    private rangeIndex;
+    private range;
+    resolveOffset(offset: number, assoc: -1 | 1): number;
+    peek(offset: number): any;
+    acceptToken(token: number, endOffset?: number): void;
+    private getChunk;
+    private readNext;
+    advance(n?: number): number;
+    private setDone;
+}
+interface Tokenizer {
+}
+interface ExternalOptions {
+    contextual?: boolean;
+    fallback?: boolean;
+    extend?: boolean;
+}
+declare class ExternalTokenizer implements Tokenizer {
+    constructor(token: (input: InputStream, stack: Stack) => void, options?: ExternalOptions);
+}
+
+declare class ContextTracker<T> {
+    constructor(spec: {
+        start: T;
+        shift?(context: T, term: number, stack: Stack, input: InputStream): T;
+        reduce?(context: T, term: number, stack: Stack, input: InputStream): T;
+        reuse?(context: T, node: Tree, stack: Stack, input: InputStream): T;
+        hash?(context: T): number;
+        strict?: boolean;
+    });
+}
+interface ParserConfig {
+    props?: readonly NodePropSource[];
+    top?: string;
+    dialect?: string;
+    tokenizers?: {
+        from: ExternalTokenizer;
+        to: ExternalTokenizer;
+    }[];
+    contextTracker?: ContextTracker<any>;
+    strict?: boolean;
+    wrap?: ParseWrapper;
+    bufferLength?: number;
+}
+declare class LRParser extends Parser {
+    readonly nodeSet: NodeSet;
+    createParse(input: Input, fragments: readonly TreeFragment[], ranges: readonly {
+        from: number;
+        to: number;
+    }[]): PartialParse;
+    configure(config: ParserConfig): LRParser;
+    getName(term: number): string;
+    get topNode(): NodeType;
+}
+
 /**
 Each range is associated with a value, which must inherit from
 this class.
@@ -1657,7 +1890,8 @@ interface ReplaceDecorationSpec {
     /**
     Whether this range covers the positions on its sides. This
     influences whether new content becomes part of the range and
-    whether the cursor can be drawn on its sides. Defaults to false.
+    whether the cursor can be drawn on its sides. Defaults to false
+    for inline replacements, and true for block replacements.
     */
     inclusive?: boolean;
     /**
@@ -1684,6 +1918,10 @@ interface LineDecorationSpec {
     attributes?: {
         [key: string]: string;
     };
+    /**
+    Shorthand for `{attributes: {class: value}}`.
+    */
+    class?: string;
     /**
     Other properties are allowed.
     */
@@ -1732,6 +1970,11 @@ declare abstract class WidgetType {
     events.
     */
     ignoreEvent(_event: Event): boolean;
+    /**
+    This is called when the an instance of the widget is removed
+    from the editor view.
+    */
+    destroy(_dom: HTMLElement): void;
 }
 /**
 A decoration set represents a collection of decorated ranges,
@@ -1972,13 +2215,14 @@ interface MeasureRequest<T> {
     Called in a DOM write phase to update the document. Should _not_
     do anything that triggers DOM layout.
     */
-    write(measure: T, view: EditorView): void;
+    write?(measure: T, view: EditorView): void;
     /**
     When multiple requests with the same key are scheduled, only the
     last one will actually be ran.
     */
     key?: any;
 }
+declare type AttrSource = Attrs | ((view: EditorView) => Attrs | null);
 /**
 View [plugins](https://codemirror.net/6/docs/ref/#view.ViewPlugin) are given instances of this
 class, which describe what happened, whenever the view is updated.
@@ -2121,7 +2365,8 @@ declare class BlockInfo {
     */
     readonly length: number;
     /**
-    The top position of the element.
+    The top position of the element (relative to the top of the
+    document).
     */
     readonly top: number;
     /**
@@ -2152,7 +2397,9 @@ interface EditorConfig {
     /**
     If the view is going to be mounted in a shadow root or document
     other than the one held by the global variable `document` (the
-    default), you should pass it here.
+    default), you should pass it here. If you provide `parent`, but
+    not this option, the editor will automatically look up a root
+    from the parent.
     */
     root?: Document | ShadowRoot;
     /**
@@ -2239,6 +2486,7 @@ declare class EditorView {
     readonly contentDOM: HTMLElement;
     private announceDOM;
     private plugins;
+    private pluginMap;
     private editorAttrs;
     private contentAttrs;
     private styleModules;
@@ -2313,6 +2561,19 @@ declare class EditorView {
     */
     plugin<T>(plugin: ViewPlugin<T>): T | null;
     /**
+    The top position of the document, in screen coordinates. This
+    may be negative when the editor is scrolled down. Points
+    directly to the top of the first line, not above the padding.
+    */
+    get documentTop(): number;
+    /**
+    Reports the padding above and below the document.
+    */
+    get documentPadding(): {
+        top: number;
+        bottom: number;
+    };
+    /**
     Find the line or block widget at the given vertical position.
     
     By default, this position is interpreted as a screen position,
@@ -2322,8 +2583,16 @@ declare class EditorView {
     position, or a precomputed document top
     (`view.contentDOM.getBoundingClientRect().top`) to limit layout
     queries.
+    
+    *Deprecated: use `blockAtHeight` instead.*
     */
     blockAtHeight(height: number, docTop?: number): BlockInfo;
+    /**
+    Find the text line or block widget at the given vertical
+    position (which is interpreted as relative to the [top of the
+    document](https://codemirror.net/6/docs/ref/#view.EditorView.documentTop)
+    */
+    elementAtHeight(height: number): BlockInfo;
     /**
     Find information for the visual line (see
     [`visualLineAt`](https://codemirror.net/6/docs/ref/#view.EditorView.visualLineAt)) at the given
@@ -2334,15 +2603,32 @@ declare class EditorView {
     Defaults to treating `height` as a screen position. See
     [`blockAtHeight`](https://codemirror.net/6/docs/ref/#view.EditorView.blockAtHeight) for the
     interpretation of the `docTop` parameter.
+    
+    *Deprecated: use `lineBlockAtHeight` instead.*
     */
     visualLineAtHeight(height: number, docTop?: number): BlockInfo;
+    /**
+    Find the line block (see
+    [`lineBlockAt`](https://codemirror.net/6/docs/ref/#view.EditorView.lineBlockAt) at the given
+    height.
+    */
+    lineBlockAtHeight(height: number): BlockInfo;
     /**
     Iterate over the height information of the visual lines in the
     viewport. The heights of lines are reported relative to the
     given document top, which defaults to the screen position of the
     document (forcing a layout).
+    
+    *Deprecated: use `viewportLineBlocks` instead.*
     */
     viewportLines(f: (line: BlockInfo) => void, docTop?: number): void;
+    /**
+    Get the extent and vertical position of all [line
+    blocks](https://codemirror.net/6/docs/ref/#view.EditorView.lineBlockAt) in the viewport. Positions
+    are relative to the [top of the
+    document](https://codemirror.net/6/docs/ref/#view.EditorView.documentTop);
+    */
+    get viewportLineBlocks(): BlockInfo[];
     /**
     Find the extent and height of the visual line (a range delimited
     on both sides by either non-[hidden](https://codemirror.net/6/docs/ref/#view.Decoration^range)
@@ -2352,8 +2638,19 @@ declare class EditorView {
     argument, which defaults to 0 for this method. You can pass
     `view.contentDOM.getBoundingClientRect().top` here to get screen
     coordinates.
+    
+    *Deprecated: use `lineBlockAt` instead.*
     */
     visualLineAt(pos: number, docTop?: number): BlockInfo;
+    /**
+    Find the line block around the given document position. A line
+    block is a range delimited on both sides by either a
+    non-[hidden](https://codemirror.net/6/docs/ref/#view.Decoration^range) line breaks, or the
+    start/end of the document. It will usually just hold a line of
+    text, but may be broken into multiple textblocks by block
+    widgets.
+    */
+    lineBlockAt(pos: number): BlockInfo;
     /**
     The editor's total content height.
     */
@@ -2403,9 +2700,6 @@ declare class EditorView {
     used.
     */
     moveVertically(start: SelectionRange, forward: boolean, distance?: number): SelectionRange;
-    /**
-    Scroll the given document position into view.
-    */
     scrollPosIntoView(pos: number): void;
     /**
     Find the DOM parent node and offset (child offset if `node` is
@@ -2495,6 +2789,11 @@ declare class EditorView {
     transaction to make it scroll the given range into view.
     */
     static scrollTo: StateEffectType<SelectionRange>;
+    /**
+    Effect that makes the editor scroll the given range to the
+    center of the visible view.
+    */
+    static centerOn: StateEffectType<SelectionRange>;
     /**
     Facet to add a [style
     module](https://github.com/marijnh/style-mod#documentation) to
@@ -2609,12 +2908,12 @@ declare class EditorView {
     Facet that provides additional DOM attributes for the editor's
     editable DOM element.
     */
-    static contentAttributes: Facet<Attrs, Attrs>;
+    static contentAttributes: Facet<AttrSource, readonly AttrSource[]>;
     /**
     Facet that provides DOM attributes for the editor's outer
     element.
     */
-    static editorAttributes: Facet<Attrs, Attrs>;
+    static editorAttributes: Facet<AttrSource, readonly AttrSource[]>;
     /**
     An extension that enables line wrapping in the editor (by
     setting CSS `white-space` to `pre-wrap` in the content).
@@ -2810,295 +3109,6 @@ Extension that enables a placeholder—a piece of example content
 to show when the editor is empty.
 */
 declare function placeholder(content: string | HTMLElement): Extension;
-
-interface ChangedRange {
-    fromA: number;
-    toA: number;
-    fromB: number;
-    toB: number;
-}
-declare class TreeFragment {
-    readonly from: number;
-    readonly to: number;
-    readonly tree: Tree;
-    readonly offset: number;
-    constructor(from: number, to: number, tree: Tree, offset: number, openStart?: boolean, openEnd?: boolean);
-    get openStart(): boolean;
-    get openEnd(): boolean;
-    static addTree(tree: Tree, fragments?: readonly TreeFragment[], partial?: boolean): TreeFragment[];
-    static applyChanges(fragments: readonly TreeFragment[], changes: readonly ChangedRange[], minGap?: number): readonly TreeFragment[];
-}
-interface PartialParse {
-    advance(): Tree | null;
-    readonly parsedPos: number;
-    stopAt(pos: number): void;
-    readonly stoppedAt: number | null;
-}
-declare abstract class Parser {
-    abstract createParse(input: Input, fragments: readonly TreeFragment[], ranges: readonly {
-        from: number;
-        to: number;
-    }[]): PartialParse;
-    startParse(input: Input | string, fragments?: readonly TreeFragment[], ranges?: readonly {
-        from: number;
-        to: number;
-    }[]): PartialParse;
-    parse(input: Input | string, fragments?: readonly TreeFragment[], ranges?: readonly {
-        from: number;
-        to: number;
-    }[]): Tree;
-}
-interface Input {
-    readonly length: number;
-    chunk(from: number): string;
-    readonly lineChunks: boolean;
-    read(from: number, to: number): string;
-}
-declare type ParseWrapper = (inner: PartialParse, input: Input, fragments: readonly TreeFragment[], ranges: readonly {
-    from: number;
-    to: number;
-}[]) => PartialParse;
-
-declare class NodeProp<T> {
-    perNode: boolean;
-    deserialize: (str: string) => T;
-    constructor(config?: {
-        deserialize?: (str: string) => T;
-        perNode?: boolean;
-    });
-    add(match: {
-        [selector: string]: T;
-    } | ((type: NodeType) => T | undefined)): NodePropSource;
-    static closedBy: NodeProp<readonly string[]>;
-    static openedBy: NodeProp<readonly string[]>;
-    static group: NodeProp<readonly string[]>;
-    static contextHash: NodeProp<number>;
-    static lookAhead: NodeProp<number>;
-    static mounted: NodeProp<MountedTree>;
-}
-declare class MountedTree {
-    readonly tree: Tree;
-    readonly overlay: readonly {
-        from: number;
-        to: number;
-    }[] | null;
-    readonly parser: Parser;
-    constructor(tree: Tree, overlay: readonly {
-        from: number;
-        to: number;
-    }[] | null, parser: Parser);
-}
-declare type NodePropSource = (type: NodeType) => null | [NodeProp<any>, any];
-declare class NodeType {
-    readonly name: string;
-    readonly id: number;
-    static define(spec: {
-        id: number;
-        name?: string;
-        props?: readonly ([NodeProp<any>, any] | NodePropSource)[];
-        top?: boolean;
-        error?: boolean;
-        skipped?: boolean;
-    }): NodeType;
-    prop<T>(prop: NodeProp<T>): T | undefined;
-    get isTop(): boolean;
-    get isSkipped(): boolean;
-    get isError(): boolean;
-    get isAnonymous(): boolean;
-    is(name: string | number): boolean;
-    static none: NodeType;
-    static match<T>(map: {
-        [selector: string]: T;
-    }): (node: NodeType) => T | undefined;
-}
-declare class NodeSet {
-    readonly types: readonly NodeType[];
-    constructor(types: readonly NodeType[]);
-    extend(...props: NodePropSource[]): NodeSet;
-}
-declare class Tree {
-    readonly type: NodeType;
-    readonly children: readonly (Tree | TreeBuffer)[];
-    readonly positions: readonly number[];
-    readonly length: number;
-    constructor(type: NodeType, children: readonly (Tree | TreeBuffer)[], positions: readonly number[], length: number, props?: readonly [NodeProp<any> | number, any][]);
-    static empty: Tree;
-    cursor(pos?: number, side?: -1 | 0 | 1): TreeCursor;
-    fullCursor(): TreeCursor;
-    get topNode(): SyntaxNode;
-    resolve(pos: number, side?: -1 | 0 | 1): SyntaxNode;
-    resolveInner(pos: number, side?: -1 | 0 | 1): SyntaxNode;
-    iterate(spec: {
-        enter(type: NodeType, from: number, to: number, get: () => SyntaxNode): false | void;
-        leave?(type: NodeType, from: number, to: number, get: () => SyntaxNode): void;
-        from?: number;
-        to?: number;
-    }): void;
-    prop<T>(prop: NodeProp<T>): T | undefined;
-    get propValues(): readonly [NodeProp<any> | number, any][];
-    balance(config?: {
-        makeTree?: (children: readonly (Tree | TreeBuffer)[], positions: readonly number[], length: number) => Tree;
-    }): Tree;
-    static build(data: BuildData): Tree;
-}
-declare type BuildData = {
-    buffer: BufferCursor | readonly number[];
-    nodeSet: NodeSet;
-    topID: number;
-    start?: number;
-    bufferStart?: number;
-    length?: number;
-    maxBufferLength?: number;
-    reused?: readonly Tree[];
-    minRepeatType?: number;
-};
-interface BufferCursor {
-    pos: number;
-    id: number;
-    start: number;
-    end: number;
-    size: number;
-    next(): void;
-    fork(): BufferCursor;
-}
-declare class TreeBuffer {
-    readonly buffer: Uint16Array;
-    readonly length: number;
-    readonly set: NodeSet;
-    constructor(buffer: Uint16Array, length: number, set: NodeSet);
-}
-interface SyntaxNode {
-    type: NodeType;
-    name: string;
-    from: number;
-    to: number;
-    parent: SyntaxNode | null;
-    firstChild: SyntaxNode | null;
-    lastChild: SyntaxNode | null;
-    childAfter(pos: number): SyntaxNode | null;
-    childBefore(pos: number): SyntaxNode | null;
-    enter(pos: number, side: -1 | 0 | 1, overlays?: boolean, buffers?: boolean): SyntaxNode | null;
-    nextSibling: SyntaxNode | null;
-    prevSibling: SyntaxNode | null;
-    cursor: TreeCursor;
-    resolve(pos: number, side?: -1 | 0 | 1): SyntaxNode;
-    enterUnfinishedNodesBefore(pos: number): SyntaxNode;
-    tree: Tree | null;
-    toTree(): Tree;
-    getChild(type: string | number, before?: string | number | null, after?: string | number | null): SyntaxNode | null;
-    getChildren(type: string | number, before?: string | number | null, after?: string | number | null): SyntaxNode[];
-}
-declare class TreeCursor {
-    type: NodeType;
-    get name(): string;
-    from: number;
-    to: number;
-    private buffer;
-    private stack;
-    private index;
-    private bufferNode;
-    private yieldNode;
-    private yieldBuf;
-    private yield;
-    firstChild(): boolean;
-    lastChild(): boolean;
-    childAfter(pos: number): boolean;
-    childBefore(pos: number): boolean;
-    enter(pos: number, side: -1 | 0 | 1, overlays?: boolean, buffers?: boolean): boolean;
-    parent(): boolean;
-    nextSibling(): boolean;
-    prevSibling(): boolean;
-    private atLastNode;
-    private move;
-    next(enter?: boolean): boolean;
-    prev(enter?: boolean): boolean;
-    moveTo(pos: number, side?: -1 | 0 | 1): this;
-    get node(): SyntaxNode;
-    get tree(): Tree | null;
-}
-
-interface NestedParse {
-    parser: Parser;
-    overlay?: readonly {
-        from: number;
-        to: number;
-    }[] | ((node: TreeCursor) => {
-        from: number;
-        to: number;
-    } | boolean);
-}
-declare function parseMixed(nest: (node: TreeCursor, input: Input) => NestedParse | null): ParseWrapper;
-
-declare class Stack {
-    pos: number;
-    get context(): any;
-    canShift(term: number): boolean;
-    get parser(): LRParser;
-    dialectEnabled(dialectID: number): boolean;
-    private shiftContext;
-    private reduceContext;
-    private updateContext;
-}
-
-declare class InputStream {
-    private chunk2;
-    private chunk2Pos;
-    next: number;
-    pos: number;
-    private rangeIndex;
-    private range;
-    resolveOffset(offset: number, assoc: -1 | 1): number;
-    peek(offset: number): any;
-    acceptToken(token: number, endOffset?: number): void;
-    private getChunk;
-    private readNext;
-    advance(n?: number): number;
-    private setDone;
-}
-interface Tokenizer {
-}
-interface ExternalOptions {
-    contextual?: boolean;
-    fallback?: boolean;
-    extend?: boolean;
-}
-declare class ExternalTokenizer implements Tokenizer {
-    constructor(token: (input: InputStream, stack: Stack) => void, options?: ExternalOptions);
-}
-
-declare class ContextTracker<T> {
-    constructor(spec: {
-        start: T;
-        shift?(context: T, term: number, stack: Stack, input: InputStream): T;
-        reduce?(context: T, term: number, stack: Stack, input: InputStream): T;
-        reuse?(context: T, node: Tree, stack: Stack, input: InputStream): T;
-        hash?(context: T): number;
-        strict?: boolean;
-    });
-}
-interface ParserConfig {
-    props?: readonly NodePropSource[];
-    top?: string;
-    dialect?: string;
-    tokenizers?: {
-        from: ExternalTokenizer;
-        to: ExternalTokenizer;
-    }[];
-    contextTracker?: ContextTracker<any>;
-    strict?: boolean;
-    wrap?: ParseWrapper;
-    bufferLength?: number;
-}
-declare class LRParser extends Parser {
-    readonly nodeSet: NodeSet;
-    createParse(input: Input, fragments: readonly TreeFragment[], ranges: readonly {
-        from: number;
-        to: number;
-    }[]): PartialParse;
-    configure(config: ParserConfig): LRParser;
-    getName(term: number): string;
-    get topNode(): NodeType;
-}
 
 /**
 A language object manages parsing and per-language
@@ -3297,7 +3307,8 @@ declare class LanguageDescription {
         */
         alias?: readonly string[];
         /**
-        An optional array of extensions associated with this language.
+        An optional array of filename extensions associated with this
+        language.
         */
         extensions?: readonly string[];
         /**
@@ -3307,7 +3318,12 @@ declare class LanguageDescription {
         /**
         A function that will asynchronously load the language.
         */
-        load: () => Promise<LanguageSupport>;
+        load?: () => Promise<LanguageSupport>;
+        /**
+        Alternatively to `load`, you can provide an already loaded
+        support object. Either this or `load` should be provided.
+        */
+        support?: LanguageSupport;
     }): LanguageDescription;
     /**
     Look for a language in the given array of descriptions that
@@ -4294,41 +4310,6 @@ Close-brackets related key bindings. Binds Backspace to
 */
 declare const closeBracketsKeymap: readonly KeyBinding[];
 
-declare type HighlightOptions = {
-    /**
-    Determines whether, when nothing is selected, the word around
-    the cursor is matched instead. Defaults to false.
-    */
-    highlightWordAroundCursor?: boolean;
-    /**
-    The minimum length of the selection before it is highlighted.
-    Defaults to 1 (always highlight non-cursor selections).
-    */
-    minSelectionLength?: number;
-    /**
-    The amount of matches (in the viewport) at which to disable
-    highlighting. Defaults to 100.
-    */
-    maxMatches?: number;
-};
-/**
-This extension highlights text that matches the selection. It uses
-the `"cm-selectionMatch"` class for the highlighting. When
-`highlightWordAroundCursor` is enabled, the word at the cursor
-itself will be highlighted with `"cm-selectionMatch-main"`.
-*/
-declare function highlightSelectionMatches(options?: HighlightOptions): Extension;
-/**
-Default search-related key bindings.
-
- - Mod-f: [`openSearchPanel`](https://codemirror.net/6/docs/ref/#search.openSearchPanel)
- - F3, Mod-g: [`findNext`](https://codemirror.net/6/docs/ref/#search.findNext)
- - Shift-F3, Shift-Mod-g: [`findPrevious`](https://codemirror.net/6/docs/ref/#search.findPrevious)
- - Alt-g: [`gotoLine`](https://codemirror.net/6/docs/ref/#search.gotoLine)
- - Mod-d: [`selectNextOccurrence`](https://codemirror.net/6/docs/ref/#search.selectNextOccurrence)
-*/
-declare const searchKeymap: readonly KeyBinding[];
-
 interface CompletionConfig {
     /**
     When enabled (defaults to true), autocompletion will start
@@ -4660,7 +4641,7 @@ declare const completeAnyWord: CompletionSource;
 /**
 Returns an extension that enables autocompletion.
 */
-declare function autocompletion$1(config?: CompletionConfig): Extension;
+declare function autocompletion(config?: CompletionConfig): Extension;
 /**
 Basic keybindings for autocompletion.
 
@@ -4672,7 +4653,7 @@ Basic keybindings for autocompletion.
  - PageDown: [`moveCompletionSelection`](https://codemirror.net/6/docs/ref/#autocomplete.moveCompletionSelection)`(true, "page")`
  - Enter: [`acceptCompletion`](https://codemirror.net/6/docs/ref/#autocomplete.acceptCompletion)
 */
-declare const completionKeymap$1: readonly KeyBinding[];
+declare const completionKeymap: readonly KeyBinding[];
 /**
 Get the current completion status. When completions are available,
 this will return `"active"`. When completions are pending (in the
@@ -4695,10 +4676,12 @@ declare const index_CompletionContext: typeof CompletionContext;
 type index_CompletionResult = CompletionResult;
 type index_CompletionSource = CompletionSource;
 declare const index_acceptCompletion: typeof acceptCompletion;
+declare const index_autocompletion: typeof autocompletion;
 declare const index_clearSnippet: typeof clearSnippet;
 declare const index_closeCompletion: typeof closeCompletion;
 declare const index_completeAnyWord: typeof completeAnyWord;
 declare const index_completeFromList: typeof completeFromList;
+declare const index_completionKeymap: typeof completionKeymap;
 declare const index_completionStatus: typeof completionStatus;
 declare const index_currentCompletions: typeof currentCompletions;
 declare const index_ifIn: typeof ifIn;
@@ -4719,12 +4702,12 @@ declare namespace index {
     index_CompletionResult as CompletionResult,
     index_CompletionSource as CompletionSource,
     index_acceptCompletion as acceptCompletion,
-    autocompletion$1 as autocompletion,
+    index_autocompletion as autocompletion,
     index_clearSnippet as clearSnippet,
     index_closeCompletion as closeCompletion,
     index_completeAnyWord as completeAnyWord,
     index_completeFromList as completeFromList,
-    completionKeymap$1 as completionKeymap,
+    index_completionKeymap as completionKeymap,
     index_completionStatus as completionStatus,
     index_currentCompletions as currentCompletions,
     index_ifIn as ifIn,
@@ -4740,6 +4723,41 @@ declare namespace index {
     index_startCompletion as startCompletion,
   };
 }
+
+declare type HighlightOptions = {
+    /**
+    Determines whether, when nothing is selected, the word around
+    the cursor is matched instead. Defaults to false.
+    */
+    highlightWordAroundCursor?: boolean;
+    /**
+    The minimum length of the selection before it is highlighted.
+    Defaults to 1 (always highlight non-cursor selections).
+    */
+    minSelectionLength?: number;
+    /**
+    The amount of matches (in the viewport) at which to disable
+    highlighting. Defaults to 100.
+    */
+    maxMatches?: number;
+};
+/**
+This extension highlights text that matches the selection. It uses
+the `"cm-selectionMatch"` class for the highlighting. When
+`highlightWordAroundCursor` is enabled, the word at the cursor
+itself will be highlighted with `"cm-selectionMatch-main"`.
+*/
+declare function highlightSelectionMatches(options?: HighlightOptions): Extension;
+/**
+Default search-related key bindings.
+
+ - Mod-f: [`openSearchPanel`](https://codemirror.net/6/docs/ref/#search.openSearchPanel)
+ - F3, Mod-g: [`findNext`](https://codemirror.net/6/docs/ref/#search.findNext)
+ - Shift-F3, Shift-Mod-g: [`findPrevious`](https://codemirror.net/6/docs/ref/#search.findPrevious)
+ - Alt-g: [`gotoLine`](https://codemirror.net/6/docs/ref/#search.gotoLine)
+ - Mod-d: [`selectNextOccurrence`](https://codemirror.net/6/docs/ref/#search.selectNextOccurrence)
+*/
+declare const searchKeymap: readonly KeyBinding[];
 
 /**
 Default key bindings for this package.
@@ -5066,7 +5084,29 @@ Python language support.
 */
 declare function python(): LanguageSupport;
 
-declare let autocompletion: typeof autocompletion$1;
-declare let completionKeymap: readonly KeyBinding[];
+declare type CollabConfig = {
+    /**
+    The starting document version. Defaults to 0.
+    */
+    startVersion?: number;
+    /**
+    This client's identifying [ID](https://codemirror.net/6/docs/ref/#collab.getClientID). Will be a
+    randomly generated string if not provided.
+    */
+    clientID?: string;
+    /**
+    It is possible to share information other than document changes
+    through this extension. If you provide this option, your
+    function will be called on each transaction, and the effects it
+    returns will be sent to the server, much like changes are. Such
+    effects are automatically remapped when conflicting remote
+    changes come in.
+    */
+    sharedEffects?: (tr: Transaction) => readonly StateEffect<any>[];
+};
+/**
+Create an instance of the collaborative editing plugin.
+*/
+declare function collab(config?: CollabConfig): Extension;
 
-export { Compartment, Decoration, EditorSelection, EditorState, EditorView, Facet, HighlightStyle, NodeProp, PluginField, PostgreSQL, Prec, SelectionRange, StateEffect, StateField, StreamLanguage, Text, Transaction, TreeCursor, ViewPlugin, ViewUpdate, WidgetType, index as autocomplete, autocompletion, bracketMatching, closeBrackets, closeBracketsKeymap, combineConfig, commentKeymap, completionKeymap, defaultHighlightStyle, defaultKeymap, drawSelection, foldGutter, foldKeymap, highlightSelectionMatches, highlightSpecialChars, history, historyKeymap, html, htmlLanguage, indentLess, indentMore, indentOnInput, indentUnit, javascript, javascriptLanguage, julia as julia_andrey, julia$1 as julia_legacy, keymap, lineNumbers, markdown, markdownLanguage, parseMixed, placeholder, python, pythonLanguage, rectangularSelection, searchKeymap, sql, syntaxTree, tags };
+export { Annotation, Compartment, Decoration, EditorSelection, EditorState, EditorView, Facet, HighlightStyle, NodeProp, PostgreSQL, SelectionRange, StateEffect, StateField, StreamLanguage, Text, Transaction, TreeCursor, ViewPlugin, ViewUpdate, WidgetType, index as autocomplete, bracketMatching, closeBrackets, closeBracketsKeymap, collab, combineConfig, commentKeymap, completionKeymap, defaultHighlightStyle, defaultKeymap, drawSelection, foldGutter, foldKeymap, highlightSelectionMatches, highlightSpecialChars, history, historyKeymap, html, htmlLanguage, indentLess, indentMore, indentOnInput, indentUnit, javascript, javascriptLanguage, julia as julia_andrey, julia$1 as julia_legacy, keymap, lineNumbers, markdown, markdownLanguage, parseMixed, placeholder, python, pythonLanguage, rectangularSelection, searchKeymap, sql, syntaxTree, tags };
