@@ -51,6 +51,12 @@ const tabCompletionState = StateField.define({
         if (tr.startState.field(completionState, false)?.open != null && tr.state.field(completionState, false)?.open == null) {
             return false
         }
+        if (
+            tr.startState.field(completionState, false).open != null &&
+            tr.startState.field(completionState, false) !== tr.state.field(completionState, false)
+        ) {
+            return false
+        }
         return value
     },
 })
