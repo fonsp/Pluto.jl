@@ -130,63 +130,6 @@ let update_docs_from_autocomplete_selection = (on_update_doc_query) => {
 // TODO Maybe use this again later?
 // const no_autocomplete = " \t\r\n([])+-=/,;'\"!#$%^&*~`<>|"
 
-/**
- * @param {EditorState} state
- * @param {number} pos
- */
-let expand_expression_to_completion_stuff = (state, pos) => {
-    let tree = syntaxTree(state)
-    let node = tree.resolve(pos, -1)
-
-    let to_complete = null
-    if (state.sliceDoc(pos - 1, pos) === ".") {
-        if (node.name === "BinaryExpression") {
-            // This is the parser not getting that we're going for a FieldExpression
-            // But it's cool, because this is as expanded as it gets
-        }
-
-        // This is what julia-lezer thinks the `.` is in `@Base.`
-        if (node.parent?.name === "MacroArgumentList") {
-            do {
-                node = node.parent
-            } while (node.name !== "MacroExpression")
-        }
-    } else {
-        if (
-            (node.name === "Operator" || node.name === "⚠" || node.name === "Identifier") &&
-            node.parent.name === "QuoteExpression" &&
-            node.parent.parent.name === "FieldExpression"
-        ) {
-            node = node.parent
-        }
-        if (node.name === "QuoteExpression" && node.parent.name === "FieldExpression") {
-            node = node.parent
-        }
-
-        // Make sure that `import XX` and `using XX` are handled awesomely
-        if (node.parent?.name === "Import") {
-            node = node.parent.parent
-        }
-
-        while (node.parent?.name === "FieldExpression") {
-            node = node.parent
-        }
-        // if (node.name === "FieldExpression") {
-        //     // Not exactly sure why, but this makes `aaa.bbb.ccc` into `aaa.bbb.`
-        //     to_complete_onto = state.sliceDoc(node.firstChild.from, node.lastChild.from)
-        // }
-
-        if (node.parent?.name === "MacroIdentifier") {
-            while (node.name !== "MacroExpression") {
-                node = node.parent
-            }
-        }
-    }
-
-    to_complete = to_complete ?? state.sliceDoc(node.from, pos)
-    return { to_complete, from: node.from }
-}
-
 let match_unicode_complete = (ctx) => ctx.matchBefore(/\\[^\s"'.`]*/)
 let match_symbol_complete = (ctx) => ctx.matchBefore(/\.\:[^\s"'`()\[\].]*/)
 
@@ -223,7 +166,7 @@ const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ reque
     //   And possibly we want to show unicode AND extra symbols later
     if (match_unicode_complete(ctx)) return null
 
-    let { to_complete, from } = expand_expression_to_completion_stuff(ctx.state, ctx.pos)
+    let to_complete = ctx.state.sliceDoc(0, ctx.pos)
 
     // Another rough hack... If it detects a `.:`, we want to cut out the `:` so we get all results from julia,
     // but then codemirror will put the `:` back in filtering
@@ -242,8 +185,8 @@ const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ reque
     let to_complete_onto = to_complete.slice(0, start)
     let is_field_expression = to_complete_onto.slice(-1) === "."
     return {
-        from: from + start,
-        to: from + stop,
+        from: start,
+        to: stop,
 
         // This tells codemirror to not query this function again as long as the string
         // we are completing has the same prefix as we complete now, and there is no weird characters (subjective)
@@ -252,17 +195,17 @@ const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ reque
         //      If we backspace however, to `Math.a`, `a` does no longer match! So it will re-query this function.
         span: RegExp(`^${_.escapeRegExp(ctx.state.sliceDoc(start, stop))}[^\\s"'()\\[\\].{}]*`),
         options: [
-            ...results.map(([text, type_description, is_exported, is_from_notebook], i) => {
+            ...results.map(([text, type_description, is_exported, is_from_notebook, completion_type], i) => {
                 // (quick) fix for identifiers that need to be escaped
                 // Ideally this is done with Meta.isoperator on the julia side
                 let text_to_apply = is_field_expression ? override_text_to_apply_in_field_expression(text) ?? text : text
-
                 return {
                     label: text,
                     apply: text_to_apply,
                     type: cl({
                         c_notexported: !is_exported,
                         [`c_${type_description}`]: type_description != null,
+                        [`completion_${completion_type}`]: completion_type != null,
                         c_from_notebook: is_from_notebook,
                     }),
                     boost: 99 - i / results.length,
@@ -293,7 +236,7 @@ const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ reque
 
 /**
  * @typedef PlutoAutocompleteResults
- * @type {{ start: number, stop: number, results: Array<[string, (string | null), boolean, boolean]> }}
+ * @type {{ start: number, stop: number, results: Array<[string, (string | null), boolean, boolean, (string | null)]> }}
  *
  * @typedef PlutoRequestAutocomplete
  * @type {(options: { text: string }) => Promise<PlutoAutocompleteResults>}

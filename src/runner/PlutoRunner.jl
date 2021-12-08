@@ -16,7 +16,7 @@ using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
 import Distributed
 import Base64
-import FuzzyCompletions: Completion, ModuleCompletion, PropertyCompletion, FieldCompletion, completions, completion_text, score
+import FuzzyCompletions: Completion, ModuleCompletion, PropertyCompletion, FieldCompletion, PathCompletion, DictCompletion, completions, completion_text, score
 import Base: show, istextmime
 import UUIDs: UUID, uuid4
 import Dates: DateTime
@@ -1502,12 +1502,22 @@ end
 completion_from_notebook(c::ModuleCompletion) = is_pluto_workspace(c.parent) && c.mod != "include" && c.mod != "eval"
 completion_from_notebook(c::Completion) = false
 
+only_special_completion_types(c::PathCompletion) = :path
+only_special_completion_types(c::DictCompletion) = :dict
+only_special_completion_types(c::Completion) = nothing
+
 "You say Linear, I say Algebra!"
 function completion_fetcher(query, pos, workspace::Module)
     results, loc, found = completions(query, pos, workspace)
     if endswith(query, '.')
         filter!(is_dot_completion, results)
         # we are autocompleting a module, and we want to see its fields alphabetically
+        sort!(results; by=(r -> completion_text(r)))
+    elseif endswith(query, '/')
+        filter!(is_path_completion, results)
+        sort!(results; by=(r -> completion_text(r)))
+    elseif endswith(query, '[')
+        filter!(is_dict_completion, results)
         sort!(results; by=(r -> completion_text(r)))
     else
         isenough(x) = x ≥ 0
@@ -1518,8 +1528,9 @@ function completion_fetcher(query, pos, workspace::Module)
     descriptions = completion_description.(results)
     exported = completions_exported(results)
     from_notebook = completion_from_notebook.(results)
+    completion_type = only_special_completion_types.(results)
 
-    smooshed_together = collect(zip(texts, descriptions, exported, from_notebook))
+    smooshed_together = collect(zip(texts, descriptions, exported, from_notebook, completion_type))
 
     p = if endswith(query, '.')
         sortperm(smooshed_together; alg=MergeSort, by=basic_completion_priority)
@@ -1534,7 +1545,14 @@ function completion_fetcher(query, pos, workspace::Module)
 end
 
 is_dot_completion(::Union{ModuleCompletion,PropertyCompletion,FieldCompletion}) = true
-is_dot_completion(::Completion)                                                   = false
+is_dot_completion(::Completion)                                                 = false
+
+is_path_completion(::Union{PathCompletion}) = true
+is_path_completion(::Completion)            = false
+
+is_dict_completion(::Union{DictCompletion}) = true
+is_dict_completion(::Completion)            = false
+
 
 """
     is_pure_expression(expression::ReturnValue{Meta.parse})
