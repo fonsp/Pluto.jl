@@ -20,8 +20,6 @@ let { autocompletion, completionKeymap } = autocomplete
 
 // These should be imported from  @codemirror/autocomplete
 let completionState = autocompletion()[0]
-let start_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Ctrl-Space").run
-let select_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Enter")
 let acceptCompletion = (/** @type {EditorView} */ view, option) => {
     let apply = option.completion.apply || option.completion.label
     let result = option.source
@@ -65,7 +63,7 @@ const tabCompletionState = StateField.define({
 /** @param {EditorView} cm */
 const tab_completion_command = (cm) => {
     // This will return true if the autocomplete select popup is open
-    if (select_autocomplete_command.run(cm)) {
+    if (autocomplete.acceptCompletion(cm)) {
         return true
     }
 
@@ -79,7 +77,7 @@ const tab_completion_command = (cm) => {
     cm.dispatch({
         effects: TabCompletionEffect.of(10),
     })
-    return start_autocomplete_command(cm)
+    return autocomplete.startCompletion(cm)
 }
 
 // Remove this if we find that people actually need the `?` in their queries, but I very much doubt it.
@@ -95,7 +93,7 @@ let open_docs_if_autocomplete_is_open_command = (cm) => {
 /** @param {EditorView} cm */
 let complete_and_also_type = (cm) => {
     // Possibly autocomplete
-    select_autocomplete_command.run(cm)
+    autocomplete.acceptCompletion(cm)
     // And then do nothing, in the hopes that codemirror will add whatever we typed
     return false
 }
@@ -137,27 +135,26 @@ let update_docs_from_autocomplete_selection = (on_update_doc_query) => {
     })
 }
 
-// TODO Maybe use this again later?
-// const no_autocomplete = " \t\r\n([])+-=/,;'\"!#$%^&*~`<>|"
-
 let match_unicode_complete = (ctx) => ctx.matchBefore(/\\[^\s"'.`]*/)
 let match_symbol_complete = (ctx) => ctx.matchBefore(/\.\:[^\s"'`()\[\].]*/)
+let match_expanduser_complete = (ctx) => ctx.matchBefore(/~\//)
 
-let unicode_hint_generator = (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (ctx) => {
-    let unicode_match = match_unicode_complete(ctx)
+let unfiltered_julia_generator = (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (ctx) => {
+    let unicode_match = match_unicode_complete(ctx) || match_expanduser_complete(ctx)
     if (unicode_match == null) return null
 
-    let message = await request_autocomplete({ text: unicode_match.text })
+    let to_complete = ctx.state.sliceDoc(0, ctx.pos)
+    let { start, stop, results } = await request_autocomplete({ text: to_complete })
 
     return {
-        from: unicode_match.from,
-        to: unicode_match.to,
+        from: start,
+        to: stop,
         // This is an important one when you not only complete, but also replace something.
         // @codemirror/autocomplete automatically filters out results otherwise >:(
         filter: false,
         // TODO Add "detail" that shows the unicode character
         // TODO Add "apply" with the unicode character so it autocompletes that immediately
-        options: message.results.map(([text], i) => {
+        options: results.map(([text], i) => {
             return {
                 label: text,
             }
@@ -171,11 +168,6 @@ let override_text_to_apply_in_field_expression = (text) => {
 }
 
 const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (ctx) => {
-    // Let the unicode source handle "\..." completions
-    // - Putting it in a separate function so to maybe optimise it with local options later (all unicode symbols could be loaded at startup)
-    //   And possibly we want to show unicode AND extra symbols later
-    if (match_unicode_complete(ctx)) return null
-
     let to_complete = ctx.state.sliceDoc(0, ctx.pos)
 
     // Another rough hack... If it detects a `.:`, we want to cut out the `:` so we get all results from julia,
@@ -203,7 +195,7 @@ const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ reque
         // e.g. Base.ab<TAB>, will create a regex like /^ab[^weird]*$/, so when now typing `s`,
         //      we'll get `Base.abs`, it finds the `abs` matching our span, and it will filter the existing results.
         //      If we backspace however, to `Math.a`, `a` does no longer match! So it will re-query this function.
-        span: RegExp(`^${_.escapeRegExp(ctx.state.sliceDoc(start, stop))}[^\\s"'()\\[\\].{}]*`),
+        // span: RegExp(`^${_.escapeRegExp(ctx.state.sliceDoc(start, stop))}[^\\s"'()\\[\\].{}]*`),
         options: [
             ...results.map(([text, type_description, is_exported, is_from_notebook, completion_type], i) => {
                 // (quick) fix for identifiers that need to be escaped
@@ -258,13 +250,32 @@ const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ reque
  * @param {(query: string) => void} props.on_update_doc_query
  */
 export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) => {
+    let last_query = null
+    let last_result = null
+    /**
+     * To make stuff a bit easier, we let all the generators fetch all the time and run their logic, but just do one request.
+     * Previously I had checks to make sure when `unicode_hint_generator` matches it wouldn't fetch in `juliahints_cool_generator`..
+     * but that became cumbersome with `expanduser` autocomplete.. also because THERE MIGHT be a case where
+     * `~/` actually needs a different completion? Idk, I decided to put this "memoize last" thing here deal with it.
+     * @type {PlutoRequestAutocomplete}
+     **/
+    let memoize_last_request_autocomplete = async (options) => {
+        if (_.isEqual(options, last_query)) {
+            return await last_result
+        } else {
+            last_query = options
+            last_result = request_autocomplete(options)
+            return await last_result
+        }
+    }
+
     return [
         tabCompletionState,
         autocompletion({
             activateOnTyping: false,
             override: [
-                unicode_hint_generator(request_autocomplete),
-                juliahints_cool_generator(request_autocomplete),
+                unfiltered_julia_generator(memoize_last_request_autocomplete),
+                juliahints_cool_generator(memoize_last_request_autocomplete),
                 // TODO completion for local variables
             ],
             defaultKeymap: false, // We add these manually later, so we can override them if necessary
@@ -274,6 +285,8 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
 
         // If there is just one autocomplete result, apply it directly
         EditorView.updateListener.of((update) => {
+            // AGAIN, can't use this here again, because the currentCompletions *do not contain all the info to apply the completion*
+            // let open_completions = autocomplete.currentCompletions(update.state)
             let autocompletion_state = update.state.field(completionState, false)
             let is_tab_completion = update.state.field(tabCompletionState, false)
 
@@ -291,8 +304,7 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
                         picked_completion.apply.endsWith("/") &&
                         picked_completion.type?.match(/(^| )completion_path( |$)/)
                     ) {
-                        console.log(`picked_completion:`, picked_completion)
-                        start_autocomplete_command(update.view)
+                        autocomplete.startCompletion(update.view)
                     }
                 }
             }
