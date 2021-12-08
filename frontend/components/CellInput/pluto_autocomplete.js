@@ -111,6 +111,9 @@ const pluto_autocomplete_keymap = [
  */
 let update_docs_from_autocomplete_selection = (on_update_doc_query) => {
     return EditorView.updateListener.of((update) => {
+        // Can't use this yet as it has not enough info to apply the change (source.from and source.to)
+        // let selected_completion = autocomplete.selectedCompletion(update.state)
+
         let autocompletion_state = update.state.field(completionState, false)
         let open_autocomplete = autocompletion_state?.open
         if (open_autocomplete == null) return
@@ -276,6 +279,22 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
 
             if (autocompletion_state?.open != null && is_tab_completion && autocompletion_state.open.options.length === 1) {
                 acceptCompletion(update.view, autocompletion_state.open.options[0])
+            }
+        }),
+
+        EditorView.updateListener.of((update) => {
+            for (let transaction of update.transactions) {
+                let picked_completion = transaction.annotation(autocomplete.pickedCompletion)
+                if (picked_completion) {
+                    if (
+                        typeof picked_completion.apply === "string" &&
+                        picked_completion.apply.endsWith("/") &&
+                        picked_completion.type?.match(/(^| )completion_path( |$)/)
+                    ) {
+                        console.log(`picked_completion:`, picked_completion)
+                        start_autocomplete_command(update.view)
+                    }
+                }
             }
         }),
 
