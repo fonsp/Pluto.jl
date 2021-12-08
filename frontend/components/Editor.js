@@ -652,10 +652,28 @@ patch: ${JSON.stringify(
                 // Update for a different notebook, TODO maybe log this as it shouldn't happen
             }
         }
+        
+        this.custom_header_component = null
 
         const on_establish_connection = async (client) => {
             // nasty
             Object.assign(this.client, client)
+            
+            let custom_js_url = await this.client.send("juliahub_get_custom_js_url")
+            
+            if (custom_js_url) {
+                let result = await import(custom_js_url)
+                // result can be a `data:text/javascript;base64,kjahsdfhjsdf` url
+                
+                
+                // make this in Julia with `using Base64; "data:text/javascript;base64,$(encodebase64(data))"`
+                
+                this.custom_header_component = result.get_custom_header_component({
+                    html, preact, this.state, client
+                })
+                
+                // return a preact component, something like `() => html`<div>asfd</div>``
+            }
 
             // @ts-ignore
             window.version_info = this.client.version_info // for debugging
@@ -1025,6 +1043,8 @@ patch: ${JSON.stringify(
                 // and don't prevent the unload
             }
         })
+        
+        
     }
 
     componentDidUpdate(old_props, old_state) {
@@ -1072,6 +1092,8 @@ patch: ${JSON.stringify(
         if (old_state.notebook.nbpkg?.restart_required_msg !== new_state.notebook.nbpkg?.restart_required_msg) {
             console.warn(`New restart required message: ${new_state.notebook.nbpkg?.restart_required_msg}`)
         }
+        
+        
     }
 
     componentWillUpdate(new_props, new_state) {
@@ -1155,6 +1177,9 @@ patch: ${JSON.stringify(
                                 <h1><img id="logo-big" src=${url_logo_big} alt="Pluto.jl" /><img id="logo-small" src=${url_logo_small} /></h1>
                             </a>
                             <div class="flex_grow_1"></div>
+                            <${this.custom_header_component} 
+                                notebook_state=${this.state.notebook}
+                            />
                             ${
                                 status.binder
                                     ? html`<pluto-filepicker><a href=${export_url("notebookfile")} target="_blank">Save notebook...</a></pluto-filepicker>`
