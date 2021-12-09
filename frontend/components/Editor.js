@@ -34,6 +34,7 @@ import { IsolatedCell } from "./Cell.js"
 import { RawHTMLContainer } from "./CellOutput.js"
 
 import custom_env from "../common/Environment.js"
+import environment from "../common/Environment.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -245,6 +246,9 @@ export class Editor extends Component {
             selected_cells: [],
 
             update_is_ongoing: false,
+            extended_components: {
+                CustomHeader: () => null,
+            },
         }
 
         this.setStatePromise = (fn) => new Promise((r) => this.setState(fn, r))
@@ -658,7 +662,14 @@ patch: ${JSON.stringify(
         const on_establish_connection = async (client) => {
             // nasty
             Object.assign(this.client, client)
-
+            const {} = await import(this.client.session_options.server.injected_javascript_data_url)
+            const { custom_editor_header_component } = environment(client, html, useEffect, useState, useMemo)
+            this.setState({
+                extended_components: {
+                    ...this.state.extended_components,
+                    CustomHeader: custom_editor_header_component,
+                },
+            })
             // @ts-ignore
             window.version_info = this.client.version_info // for debugging
 
@@ -1163,6 +1174,7 @@ patch: ${JSON.stringify(
                             }>
                                 <h1><img id="logo-big" src=${url_logo_big} alt="Pluto.jl" /><img id="logo-small" src=${url_logo_small} /></h1>
                             </a>
+                            <${this.state.extended_components.CustomHeader} notebook_id=${this.state.notebook.notebook_id} new_path=${"new path"} />
                             <div class="flex_grow_1"></div>
                             ${
                                 status.binder
