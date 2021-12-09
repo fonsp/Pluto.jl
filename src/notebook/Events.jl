@@ -1,5 +1,6 @@
+import HTTP
 
-#= Pluto Events interface
+"""Pluto Events interface
 
 Use this interface to hook up functionality into the Pluto world.
 Events are guaranteed to be run at least every time something interesting happens,
@@ -30,13 +31,20 @@ julia >    function myfn(a::FileSaveEvent)
         HTTP.post("https://my.service.com/count_saves")
     end
 
-Finally, assing the listener to your session
+Finally, assign the listener to your session
 
 julia > pluto_server_session.event_listener = yourfunction
-
-=#
-import HTTP
+"""
 abstract type PlutoEvent end
+
+function try_event_call(session, event::PlutoEvent)
+    return try
+        session.event_listener(event);
+    catch e
+        @warn "Couldn't run event listener" event exception=(e, catch_backtrace())
+        nothing
+    end
+end
 
 # Triggered when a notebook is saved
 struct FileSaveEvent <: PlutoEvent

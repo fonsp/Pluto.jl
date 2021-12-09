@@ -213,11 +213,7 @@ function http_router_for(session::ServerSession)
                 # You are responsible to keep this up to date.
                 # See Events.jl for types and explanation
                 #
-                maybeNotebook = try
-                    session.event_listener(CustomLaunchEvent(query, request, try_launch_notebook_response))
-                catch
-                    nothing
-                end
+                maybeNotebook = try_event_call(session, CustomLaunchEvent(query, request, try_launch_notebook_response))
                 isnothing(maybeNotebook) && return error("Empty request")
                 return maybeNotebook
             end
