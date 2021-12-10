@@ -3,7 +3,7 @@ import { html, Component, useRef, useLayoutEffect, useContext, useEffect, useMem
 import { ErrorMessage } from "./ErrorMessage.js"
 import { TreeView, TableView, DivElement } from "./TreeView.js"
 
-import { add_bonds_listener, set_bound_elements_to_their_value, get_input_value, set_input_value } from "../common/Bond.js"
+import { add_bonds_listener, set_bound_elements_to_their_value, get_input_value, set_input_value, eventof } from "../common/Bond.js"
 import { cl } from "../common/ClassTable.js"
 
 import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
@@ -289,6 +289,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                             getPublishedObject: (id) => cell.getPublishedObject(id),
                             getBoundElementValueLikePluto: get_input_value,
                             setBoundElementValueLikePluto: set_input_value,
+                            getBoundElementEventNameLikePluto: eventof,
                             ...observablehq_for_cells,
                         },
                         code: node.innerText,

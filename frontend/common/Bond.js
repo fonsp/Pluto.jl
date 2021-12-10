@@ -39,7 +39,7 @@ export function get_input_value(input) {
  * @param {Element} input
  * @returns {string}
  */
-function eventof(input) {
+export function eventof(input) {
     //@ts-ignore
     switch (input.type) {
         case "button":
