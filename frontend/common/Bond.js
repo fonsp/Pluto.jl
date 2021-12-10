@@ -10,7 +10,7 @@ import observablehq from "./SetupCellEnvironment.js"
  * @param {Element} input
  * @returns {any}
  */
-function get_input_value(input) {
+export function get_input_value(input) {
     if (input instanceof HTMLInputElement) {
         switch (input.type) {
             case "range":
@@ -77,7 +77,7 @@ function input_generator(input) {
  * @param {Element} input
  * @param {any} new_value
  */
-const set_input_value = (input, new_value) => {
+export const set_input_value = (input, new_value) => {
     if (new_value == null) {
         //@ts-ignore
         input.value = new_value
