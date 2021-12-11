@@ -13,7 +13,7 @@ md"""
 
 Pluto is an excellent enviroment to visualise your data. This notebook shows a few examples of using plots in Pluto using the `Plots` package.
 
-I wrote this notebook so you can understand it even if you have never used `Plots`. However, it is not intend as a complete tutorial for the package. If you want to start making your own plots, I recommend looking at the package [documentation](https://docs.juliaplots.org/latest/) for a full tutorial as well.
+I wrote this notebook so you can understand it even if you have never used `Plots`. However, it is not intended as a complete tutorial for the package. If you want to start making your own plots, I recommend looking at the package [documentation](https://docs.juliaplots.org/latest/) for a full tutorial as well.
 
 Let's start by importing the `Plots` package. _(Pluto's package manager automatically takes care of installing and tracking dependencies!)_
 """

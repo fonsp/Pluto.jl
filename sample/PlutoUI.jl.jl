@@ -43,10 +43,9 @@ Simply import the `PlutoUI` package, and Pluto's built-in package manager takes 
 """
 
 # ╔═╡ fddb794c-c75c-11ea-1f55-eb9c178424cd
-md"# Basics"
-
-# ╔═╡ 1e10d82a-c766-11ea-0c4b-3bd77f62759d
-md"`PlutoUI` includes the basic HTML5 `<input>` types."
+md"""
+# Basics
+"""
 
 # ╔═╡ b819e9a8-c760-11ea-11ee-dd01da663b5c
 md"## Slider"
@@ -61,7 +60,7 @@ x
 
 
 # ╔═╡ a709fd2e-c760-11ea-05c5-7bf673990de1
-md"The first argument is an `AbstractRange` object. You can set the _default value_ using a keyword argument:"
+md"The first argument is a `Vector` or range. You can set the _default value_ using a keyword argument:"
 
 # ╔═╡ d3811ac2-c760-11ea-0811-131d9f1d3910
 @bind y Slider(20:0.1:30, default=25)
@@ -70,6 +69,34 @@ md"The first argument is an `AbstractRange` object. You can set the _default val
 y
 
 # ╔═╡ 06962cde-cc4f-11ea-0d96-69a8cb7eeda2
+
+
+# ╔═╡ 6605d010-d0d1-4cc8-a34d-3158b8572b5d
+md"""
+## Scrubbable
+
+`Scrubbable` makes a number interactive, you can **click and drag** its value left or right. 
+
+Try it in the text below:
+"""
+
+# ╔═╡ 756e2c82-6e2f-4d7b-a1ed-5de97be04269
+md"""
+_If Alice has $(@bind a Scrubbable(20)) apples, 
+and she gives $(@bind b Scrubbable(3)) apples to Bob..._
+"""
+
+# ╔═╡ c07c5a9e-61f9-4247-86e7-7c3f9956d0ff
+md"""
+_...then Alice has **$(a - b)** apples left._
+"""
+
+# ╔═╡ c3fea1b2-fc11-4c19-9c01-a8e03fda2817
+md"""
+Use the Live Docs to learn more about `Scrubbable`!
+"""
+
+# ╔═╡ 221c308e-3cbe-4689-aa67-8970957f8cb0
 
 
 # ╔═╡ e49623ac-c760-11ea-3689-c15f2e2f6081
@@ -141,8 +168,9 @@ sentence
 md"You can also create a **mutli-line** text box!"
 
 # ╔═╡ 0e6f0508-c762-11ea-0352-09bd694a9b35
-# gedicht van: Sanne de Kroon
 @bind poem TextField((30, 3), "Je opent en sluit je armen,\nMaar houdt niets vast.\nHet is net zwemmen")
+
+# (poem by: Sanne de Kroon)
 
 # ╔═╡ 3dcd7002-c765-11ea-323d-a1fb49409011
 split(poem, "\n")
@@ -159,11 +187,17 @@ md"## Select"
 # ╔═╡ 705662e2-c763-11ea-2f6d-cdaffc1fc73a
 vegetable
 
+# ╔═╡ 1feebd8f-667a-42fd-965d-5e3167ff7c7a
+@bind favourite_function Select([sin, cos, tan, sqrt])
+
+# ╔═╡ 9128d2c1-364c-4446-baaa-6d0593edda47
+favourite_function(2)
+
 # ╔═╡ 3930f0d8-cc50-11ea-3de6-d91ac5c6cd9f
 
 
 # ╔═╡ 787a2c88-c763-11ea-0a32-bb91ca60113d
-md"Instead of an array of `String`s, you can also give an array of **pairs**, where the first item is the bound value, and the second item is displayed. "
+md"Instead of an array of values, you can also give an array of **pairs**, where the first item is the bound value, and the second item is displayed. "
 
 # ╔═╡ ac8c4dee-c763-11ea-1b2d-c590a2d50d7e
 @bind fruit Select(["apple" => "🍎", "melon" => "🍉"])
@@ -289,7 +323,9 @@ md"You can use a `Clock` to drive an animation! Or use it to repeat the same com
 md"## DownloadButton"
 
 # ╔═╡ ea00721c-cc4b-11ea-1e82-0b3dbe6a7f1e
-md"The download button is not an **input** element that you can `@bind` to, it's an **output** that you can use to get processed data from your notebook easily."
+md"""
+The download button is not an **input** element that you can `@bind` to, it's an **output** that you can use to get processed data from your notebook easily. The second argument is the _output filename_.
+"""
 
 # ╔═╡ fc12280c-c768-11ea-3ebc-ebcd6b3459c1
 DownloadButton(poem, "poem.txt")
@@ -297,10 +333,86 @@ DownloadButton(poem, "poem.txt")
 # ╔═╡ 067cbcde-cc4c-11ea-3eed-972dc6d7bb3b
 DownloadButton([0x01, 0x02, 0x03], "secret_data.bin")
 
+# ╔═╡ 7da30d97-b28a-4eb9-a2ef-fad599b549d1
+md"""
+# High-level inputs
+"""
+
+# ╔═╡ 170089cd-f366-4c0a-b58d-fe6e36049db7
+md"""
+## Confirm
+
+Normally, when you move a [`Slider`](@ref) or type in a [`TextField`](@ref), all intermediate values are sent back to `@bind`. By wrapping an input element in `confirm`, you get a button to manually **control when the value is sent**, intermediate updates are hidden from Pluto.
+
+"""
+
+# ╔═╡ b29215cb-8e7e-4382-822c-cdaa4c473ba1
+@bind distance confirm(Slider(1:100))
+
+# ╔═╡ 00f9f608-85bd-4932-b585-39f74dcf53b4
+distance
+
+# ╔═╡ 48a9ffbd-cac7-4c4e-85e5-c3d0693e5550
+md"""
+`confirm` can be wrapper around any input element to create a new one, including inputs from other packages, or inputs that you have made yourself!
+"""
+
+# ╔═╡ 5c85ee41-da68-4f5f-b45e-e1de7996747d
+
+
+# ╔═╡ 8c51343f-cb35-4ff9-9fd8-642ffab57e22
+md"""
+## Combine
+
+This next high-level component is a bit tricky, but very powerful!
+
+Using `combine`, you can create a single input out of multiple existing ones! In the example below, we create a new input, `wind_speed_input`. Notice that the list of wind directions is *dynamic*: if you add a new direction, a 5th slider will appear!
+
+"""
+
+# ╔═╡ a4837897-caae-447a-8db9-7775e7a4d0c8
+
+
+# ╔═╡ d278189e-6a5b-428a-8c81-ce3d206b042c
+function wind_speed_input(directions::Vector)
+	
+	return combine() do Child
+		
+		inputs = [
+			md""" $(name): $(
+				Child(name, Slider(1:100))
+			)"""
+			
+			for name in directions
+		]
+		
+		md"""
+		#### Wind speeds
+		$(inputs)
+		"""
+	end
+end
+
+# ╔═╡ f5c421cc-dbdb-459a-9bb4-d648507a87d2
+@bind speeds wind_speed_input(["North", "East", "South", "West"])
+
+# ╔═╡ a4eac824-ba87-473a-b39a-783c4de3f933
+speeds
+
+# ╔═╡ f9052ed8-84cc-4cca-abb2-9363aafc6040
+speeds.North
+
+# ╔═╡ 4ca9c749-08ee-467f-af2c-9b2f13199d72
+md"""
+Use the Live Docs to learn more about `combine` and to see additional examples. 
+
+> 🙋 `combine` is very useful in combination with [HypertextLiteral.jl](https://github.com/MechanicalRabbit/HypertextLiteral.jl), which you can learn using our JavaScript sample notebook. 
+"""
+
 # ╔═╡ ad8e9b30-c75d-11ea-1fd0-0b53592135bf
 md"""# Loading resources
 
-Notebooks use data from different places. For example, you use `Base.read` to access local data (files) inside your Julia code, and `HTTP.jl` for remote data (interwebs). 
+Notebooks use data from different places. For example, you use [`Base.read`](https://docs.julialang.org/en/v1/base/io-network/#:~:text=read(filename%3A%3AAbstractString%2C%20String)) to access local data (files) inside your Julia code, and [`Downloads.jl`](https://github.com/JuliaLang/Downloads.jl) for remote data (interwebs). 
 
 `PlutoUI` helps you communicate with the person reading the notebook!
 - To get **remote media** (URL) inside your **Markdown text**, use `PlutoUI.Resource`.
@@ -477,6 +589,9 @@ space
 space
 
 # ╔═╡ f69a5d5e-c765-11ea-3fa0-230c6c619730
+space
+
+# ╔═╡ 0b66c781-ecf2-445e-b2aa-82cb13371e46
 space
 
 # ╔═╡ 35523932-cc4f-11ea-0908-2d51c57176b7
@@ -668,7 +783,6 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╠═071d9ca5-9b42-4583-ad96-a48f93453a0e
 # ╟─fb6142f6-c765-11ea-29fd-7ff4e823c02b
 # ╟─fddb794c-c75c-11ea-1f55-eb9c178424cd
-# ╟─1e10d82a-c766-11ea-0c4b-3bd77f62759d
 # ╟─b819e9a8-c760-11ea-11ee-dd01da663b5c
 # ╠═34ebf81e-c760-11ea-05bb-376173e7ed10
 # ╠═a4488984-c760-11ea-2930-871f6b400ef5
@@ -677,6 +791,11 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╠═d3811ac2-c760-11ea-0811-131d9f1d3910
 # ╠═dfe10b6c-c760-11ea-2f77-79cc4cfa8dc4
 # ╟─06962cde-cc4f-11ea-0d96-69a8cb7eeda2
+# ╟─6605d010-d0d1-4cc8-a34d-3158b8572b5d
+# ╠═756e2c82-6e2f-4d7b-a1ed-5de97be04269
+# ╠═c07c5a9e-61f9-4247-86e7-7c3f9956d0ff
+# ╟─c3fea1b2-fc11-4c19-9c01-a8e03fda2817
+# ╟─221c308e-3cbe-4689-aa67-8970957f8cb0
 # ╟─e49623ac-c760-11ea-3689-c15f2e2f6081
 # ╠═314cb85a-c761-11ea-1cba-b73f84a52be8
 # ╟─3c68b25c-c761-11ea-226a-4f46579a6732
@@ -706,6 +825,8 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╟─5833f7f4-c763-11ea-0b95-9b21a40192a9
 # ╠═690cf3ac-c763-11ea-10f0-b3e28c380be9
 # ╠═705662e2-c763-11ea-2f6d-cdaffc1fc73a
+# ╠═1feebd8f-667a-42fd-965d-5e3167ff7c7a
+# ╠═9128d2c1-364c-4446-baaa-6d0593edda47
 # ╟─3930f0d8-cc50-11ea-3de6-d91ac5c6cd9f
 # ╟─787a2c88-c763-11ea-0a32-bb91ca60113d
 # ╠═ac8c4dee-c763-11ea-1b2d-c590a2d50d7e
@@ -748,6 +869,20 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╠═fc12280c-c768-11ea-3ebc-ebcd6b3459c1
 # ╠═067cbcde-cc4c-11ea-3eed-972dc6d7bb3b
 # ╟─f69a5d5e-c765-11ea-3fa0-230c6c619730
+# ╟─7da30d97-b28a-4eb9-a2ef-fad599b549d1
+# ╟─170089cd-f366-4c0a-b58d-fe6e36049db7
+# ╠═b29215cb-8e7e-4382-822c-cdaa4c473ba1
+# ╠═00f9f608-85bd-4932-b585-39f74dcf53b4
+# ╟─48a9ffbd-cac7-4c4e-85e5-c3d0693e5550
+# ╟─5c85ee41-da68-4f5f-b45e-e1de7996747d
+# ╟─8c51343f-cb35-4ff9-9fd8-642ffab57e22
+# ╟─a4837897-caae-447a-8db9-7775e7a4d0c8
+# ╠═f5c421cc-dbdb-459a-9bb4-d648507a87d2
+# ╠═a4eac824-ba87-473a-b39a-783c4de3f933
+# ╠═f9052ed8-84cc-4cca-abb2-9363aafc6040
+# ╠═d278189e-6a5b-428a-8c81-ce3d206b042c
+# ╟─4ca9c749-08ee-467f-af2c-9b2f13199d72
+# ╟─0b66c781-ecf2-445e-b2aa-82cb13371e46
 # ╟─ad8e9b30-c75d-11ea-1fd0-0b53592135bf
 # ╟─87d088d0-cc54-11ea-02c6-bd673b95b9d3
 # ╟─6a7e7e54-c75e-11ea-2ea7-ed3da37e9e96
