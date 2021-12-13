@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.15.0
+# v0.17.3
 
 using Markdown
 using InteractiveUtils
@@ -7,8 +7,9 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
-        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
     end
 end
@@ -34,7 +35,7 @@ This document assumes that you have used HTML, CSS and JavaScript before in anot
 """
 
 # ╔═╡ 28ae1424-67dc-4b76-a172-1185cc76cb59
-html"""
+@htl("""
 
 <article class="learning">
 	<h4>
@@ -67,7 +68,7 @@ html"""
 	}
 
 </style>
-"""
+""")
 
 # ╔═╡ ea39c63f-7466-4015-a66c-08bd9c716343
 md"""
@@ -95,161 +96,50 @@ If you chose to learn JavaScript using Pluto, let me know how it went, and how w
 # ╔═╡ d70a3a02-ef3a-450f-bf5a-4a0d7f6262e2
 TableOfContents()
 
-# ╔═╡ 5c5d2489-e48b-432f-94f8-b15333134e24
+# ╔═╡ 10cf6ed1-8276-4a4a-ad06-097d10335512
 md"""
 # Essentials
 
-## Custom `@bind` output
+## Using HTML, CSS and JavaScript
+
+To use web languages inside Pluto, we recomend the small package `HypertextLiteral.jl`, which provides a `@htl` macro.
+
+You wrap `@htl` around a string expression, to mark it as an *HTML literal*. When a cell outputs an HTML-showable object, it is rendered directly in your browser.
 """
 
-# ╔═╡ 75e1a973-7ef0-4ac5-b3e2-5edb63577927
+# ╔═╡ d967cdf9-3df9-40bb-9b08-09cae95a5ca7
+@htl(" <b> Hello! </b> ")
+
+# ╔═╡ 858745a9-cd59-43a6-a296-803515518e57
 md"""
-**You can use JavaScript to write input widgets.** The `input` event can be triggered on any object using
+### CSS and JavaScript
 
-```javascript
-obj.value = ...
-obj.dispatchEvent(new CustomEvent("input"))
-```
+You can use CSS and JavaScript by including it inside HTML, just like you do when writing a web page.
 
-For example, here is a button widget that will send the number of times it has been clicked as the value:
-
+For example, here we use `<script>` to include some JavaScript, and `<style>` to include CSS.
 """
 
-# ╔═╡ e8d8a60e-489b-467a-b49c-1fa844807751
-ClickCounter(text="Click") = @htl("""
-<div>
-<button>$(text)</button>
-
-<script>
-
-	// Select elements relative to `currentScript`
-	var div = currentScript.parentElement
-	var button = div.querySelector("button")
-
-	// we wrapped the button in a `div` to hide its default behaviour from Pluto
-
-	var count = 0
-
-	button.addEventListener("click", (e) => {
-		count += 1
-
-		// we dispatch the input event on the div, not the button, because 
-		// Pluto's `@bind` mechanism listens for events on the **first element** in the
-		// HTML output. In our case, that's the div.
-
-		div.value = count
-		div.dispatchEvent(new CustomEvent("input"))
-		e.preventDefault()
-	})
-
-	// Set the initial value
-	div.value = count
-
-</script>
-</div>
-""")
-
-# ╔═╡ 9346d8e2-9ba0-4475-a21f-11bdd018bc60
-@bind num_clicks ClickCounter()
-
-# ╔═╡ 7822fdb7-bee6-40cc-a089-56bb32d77fe6
-num_clicks
-
-# ╔═╡ 701de4b8-42d3-46a3-a399-d7761dccd83d
-md"""
-As an exercise to get familiar with these techniques, you can try the following:
-- 👉 Add a "reset to zero" button to the widget above.
-- 👉 Make the bound value an array that increases size when you click, instead of a single number.
-- 👉 Create a "two sliders" widget: combine two sliders (`<input type=range>`) into a single widget, where the bound value is the two-element array with both values.
-- 👉 Create a "click to send" widget: combine a text input and a button, and only send the contents of the text field when the button is clicked, not on every keystroke.
-
-Questions? Ask them on our [GitHub Discussions](https://github.com/fonsp/Pluto.jl/discussions)!
-"""
-
-# ╔═╡ 88120468-a43d-4d58-ac04-9cc7c86ca179
-md"""
-## Debugging
-
-The HTML, CSS and JavaScript that you write run in the browser, so you should use the [browser's built-in developer tools](https://developer.mozilla.org/en-US/docs/Learn/Common_questions/What_are_browser_developer_tools) to debug your code. 
-"""
-
-# ╔═╡ ea4b2da1-4c83-4a1f-8fc3-c71a120e58e1
-html"""
-
-<script>
-
-console.info("Can you find this message in the console?")
-
-</script>
-
-"""
-
-# ╔═╡ 08bdeaff-5bfb-49ab-b4cc-3a3446c63edc
+# ╔═╡ 21a9e3e6-92f4-475d-9c8e-21e15c09336b
 @htl("""
-	<style>
-	.cool-class {
-		font-size: 1.3rem;
-		color: purple;
-		background: lightBlue;
-		padding: 1rem;
-		border-radius: 1rem;
-	}
-	
-	
-	</style>
-	
-	<div class="cool-class">Can you find out which CSS class this is?</div>
-	""")
 
-# ╔═╡ 9b6b5da9-8372-4ebf-9c66-ae9fcfc45d47
-md"""
-## Selecting elements
-
-When writing the javascript code for a widget, it is common to **select elements inside the widgets** to manipulate them. In the number-of-clicks example above, we selected the `<div>` and `<button>` elements in our code, to trigger the input event, and attach event listeners, respectively.
-
-There are a numbers of ways to do this, and the recommended strategy is to **create a wrapper `<div>`, and use `currentScript.parentElement` to select it**.
-
-### `currentScript`
-
-When Pluto runs the code inside `<script>` tags, it assigns a reference to that script element to a variable called `currentScript`. You can then use properties like `previousElementSibling` or `parentElement` to "navigate to other elements".
-
-Let's look at the "wrapper div strategy" again.
-
-```htmlmixed
-@htl("\""
-
-<!-- the wrapper div -->
-<div>
-
-	<button id="first">Hello</button>
-	<button id="second">Julians!</button>
-	
-	<script>
-		var wrapper_div = currentScript.parentElement
-		// we can now use querySelector to select anything we want
-		var first_button = wrapper_div.querySelector("button#first")
-
-		console.log(first_button)
-	</script>
+<div class='blue-background'>
+Hello!
 </div>
-"\"")
-```
-"""
 
-# ╔═╡ f18b98f7-1e0f-4273-896f-8a667d15605b
-md"""
-#### Why not just select on `document.body`?
+<script>
+// more about selecting elements later!
+currentScript.previousElementSibling.innerText = "Hello from JavaScript!"
 
-In the example above, it would have been easier to just select the button directly, using:
-```javascript
-// ⛔ do no use:
-var first_button = document.body.querySelector("button#first")
-```
+</script>
 
-However, this becomes a problem when **combining using the widget multiple times in the same notebook**, since all selectors will point to the first instance. 
+<style>
+.blue-background {
+	padding: .5em;
+	background: lightblue;
+}
+</style>
 
-Similarly, try not to search relative to the `<pluto-cell>` or `<pluto-output>` element, because users might want to combine multiple instances of the widget in a single cell.
-"""
+""")
 
 # ╔═╡ 4a3398be-ee86-45f3-ac8b-f627a38c00b8
 md"""
@@ -340,9 +230,9 @@ HTML("""
 md"""
 ### Interpolating into JS -- _HypertextLiteral.jl_
 
-As we see above, using HypertextLiteral.jl, we can interpolate objects (numbers, string, images) into HTML output, great! Next, we want to **interpolate _data_ into _scripts_**. Although you could use `JSON.jl`, HypertextLiteral.jl actually has this abality built-in! 
+As we see above, using HypertextLiteral.jl, we can interpolate objects (numbers, string, images) into HTML output, great! Next, we want to **interpolate _data_ into _scripts_**. Although you could use `JSON.jl`, HypertextLiteral.jl actually has this ability built-in! 
 
-> When you **interpolate Julia objects into a `<script>` tag** using the `@htl` macro, it be converted to a JS object _automatically_. 
+> When you **interpolate Julia objects into a `<script>` tag** using the `@htl` macro, it will be converted to a JS object _automatically_. 
 """
 
 # ╔═╡ b226da72-9512-4d14-8582-2f7787c25028
@@ -407,6 +297,160 @@ md"""
 In the future, you will be able to embed data directly into JavaScript, using Pluto's built-in, optimized data transfer. See [the Pull Request](https://github.com/fonsp/Pluto.jl/pull/1124) for more info.
 """
 
+# ╔═╡ 0866afc2-fd42-42b7-a572-9d824cf8b83b
+md"""
+## Custom `@bind` output
+"""
+
+# ╔═╡ 75e1a973-7ef0-4ac5-b3e2-5edb63577927
+md"""
+**You can use JavaScript to write input widgets.** The `input` event can be triggered on any object using
+
+```javascript
+obj.value = ...
+obj.dispatchEvent(new CustomEvent("input"))
+```
+
+For example, here is a button widget that will send the number of times it has been clicked as the value:
+
+"""
+
+# ╔═╡ e8d8a60e-489b-467a-b49c-1fa844807751
+ClickCounter(text="Click") = @htl("""
+<span>
+<button>$(text)</button>
+
+<script>
+
+	// Select elements relative to `currentScript`
+	var span = currentScript.parentElement
+	var button = span.querySelector("button")
+
+	// we wrapped the button in a `span` to hide its default behaviour from Pluto
+
+	var count = 0
+
+	button.addEventListener("click", (e) => {
+		count += 1
+
+		// we dispatch the input event on the span, not the button, because 
+		// Pluto's `@bind` mechanism listens for events on the **first element** in the
+		// HTML output. In our case, that's the span.
+
+		span.value = count
+		span.dispatchEvent(new CustomEvent("input"))
+		e.preventDefault()
+	})
+
+	// Set the initial value
+	span.value = count
+
+</script>
+</span>
+""")
+
+# ╔═╡ 9346d8e2-9ba0-4475-a21f-11bdd018bc60
+@bind num_clicks ClickCounter()
+
+# ╔═╡ 7822fdb7-bee6-40cc-a089-56bb32d77fe6
+num_clicks
+
+# ╔═╡ 701de4b8-42d3-46a3-a399-d7761dccd83d
+md"""
+As an exercise to get familiar with these techniques, you can try the following:
+- 👉 Add a "reset to zero" button to the widget above.
+- 👉 Make the bound value an array that increases size when you click, instead of a single number.
+- 👉 Create a "two sliders" widget: combine two sliders (`<input type=range>`) into a single widget, where the bound value is the two-element array with both values.
+- 👉 Create a "click to send" widget: combine a text input and a button, and only send the contents of the text field when the button is clicked, not on every keystroke.
+
+Questions? Ask them on our [GitHub Discussions](https://github.com/fonsp/Pluto.jl/discussions)!
+"""
+
+# ╔═╡ 88120468-a43d-4d58-ac04-9cc7c86ca179
+md"""
+## Debugging
+
+The HTML, CSS and JavaScript that you write run in the browser, so you should use the [browser's built-in developer tools](https://developer.mozilla.org/en-US/docs/Learn/Common_questions/What_are_browser_developer_tools) to debug your code. 
+"""
+
+# ╔═╡ ea4b2da1-4c83-4a1f-8fc3-c71a120e58e1
+@htl("""
+
+<script>
+
+console.info("Can you find this message in the console?")
+
+</script>
+
+""")
+
+# ╔═╡ 08bdeaff-5bfb-49ab-b4cc-3a3446c63edc
+@htl("""
+	<style>
+	.cool-class {
+		font-size: 1.3rem;
+		color: purple;
+		background: lightBlue;
+		padding: 1rem;
+		border-radius: 1rem;
+	}
+	
+	
+	</style>
+	
+	<div class="cool-class">Can you find out which CSS class this is?</div>
+	""")
+
+# ╔═╡ 9b6b5da9-8372-4ebf-9c66-ae9fcfc45d47
+md"""
+## Selecting elements
+
+When writing the javascript code for a widget, it is common to **select elements inside the widgets** to manipulate them. In the number-of-clicks example above, we selected the `<span>` and `<button>` elements in our code, to trigger the input event, and attach event listeners, respectively.
+
+There are a numbers of ways to do this, and the recommended strategy is to **create a wrapper `<span>`, and use `currentScript.parentElement` to select it**.
+
+### `currentScript`
+
+When Pluto runs the code inside `<script>` tags, it assigns a reference to that script element to a variable called `currentScript`. You can then use properties like `previousElementSibling` or `parentElement` to "navigate to other elements".
+
+Let's look at the "wrapper span strategy" again.
+
+```htmlmixed
+@htl("\""
+
+<!-- the wrapper span -->
+<span>
+
+	<button id="first">Hello</button>
+	<button id="second">Julians!</button>
+	
+	<script>
+		var wrapper_span = currentScript.parentElement
+		// we can now use querySelector to select anything we want
+		var first_button = wrapper_span.querySelector("button#first")
+
+		console.log(first_button)
+	</script>
+</span>
+"\"")
+```
+"""
+
+# ╔═╡ f18b98f7-1e0f-4273-896f-8a667d15605b
+md"""
+#### Why not just select on `document.body`?
+
+In the example above, it would have been easier to just select the button directly, using:
+```javascript
+// ⛔ do no use:
+var first_button = document.body.querySelector("button#first")
+```
+
+However, this becomes a problem when **combining using the widget multiple times in the same notebook**, since all selectors will point to the first instance. 
+
+Similarly, try not to search relative to the `<pluto-cell>` or `<pluto-output>` element, because users might want to combine multiple instances of the widget in a single cell.
+"""
+
 # ╔═╡ d83d57e2-4787-4b8d-8669-64ed73d79e73
 md"""
 ## Script loading
@@ -444,7 +488,7 @@ md"""
 
 `<script src="...">` tags with a `src` attribute set, like this tag to import the d3.js library:
 
-```css
+```html
 <script src="https://cdn.jsdelivr.net/npm/d3@6.2.0/dist/d3.min.js"></script>
 ```
 
@@ -480,6 +524,7 @@ The following is different in Pluto:
 # ╔═╡ 5721ad33-a51a-4a91-adb2-0915ea0efa13
 md"""
 ### Example: 
+(Though using `HypertextLiteral.jl` would make more sense for this purpose.)
 """
 
 # ╔═╡ 846354c8-ba3b-4be7-926c-d3c9cc9add5f
@@ -628,7 +673,7 @@ state = Dict(
 
 # ╔═╡ 9e37c18c-3ebb-443a-9663-bb4064391d6e
 @htl("""
-<script type="module" id="asdf">
+<script id="asdf">
 	//await new Promise(r => setTimeout(r, 1000))
 	
 	const { html, render, Component, useEffect, useLayoutEffect, useState, useRef, useMemo, createContext, useContext, } = await import( "https://cdn.jsdelivr.net/npm/htm@3.0.4/preact/standalone.mjs")
@@ -736,42 +781,6 @@ details(md"""
 	```
 	""", "Show with syntax highlighting")
 
-# ╔═╡ b0c246ed-b871-461b-9541-280e49b49136
-details(md"""
-```htmlmixed
-<div>
-<button>$(text)</button>
-
-<script>
-
-	// Select elements relative to `currentScript`
-	var div = currentScript.parentElement
-	var button = div.querySelector("button")
-
-	// we wrapped the button in a `div` to hide its default behaviour from Pluto
-
-	var count = 0
-
-	button.addEventListener("click", (e) => {
-		count += 1
-
-		// we dispatch the input event on the div, not the button, because 
-		// Pluto's `@bind` mechanism listens for events on the **first element** in the
-		// HTML output. In our case, that's the div.
-
-		div.value = count
-		div.dispatchEvent(new CustomEvent("input"))
-		e.preventDefault()
-	})
-
-	// Set the initial value
-	div.value = count
-
-</script>
-</div>
-```
-""", "Show with syntax highlighting")
-
 # ╔═╡ d12b98df-8c3f-4620-ba3c-2f3dadac521b
 details(md"""
 	```htmlmixed
@@ -812,6 +821,42 @@ details(md"""
 	</script>
 	```
 	""", "Show with syntax highlighting")
+
+# ╔═╡ b0c246ed-b871-461b-9541-280e49b49136
+details(md"""
+```htmlmixed
+<div>
+<button>$(text)</button>
+
+<script>
+
+	// Select elements relative to `currentScript`
+	var div = currentScript.parentElement
+	var button = div.querySelector("button")
+
+	// we wrapped the button in a `div` to hide its default behaviour from Pluto
+
+	var count = 0
+
+	button.addEventListener("click", (e) => {
+		count += 1
+
+		// we dispatch the input event on the div, not the button, because 
+		// Pluto's `@bind` mechanism listens for events on the **first element** in the
+		// HTML output. In our case, that's the div.
+
+		div.value = count
+		div.dispatchEvent(new CustomEvent("input"))
+		e.preventDefault()
+	})
+
+	// Set the initial value
+	div.value = count
+
+</script>
+</div>
+```
+""", "Show with syntax highlighting")
 
 # ╔═╡ d121e085-c69b-490f-b315-c11a9abd57a6
 details(md"""
@@ -996,13 +1041,25 @@ HypertextLiteral = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 
 [compat]
-HypertextLiteral = "~0.8.0"
-PlutoUI = "~0.7.9"
+HypertextLiteral = "~0.9.3"
+PlutoUI = "~0.7.22"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
+
+[[AbstractPlutoDingetjes]]
+deps = ["Pkg"]
+git-tree-sha1 = "abb72771fd8895a7ebd83d5632dc4b989b022b5b"
+uuid = "6e696c72-6542-2067-7265-42206c756150"
+version = "1.1.2"
+
+[[ArgTools]]
+uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
+
+[[Artifacts]]
+uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
 
 [[Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
@@ -1011,10 +1068,26 @@ uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 
+[[Downloads]]
+deps = ["ArgTools", "LibCURL", "NetworkOptions"]
+uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
+
+[[Hyperscript]]
+deps = ["Test"]
+git-tree-sha1 = "8d511d5b81240fc8e6802386302675bdf47737b9"
+uuid = "47d2ed2b-36de-50cf-bf87-49c2cf4b8b91"
+version = "0.0.4"
+
 [[HypertextLiteral]]
-git-tree-sha1 = "1e3ccdc7a6f7b577623028e0095479f4727d8ec1"
+git-tree-sha1 = "2b078b5a615c6c0396c77810d92ee8c6f470d238"
 uuid = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
-version = "0.8.0"
+version = "0.9.3"
+
+[[IOCapture]]
+deps = ["Logging", "Random"]
+git-tree-sha1 = "f7be53659ab06ddc986428d3a9dcc95f6fa6705a"
+uuid = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
+version = "0.2.2"
 
 [[InteractiveUtils]]
 deps = ["Markdown"]
@@ -1022,9 +1095,28 @@ uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 
 [[JSON]]
 deps = ["Dates", "Mmap", "Parsers", "Unicode"]
-git-tree-sha1 = "81690084b6198a2e1da36fcfda16eeca9f9f24e4"
+git-tree-sha1 = "8076680b162ada2a031f707ac7b4953e30667a37"
 uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
-version = "0.21.1"
+version = "0.21.2"
+
+[[LibCURL]]
+deps = ["LibCURL_jll", "MozillaCACerts_jll"]
+uuid = "b27032c2-a3e7-50c8-80cd-2d36dbcbfd21"
+
+[[LibCURL_jll]]
+deps = ["Artifacts", "LibSSH2_jll", "Libdl", "MbedTLS_jll", "Zlib_jll", "nghttp2_jll"]
+uuid = "deac9b47-8bc7-5906-a0fe-35ac56dc84c0"
+
+[[LibGit2]]
+deps = ["Base64", "NetworkOptions", "Printf", "SHA"]
+uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
+
+[[LibSSH2_jll]]
+deps = ["Artifacts", "Libdl", "MbedTLS_jll"]
+uuid = "29816b5a-b9ab-546f-933c-edad1886dfa8"
+
+[[Libdl]]
+uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 
 [[Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
@@ -1033,44 +1125,91 @@ uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 deps = ["Base64"]
 uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
 
+[[MbedTLS_jll]]
+deps = ["Artifacts", "Libdl"]
+uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
+
 [[Mmap]]
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
+[[MozillaCACerts_jll]]
+uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
+
+[[NetworkOptions]]
+uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
+
 [[Parsers]]
 deps = ["Dates"]
-git-tree-sha1 = "c8abc88faa3f7a3950832ac5d6e690881590d6dc"
+git-tree-sha1 = "ae4bbcadb2906ccc085cf52ac286dc1377dceccc"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "1.1.0"
+version = "2.1.2"
+
+[[Pkg]]
+deps = ["Artifacts", "Dates", "Downloads", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
+uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
 [[PlutoUI]]
-deps = ["Base64", "Dates", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "Suppressor"]
-git-tree-sha1 = "44e225d5837e2a2345e69a1d1e01ac2443ff9fcb"
+deps = ["AbstractPlutoDingetjes", "Base64", "Dates", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "UUIDs"]
+git-tree-sha1 = "565564f615ba8c4e4f40f5d29784aa50a8f7bbaf"
 uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-version = "0.7.9"
+version = "0.7.22"
 
 [[Printf]]
 deps = ["Unicode"]
 uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+
+[[REPL]]
+deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
+uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 
 [[Random]]
 deps = ["Serialization"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [[Reexport]]
-git-tree-sha1 = "5f6c21241f0f655da3952fd60aa18477cf96c220"
+git-tree-sha1 = "45e428421666073eab6f2da5c9d310d99bb12f9b"
 uuid = "189a3867-3050-52da-a836-e630ba90ab69"
-version = "1.1.0"
+version = "1.2.2"
+
+[[SHA]]
+uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 
 [[Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
-[[Suppressor]]
-git-tree-sha1 = "a819d77f31f83e5792a76081eee1ea6342ab8787"
-uuid = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
-version = "0.2.0"
+[[Sockets]]
+uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
+
+[[TOML]]
+deps = ["Dates"]
+uuid = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
+
+[[Tar]]
+deps = ["ArgTools", "SHA"]
+uuid = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
+
+[[Test]]
+deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
+uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[[UUIDs]]
+deps = ["Random", "SHA"]
+uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 [[Unicode]]
 uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
+
+[[Zlib_jll]]
+deps = ["Libdl"]
+uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
+
+[[nghttp2_jll]]
+deps = ["Artifacts", "Libdl"]
+uuid = "8e850ede-7688-5339-a07c-302acd2aaf8d"
+
+[[p7zip_jll]]
+deps = ["Artifacts", "Libdl"]
+uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 """
 
 # ╔═╡ Cell order:
@@ -1082,18 +1221,10 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 # ╟─ea39c63f-7466-4015-a66c-08bd9c716343
 # ╟─8b082f9a-073e-4112-9422-4087850fc89e
 # ╟─d70a3a02-ef3a-450f-bf5a-4a0d7f6262e2
-# ╟─5c5d2489-e48b-432f-94f8-b15333134e24
-# ╟─75e1a973-7ef0-4ac5-b3e2-5edb63577927
-# ╠═e8d8a60e-489b-467a-b49c-1fa844807751
-# ╟─b0c246ed-b871-461b-9541-280e49b49136
-# ╠═9346d8e2-9ba0-4475-a21f-11bdd018bc60
-# ╠═7822fdb7-bee6-40cc-a089-56bb32d77fe6
-# ╟─701de4b8-42d3-46a3-a399-d7761dccd83d
-# ╟─88120468-a43d-4d58-ac04-9cc7c86ca179
-# ╠═ea4b2da1-4c83-4a1f-8fc3-c71a120e58e1
-# ╟─08bdeaff-5bfb-49ab-b4cc-3a3446c63edc
-# ╟─9b6b5da9-8372-4ebf-9c66-ae9fcfc45d47
-# ╟─f18b98f7-1e0f-4273-896f-8a667d15605b
+# ╟─10cf6ed1-8276-4a4a-ad06-097d10335512
+# ╠═d967cdf9-3df9-40bb-9b08-09cae95a5ca7
+# ╟─858745a9-cd59-43a6-a296-803515518e57
+# ╠═21a9e3e6-92f4-475d-9c8e-21e15c09336b
 # ╟─4a3398be-ee86-45f3-ac8b-f627a38c00b8
 # ╠═2d5fd611-284b-4428-b6a5-8909203990b9
 # ╠═82de4674-9ecc-46c4-8a57-0b4453c579c3
@@ -1119,6 +1250,18 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 # ╠═21f57310-9ceb-423c-a9ce-5beb1060a5a3
 # ╟─94561cb1-2325-49b6-8b22-943923fdd91b
 # ╟─7d9d6c28-131a-4b2a-84f8-5c085f387e85
+# ╟─0866afc2-fd42-42b7-a572-9d824cf8b83b
+# ╟─75e1a973-7ef0-4ac5-b3e2-5edb63577927
+# ╠═e8d8a60e-489b-467a-b49c-1fa844807751
+# ╟─b0c246ed-b871-461b-9541-280e49b49136
+# ╠═9346d8e2-9ba0-4475-a21f-11bdd018bc60
+# ╠═7822fdb7-bee6-40cc-a089-56bb32d77fe6
+# ╟─701de4b8-42d3-46a3-a399-d7761dccd83d
+# ╟─88120468-a43d-4d58-ac04-9cc7c86ca179
+# ╠═ea4b2da1-4c83-4a1f-8fc3-c71a120e58e1
+# ╟─08bdeaff-5bfb-49ab-b4cc-3a3446c63edc
+# ╟─9b6b5da9-8372-4ebf-9c66-ae9fcfc45d47
+# ╟─f18b98f7-1e0f-4273-896f-8a667d15605b
 # ╟─d83d57e2-4787-4b8d-8669-64ed73d79e73
 # ╟─077c95cf-2a1b-459f-830e-c29c11a2c5cc
 # ╟─8388a833-d535-4cbd-a27b-de323cea60e8
