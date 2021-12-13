@@ -359,7 +359,8 @@ export const RecordingPlaybackUI = ({ recording_url, audio_src, initializing, ap
                 let now = Date.now()
                 let dt = (now - last_manual_window_scroll_time_ref.current) / 1000
                 let smooth_dt = (now - last_manual_window_smoothscroll_time_ref.current) / 1000
-                let ignore = dt < 1 && smooth_dt < 0.2
+                let is_first_smooth_scroll = smooth_dt === dt
+                let ignore = dt < 1 && (is_first_smooth_scroll || smooth_dt < 0.2)
                 if (ignore) {
                     // then this must have been a browser-initiated smooth scroll event
                     last_manual_window_smoothscroll_time_ref.current = now
