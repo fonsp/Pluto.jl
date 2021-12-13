@@ -80,7 +80,7 @@ md"""
 # ╔═╡ 8b082f9a-073e-4112-9422-4087850fc89e
 md"""
 #### Learning JavaScript
-After learning HTML and CSS, you can already spice up your Pluto notebooks but creating custom layouts, generated dynamically from Julia data. To take things to the next level, you can learn JavaScript. We recommend using an online resource for this. 
+After learning HTML and CSS, you can already spice up your Pluto notebooks by creating custom layouts, generated dynamically from Julia data. To take things to the next level, you can learn JavaScript. We recommend using an online resource for this. 
 
 > My personal favourite is [javascript.info](https://javascript.info/), a high-quality, open source tutorial. I use it too!
 > 
@@ -104,7 +104,7 @@ md"""
 
 To use web languages inside Pluto, we recomend the small package `HypertextLiteral.jl`, which provides a `@htl` macro.
 
-You wrap `@htl` around a string expression, to mark it as an *HTML literal*. When a cell outputs an HTML-showable object, it is rendered directly in your browser.
+You wrap `@htl` around a string expression to mark it as an *HTML literal*. When a cell outputs an HTML-showable object, it is rendered directly in your browser.
 """
 
 # ╔═╡ d967cdf9-3df9-40bb-9b08-09cae95a5ca7
@@ -463,7 +463,7 @@ Just like when writing a browser app, there are two ways to import JS dependenci
 
 ### Loading method 1: ES6 imports
 
-we recommend that you use an [**ES6 import**](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules) if the library supports it.
+We recommend that you use an [**ES6 import**](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules) if the library supports it.
 
 
 ##### Awkward note about syntax
@@ -563,7 +563,7 @@ md"""
 ## Stateful output with `this`
 
 Just like in observablehq, if a cell _re-runs reactively_, then the javascript variable `this` will take the value of the last thing that was returned by the script. If the cell runs for the first time, then `this == undefined`. In particular, if you return an HTML node, and the cell runs a second time, then you can access the HTML node using `this`. Two reasons for using this feature are:
-- Stateful output: you can persist some state inbetween re-renders. 
+- Stateful output: you can persist some state in-between re-renders. 
 - Performance: you can 'recycle' the previous DOM and update it partially (using d3, for example). _When doing so, Pluto guarantees that the DOM node will always be visible, without flicker._
 
 ##### 'Re-runs reactively'?
@@ -621,7 +621,7 @@ end
 
 # ╔═╡ 0962d456-1a76-4b0d-85ff-c9e7dc66621d
 md"""
-Notice that, even though the cell below re-runs, we **smoothly transition** between states. We use `this` to maintain the d3 transition states inbetween reactive runs.
+Notice that, even though the cell below re-runs, we **smoothly transition** between states. We use `this` to maintain the d3 transition states in-between reactive runs.
 """
 
 # ╔═╡ bf9b36e8-14c5-477b-a54b-35ba8e415c77
