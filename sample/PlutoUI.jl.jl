@@ -370,6 +370,9 @@ Using `combine`, you can create a single input out of multiple existing ones! In
 
 """
 
+# ╔═╡ 621f2e82-5ab4-4ab9-a0ff-fb1cc1b41295
+import PlutoUI: combine
+
 # ╔═╡ a4837897-caae-447a-8db9-7775e7a4d0c8
 
 
@@ -876,6 +879,7 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╟─48a9ffbd-cac7-4c4e-85e5-c3d0693e5550
 # ╟─5c85ee41-da68-4f5f-b45e-e1de7996747d
 # ╟─8c51343f-cb35-4ff9-9fd8-642ffab57e22
+# ╠═621f2e82-5ab4-4ab9-a0ff-fb1cc1b41295
 # ╟─a4837897-caae-447a-8db9-7775e7a4d0c8
 # ╠═f5c421cc-dbdb-459a-9bb4-d648507a87d2
 # ╠═a4eac824-ba87-473a-b39a-783c4de3f933
