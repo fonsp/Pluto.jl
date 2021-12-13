@@ -548,6 +548,17 @@ import Distributed
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
+    @testset "Don't lose basic generic types with macros" begin
+        notebook = Notebook(Cell.([
+            "f(::Val{1}) = @info x",
+            "f(::Val{2}) = @info x",
+        ]))
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test notebook.cells[1] |> noerror
+        @test notebook.cells[2] |> noerror
+    end
+
     @testset "Two inter-twined cycles" begin
         notebook = Notebook(Cell.([
             """
