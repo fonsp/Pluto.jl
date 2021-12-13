@@ -195,13 +195,6 @@ let get_scroll_top = ({ cell_id, relative_distance }) => {
     return cell.offsetTop + relative_distance * cell.offsetHeight - window.innerHeight / 2
 }
 
-const goto_scroll_position = ({ cell_id, relative_distance }, smooth = true) => {
-    window.scrollTo({
-        top: get_scroll_top({ cell_id, relative_distance }),
-        behavior: smooth ? "smooth" : "auto",
-    })
-}
-
 export const RecordingPlaybackUI = ({ recording_url, audio_src, initializing, apply_notebook_patches, reset_notebook_state }) => {
     let loaded_recording = useMemo(
         () =>
@@ -220,18 +213,34 @@ export const RecordingPlaybackUI = ({ recording_url, audio_src, initializing, ap
         loaded_recording.then(console.log)
     }, [loaded_recording])
 
-    let recording_audio_player_ref = useRef(null)
+    let audio_element_ref = useRef(/** @type {HTMLAudioElement} */ (null))
 
     let match_state_to_playback_running_ref = useRef(false)
     let current_state_timestamp_ref = useRef(0)
 
-    let [current_scroll_position, set_current_scroll_position] = useState(null)
-    let following_scroll_ref = useRef(true)
+    let [current_scrollY, set_current_scrollY] = useState(null)
+    let [following_scroll, set_following_scroll] = useState(true)
+    let following_scroll_ref = useRef(following_scroll)
+    following_scroll_ref.current = following_scroll
+    let was_playing_before_scrollout_ref = useRef(false)
 
-    let on_scroll = (value, x) => {
-        set_current_scroll_position(value)
+    let last_manual_window_scroll_time_ref = useRef(0)
+    let last_manual_window_smoothscroll_time_ref = useRef(0)
+    const scroll_window = (scrollY, smooth = true) => {
+        last_manual_window_scroll_time_ref.current = Date.now()
+        last_manual_window_smoothscroll_time_ref.current = Date.now()
+        window.scrollTo({
+            top: scrollY,
+            behavior: smooth ? "smooth" : "auto",
+        })
+    }
+
+    let on_scroll = ({ cell_id, relative_distance }, smooth = true) => {
+        let scrollY = get_scroll_top({ cell_id, relative_distance })
+
+        set_current_scrollY(scrollY)
         if (following_scroll_ref.current) {
-            goto_scroll_position(value, x)
+            scroll_window(scrollY, smooth)
         }
     }
 
@@ -243,7 +252,7 @@ export const RecordingPlaybackUI = ({ recording_url, audio_src, initializing, ap
 
         computed_reverse_patches_ref.current = computed_reverse_patches_ref.current ?? deserialized.steps.map(([t, s]) => [t, null])
 
-        const audio = recording_audio_player_ref.current
+        const audio = audio_element_ref.current
         let new_timestamp = audio.currentTime
         let forward = new_timestamp >= current_state_timestamp_ref.current
         let directed = forward ? _.identity : _.reverse
@@ -294,18 +303,18 @@ export const RecordingPlaybackUI = ({ recording_url, audio_src, initializing, ap
     const event_names = ["seeked", "suspend", "play", "pause", "ended", "waiting"]
 
     useLayoutEffect(() => {
-        if (recording_audio_player_ref.current) {
+        if (audio_element_ref.current) {
             event_names.forEach((en) => {
-                recording_audio_player_ref.current.addEventListener(en, on_audio_playback_change)
+                audio_element_ref.current.addEventListener(en, on_audio_playback_change)
             })
 
             return () => {
                 event_names.forEach((en) => {
-                    recording_audio_player_ref.current.removeEventListener(en, on_audio_playback_change)
+                    audio_element_ref.current.removeEventListener(en, on_audio_playback_change)
                 })
             }
         }
-    }, [recording_audio_player_ref.current, on_audio_playback_change])
+    }, [audio_element_ref.current, on_audio_playback_change])
 
     useEffect(() => {
         if (!initializing) {
@@ -315,7 +324,7 @@ export const RecordingPlaybackUI = ({ recording_url, audio_src, initializing, ap
                 if (first_scroll) {
                     let obs = new ResizeObserver(() => {
                         console.log("Scrolling back to first recorded scroll position...")
-                        goto_scroll_position(first_scroll[1], false)
+                        on_scroll(first_scroll[1], false)
                     })
                     let old_value = history.scrollRestoration
                     history.scrollRestoration = "manual"
@@ -324,21 +333,80 @@ export const RecordingPlaybackUI = ({ recording_url, audio_src, initializing, ap
                         history.scrollRestoration = old_value
                         obs.disconnect()
                     }, 3000)
-                    goto_scroll_position(first_scroll[1], false)
+                    on_scroll(first_scroll[1], false)
                 }
+
+                document.fonts.ready.then(() => {
+                    console.info("Fonts loaded")
+                    on_scroll(first_scroll[1], false)
+                })
             })
         }
     }, [initializing])
 
+    useEffect(() => {
+        if (!initializing) {
+        }
+    }, [initializing])
+
+    useEffect(() => {
+        if (!initializing && recording_url != null) {
+            let on_scroll = (e) => {
+                let now = Date.now()
+                let dt = (now - last_manual_window_scroll_time_ref.current) / 1000
+                let smooth_dt = (now - last_manual_window_smoothscroll_time_ref.current) / 1000
+                let ignore = dt < 1 && smooth_dt < 0.2
+                if (ignore) {
+                    // then this must have been a browser-initiated smooth scroll event
+                    last_manual_window_smoothscroll_time_ref.current = now
+                    // console.log("ignoring scroll", { ignore, dt, smooth_dt, e })
+                }
+
+                if (!ignore) {
+                    if (following_scroll_ref.current) {
+                        console.warn("Manual scroll detected, no longer following playback scroll", { dt, smooth_dt, e })
+
+                        was_playing_before_scrollout_ref.current = !audio_element_ref.current.paused
+                        audio_element_ref.current.pause()
+                        set_following_scroll(false)
+                    }
+                }
+            }
+
+            document.fonts.ready.then(() => {
+                window.addEventListener("scroll", on_scroll)
+            })
+            return () => {
+                window.removeEventListener("scroll", on_scroll)
+            }
+        }
+    }, [initializing, recording_url])
+
     return html`
         ${recording_url
-            ? html`<div
+            ? html`${!following_scroll
+                      ? html` <div id="record-ui-container">
+                            <div class="overlay-button playback">
+                                <button
+                                    onclick=${() => {
+                                        scroll_window(current_scrollY, true)
+                                        set_following_scroll(true)
+                                        if (was_playing_before_scrollout_ref.current) audio_element_ref.current.play()
+                                    }}
+                                >
+                                    <span>Back to <b>recording</b> <span class="follow-recording-icon pluto-icon"></span></span>
+                                </button>
+                            </div>
+                        </div>`
+                      : null}
+                  <div
                       class="outline-frame playback"
                       style=${{
-                          top: `${current_scroll_position ? get_scroll_top(current_scroll_position) : 0}px`,
+                          opacity: following_scroll ? 0.0 : 1,
+                          top: `${current_scrollY ?? 0}px`,
                       }}
                   ></div>
-                  <${AudioPlayer} audio_element_ref=${recording_audio_player_ref} src=${audio_src} loaded_recording=${loaded_recording} />`
+                  <${AudioPlayer} audio_element_ref=${audio_element_ref} src=${audio_src} loaded_recording=${loaded_recording} />`
             : null}
     `
 }

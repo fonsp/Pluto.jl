@@ -753,7 +753,7 @@ loading-bar {
     display: block;
     transition: width cubic-bezier(0.14, 0.71, 0, 0.99) 2s, opacity linear 0.2s;
     opacity: 0;
-    z-index: 9999;
+    z-index: 12000;
     animation: move-background 2s ease-in-out infinite;
 }
 loading-bar.slow {
@@ -779,7 +779,7 @@ body.binder.loading #binder_spinners {
 }
 
 .outline-frame {
-    z-index: 9999;
+    z-index: 9990;
     pointer-events: none;
     position: fixed;
     top: 0px;
@@ -801,6 +801,8 @@ body.is_recording .outline-frame.recording {
     position: absolute;
     transition: top 0.3s ease-in-out, opacity 0.3s ease-in-out;
     border: 12px solid #357ddcba;
+    /* background: #7b77ff12; */
+    box-shadow: inset 0px 0px 20px 20px #919bff2b;
 }
 
 body.recording_waiting_to_start > header,
@@ -825,6 +827,9 @@ body.is_recording > header {
 #record-ui-container > .overlay-button.record-no-audio {
     border-color: #dcc6c6;
 }
+#record-ui-container > .overlay-button.playback {
+    border-color: #c6c6dc;
+}
 #record-ui-container span.stop-recording-icon::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/stop-circle-outline.svg);
 }
@@ -833,6 +838,9 @@ body.is_recording > header {
 }
 #record-ui-container span.mute-icon::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/mic-off-outline.svg);
+}
+#record-ui-container span.follow-recording-icon::after {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-undo-outline.svg);
 }
 
 div.recording-playback {
@@ -900,8 +908,8 @@ main > preamble #saveall-container.saved > span {
     display: inline-block;
     padding-right: 20px;
     /* width: 17px; */
-    height: 17px;
-    margin-bottom: -3px;
+    height: 18px;
+    margin-bottom: -5px;
     background-size: 17px 17px;
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sync-circle-outline.svg");
     background-repeat: no-repeat;
