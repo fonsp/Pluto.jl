@@ -8,6 +8,7 @@ VERSION > v"1.6.99" || include("./RichOutput.jl")
 include("./React.jl")
 include("./Dynamic.jl")
 include("./MacroAnalysis.jl")
+include("./webserver.jl")
 
 # for SOME reason 😞 the Notebook.jl tests need to run AFTER all the tests above, or the Github Actions runner on Windows gets internal julia errors.
 include("./Notebook.jl")
@@ -17,13 +18,18 @@ include("./ReloadFromFile.jl")
 include("./packages/PkgCompat.jl")
 include("./ExpressionExplorer.jl")
 include("./MethodSignatures.jl")
-VERSION > v"1.6.99" || include("./Configuration.jl")
+VERSION > v"1.6.99" || include("./Configuration.jl") # TODO THIS DOES START NEW PROCESSES
 include("./MoreAnalysis.jl")
 include("./Analysis.jl")
 include("./webserver_utils.jl")
 include("./DependencyCache.jl")
 include("./Throttled.jl")
 include("./cell_disabling.jl")
+
+import Distributed
+if length(Distributed.procs()) != 1
+    @error "Not all notebook processes were closed during tests!" Distributed.procs()
+end
 
 # TODO: test PlutoRunner functions like:
 # - from_this_notebook
