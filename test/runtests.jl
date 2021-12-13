@@ -19,13 +19,14 @@ include("./webserver.jl")
 verify_no_running_processes()
 include("./Notebook.jl")
 verify_no_running_processes()
+include("./Configuration.jl")
+verify_no_running_processes()
 
 # # tests that don't start new processes:
 include("./ReloadFromFile.jl")
 include("./packages/PkgCompat.jl")
 include("./ExpressionExplorer.jl")
 include("./MethodSignatures.jl")
-VERSION > v"1.6.99" || include("./Configuration.jl") # TODO THIS DOES START NEW PROCESSES
 include("./MoreAnalysis.jl")
 include("./Analysis.jl")
 include("./webserver_utils.jl")
