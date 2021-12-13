@@ -8,7 +8,7 @@ import { pack, unpack } from "../common/MsgPack.js"
 
 let run = (x) => x()
 
-export const RecordingUI = ({ is_recording, recording_waiting_to_start, set_recording_states, patch_listeners, export_url }) => {
+export const RecordingUI = ({ notebook_name, is_recording, recording_waiting_to_start, set_recording_states, patch_listeners, export_url }) => {
     let current_recording_ref = useRef(null)
     let recording_start_time_ref = useRef(0)
 
@@ -110,6 +110,10 @@ export const RecordingUI = ({ is_recording, recording_waiting_to_start, set_reco
         window.addEventListener("scroll", scroll_handler)
     }
 
+    let notebook_name_ref = useRef(notebook_name)
+    notebook_name_ref.current = _.last(notebook_name.split("/"))
+        .replace(/\.jl$/, "")
+        .replace(/\.plutojl$/, "")
     const stop_recording = async () => {
         if (current_recording_ref.current != null) {
             const { audio_recorder, initial_html, steps, scrolls, scroll_handler } = current_recording_ref.current
@@ -133,7 +137,7 @@ export const RecordingUI = ({ is_recording, recording_waiting_to_start, set_reco
 
             let element = document.createElement("a")
             element.setAttribute("href", "data:text/html;charset=utf-8," + encodeURIComponent(output_html))
-            element.setAttribute("download", "recording.html")
+            element.setAttribute("download", `${notebook_name_ref.current} recording.html`)
 
             element.style.display = "none"
             document.body.appendChild(element)

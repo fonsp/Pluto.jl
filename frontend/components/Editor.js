@@ -1238,6 +1238,7 @@ patch: ${JSON.stringify(
                     </header>
                     
                     <${RecordingUI} 
+                        notebook_name=${notebook.shortpath}
                         recording_waiting_to_start=${this.state.recording_waiting_to_start}
                         set_recording_states=${({ is_recording, recording_waiting_to_start }) => this.setState({ is_recording, recording_waiting_to_start })}
                         is_recording=${this.state.is_recording}
