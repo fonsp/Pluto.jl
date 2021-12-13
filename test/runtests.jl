@@ -7,7 +7,7 @@ include("./packages/Basic.jl")
 verify_no_running_processes()
 include("./Bonds.jl")
 verify_no_running_processes()
-VERSION > v"1.6.99" || include("./RichOutput.jl")
+include("./RichOutput.jl")
 verify_no_running_processes()
 include("./React.jl")
 verify_no_running_processes()
@@ -22,7 +22,7 @@ verify_no_running_processes()
 include("./Configuration.jl")
 verify_no_running_processes()
 
-# # tests that don't start new processes:
+# tests that don't start new processes:
 include("./ReloadFromFile.jl")
 include("./packages/PkgCompat.jl")
 include("./ExpressionExplorer.jl")
