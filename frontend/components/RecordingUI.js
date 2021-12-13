@@ -55,7 +55,11 @@ export const RecordingUI = ({ notebook_name, is_recording, recording_waiting_to_
 
         let initial_html = await (await fetch(export_url("notebookexport"))).text()
 
-        initial_html = initial_html.replaceAll("https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.3/frontend/", "http://localhost:1234/")
+        initial_html = initial_html.replaceAll(
+            "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.3/frontend/",
+            "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@8d243df/frontend/"
+        )
+        // initial_html = initial_html.replaceAll("https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.3/frontend/", "http://localhost:1234/")
 
         const scroll_handler_direct = () => {
             let y = window.scrollY + window.innerHeight / 2
