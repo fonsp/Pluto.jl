@@ -567,9 +567,11 @@ export class Editor extends Component {
             },
         }
 
-        const apply_notebook_patches = (patches, old_state = undefined) =>
+        const apply_notebook_patches = (patches, old_state = undefined, get_reverse_patches = false) =>
             new Promise((resolve) => {
                 if (patches.length !== 0) {
+                    let copy_of_patches,
+                        reverse_of_patches = []
                     this.setState(
                         immer((state) => {
                             let new_notebook
@@ -578,6 +580,14 @@ export class Editor extends Component {
                                 // if (Math.random() < 0.25) {
                                 //     throw new Error(`Error: [Immer] minified error nr: 15 '${patches?.[0]?.path?.join("/")}'    .`)
                                 // }
+
+                                if (get_reverse_patches) {
+                                    ;[new_notebook, copy_of_patches, reverse_of_patches] = produceWithPatches(old_state ?? state.notebook, (state) => {
+                                        applyPatches(state, patches)
+                                    })
+                                    // TODO: why was `new_notebook` not updated?
+                                    // this is why the line below is also called when `get_reverse_patches === true`
+                                }
                                 new_notebook = applyPatches(old_state ?? state.notebook, patches)
                             } catch (exception) {
                                 const failing_path = String(exception).match(".*'(.*)'.*")[1].replace(/\//gi, ".")
@@ -586,6 +596,7 @@ export class Editor extends Component {
                                 // The alert below is not catastrophic: the editor will try to recover.
                                 // Deactivating to be user-friendly!
                                 // alert(`Ooopsiee.`)
+
                                 console.error(
                                     `#######################**************************########################
 PlutoError: StateOutOfSync: Failed to apply patches.
@@ -631,10 +642,10 @@ patch: ${JSON.stringify(
                             this.on_patches_hook(patches)
                             state.notebook = new_notebook
                         }),
-                        resolve
+                        () => resolve(reverse_of_patches)
                     )
                 } else {
-                    resolve()
+                    resolve([])
                 }
             })
 
