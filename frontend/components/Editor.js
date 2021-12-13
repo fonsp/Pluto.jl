@@ -255,12 +255,6 @@ export class Editor extends Component {
             recording_waiting_to_start: false,
         }
 
-        // const original_setState = this.setState
-
-        // this.setState = (change, callback) => {
-        //     original_setState(change, callback)
-        // }
-
         this.setStatePromise = (fn) => new Promise((r) => this.setState(fn, r))
 
         // these are things that can be done to the local notebook
