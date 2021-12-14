@@ -102,7 +102,7 @@ md"""
 
 ## Using HTML, CSS and JavaScript
 
-To use web languages inside Pluto, we recomend the small package [`HypertextLiteral.jl`](https://github.com/MechanicalRabbit/HypertextLiteral.jl), which provides a `@htl` macro.
+To use web languages inside Pluto, we recommend the small package [`HypertextLiteral.jl`](https://github.com/MechanicalRabbit/HypertextLiteral.jl), which provides an `@htl` macro.
 
 You wrap `@htl` around a string expression to mark it as an *HTML literal*, as we did in the example cell from earlier. When a cell outputs an HTML-showable object, it is rendered directly in your browser.
 """
