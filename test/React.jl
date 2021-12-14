@@ -360,6 +360,35 @@ import Distributed
         🍭.options.evaluation.workspace_use_distributed = false
     end
 
+    @testset "Reactive usings 5" begin
+        notebook = Notebook(Cell.([
+            "",
+            "x = ones(December * 2)",
+            "December = 3",
+        ]))
+
+        fakeclient.connected_notebook = notebook
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test all(noerror, notebook.cells)
+
+        setcode(notebook.cells[begin], raw"""
+            begin
+                @eval(module Hello
+                    December = 12
+                    export December
+                end)
+                using .Hello
+            end
+        """)
+        update_run!(🍭, notebook, notebook.cells[begin])
+
+        @test all(noerror, notebook.cells)
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
+
     @testset "Function dependencies" begin
         🍭.options.evaluation.workspace_use_distributed = true
 
@@ -517,6 +546,17 @@ import Distributed
         setcode.(notebook.cells, [""])
         update_run!(🍭, notebook, notebook.cells)
         WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
+
+    @testset "Don't lose basic generic types with macros" begin
+        notebook = Notebook(Cell.([
+            "f(::Val{1}) = @info x",
+            "f(::Val{2}) = @info x",
+        ]))
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test notebook.cells[1] |> noerror
+        @test notebook.cells[2] |> noerror
     end
 
     @testset "Two inter-twined cycles" begin

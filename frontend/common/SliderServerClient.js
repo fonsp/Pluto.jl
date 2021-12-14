@@ -46,6 +46,7 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
 
             const url = base + "staterequest/" + encodeURIComponent(hash) + "/"
 
+            let unpacked = null
             try {
                 const use_get = url.length + (packed.length * 4) / 3 + 20 < 8000
 
@@ -58,7 +59,8 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
                           body: packed,
                       })
 
-                const { patches, ids_of_cells_that_ran } = unpack(new Uint8Array(await response.arrayBuffer()))
+                unpacked = unpack(new Uint8Array(await response.arrayBuffer()))
+                const { patches, ids_of_cells_that_ran } = unpacked
 
                 await apply_notebook_patches(
                     patches,
@@ -70,7 +72,7 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
                     })(get_current_state())
                 )
             } catch (e) {
-                console.error(e)
+                console.error(unpacked, e)
             }
         }
     })

@@ -26,3 +26,5 @@ if (Blob.prototype.arrayBuffer == null) {
         return new Response(this).arrayBuffer()
     }
 }
+
+import "https://cdn.jsdelivr.net/npm/smoothscroll-polyfill@0.4.4/dist/smoothscroll.min.js"

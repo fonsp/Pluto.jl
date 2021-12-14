@@ -37,3 +37,12 @@ export const debounced_promises = (async_function) => {
         }
     }
 }
+
+export const blob_url_to_data_url = async (/** @type {string} */ blob_url) => {
+    const blob = await (await fetch(blob_url)).blob()
+    return await new Promise((r) => {
+        const reader = new FileReader()
+        reader.onload = () => r(reader.result)
+        reader.readAsDataURL(blob)
+    })
+}

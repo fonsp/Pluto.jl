@@ -177,10 +177,12 @@ end
 function sanitize_expr(expr::Expr)
     Expr(expr.head, sanitize_expr.(expr.args)...)
 end
-sanitize_expr(symbol::Symbol) = symbol
 sanitize_expr(linenumbernode::LineNumberNode) = linenumbernode
-sanitize_expr(bool::Bool) = bool
 sanitize_expr(quoted::QuoteNode) = QuoteNode(sanitize_expr(quoted.value))
+
+sanitize_expr(bool::Bool) = bool
+sanitize_expr(symbol::Symbol) = symbol
+sanitize_expr(number::Union{Int,Int8,Float32,Float64}) = number
 
 # In all cases of more complex objects, we just don't send it.
 # It's not like the expression explorer will look into them at all.
