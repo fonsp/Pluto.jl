@@ -1,6 +1,6 @@
 module SessionActions
 
-import ..Pluto: ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, readwrite, update_save_run!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, @asynclog
+import ..Pluto: ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, readwrite, update_save_run!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, try_event_call, OpenNotebookEvent, @asynclog
 using FileWatching
 import ..Pluto.DownloadCool: download_cool
 
@@ -54,7 +54,7 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
     update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
     
     add(session, nb; run_async=run_async)
-    try_event_call(session, OpenNotebookEvent(notebook))
+    try_event_call(session, OpenNotebookEvent(nb))
     nb
 end
 
