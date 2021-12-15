@@ -1342,7 +1342,7 @@ const integrations = Integration[
                 if truncate
                     result = Any[
                         # not xs[1:limit] because of https://github.com/JuliaLang/julia/issues/38364
-                        f(xs[i]) for i in 1:limit
+                        f(xs[i]) for i in Iterators.take(eachindex(xs), limit)
                     ]
                     push!(result, filler)
                     result
@@ -1410,6 +1410,7 @@ const integrations = Integration[
             pluto_showable(::MIME"application/vnd.pluto.table+object", x::Any) = try Tables.rowaccess(x)::Bool catch; false end
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::Type) = false
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:NamedTuple}) = false
+            pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:Dict{Symbol,<:Any}}) = false
 
         end,
     ),
