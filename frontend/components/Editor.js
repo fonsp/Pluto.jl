@@ -35,7 +35,6 @@ import { RawHTMLContainer } from "./CellOutput.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
 
 import custom_env from "../common/Environment.js"
-import environment from "../common/Environment.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -685,7 +684,7 @@ patch: ${JSON.stringify(
         const on_establish_connection = async (client) => {
             // nasty
             Object.assign(this.client, client)
-            const {} = await import(this.client.session_options.server.injected_javascript_data_url)
+            const { default: environment } = await import(this.client.session_options.server.injected_javascript_data_url)
             const { custom_editor_header_component } = environment(client, html, useEffect, useState, useMemo)
             this.setState({
                 extended_components: {
