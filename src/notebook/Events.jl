@@ -76,7 +76,8 @@ end
 # This will be fired ONLY if URL params don't match anything else.
 # Useful if you want to create a file in a custom way,
 # before opening the notebook
-# Should return a notebook (use Pluto.open)
+# Should return a redirect to /edit?id={notebook_id}
+# Note: use Pluto.open - try_launch_notebook_response will return a fitting response.
 struct CustomLaunchEvent <: PlutoEvent
     params::Dict{Any, Any}
     request::HTTP.Request
