@@ -220,7 +220,7 @@ test_bond |> embed_display
 
 # ╔═╡ 6999e86a-cd68-4e97-a875-38a9c1ac8939
 md"""
-# Persistance
+# Persistence
 """
 
 # ╔═╡ e579aafa-60ce-4175-9348-02e6b5687323

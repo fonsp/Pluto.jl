@@ -165,7 +165,7 @@ sentence
 
 
 # ╔═╡ 0136af80-c762-11ea-2f1a-9dccff334a11
-md"You can also create a **mutli-line** text box!"
+md"You can also create a **multi-line** text box!"
 
 # ╔═╡ 0e6f0508-c762-11ea-0352-09bd694a9b35
 @bind poem TextField((30, 3), "Je opent en sluit je armen,\nMaar houdt niets vast.\nHet is net zwemmen")
