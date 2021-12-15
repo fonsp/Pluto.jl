@@ -150,6 +150,7 @@ export const SelectionArea = ({ on_selection, set_scroller, cell_order }) => {
             document.removeEventListener("mousemove", onmousemove)
             document.removeEventListener("selectstart", onselectstart)
             document.removeEventListener("keydown", onkeydown)
+            // @ts-ignore
             document.removeEventListener("scroll", onscroll, { passive: true })
         }
     }, [selection_start])

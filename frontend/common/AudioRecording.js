@@ -1,3 +1,4 @@
+// @ts-ignore
 import vmsg from "https://cdn.jsdelivr.net/npm/vmsg@0.4.0/vmsg.js"
 
 export const create_recorder = async () => {
