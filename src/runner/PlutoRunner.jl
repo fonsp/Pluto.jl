@@ -1651,7 +1651,7 @@ function transform_bond_value(s::Symbol, value_from_js)
     end
 end
 
-function possible_bond_values(s::Symbol)
+function possible_bond_values(s::Symbol; get_length::Bool=false)
     element = registered_bond_elements[s]
     possible_values = possible_bond_values_ref[](element)
 
@@ -1667,7 +1667,13 @@ function possible_bond_values(s::Symbol)
         # If you change this, change it everywhere in this file.
         :NotGiven
     else
-        make_distributed_serializable(possible_values)
+        get_length ? 
+            try
+                length(possible_values)
+            catch
+                length(make_distributed_serializable(possible_values))
+            end : 
+            make_distributed_serializable(possible_values)
     end
 end
 

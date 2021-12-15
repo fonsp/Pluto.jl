@@ -257,6 +257,11 @@ import Distributed
         @test Pluto.possible_bond_values(🍭, notebook, :pv3) == [1,2,3]
         @test Pluto.possible_bond_values(🍭, notebook, :pv4) == 2:11
         @test Pluto.possible_bond_values(🍭, notebook, :pv5) === 1:10
+        @test Pluto.possible_bond_values_length(🍭, notebook, :pv1) == :NotGiven
+        @test Pluto.possible_bond_values_length(🍭, notebook, :pv2) == :InfinitePossibilities
+        @test Pluto.possible_bond_values_length(🍭, notebook, :pv3) == 3
+        @test Pluto.possible_bond_values_length(🍭, notebook, :pv4) == 10
+        @test Pluto.possible_bond_values_length(🍭, notebook, :pv5) == 10
 
         
         
