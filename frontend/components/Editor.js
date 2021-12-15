@@ -1211,10 +1211,11 @@ patch: ${JSON.stringify(
                             }>
                                 <h1><img id="logo-big" src=${url_logo_big} alt="Pluto.jl" /><img id="logo-small" src=${url_logo_small} /></h1>
                             </a>
-                            <${this.state.extended_components.CustomHeader} notebook_id=${this.state.notebook.notebook_id} new_path=${"new path"} />
+                            <${this.state.extended_components.CustomHeader} notebook_id=${this.state.notebook.notebook_id}/>
                             <div class="flex_grow_1"></div>
                             ${
-                                status.binder
+                                this.state.extended_components.CustomHeader === null &&
+                                (status.binder
                                     ? html`<pluto-filepicker><a href=${this.export_url("notebookfile")} target="_blank">Save notebook...</a></pluto-filepicker>`
                                     : html`<${FilePicker}
                                           client=${this.client}
@@ -1226,7 +1227,7 @@ patch: ${JSON.stringify(
                                           }}
                                           placeholder="Save notebook..."
                                           button_label=${notebook.in_temp_dir ? "Choose" : "Move"}
-                                      />`
+                                      />`)
                             }
                             <div class="flex_grow_2"></div>
                             <button class="toggle_export" title="Export..." onClick=${() => {
