@@ -189,6 +189,8 @@ function http_router_for(session::ServerSession)
     HTTP.@register(router, "GET", "/new", serve_newfile)
     HTTP.@register(router, "POST", "/new", serve_newfile)
 
+    # This is not in Dynamic.jl because of bookmarks, how HTML works,
+    # real loading bars and the rest; Same for CustomLaunchEvent
     serve_openfile = with_authentication(;
         required=security.require_secret_for_access || 
         security.require_secret_for_open_links
