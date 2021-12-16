@@ -1,10 +1,11 @@
 import _ from "../imports/lodash.js"
-import { html, Component } from "../imports/Preact.js"
+import { html, Component, useEffect, useState, useMemo } from "../imports/Preact.js"
 
 import { FilePicker } from "./FilePicker.js"
 import { create_pluto_connection, fetch_pluto_releases } from "../common/PlutoConnection.js"
 import { cl } from "../common/ClassTable.js"
 import { PasteHandler } from "./PasteHandler.js"
+import custom_env from "../common/Environment.js"
 
 /**
  * @typedef CombinedNotebook
@@ -116,6 +117,15 @@ export class Welcome extends Component {
             // recent_notebooks: null,
             combined_notebooks: /** @type {Array<CombinedNotebook>} */ (null), // will become an array
             connected: false,
+            extended_components: {
+                CustomWelcome: null,
+                Recent: ({ recents }) => html`
+                    <p>Recent sessions:</p>
+                    <ul id="recent">
+                        ${recents}
+                    </ul>
+                `,
+            },
         }
         const set_notebook_state = (this.set_notebook_state = (path, new_state_props) => {
             this.setState((prevstate) => {
@@ -176,10 +186,10 @@ export class Welcome extends Component {
         })
         this.client_promise.then((client) => {
             Object.assign(this.client, client)
-
+            const { custom_welcome, custom_recent } = custom_env(client, html, useEffect, useState, useMemo)
+            this.setState({ extended_components: { ...this.state.extended_components, Recent: custom_recent, Welcome: custom_welcome } })
             this.client.send("get_all_notebooks", {}, {}).then(({ message }) => {
                 const running = message.notebooks.map((nb) => create_empty_notebook(nb.path, nb.notebook_id))
-
                 const recent_notebooks = get_stored_recent_notebooks()
 
                 // show running notebooks first, in the order defined by the recent notebooks, then recent notebooks
@@ -331,6 +341,7 @@ export class Welcome extends Component {
                 </li>`
             })
         }
+        const { Recent, CustomWelcome } = this.state.extended_components
 
         return html`<p>New session:</p>
             <${PasteHandler} />
@@ -343,10 +354,7 @@ export class Welcome extends Component {
                 </li>
             </ul>
             <br />
-            <p>Recent sessions:</p>
-            <ul id="recent">
-                ${recents}
-            </ul>`
+            <${Recent} cl=${cl} combined=${this.state.combined_notebooks} client=${this.client} recents=${recents} />`
     }
 }
 

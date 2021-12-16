@@ -253,7 +253,7 @@ export class Editor extends Component {
 
             update_is_ongoing: false,
             extended_components: {
-                CustomHeader: () => null,
+                CustomHeader: null,
             },
 
             is_recording: false,
@@ -885,10 +885,6 @@ patch: ${JSON.stringify(
             )
         }
         this.submit_file_change = async (new_path, reset_cm_value) => {
-            try {
-                // Environment can reject normal file move
-                if (custom_env?.on_move?.()) return
-            } catch (e) {}
             const old_path = this.state.notebook.path
             if (old_path === new_path) {
                 return
@@ -1081,9 +1077,6 @@ patch: ${JSON.stringify(
                 // and don't prevent the unload
             }
         })
-        try {
-            custom_env?.on_mount?.()
-        } catch (e) {}
     }
 
     componentDidUpdate(old_props, old_state) {
