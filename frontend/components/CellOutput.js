@@ -14,6 +14,7 @@ import { EditorState, EditorView, julia_andrey, defaultHighlightStyle } from "..
 import { pluto_syntax_colors } from "./CellInput.js"
 import { useState } from "../imports/Preact.js"
 
+// @ts-ignore
 import hljs from "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.2.0/build/es/highlight.min.js"
 
 export class CellOutput extends Component {
@@ -416,16 +417,16 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
 
             // Apply syntax highlighting
             try {
-                for (let code_element of container.current.querySelectorAll("code")) {
-                    for (let className of code_element.classList) {
+                container.current.querySelectorAll("code").forEach((code_element) => {
+                    code_element.classList.forEach((className) => {
                         if (className.startsWith("language-")) {
                             let language = className.substr(9)
 
                             // Remove "language-"
                             highlight(code_element, language)
                         }
-                    }
-                }
+                    })
+                })
             } catch (err) {}
             js_init_set?.delete(container.current)
         })

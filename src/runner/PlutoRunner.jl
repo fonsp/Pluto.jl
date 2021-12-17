@@ -1342,7 +1342,7 @@ const integrations = Integration[
                 if truncate
                     result = Any[
                         # not xs[1:limit] because of https://github.com/JuliaLang/julia/issues/38364
-                        f(xs[i]) for i in 1:limit
+                        f(xs[i]) for i in Iterators.take(eachindex(xs), limit)
                     ]
                     push!(result, filler)
                     result
@@ -1410,6 +1410,7 @@ const integrations = Integration[
             pluto_showable(::MIME"application/vnd.pluto.table+object", x::Any) = try Tables.rowaccess(x)::Bool catch; false end
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::Type) = false
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:NamedTuple}) = false
+            pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:Dict{Symbol,<:Any}}) = false
 
         end,
     ),
@@ -1651,7 +1652,7 @@ function transform_bond_value(s::Symbol, value_from_js)
     end
 end
 
-function possible_bond_values(s::Symbol)
+function possible_bond_values(s::Symbol; get_length::Bool=false)
     element = registered_bond_elements[s]
     possible_values = possible_bond_values_ref[](element)
 
@@ -1667,7 +1668,13 @@ function possible_bond_values(s::Symbol)
         # If you change this, change it everywhere in this file.
         :NotGiven
     else
-        make_distributed_serializable(possible_values)
+        get_length ? 
+            try
+                length(possible_values)
+            catch
+                length(make_distributed_serializable(possible_values))
+            end : 
+            make_distributed_serializable(possible_values)
     end
 end
 

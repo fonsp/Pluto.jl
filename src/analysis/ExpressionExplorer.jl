@@ -423,7 +423,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         # In a `for`, this expression comes at the end.
 
         # This is not strictly the normal form of a `for` but that's okay
-        return explore!(Expr(:for, ex.args[2:end]..., ex.args[1]), scopestate)
+        return explore!(Expr(:for, Iterators.reverse(ex.args[2:end])..., ex.args[1]), scopestate)
     elseif ex.head == :macrocall
         # Early stopping, this expression will have to be re-explored once
         # the macro is expanded in the notebook process.
