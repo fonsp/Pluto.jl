@@ -14,7 +14,7 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
     notebookfile_hash.then((x) => console.log("Notebook file hash:", x))
 
     const bond_connections = notebookfile_hash
-        .then((hash) => fetch(trailingslash(launch_params.slider_server_url) + "bondconnections/" + encodeURIComponent(hash) + "/"))
+        .then((hash) => fetch(trailingslash(launch_params.slider_server_url) + "bondconnections/" + encodeURIComponent(hash)))
         .then((r) => r.arrayBuffer())
         .then((b) => unpack(new Uint8Array(b)))
 
@@ -35,12 +35,18 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
             console.debug("Requesting bonds", bonds_to_set.current, to_send)
             bonds_to_set.current = new Set()
 
-            const mybonds_filtered = Object.fromEntries(Object.entries(mybonds).filter(([k, v]) => to_send.has(k)))
+            const mybonds_filtered = Object.fromEntries(
+                _.sortBy(
+                    Object.entries(mybonds).filter(([k, v]) => to_send.has(k)),
+                    ([k, v]) => k
+                )
+            )
 
             const packed = pack(mybonds_filtered)
 
             const url = base + "staterequest/" + encodeURIComponent(hash) + "/"
 
+            let unpacked = null
             try {
                 const use_get = url.length + (packed.length * 4) / 3 + 20 < 8000
 
@@ -53,7 +59,8 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
                           body: packed,
                       })
 
-                const { patches, ids_of_cells_that_ran } = unpack(new Uint8Array(await response.arrayBuffer()))
+                unpacked = unpack(new Uint8Array(await response.arrayBuffer()))
+                const { patches, ids_of_cells_that_ran } = unpacked
 
                 await apply_notebook_patches(
                     patches,
@@ -65,21 +72,21 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
                     })(get_current_state())
                 )
             } catch (e) {
-                console.error(e)
+                console.error(unpacked, e)
             }
         }
     })
 
     return {
         ...nothing_actions({ actions }),
-        set_bond: async (symbol, value, is_first_value) => {
+        set_bond: async (symbol, value) => {
             setStatePromise(
                 immer((state) => {
-                    state.notebook.bonds[symbol] = { value: value, is_first_value: is_first_value }
+                    state.notebook.bonds[symbol] = { value: value }
                 })
             )
             if (mybonds[symbol] == null || !_.isEqual(mybonds[symbol].value, value)) {
-                mybonds[symbol] = { value: _.cloneDeep(value), is_first_value: is_first_value }
+                mybonds[symbol] = { value: _.cloneDeep(value) }
                 bonds_to_set.current.add(symbol)
                 await request_bond_response()
             }

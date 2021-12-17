@@ -1,4 +1,4 @@
-name: Trigger release on https://github.com/fonsp/pluto-on-binder
+name: Fire release triggers
 
 on:
   release:
@@ -8,6 +8,11 @@ on:
 jobs:
   trigger:
     runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        repository: ['fonsp/pluto-on-binder', 'JuliaPluto/sample-notebook-previews']
     steps:
       - uses: actions/checkout@v2
       - run: |
@@ -15,5 +20,5 @@ jobs:
             -X POST \
             -u "${{ secrets.PAT_USERNAME}}:${{secrets.PAT_TOKEN}}" \
             -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/fonsp/pluto-on-binder/dispatches \
+            https://api.github.com/repos/${{ matrix.repository }}/dispatches \
             -d '{"event_type":"release_pluto"}'

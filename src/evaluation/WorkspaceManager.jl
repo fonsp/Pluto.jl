@@ -16,6 +16,7 @@ Base.@kwdef mutable struct Workspace
     module_name::Symbol
     dowork_token::Token=Token()
     nbpkg_was_active::Bool=false
+    is_offline_renderer::Bool=false
     original_LOAD_PATH::Vector{String}=String[]
     original_ACTIVE_PROJECT::Union{Nothing,String}=nothing
 end
@@ -33,10 +34,10 @@ const workspaces = Dict{UUID,Promise{Workspace}}()
 const SN = Tuple{ServerSession,Notebook}
 
 """Create a workspace for the notebook, optionally in the main process."""
-function make_workspace((session, notebook)::SN; force_offline::Bool=false)::Workspace
-    force_offline || (notebook.process_status = ProcessStatus.starting)
+function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false)::Workspace
+    is_offline_renderer || (notebook.process_status = ProcessStatus.starting)
 
-    use_distributed = if force_offline
+    use_distributed = if is_offline_renderer
         false
     else
         session.options.evaluation.workspace_use_distributed
@@ -72,6 +73,7 @@ function make_workspace((session, notebook)::SN; force_offline::Bool=false)::Wor
         module_name=module_name,
         original_LOAD_PATH=original_LOAD_PATH,
         original_ACTIVE_PROJECT=original_ACTIVE_PROJECT,
+        is_offline_renderer=is_offline_renderer,
     )
 
     @async start_relaying_logs((session, notebook), log_channel)
@@ -79,7 +81,7 @@ function make_workspace((session, notebook)::SN; force_offline::Bool=false)::Wor
     cd_workspace(workspace, notebook.path)
     use_nbpkg_environment((session, notebook), workspace)
 
-    force_offline || (notebook.process_status = ProcessStatus.ready)
+    is_offline_renderer || (notebook.process_status = ProcessStatus.ready)
     return workspace
 end
 
@@ -186,6 +188,15 @@ function bump_workspace_module(session_notebook::SN)
     new_name = workspace.module_name = create_emptyworkspacemodule(workspace.pid)
 
     old_name, new_name
+end
+
+function possible_bond_values(session_notebook::SN, n::Symbol; get_length::Bool=false)
+    workspace = get_workspace(session_notebook)
+    pid = workspace.pid
+
+    Distributed.remotecall_eval(Main, pid, quote
+        PlutoRunner.possible_bond_values($(QuoteNode(n)); get_length=$(get_length))
+    end)
 end
 
 function create_emptyworkspacemodule(pid::Integer)::Symbol
@@ -316,6 +327,7 @@ function eval_format_fetch_in_workspace(
     function_wrapped_info::Union{Nothing,Tuple}=nothing,
     forced_expr_id::Union{PlutoRunner.ObjectID,Nothing}=nothing,
     user_requested_run::Bool=true,
+    known_published_objects::Vector{String}=String[],
 )::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
 
     workspace = get_workspace(session_notebook)
@@ -351,7 +363,7 @@ function eval_format_fetch_in_workspace(
     end
 
     early_result === nothing ?
-        format_fetch_in_workspace(workspace, cell_id, ends_with_semicolon) :
+        format_fetch_in_workspace(workspace, cell_id, ends_with_semicolon, known_published_objects) :
         early_result
 end
 
@@ -363,14 +375,23 @@ function eval_in_workspace(session_notebook::Union{SN,Workspace}, expr)
     nothing
 end
 
-function format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, cell_id, ends_with_semicolon, showmore_id::Union{PlutoRunner.ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
+function format_fetch_in_workspace(
+    session_notebook::Union{SN,Workspace}, 
+    cell_id, 
+    ends_with_semicolon, 
+    known_published_objects::Vector{String}=String[],
+    showmore_id::Union{PlutoRunner.ObjectDimPair,Nothing}=nothing,
+)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
     workspace = get_workspace(session_notebook)
     
     # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.
     withtoken(workspace.dowork_token) do
         try
             Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.formatted_result_of(
-                $cell_id, $ends_with_semicolon, $showmore_id,
+                $cell_id, 
+                $ends_with_semicolon, 
+                $known_published_objects,
+                $showmore_id,
                 getfield(Main, $(QuoteNode(workspace.module_name))),
                 )))
         catch ex

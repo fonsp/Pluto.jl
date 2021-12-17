@@ -23,7 +23,6 @@ import {
     indentLess,
     tags,
     HighlightStyle,
-    autocompletion,
     lineNumbers,
     highlightSpecialChars,
     foldGutter,
@@ -37,7 +36,6 @@ import {
     searchKeymap,
     foldKeymap,
     commentKeymap,
-    completionKeymap,
     syntaxTree,
     Decoration,
     ViewUpdate,
@@ -46,12 +44,13 @@ import {
     indentUnit,
     StateField,
     StateEffect,
+    autocomplete,
 } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
 import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"
 import { drag_n_drop_plugin } from "./useDropHandler.js"
-import { cell_movement_plugin } from "./CellInput/cell_movement_plugin.js"
+import { cell_movement_plugin, prevent_holding_a_key_from_doing_things_across_cells } from "./CellInput/cell_movement_plugin.js"
 import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
 import { cl } from "../common/ClassTable.js"
@@ -97,8 +96,6 @@ const replaceRange6 = (/** @type {EditorView} */ cm, text, from, to) =>
     })
 
 // Compartments: https://codemirror.net/6/examples/config/
-let editable = new Compartment()
-
 let useCompartment = (/** @type {import("../imports/Preact.js").Ref<EditorView>} */ codemirror_ref, value) => {
     let compartment = useRef(new Compartment())
     let initial_value = useRef(compartment.current.of(value))
@@ -200,7 +197,7 @@ export const CellInput = ({
             return true
         }
 
-        let select_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Enter")
+        let select_autocomplete_command = autocomplete.completionKeymap.find((keybinding) => keybinding.key === "Enter")
         let keyMapTab = (/** @type {EditorView} */ cm) => {
             // This will return true if the autocomplete select popup is open
             if (select_autocomplete_command.run(cm)) {
@@ -297,7 +294,8 @@ export const CellInput = ({
             // But I found out that keyboard events have a `.repeated` property which is perfect for what we want...
             // So now this is just the cell deleting logic (and the repeated stuff is in a separate plugin)
             if (cm.state.doc.length === 0) {
-                on_focus_neighbor(cell_id, -1)
+                // `Infinity, Infinity` means: last line, last character
+                on_focus_neighbor(cell_id, -1, Infinity, Infinity)
                 on_delete()
                 return true
             }
@@ -353,7 +351,13 @@ export const CellInput = ({
                     used_variables_compartment,
                     editable_compartment,
 
-                    highlightLinePlugin(),
+                    // This is waaaay in front of the keys it is supposed to override,
+                    // Which is necessary because it needs to run before *any* keymap,
+                    // as the first keymap will activate the keymap extension which will attach the
+                    // keymap handlers at that point, which is likely before this extension.
+                    // TODO Use https://codemirror.net/6/docs/ref/#state.Prec when added to pluto-codemirror-setup
+                    prevent_holding_a_key_from_doing_things_across_cells,
+
                     pkgBubblePlugin({ pluto_actions, notebook_id }),
                     ScopeStateField,
                     pluto_syntax_colors,
