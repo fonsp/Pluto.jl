@@ -122,6 +122,10 @@ function run(session::ServerSession)
 end
 
 function run(session::ServerSession, pluto_router)
+    
+    if VERSION < v"1.6.2"
+        @info "Pluto is running on an old version of Julia ($(VERSION)) that is no longer supported. Visit https://julialang.org/downloads/ for more information about upgrading Julia."
+    end
 
     notebook_at_startup = session.options.server.notebook
     open_notebook!(session, notebook_at_startup)
