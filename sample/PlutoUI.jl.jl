@@ -29,7 +29,7 @@ However, code like
 ```
 is hard to memorize, so `PlutoUI` makes it more _Julian_:
 ```julia
-@bind x Slider(1:15)
+@bind x Slider(5:15)
 ```
 """
 
@@ -236,6 +236,17 @@ This widget allows the user to select multiple elements using checkboxes.
 
 # ╔═╡ 2c7811cb-d9ea-470c-8cb7-2b3803489f3f
 fruit_basket
+
+# ╔═╡ 78be41d1-7dda-4bec-b75f-fbcf8b7594a7
+md"""
+You can use `MultiSelect` and `MultiCheckBox` with any vector of objects, not just strings:
+"""
+
+# ╔═╡ 90d84f1b-042c-444e-8bac-fe358b6d68a1
+@bind my_functions MultiCheckBox([sin, cos, tan])
+
+# ╔═╡ b97cfb04-0c39-4709-9419-9294e677a872
+[f(π) for f in my_functions]
 
 # ╔═╡ 283d1177-c605-4652-905b-9a70354cf878
 md"Just like `Select`, you can also give an array of pairs. See the Live Docs for `MultiCheckBox` for all the customization options!"
@@ -609,7 +620,7 @@ PLUTO_PROJECT_TOML_CONTENTS = """
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 
 [compat]
-PlutoUI = "~0.7.22"
+PlutoUI = "~0.7.24"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -631,6 +642,12 @@ uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
 [[Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
+[[ColorTypes]]
+deps = ["FixedPointNumbers", "Random"]
+git-tree-sha1 = "024fe24d83e4a5bf5fc80501a314ce0d1aa35597"
+uuid = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
+version = "0.11.0"
+
 [[Dates]]
 deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
@@ -638,6 +655,12 @@ uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 [[Downloads]]
 deps = ["ArgTools", "LibCURL", "NetworkOptions"]
 uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
+
+[[FixedPointNumbers]]
+deps = ["Statistics"]
+git-tree-sha1 = "335bfdceacc84c5cdf16aadc768aa5ddfc5383cc"
+uuid = "53c48c17-4a7d-5ca2-90c5-79b7896eea93"
+version = "0.8.4"
 
 [[Hyperscript]]
 deps = ["Test"]
@@ -685,6 +708,10 @@ uuid = "29816b5a-b9ab-546f-933c-edad1886dfa8"
 [[Libdl]]
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 
+[[LinearAlgebra]]
+deps = ["Libdl"]
+uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+
 [[Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
@@ -707,19 +734,19 @@ uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 
 [[Parsers]]
 deps = ["Dates"]
-git-tree-sha1 = "ae4bbcadb2906ccc085cf52ac286dc1377dceccc"
+git-tree-sha1 = "d7fa6237da8004be601e19bd6666083056649918"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "2.1.2"
+version = "2.1.3"
 
 [[Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
 [[PlutoUI]]
-deps = ["AbstractPlutoDingetjes", "Base64", "Dates", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "UUIDs"]
-git-tree-sha1 = "565564f615ba8c4e4f40f5d29784aa50a8f7bbaf"
+deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "UUIDs"]
+git-tree-sha1 = "6c9fa3e4880242c666dafa4901a34d8e1cd1b243"
 uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-version = "0.7.22"
+version = "0.7.24"
 
 [[Printf]]
 deps = ["Unicode"]
@@ -746,6 +773,14 @@ uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
 [[Sockets]]
 uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
+
+[[SparseArrays]]
+deps = ["LinearAlgebra", "Random"]
+uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+
+[[Statistics]]
+deps = ["LinearAlgebra", "SparseArrays"]
+uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [[TOML]]
 deps = ["Dates"]
@@ -842,6 +877,9 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╟─b104ba6d-0293-4378-9652-f628f1d08d97
 # ╠═16f2218d-f1bc-4b34-a355-53acfa77fbf5
 # ╠═2c7811cb-d9ea-470c-8cb7-2b3803489f3f
+# ╟─78be41d1-7dda-4bec-b75f-fbcf8b7594a7
+# ╠═90d84f1b-042c-444e-8bac-fe358b6d68a1
+# ╠═b97cfb04-0c39-4709-9419-9294e677a872
 # ╟─283d1177-c605-4652-905b-9a70354cf878
 # ╟─0b1ce22e-c764-11ea-3d60-e799d58aee30
 # ╠═6d9108a8-c765-11ea-0a38-09a1364998b1
