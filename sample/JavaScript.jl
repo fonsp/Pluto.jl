@@ -30,7 +30,7 @@ _However_, if you want to take your interactive document one step further, then 
 md"""
 ## Prerequisites
 
-This document assumes that you have used HTML, CSS and JavaScript before in another context. If you know Julia, and you want to add these web languages to your skillset, we encourage you to do so! It will be useful knowledge, also outside of Pluto.
+This document assumes that you have used HTML, CSS and JavaScript before in another context. If you know Julia, and you want to add these web languages to your skill set, we encourage you to do so! It will be useful knowledge, also outside of Pluto.
 
 """
 

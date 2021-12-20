@@ -203,7 +203,7 @@ md"## Behind the scenes
 
 It's an **`Int64`**! Not an Observable, not a callback function, but simply _the latest value of the input element_.
 
-The update mechanism is _lossy_ and _lazy_, which means that it will skip values if your code is still running - and **only send the latest value when your code is ready again**. This is important when changing a slider from `0` to `100`, for example. If it would send all intermediate values, it might take a while for your code to process everything, causing a noticable lag."
+The update mechanism is _lossy_ and _lazy_, which means that it will skip values if your code is still running - and **only send the latest value when your code is ready again**. This is important when changing a slider from `0` to `100`, for example. If it would send all intermediate values, it might take a while for your code to process everything, causing a noticeable lag."
 
 # ╔═╡ 8f829274-7eb1-11ea-3888-13c00b3ba70f
 md"""#### What does the macro do?
