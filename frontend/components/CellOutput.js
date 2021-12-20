@@ -14,8 +14,7 @@ import { EditorState, EditorView, julia_andrey, defaultHighlightStyle } from "..
 import { pluto_syntax_colors } from "./CellInput.js"
 import { useState } from "../imports/Preact.js"
 
-// @ts-ignore
-import hljs from "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.2.0/build/es/highlight.min.js"
+import hljs from "../imports/highlightjs.js"
 
 export class CellOutput extends Component {
     constructor() {
@@ -445,7 +444,13 @@ export let highlight = (code_element, language) => {
     language = language === "jl" ? "julia" : language
 
     if (code_element.children.length === 0) {
-        if (language === "julia") {
+        if (
+            language === "julia" &&
+            // CodeMirror does not want to render inside a `<details>`...
+            // I tried to debug this, it does not happen on a clean webpage with the same CM versions:
+            // https://glitch.com/edit/#!/wobbly-sweet-fibre?path=script.js%3A51%3A76
+            code_element.closest("details") == null
+        ) {
             const editorview = new EditorView({
                 state: EditorState.create({
                     // Remove references to `Main.workspace#xx.` in the docs since

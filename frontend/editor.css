@@ -1892,6 +1892,7 @@ pluto-helpbox > header {
     background-color: #eef1f7;
     color: hsl(230, 14%, 11%);
     font-family: "Roboto Mono", monospace;
+    font-size: 0.9rem;
     font-weight: 700;
     border-top-left-radius: 6px;
     border-top-right-radius: 6px;
@@ -1957,16 +1958,26 @@ pluto-helpbox.hidden > section {
 pluto-helpbox {
     font-family: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
     line-height: 1.5;
+    font-size: 0.9rem;
 }
 pluto-helpbox pre,
 pluto-helpbox code,
 pluto-helpbox .cm-line {
     /* from https://docs.julialang.org/en/v1/assets/themes/documenter-light.css */
     font-family: "Roboto Mono", "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", "DejaVu Sans Mono", monospace;
-    font-size: 0.875em;
+    font-size: 0.95em;
 }
 pluto-helpbox pre code {
     font-size: 1em;
+}
+
+pluto-helpbox pre code.hljs {
+    padding: 0;
+    background: none;
+}
+
+pluto-helpbox code .cm-editor .cm-content {
+    padding: 0px;
 }
 
 pluto-helpbox > section {
