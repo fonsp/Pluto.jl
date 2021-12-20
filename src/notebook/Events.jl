@@ -39,7 +39,7 @@ abstract type PlutoEvent end
 
 function try_event_call(session, event::PlutoEvent)
     return try
-        session.event_listener(event);
+        session.event_listener(event)
     catch e
         @warn "Couldn't run event listener" event exception=(e, catch_backtrace())
         nothing
@@ -66,6 +66,11 @@ struct FileEditEvent <: PlutoEvent
     notebook::Notebook
     fileContent::String
     path::String
+end
+
+# Triggered when we open a new notebook
+struct NewNotebookEvent <: PlutoEvent
+    notebook::Notebook
 end
 
 # Triggered when a user opens a notebook
