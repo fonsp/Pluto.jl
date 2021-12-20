@@ -265,7 +265,16 @@ function load_notebook_nobackup(io, path)::Notebook
         PkgCompat.create_empty_ctx()
     end
 
-    appeared_order = setdiff(cell_order ∩ keys(collected_cells), [_ptoml_cell_id, _mtoml_cell_id])
+    appeared_order = setdiff!(
+        union!(
+            # don't include cells that only appear in the order, but no code was given
+            intersect!(cell_order, keys(collected_cells)),
+            # add cells that appeared in code, but not in the order.
+            keys(collected_cells)
+        ), 
+        # remove Pkg cells
+        (_ptoml_cell_id, _mtoml_cell_id)
+    )
     appeared_cells_dict = filter(collected_cells) do (k, v)
         k ∈ appeared_order
     end
