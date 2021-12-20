@@ -42,5 +42,14 @@ function set_bond_values_reactive(; session::ServerSession, notebook::Notebook, 
     run_reactive_async!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, user_requested_run=false, run_async=false, kwargs...)
 end
 
-"Returns the set of all possible values for the binded variable `n` as returned by the widget implementation using `AbstractPlutoDingetjes.possible_bond_values(element)`. This API is meant to be used by PlutoSliderServer."
-possible_bond_values(session::ServerSession, notebook::Notebook, n::Symbol) = WorkspaceManager.possible_bond_values((session,notebook), n)
+"""
+Returns the set of all possible values for the binded variable `n` as returned by the widget implementation using `AbstractPlutoDingetjes.possible_bond_values(element)`. This API is meant to be used by PlutoSliderServer.
+"""
+possible_bond_values(session::ServerSession, notebook::Notebook, name::Symbol) = WorkspaceManager.possible_bond_values((session,notebook), name)
+
+
+"""
+Optimized version of `length ∘ possible_bond_values`.
+"""
+possible_bond_values_length(session::ServerSession, notebook::Notebook, name::Symbol) = WorkspaceManager.possible_bond_values((session,notebook), name; get_length=true)
+

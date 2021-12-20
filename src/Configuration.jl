@@ -45,8 +45,9 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 - `auto_reload_from_file_cooldown::Real = 0.5` Experimental, will be removed
 - `auto_reload_from_file_ignore_pkg::Bool = false` Experimental flag, will be removed
 - `notebook::Union{Nothing,String} = nothing` Optional path of notebook to launch at start
-- `simulated_lag::Real=0.0`
+- `simulated_lag::Real=0.0` (internal) Extra lag to add to our server responses. Will be multiplied by `0.5 + rand()`.
 - `injected_javascript_data_url`::String = "data:text/javascript;base64," Optional javascript injectables to the front-end. Useful to customize editor.
+
 """
 @option mutable struct ServerOptions
     root_url::Union{Nothing,String} = nothing

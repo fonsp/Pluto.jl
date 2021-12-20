@@ -94,6 +94,7 @@ const statusmap = (state) => ({
     ),
     recording_waiting_to_start: state.recording_waiting_to_start,
     is_recording: state.is_recording,
+    isolated_cell_view: launch_params.isolated_cell_ids != null && launch_params.isolated_cell_ids.length > 0,
 })
 
 const first_true_key = (obj) => {
@@ -1092,8 +1093,8 @@ patch: ${JSON.stringify(
             document.title = "🎈 " + new_state.notebook.shortpath + " — Pluto.jl"
         }
 
-        Object.entries(this.cached_status).forEach((e) => {
-            document.body.classList.toggle(...e)
+        Object.entries(this.cached_status).forEach(([k, v]) => {
+            document.body.classList.toggle(k, v === true)
         })
 
         // this class is used to tell our frontend tests that the updates are done
@@ -1136,7 +1137,7 @@ patch: ${JSON.stringify(
         const status = this.cached_status ?? statusmap(this.state)
         const statusval = first_true_key(status)
 
-        if (launch_params.isolated_cell_ids && launch_params.isolated_cell_ids.length > 0) {
+        if (status.isolated_cell_view) {
             return html`
                 <${PlutoContext.Provider} value=${this.actions}>
                     <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>

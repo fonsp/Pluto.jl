@@ -111,7 +111,7 @@ export const RecordingUI = ({ notebook_name, is_recording, recording_waiting_to_
 
         // call it once to record the start scroll position
         scroll_handler_direct()
-        window.addEventListener("scroll", scroll_handler)
+        window.addEventListener("scroll", scroll_handler, { passive: true })
     }
 
     let notebook_name_ref = useRef(notebook_name)
@@ -121,7 +121,8 @@ export const RecordingUI = ({ notebook_name, is_recording, recording_waiting_to_
     const stop_recording = async () => {
         if (current_recording_ref.current != null) {
             const { audio_recorder, initial_html, steps, scrolls, scroll_handler } = current_recording_ref.current
-            window.removeEventListener("scroll", scroll_handler)
+            // @ts-ignore
+            window.removeEventListener("scroll", scroll_handler, { passive: true })
 
             const audio_blob_url = await audio_recorder?.stop()
             const audio_data_url = audio_blob_url == null ? null : await blob_url_to_data_url(audio_blob_url)
@@ -321,7 +322,7 @@ export const RecordingPlaybackUI = ({ recording_url, audio_src, initializing, ap
     }, [audio_element_ref.current, on_audio_playback_change])
 
     useEffect(() => {
-        if (!initializing) {
+        if (!initializing && recording_url != null) {
             // if we are playing a recording, fix the initial scroll position
             loaded_recording.then((x) => {
                 let first_scroll = _.first(x?.scrolls)
@@ -350,6 +351,7 @@ export const RecordingPlaybackUI = ({ recording_url, audio_src, initializing, ap
 
     useEffect(() => {
         if (!initializing) {
+            // TODO fons wat was je plan hier?
         }
     }, [initializing])
 
@@ -379,13 +381,22 @@ export const RecordingPlaybackUI = ({ recording_url, audio_src, initializing, ap
             }
 
             document.fonts.ready.then(() => {
-                window.addEventListener("scroll", on_scroll)
+                window.addEventListener("scroll", on_scroll, { passive: true })
             })
             return () => {
-                window.removeEventListener("scroll", on_scroll)
+                // @ts-ignore
+                window.removeEventListener("scroll", on_scroll, { passive: true })
             }
         }
     }, [initializing, recording_url])
+
+    let frame = html`<div
+        style=${{
+            opacity: following_scroll ? 0.0 : 1,
+            top: `${current_scrollY ?? 0}px`,
+        }}
+        class="outline-frame playback"
+    ></div>`
 
     return html`
         ${recording_url
@@ -404,14 +415,7 @@ export const RecordingPlaybackUI = ({ recording_url, audio_src, initializing, ap
                             </div>
                         </div>`
                       : null}
-                  <div
-                      class="outline-frame playback"
-                      style=${{
-                          opacity: following_scroll ? 0.0 : 1,
-                          top: `${current_scrollY ?? 0}px`,
-                      }}
-                  ></div>
-                  <${AudioPlayer} audio_element_ref=${audio_element_ref} src=${audio_src} loaded_recording=${loaded_recording} />`
+                  ${frame} <${AudioPlayer} audio_element_ref=${audio_element_ref} src=${audio_src} loaded_recording=${loaded_recording} />`
             : null}
     `
 }
