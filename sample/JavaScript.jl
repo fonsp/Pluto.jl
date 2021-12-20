@@ -102,9 +102,9 @@ md"""
 
 ## Using HTML, CSS and JavaScript
 
-To use web languages inside Pluto, we recommend the small package `HypertextLiteral.jl`, which provides an `@htl` macro.
+To use web languages inside Pluto, we recommend the small package [`HypertextLiteral.jl`](https://github.com/MechanicalRabbit/HypertextLiteral.jl), which provides an `@htl` macro.
 
-You wrap `@htl` around a string expression to mark it as an *HTML literal*. When a cell outputs an HTML-showable object, it is rendered directly in your browser.
+You wrap `@htl` around a string expression to mark it as an *HTML literal*, as we did in the example cell from earlier. When a cell outputs an HTML-showable object, it is rendered directly in your browser.
 """
 
 # ╔═╡ d967cdf9-3df9-40bb-9b08-09cae95a5ca7
@@ -177,7 +177,7 @@ html"""
 # ╔═╡ 8c03139f-a94b-40cc-859f-0d86f1c72143
 md"""
 
-😢 For this feature, we highly recommend the new package [HypertextLiteral.jl](https://github.com/MechanicalRabbit/HypertextLiteral.jl), which has an `@htl` macro that supports interpolation:
+😢 Luckily we can perform these kinds of interpolations (and much more) with the `@htl` macro, as we will see next.
 
 
 ### Interpolating into HTML -- HypertextLiteral.jl
