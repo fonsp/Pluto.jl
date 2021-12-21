@@ -212,6 +212,9 @@ module CantReturnInPluto
             :(throw($(CantReturnInPlutoException())))
         elseif expr.head == :quote
             Expr(:quote, replace_returns_with_error_in_interpolation(expr.args[1]))
+        elseif Meta.isexpr(expr, :(=)) && expr.args[1] isa Expr && (expr.args[1].head == :call || expr.args[1].head == :where || (expr.args[1].head == :(::) && expr.args[1].args[1] isa Expr && expr.args[1].args[1].head == :call))
+            # f(x) = ...
+            expr
         elseif expr.head == :function || expr.head == :macro || expr.head == :(->)
             expr
         else
@@ -1866,17 +1869,21 @@ end
 assertpackable(t::Tuple) = foreach(assertpackable, t)
 assertpackable(t::NamedTuple) = foreach(assertpackable, t)
 
+const _EmbeddableDisplay_enable_html_shortcut = Ref{Bool}(true)
+
 struct EmbeddableDisplay
     x
-    script_id
+    script_id::String
 end
 
 function Base.show(io::IO, m::MIME"text/html", e::EmbeddableDisplay)
     body, mime = format_output_default(e.x, io)
 	
-    write(io, """
-    <pluto-display></pluto-display>
-    <script id=$(e.script_id)>
+    to_write = if mime === m && _EmbeddableDisplay_enable_html_shortcut[]
+        # In this case, we can just embed the HTML content directly.
+        body
+    else
+        """<pluto-display></pluto-display><script id=$(e.script_id)>
 
         // see https://plutocon2021-demos.netlify.app/fonsp%20%E2%80%94%20javascript%20inside%20pluto to learn about the techniques used in this script
         
@@ -1897,8 +1904,9 @@ function Base.show(io::IO, m::MIME"text/html", e::EmbeddableDisplay)
         }
         return display
 
-    </script>
-	""")
+        </script>"""
+    end
+    write(io, to_write)
 end
 
 export embed_display
