@@ -1980,6 +1980,10 @@ pluto-helpbox code .cm-editor .cm-content {
     padding: 0px;
 }
 
+pluto-helpbox img {
+    max-width: 100%;
+}
+
 pluto-helpbox > section {
     height: 100%;
     overflow: auto;
