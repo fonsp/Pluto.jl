@@ -1787,6 +1787,9 @@ end"""
 # PUBLISHED OBJECTS
 ###
 
+"""
+**(Internal API.)** A `Ref` containing the id of the cell that is currently **running** or **displaying**.
+"""
 const currently_running_cell_id = Ref{UUID}(uuid4())
 
 function _publish(x, id_start)::String
