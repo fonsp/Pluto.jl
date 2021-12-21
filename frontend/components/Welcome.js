@@ -6,8 +6,21 @@ import { create_pluto_connection, fetch_pluto_releases } from "../common/PlutoCo
 import { cl } from "../common/ClassTable.js"
 import { PasteHandler } from "./PasteHandler.js"
 
-const get_path = (p) => (typeof p === "object" ? p.path : p) ?? ""
-const get_url = (p) => (typeof p === "object" ? p.url : p) ?? ""
+/**
+ * @typedef CombinedNotebook
+ * @type {{
+ *    path: String,
+ *    transitioning: Boolean,
+ *    notebook_id: String?,
+ * }}
+ */
+
+/**
+ *
+ * @param {string} path
+ * @param {string?} notebook_id
+ * @returns {CombinedNotebook}
+ */
 
 const create_empty_notebook = (path, notebook_id = null) => {
     return {
@@ -17,17 +30,13 @@ const create_empty_notebook = (path, notebook_id = null) => {
     }
 }
 
-const split_at_level = (path = "", level = 1) => {
-    return get_path(path).split(/\/|\\/)?.slice(-level)?.join("/")
-}
+const split_at_level = (path, level) => path.split(/\/|\\/).slice(-level).join("/")
 
-const shortest_path = (maybepath, allpaths) => {
-    const path = get_path(maybepath)
-    const paths = allpaths.map(get_path)
+const shortest_path = (path, allpaths) => {
     let level = 1
-    for (const otherpath of paths) {
+    for (const otherpath of allpaths) {
         if (otherpath !== path) {
-            while (split_at_level(String(path), level) === split_at_level(String(otherpath), level)) {
+            while (split_at_level(path, level) === split_at_level(otherpath, level)) {
                 level++
             }
         }
@@ -94,8 +103,8 @@ export const process_path_or_url = async (path_or_url) => {
 }
 
 // /open will execute a script from your hard drive, so we include a token in the URL to prevent a mean person from getting a bad file on your computer _using another hypothetical intrusion_, and executing it using Pluto
-export const link_open_path = (path) => "open?" + new URLSearchParams({ path: get_path(path) }).toString()
-export const link_open_url = (url) => "open?" + new URLSearchParams({ url: get_url(url) }).toString()
+export const link_open_path = (path) => "open?" + new URLSearchParams({ path: path }).toString()
+export const link_open_url = (url) => "open?" + new URLSearchParams({ url: url }).toString()
 export const link_edit = (notebook_id) => "edit?id=" + notebook_id
 
 export class Welcome extends Component {
@@ -105,7 +114,7 @@ export class Welcome extends Component {
         this.state = {
             // running_notebooks: null,
             // recent_notebooks: null,
-            combined_notebooks: null, // will become an array
+            combined_notebooks: /** @type {Array<CombinedNotebook>} */ (null), // will become an array
             connected: false,
         }
         const set_notebook_state = (this.set_notebook_state = (path, new_state_props) => {
@@ -310,7 +319,7 @@ export class Welcome extends Component {
                     </button>
                     <a
                         href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path)}
-                        title=${get_path(nb.path)}
+                        title=${nb.path}
                         onClick=${(e) => {
                             document.body.classList.add("loading")
                             this.set_notebook_state(nb.path, {

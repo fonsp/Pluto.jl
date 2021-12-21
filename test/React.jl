@@ -360,6 +360,35 @@ import Distributed
         🍭.options.evaluation.workspace_use_distributed = false
     end
 
+    @testset "Reactive usings 5" begin
+        notebook = Notebook(Cell.([
+            "",
+            "x = ones(December * 2)",
+            "December = 3",
+        ]))
+
+        fakeclient.connected_notebook = notebook
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test all(noerror, notebook.cells)
+
+        setcode(notebook.cells[begin], raw"""
+            begin
+                @eval(module Hello
+                    December = 12
+                    export December
+                end)
+                using .Hello
+            end
+        """)
+        update_run!(🍭, notebook, notebook.cells[begin])
+
+        @test all(noerror, notebook.cells)
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
+
     @testset "Function dependencies" begin
         🍭.options.evaluation.workspace_use_distributed = true
 
@@ -517,6 +546,17 @@ import Distributed
         setcode.(notebook.cells, [""])
         update_run!(🍭, notebook, notebook.cells)
         WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
+
+    @testset "Don't lose basic generic types with macros" begin
+        notebook = Notebook(Cell.([
+            "f(::Val{1}) = @info x",
+            "f(::Val{2}) = @info x",
+        ]))
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test notebook.cells[1] |> noerror
+        @test notebook.cells[2] |> noerror
     end
 
     @testset "Two inter-twined cycles" begin
@@ -1348,6 +1388,20 @@ import Distributed
             Cell("""struct A7 end; filter(1:3) do x
                 return true
             end"""),
+
+            # Function assignments
+            Cell("""f(x) = if x == 1
+                return false
+            else
+                return true
+            end"""),
+            Cell("""g(x::T) where {T} = if x == 1
+                return false
+            else
+                return true
+            end"""),
+            Cell("(h(x::T)::MyType) where {T} = return(x)"),
+            Cell("i(x)::MyType = return(x)"),
         ])
 
         update_run!(🍭, notebook, notebook.cells)
@@ -1357,7 +1411,7 @@ import Distributed
         @test occursinerror("You can only use return inside a function.", notebook.cells[4])
         @test occursinerror("You can only use return inside a function.", notebook.cells[5])
         @test occursinerror("You can only use return inside a function.", notebook.cells[6])
-        @test notebook.cells[7].errored == false
+        @test notebook.cells[7] |> noerror
 
         @test occursinerror("You can only use return inside a function.", notebook.cells[8])
         @test occursinerror("You can only use return inside a function.", notebook.cells[9])
@@ -1365,7 +1419,13 @@ import Distributed
         @test occursinerror("You can only use return inside a function.", notebook.cells[11])
         @test occursinerror("You can only use return inside a function.", notebook.cells[12])
         @test occursinerror("You can only use return inside a function.", notebook.cells[13])
-        @test notebook.cells[14].errored == false
+        @test notebook.cells[14] |> noerror
+
+        # Function assignments
+        @test notebook.cells[15] |> noerror
+        @test notebook.cells[16] |> noerror
+        @test notebook.cells[17] |> noerror
+        @test notebook.cells[18] |> noerror
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
