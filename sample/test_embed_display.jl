@@ -123,7 +123,7 @@ md"""
 md"""
 Expand the three arrays below and click on "More". You should:
 - load more items
-- remain in the expanded view after more items are loaded
+- *(failing)* remain in the expanded view after more items are loaded
 """
 
 # ╔═╡ 28e30787-950a-4044-a16b-651e6ce5c649
@@ -1332,10 +1332,10 @@ version = "0.9.1+5"
 # ╟─ce78e7b8-6d74-43b5-8559-1688b933666d
 # ╟─7921e510-f2cd-433e-8675-a1d3e698e3fe
 # ╟─1a9d606d-54fc-4948-be9e-52cbdcc79627
-# ╟─90f2103d-7cc1-4a82-a056-f141519239af
+# ╠═90f2103d-7cc1-4a82-a056-f141519239af
 # ╟─be19ac0a-0849-4dfe-a786-cf5cf25ff385
 # ╟─43d5a69b-9fdd-43cf-bfa6-0c2706c0c96a
-# ╟─e418c6d5-0eb2-4b38-ae8d-74e115ce6fe8
+# ╠═e418c6d5-0eb2-4b38-ae8d-74e115ce6fe8
 # ╟─28e30787-950a-4044-a16b-651e6ce5c649
 # ╟─3a8fa3d0-02f3-4f65-9634-95cb1e533e3a
 # ╟─777d670e-cdb7-48f0-ba3e-59b0044c6880
