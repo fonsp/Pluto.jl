@@ -212,6 +212,9 @@ module CantReturnInPluto
             :(throw($(CantReturnInPlutoException())))
         elseif expr.head == :quote
             Expr(:quote, replace_returns_with_error_in_interpolation(expr.args[1]))
+        elseif Meta.isexpr(expr, :(=)) && expr.args[1] isa Expr && (expr.args[1].head == :call || expr.args[1].head == :where || (expr.args[1].head == :(::) && expr.args[1].args[1] isa Expr && expr.args[1].args[1].head == :call))
+            # f(x) = ...
+            expr
         elseif expr.head == :function || expr.head == :macro || expr.head == :(->)
             expr
         else
