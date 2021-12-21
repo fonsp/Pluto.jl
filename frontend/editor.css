@@ -1008,8 +1008,11 @@ pluto-output:not(.rich_output) > div > pre {
 
 /* as embedded display: */
 
+pluto-display {
+    display: contents;
+}
 pluto-display > div {
-    display: inline-block;
+    display: contents;
 }
 
 /* isolated cell view */
