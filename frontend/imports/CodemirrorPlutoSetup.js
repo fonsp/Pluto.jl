@@ -62,6 +62,8 @@ const postgresParser = PostgreSQL.language.parser
 const sqlLang = sql({ config: { dialect: PostgreSQL } })
 const pythonParser = pythonLanguage.parser
 
+const MARKDOWN_TAGS = ["md", "mermaid", "markdownliteral", "markdown", "mdx"].flatMap((x) => [x, `@${x}`])
+
 const juliaWrapper = parseMixed((node, input) => {
     if (!["TripleString", "String", "CommandString"].includes(node.type.name)) {
         return null
@@ -90,7 +92,7 @@ const juliaWrapper = parseMixed((node, input) => {
             parser: htmlParser,
             overlay: defaultOverlay,
         }
-    } else if (tag === "md" || tag === "mermaid") {
+    } else if (MARKDOWN_TAGS.includes(tag)) {
         return {
             parser: mdParser,
             overlay: defaultOverlay,
