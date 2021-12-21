@@ -67,7 +67,7 @@ export const Preamble = ({ any_code_differs, last_update_time, last_hot_reload_t
     return html`<preamble>
         ${state === "ask_to_save"
             ? html`
-                  <div id="saveall-container" class=${state}>
+                  <div id="saveall-container" class="overlay-button ${state}">
                       <button
                           onClick=${() => {
                               set_state("saving")
@@ -83,17 +83,17 @@ export const Preamble = ({ any_code_differs, last_update_time, last_hot_reload_t
                   </div>
               `
             : // : state === "saving"
-            // ? html` <div id="saveall-container" class=${state}>Saving... <span class="saving-icon"></span></div> `
+            // ? html` <div id="saveall-container" class="overlay-button ${state}">Saving... <span class="saving-icon"></span></div> `
             state === "saved" || state === "saving"
             ? html`
-                  <div id="saveall-container" class=${state}>
-                      <span><span class="only-on-hover">Saved </span><span class="saved-icon"></span></span>
+                  <div id="saveall-container" class="overlay-button ${state}">
+                      <span><span class="only-on-hover">Saved </span><span class="saved-icon pluto-icon"></span></span>
                   </div>
               `
             : reload_state === "reloaded_from_file"
             ? html`
-                  <div id="saveall-container" class=${state}>
-                      <span>File change detected, <b>notebook updated </b><span class="saved-icon"></span></span>
+                  <div id="saveall-container" class="overlay-button ${state}">
+                      <span>File change detected, <b>notebook updated </b><span class="saved-icon pluto-icon"></span></span>
                   </div>
               `
             : null}

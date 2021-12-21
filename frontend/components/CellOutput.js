@@ -14,7 +14,7 @@ import { EditorState, EditorView, julia_andrey, defaultHighlightStyle } from "..
 import { pluto_syntax_colors } from "./CellInput.js"
 import { useState } from "../imports/Preact.js"
 
-import hljs from "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.2.0/build/es/highlight.min.js"
+import hljs from "../imports/highlightjs.js"
 
 export class CellOutput extends Component {
     constructor() {
@@ -309,7 +309,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                     console.warn("We don't (yet) fully support <script type=module> (loading modules with <script type=module src=...> is fine).")
                 }
 
-                if (node.type === "" || node.type === "text/javascript") {
+                if (node.type === "" || node.type === "text/javascript" || node.type === "module") {
                     if (is_displayable(old_result)) {
                         node.parentElement.insertBefore(old_result, node)
                     }
@@ -384,7 +384,7 @@ let declarative_shadow_dom_polyfill = (template) => {
     }
 }
 
-export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timestamp }) => {
+export let RawHTMLContainer = ({ body, className = "", persist_js_state = false, last_run_timestamp }) => {
     let pluto_actions = useContext(PlutoContext)
     let pluto_bonds = useContext(PlutoBondsContext)
     let js_init_set = useContext(PlutoJSInitializingContext)
@@ -432,7 +432,7 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
 
             if (pluto_actions != null) {
                 set_bound_elements_to_their_value(container.current, pluto_bonds)
-                let remove_bonds_listener = add_bonds_listener(container.current, pluto_actions.set_bond)
+                let remove_bonds_listener = add_bonds_listener(container.current, pluto_actions.set_bond, pluto_bonds)
                 invalidation.then(remove_bonds_listener)
             }
 
@@ -450,16 +450,16 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
 
             // Apply syntax highlighting
             try {
-                for (let code_element of container.current.querySelectorAll("code")) {
-                    for (let className of code_element.classList) {
+                container.current.querySelectorAll("code").forEach((code_element) => {
+                    code_element.classList.forEach((className) => {
                         if (className.startsWith("language-")) {
                             let language = className.substr(9)
 
                             // Remove "language-"
                             highlight(code_element, language)
                         }
-                    }
-                }
+                    })
+                })
             } catch (err) {}
             js_init_set?.delete(container.current)
         })
@@ -469,7 +469,7 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
         }
     }, [body, persist_js_state, last_run_timestamp, pluto_actions])
 
-    return html`<div class="raw-html-wrapper" ref=${container}></div>`
+    return html`<div class="raw-html-wrapper ${className}" ref=${container}></div>`
 }
 
 /** @param {HTMLElement} code_element */
@@ -478,7 +478,13 @@ export let highlight = (code_element, language) => {
     language = language === "jl" ? "julia" : language
 
     if (code_element.children.length === 0) {
-        if (language === "julia") {
+        if (
+            language === "julia" &&
+            // CodeMirror does not want to render inside a `<details>`...
+            // I tried to debug this, it does not happen on a clean webpage with the same CM versions:
+            // https://glitch.com/edit/#!/wobbly-sweet-fibre?path=script.js%3A51%3A76
+            code_element.closest("details") == null
+        ) {
             const editorview = new EditorView({
                 state: EditorState.create({
                     // Remove references to `Main.workspace#xx.` in the docs since

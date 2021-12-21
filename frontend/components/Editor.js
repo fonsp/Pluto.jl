@@ -31,6 +31,8 @@ import { BinderButton } from "./BinderButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
 import { ProgressBar } from "./ProgressBar.js"
 import { IsolatedCell } from "./Cell.js"
+import { RawHTMLContainer } from "./CellOutput.js"
+import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -74,7 +76,10 @@ const ProcessStatus = {
  */
 const statusmap = (state) => ({
     disconnected: !(state.connected || state.initializing || state.static_preview),
-    loading: (BinderPhase.wait_for_user < state.binder_phase && state.binder_phase < BinderPhase.ready) || state.initializing || state.moving_file,
+    loading:
+        (state.binder_phase != null && BinderPhase.wait_for_user < state.binder_phase && state.binder_phase < BinderPhase.ready) ||
+        state.initializing ||
+        state.moving_file,
     process_restarting: state.notebook.process_status === ProcessStatus.waiting_to_restart,
     process_dead: state.notebook.process_status === ProcessStatus.no_process || state.notebook.process_status === ProcessStatus.waiting_to_restart,
     nbpkg_restart_required: state.notebook.nbpkg?.restart_required_msg != null,
@@ -85,6 +90,9 @@ const statusmap = (state) => ({
     code_differs: state.notebook.cell_order.some(
         (cell_id) => state.cell_inputs_local[cell_id] != null && state.notebook.cell_inputs[cell_id].code !== state.cell_inputs_local[cell_id].code
     ),
+    recording_waiting_to_start: state.recording_waiting_to_start,
+    is_recording: state.is_recording,
+    isolated_cell_view: launch_params.isolated_cell_ids != null && launch_params.isolated_cell_ids.length > 0,
 })
 
 const first_true_key = (obj) => {
@@ -126,7 +134,7 @@ const first_true_key = (obj) => {
  *      rootassignee: ?string,
  *      has_pluto_hook_features: boolean,
  *  },
- *  published_objects: object,
+ *  published_object_keys: [string],
  * }}
  */
 
@@ -155,6 +163,7 @@ const first_true_key = (obj) => {
  *  cell_dependencies: { [uuid: string]: CellDependencyData },
  *  cell_order: Array<string>,
  *  cell_execution_order: Array<string>,
+ *  published_objects: { [objectid: string]: any},
  *  bonds: { [name: string]: any },
  *  nbpkg: Object,
  * }}
@@ -174,11 +183,17 @@ const launch_params = {
     //@ts-ignore
     disable_ui: !!(url_params.get("disable_ui") ?? window.pluto_disable_ui),
     //@ts-ignore
+    preamble_html: url_params.get("preamble_html") ?? window.pluto_preamble_html,
+    //@ts-ignore
     isolated_cell_ids: url_params.has("isolated_cell_id") ? url_params.getAll("isolated_cell_id") : window.pluto_isolated_cell_ids,
     //@ts-ignore
     binder_url: url_params.get("binder_url") ?? window.pluto_binder_url,
     //@ts-ignore
     slider_server_url: url_params.get("slider_server_url") ?? window.pluto_slider_server_url,
+    //@ts-ignore
+    recording_url: url_params.get("recording_url") ?? window.pluto_recording_url,
+    //@ts-ignore
+    recording_audio_url: url_params.get("recording_audio_url") ?? window.pluto_recording_audio_url,
 }
 console.log("Launch parameters: ", launch_params)
 
@@ -199,6 +214,7 @@ const initial_notebook = () => ({
     cell_dependencies: {},
     cell_order: [],
     cell_execution_order: [],
+    published_objects: {},
     bonds: {},
     nbpkg: null,
 })
@@ -235,6 +251,9 @@ export class Editor extends Component {
             selected_cells: [],
 
             update_is_ongoing: false,
+
+            is_recording: false,
+            recording_waiting_to_start: false,
         }
 
         this.setStatePromise = (fn) => new Promise((r) => this.setState(fn, r))
@@ -243,6 +262,7 @@ export class Editor extends Component {
         this.actions = {
             get_notebook: () => this?.state?.notebook || {},
             send: (...args) => this.client.send(...args),
+            get_published_object: (objectid) => this.state.notebook.published_objects[objectid],
             //@ts-ignore
             update_notebook: (...args) => this.update_notebook(...args),
             set_doc_query: (query) => this.setState({ desired_doc_query: query }),
@@ -505,15 +525,11 @@ export class Editor extends Component {
              *
              * @param {string} name         | bond name
              * @param {*} value             | bond value
-             * @param {boolean} is_first_value    | true during initialization
              */
-            set_bond: async (name, value, is_first_value) => {
-                // For now I discard is_first_value, basing it on if there
-                // is a value already present in the state.
-                // Keep an eye on https://github.com/fonsp/Pluto.jl/issues/275
+            set_bond: async (name, value) => {
                 await update_notebook((notebook) => {
                     // Wrap the bond value in an object so immer assumes it is changed
-                    let new_bond = { value: value, is_first_value: is_first_value }
+                    let new_bond = { value: value }
                     notebook.bonds[name] = new_bond
                 })
             },
@@ -546,9 +562,11 @@ export class Editor extends Component {
             },
         }
 
-        const apply_notebook_patches = (patches, old_state = undefined) =>
+        const apply_notebook_patches = (patches, old_state = undefined, get_reverse_patches = false) =>
             new Promise((resolve) => {
                 if (patches.length !== 0) {
+                    let copy_of_patches,
+                        reverse_of_patches = []
                     this.setState(
                         immer((state) => {
                             let new_notebook
@@ -557,6 +575,14 @@ export class Editor extends Component {
                                 // if (Math.random() < 0.25) {
                                 //     throw new Error(`Error: [Immer] minified error nr: 15 '${patches?.[0]?.path?.join("/")}'    .`)
                                 // }
+
+                                if (get_reverse_patches) {
+                                    ;[new_notebook, copy_of_patches, reverse_of_patches] = produceWithPatches(old_state ?? state.notebook, (state) => {
+                                        applyPatches(state, patches)
+                                    })
+                                    // TODO: why was `new_notebook` not updated?
+                                    // this is why the line below is also called when `get_reverse_patches === true`
+                                }
                                 new_notebook = applyPatches(old_state ?? state.notebook, patches)
                             } catch (exception) {
                                 const failing_path = String(exception).match(".*'(.*)'.*")[1].replace(/\//gi, ".")
@@ -565,6 +591,7 @@ export class Editor extends Component {
                                 // The alert below is not catastrophic: the editor will try to recover.
                                 // Deactivating to be user-friendly!
                                 // alert(`Ooopsiee.`)
+
                                 console.error(
                                     `#######################**************************########################
 PlutoError: StateOutOfSync: Failed to apply patches.
@@ -607,18 +634,21 @@ patch: ${JSON.stringify(
                                 console.warn(`cells_stuck_in_limbo:`, cells_stuck_in_limbo)
                                 new_notebook.cell_order = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] != null)
                             }
+                            this.on_patches_hook(patches)
                             state.notebook = new_notebook
                         }),
-                        resolve
+                        () => resolve(reverse_of_patches)
                     )
                 } else {
-                    resolve()
+                    resolve([])
                 }
             })
 
+        this.apply_notebook_patches = apply_notebook_patches
         // these are update message that are _not_ a response to a `send(*, *, {create_promise: true})`
         const on_update = (update, by_me) => {
             if (this.state.notebook.notebook_id === update.notebook_id) {
+                if (this.state.binder_phase != null) console.debug("on_update", update, by_me)
                 const message = update.message
                 switch (update.type) {
                     case "notebook_diff":
@@ -641,6 +671,7 @@ patch: ${JSON.stringify(
                         // alert("Something went wrong 🙈\n Try clearing your browser cache and refreshing the page")
                         break
                 }
+                if (this.state.binder_phase != null) console.debug("on_update done")
             } else {
                 // Update for a different notebook, TODO maybe log this as it shouldn't happen
             }
@@ -673,6 +704,11 @@ patch: ${JSON.stringify(
 
             return true
         }
+
+        this.export_url = (/** @type {string} */ u) =>
+            this.state.binder_session_url == null
+                ? `./${u}?id=${this.state.notebook.notebook_id}`
+                : `${this.state.binder_session_url}${u}?id=${this.state.notebook.notebook_id}&token=${this.state.binder_session_token}`
 
         this.client = {}
 
@@ -800,6 +836,7 @@ patch: ${JSON.stringify(
                 }
                 pending_local_updates++
                 this.setState({ update_is_ongoing: pending_local_updates > 0 })
+                this.on_patches_hook(changes)
                 try {
                     await Promise.all([
                         this.client.send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false).then((response) => {
@@ -881,6 +918,11 @@ patch: ${JSON.stringify(
             }
         }
 
+        this.patch_listeners = []
+        this.on_patches_hook = (patches) => {
+            this.patch_listeners.forEach((f) => f(patches))
+        }
+
         document.addEventListener("keyup", (e) => {
             document.body.classList.toggle("ctrl_down", has_ctrl_or_cmd_pressed(e))
         })
@@ -941,6 +983,12 @@ patch: ${JSON.stringify(
     The notebook file saves every time you run a cell.`
                 )
                 e.preventDefault()
+            } else if (e.key === "Escape") {
+                this.setState({
+                    recording_waiting_to_start: false,
+                    selected_cells: [],
+                    export_menu_open: false,
+                })
             }
 
             if (this.state.disable_ui && this.state.offer_binder) {
@@ -1033,8 +1081,8 @@ patch: ${JSON.stringify(
             document.title = "🎈 " + new_state.notebook.shortpath + " — Pluto.jl"
         }
 
-        Object.entries(this.cached_status).forEach((e) => {
-            document.body.classList.toggle(...e)
+        Object.entries(this.cached_status).forEach(([k, v]) => {
+            document.body.classList.toggle(k, v === true)
         })
 
         // this class is used to tell our frontend tests that the updates are done
@@ -1077,7 +1125,7 @@ patch: ${JSON.stringify(
         const status = this.cached_status ?? statusmap(this.state)
         const statusval = first_true_key(status)
 
-        if (launch_params.isolated_cell_ids && launch_params.isolated_cell_ids.length > 0) {
+        if (status.isolated_cell_view) {
             return html`
                 <${PlutoContext.Provider} value=${this.actions}>
                     <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
@@ -1112,10 +1160,6 @@ patch: ${JSON.stringify(
             }}
             >${text}</a
         >`
-        const export_url = (u) =>
-            this.state.binder_session_url == null
-                ? `./${u}?id=${this.state.notebook.notebook_id}`
-                : `${this.state.binder_session_url}${u}?id=${this.state.notebook.notebook_id}&token=${this.state.binder_session_token}`
 
         return html`
             <${PlutoContext.Provider} value=${this.actions}>
@@ -1125,10 +1169,11 @@ patch: ${JSON.stringify(
                     <${ProgressBar} notebook=${this.state.notebook} binder_phase=${this.state.binder_phase} status=${status}/>
                     <header className=${export_menu_open ? "show_export" : ""}>
                         <${ExportBanner}
-                            notebookfile_url=${export_url("notebookfile")}
-                            notebookexport_url=${export_url("notebookexport")}
+                            notebookfile_url=${this.export_url("notebookfile")}
+                            notebookexport_url=${this.export_url("notebookexport")}
                             open=${export_menu_open}
                             onClose=${() => this.setState({ export_menu_open: false })}
+                            start_recording=${() => this.setState({ recording_waiting_to_start: true })}
                         />
                         ${
                             status.binder
@@ -1149,8 +1194,8 @@ patch: ${JSON.stringify(
                             </a>
                             <div class="flex_grow_1"></div>
                             ${
-                                this.state.binder_phase === BinderPhase.ready
-                                    ? html`<pluto-filepicker><a href=${export_url("notebookfile")} target="_blank">Save notebook...</a></pluto-filepicker>`
+                                status.binder
+                                    ? html`<pluto-filepicker><a href=${this.export_url("notebookfile")} target="_blank">Save notebook...</a></pluto-filepicker>`
                                     : html`<${FilePicker}
                                           client=${this.client}
                                           value=${notebook.in_temp_dir ? "" : notebook.path}
@@ -1186,11 +1231,35 @@ patch: ${JSON.stringify(
                             }</div>
                         </nav>
                     </header>
+                    
+                    <${RecordingUI} 
+                        notebook_name=${notebook.shortpath}
+                        recording_waiting_to_start=${this.state.recording_waiting_to_start}
+                        set_recording_states=${({ is_recording, recording_waiting_to_start }) => this.setState({ is_recording, recording_waiting_to_start })}
+                        is_recording=${this.state.is_recording}
+                        patch_listeners=${this.patch_listeners}
+                        export_url=${this.export_url}
+                    />
+                    <${RecordingPlaybackUI} 
+                        recording_url=${launch_params.recording_url}
+                        audio_src=${launch_params.recording_audio_url}
+                        initializing=${this.state.initializing}
+                        apply_notebook_patches=${this.apply_notebook_patches}
+                        reset_notebook_state=${() =>
+                            this.setStatePromise(
+                                immer((state) => {
+                                    state.notebook = this.original_state
+                                })
+                            )}
+                    />
+                    
+                    
                     <${BinderButton} binder_phase=${this.state.binder_phase} start_binder=${() =>
             start_binder({ setStatePromise: this.setStatePromise, connect: this.connect, launch_params: launch_params })} notebookfile=${
             launch_params.notebookfile == null ? null : new URL(launch_params.notebookfile, window.location.href).href
         } />
                     <${FetchProgress} progress=${this.state.statefile_download_progress} />
+                    ${launch_params.preamble_html ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />` : null}
                     <${Main}>
                         <${Preamble}
                             last_update_time=${this.state.last_update_time}

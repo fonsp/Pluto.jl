@@ -125,6 +125,11 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(a .+= b), [:b, :a], [], [:+], [])
         @test testee(:(a[i] .+= b), [:b, :a, :i], [], [:+], [])
         @test testee(:(a .+ b ./ sqrt.(c, d)), [:a, :b, :c, :d], [], [:+, :/, :sqrt], [])
+
+        # in 1.5 :(.+) is a symbol, in 1.6 its Expr:(:(.), :+)
+        broadcasted_add = :(.+) isa Symbol ? :(.+) : :+
+        @test testee(:(f = .+), [broadcasted_add], [:f], [], [])
+        @test testee(:(reduce(.+, foo)), [broadcasted_add, :foo], [], [:reduce], [])
     end
     @testset "`for` & `while`" begin
         @test testee(:(for k in 1:n; k + s; end), [:n, :s], [], [:+, :(:)], [])
@@ -146,6 +151,7 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:([a for a in b if a != 2]), [:b], [], [:(!=)], [])
         @test testee(:([a for a in f() if g(a)]), [], [], [:f, :g], [])
         @test testee(:([c(a) for a in f() if g(a)]), [], [], [:c, :f, :g], [])
+        @test testee(:([k for k in P, j in 1:k]), [:k, :P], [], [:(:)], [])
 
         @test testee(:([a for a in a]), [:a], [], [], [])
         @test testee(:(for a in a; a; end), [:a], [], [], [])
@@ -494,6 +500,9 @@ Some of these @test_broken lines are commented out to prevent printing to the te
             expr=:(@parent begin @child 1 + @grandchild 10 end),
             macrocalls=[Symbol("@parent"), Symbol("@child"), Symbol("@grandchild")],
         )
+        @test testee(macroexpand(Main, :(@noinline f(x) = x)), [], [], [], [
+            Symbol("f") => ([], [], [], [])
+        ])
     end
     @testset "Macros and heuristics" begin
         @test test_expression_explorer(
