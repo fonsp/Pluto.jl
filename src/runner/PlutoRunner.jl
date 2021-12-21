@@ -1866,15 +1866,17 @@ end
 assertpackable(t::Tuple) = foreach(assertpackable, t)
 assertpackable(t::NamedTuple) = foreach(assertpackable, t)
 
+const _EmbeddableDisplay_enable_html_shortcut = Ref{Bool}(true)
+
 struct EmbeddableDisplay
     x
-    script_id
+    script_id::String
 end
 
 function Base.show(io::IO, m::MIME"text/html", e::EmbeddableDisplay)
     body, mime = format_output_default(e.x, io)
 	
-    to_write = if mime === m
+    to_write = if mime === m && _EmbeddableDisplay_enable_html_shortcut[]
         # In this case, we can just embed the HTML content directly.
         body
     else
