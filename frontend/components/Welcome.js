@@ -5,7 +5,9 @@ import { FilePicker } from "./FilePicker.js"
 import { create_pluto_connection, fetch_pluto_releases } from "../common/PlutoConnection.js"
 import { cl } from "../common/ClassTable.js"
 import { PasteHandler } from "./PasteHandler.js"
-import custom_env from "../common/Environment.js"
+
+// This is imported asynchronously - uncomment for development
+// import environment from "../common/Environment.js"
 
 /**
  * @typedef CombinedNotebook
@@ -119,6 +121,7 @@ export class Welcome extends Component {
             connected: false,
             extended_components: {
                 CustomWelcome: null,
+                Picker: {},
                 Recent: ({ recents }) => html`
                     <p>Recent sessions:</p>
                     <ul id="recent">
@@ -184,10 +187,14 @@ export class Welcome extends Component {
             on_connection_status: on_connection_status,
             on_reconnect: () => true,
         })
-        this.client_promise.then((client) => {
+        this.client_promise.then(async (client) => {
             Object.assign(this.client, client)
-            const { custom_welcome, custom_recent } = custom_env(client, html, useEffect, useState, useMemo)
-            this.setState({ extended_components: { ...this.state.extended_components, Recent: custom_recent, Welcome: custom_welcome } })
+            const { default: environment } = await import(this.client.session_options.server.injected_javascript_data_url)
+            console.log("Does this run?")
+            const { custom_welcome, custom_recent, custom_filepicker } = environment(client, html, useEffect, useState, useMemo)
+            this.setState({
+                extended_components: { ...this.state.extended_components, Recent: custom_recent, Welcome: custom_welcome, Picker: custom_filepicker },
+            })
             this.client.send("get_all_notebooks", {}, {}).then(({ message }) => {
                 const running = message.notebooks.map((nb) => create_empty_notebook(nb.path, nb.notebook_id))
                 const recent_notebooks = get_stored_recent_notebooks()
@@ -341,7 +348,10 @@ export class Welcome extends Component {
                 </li>`
             })
         }
-        const { Recent, CustomWelcome } = this.state.extended_components
+        const {
+            Recent,
+            Picker: { text: open_file_label, placeholder },
+        } = this.state.extended_components
 
         return html`<p>New session:</p>
             <${PasteHandler} />
@@ -349,8 +359,15 @@ export class Welcome extends Component {
                 <li>Open a <a href="sample">sample notebook</a></li>
                 <li>Create a <a href="new">new notebook</a></li>
                 <li>
-                    Open from file:
-                    <${FilePicker} client=${this.client} value="" on_submit=${this.on_open_path} button_label="Open" placeholder="Enter path or URL..." />
+                    ${open_file_label || "Open from file"}:
+                    <${FilePicker}
+                        key=${placeholder}
+                        client=${this.client}
+                        value=""
+                        on_submit=${this.on_open_path}
+                        button_label="Open"
+                        placeholder=${placeholder ?? "Enter path or URL..."}
+                    />
                 </li>
             </ul>
             <br />

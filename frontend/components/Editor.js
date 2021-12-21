@@ -34,7 +34,8 @@ import { IsolatedCell } from "./Cell.js"
 import { RawHTMLContainer } from "./CellOutput.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
 
-import custom_env from "../common/Environment.js"
+// This is imported asynchronously - uncomment for development
+// import environment from "../common/Environment.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
