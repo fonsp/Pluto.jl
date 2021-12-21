@@ -122,6 +122,10 @@ function run(session::ServerSession)
 end
 
 function run(session::ServerSession, pluto_router)
+    
+    if VERSION < v"1.6.2"
+        @info "Pluto is running on an old version of Julia ($(VERSION)) that is no longer supported. Visit https://julialang.org/downloads/ for more information about upgrading Julia."
+    end
 
     notebook_at_startup = session.options.server.notebook
     open_notebook!(session, notebook_at_startup)
@@ -168,7 +172,7 @@ function run(session::ServerSession, pluto_router)
                                 
                                 let
                                     lag = session.options.server.simulated_lag
-                                    (lag > 0) && sleep(lag) # sleep(0) would yield to the process manager which we dont want
+                                    (lag > 0) && sleep(lag * (0.5 + rand())) # sleep(0) would yield to the process manager which we dont want
                                 end
 
                                 process_ws_message(session, parentbody, clientstream)
@@ -260,8 +264,8 @@ function run(session::ServerSession, pluto_router)
     println("Press Ctrl+C in this terminal to stop Pluto")
     println()
 
-    if !isdir(project_relative_path("frontend-dist"))
-        @warn "FYI, running unbundled (dev) frontend"
+    if PLUTO_VERSION >= v"0.18.0" && frontend_directory() == "frontend"
+        @info "It looks like you are developing the Pluto package, using the unbundled frontend..."
     end
 
     shutdown_server[] = () -> @sync begin

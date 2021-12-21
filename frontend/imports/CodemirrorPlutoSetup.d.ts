@@ -1439,6 +1439,7 @@ interface SyntaxNode {
     prevSibling: SyntaxNode | null;
     cursor: TreeCursor;
     resolve(pos: number, side?: -1 | 0 | 1): SyntaxNode;
+    resolveInner(pos: number, side?: -1 | 0 | 1): SyntaxNode;
     enterUnfinishedNodesBefore(pos: number): SyntaxNode;
     tree: Tree | null;
     toTree(): Tree;
@@ -1969,6 +1970,11 @@ declare abstract class WidgetType {
     events.
     */
     ignoreEvent(_event: Event): boolean;
+    /**
+    This is called when the an instance of the widget is removed
+    from the editor view.
+    */
+    destroy(_dom: HTMLElement): void;
 }
 /**
 A decoration set represents a collection of decorated ranges,
@@ -2209,13 +2215,14 @@ interface MeasureRequest<T> {
     Called in a DOM write phase to update the document. Should _not_
     do anything that triggers DOM layout.
     */
-    write(measure: T, view: EditorView): void;
+    write?(measure: T, view: EditorView): void;
     /**
     When multiple requests with the same key are scheduled, only the
     last one will actually be ran.
     */
     key?: any;
 }
+declare type AttrSource = Attrs | ((view: EditorView) => Attrs | null);
 /**
 View [plugins](https://codemirror.net/6/docs/ref/#view.ViewPlugin) are given instances of this
 class, which describe what happened, whenever the view is updated.
@@ -2358,7 +2365,8 @@ declare class BlockInfo {
     */
     readonly length: number;
     /**
-    The top position of the element.
+    The top position of the element (relative to the top of the
+    document).
     */
     readonly top: number;
     /**
@@ -2478,6 +2486,7 @@ declare class EditorView {
     readonly contentDOM: HTMLElement;
     private announceDOM;
     private plugins;
+    private pluginMap;
     private editorAttrs;
     private contentAttrs;
     private styleModules;
@@ -2552,6 +2561,19 @@ declare class EditorView {
     */
     plugin<T>(plugin: ViewPlugin<T>): T | null;
     /**
+    The top position of the document, in screen coordinates. This
+    may be negative when the editor is scrolled down. Points
+    directly to the top of the first line, not above the padding.
+    */
+    get documentTop(): number;
+    /**
+    Reports the padding above and below the document.
+    */
+    get documentPadding(): {
+        top: number;
+        bottom: number;
+    };
+    /**
     Find the line or block widget at the given vertical position.
     
     By default, this position is interpreted as a screen position,
@@ -2561,8 +2583,16 @@ declare class EditorView {
     position, or a precomputed document top
     (`view.contentDOM.getBoundingClientRect().top`) to limit layout
     queries.
+    
+    *Deprecated: use `blockAtHeight` instead.*
     */
     blockAtHeight(height: number, docTop?: number): BlockInfo;
+    /**
+    Find the text line or block widget at the given vertical
+    position (which is interpreted as relative to the [top of the
+    document](https://codemirror.net/6/docs/ref/#view.EditorView.documentTop)
+    */
+    elementAtHeight(height: number): BlockInfo;
     /**
     Find information for the visual line (see
     [`visualLineAt`](https://codemirror.net/6/docs/ref/#view.EditorView.visualLineAt)) at the given
@@ -2573,15 +2603,32 @@ declare class EditorView {
     Defaults to treating `height` as a screen position. See
     [`blockAtHeight`](https://codemirror.net/6/docs/ref/#view.EditorView.blockAtHeight) for the
     interpretation of the `docTop` parameter.
+    
+    *Deprecated: use `lineBlockAtHeight` instead.*
     */
     visualLineAtHeight(height: number, docTop?: number): BlockInfo;
+    /**
+    Find the line block (see
+    [`lineBlockAt`](https://codemirror.net/6/docs/ref/#view.EditorView.lineBlockAt) at the given
+    height.
+    */
+    lineBlockAtHeight(height: number): BlockInfo;
     /**
     Iterate over the height information of the visual lines in the
     viewport. The heights of lines are reported relative to the
     given document top, which defaults to the screen position of the
     document (forcing a layout).
+    
+    *Deprecated: use `viewportLineBlocks` instead.*
     */
     viewportLines(f: (line: BlockInfo) => void, docTop?: number): void;
+    /**
+    Get the extent and vertical position of all [line
+    blocks](https://codemirror.net/6/docs/ref/#view.EditorView.lineBlockAt) in the viewport. Positions
+    are relative to the [top of the
+    document](https://codemirror.net/6/docs/ref/#view.EditorView.documentTop);
+    */
+    get viewportLineBlocks(): BlockInfo[];
     /**
     Find the extent and height of the visual line (a range delimited
     on both sides by either non-[hidden](https://codemirror.net/6/docs/ref/#view.Decoration^range)
@@ -2591,8 +2638,19 @@ declare class EditorView {
     argument, which defaults to 0 for this method. You can pass
     `view.contentDOM.getBoundingClientRect().top` here to get screen
     coordinates.
+    
+    *Deprecated: use `lineBlockAt` instead.*
     */
     visualLineAt(pos: number, docTop?: number): BlockInfo;
+    /**
+    Find the line block around the given document position. A line
+    block is a range delimited on both sides by either a
+    non-[hidden](https://codemirror.net/6/docs/ref/#view.Decoration^range) line breaks, or the
+    start/end of the document. It will usually just hold a line of
+    text, but may be broken into multiple textblocks by block
+    widgets.
+    */
+    lineBlockAt(pos: number): BlockInfo;
     /**
     The editor's total content height.
     */
@@ -2850,12 +2908,12 @@ declare class EditorView {
     Facet that provides additional DOM attributes for the editor's
     editable DOM element.
     */
-    static contentAttributes: Facet<Attrs, Attrs>;
+    static contentAttributes: Facet<AttrSource, readonly AttrSource[]>;
     /**
     Facet that provides DOM attributes for the editor's outer
     element.
     */
-    static editorAttributes: Facet<Attrs, Attrs>;
+    static editorAttributes: Facet<AttrSource, readonly AttrSource[]>;
     /**
     An extension that enables line wrapping in the editor (by
     setting CSS `white-space` to `pre-wrap` in the content).
@@ -4433,6 +4491,21 @@ declare class CompletionContext {
     addEventListener(type: "abort", listener: () => void): void;
 }
 /**
+Given a a fixed array of options, return an autocompleter that
+completes them.
+*/
+declare function completeFromList(list: readonly (string | Completion)[]): CompletionSource;
+/**
+Wrap the given completion source so that it will only fire when the
+cursor is in a syntax node with one of the given names.
+*/
+declare function ifIn(nodes: readonly string[], source: CompletionSource): CompletionSource;
+/**
+Wrap the given completion source so that it will not fire when the
+cursor is in a syntax node with one of the given names.
+*/
+declare function ifNotIn(nodes: readonly string[], source: CompletionSource): CompletionSource;
+/**
 The function signature for a completion source. Such a function
 may return its [result](https://codemirror.net/6/docs/ref/#autocomplete.CompletionResult)
 synchronously or as a promise. Returning null indicates no
@@ -4478,6 +4551,92 @@ interface CompletionResult {
     */
     filter?: boolean;
 }
+/**
+This annotation is added to transactions that are produced by
+picking a completion.
+*/
+declare const pickedCompletion: AnnotationType<Completion>;
+
+/**
+Convert a snippet template to a function that can apply it.
+Snippets are written using syntax like this:
+
+    "for (let ${index} = 0; ${index} < ${end}; ${index}++) {\n\t${}\n}"
+
+Each `${}` placeholder (you may also use `#{}`) indicates a field
+that the user can fill in. Its name, if any, will be the default
+content for the field.
+
+When the snippet is activated by calling the returned function,
+the code is inserted at the given position. Newlines in the
+template are indented by the indentation of the start line, plus
+one [indent unit](https://codemirror.net/6/docs/ref/#language.indentUnit) per tab character after
+the newline.
+
+On activation, (all instances of) the first field are selected.
+The user can move between fields with Tab and Shift-Tab as long as
+the fields are active. Moving to the last field or moving the
+cursor out of the current field deactivates the fields.
+
+The order of fields defaults to textual order, but you can add
+numbers to placeholders (`${1}` or `${1:defaultText}`) to provide
+a custom order.
+*/
+declare function snippet(template: string): (editor: {
+    state: EditorState;
+    dispatch: (tr: Transaction) => void;
+}, _completion: Completion, from: number, to: number) => void;
+/**
+A command that clears the active snippet, if any.
+*/
+declare const clearSnippet: StateCommand;
+/**
+Move to the next snippet field, if available.
+*/
+declare const nextSnippetField: StateCommand;
+/**
+Move to the previous snippet field, if available.
+*/
+declare const prevSnippetField: StateCommand;
+/**
+A facet that can be used to configure the key bindings used by
+snippets. The default binds Tab to
+[`nextSnippetField`](https://codemirror.net/6/docs/ref/#autocomplete.nextSnippetField), Shift-Tab to
+[`prevSnippetField`](https://codemirror.net/6/docs/ref/#autocomplete.prevSnippetField), and Escape
+to [`clearSnippet`](https://codemirror.net/6/docs/ref/#autocomplete.clearSnippet).
+*/
+declare const snippetKeymap: Facet<readonly KeyBinding[], readonly KeyBinding[]>;
+/**
+Create a completion from a snippet. Returns an object with the
+properties from `completion`, plus an `apply` function that
+applies the snippet.
+*/
+declare function snippetCompletion(template: string, completion: Completion): Completion;
+
+/**
+Returns a command that moves the completion selection forward or
+backward by the given amount.
+*/
+declare function moveCompletionSelection(forward: boolean, by?: "option" | "page"): Command;
+/**
+Accept the current completion.
+*/
+declare const acceptCompletion: Command;
+/**
+Explicitly start autocompletion.
+*/
+declare const startCompletion: Command;
+/**
+Close the currently active completion.
+*/
+declare const closeCompletion: Command;
+
+/**
+A completion source that will scan the document for words (using a
+[character categorizer](https://codemirror.net/6/docs/ref/#state.EditorState.charCategorizer)), and
+return those as completions.
+*/
+declare const completeAnyWord: CompletionSource;
 
 /**
 Returns an extension that enables autocompletion.
@@ -4495,6 +4654,75 @@ Basic keybindings for autocompletion.
  - Enter: [`acceptCompletion`](https://codemirror.net/6/docs/ref/#autocomplete.acceptCompletion)
 */
 declare const completionKeymap: readonly KeyBinding[];
+/**
+Get the current completion status. When completions are available,
+this will return `"active"`. When completions are pending (in the
+process of being queried), this returns `"pending"`. Otherwise, it
+returns `null`.
+*/
+declare function completionStatus(state: EditorState): null | "active" | "pending";
+/**
+Returns the available completions as an array.
+*/
+declare function currentCompletions(state: EditorState): readonly Completion[];
+/**
+Return the currently selected completion, if any.
+*/
+declare function selectedCompletion(state: EditorState): Completion | null;
+
+type index_Completion = Completion;
+type index_CompletionContext = CompletionContext;
+declare const index_CompletionContext: typeof CompletionContext;
+type index_CompletionResult = CompletionResult;
+type index_CompletionSource = CompletionSource;
+declare const index_acceptCompletion: typeof acceptCompletion;
+declare const index_autocompletion: typeof autocompletion;
+declare const index_clearSnippet: typeof clearSnippet;
+declare const index_closeCompletion: typeof closeCompletion;
+declare const index_completeAnyWord: typeof completeAnyWord;
+declare const index_completeFromList: typeof completeFromList;
+declare const index_completionKeymap: typeof completionKeymap;
+declare const index_completionStatus: typeof completionStatus;
+declare const index_currentCompletions: typeof currentCompletions;
+declare const index_ifIn: typeof ifIn;
+declare const index_ifNotIn: typeof ifNotIn;
+declare const index_moveCompletionSelection: typeof moveCompletionSelection;
+declare const index_nextSnippetField: typeof nextSnippetField;
+declare const index_pickedCompletion: typeof pickedCompletion;
+declare const index_prevSnippetField: typeof prevSnippetField;
+declare const index_selectedCompletion: typeof selectedCompletion;
+declare const index_snippet: typeof snippet;
+declare const index_snippetCompletion: typeof snippetCompletion;
+declare const index_snippetKeymap: typeof snippetKeymap;
+declare const index_startCompletion: typeof startCompletion;
+declare namespace index {
+  export {
+    index_Completion as Completion,
+    index_CompletionContext as CompletionContext,
+    index_CompletionResult as CompletionResult,
+    index_CompletionSource as CompletionSource,
+    index_acceptCompletion as acceptCompletion,
+    index_autocompletion as autocompletion,
+    index_clearSnippet as clearSnippet,
+    index_closeCompletion as closeCompletion,
+    index_completeAnyWord as completeAnyWord,
+    index_completeFromList as completeFromList,
+    index_completionKeymap as completionKeymap,
+    index_completionStatus as completionStatus,
+    index_currentCompletions as currentCompletions,
+    index_ifIn as ifIn,
+    index_ifNotIn as ifNotIn,
+    index_moveCompletionSelection as moveCompletionSelection,
+    index_nextSnippetField as nextSnippetField,
+    index_pickedCompletion as pickedCompletion,
+    index_prevSnippetField as prevSnippetField,
+    index_selectedCompletion as selectedCompletion,
+    index_snippet as snippet,
+    index_snippetCompletion as snippetCompletion,
+    index_snippetKeymap as snippetKeymap,
+    index_startCompletion as startCompletion,
+  };
+}
 
 declare type HighlightOptions = {
     /**
@@ -4856,4 +5084,29 @@ Python language support.
 */
 declare function python(): LanguageSupport;
 
-export { Compartment, Decoration, EditorSelection, EditorState, EditorView, Facet, HighlightStyle, NodeProp, PostgreSQL, SelectionRange, StateEffect, StateField, StreamLanguage, Text, Transaction, TreeCursor, ViewPlugin, ViewUpdate, WidgetType, autocompletion, bracketMatching, closeBrackets, closeBracketsKeymap, combineConfig, commentKeymap, completionKeymap, defaultHighlightStyle, defaultKeymap, drawSelection, foldGutter, foldKeymap, highlightSelectionMatches, highlightSpecialChars, history, historyKeymap, html, htmlLanguage, indentLess, indentMore, indentOnInput, indentUnit, javascript, javascriptLanguage, julia as julia_andrey, julia$1 as julia_legacy, keymap, lineNumbers, markdown, markdownLanguage, parseMixed, placeholder, python, pythonLanguage, rectangularSelection, searchKeymap, sql, syntaxTree, tags };
+declare type CollabConfig = {
+    /**
+    The starting document version. Defaults to 0.
+    */
+    startVersion?: number;
+    /**
+    This client's identifying [ID](https://codemirror.net/6/docs/ref/#collab.getClientID). Will be a
+    randomly generated string if not provided.
+    */
+    clientID?: string;
+    /**
+    It is possible to share information other than document changes
+    through this extension. If you provide this option, your
+    function will be called on each transaction, and the effects it
+    returns will be sent to the server, much like changes are. Such
+    effects are automatically remapped when conflicting remote
+    changes come in.
+    */
+    sharedEffects?: (tr: Transaction) => readonly StateEffect<any>[];
+};
+/**
+Create an instance of the collaborative editing plugin.
+*/
+declare function collab(config?: CollabConfig): Extension;
+
+export { Annotation, Compartment, Decoration, EditorSelection, EditorState, EditorView, Facet, HighlightStyle, NodeProp, PostgreSQL, SelectionRange, StateEffect, StateField, StreamLanguage, Text, Transaction, TreeCursor, ViewPlugin, ViewUpdate, WidgetType, index as autocomplete, bracketMatching, closeBrackets, closeBracketsKeymap, collab, combineConfig, commentKeymap, completionKeymap, defaultHighlightStyle, defaultKeymap, drawSelection, foldGutter, foldKeymap, highlightSelectionMatches, highlightSpecialChars, history, historyKeymap, html, htmlLanguage, indentLess, indentMore, indentOnInput, indentUnit, javascript, javascriptLanguage, julia as julia_andrey, julia$1 as julia_legacy, keymap, lineNumbers, markdown, markdownLanguage, parseMixed, placeholder, python, pythonLanguage, rectangularSelection, searchKeymap, sql, syntaxTree, tags };

@@ -156,6 +156,15 @@ function bump_workspace_module(session_notebook::SN)
     old_name, new_name
 end
 
+function possible_bond_values(session_notebook::SN, n::Symbol; get_length::Bool=false)
+    workspace = get_workspace(session_notebook)
+    pid = workspace.pid
+
+    Distributed.remotecall_eval(Main, pid, quote
+        PlutoRunner.possible_bond_values($(QuoteNode(n)); get_length=$(get_length))
+    end)
+end
+
 function create_emptyworkspacemodule(pid::Integer)::Symbol
     Distributed.remotecall_eval(Main, pid, :(PlutoRunner.increment_current_module()))
 end

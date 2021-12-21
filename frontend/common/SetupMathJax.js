@@ -1,3 +1,4 @@
+// @ts-nocheck
 const deprecated = () => console.warn("Pluto uses MathJax 3, but a MathJax 2 function was called.")
 
 window.MathJax = {

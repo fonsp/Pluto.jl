@@ -2,6 +2,7 @@ using Test
 import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new, readwrite, without_pluto_file_extension
 import Random
 import Pkg
+import UUIDs: UUID
 
 # We define some notebooks explicitly, and not as a .jl notebook file, to avoid circular reasoning 🤔
 function basic_notebook()
@@ -180,6 +181,42 @@ end
             end
         end
     end
+    
+    @testset "Recover from bad cell order" begin
+        contents = """
+        ### A Pluto.jl notebook ###
+        # v0.17.3
+
+        using Markdown
+        using InteractiveUtils
+
+        # ╔═╡ cdd40e28-61be-11ec-28fd-111111111111
+        x = 1
+
+        # ╔═╡ cdd40e28-61be-11ec-28fd-222222222222
+        y = 2
+
+        # ╔═╡ cdd40e28-61be-11ec-28fd-333333333333
+        z = 3
+
+        # ╔═╡ Cell order:
+        # ╠═cdd40e28-61be-11ec-28fd-111111111111
+        # ╠═cdd40e28-61be-11ec-28fd-333333333333
+        # ╠═cdd40e28-61be-11ec-28fd-444444444444
+        """
+        
+        path = tempname()
+        write(path, contents)
+        
+        nb = load_notebook(path)
+        
+        @test nb.cell_order == UUID.([
+            "cdd40e28-61be-11ec-28fd-111111111111",
+            "cdd40e28-61be-11ec-28fd-333333333333",
+            "cdd40e28-61be-11ec-28fd-222222222222",
+        ])
+        @test keys(nb.cells_dict) == Set(nb.cell_order)
+    end
 
     # Some notebooks are designed to error (inside/outside Pluto)
     expect_error = [String(nameof(bad_code_notebook)), String(nameof(project_notebook)), "sample Interactivity.jl"]
@@ -205,6 +242,7 @@ end
         @testset "$(name)" for (name, nb) in nbs
             if name ∉ expect_error
                 @test nb_is_runnable(🍭, nb)
+                WorkspaceManager.unmake_workspace((🍭, nb))
             end
         end
     end
