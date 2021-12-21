@@ -1,9 +1,27 @@
 import HTTP
 import Markdown: htmlesc
 import UUIDs: UUID
+import Pkg
 
-function frontend_directory()
-    if isdir(project_relative_path("frontend-dist"))
+const found_is_pluto_dev = Ref{Union{Nothing,Bool}}(nothing)
+function is_pluto_dev()
+    if found_is_pluto_dev[] !== nothing
+        return found_is_pluto_dev[]
+    end
+    found_is_pluto_dev[] = try
+        deps = Pkg.dependencies()
+
+        p_index = findfirst(p -> p.name == "Pluto", deps)
+        p = deps[p_index]
+
+        return p.is_tracking_path
+    catch
+        false
+    end
+end
+
+function frontend_directory(; allow_bundled::Bool=true)
+    if allow_bundled && isdir(project_relative_path("frontend-dist")) && !is_pluto_dev()
         "frontend-dist"
     else
         "frontend"
@@ -290,7 +308,7 @@ function http_router_for(session::ServerSession)
         asset_response(filepath)
     end
     HTTP.@register(router, "GET", "/*", serve_asset)
-    HTTP.@register(router, "GET", "/favicon.ico", create_serve_onefile(project_relative_path(frontend_directory(), "img", "favicon.ico")))
+    HTTP.@register(router, "GET", "/favicon.ico", create_serve_onefile(project_relative_path(frontend_directory(allow_bundled=false), "img", "favicon.ico")))
 
     return router
 end

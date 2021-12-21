@@ -16,7 +16,7 @@ using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
 import Distributed
 import Base64
-import FuzzyCompletions: Completion, ModuleCompletion, PropertyCompletion, FieldCompletion, completions, completion_text, score
+import FuzzyCompletions: Completion, ModuleCompletion, PropertyCompletion, FieldCompletion, PathCompletion, DictCompletion, completions, completion_text, score
 import Base: show, istextmime
 import UUIDs: UUID, uuid4
 import Dates: DateTime
@@ -177,10 +177,12 @@ end
 function sanitize_expr(expr::Expr)
     Expr(expr.head, sanitize_expr.(expr.args)...)
 end
-sanitize_expr(symbol::Symbol) = symbol
 sanitize_expr(linenumbernode::LineNumberNode) = linenumbernode
-sanitize_expr(bool::Bool) = bool
 sanitize_expr(quoted::QuoteNode) = QuoteNode(sanitize_expr(quoted.value))
+
+sanitize_expr(bool::Bool) = bool
+sanitize_expr(symbol::Symbol) = symbol
+sanitize_expr(number::Union{Int,Int8,Float32,Float64}) = number
 
 # In all cases of more complex objects, we just don't send it.
 # It's not like the expression explorer will look into them at all.
@@ -210,6 +212,9 @@ module CantReturnInPluto
             :(throw($(CantReturnInPlutoException())))
         elseif expr.head == :quote
             Expr(:quote, replace_returns_with_error_in_interpolation(expr.args[1]))
+        elseif Meta.isexpr(expr, :(=)) && expr.args[1] isa Expr && (expr.args[1].head == :call || expr.args[1].head == :where || (expr.args[1].head == :(::) && expr.args[1].args[1] isa Expr && expr.args[1].args[1].head == :call))
+            # f(x) = ...
+            expr
         elseif expr.head == :function || expr.head == :macro || expr.head == :(->)
             expr
         else
@@ -757,6 +762,7 @@ const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 function formatted_result_of(
     cell_id::UUID, 
     ends_with_semicolon::Bool, 
+    known_published_objects::Vector{String}=String[],
     showmore::Union{ObjectDimPair,Nothing}=nothing, 
     workspace::Module=Main,
 )::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
@@ -780,13 +786,22 @@ function formatted_result_of(
     else
         ("", MIME"text/plain"())
     end
+    
+    published_objects = get(cell_published_objects, cell_id, Dict{String,Any}())
+    
+    for k in known_published_objects
+        if haskey(published_objects, k)
+            published_objects[k] = nothing
+        end
+    end
+    
     return (
         output_formatted = output_formatted,
         errored = errored, 
         interrupted = false, 
         process_exited = false, 
         runtime = get(cell_runtimes, cell_id, nothing),
-        published_objects = get(cell_published_objects, cell_id, Dict{String,Any}()),
+        published_objects = published_objects,
         has_pluto_hook_features = has_pluto_hook_features,
     )
 end
@@ -1306,12 +1321,14 @@ const integrations = Integration[
             @assert v"1.0.0" <= AbstractPlutoDingetjes.MY_VERSION < v"2.0.0"
             initial_value_getter_ref[] = AbstractPlutoDingetjes.Bonds.initial_value
             transform_value_ref[] = AbstractPlutoDingetjes.Bonds.transform_value
-            
+            possible_bond_values_ref[] = AbstractPlutoDingetjes.Bonds.possible_values
+
             push!(supported_integration_features,
                 AbstractPlutoDingetjes,
                 AbstractPlutoDingetjes.Bonds,
                 AbstractPlutoDingetjes.Bonds.initial_value,
                 AbstractPlutoDingetjes.Bonds.transform_value,
+                AbstractPlutoDingetjes.Bonds.possible_values,
             )
         end,
     ),
@@ -1328,7 +1345,7 @@ const integrations = Integration[
                 if truncate
                     result = Any[
                         # not xs[1:limit] because of https://github.com/JuliaLang/julia/issues/38364
-                        f(xs[i]) for i in 1:limit
+                        f(xs[i]) for i in Iterators.take(eachindex(xs), limit)
                     ]
                     push!(result, filler)
                     result
@@ -1396,6 +1413,7 @@ const integrations = Integration[
             pluto_showable(::MIME"application/vnd.pluto.table+object", x::Any) = try Tables.rowaccess(x)::Bool catch; false end
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::Type) = false
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:NamedTuple}) = false
+            pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:Dict{Symbol,<:Any}}) = false
 
         end,
     ),
@@ -1490,12 +1508,22 @@ end
 completion_from_notebook(c::ModuleCompletion) = is_pluto_workspace(c.parent) && c.mod != "include" && c.mod != "eval"
 completion_from_notebook(c::Completion) = false
 
+only_special_completion_types(c::PathCompletion) = :path
+only_special_completion_types(c::DictCompletion) = :dict
+only_special_completion_types(c::Completion) = nothing
+
 "You say Linear, I say Algebra!"
 function completion_fetcher(query, pos, workspace::Module)
     results, loc, found = completions(query, pos, workspace)
     if endswith(query, '.')
         filter!(is_dot_completion, results)
         # we are autocompleting a module, and we want to see its fields alphabetically
+        sort!(results; by=(r -> completion_text(r)))
+    elseif endswith(query, '/')
+        filter!(is_path_completion, results)
+        sort!(results; by=(r -> completion_text(r)))
+    elseif endswith(query, '[')
+        filter!(is_dict_completion, results)
         sort!(results; by=(r -> completion_text(r)))
     else
         isenough(x) = x ≥ 0
@@ -1506,8 +1534,9 @@ function completion_fetcher(query, pos, workspace::Module)
     descriptions = completion_description.(results)
     exported = completions_exported(results)
     from_notebook = completion_from_notebook.(results)
+    completion_type = only_special_completion_types.(results)
 
-    smooshed_together = collect(zip(texts, descriptions, exported, from_notebook))
+    smooshed_together = collect(zip(texts, descriptions, exported, from_notebook, completion_type))
 
     p = if endswith(query, '.')
         sortperm(smooshed_together; alg=MergeSort, by=basic_completion_priority)
@@ -1522,7 +1551,14 @@ function completion_fetcher(query, pos, workspace::Module)
 end
 
 is_dot_completion(::Union{ModuleCompletion,PropertyCompletion,FieldCompletion}) = true
-is_dot_completion(::Completion)                                                   = false
+is_dot_completion(::Completion)                                                 = false
+
+is_path_completion(::Union{PathCompletion}) = true
+is_path_completion(::Completion)            = false
+
+is_dict_completion(::Union{DictCompletion}) = true
+is_dict_completion(::Completion)            = false
+
 
 """
     is_pure_expression(expression::ReturnValue{Meta.parse})
@@ -1619,6 +1655,37 @@ function transform_bond_value(s::Symbol, value_from_js)
     end
 end
 
+function possible_bond_values(s::Symbol; get_length::Bool=false)
+    element = registered_bond_elements[s]
+    possible_values = possible_bond_values_ref[](element)
+
+    if possible_values === :NotGiven
+        # Short-circuit to avoid the checks below, which only work if AbstractPlutoDingetjes is loaded.
+        :NotGiven
+    elseif possible_values isa AbstractPlutoDingetjes.Bonds.InfinitePossibilities
+        # error("Bond \"$s\" has an unlimited number of possible values, try changing the `@bind` to something with a finite number of possible values like `PlutoUI.CheckBox(...)` or `PlutoUI.Slider(...)` instead.")
+        :InfinitePossibilities
+    elseif (possible_values isa AbstractPlutoDingetjes.Bonds.NotGiven)
+        # error("Bond \"$s\" did not specify its possible values with `AbstractPlutoDingetjes.Bond.possible_values()`. Try using PlutoUI for the `@bind` values.")
+        
+        # If you change this, change it everywhere in this file.
+        :NotGiven
+    else
+        get_length ? 
+            try
+                length(possible_values)
+            catch
+                length(make_distributed_serializable(possible_values))
+            end : 
+            make_distributed_serializable(possible_values)
+    end
+end
+
+make_distributed_serializable(x::Any) = x
+make_distributed_serializable(x::Union{AbstractVector,AbstractSet,Base.Generator}) = collect(x)
+make_distributed_serializable(x::Union{Vector,Set,OrdinalRange}) = x
+
+
 """
 _“The name is Bond, James Bond.”_
 
@@ -1661,6 +1728,7 @@ end
 
 const initial_value_getter_ref = Ref{Function}(element -> missing)
 const transform_value_ref = Ref{Function}((element, x) -> x)
+const possible_bond_values_ref = Ref{Function}((_args...; _kwargs...) -> :NotGiven)
 
 """
     `@bind symbol element`
@@ -1722,6 +1790,9 @@ end"""
 # PUBLISHED OBJECTS
 ###
 
+"""
+**(Internal API.)** A `Ref` containing the id of the cell that is currently **running** or **displaying**.
+"""
 const currently_running_cell_id = Ref{UUID}(uuid4())
 
 function _publish(x, id_start)::String
@@ -1798,17 +1869,21 @@ end
 assertpackable(t::Tuple) = foreach(assertpackable, t)
 assertpackable(t::NamedTuple) = foreach(assertpackable, t)
 
+const _EmbeddableDisplay_enable_html_shortcut = Ref{Bool}(true)
+
 struct EmbeddableDisplay
     x
-    script_id
+    script_id::String
 end
 
 function Base.show(io::IO, m::MIME"text/html", e::EmbeddableDisplay)
     body, mime = format_output_default(e.x, io)
 	
-    write(io, """
-    <pluto-display></pluto-display>
-    <script id=$(e.script_id)>
+    to_write = if mime === m && _EmbeddableDisplay_enable_html_shortcut[]
+        # In this case, we can just embed the HTML content directly.
+        body
+    else
+        """<pluto-display></pluto-display><script id=$(e.script_id)>
 
         // see https://plutocon2021-demos.netlify.app/fonsp%20%E2%80%94%20javascript%20inside%20pluto to learn about the techniques used in this script
         
@@ -1829,8 +1904,9 @@ function Base.show(io::IO, m::MIME"text/html", e::EmbeddableDisplay)
         }
         return display
 
-    </script>
-	""")
+        </script>"""
+    end
+    write(io, to_write)
 end
 
 export embed_display

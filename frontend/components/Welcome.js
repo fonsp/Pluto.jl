@@ -7,6 +7,22 @@ import { cl } from "../common/ClassTable.js"
 import { PasteHandler } from "./PasteHandler.js"
 import { alert, confirm } from "../common/alert_confirm.js"
 
+/**
+ * @typedef CombinedNotebook
+ * @type {{
+ *    path: String,
+ *    transitioning: Boolean,
+ *    notebook_id: String?,
+ * }}
+ */
+
+/**
+ *
+ * @param {string} path
+ * @param {string?} notebook_id
+ * @returns {CombinedNotebook}
+ */
+
 const create_empty_notebook = (path, notebook_id = null) => {
     return {
         transitioning: false, // between running and being shut down
@@ -99,7 +115,7 @@ export class Welcome extends Component {
         this.state = {
             // running_notebooks: null,
             // recent_notebooks: null,
-            combined_notebooks: null, // will become an array
+            combined_notebooks: /** @type {Array<CombinedNotebook>} */ (null), // will become an array
             connected: false,
         }
         const set_notebook_state = (this.set_notebook_state = (path, new_state_props) => {
