@@ -51,10 +51,10 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
     for c in nb.cells
         c.queued = session.options.evaluation.run_notebook_on_load
     end
+    try_event_call(session, OpenNotebookEvent(nb))
     update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
     
     add(session, nb; run_async=run_async)
-    try_event_call(session, OpenNotebookEvent(nb))
     nb
 end
 
@@ -181,12 +181,16 @@ function new(session::ServerSession; run_async=true, notebook_id::UUID=uuid1())
             Notebook([Cell("import Pkg"), Cell("# This cell disables Pluto's package manager and activates the global environment. Click on ? inside the bubble next to Pkg.activate to learn more.\n# (added automatically because a sysimage is used)\nPkg.activate()"), Cell()])
         end
     end
-    nb.notebook_id = notebook_id
-    update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
-    
-    add(session, nb; run_async=run_async)
-    try_event_call(session, NewNotebookEvent(nb))
+    # Run NewNotebookEvent handler before assigning ID
+    isid = try_event_call(session, NewNotebookEvent(nb))
+    nb.notebook_id = isnothing(isid) ? notebook_id : isid
+
+    # Run Open Notebook handler before saving for the first time!
     try_event_call(session, OpenNotebookEvent(nb))
+
+    update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
+    add(session, nb; run_async=run_async)
+
     nb
 end
 
