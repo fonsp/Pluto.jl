@@ -1388,6 +1388,20 @@ import Distributed
             Cell("""struct A7 end; filter(1:3) do x
                 return true
             end"""),
+
+            # Function assignments
+            Cell("""f(x) = if x == 1
+                return false
+            else
+                return true
+            end"""),
+            Cell("""g(x::T) where {T} = if x == 1
+                return false
+            else
+                return true
+            end"""),
+            Cell("(h(x::T)::MyType) where {T} = return(x)"),
+            Cell("i(x)::MyType = return(x)"),
         ])
 
         update_run!(🍭, notebook, notebook.cells)
@@ -1397,7 +1411,7 @@ import Distributed
         @test occursinerror("You can only use return inside a function.", notebook.cells[4])
         @test occursinerror("You can only use return inside a function.", notebook.cells[5])
         @test occursinerror("You can only use return inside a function.", notebook.cells[6])
-        @test notebook.cells[7].errored == false
+        @test notebook.cells[7] |> noerror
 
         @test occursinerror("You can only use return inside a function.", notebook.cells[8])
         @test occursinerror("You can only use return inside a function.", notebook.cells[9])
@@ -1405,7 +1419,13 @@ import Distributed
         @test occursinerror("You can only use return inside a function.", notebook.cells[11])
         @test occursinerror("You can only use return inside a function.", notebook.cells[12])
         @test occursinerror("You can only use return inside a function.", notebook.cells[13])
-        @test notebook.cells[14].errored == false
+        @test notebook.cells[14] |> noerror
+
+        # Function assignments
+        @test notebook.cells[15] |> noerror
+        @test notebook.cells[16] |> noerror
+        @test notebook.cells[17] |> noerror
+        @test notebook.cells[18] |> noerror
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
