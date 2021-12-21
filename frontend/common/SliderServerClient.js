@@ -4,7 +4,19 @@ import { pack, unpack } from "./MsgPack.js"
 import immer from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
-export const nothing_actions = ({ actions }) => Object.fromEntries(Object.keys(actions).map((k) => [k, () => {}]))
+const actions_to_keep = ["get_published_object"]
+
+export const nothing_actions = ({ actions }) =>
+    Object.fromEntries(
+        Object.entries(actions).map(([k, v]) => [
+            k,
+            actions_to_keep.includes(k)
+                ? // the original action
+                  v
+                : // a no-op action
+                  () => {},
+        ])
+    )
 
 export const slider_server_actions = ({ setStatePromise, launch_params, actions, get_original_state, get_current_state, apply_notebook_patches }) => {
     const notebookfile_hash = fetch(launch_params.notebookfile)
