@@ -189,12 +189,13 @@ export class Welcome extends Component {
         })
         this.client_promise.then(async (client) => {
             Object.assign(this.client, client)
-            const { default: environment } = await import(this.client.session_options.server.injected_javascript_data_url)
-            console.log("Does this run?")
-            const { custom_welcome, custom_recent, custom_filepicker } = environment(client, html, useEffect, useState, useMemo)
-            this.setState({
-                extended_components: { ...this.state.extended_components, Recent: custom_recent, Welcome: custom_welcome, Picker: custom_filepicker },
-            })
+            try {
+                const { default: environment } = await import(this.client.session_options.server.injected_javascript_data_url)
+                const { custom_welcome, custom_recent, custom_filepicker } = environment(client, html, useEffect, useState, useMemo)
+                this.setState({
+                    extended_components: { ...this.state.extended_components, Recent: custom_recent, Welcome: custom_welcome, Picker: custom_filepicker },
+                })
+            } catch (e) {}
             this.client.send("get_all_notebooks", {}, {}).then(({ message }) => {
                 const running = message.notebooks.map((nb) => create_empty_notebook(nb.path, nb.notebook_id))
                 const recent_notebooks = get_stored_recent_notebooks()

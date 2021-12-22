@@ -686,14 +686,17 @@ patch: ${JSON.stringify(
         const on_establish_connection = async (client) => {
             // nasty
             Object.assign(this.client, client)
-            const { default: environment } = await import(this.client.session_options.server.injected_javascript_data_url)
-            const { custom_editor_header_component } = environment(client, html, useEffect, useState, useMemo)
-            this.setState({
-                extended_components: {
-                    ...this.state.extended_components,
-                    CustomHeader: custom_editor_header_component,
-                },
-            })
+            try {
+                const { default: environment } = await import(this.client.session_options.server.injected_javascript_data_url)
+                const { custom_editor_header_component } = environment(client, html, useEffect, useState, useMemo)
+                this.setState({
+                    extended_components: {
+                        ...this.state.extended_components,
+                        CustomHeader: custom_editor_header_component,
+                    },
+                })
+            } catch (e) {}
+
             // @ts-ignore
             window.version_info = this.client.version_info // for debugging
 
@@ -1205,7 +1208,10 @@ patch: ${JSON.stringify(
                             }>
                                 <h1><img id="logo-big" src=${url_logo_big} alt="Pluto.jl" /><img id="logo-small" src=${url_logo_small} /></h1>
                             </a>
-                            <${this.state.extended_components.CustomHeader} notebook_id=${this.state.notebook.notebook_id}/>
+                            ${
+                                this.state.extended_components.CustomHeader &&
+                                html`<${this.state.extended_components.CustomHeader} notebook_id=${this.state.notebook.notebook_id} />`
+                            }
                             <div class="flex_grow_1"></div>
                             ${
                                 this.state.extended_components.CustomHeader === null &&
