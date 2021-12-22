@@ -129,7 +129,7 @@ let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPluto
  */
 export const CellInput = ({
     local_code,
-    local_code_author_id,
+    local_code_author_name,
     remote_code,
     disable_input,
     focus_after_creation,
@@ -151,7 +151,7 @@ export const CellInput = ({
     variables_in_all_notebook,
 }) => {
     let pluto_actions = useContext(PlutoContext)
-    const client_id = pluto_actions.client_id
+    const my_author_name = pluto_actions.my_author_name
     const newcm_ref = useRef(/** @type {EditorView} */ (null))
     const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))
     const remote_code_ref = useRef(null)
@@ -466,14 +466,14 @@ export const CellInput = ({
     useEffect(() => {
         if (newcm_ref.current == null) return // Not sure when and why this gave an error, but now it doesn't
         const current_value = getValue6(newcm_ref.current) ?? ""
-        const will_update_code = local_code_author_id !== client_id && current_value !== local_code
+        const will_update_code = local_code_author_name !== my_author_name && current_value !== local_code
         if (will_update_code) {
             newcm_ref.current.dispatch({
                 changes: { from: 0, to: newcm_ref.current.state.doc.length, insert: local_code },
                 annotations: [change_is_from_remote_annotation.of(1)], // Maybe cursor in the future??
             })
         }
-    }, [local_code, client_id])
+    }, [local_code, my_author_name])
 
     useEffect(() => {
         const cm = newcm_ref.current

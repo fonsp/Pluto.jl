@@ -109,7 +109,7 @@ const first_true_key = (obj) => {
  *  cell_id: string,
  *  code: string,
  *  local_code: string,
- *  local_code_author_id?: string,
+ *  local_code_author_name?: string,
  *  code_folded: boolean,
  *  running_disabled: boolean,
  * }}
@@ -226,7 +226,7 @@ export class Editor extends Component {
         super()
 
         this.state = {
-            client_id: uuidv4(),
+            my_author_name: uuidv4(),
             notebook: /** @type {NotebookData} */ initial_notebook(),
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
@@ -272,7 +272,7 @@ export class Editor extends Component {
                 update_notebook((notebook) => {
                     if (notebook.cell_inputs[cell_id].local_code !== new_val) {
                         notebook.cell_inputs[cell_id].local_code = new_val
-                        notebook.cell_inputs[cell_id].local_code_author_id = this.state.client_id
+                        notebook.cell_inputs[cell_id].local_code_author_name = this.state.my_author_name
                     }
                 })
             },
@@ -1127,10 +1127,13 @@ patch: ${JSON.stringify(
 
         const status = this.cached_status ?? statusmap(this.state)
         const statusval = first_true_key(status)
-        const pluto_actions_with_client_id = useMemo(() => ({ ...this.actions, client_id: this.state.client_id }), [this.actions, this.state.client_id])
+        const pluto_actions_with_my_author_name = useMemo(
+            () => ({ ...this.actions, my_author_name: this.state.my_author_name }),
+            [this.actions, this.state.my_author_name]
+        )
         if (status.isolated_cell_view) {
             return html`
-                <${PlutoContext.Provider} value=${pluto_actions_with_client_id}>
+                <${PlutoContext.Provider} value=${pluto_actions_with_my_author_name}>
                     <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                         <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
                             <div style="width: 100%">
@@ -1165,7 +1168,7 @@ patch: ${JSON.stringify(
         >`
 
         return html`
-            <${PlutoContext.Provider} value=${pluto_actions_with_client_id}>
+            <${PlutoContext.Provider} value=${pluto_actions_with_my_author_name}>
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                     <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
                     <${Scroller} active=${this.state.scroller} />
