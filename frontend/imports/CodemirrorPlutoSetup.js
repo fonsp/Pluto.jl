@@ -43,7 +43,7 @@ import {
     combineConfig,
     NodeProp,
     autocomplete,
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@0.19.4/dist/index.es.min.js"
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@0.19.5/dist/index.es.min.js"
 
 export {
     EditorState,
