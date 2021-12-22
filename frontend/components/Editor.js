@@ -297,9 +297,10 @@ export class Editor extends Component {
                 /** Create copies of the cells with fresh ids */
                 let new_cells = new_codes.map((code) => ({
                     cell_id: uuidv4(),
-                    code: code,
+                    code: "",
                     code_folded: false,
                     running_disabled: false,
+                    local_code: code,
                 }))
 
                 let index
@@ -322,20 +323,6 @@ export class Editor extends Component {
                 /** Update local_code. Local code doesn't force CM to update it's state
                  * (the usual flow is keyboard event -> cm -> local_code and not the opposite )
                  * See ** 1 **
-                 */
-                this.setState(
-                    immer((state) => {
-                        // Deselect everything first, to clean things up
-                        state.selected_cells = []
-
-                        for (let cell of new_cells) {
-                            state.notebook.cell_inputs[cell.cell_id] = cell
-                        }
-                        state.last_created_cell = new_cells[0]?.cell_id
-                    })
-                )
-
-                /**
                  * Create an empty cell in the julia-side.
                  * Code will differ, until the user clicks 'run' on the new code
                  */
@@ -354,20 +341,25 @@ export class Editor extends Component {
                         ...notebook.cell_order.slice(index, Infinity),
                     ]
                 })
+                await this.setStatePromise(
+                    immer((state) => {
+                        // Deselect everything first, to clean things up
+                        state.selected_cells = []
+                        state.last_created_cell = new_cells[0]?.cell_id
+                    })
+                )
             },
             wrap_remote_cell: async (cell_id, block_start = "begin", block_end = "end") => {
                 const cell = this.state.notebook.cell_inputs[cell_id]
                 const new_code = `${block_start}\n\t${cell.code.replace(/\n/g, "\n\t")}\n${block_end}`
 
-                await this.setStatePromise(
-                    immer((state) => {
-                        state.notebook.cell_inputs[cell_id] = {
-                            ...cell,
-                            ...state.notebook.cell_inputs[cell_id],
-                            local_code: new_code,
-                        }
-                    })
-                )
+                await update_notebook((notebook) => {
+                    notebook.cell_inputs[cell_id] = {
+                        ...cell,
+                        ...notebook.cell_inputs[cell_id],
+                        local_code: new_code,
+                    }
+                })
                 await this.actions.set_and_run_multiple([cell_id])
             },
             split_remote_cell: async (cell_id, boundaries, submit = false) => {
@@ -388,13 +380,6 @@ export class Editor extends Component {
                     }
                 })
 
-                this.setState(
-                    immer((state) => {
-                        for (let cell of cells_to_add) {
-                            state.notebook.cell_inputs[cell.cell_id] = cell
-                        }
-                    })
-                )
                 await update_notebook((notebook) => {
                     // delete the old cell
                     delete notebook.cell_inputs[cell_id]
@@ -503,8 +488,8 @@ export class Editor extends Component {
                 if (cell_ids.length > 0) {
                     await update_notebook((notebook) => {
                         for (let cell_id of cell_ids) {
-                            if (this.state.notebook.cell_inputs[cell_id]?.local_code) {
-                                notebook.cell_inputs[cell_id].code = this.state.notebook.cell_inputs[cell_id].local_code
+                            if (notebook.cell_inputs[cell_id]?.local_code) {
+                                notebook.cell_inputs[cell_id].code = notebook.cell_inputs[cell_id].local_code
                             }
                         }
                     })
