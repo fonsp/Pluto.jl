@@ -23,6 +23,28 @@ const pythonParser = pythonLanguage.parser
 
 const MD_SIMPLE_TAGS = ["md", "mermaid"].flatMap((x) => [x, `@${x}`])
 const MD_EXTENDED_TAGS = ["cm", "markdown", "mdx", "mdl", "markdownliteral"].flatMap((x) => [x, `@${x}`])
+
+const overlayHack = (overlay, input) => {
+    return overlay.flatMap(({ from, to }) => {
+        const text = input.read(from, to)
+        const newlines = [...text.matchAll(/\\n/g)].map(({ index }) => ({ from: from + index, to: from + index + 2 }))
+        const escdollars = [...text.matchAll(/\\\$/g)].map(({ index }) => ({ from: from + index, to: from + index + 1 }))
+        const escjuliadollars = [...text.matchAll(/[^\\]\$/g)].map(({ index }) => ({ from: from + index, to: from + index + 2 }))
+        const extraOverlaysNegatives = _.sortBy([...newlines, ...escdollars, ...escjuliadollars], "from")
+
+        const result = []
+        let f = from,
+            t = to
+        extraOverlaysNegatives.forEach(({ from: newFrom, to: newTo }) => {
+            result.push({ from: f, to: newFrom })
+            f = newTo
+        })
+        result.push({ from: f, to: t })
+        // console.log(result, { from, to }, result.map(({ from, to }) => input.read(from, to)).join(" - "))
+        return result
+    })
+}
+
 const juliaWrapper = parseMixed((node, input) => {
     if (!["TripleString", "String", "CommandString"].includes(node.type.name)) {
         return null
@@ -42,84 +64,62 @@ const juliaWrapper = parseMixed((node, input) => {
         return null
     }
     const tag = input.read(tagNode.from, tagNode.to)
-    let parser
+    let parser,
+        overlay = []
 
     if (tag === "@htl") {
         parser = htmlParser
     } else if (tag === "html") {
-        return {
-            parser: htmlParser,
-            overlay: defaultOverlay,
-        }
+        parser = htmlParser
+        overlay = defaultOverlay
     } else if (MD_SIMPLE_TAGS.includes(tag)) {
-        return {
-            parser: mdParser,
-            overlay: defaultOverlay,
-        }
+        parser = mdParser
+        overlay = defaultOverlay
     } else if (MD_EXTENDED_TAGS.includes(tag)) {
         parser = mdParserExt
     } else if (tag === "@javascript") {
-        return {
-            parser: javascriptLanguage.parser,
-            overlay: defaultOverlay,
-        }
+        parser = javascriptLanguage.parser
     } else if (tag === "py" || tag === "pyr" || tag === "python") {
-        return {
-            parser: pythonParser,
-            overlay: defaultOverlay,
-        }
+        parser = pythonParser
     } else if (tag === "sql") {
         parser = postgresParser
     } else {
         return null
     }
 
-    let overlay = [] //: { from: number, to: number }[] = [];
     let from = node.from
-    for (let child = node.node.firstChild; child !== null && child.to <= node.to; child = child?.nextSibling) {
+    for (let child = node.node.firstChild; overlay !== defaultOverlay && child !== null && child.to <= node.to; child = child?.nextSibling) {
         overlay.push({ from, to: child.from })
         from = child.to
     }
-
+    // If overlay is not the default and we haven't found anything (=interpolation) inside, use the default
     if (overlay.length === 0 || node.node.firstChild === null) {
-        return { parser }
+        overlay = defaultOverlay
+    } else if (
+        // If the overlay is the default, this fix is not needed, as it's already adjusted for limits
+        overlay !== defaultOverlay
+    ) {
+        overlay.push({ from, to: node.to })
+        // Remove quotes from strings
+        if (node.type.name === "TripleString") {
+            // Triple Quote String
+            overlay[0].from += 3
+            overlay[overlay.length - 1].to -= 3
+        } else {
+            // Single quote string
+            overlay[0].from += 1
+            overlay[overlay.length - 1].to -= 1
+        }
     }
-    overlay.push({ from, to: node.to })
-    // TODO: replace $() from overlays - add placeholder??
-    // Remove quotes from strings
-    if (node.type.name === "TripleString") {
-        // Triple Quote String
-        overlay[0].from += 3
-        overlay[overlay.length - 1].to -= 3
-    } else {
-        // Single quote string
-        overlay[0].from += 1
-        overlay[overlay.length - 1].to -= 1
-    }
-    // If javascript, we want to unescape some characters
+
+    // If javascript or markdown or htl, we want to unescape some characters
     // Until the parser is smarter, we remove the selection from the syntax highlighting overlay.
     if (["@htl", "@javascript", ...MD_EXTENDED_TAGS].includes(tag)) {
-        overlay = overlay.flatMap(({ from, to }) => {
-            const text = input.read(from, to)
-            const newlines = [...text.matchAll(/\\n/g)].map(({ index }) => ({ from: from + index, to: from + index + 2 }))
-            const escdollars = [...text.matchAll(/\\\$/g)].map(({ index }) => ({ from: from + index, to: from + index + 1 }))
-            const escjuliadollars = [...text.matchAll(/[^\\]\$/g)].map(({ index }) => ({ from: from + index, to: from + index + 2 }))
-            const extraOverlaysNegatives = _.sortBy([...newlines, ...escdollars, ...escjuliadollars], "from")
-
-            const result = []
-            let f = from,
-                t = to
-            extraOverlaysNegatives.forEach(({ from: newFrom, to: newTo }) => {
-                result.push({ from: f, to: newFrom })
-                f = newTo
-            })
-            result.push({ from: f, to: t })
-            // console.log(result, { from, to }, result.map(({ from, to }) => input.read(from, to)).join(" - "))
-            return result
-        })
+        overlay = overlayHack(overlay, input)
     }
-
-    return { parser, overlay }
+    const ret = { parser, overlay }
+    console.log(">", tag, overlay, ret)
+    return ret
 })
 
 const julia_andrey = julia_andrey_original()
