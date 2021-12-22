@@ -45,7 +45,7 @@ import {
     autocomplete,
 } from "../imports/CodemirrorPlutoSetup.js"
 
-import { markdown, html as htmlLang, javascript, sqlLang, python, julia_andrey } from "../imports/mixedParsers.js"
+import { markdown, html as htmlLang, javascript, sqlLang, python, julia_andrey } from "./CellInput/mixedParsers.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
 import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"

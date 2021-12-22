@@ -16,7 +16,7 @@ import { pluto_syntax_colors } from "./CellInput.js"
 import { useState } from "../imports/Preact.js"
 
 import hljs from "../imports/highlightjs.js"
-import { julia_andrey } from "../imports/mixedParsers.js"
+import { julia_andrey } from "./CellInput/mixedParsers.js"
 
 export class CellOutput extends Component {
     constructor() {
