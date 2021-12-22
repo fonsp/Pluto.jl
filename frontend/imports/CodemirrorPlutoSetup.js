@@ -15,6 +15,7 @@ import {
     indentLess,
     tags,
     HighlightStyle,
+    autocompletion,
     lineNumbers,
     highlightSpecialChars,
     foldGutter,
@@ -29,6 +30,7 @@ import {
     searchKeymap,
     foldKeymap,
     commentKeymap,
+    completionKeymap,
     syntaxTree,
     Decoration,
     ViewUpdate,
@@ -42,8 +44,7 @@ import {
     indentUnit,
     combineConfig,
     NodeProp,
-    autocomplete,
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@0.19.4/dist/index.es.min.js"
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@0.19.2/dist/index.es.min.js"
 
 export {
     EditorState,
@@ -62,6 +63,7 @@ export {
     indentLess,
     tags,
     HighlightStyle,
+    autocompletion,
     lineNumbers,
     highlightSpecialChars,
     foldGutter,
@@ -76,6 +78,7 @@ export {
     searchKeymap,
     foldKeymap,
     commentKeymap,
+    completionKeymap,
     syntaxTree,
     Decoration,
     ViewUpdate,
@@ -89,5 +92,4 @@ export {
     indentUnit,
     combineConfig,
     NodeProp,
-    autocomplete,
 }
