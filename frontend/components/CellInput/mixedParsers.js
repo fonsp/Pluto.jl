@@ -12,7 +12,7 @@ import {
     python,
     julia_andrey as julia_andrey_original,
     parseCode,
-} from "./CodemirrorPlutoSetup.js"
+} from "../../imports/CodemirrorPlutoSetup.js"
 
 const htmlParser = htmlLanguage.parser
 const mdParser = markdownLanguage.parser
