@@ -195,6 +195,7 @@ function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing)
             end
         end
     end
+    try_event_call(🙋.session, FileEditEvent(🙋.notebook))
 end
 
 "Like `deepcopy`, but anything onther than `Dict` gets a shallow (reference) copy."
