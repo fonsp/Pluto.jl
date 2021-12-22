@@ -13,7 +13,6 @@ import {
     Compartment,
     EditorView,
     placeholder,
-    julia_andrey,
     keymap,
     history,
     historyKeymap,
@@ -43,13 +42,10 @@ import {
     indentUnit,
     StateField,
     StateEffect,
-    markdown,
-    html as htmlLang,
-    javascript,
-    sqlLang,
-    python,
     autocomplete,
 } from "../imports/CodemirrorPlutoSetup.js"
+
+import { markdown, html as htmlLang, javascript, sqlLang, python, julia_andrey } from "../imports/mixedParsers.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
 import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"
