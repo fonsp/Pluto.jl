@@ -117,9 +117,7 @@ const juliaWrapper = parseMixed((node, input) => {
     if (["@htl", "@javascript", ...MD_EXTENDED_TAGS].includes(tag)) {
         overlay = overlayHack(overlay, input)
     }
-    const ret = { parser, overlay }
-    console.log(">", tag, overlay, ret)
-    return ret
+    return { parser, overlay }
 })
 
 const julia_andrey = julia_andrey_original()
