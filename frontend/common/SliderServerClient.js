@@ -4,7 +4,19 @@ import { pack, unpack } from "./MsgPack.js"
 import immer from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
-export const nothing_actions = ({ actions }) => Object.fromEntries(Object.keys(actions).map((k) => [k, () => {}]))
+const actions_to_keep = ["get_published_object"]
+
+export const nothing_actions = ({ actions }) =>
+    Object.fromEntries(
+        Object.entries(actions).map(([k, v]) => [
+            k,
+            actions_to_keep.includes(k)
+                ? // the original action
+                  v
+                : // a no-op action
+                  () => {},
+        ])
+    )
 
 export const slider_server_actions = ({ setStatePromise, launch_params, actions, get_original_state, get_current_state, apply_notebook_patches }) => {
     const notebookfile_hash = fetch(launch_params.notebookfile)
@@ -46,6 +58,7 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
 
             const url = base + "staterequest/" + encodeURIComponent(hash) + "/"
 
+            let unpacked = null
             try {
                 const use_get = url.length + (packed.length * 4) / 3 + 20 < 8000
 
@@ -58,7 +71,8 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
                           body: packed,
                       })
 
-                const { patches, ids_of_cells_that_ran } = unpack(new Uint8Array(await response.arrayBuffer()))
+                unpacked = unpack(new Uint8Array(await response.arrayBuffer()))
+                const { patches, ids_of_cells_that_ran } = unpacked
 
                 await apply_notebook_patches(
                     patches,
@@ -70,7 +84,7 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
                     })(get_current_state())
                 )
             } catch (e) {
-                console.error(e)
+                console.error(unpacked, e)
             }
         }
     })

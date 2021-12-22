@@ -1383,8 +1383,8 @@ declare class Tree {
     cursor(pos?: number, side?: -1 | 0 | 1): TreeCursor;
     fullCursor(): TreeCursor;
     get topNode(): SyntaxNode;
-    resolve(pos: number, side?: -1 | 0 | 1): SyntaxNode;
-    resolveInner(pos: number, side?: -1 | 0 | 1): SyntaxNode;
+    resolve(pos: number, side?: -1 | 0 | 1): any;
+    resolveInner(pos: number, side?: -1 | 0 | 1): any;
     iterate(spec: {
         enter(type: NodeType, from: number, to: number, get: () => SyntaxNode): false | void;
         leave?(type: NodeType, from: number, to: number, get: () => SyntaxNode): void;
@@ -1647,6 +1647,11 @@ interface SpanIterator<T extends RangeValue> {
     `active.length + 1` to signal this.
     */
     point(from: number, to: number, value: T, active: readonly T[], openStart: number): void;
+    /**
+    When provided, this will be called for each point processed,
+    causing the ones for which it returns false to be ignored.
+    */
+    filterPoint?(from: number, to: number, value: T, index: number): boolean;
 }
 /**
 A range cursor is an object that moves to the next range every
@@ -2063,6 +2068,7 @@ interface Rect {
     readonly top: number;
     readonly bottom: number;
 }
+declare type ScrollStrategy = "nearest" | "start" | "end" | "center";
 
 /**
 Command functions are used in key bindings and other types of user
@@ -2125,11 +2131,13 @@ declare class PluginField<T> {
     **Note**: For reasons of data flow (plugins are only updated
     after the viewport is computed), decorations produced by plugins
     are _not_ taken into account when predicting the vertical layout
-    structure of the editor. Thus, things like large widgets or big
-    replacements (i.e. code folding) should be provided through the
-    state-level [`decorations` facet](https://codemirror.net/6/docs/ref/#view.EditorView^decorations),
-    not this plugin field. Specifically, replacing decorations that
-    cross line boundaries will break if provided through a plugin.
+    structure of the editor. They **must not** introduce block
+    widgets (that will raise an error) or replacing decorations that
+    cover line breaks (these will be ignored if they occur). Such
+    decorations, or others that cause a large amount of vertical
+    size shift compared to the undecorated content, should be
+    provided through the state-level [`decorations`
+    facet](https://codemirror.net/6/docs/ref/#view.EditorView^decorations) instead.
     */
     static decorations: PluginField<DecorationSet>;
     /**
@@ -2255,12 +2263,13 @@ declare class ViewUpdate {
     */
     get viewportChanged(): boolean;
     /**
-    Indicates whether the line height in the editor changed in this update.
+    Indicates whether the height of an element in the editor changed
+    in this update.
     */
     get heightChanged(): boolean;
     /**
-    Returns true when the document changed or the size of the editor
-    or the lines or characters within it has changed.
+    Returns true when the document was modified or the size of the
+    editor, or elements within the editor, changed.
     */
     get geometryChanged(): boolean;
     /**
@@ -2705,6 +2714,11 @@ declare class EditorView {
     Find the DOM parent node and offset (child offset if `node` is
     an element, character offset when it is a text node) at the
     given document position.
+    
+    Note that for positions that aren't currently in
+    `visibleRanges`, the resulting DOM position isn't necessarily
+    meaningful (it may just point before or after a placeholder
+    element).
     */
     domAtPos(pos: number): {
         node: Node;
@@ -2717,8 +2731,11 @@ declare class EditorView {
     */
     posAtDOM(node: Node, offset?: number): number;
     /**
-    Get the document position at the given screen coordinates.
-    Returns null if no valid position could be found.
+    Get the document position at the given screen coordinates. For
+    positions not covered by the visible viewport's DOM structure,
+    this will return null, unless `false` is passed as second
+    argument, in which case it'll return an estimated position that
+    would be near the coordinates if it were rendered.
     */
     posAtCoords(coords: {
         x: number;
@@ -2787,13 +2804,48 @@ declare class EditorView {
     /**
     Effect that can be [added](https://codemirror.net/6/docs/ref/#state.TransactionSpec.effects) to a
     transaction to make it scroll the given range into view.
+    
+    *Deprecated*. Use [`scrollIntoView`](https://codemirror.net/6/docs/ref/#view.EditorView^scrollIntoView) instead.
     */
     static scrollTo: StateEffectType<SelectionRange>;
     /**
     Effect that makes the editor scroll the given range to the
     center of the visible view.
+    
+    *Deprecated*. Use [`scrollIntoView`](https://codemirror.net/6/docs/ref/#view.EditorView^scrollIntoView) instead.
     */
     static centerOn: StateEffectType<SelectionRange>;
+    /**
+    Returns an effect that can be
+    [added](https://codemirror.net/6/docs/ref/#state.TransactionSpec.effects) to a transaction to
+    cause it to scroll the given position or range into view.
+    */
+    static scrollIntoView(pos: number | SelectionRange, options?: {
+        /**
+        By default (`"nearest"`) the position will be vertically
+        scrolled only the minimal amount required to move the given
+        position into view. You can set this to `"start"` to move it
+        to the top of the view, `"end"` to move it to the bottom, or
+        `"center"` to move it to the center.
+        */
+        y?: ScrollStrategy;
+        /**
+        Effect similar to
+        [`y`](https://codemirror.net/6/docs/ref/#view.EditorView^scrollIntoView^options.y), but for the
+        horizontal scroll position.
+        */
+        x?: ScrollStrategy;
+        /**
+        Extra vertical distance to add when moving something into
+        view. Not used with the `"center"` strategy. Defaults to 5.
+        */
+        yMargin?: number;
+        /**
+        Extra horizontal distance to add. Not used with the `"center"`
+        strategy. Defaults to 5.
+        */
+        xMargin?: number;
+    }): StateEffect<unknown>;
     /**
     Facet to add a [style
     module](https://github.com/marijnh/style-mod#documentation) to
@@ -4491,6 +4543,21 @@ declare class CompletionContext {
     addEventListener(type: "abort", listener: () => void): void;
 }
 /**
+Given a a fixed array of options, return an autocompleter that
+completes them.
+*/
+declare function completeFromList(list: readonly (string | Completion)[]): CompletionSource;
+/**
+Wrap the given completion source so that it will only fire when the
+cursor is in a syntax node with one of the given names.
+*/
+declare function ifIn(nodes: readonly string[], source: CompletionSource): CompletionSource;
+/**
+Wrap the given completion source so that it will not fire when the
+cursor is in a syntax node with one of the given names.
+*/
+declare function ifNotIn(nodes: readonly string[], source: CompletionSource): CompletionSource;
+/**
 The function signature for a completion source. Such a function
 may return its [result](https://codemirror.net/6/docs/ref/#autocomplete.CompletionResult)
 synchronously or as a promise. Returning null indicates no
@@ -4536,6 +4603,92 @@ interface CompletionResult {
     */
     filter?: boolean;
 }
+/**
+This annotation is added to transactions that are produced by
+picking a completion.
+*/
+declare const pickedCompletion: AnnotationType<Completion>;
+
+/**
+Convert a snippet template to a function that can apply it.
+Snippets are written using syntax like this:
+
+    "for (let ${index} = 0; ${index} < ${end}; ${index}++) {\n\t${}\n}"
+
+Each `${}` placeholder (you may also use `#{}`) indicates a field
+that the user can fill in. Its name, if any, will be the default
+content for the field.
+
+When the snippet is activated by calling the returned function,
+the code is inserted at the given position. Newlines in the
+template are indented by the indentation of the start line, plus
+one [indent unit](https://codemirror.net/6/docs/ref/#language.indentUnit) per tab character after
+the newline.
+
+On activation, (all instances of) the first field are selected.
+The user can move between fields with Tab and Shift-Tab as long as
+the fields are active. Moving to the last field or moving the
+cursor out of the current field deactivates the fields.
+
+The order of fields defaults to textual order, but you can add
+numbers to placeholders (`${1}` or `${1:defaultText}`) to provide
+a custom order.
+*/
+declare function snippet(template: string): (editor: {
+    state: EditorState;
+    dispatch: (tr: Transaction) => void;
+}, _completion: Completion, from: number, to: number) => void;
+/**
+A command that clears the active snippet, if any.
+*/
+declare const clearSnippet: StateCommand;
+/**
+Move to the next snippet field, if available.
+*/
+declare const nextSnippetField: StateCommand;
+/**
+Move to the previous snippet field, if available.
+*/
+declare const prevSnippetField: StateCommand;
+/**
+A facet that can be used to configure the key bindings used by
+snippets. The default binds Tab to
+[`nextSnippetField`](https://codemirror.net/6/docs/ref/#autocomplete.nextSnippetField), Shift-Tab to
+[`prevSnippetField`](https://codemirror.net/6/docs/ref/#autocomplete.prevSnippetField), and Escape
+to [`clearSnippet`](https://codemirror.net/6/docs/ref/#autocomplete.clearSnippet).
+*/
+declare const snippetKeymap: Facet<readonly KeyBinding[], readonly KeyBinding[]>;
+/**
+Create a completion from a snippet. Returns an object with the
+properties from `completion`, plus an `apply` function that
+applies the snippet.
+*/
+declare function snippetCompletion(template: string, completion: Completion): Completion;
+
+/**
+Returns a command that moves the completion selection forward or
+backward by the given amount.
+*/
+declare function moveCompletionSelection(forward: boolean, by?: "option" | "page"): Command;
+/**
+Accept the current completion.
+*/
+declare const acceptCompletion: Command;
+/**
+Explicitly start autocompletion.
+*/
+declare const startCompletion: Command;
+/**
+Close the currently active completion.
+*/
+declare const closeCompletion: Command;
+
+/**
+A completion source that will scan the document for words (using a
+[character categorizer](https://codemirror.net/6/docs/ref/#state.EditorState.charCategorizer)), and
+return those as completions.
+*/
+declare const completeAnyWord: CompletionSource;
 
 /**
 Returns an extension that enables autocompletion.
@@ -4553,6 +4706,75 @@ Basic keybindings for autocompletion.
  - Enter: [`acceptCompletion`](https://codemirror.net/6/docs/ref/#autocomplete.acceptCompletion)
 */
 declare const completionKeymap: readonly KeyBinding[];
+/**
+Get the current completion status. When completions are available,
+this will return `"active"`. When completions are pending (in the
+process of being queried), this returns `"pending"`. Otherwise, it
+returns `null`.
+*/
+declare function completionStatus(state: EditorState): null | "active" | "pending";
+/**
+Returns the available completions as an array.
+*/
+declare function currentCompletions(state: EditorState): readonly Completion[];
+/**
+Return the currently selected completion, if any.
+*/
+declare function selectedCompletion(state: EditorState): Completion | null;
+
+type index_Completion = Completion;
+type index_CompletionContext = CompletionContext;
+declare const index_CompletionContext: typeof CompletionContext;
+type index_CompletionResult = CompletionResult;
+type index_CompletionSource = CompletionSource;
+declare const index_acceptCompletion: typeof acceptCompletion;
+declare const index_autocompletion: typeof autocompletion;
+declare const index_clearSnippet: typeof clearSnippet;
+declare const index_closeCompletion: typeof closeCompletion;
+declare const index_completeAnyWord: typeof completeAnyWord;
+declare const index_completeFromList: typeof completeFromList;
+declare const index_completionKeymap: typeof completionKeymap;
+declare const index_completionStatus: typeof completionStatus;
+declare const index_currentCompletions: typeof currentCompletions;
+declare const index_ifIn: typeof ifIn;
+declare const index_ifNotIn: typeof ifNotIn;
+declare const index_moveCompletionSelection: typeof moveCompletionSelection;
+declare const index_nextSnippetField: typeof nextSnippetField;
+declare const index_pickedCompletion: typeof pickedCompletion;
+declare const index_prevSnippetField: typeof prevSnippetField;
+declare const index_selectedCompletion: typeof selectedCompletion;
+declare const index_snippet: typeof snippet;
+declare const index_snippetCompletion: typeof snippetCompletion;
+declare const index_snippetKeymap: typeof snippetKeymap;
+declare const index_startCompletion: typeof startCompletion;
+declare namespace index {
+  export {
+    index_Completion as Completion,
+    index_CompletionContext as CompletionContext,
+    index_CompletionResult as CompletionResult,
+    index_CompletionSource as CompletionSource,
+    index_acceptCompletion as acceptCompletion,
+    index_autocompletion as autocompletion,
+    index_clearSnippet as clearSnippet,
+    index_closeCompletion as closeCompletion,
+    index_completeAnyWord as completeAnyWord,
+    index_completeFromList as completeFromList,
+    index_completionKeymap as completionKeymap,
+    index_completionStatus as completionStatus,
+    index_currentCompletions as currentCompletions,
+    index_ifIn as ifIn,
+    index_ifNotIn as ifNotIn,
+    index_moveCompletionSelection as moveCompletionSelection,
+    index_nextSnippetField as nextSnippetField,
+    index_pickedCompletion as pickedCompletion,
+    index_prevSnippetField as prevSnippetField,
+    index_selectedCompletion as selectedCompletion,
+    index_snippet as snippet,
+    index_snippetCompletion as snippetCompletion,
+    index_snippetKeymap as snippetKeymap,
+    index_startCompletion as startCompletion,
+  };
+}
 
 declare type HighlightOptions = {
     /**
@@ -4705,6 +4927,11 @@ declare class InlineContext {
     elt(type: string, from: number, to: number, children?: readonly Element$1[]): Element$1;
     elt(tree: Tree, at: number): Element$1;
 }
+
+declare function parseCode(config: {
+    codeParser?: (info: string) => null | Parser;
+    htmlParser?: Parser;
+}): MarkdownExtension;
 
 /**
 Language support for [GFM](https://github.github.com/gfm/) plus
@@ -4939,4 +5166,4 @@ Create an instance of the collaborative editing plugin.
 */
 declare function collab(config?: CollabConfig): Extension;
 
-export { Annotation, Compartment, Decoration, EditorSelection, EditorState, EditorView, Facet, HighlightStyle, NodeProp, PostgreSQL, SelectionRange, StateEffect, StateField, StreamLanguage, Text, Transaction, TreeCursor, ViewPlugin, ViewUpdate, WidgetType, autocompletion, bracketMatching, closeBrackets, closeBracketsKeymap, collab, combineConfig, commentKeymap, completionKeymap, defaultHighlightStyle, defaultKeymap, drawSelection, foldGutter, foldKeymap, highlightSelectionMatches, highlightSpecialChars, history, historyKeymap, html, htmlLanguage, indentLess, indentMore, indentOnInput, indentUnit, javascript, javascriptLanguage, julia as julia_andrey, julia$1 as julia_legacy, keymap, lineNumbers, markdown, markdownLanguage, parseMixed, placeholder, python, pythonLanguage, rectangularSelection, searchKeymap, sql, syntaxTree, tags };
+export { Annotation, Compartment, Decoration, EditorSelection, EditorState, EditorView, Facet, HighlightStyle, NodeProp, PostgreSQL, SelectionRange, StateEffect, StateField, StreamLanguage, Text, Transaction, TreeCursor, ViewPlugin, ViewUpdate, WidgetType, index as autocomplete, bracketMatching, closeBrackets, closeBracketsKeymap, collab, combineConfig, commentKeymap, completionKeymap, defaultHighlightStyle, defaultKeymap, drawSelection, foldGutter, foldKeymap, highlightSelectionMatches, highlightSpecialChars, history, historyKeymap, html, htmlLanguage, indentLess, indentMore, indentOnInput, indentUnit, javascript, javascriptLanguage, julia as julia_andrey, julia$1 as julia_legacy, keymap, lineNumbers, markdown, markdownLanguage, parseCode, parseMixed, placeholder, python, pythonLanguage, rectangularSelection, searchKeymap, sql, syntaxTree, tags };

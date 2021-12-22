@@ -151,6 +151,7 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:([a for a in b if a != 2]), [:b], [], [:(!=)], [])
         @test testee(:([a for a in f() if g(a)]), [], [], [:f, :g], [])
         @test testee(:([c(a) for a in f() if g(a)]), [], [], [:c, :f, :g], [])
+        @test testee(:([k for k in P, j in 1:k]), [:k, :P], [], [:(:)], [])
 
         @test testee(:([a for a in a]), [:a], [], [], [])
         @test testee(:(for a in a; a; end), [:a], [], [], [])

@@ -44,7 +44,7 @@ end
     ["--compile=min", "--startup-file=no", "--history-file=no"]
 end
 
-@testset "authentication" begin
+@testset "Authentication" begin
     port = 1238
     options = Pluto.Configuration.from_flat_kwargs(; port=port, launch_browser=false, workspace_use_distributed=false)
     🍭 = Pluto.ServerSession(; options=options)
@@ -125,28 +125,33 @@ end
     "https://gist.githubusercontent.com/fonsp/4e164a262a60fc4bdd638e124e629d64/raw/8ffe93c680e539056068456a62dea7bf6b8eb622/basic_pkg_notebook.jl",
     ]
     nbnames = download.(urls)
+    
+    server_running() = HTTP.get(local_url("favicon.ico")).status == 200 && HTTP.get(local_url("edit")).status == 200
 
     # without notebook at startup
-    server_task = @async Pluto.run(port=port, launch_browser=false, workspace_use_distributed=false, require_secret_for_access=false)
+    server_task = @async Pluto.run(port=port, launch_browser=false, workspace_use_distributed=false, require_secret_for_access=false, require_secret_for_open_links=false)
     @test poll(5) do
-        HTTP.get(local_url("favicon.ico")).status == 200
+        server_running()
     end
     @async schedule(server_task, InterruptException(); error=true)
 
     # with a single notebook at startup
-    server_task = @async Pluto.run(notebook=first(nbnames), port=port, launch_browser=false, workspace_use_distributed=false, require_secret_for_access=false)
+    server_task = @async Pluto.run(notebook=first(nbnames), port=port, launch_browser=false, workspace_use_distributed=false, require_secret_for_access=false, require_secret_for_open_links=false)
     @test poll(5) do
-        HTTP.get(local_url("favicon.ico")).status == 200
+        server_running()
     end
     @async schedule(server_task, InterruptException(); error=true)
 
     # with multiple notebooks at startup
-    server_task = @async Pluto.run(notebook=nbnames, port=port, launch_browser=false, workspace_use_distributed=false, require_secret_for_access=false)
+    server_task = @async Pluto.run(notebook=nbnames, port=port, launch_browser=false, workspace_use_distributed=false, require_secret_for_access=false, require_secret_for_open_links=false)
     @test poll(5) do
-        HTTP.get(local_url("favicon.ico")).status == 200
+        server_running()
     end
     @async schedule(server_task, InterruptException(); error=true)
 
 end
+
+# TODO are the processes closed properly?
+# TODO we reuse the same port without awaiting the shutdown of the previous server
 
 end # testset

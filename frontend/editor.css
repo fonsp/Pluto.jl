@@ -292,7 +292,7 @@ pluto-output div.admonition {
 pluto-output div.admonition .admonition-title {
     background: rgb(158, 200, 137);
     margin: -1px; /* Fixes a rendering glitch in Chrome */
-    margin-left: -.55rem;
+    margin-left: -0.55rem;
 }
 pluto-output div.admonition.note,
 pluto-output div.admonition.info,
@@ -615,12 +615,14 @@ nav#at_the_top > pluto-filepicker button {
     cursor: pointer;
 }
 
+button.start_stop_recording,
 button.toggle_export {
     border: none;
     background: none;
     cursor: pointer;
     opacity: 0.5;
 }
+button.start_stop_recording span,
 button.toggle_export span {
     display: block;
     content: " " !important;
@@ -629,6 +631,12 @@ button.toggle_export span {
     width: 25px;
 }
 
+nav#at_the_top button.start_stop_recording span {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/radio-button-on-outline.svg");
+}
+nav#at_the_top button.start_stop_recording.stop span {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/stop-circle-outline.svg");
+}
 nav#at_the_top button.toggle_export span {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/shapes-outline.svg");
 }
@@ -745,7 +753,7 @@ loading-bar {
     display: block;
     transition: width cubic-bezier(0.14, 0.71, 0, 0.99) 2s, opacity linear 0.2s;
     opacity: 0;
-    z-index: 9999;
+    z-index: 12000;
     animation: move-background 2s ease-in-out infinite;
 }
 loading-bar.slow {
@@ -770,6 +778,81 @@ body.binder.loading #binder_spinners {
     }
 }
 
+.outline-frame {
+    z-index: 9990;
+    pointer-events: none;
+    position: fixed;
+    top: 0px;
+    left: 0px;
+    width: 100vw;
+    height: 100vh;
+    /* outline: red inset 15px; */
+    box-sizing: border-box;
+}
+
+body.recording_waiting_to_start .outline-frame.recording {
+    border: 12px solid #be6f6fba;
+}
+body.is_recording .outline-frame.recording {
+    border: 12px solid #dc3535ba;
+}
+.outline-frame.playback {
+    opacity: 1;
+    position: absolute;
+    transition: top 0.3s ease-in-out, opacity 0.3s ease-in-out;
+    border: 12px solid #357ddcba;
+    /* background: #7b77ff12; */
+    box-shadow: inset 0px 0px 20px 20px #919bff2b;
+}
+
+body.recording_waiting_to_start > header,
+body.is_recording > header {
+    display: none;
+}
+
+#record-ui-container {
+    position: fixed;
+    top: 3px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+#record-ui-container > .overlay-button {
+    /* background: pink; */
+    border-color: #e86f6c;
+    margin: 0 3px;
+}
+#record-ui-container > .overlay-button.record-no-audio {
+    border-color: #dcc6c6;
+}
+#record-ui-container > .overlay-button.playback {
+    border-color: #c6c6dc;
+}
+#record-ui-container span.stop-recording-icon::after {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/stop-circle-outline.svg");
+}
+#record-ui-container span.microphone-icon::after {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/mic-outline.svg");
+}
+#record-ui-container span.mute-icon::after {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/mic-off-outline.svg");
+}
+#record-ui-container span.follow-recording-icon::after {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-undo-outline.svg");
+}
+
+div.recording-playback {
+    width: min(500px, 90vw);
+    position: fixed;
+    bottom: 16px;
+    z-index: 9999;
+}
+div.recording-playback audio {
+    width: 100%;
+}
+
 /* PREAMBLE */
 
 .raw-html-wrapper.preamble {
@@ -787,11 +870,7 @@ main > preamble {
     pointer-events: none;
 }
 
-main > preamble #saveall-container {
-    margin-left: auto;
-    pointer-events: all;
-    right: min(0px, 700px + 25px - 100vw);
-    position: relative;
+.overlay-button {
     background: #ffffff;
     padding: 5px 8px;
     border: 3px solid #e3e3e3;
@@ -799,6 +878,13 @@ main > preamble #saveall-container {
     height: 35px;
     font-family: "Segoe UI Emoji", "Roboto Mono", monospace;
     font-size: 0.75rem;
+    pointer-events: all;
+}
+
+main > preamble #saveall-container {
+    margin-left: auto;
+    right: min(0px, 700px + 25px - 100vw);
+    position: relative;
 }
 
 @media screen and (min-width: calc(700px + 25px + 6px + 500px)) {
@@ -817,14 +903,13 @@ main > preamble #saveall-container.saved > span {
     opacity: 0.5;
 }
 
-main > preamble span.saved-icon::after,
-main > preamble span.saving-icon::after {
+.overlay-button span.pluto-icon::after {
     content: "";
     display: inline-block;
     padding-right: 20px;
     /* width: 17px; */
-    height: 17px;
-    margin-bottom: -3px;
+    height: 18px;
+    margin-bottom: -5px;
     background-size: 17px 17px;
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sync-circle-outline.svg");
     background-repeat: no-repeat;
@@ -832,11 +917,8 @@ main > preamble span.saving-icon::after {
     background-position-y: 1px;
 }
 
-main > preamble span.saved-icon::after {
+.overlay-button span.saved-icon::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/checkmark-outline.svg");
-}
-main > preamble button {
-    position: relative;
 }
 
 #saveall-container .only-on-hover {
@@ -926,8 +1008,11 @@ pluto-output:not(.rich_output) > div > pre {
 
 /* as embedded display: */
 
+pluto-display {
+    display: contents;
+}
 pluto-display > div {
-    display: inline-block;
+    display: contents;
 }
 
 /* isolated cell view */
@@ -1025,7 +1110,7 @@ pluto-cell.running_disabled > pluto-input .cm-editor {
 
 /* UI */
 
-preamble button,
+.overlay-button button,
 pluto-cell > button,
 pluto-input > button,
 pluto-runarea > button,
@@ -1044,6 +1129,10 @@ nav#slide_controls > button {
     font-size: 0.75rem;
     z-index: 30;
     /* CodeMirror is 2 */
+}
+
+.overlay-button button {
+    position: relative;
 }
 
 /* CELL SHOULDER */
@@ -1289,6 +1378,7 @@ pluto-input > button > span {
         transition: opacity 0.25s ease-in-out;
     }
     button.toggle_export,
+    button.start_stop_recording,
     pluto-cell:hover > button,
     pluto-cell:hover > pluto-input > button,
     pluto-cell > pluto-runarea > button,
@@ -1297,7 +1387,8 @@ pluto-input > button > span {
         transition: opacity 0.25s ease-in-out;
     }
     button.toggle_export:hover,
-    preamble button:hover,
+    button.start_stop_recording:hover,
+    .overlay-button button:hover,
     pluto-cell > button:hover,
     pluto-cell > pluto-input > button:hover,
     pluto-cell > pluto-runarea > button:hover,
@@ -1804,6 +1895,7 @@ pluto-helpbox > header {
     background-color: #eef1f7;
     color: hsl(230, 14%, 11%);
     font-family: "Roboto Mono", monospace;
+    font-size: 0.9rem;
     font-weight: 700;
     border-top-left-radius: 6px;
     border-top-right-radius: 6px;
@@ -1869,16 +1961,30 @@ pluto-helpbox.hidden > section {
 pluto-helpbox {
     font-family: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
     line-height: 1.5;
+    font-size: 0.9rem;
 }
 pluto-helpbox pre,
 pluto-helpbox code,
 pluto-helpbox .cm-line {
     /* from https://docs.julialang.org/en/v1/assets/themes/documenter-light.css */
     font-family: "Roboto Mono", "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", "DejaVu Sans Mono", monospace;
-    font-size: 0.875em;
+    font-size: 0.95em;
 }
 pluto-helpbox pre code {
     font-size: 1em;
+}
+
+pluto-helpbox pre code.hljs {
+    padding: 0;
+    background: none;
+}
+
+pluto-helpbox code .cm-editor .cm-content {
+    padding: 0px;
+}
+
+pluto-helpbox img {
+    max-width: 100%;
 }
 
 pluto-helpbox > section {
@@ -2271,6 +2377,8 @@ pluto-cell.code_differs .cm-editor .cm-gutters {
 }
 
 .cm-completionIcon-c_String::before,
+.cm-completionIcon-completion_path::before,
+.cm-completionIcon-completion_dict::before,
 .cm-s-default span.cm-string {
     color: #da5616;
 }

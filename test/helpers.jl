@@ -2,6 +2,7 @@ import Pluto
 import Pluto.ExpressionExplorer
 import Pluto.ExpressionExplorer: SymbolsState, compute_symbolreferences, FunctionNameSignaturePair, UsingsImports, compute_usings_imports
 using Test
+import Distributed
 
 function Base.show(io::IO, s::SymbolsState)
     print(io, "SymbolsState([")
@@ -192,3 +193,12 @@ has_embedded_pkgfiles(contents::AbstractString) =
 
 has_embedded_pkgfiles(nb::Pluto.Notebook) = 
     read(nb.path, String) |> has_embedded_pkgfiles
+
+"""
+Log an error message if there are any running processes created by Distrubted, that were not shut down.
+"""
+function verify_no_running_processes()
+    if length(Distributed.procs()) != 1
+        @error "Not all notebook processes were closed during tests!" Distributed.procs()
+    end
+end
