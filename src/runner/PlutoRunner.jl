@@ -1974,12 +1974,7 @@ tree_data(@nospecialize(e::DivElement), context::IOContext) = Dict{Symbol, Any}(
 pluto_showable(::MIME"application/vnd.pluto.divelement+object", ::DivElement) = true
 
 function Base.show(io::IO, m::MIME"text/html", e::DivElement)
-    extra_args = e.class === nothing ? tuple() : (:class => e.class,)
-    withtag(io, :div, :style => e.style, extra_args...) do
-        foreach(e.children) do child
-            show(io, m, embed_display(child))
-        end
-    end
+    Base.show(io, m, embed_display(e))
 end
 
 ###
