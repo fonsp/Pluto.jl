@@ -419,7 +419,7 @@ export const CellInput = ({
                     drag_n_drop_plugin(on_drag_drop_events),
                     EditorState.tabSize.of(4),
                     indentUnit.of("\t"),
-                    julia_andrey,
+                    julia_andrey(),
                     markdown(),
                     htmlLang(), //Provides tag closing!,
                     javascript(),

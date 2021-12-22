@@ -120,8 +120,10 @@ const juliaWrapper = parseMixed((node, input) => {
     return { parser, overlay }
 })
 
-const julia_andrey = julia_andrey_original()
-
-julia_andrey.language.parser = julia_andrey.language.parser.configure({ wrap: juliaWrapper })
+const julia_andrey = (config) => {
+    const julia = julia_andrey_original(config)
+    julia.language.parser = julia.language.parser.configure({ wrap: juliaWrapper })
+    return julia
+}
 
 export { julia_andrey, sqlLang, pythonLanguage, javascript, htmlLanguage, javascriptLanguage, python, markdown, html }
