@@ -10,7 +10,7 @@ import {
     sql,
     javascript,
     python,
-    julia_andrey_original,
+    julia_andrey as julia_andrey_original,
     parseCode,
 } from "./CodemirrorPlutoSetup.js"
 

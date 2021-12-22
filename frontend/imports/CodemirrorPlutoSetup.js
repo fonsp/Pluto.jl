@@ -5,7 +5,7 @@ import {
     EditorView,
     placeholder,
     julia_legacy,
-    julia_andrey as julia_andrey_original,
+    julia_andrey,
     keymap,
     history,
     historyKeymap,
@@ -64,6 +64,7 @@ export {
     EditorView,
     placeholder,
     julia_legacy,
+    julia_andrey,
     keymap,
     history,
     historyKeymap,
@@ -113,5 +114,4 @@ export {
     sql,
     javascript,
     python,
-    julia_andrey_original,
 }
