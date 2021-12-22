@@ -57,9 +57,7 @@ const juliaWrapper = parseMixed((node, input) => {
             overlay: defaultOverlay,
         }
     } else if (MD_EXTENDED_TAGS.includes(tag)) {
-        return {
-            parser: mdParserExt,
-        }
+        parser = mdParserExt
     } else if (tag === "@javascript") {
         return {
             parser: javascriptLanguage.parser,
