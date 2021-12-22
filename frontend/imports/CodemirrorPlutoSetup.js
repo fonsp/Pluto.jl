@@ -48,13 +48,14 @@ import {
     javascriptLanguage,
     markdown,
     markdownLanguage,
+    parseCode,
     parseMixed,
     PostgreSQL,
     pythonLanguage,
     sql,
     javascript,
     python,
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@0.19.4/dist/index.es.min.js"
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@74b543d/dist/index.es.min.js"
 
 export {
     EditorState,
@@ -105,6 +106,7 @@ export {
     javascriptLanguage,
     markdown,
     markdownLanguage,
+    parseCode,
     parseMixed,
     PostgreSQL,
     pythonLanguage,

@@ -11,16 +11,18 @@ import {
     javascript,
     python,
     julia_andrey_original,
+    parseCode,
 } from "./CodemirrorPlutoSetup.js"
 
 const htmlParser = htmlLanguage.parser
 const mdParser = markdownLanguage.parser
+const mdParserExt = markdownLanguage.parser.configure(parseCode({ htmlParser }))
 const postgresParser = PostgreSQL.language.parser
 const sqlLang = sql({ dialect: PostgreSQL })
 const pythonParser = pythonLanguage.parser
 
-const MARKDOWN_TAGS = ["md", "mermaid", "markdownliteral", "markdown", "mdx"].flatMap((x) => [x, `@${x}`])
-
+const MD_SIMPLE_TAGS = ["md", "mermaid"].flatMap((x) => [x, `@${x}`])
+const MD_EXTENDED_TAGS = ["cm", "markdown", "mdx", "mdl", "markdownliteral"].flatMap((x) => [x, `@${x}`])
 const juliaWrapper = parseMixed((node, input) => {
     if (!["TripleString", "String", "CommandString"].includes(node.type.name)) {
         return null
@@ -49,10 +51,14 @@ const juliaWrapper = parseMixed((node, input) => {
             parser: htmlParser,
             overlay: defaultOverlay,
         }
-    } else if (MARKDOWN_TAGS.includes(tag)) {
+    } else if (MD_SIMPLE_TAGS.includes(tag)) {
         return {
             parser: mdParser,
             overlay: defaultOverlay,
+        }
+    } else if (MD_EXTENDED_TAGS.includes(tag)) {
+        return {
+            parser: mdParserExt,
         }
     } else if (tag === "@javascript") {
         return {
@@ -94,7 +100,7 @@ const juliaWrapper = parseMixed((node, input) => {
     }
     // If javascript, we want to unescape some characters
     // Until the parser is smarter, we remove the selection from the syntax highlighting overlay.
-    if (["@htl", "@javascript"].includes(tag)) {
+    if (["@htl", "@javascript", ...MD_EXTENDED_TAGS].includes(tag)) {
         overlay = overlay.flatMap(({ from, to }) => {
             const text = input.read(from, to)
             const newlines = [...text.matchAll(/\\n/g)].map(({ index }) => ({ from: from + index, to: from + index + 2 }))
@@ -122,4 +128,4 @@ const julia_andrey = julia_andrey_original()
 
 julia_andrey.language.parser = julia_andrey.language.parser.configure({ wrap: juliaWrapper })
 
-export { julia_andrey, sqlLang, pythonLanguage, javascript, htmlLanguage, javascriptLanguage, python, markdown, markdownLanguage, html }
+export { julia_andrey, sqlLang, pythonLanguage, javascript, htmlLanguage, javascriptLanguage, python, markdown, html }
