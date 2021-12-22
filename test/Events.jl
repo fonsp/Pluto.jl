@@ -1,11 +1,32 @@
 using Test
 
-import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new, readwrite, without_pluto_file_extension
+import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new, readwrite, without_pluto_file_extension, PlutoEvent, update_run!
 import Random
 import Pkg
 import UUIDs: UUID
 
 @testset "Private API stability for extended Pluto deployments" begin
+
+    events = []
+    function test_listener(a::PlutoEvent)
+        @info "this run!"
+        push!(events, typeof(a))
+    end
+    🍭 = ServerSession(; event_listener = test_listener)
+    🍭.options.evaluation.workspace_use_distributed = false
+
+    fakeclient = ClientSession(:fake, nothing)
+    🍭.connected_clients[fakeclient.id] = fakeclient
+    notebook = Notebook([
+        Cell("[1,1,[1]]"),
+        Cell("Dict(:a => [:b, :c])"),
+    ])
+
+    fakeclient.connected_notebook = notebook
+
+    update_run!(🍭, notebook, notebook.cells)
+    WorkspaceManager.unmake_workspace((🍭, notebook))
+    @test events == ["1", 2 , 4]
 
 # Pluto.CustomLaunchEvent: Gets fired
 # Pluto.NewNotebookEvent: Gets fired
