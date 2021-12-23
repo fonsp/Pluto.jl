@@ -92,7 +92,93 @@ const _cell_suffix = "\n\n"
 const _ptoml_cell_id = UUID(1)
 const _mtoml_cell_id = UUID(2)
 
-emptynotebook(args...) = Notebook([Cell()], args...)
+emptynotebook(args...) = Notebook([Cell(;
+code_folded=true,
+code="""
+html\"\"\"
+	<div>Happy holiday! Remember to take care of yourself and your loved ones!</div>
+<div id="snow"></div>
+<style>
+	body:not(.disable_ui):not(.more-specificity) {
+        background-color:#e9ecff;
+    }
+	pluto-output{
+		border-radius: 0px 8px 0px 0px;
+        background-color:#e9ecff;
+	}
+	#snow {
+        position: fixed;
+    	top: 0;
+    	left: 0;
+    	right: 0;
+    	bottom: 0;
+    	pointer-events: none;
+    	z-index: 1000;
+	}
+</style>
+<script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+<script>
+        setTimeout(() => window.particlesJS("snow", {
+            "particles": {
+                "number": {
+                    "value": 70,
+                    "density": {
+                        "enable": true,
+                        "value_area": 800
+                    }
+                },
+                "color": {
+                    "value": "#ffffff"
+                },
+                "opacity": {
+                    "value": 0.7,
+                    "random": false,
+                    "anim": {
+                        "enable": false
+                    }
+                },
+                "size": {
+                    "value": 5,
+                    "random": true,
+                    "anim": {
+                        "enable": false
+                    }
+                },
+                "line_linked": {
+                    "enable": false
+                },
+                "move": {
+                    "enable": true,
+                    "speed": 5,
+                    "direction": "bottom",
+                    "random": true,
+                    "straight": false,
+                    "out_mode": "out",
+                    "bounce": false,
+                    "attract": {
+                        "enable": true,
+                        "rotateX": 300,
+                        "rotateY": 1200
+                    }
+                }
+            },
+            "interactivity": {
+                "events": {
+                    "onhover": {
+                        "enable": false
+                    },
+                    "onclick": {
+                        "enable": false
+                    },
+                    "resize": false
+                }
+            },
+            "retina_detect": true
+        }), 3000);
+	</script>
+\"\"\"
+"""
+), Cell()], args...)
 
 """
 Save the notebook to `io`, `file` or to `notebook.path`.
