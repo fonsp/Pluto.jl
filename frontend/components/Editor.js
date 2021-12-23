@@ -34,9 +34,6 @@ import { IsolatedCell } from "./Cell.js"
 import { RawHTMLContainer } from "./CellOutput.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
 
-// This is imported asynchronously - uncomment for development
-// import environment from "../common/Environment.js"
-
 const default_path = "..."
 const DEBUG_DIFFING = false
 let pending_local_updates = 0
@@ -254,9 +251,6 @@ export class Editor extends Component {
             selected_cells: [],
 
             update_is_ongoing: false,
-            extended_components: {
-                CustomHeader: null,
-            },
 
             is_recording: false,
             recording_waiting_to_start: false,
@@ -686,16 +680,6 @@ patch: ${JSON.stringify(
         const on_establish_connection = async (client) => {
             // nasty
             Object.assign(this.client, client)
-            try {
-                const { default: environment } = await import(this.client.session_options.server.injected_javascript_data_url)
-                const { custom_editor_header_component } = environment(client, html, useEffect, useState, useMemo)
-                this.setState({
-                    extended_components: {
-                        ...this.state.extended_components,
-                        CustomHeader: custom_editor_header_component,
-                    },
-                })
-            } catch (e) {}
 
             // @ts-ignore
             window.version_info = this.client.version_info // for debugging
@@ -1208,14 +1192,9 @@ patch: ${JSON.stringify(
                             }>
                                 <h1><img id="logo-big" src=${url_logo_big} alt="Pluto.jl" /><img id="logo-small" src=${url_logo_small} /></h1>
                             </a>
-                            ${
-                                this.state.extended_components.CustomHeader &&
-                                html`<${this.state.extended_components.CustomHeader} notebook_id=${this.state.notebook.notebook_id} />`
-                            }
                             <div class="flex_grow_1"></div>
                             ${
-                                this.state.extended_components.CustomHeader === null &&
-                                (status.binder
+                                status.binder
                                     ? html`<pluto-filepicker><a href=${this.export_url("notebookfile")} target="_blank">Save notebook...</a></pluto-filepicker>`
                                     : html`<${FilePicker}
                                           client=${this.client}
@@ -1227,7 +1206,7 @@ patch: ${JSON.stringify(
                                           }}
                                           placeholder="Save notebook..."
                                           button_label=${notebook.in_temp_dir ? "Choose" : "Move"}
-                                      />`)
+                                      />`
                             }
                             <div class="flex_grow_2"></div>
                             <button class="toggle_export" title="Export..." onClick=${() => {

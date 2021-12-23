@@ -1,13 +1,10 @@
 import _ from "../imports/lodash.js"
-import { html, Component, useEffect, useState, useMemo } from "../imports/Preact.js"
+import { html, Component } from "../imports/Preact.js"
 
 import { FilePicker } from "./FilePicker.js"
 import { create_pluto_connection, fetch_pluto_releases } from "../common/PlutoConnection.js"
 import { cl } from "../common/ClassTable.js"
 import { PasteHandler } from "./PasteHandler.js"
-
-// This is imported asynchronously - uncomment for development
-// import environment from "../common/Environment.js"
 
 /**
  * @typedef CombinedNotebook
@@ -119,16 +116,6 @@ export class Welcome extends Component {
             // recent_notebooks: null,
             combined_notebooks: /** @type {Array<CombinedNotebook>} */ (null), // will become an array
             connected: false,
-            extended_components: {
-                CustomWelcome: null,
-                Picker: {},
-                Recent: ({ recents }) => html`
-                    <p>Recent sessions:</p>
-                    <ul id="recent">
-                        ${recents}
-                    </ul>
-                `,
-            },
         }
         const set_notebook_state = (this.set_notebook_state = (path, new_state_props) => {
             this.setState((prevstate) => {
@@ -187,17 +174,12 @@ export class Welcome extends Component {
             on_connection_status: on_connection_status,
             on_reconnect: () => true,
         })
-        this.client_promise.then(async (client) => {
+        this.client_promise.then((client) => {
             Object.assign(this.client, client)
-            try {
-                const { default: environment } = await import(this.client.session_options.server.injected_javascript_data_url)
-                const { custom_welcome, custom_recent, custom_filepicker } = environment(client, html, useEffect, useState, useMemo)
-                this.setState({
-                    extended_components: { ...this.state.extended_components, Recent: custom_recent, Welcome: custom_welcome, Picker: custom_filepicker },
-                })
-            } catch (e) {}
+
             this.client.send("get_all_notebooks", {}, {}).then(({ message }) => {
                 const running = message.notebooks.map((nb) => create_empty_notebook(nb.path, nb.notebook_id))
+
                 const recent_notebooks = get_stored_recent_notebooks()
 
                 // show running notebooks first, in the order defined by the recent notebooks, then recent notebooks
@@ -349,10 +331,6 @@ export class Welcome extends Component {
                 </li>`
             })
         }
-        const {
-            Recent,
-            Picker: { text: open_file_label, placeholder },
-        } = this.state.extended_components
 
         return html`<p>New session:</p>
             <${PasteHandler} />
@@ -360,19 +338,15 @@ export class Welcome extends Component {
                 <li>Open a <a href="sample">sample notebook</a></li>
                 <li>Create a <a href="new">new notebook</a></li>
                 <li>
-                    ${open_file_label || "Open from file"}:
-                    <${FilePicker}
-                        key=${placeholder}
-                        client=${this.client}
-                        value=""
-                        on_submit=${this.on_open_path}
-                        button_label="Open"
-                        placeholder=${placeholder ?? "Enter path or URL..."}
-                    />
+                    Open from file:
+                    <${FilePicker} client=${this.client} value="" on_submit=${this.on_open_path} button_label="Open" placeholder="Enter path or URL..." />
                 </li>
             </ul>
             <br />
-            <${Recent} cl=${cl} combined=${this.state.combined_notebooks} client=${this.client} recents=${recents} />`
+            <p>Recent sessions:</p>
+            <ul id="recent">
+                ${recents}
+            </ul>`
     }
 }
 
