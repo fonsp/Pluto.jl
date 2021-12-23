@@ -53,50 +53,34 @@ import { cell_movement_plugin, prevent_holding_a_key_from_doing_things_across_ce
 import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
 import { cl } from "../common/ClassTable.js"
-import { literal, 
-    macroName,
-    std_variableName,
-    bool,
-    comment,
-    atom,
-    number,
-    keyword,
-    string,
-    variableName,
-    def_variableName,
-    bracket,
-    brace,
-    tagName,
-    link,
-    invalid,
-    invalid_bg } from "./SyntaxColorsParser.js"
+
 
 export const pluto_syntax_colors = HighlightStyle.define([
     /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
     // Symbol
-    { tag: tags.literal, color: literal, fontWeight: 700 },
-    { tag: tags.macroName, color: macroName, fontWeight: 700 },
+    { tag: tags.literal, color: "var(--cm-builtin-color)", fontWeight: 700 },
+    { tag: tags.macroName, color: "var(--cm-var-color)", fontWeight: 700 },
     // `nothing` I guess... Any others?
-    { tag: tags.standard(tags.variableName), color: std_variableName, fontWeight: 700 },
+    { tag: tags.standard(tags.variableName), color: "var(--cm-builtin-color)", fontWeight: 700 },
 
-    { tag: tags.bool, color: bool, fontWeight: 700 },
+    { tag: tags.bool, color: "var(--cm-builtin-color)", fontWeight: 700 },
 
-    { tag: tags.keyword, color: keyword },
-    { tag: tags.comment, color: comment, fontStyle: "italic" },
-    { tag: tags.atom, color: atom },
-    { tag: tags.number, color: number },
+    { tag: tags.keyword, color: "var(--cm-keyword-color)" },
+    { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
+    { tag: tags.atom, color: "var(--cm-atom-color)" },
+    { tag: tags.number, color: "var(--cm-number-color)" },
     // { tag: tags.property, color: "#48b685" },
     // { tag: tags.attribute, color: "#48b685" },
-    { tag: tags.keyword, color: keyword },
-    { tag: tags.string, color: string },
-    { tag: tags.variableName, color: variableName, fontWeight: 700 },
+    { tag: tags.keyword, color: "var(--cm-keyword-color)" },
+    { tag: tags.string, color: "var(--cm-string-color)" },
+    { tag: tags.variableName, color: "var(--cm-var-color)", fontWeight: 700 },
     // { tag: tags.variable2, color: "#06b6ef" },
-    { tag: tags.definition(tags.variableName), color: def_variableName },
-    { tag: tags.bracket, color: bracket },
-    { tag: tags.brace, color: brace },
-    { tag: tags.tagName, color: tagName },
-    { tag: tags.link, color: link },
-    { tag: tags.invalid, color: invalid, background: invalid_bg },
+    { tag: tags.definition(tags.variableName), color: "var(--cm-def-color)" },
+    { tag: tags.bracket, color: "var(--cm-bracket-color)" },
+    { tag: tags.brace, color: "var(--cm-bracket-color)" },
+    { tag: tags.tagName, color: "var(--cm-tag-color)" },
+    { tag: tags.link, color: "var(--cm-link-color)" },
+    { tag: tags.invalid, color: "var(--cm-error-color)", background: "var(--cm-error-bg-color)" },
     // ...Object.keys(tags).map((x) => ({ tag: x, color: x })),
 ])
 
