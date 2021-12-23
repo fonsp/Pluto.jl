@@ -62,8 +62,10 @@ export class FilePicker extends Component {
     }
     componentDidMount() {
         this.cm = new EditorView({
+            /** Migration #0: New */
             state: EditorState.create({
                 doc: "",
+
                 extensions: [
                     drawSelection(),
                     EditorView.domEventHandlers({
