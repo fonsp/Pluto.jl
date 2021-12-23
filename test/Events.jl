@@ -26,7 +26,7 @@ import UUIDs: UUID
 
     update_run!(🍭, notebook, notebook.cells)
     WorkspaceManager.unmake_workspace((🍭, notebook))
-    @testbroken events == ["1", 2 , 4]
+    @test_broken events[1:3] == ["NewNotebookEvent", "OpenNotebookEvent" , "FileSaveEvent"]
 
 # Pluto.CustomLaunchEvent: Gets fired
 # Pluto.NewNotebookEvent: Gets fired
