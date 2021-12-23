@@ -101,12 +101,11 @@ let useCompartment = (/** @type {import("../imports/Preact.js").Ref<EditorView>}
     let compartment = useRef(new Compartment())
     let initial_value = useRef(compartment.current.of(value))
 
-    compartment.current.of,
-        useLayoutEffect(() => {
-            codemirror_ref.current?.dispatch?.({
-                effects: compartment.current.reconfigure(value),
-            })
-        }, [value])
+    useLayoutEffect(() => {
+        codemirror_ref.current?.dispatch?.({
+            effects: compartment.current.reconfigure(value),
+        })
+    }, [value])
 
     return initial_value.current
 }
