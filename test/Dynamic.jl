@@ -135,8 +135,14 @@ end
         - move notebook file
         - search for docs
         - show more items of an array =#
+        @testset "Extension of response" begin
+            Pluto.responses[:custom_response] = function (🙋::Pluto.ClientRequest)
+                return "Yes this can be extended!"
+            end
+           @test send(:custom_response, Dict()) == "Yes this can be extended!"           
+        end
 
-        send(:shutdown_notebook, Dict("keep_in_session" => false))
+        @test_nowarn send(:shutdown_notebook, Dict("keep_in_session" => false))
 
         @test_nowarn await_with_timeout() do
             !haskey(🍭.notebooks, notebook.notebook_id)
