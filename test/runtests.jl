@@ -1,6 +1,9 @@
 include("./helpers.jl")
 
 # tests that start new processes:
+
+include("./Events.jl")
+verify_no_running_processes()
 include("./WorkspaceManager.jl")
 verify_no_running_processes()
 include("./packages/Basic.jl")
