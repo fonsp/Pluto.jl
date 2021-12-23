@@ -215,9 +215,9 @@ function http_router_for(session::ServerSession)
                 # You are responsible to keep this up to date.
                 # See Events.jl for types and explanation
                 #
-                maybeNotebookResponse = try_event_call(session, CustomLaunchEvent(query, request, try_launch_notebook_response))
-                isnothing(maybeNotebookResponse) && return error("Empty request")
-                return maybeNotebookResponse
+                maybe_notebook_response = try_event_call(session, CustomLaunchEvent(query, request, try_launch_notebook_response))
+                isnothing(maybe_notebook_response) && return error("Empty request")
+                return maybe_notebook_response
             end
         catch e
             return error_response(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", sprint(showerror, e, stacktrace(catch_backtrace())))
