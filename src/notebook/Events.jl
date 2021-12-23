@@ -49,32 +49,32 @@ end
 # Triggered when a notebook is saved
 struct FileSaveEvent <: PlutoEvent
     notebook::Notebook
-    fileContent::String
+    file_contents::String
     path::String
 end
 
 FileSaveEvent(notebook::Notebook) = begin
-    fileContent = sprint() do io
+    file_contents = sprint() do io
         save_notebook(io, notebook)
     end
-    FileSaveEvent(notebook, fileContent, notebook.path)
+    FileSaveEvent(notebook, file_contents, notebook.path)
 end
 
 # Triggered when the local code has changed (user typed something),
 # but the code hasn't run yet. 
 struct FileEditEvent <: PlutoEvent
     notebook::Notebook
-    fileContent::String
+    file_contents::String
     path::String
 end
 
 FileEditEvent(notebook::Notebook) = begin
-    fileContent = sprint() do io
+    file_contents = sprint() do io
         # TODO: https://github.com/fonsp/Pluto.jl/pull/1729: serialize_temp flag
         # to only get local changes; the workspace edit of the notebook!
         save_notebook(io, notebook #=; serialize_temp=true =#)
     end
-    FileEditEvent(notebook, fileContent, notebook.path)
+    FileEditEvent(notebook, file_contents, notebook.path)
 end
 
 # Triggered when we open a new notebook
