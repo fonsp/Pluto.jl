@@ -43,7 +43,19 @@ import {
     combineConfig,
     NodeProp,
     autocomplete,
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@0.19.4/dist/index.es.min.js"
+    html,
+    htmlLanguage,
+    javascriptLanguage,
+    markdown,
+    markdownLanguage,
+    parseCode,
+    parseMixed,
+    PostgreSQL,
+    pythonLanguage,
+    sql,
+    javascript,
+    python,
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@0.19.6/dist/index.es.min.js"
 
 export {
     EditorState,
@@ -90,4 +102,16 @@ export {
     combineConfig,
     NodeProp,
     autocomplete,
+    html,
+    htmlLanguage,
+    javascriptLanguage,
+    markdown,
+    markdownLanguage,
+    parseCode,
+    parseMixed,
+    PostgreSQL,
+    pythonLanguage,
+    sql,
+    javascript,
+    python,
 }

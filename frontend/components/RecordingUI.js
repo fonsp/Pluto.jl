@@ -322,7 +322,7 @@ export const RecordingPlaybackUI = ({ recording_url, audio_src, initializing, ap
     }, [audio_element_ref.current, on_audio_playback_change])
 
     useEffect(() => {
-        if (!initializing) {
+        if (!initializing && recording_url != null) {
             // if we are playing a recording, fix the initial scroll position
             loaded_recording.then((x) => {
                 let first_scroll = _.first(x?.scrolls)
@@ -351,6 +351,7 @@ export const RecordingPlaybackUI = ({ recording_url, audio_src, initializing, ap
 
     useEffect(() => {
         if (!initializing) {
+            // TODO fons wat was je plan hier?
         }
     }, [initializing])
 
