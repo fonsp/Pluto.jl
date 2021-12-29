@@ -297,7 +297,7 @@ export class Editor extends Component {
                 /** Create copies of the cells with fresh ids */
                 let new_cells = new_codes.map((code) => ({
                     cell_id: uuidv4(),
-                    code: "",
+                    code: code,
                     code_folded: false,
                     running_disabled: false,
                     local_code: code,
