@@ -120,6 +120,7 @@ export class Welcome extends Component {
             combined_notebooks: /** @type {Array<CombinedNotebook>} */ (null), // will become an array
             connected: false,
             extended_components: {
+                show_samples: true,
                 CustomWelcome: null,
                 Picker: {},
                 Recent: ({ recents }) => html`
@@ -191,9 +192,15 @@ export class Welcome extends Component {
             Object.assign(this.client, client)
             try {
                 const { default: environment } = await import(this.client.session_options.server.injected_javascript_data_url)
-                const { custom_welcome, custom_recent, custom_filepicker } = environment(client, html, useEffect, useState, useMemo)
+                const { custom_welcome, custom_recent, custom_filepicker, show_samples = true } = environment(client, html, useEffect, useState, useMemo)
                 this.setState({
-                    extended_components: { ...this.state.extended_components, Recent: custom_recent, Welcome: custom_welcome, Picker: custom_filepicker },
+                    extended_components: {
+                        ...this.state.extended_components,
+                        Recent: custom_recent,
+                        Welcome: custom_welcome,
+                        Picker: custom_filepicker,
+                        show_samples,
+                    },
                 })
             } catch (e) {}
             this.client.send("get_all_notebooks", {}, {}).then(({ message }) => {
@@ -350,6 +357,7 @@ export class Welcome extends Component {
             })
         }
         const {
+            show_samples,
             Recent,
             Picker: { text: open_file_label, placeholder },
         } = this.state.extended_components
@@ -357,7 +365,7 @@ export class Welcome extends Component {
         return html`<p>New session:</p>
             <${PasteHandler} />
             <ul id="new">
-                <li>Open a <a href="sample">sample notebook</a></li>
+                ${show_samples && html`<li>Open a <a href="sample">sample notebook</a></li>`}
                 <li>Create a <a href="new">new notebook</a></li>
                 <li>
                     ${open_file_label || "Open from file"}:
