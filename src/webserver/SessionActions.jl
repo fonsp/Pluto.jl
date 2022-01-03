@@ -20,7 +20,9 @@ end
 
 function open_url(session::ServerSession, url::AbstractString; kwargs...)
     path = download_cool(url, emptynotebook().path)
-    open(session, path; kwargs...)
+    isid = try_event_call(session, NewNotebookEvent(nb))
+    isnothing(isid) && return open(session, path; kwargs...)
+    open(session, path; notebook_id=UUID(isid), kwargs...)
 end
 
 "Open the notebook at `path` into `session::ServerSession` and run it. Returns the `Notebook`."
