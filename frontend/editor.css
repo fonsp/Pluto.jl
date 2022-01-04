@@ -177,6 +177,12 @@ pluto-output p:first-child {
     margin-block-start: 0px;
 }
 
+/* https://github.com/necolas/normalize.css/blob/fc091cce1534909334c1911709a39c22d406977b/normalize.css#L96 */
+b,
+strong {
+    font-weight: bolder;
+}
+
 /* I actually just want to get rid of the margin-block-start on the p tag,
     but css doesn't allow that. So I have to move the list up, instead of not moving it up */
 pluto-output li p + ul,

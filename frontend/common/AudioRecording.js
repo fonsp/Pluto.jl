@@ -3,7 +3,7 @@ import vmsg from "https://cdn.jsdelivr.net/npm/vmsg@0.4.0/vmsg.js"
 
 export const create_recorder = async () => {
     const recorder = new vmsg.Recorder({
-        wasmURL: "https://unpkg.com/vmsg@0.4.0/vmsg.wasm",
+        wasmURL: new URL("https://unpkg.com/vmsg@0.4.0/vmsg.wasm", import.meta.url),
     })
 
     return {
