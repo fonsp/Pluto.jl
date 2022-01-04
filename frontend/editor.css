@@ -181,6 +181,12 @@ pluto-output p:first-child {
     margin-block-start: 0px;
 }
 
+/* https://github.com/necolas/normalize.css/blob/fc091cce1534909334c1911709a39c22d406977b/normalize.css#L96 */
+b,
+strong {
+    font-weight: bolder;
+}
+
 /* I actually just want to get rid of the margin-block-start on the p tag,
     but css doesn't allow that. So I have to move the list up, instead of not moving it up */
 pluto-output li p + ul,
@@ -205,11 +211,10 @@ a {
     border-left: 1.2px solid var(--cursor-color) !important;
 }
 
-
 pluto-output code {
     font-family: JuliaMono, monospace;
     font-size: 0.75em; /* not rem */
-    font-variant-ligatures: none; 
+    font-variant-ligatures: none;
 }
 
 pluto-output code .cm-editor .cm-line {
@@ -650,7 +655,6 @@ nav#at_the_top button.start_stop_recording.stop span {
 nav#at_the_top button.toggle_export span {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/shapes-outline.svg);
     filter: var(--image-filters);
-
 }
 aside#export button.toggle_export span {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-outline.svg);
@@ -946,7 +950,8 @@ main > preamble #saveall-container.saved > span {
     filter: var(--image-filters);
 }
 
-main > preamble span.saved-icon::after, .overlay-button span.saved-icon::after {
+main > preamble span.saved-icon::after,
+.overlay-button span.saved-icon::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/checkmark-outline.svg);
     filter: var(--image-filters);
 }
@@ -1216,7 +1221,6 @@ pluto-shoulder > button > span::after {
 pluto-cell.code_folded > pluto-shoulder > button > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/eye-off-outline.svg);
     filter: var(--image-filters);
-
 }
 
 /* TRAFFIC LIGHT */
@@ -1299,13 +1303,7 @@ body:not(.___) pluto-cell.errored > pluto-trafficlight {
 }
 
 body:not(.___) pluto-cell.queued > pluto-trafficlight::after {
-    background: repeating-linear-gradient(
-        -45deg, 
-        rgba(0, 0, 0, 0), 
-        rgba(0, 0, 0, 0) 8px, 
-        var(--normal-cell-color) 8px, 
-        var(--normal-cell-color) 16px
-    );
+    background: repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0) 8px, var(--normal-cell-color) 8px, var(--normal-cell-color) 16px);
     background-clip: padding-box;
     /* [1]
     Queued, Running, Errored are really fast changing props.
@@ -1323,9 +1321,9 @@ body:not(.___) pluto-cell.queued > pluto-trafficlight::after {
 body:not(.___) pluto-cell.running > pluto-trafficlight::after {
     background: repeating-linear-gradient(
         -45deg,
-        var(--normal-cell-color), 
-        var(--normal-cell-color) 8px, 
-        var(--dark-normal-cell-color) 8px, 
+        var(--normal-cell-color),
+        var(--normal-cell-color) 8px,
+        var(--dark-normal-cell-color) 8px,
         var(--dark-normal-cell-color) 16px
     );
     background-clip: content-box;
@@ -1348,10 +1346,10 @@ body:not(.___) pluto-cell.queued.errored > pluto-trafficlight::after {
 
 body:not(.___) pluto-cell.running.errored > pluto-trafficlight::after {
     background: repeating-linear-gradient(
-        -45deg, 
-        var(--light-error-cell-color), 
-        var(--light-error-cell-color) 8px, 
-        var(--bright-error-cell-color) 8px, 
+        -45deg,
+        var(--light-error-cell-color),
+        var(--light-error-cell-color) 8px,
+        var(--bright-error-cell-color) 8px,
         var(--bright-error-cell-color) 16px
     );
     background-clip: content-box;
@@ -1367,38 +1365,6 @@ pluto-cell.running_disabled > pluto-trafficlight {
 pluto-cell.running_disabled:not(.asjkdhf) > pluto-trafficlight {
     background-color: var(--disabled-cell-bg-color);
     opacity: 0.3;
-}
-
-pluto-cell.drop_target {
-    position: relative;
-}
-
-pluto-cell.drop_target pluto-input::after {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 100%;
-    color: var(--drop-target-text-color);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font: 16px var(--sans-serif-font-stack);
-    z-index: 20;
-    background-color: var(--drop-target-bg-color);
-    content: "+ Drop file here";
-}
-
-pluto-cell.drop_target.saving_file pluto-input::after {
-    content: "The 💾 File you dropped is being saved... ";
-    color: var(--drop-target-saving-file-color);
-    background-color: var(--drop-target-saving-file-bg-color);
-}
-
-pluto-cell.drop_target.drop_invalid pluto-input::after {
-    background-color: var(--drop-invalid-bg-color);
-    color: var(--drop-invalid-color);
-    content: "Try dropping your file in an empty cell!";
 }
 
 /* Define --patternHeight for this keyframes animation to work! */
@@ -1671,7 +1637,7 @@ pkg-status-mark.installed > button > span::after {
 pkg-status-mark.busy > button > span::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sync-outline.svg");
     animation: loadspin 3s ease-in-out infinite;
-    filter: var(--image-filters)
+    filter: var(--image-filters);
 }
 pkg-status-mark.not_found > button > span::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/cloud-offline-outline.svg");
@@ -1762,7 +1728,6 @@ pkg-popup .pkg-buttons {
 
 pkg-popup .pkg-buttons img {
     filter: var(--image-filters);
-
 }
 
 pkg-popup .pkg-buttons > * {
@@ -2203,7 +2168,7 @@ nav#undo_delete {
     left: 0px;
     margin: 0.75rem;
     padding: 0.5rem;
-    
+
     font-family: "Roboto Mono", monospace;
     font-size: 0.75rem;
 
