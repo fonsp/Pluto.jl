@@ -62,5 +62,5 @@ Base.setindex!(aid::DefaultDict, args...) = Base.setindex!(aid.container, args..
 Base.delete!(aid::DefaultDict, args...) = Base.delete!(aid.container, args...)
 Base.keys(aid::DefaultDict) = Base.keys(aid.container)
 Base.values(aid::DefaultDict) = Base.values(aid.container)
-Base.length(aid::Pluto.DefaultDict) = Base.length(aid.container)
+Base.length(aid::DefaultDict) = Base.length(aid.container)
 Base.iterate(aid::DefaultDict, args...) = Base.iterate(aid.container, args...)
