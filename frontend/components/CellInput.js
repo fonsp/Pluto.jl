@@ -81,8 +81,6 @@ export const pluto_syntax_colors = HighlightStyle.define([
     { tag: tags.link, color: "var(--cm-link-color)" },
     { tag: tags.invalid, color: "var(--cm-error-color)", background: "var(--cm-error-bg-color)" },
     // ...Object.keys(tags).map((x) => ({ tag: x, color: x })),
-
-    // TODO: Colors below
     // Markdown
     { tag: tags.heading, color: "#081e87", fontWeight: 500 },
     { tag: tags.heading1, color: "#081e87", fontWeight: 500, fontSize: "1.5em" },
