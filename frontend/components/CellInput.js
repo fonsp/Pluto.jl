@@ -50,7 +50,6 @@ import { markdown, html as htmlLang, javascript, sqlLang, python, julia_andrey }
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
 import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"
-import { drag_n_drop_plugin } from "./useDropHandler.js"
 import { cell_movement_plugin, prevent_holding_a_key_from_doing_things_across_cells } from "./CellInput/cell_movement_plugin.js"
 import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
@@ -159,7 +158,6 @@ export const CellInput = ({
     on_change,
     on_update_doc_query,
     on_focus_neighbor,
-    on_drag_drop_events,
     on_line_heights,
     nbpkg,
     cell_id,
@@ -424,7 +422,6 @@ export const CellInput = ({
                             window.dispatchEvent(new CustomEvent("open_live_docs"))
                         }
                     }),
-                    drag_n_drop_plugin(on_drag_drop_events),
                     EditorState.tabSize.of(4),
                     indentUnit.of("\t"),
                     julia_andrey(),

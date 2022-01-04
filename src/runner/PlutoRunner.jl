@@ -1973,6 +1973,9 @@ tree_data(@nospecialize(e::DivElement), context::IOContext) = Dict{Symbol, Any}(
 )
 pluto_showable(::MIME"application/vnd.pluto.divelement+object", ::DivElement) = true
 
+function Base.show(io::IO, m::MIME"text/html", e::DivElement)
+    Base.show(io, m, embed_display(e))
+end
 
 ###
 # LOGGING

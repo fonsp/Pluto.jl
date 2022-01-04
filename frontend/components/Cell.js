@@ -6,7 +6,6 @@ import { CellInput } from "./CellInput.js"
 import { Logs } from "./Logs.js"
 import { RunArea, useDebouncedTruth } from "./RunArea.js"
 import { cl } from "../common/ClassTable.js"
-import { useDropHandler } from "./useDropHandler.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 
 const useCellApi = (node_ref, published_object_keys, pluto_actions) => {
@@ -78,7 +77,6 @@ export const Cell = ({
         }
     }, [any_logs])
 
-    const { saving_file, drag_active, handler } = useDropHandler()
     useEffect(() => {
         const focusListener = (e) => {
             if (e.detail.cell_id === cell_id) {
@@ -136,10 +134,6 @@ export const Cell = ({
     return html`
         <pluto-cell
             ref=${node_ref}
-            onDragOver=${handler}
-            onDrop=${handler}
-            onDragEnter=${handler}
-            onDragLeave=${handler}
             class=${cl({
                 queued: queued || (waiting_to_run && is_process_ready),
                 running: running,
@@ -151,8 +145,6 @@ export const Cell = ({
                 running_disabled: running_disabled,
                 depends_on_disabled_cells: depends_on_disabled_cells,
                 show_input: show_input,
-                drop_target: drag_active,
-                saving_file: saving_file,
                 shrunk: Object.values(logs).length > 0,
                 hooked_up: output?.has_pluto_hook_features ?? false,
             })}
@@ -196,7 +188,6 @@ export const Cell = ({
                 cm_forced_focus=${cm_forced_focus}
                 set_cm_forced_focus=${set_cm_forced_focus}
                 show_input=${show_input}
-                on_drag_drop_events=${handler}
                 on_submit=${() => {
                     if (!disable_input_ref.current) {
                         set_waiting_to_run_smart(true)
