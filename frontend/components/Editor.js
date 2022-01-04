@@ -23,7 +23,6 @@ import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea
 import { handle_log } from "../common/Logging.js"
 import { PlutoContext, PlutoBondsContext, PlutoJSInitializingContext } from "../common/PlutoContext.js"
 import { unpack } from "../common/MsgPack.js"
-import { useDropHandler } from "./useDropHandler.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
 import { start_binder, BinderPhase, count_stat } from "../common/Binder.js"
 import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js"
@@ -51,19 +50,6 @@ const uuidv4 = () =>
  * */
 
 const Main = ({ children }) => {
-    const { handler } = useDropHandler()
-    useEffect(() => {
-        document.body.addEventListener("drop", handler)
-        document.body.addEventListener("dragover", handler)
-        document.body.addEventListener("dragenter", handler)
-        document.body.addEventListener("dragleave", handler)
-        return () => {
-            document.body.removeEventListener("drop", handler)
-            document.body.removeEventListener("dragover", handler)
-            document.body.removeEventListener("dragenter", handler)
-            document.body.removeEventListener("dragleave", handler)
-        }
-    })
     return html`<main>${children}</main>`
 }
 
@@ -547,17 +533,6 @@ export class Editor extends Component {
                     },
                     { notebook_id: this.state.notebook.notebook_id },
                     false
-                )
-            },
-            write_file: (cell_id, { file, name, type }) => {
-                return this.client.send(
-                    "write_file",
-                    { file, name, type, path: this.state.notebook.path },
-                    {
-                        notebook_id: this.state.notebook.notebook_id,
-                        cell_id: cell_id,
-                    },
-                    true
                 )
             },
             get_avaible_versions: async ({ package_name, notebook_id }) => {
@@ -1237,7 +1212,8 @@ patch: ${JSON.stringify(
                             }</div>
                         </nav>
                     </header>
-                    
+                    ${
+                        /*
                     <${RecordingUI} 
                         notebook_name=${notebook.shortpath}
                         recording_waiting_to_start=${this.state.recording_waiting_to_start}
@@ -1258,8 +1234,8 @@ patch: ${JSON.stringify(
                                 })
                             )}
                     />
-                    
-                    
+                    */ null
+                    }
                     <${BinderButton} binder_phase=${this.state.binder_phase} start_binder=${() =>
             start_binder({ setStatePromise: this.setStatePromise, connect: this.connect, launch_params: launch_params })} notebookfile=${
             launch_params.notebookfile == null ? null : new URL(launch_params.notebookfile, window.location.href).href

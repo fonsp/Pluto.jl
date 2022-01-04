@@ -10,11 +10,13 @@ import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
 import { PlutoBondsContext, PlutoContext, PlutoJSInitializingContext } from "../common/PlutoContext.js"
 import register from "../imports/PreactCustomElement.js"
 
-import { EditorState, EditorView, julia_andrey, defaultHighlightStyle } from "../imports/CodemirrorPlutoSetup.js"
+import { EditorState, EditorView, defaultHighlightStyle } from "../imports/CodemirrorPlutoSetup.js"
+
 import { pluto_syntax_colors } from "./CellInput.js"
 import { useState } from "../imports/Preact.js"
 
 import hljs from "../imports/highlightjs.js"
+import { julia_andrey } from "./CellInput/mixedParsers.js"
 
 export class CellOutput extends Component {
     constructor() {
