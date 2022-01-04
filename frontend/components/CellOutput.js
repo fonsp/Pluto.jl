@@ -181,14 +181,15 @@ let IframeContainer = ({ body }) => {
             /** Grab the <script> tag for the iframe content window resizer
              * @type {HTMLScriptElement} */
             let original_script_element = document.querySelector("#iframe-resizer-content-window-script")
-            // Clone it into the iframe document, so we have the exact same script tag there
-            let iframe_resizer_content_script = iframeDocument.importNode(original_script_element)
-            // Fix the `src` so it isn't relative to the iframes url, but this documents url
-            iframe_resizer_content_script.src = new URL(iframe_resizer_content_script.src, original_script_element.baseURI).toString()
-            iframeDocument.head.appendChild(iframe_resizer_content_script)
+
+            // Insert iframe resizer inside the iframe
+            let x = iframeDocument.createElement("script")
+            x.src = original_script_element.src
+            x.crossOrigin = "anonymous"
+            iframeDocument.head.appendChild(x)
 
             // Apply iframe resizer from the host side
-            new Promise((resolve) => iframe_resizer_content_script.addEventListener("load", () => resolve()))
+            new Promise((resolve) => x.addEventListener("load", () => resolve()))
             // @ts-ignore
             window.iFrameResize({ checkOrigin: false }, iframeref.current)
         })
