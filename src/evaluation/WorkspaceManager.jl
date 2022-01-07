@@ -180,7 +180,7 @@ function create_workspaceprocess(;compiler_options=CompilerOptions())::Integer
     # run on proc 1 in case Pluto is being used inside a notebook process
     # Workaround for "only process 1 can add/remove workers"
     pid = Distributed.remotecall_eval(Main, 1, quote
-        $(Distributed_expr).addprocs(1; exeflags=$(_convert_to_flags(compiler_options))) |> first
+        $(Distributed_expr).addprocs(1; topology=:master_worker, exeflags=$(_convert_to_flags(compiler_options))) |> first
     end)
 
     for expr in process_preamble
