@@ -2,20 +2,6 @@
     :root {
         --image-filters: invert(1) hue-rotate(180deg) contrast(0.85);
 
-        /* Dracula */
-        --background: 40, 42, 54;
-        --current-line: 68, 71, 90;
-        --selection: 68, 71, 90;
-        --foreground: 248, 248, 242;
-        --comment: 98, 114, 164;
-        --cyan: 139, 233, 253;
-        --green: 80, 250, 123;
-        --orange: 255, 184, 108;
-        --pink: 255, 121, 198;
-        --purple: 189, 147, 249;
-        --red: 255, 85, 85;
-        --yellow: 241, 250, 140;
-
         --main-bg-color: hsl(225, 7%, 11%);
         --rule-color: rgba(255, 255, 255, 0.15);
         --kbd-border-color: #222222;
@@ -157,28 +143,30 @@
         --cm-editor-li-aria-selected-bg-color: #3271e7;
         --cm-editor-li-aria-selected-color: white;
         --cm-editor-li-notexported-color: rgba(0, 0, 0, 0.5);
-        --cm-editor-bg-color: rgb(20, 20, 20);
-        --cm-editor-text-color: rgb(var(--foreground));
+        --code-background: rgb(34 40 54);
         --cm-code-changed-gutters-color: rgba(235, 221, 28, 0.2);
         --cm-line-numbers-color: #8d86875e;
 
         /* code highlighting */
-        --cm-comment-color: rgb(var(--comment));
-        --cm-atom-color: rgb(var(--purple));
+        --cm-editor-text-color: #ffe9fc;
+        --cm-comment-color: #e96ba8;
+        --cm-atom-color: #815ba4;
         --cm-number-color: #815ba4;
         --cm-property-color: #48b685;
-        --cm-keyword-color: rgb(var(--red));
-        --cm-string-color: rgb(var(--yellow));
-        --cm-var-color: rgb(var(--cyan));
+        --cm-keyword-color: #ff7a6f;
+        --cm-string-color: hsl(20deg 56% 68%);
+        --cm-var-color: #afb7d3;
         --cm-var2-color: #06b6ef;
-        --cm-builtin-color: rgb(var(--cyan));
-        --cm-def-color: rgb(var(--orange));
+        --cm-buitin-color: #5e7ad3;
+        --cm-def-color: #f99b15;
         --cm-bracket-color: #41323f;
         --cm-tag-color: #ef6155;
-        --cm-link-color: rgb(var(--green));
+        --cm-link-color: #815ba4;
         --cm-error-bg-color: #ef6155;
         --cm-error-color: #f7f7f7;
-        --cm-matchingBracket-color: rgb(var(--yellow), 0.6);
+        --cm-matchingBracket-color: black;
+        --cm-matchingBracket-bg-color: #1b4bbb21;
+        --cm-placeholder-text-color: rgba(0, 0, 0, 0.2);
         --cm-matchingBracket-bg-color: rgba(var(--current-line), 0.875);
         --cm-placeholder-text-color: rgba(var(--foreground), 0.5);
 

@@ -2359,7 +2359,7 @@ pluto-input .cm-editor .cm-content {
 }
 
 .cm-editor {
-    background: var(--cm-editor-bg-color);
+    background: var(--code-background);
     color: var(--cm-editor-text-color);
 }
 .cm-editor.cm-focused:not(.__) {
