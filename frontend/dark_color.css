@@ -1,8 +1,7 @@
 @media (prefers-color-scheme: dark) {
     :root {
         --image-filters: invert(1) hue-rotate(180deg) contrast(0.85);
-
-        --main-bg-color: hsl(225, 7%, 11%);
+        --main-bg-color: hsl(38deg 13% 10%);
         --rule-color: rgba(255, 255, 255, 0.15);
         --kbd-border-color: #222222;
         --header-border-color: rgba(255, 255, 255, 0.1);
@@ -14,9 +13,7 @@
         --normal-cell: 100, 100, 100;
         --code-differs: var(--yellow);
         --differs: rgb(255, 235, 60);
-        --error-color: 235, 67, 67;
         --error-color: var(--red);
-
         --normal-cell-color: rgba(var(--normal-cell), 0.2);
         --dark-normal-cell-color: rgba(var(--normal-cell), 0.4);
         --selected-cell-color: rgba(57, 189, 40, 0.185);
@@ -26,18 +23,18 @@
         --light-error-cell-color: rgba(var(--error-color), 0);
 
         /*Export styling*/
-        --export-bg-color: hsl(225, 7%, 20%);
-        --export-color: rgba(255, 255, 255, 0.897);
-        --export-card-bg-color: rgba(20, 20, 20, 0.8);
+        --export-bg-color: hsl(225deg 36% 22%);
+        --export-color: rgb(255 255 255 / 84%);
+        --export-card-bg-color: rgb(73 73 73);
         --export-card-title-color: rgba(255, 255, 255, 0.85);
-        --export-card-text-color: rgba(255, 255, 255, 0.7);
-        --export-card-shadow-color: #96969629;
+        --export-card-text-color: rgb(255 255 255 / 70%);
+        --export-card-shadow-color: #0000001c;
 
         /*Pluto output styling */
         --pluto-schema-types-color: rgba(255, 255, 255, 0.6);
         --pluto-schema-types-border-color: rgba(255, 255, 255, 0.2);
         --pluto-dim-output-color: hsl(0, 0, 70%);
-        --pluto-output-color: hsl(0, 0%, 85%);
+        --pluto-output-color: hsl(0deg 0% 77%);
         --pluto-output-h-color: hsl(0, 0%, 90%);
         --pluto-output-bg-color: var(--main-bg-color);
         --blockquote-color: #555;
@@ -94,11 +91,11 @@
         --input-context-menu-li-color: #c7c7c7;
 
         /*Pkg status*/
-        --pkg-popup-border-color: #f0e4ee;
-        --pkg-popup-bg-color: var(--input-context-menu-bg-color);
+        --pkg-popup-bg: #3d2f44;
+        --pkg-popup-border-color: #574f56;
         --pkg-popup-buttons-bg-color: var(--input-context-menu-bg-color);
-        --pkg-popup-color: white;
-        --pkg-terminal-color: #ffffff;
+        --black: white;
+        --white: black;
         --pkg-terminal-bg-color: #252627;
         --pkg-terminal-border-color: #c3c3c388;
 
@@ -132,7 +129,7 @@
         --footer-atag-color: rgb(114, 161, 223);
         --footer-input-border-color: #818181;
         --footer-filepicker-button-color: white;
-        --footer-filepicker-focus-color: #3271e7;
+        --footer-filepicker-focus-color: #aac4d4;
         --footnote-border-color: rgba(114, 225, 231, 0.15);
 
         /* undo delete cell*/

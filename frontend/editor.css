@@ -272,10 +272,9 @@ pluto-output blockquote {
     margin-block-end: var(--pluto-cell-spacing);
     display: block;
     padding: 15px;
-
     border-radius: 15px;
     background-color: var(--pluto-output-bg-color);
-    color: var(--blockquote-color);
+    /* color: var(--blockquote-color); */
 }
 pluto-output.rich_output pre:not(.no-block):last-child,
 pluto-output blockquote:last-child {
@@ -518,12 +517,14 @@ div.export_title {
 a.export_card header {
     margin-block: 0px;
     font-family: "Vollkorn", sans;
+    /* font-family: system-ui; */
     font-feature-settings: "lnum", "pnum";
     font-size: 1rem;
 }
 a.export_card section {
     color: var(--export-card-text-color);
     font-weight: 500;
+    /* font-family: system-ui; */
 }
 aside#export button.toggle_export {
     margin-left: auto;
@@ -1668,9 +1669,9 @@ pkg-popup {
     /* min-height: 80px; */
     margin-left: 1.1rem;
     margin-top: calc(0.5 * (1rem - 80px));
-    background: var(--pkg-popup-bg-color);
+    background: var(--pkg-popup-bg);
     border: 3px solid var(--pkg-popup-border-color);
-    color: var(--pkg-popup-color);
+    color: var(--black);
     border-radius: 10px;
     padding: 8px;
     overflow-wrap: break-word;
@@ -1734,7 +1735,7 @@ pkg-terminal {
     cursor: text;
     margin-top: 6px;
     background: var(--pkg-terminal-bg-color);
-    color: var(--pkg-terminal-color);
+    color: white;
     border-radius: 6px;
     border: 3px solid var(--pkg-terminal-border-color);
     padding: 3px;
@@ -2167,9 +2168,9 @@ nav#undo_delete {
     font-family: "Roboto Mono", monospace;
     font-size: 0.75rem;
 
-    background-color: var(--undo-delete-bg-color);
+    background-color: var(--white);
     border-radius: 3px;
-    color: var(--undo-delete-color);
+    color: var(--black);
 
     box-shadow: 00px 00px 10px 2px var(--undo-delete-box-shadow-color);
     opacity: 1;

@@ -2,6 +2,7 @@
     :root {
         --image-filters: none;
 
+        /* Color scheme */
         --main-bg-color: white;
         --rule-color: rgba(0, 0, 0, 0.15);
         --kbd-border-color: #dfdfdf;
@@ -9,7 +10,6 @@
         --atag-color: black;
         --ui-button-color: #2a2a2b;
         --cursor-color: black;
-
         --normal-cell: 0, 0, 0;
         --code-differs: 160, 130, 28;
         --error-color: 240, 168, 168;
@@ -50,7 +50,7 @@
         --footnote-border-color: rgba(23, 115, 119, 0.15);
         --table-border-color: rgba(0, 0, 0, 0.2);
         --table-bg-hover-color: rgba(159, 158, 224, 0.15);
-        --pluto-tree-color: rgba(0, 0, 0, 0.3);
+        --pluto-tree-color: rgb(0 0 0 / 38%);
 
         /*pluto cell styling*/
         --disabled-cell-bg-color: rgba(139, 139, 139, 0.25);
@@ -93,11 +93,11 @@
         --input-context-menu-li-color: #6b6a6a;
 
         /*Pkg status*/
+        --pkg-popup-bg: white;
         --pkg-popup-border-color: #f0e4ee;
-        --pkg-popup-bg-color: rgb(255, 255, 255);
         --pkg-popup-buttons-bg-color: white;
-        --pkg-popup-color: black;
-        --pkg-terminal-color: #ffffff;
+        --black: black;
+        --white: white;
         --pkg-terminal-bg-color: #232433;
         --pkg-terminal-border-color: #c3c3c3;
 
@@ -142,12 +142,12 @@
         --cm-editor-li-aria-selected-bg-color: #16659d;
         --cm-editor-li-aria-selected-color: white;
         --cm-editor-li-notexported-color: rgba(0, 0, 0, 0.5);
-        --cm-editor-bg-color: hsla(46, 90%, 98%, 1);
-        --cm-editor-text-color: #41323f;
+        --code-background: hsla(46, 90%, 98%, 1);
         --cm-code-changed-gutters-color: rgba(214, 172, 35, 0.2);
         --cm-line-numbers-color: #8d86875e;
 
         /* code highlighting */
+        --cm-editor-text-color: #41323f;
         --cm-comment-color: #e96ba8;
         --cm-atom-color: #815ba4;
         --cm-number-color: #815ba4;
