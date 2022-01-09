@@ -67,8 +67,8 @@
         --nav-process-status-color: var(--pluto-output-h-color);
 
         /*header*/
-        --restart-recc-header-color: rgba(72, 173, 255, 0.56);
-        --restart-req-header-color: rgba(233, 48, 35, 0.56);
+        --restart-recc-header-color: rgb(44 106 157 / 56%);
+        --restart-req-header-color: rgb(145 66 60 / 56%);
         --dead-process-header-color: rgba(250, 75, 21, 0.473);
         --loading-header-color: hsl(0deg 0% 20% / 50%);
         --disconnected-header-color: rgba(255, 169, 114, 0.56);
@@ -78,8 +78,9 @@
         --loading-grad-color-1: #a9d4f1;
         --loading-grad-color-2: #d0d4d7;
         /*saveall container*/
-        --overlay-button-bg: #645f5f;
-        --overlay-button-border: #e3e3e3;
+        --overlay-button-bg: #2c2c2c;
+        --overlay-button-border: #c7a74670;
+        --overlay-button-color: white;
 
         /*input_context_menu*/
         --input-context-menu-border-color: rgba(255, 255, 255, 0.1);
