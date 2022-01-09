@@ -4,7 +4,8 @@
         --main-bg-color: hsl(38deg 13% 10%);
         --rule-color: rgba(255, 255, 255, 0.15);
         --kbd-border-color: #222222;
-        --header-border-color: rgba(255, 255, 255, 0.1);
+        --header-bg-color: rgb(33, 32, 31);
+        --header-border-color: transparent;
         --atag-color: white;
         --ui-button-color: rgb(255, 255, 255);
         --cursor-color: white;
@@ -72,7 +73,7 @@
         --restart-recc-header-color: rgba(72, 173, 255, 0.56);
         --restart-req-header-color: rgba(233, 48, 35, 0.56);
         --dead-process-header-color: rgba(250, 75, 21, 0.473);
-        --loading-header-color: hsla(290, 10%, 80%, 0.5);
+        --loading-header-color: hsl(0deg 0% 20% / 50%);
         --disconnected-header-color: rgba(255, 169, 114, 0.56);
         --binder-loading-header-color: hsl(51deg 64% 90% / 50%);
 
