@@ -38,12 +38,6 @@
         --error-cell-color: rgba(var(--error-color), 0.6);
         --bright-error-cell-color: rgba(var(--error-color), 0.9);
         --light-error-cell-color: rgba(var(--error-color), 0);
-        --drop-target-bg-color: rgba(255, 255, 255, 0.75);
-        --drop-target-text-color: black;
-        --drop-target-saving-file-color: white;
-        --drop-target-saving-file-bg-color: rgba(3, 92, 151, 0.75);
-        --drop-invalid-color: rgba(0, 0, 0, 0.85);
-        --drop-invalid-bg-color: #ece5e5bf;
 
         /*Export styling*/
         --export-bg-color: hsl(225, 7%, 20%);
@@ -114,9 +108,6 @@
         --input-context-menu-li-color: #c7c7c7;
 
         /*Pkg status*/
-        --pkg-status-bg-color: #d3752538;
-        --pkg-status-color: #00000060;
-        --pkg-status-mark-option-color: black;
         --pkg-popup-border-color: #f0e4ee;
         --pkg-popup-bg-color: var(--input-context-menu-bg-color);
         --pkg-popup-buttons-bg-color: var(--input-context-menu-bg-color);
@@ -159,9 +150,7 @@
         --footnote-border-color: rgba(114, 225, 231, 0.15);
 
         /* undo delete cell*/
-        --undo-delete-color: white;
         --undo-delete-box-shadow-color: rgba(213, 213, 214, 0.2);
-        --undo-delete-bg-color: #474a4e;
 
         /*codemirror hints*/
         --cm-editor-tooltip-border-color: rgba(0, 0, 0, 0.2);
@@ -201,10 +190,7 @@
         --index-clickable-text-color: rgb(235, 235, 235);
 
         /* docs binding */
-        --docs-binding-bg-color: rgb(var(--background));
-        --docs-binding-color: var(--pluto-output-color);
-        --docs-binding-title-bg-color: rgb(100, 100, 100);
-        --docs-binding-title-color: white;
+        --docs-binding-bg: #323431;
     }
     body:not(.disable_ui):not(.more-specificity) {
         /* background by SVGBackgrounds.com */

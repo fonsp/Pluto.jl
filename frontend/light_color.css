@@ -22,12 +22,6 @@
         --error-cell-color: rgba(var(--error-color), 0.7);
         --bright-error-cell-color: rgb(var(--error-color));
         --light-error-cell-color: rgba(var(--error-color), 0.05);
-        --drop-target-bg-color: rgba(255, 255, 255, 0.75);
-        --drop-target-text-color: black;
-        --drop-target-saving-file-color: white;
-        --drop-target-saving-file-bg-color: rgba(3, 92, 151, 0.75);
-        --drop-invalid-color: rgba(0, 0, 0, 0.85);
-        --drop-invalid-bg-color: #ece5e5bf;
 
         /*Export styling*/
         --export-bg-color: rgb(60, 67, 101);
@@ -99,9 +93,6 @@
         --input-context-menu-li-color: #6b6a6a;
 
         /*Pkg status*/
-        --pkg-status-bg-color: #d3752538;
-        --pkg-status-color: #00000060;
-        --pkg-status-mark-option-color: black;
         --pkg-popup-border-color: #f0e4ee;
         --pkg-popup-bg-color: rgb(255, 255, 255);
         --pkg-popup-buttons-bg-color: white;
@@ -144,9 +135,7 @@
         --footnote-border-color: rgba(23, 115, 119, 0.15);
 
         /* undo delete cell*/
-        --undo-delete-color: white;
         --undo-delete-box-shadow-color: #0083;
-        --undo-delete-bg-color: white;
 
         /*codemirror hints*/
         --cm-editor-tooltip-border-color: rgba(0, 0, 0, 0.2);
@@ -184,10 +173,6 @@
         /* Landing colors */
         --index-text-color: hsl(0, 0, 60);
         --index-clickable-text-color: hsl(0, 0, 30);
-
-        --docs-binding-bg-color: #8383830a;
-        --docs-binding-color: var(--pluto-output-color);
-        --docs-binding-title-bg-color: white;
-        --docs-binding-title-color: #646464;
+        --docs-binding-bg: #8383830a;
     }
 }
