@@ -2067,13 +2067,25 @@ pluto-helpbox > section hr {
 }
 
 .pluto-docs-binding {
-    background: var(--docs-binding-bg-color) !important;
-    color: var(--docs-binding-color) !important;
+    margin: 0.5em;
+    padding: 1em;
+    border-radius: 1em;
+    background: var(--docs-binding-bg);
+    color: var(--pluto-output-color);
 }
 
 .pluto-docs-binding > span {
-    background: var(--docs-binding-title-bg-color) !important;
-    color: var(--docs-binding-title-color) !important;
+    display: inline-block;
+    transform: translate(-19px, -16px);
+    font-family: "JuliaMono", monospace;
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin-top: -1em;
+    padding: 4px;
+    border-radius: 7px;
+
+    background: var(--pluto-output-bg-color);
+    color: var(--black);
 }
 
 /* FOOTER */
