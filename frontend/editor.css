@@ -206,8 +206,14 @@ pluto-output video {
 }
 
 a {
-    color: var(--atag-color);
-    font-weight: bold;
+    color: var(--black);
+    /* font-weight: bold; */
+    text-decoration-thickness: 2px;
+    text-decoration-color: var(--a-underline);
+    /* text-shadow: 1px -1px 0px #ffffff33; */
+}
+a:hover {
+    text-decoration-color: var(--black);
 }
 
 .cm-cursor {
@@ -235,6 +241,7 @@ pluto-output.rich_output code {
 }
 pluto-output.rich_output pre > code {
     padding: 0px;
+    background-color: transparent;
 }
 
 pluto-output pre {
@@ -273,8 +280,8 @@ pluto-output blockquote {
     display: block;
     padding: 15px;
     border-radius: 15px;
-    background-color: var(--pluto-output-bg-color);
-    /* color: var(--blockquote-color); */
+    background-color: var(--blockquote-bg);
+    color: var(--blockquote-color);
 }
 pluto-output.rich_output pre:not(.no-block):last-child,
 pluto-output blockquote:last-child {
@@ -462,7 +469,7 @@ aside#export {
     height: 130px;
     background: var(--export-bg-color);
     color: var(--export-color);
-    transform: translateY(-101%);
+    transform: translateY(-100%);
 }
 aside#export::before {
     content: "";
@@ -1410,7 +1417,7 @@ pluto-input > button > span {
     pluto-cell:hover > pluto-input > button,
     pluto-cell > pluto-runarea > button,
     pluto-cell:hover > pluto-shoulder > button {
-        opacity: 0.25;
+        opacity: 0.4;
         transition: opacity 0.25s ease-in-out;
     }
     button.toggle_export:hover,
@@ -2041,6 +2048,7 @@ pluto-helpbox > section pre {
     overflow-x: auto;
     background: var(--code-section-bg-color);
     border: 1px solid var(--code-section-border-color);
+    border-radius: 4px;
     white-space: pre;
     word-wrap: normal;
 }

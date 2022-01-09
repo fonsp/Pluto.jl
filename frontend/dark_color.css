@@ -1,12 +1,12 @@
 @media (prefers-color-scheme: dark) {
     :root {
-        --image-filters: invert(1) hue-rotate(180deg) contrast(0.85);
+        --image-filters: invert(1) hue-rotate(180deg) contrast(0.8);
+        --out-of-focus-opacity: 0.5;
         --main-bg-color: hsl(38deg 13% 10%);
         --rule-color: rgba(255, 255, 255, 0.15);
         --kbd-border-color: #222222;
         --header-bg-color: rgb(33, 32, 31);
         --header-border-color: transparent;
-        --atag-color: white;
         --ui-button-color: rgb(255, 255, 255);
         --cursor-color: white;
 
@@ -22,7 +22,7 @@
         --light-error-cell-color: rgba(var(--error-color), 0);
 
         /*Export styling*/
-        --export-bg-color: hsl(225deg 36% 22%);
+        --export-bg-color: hsl(225deg 17% 18%);
         --export-color: rgb(255 255 255 / 84%);
         --export-card-bg-color: rgb(73 73 73);
         --export-card-title-color: rgba(255, 255, 255, 0.85);
@@ -36,14 +36,16 @@
         --pluto-output-color: hsl(0deg 0% 77%);
         --pluto-output-h-color: hsl(0, 0%, 90%);
         --pluto-output-bg-color: var(--main-bg-color);
-        --blockquote-color: #555;
+        --a-underline: #ffffff69;
+        --blockquote-color: inherit;
+        --blockquote-bg: #23262e;
         --admonition-title-color: black;
-        --admonition-bg-color: rgba(147, 149, 28, 0.2);
-        --admonition-focus-color: rgb(255, 246, 126);
+        --admonition-bg-color: rgb(35 149 28 / 20%);
+        --admonition-focus-color: rgb(131 191 138);
         --admonition-note-main-color: rgba(50, 115, 200, 0.2);
-        --admonition-note-focus-color: rgb(108, 169, 250);
+        --admonition-note-focus-color: rgb(92 140 205);
         --admonition-warn-main-color: rgba(162, 148, 30, 0.2);
-        --admonition-warn-focus-color: rgb(255, 246, 126);
+        --admonition-warn-focus-color: rgb(221 212 100);
         --admonition-danger-main-color: rgba(200, 67, 50, 0.2);
         --admonition-danger-focus-color: rgb(255, 117, 98);
         --table-border-color: rgba(255, 255, 255, 0.2);
@@ -113,10 +115,10 @@
         --jlerror-mark-color: #b1a9a9;
 
         /* helpbox */
-        --helpbox-bg-color: rgb(20, 20, 20);
-        --helpbox-box-shadow-color: #e9e9e910;
-        --helpbox-header-bg-color: #474a4e;
-        --helpbox-header-color: rgb(255, 251, 244);
+        --helpbox-bg-color: rgb(30 34 31);
+        --helpbox-box-shadow-color: #00000017;
+        --helpbox-header-bg-color: #2c3e36;
+        --helpbox-header-color: rgb(255 248 235);
         --helpbox-notfound-header-color: rgb(139, 139, 139);
         --helpbox-text-color: rgb(230, 230, 230);
         --code-section-bg-color: rgb(44, 44, 44);
@@ -138,7 +140,7 @@
         --cm-editor-tooltip-border-color: rgba(0, 0, 0, 0.2);
         --cm-editor-li-aria-selected-bg-color: #3271e7;
         --cm-editor-li-aria-selected-color: white;
-        --cm-editor-li-notexported-color: rgba(0, 0, 0, 0.5);
+        --cm-editor-li-notexported-color: rgba(255, 255, 255, 0.5);
         --code-background: rgb(34 40 54);
         --cm-code-differs-gutters-color: rgb(235 213 28 / 11%);
         --cm-line-numbers-color: #8d86875e;
@@ -155,7 +157,7 @@
         --cm-var2-color: #06b6ef;
         --cm-buitin-color: #5e7ad3;
         --cm-def-color: #f99b15;
-        --cm-bracket-color: #41323f;
+        --cm-bracket-color: #a2a273;
         --cm-tag-color: #ef6155;
         --cm-link-color: #815ba4;
         --cm-error-bg-color: #ef6155;

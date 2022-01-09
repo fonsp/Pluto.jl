@@ -1,6 +1,7 @@
 @media (prefers-color-scheme: light) {
     :root {
         --image-filters: none;
+        --out-of-focus-opacity: 0.25;
 
         /* Color scheme */
         --main-bg-color: white;
@@ -8,7 +9,6 @@
         --kbd-border-color: #dfdfdf;
         --header-bg-color: white;
         --header-border-color: rgba(0, 0, 0, 0.1);
-        --atag-color: black;
         --ui-button-color: #2a2a2b;
         --cursor-color: black;
         --normal-cell: 0, 0, 0;
@@ -38,6 +38,7 @@
         --pluto-output-color: hsl(0, 0%, 25%);
         --pluto-output-h-color: hsl(0, 0%, 12%);
         --pluto-output-bg-color: white;
+        --a-underline: #00000059;
         --blockquote-color: #555;
         --admonition-title-color: white;
         --admonition-bg-color: rgba(68, 149, 28, 0.2);
