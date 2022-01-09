@@ -896,9 +896,9 @@ main > preamble #saveall-container {
     pointer-events: all;
     right: min(0px, 700px + 25px - 100vw);
     position: relative;
-    background: var(--saveall-bg-color);
+    background: var(--overlay-button-bg);
     padding: 5px 8px;
-    border: 3px solid var(--saveall-border-color);
+    border: 3px solid var(--overlay-button-border);
     border-radius: 12px;
     height: 35px;
     font-family: "Segoe UI Emoji", "Roboto Mono", monospace;
@@ -909,7 +909,7 @@ main > preamble #saveall-container {
 .overlay-button {
     background: #ffffff;
     padding: 5px 8px;
-    border: 3px solid var(--saveall-border-color);
+    border: 3px solid var(--overlay-button-border);
     border-radius: 12px;
     height: 35px;
     font-family: "Segoe UI Emoji", "Roboto Mono", monospace;

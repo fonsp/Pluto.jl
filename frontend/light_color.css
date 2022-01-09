@@ -82,8 +82,8 @@
         --loading-grad-color-2: #d7d7d0;
 
         /*saveall container*/
-        --saveall-bg-color: #e4e3e3;
-        --saveall-border-color: #f3f2f2;
+        --overlay-button-bg: #ffffff;
+        --overlay-button-border: #f3f2f2;
 
         /*input_context_menu*/
         --input-context-menu-border-color: rgba(0, 0, 0, 0.1);
@@ -109,11 +109,11 @@
         --dropruler-bg-color: rgba(0, 0, 0, 0.5);
 
         /* jlerror */
-        --jlerror-header-color: rgb(var(--error-color));
-        --jlerror-mark-bg-color: rgb(42, 44, 51);
-        --jlerror-a-bg-color: rgba(82, 79, 58, 0.5);
+        --jlerror-header-color: #4f1616;
+        --jlerror-mark-bg-color: rgb(243 243 243);
+        --jlerror-a-bg-color: #f5efd9;
         --jlerror-a-border-left-color: #704141;
-        --jlerror-mark-color: white;
+        --jlerror-mark-color: black;
 
         /* helpbox */
         --helpbox-bg-color: white;

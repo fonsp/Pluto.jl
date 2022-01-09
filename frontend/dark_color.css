@@ -80,8 +80,8 @@
         --loading-grad-color-1: #a9d4f1;
         --loading-grad-color-2: #d0d4d7;
         /*saveall container*/
-        --saveall-bg-color: #645f5f;
-        --saveall-border-color: #e3e3e3;
+        --overlay-button-bg: #645f5f;
+        --overlay-button-border: #e3e3e3;
 
         /*input_context_menu*/
         --input-context-menu-border-color: rgba(255, 255, 255, 0.1);
