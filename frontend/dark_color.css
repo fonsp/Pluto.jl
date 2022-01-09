@@ -12,13 +12,11 @@
 
         /* Cells */
         --normal-cell: 100, 100, 100;
-        --code-differs: var(--yellow);
-        --differs: rgb(255, 235, 60);
-        --error-color: var(--red);
+        --error-color: 255, 125, 125;
         --normal-cell-color: rgba(var(--normal-cell), 0.2);
         --dark-normal-cell-color: rgba(var(--normal-cell), 0.4);
-        --selected-cell-color: rgba(57, 189, 40, 0.185);
-        --code-differs-cell-color: rgba(var(--code-differs), 0.8);
+        --selected-cell-color: rgb(40 147 189 / 65%);
+        --code-differs-cell-color: #9b906c;
         --error-cell-color: rgba(var(--error-color), 0.6);
         --bright-error-cell-color: rgba(var(--error-color), 0.9);
         --light-error-cell-color: rgba(var(--error-color), 0);
@@ -54,10 +52,9 @@
 
         /*pluto cell styling*/
         --disabled-cell-bg-color: rgba(139, 139, 139, 0.25);
-        --selected-cell-bg-color: rgba(116, 165, 230, 0.24);
+        --selected-cell-bg-color: rgb(42 115 205 / 78%);
         --hover-scrollbar-color-1: rgba(0, 0, 0, 0.15);
         --hover-scrollbar-color-2: rgba(0, 0, 0, 0.05);
-        --code-differs-border-color: rgba(var(--code-differs), 0.7);
 
         /* Pluto shoulders */
         --shoulder-hover-bg-color: rgba(255, 255, 255, 0.05);
@@ -108,11 +105,11 @@
         --dropruler-bg-color: rgba(255, 255, 255, 0.1);
 
         /* jlerror */
-        --jlerror-header-color: rgb(var(--error-color));
-        --jlerror-mark-bg-color: rgb(42, 44, 51);
+        --jlerror-header-color: #d9baba;
+        --jlerror-mark-bg-color: rgb(0 0 0 / 18%);
         --jlerror-a-bg-color: rgba(82, 58, 58, 0.5);
         --jlerror-a-border-left-color: #704141;
-        --jlerror-mark-color: white;
+        --jlerror-mark-color: #b1a9a9;
 
         /* helpbox */
         --helpbox-bg-color: rgb(20, 20, 20);
@@ -128,9 +125,9 @@
         --footer-color: #cacaca;
         --footer-bg-color: rgb(38, 39, 44);
         --footer-atag-color: rgb(114, 161, 223);
-        --footer-input-border-color: #818181;
-        --footer-filepicker-button-color: white;
-        --footer-filepicker-focus-color: #aac4d4;
+        --footer-input-border-color: #6c6c6c;
+        --footer-filepicker-button-color: black;
+        --footer-filepicker-focus-color: #9d9d9d;
         --footnote-border-color: rgba(114, 225, 231, 0.15);
 
         /* undo delete cell*/
@@ -142,7 +139,7 @@
         --cm-editor-li-aria-selected-color: white;
         --cm-editor-li-notexported-color: rgba(0, 0, 0, 0.5);
         --code-background: rgb(34 40 54);
-        --cm-code-changed-gutters-color: rgba(235, 221, 28, 0.2);
+        --cm-code-differs-gutters-color: rgb(235 213 28 / 11%);
         --cm-line-numbers-color: #8d86875e;
 
         /* code highlighting */
@@ -162,11 +159,9 @@
         --cm-link-color: #815ba4;
         --cm-error-bg-color: #ef6155;
         --cm-error-color: #f7f7f7;
-        --cm-matchingBracket-color: black;
-        --cm-matchingBracket-bg-color: #1b4bbb21;
-        --cm-placeholder-text-color: rgba(0, 0, 0, 0.2);
-        --cm-matchingBracket-bg-color: rgba(var(--current-line), 0.875);
-        --cm-placeholder-text-color: rgba(var(--foreground), 0.5);
+        --cm-matchingBracket-color: white;
+        --cm-matchingBracket-bg-color: #c58c237a;
+        --cm-placeholder-text-color: rgb(255 255 255 / 20%);
 
         /*autocomplete menu*/
         --autocomplete-menu-bg-color: var(--input-context-menu-bg-color);

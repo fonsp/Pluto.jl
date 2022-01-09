@@ -58,7 +58,6 @@
         --selected-cell-bg-color: rgba(40, 78, 189, 0.24);
         --hover-scrollbar-color-1: rgba(0, 0, 0, 0.15);
         --hover-scrollbar-color-2: rgba(0, 0, 0, 0.05);
-        --code-differs-border-color: hsla(46, 70%, 37%, 0.68);
 
         /* Pluto shoulders */
         --shoulder-hover-bg-color: rgba(0, 0, 0, 0.05);
@@ -144,7 +143,7 @@
         --cm-editor-li-aria-selected-color: white;
         --cm-editor-li-notexported-color: rgba(0, 0, 0, 0.5);
         --code-background: hsla(46, 90%, 98%, 1);
-        --cm-code-changed-gutters-color: rgba(214, 172, 35, 0.2);
+        --cm-code-differs-gutters-color: rgba(214, 172, 35, 0.2);
         --cm-line-numbers-color: #8d86875e;
 
         /* code highlighting */

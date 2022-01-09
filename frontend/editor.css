@@ -615,7 +615,7 @@ nav#at_the_top > pluto-filepicker .cm-editor {
     letter-spacing: 1px;
     background: none;
     color: var(--nav-filepicker-color);
-    border: 2px solid var(--nav-filepicker-border-color);
+    border: 2px solid var(--footer-input-border-color);
     border-radius: 3px;
     border-right: none;
     border-top-right-radius: 0;
@@ -696,7 +696,7 @@ nav#at_the_top:after {
     }
     header:hover > nav#at_the_top > pluto-filepicker .cm-editor,
     header:focus-within > nav#at_the_top > pluto-filepicker .cm-editor {
-        border: 2px solid var(--nav-filepicker-border-color);
+        border: 2px solid var(--footer-input-border-color);
         border-right: none;
     }
     header:hover > nav#at_the_top > pluto-filepicker button,
@@ -1302,7 +1302,7 @@ body:not(.___) pluto-cell.code_differs > pluto-trafficlight {
 
 body:not(.___) pluto-cell.errored > pluto-trafficlight {
     background: var(--error-cell-color);
-    border-left-color: var(--error-cell-color);
+    border-left-color: rgb(0 0 0 / 60%);
     background-clip: padding-box;
 }
 
@@ -2120,6 +2120,7 @@ footer a {
 footer input {
     margin: 0px;
     border: 2px solid var(--footer-input-border-color);
+    background: transparent;
     font-family: inherit;
     font-size: inherit;
     border-radius: 3px 0 0 3px;
@@ -2379,7 +2380,7 @@ pluto-input .cm-editor .cm-content {
 
 pluto-cell.code_differs .cm-editor .cm-gutters {
     /* background: hsla(46, 70%, 88%, 1); */
-    background-color: var(--cm-code-changed-gutters-color);
+    background-color: var(--cm-code-differs-gutters-color);
 }
 
 .cm-editor .cm-lineNumbers .cm-gutterElement {
