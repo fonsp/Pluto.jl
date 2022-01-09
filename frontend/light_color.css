@@ -40,6 +40,7 @@
         --pluto-output-bg-color: white;
         --a-underline: #00000059;
         --blockquote-color: #555;
+        --blockquote-bg: #f2f2f2;
         --admonition-title-color: white;
         --admonition-bg-color: rgba(68, 149, 28, 0.2);
         --admonition-focus-color: rgb(158, 200, 137);
@@ -157,7 +158,7 @@
         --cm-string-color: #da5616;
         --cm-var-color: #5668a4;
         --cm-var2-color: #06b6ef;
-        --cm-buitin-color: #5e7ad3;
+        --cm-builtin-color: #5e7ad3;
         --cm-def-color: #f99b15;
         --cm-bracket-color: #41323f;
         --cm-tag-color: #ef6155;

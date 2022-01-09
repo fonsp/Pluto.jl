@@ -2013,7 +2013,6 @@ pluto-helpbox pre code {
 
 pluto-helpbox pre code.hljs {
     padding: 0;
-    background: none;
 }
 
 pluto-helpbox code .cm-editor .cm-content {

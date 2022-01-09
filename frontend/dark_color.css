@@ -2,10 +2,10 @@
     :root {
         --image-filters: invert(1) hue-rotate(180deg) contrast(0.8);
         --out-of-focus-opacity: 0.5;
-        --main-bg-color: hsl(38deg 13% 10%);
+        --main-bg-color: hsl(0deg 0% 12%);
         --rule-color: rgba(255, 255, 255, 0.15);
         --kbd-border-color: #222222;
-        --header-bg-color: rgb(33, 32, 31);
+        --header-bg-color: hsl(30deg 3% 16%);
         --header-border-color: transparent;
         --ui-button-color: rgb(255, 255, 255);
         --cursor-color: white;
@@ -38,7 +38,7 @@
         --pluto-output-bg-color: var(--main-bg-color);
         --a-underline: #ffffff69;
         --blockquote-color: inherit;
-        --blockquote-bg: #23262e;
+        --blockquote-bg: #2e2e2e;
         --admonition-title-color: black;
         --admonition-bg-color: rgb(35 149 28 / 20%);
         --admonition-focus-color: rgb(131 191 138);
@@ -141,7 +141,7 @@
         --cm-editor-li-aria-selected-bg-color: #3271e7;
         --cm-editor-li-aria-selected-color: white;
         --cm-editor-li-notexported-color: rgba(255, 255, 255, 0.5);
-        --code-background: rgb(34 40 54);
+        --code-background: hsl(222deg 17% 17%);
         --cm-code-differs-gutters-color: rgb(235 213 28 / 11%);
         --cm-line-numbers-color: #8d86875e;
 
@@ -155,7 +155,7 @@
         --cm-string-color: hsl(20deg 56% 68%);
         --cm-var-color: #afb7d3;
         --cm-var2-color: #06b6ef;
-        --cm-buitin-color: #5e7ad3;
+        --cm-builtin-color: #5e7ad3;
         --cm-def-color: #f99b15;
         --cm-bracket-color: #a2a273;
         --cm-tag-color: #ef6155;
