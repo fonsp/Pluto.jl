@@ -1599,26 +1599,6 @@ pkg-status-mark.disable_pkg > button > span::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chatbox-ellipses-outline.svg");
     opacity: 0.6;
 }
-pkg-status-mark select {
-    width: 100%;
-    white-space: nowrap;
-    border: none;
-    background-color: transparent;
-    font-size: 0.65rem;
-    font-family: "Space Mono", monospace;
-    font-weight: 500;
-    text-align: center;
-    text-align-last: center;
-}
-
-pkg-status-mark option {
-    background: #d3752538;
-    color: #00000060;
-}
-pkg-status-mark option.installed {
-    background: unset;
-    color: black;
-}
 
 pkg-popup {
     display: block;
