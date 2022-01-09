@@ -600,7 +600,6 @@ nav#at_the_top img#logo-small {
 nav#at_the_top > pluto-filepicker {
     width: 210px;
     flex-grow: 1;
-
     display: flex;
     flex-direction: row;
 }
@@ -632,6 +631,7 @@ pluto-filepicker .cm-scroller::-webkit-scrollbar {
 
 nav#at_the_top > pluto-filepicker button {
     cursor: pointer;
+    height: auto;
 }
 
 button.start_stop_recording,
@@ -2083,9 +2083,9 @@ footer {
 
 footer form {
     height: 1.5rem;
-
     opacity: 1;
     transition: opacity 5s;
+    display: flex;
 }
 
 footer form > * {
@@ -2137,7 +2137,7 @@ footer button {
     /* border: none; */
     font-family: inherit;
     font-weight: 600;
-    height: 100%;
+    height: auto;
     font-size: 0.75rem;
 }
 
