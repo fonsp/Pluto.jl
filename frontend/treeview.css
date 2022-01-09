@@ -16,7 +16,7 @@ pluto-tree-pair {
 }
 pluto-tree {
     color: var(--pluto-tree-color);
-    /* white-space: pre; */
+    white-space: pre;
     cursor: pointer;
 }
 
@@ -53,7 +53,7 @@ pluto-tree > pluto-tree-prefix::before {
     opacity: 0.5;
     cursor: pointer;
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-down-outline.svg);
-    filter: invert(var(--invert-image-colors));
+    filter: var(--image-filters);
 }
 
 pluto-tree.collapsed pluto-tree > pluto-tree-prefix::before {

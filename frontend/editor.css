@@ -29,6 +29,8 @@
         for julia mono see here: https://cormullion.github.io/pages/2020-07-26-JuliaMono/#contextual_and_stylistic_alternates_and_ligatures */
     --pluto-operator-ligatures: none;
     --sans-serif-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+
+    color-scheme: light dark;
 }
 
 /* GENERAL PAGE LAYOUT */
@@ -90,6 +92,7 @@ body:not(.disable_ui) {
 
 pluto-notebook {
     display: block;
+    background: var(--main-bg-color);
 }
 
 /* STANDARD HTML ELEMENTS */
