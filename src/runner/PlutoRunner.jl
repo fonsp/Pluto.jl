@@ -912,21 +912,8 @@ end
 function format_output(binding::Base.Docs.Binding; context=default_iocontext)
     try
         ("""
-        <div class="pluto-docs-binding" style="margin: .5em; padding: 1em; background: #8383830a; border-radius: 1em;">
-        <span style="
-            display: inline-block;
-            transform: translate(-19px, -16px);
-            font-family: 'JuliaMono', monospace;
-            font-size: .9rem;
-            font-weight: 700;
-            /* height: 1px; */
-            margin-top: -1em;
-            background: white;
-            padding: 4px;
-            border-radius: 7px;
-            /* color: #646464; */
-            /* border: 3px solid #f99b1536;
-        ">$(binding.var)</span>
+        <div class="pluto-docs-binding">
+        <span>$(binding.var)</span>
         $(repr(MIME"text/html"(), Base.Docs.doc(binding)))
         </div>
         """, MIME"text/html"()) 

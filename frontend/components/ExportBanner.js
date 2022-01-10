@@ -41,7 +41,7 @@ export const ExportBanner = ({ onClose, notebookfile_url, notebookexport_url, st
                     <section>An <b>.html</b> file for your web page, or to share online.</section>
                 </a>
                 <a href="#" class="export_card" onClick=${() => window.print()}>
-                    <header><${Square} fill="#3D6117" /> Static PDF</header>
+                    <header><${Square} fill="#619b3d" /> Static PDF</header>
                     <section>A static <b>.pdf</b> file for print or email.</section>
                 </a>
                 <!--

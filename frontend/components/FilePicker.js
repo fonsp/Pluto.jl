@@ -61,6 +61,7 @@ export class FilePicker extends Component {
         }
     }
     componentDidMount() {
+        const usesDarkTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
         this.cm = new EditorView({
             /** Migration #0: New */
             state: EditorState.create({
@@ -100,7 +101,7 @@ export class FilePicker extends Component {
                             overflowY: "hidden",
                             overflowX: "auto",
                         },
-                    }),
+                    }, {dark : usesDarkTheme}),
                     // EditorView.updateListener.of(onCM6Update),
                     history(),
                     autocompletion({
