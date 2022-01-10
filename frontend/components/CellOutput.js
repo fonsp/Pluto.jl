@@ -10,11 +10,13 @@ import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
 import { PlutoBondsContext, PlutoContext, PlutoJSInitializingContext } from "../common/PlutoContext.js"
 import register from "../imports/PreactCustomElement.js"
 
-import { EditorState, EditorView, julia_andrey, defaultHighlightStyle } from "../imports/CodemirrorPlutoSetup.js"
+import { EditorState, EditorView, defaultHighlightStyle } from "../imports/CodemirrorPlutoSetup.js"
+
 import { pluto_syntax_colors } from "./CellInput.js"
 import { useState } from "../imports/Preact.js"
 
 import hljs from "../imports/highlightjs.js"
+import { julia_andrey } from "./CellInput/mixedParsers.js"
 
 export class CellOutput extends Component {
     constructor() {
@@ -213,10 +215,11 @@ let IframeContainer = ({ body }) => {
             /** Grab the <script> tag for the iframe content window resizer
              * @type {HTMLScriptElement} */
             let original_script_element = document.querySelector("#iframe-resizer-content-window-script")
-            // Clone it into the iframe document, so we have the exact same script tag there
-            let iframe_resizer_content_script = iframeDocument.importNode(original_script_element)
-            // Fix the `src` so it isn't relative to the iframes url, but this documents url
-            iframe_resizer_content_script.src = new URL(iframe_resizer_content_script.src, original_script_element.baseURI).toString()
+
+            // Insert iframe resizer inside the iframe
+            let iframe_resizer_content_script = iframeDocument.createElement("script")
+            iframe_resizer_content_script.src = original_script_element.src
+            iframe_resizer_content_script.crossOrigin = "anonymous"
             iframeDocument.head.appendChild(iframe_resizer_content_script)
 
             // Apply iframe resizer from the host side

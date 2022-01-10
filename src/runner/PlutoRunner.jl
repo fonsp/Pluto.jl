@@ -1653,7 +1653,7 @@ function transform_bond_value(s::Symbol, value_from_js)
         transform_value_ref[](element, value_from_js)
     catch e
         @error "AbstractPlutoDingetjes: Bond value transformation errored." exception=(e, catch_backtrace())
-        (Text("❌ AbstractPlutoDingetjes: Bond value transformation errored."), e, stacktrace(catch_backtrace()))
+        (Text("❌ AbstractPlutoDingetjes: Bond value transformation errored."), e, stacktrace(catch_backtrace()), value_from_js)
     end
 end
 
@@ -1885,28 +1885,30 @@ function Base.show(io::IO, m::MIME"text/html", e::EmbeddableDisplay)
         # In this case, we can just embed the HTML content directly.
         body
     else
-        """<pluto-display></pluto-display><script id=$(e.script_id)>
+        s = """<pluto-display></pluto-display><script id=$(e.script_id)>
 
         // see https://plutocon2021-demos.netlify.app/fonsp%20%E2%80%94%20javascript%20inside%20pluto to learn about the techniques used in this script
         
-        const body = $(publish_to_js(body, e.script_id))
-        const mime = "$(string(mime))"
+        const body = $(publish_to_js(body, e.script_id));
+        const mime = "$(string(mime))";
         
-        const create_new = this == null || this._mime !== mime
+        const create_new = this == null || this._mime !== mime;
         
-        const display = create_new ? currentScript.previousElementSibling : this
+        const display = create_new ? currentScript.previousElementSibling : this;
         
-        display.persist_js_state = true
-        display.body = body
+        display.persist_js_state = true;
+        display.body = body;
         if(create_new) {
             // only set the mime if necessary, it triggers a second preact update
-            display.mime = mime
+            display.mime = mime;
             // add it also as unwatched property to prevent interference from Preact
-            display._mime = mime
+            display._mime = mime;
         }
-        return display
+        return display;
 
         </script>"""
+        
+        replace(replace(s, r"//.+" => ""), "\n" => "")
     end
     write(io, to_write)
 end
@@ -1985,6 +1987,9 @@ tree_data(@nospecialize(e::DivElement), context::IOContext) = Dict{Symbol, Any}(
 )
 pluto_showable(::MIME"application/vnd.pluto.divelement+object", ::DivElement) = true
 
+function Base.show(io::IO, m::MIME"text/html", e::DivElement)
+    Base.show(io, m, embed_display(e))
+end
 
 ###
 # LOGGING
