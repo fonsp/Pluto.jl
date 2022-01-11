@@ -43,9 +43,10 @@ import {
     StateField,
     StateEffect,
     autocomplete,
+    julia_andrey,
 } from "../imports/CodemirrorPlutoSetup.js"
 
-import { markdown, html as htmlLang, javascript, sqlLang, python, julia_andrey } from "./CellInput/mixedParsers.js"
+// import { markdown, html as htmlLang, javascript, sqlLang, python, julia_andrey } from "./CellInput/mixedParsers.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
 import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"
@@ -55,22 +56,28 @@ import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
 import { cl } from "../common/ClassTable.js"
 
+console.log(`tags.definitionKeyword:`, tags.definitionKeyword)
+
 export const pluto_syntax_colors = HighlightStyle.define([
     /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
     // Symbol
+    { tag: tags.paren, color: "red" },
     { tag: tags.literal, color: "#5e7ad3", fontWeight: 700 },
     { tag: tags.macroName, color: "#5668a4", fontWeight: 700 },
     // `nothing` I guess... Any others?
     { tag: tags.standard(tags.variableName), color: "#5e7ad3", fontWeight: 700 },
 
-    { tag: tags.bool, color: "#5e7ad3", fontWeight: 700 },
+    { tag: tags.controlKeyword, color: "black", fontWeight: 700 },
 
-    { tag: tags.keyword, color: "#fc6" },
+    { tag: tags.bool, color: "#815ba4", fontWeight: 700 },
+    { tag: tags.propertyName, color: "#48b685" },
+    { tag: tags.unit, color: "red" },
+
+    { tag: tags.keyword, color: "#ef6155" },
     { tag: tags.comment, color: "#e96ba8", fontStyle: "italic" },
     { tag: tags.atom, color: "#815ba4" },
     { tag: tags.number, color: "#815ba4" },
     { tag: tags.bracket, color: "#48b685" },
-    { tag: tags.keyword, color: "#ef6155" },
     { tag: tags.string, color: "#da5616" },
     { tag: tags.variableName, color: "#5668a4", fontWeight: 700 },
     // { tag: tags.variable2, color: "#06b6ef" },
@@ -80,6 +87,10 @@ export const pluto_syntax_colors = HighlightStyle.define([
     { tag: tags.tagName, color: "#ef6155" },
     { tag: tags.link, color: "#815ba4" },
     { tag: tags.invalid, color: "#000", background: "#ef6155" },
+
+    { tag: tags.definitionKeyword, color: "green" },
+    { tag: tags.paren, color: "red" },
+
     // Object.keys(tags).map((x) => ({ tag: x, color: x })),
     // Markdown
     { tag: tags.heading, color: "#081e87", fontWeight: 500 },
@@ -419,11 +430,11 @@ export const CellInput = ({
                     EditorState.tabSize.of(4),
                     indentUnit.of("\t"),
                     julia_andrey(),
-                    markdown(),
-                    htmlLang(), //Provides tag closing!,
-                    javascript(),
-                    python(),
-                    sqlLang,
+                    // markdown(),
+                    // htmlLang(), //Provides tag closing!,
+                    // javascript(),
+                    // python(),
+                    // sqlLang,
                     go_to_definition_plugin,
                     pluto_autocomplete({
                         request_autocomplete: async ({ text }) => {
