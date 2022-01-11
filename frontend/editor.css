@@ -587,7 +587,6 @@ nav#at_the_top img#logo-small {
 nav#at_the_top > pluto-filepicker {
     width: 210px;
     flex-grow: 1;
-
     display: flex;
     flex-direction: row;
 }
@@ -619,6 +618,7 @@ pluto-filepicker .cm-scroller::-webkit-scrollbar {
 
 nav#at_the_top > pluto-filepicker button {
     cursor: pointer;
+    height: auto;
 }
 
 button.start_stop_recording,
@@ -885,6 +885,8 @@ main > preamble {
     font-family: "Segoe UI Emoji", "Roboto Mono", monospace;
     font-size: 0.75rem;
     pointer-events: all;
+    /* break-inside: avoid; */
+    white-space: nowrap;
 }
 
 main > preamble #saveall-container {
@@ -1599,26 +1601,6 @@ pkg-status-mark.disable_pkg > button > span::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chatbox-ellipses-outline.svg");
     opacity: 0.6;
 }
-pkg-status-mark select {
-    width: 100%;
-    white-space: nowrap;
-    border: none;
-    background-color: transparent;
-    font-size: 0.65rem;
-    font-family: "Space Mono", monospace;
-    font-weight: 500;
-    text-align: center;
-    text-align-last: center;
-}
-
-pkg-status-mark option {
-    background: #d3752538;
-    color: #00000060;
-}
-pkg-status-mark option.installed {
-    background: unset;
-    color: black;
-}
 
 pkg-popup {
     display: block;
@@ -2011,9 +1993,9 @@ footer {
 
 footer form {
     height: 1.5rem;
-
     opacity: 1;
     transition: opacity 5s;
+    display: flex;
 }
 
 footer form > * {
@@ -2065,6 +2047,7 @@ footer button {
     /* border: none; */
     font-family: inherit;
     font-weight: 600;
+    height: auto;
     font-size: 0.75rem;
 }
 
@@ -2293,12 +2276,14 @@ pluto-input .cm-editor .cm-content {
 
 .cm-editor .cm-gutter {
     min-width: 29px;
+    min-height: 23px;
 }
 
 .cm-editor .cm-gutters {
     /* background: hsla(46, 90%, 98%, 1); */
     background: transparent;
     border-right: solid 1px hsla(0, 0%, 0%, 0);
+    /* height: auto; */
 }
 
 pluto-cell.code_differs .cm-editor .cm-gutters {
