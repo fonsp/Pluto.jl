@@ -43,7 +43,7 @@ const useCellApi = (node_ref, published_object_keys, pluto_actions) => {
  * */
 export const Cell = ({
     cell_input: { cell_id, code, code_folded, running_disabled },
-    cell_result: { queued, running, runtime, errored, output, logs, published_object_keys, depends_on_disabled_cells },
+    cell_result: { queued, running, runtime, errored, output, published_object_keys, depends_on_disabled_cells },
     cell_dependencies,
     cell_input_local,
     notebook_id,
@@ -57,6 +57,8 @@ export const Cell = ({
     is_process_ready,
     disable_input,
     nbpkg,
+    any_logs,
+    shrunk,
 }) => {
     let pluto_actions = useContext(PlutoContext)
     const notebook = pluto_actions.get_notebook()
@@ -68,8 +70,6 @@ export const Cell = ({
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
     const [cm_highlighted_line, set_cm_highlighted_line] = useState(null)
     const [show_logs, set_show_logs] = useState(true)
-
-    const any_logs = useMemo(() => !_.isEmpty(logs), [logs])
 
     useEffect(() => {
         if (!any_logs) {
@@ -145,7 +145,7 @@ export const Cell = ({
                 running_disabled: running_disabled,
                 depends_on_disabled_cells: depends_on_disabled_cells,
                 show_input: show_input,
-                shrunk: Object.values(logs).length > 0,
+                shrunk: shrunk,
                 hooked_up: output?.has_pluto_hook_features ?? false,
             })}
             id=${cell_id}
@@ -223,7 +223,7 @@ export const Cell = ({
                 cm_highlighted_line=${cm_highlighted_line}
                 set_cm_highlighted_line=${set_cm_highlighted_line}
             />
-            ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${line_heights} set_cm_highlighted_line=${set_cm_highlighted_line} />` : null}
+            ${show_logs ? html`<${Logs} line_heights=${line_heights} set_cm_highlighted_line=${set_cm_highlighted_line} />` : null}
             <${RunArea}
                 cell_id=${cell_id}
                 running_disabled=${running_disabled}

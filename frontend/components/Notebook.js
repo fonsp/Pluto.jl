@@ -1,4 +1,4 @@
-import { PlutoContext } from "../common/PlutoContext.js"
+import { PlutoContext, PlutoLogsContext } from "../common/PlutoContext.js"
 import { html, useContext, useEffect, useMemo, useState } from "../imports/Preact.js"
 
 import { Cell } from "./Cell.js"
@@ -28,7 +28,11 @@ let CellMemo = ({
     const logs = cell_result?.logs ?? []
     const { queued, running, runtime, errored, depends_on_disabled_cells } = cell_result || {}
     const { cell_id, code, code_folded, running_disabled } = cell_input || {}
-    return useMemo(() => {
+    const [any_logs, shrunk, logsToPass] = useMemo(() => {
+        const vals = Object.values(logs)
+        return [!_.isEmpty(logs), vals.length > 0, vals]
+    }, [logs])
+    const MemoizedCell = useMemo(() => {
         return html`
             <${Cell}
                 cell_result=${cell_result}
@@ -48,6 +52,8 @@ let CellMemo = ({
                 show_logs=${show_logs}
                 set_show_logs=${set_show_logs}
                 nbpkg=${nbpkg}
+                any_logs=${any_logs}
+                shrunk=${shrunk}
             />
         `
     }, [
@@ -63,7 +69,7 @@ let CellMemo = ({
         mime,
         persist_js_state,
         rootassignee,
-        logs,
+        // logs, -- Performance optimization: Throw logs into context
         code,
         code_folded,
         cell_input_local,
@@ -79,8 +85,14 @@ let CellMemo = ({
         is_process_ready,
         disable_input,
         show_logs,
+        any_logs,
+        shrunk,
         ...nbpkg_fingerprint(nbpkg),
     ])
+
+    return html`<${PlutoLogsContext.Provider} value=${logsToPass}>
+    ${MemoizedCell}
+    </${PlutoLogsContext.Provider}`
 }
 
 /**
