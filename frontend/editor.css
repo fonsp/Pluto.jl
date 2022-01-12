@@ -1315,7 +1315,7 @@ body:not(.___) pluto-cell.code_differs > pluto-trafficlight {
 
 body:not(.___) pluto-cell.errored > pluto-trafficlight {
     background: var(--error-cell-color);
-    border-left-color: rgb(0 0 0 / 60%);
+    border-left-color: var(--error-cell-color);
     background-clip: padding-box;
 }
 
