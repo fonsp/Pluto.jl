@@ -2373,6 +2373,10 @@ pluto-input .cm-editor .cm-content {
     padding: 2px 0px;
 }
 
+.cm-focused .cm-selectionBackground {
+    background: var(--cm-selection-background) !important;
+}
+
 .cm-editor {
     background: var(--code-background);
     color: var(--cm-editor-text-color);
