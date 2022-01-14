@@ -144,7 +144,8 @@
         --code-background: hsl(222deg 16% 19%);
         --cm-code-differs-gutters-color: rgb(235 213 28 / 11%);
         --cm-line-numbers-color: #8d86875e;
-        --cm-selection-background: rgba(83, 206, 114, 0.253);
+        --cm-selection-background: hsl(215deg 64% 59% / 48%);
+        --cm-selection-background-blurred: hsl(215deg 0% 59% / 48%);
 
         /* code highlighting */
         --cm-editor-text-color: #ffe9fc;
