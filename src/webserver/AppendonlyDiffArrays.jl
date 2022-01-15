@@ -154,7 +154,7 @@ md"## Import Firebasey when running inside notebook"
 end
 
 # ╔═╡ 2903d17e-c6fd-4cea-8585-4db26a00b0e7
-function array_diff(a::AppendonlyDiffArray, b::AppendonlyDiffArray)
+function Firebasey.diff(a::AppendonlyDiffArray, b::AppendonlyDiffArray)
 	if a.mutable_source !== b.mutable_source
 		[Firebasey.ReplacePatch([], b)]
 	else
