@@ -78,6 +78,11 @@ Besides `:update_notebook`, you will find more functions in [`responses`](@ref) 
 
 """
 module Firebasey include("./Firebasey.jl") end
+module AppendonlyDiffArrays
+    # I put Firebasey here manually THANKS JULIA
+    import ..Firebasey
+    include("./AppendonlyDiffArrays.jl")
+end
 
 # All of the arrays in the notebook_to_js object are 'immutable' (we write code as if they are), so we can enable this optimization:
 Firebasey.use_triple_equals_for_arrays[] = true
@@ -138,10 +143,7 @@ function notebook_to_js(notebook::Notebook)
                 "running" => cell.running,
                 "errored" => cell.errored,
                 "runtime" => cell.runtime,
-                "logs" => Dict(
-                    string(i) => log
-                    for (i, log) in enumerate(cell.logs)
-                ),
+                "logs" => AppendonlyDiffArrays.AppendonlyDiffArray(cell.logs),
             )
         for (id, cell) in notebook.cells_dict),
         "cell_order" => notebook.cell_order,
