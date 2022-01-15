@@ -192,7 +192,7 @@ end
 # ⚠️✅ Internal API with fallback
 function instantiate(ctx; update_registry::Bool)
 	@static if hasmethod(Pkg.instantiate, Tuple{}, (:update_registry,))
-		Pkg.instantiate(ctx; update_registry=update_registry)
+		Pkg.instantiate(ctx; update_registry)
 	else
 		Pkg.instantiate(ctx)
 	end
