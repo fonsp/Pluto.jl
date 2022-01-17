@@ -101,7 +101,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 		cell.queued = false
 		cell.running = true
-		# Important to not use empty! here because AppendonlyDiffArray requires a new array identity.
+		# Important to not use empty! here because AppendonlyMarker requires a new array identity.
 		# Eventually we could even make AppendonlyArray to enforce this but idk if it's worth it. yadiyadi.
 		cell.logs = []
 		send_notebook_changes_throttled()

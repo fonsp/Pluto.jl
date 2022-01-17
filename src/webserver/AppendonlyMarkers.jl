@@ -7,36 +7,36 @@ using InteractiveUtils
 # ╔═╡ 273c7c85-8178-44a7-99f0-581754aeb8c8
 begin
 	"""
-	An array type only useful in the context of Firebasey diffing..
+	Mark a vector as being append-only: let Firebasey know that it can diff this array simply by comparing lengths, without looking at its contents.
 
-	It was made specifically for logs: Logs are always appended, OR the whole log stream is reset. AppendonlyDiffArray is like SubArray (a view into another array) except we agree to only ever append to the source array. This way, firebase can just look at the index and diff based on that.
+	It was made specifically for logs: Logs are always appended, OR the whole log stream is reset. AppendonlyMarker is like SubArray (a view into another array) except we agree to only ever append to the source array. This way, firebase can just look at the index and diff based on that.
 	"""
-	struct AppendonlyDiffArray{T} <: AbstractVector{T}
+	struct AppendonlyMarker{T} <: AbstractVector{T}
 		mutable_source::Vector{T}
 		length_at_time_of_creation::Int
 	end
-	AppendonlyDiffArray(arr) = AppendonlyDiffArray(arr, length(arr))
+	AppendonlyMarker(arr) = AppendonlyMarker(arr, length(arr))
 	
 	# Poor mans vector-proxy
 	# I think this is enough for Pluto to show, and for msgpack to pack
-	function Base.size(arr::AppendonlyDiffArray)
+	function Base.size(arr::AppendonlyMarker)
 		return (arr.length_at_time_of_creation,)
 	end
-	function Base.getindex(arr::AppendonlyDiffArray, index::Int)
+	function Base.getindex(arr::AppendonlyMarker, index::Int)
 		if index > arr.length_at_time_of_creation
 			throw(BoundsError(arr, index))
 		end
 
 		arr.mutable_source[index]
 	end
-	function Base.iterate(arr::AppendonlyDiffArray)
+	function Base.iterate(arr::AppendonlyMarker)
 		if arr.length_at_time_of_creation == 0
 			nothing
 		else
 			Base.iterate(arr.mutable_source)
 		end
 	end
-	function Base.iterate(arr::AppendonlyDiffArray, index::Int)
+	function Base.iterate(arr::AppendonlyMarker, index::Int)
 		if arr.length_at_time_of_creation < index
 			nothing
 		else
@@ -47,7 +47,7 @@ end
 
 # ╔═╡ 183cef1f-bfe9-42cd-8239-49e9ed00a7b6
 md"""
-## AppendonlyDiffArray(s)
+## AppendonlyMarker(s)
 
 Example of how to solve performance problems with Firebasey:
 We make a new type with a specific diff function.
@@ -84,9 +84,9 @@ end
 # ╔═╡ 35d3bcd7-af51-466a-b4c4-cc055e74d01d
 @skip_as_script appendonly_1, appendonly_2 = let
 	array_1 = [1,2,3,4]
-	appendonly_1 = AppendonlyDiffArray(array_1)
+	appendonly_1 = AppendonlyMarker(array_1)
 	push!(array_1, 5)
-	appendonly_2 = AppendonlyDiffArray(array_1)
+	appendonly_2 = AppendonlyMarker(array_1)
 
 	appendonly_1, appendonly_2
 end;
@@ -101,9 +101,9 @@ end;
 		)
 		for i in 1:10000
 	];
-	appendonly_1 = AppendonlyDiffArray(large_array_1)
+	appendonly_1 = AppendonlyMarker(large_array_1)
 	push!(large_array_1, Dict("x" => 5))
-	appendonly_2 = AppendonlyDiffArray(large_array_1)
+	appendonly_2 = AppendonlyMarker(large_array_1)
 
 	appendonly_1, appendonly_2
 end;
@@ -134,10 +134,10 @@ begin
 end
 
 # ╔═╡ 06492e8d-4500-4efe-80ee-55bf1ee2348c
-@skip_as_script @test length([AppendonlyDiffArray([1,2,3])...]) == 3
+@skip_as_script @test length([AppendonlyMarker([1,2,3])...]) == 3
 
 # ╔═╡ 2284ae12-5b8c-4542-81fa-c4d34f2483e7
-@skip_as_script @test length([AppendonlyDiffArray([1,2,3], 1)...]) == 1
+@skip_as_script @test length([AppendonlyMarker([1,2,3], 1)...]) == 1
 
 # ╔═╡ dc5cd268-9cfb-49bf-87fb-5b7db4fa6e3c
 md"## Import Firebasey when running inside notebook"
@@ -154,12 +154,12 @@ md"## Import Firebasey when running inside notebook"
 end
 
 # ╔═╡ 2903d17e-c6fd-4cea-8585-4db26a00b0e7
-function Firebasey.diff(a::AppendonlyDiffArray, b::AppendonlyDiffArray)
+function Firebasey.diff(a::AppendonlyMarker, b::AppendonlyMarker)
 	if a.mutable_source !== b.mutable_source
 		[Firebasey.ReplacePatch([], b)]
 	else
 		if a.length_at_time_of_creation > b.length_at_time_of_creation
-			throw(ErrorException("Not really supposed to diff AppendonlyDiffArray with the original being longer than the next version (you know, 'append only' and al)"))
+			throw(ErrorException("Not really supposed to diff AppendonlyMarker with the original being longer than the next version (you know, 'append only' and al)"))
 		end
 		
 		map(a.length_at_time_of_creation+1:b.length_at_time_of_creation) do index
