@@ -34,7 +34,7 @@ md"""
 end
 
 # ╔═╡ 3599eb82-0003-11eb-3814-dfd0f5737846
-for i in 1:10000
+for i in 1:1000
 	
 	@debug i
 	@info i*100
@@ -45,7 +45,7 @@ for i in 1:10000
 end
 
 # ╔═╡ 54d5c34e-63b5-4b52-91fe-a5fd1b729182
-for z in 1:200
+for z in 1:20
 	@info z
 	sleep(.1)
 end
