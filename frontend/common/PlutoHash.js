@@ -1,3 +1,5 @@
+import "https://cdn.jsdelivr.net/npm/js-sha256@0.9.0"
+
 export const base64_arraybuffer = async (/** @type {BufferSource} */ data) => {
     /** @type {string} */
     const base64url = await new Promise((r) => {
