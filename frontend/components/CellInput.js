@@ -1,4 +1,5 @@
 import { html, useState, useEffect, useLayoutEffect, useRef, useContext, useMemo } from "../imports/Preact.js"
+import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 import _ from "../imports/lodash.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
@@ -53,6 +54,7 @@ import { cell_movement_plugin, prevent_holding_a_key_from_doing_things_across_ce
 import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
 import { cl } from "../common/ClassTable.js"
+import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_line.js"
 
 export const pluto_syntax_colors = HighlightStyle.define([
     /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
@@ -157,11 +159,16 @@ export const CellInput = ({
     on_change,
     on_update_doc_query,
     on_focus_neighbor,
+    on_line_heights,
     nbpkg,
     cell_id,
     notebook_id,
     running_disabled,
     cell_dependencies,
+    any_logs,
+    show_logs,
+    set_show_logs,
+    cm_highlighted_line,
     variables_in_all_notebook,
 }) => {
     let pluto_actions = useContext(PlutoContext)
@@ -174,6 +181,7 @@ export const CellInput = ({
 
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
     let used_variables_compartment = useCompartment(newcm_ref, UsedVariablesFacet.of(variables_in_all_notebook))
+    let highlighted_line_compartment = useCompartment(newcm_ref, HighlightLineFacet.of(cm_highlighted_line))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
 
     let on_change_compartment = useCompartment(
@@ -359,6 +367,7 @@ export const CellInput = ({
                     EditorView.theme({}, { dark: usesDarkTheme }),
                     // Compartments coming from react state/props
                     nbpkg_compartment,
+                    highlighted_line_compartment,
                     used_variables_compartment,
                     editable_compartment,
 
@@ -479,6 +488,21 @@ export const CellInput = ({
                 view.focus()
             })
         }
+
+        // @ts-ignore
+        const lines_wrapper_dom_node = dom_node_ref.current.querySelector("div.cm-content")
+        const lines_wrapper_resize_observer = new ResizeObserver(() => {
+            const line_nodes = lines_wrapper_dom_node.children
+            const tops = _.map(line_nodes, (c) => c.offsetTop)
+            const diffs = tops.slice(1).map((y, i) => y - tops[i])
+            const heights = [...diffs, 15]
+            on_line_heights(heights)
+        })
+
+        lines_wrapper_resize_observer.observe(lines_wrapper_dom_node)
+        return () => {
+            lines_wrapper_resize_observer.unobserve(lines_wrapper_dom_node)
+        }
     }, [])
 
     // Effect to apply "remote_code" to the cell when it changes...
@@ -542,12 +566,20 @@ export const CellInput = ({
 
     return html`
         <pluto-input ref=${dom_node_ref} class="CodeMirror" translate=${false}>
-            <${InputContextMenu} on_delete=${on_delete} cell_id=${cell_id} run_cell=${on_submit} running_disabled=${running_disabled} />
+            <${InputContextMenu}
+                on_delete=${on_delete}
+                cell_id=${cell_id}
+                run_cell=${on_submit}
+                running_disabled=${running_disabled}
+                any_logs=${any_logs}
+                show_logs=${show_logs}
+                set_show_logs=${set_show_logs}
+            />
         </pluto-input>
     `
 }
 
-const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled }) => {
+const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled, any_logs, show_logs, set_show_logs }) => {
     const timeout = useRef(null)
     let pluto_actions = useContext(PlutoContext)
     const [open, setOpen] = useState(false)
@@ -564,6 +596,7 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled }) =>
         // we also 'run' the cell if it is disabled, this will make the backend propage the disabled state to dependent cells
         await run_cell()
     }
+    const toggle_logs = () => set_show_logs(!show_logs)
 
     return html` <button
         onClick=${() => setOpen(!open)}
@@ -585,6 +618,13 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled }) =>
                       ${running_disabled ? html`<span class="enable_cell_icon" />` : html`<span class="disable_cell_icon" />`}
                       ${running_disabled ? html`<b>Enable cell</b>` : html`Disable cell`}
                   </li>
+                  ${any_logs
+                      ? html`<li title="" onClick=${toggle_logs}>
+                            ${show_logs
+                                ? html`<span class="hide_logs_icon" /><span>Hide logs</span>`
+                                : html`<span class="show_logs_icon" /><span>Show logs</span>`}
+                        </li>`
+                      : null}
                   <li class="coming_soon" title=""><span class="bandage_icon" /><em>Coming soon…</em></li>
               </ul>`
             : html``}

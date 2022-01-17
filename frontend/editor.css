@@ -43,6 +43,7 @@ html {
 }
 
 body {
+    overscroll-behavior: contain;
     margin: 0px;
     overflow-anchor: none;
     overflow-x: hidden;
@@ -244,6 +245,7 @@ pluto-output.rich_output pre > code {
     background-color: transparent;
 }
 
+pluto-log-dot pre,
 pluto-output pre {
     display: inline-block;
     margin: 0px;
@@ -309,38 +311,38 @@ pluto-output div.admonition .admonition-title ~ * {
 
 pluto-output div.admonition {
     padding-left: 0.5rem;
-    background: var(--admonition-bg-color);
-    border: 5px solid var(--admonition-focus-color);
+    background: var(--jl-message-color);
+    border: 5px solid var(--jl-message-accent-color);
 }
 pluto-output div.admonition .admonition-title {
-    background: var(--admonition-focus-color);
+    background: var(--jl-message-accent-color);
     margin: -1px; /* Fixes a rendering glitch in Chrome */
     margin-left: -0.55rem;
 }
 pluto-output div.admonition.note,
 pluto-output div.admonition.info,
 pluto-output div.admonition.hint {
-    background: var(--admonition-note-main-color);
-    border: 5px solid var(--admonition-note-focus-color);
+    background: var(--jl-info-color);
+    border: 5px solid var(--jl-info-accent-color);
 }
 pluto-output div.admonition.note .admonition-title,
 pluto-output div.admonition.info .admonition-title,
 pluto-output div.admonition.hint .admonition-title {
-    background: var(--admonition-note-focus-color);
+    background: var(--jl-info-accent-color);
 }
 pluto-output div.admonition.warning {
-    background: var(--admonition-warn-main-color);
-    border: 5px solid var(--admonition-warn-focus-color);
+    background: var(--jl-warn-color);
+    border: 5px solid var(--jl-warn-accent-color);
 }
 pluto-output div.admonition.warning .admonition-title {
-    background: var(--admonition-warn-focus-color);
+    background: var(--jl-warn-accent-color);
 }
 pluto-output div.admonition.danger {
-    background: var(--admonition-danger-main-color);
-    border: 5px solid var(--admonition-danger-focus-color);
+    background: var(--jl-danger-color);
+    border: 5px solid var(--jl-danger-accent-color);
 }
 pluto-output div.admonition.danger .admonition-title {
-    background: var(--admonition-danger-focus-color);
+    background: var(--jl-danger-accent-color);
 }
 
 pluto-output div.admonition.hint .admonition-title ~ * {
@@ -1142,6 +1144,15 @@ pluto-input:focus-within .cm-editor {
     z-index: 21;
 }
 
+pluto-input .cm-editor .cm-line {
+    transition: background-color 0.15s ease-in-out;
+}
+
+pluto-input .cm-editor .cm-line.cm-highlighted-line {
+    background-color: #bdbdbd68;
+    border-radius: 3px;
+}
+
 pluto-cell:not(.show_input) > pluto-input {
     display: none;
 }
@@ -1561,6 +1572,8 @@ pluto-input > button.input_context_menu ul {
 .delete_icon,
 .enable_cell_icon,
 .bandage_icon,
+.show_logs_icon,
+.hide_logs_icon,
 .icon {
     --size: 17px;
     width: var(--size);
@@ -1570,6 +1583,14 @@ pluto-input > button.input_context_menu ul {
     background-position: center;
     margin-right: calc(var(--size) / 3);
 }
+.show_logs_icon {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-text-outline.svg);
+}
+
+.hide_logs_icon {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-text-outline.svg);
+}
+
 .bandage_icon {
     filter: opacity(0.3);
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/bandage-outline.svg);
@@ -2211,6 +2232,213 @@ nav#undo_delete.hidden {
     }
 }
 
+/* LOGS */
+
+@media screen and (max-width: calc(700px + 25px + 6px + 100px)) {
+    pluto-cell.shrunk {
+        /* max-width: calc(100% - 100px); */
+    }
+}
+
+pluto-logs-container {
+    display: block;
+    width: max(100px, 100vw - (700px + 25px));
+    /* Show logs up to the RunArea */
+    max-height: calc(100% + 14px);
+    position: absolute;
+    z-index: 25;
+    right: min(-100px, -100vw + (700px + 25px));
+    top: 1px;
+    overflow-x: auto;
+    /* overflow-y: hidden; */
+    background: hsl(0deg 0% 100% / 81%);
+}
+
+/* @media screen and (max-width: calc(700px + 25px + 6px + 150px)) { */
+pluto-logs {
+    display: flex !important;
+}
+
+pluto-logs-container {
+    position: static;
+    /* right: min(-6px, 700px + 25px - 100vw); */
+    /* width: 20px; */
+    /* transition: width ease-in-out 100ms; */
+    /* padding-left: 80px; */
+    width: 100%;
+}
+
+pluto-logs-container:not(:empty) {
+    background: var(--pluto-logs-bg-color);
+    padding: 10px;
+}
+
+pluto-logs-container:focus-within,
+pluto-logs-container:hover {
+    /* width: 30vw; */
+}
+
+pluto-logs-container pluto-logs {
+    /* grid-template-columns: repeat(auto-fill, 0px); */
+}
+pluto-logs-container:focus-within pluto-logs,
+pluto-logs-container:hover pluto-logs {
+    /* grid-template-columns: repeat(auto-fill, 10px); */
+}
+/* 
+    pluto-log-dot-positioner {
+        flex: 0 0 auto;
+        width: auto;
+    }
+    pluto-log-dot-sizer {
+        width: auto;
+    } */
+/* } */
+/* 
+@media screen and (min-width: calc(700px + 25px + 6px + 500px)) and (max-width: calc(700px + 25px + 6px + 500px + 500px)) {
+    pluto-logs-container {
+        right: calc(-500px - 6px);
+        width: calc(500px + 6px);
+    }
+}
+@media screen and (min-width: calc(700px + 25px + 6px + 500px + 500px)) {
+    pluto-logs-container {
+        width: calc(0.5 * (6px + 100vw - (700px + 25px)));
+        right: calc(-0.5 * (6px + 100vw - (700px + 25px)));
+    }
+} */
+
+pluto-logs-container pluto-progress-bars pluto-progress:not(:first-child) {
+    margin-top: 10px;
+}
+
+pluto-logs-container pluto-progress-bar {
+    top: 3px;
+    position: absolute;
+    left: 2px;
+    height: calc(100% - 6px);
+    max-width: calc(100% - 4px);
+    width: 0;
+    border-radius: 5px;
+    transition: width cubic-bezier(0.14, 0.71, 0, 0.99) 2s, opacity linear 0.2s;
+    background-color: salmon;
+}
+
+pluto-logs-container pluto-log-dot.Progress pre {
+    z-index: 1;
+    color: white;
+}
+
+pluto-logs-container pluto-progress-bar.collapsed {
+    height: 0;
+}
+
+pluto-logs {
+    display: grid;
+    grid-auto-rows: 15px;
+    flex-direction: row;
+    grid-template-rows: repeat(auto-fill, 15px);
+    grid-template-columns: repeat(auto-fill, 10px);
+    grid-auto-flow: column;
+}
+
+pluto-logs:not(:first-child):not(:empty) {
+    margin-top: 10px;
+}
+
+pluto-log-dot-positioner {
+    display: block;
+    width: 10px;
+    transition: transform 100ms ease-in-out;
+}
+
+pluto-log-dot-positioner:hover,
+pluto-log-dot-positioner.inspecting {
+    z-index: 5;
+    /* transform: translate(0px, -5px); */
+}
+
+/* pluto-log-dot-positioner {
+    transform: translateX(0px);
+} */
+pluto-log-dot-positioner.inspecting {
+    transform: translateX(5px);
+}
+pluto-log-dot-positioner.inspecting pluto-log-dot {
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
+}
+pluto-log-dot-positioner.inspecting ~ pluto-log-dot-positioner {
+    transform: translateX(10px);
+}
+
+pluto-log-dot-sizer {
+    display: block;
+    width: 100px;
+    transform: translateZ(10px);
+    z-index: 300;
+    pointer-events: none; /* part 1: because the hit box is larger than the action log dot */
+}
+pluto-log-dot {
+    pointer-events: auto; /* part 2 */
+    box-shadow: -2px 0px 1px #00000014;
+    font-family: "Roboto Mono", monospace;
+    font-size: 0.6rem;
+
+    /* position: absolute; */
+    display: inline-flex;
+    flex-direction: column;
+    padding: 1px 3px;
+    min-width: 18px;
+    min-height: 18px;
+    border-radius: 7px;
+}
+pluto-log-dot {
+    background: var(--jl-info-color);
+    border: 3px solid var(--jl-info-accent-color);
+}
+pluto-log-dot.Warn {
+    background: var(--jl-warn-color);
+    border: 3px solid var(--jl-warn-accent-color);
+}
+pluto-log-dot.Error {
+    background: var(--jl-danger-color);
+    border: 3px solid var(--jl-danger-accent-color);
+}
+pluto-log-dot.Debug {
+    background: var(--jl-debug-color);
+    border: 3px solid var(--jl-debug-accent-color);
+}
+pluto-log-dot.Progress {
+    background: pink;
+    border: 3px solid hsla(0, 100%, 80%, 1);
+}
+
+pluto-log-dot jltree,
+pluto-log-dot jlpair {
+    font-size: 0.6rem;
+}
+pluto-log-dot > img {
+    max-width: 100px;
+}
+
+pluto-log-dot-kwarg {
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+}
+pluto-log-dot-kwarg > * {
+    flex: 0 0 auto;
+}
+pluto-log-dot-kwarg > pluto-key {
+    color: var(--pluto-schema-types-color);
+    margin-right: calc(1em - 30px);
+}
+pluto-log-dot-kwarg > pluto-key::after {
+    content: ": ";
+}
+pluto-log-dot-kwarg > pluto-value {
+    margin-left: 30px;
+}
 /* PRESENTATION MODE */
 
 body.presentation pluto-output h1,
