@@ -311,38 +311,38 @@ pluto-output div.admonition .admonition-title ~ * {
 
 pluto-output div.admonition {
     padding-left: 0.5rem;
-    background: var(--admonition-bg-color);
-    border: 5px solid var(--admonition-focus-color);
+    background: var(--jl-message-color);
+    border: 5px solid var(--jl-message-accent-color);
 }
 pluto-output div.admonition .admonition-title {
-    background: var(--admonition-focus-color);
+    background: var(--jl-message-accent-color);
     margin: -1px; /* Fixes a rendering glitch in Chrome */
     margin-left: -0.55rem;
 }
 pluto-output div.admonition.note,
 pluto-output div.admonition.info,
 pluto-output div.admonition.hint {
-    background: var(--admonition-note-main-color);
-    border: 5px solid var(--admonition-note-focus-color);
+    background: var(--jl-info-color);
+    border: 5px solid var(--jl-info-accent-color);
 }
 pluto-output div.admonition.note .admonition-title,
 pluto-output div.admonition.info .admonition-title,
 pluto-output div.admonition.hint .admonition-title {
-    background: var(--admonition-note-focus-color);
+    background: var(--jl-info-accent-color);
 }
 pluto-output div.admonition.warning {
-    background: var(--admonition-warn-main-color);
-    border: 5px solid var(--admonition-warn-focus-color);
+    background: var(--jl-warn-color);
+    border: 5px solid var(--jl-warn-accent-color);
 }
 pluto-output div.admonition.warning .admonition-title {
-    background: var(--admonition-warn-focus-color);
+    background: var(--jl-warn-accent-color);
 }
 pluto-output div.admonition.danger {
-    background: var(--admonition-danger-main-color);
-    border: 5px solid var(--admonition-danger-focus-color);
+    background: var(--jl-danger-color);
+    border: 5px solid var(--jl-danger-accent-color);
 }
 pluto-output div.admonition.danger .admonition-title {
-    background: var(--admonition-danger-focus-color);
+    background: var(--jl-danger-accent-color);
 }
 
 pluto-output div.admonition.hint .admonition-title ~ * {
@@ -2269,7 +2269,7 @@ pluto-logs-container {
 }
 
 pluto-logs-container:not(:empty) {
-    background: #efeff3;
+    background: var(--pluto-logs-bg-color);
     padding: 10px;
 }
 
@@ -2393,20 +2393,20 @@ pluto-log-dot {
     border-radius: 7px;
 }
 pluto-log-dot {
-    background: #cbe5ff;
-    border: 3px solid rgb(132, 171, 190);
+    background: var(--jl-info-color);
+    border: 3px solid var(--jl-info-accent-color);
 }
 pluto-log-dot.Warn {
-    background: #fae5ce;
-    border: 3px solid rgb(235, 183, 138);
+    background: var(--jl-warn-color);
+    border: 3px solid var(--jl-warn-accent-color);
 }
 pluto-log-dot.Error {
-    background: #ffd5cb;
-    border: 3px solid rgb(239, 139, 139);
+    background: var(--jl-danger-color);
+    border: 3px solid var(--jl-danger-accent-color);
 }
 pluto-log-dot.Debug {
-    background: hsl(273deg 49% 94%);
-    border: 3px solid hsl(284deg 49% 79%);
+    background: var(--jl-debug-color);
+    border: 3px solid var(--jl-debug-accent-color);
 }
 pluto-log-dot.Progress {
     background: pink;
@@ -2430,7 +2430,7 @@ pluto-log-dot-kwarg > * {
     flex: 0 0 auto;
 }
 pluto-log-dot-kwarg > pluto-key {
-    color: hsl(0, 0%, 40%);
+    color: var(--pluto-schema-types-color);
     margin-right: calc(1em - 30px);
 }
 pluto-log-dot-kwarg > pluto-key::after {

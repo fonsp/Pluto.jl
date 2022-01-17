@@ -40,14 +40,16 @@
         --blockquote-color: inherit;
         --blockquote-bg: #2e2e2e;
         --admonition-title-color: black;
-        --admonition-bg-color: rgb(35 149 28 / 20%);
-        --admonition-focus-color: rgb(131 191 138);
-        --admonition-note-main-color: rgba(50, 115, 200, 0.2);
-        --admonition-note-focus-color: rgb(92 140 205);
-        --admonition-warn-main-color: rgba(162, 148, 30, 0.2);
-        --admonition-warn-focus-color: rgb(221 212 100);
-        --admonition-danger-main-color: rgba(200, 67, 50, 0.2);
-        --admonition-danger-focus-color: rgb(255, 117, 98);
+        --jl-message-color: rgb(38 90 32);
+        --jl-message-accent-color: rgb(131 191 138);
+        --jl-info-color: rgb(42 73 115);
+        --jl-info-accent-color: rgb(92 140 205);
+        --jl-warn-color: rgb(96 90 34);
+        --jl-warn-accent-color: rgb(221 212 100);
+        --jl-danger-color: rgb(100 47 39);
+        --jl-danger-accent-color: rgb(255, 117, 98);
+        --jl-debug-color: hsl(288deg 33% 27%);
+        --jl-debug-accent-color: hsl(283deg 59% 69%);
         --table-border-color: rgba(255, 255, 255, 0.2);
         --table-bg-hover-color: rgba(193, 192, 235, 0.15);
         --pluto-tree-color: rgba(191, 191, 191, 0.507);
@@ -60,6 +62,9 @@
 
         /* Pluto shoulders */
         --shoulder-hover-bg-color: rgba(255, 255, 255, 0.05);
+
+        /* Logs */
+        --pluto-logs-bg-color: hsl(240deg 10% 29%);
 
         /*Top navbar styling*/
         --nav-h1-text-color: white;
