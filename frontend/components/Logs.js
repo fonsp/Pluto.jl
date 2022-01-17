@@ -1,8 +1,7 @@
 import _ from "../imports/lodash.js"
 import { cl } from "../common/ClassTable.js"
-import { html, useState, useEffect, useLayoutEffect, useRef, useMemo, useContext } from "../imports/Preact.js"
+import { html, useState, useEffect, useLayoutEffect, useRef, useMemo } from "../imports/Preact.js"
 import { SimpleOutputBody } from "./TreeView.js"
-import { PlutoLogsContext } from "../common/PlutoContext.js"
 
 // Defined in editor.css
 const GRID_WIDTH = 10
@@ -12,8 +11,7 @@ const is_progress_log = (log) => {
     return log.kwargs.find((kwarg) => kwarg[0] === "progress") !== undefined
 }
 
-export const Logs = ({ line_heights, set_cm_highlighted_line }) => {
-    const logs = useContext(PlutoLogsContext)
+export const Logs = ({ logs, line_heights, set_cm_highlighted_line }) => {
     const container = useRef(null)
     const [from, setFrom] = useState(0)
     const [to, setTo] = useState(Math.round(1000 / GRID_WIDTH))
@@ -114,7 +112,7 @@ const Dot = ({ set_cm_highlighted_line, show, msg, kwargs, x, y, level }) => {
 
         level = "Progress"
         y = 0
-        msg = [`${Math.ceil(100 * progress)}%            `, "text/plain"]
+        msg = [`${Math.ceil(100*progress)}%            `, "text/plain"]
     }
 
     useLayoutEffect(() => {
