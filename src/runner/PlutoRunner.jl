@@ -2000,7 +2000,7 @@ end
 Logging.min_enabled_level(::PlutoLogger) = Logging.Debug
 Logging.catch_exceptions(::PlutoLogger) = false
 function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, file, line; kwargs...)
-    println("receiving msg from ", _module, " ", group, " ", id, " ", msg, " ", level, " ", line, " ", file)
+    # println("receiving msg from ", _module, " ", group, " ", id, " ", msg, " ", level, " ", line, " ", file)
 
     try
         put!(log_channel, Dict{String,Any}(
@@ -2014,8 +2014,9 @@ function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, f
             "kwargs" => Any[(string(k), format_output_default(v)) for (k, v) in kwargs],
             )
         )
-        # also print to console
-        Logging.handle_message(old_logger[], level, msg, _module, group, id, file, line; kwargs...)
+        
+        # Also print to console (disabled)
+        # Logging.handle_message(old_logger[], level, msg, _module, group, id, file, line; kwargs...)
     catch e
         println(stderr, "Failed to relay log from PlutoRunner")
         showerror(stderr, e, stacktrace(catch_backtrace()))
