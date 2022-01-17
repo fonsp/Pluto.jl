@@ -170,10 +170,10 @@ function http_router_for(session::ServerSession)
     function try_launch_notebook_response(action::Function, path_or_url::AbstractString; title="", advice="", home_url="./", as_redirect=true, action_kwargs...)
         try
             nb = action(session, path_or_url; action_kwargs...)
-            notebook_response(nb; home_url=home_url, as_redirect=as_redirect)
+            notebook_response(nb; home_url, as_redirect)
         catch e
             if e isa SessionActions.NotebookIsRunningException
-                notebook_response(e.notebook; home_url=home_url, as_redirect=as_redirect)
+                notebook_response(e.notebook; home_url, as_redirect)
             else
                 error_response(500, title, advice, sprint(showerror, e, stacktrace(catch_backtrace())))
             end

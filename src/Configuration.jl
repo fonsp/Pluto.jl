@@ -143,7 +143,14 @@ end
 
 function default_number_of_threads()
     env_value = get(ENV, "JULIA_NUM_THREADS", "")
-    all(isspace, env_value) ? roughly_the_number_of_physical_cpu_cores() : parse(Int, env_value)
+
+    all(isspace, env_value) ?
+        roughly_the_number_of_physical_cpu_cores() :
+        try
+            parse(Int, env_value)
+        catch
+            env_value
+        end
 end
 
 function roughly_the_number_of_physical_cpu_cores()

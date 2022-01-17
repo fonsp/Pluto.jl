@@ -92,7 +92,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
     to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_errable)...)
 
     to_reimport = union!(Set{Expr}(), map(c -> new_topology.codes[c].module_usings_imports.usings, setdiff(notebook.cells, to_run))...)
-    deletion_hook((session, notebook), old_workspace_name, nothing, to_delete_vars, to_delete_funcs, to_reimport; to_run = to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
+    deletion_hook((session, notebook), old_workspace_name, nothing, to_delete_vars, to_delete_funcs, to_reimport; to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
 
     delete!.([notebook.bonds], to_delete_vars)
 
@@ -139,7 +139,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
             update_dependency_cache!(notebook)
             save_notebook(session, notebook)
 
-            return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook = deletion_hook, user_requested_run = user_requested_run, already_in_run = true, already_run = to_run[1:i])
+            return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook, user_requested_run, already_in_run = true, already_run = to_run[1:i])
         elseif !isempty(implicit_usings)
             new_soft_definitions = WorkspaceManager.collect_soft_definitions((session, notebook), implicit_usings)
             notebook.topology = new_new_topology = with_new_soft_definitions(new_topology, cell, new_soft_definitions)
@@ -148,7 +148,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
             update_dependency_cache!(notebook)
             save_notebook(session, notebook)
 
-            return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook = deletion_hook, user_requested_run = user_requested_run, already_in_run = true, already_run = to_run[1:i])
+            return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook, user_requested_run, already_in_run = true, already_run = to_run[1:i])
         end
     end
 

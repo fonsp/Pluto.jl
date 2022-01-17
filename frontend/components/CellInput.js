@@ -59,29 +59,30 @@ import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_l
 export const pluto_syntax_colors = HighlightStyle.define([
     /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
     // Symbol
-    { tag: tags.literal, color: "#5e7ad3", fontWeight: 700 },
-    { tag: tags.macroName, color: "#5668a4", fontWeight: 700 },
+    { tag: tags.literal, color: "var(--cm-builtin-color)", fontWeight: 700 },
+    { tag: tags.macroName, color: "var(--cm-var-color)", fontWeight: 700 },
     // `nothing` I guess... Any others?
-    { tag: tags.standard(tags.variableName), color: "#5e7ad3", fontWeight: 700 },
+    { tag: tags.standard(tags.variableName), color: "var(--cm-builtin-color)", fontWeight: 700 },
 
-    { tag: tags.bool, color: "#5e7ad3", fontWeight: 700 },
+    { tag: tags.bool, color: "var(--cm-builtin-color)", fontWeight: 700 },
 
-    { tag: tags.keyword, color: "#fc6" },
-    { tag: tags.comment, color: "#e96ba8", fontStyle: "italic" },
-    { tag: tags.atom, color: "#815ba4" },
-    { tag: tags.number, color: "#815ba4" },
-    { tag: tags.bracket, color: "#48b685" },
-    { tag: tags.keyword, color: "#ef6155" },
-    { tag: tags.string, color: "#da5616" },
-    { tag: tags.variableName, color: "#5668a4", fontWeight: 700 },
+    { tag: tags.keyword, color: "var(--cm-keyword-color)" },
+    { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
+    { tag: tags.atom, color: "var(--cm-atom-color)" },
+    { tag: tags.number, color: "var(--cm-number-color)" },
+    // { tag: tags.property, color: "#48b685" },
+    // { tag: tags.attribute, color: "#48b685" },
+    { tag: tags.keyword, color: "var(--cm-keyword-color)" },
+    { tag: tags.string, color: "var(--cm-string-color)" },
+    { tag: tags.variableName, color: "var(--cm-var-color)", fontWeight: 700 },
     // { tag: tags.variable2, color: "#06b6ef" },
-    { tag: tags.definition(tags.variableName), color: "#f99b15" },
-    { tag: tags.bracket, color: "#41323f" },
-    { tag: tags.brace, color: "#41323f" },
-    { tag: tags.tagName, color: "#ef6155" },
-    { tag: tags.link, color: "#815ba4" },
-    { tag: tags.invalid, color: "#000", background: "#ef6155" },
-    // Object.keys(tags).map((x) => ({ tag: x, color: x })),
+    { tag: tags.definition(tags.variableName), color: "var(--cm-def-color)" },
+    { tag: tags.bracket, color: "var(--cm-bracket-color)" },
+    { tag: tags.brace, color: "var(--cm-bracket-color)" },
+    { tag: tags.tagName, color: "var(--cm-tag-color)" },
+    { tag: tags.link, color: "var(--cm-link-color)" },
+    { tag: tags.invalid, color: "var(--cm-error-color)", background: "var(--cm-error-bg-color)" },
+    // ...Object.keys(tags).map((x) => ({ tag: x, color: x })),
     // Markdown
     { tag: tags.heading, color: "#081e87", fontWeight: 500 },
     { tag: tags.heading1, color: "#081e87", fontWeight: 500, fontSize: "1.5em" },
@@ -356,12 +357,14 @@ export const CellInput = ({
         // TODO remove me
         //@ts-ignore
         window.tags = tags
+        const usesDarkTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         const newcm = (newcm_ref.current = new EditorView({
             /** Migration #0: New */
             state: EditorState.create({
                 doc: local_code,
 
                 extensions: [
+                    EditorView.theme({}, { dark: usesDarkTheme }),
                     // Compartments coming from react state/props
                     nbpkg_compartment,
                     highlighted_line_compartment,
