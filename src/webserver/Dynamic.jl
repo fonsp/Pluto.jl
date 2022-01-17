@@ -297,9 +297,9 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
             (mutator, matches, rest) = trigger_resolver(effects_of_changed_state, patch.path)
             
             current_changes = if isempty(rest) && applicable(mutator, matches...)
-                mutator(matches...; request=🙋, patch=patch)
+                mutator(matches...; request=🙋, patch)
             else
-                mutator(matches..., rest...; request=🙋, patch=patch)
+                mutator(matches..., rest...; request=🙋, patch)
             end
 
             push!(changes, current_changes...)
