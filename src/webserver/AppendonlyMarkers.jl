@@ -22,27 +22,8 @@ begin
 	function Base.size(arr::AppendonlyMarker)
 		return (arr.length_at_time_of_creation,)
 	end
-	function Base.getindex(arr::AppendonlyMarker, index::Int)
-		if index > arr.length_at_time_of_creation
-			throw(BoundsError(arr, index))
-		end
-
-		arr.mutable_source[index]
-	end
-	function Base.iterate(arr::AppendonlyMarker)
-		if arr.length_at_time_of_creation == 0
-			nothing
-		else
-			Base.iterate(arr.mutable_source)
-		end
-	end
-	function Base.iterate(arr::AppendonlyMarker, index::Int)
-		if arr.length_at_time_of_creation < index
-			nothing
-		else
-			Base.iterate(arr.mutable_source, index)
-		end
-	end
+	Base.getindex(arr::AppendonlyMarker, index::Int) = arr.mutable_source[index]
+	Base.iterate(arr::AppendonlyMarker, args...) = Base.iterate(arr.mutable_source, args...)
 end
 
 # ╔═╡ 183cef1f-bfe9-42cd-8239-49e9ed00a7b6
