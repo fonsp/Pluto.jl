@@ -1697,7 +1697,8 @@ The actual reactive-interactive functionality is not done in Julia - it is handl
 struct Bond
     element::Any
     defines::Symbol
-    Bond(element, defines::Symbol) = showable(MIME"text/html"(), element) ? new(element, defines) : error("""Can only bind to html-showable objects, ie types T for which show(io, ::MIME"text/html", x::T) is defined.""")
+    unique_id::String
+    Bond(element, defines::Symbol) = showable(MIME"text/html"(), element) ? new(element, defines, Base64.base64encode(rand(UInt8,9))) : error("""Can only bind to html-showable objects, ie types T for which show(io, ::MIME"text/html", x::T) is defined.""")
 end
 
 function create_bond(element, defines::Symbol)
@@ -1706,10 +1707,9 @@ function create_bond(element, defines::Symbol)
     Bond(element, defines)
 end
 
-import Base: show
-function show(io::IO, ::MIME"text/html", bond::Bond)
-    withtag(io, :bond, :def => bond.defines) do
-        show(io, MIME"text/html"(), bond.element)
+function Base.show(io::IO, m::MIME"text/html", bond::Bond)
+    withtag(io, :bond, :def => bond.defines, :unique_id => bond.unique_id) do
+        show(io, m, bond.element)
     end
 end
 
@@ -1718,7 +1718,9 @@ const transform_value_ref = Ref{Function}((element, x) -> x)
 const possible_bond_values_ref = Ref{Function}((_args...; _kwargs...) -> :NotGiven)
 
 """
-    `@bind symbol element`
+```julia
+@bind symbol element
+```
 
 Return the HTML `element`, and use its latest JavaScript value as the definition of `symbol`.
 
