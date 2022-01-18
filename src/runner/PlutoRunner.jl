@@ -1408,7 +1408,7 @@ const integrations = Integration[
         id = Base.PkgId(UUID("91a5bcdd-55d7-5caf-9e0b-520d859cae80"), "Plots"),
         code = quote
             approx_size(p::Plots.Plot) = try
-                sum(p.series_list) do series
+                sum(p.series_list; init=0) do series
                     length(series[:y])
                 end
             catch e
