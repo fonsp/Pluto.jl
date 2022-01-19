@@ -185,8 +185,12 @@ end
 # ✅ Public API
 function update_registries(; force::Bool=false)
 	if force || !_updated_registries_compat[]
-		_updated_registries_compat[] = true
 		Pkg.Registry.update()
+		try
+			refresh_registry_cache()
+		catch
+		end
+		_updated_registries_compat[] = true		
 	end
 end
 
