@@ -1,4 +1,4 @@
-import "https://cdn.jsdelivr.net/npm/js-sha256@0.9.0"
+import { sha256 } from "https://cdn.jsdelivr.net/npm/js-sha256@0.9.0/+esm"
 
 export const base64_arraybuffer = async (/** @type {BufferSource} */ data) => {
     /** @type {string} */
@@ -13,8 +13,7 @@ export const base64_arraybuffer = async (/** @type {BufferSource} */ data) => {
 }
 
 export const hash_arraybuffer = async (/** @type {BufferSource} */ data) => {
-    // @ts-ignore
-    const hash = window.sha256.create()
+    const hash = sha256.create()
     hash.update(data)
     const hashed_buffer = hash.arrayBuffer()
     // const hashed_buffer = await window.crypto.subtle.digest("SHA-256", data)
@@ -25,6 +24,8 @@ export const hash_str = async (/** @type {string} */ s) => {
     const data = new TextEncoder().encode(s)
     return await hash_arraybuffer(data)
 }
+
+hash_str("Hannes").then((r) => console.assert(r === "OI48wVWerxEEnz5lIj6CPPRB8NOwwba+LkFYTDp4aUU=", r))
 
 export const debounced_promises = (async_function) => {
     let currently_running = false
