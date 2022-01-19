@@ -200,7 +200,7 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
                         pushfirst!(LOAD_PATH, env_dir)
 
                         # update registries if this is the first time
-                        PkgCompat.update_registries(notebook.nbpkg_ctx)
+                        PkgCompat.update_registries(; force=false)
                         # instantiate without forcing registry update
                         PkgCompat.instantiate(notebook.nbpkg_ctx; update_registry=false)
                         

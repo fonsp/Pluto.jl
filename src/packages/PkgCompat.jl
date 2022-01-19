@@ -175,17 +175,18 @@ function refresh_registry_cache()
 	_parsed_registries[] = _get_registries()
 end
 
-const _updated_registries_compat = Ref(false)
+# ⚠️✅ Internal API with fallback
+const _updated_registries_compat = @static if isdefined(Pkg, :UPDATED_REGISTRY_THIS_SESSION) && Pkg.UPDATED_REGISTRY_THIS_SESSION isa Ref{Bool}
+	Pkg.UPDATED_REGISTRY_THIS_SESSION
+else
+	Ref(false)
+end
 
-# ⚠️✅ Internal API with good fallback
-function update_registries(ctx)
-	@static if isdefined(Pkg, :Types) && isdefined(Pkg.Types, :update_registries)
-		Pkg.Types.update_registries(ctx)
-	else
-		if !_updated_registries_compat[]
-			_updated_registries_compat[] = true
-			Pkg.Registry.update()
-		end
+# ✅ Public API
+function update_registries(; force::Bool=false)
+	if force || !_updated_registries_compat[]
+		_updated_registries_compat[] = true
+		Pkg.Registry.update()
 	end
 end
 
