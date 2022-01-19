@@ -194,6 +194,30 @@ function update_registries(; force::Bool=false)
 	end
 end
 
+# (✅ Public API)
+function install_default_registries()
+	# https://github.com/JuliaLang/Pkg.jl/pull/2898
+	@static if hasmethod(Pkg.Registry.add, Tuple{})
+		Pkg.Registry.add()
+	else
+		Pkg.Registry.add(Pkg.RegistrySpec[])
+	end
+end
+
+# ⚠️✅ Internal API with fallback
+function install_default_registries_if_needed()
+	if VERSION >= v"1.7.0"
+		registry_paths = _get_registry_paths()
+		has_old_general = any(basename(p) == "General" for p in registry_paths)
+		has_new_general = any(basename(p) == "General.toml" for p in registry_paths)
+		
+		if has_old_general && !has_new_general
+			@info "Upgrading General registry to Julia 1.7 format..."
+			install_default_registries()
+			refresh_registry_cache()
+		end
+	end
+end
 
 ###
 # Instantiate
