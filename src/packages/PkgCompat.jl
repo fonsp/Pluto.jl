@@ -194,6 +194,11 @@ function update_registries(; force::Bool=false)
 	end
 end
 
+
+###
+# Instantiate
+###
+
 # ⚠️✅ Internal API with fallback
 function instantiate(ctx; update_registry::Bool)
 	@static if hasmethod(Pkg.instantiate, Tuple{}, (:update_registry,))
@@ -204,6 +209,9 @@ function instantiate(ctx; update_registry::Bool)
 end
 
 
+###
+# Standard Libraries
+###
 
 # (⚠️ Internal API with fallback)
 _stdlibs() = try
