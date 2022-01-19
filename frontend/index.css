@@ -142,7 +142,7 @@ pluto-filepicker button {
     background: var(--footer-filepicker-focus-color);
     border-radius: 3px;
     border: 2px solid var(--nav-filepicker-focus-color);
-    color: var(--ui-button-color);
+    color: var(--white);
     /* border: none; */
     font-family: "Roboto Mono", monospace;
     font-weight: 600;
