@@ -3,13 +3,6 @@ import UUIDs: UUID
 import HTTP
 import Sockets
 
-import Base: endswith
-function endswith(vec::Vector{T}, suffix::Vector{T}) where T
-    local liv = lastindex(vec)
-    local lis = lastindex(suffix)
-    liv >= lis && (view(vec, (liv - lis + 1):liv) == suffix)
-end
-
 include("./WebSocketFix.jl")
 
 # from https://github.com/JuliaLang/julia/pull/36425
