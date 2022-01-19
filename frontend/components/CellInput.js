@@ -62,7 +62,7 @@ export const pluto_syntax_colors = HighlightStyle.define([
     // { tag: tags.controlKeyword, color: "var(--cm-keyword-color)", fontWeight: 700 },
 
     { tag: tags.propertyName, color: "var(--cm-def-color)" },
-    { tag: tags.unit, color: "red" },
+    { tag: tags.unit, color: "var(--cm-tag-color)" },
     { tag: tags.literal, color: "var(--cm-builtin-color)", fontWeight: 700 },
     { tag: tags.macroName, color: "var(--cm-var-color)", fontWeight: 700 },
     // `nothing` I guess... Any others?
