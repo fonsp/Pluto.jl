@@ -26,6 +26,9 @@ const Square = ({ fill }) => html`
     </svg>
 `
 
+//@ts-ignore
+window.enable_secret_pluto_recording = false
+
 export const ExportBanner = ({ onClose, notebookfile_url, notebookexport_url, start_recording }) => {
     return html`
         <aside id="export">
@@ -44,21 +47,27 @@ export const ExportBanner = ({ onClose, notebookfile_url, notebookexport_url, st
                     <header><${Square} fill="#619b3d" /> Static PDF</header>
                     <section>A static <b>.pdf</b> file for print or email.</section>
                 </a>
-                <!--
-                <div class="export_title">record</div>
-                <a
-                    href="#"
-                    onClick=${(e) => {
-                    start_recording()
-                    onClose()
-                    e.preventDefault()
-                }}
-                    class="export_card"
-                >
-                    <header><${Circle} fill="#E86F51" /> Recording</header>
-                    <section>Capture the entire notebook, and any changes you make.</section>
-                </a>
--->
+                ${
+                    //@ts-ignore
+                    window.enable_secret_pluto_recording
+                        ? html`
+                              <div class="export_title">record</div>
+                              <a
+                                  href="#"
+                                  onClick=${(e) => {
+                                      start_recording()
+                                      onClose()
+                                      e.preventDefault()
+                                  }}
+                                  class="export_card"
+                              >
+                                  <header><${Circle} fill="#E86F51" /> Recording</header>
+                                  <section>Capture the entire notebook, and any changes you make.</section>
+                              </a>
+                          `
+                        : null
+                }
+
                 <button title="Close" class="toggle_export" onClick=${() => onClose()}>
                     <span></span>
                 </button>
