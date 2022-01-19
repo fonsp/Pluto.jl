@@ -44,10 +44,9 @@ import {
     StateField,
     StateEffect,
     autocomplete,
-    julia_andrey,
 } from "../imports/CodemirrorPlutoSetup.js"
 
-// import { markdown, html as htmlLang, javascript, sqlLang, python, julia_andrey } from "./CellInput/mixedParsers.js"
+import { markdown, html as htmlLang, javascript, sqlLang, python, julia_andrey } from "./CellInput/mixedParsers.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
 import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"
@@ -451,11 +450,11 @@ export const CellInput = ({
                     EditorState.tabSize.of(4),
                     indentUnit.of("\t"),
                     julia_andrey(),
-                    // markdown(),
-                    // htmlLang(), //Provides tag closing!,
-                    // javascript(),
-                    // python(),
-                    // sqlLang,
+                    markdown(),
+                    htmlLang(), //Provides tag closing!,
+                    javascript(),
+                    python(),
+                    sqlLang,
                     go_to_definition_plugin,
                     pluto_autocomplete({
                         request_autocomplete: async ({ text }) => {
