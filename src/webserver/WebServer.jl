@@ -244,11 +244,20 @@ function run(session::ServerSession, pluto_router)
             end
         end
     end
-
+    
+    server_running() = try
+        HTTP.get("http://$(hostIP):$(port)/ping"; status_exception=false, retry=false, connect_timeout=10, readtimeout=10).status == 200
+    catch
+        false
+    end
+    
     address = pretty_address(session, hostIP, port)
-
     println()
-    if session.options.server.launch_browser && open_in_default_browser(address)
+    if session.options.server.launch_browser && (
+        # Wait for the server to start up before opening the browser. We have a 5 second grace period for allowing the connection, and then 10 seconds for the server to write data.
+        WorkspaceManager.poll(server_running, 5.0, 1.0) && 
+        open_in_default_browser(address)
+    )
         println("Opening $address in your default browser... ~ have fun!")
     else
         println("Go to $address in your browser to start writing ~ have fun!")
