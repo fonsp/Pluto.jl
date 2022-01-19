@@ -1,3 +1,5 @@
+import "https://cdn.jsdelivr.net/npm/js-sha256@0.9.0"
+
 export const base64_arraybuffer = async (/** @type {BufferSource} */ data) => {
     /** @type {string} */
     const base64url = await new Promise((r) => {
@@ -12,7 +14,10 @@ export const base64_arraybuffer = async (/** @type {BufferSource} */ data) => {
 
 export const hash_arraybuffer = async (/** @type {BufferSource} */ data) => {
     // @ts-ignore
-    const hashed_buffer = await window.crypto.subtle.digest("SHA-256", data)
+    const hash = window.sha256.create()
+    hash.update(data)
+    const hashed_buffer = hash.arrayBuffer()
+    // const hashed_buffer = await window.crypto.subtle.digest("SHA-256", data)
     return await base64_arraybuffer(hashed_buffer)
 }
 
