@@ -52,7 +52,7 @@
         --jl-debug-accent-color: hsl(283deg 59% 69%);
         --table-border-color: rgba(255, 255, 255, 0.2);
         --table-bg-hover-color: rgba(193, 192, 235, 0.15);
-        --pluto-tree-color: rgba(191, 191, 191, 0.507);
+        --pluto-tree-color: rgb(209 207 207 / 61%);
 
         /*pluto cell styling*/
         --disabled-cell-bg-color: rgba(139, 139, 139, 0.25);
