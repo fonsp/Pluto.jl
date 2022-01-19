@@ -155,8 +155,8 @@
         /* code highlighting */
         --cm-editor-text-color: #ffe9fc;
         --cm-comment-color: #e96ba8;
-        --cm-atom-color: #815ba4;
-        --cm-number-color: #815ba4;
+        --cm-atom-color: hsl(8deg 72% 62%);
+        --cm-number-color: hsl(271deg 45% 64%);
         --cm-property-color: #48b685;
         --cm-keyword-color: #ff7a6f;
         --cm-string-color: hsl(20deg 69% 59%);
