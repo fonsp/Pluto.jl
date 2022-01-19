@@ -360,6 +360,7 @@ function update_nbpkg_core(notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEV
                 notebook.nbpkg_ctx = PkgCompat.clear_stdlib_compat_entries(notebook.nbpkg_ctx)
                 PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
                     withinteractive(false) do
+                        PkgCompat.update_registries(;force=false)
                         try
                             Pkg.resolve(notebook.nbpkg_ctx)
                         catch e
