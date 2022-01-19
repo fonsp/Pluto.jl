@@ -92,16 +92,19 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
     to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_errable)...)
 
     to_reimport = union!(Set{Expr}(), map(c -> new_topology.codes[c].module_usings_imports.usings, setdiff(notebook.cells, to_run))...)
-    deletion_hook((session, notebook), old_workspace_name, nothing, to_delete_vars, to_delete_funcs, to_reimport; to_run = to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
+    deletion_hook((session, notebook), old_workspace_name, nothing, to_delete_vars, to_delete_funcs, to_reimport; to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
 
     delete!.([notebook.bonds], to_delete_vars)
 
     local any_interrupted = false
     for (i, cell) in enumerate(to_run)
 
-        cell.queued = false
-        cell.running = true
-        send_notebook_changes_throttled()
+		cell.queued = false
+		cell.running = true
+		# Important to not use empty! here because AppendonlyMarker requires a new array identity.
+		# Eventually we could even make AppendonlyArray to enforce this but idk if it's worth it. yadiyadi.
+		cell.logs = []
+		send_notebook_changes_throttled()
 
         if any_interrupted || notebook.wants_to_interrupt
             relay_reactivity_error!(cell, InterruptException())
@@ -136,7 +139,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
             update_dependency_cache!(notebook)
             save_notebook(session, notebook)
 
-            return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook = deletion_hook, user_requested_run = user_requested_run, already_in_run = true, already_run = to_run[1:i])
+            return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook, user_requested_run, already_in_run = true, already_run = to_run[1:i])
         elseif !isempty(implicit_usings)
             new_soft_definitions = WorkspaceManager.collect_soft_definitions((session, notebook), implicit_usings)
             notebook.topology = new_new_topology = with_new_soft_definitions(new_topology, cell, new_soft_definitions)
@@ -145,7 +148,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
             update_dependency_cache!(notebook)
             save_notebook(session, notebook)
 
-            return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook = deletion_hook, user_requested_run = user_requested_run, already_in_run = true, already_run = to_run[1:i])
+            return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook, user_requested_run, already_in_run = true, already_run = to_run[1:i])
         end
     end
 
@@ -562,55 +565,4 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 	end
 	
 	return true
-end
-
-
-
-"""
-throttled(f::Function, timeout::Real)
-
-Return a function that when invoked, will only be triggered at most once
-during `timeout` seconds.
-The throttled function will run as much as it can, without ever
-going more than once per `wait` duration.
-
-This throttle is 'leading' and has some other properties that are specifically designed for our use in Pluto, see the tests.
-
-Inspired by FluxML
-See: https://github.com/FluxML/Flux.jl/blob/8afedcd6723112ff611555e350a8c84f4e1ad686/src/utils.jl#L662
-"""
-function throttled(f::Function, timeout::Real)
-    tlock = ReentrantLock()
-    iscoolnow = Ref(false)
-    run_later = Ref(false)
-
-    function flush()
-        lock(tlock) do
-            run_later[] = false
-            f()
-        end
-    end
-
-    function schedule()
-        @async begin
-            sleep(timeout)
-            if run_later[]
-                flush()
-            end
-            iscoolnow[] = true
-        end
-    end
-    schedule()
-
-    function throttled_f()
-        if iscoolnow[]
-            iscoolnow[] = false
-            flush()
-            schedule()
-        else
-            run_later[] = true
-        end
-    end
-
-    return throttled_f, flush
 end

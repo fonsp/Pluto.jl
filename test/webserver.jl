@@ -19,8 +19,8 @@ using Pluto.WorkspaceManager: WorkspaceManager, poll
     
 
     # without notebook at startup
-    options = Pluto.Configuration.from_flat_kwargs(; port=port, launch_browser=false, workspace_use_distributed=false, require_secret_for_access=false, require_secret_for_open_links=false)
-    🍭 = Pluto.ServerSession(; options=options)
+    options = Pluto.Configuration.from_flat_kwargs(; port, launch_browser=false, workspace_use_distributed=false, require_secret_for_access=false, require_secret_for_open_links=false)
+    🍭 = Pluto.ServerSession(; options)
     server_task = @async Pluto.run(🍭)
     @test poll(5) do
         server_running()

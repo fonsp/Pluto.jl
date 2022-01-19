@@ -22,12 +22,12 @@ Base.@kwdef mutable struct Workspace
 end
 
 "These expressions get evaluated whenever a new `Workspace` process is created."
-const process_preamble = [
-    :(ccall(:jl_exit_on_sigint, Cvoid, (Cint,), 0)),
-    :(include($(project_relative_path("src", "runner", "Loader.jl")))),
-    :(ENV["GKSwstype"] = "nul"), 
-    :(ENV["JULIA_REVISE_WORKER_ONLY"] = "1"), 
-]
+const process_preamble = quote
+    ccall(:jl_exit_on_sigint, Cvoid, (Cint,), 0)
+    include($(project_relative_path("src", "runner", "Loader.jl")))
+    ENV["GKSwstype"] = "nul"
+    ENV["JULIA_REVISE_WORKER_ONLY"] = "1"
+end
 
 const workspaces = Dict{UUID,Promise{Workspace}}()
 
@@ -127,10 +127,44 @@ function start_relaying_self_updates((session, notebook)::SN, run_channel::Distr
 end
 
 function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.RemoteChannel)
+    update_throttled, flush_throttled = Pluto.throttled(0.1) do 
+        Pluto.send_notebook_changes!(Pluto.ClientRequest(session=session, notebook=notebook))
+    end
+    
     while true
         try
-            next_log = take!(log_channel)
-            putnotebookupdates!(session, notebook, UpdateMessage(:log, next_log, notebook))
+            next_log::Dict{String,Any} = take!(log_channel)
+
+            fn = next_log["file"]
+            match = findfirst("#==#", fn)
+            
+            # We always show the log at the currently running cell, which is given by
+            running_cell_id = UUID(next_log["cell_id"])
+            running_cell = notebook.cells_dict[running_cell_id]
+            
+            # Some logs originate from outside of the running code, through function calls. Some code here to deal with that:
+            begin
+                source_cell_id = if match !== nothing
+                    # the log originated from within the notebook
+                    
+                    UUID(fn[findfirst("#==#", fn)[end]+1:end])
+                else
+                    # the log originated from a function call defined outside of the notebook
+                    
+                    # we will show the log at the currently running cell, at "line -1", i.e. without line info.
+                    next_log["line"] = -1
+                    UUID(next_log["cell_id"])
+                end
+                
+                if running_cell_id != source_cell_id
+                    # the log originated from a function in another cell of the notebook
+                    # we will show the log at the currently running cell, at "line -1", i.e. without line info.
+                    next_log["line"] = -1
+                end
+            end
+
+            push!(running_cell.logs, next_log)
+            Pluto.@asynclog update_throttled()
         catch e
             if !isopen(log_channel)
                 break
@@ -183,9 +217,7 @@ function create_workspaceprocess(;compiler_options=CompilerOptions())::Integer
         $(Distributed_expr).addprocs(1; exeflags=$(_convert_to_flags(compiler_options))) |> first
     end)
 
-    for expr in process_preamble
-        Distributed.remotecall_eval(Main, [pid], expr)
-    end
+    Distributed.remotecall_eval(Main, [pid], process_preamble)
 
     # so that we NEVER break the workspace with an interrupt 🤕
     @async Distributed.remotecall_eval(Main, [pid],
