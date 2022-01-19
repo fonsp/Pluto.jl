@@ -49,7 +49,6 @@ let node_is_variable_usage = (node) => {
     if (parent.name === "TypedExpression") return node_is_variable_usage(parent)
     if (parent.name === "NamedField") return node_is_variable_usage(parent)
     if (parent.name === "BareTupleExpression") return node_is_variable_usage(parent)
-    if (parent.name === "MacroIdentifier") return node_is_variable_usage(parent)
 
     return true
 }
@@ -316,31 +315,6 @@ let explore_variable_usage = (
                     usages: new Set(Array.from(module_scopestate.usages).filter((x) => x.definition != null)),
                     definitions: new Map(),
                 })
-            } finally {
-                cursor.parent()
-            }
-        } else if (cursor.name === "ExportStatement" && cursor.firstChild()) {
-            try {
-                // @ts-ignore
-                if (cursor.name === "export") cursor.nextSibling()
-                do {
-                    // @ts-ignore
-                    if (cursor.name === "Identifier") {
-                        // Because lezer-julia isn't smart enough yet, we have to check if this is a macro
-                        // by plainly checking if there is an @ in front of the identifier :P
-                        let name_with_possibly_an_at = doc.sliceString(cursor.from - 1, cursor.to)
-                        if (name_with_possibly_an_at[0] !== "@") {
-                            name_with_possibly_an_at = name_with_possibly_an_at.slice(1)
-                        }
-                        scopestate.usages.add({
-                            usage: {
-                                from: cursor.to - name_with_possibly_an_at.length,
-                                to: cursor.to,
-                            },
-                            definition: scopestate.definitions.get(name_with_possibly_an_at) ?? null,
-                        })
-                    }
-                } while (cursor.nextSibling())
             } finally {
                 cursor.parent()
             }
