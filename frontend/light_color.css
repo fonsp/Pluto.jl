@@ -168,7 +168,7 @@
         --cm-var2-color: #37768a;
         --cm-builtin-color: #5e7ad3;
         --cm-function-color: #cc80ac;
-        --cm-type-color: lightblue;
+        --cm-type-color: hsl(170deg 32% 44%);
         --cm-bracket-color: #41323f;
         --cm-tag-color: #ef6155;
         --cm-link-color: #815ba4;
