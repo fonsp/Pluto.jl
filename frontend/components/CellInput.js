@@ -513,7 +513,7 @@ export const CellInput = ({
     useEffect(() => {
         if (newcm_ref.current == null) return // Not sure when and why this gave an error, but now it doesn't
         const current_value = getValue6(newcm_ref.current) ?? ""
-        const will_update_code = local_code_author_name !== my_author_name && current_value !== local_code
+        const will_update_code = /* local_code_author_name !== my_author_name && */ current_value !== local_code
         if (will_update_code) {
             newcm_ref.current.dispatch({
                 changes: { from: 0, to: newcm_ref.current.state.doc.length, insert: local_code },
