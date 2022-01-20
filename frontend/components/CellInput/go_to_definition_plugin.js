@@ -46,6 +46,10 @@ let node_is_variable_usage = (node) => {
         }
     }
 
+    if (parent.name === "Type") {
+        return true
+    }
+
     if (parent.name === "TypedExpression") return node_is_variable_usage(parent)
     if (parent.name === "NamedField") return node_is_variable_usage(parent)
     if (parent.name === "BareTupleExpression") return node_is_variable_usage(parent)
@@ -500,9 +504,59 @@ let explore_variable_usage = (
                     if (cursor.name === "ArgumentList" && cursor.firstChild()) {
                         try {
                             do {
-                                // I tried doing this the way it is, but lezer-julia isn't there yet.
-                                // It is too hard (and not worth it) to do it the way it is now.
-                                // So we only take simple identifiers, and we don't care about the rest.
+                                // @ts-ignore
+                                if (cursor.name === "NamedArgument" && cursor.firstChild()) {
+                                    try {
+                                        if (cursor.name === "NamedField" && cursor.firstChild()) {
+                                            try {
+                                                // First child is the name of the argument
+                                                if (cursor.name === "TypedExpression" && cursor.firstChild()) {
+                                                    try {
+                                                        do {
+                                                            // @ts-ignore
+                                                            if (cursor.name === "Type") {
+                                                                scopestate = merge_scope_state(scopestate, explore_variable_usage(cursor, doc, scopestate))
+                                                            }
+                                                        } while (cursor.nextSibling())
+                                                    } finally {
+                                                        cursor.parent()
+                                                    }
+                                                }
+                                                for (let variable_node of get_variables_from_assignment(cursor)) {
+                                                    let name = doc.sliceString(variable_node.from, variable_node.to)
+                                                    nested_scope.definitions.set(name, {
+                                                        from: variable_node.from,
+                                                        to: variable_node.to,
+                                                    })
+                                                }
+
+                                                // Next sibling is the default value
+                                                if (cursor.nextSibling()) {
+                                                    scopestate = merge_scope_state(scopestate, explore_variable_usage(cursor, doc, scopestate))
+                                                }
+                                            } finally {
+                                                cursor.parent()
+                                            }
+                                        }
+                                    } finally {
+                                        cursor.parent()
+                                    }
+                                }
+
+                                // @ts-ignore
+                                if (cursor.name === "TypedExpression" && cursor.firstChild()) {
+                                    try {
+                                        do {
+                                            // @ts-ignore
+                                            if (cursor.name === "Type") {
+                                                scopestate = merge_scope_state(scopestate, explore_variable_usage(cursor, doc, nested_scope))
+                                            }
+                                        } while (cursor.nextSibling())
+                                    } finally {
+                                        cursor.parent()
+                                    }
+                                }
+
                                 for (let variable_node of get_variables_from_assignment(cursor)) {
                                     let name = doc.sliceString(variable_node.from, variable_node.to)
                                     nested_scope.definitions.set(name, {
