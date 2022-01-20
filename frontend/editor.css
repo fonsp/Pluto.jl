@@ -917,7 +917,7 @@ main > preamble #saveall-container {
 }
 
 .overlay-button {
-    background: #ffffff;
+    background: var(--overlay-button-bg);
     padding: 5px 8px;
     border: 3px solid var(--overlay-button-border);
     border-radius: 12px;
