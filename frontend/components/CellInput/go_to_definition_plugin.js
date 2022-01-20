@@ -485,7 +485,6 @@ let explore_variable_usage = (
                         try {
                             for (let variable_node of get_variables_from_assignment(cursor)) {
                                 let name = doc.sliceString(variable_node.from, variable_node.to)
-                                console.log(`name:`, name)
                                 nested_scope.definitions.set(name, {
                                     from: variable_node.from,
                                     to: variable_node.to,
