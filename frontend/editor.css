@@ -2654,80 +2654,35 @@ pluto-cell.code_differs .cm-editor .cm-gutters {
     font-size: 0px;
 }
 
-.cm-s-default span.cm-comment {
-    color: var(--cm-comment-color);
-    font-style: italic;
-}
-
-.cm-s-default span.cm-atom {
-    color: var(--cm-atom-color);
-}
-
-.cm-completionIcon-c_Number::before,
-.cm-s-default span.cm-number {
+.cm-completionIcon-c_Number::before {
     color: var(--cm-number-color);
-}
-
-.cm-s-default span.cm-property,
-.cm-s-default span.cm-attribute {
-    color: var(--cm-property-color);
-}
-
-.cm-s-default span.cm-keyword {
-    color: var(--cm-keyword-color);
 }
 
 .cm-completionIcon-c_String::before,
 .cm-completionIcon-completion_path::before,
-.cm-completionIcon-completion_dict::before,
-.cm-s-default span.cm-string {
+.cm-completionIcon-completion_dict::before {
     color: var(--cm-string-color);
 }
 
-.cm-s-default span.cm-operator {
-    font-variant-ligatures: var(--pluto-operator-ligatures);
-}
-
 .cm-completionIcon-c_Any::before,
-pluto-output > assignee,
-.cm-s-default span.cm-variable {
+pluto-output > assignee {
     color: var(--cm-var-color) !important;
     font-weight: 700;
 }
 
-.cm-s-default span.cm-builtin {
-    color: var(--cm-builtin-color);
-    font-weight: 700;
-}
-
-.cm-s-default span.cm-variable-2 {
-    color: var(--cm-var2-color);
-}
-
-.cm-completionIcon-c_Function::before,
-.cm-s-default span.cm-def {
+.cm-completionIcon-c_Function::before {
     color: var(--cm-def-color);
 }
 
-.cm-completionIcon-c_Array::before,
-.cm-s-default span.cm-bracket {
+.cm-completionIcon-c_Array::before {
     color: var(--cm-bracket-color);
 }
 
-.cm-s-default span.cm-tag {
-    color: var(--cm-tag-color);
-}
-
 .cm-completionIcon-c_package::before,
-.cm-completionIcon-c_Module::before,
-.cm-s-default span.cm-link {
+.cm-completionIcon-c_Module::before {
     color: var(--cm-link-color);
 }
 
-.cm-s-default span.cm-error {
-    background: var(--cm-error-bg-color);
-    color: var(--cm-error-color);
-}
 .cm-editor .cm-activeLine {
     background: unset;
 }
