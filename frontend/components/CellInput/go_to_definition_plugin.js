@@ -471,30 +471,35 @@ let explore_variable_usage = (
             }
         } else if (cursor.name === "DoClause" && cursor.firstChild()) {
             try {
-                // It's not yet possible to be SURE that we have the arguments, because of the way @lezer/julia works...
-                // But imma do my best, and soon contribute to @lezer/julia
-
-                cursor.nextSibling() // We are now supposed to be in the argumentlist..
-                // Problem is: we might also be in the first statement of the function...
-                // So we'll make sure that we have something that is valid as arguments,
-                // but then still someone MIGHT have a plain identifier in the first statement.
-
                 let nested_scope = {
                     usages: new Set(),
                     definitions: new Map(scopestate.definitions),
                 }
-                for (let variable_node of get_variables_from_assignment(cursor)) {
-                    let name = doc.sliceString(variable_node.from, variable_node.to)
-                    nested_scope.definitions.set(name, {
-                        from: variable_node.from,
-                        to: variable_node.to,
-                    })
-                }
-
-                cursor.nextSibling()
 
                 do {
-                    nested_scope = merge_scope_state(nested_scope, explore_variable_usage(cursor, doc, nested_scope))
+                    // @ts-ignore
+                    if (cursor.name === "DoClauseArguments" && cursor.firstChild()) {
+                        // Don't ask me why, but currently `do (x, y)` is parsed as `DoClauseArguments(ArgumentList(x, y))`
+                        // while an actual argumentslist, `do x, y` is parsed as `DoClauseArguments(BareTupleExpression(x, y))`
+                        let did_go_on_level_deeper = cursor.name === "ArgumentList" && cursor.firstChild()
+                        try {
+                            for (let variable_node of get_variables_from_assignment(cursor)) {
+                                let name = doc.sliceString(variable_node.from, variable_node.to)
+                                console.log(`name:`, name)
+                                nested_scope.definitions.set(name, {
+                                    from: variable_node.from,
+                                    to: variable_node.to,
+                                })
+                            }
+                        } finally {
+                            if (did_go_on_level_deeper) {
+                                cursor.parent()
+                            }
+                            cursor.parent()
+                        }
+                    } else {
+                        nested_scope = merge_scope_state(nested_scope, explore_variable_usage(cursor, doc, nested_scope))
+                    }
                 } while (cursor.nextSibling())
 
                 scopestate = {
