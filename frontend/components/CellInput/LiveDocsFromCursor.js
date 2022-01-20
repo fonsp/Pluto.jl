@@ -24,6 +24,7 @@ let VALID_DOCS_TYPES = [
     "MacroFieldExpression",
     "MacroIdentifier",
     "Operator",
+    "Definition",
     "ParameterizedIdentifier",
 ]
 let keywords_that_have_docs_and_are_cool = ["import", "export", "try", "catch", "finally", "quote", "do", "struct", "mutable"]
@@ -40,6 +41,9 @@ let is_docs_searchable = (/** @type {import("../../imports/CodemirrorPlutoSetup.
                 }
                 // This is for the VERY specific case like `Vector{Int}(1,2,3,4) which I want to yield `Vector{Int}`
                 if (cursor.name === "TypeArgumentList") {
+                    continue
+                }
+                if (cursor.name === "FieldName" || cursor.name === "MacroName" || cursor.name === "MacroFieldName") {
                     continue
                 }
                 if (!is_docs_searchable(cursor)) {
@@ -158,7 +162,7 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                 }
 
                 // `html"asd"` should yield "html"
-                if (cursor.name === "Identifier" && parent.name === "PrefixedString") {
+                if (cursor.name === "Identifier" && parent.name === "Prefix") {
                     continue
                 }
                 if (cursor.name === "PrefixedString") {
@@ -269,6 +273,7 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
 
                 if (VALID_DOCS_TYPES.includes(cursor.name) || keywords_that_have_docs_and_are_cool.includes(cursor.name)) {
                     if (!is_docs_searchable(cursor)) {
+                        console.log("NOT DOCS SEARCHABLE")
                         return undefined
                     }
 

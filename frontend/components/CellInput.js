@@ -64,7 +64,8 @@ export const pluto_syntax_colors = HighlightStyle.define([
     { tag: tags.propertyName, color: "var(--cm-property-color)" },
     { tag: tags.unit, color: "var(--cm-tag-color)" },
     { tag: tags.literal, color: "var(--cm-builtin-color)", fontWeight: 700 },
-    { tag: tags.macroName, color: "var(--cm-macro-color)" },
+    { tag: tags.macroName, color: "var(--cm-macro-color)", fontWeight: 700 },
+
     // `nothing` I guess... Any others?
     {
         tag: tags.standard(tags.variableName),
@@ -358,7 +359,7 @@ export const CellInput = ({
             { key: "Ctrl-Backspace", run: keyMapBackspace },
         ]
 
-        let DOCS_UPDATER_VERBOSE = true
+        let DOCS_UPDATER_VERBOSE = false
         const docs_updater = EditorView.updateListener.of((update) => {
             if (!update.view.hasFocus) {
                 return

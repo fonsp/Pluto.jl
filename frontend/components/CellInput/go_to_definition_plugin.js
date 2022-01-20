@@ -101,6 +101,16 @@ let clone_scope_state = (scopestate) => {
  * @returns {Array<Range>}
  */
 let get_variables_from_assignment = (cursor) => {
+    if (cursor.name === "Definition") {
+        if (cursor.firstChild()) {
+            try {
+                return get_variables_from_assignment(cursor)
+            } finally {
+                cursor.parent()
+            }
+        }
+    }
+
     if (cursor.name === "Identifier") {
         return [{ to: cursor.to, from: cursor.from }]
     }
@@ -191,6 +201,61 @@ let go_through_quoted_expression_looking_for_interpolations = function* (cursor)
  * @param {ScopeState} scopestate
  * @returns {ScopeState}
  */
+let parse_definitions = function (cursor, doc, scopestate) {
+    if (cursor.name === "TypeArgumentList" && cursor.firstChild()) {
+        try {
+            do {
+                scopestate = parse_definitions(cursor, doc, scopestate)
+            } while (cursor.nextSibling())
+        } finally {
+            cursor.parent()
+        }
+        return scopestate
+    } else if (cursor.name === "TypedExpression" && cursor.node.getChildren("<:").length === 1 && cursor.firstChild()) {
+        // X <: Y
+        try {
+            // X
+            scopestate = parse_definitions(cursor, doc, scopestate)
+            cursor.nextSibling()
+            // <:
+            cursor.nextSibling()
+            // Y
+            scopestate = merge_scope_state(scopestate, explore_variable_usage(cursor, doc, scopestate))
+            return scopestate
+        } finally {
+            cursor.parent()
+        }
+    } else if (cursor.name === "ParameterizedIdentifier" && cursor.firstChild()) {
+        // X{Y}
+        try {
+            // X
+            scopestate = parse_definitions(cursor, doc, scopestate)
+            cursor.nextSibling()
+            // Y
+            scopestate = parse_definitions(cursor, doc, scopestate)
+            return scopestate
+        } finally {
+            cursor.parent()
+        }
+    } else if (cursor.name === "Identifier") {
+        let name = doc.sliceString(cursor.from, cursor.to)
+        scopestate.definitions.set(name, {
+            from: cursor.from,
+            to: cursor.to,
+        })
+        return scopestate
+    } else {
+        // console.warn(`UNKNOWN NODE in parse_definition cursor.toString():`, cursor.toString())
+        return scopestate
+    }
+}
+
+/**
+ * @param {import("../../imports/CodemirrorPlutoSetup.js").TreeCursor} cursor
+ * @param {any} doc
+ * @param {ScopeState} scopestate
+ * @returns {ScopeState}
+ */
 let explore_variable_usage = (
     cursor,
     doc,
@@ -220,35 +285,12 @@ let explore_variable_usage = (
 
                 // We're at the identifier (possibly ParameterizedIdentifier)
                 // @ts-ignore
-                if (cursor.name === "Identifier") {
-                    let name = doc.sliceString(cursor.from, cursor.to)
-                    scopestate.definitions.set(name, {
-                        from: cursor.from,
-                        to: cursor.to,
-                    })
-                    cursor.nextSibling()
-                }
-                // @ts-ignore
-                if (cursor.name === "ParameterizedIdentifier" && cursor.firstChild()) {
+                if (cursor.name === "Definition" && cursor.firstChild()) {
                     try {
-                        let name = doc.sliceString(cursor.from, cursor.to)
-                        scopestate.definitions.set(name, {
-                            from: cursor.from,
-                            to: cursor.to,
-                        })
-
-                        cursor.nextSibling() // Typed part
-                        scopestate = merge_scope_state(scopestate, explore_variable_usage(cursor, doc, scopestate))
+                        scopestate = parse_definitions(cursor, doc, scopestate)
                     } finally {
                         cursor.parent()
                     }
-                    cursor.nextSibling()
-                }
-
-                // @ts-ignore
-                if (cursor.name === "TypedExpression" && cursor.node.getChildren("Identifier").length === 1) {
-                    scopestate = merge_scope_state(scopestate, explore_variable_usage(cursor, doc, scopestate))
-                    cursor.nextSibling()
                 }
 
                 // We are now in the actual struct body
@@ -493,14 +535,19 @@ let explore_variable_usage = (
                     }
                     // @ts-ignore
                     // Function name, add to current scope
-                    if (cursor.name === "Identifier") {
-                        let name = doc.sliceString(cursor.from, cursor.to)
-                        if (in_macro) {
-                            name = `@${name}`
+                    if (cursor.name === "Definition" && cursor.firstChild()) {
+                        try {
+                            if (cursor.name === "Identifier") {
+                                let name = doc.sliceString(cursor.from, cursor.to)
+                                if (in_macro) {
+                                    name = `@${name}`
+                                }
+                                scopestate.definitions.set(name, { from: cursor.from, to: cursor.to })
+                                cursor.nextSibling()
+                            }
+                        } finally {
+                            cursor.parent()
                         }
-                        // Add the full node as position, so it selects the whole thing
-                        // scopestate.definitions.set(name, { from: full_node.from, to: full_node.to })
-                        scopestate.definitions.set(name, { from: cursor.from, to: cursor.to })
                         cursor.nextSibling()
                     }
 
@@ -508,6 +555,12 @@ let explore_variable_usage = (
                         usages: new Set(),
                         definitions: new Map(scopestate.definitions),
                     }
+
+                    let type_parameters = full_node.getChild("TypeParameters")
+                    if (type_parameters) {
+                        nested_scope = parse_definitions(type_parameters.firstChild.cursor, doc, nested_scope)
+                    }
+
                     // @ts-ignore
                     // Cycle through arguments
                     if (cursor.name === "ArgumentList" && cursor.firstChild()) {
