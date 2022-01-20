@@ -85,6 +85,7 @@ export const pluto_syntax_colors = HighlightStyle.define([
     { tag: tags.variableName, color: "var(--cm-var-color)", fontWeight: 700 },
     // { tag: tags.variable2, color: "#06b6ef" },
     { tag: tags.typeName, color: "var(--cm-type-color)", fontStyle: "italic" },
+    { tag: tags.typeOperator, color: "var(--cm-type-color)", fontStyle: "italic" },
     { tag: tags.bracket, color: "var(--cm-bracket-color)" },
     { tag: tags.brace, color: "var(--cm-bracket-color)" },
     { tag: tags.tagName, color: "var(--cm-tag-color)" },
