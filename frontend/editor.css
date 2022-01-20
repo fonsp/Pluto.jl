@@ -1387,11 +1387,6 @@ body:not(.___) pluto-cell.running.errored > pluto-trafficlight::after {
 
 pluto-cell.depends_on_disabled_cells > pluto-trafficlight,
 pluto-cell.running_disabled > pluto-trafficlight {
-    background-color: rgb(255, 0, 0);
-}
-
-pluto-cell.running_disabled:not(.asjkdhf) > pluto-trafficlight {
-    background-color: var(--disabled-cell-bg-color);
     opacity: 0.3;
 }
 
