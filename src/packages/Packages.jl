@@ -200,7 +200,7 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
                         pushfirst!(LOAD_PATH, env_dir)
 
                         # update registries if this is the first time
-                        PkgCompat.update_registries(notebook.nbpkg_ctx)
+                        PkgCompat.update_registries(; force=false)
                         # instantiate without forcing registry update
                         PkgCompat.instantiate(notebook.nbpkg_ctx; update_registry=false)
                         
@@ -360,6 +360,7 @@ function update_nbpkg_core(notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEV
                 notebook.nbpkg_ctx = PkgCompat.clear_stdlib_compat_entries(notebook.nbpkg_ctx)
                 PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
                     withinteractive(false) do
+                        PkgCompat.update_registries(;force=false)
                         try
                             Pkg.resolve(notebook.nbpkg_ctx)
                         catch e

@@ -1,4 +1,5 @@
 import { html, useState, useEffect, useLayoutEffect, useRef, useContext, useMemo } from "../imports/Preact.js"
+import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 import _ from "../imports/lodash.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
@@ -54,35 +55,36 @@ import { cell_movement_plugin, prevent_holding_a_key_from_doing_things_across_ce
 import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
 import { cl } from "../common/ClassTable.js"
+import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_line.js"
 
 const change_is_from_remote_annotation = Annotation.define()
 
 export const pluto_syntax_colors = HighlightStyle.define([
     /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
     // Symbol
-    { tag: tags.literal, color: "#5e7ad3", fontWeight: 700 },
-    { tag: tags.macroName, color: "#5668a4", fontWeight: 700 },
+    { tag: tags.literal, color: "var(--cm-builtin-color)", fontWeight: 700 },
+    { tag: tags.macroName, color: "var(--cm-var-color)", fontWeight: 700 },
     // `nothing` I guess... Any others?
-    { tag: tags.standard(tags.variableName), color: "#5e7ad3", fontWeight: 700 },
+    { tag: tags.standard(tags.variableName), color: "var(--cm-builtin-color)", fontWeight: 700 },
 
-    { tag: tags.bool, color: "#5e7ad3", fontWeight: 700 },
+    { tag: tags.bool, color: "var(--cm-builtin-color)", fontWeight: 700 },
 
-    { tag: tags.keyword, color: "#fc6" },
-    { tag: tags.comment, color: "#e96ba8", fontStyle: "italic" },
-    { tag: tags.atom, color: "#815ba4" },
-    { tag: tags.number, color: "#815ba4" },
-    { tag: tags.bracket, color: "#48b685" },
-    { tag: tags.keyword, color: "#ef6155" },
-    { tag: tags.string, color: "#da5616" },
-    { tag: tags.variableName, color: "#5668a4", fontWeight: 700 },
+    { tag: tags.keyword, color: "var(--cm-keyword-color)" },
+    { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
+    { tag: tags.atom, color: "var(--cm-atom-color)" },
+    { tag: tags.number, color: "var(--cm-number-color)" },
+    // { tag: tags.property, color: "#48b685" },
+    // { tag: tags.attribute, color: "#48b685" },
+    { tag: tags.keyword, color: "var(--cm-keyword-color)" },
+    { tag: tags.string, color: "var(--cm-string-color)" },
+    { tag: tags.variableName, color: "var(--cm-var-color)", fontWeight: 700 },
     // { tag: tags.variable2, color: "#06b6ef" },
-    { tag: tags.definition(tags.variableName), color: "#f99b15" },
-    { tag: tags.bracket, color: "#41323f" },
-    { tag: tags.brace, color: "#41323f" },
-    { tag: tags.tagName, color: "#ef6155" },
-    { tag: tags.link, color: "#815ba4" },
-    { tag: tags.invalid, color: "#000", background: "#ef6155" },
-    // Object.keys(tags).map((x) => ({ tag: x, color: x })),
+    { tag: tags.bracket, color: "var(--cm-bracket-color)" },
+    { tag: tags.brace, color: "var(--cm-bracket-color)" },
+    { tag: tags.tagName, color: "var(--cm-tag-color)" },
+    { tag: tags.link, color: "var(--cm-link-color)" },
+    { tag: tags.invalid, color: "var(--cm-error-color)", background: "var(--cm-error-bg-color)" },
+    // ...Object.keys(tags).map((x) => ({ tag: x, color: x })),
     // Markdown
     { tag: tags.heading, color: "#081e87", fontWeight: 500 },
     { tag: tags.heading1, color: "#081e87", fontWeight: 500, fontSize: "1.5em" },
@@ -160,11 +162,16 @@ export const CellInput = ({
     on_change,
     on_update_doc_query,
     on_focus_neighbor,
+    on_line_heights,
     nbpkg,
     cell_id,
     notebook_id,
     running_disabled,
     cell_dependencies,
+    any_logs,
+    show_logs,
+    set_show_logs,
+    cm_highlighted_line,
     variables_in_all_notebook,
 }) => {
     let pluto_actions = useContext(PlutoContext)
@@ -176,6 +183,7 @@ export const CellInput = ({
     on_change_ref.current = on_change
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
     let used_variables_compartment = useCompartment(newcm_ref, UsedVariablesFacet.of(variables_in_all_notebook))
+    let highlighted_line_compartment = useCompartment(newcm_ref, HighlightLineFacet.of(cm_highlighted_line))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
 
     let on_change_compartment = useCompartment(
@@ -354,14 +362,17 @@ export const CellInput = ({
         // TODO remove me
         //@ts-ignore
         window.tags = tags
+        const usesDarkTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         const newcm = (newcm_ref.current = new EditorView({
             /** Migration #0: New */
             state: EditorState.create({
                 doc: local_code,
 
                 extensions: [
+                    EditorView.theme({}, { dark: usesDarkTheme }),
                     // Compartments coming from react state/props
                     nbpkg_compartment,
+                    highlighted_line_compartment,
                     used_variables_compartment,
                     editable_compartment,
 
@@ -482,6 +493,21 @@ export const CellInput = ({
                 view.focus()
             })
         }
+
+        // @ts-ignore
+        const lines_wrapper_dom_node = dom_node_ref.current.querySelector("div.cm-content")
+        const lines_wrapper_resize_observer = new ResizeObserver(() => {
+            const line_nodes = lines_wrapper_dom_node.children
+            const tops = _.map(line_nodes, (c) => c.offsetTop)
+            const diffs = tops.slice(1).map((y, i) => y - tops[i])
+            const heights = [...diffs, 15]
+            on_line_heights(heights)
+        })
+
+        lines_wrapper_resize_observer.observe(lines_wrapper_dom_node)
+        return () => {
+            lines_wrapper_resize_observer.unobserve(lines_wrapper_dom_node)
+        }
     }, [])
 
     useEffect(() => {
@@ -539,12 +565,20 @@ export const CellInput = ({
 
     return html`
         <pluto-input ref=${dom_node_ref} class="CodeMirror" translate=${false}>
-            <${InputContextMenu} on_delete=${on_delete} cell_id=${cell_id} run_cell=${on_submit} running_disabled=${running_disabled} />
+            <${InputContextMenu}
+                on_delete=${on_delete}
+                cell_id=${cell_id}
+                run_cell=${on_submit}
+                running_disabled=${running_disabled}
+                any_logs=${any_logs}
+                show_logs=${show_logs}
+                set_show_logs=${set_show_logs}
+            />
         </pluto-input>
     `
 }
 
-const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled }) => {
+const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled, any_logs, show_logs, set_show_logs }) => {
     const timeout = useRef(null)
     let pluto_actions = useContext(PlutoContext)
     const [open, setOpen] = useState(false)
@@ -561,6 +595,7 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled }) =>
         // we also 'run' the cell if it is disabled, this will make the backend propage the disabled state to dependent cells
         await run_cell()
     }
+    const toggle_logs = () => set_show_logs(!show_logs)
 
     return html` <button
         onClick=${() => setOpen(!open)}
@@ -582,6 +617,13 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled }) =>
                       ${running_disabled ? html`<span class="enable_cell_icon" />` : html`<span class="disable_cell_icon" />`}
                       ${running_disabled ? html`<b>Enable cell</b>` : html`Disable cell`}
                   </li>
+                  ${any_logs
+                      ? html`<li title="" onClick=${toggle_logs}>
+                            ${show_logs
+                                ? html`<span class="hide_logs_icon" /><span>Hide logs</span>`
+                                : html`<span class="show_logs_icon" /><span>Show logs</span>`}
+                        </li>`
+                      : null}
                   <li class="coming_soon" title=""><span class="bandage_icon" /><em>Coming soon…</em></li>
               </ul>`
             : html``}

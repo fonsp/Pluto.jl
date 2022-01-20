@@ -136,6 +136,7 @@ currentScript.previousElementSibling.innerText = "Hello from JavaScript!"
 .blue-background {
 	padding: .5em;
 	background: lightblue;
+	color: black;
 }
 </style>
 
@@ -284,6 +285,7 @@ my_data = [
 		.join("text")
 		.attr("x", d => d.coordinate[0])
 		.attr("y", d => d.coordinate[1])
+		.style("fill", "red")
 		.text(d => d.name)
 
 	return svg
@@ -763,7 +765,7 @@ details(md"""
 	<style>
 
 		article.learning {
-			background: #fde6ea9c;
+			background: #fde6ea4c;
 			padding: 1em;
 			border-radius: 5px;
 		}
@@ -815,6 +817,7 @@ details(md"""
 		.join("text")
 		.attr("x", d => d.coordinate[0])
 		.attr("y", d => d.coordinate[1])
+		.style("fill", "red")
 		.text(d => d.name)
 
 	return svg

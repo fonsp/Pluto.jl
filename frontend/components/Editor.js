@@ -102,6 +102,17 @@ const first_true_key = (obj) => {
  */
 
 /**
+ * @typedef LogEntryData
+ * @type {{
+ *   level: number,
+ *   msg: string,
+ *   file: string,
+ *   line: number,
+ *   kwargs: Object,
+ * }}
+ */
+
+/**
  * @typedef CellResultData
  * @type {{
  *  cell_id: string,
@@ -122,6 +133,7 @@ const first_true_key = (obj) => {
  *      rootassignee: ?string,
  *      has_pluto_hook_features: boolean,
  *  },
+ *  logs: Array<LogEntryData>,
  *  published_object_keys: [string],
  * }}
  */
@@ -234,6 +246,7 @@ export class Editor extends Component {
                 down: false,
             },
             export_menu_open: false,
+            show_logs: true,
 
             last_created_cell: null,
             selected_cells: [],
@@ -625,9 +638,6 @@ patch: ${JSON.stringify(
                         } else if (message.patches.length !== 0) {
                             apply_notebook_patches(message.patches)
                         }
-                        break
-                    case "log":
-                        handle_log(message, this.state.notebook.path)
                         break
                     default:
                         console.error("Received unknown update type!", update)
@@ -1241,6 +1251,8 @@ patch: ${JSON.stringify(
                             on_cell_input=${this.actions.set_local_cell}
                             on_focus_neighbor=${this.actions.focus_on_neighbor}
                             disable_input=${this.state.disable_ui || !this.state.connected /* && this.state.binder_phase == null*/}
+                            show_logs=${this.state.show_logs}
+                            set_show_logs=${(enabled) => this.setState({ show_logs: enabled })}
                             last_created_cell=${this.state.last_created_cell}
                             selected_cells=${this.state.selected_cells}
                             is_initializing=${this.state.initializing}
@@ -1249,9 +1261,7 @@ patch: ${JSON.stringify(
                         <${DropRuler} 
                             actions=${this.actions}
                             selected_cells=${this.state.selected_cells}
-                            set_scroller=${(enabled) => {
-                                this.setState({ scroller: enabled })
-                            }}
+                            set_scroller=${(enabled) => this.setState({ scroller: enabled })}
                             serialize_selected=${this.serialize_selected}
                         />
                         ${

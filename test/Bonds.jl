@@ -183,10 +183,7 @@ import Distributed
         
         function set_bond_value(name, value, is_first_value=false)
             notebook.bonds[name] = Dict("value" => value)
-            Pluto.set_bond_values_reactive(;
-                session=🍭,
-                notebook=notebook,
-                bound_sym_names=[name],
+            Pluto.set_bond_values_reactive(; session=🍭, notebook, bound_sym_names=[name],
                 is_first_values=[is_first_value],
                 run_async=false,
             )

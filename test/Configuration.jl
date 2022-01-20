@@ -46,8 +46,8 @@ end
 
 @testset "Authentication" begin
     port = 1238
-    options = Pluto.Configuration.from_flat_kwargs(; port=port, launch_browser=false, workspace_use_distributed=false)
-    🍭 = Pluto.ServerSession(; options=options)
+    options = Pluto.Configuration.from_flat_kwargs(; port, launch_browser=false, workspace_use_distributed=false)
+    🍭 = Pluto.ServerSession(; options)
     fakeclient = ClientSession(:fake, nothing)
     🍭.connected_clients[fakeclient.id] = fakeclient
     host = 🍭.options.server.host
