@@ -462,6 +462,15 @@ let explore_variable_usage = (
             } finally {
                 cursor.parent()
             }
+        } else if (cursor.name === "NamedField" && cursor.firstChild()) {
+            try {
+                // NamedField's in the wild indicate there is no assignment, just a property name
+                if (cursor.nextSibling()) {
+                    scopestate = merge_scope_state(scopestate, explore_variable_usage(cursor, doc, scopestate))
+                }
+            } finally {
+                cursor.parent()
+            }
         } else if (cursor.name === "FunctionDefinition" || cursor.name === "MacroDefinition") {
             let full_node = cursor.node
             if (cursor.firstChild()) {
