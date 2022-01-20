@@ -59,10 +59,19 @@ import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_l
 export const pluto_syntax_colors = HighlightStyle.define([
     /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
     // Symbol
+    // { tag: tags.controlKeyword, color: "var(--cm-keyword-color)", fontWeight: 700 },
+
+    { tag: tags.propertyName, color: "var(--cm-property-color)" },
+    { tag: tags.unit, color: "var(--cm-tag-color)" },
     { tag: tags.literal, color: "var(--cm-builtin-color)", fontWeight: 700 },
-    { tag: tags.macroName, color: "var(--cm-var-color)", fontWeight: 700 },
+    { tag: tags.macroName, color: "var(--cm-macro-color)", fontWeight: 700 },
+
     // `nothing` I guess... Any others?
-    { tag: tags.standard(tags.variableName), color: "var(--cm-builtin-color)", fontWeight: 700 },
+    {
+        tag: tags.standard(tags.variableName),
+        color: "var(--cm-builtin-color)",
+        fontWeight: 700,
+    },
 
     { tag: tags.bool, color: "var(--cm-builtin-color)", fontWeight: 700 },
 
@@ -76,12 +85,19 @@ export const pluto_syntax_colors = HighlightStyle.define([
     { tag: tags.string, color: "var(--cm-string-color)" },
     { tag: tags.variableName, color: "var(--cm-var-color)", fontWeight: 700 },
     // { tag: tags.variable2, color: "#06b6ef" },
+    { tag: tags.typeName, color: "var(--cm-type-color)", fontStyle: "italic" },
+    { tag: tags.typeOperator, color: "var(--cm-type-color)", fontStyle: "italic" },
     { tag: tags.bracket, color: "var(--cm-bracket-color)" },
     { tag: tags.brace, color: "var(--cm-bracket-color)" },
     { tag: tags.tagName, color: "var(--cm-tag-color)" },
     { tag: tags.link, color: "var(--cm-link-color)" },
-    { tag: tags.invalid, color: "var(--cm-error-color)", background: "var(--cm-error-bg-color)" },
+    {
+        tag: tags.invalid,
+        color: "var(--cm-error-color)",
+        background: "var(--cm-error-bg-color)",
+    },
     // ...Object.keys(tags).map((x) => ({ tag: x, color: x })),
+
     // Markdown
     { tag: tags.heading, color: "#081e87", fontWeight: 500 },
     { tag: tags.heading1, color: "#081e87", fontWeight: 500, fontSize: "1.5em" },
@@ -89,7 +105,12 @@ export const pluto_syntax_colors = HighlightStyle.define([
     { tag: tags.heading3, color: "#081e87", fontWeight: 500, fontSize: "1.25em" },
     { tag: tags.heading4, color: "#081e87", fontWeight: 500, fontSize: "1.1em" },
     { tag: tags.heading5, color: "#081e87", fontWeight: 500, fontSize: "1em" },
-    { tag: tags.heading6, color: "#081e87", fontWeight: "bold", fontSize: "0.8em" },
+    {
+        tag: tags.heading6,
+        color: "#081e87",
+        fontWeight: "bold",
+        fontSize: "0.8em",
+    },
     { tag: tags.url, color: "#48b685", textDecoration: "underline" },
     { tag: tags.quote, color: "#444", fontStyle: "italic" },
     { tag: tags.literal, color: "#232227", fontWeight: 700 },
@@ -277,7 +298,11 @@ export const CellInput = ({
                 cm.dispatch({
                     changes: [
                         { from: 0, to: 0, insert: prefix },
-                        { from: cm.state.doc.length, to: cm.state.doc.length, insert: suffix },
+                        {
+                            from: cm.state.doc.length,
+                            to: cm.state.doc.length,
+                            insert: suffix,
+                        },
                     ],
                     selection:
                         selection.from === 0
@@ -334,7 +359,7 @@ export const CellInput = ({
             { key: "Ctrl-Backspace", run: keyMapBackspace },
         ]
 
-        let DOCS_UPDATER_VERBOSE = true
+        let DOCS_UPDATER_VERBOSE = false
         const docs_updater = EditorView.updateListener.of((update) => {
             if (!update.view.hasFocus) {
                 return
@@ -450,7 +475,9 @@ export const CellInput = ({
                     keymap.of(plutoKeyMaps),
                     // Before default keymaps (because we override some of them)
                     // but after the autocomplete plugin, because we don't want to move cell when scrolling through autocomplete
-                    cell_movement_plugin({ focus_on_neighbor: ({ cell_delta, line, character }) => on_focus_neighbor(cell_id, cell_delta, line, character) }),
+                    cell_movement_plugin({
+                        focus_on_neighbor: ({ cell_delta, line, character }) => on_focus_neighbor(cell_id, cell_delta, line, character),
+                    }),
                     keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, ...foldKeymap, ...commentKeymap]),
                     placeholder("Enter cell code..."),
 
