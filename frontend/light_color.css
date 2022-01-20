@@ -165,8 +165,9 @@
         --cm-string-color: #da5616;
         --cm-var-color: #5668a4;
         --cm-var2-color: #06b6ef;
+        --cm-macro-color: #5c8c5f;
         --cm-builtin-color: #5e7ad3;
-        --cm-def-color: #e28f7f;
+        --cm-def-color: #cc80ac;
         --cm-bracket-color: #41323f;
         --cm-tag-color: #ef6155;
         --cm-link-color: #815ba4;
