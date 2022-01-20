@@ -2559,9 +2559,15 @@ Based on "Paraíso (Light)" by Jan T. Sott:
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete li.c_from_notebook .cm-completionLabel {
     font-weight: bold;
     text-decoration: underline;
-    text-decoration-color: #ced2ef;
+    text-decoration-color: #5d5f70;
     text-decoration-thickness: 3px;
     text-decoration-skip-ink: none;
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-pluto-variable] {
+        text-decoration-color: #5d5f70;
+    }
 }
 
 body.ctrl_down [data-pluto-variable],
