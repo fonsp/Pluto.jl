@@ -146,11 +146,7 @@ function default_number_of_threads()
 
     all(isspace, env_value) ?
         roughly_the_number_of_physical_cpu_cores() :
-        try
-            parse(Int, env_value)
-        catch
-            env_value
-        end
+        env_value
 end
 
 function roughly_the_number_of_physical_cpu_cores()
