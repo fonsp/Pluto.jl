@@ -61,7 +61,7 @@ export const pluto_syntax_colors = HighlightStyle.define([
     // Symbol
     // { tag: tags.controlKeyword, color: "var(--cm-keyword-color)", fontWeight: 700 },
 
-    { tag: tags.propertyName, color: "var(--cm-def-color)" },
+    { tag: tags.propertyName, color: "var(--cm-property-color)" },
     { tag: tags.unit, color: "var(--cm-tag-color)" },
     { tag: tags.literal, color: "var(--cm-builtin-color)", fontWeight: 700 },
     { tag: tags.macroName, color: "var(--cm-macro-color)" },
