@@ -2635,24 +2635,24 @@ pluto-cell.code_differs .cm-editor .cm-gutters {
 }
 
 .cm-editor .cm-lineNumbers .cm-gutterElement {
-    color: var(--cm-line-numbers-color);
+    color: transparent;
 }
 
 .cm-editor .cm-lineNumbers .cm-gutterElement::after {
     content: "⋅";
     font-size: 0.75rem;
-}
-
-.cm-editor .cm-lineNumbers .cm-gutterElement {
-    font-size: 0px;
+    color: var(--cm-line-numbers-color);
+    position: absolute;
+    right: 3px;
+    pointer-events: none;
 }
 
 .cm-editor .cm-lineNumbers .cm-gutterElement:hover {
-    font-size: 0.75rem;
+    color: var(--cm-line-numbers-color);
 }
 
 .cm-editor .cm-lineNumbers .cm-gutterElement:hover::after {
-    font-size: 0px;
+    color: transparent;
 }
 
 .cm-completionIcon-c_Number::before {
