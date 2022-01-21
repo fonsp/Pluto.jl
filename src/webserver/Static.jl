@@ -14,7 +14,7 @@ function is_pluto_dev()
         p_index = findfirst(p -> p.name == "Pluto", deps)
         p = deps[p_index]
 
-        return p.is_tracking_path
+        p.is_tracking_path
     catch
         false
     end
