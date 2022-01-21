@@ -82,10 +82,10 @@ const Progress = ({ progress }) => {
     const bar_ref = useRef(null)
 
     useLayoutEffect(() => {
-        bar_ref.current.style.width = `${progress * 100}%`
+        bar_ref.current.style.backgroundSize = `${progress * 100}%`
     }, [progress])
 
-    return html`<pluto-progress-bar ref=${bar_ref}></pluto-progress-bar>`
+    return html`<pluto-progress-bar ref=${bar_ref}>${Math.ceil(100 * progress)}%</pluto-progress-bar>`
 }
 
 const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${"adsf"} mime=${pair[1]} body=${pair[0]} persist_js_state=${false} />`
@@ -112,7 +112,6 @@ const Dot = ({ set_cm_highlighted_line, show, msg, kwargs, x, y, level }) => {
 
         level = "Progress"
         y = 0
-        msg = [`${Math.ceil(100*progress)}%            `, "text/plain"]
     }
 
     useLayoutEffect(() => {
@@ -151,10 +150,14 @@ const Dot = ({ set_cm_highlighted_line, show, msg, kwargs, x, y, level }) => {
           >
               <pluto-log-dot-sizer>
                   <pluto-log-dot class=${level}
-                      >${mimepair_output(msg)}${(!is_progress ? kwargs : []).map(
-                          ([k, v]) =>
-                              html` <pluto-log-dot-kwarg><pluto-key>${k}</pluto-key> <pluto-value>${mimepair_output(v)}</pluto-value></pluto-log-dot-kwarg> `
-                      )}${is_progress ? html`<${Progress} progress=${progress} />` : null}</pluto-log-dot
+                      >${!is_progress
+                          ? html`${mimepair_output(msg)}${kwargs.map(
+                                ([k, v]) =>
+                                    html`
+                                        <pluto-log-dot-kwarg><pluto-key>${k}</pluto-key> <pluto-value>${mimepair_output(v)}</pluto-value></pluto-log-dot-kwarg>
+                                    `
+                            )}`
+                          : html`<${Progress} progress=${progress} />`}</pluto-log-dot
                   >
               </pluto-log-dot-sizer>
           </pluto-log-dot-positioner>`

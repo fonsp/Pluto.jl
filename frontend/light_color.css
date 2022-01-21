@@ -68,6 +68,8 @@
 
         /* Logs */
         --pluto-logs-bg-color: #efeff3;
+        --pluto-logs-progress-fill: #ffffff;
+        --pluto-logs-progress-border: hsl(210deg 16% 74%);
 
         /*Top navbar styling*/
         --nav-h1-text-color: black;

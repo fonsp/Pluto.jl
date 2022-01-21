@@ -2308,20 +2308,13 @@ pluto-logs-container pluto-progress-bars pluto-progress:not(:first-child) {
 }
 
 pluto-logs-container pluto-progress-bar {
-    top: 3px;
-    position: absolute;
-    left: 2px;
-    height: calc(100% - 6px);
-    max-width: calc(100% - 4px);
-    width: 0;
-    border-radius: 5px;
-    transition: width cubic-bezier(0.14, 0.71, 0, 0.99) 2s, opacity linear 0.2s;
-    background-color: salmon;
-}
-
-pluto-logs-container pluto-log-dot.Progress pre {
-    z-index: 1;
-    color: white;
+    --c: var(--pluto-logs-progress-fill);
+    padding: 1px 3px;
+    background: linear-gradient(90deg, var(--c), var(--c));
+    background-repeat: no-repeat;
+    width: 100%;
+    transition: background-size cubic-bezier(0.14, 0.71, 0, 0.99) 2s, opacity linear 0.2s;
+    /* background-color: salmon; */
 }
 
 pluto-logs-container pluto-progress-bar.collapsed {
@@ -2404,8 +2397,11 @@ pluto-log-dot.Debug {
     border: 3px solid var(--jl-debug-accent-color);
 }
 pluto-log-dot.Progress {
-    background: pink;
-    border: 3px solid hsla(0, 100%, 80%, 1);
+    width: 100px;
+    background: #94949466;
+    border: 3px solid var(--pluto-logs-progress-border);
+    overflow: hidden;
+    padding: 0px;
 }
 
 pluto-log-dot jltree,
