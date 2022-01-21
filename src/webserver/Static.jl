@@ -61,7 +61,6 @@ function asset_response(path; cacheable::Bool=false)
         push!(response.headers, "Content-Length" => string(length(data)))
         push!(response.headers, "Access-Control-Allow-Origin" => "*")
         cacheable && push!(response.headers, "Cache-Control" => "public, max-age=$(30day), immutable")
-        @info length(data)
         response
     else
         HTTP.Response(404, "Not found!")
