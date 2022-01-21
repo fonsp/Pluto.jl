@@ -8,7 +8,7 @@ function is_pluto_dev()
     if found_is_pluto_dev[] !== nothing
         return found_is_pluto_dev[]
     end
-    found_is_pluto_dev[] = try
+    found_is_pluto_dev[] = get(ENV, "JULIA_PLUTO_FORCE_BUNDLED", "nein") != "ja" && try
         deps = Pkg.dependencies()
 
         p_index = findfirst(p -> p.name == "Pluto", deps)
@@ -28,6 +28,11 @@ function frontend_directory(; allow_bundled::Bool=true)
     end
 end
 
+function should_cache(path::String)
+    dir, filename = splitdir(path)
+    endswith(dir, "frontend-dist") && occursin(r"\.[0-9a-f]{8}\.", filename)
+end
+
 # Serve everything from `/frontend`, and create HTTP endpoints to open notebooks.
 
 "Attempts to find the MIME pair corresponding to the extension of a filename. Defaults to `text/plain`."
@@ -38,7 +43,13 @@ function mime_fromfilename(filename)
     MIME(mimepairs[file_extension])
 end
 
-function asset_response(path)
+const day = let 
+    second = 1
+    hour = 60second
+    day = 24hour
+end
+
+function asset_response(path; cacheable::Bool=false)
     if !isfile(path) && !endswith(path, ".html")
         return asset_response(path * ".html")
     end
@@ -50,6 +61,8 @@ function asset_response(path)
         push!(response.headers, "Content-Type" => Base.istextmime(m) ? "$(m); charset=UTF-8" : string(m))
         push!(response.headers, "Content-Length" => string(length(data)))
         push!(response.headers, "Access-Control-Allow-Origin" => "*")
+        cacheable && push!(response.headers, "Cache-Control" => "public, max-age=$(7day), immutable")
+        
         response
     catch e
         HTTP.Response(404, "Not found!")
@@ -314,9 +327,8 @@ function http_router_for(session::ServerSession)
     
     function serve_asset(request::HTTP.Request)
         uri = HTTP.URI(request.target)
-        
         filepath = project_relative_path(frontend_directory(), relpath(HTTP.unescapeuri(uri.path), "/"))
-        asset_response(filepath)
+        asset_response(filepath; cacheable=should_cache(filepath))
     end
     HTTP.@register(router, "GET", "/*", serve_asset)
     HTTP.@register(router, "GET", "/favicon.ico", create_serve_onefile(project_relative_path(frontend_directory(allow_bundled=false), "img", "favicon.ico")))
