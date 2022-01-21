@@ -267,7 +267,7 @@ function run(session::ServerSession, pluto_router)
     println("Press Ctrl+C in this terminal to stop Pluto")
     println()
 
-    if PLUTO_VERSION >= v"0.18.0" && frontend_directory() == "frontend"
+    if PLUTO_VERSION >= v"0.17.6" && frontend_directory() == "frontend"
         @info "It looks like you are developing the Pluto package, using the unbundled frontend..."
     end
     

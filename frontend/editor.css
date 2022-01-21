@@ -12,14 +12,14 @@
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/500-italic.css");
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/700-italic.css");
 
-@import url("juliamono.css");
-@import url("vollkorn.css");
+@import url("./juliamono.css");
+@import url("./vollkorn.css");
 /* @import url("https://fonts.googleapis.com/css2?family=Lato&display=swap"); */
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/lato@4.4.5/400.css");
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/lato@4.4.5/400-italic.css");
 
-@import url("light_color.css");
-@import url("dark_color.css");
+@import url("./light_color.css");
+@import url("./dark_color.css");
 
 /* VARIABLES */
 
