@@ -1,9 +1,42 @@
 import { julia_andrey, Text } from "../../imports/CodemirrorPlutoSetup.js"
 import lodash from "../../imports/lodash.js"
 
+import ManyKeysWeakmap from "https://esm.sh/many-keys-weakmap@1.0.0"
+
 let VERBOSE = false
 
 export let julia_parser = julia_andrey().language.parser
+
+/**
+ * @template {(...args: any) => any} T
+ * @param {T} fn
+ * @param {(...x: Parameters<T>) => Array<any>} cachekey_resolver
+ * @returns {T}
+ */
+let weak_memo = (fn, cachekey_resolver = (...x) => x) => {
+    let cache = new ManyKeysWeakmap()
+
+    return /** @type {any} */ (
+        (/** @type {Parameters<T>} */ ...args) => {
+            let cachekey = cachekey_resolver(...args)
+            if (cache.has(cachekey)) {
+                return cache.get(cachekey)
+            } else {
+                // @ts-ignore
+                let result = fn(...args)
+                cache.set(cachekey, result)
+                return result
+            }
+        }
+    )
+}
+
+/**
+ * @template {(...args: any) => any} T
+ * @param {T} fn
+ * @returns {T}
+ */
+let weak_memo1 = (fn) => weak_memo(fn, (x) => [x])
 
 /**
  * @typedef TreeCursor
@@ -157,9 +190,6 @@ export let match_template = (haystack_cursor, template, matches) => {
     }
 }
 
-let julia_template_cache = new WeakMap()
-let julia_code_object_cache = new WeakMap()
-
 export class JuliaCodeObject {
     /**
      * @param {TemplateStringsArray} template
@@ -264,14 +294,10 @@ export let to_template = function* (julia_code_object, id_counter) {
  * @param {TemplateStringsArray} template
  * @param {any[]} substitutions
  * */
-export let jl = (template, ...substitutions) => {
-    // if (julia_code_object_cache.has(template)) {
-    //     return julia_code_object_cache.get(template)
-    // }
-    let julia_code_object = new JuliaCodeObject(template, substitutions)
-    // julia_code_object_cache.set(template, julia_code_object)
-    return julia_code_object
-}
+export let jl = weak_memo1((template, ...substitutions) => {
+    console.log(`template:`, template)
+    return new JuliaCodeObject(template, substitutions)
+})
 
 export class IdCounter {
     constructor() {
@@ -282,13 +308,8 @@ export class IdCounter {
     }
 }
 
-/**
- * @param {JuliaCodeObject} julia_code_object
- * */
-export let template = (julia_code_object) => {
-    // if (julia_template_cache.has(julia_code_object)) {
-    //     return julia_template_cache.get(julia_code_object)
-    // }
+export let template = weak_memo1((/** @type {JuliaCodeObject} */ julia_code_object) => {
+    console.log(`julia_code_object:`, julia_code_object)
 
     let id_counter = new IdCounter()
 
@@ -300,7 +321,7 @@ export let template = (julia_code_object) => {
 
     let the_actual_template = template_generator.next(template_ast).value
 
-    let result = {
+    return {
         /** @param {TreeCursor | SyntaxNode} haystack_cursor */
         match(haystack_cursor) {
             if ("cursor" in haystack_cursor) {
@@ -315,60 +336,11 @@ export let template = (julia_code_object) => {
             return match_template(haystack_cursor, the_actual_template, matches) ? matches : null
         },
     }
-
-    julia_template_cache.set(julia_code_object, result)
-    return result
-}
+})
 
 /** @type {(...args: Parameters<typeof jl>) => ReturnType<typeof template>} */
 export let julia_ast = (...args) => {
     return template(jl(...args))
-
-    // if (julia_ast_cache.has(template)) {
-    //     return julia_ast_cache.get(template)
-    // }
-
-    // let index = 0
-
-    // let bound = {}
-    // let julia_to_parse = ""
-
-    // for (let [string_part, substition] of lodash.zip(template, subtitions)) {
-    //     julia_to_parse += string_part
-    //     if (substition !== undefined) {
-    //         let id = needle_prefix + index++
-    //         bound[id] = substition
-    //         julia_to_parse += id
-    //     }
-    // }
-
-    // let template_doc = Text.of([julia_to_parse])
-    // let template_ast = julia_andrey().language.parser.parse(julia_to_parse).topNode.firstChild
-
-    // let result = {
-    //     bound,
-    //     ast: template_ast,
-    //     doc: template_doc,
-    //     /** @param {TreeCursor | SyntaxNode} haystack_cursor */
-    //     match(haystack_cursor) {
-    //         if ("cursor" in haystack_cursor) {
-    //             haystack_cursor = haystack_cursor.cursor
-    //         }
-
-    //         let template_cursor = template_ast.cursor
-
-    //         if (haystack_cursor.name === "⚠") {
-    //             return null
-    //         }
-
-    //         let matches = {}
-    //         return match_template(haystack_cursor, template_cursor, template_doc, bound, matches) ? matches : null
-    //     },
-    // }
-
-    // // @ts-ignore
-    // julia_ast_cache.set(template, result)
-    // return result
 }
 
 /** @param {String} node_type */
@@ -498,3 +470,35 @@ export let t = {
 
     Identifier: type_match_constructor("Identifier"),
 }
+
+/**
+ * @param {JuliaCodeObject} template
+ * @param {any} meta_template
+ */
+export let take_little_piece_of_template = weak_memo((template, meta_template) => {
+    console.log(`template:`, template)
+    let generator = to_template(template, new IdCounter())
+    let julia_to_parse = generator.next().value
+    let template_ast = julia_parser.parse(julia_to_parse).topNode.firstChild
+
+    let match = null
+    if ((match = meta_template.match(template_ast))) {
+        let { content } = match
+        let the_actual_template = generator.next(content).value
+
+        return {
+            /** @param {TreeCursor | SyntaxNode} haystack_cursor */
+            match(haystack_cursor) {
+                if ("cursor" in haystack_cursor) haystack_cursor = haystack_cursor.cursor
+                if (haystack_cursor.name === "⚠") return null
+
+                let matches = {}
+                return match_template(haystack_cursor, the_actual_template, matches) ? matches : null
+            },
+        }
+    } else {
+        console.log(`meta_template:`, meta_template)
+        console.log(`template:`, template)
+        throw new Error("Uhhh")
+    }
+})

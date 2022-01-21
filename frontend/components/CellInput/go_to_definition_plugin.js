@@ -1,64 +1,7 @@
-import { syntaxTree, Facet, ViewPlugin, Decoration, StateField, EditorView, julia_andrey, Text } from "../../imports/CodemirrorPlutoSetup.js"
-import {
-    julia_ast,
-    t,
-    children,
-    all_children,
-    match_template,
-    jl,
-    template,
-    JuliaCodeObject,
-    to_template,
-    IdCounter,
-    julia_parser,
-} from "./julia_ast_template.js"
+import { syntaxTree, Facet, ViewPlugin, Decoration, StateField, EditorView } from "../../imports/CodemirrorPlutoSetup.js"
+import { julia_ast, t, children, jl, template, take_little_piece_of_template } from "./julia_ast_template.js"
 import { ctrl_or_cmd_name, has_ctrl_or_cmd_pressed } from "../../common/KeyboardShortcuts.js"
 import _ from "../../imports/lodash.js"
-
-/**
- * @param {JuliaCodeObject} template
- * @param {any} meta_template
- */
-let zoom_into_template = (template, meta_template) => {
-    let generator = to_template(template, new IdCounter())
-    let julia_to_parse = generator.next().value
-    let template_ast = julia_parser.parse(julia_to_parse).topNode.firstChild
-
-    let match = null
-    if ((match = meta_template.match(template_ast))) {
-        let { content } = match
-        let the_actual_template = generator.next(content).value
-
-        return {
-            /** @param {TreeCursor | SyntaxNode} haystack_cursor */
-            match(haystack_cursor) {
-                if ("cursor" in haystack_cursor) haystack_cursor = haystack_cursor.cursor
-                if (haystack_cursor.name === "⚠") return null
-
-                let matches = {}
-                return match_template(haystack_cursor, the_actual_template, matches) ? matches : null
-            },
-        }
-    } else {
-        console.log(`meta_template:`, meta_template)
-        console.log(`template:`, template)
-        throw new Error("Uhhh")
-    }
-}
-
-// let assigment_ast = jl`(${t.any("x")}, ${t.any("y")})`
-// let argument_meta_template = template(jl`${t.any("content")} = ${t.any("value")}`)
-
-// /** @type {any} */
-// let an_assignment = julia_andrey().language.parser.parse("(x, y) = 10").topNode.firstChild
-
-// let yyy = argument_meta_template.match(an_assignment)
-// console.log(`yyy:`, yyy)
-
-// let xxx = zoom_into_template(jl`${assigment_ast} = nothing`, argument_meta_template)
-// console.log(`xxx:`, xxx)
-// console.log(`xxx.match():`, xxx.match(yyy.content))
-// throw new Error("Aaa")
 
 /**
  * @typedef TreeCursor
@@ -66,60 +9,9 @@ let zoom_into_template = (template, meta_template) => {
  */
 
 /**
- * @typedef MyCursor
- * @type {TreeCursor | SubCursor}
- */
-
-/**
  * @typedef SyntaxNode
  * @type {TreeCursor["node"]}
  */
-
-class SubCursor {
-    /** @param {{ cursor: MyCursor, root: SyntaxNode }} obj */
-    constructor({ cursor, root }) {
-        this.cursor = cursor
-        this.root = root
-    }
-
-    get node() {
-        return this.cursor.node
-    }
-    get name() {
-        return this.cursor.name
-    }
-    get from() {
-        return this.cursor.from
-    }
-    get to() {
-        return this.cursor.to
-    }
-
-    /** @type {(...args: Parameters<TreeCursor["nextSibling"]>) => ReturnType<TreeCursor["nextSibling"]>} */
-    nextSibling(...args) {
-        return this.cursor.nextSibling(...args)
-    }
-    /** @type {(...args: Parameters<TreeCursor["prevSibling"]>) => ReturnType<TreeCursor["prevSibling"]>} */
-    prevSibling(...args) {
-        return this.cursor.prevSibling(...args)
-    }
-    /** @type {(...args: Parameters<TreeCursor["firstChild"]>) => ReturnType<TreeCursor["firstChild"]>} */
-    firstChild(...args) {
-        return this.cursor.firstChild(...args)
-    }
-    /** @type {(...args: Parameters<TreeCursor["lastChild"]>) => ReturnType<TreeCursor["lastChild"]>} */
-    lastChild(...args) {
-        return this.cursor.lastChild(...args)
-    }
-    /** @type {(...args: Parameters<TreeCursor["parent"]>) => ReturnType<TreeCursor["parent"]>} */
-    parent(...args) {
-        if (this.cursor.from == this.root.from && this.cursor.to == this.root.to) {
-            return false
-        } else {
-            return this.cursor.parent(...args)
-        }
-    }
-}
 
 /**
  * This function work bottom up: you give it an identifier, and it will look at it parents to figure out what it is...
@@ -214,7 +106,7 @@ let clone_scope_state = (scopestate) => {
 }
 
 /**
- * @param {MyCursor} cursor
+ * @param {TreeCursor} cursor
  * @returns {Array<Range>}
  */
 let get_variables_from_assignment = (cursor) => {
@@ -310,7 +202,7 @@ let inspect = (cursor, doc) => {
 /**
  * @param {ScopeState} scopestate
  * @param {any} doc
- * @param {SyntaxNode | TreeCursor | MyCursor} node
+ * @param {SyntaxNode | TreeCursor | TreeCursor} node
  */
 let scopestate_add_definition = (scopestate, doc, node) => {
     scopestate.definitions.set(doc.sliceString(node.from, node.to), {
@@ -322,7 +214,7 @@ let scopestate_add_definition = (scopestate, doc, node) => {
 
 let assignment_template = (assigment_ast) => {
     let argument_meta_template = template(jl`${t.any("content")} = ${t.any()}`)
-    return zoom_into_template(jl`${assigment_ast} = nothing`, argument_meta_template)
+    return take_little_piece_of_template(jl`${assigment_ast} = nothing`, argument_meta_template)
 }
 
 /**
@@ -361,7 +253,7 @@ let explorer_pattern = (cursor, doc, scopestate, verbose = false) => {
 
 let argument_template = (argument) => {
     let argument_meta_template = julia_ast`function f(${t.any("content")}) end`
-    return zoom_into_template(jl`function f(${argument}) end`, argument_meta_template)
+    return take_little_piece_of_template(jl`function f(${argument}) end`, argument_meta_template)
 }
 
 /**
@@ -481,8 +373,8 @@ let explore_variable_usage = (
         } else if (cursor.name === "Symbol") {
             // Nothing, ha!
         } else if (
-            (match = julia_ast`abstract type ${t.any("name")} <: ${t.any("supertype")} end`.match(cursor)) ??
-            (match = julia_ast`abstract type ${t.any("name")} end`.match(cursor))
+            (match = template(jl`abstract type ${t.any("name")} <: ${t.any("supertype")} end`).match(cursor)) ??
+            (match = template(jl`abstract type ${t.any("name")} end`).match(cursor))
         ) {
             let { name, supertype } = match
             scopestate_add_definition(scopestate, doc, name)
@@ -549,9 +441,9 @@ let explore_variable_usage = (
 
             let import_specifier = julia_ast`import ${t.any("content")}`
             for (let { node: specifier } of specifiers) {
-                let renamed_import_template = zoom_into_template(jl`import ${t.any("external")}: ${t.multiple("locals", t.any())}`, import_specifier)
-                let simple_identifier = zoom_into_template(jl`import ${t.Identifier("name")}`, import_specifier)
-                let scoped_identifier = zoom_into_template(jl`import ${t.any()}.${t.Identifier("name")}`, import_specifier)
+                let renamed_import_template = take_little_piece_of_template(jl`import ${t.any("external")}: ${t.multiple("locals", t.any())}`, import_specifier)
+                let simple_identifier = take_little_piece_of_template(jl`import ${t.Identifier("name")}`, import_specifier)
+                let scoped_identifier = take_little_piece_of_template(jl`import ${t.any()}.${t.Identifier("name")}`, import_specifier)
 
                 if ((match = renamed_import_template.match(specifier))) {
                     for (let { node: local } of match.locals) {
@@ -967,7 +859,7 @@ export const go_to_definition_plugin = ViewPlugin.fromClass(
                                 new CustomEvent("cell_focus", {
                                     detail: {
                                         cell_id: used_variables[variable],
-                                        line: 0, // 1-based to 0-based index
+                                        li2ne: 0, // 1-based to 0-based index
                                         definition_of: variable,
                                     },
                                 })
