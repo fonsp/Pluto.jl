@@ -61,7 +61,7 @@ function asset_response(path; cacheable::Bool=false)
         push!(response.headers, "Content-Type" => Base.istextmime(m) ? "$(m); charset=UTF-8" : string(m))
         push!(response.headers, "Content-Length" => string(length(data)))
         push!(response.headers, "Access-Control-Allow-Origin" => "*")
-        cacheable && push!(response.headers, "Cache-Control" => "public, max-age=$(7day), immutable")
+        cacheable && push!(response.headers, "Cache-Control" => "public, max-age=$(30day), immutable")
         
         response
     catch e
