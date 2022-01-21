@@ -2361,8 +2361,9 @@ pluto-log-dot-positioner.inspecting ~ pluto-log-dot-positioner {
 
 pluto-log-dot-sizer {
     display: block;
-    width: 100px;
+    width: max-content;
     transform: translateZ(10px);
+    max-width: 600px;
     z-index: 300;
     pointer-events: none; /* part 1: because the hit box is larger than the action log dot */
 }
