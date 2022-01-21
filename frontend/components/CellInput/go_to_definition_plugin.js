@@ -1,5 +1,17 @@
 import { syntaxTree, Facet, ViewPlugin, Decoration, StateField, EditorView, julia_andrey, Text } from "../../imports/CodemirrorPlutoSetup.js"
-import { julia_ast, t, children, all_children, match_template, jl, template, JuliaCodeObject, to_template, IdCounter } from "./julia_ast_template.js"
+import {
+    julia_ast,
+    t,
+    children,
+    all_children,
+    match_template,
+    jl,
+    template,
+    JuliaCodeObject,
+    to_template,
+    IdCounter,
+    julia_parser,
+} from "./julia_ast_template.js"
 import { ctrl_or_cmd_name, has_ctrl_or_cmd_pressed } from "../../common/KeyboardShortcuts.js"
 import _ from "../../imports/lodash.js"
 
@@ -8,35 +20,20 @@ import _ from "../../imports/lodash.js"
  * @param {any} meta_template
  */
 let zoom_into_template = (template, meta_template) => {
-    console.log(`template:`, template)
     let generator = to_template(template, new IdCounter())
     let julia_to_parse = generator.next().value
-
-    let template_ast = julia_andrey().language.parser.parse(julia_to_parse).topNode.firstChild
-
-    console.log(`julia_to_parse:`, julia_to_parse)
-    console.log(`template_ast:`, template_ast)
+    let template_ast = julia_parser.parse(julia_to_parse).topNode.firstChild
 
     let match = null
     if ((match = meta_template.match(template_ast))) {
         let { content } = match
-
-        console.log(`### content:`, content.toString())
-
         let the_actual_template = generator.next(content).value
-
-        console.log(`### the_actual_template:`, the_actual_template)
 
         return {
             /** @param {TreeCursor | SyntaxNode} haystack_cursor */
             match(haystack_cursor) {
-                if ("cursor" in haystack_cursor) {
-                    haystack_cursor = haystack_cursor.cursor
-                }
-
-                if (haystack_cursor.name === "⚠") {
-                    return null
-                }
+                if ("cursor" in haystack_cursor) haystack_cursor = haystack_cursor.cursor
+                if (haystack_cursor.name === "⚠") return null
 
                 let matches = {}
                 return match_template(haystack_cursor, the_actual_template, matches) ? matches : null
@@ -49,33 +46,19 @@ let zoom_into_template = (template, meta_template) => {
     }
 }
 
-// let meta_template = julia_ast`import ${t.any("content")}`
-// console.log(`meta_template:`, meta_template)
-// // let template = zoom_into_template(julia_ast`import ${t.any("external")}.${t.any("local")}`, meta_template)
+// let assigment_ast = jl`(${t.any("x")}, ${t.any("y")})`
+// let argument_meta_template = template(jl`${t.any("content")} = ${t.any("value")}`)
 
-// let match = template(jl`[
-//     ${t.any("result")} for
-//     ${t.many("for-clause", jl`${t.any("pattern")} in ${t.any("list")}`)}
-// ]`).match(template(jl`[x*2 for x in xs, z in xs]`).ast)
-// console.log(`match:`, match)
-// console.log(`#2:`, template(jl`[x*2 for x in xs, z in xs]`).ast)
-// throw new Error("hi")
+// /** @type {any} */
+// let an_assignment = julia_andrey().language.parser.parse("(x, y) = 10").topNode.firstChild
 
-// let { content: to_test } = meta_template.match(julia_ast`import x.y`.ast)
-// console.log(`to_test:`, to_test)
-// console.log(`template:`, template)
-// let result = template.match(to_test)
-// console.log(`result:`, result)
-// console.log(`renamed_import_template:`, renamed_import_template)
-// console.log(`renamed_import.content:`, renamed_import.content)
+// let yyy = argument_meta_template.match(an_assignment)
+// console.log(`yyy:`, yyy)
 
-// console.log("")
-// console.log("")
-// console.log("")
-
-// let aahhhh = renamed_import_template.match(renamed_import.content)
-
-// throw new Error("STOP")
+// let xxx = zoom_into_template(jl`${assigment_ast} = nothing`, argument_meta_template)
+// console.log(`xxx:`, xxx)
+// console.log(`xxx.match():`, xxx.match(yyy.content))
+// throw new Error("Aaa")
 
 /**
  * @typedef TreeCursor
@@ -352,19 +335,7 @@ let assignment_template = (assigment_ast) => {
 let explorer_pattern = (cursor, doc, scopestate, verbose = false) => {
     let match = null
 
-    console.log(`cursor.toString():`, cursor.toString())
-
-    if ((match = argument_template(jl`${t.any("name")} = ${t.any("value")}`).match(cursor))) {
-        let { name, value } = match
-        console.log(`match:`, match)
-        scopestate = explorer_pattern(name, doc, scopestate, verbose)
-        scopestate = explore_variable_usage(value.cursor, doc, scopestate, verbose)
-        return scopestate
-    } else {
-        return scopestate
-    }
-
-    if (cursor.name === "Identifier") {
+    if ((match = assignment_template(jl`${t.Identifier("subject")}`).match(cursor))) {
         return scopestate_add_definition(scopestate, doc, cursor)
     }
     // `x... = 10` => ["x"]
@@ -389,8 +360,8 @@ let explorer_pattern = (cursor, doc, scopestate, verbose = false) => {
 }
 
 let argument_template = (argument) => {
-    let argument_meta_template = julia_ast`function ${t.any()}(${t.any("content")}) end`
-    return zoom_into_template(jl`function X(${argument}) end`, argument_meta_template)
+    let argument_meta_template = julia_ast`function f(${t.any("content")}) end`
+    return zoom_into_template(jl`function f(${argument}) end`, argument_meta_template)
 }
 
 /**
@@ -403,7 +374,7 @@ let argument_template = (argument) => {
 let explorer_function_argument = (cursor, doc, scopestate, verbose = false) => {
     let match = null
 
-    if (cursor.name === "Identifier") {
+    if ((match = argument_template(jl`${t.Identifier("subject")}`).match(cursor))) {
         return scopestate_add_definition(scopestate, doc, cursor)
     }
     // `function f(x...)` => ["x"]
@@ -418,10 +389,11 @@ let explorer_function_argument = (cursor, doc, scopestate, verbose = false) => {
         scopestate = explorer_pattern(name, doc, scopestate, verbose)
         scopestate = explore_variable_usage(value.cursor, doc, scopestate, verbose)
         return scopestate
-    } else if ((match = argument_template(jl`${t.any("name")}::${t.any("returntype")}`).match(cursor))) {
-        let { name, returntype } = match
+    } else if ((match = argument_template(jl`${t.any("name")}::${t.any("type")}`).match(cursor))) {
+        let { name, type } = match
+        console.log(`name, type:`, name, type)
         scopestate = explorer_pattern(name, doc, scopestate, verbose)
-        scopestate = explore_variable_usage(returntype.cursor, doc, scopestate, verbose)
+        scopestate = explore_variable_usage(type.cursor, doc, scopestate, verbose)
         return scopestate
     } else {
         console.warn("UNKNOWN FUNCTION ARGUMENT:", cursor.toString())
@@ -667,6 +639,7 @@ let explore_variable_usage = (
 
             scopestate_add_definition(scopestate, doc, name)
 
+            console.log(`return_type:`, return_type)
             if (return_type) {
                 scopestate = explore_variable_usage(return_type, doc, scopestate, verbose)
             }
@@ -677,7 +650,7 @@ let explore_variable_usage = (
             }
             // Add argument definitions to the nested scope
             for (let { node: arg } of args) {
-                nested_scope = explorer_pattern(arg, doc, nested_scope, verbose)
+                nested_scope = explorer_function_argument(arg, doc, nested_scope, verbose)
             }
             for (let { node: expression } of body) {
                 scopestate = explore_variable_usage(expression, doc, nested_scope, verbose)

@@ -3,6 +3,8 @@ import lodash from "../../imports/lodash.js"
 
 let VERBOSE = false
 
+export let julia_parser = julia_andrey().language.parser
+
 /**
  * @typedef TreeCursor
  * @type {import("../../imports/CodemirrorPlutoSetup.js").TreeCursor}
@@ -161,11 +163,29 @@ let julia_code_object_cache = new WeakMap()
 export class JuliaCodeObject {
     /**
      * @param {TemplateStringsArray} template
-     * @param {any[]} subtitutions
+     * @param {any[]} substitutions
      * */
-    constructor(template, subtitutions) {
-        this.template = template
-        this.subtitutions = subtitutions
+    constructor(template, substitutions) {
+        let flattened_template = []
+        let flattened_substitutions = []
+
+        flattened_template.push(template[0])
+        for (let [string_part, substitution] of lodash.zip(template.slice(1), substitutions)) {
+            if (substitution instanceof JuliaCodeObject) {
+                flattened_template[flattened_template.length - 1] += substitution.template[0]
+                for (let [sub_string_part, sub_substitution] of lodash.zip(substitution.template.slice(1), substitution.substitutions)) {
+                    flattened_substitutions.push(sub_substitution)
+                    flattened_template.push(sub_string_part)
+                }
+                flattened_template[flattened_template.length - 1] += string_part
+            } else {
+                flattened_substitutions.push(substitution)
+                flattened_template.push(string_part)
+            }
+        }
+
+        this.template = flattened_template
+        this.substitutions = flattened_substitutions
     }
 }
 
@@ -205,7 +225,7 @@ export let to_template = function* (julia_code_object, id_counter) {
         let julia_code_to_parse = ""
 
         let subsitions = []
-        for (let [string_part, substitution] of lodash.zip(julia_code_object.template, julia_code_object.subtitutions)) {
+        for (let [string_part, substitution] of lodash.zip(julia_code_object.template, julia_code_object.substitutions)) {
             julia_code_to_parse += string_part
 
             if (substitution) {
@@ -242,13 +262,13 @@ export let to_template = function* (julia_code_object, id_counter) {
 
 /**
  * @param {TemplateStringsArray} template
- * @param {any[]} subtitutions
+ * @param {any[]} substitutions
  * */
-export let jl = (template, ...subtitutions) => {
+export let jl = (template, ...substitutions) => {
     // if (julia_code_object_cache.has(template)) {
     //     return julia_code_object_cache.get(template)
     // }
-    let julia_code_object = new JuliaCodeObject(template, subtitutions)
+    let julia_code_object = new JuliaCodeObject(template, substitutions)
     // julia_code_object_cache.set(template, julia_code_object)
     return julia_code_object
 }
@@ -262,7 +282,9 @@ export class IdCounter {
     }
 }
 
-/** @param {JuliaCodeObject} julia_code_object */
+/**
+ * @param {JuliaCodeObject} julia_code_object
+ * */
 export let template = (julia_code_object) => {
     // if (julia_template_cache.has(julia_code_object)) {
     //     return julia_template_cache.get(julia_code_object)
@@ -274,7 +296,7 @@ export let template = (julia_code_object) => {
     let julia_to_parse = template_generator.next().value
 
     let template_doc = Text.of([julia_to_parse])
-    let template_ast = julia_andrey().language.parser.parse(julia_to_parse).topNode.firstChild
+    let template_ast = julia_parser.parse(julia_to_parse).topNode.firstChild
 
     let the_actual_template = template_generator.next(template_ast).value
 
