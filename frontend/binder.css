@@ -140,9 +140,12 @@ body.wiggle_binder #binder_launch_help {
     border-radius: 8px;
     left: calc(50vw - var(--width) / 2);
     background-color: white;
+    color: black;
     box-shadow: 0px 0px 0px 100vmax #0000004a;
-
     font-family: "Lato", sans-serif;
+}
+#binder_help_text a {
+    color: black;
 }
 
 @media (max-width: 500px) {

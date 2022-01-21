@@ -154,8 +154,8 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
         console.log("Connecting WebSocket")
 
         const connect_promise = connect(with_token(ws_address_from_base(binder_session_url) + "channels"))
-        await timeout_promise(connect_promise, 10_000).catch((e) => {
-            console.error("Failed to establish connection within 10 seconds. Navigating to the edit URL directly.", e)
+        await timeout_promise(connect_promise, 20_000).catch((e) => {
+            console.error("Failed to establish connection within 20 seconds. Navigating to the edit URL directly.", e)
             const edit_url = new URL("edit", binder_session_url)
             edit_url.searchParams.set("id", new_notebook_id)
             window.parent.location.href = with_token(edit_url)
