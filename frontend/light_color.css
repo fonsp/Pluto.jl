@@ -162,7 +162,7 @@
         --cm-comment-color: #e96ba8;
         --cm-atom-color: #815ba4;
         --cm-number-color: #815ba4;
-        --cm-property-color: #48b685;
+        --cm-property-color: #b67a48;
         --cm-keyword-color: #ef6155;
         --cm-string-color: #da5616;
         --cm-var-color: #5668a4;
@@ -170,7 +170,7 @@
         --cm-var2-color: #37768a;
         --cm-builtin-color: #5e7ad3;
         --cm-function-color: #cc80ac;
-        --cm-type-color: hsl(170deg 32% 44%);
+        --cm-type-color: hsl(170deg 7% 56%);
         --cm-bracket-color: #41323f;
         --cm-tag-color: #ef6155;
         --cm-link-color: #815ba4;
