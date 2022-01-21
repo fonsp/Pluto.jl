@@ -44,9 +44,11 @@ function asset_response(path)
     end
     try
         @assert isfile(path)
-        response = HTTP.Response(200, read(path, String))
+        data = read(path)
+        response = HTTP.Response(200, data)
         m = mime_fromfilename(path)
         push!(response.headers, "Content-Type" => Base.istextmime(m) ? "$(m); charset=UTF-8" : string(m))
+        push!(response.headers, "Content-Length" => string(length(data)))
         push!(response.headers, "Access-Control-Allow-Origin" => "*")
         response
     catch e
