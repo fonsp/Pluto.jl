@@ -3,8 +3,6 @@ import lodash from "../../imports/lodash.js"
 
 import ManyKeysWeakmap from "https://esm.sh/many-keys-weakmap@1.0.0"
 
-let VERBOSE = false
-
 export let julia_parser = julia_andrey().language.parser
 
 /**
@@ -13,12 +11,11 @@ export let julia_parser = julia_andrey().language.parser
  * @param {(...x: Parameters<T>) => Array<any>} cachekey_resolver
  * @returns {T}
  */
-let weak_memo = (fn, cachekey_resolver = (...x) => x) => {
-    let cache = new ManyKeysWeakmap()
-
+let memo = (fn, cachekey_resolver = (x) => x, cache = new Map()) => {
     return /** @type {any} */ (
         (/** @type {Parameters<T>} */ ...args) => {
             let cachekey = cachekey_resolver(...args)
+            // console.log(`args, cachekey:`, args, cachekey, cache.has(cachekey))
             if (cache.has(cachekey)) {
                 return cache.get(cachekey)
             } else {
@@ -30,6 +27,14 @@ let weak_memo = (fn, cachekey_resolver = (...x) => x) => {
         }
     )
 }
+
+/**
+ * @template {(...args: any) => any} T
+ * @param {T} fn
+ * @param {(...x: Parameters<T>) => Array<any>} cachekey_resolver
+ * @returns {T}
+ */
+let weak_memo = (fn, cachekey_resolver = (...x) => x) => memo(fn, cachekey_resolver, new ManyKeysWeakmap())
 
 /**
  * @template {(...args: any) => any} T
@@ -87,18 +92,24 @@ export let all_children = function* (cursor) {
  *  node: SyntaxNode,
  *  children: Array<AstTemplate>,
  * } | {
- *  pattern: (haystack: (TreeCursor | void), template: AstTemplate, matches: { [key: string]: any }) => boolean,
+ *  pattern: (
+ *      haystack: (TreeCursor | void),
+ *      template: AstTemplate,
+ *      matches: { [key: string]: any },
+ *      verbose?: boolean
+ *  ) => boolean,
  * }}
  */
 
 /**
  * @param {TreeCursor | void} haystack_cursor
  * @param {AstTemplate} template
- * @param matches
+ * @param {{ [name: string]: any }} matches
+ * @param {boolean} verbose
  */
-export let match_template = (haystack_cursor, template, matches) => {
+export let match_template = (haystack_cursor, template, matches, verbose = false) => {
     let previous_node = null
-    if (VERBOSE) {
+    if (verbose) {
         console.group("Group")
         console.log(`template:`, template)
         if (haystack_cursor) {
@@ -110,49 +121,41 @@ export let match_template = (haystack_cursor, template, matches) => {
     try {
         if ("pattern" in template) {
             let pattern = template.pattern
-            VERBOSE && console.log(`pattern:`, pattern)
+            verbose && console.log(`pattern:`, pattern)
             if (typeof pattern !== "function") {
                 console.log(`pattern:`, pattern)
                 throw new Error("Unknown pattern")
             }
-            VERBOSE && console.log(`matches:`, matches)
+            verbose && console.log(`matches:`, matches)
 
-            return pattern(haystack_cursor, template, matches)
+            return pattern(haystack_cursor, template, matches, verbose)
         } else if ("node" in template) {
             let { node, children } = template
 
             if (haystack_cursor && haystack_cursor.name === "⚠") {
                 // Not sure about this yet but ehhhh
-                VERBOSE && console.log(`✅ because ⚠`)
+                verbose && console.log(`✅ because ⚠`)
                 return true
             }
 
             if (!haystack_cursor || haystack_cursor.name !== node.name) {
-                // This makes it so `import $x` will match `import x: y`,
-                //   where `import $x` yields `Import(ImportIdentifier(Identifier))` but
-                //   `import x: y` yields `Import(ScopedIdentifier(Identifier, Identifier))`
-                //   So if we match on the `Identifier` in the first template, we will never match
-                //   as `ScopedIdentifier` !== `ImportIdentifier`.
-                //   So I need to teach the template to "jump down" when it finds a node that is exactly
-                //   as big as it's only child. This means there is no syntax at all,
-                //   thus no way for us to signify the difference between those nodes.
-                VERBOSE && console.log(`❌ because no cursor or name mismatch`)
+                verbose && console.log(`❌ because no cursor or name mismatch`)
                 return false
             }
 
             if (haystack_cursor.firstChild()) {
                 try {
                     let is_last_from_haystack = false
-                    for (let template_child of template.children) {
+                    for (let template_child of children) {
                         if (is_last_from_haystack) {
-                            VERBOSE && console.log(`❌ because no cursor or name mismatch`)
+                            verbose && console.log(`❌ because no cursor or name mismatch`)
                             return false
                         }
 
-                        let child_does_match = match_template(haystack_cursor, template_child, matches)
+                        let child_does_match = match_template(haystack_cursor, template_child, matches, verbose)
 
                         if (!child_does_match) {
-                            VERBOSE && console.log(`❌ because a child mismatch`, template_child, haystack_cursor.toString())
+                            verbose && console.log(`❌ because a child mismatch`, template_child, haystack_cursor.toString())
                             return false
                         }
 
@@ -160,7 +163,7 @@ export let match_template = (haystack_cursor, template, matches) => {
                         // to give the nested match templates more freedom in move the cursor around between siblings.
                         is_last_from_haystack = !haystack_cursor.nextSibling()
                     }
-                    VERBOSE && console.log(`✅ because all children match`)
+                    verbose && console.log(`✅ because all children match`)
                     return true
                 } finally {
                     haystack_cursor.parent()
@@ -168,18 +171,19 @@ export let match_template = (haystack_cursor, template, matches) => {
             } else {
                 for (let child of template.children) {
                     if (!match_template(null, child, matches)) {
-                        VERBOSE && console.log(`❌ because a mismatch with null child`, child)
+                        verbose && console.log(`❌ because a mismatch with null child`, child)
                         return false
                     }
                 }
-                VERBOSE && console.log(`✅ because empty children are fine`)
+                verbose && console.log(`✅ because empty children are fine`)
                 return true
             }
         } else {
+            console.log(`template:`, template)
             throw new Error("waaaah")
         }
     } finally {
-        if (VERBOSE) {
+        if (verbose) {
             if (haystack_cursor) {
                 console.log(`Cursor at end:`, haystack_cursor.node.name, haystack_cursor.node.from, haystack_cursor.node.to)
                 // prettier-ignore
@@ -221,20 +225,19 @@ export class JuliaCodeObject {
 
 /**
  * @param {SyntaxNode} ast
- * @param {any} code
- * @param {Array<{ code: any, generator: any }>} substitutions
+ * @param {Array<{ generator: any, from: number, to: number }>} substitutions
  * @returns {AstTemplate}
  */
-let substitutions_to_template = (ast, code, substitutions) => {
+let substitutions_to_template = (ast, substitutions) => {
     for (let substitution of substitutions) {
-        if (code.slice(ast.from, ast.to) === substitution.code) {
+        if (ast.from === substitution.from && ast.to === substitution.to) {
             return substitution.generator.next(ast).value
         }
     }
 
     return {
         node: ast,
-        children: Array.from(child_nodes(ast)).map((node) => substitutions_to_template(node, code, substitutions)),
+        children: Array.from(child_nodes(ast)).map((node) => substitutions_to_template(node, substitutions)),
         name: ast.name,
         from: ast.from,
         to: ast.to,
@@ -263,7 +266,8 @@ export let to_template = function* (julia_code_object, id_counter) {
                 let substitution_code = substitution_generator.next().value
 
                 subsitions.push({
-                    code: substitution_code,
+                    from: julia_code_to_parse.length,
+                    to: julia_code_to_parse.length + substitution_code.length,
                     generator: substitution_generator,
                 })
                 julia_code_to_parse += substitution_code
@@ -271,18 +275,20 @@ export let to_template = function* (julia_code_object, id_counter) {
         }
         let template_node = yield julia_code_to_parse
 
+        let substitution_with_proper_position = subsitions.map((substitution) => {
+            return {
+                from: substitution.from + template_node.from,
+                to: substitution.to + template_node.from,
+                generator: substitution.generator,
+            }
+        })
+
         // TODO Throw if not all substitutions are used
-        return substitutions_to_template(template_node, julia_code_to_parse, subsitions)
+        return substitutions_to_template(template_node, substitution_with_proper_position)
     } else if ("generator" in julia_code_object) {
         return yield* julia_code_object.generator(id_counter)
-        // let generator = julia_code_object.generator(id_counter)
-        // let ast = yield generator.next().value
-        // let template_node = generator.next(ast).value
-        // return template_node
     } else if (typeof julia_code_object === "function") {
-        let id = NEEDLE_PREFIX + id_counter.nextIndex()
-
-        let template_node = yield id
+        yield "template"
         return { pattern: julia_code_object }
     } else {
         console.log(`julia_code_object:`, julia_code_object)
@@ -294,8 +300,7 @@ export let to_template = function* (julia_code_object, id_counter) {
  * @param {TemplateStringsArray} template
  * @param {any[]} substitutions
  * */
-export let jl = weak_memo1((template, ...substitutions) => {
-    console.log(`template:`, template)
+export let jl = weak_memo((template, ...substitutions) => {
     return new JuliaCodeObject(template, substitutions)
 })
 
@@ -308,9 +313,7 @@ export class IdCounter {
     }
 }
 
-export let template = weak_memo1((/** @type {JuliaCodeObject} */ julia_code_object) => {
-    console.log(`julia_code_object:`, julia_code_object)
-
+export let template = weak_memo((/** @type {JuliaCodeObject} */ julia_code_object) => {
     let id_counter = new IdCounter()
 
     let template_generator = to_template(julia_code_object, id_counter)
@@ -322,8 +325,12 @@ export let template = weak_memo1((/** @type {JuliaCodeObject} */ julia_code_obje
     let the_actual_template = template_generator.next(template_ast).value
 
     return {
-        /** @param {TreeCursor | SyntaxNode} haystack_cursor */
-        match(haystack_cursor) {
+        /**
+         * @param {TreeCursor | SyntaxNode} haystack_cursor
+         * @param {boolean} verbose?
+         **/
+        the_actual_template,
+        match(haystack_cursor, verbose = false) {
             if ("cursor" in haystack_cursor) {
                 haystack_cursor = haystack_cursor.cursor
             }
@@ -338,41 +345,76 @@ export let template = weak_memo1((/** @type {JuliaCodeObject} */ julia_code_obje
     }
 })
 
+export let as_string = weak_memo((/** @type {JuliaCodeObject} */ julia_code_object) => {
+    let id_counter = new IdCounter()
+
+    let template_generator = to_template(julia_code_object, id_counter)
+    let julia_to_parse = template_generator.next().value
+    return julia_to_parse
+})
+
+export let as_node = weak_memo((/** @type {JuliaCodeObject} */ julia_code_object) => {
+    return julia_parser.parse(as_string(julia_code_object)).topNode.firstChild
+})
+
 /** @type {(...args: Parameters<typeof jl>) => ReturnType<typeof template>} */
 export let julia_ast = (...args) => {
     return template(jl(...args))
 }
 
-/** @param {String} node_type */
-let type_match_constructor = (node_type) => (name) => (cursor, template_cursor, matches, verbose) => {
-    if (cursor != null && cursor.name === node_type) {
-        matches[name] = cursor.node
-        return true
-    } else {
-        return false
-    }
+/**
+ * @template {(name: string, ...args: any[]) => any} T
+ * @param {T} func
+ * @returns {T}
+ **/
+let memo_thingy = (func) => {
+    let per_name_memo = memo((name) => {
+        return weak_memo((...args) => {
+            return func(name, ...args)
+        })
+    })
+
+    return /** @type {any} */ (
+        (name, ...args) => {
+            let sub_memo = per_name_memo(name)
+            return sub_memo(...args)
+        }
+    )
 }
 
-export let t = {
-    Expression: (name) =>
-        function Expression(cursor, template_cursor, matches, verbose = false) {
-            if (cursor == null) {
-                verbose && console.log("cursor null")
-                return false
-            }
-            // So we don't match keywords
-            if (cursor.name[0] === cursor.name[0].toLowerCase()) {
-                verbose && console.log("keyword")
-                return false
-            }
-
-            if (name != null) {
-                matches[name] = cursor.node
-            }
+/** @param {String} node_type */
+let type_match_constructor = (node_type) =>
+    memo_thingy((name) => (cursor, template_cursor, matches, verbose) => {
+        if (cursor != null && cursor.name === node_type) {
+            matches[name] = cursor.node
             return true
-        },
-    any: (name) => t.Expression(name),
-    multiple: (name, of_what) => {
+        } else {
+            return false
+        }
+    })
+
+export let t = {
+    Expression: memo_thingy(
+        (name) =>
+            function Expression(cursor, template_cursor, matches, verbose = false) {
+                if (cursor == null) {
+                    verbose && console.log("cursor null")
+                    return false
+                }
+                // So we don't match keywords
+                if (cursor.name[0] === cursor.name[0].toLowerCase()) {
+                    verbose && console.log("keyword")
+                    return false
+                }
+
+                if (name != null) {
+                    matches[name] = cursor.node
+                }
+                return true
+            }
+    ),
+    any: memo_thingy((name) => t.Expression(name)),
+    multiple: memo_thingy((name, of_what) => {
         return function multiple(cursor, template_cursor, matches, verbose = false) {
             if (cursor == null) {
                 return true
@@ -399,8 +441,8 @@ export let t = {
             cursor.prevSibling()
             return true
         }
-    },
-    many: (name, of_what) => {
+    }),
+    many: memo_thingy((name, of_what) => {
         return {
             /**
              * @param {JuliaCodeObject} julia_code_object
@@ -439,9 +481,9 @@ export let t = {
                 }
             },
         }
-    },
+    }),
 
-    maybe: (what) => {
+    maybe: weak_memo((what) => {
         return {
             /**
              * @param {JuliaCodeObject} julia_code_object
@@ -466,9 +508,40 @@ export let t = {
                 }
             },
         }
-    },
+    }),
 
     Identifier: type_match_constructor("Identifier"),
+    Number: {
+        /**
+         * @param {JuliaCodeObject} julia_code_object
+         * @param {IdCounter} id_counter
+         */
+        generator: function* Number(id_counter) {
+            let ast = yield "10"
+
+            return {
+                pattern: function Number(cursor, template_cursor, matches, verbose = false) {
+                    return cursor.name === "Number"
+                },
+            }
+        },
+    },
+    string: {
+        /**
+         * @param {JuliaCodeObject} julia_code_object
+         * @param {IdCounter} id_counter
+         */
+        generator: function* string(id_counter) {
+            let ast = yield `"template"`
+
+            return {
+                pattern: function string(cursor, template_cursor, matches, verbose = false) {
+                    console.log(`cursor.name:`, cursor.name)
+                    return cursor.name === "StringWithoutInterpolation"
+                },
+            }
+        },
+    },
 }
 
 /**
@@ -476,7 +549,6 @@ export let t = {
  * @param {any} meta_template
  */
 export let take_little_piece_of_template = weak_memo((template, meta_template) => {
-    console.log(`template:`, template)
     let generator = to_template(template, new IdCounter())
     let julia_to_parse = generator.next().value
     let template_ast = julia_parser.parse(julia_to_parse).topNode.firstChild
@@ -487,8 +559,11 @@ export let take_little_piece_of_template = weak_memo((template, meta_template) =
         let the_actual_template = generator.next(content).value
 
         return {
-            /** @param {TreeCursor | SyntaxNode} haystack_cursor */
-            match(haystack_cursor) {
+            /**
+             * @param {TreeCursor | SyntaxNode} haystack_cursor
+             * @param {boolean} verbose?
+             * */
+            match(haystack_cursor, verbose = false) {
                 if ("cursor" in haystack_cursor) haystack_cursor = haystack_cursor.cursor
                 if (haystack_cursor.name === "⚠") return null
 

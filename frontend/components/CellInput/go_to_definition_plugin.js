@@ -1,5 +1,5 @@
 import { syntaxTree, Facet, ViewPlugin, Decoration, StateField, EditorView } from "../../imports/CodemirrorPlutoSetup.js"
-import { julia_ast, t, children, jl, template, take_little_piece_of_template } from "./julia_ast_template.js"
+import { julia_ast, t, children, jl, template, take_little_piece_of_template, julia_parser, as_node, as_string } from "./julia_ast_template.js"
 import { ctrl_or_cmd_name, has_ctrl_or_cmd_pressed } from "../../common/KeyboardShortcuts.js"
 import _ from "../../imports/lodash.js"
 
@@ -65,8 +65,6 @@ let node_is_variable_usage = (node) => {
 
     return true
 }
-
-let empty_variables = []
 
 /**
  * @typedef Range
@@ -172,31 +170,10 @@ let search_for_interpolations = function* (cursor) {
         }
     }
 }
-
 /** @param {TreeCursor} cursor */
 let go_through_quoted_expression_looking_for_interpolations = function* (cursor) {
     if (cursor.name !== "QuoteExpression" && cursor.name !== "QuoteStatement") throw new Error("Expected QuotedExpression or QuoteStatement")
     yield* search_for_interpolations(cursor)
-}
-
-/**
- * @param {TreeCursor} cursor
- * @param {import("../../imports/CodemirrorPlutoSetup.js").Text} doc
- */
-let inspect = (cursor, doc) => {
-    let name = cursor.name
-    let content = doc.sliceString(cursor.from, cursor.to)
-
-    let _children = []
-    for (let child of children(cursor)) {
-        _children.push(inspect(child, doc))
-    }
-
-    return {
-        type: name,
-        content: children.length === 0 ? undefined : content,
-        children: children,
-    }
 }
 
 /**
@@ -256,6 +233,11 @@ let argument_template = (argument) => {
     return take_little_piece_of_template(jl`function f(${argument}) end`, argument_meta_template)
 }
 
+let function_call_argument_template = (argument) => {
+    let meta_template = template(jl`f(${t.any("content")})`)
+    return take_little_piece_of_template(jl`f(${argument})`, meta_template)
+}
+
 /**
  * @param {TreeCursor | SyntaxNode} cursor
  * @param {any} doc
@@ -278,6 +260,7 @@ let explorer_function_argument = (cursor, doc, scopestate, verbose = false) => {
     // `function f(x = 10)` => ["x"]
     else if ((match = argument_template(jl`${t.any("name")} = ${t.any("value")}`).match(cursor))) {
         let { name, value } = match
+        console.log(`name, value:`, name, value)
         scopestate = explorer_pattern(name, doc, scopestate, verbose)
         scopestate = explore_variable_usage(value.cursor, doc, scopestate, verbose)
         return scopestate
@@ -290,6 +273,26 @@ let explorer_function_argument = (cursor, doc, scopestate, verbose = false) => {
     } else {
         console.warn("UNKNOWN FUNCTION ARGUMENT:", cursor.toString())
         return scopestate
+    }
+}
+
+// console.log(`template:`, template(jl`${t.Identifier("prefix")}${t.string}`))
+
+// let aaa = template(jl`${t.Identifier("prefix")}${t.string}`).match(as_node(jl`prefix"hello"`))
+
+// console.log(`as_node2:`, as_string(jl`${t.Identifier("prefix")}${t.string}`).toString())
+// console.log(`as_node2:`, as_node(jl`${t.Identifier("prefix")}${t.string}`).toString())
+// console.log(`as_node:`, as_node(jl`prefix"hello"`).toString())
+// console.log(`aaa:`, aaa)
+
+// throw new Error("HI")
+
+/** @param {SyntaxNode} node */
+let narrow = (node) => {
+    if (node.firstChild && node.firstChild.from === node.from && node.firstChild.to === node.to) {
+        return narrow(node.firstChild)
+    } else {
+        return node
     }
 }
 
@@ -323,11 +326,12 @@ let explore_variable_usage = (
         let match = null
 
         if (
-            (match = julia_ast`struct ${t.any("defined_as")} ${t.multiple("expressions", t.any())} end`.match(cursor)) ??
-            (match = julia_ast`mutable struct ${t.any("defined_as")} ${t.multiple("expressions", t.any())} end`.match(cursor))
+            (match = template(jl`struct ${t.any("defined_as")} ${t.multiple("expressions", t.any())} end`).match(cursor)) ??
+            (match = template(jl`mutable struct ${t.any("defined_as")} ${t.multiple("expressions", t.any())} end`).match(cursor))
         ) {
             let { defined_as, expressions } = match
-            console.log(`match:`, match)
+            defined_as = narrow(defined_as)
+
             // We're at the identifier (possibly ParameterizedIdentifier)
             if (defined_as.name === "Identifier") {
                 let name = doc.sliceString(defined_as.from, defined_as.to)
@@ -455,6 +459,35 @@ let explore_variable_usage = (
                     scopestate_add_definition(scopestate, doc, match.name)
                 }
             }
+        } else if ((match = template(jl`${t.Number}${t.any("unit")}`).match(cursor))) {
+            let { number, unit } = match
+            scopestate = merge_scope_state(scopestate, explore_variable_usage(unit, doc, scopestate))
+        } else if ((match = template(jl`${t.Identifier("prefix")}${t.string}`).match(cursor))) {
+            let { prefix } = match
+            console.log(`prefix:`, prefix)
+            let name_in_code = doc.sliceString(prefix.from, prefix.to)
+            let name = `@${name_in_code}_str`
+            console.log(`name:`, name)
+            scopestate.usages.add({
+                usage: {
+                    from: prefix.from,
+                    to: prefix.to,
+                },
+                definition: scopestate.definitions.get(name) ?? null,
+            })
+        } else if ((match = julia_ast`${t.any("callee")}(${t.multiple("args", t.any())})`.match(cursor))) {
+            let { callee, args = [] } = match
+            scopestate = merge_scope_state(scopestate, explore_variable_usage(callee, doc, scopestate))
+
+            for (let { node: arg } of args) {
+                let match = null
+                if ((match = function_call_argument_template(jl`${t.any("name")} = ${t.any("value")}`).match(arg))) {
+                    let { name, value } = match
+                    scopestate = merge_scope_state(scopestate, explore_variable_usage(value, doc, scopestate))
+                } else {
+                    scopestate = merge_scope_state(scopestate, explore_variable_usage(arg, doc, scopestate))
+                }
+            }
         } else if (
             (match = julia_ast`for ${t.any("binding")} in ${t.any("value")} ${t.multiple("body", t.any())} end`.match(cursor)) ??
             (match = julia_ast`for ${t.any("binding")} = ${t.any("value")} ${t.multiple("body", t.any())} end`.match(cursor)) ??
@@ -519,8 +552,12 @@ let explore_variable_usage = (
             }
         } else if (
             (match = julia_ast`function ${t.any("name")} end`.match(cursor)) ??
-            (match = julia_ast`function ${t.any("name")}(${t.multiple("args", t.any())}) ${t.multiple("body", t.any())} end`.match(cursor)) ??
+            // I have to first match *with* ::ReturnType, because else it will gracefully be
+            // added to the
             (match = julia_ast`function ${t.any("name")}(${t.multiple("args", t.any())})::${t.any("return_type")}
+                ${t.multiple("body", t.any())}
+            end`.match(cursor)) ??
+            (match = julia_ast`function ${t.any("name")}(${t.multiple("args", t.any())})
                 ${t.multiple("body", t.any())}
             end`.match(cursor))
         ) {
@@ -531,7 +568,6 @@ let explore_variable_usage = (
 
             scopestate_add_definition(scopestate, doc, name)
 
-            console.log(`return_type:`, return_type)
             if (return_type) {
                 scopestate = explore_variable_usage(return_type, doc, scopestate, verbose)
             }
@@ -685,7 +721,7 @@ let explore_variable_usage = (
             // }
         } else {
             // In most cases we "just" go through all the children separately
-            console.log(`Not recognized:`, cursor.toString())
+            // console.log(`Not recognized:`, cursor.toString())
             if (cursor.firstChild()) {
                 try {
                     do {
@@ -721,8 +757,12 @@ let get_variable_marks = (state, { scopestate, used_variables }) => {
                     // TODO variables_with_origin_cell should be notebook wide, not just in the current cell
                     // .... Because now it will only show variables after it has run once
                     if (used_variables[text]) {
+                        // TODO This used to be tagName: "a", but codemirror doesn't like that...
+                        // .... https://github.com/fonsp/Pluto.jl/issues/1790
+                        // .... Ideally we'd change it back to `a` (feels better), but functionally there is no difference..
+                        // .... When I ever happen to find a lot of time I can spend on this, I'll debug and change it back to `a`
                         return Decoration.mark({
-                            tagName: "a",
+                            tagName: "pluto-variable-link",
                             attributes: {
                                 "title": `${ctrl_or_cmd_name}-Click to jump to the definition of ${text}.`,
                                 "data-pluto-variable": text,
@@ -745,7 +785,7 @@ let get_variable_marks = (state, { scopestate, used_variables }) => {
                 } else {
                     // Could be used to select the definition of a variable inside the current cell
                     return Decoration.mark({
-                        tagName: "a",
+                        tagName: "pluto-variable-link",
                         attributes: {
                             "title": `${ctrl_or_cmd_name}-Click to jump to the definition of ${text}.`,
                             "data-cell-variable": text,
@@ -859,7 +899,7 @@ export const go_to_definition_plugin = ViewPlugin.fromClass(
                                 new CustomEvent("cell_focus", {
                                     detail: {
                                         cell_id: used_variables[variable],
-                                        li2ne: 0, // 1-based to 0-based index
+                                        line: 0, // 1-based to 0-based index
                                         definition_of: variable,
                                     },
                                 })
