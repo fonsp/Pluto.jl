@@ -15,7 +15,27 @@ export const Logs = ({ logs, line_heights, set_cm_highlighted_line }) => {
     const container = useRef(null)
     const [from, setFrom] = useState(0)
     const [to, setTo] = useState(Math.round(1000 / GRID_WIDTH))
-    const logsWidth = logs.length * GRID_WIDTH
+    const progress_logs = logs.filter(is_progress_log)
+    const latest_progress_logs = progress_logs.reduce((progress_logs, log) => ({ ...progress_logs, [log.id]: log }), {})
+    const [_, grouped_progress_and_logs] = logs.reduce(
+        ([seen, final_logs], log) => {
+            const ipl = is_progress_log(log)
+            if (ipl && !(log.id in seen)) {
+                return [{ ...seen, [log.id]: true }, [...final_logs, latest_progress_logs[log.id]]]
+            } else if (!ipl) {
+                return [seen, [...final_logs, log]]
+            }
+            return [seen, final_logs]
+        },
+        [{}, []]
+    )
+    const logsWidth = grouped_progress_and_logs.length * GRID_WIDTH
+
+    const logsStyle = useMemo(
+        () => `grid-template-rows: ${line_heights.map((y) => y + "px").join(" ")} repeat(auto-fill, 15px); width: ${logsWidth}px;`,
+        [logsWidth, line_heights]
+    )
+
     useEffect(() => {
         if (!container.current) return
         const elem = container.current
@@ -33,29 +53,10 @@ export const Logs = ({ logs, line_heights, set_cm_highlighted_line }) => {
             document.removeEventListener("resize", l)
         }
     }, [container.current, logsWidth])
-    const logsStyle = useMemo(
-        () => `grid-template-rows: ${line_heights.map((y) => y + "px").join(" ")} repeat(auto-fill, 15px); width: ${logs.length * GRID_WIDTH}px;`,
-        [logs.length, line_heights]
-    )
     const is_hidden_input = line_heights[0] === 0
     if (logs.length === 0) {
         return null
     }
-
-    const progress_logs = logs.filter(is_progress_log)
-    const latest_progress_logs = progress_logs.reduce((progress_logs, log) => ({ ...progress_logs, [log.id]: log }), {})
-    const [_, grouped_progress_and_logs] = logs.reduce(
-        ([seen, final_logs], log) => {
-            const ipl = is_progress_log(log)
-            if (ipl && !(log.id in seen)) {
-                return [{ ...seen, [log.id]: true }, [...final_logs, latest_progress_logs[log.id]]]
-            } else if (!ipl) {
-                return [seen, [...final_logs, log]]
-            }
-            return [seen, final_logs]
-        },
-        [{}, []]
-    )
 
     return html`
         <pluto-logs-container ref=${container}>
