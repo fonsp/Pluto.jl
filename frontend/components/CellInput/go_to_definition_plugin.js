@@ -59,8 +59,12 @@ let search_for_interpolations = function* (cursor) {
     for (let child of child_cursors(cursor)) {
         if (child.name === "InterpolationExpression") {
             yield cursor
+        } else if (child.name === "QuoteExpression" || child.name === "QuoteStatement") {
+            for (let child_child of search_for_interpolations(child)) {
+                yield* search_for_interpolations(child_child)
+            }
         } else {
-            yield* search_for_interpolations(cursor)
+            yield* search_for_interpolations(child)
         }
     }
 }
@@ -132,7 +136,7 @@ let explore_pattern = (node, doc, scopestate, verbose = false) => {
         scopestate = scopestate_add_definition(scopestate, doc, object)
         return scopestate
     } else if ((match = assignment_template(jl`${t.as("subject")}...`).match(node))) {
-        // `x... = 10` => ["x"]
+        // `x... = [1,2,3]` => ["x"]
         return explore_pattern(match.subject, doc, scopestate, verbose)
     } else if ((match = function_definition_argument_template(jl`${t.as("name")} = ${t.as("value")}`).match(node))) {
         let { name, value } = match
@@ -589,16 +593,10 @@ let explore_variable_usage = (
         ) {
             let { specifiers } = match
 
-            let import_specifier_template = (argument) => {
-                let meta_template = template(jl`import ${t.as("content")}`)
-                return take_little_piece_of_template(jl`import ${argument}`, meta_template)
-            }
+            let import_specifier_template = create_specific_template_maker((x) => jl`import ${x}`)
             // Apparently there is a difference between the `X as Y` in `import X as Y` and `import P: X as Y`
-            // This template is specifically for `import P: X as Y`.
-            let very_specific_import_specifier_template = (argument) => {
-                let meta_template = template(jl`import X: ${t.as("content")}`)
-                return take_little_piece_of_template(jl`import X: ${argument}`, meta_template)
-            }
+            // This template is specifically for `X as Y` in `import P: X as Y`.
+            let very_specific_import_specifier_template = create_specific_template_maker((x) => jl`import X: ${x}`)
 
             let add_import_specifier = (scopestate, doc, specifier) => {
                 let match = null
@@ -629,6 +627,7 @@ let explore_variable_usage = (
                         return scopestate_add_definition(scopestate, doc, identifier)
                     } else {
                         verbose && console.warn("Something odd going on with ScopedIdentifiers", original_identifier.toString())
+                        return scopestate
                     }
                 } else {
                     verbose && console.warn("Unrecognized import specifier", specifier.toString())

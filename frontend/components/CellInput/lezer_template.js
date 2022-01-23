@@ -669,7 +669,7 @@ export const t = {
                     if (did_match === true) {
                         matches[name] = cursor?.["node"]
                     }
-                    return did_match
+                    return cursor && did_match
                 },
             }
         }
@@ -680,7 +680,7 @@ export const t = {
         return {
             pattern: function Identifier(cursor, matches, verbose = false) {
                 verbose && console.log(`cursor:`, narrow_name(cursor), cursor.toString())
-                return narrow_name(cursor) === "Identifier"
+                return cursor && narrow_name(cursor) === "Identifier"
             },
         }
     },
@@ -688,7 +688,7 @@ export const t = {
         yield "69"
         return {
             pattern: function Number(cursor, matches, verbose = false) {
-                return narrow_name(cursor) === "Number"
+                return cursor && narrow_name(cursor) === "Number"
             },
         }
     },
@@ -696,7 +696,7 @@ export const t = {
         yield `"A113"`
         return {
             pattern: function String(cursor, matches, verbose = false) {
-                return narrow_name(cursor) === "StringWithoutInterpolation" || narrow_name(cursor) === "TripleStringWithoutInterpolation"
+                return (cursor && narrow_name(cursor) === "StringWithoutInterpolation") || narrow_name(cursor) === "TripleStringWithoutInterpolation"
             },
         }
     },
