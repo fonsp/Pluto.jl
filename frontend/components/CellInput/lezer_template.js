@@ -496,7 +496,7 @@ export let template = weak_memo((/** @type {JuliaCodeObject} */ julia_code_objec
             try {
                 return match_template(haystack_cursor, template_description, matches, verbose) ? matches : null
             } finally {
-                console.groupEnd()
+                verbose && console.groupEnd()
             }
         },
     })
