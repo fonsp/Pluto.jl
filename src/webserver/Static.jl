@@ -8,20 +8,20 @@ function is_pluto_dev()
     if found_is_pluto_dev[] !== nothing
         return found_is_pluto_dev[]
     end
-    found_is_pluto_dev[] = get(ENV, "JULIA_PLUTO_FORCE_BUNDLED", "nein") != "ja" && try
+    found_is_pluto_dev[] = try
         deps = Pkg.dependencies()
 
         p_index = findfirst(p -> p.name == "Pluto", deps)
         p = deps[p_index]
 
-        return p.is_tracking_path
+        p.is_tracking_path
     catch
         false
     end
 end
 
 function frontend_directory(; allow_bundled::Bool=true)
-    if allow_bundled && isdir(project_relative_path("frontend-dist")) && !is_pluto_dev()
+    if allow_bundled && isdir(project_relative_path("frontend-dist")) && (get(ENV, "JULIA_PLUTO_FORCE_BUNDLED", "nein") == "ja" || !is_pluto_dev())
         "frontend-dist"
     else
         "frontend"
@@ -51,10 +51,9 @@ end
 
 function asset_response(path; cacheable::Bool=false)
     if !isfile(path) && !endswith(path, ".html")
-        return asset_response(path * ".html")
+        return asset_response(path * ".html"; cacheable)
     end
-    try
-        @assert isfile(path)
+    if isfile(path)
         data = read(path)
         response = HTTP.Response(200, data)
         m = mime_fromfilename(path)
@@ -62,9 +61,8 @@ function asset_response(path; cacheable::Bool=false)
         push!(response.headers, "Content-Length" => string(length(data)))
         push!(response.headers, "Access-Control-Allow-Origin" => "*")
         cacheable && push!(response.headers, "Cache-Control" => "public, max-age=$(30day), immutable")
-        
         response
-    catch e
+    else
         HTTP.Response(404, "Not found!")
     end
 end

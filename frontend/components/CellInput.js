@@ -636,22 +636,22 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled, any_
         <span class="icon"></span>
         ${open
             ? html`<ul onMouseenter=${mouseenter}>
-                  <li onClick=${on_delete} title="Delete"><span class="delete_icon" />Delete cell</li>
+                  <li onClick=${on_delete} title="Delete"><span class="delete ctx_icon" />Delete cell</li>
                   <li
                       onClick=${toggle_running_disabled}
                       title=${running_disabled ? "Enable and run the cell" : "Disable this cell, and all cells that depend on it"}
                   >
-                      ${running_disabled ? html`<span class="enable_cell_icon" />` : html`<span class="disable_cell_icon" />`}
+                      ${running_disabled ? html`<span class="enable_cell ctx_icon" />` : html`<span class="disable_cell ctx_icon" />`}
                       ${running_disabled ? html`<b>Enable cell</b>` : html`Disable cell`}
                   </li>
                   ${any_logs
                       ? html`<li title="" onClick=${toggle_logs}>
                             ${show_logs
-                                ? html`<span class="hide_logs_icon" /><span>Hide logs</span>`
-                                : html`<span class="show_logs_icon" /><span>Show logs</span>`}
+                                ? html`<span class="hide_logs ctx_icon" /><span>Hide logs</span>`
+                                : html`<span class="show_logs ctx_icon" /><span>Show logs</span>`}
                         </li>`
                       : null}
-                  <li class="coming_soon" title=""><span class="bandage_icon" /><em>Coming soon…</em></li>
+                  <li class="coming_soon" title=""><span class="bandage ctx_icon" /><em>Coming soon…</em></li>
               </ul>`
             : html``}
     </button>`
