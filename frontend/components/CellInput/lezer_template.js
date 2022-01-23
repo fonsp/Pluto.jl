@@ -653,7 +653,7 @@ export const t = {
      * This "higher-order" template pattern is for adding their nodes to the matches.
      * Without a pattern (e.g. `t.as("foo")`) it will default to `t.any`
      *
-     * @type {(name: string, what?: () => TemplateGenerator) => (() => TemplateGenerator)}
+     * @type {(name: string, what?: Substitution | JuliaCodeObject) => Substitution}
      */
     as: memo_first_argument_weakmemo_rest((name, what = expression) => {
         return function* as() {
@@ -773,7 +773,7 @@ export let narrow_name = (cursor) => {
  */
 export let create_specific_template_maker = (fn) => {
     return (argument) => {
-        let meta_template = template(fn(t.as("content")))
+        let meta_template = template(fn(t.as("content", argument)))
         return take_little_piece_of_template(fn(argument), meta_template)
     }
 }
