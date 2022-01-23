@@ -341,6 +341,45 @@ let explore_variable_usage = (
     try {
         let match = null
 
+        // Doing these checks in front seems to speed things up a bit.
+        if (
+            cursor.name === "SourceFile" ||
+            cursor.name === "BooleanLiteral" ||
+            cursor.name === "Character" ||
+            cursor.name === "String" ||
+            cursor.name === "Number" ||
+            cursor.name === "Comment" ||
+            cursor.name === "BinaryExpression" ||
+            cursor.name === "Operator" ||
+            cursor.name === "MacroArgumentList" ||
+            cursor.name === "ReturnStatement" ||
+            cursor.name === "BareTupleExpression" ||
+            cursor.name === "ParenthesizedExpression" ||
+            cursor.name === "Type" ||
+            cursor.name === "InterpolationExpression" ||
+            cursor.name === "SpreadExpression" ||
+            cursor.name === "CompoundExpression" ||
+            cursor.name === "ParameterizedIdentifier" ||
+            cursor.name === "TypeArgumentList" ||
+            cursor.name === "TernaryExpression" ||
+            cursor.name === "Coefficient" ||
+            cursor.name === "TripleString" ||
+            cursor.name === "RangeExpression" ||
+            cursor.name === "SubscriptExpression" ||
+            cursor.name === "UnaryExpression" ||
+            cursor.name === "ConstStatement" ||
+            cursor.name === "GlobalStatement" ||
+            cursor.name === "ContinueStatement" ||
+            cursor.name === "MatrixExpression" ||
+            cursor.name === "MatrixRow" ||
+            cursor.name === "ArrayExpression"
+        ) {
+            for (let subcursor of child_cursors(cursor)) {
+                scopestate = explore_variable_usage(subcursor, doc, scopestate)
+            }
+            return scopestate
+        }
+
         if (cursor.name === "Identifier" || cursor.name === "MacroIdentifier") {
             let name = doc.sliceString(cursor.from, cursor.to)
             scopestate.usages.add({

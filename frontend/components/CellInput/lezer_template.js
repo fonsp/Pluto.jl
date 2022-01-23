@@ -1,8 +1,8 @@
 import { julia_andrey, Text } from "../../imports/CodemirrorPlutoSetup.js"
 import lodash from "../../imports/lodash.js"
 
-// @ts-ignore
-import ManyKeysWeakmap from "https://esm.sh/many-keys-weakmap@1.0.0"
+// // @ts-ignore
+import ManyKeysWeakMap from "https://esm.sh/many-keys-weakmap@1.0.0"
 
 /**
  * @param {string} julia_code
@@ -25,11 +25,16 @@ let memo = (fn, cachekey_resolver = (x) => x, cache = new Map()) => {
         (/** @type {Parameters<T>} */ ...args) => {
             let cachekey = cachekey_resolver(...args)
             // console.log(`args, cachekey:`, args, cachekey, cache.has(cachekey))
-            if (cache.has(cachekey)) {
-                return cache.get(cachekey)
+            let result = cache.get(cachekey)
+            if (result != null) {
+                return result
             } else {
                 // @ts-ignore
                 let result = fn(...args)
+
+                if (result == undefined) {
+                    throw new Error("Memoized function returned undefined")
+                }
                 cache.set(cachekey, result)
                 return result
             }
@@ -43,7 +48,7 @@ let memo = (fn, cachekey_resolver = (x) => x, cache = new Map()) => {
  * @param {(...x: Parameters<T>) => Array<any>} cachekey_resolver
  * @returns {T}
  */
-let weak_memo = (fn, cachekey_resolver = (...x) => x) => memo(fn, cachekey_resolver, new ManyKeysWeakmap())
+let weak_memo = (fn, cachekey_resolver = (...x) => x) => memo(fn, cachekey_resolver, new ManyKeysWeakMap())
 
 /**
  * @typedef TreeCursor
@@ -208,7 +213,7 @@ export let match_template = (haystack_cursor, template, matches, verbose = false
                         is_last_from_haystack = !haystack_cursor.nextSibling()
                     }
 
-                    if (!is_last_from_haystack) {
+                    if (verbose && !is_last_from_haystack) {
                         let spare_children = []
                         do {
                             spare_children.push(haystack_cursor.node)
