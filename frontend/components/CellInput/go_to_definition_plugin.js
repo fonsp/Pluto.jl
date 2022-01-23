@@ -653,10 +653,10 @@ let explore_variable_usage = (
             return scopestate
         } else if (
             (match = template(jl`
-            for ${t.many("bindings", t.something_with_the_same_type_as(jl`x in y`))};
-                ${t.many("expressions")}
-            end
-        `).match(cursor))
+                for ${t.many("bindings", t.something_with_the_same_type_as(jl`x in y`))};
+                    ${t.many("expressions")}
+                end
+            `).match(cursor))
         ) {
             let for_loop_binding_template = create_specific_template_maker((arg) => jl`for ${arg}; x end`)
 
