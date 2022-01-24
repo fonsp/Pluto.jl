@@ -153,6 +153,22 @@ function find_import_statements({ doc, tree, from, to }) {
                         console.warn("Unknown import specifier: " + specifier.toString())
                     }
                 }
+
+                match = null
+                if ((match = template(jl`using ${t.as("specifier")}, ${t.many("specifiers")}`).match(cursor))) {
+                    let { specifier } = match
+                    if (specifier) {
+                        if (doc.sliceString(specifier.to, specifier.to + 1) === "\n" || doc.sliceString(specifier.to, specifier.to + 1) === "") {
+                            things_to_return.push({
+                                type: "implicit_using",
+                                name: doc.sliceString(specifier.from, specifier.to),
+                                from: specifier.to,
+                                to: specifier.to,
+                            })
+                        }
+                    }
+                }
+
                 return false
             } else if (cursor.name === "ImportStatement") {
                 throw new Error("What")
@@ -213,11 +229,32 @@ function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg }) {
                         side: 1,
                     })
                     return deco.range(thing.to)
+                } else if (thing.type === "implicit_using") {
+                    if (thing.name === "HypertextLiteral") {
+                        let deco = Decoration.widget({
+                            widget: new ReactWidget(html`<span style=${{ position: "relative" }}>
+                                <div
+                                    style=${{
+                                        position: `absolute`,
+                                        display: `inline`,
+                                        left: 0,
+                                        whiteSpace: `nowrap`,
+                                        opacity: 0.3,
+                                        pointerEvents: `none`,
+                                    }}
+                                >
+                                    : @htl, @htl_str
+                                </div>
+                            </span>`),
+                            side: 1,
+                        })
+                        return deco.range(thing.to)
+                    }
                 }
             })
         })
         .filter((x) => x != null)
-    return Decoration.set(widgets)
+    return Decoration.set(widgets, true)
 }
 
 export const NotebookpackagesFacet = Facet.define({
