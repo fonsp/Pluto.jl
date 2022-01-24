@@ -12,7 +12,18 @@ export let julia_to_ast = (julia_code) => {
     return /** @type {any} */ (julia_andrey().language.parser.parse(julia_code).topNode.firstChild)
 }
 
-let TEMPLATE_CREATION_VERBOSE = false
+const TEMPLATE_CREATION_VERBOSE = false
+
+/**
+ * Settings this to `"VALIDITY"` will enable some (currently, one) slow validations.
+ * Might be useful to run set this to `"VALIDITY"` every so often to make sure there are no bugs.
+ * In production this should always to `"SPEED"`
+ *
+ * @type {"SPEED" | "VALIDITY"}
+ */
+const PERFORMANCE_MODE = /** @type {any} */ ("SPEED")
+
+const IS_IN_VALIDATION_MODE = PERFORMANCE_MODE === "VALIDITY"
 
 /**
  * @template {Array} P
@@ -56,6 +67,8 @@ let weak_memo = (fn, cachekey_resolver = (...x) => x) => memo(fn, cachekey_resol
  * @returns {T}
  */
 let weak_memo1 = (fn) => memo(fn, (x) => x, new WeakMap())
+
+// Good luck figuring anything out from these types 💕
 
 /**
  * @typedef TreeCursor
@@ -448,9 +461,10 @@ let template_cache = new WeakMap()
  * @param {Array<Templatable>} substitutions
  */
 export let jl = (template, ...substitutions) => {
-    if (template_cache.has(template)) {
-        let { input, result } = template_cache.get(template)
-        if (TEMPLATE_CREATION_VERBOSE) {
+    let cached = template_cache.get(template)
+    if (cached != null) {
+        let { input, result } = cached
+        if (IS_IN_VALIDATION_MODE) {
             if (!lodash.isEqual(substitutions, input)) {
                 console.trace("Substitutions changed on `jl` template string.. change to `jl_dynamic` if you need this.")
             }
