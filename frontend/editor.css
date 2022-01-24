@@ -2598,7 +2598,7 @@ pluto-input .cm-editor .cm-content {
 
 .cm-editor {
     background: var(--code-background);
-    color: #645e11;
+    color: var(--cm-editor-text-color);
 }
 .cm-editor.cm-focused:not(.__) {
     outline: unset;
