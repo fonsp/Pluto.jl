@@ -17,7 +17,8 @@ let TEMPLATE_CREATION_VERBOSE = false
 /**
  * @template {(...args: any) => any} T
  * @param {T} fn
- * @param {(...x: Parameters<T>) => Array<any>} cachekey_resolver
+ * @param {(...x: Parameters<T>) => any} cachekey_resolver
+ * @param {WeakMap} cache
  * @returns {T}
  */
 let memo = (fn, cachekey_resolver = (x) => x, cache = new Map()) => {
@@ -49,6 +50,8 @@ let memo = (fn, cachekey_resolver = (x) => x, cache = new Map()) => {
  * @returns {T}
  */
 let weak_memo = (fn, cachekey_resolver = (...x) => x) => memo(fn, cachekey_resolver, new ManyKeysWeakMap())
+
+let weak_memo1 = (fn) => memo(fn, (x) => x, new WeakMap())
 
 /**
  * @typedef TreeCursor
@@ -450,9 +453,29 @@ export let to_template = function* (julia_code_object) {
  * @param {TemplateStringsArray} template
  * @param {any[]} substitutions
  * */
-export let jl = weak_memo((template, ...substitutions) => {
+export let jl_dynamic = weak_memo((template, ...substitutions) => {
     return new JuliaCodeObject(template, substitutions)
 })
+
+let template_cache = new WeakMap()
+export let jl = (template, ...substitutions) => {
+    if (template_cache.has(template)) {
+        let { input, result } = template_cache.get(template)
+        if (TEMPLATE_CREATION_VERBOSE) {
+            if (!lodash.isEqual(substitutions, input)) {
+                console.trace("Substitutions changed on `jl` template string.. change to `jl_dynamic` if you need this.")
+            }
+        }
+        return result
+    } else {
+        let result = new JuliaCodeObject(template, substitutions)
+        template_cache.set(template, {
+            input: substitutions,
+            result: result,
+        })
+        return result
+    }
+}
 
 /**
  * @typedef MatchResult

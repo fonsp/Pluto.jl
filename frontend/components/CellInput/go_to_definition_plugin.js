@@ -8,6 +8,7 @@ import {
     child_nodes,
     create_specific_template_maker,
     jl,
+    jl_dynamic,
     narrow,
     t,
     take_little_piece_of_template,
@@ -74,10 +75,10 @@ let go_through_quoted_expression_looking_for_interpolations = function* (cursor)
     yield* search_for_interpolations(cursor)
 }
 
-let for_binding_template = create_specific_template_maker((x) => jl`[i for i in i ${x}]`)
-let assignment_template = create_specific_template_maker((x) => jl`${x} = nothing`)
-let function_definition_argument_template = create_specific_template_maker((x) => jl`function f(${x}) end`)
-let function_call_argument_template = create_specific_template_maker((x) => jl`f(${x})`)
+let for_binding_template = create_specific_template_maker((x) => jl_dynamic`[i for i in i ${x}]`)
+let assignment_template = create_specific_template_maker((x) => jl_dynamic`${x} = nothing`)
+let function_definition_argument_template = create_specific_template_maker((x) => jl_dynamic`function f(${x}) end`)
+let function_call_argument_template = create_specific_template_maker((x) => jl_dynamic`f(${x})`)
 
 /**
  * @param {TreeCursor | SyntaxNode} cursor
@@ -227,7 +228,7 @@ let explore_definition = function (cursor, doc, scopestate, verbose = false) {
 let explore_macro_identifier = (cursor, doc, scopestate, verbose = false) => {
     let match = null
 
-    let macro_identifier_template = create_specific_template_maker((x) => jl`${x} x y z`)
+    let macro_identifier_template = create_specific_template_maker((x) => jl_dynamic`${x} x y z`)
 
     if ((match = macro_identifier_template(jl`${t.as("macro", jl`@${t.any}`)}`).match(cursor))) {
         let { macro } = match
@@ -593,10 +594,10 @@ let explore_variable_usage = (
         ) {
             let { specifiers } = match
 
-            let import_specifier_template = create_specific_template_maker((x) => jl`import ${x}`)
+            let import_specifier_template = create_specific_template_maker((x) => jl_dynamic`import ${x}`)
             // Apparently there is a difference between the `X as Y` in `import X as Y` and `import P: X as Y`
             // This template is specifically for `X as Y` in `import P: X as Y`.
-            let very_specific_import_specifier_template = create_specific_template_maker((x) => jl`import X: ${x}`)
+            let very_specific_import_specifier_template = create_specific_template_maker((x) => jl_dynamic`import X: ${x}`)
 
             let add_import_specifier = (scopestate, doc, specifier) => {
                 let match = null
@@ -657,7 +658,7 @@ let explore_variable_usage = (
                 end
             `).match(cursor))
         ) {
-            let for_loop_binding_template = create_specific_template_maker((arg) => jl`for ${arg}; x end`)
+            let for_loop_binding_template = create_specific_template_maker((arg) => jl_dynamic`for ${arg}; x end`)
 
             let { bindings, expressions } = match
             let inner_scope = lower_scope(scopestate)
@@ -769,7 +770,7 @@ let explore_variable_usage = (
 
             let { tuple_elements = [] } = match
 
-            let tuple_element_template = create_specific_template_maker((arg) => jl`(${arg},)`)
+            let tuple_element_template = create_specific_template_maker((arg) => jl_dynamic`(${arg},)`)
 
             let is_named_field = tuple_elements.map(({ node }) => tuple_element_template(jl`${t.Identifier} = ${t.any}`).match(node) != null)
 

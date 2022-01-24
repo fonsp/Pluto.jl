@@ -3,7 +3,7 @@ import { EditorView, syntaxTree, Decoration, ViewUpdate, ViewPlugin, Facet } fro
 import { PkgStatusMark, PkgActivateMark } from "../PkgStatusMark.js"
 import { html } from "../../imports/Preact.js"
 import { ReactWidget } from "./ReactWidget.js"
-import { create_specific_template_maker, jl, narrow, t, template } from "./lezer_template.js"
+import { create_specific_template_maker, jl, jl_dynamic, narrow, t, template } from "./lezer_template.js"
 
 /**
  * @typedef PkgstatusmarkWidgetProps
@@ -80,16 +80,16 @@ function find_import_statements({ doc, tree, from, to }) {
                 return
             }
 
-            let import_specifier_template = create_specific_template_maker((x) => jl`import A, ${x}`)
+            let import_specifier_template = create_specific_template_maker((x) => jl_dynamic`import A, ${x}`)
             // Because the templates can't really do recursive stuff, we need JavaScript™️!
             let unwrap_scoped_import = (specifier) => {
                 let match = null
-                if ((match = import_specifier_template(jl`${t.as("package")}.${t.any}`).match(specifier))) {
+                if ((match = import_specifier_template(jl_dynamic`${t.as("package")}.${t.any}`).match(specifier))) {
                     return unwrap_scoped_import(match.package)
-                } else if ((match = import_specifier_template(jl`.${t.maybe(t.any)}`).match(specifier))) {
+                } else if ((match = import_specifier_template(jl_dynamic`.${t.maybe(t.any)}`).match(specifier))) {
                     // Still trash!
                     return null
-                } else if ((match = import_specifier_template(jl`${t.Identifier}`).match(specifier))) {
+                } else if ((match = import_specifier_template(jl_dynamic`${t.Identifier}`).match(specifier))) {
                     return specifier
                 } else {
                     console.warn("Unknown nested import specifier: " + specifier.toString())
