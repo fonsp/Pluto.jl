@@ -489,7 +489,7 @@ export let jl = (template, ...substitutions) => {
  * }}
  */
 
-export let template = weak_memo((/** @type {JuliaCodeObject} */ julia_code_object) => {
+export let template = weak_memo1((/** @type {JuliaCodeObject} */ julia_code_object) => {
     let template_generator = to_template(julia_code_object)
     let julia_to_parse = intermediate_value(template_generator.next())
     let template_ast = julia_to_ast(julia_to_parse)
@@ -510,13 +510,11 @@ export let template = weak_memo((/** @type {JuliaCodeObject} */ julia_code_objec
          **/
         template_description,
         match(haystack_cursor, verbose = false) {
-            if ("cursor" in haystack_cursor) {
-                haystack_cursor = haystack_cursor.cursor
-            }
+            // Performance gain for not converting to `TreeCursor` possibly 🤷‍♀️
+            if ("node" in template_description && template_description.node.name !== haystack_cursor.name) return
 
-            if (haystack_cursor.name === "⚠") {
-                return null
-            }
+            if (haystack_cursor.name === "⚠") return null
+            if ("cursor" in haystack_cursor) haystack_cursor = haystack_cursor.cursor
 
             let matches = /** @type {{ [key: string]: MatchResult }} */ ({})
 
@@ -530,7 +528,7 @@ export let template = weak_memo((/** @type {JuliaCodeObject} */ julia_code_objec
     })
 })
 
-export let as_string = weak_memo((/** @type {JuliaCodeObject} */ julia_code_object) => {
+export let as_string = weak_memo1((/** @type {JuliaCodeObject} */ julia_code_object) => {
     let template_generator = to_template(julia_code_object)
     let julia_to_parse = intermediate_value(template_generator.next())
     // @ts-ignore
@@ -538,26 +536,28 @@ export let as_string = weak_memo((/** @type {JuliaCodeObject} */ julia_code_obje
     return julia_to_parse
 })
 
-export let as_node = weak_memo((/** @type {JuliaCodeObject} */ julia_code_object) => {
+export let as_node = weak_memo1((/** @type {JuliaCodeObject} */ julia_code_object) => {
     return julia_to_ast(as_string(julia_code_object))
 })
 
 /**
- * @template {(name: string, ...args: any[]) => any} T
+ * @template {(name: string, other_arg: Object) => any} T
  * @param {T} func
  * @returns {T}
  **/
-let memo_first_argument_weakmemo_rest = (func) => {
+let memo_first_argument_weakmemo_second = (func) => {
+    let fake_weakmap_no_arg = {}
     let per_name_memo = memo((name) => {
-        return weak_memo((...args) => {
-            return func(name, ...args)
+        return weak_memo1((arg) => {
+            if (arg === fake_weakmap_no_arg) return func(name)
+            return func(name, arg)
         })
     })
 
     return /** @type {any} */ (
-        (name, ...args) => {
+        (name, arg = fake_weakmap_no_arg) => {
             let sub_memo = per_name_memo(name)
-            return sub_memo(...args)
+            return sub_memo(arg)
         }
     )
 }
@@ -583,7 +583,7 @@ function* expression() {
 export const t = {
     expression: expression,
     any: expression,
-    many: memo_first_argument_weakmemo_rest((name, of_what = expression) => {
+    many: memo_first_argument_weakmemo_second((name, of_what = expression) => {
         return function* many() {
             let sub_template = yield* to_template(of_what)
 
@@ -619,7 +619,7 @@ export const t = {
         }
     }),
 
-    maybe: weak_memo((what) => {
+    maybe: weak_memo1((what) => {
         return function* maybe() {
             let sub_template = yield* to_template(what)
             return {
@@ -647,7 +647,7 @@ export const t = {
      * More technically, this says "match anything that will appear in my position in the AST".
      * It does not care about the type. Don't use this recklessly!
      * */
-    anything_that_fits: weak_memo((what) => {
+    anything_that_fits: weak_memo1((what) => {
         return function* anything_that_fits() {
             // We send the template code upwards, but we fully ignore the output
             yield* to_template(what)
@@ -659,7 +659,7 @@ export const t = {
         }
     }),
     /** @type {(what: Substitution | JuliaCodeObject) => Substitution} */
-    something_with_the_same_type_as: weak_memo((what) => {
+    something_with_the_same_type_as: weak_memo1((what) => {
         return function* something_with_the_same_type_as() {
             let template_generator = to_template(what)
             let julia_to_parse = intermediate_value(template_generator.next())
@@ -683,7 +683,7 @@ export const t = {
      *
      * @type {(name: string, what?: Substitution | JuliaCodeObject) => Substitution}
      */
-    as: memo_first_argument_weakmemo_rest((name, what = expression) => {
+    as: memo_first_argument_weakmemo_second((name, what = expression) => {
         return function* as() {
             let sub_template = yield* to_template(what)
             return {
@@ -738,13 +738,13 @@ export let take_little_piece_of_template = weak_memo((template, meta_template) =
     if ((match = meta_template.match(template_ast))) {
         let { content } = /** @type {{ content: SyntaxNode }} */ (match)
 
-        // Need to provide the original from:to range
         let template_description = return_value(
             generator.next({
                 name: content.name,
+                node: content,
+                // Need to provide the original from:to range
                 from: template_ast.from,
                 to: template_ast.to,
-                node: content,
             })
         )
 
@@ -755,8 +755,10 @@ export let take_little_piece_of_template = weak_memo((template, meta_template) =
              * @param {boolean} verbose?
              * */
             match(haystack_cursor, verbose = false) {
+                // Performance gain for not converting to `TreeCursor` possibly 🤷‍♀️
+                if ("node" in template_description && template_description.node.name !== haystack_cursor.name) return
+                // if (haystack_cursor.name === "⚠") return null
                 if ("cursor" in haystack_cursor) haystack_cursor = haystack_cursor.cursor
-                if (haystack_cursor.name === "⚠") return null
 
                 let matches = {}
                 return match_template(haystack_cursor, template_description, matches, verbose) ? matches : null
