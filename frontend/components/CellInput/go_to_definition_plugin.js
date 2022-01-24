@@ -31,7 +31,7 @@ import {
  * @property {number} to
  *
  * @typedef ScopeState
- * @property {Set<{
+ * @property {Array<{
  *  usage: Range,
  *  definition: Range | null,
  *  name: string,
@@ -47,7 +47,7 @@ import {
 let merge_scope_state = (a, b) => {
     if (a === b) return a
 
-    let usages = new Set([...a.usages, ...b.usages])
+    let usages = [...a.usages, ...b.usages]
     let definitions = new Map(a.definitions)
     for (let [key, value] of b.definitions) {
         definitions.set(key, value)
@@ -233,7 +233,7 @@ let explore_macro_identifier = (cursor, doc, scopestate, verbose = false) => {
     if ((match = macro_identifier_template(jl`${t.as("macro", jl`@${t.any}`)}`).match(cursor))) {
         let { macro } = match
         let name = doc.sliceString(macro.from, macro.to)
-        scopestate.usages.add({
+        scopestate.usages.push({
             usage: macro,
             definition: scopestate.definitions.get(name),
             name: name,
@@ -242,7 +242,7 @@ let explore_macro_identifier = (cursor, doc, scopestate, verbose = false) => {
     } else if ((match = macro_identifier_template(jl`${t.as("object")}.@${t.as("macro")}`).match(cursor))) {
         let { object } = match
         let name = doc.sliceString(object.from, object.to)
-        scopestate.usages.add({
+        scopestate.usages.push({
             usage: object,
             definition: scopestate.definitions.get(name),
             name: name,
@@ -251,7 +251,7 @@ let explore_macro_identifier = (cursor, doc, scopestate, verbose = false) => {
     } else if ((match = macro_identifier_template(jl`@${t.as("object")}.${t.as("macro")}`).match(cursor))) {
         let { object } = match
         let name = doc.sliceString(object.from, object.to)
-        scopestate.usages.add({
+        scopestate.usages.push({
             usage: object,
             definition: scopestate.definitions.get(name),
             name: name,
@@ -267,7 +267,7 @@ let explore_macro_identifier = (cursor, doc, scopestate, verbose = false) => {
  */
 let fresh_scope = () => {
     return {
-        usages: new Set(),
+        usages: [],
         definitions: new Map(),
     }
 }
@@ -283,7 +283,7 @@ let fresh_scope = () => {
  */
 let lower_scope = (scopestate) => {
     return {
-        usages: new Set(),
+        usages: [],
         definitions: new Map(scopestate.definitions),
     }
 }
@@ -299,7 +299,7 @@ let lower_scope = (scopestate) => {
  */
 let raise_scope = (nested_scope, scopestate) => {
     return {
-        usages: new Set([...scopestate.usages, ...nested_scope.usages]),
+        usages: [...scopestate.usages, ...nested_scope.usages],
         definitions: scopestate.definitions,
     }
 }
@@ -327,7 +327,7 @@ let explore_variable_usage = (
     cursor,
     doc,
     scopestate = {
-        usages: new Set(),
+        usages: [],
         definitions: new Map(),
     },
     verbose = false
@@ -387,7 +387,7 @@ let explore_variable_usage = (
 
         if (cursor.name === "Identifier" || cursor.name === "MacroIdentifier") {
             let name = doc.sliceString(cursor.from, cursor.to)
-            scopestate.usages.add({
+            scopestate.usages.push({
                 name: name,
                 usage: {
                     from: cursor.from,
@@ -540,7 +540,7 @@ let explore_variable_usage = (
             // We still merge the module scopestate with the global scopestate, but only the usages that don't escape.
             // (Later we can have also shadowed definitions for the dimming of unused variables)
             scopestate = merge_scope_state(scopestate, {
-                usages: new Set(Array.from(module_scope.usages).filter((x) => x.definition != null)),
+                usages: Array.from(module_scope.usages).filter((x) => x.definition != null),
                 definitions: new Map(),
             })
 
@@ -557,7 +557,7 @@ let explore_variable_usage = (
             if (prefix_string === "var") {
                 let name = doc.sliceString(string.from + 1, string.to - 1)
                 if (name.length !== 0) {
-                    scopestate.usages.add({
+                    scopestate.usages.push({
                         name: name,
                         usage: {
                             from: cursor.from,
@@ -569,7 +569,7 @@ let explore_variable_usage = (
                 return scopestate
             } else {
                 let name = `@${prefix_string}_str`
-                scopestate.usages.add({
+                scopestate.usages.push({
                     name: name,
                     usage: {
                         from: prefix.from,
@@ -980,7 +980,7 @@ let explore_variable_usage = (
  */
 let get_variable_marks = (state, { scopestate, used_variables }) => {
     return Decoration.set(
-        Array.from(scopestate.usages)
+        scopestate.usages
             .map(({ definition, usage, name }) => {
                 if (definition == null) {
                     // TODO variables_with_origin_cell should be notebook wide, not just in the current cell
@@ -1048,7 +1048,7 @@ export let ScopeStateField = StateField.define({
         } catch (error) {
             console.error("Something went wrong while parsing variables...", error)
             return {
-                usages: new Set(),
+                usages: [],
                 definitions: new Map(),
             }
         }
@@ -1066,7 +1066,7 @@ export let ScopeStateField = StateField.define({
         } catch (error) {
             console.error("Something went wrong while parsing variables...", error)
             return {
-                usages: new Set(),
+                usages: [],
                 definitions: new Map(),
             }
         }

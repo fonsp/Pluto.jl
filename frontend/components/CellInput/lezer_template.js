@@ -1,7 +1,7 @@
 import { julia_andrey, Text } from "../../imports/CodemirrorPlutoSetup.js"
 import lodash from "../../imports/lodash.js"
 
-// // @ts-ignore
+// @ts-ignore
 import ManyKeysWeakMap from "https://esm.sh/many-keys-weakmap@1.0.0"
 
 /**
