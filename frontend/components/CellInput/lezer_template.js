@@ -1,4 +1,4 @@
-import { julia_andrey, Text } from "../../imports/CodemirrorPlutoSetup.js"
+import { julia_andrey, NodeProp, Text } from "../../imports/CodemirrorPlutoSetup.js"
 import lodash from "../../imports/lodash.js"
 
 // @ts-ignore
@@ -569,8 +569,7 @@ function* any() {
                 verbose && console.log("❌ I want anything!! YOU GIVE ME NULL???")
                 return false
             }
-            // So we don't match keywords
-            if (cursor.type.isAnonymous) {
+            if (cursor.type.is("keyword")) {
                 verbose && console.log("❌ Keywords are not allowed!")
                 return false
             }

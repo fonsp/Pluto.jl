@@ -796,8 +796,6 @@ let explore_variable_usage = (
             (match = template(jl`${t.as("name")}(${t.many("args")}) = ${t.many("body")}`).match(cursor)) ??
             (match = template(jl`${t.as("name")}(${t.many("args")}) = ${t.many("body", t.anything_that_fits(jl`x, y`))}`).match(cursor)) ??
             (match = template(jl`function ${t.as("name")} end`).match(cursor)) ??
-            // I have to first match *with* ::ReturnType, because else it will gracefully end up
-            // in the function body.
             (match = template(jl`
                 function ${t.as("name")}${t.maybe(jl`(${t.many("args")})`)}${t.maybe(jl`::${t.as("return_type")}`)}
                     ${t.many("body")}
