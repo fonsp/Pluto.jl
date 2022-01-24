@@ -23,6 +23,7 @@ include("./notebook/Export.jl")
 include("./Configuration.jl")
 
 include("./evaluation/Tokens.jl")
+include("./evaluation/Throttled.jl")
 include("./runner/PlutoRunner.jl")
 include("./analysis/ExpressionExplorer.jl")
 include("./analysis/FunctionDependencies.jl")

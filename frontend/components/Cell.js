@@ -1,7 +1,9 @@
+import _ from "../imports/lodash.js"
 import { html, useState, useEffect, useMemo, useRef, useContext, useLayoutEffect } from "../imports/Preact.js"
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
+import { Logs } from "./Logs.js"
 import { RunArea, useDebouncedTruth } from "./RunArea.js"
 import { cl } from "../common/ClassTable.js"
 import { PlutoContext } from "../common/PlutoContext.js"
@@ -41,7 +43,7 @@ const useCellApi = (node_ref, published_object_keys, pluto_actions) => {
  * */
 export const Cell = ({
     cell_input: { cell_id, code, code_folded, running_disabled },
-    cell_result: { queued, running, runtime, errored, output, published_object_keys, depends_on_disabled_cells },
+    cell_result: { queued, running, runtime, errored, output, logs, published_object_keys, depends_on_disabled_cells },
     cell_dependencies,
     cell_input_local,
     notebook_id,
@@ -64,6 +66,17 @@ export const Cell = ({
     const variables = Object.keys(notebook?.cell_dependencies?.[cell_id]?.downstream_cells_map || {})
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
+    const [cm_highlighted_line, set_cm_highlighted_line] = useState(null)
+    const [show_logs, set_show_logs] = useState(true)
+
+    const any_logs = useMemo(() => !_.isEmpty(logs), [logs])
+
+    useEffect(() => {
+        if (!any_logs) {
+            set_show_logs(true)
+        }
+    }, [any_logs])
+
     useEffect(() => {
         const focusListener = (e) => {
             if (e.detail.cell_id === cell_id) {
@@ -107,6 +120,7 @@ export const Cell = ({
     // during the initial page load, force_hide_input === true, so that cell outputs render fast, and codemirrors are loaded after
     let show_input = !force_hide_input && (errored || class_code_differs || !class_code_folded)
 
+    const [line_heights, set_line_heights] = useState([15])
     const node_ref = useRef(null)
 
     const disable_input_ref = useRef(disable_input)
@@ -131,6 +145,7 @@ export const Cell = ({
                 running_disabled: running_disabled,
                 depends_on_disabled_cells: depends_on_disabled_cells,
                 show_input: show_input,
+                shrunk: Object.values(logs).length > 0,
                 hooked_up: output?.has_pluto_hook_features ?? false,
             })}
             id=${cell_id}
@@ -197,11 +212,18 @@ export const Cell = ({
                 }}
                 on_update_doc_query=${on_update_doc_query}
                 on_focus_neighbor=${on_focus_neighbor}
+                on_line_heights=${set_line_heights}
                 nbpkg=${nbpkg}
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
                 running_disabled=${running_disabled}
+                any_logs=${any_logs}
+                show_logs=${show_logs}
+                set_show_logs=${set_show_logs}
+                cm_highlighted_line=${cm_highlighted_line}
+                set_cm_highlighted_line=${set_cm_highlighted_line}
             />
+            ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${line_heights} set_cm_highlighted_line=${set_cm_highlighted_line} />` : null}
             <${RunArea}
                 cell_id=${cell_id}
                 running_disabled=${running_disabled}

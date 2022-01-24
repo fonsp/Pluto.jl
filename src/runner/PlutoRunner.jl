@@ -912,21 +912,8 @@ end
 function format_output(binding::Base.Docs.Binding; context=default_iocontext)
     try
         ("""
-        <div class="pluto-docs-binding" style="margin: .5em; padding: 1em; background: #8383830a; border-radius: 1em;">
-        <span style="
-            display: inline-block;
-            transform: translate(-19px, -16px);
-            font-family: 'JuliaMono', monospace;
-            font-size: .9rem;
-            font-weight: 700;
-            /* height: 1px; */
-            margin-top: -1em;
-            background: white;
-            padding: 4px;
-            border-radius: 7px;
-            /* color: #646464; */
-            /* border: 3px solid #f99b1536;
-        ">$(binding.var)</span>
+        <div class="pluto-docs-binding">
+        <span>$(binding.var)</span>
         $(repr(MIME"text/html"(), Base.Docs.doc(binding)))
         </div>
         """, MIME"text/html"()) 
@@ -1421,7 +1408,7 @@ const integrations = Integration[
         id = Base.PkgId(UUID("91a5bcdd-55d7-5caf-9e0b-520d859cae80"), "Plots"),
         code = quote
             approx_size(p::Plots.Plot) = try
-                sum(p.series_list) do series
+                sum(p.series_list; init=0) do series
                     length(series[:y])
                 end
             catch e
@@ -1651,7 +1638,7 @@ function transform_bond_value(s::Symbol, value_from_js)
         transform_value_ref[](element, value_from_js)
     catch e
         @error "AbstractPlutoDingetjes: Bond value transformation errored." exception=(e, catch_backtrace())
-        (Text("❌ AbstractPlutoDingetjes: Bond value transformation errored."), e, stacktrace(catch_backtrace()))
+        (Text("❌ AbstractPlutoDingetjes: Bond value transformation errored."), e, stacktrace(catch_backtrace()), value_from_js)
     end
 end
 
@@ -1710,7 +1697,8 @@ The actual reactive-interactive functionality is not done in Julia - it is handl
 struct Bond
     element::Any
     defines::Symbol
-    Bond(element, defines::Symbol) = showable(MIME"text/html"(), element) ? new(element, defines) : error("""Can only bind to html-showable objects, ie types T for which show(io, ::MIME"text/html", x::T) is defined.""")
+    unique_id::String
+    Bond(element, defines::Symbol) = showable(MIME"text/html"(), element) ? new(element, defines, Base64.base64encode(rand(UInt8,9))) : error("""Can only bind to html-showable objects, ie types T for which show(io, ::MIME"text/html", x::T) is defined.""")
 end
 
 function create_bond(element, defines::Symbol)
@@ -1719,10 +1707,9 @@ function create_bond(element, defines::Symbol)
     Bond(element, defines)
 end
 
-import Base: show
-function show(io::IO, ::MIME"text/html", bond::Bond)
-    withtag(io, :bond, :def => bond.defines) do
-        show(io, MIME"text/html"(), bond.element)
+function Base.show(io::IO, m::MIME"text/html", bond::Bond)
+    withtag(io, :bond, :def => bond.defines, :unique_id => bond.unique_id) do
+        show(io, m, bond.element)
     end
 end
 
@@ -1731,7 +1718,9 @@ const transform_value_ref = Ref{Function}((element, x) -> x)
 const possible_bond_values_ref = Ref{Function}((_args...; _kwargs...) -> :NotGiven)
 
 """
-    `@bind symbol element`
+```julia
+@bind symbol element
+```
 
 Return the HTML `element`, and use its latest JavaScript value as the definition of `symbol`.
 
@@ -1883,28 +1872,30 @@ function Base.show(io::IO, m::MIME"text/html", e::EmbeddableDisplay)
         # In this case, we can just embed the HTML content directly.
         body
     else
-        """<pluto-display></pluto-display><script id=$(e.script_id)>
+        s = """<pluto-display></pluto-display><script id=$(e.script_id)>
 
         // see https://plutocon2021-demos.netlify.app/fonsp%20%E2%80%94%20javascript%20inside%20pluto to learn about the techniques used in this script
         
-        const body = $(publish_to_js(body, e.script_id))
-        const mime = "$(string(mime))"
+        const body = $(publish_to_js(body, e.script_id));
+        const mime = "$(string(mime))";
         
-        const create_new = this == null || this._mime !== mime
+        const create_new = this == null || this._mime !== mime;
         
-        const display = create_new ? currentScript.previousElementSibling : this
+        const display = create_new ? currentScript.previousElementSibling : this;
         
-        display.persist_js_state = true
-        display.body = body
+        display.persist_js_state = true;
+        display.body = body;
         if(create_new) {
             // only set the mime if necessary, it triggers a second preact update
-            display.mime = mime
+            display.mime = mime;
             // add it also as unwatched property to prevent interference from Preact
-            display._mime = mime
+            display._mime = mime;
         }
-        return display
+        return display;
 
         </script>"""
+        
+        replace(replace(s, r"//.+" => ""), "\n" => "")
     end
     write(io, to_write)
 end
@@ -1994,19 +1985,27 @@ function Logging.shouldlog(::PlutoLogger, level, _module, _...)
     # - Info level and above for other modules
     (_module isa Module && is_pluto_workspace(_module)) || convert(Logging.LogLevel, level) >= Logging.Info
 end
+
 Logging.min_enabled_level(::PlutoLogger) = Logging.Debug
 Logging.catch_exceptions(::PlutoLogger) = false
 function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, file, line; kwargs...)
+    # println("receiving msg from ", _module, " ", group, " ", id, " ", msg, " ", level, " ", line, " ", file)
+
     try
-        put!(log_channel, (level=string(level),
-            msg=(msg isa String) ? msg : repr(msg),
-            group=group,
-            # id=id,
-            file=file,
-            line=line,
-            kwargs=Dict((k=>repr(v) for (k, v) in kwargs)...),))
-        # also print to console
-        Logging.handle_message(old_logger[], level, msg, _module, group, id, file, line; kwargs...)
+        put!(log_channel, Dict{String,Any}(
+            "level" => string(level),
+            "msg" => format_output_default(msg isa String ? Text(msg) : msg),
+            "group" => group,
+            "id" => id,
+            "file" => file,
+            "cell_id" => currently_running_cell_id[],
+            "line" => line,
+            "kwargs" => Any[(string(k), format_output_default(v)) for (k, v) in kwargs],
+            )
+        )
+        
+        # Also print to console (disabled)
+        # Logging.handle_message(old_logger[], level, msg, _module, group, id, file, line; kwargs...)
     catch e
         println(stderr, "Failed to relay log from PlutoRunner")
         showerror(stderr, e, stacktrace(catch_backtrace()))

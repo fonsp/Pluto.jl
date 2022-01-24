@@ -78,6 +78,11 @@ Besides `:update_notebook`, you will find more functions in [`responses`](@ref) 
 
 """
 module Firebasey include("./Firebasey.jl") end
+module AppendonlyMarkers
+    # I put Firebasey here manually THANKS JULIA
+    import ..Firebasey
+    include("./AppendonlyMarkers.jl")
+end
 
 # All of the arrays in the notebook_to_js object are 'immutable' (we write code as if they are), so we can enable this optimization:
 Firebasey.use_triple_equals_for_arrays[] = true
@@ -138,6 +143,7 @@ function notebook_to_js(notebook::Notebook)
                 "running" => cell.running,
                 "errored" => cell.errored,
                 "runtime" => cell.runtime,
+                "logs" => AppendonlyMarkers.AppendonlyMarker(cell.logs),
             )
         for (id, cell) in notebook.cells_dict),
         "cell_order" => notebook.cell_order,
@@ -297,9 +303,9 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
             (mutator, matches, rest) = trigger_resolver(effects_of_changed_state, patch.path)
             
             current_changes = if isempty(rest) && applicable(mutator, matches...)
-                mutator(matches...; request=🙋, patch=patch)
+                mutator(matches...; request=🙋, patch)
             else
-                mutator(matches..., rest...; request=🙋, patch=patch)
+                mutator(matches..., rest...; request=🙋, patch)
             end
 
             push!(changes, current_changes...)
