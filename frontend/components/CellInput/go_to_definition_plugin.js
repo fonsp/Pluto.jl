@@ -1,19 +1,7 @@
 import { syntaxTree, Facet, ViewPlugin, Decoration, StateField, EditorView, EditorSelection, EditorState } from "../../imports/CodemirrorPlutoSetup.js"
 import { ctrl_or_cmd_name, has_ctrl_or_cmd_pressed } from "../../common/KeyboardShortcuts.js"
 import _ from "../../imports/lodash.js"
-import {
-    as_node,
-    as_string,
-    child_cursors,
-    child_nodes,
-    create_specific_template_maker,
-    jl,
-    jl_dynamic,
-    narrow,
-    t,
-    take_little_piece_of_template,
-    template,
-} from "./lezer_template.js"
+import { as_node, as_string, child_cursors, child_nodes, create_specific_template_maker, jl, jl_dynamic, narrow, t, template } from "./lezer_template.js"
 
 /**
  * @typedef TreeCursor
@@ -127,10 +115,8 @@ let explorer_function_argument = (cursor, doc, scopestate, verbose = false) => {
 let explore_pattern = (node, doc, scopestate, verbose = false) => {
     let match = null
 
-    if ((match = assignment_template(jl`${t.Identifier}`).match(node))) {
+    if ((match = assignment_template(t.Identifier).match(node))) {
         return scopestate_add_definition(scopestate, doc, node)
-    } else if ((match = assignment_template(jl`${t.Identifier}`).match(narrow("node" in node ? node.node : node)))) {
-        throw "Mwup mwup"
     } else if ((match = assignment_template(jl`${t.as("object")}::${t.as("type")}`).match(node))) {
         let { object, type } = match
         scopestate = explore_variable_usage(type.cursor, doc, scopestate, verbose)
@@ -399,10 +385,10 @@ let explore_variable_usage = (
         } else if ((match = template(jl`:${t.any}`).match(cursor))) {
             // Nothing, ha!
             return scopestate
-        } else if ((match = template(jl`${t.Number}`).match(cursor))) {
+        } else if ((match = template(t.Number).match(cursor))) {
             // Nothing, ha!
             return scopestate
-        } else if ((match = template(jl`${t.String}`).match(cursor))) {
+        } else if ((match = template(t.String).match(cursor))) {
             // Nothing, ha!
             return scopestate
         } else if ((match = template(jl`${t.as("object")}.${t.as("property")}`).match(cursor))) {

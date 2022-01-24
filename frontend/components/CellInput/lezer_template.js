@@ -15,22 +15,21 @@ export let julia_to_ast = (julia_code) => {
 let TEMPLATE_CREATION_VERBOSE = false
 
 /**
- * @template {(...args: any) => any} T
+ * @template {Array} P
+ * @template {(...args: P) => any} T
  * @param {T} fn
- * @param {(...x: Parameters<T>) => any} cachekey_resolver
+ * @param {(...args: P) => any} cachekey_resolver
  * @param {WeakMap} cache
  * @returns {T}
  */
-let memo = (fn, cachekey_resolver = (x) => x, cache = new Map()) => {
+let memo = (fn, cachekey_resolver = /** @type {any} */ ((x) => x), cache = new Map()) => {
     return /** @type {any} */ (
-        (/** @type {Parameters<T>} */ ...args) => {
+        (/** @type {P} */ ...args) => {
             let cachekey = cachekey_resolver(...args)
-            // console.log(`args, cachekey:`, args, cachekey, cache.has(cachekey))
             let result = cache.get(cachekey)
             if (result != null) {
                 return result
             } else {
-                // @ts-ignore
                 let result = fn(...args)
 
                 if (result == undefined) {
@@ -51,6 +50,11 @@ let memo = (fn, cachekey_resolver = (x) => x, cache = new Map()) => {
  */
 let weak_memo = (fn, cachekey_resolver = (...x) => x) => memo(fn, cachekey_resolver, new ManyKeysWeakMap())
 
+/**
+ * @template {(arg: any) => any} T
+ * @param {T} fn
+ * @returns {T}
+ */
 let weak_memo1 = (fn) => memo(fn, (x) => x, new WeakMap())
 
 /**
@@ -59,6 +63,43 @@ let weak_memo1 = (fn) => memo(fn, (x) => x, new WeakMap())
  *
  * @typedef SyntaxNode
  * @type {TreeCursor["node"]}
+ */
+
+/**
+ * @typedef LezerOffsetNode
+ * @type {{
+ *  name: string,
+ *  from: number,
+ *  to: number,
+ *  node: SyntaxNode,
+ * }}
+ */
+
+/**
+ * @typedef TemplateGenerator
+ * @type {Generator<string, AstTemplate, LezerOffsetNode>}
+ */
+
+/**
+ * @typedef Substitution
+ * @type {() => TemplateGenerator}
+ */
+
+/**
+ * @typedef Templatable
+ * @type {JuliaCodeObject | Substitution}
+ */
+
+/**
+ * @typedef MatchResult
+ * @type {any}
+ */
+
+/**
+ * @typedef Matcher
+ * @type {{
+ *  match: (haystack_cursor: TreeCursor | SyntaxNode, verbose?: boolean) => void | { [key: string]: MatchResult }
+ * }}
  */
 
 /** @param {TreeCursor} cursor */
@@ -166,15 +207,15 @@ export let match_template = (haystack_cursor, template, matches, verbose = false
 
             verbose && console.log(`Matching against node: ${template.node.name}`)
 
-            if (haystack_cursor && haystack_cursor.name === "⚠") {
-                // Not sure about this yet but ehhhh
-                verbose && console.log(`✅ because ⚠`)
-                return true
-            }
-
             if (!haystack_cursor) {
                 verbose && console.log(`❌ because no cursor left to match against`)
                 return false
+            }
+
+            if (haystack_cursor.type.isError) {
+                // Not sure about this yet but ehhhh
+                verbose && console.log(`✅ because ⚠`)
+                return true
             }
 
             if (haystack_cursor.name !== node.name) {
@@ -326,64 +367,7 @@ let substitutions_to_template = (ast, substitutions) => {
 }
 
 /**
- * Not sure why typescript doesn't infer the `Generator<T>` when I ask !iterater_result.done...
- * Maybe it will bite me later 🤷‍♀️
- *
- * @template T
- * @param {IteratorResult<T, unknown>} iterater_result
- * @returns {T} iterater_result
- */
-let intermediate_value = (iterater_result) => {
-    if (iterater_result.done) {
-        throw new Error("Expected `yield`-d value, but got `return`")
-    } else {
-        return /** @type {any} */ (iterater_result.value)
-    }
-}
-
-/**
- * Not sure why typescript doesn't infer the `Generator<T>` when I ask !iterater_result.done...
- * Maybe it will bite me later 🤷‍♀️
- *
- * @template T
- * @param {IteratorResult<unknown, T>} iterater_result
- * @returns {T} iterater_result
- */
-let return_value = (iterater_result) => {
-    if (iterater_result.done) {
-        return /** @type {any} */ (iterater_result.value)
-    } else {
-        throw new Error("Expected `yield`-d value, but got `return`")
-    }
-}
-
-/**
- * @typedef TemplateMatcher
- * @type {any}
- */
-
-/**
- * @typedef LezerOffsetNode
- * @type {{
- *  name: string,
- *  from: number,
- *  to: number,
- *  node: SyntaxNode,
- * }}
- */
-
-/**
- * @typedef TemplateGenerator
- * @type {Generator<string, AstTemplate, LezerOffsetNode>}
- */
-
-/**
- * @typedef Substitution
- * @type {() => TemplateGenerator}
- */
-
-/**
- * @param {JuliaCodeObject | Substitution} julia_code_object
+ * @param {Templatable} julia_code_object
  * @returns {TemplateGenerator}
  */
 export let to_template = function* (julia_code_object) {
@@ -457,7 +441,12 @@ export let jl_dynamic = weak_memo((template, ...substitutions) => {
     return new JuliaCodeObject(template, substitutions)
 })
 
+/** @type {WeakMap<TemplateStringsArray, { input: Array<Templatable>, result: JuliaCodeObject }>} */
 let template_cache = new WeakMap()
+/**
+ * @param {TemplateStringsArray} template
+ * @param {Array<Templatable>} substitutions
+ */
 export let jl = (template, ...substitutions) => {
     if (template_cache.has(template)) {
         let { input, result } = template_cache.get(template)
@@ -468,6 +457,8 @@ export let jl = (template, ...substitutions) => {
         }
         return result
     } else {
+        // Uncomment this if you want to check if the cache is working
+        // console.log("Creating template for", template, substitutions)
         let result = new JuliaCodeObject(template, substitutions)
         template_cache.set(template, {
             input: substitutions,
@@ -478,18 +469,11 @@ export let jl = (template, ...substitutions) => {
 }
 
 /**
- * @typedef MatchResult
- * @type {any}
+ * Turns a ``` jl`` ``` (or substitution) into a template with a `.match(cursor)` method.
+ *
+ * @type {(code: Templatable) => Matcher}
  */
-
-/**
- * @typedef Matcher
- * @type {{
- *  match: (haystack_cursor: TreeCursor | SyntaxNode, verbose?: boolean) => void | { [key: string]: MatchResult }
- * }}
- */
-
-export let template = weak_memo1((/** @type {JuliaCodeObject} */ julia_code_object) => {
+export let template = weak_memo1((julia_code_object) => {
     let template_generator = to_template(julia_code_object)
     let julia_to_parse = intermediate_value(template_generator.next())
     let template_ast = julia_to_ast(julia_to_parse)
@@ -512,8 +496,8 @@ export let template = weak_memo1((/** @type {JuliaCodeObject} */ julia_code_obje
         match(haystack_cursor, verbose = false) {
             // Performance gain for not converting to `TreeCursor` possibly 🤷‍♀️
             if ("node" in template_description && template_description.node.name !== haystack_cursor.name) return
+            if (haystack_cursor.type.isError) return null
 
-            if (haystack_cursor.name === "⚠") return null
             if ("cursor" in haystack_cursor) haystack_cursor = haystack_cursor.cursor
 
             let matches = /** @type {{ [key: string]: MatchResult }} */ ({})
@@ -554,7 +538,7 @@ let memo_first_argument_weakmemo_second = (func) => {
         })
     })
 
-    return /** @type {any} */ (
+    return /** @type {T} */ (
         (name, arg = fake_weakmap_no_arg) => {
             let sub_memo = per_name_memo(name)
             return sub_memo(arg)
@@ -562,16 +546,17 @@ let memo_first_argument_weakmemo_second = (func) => {
     )
 }
 
-function* expression() {
+/** @type {Substitution} */
+function* any() {
     yield "expression"
     return {
         pattern: function expression(cursor, matches, verbose = false) {
-            if (cursor == null) {
-                verbose && console.log("❌ I want an expression!! YOU GIVE ME NULL???")
+            if (!cursor) {
+                verbose && console.log("❌ I want anything!! YOU GIVE ME NULL???")
                 return false
             }
             // So we don't match keywords
-            if (cursor.name[0] === cursor.name[0].toLowerCase()) {
+            if (cursor.type.isAnonymous) {
                 verbose && console.log("❌ Keywords are not allowed!")
                 return false
             }
@@ -580,22 +565,28 @@ function* expression() {
     }
 }
 
-export const t = {
-    expression: expression,
-    any: expression,
-    many: memo_first_argument_weakmemo_second((name, of_what = expression) => {
+export const t = /** @type {const} */ ({
+    any: any,
+    /**
+     * Match no, one, or multiple! Like `*` in regex.
+     * It stores it's matches as `{ [name]: Array<{ node: SyntaxNode, matches: MatchResult }> }`
+     *
+     * If name isn't provided it will not store any of the matches.. useful if you really really don't care about something.
+     *
+     * @type {(name?: string, what?: Templatable) => Substitution}
+     */
+    many: memo_first_argument_weakmemo_second((name, of_what = any) => {
         return function* many() {
             let sub_template = yield* to_template(of_what)
 
             return {
                 pattern: function many(cursor, matches, verbose = false) {
-                    if (cursor == null) {
+                    if (!cursor) {
                         verbose && console.log("✅ Nothing to see here... I'm fine with that - many")
                         return true
                     }
 
                     let matches_nodes = []
-                    let did_consume_all = false
                     while (true) {
                         let local_match = {}
                         let did_match = match_template(cursor, sub_template, local_match, verbose)
@@ -619,17 +610,22 @@ export const t = {
         }
     }),
 
+    /**
+     * Match either a single node or none. Like `?` in regex.
+     * @type {(what: Templatable) => Substitution}
+     */
     maybe: weak_memo1((what) => {
         return function* maybe() {
             let sub_template = yield* to_template(what)
             return {
                 pattern: function maybe(cursor, matches, verbose = false) {
-                    if (cursor == null) return true
-                    if (cursor.name === "⚠") return true
+                    if (!cursor) return true
+                    if (cursor.type.isError) return true
 
                     let did_match = match_template(cursor, sub_template, matches, verbose)
 
                     if (did_match === false) {
+                        // Roll back position because we didn't match
                         cursor.prevSibling()
                     }
                     return true
@@ -646,6 +642,8 @@ export const t = {
      *
      * More technically, this says "match anything that will appear in my position in the AST".
      * It does not care about the type. Don't use this recklessly!
+     *
+     * @type {(what: Templatable) => Substitution}
      * */
     anything_that_fits: weak_memo1((what) => {
         return function* anything_that_fits() {
@@ -658,7 +656,12 @@ export const t = {
             }
         }
     }),
-    /** @type {(what: Substitution | JuliaCodeObject) => Substitution} */
+    /**
+     * This is an escape hatch, like {@linkcode anything_that_fits},
+     * but it does also check for node type at least.
+     *
+     * @type {(what: Templatable) => Substitution}
+     * */
     something_with_the_same_type_as: weak_memo1((what) => {
         return function* something_with_the_same_type_as() {
             let template_generator = to_template(what)
@@ -681,9 +684,9 @@ export const t = {
      * This "higher-order" template pattern is for adding their nodes to the matches.
      * Without a pattern (e.g. `t.as("foo")`) it will default to `t.any`
      *
-     * @type {(name: string, what?: Substitution | JuliaCodeObject) => Substitution}
+     * @type {(name: string, what?: Templatable) => Substitution}
      */
-    as: memo_first_argument_weakmemo_second((name, what = expression) => {
+    as: memo_first_argument_weakmemo_second((name, what = any) => {
         return function* as() {
             let sub_template = yield* to_template(what)
             return {
@@ -698,15 +701,16 @@ export const t = {
         }
     }),
 
+    /** @type {Substitution} */
     Identifier: function* Identifier() {
         yield "identifier"
         return {
             pattern: function Identifier(cursor, matches, verbose = false) {
-                verbose && console.log(`cursor:`, narrow_name(cursor), cursor.toString())
                 return cursor && narrow_name(cursor) === "Identifier"
             },
         }
     },
+    /** @type {Substitution} */
     Number: function* Number() {
         yield "69"
         return {
@@ -715,31 +719,39 @@ export const t = {
             },
         }
     },
+    /** @type {Substitution} */
     String: function* String() {
         yield `"A113"`
         return {
             pattern: function String(cursor, matches, verbose = false) {
-                return (cursor && narrow_name(cursor) === "StringWithoutInterpolation") || narrow_name(cursor) === "TripleStringWithoutInterpolation"
+                return cursor && (narrow_name(cursor) === "StringWithoutInterpolation" || narrow_name(cursor) === "TripleStringWithoutInterpolation")
             },
         }
     },
-}
+})
 
 /**
- * @type {(template: JuliaCodeObject, meta_template: Matcher) => Matcher}
+ * Basically exists for {@linkcode create_specific_template_maker}
+ *
+ * @type {(template: Templatable, meta_template: Matcher) => Matcher}
  */
 export let take_little_piece_of_template = weak_memo((template, meta_template) => {
-    let generator = to_template(template)
-    let julia_to_parse = intermediate_value(generator.next())
+    let template_generator = to_template(template)
+    let julia_to_parse = intermediate_value(template_generator.next())
 
+    // Parse the AST from the template, but we don't send it back to the template_generator yet!
     let template_ast = julia_to_ast(julia_to_parse)
 
     let match = null
+    // Match our created template code to the meta-template, which will yield us the part of the
+    // AST that falls inside the "content" in the meta-template.
     if ((match = meta_template.match(template_ast))) {
         let { content } = /** @type {{ content: SyntaxNode }} */ (match)
 
+        // Now we send just the `content` back to the template generator, which will happily accept it...
+        // (We do send the original from:to though, as these are the from:to's that are also in the template AST still)
         let template_description = return_value(
-            generator.next({
+            template_generator.next({
                 name: content.name,
                 node: content,
                 // Need to provide the original from:to range
@@ -747,6 +759,9 @@ export let take_little_piece_of_template = weak_memo((template, meta_template) =
                 to: template_ast.to,
             })
         )
+
+        // And for some reason this works?
+        // Still feels like it shouldn't... it feels like I conjured some dark magic and I will be swiming in tartarus soon...
 
         return {
             template_description,
@@ -757,7 +772,7 @@ export let take_little_piece_of_template = weak_memo((template, meta_template) =
             match(haystack_cursor, verbose = false) {
                 // Performance gain for not converting to `TreeCursor` possibly 🤷‍♀️
                 if ("node" in template_description && template_description.node.name !== haystack_cursor.name) return
-                // if (haystack_cursor.name === "⚠") return null
+                if (haystack_cursor.type.isError) return null
                 if ("cursor" in haystack_cursor) haystack_cursor = haystack_cursor.cursor
 
                 let matches = {}
@@ -772,6 +787,11 @@ export let take_little_piece_of_template = weak_memo((template, meta_template) =
 })
 
 /**
+ * Sometimes nodes are nested at the exact same position:
+ * `struct X end`, here `X` could be both a `Definition(Identifier)` or just the `Identifier`.
+ * This function will get you the deepest node, so in the above example, it would be `Identifier`.
+ * If the node has multiple children, or the child is offset, it will return the original node.
+ *
  * @param {SyntaxNode} node
  * @returns {SyntaxNode}
  **/
@@ -783,6 +803,15 @@ export let narrow = (node) => {
     }
 }
 
+/**
+ * Effecient, cursor-based, version of `narrow(node)`,
+ * for if all you care about is the name.
+ *
+ * Which will be most of the time..
+ *
+ * @param {TreeCursor} cursor
+ * @return {string}
+ */
 export let narrow_name = (cursor) => {
     let from = cursor.from
     let to = cursor.to
@@ -799,11 +828,54 @@ export let narrow_name = (cursor) => {
 }
 
 /**
- * @param {(arg: any) => JuliaCodeObject} fn
+ * This allows for selecting the unselectable!
+ * By default templates need to match the topnode of their AST, but sometimes we want to match something on a special position.
+ *
+ * ```create_specific_template_maker(x => jl_dynamic`import X: ${x}`)``` will match specifiers that could occur specifically on the `${x}` position.
+ *
+ * NOTE: Inside `create_specific_template_maker` you'll have to use `jl_dynamic` not going to explain why.
+ *
+ * @param {(subtemplate: Templatable) => Templatable} fn
  */
 export let create_specific_template_maker = (fn) => {
     return (argument) => {
         let meta_template = template(fn(t.as("content", argument)))
         return take_little_piece_of_template(fn(argument), meta_template)
+    }
+}
+
+///////////////////////////////////
+// FULL ON UTILITY FUNCTIONS
+///////////////////////////////////
+
+/**
+ * Not sure why typescript doesn't infer the `Generator<T>` when I ask !iterater_result.done...
+ * Maybe it will bite me later 🤷‍♀️
+ *
+ * @template T
+ * @param {IteratorResult<T, unknown>} iterater_result
+ * @returns {T} iterater_result
+ */
+let intermediate_value = (iterater_result) => {
+    if (iterater_result.done) {
+        throw new Error("Expected `yield`-d value, but got `return`")
+    } else {
+        return /** @type {any} */ (iterater_result.value)
+    }
+}
+
+/**
+ * Not sure why typescript doesn't infer the `Generator<_, T>` when I ask !iterater_result.done...
+ * Maybe it will bite me later 🤷‍♀️
+ *
+ * @template T
+ * @param {IteratorResult<unknown, T>} iterater_result
+ * @returns {T} iterater_result
+ */
+let return_value = (iterater_result) => {
+    if (iterater_result.done) {
+        return /** @type {any} */ (iterater_result.value)
+    } else {
+        throw new Error("Expected `yield`-d value, but got `return`")
     }
 }

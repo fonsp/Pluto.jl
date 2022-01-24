@@ -84,12 +84,12 @@ function find_import_statements({ doc, tree, from, to }) {
             // Because the templates can't really do recursive stuff, we need JavaScript™️!
             let unwrap_scoped_import = (specifier) => {
                 let match = null
-                if ((match = import_specifier_template(jl_dynamic`${t.as("package")}.${t.any}`).match(specifier))) {
+                if ((match = import_specifier_template(jl`${t.as("package")}.${t.any}`).match(specifier))) {
                     return unwrap_scoped_import(match.package)
-                } else if ((match = import_specifier_template(jl_dynamic`.${t.maybe(t.any)}`).match(specifier))) {
+                } else if ((match = import_specifier_template(jl`.${t.maybe(t.any)}`).match(specifier))) {
                     // Still trash!
                     return null
-                } else if ((match = import_specifier_template(jl_dynamic`${t.Identifier}`).match(specifier))) {
+                } else if ((match = import_specifier_template(jl`${t.Identifier}`).match(specifier))) {
                     return specifier
                 } else {
                     console.warn("Unknown nested import specifier: " + specifier.toString())
