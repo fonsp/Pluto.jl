@@ -22,9 +22,9 @@ Base.@kwdef mutable struct Workspace
 end
 
 "These expressions get evaluated whenever a new `Workspace` process is created."
-const process_preamble = quote
+process_preamble() = quote
     ccall(:jl_exit_on_sigint, Cvoid, (Cint,), 0)
-    include($(project_relative_path("src", "runner", "Loader.jl")))
+    include($(project_relative_path(joinpath("src", "runner"), "Loader.jl")))
     ENV["GKSwstype"] = "nul"
     ENV["JULIA_REVISE_WORKER_ONLY"] = "1"
 end
@@ -217,7 +217,7 @@ function create_workspaceprocess(;compiler_options=CompilerOptions())::Integer
         $(Distributed_expr).addprocs(1; exeflags=$(_convert_to_flags(compiler_options))) |> first
     end)
 
-    Distributed.remotecall_eval(Main, [pid], process_preamble)
+    Distributed.remotecall_eval(Main, [pid], process_preamble())
 
     # so that we NEVER break the workspace with an interrupt 🤕
     @async Distributed.remotecall_eval(Main, [pid],
