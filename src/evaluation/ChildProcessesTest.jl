@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.0
+# v0.17.7
 
 using Markdown
 using InteractiveUtils
@@ -7,8 +7,9 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
-        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
     end
 end
@@ -19,14 +20,14 @@ import Serialization
 # ╔═╡ d30e1e1b-fa6f-4fbc-bccb-1fcfc7b829df
 import UUIDs: UUID, uuid4
 
-# ╔═╡ a901d255-c18c-45ed-9827-afd79246613c
-module PlutoHooks include("./PlutoHooks.jl") end
-
 # ╔═╡ f7d14367-27d7-41a5-9f6a-79cf5e721a7d
 import PlutoUI
 
+# ╔═╡ fe669218-18c3-46c7-80e8-7b1ab6fa77d2
+import PlutoLinks: @ingredients, @use_task
+
 # ╔═╡ f9675ee0-e728-420b-81bd-22e57583c587
-import .PlutoHooks: @use_effect, @use_ref, @use_state, @background, @use_memo
+import PlutoHooks: @use_effect, @use_ref, @use_state, @use_memo
 
 # ╔═╡ ca96e0d5-0904-4ae5-89d0-c1a9187710a1
 Base.@kwdef struct PlutoProcess
@@ -41,15 +42,6 @@ function Base.show(io::IO, ::MIME"text/plain", process::PlutoProcess)
 	write(io, process_running(process.process) ? "Running" : "Stopped")
 end
 
-# ╔═╡ c9a9a089-037b-4fa8-91b2-980a318faee7
-begin
-	Frames = PlutoHooks.@ingredients("./SerializationLibrary.jl")
-	ChildProcesses = Frames
-	Main.eval(quote
-		var"SerializationLibrary.jl" = $(Frames)
-	end)
-end
-
 # ╔═╡ 1a2f116b-78f7-47b6-b96b-c0c74b5c5a35
 @bind reset_process_counter PlutoUI.CounterButton("Reset process!")
 
@@ -58,6 +50,98 @@ end
 
 # ╔═╡ 09f4b4b6-75a4-4727-9405-e4fc45c2cda7
 import Distributed
+
+# ╔═╡ ffc98725-a88f-4dac-b387-f73cfd07510a
+# @use_task([x]) do
+# 	ChildProcesses.call(x, quote
+# 		1 + 1
+# 	end)
+# end
+
+# ╔═╡ a26cc458-4578-427f-840d-71d78c5c8b01
+begin
+	ChildProcesses = @ingredients("./ChildProcesses.jl").ChildProcesses
+	var"ChildProcesses.jl" = ChildProcesses
+end
+
+# ╔═╡ 730cfe5e-1541-4c08-8d4a-86d1f9e4115e
+let
+	process = ChildProcesses.create_child_process()
+
+	ChildProcesses.call(process, :(throw("hi")))
+end
+
+# ╔═╡ b7ac2fea-41f4-47f3-a294-944378cb7093
+x = @use_memo([]) do
+	ChildProcesses.create_child_process()
+end
+
+# ╔═╡ 872a8651-736c-47dd-80e6-b645fb0490c9
+kill(x, Base.SIGINT)
+
+# ╔═╡ c1038e6a-c4e9-4b79-b3f9-35a9f64b0f64
+task = @use_task([x]) do
+	ChildProcesses.call(x, quote
+			while true; end
+	end)
+end
+
+# ╔═╡ 75fc343a-7904-45f8-be09-a542255ba673
+istaskdone(task) ? fetch(task) : nothing
+
+# ╔═╡ 281b4aab-307a-4d90-9dfb-f422b9567736
+# process_output = let
+# 	# error("Nope")
+	
+# 	my_stderr = @use_memo([reset_process_counter, ChildProcesses]) do 
+# 		Pipe()
+# 	end
+# 	output, set_output = @use_state("")
+
+# 	process = @use_memo([my_stderr]) do
+# 		ChildProcesses.create_child_process(
+# 			custom_stderr=my_stderr,
+# 			exeflags=["--color=yes", "--threads=4"],
+# 		)
+# 	end
+# 	@use_effect([process]) do
+# 		return () -> begin
+# 			kill(process)
+# 		end
+# 	end
+
+# 	# So we re-run the whole thing when the process exists
+# 	_, refresh_state = @use_state(nothing)
+# 	@use_task([]) do
+# 		if process_running(process)
+# 			wait(process)
+# 			refresh_state(nothing)
+# 		end
+# 	end
+
+# 	@use_task([]) do
+# 		while process_running(process) && !eof(my_stderr)
+# 			new_output = String(readavailable(my_stderr))
+# 			set_output((output) -> begin
+# 				output * new_output
+# 			end)
+# 		end
+# 	end
+
+# 	pluto_process = @use_memo([process, my_stderr]) do
+# 		PlutoProcess(
+# 			process=process,
+# 			stderr=my_stderr,
+# 			stdin=process.process.in,
+# 			stdout=process.process.out,
+# 		)
+# 	end
+
+# 	PlutoUI.with_terminal() do
+# 		print(output)
+# 		pluto_process
+# 	end
+# end
 
 # ╔═╡ e5edaa4d-74ff-4f6e-a045-71fd5494dd79
 # @use_memo([spawned_process]) do
@@ -102,15 +186,6 @@ import Distributed
 # 	end)
 # end
 
-# ╔═╡ 33bcb6d2-5aea-4b7d-b5c4-e0dd2abc73f1
-1 + 1
-
-# ╔═╡ 2db3c415-e827-4ecb-a2c9-f407650c37ac
-@bind g PlutoUI.Slider(1:100)
-
-# ╔═╡ 4ac2d47a-30b5-4095-a873-258b003539cf
-h = g + 2
-
 # ╔═╡ de602aaa-704c-45c4-8b7b-fc58e41236ce
 begin
 	struct FakeProcess <: Base.AbstractPipe
@@ -127,81 +202,60 @@ end
 # 	Base.readbytes!(PipeBuffer(), UInt8[], 10)
 # end
 
-# ╔═╡ f8bf6cc4-5ccd-4f0d-b7de-0f192bb3dfb1
-buffer = IOBuffer()
-
-# ╔═╡ c96496a2-50bd-475c-ae02-f9b828080610
-@which write(buffer, UInt8[])
-
-# ╔═╡ 25a3fc9c-a96d-4077-a304-c59554e8f568
-@which unsafe_write(buffer, pointer(UInt8[]), sizeof(UInt8[]))
-
 # ╔═╡ ec4a5558-28dd-47c1-b015-8799d9cb8800
-function Base.eof(buffer::IOBuffer)
-	while buffer.readable
-		if bytesavailable(buffer) !== 0
-			return false
-		end
-		# eval(:(@info "OOPS"))
-		sleep(1)
-		yield()
-	end
-	return true
-end
+# function Base.eof(buffer::IOBuffer)
+# 	while buffer.readable
+# 		if bytesavailable(buffer) !== 0
+# 			return false
+# 		end
+# 		# eval(:(@info "OOPS"))
+# 		sleep(1)
+# 		yield()
+# 	end
+# 	return true
+# end
 
-# ╔═╡ 281b4aab-307a-4d90-9dfb-f422b9567736
-process_output = let
-	error("Nope")
-	
-	my_stderr = @use_memo([reset_process_counter, ChildProcesses]) do 
-		Pipe()
-	end
-	output, set_output = @use_state("", [my_stderr])
+# ╔═╡ ce384249-52c5-47d8-9c93-18837432b625
+# let
+# 	parent_to_child = PipeBuffer()
+# 	child_to_parent = PipeBuffer()
+# 	child_process = @use_memo([ChildProcesses.ChildProcess, FakeProcess]) do
+# 		process = FakeProcess(child_to_parent, parent_to_child)
+# 		child_process = ChildProcesses.ChildProcess(process=process)
+# 	end
+# 	parent_process = @use_memo([ChildProcesses.ParentProcess]) do
+# 		ChildProcesses.ParentProcess(
+# 			parent_to_child=parent_to_child,
+# 			child_to_parent=child_to_parent,
+# 		)
+# 	end
 
-	process = @use_memo([my_stderr]) do
-		ChildProcesses.create_child_process(
-			custom_stderr=my_stderr,
-			exeflags=["--color=yes", "--threads=4"],
-		)
-	end
-	@use_effect([process]) do
-		return () -> begin
-			kill(process)
-		end
-	end
+# 	@info "#1"
+# 	@use_task([ChildProcesses.start_from_child_loop, child_process]) do
+# 		ChildProcesses.start_from_child_loop(child_process)
+# 	end
+# 	@info "#2"
+# 	@use_task([ChildProcesses.listen_for_messages_from_parent, parent_process]) do
+# 		ChildProcesses.listen_for_messages_from_parent(parent_process)
+# 	end
+# 	@info "#3"
 
-	# So we re-run the whole thing when the process exists
-	_, refresh_state = @use_state(nothing, [process])
-	@background begin
-		if process_running(process)
-			wait(process)
-			refresh_state(nothing)
-		end
-	end
+# 	result, set_result = @use_state(Pending())
 
-	@background begin
-		while process_running(process) && !eof(my_stderr)
-			new_output = String(readavailable(my_stderr))
-			set_output((output) -> begin
-				output * new_output
-			end)
-		end
-	end
+# 	@use_task([ChildProcesses.call, child_process]) do
+# 		try
+# 			result = ChildProcesses.call(child_process, quote
+# 				1 + 1
+# 			end)
 
-	pluto_process = @use_memo([process, my_stderr]) do
-		PlutoProcess(
-			process=process,
-			stderr=my_stderr,
-			stdin=process.process.in,
-			stdout=process.process.out,
-		)
-	end
+# 			set_result(Result(result))
+# 		catch error
+# 			set_result(Failure(error))
+# 		end
+# 	end
 
-	PlutoUI.with_terminal(show_value=true) do
-		print(output)
-		pluto_process
-	end
-end
+# 	result
+# end
 
 # ╔═╡ 4be7e097-72a3-4590-bcfb-a7dacb78159c
 spawned_process = process_output.value.process;
@@ -212,14 +266,22 @@ md"---"
 # ╔═╡ 95c5a5bc-db23-4ad3-8ae8-81bc8f0edfd4
 import BenchmarkTools
 
+# ╔═╡ 4541f52f-1217-4dcd-b44c-042c7ca246bd
+1 + 1
+
 # ╔═╡ ced9d1e9-7075-4ff2-8ca2-6a349f2a69c4
-# let
-# 	stream = PipeBuffer()
-# 	BenchmarkTools.@benchmark begin
-# 		ChildProcesses.send_message($stream, ChildProcesses.to_binary(Dict(:x => 1)))
-# 		ChildProcesses.from_binary(ChildProcesses.read_message($stream))
-# 	end
-# end
+let
+	stream = PipeBuffer()
+	BenchmarkTools.@benchmark begin
+		input = Dict(:x => 1)
+		ChildProcesses.send_message($stream, ChildProcesses.to_binary(input))
+		output = ChildProcesses.from_binary(ChildProcesses.read_message($stream))
+		
+		if input != output
+			throw("Waoh, input and output should match but didn't!")
+		end
+	end
+end
 
 # ╔═╡ be18d157-6b55-4eaa-99fe-c398e992a9fa
 md"### @task_result"
@@ -233,66 +295,21 @@ struct Result value end
 # ╔═╡ 83540498-f317-4d8b-8dc6-80a93247b3b2
 struct Failure error end
 
-# ╔═╡ 78803cff-2af8-4266-8fad-6911faf17910
-macro task_result(expr, deps=nothing)
-	quote
-		result, set_result = @use_state($(Pending)())
-	
-		@background($(esc(deps))) do
-			try
-				result = $(esc(expr))()
-				set_result($(Result)(result))
-			catch error
-				set_result($(Failure)(error))
-			end
-		end
-	
-		result
-	end
-end
-
-# ╔═╡ ce384249-52c5-47d8-9c93-18837432b625
-let
-	parent_to_child = PipeBuffer()
-	child_to_parent = PipeBuffer()
-	child_process = @use_memo([ChildProcesses.ChildProcess, FakeProcess]) do
-		process = FakeProcess(child_to_parent, parent_to_child)
-		child_process = ChildProcesses.ChildProcess(process=process)
-	end
-	parent_process = @use_memo([ChildProcesses.ParentProcess]) do
-		ChildProcesses.ParentProcess(
-			parent_to_child=parent_to_child,
-			child_to_parent=child_to_parent,
-		)
-	end
-
-	@info "#1"
-	@background([ChildProcesses.start_from_child_loop, child_process]) do
-		ChildProcesses.start_from_child_loop(child_process)
-	end
-	@info "#2"
-	@background([ChildProcesses.listen_for_messages_from_parent, parent_process]) do
-		ChildProcesses.listen_for_messages_from_parent(parent_process)
-	end
-	@info "#3"
-	@task_result([ChildProcesses.call, child_process]) do
-		ChildProcesses.call(child_process, quote
-			1 + 1
-		end)
-	end
-end
-
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
+PlutoHooks = "0ff47ea0-7a50-410d-8455-4348d5de0774"
+PlutoLinks = "0ff47ea0-7a50-410d-8455-4348d5de0420"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 [compat]
 BenchmarkTools = "~1.2.0"
+PlutoHooks = "~0.0.3"
+PlutoLinks = "~0.1.1"
 PlutoUI = "~0.7.16"
 """
 
@@ -316,6 +333,9 @@ uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 [[Distributed]]
 deps = ["Random", "Serialization", "Sockets"]
 uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
+
+[[FileWatching]]
+uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
 
 [[Hyperscript]]
 deps = ["Test"]
@@ -366,6 +386,18 @@ deps = ["Dates"]
 git-tree-sha1 = "d911b6a12ba974dabe2291c6d450094a7226b372"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
 version = "2.1.1"
+
+[[PlutoHooks]]
+deps = ["FileWatching", "InteractiveUtils", "Markdown", "UUIDs"]
+git-tree-sha1 = "f297787f7d7507dada25f6769fe3f08f6b9b8b12"
+uuid = "0ff47ea0-7a50-410d-8455-4348d5de0774"
+version = "0.0.3"
+
+[[PlutoLinks]]
+deps = ["FileWatching", "InteractiveUtils", "Markdown", "PlutoHooks", "UUIDs"]
+git-tree-sha1 = "5f45fc68dd9eb422358a8008e3fb8df3c01d8ab8"
+uuid = "0ff47ea0-7a50-410d-8455-4348d5de0420"
+version = "0.1.1"
 
 [[PlutoUI]]
 deps = ["Base64", "Dates", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "UUIDs"]
@@ -422,38 +454,38 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 # ╔═╡ Cell order:
 # ╠═7e613bd2-616a-4687-8af5-a22c7a747d97
 # ╠═d30e1e1b-fa6f-4fbc-bccb-1fcfc7b829df
-# ╠═a901d255-c18c-45ed-9827-afd79246613c
 # ╠═f7d14367-27d7-41a5-9f6a-79cf5e721a7d
+# ╠═fe669218-18c3-46c7-80e8-7b1ab6fa77d2
 # ╠═f9675ee0-e728-420b-81bd-22e57583c587
-# ╠═c9a9a089-037b-4fa8-91b2-980a318faee7
 # ╟─ca96e0d5-0904-4ae5-89d0-c1a9187710a1
-# ╟─b7734627-ba2a-48d8-8fd8-a5c94716da20
+# ╠═b7734627-ba2a-48d8-8fd8-a5c94716da20
 # ╟─1a2f116b-78f7-47b6-b96b-c0c74b5c5a35
 # ╟─8d6f46b6-e6cf-4094-a32a-f1b13dc005f6
 # ╠═09f4b4b6-75a4-4727-9405-e4fc45c2cda7
+# ╠═730cfe5e-1541-4c08-8d4a-86d1f9e4115e
+# ╠═b7ac2fea-41f4-47f3-a294-944378cb7093
+# ╠═c1038e6a-c4e9-4b79-b3f9-35a9f64b0f64
+# ╠═75fc343a-7904-45f8-be09-a542255ba673
+# ╠═ffc98725-a88f-4dac-b387-f73cfd07510a
+# ╠═872a8651-736c-47dd-80e6-b645fb0490c9
+# ╠═a26cc458-4578-427f-840d-71d78c5c8b01
 # ╠═281b4aab-307a-4d90-9dfb-f422b9567736
 # ╠═e5edaa4d-74ff-4f6e-a045-71fd5494dd79
 # ╠═5fb236c3-b67d-47ee-8644-84bd51e577b1
 # ╠═8bd24b7b-4837-46b7-a6e9-b674630c2f56
 # ╠═e33a9b31-722e-425e-be5e-b33517bec8e3
-# ╠═33bcb6d2-5aea-4b7d-b5c4-e0dd2abc73f1
-# ╠═2db3c415-e827-4ecb-a2c9-f407650c37ac
-# ╠═4ac2d47a-30b5-4095-a873-258b003539cf
 # ╠═de602aaa-704c-45c4-8b7b-fc58e41236ce
 # ╠═abf694f4-c5c4-4a4f-b30f-62e358149195
-# ╠═f8bf6cc4-5ccd-4f0d-b7de-0f192bb3dfb1
-# ╠═c96496a2-50bd-475c-ae02-f9b828080610
-# ╠═25a3fc9c-a96d-4077-a304-c59554e8f568
 # ╠═ec4a5558-28dd-47c1-b015-8799d9cb8800
 # ╠═ce384249-52c5-47d8-9c93-18837432b625
 # ╠═4be7e097-72a3-4590-bcfb-a7dacb78159c
-# ╠═49fdc8a3-0e1a-42f0-acc4-b823eec91d31
+# ╟─49fdc8a3-0e1a-42f0-acc4-b823eec91d31
 # ╠═95c5a5bc-db23-4ad3-8ae8-81bc8f0edfd4
+# ╠═4541f52f-1217-4dcd-b44c-042c7ca246bd
 # ╠═ced9d1e9-7075-4ff2-8ca2-6a349f2a69c4
 # ╟─be18d157-6b55-4eaa-99fe-c398e992a9fa
 # ╠═12578b59-0161-4e72-afef-825166a62121
 # ╠═34d90560-5a3e-4c7f-8126-35e1a6153aa1
 # ╠═83540498-f317-4d8b-8dc6-80a93247b3b2
-# ╠═78803cff-2af8-4266-8fad-6911faf17910
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

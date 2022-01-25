@@ -238,7 +238,27 @@ function distributed_exception_result(ex::Base.IOError, workspace::Workspace)
     )
 end
 
+function distributed_exception_result(ex::ChildProcesses.ChildProcessException, workspace::Workspace)
+    (
+        output_formatted=PlutoRunner.format_output(CapturedException(InterruptException(), [])),
+        errored=true,
+        interrupted=true,
+        process_exited=false,
+        runtime=nothing,
+        published_objects=Dict{String,Any}(),
+    )
+end
 
+function distributed_exception_result(ex::ChildProcesses.ProcessExitedException, workspace::Workspace)
+    (
+        output_formatted=PlutoRunner.format_output(CapturedException(ex, [])),
+        errored=true,
+        interrupted=true,
+        process_exited=true && !workspace.discarded, # don't report a process exit if the workspace was discarded on purpose
+        runtime=nothing,
+        published_objects=Dict{String,Any}(),
+    )
+end
 
 function distributed_exception_result(exs::CompositeException, workspace::Workspace)
     ex = exs.exceptions |> first
@@ -456,7 +476,7 @@ function interrupt_workspace(session_notebook::Union{SN,Workspace}; verbose=true
     # TODO: this will also kill "pending" evaluations, and any evaluations started within 100ms of the kill. A global "evaluation count" would fix this.
     # TODO: listen for the final words of the remote process on stdout/stderr: "Force throwing a SIGINT"
     try
-        verbose && @info "Sending interrupt to process $(workspace.pid)"
+        verbose && @info "Sending interrupt to process $(workspace)..."
         kill(workspace.process, Base.SIGINT)
 
         if poll(() -> isready(workspace.dowork_token), 5.0, 5/100)
@@ -481,8 +501,7 @@ function interrupt_workspace(session_notebook::Union{SN,Workspace}; verbose=true
         true
     catch ex
         if !(ex isa KeyError)
-            @warn "Interrupt failed for unknown reason"
-            showerror(ex, stacktrace(catch_backtrace()))
+            @warn "Interrupt failed for unknown reason" sprint(showerror, ex, stacktrace(catch_backtrace()))
         end
         false
     end
