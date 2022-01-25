@@ -221,6 +221,10 @@ export let match_template = (haystack_cursor, template, matches, verbose = false
             verbose && console.log(`Matching against node: ${template.node.name}`)
 
             if (!haystack_cursor) {
+                if (node.name === "end") {
+                    verbose && console.log(`✅ No node left to match, but it was the end anyway`)
+                    return true
+                }
                 verbose && console.log(`❌ because no cursor left to match against`)
                 return false
             }

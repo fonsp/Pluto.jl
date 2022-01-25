@@ -69,12 +69,12 @@ let go_through_quoted_expression_looking_for_interpolations = function* (cursor)
  * which it really needs, because the patterns are the most important part of this code..
  */
 let make_beautiful_matcher = (template_fn) => {
-    return function match(cursor) {
+    return function match(cursor, verbose = false) {
         if (cursor == null) return jl
 
         /** @type {(...args: Parameters<jl>) => any} */
         return function jl_and_match(x, ...args) {
-            return template_fn(jl(x, ...args)).match(cursor)
+            return template_fn(jl(x, ...args)).match(cursor, verbose)
         }
     }
 }
@@ -357,6 +357,7 @@ let explore_variable_usage = (
 
         // Doing these checks in front seems to speed things up a bit.
         if (
+            cursor.type.is("keyword") ||
             cursor.name === "SourceFile" ||
             cursor.name === "BooleanLiteral" ||
             cursor.name === "Character" ||
@@ -703,6 +704,9 @@ let explore_variable_usage = (
                 ${t.as("callee")}(${t.many("args")}) ${t.maybe(jl`do ${t.as("do_args")}
                     ${t.many("do_expressions")}
                 end`)}
+            `) ??
+            (match = match_julia(cursor)`
+                ${t.as("callee")}.(${t.many("args")})
             `)
         ) {
             let { callee, args = [], do_args, do_expressions } = match
