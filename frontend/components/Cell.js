@@ -1,11 +1,32 @@
+import _ from "../imports/lodash.js"
 import { html, useState, useEffect, useMemo, useRef, useContext, useLayoutEffect } from "../imports/Preact.js"
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
+import { Logs } from "./Logs.js"
 import { RunArea, useDebouncedTruth } from "./RunArea.js"
 import { cl } from "../common/ClassTable.js"
-import { useDropHandler } from "./useDropHandler.js"
 import { PlutoContext } from "../common/PlutoContext.js"
+
+const useCellApi = (node_ref, published_object_keys, pluto_actions) => {
+    const [cell_api_ready, set_cell_api_ready] = useState(false)
+    const published_object_keys_ref = useRef(published_object_keys)
+    published_object_keys_ref.current = published_object_keys
+
+    useLayoutEffect(() => {
+        Object.assign(node_ref.current, {
+            getPublishedObject: (id) => {
+                if (!published_object_keys_ref.current.includes(id)) throw `getPublishedObject: ${id} not found`
+                return pluto_actions.get_published_object(id)
+            },
+            _internal_pluto_actions: pluto_actions,
+        })
+
+        set_cell_api_ready(true)
+    })
+
+    return cell_api_ready
+}
 
 /**
  * @param {{
@@ -22,7 +43,7 @@ import { PlutoContext } from "../common/PlutoContext.js"
  * */
 export const Cell = ({
     cell_input: { cell_id, code, code_folded, running_disabled },
-    cell_result: { queued, running, runtime, errored, output, published_objects, depends_on_disabled_cells },
+    cell_result: { queued, running, runtime, errored, output, logs, published_object_keys, depends_on_disabled_cells },
     cell_dependencies,
     cell_input_local,
     notebook_id,
@@ -39,19 +60,40 @@ export const Cell = ({
 }) => {
     let pluto_actions = useContext(PlutoContext)
     const notebook = pluto_actions.get_notebook()
+    let variables_in_all_notebook = Object.fromEntries(
+        Object.values(notebook?.cell_dependencies ?? {}).flatMap((x) => Object.keys(x.downstream_cells_map).map((variable) => [variable, x.cell_id]))
+    )
     const variables = Object.keys(notebook?.cell_dependencies?.[cell_id]?.downstream_cells_map || {})
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
-    const { saving_file, drag_active, handler } = useDropHandler()
+    const [cm_highlighted_line, set_cm_highlighted_line] = useState(null)
+    const [show_logs, set_show_logs] = useState(true)
+
+    const any_logs = useMemo(() => !_.isEmpty(logs), [logs])
+
+    useEffect(() => {
+        if (!any_logs) {
+            set_show_logs(true)
+        }
+    }, [any_logs])
+
     useEffect(() => {
         const focusListener = (e) => {
             if (e.detail.cell_id === cell_id) {
                 if (e.detail.line != null) {
                     const ch = e.detail.ch
                     if (ch == null) {
-                        set_cm_forced_focus([{ line: e.detail.line, ch: 0 }, { line: e.detail.line, ch: Infinity }, { scroll: true }])
+                        set_cm_forced_focus([
+                            { line: e.detail.line, ch: 0 },
+                            { line: e.detail.line, ch: Infinity },
+                            { scroll: true, definition_of: e.detail.definition_of },
+                        ])
                     } else {
-                        set_cm_forced_focus([{ line: e.detail.line, ch: ch }, { line: e.detail.line, ch: ch }, { scroll: true }])
+                        set_cm_forced_focus([
+                            { line: e.detail.line, ch: ch },
+                            { line: e.detail.line, ch: ch },
+                            { scroll: true, definition_of: e.detail.definition_of },
+                        ])
                     }
                 }
             }
@@ -78,33 +120,20 @@ export const Cell = ({
     // during the initial page load, force_hide_input === true, so that cell outputs render fast, and codemirrors are loaded after
     let show_input = !force_hide_input && (errored || class_code_differs || !class_code_folded)
 
+    const [line_heights, set_line_heights] = useState([15])
     const node_ref = useRef(null)
 
-    const [cell_api_ready, set_cell_api_ready] = useState(false)
-    const published_objects_ref = useRef(published_objects)
-    published_objects_ref.current = published_objects
     const disable_input_ref = useRef(disable_input)
     disable_input_ref.current = disable_input
     const should_set_waiting_to_run_ref = useRef(true)
     should_set_waiting_to_run_ref.current = !running_disabled && !depends_on_disabled_cells
     const set_waiting_to_run_smart = (x) => set_waiting_to_run(x && should_set_waiting_to_run_ref.current)
 
-    useLayoutEffect(() => {
-        Object.assign(node_ref.current, {
-            getPublishedObject: (id) => published_objects_ref.current[id],
-            _internal_pluto_actions: pluto_actions,
-        })
-
-        set_cell_api_ready(true)
-    })
+    const cell_api_ready = useCellApi(node_ref, published_object_keys, pluto_actions)
 
     return html`
         <pluto-cell
             ref=${node_ref}
-            onDragOver=${handler}
-            onDrop=${handler}
-            onDragEnter=${handler}
-            onDragLeave=${handler}
             class=${cl({
                 queued: queued || (waiting_to_run && is_process_ready),
                 running: running,
@@ -116,8 +145,8 @@ export const Cell = ({
                 running_disabled: running_disabled,
                 depends_on_disabled_cells: depends_on_disabled_cells,
                 show_input: show_input,
-                drop_target: drag_active,
-                saving_file: saving_file,
+                shrunk: Object.values(logs).length > 0,
+                hooked_up: output?.has_pluto_hook_features ?? false,
             })}
             id=${cell_id}
         >
@@ -153,12 +182,12 @@ export const Cell = ({
                 local_code=${cell_input_local?.code ?? code}
                 remote_code=${code}
                 cell_dependencies=${cell_dependencies}
+                variables_in_all_notebook=${variables_in_all_notebook}
                 disable_input=${disable_input}
                 focus_after_creation=${focus_after_creation}
                 cm_forced_focus=${cm_forced_focus}
                 set_cm_forced_focus=${set_cm_forced_focus}
                 show_input=${show_input}
-                on_drag_drop_events=${handler}
                 on_submit=${() => {
                     if (!disable_input_ref.current) {
                         set_waiting_to_run_smart(true)
@@ -183,11 +212,18 @@ export const Cell = ({
                 }}
                 on_update_doc_query=${on_update_doc_query}
                 on_focus_neighbor=${on_focus_neighbor}
+                on_line_heights=${set_line_heights}
                 nbpkg=${nbpkg}
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
                 running_disabled=${running_disabled}
+                any_logs=${any_logs}
+                show_logs=${show_logs}
+                set_show_logs=${set_show_logs}
+                cm_highlighted_line=${cm_highlighted_line}
+                set_cm_highlighted_line=${set_cm_highlighted_line}
             />
+            ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${line_heights} set_cm_highlighted_line=${set_cm_highlighted_line} />` : null}
             <${RunArea}
                 cell_id=${cell_id}
                 running_disabled=${running_disabled}
@@ -214,6 +250,18 @@ export const Cell = ({
             >
                 <span></span>
             </button>
+        </pluto-cell>
+    `
+}
+
+export const IsolatedCell = ({ cell_id, cell_results: { output, published_object_keys }, hidden }) => {
+    const node_ref = useRef(null)
+    let pluto_actions = useContext(PlutoContext)
+    const cell_api_ready = useCellApi(node_ref, published_object_keys, pluto_actions)
+
+    return html`
+        <pluto-cell ref=${node_ref} id=${cell_id} class=${hidden ? "hidden-cell" : "isolated-cell"}>
+            ${cell_api_ready ? html`<${CellOutput} ...${output} cell_id=${cell_id} />` : html``}
         </pluto-cell>
     `
 }

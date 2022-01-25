@@ -135,8 +135,14 @@ end
         - move notebook file
         - search for docs
         - show more items of an array =#
+        @testset "Extension of response" begin
+            Pluto.responses[:custom_response] = function (🙋::Pluto.ClientRequest)
+                return "Yes this can be extended!"
+            end
+           @test send(:custom_response, Dict()) == "Yes this can be extended!"           
+        end
 
-        send(:shutdown_notebook, Dict("keep_in_session" => false))
+        @test_nowarn send(:shutdown_notebook, Dict("keep_in_session" => false))
 
         @test_nowarn await_with_timeout() do
             !haskey(🍭.notebooks, notebook.notebook_id)
@@ -182,17 +188,20 @@ end
             Cell("PlutoRunner.notebook_id[] |> Text"),
             Cell("""
             let
-                a = PlutoRunner.publish(Dict(
+                # not actually public API but we test it anyways
+                a = PlutoRunner._publish(Dict(
                     "hello" => "world",
                     "xx" => UInt8[6,7,8],
                 ))
-                b = PlutoRunner.publish("cool")
+                b = PlutoRunner._publish("cool")
                 Text((a, b))
             end
             """),
             Cell("3"),
             Cell("PlutoRunner.publish_to_js(Ref(4))"),
             Cell("PlutoRunner.publish_to_js((ref=4,))"),
+            Cell("x = Dict(:a => 6)"),
+            Cell("PlutoRunner.publish_to_js(x)"),
         ])
         fakeclient.connected_notebook = notebook
 
@@ -210,14 +219,46 @@ end
             "xx" => UInt8[6,7,8],
         )
         @test p[b] == "cool"
-
+        
+        old_pa = p[a]
+        old_pb = p[b]
+        update_save_run!(🍭, notebook, notebook.cells)
+        p = notebook.cells[2].published_objects
+        a, b = Meta.parse(notebook.cells[2].output.body) |> eval
+        @test p[a] == old_pa
+        @test p[b] == old_pb
+        
+        @test !isempty(notebook.cells[2].published_objects)
+        
         setcode(notebook.cells[2], "2")
         update_save_run!(🍭, notebook, notebook.cells)
         @test isempty(notebook.cells[2].published_objects)
 
         @test notebook.cells[4].errored
         @test !notebook.cells[5].errored
-
+        @test !isempty(notebook.cells[5].published_objects)
+        
+        
+        p = notebook.cells[7].published_objects
+        @test length(p) == 1
+        old_x = values(p) |> first
+        @test old_x == Dict(:a => 6)
+        
+        update_save_run!(🍭, notebook, notebook.cells[7])
+        p = notebook.cells[7].published_objects
+        new_x = values(p) |> first
+        @test new_x == old_x
+        @test new_x === old_x # did not change, because we don't resync the same object
+        
+        update_save_run!(🍭, notebook, notebook.cells[6])
+        p = notebook.cells[7].published_objects
+        new_x = values(p) |> first
+        @test new_x == old_x
+        @test new_x !== old_x # changed, because a new (mutable) Dict was created
+        
+        @test isempty(notebook.cells[2].published_objects)
+        @test !isempty(notebook.cells[5].published_objects)
+        
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 end

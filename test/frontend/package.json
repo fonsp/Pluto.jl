@@ -15,5 +15,8 @@
     "test": "jest --verbose --runInBand"
   },
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "mkdirp": "^1.0.4"
+  }
 }

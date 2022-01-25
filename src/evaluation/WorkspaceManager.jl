@@ -16,27 +16,28 @@ Base.@kwdef mutable struct Workspace
     module_name::Symbol
     dowork_token::Token=Token()
     nbpkg_was_active::Bool=false
+    is_offline_renderer::Bool=false
     original_LOAD_PATH::Vector{String}=String[]
     original_ACTIVE_PROJECT::Union{Nothing,String}=nothing
 end
 
 "These expressions get evaluated whenever a new `Workspace` process is created."
-const process_preamble = [
-    :(ccall(:jl_exit_on_sigint, Cvoid, (Cint,), 0)),
-    :(ENV["GKSwstype"] = "nul"), 
-    :(ENV["JULIA_REVISE_WORKER_ONLY"] = "1"), 
-    :(include($(project_relative_path("src", "runner", "Loader.jl")))),
-]
+const process_preamble = quote
+    ccall(:jl_exit_on_sigint, Cvoid, (Cint,), 0)
+    include($(project_relative_path("src", "runner", "Loader.jl")))
+    ENV["GKSwstype"] = "nul"
+    ENV["JULIA_REVISE_WORKER_ONLY"] = "1"
+end
 
 const workspaces = Dict{UUID,Promise{Workspace}}()
 
 const SN = Tuple{ServerSession,Notebook}
 
 """Create a workspace for the notebook, optionally in the main process."""
-function make_workspace((session, notebook)::SN; force_offline::Bool=false)::Workspace
-    force_offline || (notebook.process_status = ProcessStatus.starting)
+function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false)::Workspace
+    is_offline_renderer || (notebook.process_status = ProcessStatus.starting)
 
-    use_distributed = if force_offline
+    use_distributed = if is_offline_renderer
         false
     else
         session.options.evaluation.workspace_use_distributed
@@ -70,28 +71,21 @@ function make_workspace((session, notebook)::SN; force_offline::Bool=false)::Wor
     
     original_LOAD_PATH, original_ACTIVE_PROJECT = ChildProcesses.call(process, :(Base.LOAD_PATH, Base.ACTIVE_PROJECT[]))
     
-    @warn "#1"
-
     workspace = Workspace(;
         process=process,
         log_channel=log_channel, 
         module_name=module_name,
         original_LOAD_PATH=original_LOAD_PATH,
         original_ACTIVE_PROJECT=original_ACTIVE_PROJECT,
+        is_offline_renderer=is_offline_renderer,
     )
 
-    @warn "#2"
-
     @async start_relaying_logs((session, notebook), log_channel)
-    @warn "#3"
     @async start_relaying_self_updates((session, notebook), run_channel)
-    @warn "#4"
     cd_workspace(workspace, notebook.path)
-    @warn "#5"
     use_nbpkg_environment((session, notebook), workspace)
-    @warn "#6"
 
-    force_offline || (notebook.process_status = ProcessStatus.ready)
+    is_offline_renderer || (notebook.process_status = ProcessStatus.ready)
     return workspace
 end
 
@@ -120,13 +114,13 @@ function use_nbpkg_environment((session, notebook)::SN, workspace=nothing)
     end
 end
 
-function start_relaying_self_updates((session, notebook)::SN, run_channel::ChildProcesses.ChildChannel)
+function start_relaying_self_updates((session, notebook)::SN, run_channel::Distributed.RemoteChannel)
     while true
         try
             next_run_uuid = take!(run_channel)
 
             cell_to_run = notebook.cells_dict[next_run_uuid]
-            Pluto.run_reactive!(session, notebook, notebook.topology, notebook.topology, Cell[cell_to_run]; persist_js_state=true)
+            Pluto.run_reactive!(session, notebook, notebook.topology, notebook.topology, Cell[cell_to_run]; user_requested_run=false)
         catch e
             if !isopen(run_channel)
                 break
@@ -139,8 +133,38 @@ end
 function start_relaying_logs((session, notebook)::SN, log_channel::ChildProcesses.ChildChannel)
     while true
         try
-            next_log = take!(log_channel)
-            putnotebookupdates!(session, notebook, UpdateMessage(:log, next_log, notebook))
+            next_log::Dict{String,Any} = take!(log_channel)
+
+            fn = next_log["file"]
+            match = findfirst("#==#", fn)
+            
+            # We always show the log at the currently running cell, which is given by
+            running_cell_id = UUID(next_log["cell_id"])
+            running_cell = notebook.cells_dict[running_cell_id]
+            
+            # Some logs originate from outside of the running code, through function calls. Some code here to deal with that:
+            begin
+                source_cell_id = if match !== nothing
+                    # the log originated from within the notebook
+                    
+                    UUID(fn[findfirst("#==#", fn)[end]+1:end])
+                else
+                    # the log originated from a function call defined outside of the notebook
+                    
+                    # we will show the log at the currently running cell, at "line -1", i.e. without line info.
+                    next_log["line"] = -1
+                    UUID(next_log["cell_id"])
+                end
+                
+                if running_cell_id != source_cell_id
+                    # the log originated from a function in another cell of the notebook
+                    # we will show the log at the currently running cell, at "line -1", i.e. without line info.
+                    next_log["line"] = -1
+                end
+            end
+
+            push!(running_cell.logs, next_log)
+            Pluto.@asynclog update_throttled()
         catch e
             if !isopen(log_channel)
                 break
@@ -166,7 +190,16 @@ function bump_workspace_module(session_notebook::SN)
     old_name, new_name
 end
 
-function create_emptyworkspacemodule(process)::Symbol
+function possible_bond_values(session_notebook::SN, n::Symbol; get_length::Bool=false)
+    workspace = get_workspace(session_notebook)
+    pid = workspace.pid
+
+    Distributed.remotecall_eval(Main, pid, quote
+        PlutoRunner.possible_bond_values($(QuoteNode(n)); get_length=$(get_length))
+    end)
+end
+
+function create_emptyworkspacemodule(pid::Integer)::Symbol
     ChildProcesses.call(process, :(PlutoRunner.increment_current_module()))
 end
 
@@ -235,6 +268,7 @@ function distributed_exception_result(ex::Base.IOError, workspace::Workspace)
         process_exited=true && !workspace.discarded, # don't report a process exit if the workspace was discarded on purpose
         runtime=nothing,
         published_objects=Dict{String,Any}(),
+        has_pluto_hook_features=false,
     )
 end
 
@@ -274,6 +308,7 @@ function distributed_exception_result(exs::CompositeException, workspace::Worksp
             process_exited=false,
             runtime=nothing,
             published_objects=Dict{String,Any}(),
+            has_pluto_hook_features=false,
         )
     elseif ex isa ChildProcesses.ProcessExitedException
         (
@@ -283,6 +318,7 @@ function distributed_exception_result(exs::CompositeException, workspace::Worksp
             process_exited=true && !workspace.discarded, # don't report a process exit if the workspace was discarded on purpose
             runtime=nothing,
             published_objects=Dict{String,Any}(),
+            has_pluto_hook_features=false,
         )
     else
         @error "Unkown error during eval_format_fetch_in_workspace" ex
@@ -293,6 +329,7 @@ function distributed_exception_result(exs::CompositeException, workspace::Worksp
             process_exited=false,
             runtime=nothing,
             published_objects=Dict{String,Any}(),
+            has_pluto_hook_features=false,
         )
     end
 end
@@ -308,7 +345,10 @@ function eval_format_fetch_in_workspace(
     ends_with_semicolon::Bool=false,
     function_wrapped_info::Union{Nothing,Tuple}=nothing,
     forced_expr_id::Union{PlutoRunner.ObjectID,Nothing}=nothing,
-)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any}}}
+    user_requested_run::Bool=true,
+    known_published_objects::Vector{String}=String[],
+)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
+
     workspace = get_workspace(session_notebook)
 
     # if multiple notebooks run on the same process, then we need to `cd` between the different notebook paths
@@ -332,6 +372,7 @@ function eval_format_fetch_in_workspace(
                 $cell_id, 
                 $function_wrapped_info,
                 $forced_expr_id,
+                user_requested_run=$user_requested_run,
             )
         end)
         put!(workspace.dowork_token)
@@ -343,7 +384,7 @@ function eval_format_fetch_in_workspace(
     end
 
     early_result === nothing ?
-        format_fetch_in_workspace(workspace, cell_id, ends_with_semicolon) :
+        format_fetch_in_workspace(workspace, cell_id, ends_with_semicolon, known_published_objects) :
         early_result
 end
 
@@ -357,7 +398,13 @@ function eval_in_workspace(session_notebook::Union{SN,Workspace}, expr)
     nothing
 end
 
-function format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, cell_id, ends_with_semicolon, showmore_id::Union{PlutoRunner.ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any}}}
+function format_fetch_in_workspace(
+    session_notebook::Union{SN,Workspace}, 
+    cell_id, 
+    ends_with_semicolon, 
+    known_published_objects::Vector{String}=String[],
+    showmore_id::Union{PlutoRunner.ObjectDimPair,Nothing}=nothing,
+)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
     workspace = get_workspace(session_notebook)
     
     # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.
@@ -365,7 +412,10 @@ function format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, cell_i
         try
             ChildProcesses.call(workspace.process, quote
                 PlutoRunner.formatted_result_of(
-                    $cell_id, $ends_with_semicolon, $showmore_id,
+                    $cell_id, 
+                    $ends_with_semicolon, 
+                    $known_published_objects,
+                    $showmore_id,
                     getfield(Main, $(QuoteNode(workspace.module_name))),
                 )
             end)
@@ -396,6 +446,15 @@ function macroexpand_in_workspace(session_notebook::Union{SN,Workspace}, macroca
             (true, PlutoRunner.try_macroexpand($(module_name), $(cell_uuid), $(macrocall |> QuoteNode)))
         catch e
             (false, e)
+        # catch error
+        #     # We have to be careful here, for example a thrown `MethodError()` will contain the called method and arguments.
+        #     # which normally would be very useful for debugging, but we can't serialize it!
+        #     # So we make sure we only serialize the exception we know about, and string-ify the others.
+        #     if (error isa LoadError && error.error isa UndefVarError) || error isa UndefVarError
+        #         (false, error)
+        #     else
+        #         (false, ErrorException(sprint(showerror, error)))
+        #     end
         end
     end)
 end

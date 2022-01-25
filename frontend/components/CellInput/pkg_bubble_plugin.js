@@ -120,8 +120,8 @@ function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg }) {
                     }
 
                     let package_name = view.state.doc.sliceString(from, to)
-                    console.warn(type)
-                    console.warn("Found", package_name)
+                    // console.warn(type)
+                    // console.warn("Found", package_name)
                     add_widget(package_name, to)
 
                     if (in_selected_import) {

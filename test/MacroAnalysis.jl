@@ -173,7 +173,7 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
     @testset "Expr sanitization" begin
         struct A; end
         f(x) = x
-        unserializable_expr = Expr(:call, f, A(), A[A(), A(), A()], PlutoRunner, PlutoRunner.sanitize_expr)
+        unserializable_expr = :($(f)(A(), A[A(), A(), A()], PlutoRunner, PlutoRunner.sanitize_expr))
 
         get_expr_types(other) = typeof(other)
         get_expr_types(ex::Expr) = get_expr_types.(ex.args)
@@ -185,11 +185,7 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         types = sanitized_expr |> get_expr_types |> flatten |> Set
 
         # Checks that no fancy type is part of the serialized expression
-        @test Set([Symbol, QuoteNode]) == types
-
-        @test Meta.isexpr(sanitized_expr.args[3], :vect, 3)
-        @test sanitized_expr.args[2] == :A
-        @test sanitized_expr.args[1] == :(Main.f)
+        @test Set([Nothing, Symbol, QuoteNode]) == types
     end
 
     @testset "Macrodef cells not root of run" begin
@@ -728,5 +724,54 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
 
         @test :option_type ∈ notebook.topology.nodes[cell(1)].references
         @test cell(1) |> noerror
+    end
+
+    @testset "GlobalRefs in macros should be respected" begin
+        notebook = Notebook(Cell.([
+            """
+            macro identity(expr)
+                expr
+            end
+            """,
+            """
+            x = 20
+            """,
+            """
+            let x = 10
+                @identity(x)
+            end
+            """,
+        ]))
+        cell(idx) = notebook.cells[idx]
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test all(cell.([1,2,3]) .|> noerror)
+        @test cell(3).output.body == "20"
+    end
+
+    @testset "GlobalRefs shouldn't break unreached undefined references" begin
+        notebook = Notebook(Cell.([
+            """
+            macro get_x_but_actually_not()
+                quote
+                    if false
+                        x
+                    else
+                        :this_should_be_returned
+                    end
+                end
+            end
+            """,
+            """
+            @get_x_but_actually_not()
+            """,
+        ]))
+        cell(idx) = notebook.cells[idx]
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test all(cell.([1,2]) .|> noerror)
+        @test cell(2).output.body == ":this_should_be_returned"
     end
 end

@@ -109,7 +109,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         update_save_run!(🍭, notebook, notebook.cells[1:8])
         @test notebook.nbpkg_restart_required_msg !== nothing
 
-        Pluto.response_restrart_process(Pluto.ClientRequest(
+        Pluto.response_restart_process(Pluto.ClientRequest(
             session=🍭,
             notebook=notebook,
         ); run_async=false)
@@ -527,7 +527,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
             # end
 
             if should_restart
-                Pluto.response_restrart_process(Pluto.ClientRequest(
+                Pluto.response_restart_process(Pluto.ClientRequest(
                     session=🍭,
                     notebook=notebook,
                 ); run_async=false)

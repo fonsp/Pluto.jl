@@ -200,7 +200,7 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
                         pushfirst!(LOAD_PATH, env_dir)
 
                         # update registries if this is the first time
-                        PkgCompat.update_registries(notebook.nbpkg_ctx)
+                        PkgCompat.update_registries(; force=false)
                         # instantiate without forcing registry update
                         PkgCompat.instantiate(notebook.nbpkg_ctx; update_registry=false)
                         
@@ -267,17 +267,17 @@ function sync_nbpkg(session, notebook; save::Bool=true)
 
 			if pkg_result.restart_recommended
 				@debug "PlutoPkg: Notebook restart recommended"
-				notebook.nbpkg_restart_recommended_msg = "yes"
+				notebook.nbpkg_restart_recommended_msg = "Yes, something changed during regular sync."
 			end
 			if pkg_result.restart_required
 				@debug "PlutoPkg: Notebook restart REQUIRED"
-				notebook.nbpkg_restart_required_msg = "yes"
+				notebook.nbpkg_restart_required_msg = "Yes, something changed during regular sync."
 			end
 
 			notebook.nbpkg_busy_packages = String[]
             update_nbpkg_cache!(notebook)
 			send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
-			save && save_notebook(notebook)
+			save && save_notebook(session, notebook)
 		end
 	catch e
 		bt = catch_backtrace()
@@ -299,12 +299,12 @@ function sync_nbpkg(session, notebook; save::Bool=true)
 
 		# Clear the embedded Project and Manifest and require a restart from the user.
 		reset_nbpkg(notebook; keep_project=false, save=save)
-		notebook.nbpkg_restart_required_msg = "yes"
+		notebook.nbpkg_restart_required_msg = "Yes, because sync_nbpkg_core failed. \n\n$(error_text)"
         notebook.nbpkg_ctx_instantiated = false
         update_nbpkg_cache!(notebook)
 		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 
-		save && save_notebook(notebook)
+		save && save_notebook(session, notebook)
 	end
 end
 
@@ -360,6 +360,7 @@ function update_nbpkg_core(notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEV
                 notebook.nbpkg_ctx = PkgCompat.clear_stdlib_compat_entries(notebook.nbpkg_ctx)
                 PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
                     withinteractive(false) do
+                        PkgCompat.update_registries(;force=false)
                         try
                             Pkg.resolve(notebook.nbpkg_ctx)
                         catch e
@@ -427,11 +428,11 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
 		if pkg_result.did_something
 			if pkg_result.restart_recommended
 				@debug "PlutoPkg: Notebook restart recommended"
-				notebook.nbpkg_restart_recommended_msg = "yes"
+				notebook.nbpkg_restart_recommended_msg = "Yes, something changed during regular update_nbpkg."
 			end
 			if pkg_result.restart_required
 				@debug "PlutoPkg: Notebook restart REQUIRED"
-				notebook.nbpkg_restart_required_msg = "yes"
+				notebook.nbpkg_restart_required_msg = "Yes, something changed during regular update_nbpkg."
 			end
 		else
             isfile(bp) && rm(bp)
@@ -440,7 +441,7 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
 		notebook.nbpkg_busy_packages = String[]
         update_nbpkg_cache!(notebook)
 		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
-		save && save_notebook(notebook)
+		save && save_notebook(session, notebook)
 	end
 end
 

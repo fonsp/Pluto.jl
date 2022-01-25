@@ -1,6 +1,8 @@
+import _ from "../imports/lodash.js"
+import { html, useContext, useEffect, useMemo, useState } from "../imports/Preact.js"
+
 import { in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { PlutoContext } from "../common/PlutoContext.js"
-import { html, useContext, useEffect, useMemo, useState } from "../imports/Preact.js"
 
 const upstream_of = (a_cell_id, notebook) => Object.values(notebook?.cell_dependencies?.[a_cell_id]?.upstream_cells_map || {}).flatMap((x) => x)
 

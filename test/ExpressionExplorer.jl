@@ -125,6 +125,11 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(a .+= b), [:b, :a], [], [:+], [])
         @test testee(:(a[i] .+= b), [:b, :a, :i], [], [:+], [])
         @test testee(:(a .+ b ./ sqrt.(c, d)), [:a, :b, :c, :d], [], [:+, :/, :sqrt], [])
+
+        # in 1.5 :(.+) is a symbol, in 1.6 its Expr:(:(.), :+)
+        broadcasted_add = :(.+) isa Symbol ? :(.+) : :+
+        @test testee(:(f = .+), [broadcasted_add], [:f], [], [])
+        @test testee(:(reduce(.+, foo)), [broadcasted_add, :foo], [], [:reduce], [])
     end
     @testset "`for` & `while`" begin
         @test testee(:(for k in 1:n; k + s; end), [:n, :s], [], [:+, :(:)], [])
@@ -146,6 +151,7 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:([a for a in b if a != 2]), [:b], [], [:(!=)], [])
         @test testee(:([a for a in f() if g(a)]), [], [], [:f, :g], [])
         @test testee(:([c(a) for a in f() if g(a)]), [], [], [:c, :f, :g], [])
+        @test testee(:([k for k in P, j in 1:k]), [:k, :P], [], [:(:)], [])
 
         @test testee(:([a for a in a]), [:a], [], [], [])
         @test testee(:(for a in a; a; end), [:a], [], [], [])
@@ -456,10 +462,10 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(Base.@kwdef struct A; x = 1; y::Int = two; z end), [], [], [], [], [[:Base, Symbol("@kwdef")]])
         @test testee(quote "asdf" f(x) = x end, [], [], [], [], [Symbol("@doc")])
 
-        @test testee(:(@bind a b), [:b, :PlutoRunner, :Base, :Core], [:a], [[:PlutoRunner, :Bond], [:Core, :applicable], [:Base, :get]], [], [Symbol("@bind")])
-        @test testee(:(PlutoRunner.@bind a b), [:b, :PlutoRunner, :Base, :Core], [:a], [[:PlutoRunner, :Bond], [:Core, :applicable], [:Base, :get]], [], [[:PlutoRunner, Symbol("@bind")]])
-        @test_broken testee(:(Main.PlutoRunner.@bind a b), [:b, :PlutoRunner, :Base, :Core], [:a], [[:Base, :get], [:Core, :applicable], [:PlutoRunner, :Bond], [:PlutoRunner, Symbol("@bind")]], [], verbose=false)
-        @test testee(:(let @bind a b end), [:b, :PlutoRunner, :Base, :Core], [:a], [[:PlutoRunner, :Bond], [:Core, :applicable], [:Base, :get]], [], [Symbol("@bind")])
+        @test testee(:(@bind a b), [:b, :PlutoRunner, :Base, :Core], [:a], [[:PlutoRunner, :create_bond], [:Core, :applicable], [:Base, :get]], [], [Symbol("@bind")])
+        @test testee(:(PlutoRunner.@bind a b), [:b, :PlutoRunner, :Base, :Core], [:a], [[:PlutoRunner, :create_bond], [:Core, :applicable], [:Base, :get]], [], [[:PlutoRunner, Symbol("@bind")]])
+        @test_broken testee(:(Main.PlutoRunner.@bind a b), [:b, :PlutoRunner, :Base, :Core], [:a], [[:Base, :get], [:Core, :applicable], [:PlutoRunner, :create_bond], [:PlutoRunner, Symbol("@bind")]], [], verbose=false)
+        @test testee(:(let @bind a b end), [:b, :PlutoRunner, :Base, :Core], [:a], [[:PlutoRunner, :create_bond], [:Core, :applicable], [:Base, :get]], [], [Symbol("@bind")])
 
         @test testee(:(@asdf a = x1 b = x2 c = x3), [], [], [], [], [Symbol("@asdf")]) # https://github.com/fonsp/Pluto.jl/issues/670
 
@@ -468,8 +474,8 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(Pack.@asdf a[1,k[j]] := log(x[i]/y[j])), [], [], [], [], [[:Pack, Symbol("@asdf")]])
 
         @test testee(:(`hey $(a = 1) $(b)`), [:b], [], [:cmd_gen], [], [Symbol("@cmd")])
-        @test testee(:(md"hey $(@bind a b) $(a)"), [:b, :PlutoRunner, :Base, :Core], [:a], [[:PlutoRunner, :Bond], [:Core, :applicable], [:Base, :get], :getindex], [], [Symbol("@md_str"), Symbol("@bind")])
-        @test testee(:(md"hey $(a) $(@bind a b)"), [:a, :b, :PlutoRunner, :Base, :Core], [:a], [[:PlutoRunner, :Bond], [:Core, :applicable], [:Base, :get], :getindex], [], [Symbol("@md_str"), Symbol("@bind")])
+        @test testee(:(md"hey $(@bind a b) $(a)"), [:b, :PlutoRunner, :Base, :Core], [:a], [[:PlutoRunner, :create_bond], [:Core, :applicable], [:Base, :get], :getindex], [], [Symbol("@md_str"), Symbol("@bind")])
+        @test testee(:(md"hey $(a) $(@bind a b)"), [:a, :b, :PlutoRunner, :Base, :Core], [:a], [[:PlutoRunner, :create_bond], [:Core, :applicable], [:Base, :get], :getindex], [], [Symbol("@md_str"), Symbol("@bind")])
         @test testee(:(html"a $(b = c)"), [], [], [], [], [Symbol("@html_str")])
         @test testee(:(md"a $(b = c) $(b)"), [:c], [:b], [:getindex], [], [Symbol("@md_str")])
         @test testee(:(md"\* $r"), [:r], [], [:getindex], [], [Symbol("@md_str")])
@@ -494,6 +500,9 @@ Some of these @test_broken lines are commented out to prevent printing to the te
             expr=:(@parent begin @child 1 + @grandchild 10 end),
             macrocalls=[Symbol("@parent"), Symbol("@child"), Symbol("@grandchild")],
         )
+        @test testee(macroexpand(Main, :(@noinline f(x) = x)), [], [], [], [
+            Symbol("f") => ([], [], [], [])
+        ])
     end
     @testset "Macros and heuristics" begin
         @test test_expression_explorer(

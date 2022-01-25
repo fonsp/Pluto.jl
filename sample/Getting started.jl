@@ -58,7 +58,7 @@ Our cats have some neighbors. Let's involve them in the story too!"
 neighbors = [cat, friend, "Smerfetka", "Latte"]
 
 # ╔═╡ 19ff8d36-9547-11ea-0e08-e5cdd8338673
-md"Now, if you're like my grandma, you're feeding the entire neigborhood by yourself. Let's see how many cans of cat food you need to prepare."
+md"Now, if you're like my grandma, you're feeding the entire neighborhood by yourself. Let's see how many cans of cat food you need to prepare."
 
 # ╔═╡ 270ac49e-9549-11ea-3ffd-71ddaee9f134
 md"But what does `confusing_function` do? If you ever need help, click on 📚 **Live docs** in the lower right, and then place your cursor on the code you need help with. 

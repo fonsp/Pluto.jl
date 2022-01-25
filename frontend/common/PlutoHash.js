@@ -1,6 +1,10 @@
+import { sha256 } from "https://cdn.jsdelivr.net/gh/JuliaPluto/js-sha256@v0.9.0-es6/src/sha256.mjs"
+
 export const base64_arraybuffer = async (/** @type {BufferSource} */ data) => {
+    /** @type {string} */
     const base64url = await new Promise((r) => {
         const reader = new FileReader()
+        // @ts-ignore
         reader.onload = () => r(reader.result)
         reader.readAsDataURL(new Blob([data]))
     })
@@ -9,8 +13,10 @@ export const base64_arraybuffer = async (/** @type {BufferSource} */ data) => {
 }
 
 export const hash_arraybuffer = async (/** @type {BufferSource} */ data) => {
-    // @ts-ignore
-    const hashed_buffer = await window.crypto.subtle.digest("SHA-256", data)
+    const hash = sha256.create()
+    hash.update(data)
+    const hashed_buffer = hash.arrayBuffer()
+    // const hashed_buffer = await window.crypto.subtle.digest("SHA-256", data)
     return await base64_arraybuffer(hashed_buffer)
 }
 
@@ -18,6 +24,8 @@ export const hash_str = async (/** @type {string} */ s) => {
     const data = new TextEncoder().encode(s)
     return await hash_arraybuffer(data)
 }
+
+hash_str("Hannes").then((r) => console.assert(r === "OI48wVWerxEEnz5lIj6CPPRB8NOwwba+LkFYTDp4aUU=", r))
 
 export const debounced_promises = (async_function) => {
     let currently_running = false
@@ -36,4 +44,16 @@ export const debounced_promises = (async_function) => {
             currently_running = false
         }
     }
+}
+
+/** @returns {Promise<string>} */
+export const blob_url_to_data_url = async (/** @type {string} */ blob_url) => {
+    const blob = await (await fetch(blob_url)).blob()
+
+    return await new Promise((r) => {
+        const reader = new FileReader()
+        // @ts-ignore
+        reader.onload = () => r(reader.result)
+        reader.readAsDataURL(blob)
+    })
 }

@@ -2,6 +2,7 @@ using Test
 import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new, readwrite, without_pluto_file_extension
 import Random
 import Pkg
+import UUIDs: UUID
 
 # We define some notebooks explicitly, and not as a .jl notebook file, to avoid circular reasoning 🤔
 function basic_notebook()
@@ -164,7 +165,7 @@ end
             readwrite(nb.path, new_path)
 
             # load_notebook also does parsing and analysis - this is needed to save the notebook with cells in their correct order
-            # laod_notebook is how they are normally loaded, load_notebook_nobackup
+            # load_notebook is how they are normally loaded, load_notebook_nobackup
             new_nb = load_notebook(new_path)
 
             before_contents = read(new_path, String)
@@ -179,6 +180,42 @@ end
                 @test Text(before_contents) == Text(after_contents)
             end
         end
+    end
+    
+    @testset "Recover from bad cell order" begin
+        contents = """
+        ### A Pluto.jl notebook ###
+        # v0.17.3
+
+        using Markdown
+        using InteractiveUtils
+
+        # ╔═╡ cdd40e28-61be-11ec-28fd-111111111111
+        x = 1
+
+        # ╔═╡ cdd40e28-61be-11ec-28fd-222222222222
+        y = 2
+
+        # ╔═╡ cdd40e28-61be-11ec-28fd-333333333333
+        z = 3
+
+        # ╔═╡ Cell order:
+        # ╠═cdd40e28-61be-11ec-28fd-111111111111
+        # ╠═cdd40e28-61be-11ec-28fd-333333333333
+        # ╠═cdd40e28-61be-11ec-28fd-444444444444
+        """
+        
+        path = tempname()
+        write(path, contents)
+        
+        nb = load_notebook(path)
+        
+        @test nb.cell_order == UUID.([
+            "cdd40e28-61be-11ec-28fd-111111111111",
+            "cdd40e28-61be-11ec-28fd-333333333333",
+            "cdd40e28-61be-11ec-28fd-222222222222",
+        ])
+        @test keys(nb.cells_dict) == Set(nb.cell_order)
     end
 
     # Some notebooks are designed to error (inside/outside Pluto)
@@ -205,6 +242,7 @@ end
         @testset "$(name)" for (name, nb) in nbs
             if name ∉ expect_error
                 @test nb_is_runnable(🍭, nb)
+                WorkspaceManager.unmake_workspace((🍭, nb))
             end
         end
     end
@@ -250,10 +288,49 @@ end
                 [old_lines[1], old_lines...]
             end
             write(new_path, join(to_write, '\n'))
+            
+            @test_nowarn load_notebook(new_path)
+            @test num_backups_in(new_dir) == 0
+            @test readdir(new_dir) == ["nb.jl"]
+            
+            
+            # Extra stuff in preamble
+            cp(nb.path, new_path, force=true)
+            to_write = let
+                old_content = read(new_path, String)
+                replace(old_content, "using Markdown" => "using Markdown\n1 + 1")
+            end
+            write(new_path, to_write)
+            
+            @test_nowarn load_notebook(new_path)
+            @test num_backups_in(new_dir) == 0
+            @test readdir(new_dir) == ["nb.jl"]
+            
+            
+            
+            
+            # Extra stuff at the end of the file
+            cp(nb.path, new_path, force=true)
+            to_write = let
+                old_lines = readlines(new_path)
+                [old_lines..., "", "1 + 1", Pluto._cell_id_delimiter * "heyyyy", "# coolio"]
+            end
+            
+            write(new_path, join(to_write, '\n'))
+            
             @test_logs (:warn, r"Backup saved to") load_notebook(new_path)
             @test num_backups_in(new_dir) == 1
 
             @test readdir(new_dir) == ["nb backup 1.jl", "nb.jl"]
+            
+            # AGAIN
+            
+            write(new_path, join(to_write, '\n'))
+            
+            @test_logs (:warn, r"Backup saved to") load_notebook(new_path)
+            @test num_backups_in(new_dir) == 2
+
+            @test Set(readdir(new_dir)) == Set(["nb backup 2.jl", "nb backup 1.jl", "nb.jl"] )
         end
     end
 

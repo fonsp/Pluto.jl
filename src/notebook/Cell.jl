@@ -11,6 +11,9 @@ Base.@kwdef struct CellOutput
     
     "Whether `this` inside `<script id=something>` should refer to the previously returned object in HTML output. This is used for fancy animations. true iff a cell runs as a reactive consequence."
     persist_js_state::Bool=false
+
+    "Whether this cell uses @use_state or @use_effect"
+    has_pluto_hook_features::Bool=false
 end
 
 struct CellDependencies{T} # T == Cell, but this has to be parametric to avoid a circular dependency of the structs
@@ -32,6 +35,8 @@ Base.@kwdef mutable struct Cell
     running::Bool=false
 
     published_objects::Dict{String,Any}=Dict{String,Any}()
+    
+    logs::Vector{Dict{String,Any}}=Vector{Dict{String,Any}}()
     
     errored::Bool=false
     runtime::Union{Nothing,UInt64}=nothing

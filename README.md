@@ -96,7 +96,7 @@ _([video](https://www.youtube.com/watch?v=rpB6zQNsbQU)) Grant Sanderson ([3Blue1
 
 For one tasty notebook 🥞 you will need:
 
-- **Julia** v1.5 or above
+- [**Julia** v1.5 or above](https://julialang.org/downloads/#current_stable_release)
 - **Linux**, **MacOS** or **Windows**, _Linux and MacOS will work best_
 - Mozilla **Firefox** or Google **Chrome**
 
@@ -109,10 +109,8 @@ and add the Pluto package:
 
 ```julia
 julia> ]
-(v1.6) pkg> add Pluto
+(v1.7) pkg> add Pluto
 ```
-
-_Using the package manager for the first time after installing Julia can take up to 15 minutes - hang in there!_
 
 _Tip for new Julia users: To return to the `julia>` prompt from the Pkg REPL,
 either press backspace when the input line is empty or press Ctrl+C._

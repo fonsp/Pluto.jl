@@ -3,17 +3,9 @@ import { html, Component } from "../imports/Preact.js"
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 
-import {
-    EditorState,
-    EditorSelection,
-    EditorView,
-    placeholder,
-    keymap,
-    history,
-    autocompletion,
-    drawSelection,
-    completionKeymap,
-} from "../imports/CodemirrorPlutoSetup.js"
+import { EditorState, EditorSelection, EditorView, placeholder, keymap, history, autocomplete, drawSelection } from "../imports/CodemirrorPlutoSetup.js"
+
+let { autocompletion, completionKeymap } = autocomplete
 
 let start_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Ctrl-Space")
 let accept_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Enter")
@@ -69,6 +61,7 @@ export class FilePicker extends Component {
         }
     }
     componentDidMount() {
+        const usesDarkTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
         this.cm = new EditorView({
             /** Migration #0: New */
             state: EditorState.create({
@@ -108,7 +101,7 @@ export class FilePicker extends Component {
                             overflowY: "hidden",
                             overflowX: "auto",
                         },
-                    }),
+                    }, {dark : usesDarkTheme}),
                     // EditorView.updateListener.of(onCM6Update),
                     history(),
                     autocompletion({
