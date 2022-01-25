@@ -7,6 +7,20 @@ using InteractiveUtils
 # ╔═╡ 4c4b77dc-8545-4922-9897-110fa67c99f4
 md"# ChildProcesses"
 
+# ╔═╡ 934d18d4-936e-4ee0-aa6e-86aa6f66774c
+juliapath() = joinpath(Sys.BINDIR::String, Base.julia_exename())
+
+# ╔═╡ 4df77979-0c35-4139-aa5e-da43c1de3a77
+if VERSION >= v"1.7.0"
+	function get_task_error(t::Task)
+		throw("TODO")
+	end
+else
+	function get_task_error(t::Task)
+		CapturedException(Base.catch_stack(t)[end]...)
+	end
+end
+
 # ╔═╡ 6925ffbb-fd9e-402c-a483-c78f28f892a5
 import Serialization
 
@@ -28,20 +42,22 @@ Base.@kwdef mutable struct ParentProcess
 	parent_to_child=stdin
 	child_to_parent=stdout
 	channels::Dict{UUID,AbstractChannel}=Dict{UUID,AbstractChannel}()
-	lock=ReentrantLock()
+	messaging_lock=ReentrantLock()
 end
 
 # ╔═╡ 87182605-f5a1-46a7-968f-bdfb9d0e08fa
 function setup_parent_process()
-	real_stdout = stdout
 	# Redirect things written to stdout to stderr,
 	# stderr will showup in the Pluto with_terminal view.
+	real_stdout = stdout
 	redirect_stdout(stderr)
 
-	# TODO Maybe redirect stdin too, just to be sure?
+	# Just take away stdin, just in case
+	real_stdin = stdin
+	redirect_stdin()
 
 	ParentProcess(
-		parent_to_child=stdin,
+		parent_to_child=real_stdin,
 		child_to_parent=real_stdout,
 	)
 end
@@ -58,11 +74,33 @@ md"""
 ## Parent process side
 """
 
+# ╔═╡ abe897ff-6e86-40eb-a1a6-2918b6c3c5a7
+struct LocalSandbox end
+
+# ╔═╡ 884e103a-8925-477d-a264-f15d02a49aa9
+md"""
+## ChildChannel
+
+I guess this is similar to Distributed.ChildChannel.
+It communicates all actions that happen on it (take!, put!, close) to the other side. There is a local channel stored that is used as buffer.
+"""
+
+# ╔═╡ 1d63f09f-dfb2-40dd-beb5-45125cb19006
+md"## Message types"
+
+# ╔═╡ fc0ca4b5-e03b-4c08-b43d-913ee12269c7
+abstract type Message end
+
+# ╔═╡ 3431051e-55ce-46c1-a0f5-364662f5c77b
+MessageChannel = AbstractChannel{Message}
+
 # ╔═╡ 85920c27-d8a6-4b5c-93b6-41daa5866f9d
 Base.@kwdef mutable struct ChildProcess
 	process::Base.AbstractPipe
-	channels::Dict{UUID,AbstractChannel}=Dict{UUID,AbstractChannel}()
-	lock=ReentrantLock()
+	channels::Dict{UUID,MessageChannel}=Dict{UUID,MessageChannel}()
+
+	"Lock to make sure there are no messages being sent intervowen"
+	messaging_lock=ReentrantLock()
 end
 
 # ╔═╡ 63531683-e295-4ba6-811f-63b0d384ba0f
@@ -99,20 +137,6 @@ Base.process_running(p::ChildProcess) = Base.process_running(p.process)
 # ╔═╡ e787d8bd-499d-4a41-8913-62b3d9346748
 Base.wait(process::ChildProcess) = Base.wait(process.process)
 
-# ╔═╡ abe897ff-6e86-40eb-a1a6-2918b6c3c5a7
-struct LocalSandbox end
-
-# ╔═╡ 934d18d4-936e-4ee0-aa6e-86aa6f66774c
-juliapath() = joinpath(Sys.BINDIR::String, Base.julia_exename())
-
-# ╔═╡ 884e103a-8925-477d-a264-f15d02a49aa9
-md"""
-## ChildChannel
-
-I guess this is similar to Distributed.ChildChannel.
-It communicates all actions that happen on it (take!, put!, close) to the other side. There is a local channel stored that is used as buffer.
-"""
-
 # ╔═╡ b8865d63-19fa-4438-87a2-ccb531bd73a4
 Base.@kwdef struct ChildChannel{T} <: AbstractChannel{T}
 	process::ChildProcess
@@ -120,8 +144,11 @@ Base.@kwdef struct ChildChannel{T} <: AbstractChannel{T}
 	local_channel::AbstractChannel{T}
 end
 
-# ╔═╡ fc0ca4b5-e03b-4c08-b43d-913ee12269c7
-abstract type Message end
+# ╔═╡ f81ff6f7-f230-4373-b60b-76e8a0eba929
+Base.@kwdef struct Envelope
+	channel_id::UUID
+	message::Message
+end
 
 # ╔═╡ adfb2d12-07a0-4d5e-8e24-1676c07107c7
 struct CreateChildChannelMessage <: Message
@@ -135,7 +162,7 @@ end
 
 # ╔═╡ f9270f05-fa22-4027-a2ca-7db61d057c56
 struct ErrorMessage <: Message
-	error::Exception
+	error::CapturedException
 end
 
 # ╔═╡ 0ba318bc-7b4c-4d0f-a46c-2f9dca756926
@@ -149,12 +176,6 @@ end
 
 # ╔═╡ 441c27e4-6884-4887-9cd5-bc55d0c49760
 struct ChannelTakeMessage <: Message
-end
-
-# ╔═╡ f81ff6f7-f230-4373-b60b-76e8a0eba929
-Base.@kwdef struct Envelope
-	channel_id::UUID
-	message::Message
 end
 
 # ╔═╡ 1f868b3c-df9a-4d4d-a6a9-9a196298a3af
@@ -254,13 +275,12 @@ function respond_to_parent(; to::ParentProcess, about::UUID, with::Message)
 		channel_id=about,
 		message=with,
 	))
-	lock(to.lock)
+	lock(to.messaging_lock)
 	try
 		send_message(to.child_to_parent, binary_message)
 	finally
-	    unlock(to.lock)
+	    unlock(to.messaging_lock)
 	end
-
 end
 
 # ╔═╡ 20f66652-bca0-4e47-a4b7-502cfbcb3db5
@@ -269,12 +289,12 @@ function send_message_without_response(process::ChildProcess, envelope::Envelope
 		throw(ProcessExitedException(process=process))
 	end
 	
-	lock(process.lock)
+	lock(process.messaging_lock)
 	try
 		send_message(process.process, to_binary(envelope))
-		return envelope
+		nothing
 	finally
-	    unlock(process.lock)
+	    unlock(process.messaging_lock)
 	end
 end
 
@@ -315,84 +335,6 @@ end
 # ╔═╡ 4289b4ba-45f2-4be7-b983-68f7d97510fa
 Base.close(process::ChildProcess) = Base.close(process.process)
 
-# ╔═╡ 6a7aa0ce-0ae3-4e7d-a93a-bfdebe406220
-begin
-	function handle_child_message(
-		message,
-		process::ChildProcess,
-		input_channel::AbstractChannel,
-		output_channel::AbstractChannel,
-	)
-		@warn "Unknown message type" message
-	end
-
-	function handle_child_message(
-		message::ChannelPushMessage,
-		process::ChildProcess,
-		input_channel::AbstractChannel,
-		output_channel::AbstractChannel,
-	)
-		put!(output_channel, message.value)
-	end
-
-	function handle_child_message(
-		message::ChannelCloseMessage,
-		process::ChildProcess,
-		input_channel::AbstractChannel,
-		output_channel::AbstractChannel,
-	)
-		close(output_channel)
-	end
-
-	function handle_child_message(
-		message::ErrorMessage,
-		process::ChildProcess,
-		input_channel::AbstractChannel,
-		output_channel::AbstractChannel,
-	)
-		close(input_channel, ChildProcessException(
-			process=process,
-			captured=message.error,
-		))
-	end
-end
-
-# ╔═╡ f99f4659-f71e-4f2e-a674-67ba69289817
-function create_channel(process::ChildProcess, expr)
-	channel_id = uuid4()
-	envelope = send_message_without_response(process, Envelope(
-		channel_id=channel_id,
-		message=CreateChildChannelMessage(expr)
-	))
-
-	response_channel = Channel{Message}()
-	process.channels[channel_id] = response_channel
-
-	actual_values_channes = Channel(Inf) do ch
-		try
-			for message in response_channel
-				handle_child_message(
-					message,
-					process,
-					response_channel,
-					ch,
-				)
-			end
-		catch e
-			close(ch, e)
-		finally
-			close(ch)
-			close(response_channel)
-		end
-	end
-
-	ChildChannel(
-		process=process,
-		id=channel_id,
-		local_channel=actual_values_channes,
-	)
-end
-
 # ╔═╡ 2342d663-030f-4ed2-b1d5-5be1910b6d4c
 function create_channel(fn, process::ChildProcess, message)
 	remote_channel = create_channel(process, message)
@@ -401,27 +343,6 @@ function create_channel(fn, process::ChildProcess, message)
 		return fn(remote_channel)
 	finally
 		close(remote_channel)
-	end
-end
-
-# ╔═╡ 4b42e233-1f06-49c9-8c6a-9dc21c21ffb7
-function call(process::ChildProcess, expr)
-	create_channel(process, quote
-		Channel() do ch
-			put!(ch, $expr)
-		end
-	end) do channel
-		take!(channel)
-	end
-end
-
-# ╔═╡ e3e16a8b-7124-4678-8fe7-12ed449e1954
-function call_without_fetch(process::ChildProcess, expr)
-	create_channel(process, quote
-		$expr
-		$(SingleTakeChannel())
-	end) do channel
-		take!(channel)
 	end
 end
 
@@ -462,7 +383,7 @@ Spawn a child process that you'll be able to `call()` on and communicate with ov
 It spawns a process using `open` with some ad-hoc julia code that also loads the `ChildProcesses` module. It then spawns a loop for listening to the spawned process.
 The returned `ChildProcess` is basically a bunch of event listeners (in the form of channels) that 
 """
-function create_child_process(; custom_stderr=stderr, exeflags=["--history-file=no"])
+function create_child_process(; custom_stderr=stderr, exeflags=["--history-file=no", "--threads=auto"])
 	this_file = split(@__FILE__(), "#")[1]
 	this_module = string(nameof(@__MODULE__))
 	
@@ -473,13 +394,23 @@ function create_child_process(; custom_stderr=stderr, exeflags=["--history-file=
 	end
 		
 	const parent_process = var"$this_module".setup_parent_process()
-	
+
+	Threads.@spawn begin
+		try
+			var"$this_module".listen_for_messages_from_parent(parent_process)
+			@info "Done?"
+		catch error
+			@error "Shutdown error" error
+			rethrow(error)
+		end
+	end
+
 	try
-		var"$this_module".listen_for_messages_from_parent(parent_process)
-		@info "Done?"
-	catch error
-		@error "Shutdown error" error
-		rethrow(error)
+		while true
+			sleep(typemax(UInt64))
+		end
+	catch e
+		@error "HMMM SIGNINT MAYBE?" e
 	end
 	"""
 	
@@ -494,6 +425,110 @@ function create_child_process(; custom_stderr=stderr, exeflags=["--history-file=
 		listen_for_messages_from_child(child_process)
 	end)
 	child_process
+end
+
+# ╔═╡ 6a7aa0ce-0ae3-4e7d-a93a-bfdebe406220
+begin
+	function handle_child_message(
+		message,
+		process::ChildProcess,
+		input_channel::AbstractChannel,
+		output_channel::AbstractChannel,
+	)
+		@warn "Unknown message type" message
+	end
+
+	function handle_child_message(
+		message::ChannelPushMessage,
+		process::ChildProcess,
+		input_channel::AbstractChannel,
+		output_channel::AbstractChannel,
+	)
+		put!(output_channel, message.value)
+	end
+
+	function handle_child_message(
+		message::ChannelCloseMessage,
+		process::ChildProcess,
+		input_channel::AbstractChannel,
+		output_channel::AbstractChannel,
+	)
+		close(output_channel)
+	end
+
+	function handle_child_message(
+		message::ErrorMessage,
+		process::ChildProcess,
+		input_channel::AbstractChannel,
+		output_channel::AbstractChannel,
+	)
+		close(output_channel, ChildProcessException(
+			process=process,
+			captured=message.error,
+		))
+	end
+end
+
+# ╔═╡ f99f4659-f71e-4f2e-a674-67ba69289817
+function create_channel(process::ChildProcess, expr)
+	channel_id = uuid4()
+
+	# Create and register channel for responses
+	response_channel = Channel{Message}()
+	process.channels[channel_id] = response_channel
+
+	# Tell the child process to start executing
+	send_message_without_response(process, Envelope(
+		channel_id=channel_id,
+		message=CreateChildChannelMessage(expr)
+	))
+
+	# Map the messages from the child process to actions
+	actual_values_channels = Channel(Inf) do ch
+		try
+			for message in response_channel
+				handle_child_message(
+					message,
+					process,
+					response_channel,
+					ch,
+				)
+			end
+		catch e
+			@error "THIS SHOULDNT ERROR MATE" e
+			close(ch, e)
+		finally
+			close(ch)
+			close(response_channel)
+		end
+	end
+
+	ChildChannel(
+		process=process,
+		id=channel_id,
+		local_channel=actual_values_channels,
+	)
+end
+
+# ╔═╡ 4b42e233-1f06-49c9-8c6a-9dc21c21ffb7
+function call(process::ChildProcess, expr)
+	create_channel(process, quote
+		Channel() do ch
+			put!(ch, $expr)
+		end
+	end) do channel
+		take!(channel)
+	end
+end
+
+# ╔═╡ e3e16a8b-7124-4678-8fe7-12ed449e1954
+function call_without_fetch(process::ChildProcess, expr)
+	create_channel(process, quote
+		$expr
+		$(SingleTakeChannel())
+	end) do channel
+		take!(channel)
+	end
 end
 
 # ╔═╡ 7da416d1-5dfb-4510-9d32-62c1464a83d4
@@ -574,14 +609,15 @@ end
 
 # ╔═╡ 13089c5d-f833-4fb7-b8cd-4158b1a57103
 function create_parent_channel(; process, channel_id, result_channel)
-	parent_channel = ParentChannel(
-		process=process,
-		channel_id=channel_id,
-		result_channel=result_channel,
-	)
 	Channel(Inf) do input_channel
 		try
 			for message in input_channel
+				parent_channel = ParentChannel(
+					process=process,
+					channel_id=channel_id,
+					result_channel=result_channel,
+				)
+
 				if handle_message_from_parent_channel(
 					parent_channel,
 					message,
@@ -606,77 +642,51 @@ function create_parent_channel(; process, channel_id, result_channel)
 	end
 end
 
-# ╔═╡ 38ca1c5b-e27e-4458-98a7-786b2d302ba3
-begin
-	function handle_message_from_parent(
-		process::ParentProcess,
-		channel_id::UUID,
-		message
-	)
-		@warn "Unknown message type from parent" message
-	end
-
-	function handle_message_from_parent(
-		process::ParentProcess,
-		channel_id::UUID,
-		message::CreateChildChannelMessage
-	)
-		result_channel = Main.eval(message.expr)
-		process.channels[channel_id] = create_parent_channel(
-			process=process,
-			channel_id=channel_id,
-			result_channel=result_channel,
-		)
-	end
-
-	function handle_message_from_parent(
-		process::ParentProcess,
-		channel_id::UUID,
-		message::ChannelCloseMessage
-	)
-		if haskey(process.channels, channel_id) && isopen(process.channels[channel_id])
-			put!(process.channels[channel_id], message)
-		end
-	end
-
-	function handle_message_from_parent(
-		process::ParentProcess,
-		channel_id::UUID,
-		message::ChannelTakeMessage
-	)
-		if haskey(process.channels, channel_id) && isopen(process.channels[channel_id])
-			put!(process.channels[channel_id], message)
-		else
-			respond_to_parent(
-				to=process,
-				about=channel_id,
-				with=ChannelCloseMessage(),
-			)
-		end
-	end
-end
-
 # ╔═╡ e4109311-8252-4793-87b8-eae807df7997
-function listen_for_messages_from_parent(parent_process::ParentProcess)
-	channels = parent_process.channels
+function listen_for_messages_from_parent(process::ParentProcess)
+	channels = process.channels
 
+	# ?? What do these locks do?? They look cool, but are they useful actually?
 	locks = Dict{UUID, ReentrantLock}()
 
-	for envelope in ReadMessages(parent_process.parent_to_child)
+	for envelope in ReadMessages(process.parent_to_child)
+		channel_id = envelope.channel_id
+		message = envelope.message
+		
 		channel_lock = get!(locks, envelope.channel_id) do 
 			ReentrantLock()
 		end
+		
 		schedule(Task() do
 			lock(channel_lock)
 			try
-				handle_message_from_parent(
-					parent_process,
-					envelope.channel_id,
-					envelope.message,
-				)
+				if envelope.message isa CreateChildChannelMessage
+					@assert !haskey(process.channels, channel_id)
+					
+					result_channel = Main.eval(message.expr)
+					process.channels[channel_id] = create_parent_channel(
+						process=process,
+						channel_id=channel_id,
+						result_channel=result_channel,
+					)
+				else
+					if (
+						haskey(process.channels, channel_id) &&
+						isopen(process.channels[channel_id])
+					)
+						put!(process.channels[channel_id], message)
+					else
+						respond_to_parent(
+							to=process,
+							about=channel_id,
+							with=ChannelCloseMessage(),
+						)
+					end
+				end
 			catch error
+				@error "Does it error here already?" error
 				respond_to_parent(
-					to=parent_process,
+					to=process,
 					about=envelope.channel_id, 
 					with=ErrorMessage(CapturedException(error, catch_backtrace()))
 				)
@@ -715,11 +725,14 @@ uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 # ╔═╡ Cell order:
 # ╟─4c4b77dc-8545-4922-9897-110fa67c99f4
-# ╟─d3fe8144-6ba8-4dd9-b0e3-941a96422267
+# ╠═d3fe8144-6ba8-4dd9-b0e3-941a96422267
+# ╠═f99f4659-f71e-4f2e-a674-67ba69289817
+# ╠═2342d663-030f-4ed2-b1d5-5be1910b6d4c
 # ╠═4b42e233-1f06-49c9-8c6a-9dc21c21ffb7
 # ╠═e3e16a8b-7124-4678-8fe7-12ed449e1954
 # ╟─934d18d4-936e-4ee0-aa6e-86aa6f66774c
 # ╟─54a03cba-6d00-4632-8bd6-c60753c15ae6
+# ╠═4df77979-0c35-4139-aa5e-da43c1de3a77
 # ╠═6925ffbb-fd9e-402c-a483-c78f28f892a5
 # ╠═8c97d5cb-e346-4b94-b2a1-4fb5ff093bd5
 # ╠═63531683-e295-4ba6-811f-63b0d384ba0f
@@ -733,12 +746,12 @@ uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 # ╠═ce2acdd1-b4bb-4a8f-8346-a56dfa55f56b
 # ╠═87182605-f5a1-46a7-968f-bdfb9d0e08fa
 # ╠═b05be9c7-8cc1-47f9-8baa-db66ac83c24f
-# ╠═590a7882-3d69-48b0-bb1b-f476c7f8a885
+# ╟─590a7882-3d69-48b0-bb1b-f476c7f8a885
 # ╠═46d905fc-d41e-4c9a-a808-14710f64293a
 # ╠═13089c5d-f833-4fb7-b8cd-4158b1a57103
-# ╠═38ca1c5b-e27e-4458-98a7-786b2d302ba3
 # ╠═e4109311-8252-4793-87b8-eae807df7997
 # ╟─17cb5a65-2a72-4e7d-8fba-901452b2c19f
+# ╠═3431051e-55ce-46c1-a0f5-364662f5c77b
 # ╠═85920c27-d8a6-4b5c-93b6-41daa5866f9d
 # ╠═af4f0720-f7f7-4d8a-bd8c-8cf5abaf10a0
 # ╠═368ccd31-1681-4a4a-a103-2b9afc0813ee
@@ -746,14 +759,14 @@ uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 # ╠═e787d8bd-499d-4a41-8913-62b3d9346748
 # ╠═20f66652-bca0-4e47-a4b7-502cfbcb3db5
 # ╠═6a7aa0ce-0ae3-4e7d-a93a-bfdebe406220
-# ╠═f99f4659-f71e-4f2e-a674-67ba69289817
-# ╠═2342d663-030f-4ed2-b1d5-5be1910b6d4c
 # ╠═abe897ff-6e86-40eb-a1a6-2918b6c3c5a7
 # ╟─884e103a-8925-477d-a264-f15d02a49aa9
 # ╠═b8865d63-19fa-4438-87a2-ccb531bd73a4
 # ╠═e1e79669-8d0a-4b04-a7fd-469e7d8e65b1
 # ╠═ed6c16ed-bf4a-40ce-9c14-a72fd77e24a1
 # ╠═5fb65aec-3512-4f48-98ce-300ab9fdadfe
+# ╟─1d63f09f-dfb2-40dd-beb5-45125cb19006
+# ╠═f81ff6f7-f230-4373-b60b-76e8a0eba929
 # ╠═fc0ca4b5-e03b-4c08-b43d-913ee12269c7
 # ╠═adfb2d12-07a0-4d5e-8e24-1676c07107c7
 # ╠═e8256f1f-c778-4fb3-a2d3-12da0e1cb3da
@@ -761,7 +774,6 @@ uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 # ╠═0ba318bc-7b4c-4d0f-a46c-2f9dca756926
 # ╠═c83f2936-3768-4724-9c5c-335d7a4aae03
 # ╠═441c27e4-6884-4887-9cd5-bc55d0c49760
-# ╠═f81ff6f7-f230-4373-b60b-76e8a0eba929
 # ╟─1f868b3c-df9a-4d4d-a6a9-9a196298a3af
 # ╟─77df6f7b-ed8e-442a-9489-873fc392937c
 # ╠═3a62b419-eca2-4de1-89a4-fc9ad6f68372

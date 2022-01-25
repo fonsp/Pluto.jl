@@ -4,16 +4,6 @@
 using Markdown
 using InteractiveUtils
 
-# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
-macro bind(def, element)
-    quote
-        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
-        local el = $(esc(element))
-        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
-        el
-    end
-end
-
 # ╔═╡ 7e613bd2-616a-4687-8af5-a22c7a747d97
 import Serialization
 
@@ -29,162 +19,31 @@ import PlutoLinks: @ingredients, @use_task
 # ╔═╡ f9675ee0-e728-420b-81bd-22e57583c587
 import PlutoHooks: @use_effect, @use_ref, @use_state, @use_memo
 
-# ╔═╡ ca96e0d5-0904-4ae5-89d0-c1a9187710a1
-Base.@kwdef struct PlutoProcess
-	process
-	stdin
-	stdout
-	stderr
-end
-
-# ╔═╡ b7734627-ba2a-48d8-8fd8-a5c94716da20
-function Base.show(io::IO, ::MIME"text/plain", process::PlutoProcess)
-	write(io, process_running(process.process) ? "Running" : "Stopped")
-end
-
-# ╔═╡ 1a2f116b-78f7-47b6-b96b-c0c74b5c5a35
-@bind reset_process_counter PlutoUI.CounterButton("Reset process!")
-
-# ╔═╡ 8d6f46b6-e6cf-4094-a32a-f1b13dc005f6
-@bind send_counter PlutoUI.CounterButton("Send!")
-
-# ╔═╡ 09f4b4b6-75a4-4727-9405-e4fc45c2cda7
-import Distributed
-
-# ╔═╡ ffc98725-a88f-4dac-b387-f73cfd07510a
-# @use_task([x]) do
-# 	ChildProcesses.call(x, quote
-# 		1 + 1
-# 	end)
-# end
-
 # ╔═╡ a26cc458-4578-427f-840d-71d78c5c8b01
 begin
 	ChildProcesses = @ingredients("./ChildProcesses.jl").ChildProcesses
 	var"ChildProcesses.jl" = ChildProcesses
 end
 
-# ╔═╡ 730cfe5e-1541-4c08-8d4a-86d1f9e4115e
-let
+# ╔═╡ 6ff77f91-ee9c-407c-a243-09fc7e555d73
+function with_process(fn)
 	process = ChildProcesses.create_child_process()
-
-	ChildProcesses.call(process, :(throw("hi")))
+	try
+		fn(process)
+	finally
+		close(process)
+	end
 end
 
-# ╔═╡ b7ac2fea-41f4-47f3-a294-944378cb7093
-x = @use_memo([]) do
-	ChildProcesses.create_child_process()
+# ╔═╡ 730cfe5e-1541-4c08-8d4a-86d1f9e4115e
+with_process() do process
+	ChildProcesses.call(process, :(throw("Hi")))
 end
 
-# ╔═╡ 872a8651-736c-47dd-80e6-b645fb0490c9
-kill(x, Base.SIGINT)
-
-# ╔═╡ c1038e6a-c4e9-4b79-b3f9-35a9f64b0f64
-task = @use_task([x]) do
-	ChildProcesses.call(x, quote
-			while true; end
-	end)
+# ╔═╡ 6ab96c70-ad5d-4614-9a77-2d44d1085567
+with_process() do process
+	ChildProcesses.call(process, :(1 + 1))
 end
-
-# ╔═╡ 75fc343a-7904-45f8-be09-a542255ba673
-istaskdone(task) ? fetch(task) : nothing
-
-# ╔═╡ 281b4aab-307a-4d90-9dfb-f422b9567736
-# process_output = let
-# 	# error("Nope")
-	
-# 	my_stderr = @use_memo([reset_process_counter, ChildProcesses]) do 
-# 		Pipe()
-# 	end
-# 	output, set_output = @use_state("")
-
-# 	process = @use_memo([my_stderr]) do
-# 		ChildProcesses.create_child_process(
-# 			custom_stderr=my_stderr,
-# 			exeflags=["--color=yes", "--threads=4"],
-# 		)
-# 	end
-# 	@use_effect([process]) do
-# 		return () -> begin
-# 			kill(process)
-# 		end
-# 	end
-
-# 	# So we re-run the whole thing when the process exists
-# 	_, refresh_state = @use_state(nothing)
-# 	@use_task([]) do
-# 		if process_running(process)
-# 			wait(process)
-# 			refresh_state(nothing)
-# 		end
-# 	end
-
-# 	@use_task([]) do
-# 		while process_running(process) && !eof(my_stderr)
-# 			new_output = String(readavailable(my_stderr))
-# 			set_output((output) -> begin
-# 				output * new_output
-# 			end)
-# 		end
-# 	end
-
-# 	pluto_process = @use_memo([process, my_stderr]) do
-# 		PlutoProcess(
-# 			process=process,
-# 			stderr=my_stderr,
-# 			stdin=process.process.in,
-# 			stdout=process.process.out,
-# 		)
-# 	end
-
-# 	PlutoUI.with_terminal() do
-# 		print(output)
-# 		pluto_process
-# 	end
-# end
-
-# ╔═╡ e5edaa4d-74ff-4f6e-a045-71fd5494dd79
-# @use_memo([spawned_process]) do
-# 	try
-# 		ChildProcesses.create_channel(spawned_process, quote
-# 			Channel() do ch
-# 				for i in 1:2000
-# 					put!(ch, i)
-# 				end
-# 			end
-# 		end) do ch
-# 			for i in 1:10
-# 				x = take!(ch)
-# 			end
-# 		end
-# 	catch error
-# 		@error "UHHH" error stacktrace(catch_backtrace())
-# 		(error, stacktrace(catch_backtrace()))
-# 	end
-# end
-
-# ╔═╡ 5fb236c3-b67d-47ee-8644-84bd51e577b1
-# @task_result([spawned_process]) do
-# 	ChildProcesses.call(spawned_process, quote
-# 		1 + 1
-# 	end)
-# end
-
-# ╔═╡ 8bd24b7b-4837-46b7-a6e9-b674630c2f56
-# @use_memo([spawned_process]) do
-# 	for i in 1:10
-# 		ChildProcesses.call(spawned_process, quote
-# 			1 + 1
-# 		end)
-# 	end
-# end
-
-# ╔═╡ e33a9b31-722e-425e-be5e-b33517bec8e3
-# @use_memo([spawned_process]) do
-# 	BenchmarkTools.@benchmark ChildProcesses.call(spawned_process, quote
-# 		1 + 1
-# 	end)
-# end
 
 # ╔═╡ de602aaa-704c-45c4-8b7b-fc58e41236ce
 begin
@@ -197,77 +56,11 @@ begin
 	eval(:(Base.pipe_reader(process::FakeProcess) = process.out))
 end
 
-# ╔═╡ abf694f4-c5c4-4a4f-b30f-62e358149195
-# @task_result() do
-# 	Base.readbytes!(PipeBuffer(), UInt8[], 10)
-# end
-
-# ╔═╡ ec4a5558-28dd-47c1-b015-8799d9cb8800
-# function Base.eof(buffer::IOBuffer)
-# 	while buffer.readable
-# 		if bytesavailable(buffer) !== 0
-# 			return false
-# 		end
-# 		# eval(:(@info "OOPS"))
-# 		sleep(1)
-# 		yield()
-# 	end
-# 	return true
-# end
-
-# ╔═╡ ce384249-52c5-47d8-9c93-18837432b625
-# let
-# 	parent_to_child = PipeBuffer()
-# 	child_to_parent = PipeBuffer()
-# 	child_process = @use_memo([ChildProcesses.ChildProcess, FakeProcess]) do
-# 		process = FakeProcess(child_to_parent, parent_to_child)
-# 		child_process = ChildProcesses.ChildProcess(process=process)
-# 	end
-# 	parent_process = @use_memo([ChildProcesses.ParentProcess]) do
-# 		ChildProcesses.ParentProcess(
-# 			parent_to_child=parent_to_child,
-# 			child_to_parent=child_to_parent,
-# 		)
-# 	end
-
-# 	@info "#1"
-# 	@use_task([ChildProcesses.start_from_child_loop, child_process]) do
-# 		ChildProcesses.start_from_child_loop(child_process)
-# 	end
-# 	@info "#2"
-# 	@use_task([ChildProcesses.listen_for_messages_from_parent, parent_process]) do
-# 		ChildProcesses.listen_for_messages_from_parent(parent_process)
-# 	end
-# 	@info "#3"
-
-# 	result, set_result = @use_state(Pending())
-
-# 	@use_task([ChildProcesses.call, child_process]) do
-# 		try
-# 			result = ChildProcesses.call(child_process, quote
-# 				1 + 1
-# 			end)
-
-# 			set_result(Result(result))
-# 		catch error
-# 			set_result(Failure(error))
-# 		end
-# 	end
-
-# 	result
-# end
-
-# ╔═╡ 4be7e097-72a3-4590-bcfb-a7dacb78159c
-spawned_process = process_output.value.process;
-
 # ╔═╡ 49fdc8a3-0e1a-42f0-acc4-b823eec91d31
 md"---"
 
 # ╔═╡ 95c5a5bc-db23-4ad3-8ae8-81bc8f0edfd4
 import BenchmarkTools
-
-# ╔═╡ 4541f52f-1217-4dcd-b44c-042c7ca246bd
-1 + 1
 
 # ╔═╡ ced9d1e9-7075-4ff2-8ca2-6a349f2a69c4
 let
@@ -281,6 +74,19 @@ let
 			throw("Waoh, input and output should match but didn't!")
 		end
 	end
+end
+
+# ╔═╡ 4baac7f2-60fe-4a6f-8612-2acf80c43ef3
+let
+	process = ChildProcesses.create_child_process()
+	
+	benchmark = BenchmarkTools.@benchmark begin
+		ChildProcesses.call($process, :(1 + 1))
+	end
+
+	kill(process)
+	
+	benchmark
 end
 
 # ╔═╡ be18d157-6b55-4eaa-99fe-c398e992a9fa
@@ -299,7 +105,6 @@ struct Failure error end
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
-Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 PlutoHooks = "0ff47ea0-7a50-410d-8455-4348d5de0774"
 PlutoLinks = "0ff47ea0-7a50-410d-8455-4348d5de0420"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
@@ -329,10 +134,6 @@ version = "1.2.0"
 [[Dates]]
 deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
-
-[[Distributed]]
-deps = ["Random", "Serialization", "Sockets"]
-uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[FileWatching]]
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
@@ -428,9 +229,6 @@ uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 [[Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
-[[Sockets]]
-uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
-
 [[SparseArrays]]
 deps = ["LinearAlgebra", "Random"]
 uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
@@ -457,32 +255,15 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 # ╠═f7d14367-27d7-41a5-9f6a-79cf5e721a7d
 # ╠═fe669218-18c3-46c7-80e8-7b1ab6fa77d2
 # ╠═f9675ee0-e728-420b-81bd-22e57583c587
-# ╟─ca96e0d5-0904-4ae5-89d0-c1a9187710a1
-# ╠═b7734627-ba2a-48d8-8fd8-a5c94716da20
-# ╟─1a2f116b-78f7-47b6-b96b-c0c74b5c5a35
-# ╟─8d6f46b6-e6cf-4094-a32a-f1b13dc005f6
-# ╠═09f4b4b6-75a4-4727-9405-e4fc45c2cda7
 # ╠═730cfe5e-1541-4c08-8d4a-86d1f9e4115e
-# ╠═b7ac2fea-41f4-47f3-a294-944378cb7093
-# ╠═c1038e6a-c4e9-4b79-b3f9-35a9f64b0f64
-# ╠═75fc343a-7904-45f8-be09-a542255ba673
-# ╠═ffc98725-a88f-4dac-b387-f73cfd07510a
-# ╠═872a8651-736c-47dd-80e6-b645fb0490c9
+# ╠═6ff77f91-ee9c-407c-a243-09fc7e555d73
+# ╠═6ab96c70-ad5d-4614-9a77-2d44d1085567
 # ╠═a26cc458-4578-427f-840d-71d78c5c8b01
-# ╠═281b4aab-307a-4d90-9dfb-f422b9567736
-# ╠═e5edaa4d-74ff-4f6e-a045-71fd5494dd79
-# ╠═5fb236c3-b67d-47ee-8644-84bd51e577b1
-# ╠═8bd24b7b-4837-46b7-a6e9-b674630c2f56
-# ╠═e33a9b31-722e-425e-be5e-b33517bec8e3
 # ╠═de602aaa-704c-45c4-8b7b-fc58e41236ce
-# ╠═abf694f4-c5c4-4a4f-b30f-62e358149195
-# ╠═ec4a5558-28dd-47c1-b015-8799d9cb8800
-# ╠═ce384249-52c5-47d8-9c93-18837432b625
-# ╠═4be7e097-72a3-4590-bcfb-a7dacb78159c
 # ╟─49fdc8a3-0e1a-42f0-acc4-b823eec91d31
 # ╠═95c5a5bc-db23-4ad3-8ae8-81bc8f0edfd4
-# ╠═4541f52f-1217-4dcd-b44c-042c7ca246bd
 # ╠═ced9d1e9-7075-4ff2-8ca2-6a349f2a69c4
+# ╠═4baac7f2-60fe-4a6f-8612-2acf80c43ef3
 # ╟─be18d157-6b55-4eaa-99fe-c398e992a9fa
 # ╠═12578b59-0161-4e72-afef-825166a62121
 # ╠═34d90560-5a3e-4c7f-8126-35e1a6153aa1
