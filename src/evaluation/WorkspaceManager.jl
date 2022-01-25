@@ -114,7 +114,7 @@ function use_nbpkg_environment((session, notebook)::SN, workspace=nothing)
     end
 end
 
-function start_relaying_self_updates((session, notebook)::SN, run_channel::Distributed.RemoteChannel)
+function start_relaying_self_updates((session, notebook)::SN, run_channel::ChildProcesses.ChildChannel)
     while true
         try
             next_run_uuid = take!(run_channel)
@@ -192,20 +192,14 @@ end
 
 function possible_bond_values(session_notebook::SN, n::Symbol; get_length::Bool=false)
     workspace = get_workspace(session_notebook)
-    pid = workspace.pid
-
-    Distributed.remotecall_eval(Main, pid, quote
+    ChildProcesses.call(workspace.process, quote
         PlutoRunner.possible_bond_values($(QuoteNode(n)); get_length=$(get_length))
     end)
 end
 
-function create_emptyworkspacemodule(pid::Integer)::Symbol
+function create_emptyworkspacemodule(process::ChildProcesses.ChildProcess)::Symbol
     ChildProcesses.call(process, :(PlutoRunner.increment_current_module()))
 end
-
-const Distributed_expr = :(
-    Base.loaded_modules[Base.PkgId(Base.UUID("8ba89e20-285c-5b6f-9357-94700520ee1b"), "Distributed")]
-)
 
 # NOTE: this function only start a worker process using given
 # compiler options, it does not resolve paths for notebooks
@@ -217,9 +211,7 @@ function create_workspaceprocess(;compiler_options=CompilerOptions())
     exeflags = _convert_to_flags(compiler_options)
     process = ChildProcesses.create_child_process(exeflags=exeflags)
 
-    for expr in process_preamble
-        ChildProcesses.call_without_fetch(process, expr)
-    end
+    ChildProcesses.call_without_fetch(process, process_preamble)
 
     # so that we NEVER break the workspace with an interrupt 🤕
     @async ChildProcesses.call_without_fetch(process, quote
@@ -280,6 +272,7 @@ function distributed_exception_result(ex::ChildProcesses.ChildProcessException, 
         process_exited=false,
         runtime=nothing,
         published_objects=Dict{String,Any}(),
+        has_pluto_hook_features=false,
     )
 end
 
@@ -291,6 +284,7 @@ function distributed_exception_result(ex::ChildProcesses.ProcessExitedException,
         process_exited=true && !workspace.discarded, # don't report a process exit if the workspace was discarded on purpose
         runtime=nothing,
         published_objects=Dict{String,Any}(),
+        has_pluto_hook_features=false,
     )
 end
 

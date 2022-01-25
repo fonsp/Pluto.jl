@@ -91,6 +91,11 @@ md"## Message types"
 # ╔═╡ fc0ca4b5-e03b-4c08-b43d-913ee12269c7
 abstract type Message end
 
+# ╔═╡ 3fd22ac5-e1c9-42a2-8ae1-7cc4e154764a
+struct JustExecuteThis <: Message
+	expr
+end
+
 # ╔═╡ 3431051e-55ce-46c1-a0f5-364662f5c77b
 MessageChannel = AbstractChannel{Message}
 
@@ -725,9 +730,9 @@ uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 # ╔═╡ Cell order:
 # ╟─4c4b77dc-8545-4922-9897-110fa67c99f4
-# ╠═d3fe8144-6ba8-4dd9-b0e3-941a96422267
-# ╠═f99f4659-f71e-4f2e-a674-67ba69289817
-# ╠═2342d663-030f-4ed2-b1d5-5be1910b6d4c
+# ╟─d3fe8144-6ba8-4dd9-b0e3-941a96422267
+# ╟─f99f4659-f71e-4f2e-a674-67ba69289817
+# ╟─2342d663-030f-4ed2-b1d5-5be1910b6d4c
 # ╠═4b42e233-1f06-49c9-8c6a-9dc21c21ffb7
 # ╠═e3e16a8b-7124-4678-8fe7-12ed449e1954
 # ╟─934d18d4-936e-4ee0-aa6e-86aa6f66774c
@@ -749,6 +754,7 @@ uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 # ╟─590a7882-3d69-48b0-bb1b-f476c7f8a885
 # ╠═46d905fc-d41e-4c9a-a808-14710f64293a
 # ╠═13089c5d-f833-4fb7-b8cd-4158b1a57103
+# ╠═3fd22ac5-e1c9-42a2-8ae1-7cc4e154764a
 # ╠═e4109311-8252-4793-87b8-eae807df7997
 # ╟─17cb5a65-2a72-4e7d-8fba-901452b2c19f
 # ╠═3431051e-55ce-46c1-a0f5-364662f5c77b

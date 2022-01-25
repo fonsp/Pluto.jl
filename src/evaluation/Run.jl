@@ -409,6 +409,9 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	update_dependency_cache!(notebook)
 	save && save_notebook(session, notebook)
 
+	# TODO REMOVE THIS BEFORE MERGING!!!
+	prerender_text = false
+
 	# _assume `prerender_text == false` if you want to skip some details_
 	to_run_online = if !prerender_text
 		cells
