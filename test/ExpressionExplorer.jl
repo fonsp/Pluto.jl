@@ -376,6 +376,7 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(let global x, y, z; b = 5; x = 1; (y,z) = 3 end), [], [:x, :y, :z], [], [])
         @test testee(:(let global x, z; b = 5; x = 1; end), [], [:x], [], [])
         @test testee(:(let a = 1, b = 2; show(a + b) end), [], [], [:show, :+], [])
+        @test_broken testee(:(let a = 1; global a = 2; end), [], [:a], [], []; verbose=false)
 
         @test testee(:(begin local a, b = 1, 2 end), [], [], [], [])
         @test testee(:(begin local a = b = 1 end), [], [:b], [], [])
