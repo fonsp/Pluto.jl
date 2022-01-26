@@ -122,9 +122,8 @@ const juliaWrapper = parseMixed((node, input) => {
 
 const julia_andrey = (config) => {
     const julia = julia_andrey_original(config)
-    /* We need to revert this due to https://github.com/fonsp/Pluto.jl/issues/1800 - fix is WIP
-        julia.language.parser = julia.language.parser.configure({ wrap: juliaWrapper })
-    */
+    // @ts-ignore
+    julia.language.parser = julia.language.parser.configure({ wrap: juliaWrapper })
     return julia
 }
 
