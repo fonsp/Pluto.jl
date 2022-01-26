@@ -585,7 +585,13 @@ export const CellInput = ({
 
             newcm_ref.current.focus()
             newcm_ref.current.dispatch({
+                scrollIntoView: true,
                 selection: new_selection,
+                effects: [
+                    EditorView.scrollIntoView(EditorSelection.range(new_selection.anchor, new_selection.head), {
+                        yMargin: 80,
+                    }),
+                ],
             })
         }
     }, [cm_forced_focus])

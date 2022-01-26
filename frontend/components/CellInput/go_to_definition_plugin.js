@@ -1159,6 +1159,7 @@ export const go_to_definition_plugin = ViewPlugin.fromClass(
                         let variable_to = Number(cell_variable.getAttribute("data-cell-variable-to"))
 
                         view.dispatch({
+                            scrollIntoView: true,
                             selection: { anchor: variable_from, head: variable_to },
                         })
                         view.focus()
