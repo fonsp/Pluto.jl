@@ -99,7 +99,6 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                     if (match) {
                         let syms_string = match[1]
                         let syms = syms_string.split(/, | and /)
-                        console.log(syms)
 
                         let symbol_links = syms.map((what) => html`<a href="#${encodeURI(what)}">${what}</a>`)
 
@@ -118,7 +117,6 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                     if (match) {
                         let syms_string = match[1]
                         let syms = syms_string.split(/, | and /)
-                        console.log(syms)
 
                         let symbol_links = syms.map((what) => {
                             const onclick = (ev) => {
