@@ -5,7 +5,7 @@ import _ from "../imports/lodash.js"
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 import { get_selected_doc_from_state } from "./CellInput/LiveDocsFromCursor.js"
-import { go_to_definition_plugin, ScopeStateField, UsedVariablesFacet } from "./CellInput/go_to_definition_plugin.js"
+import { go_to_definition_plugin, ScopeStateField, NotebookVariablesFacet } from "./CellInput/go_to_definition_plugin.js"
 import { detect_deserializer } from "../common/Serialization.js"
 
 import {
@@ -200,7 +200,7 @@ export const CellInput = ({
     on_change_ref.current = on_change
 
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
-    let used_variables_compartment = useCompartment(newcm_ref, UsedVariablesFacet.of(variables_in_all_notebook))
+    let used_variables_compartment = useCompartment(newcm_ref, NotebookVariablesFacet.of(variables_in_all_notebook))
     let highlighted_line_compartment = useCompartment(newcm_ref, HighlightLineFacet.of(cm_highlighted_line))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
 

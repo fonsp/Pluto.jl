@@ -1039,7 +1039,7 @@ let get_variable_marks = (state, { scopestate, used_variables }) => {
     )
 }
 
-export const UsedVariablesFacet = Facet.define({
+export const NotebookVariablesFacet = Facet.define({
     combine: (values) => values[0],
     compare: _.isEqual,
 })
@@ -1089,14 +1089,13 @@ export const go_to_definition_plugin = ViewPlugin.fromClass(
         constructor(view) {
             this.decorations = get_variable_marks(view.state, {
                 scopestate: view.state.field(ScopeStateField),
-                used_variables: view.state.facet(UsedVariablesFacet),
+                used_variables: view.state.facet(NotebookVariablesFacet),
             })
         }
 
         update(update) {
-            // My best take on getting this to update when UsedVariablesFacet does 🤷‍♀️
-            let used_variables = update.state.facet(UsedVariablesFacet)
-            if (update.docChanged || update.viewportChanged || used_variables !== update.startState.facet(UsedVariablesFacet)) {
+            let used_variables = update.state.facet(NotebookVariablesFacet)
+            if (update.docChanged || update.viewportChanged || used_variables !== update.startState.facet(NotebookVariablesFacet)) {
                 this.decorations = get_variable_marks(update.state, {
                     scopestate: update.state.field(ScopeStateField),
                     used_variables,
@@ -1126,7 +1125,7 @@ export const go_to_definition_plugin = ViewPlugin.fromClass(
                         // window.history.replaceState({ scrollTop: document.documentElement.scrollTop }, null)
                         // window.history.pushState({ scrollTo: scrollto_selector }, null)
 
-                        let used_variables = view.state.facet(UsedVariablesFacet)
+                        let used_variables = view.state.facet(NotebookVariablesFacet)
 
                         // TODO Something fancy where we actually emit the identifier we are looking for,
                         // .... and the cell then selects exactly that definition (using lezer and cool stuff)
