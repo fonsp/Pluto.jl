@@ -851,6 +851,9 @@ let get_variable_marks = (state, { scopestate, used_variables }) => {
     )
 }
 
+/**
+ * @type {Facet<{ [variable_name: string]: string }>}
+ */
 export const UsedVariablesFacet = Facet.define({
     combine: (values) => values[0],
     compare: _.isEqual,

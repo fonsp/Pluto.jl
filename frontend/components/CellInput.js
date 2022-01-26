@@ -161,6 +161,7 @@ let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPluto
  *  remote_code: string,
  *  scroll_into_view_after_creation: boolean,
  *  cell_dependencies: import("./Editor.js").CellDependencyData,
+ *  nbpkg: import("./Editor.js").NotebookPkgData?,
  *  variables_in_all_notebook: { [variable_name: string]: string },
  *  [key: string]: any,
  * }} props
