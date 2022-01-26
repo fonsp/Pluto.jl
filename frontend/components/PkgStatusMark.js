@@ -29,7 +29,7 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
     let hint = null
     let offer_update = false
     const chosen_version = nbpkg?.installed_versions[package_name]
-    const busy = (nbpkg?.busy_packages ?? []).includes(package_name) || nbpkg?.instantiating
+    const busy = (nbpkg?.busy_packages ?? []).includes(package_name) || !(nbpkg?.instantiated ?? true)
 
     if (is_disable_pkg) {
         const f_name = package_name
