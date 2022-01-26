@@ -41,7 +41,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
     const rewriters = [
         {
             pattern: /syntax: extra token after end of expression/,
-            display: (x) => {
+            display: (/** @type{string} */ x) => {
                 const begin_hint = html`<a
                     href="#"
                     onClick=${(e) => {
@@ -86,11 +86,11 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
         },
         {
             pattern: /MethodError: no method matching .*\nClosest candidates are:/,
-            display: (x) => x.split("\n").map((line) => html`<p style="white-space: nowrap;">${line}</p>`),
+            display: (/** @type{string} */ x) => x.split("\n").map((line) => html`<p style="white-space: nowrap;">${line}</p>`),
         },
         {
             pattern: /Cyclic references among ([^\s]+)(, .*)* and ([^\s.]+).*/,
-            display: (x) => {
+            display: (/** @type{string} */ x) => {
                 const reg = x.match(/Cyclic references among ([^\s]+)(, .*)* and ([^\s.]+).*/)
                 const first = reg[1]
                 const last = reg[3]
@@ -103,24 +103,29 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
         },
         {
             pattern: /Multiple definitions for (.*)./,
-            display: (x) => {
-                const reg = x.match(/Multiple definitions for (.*)./)
-                const what = reg[1]
-                const onclick = (ev) => {
-                    const where = document.querySelector(`pluto-cell:not([id='${cell_id}']) span[id='${encodeURI(what)}']`)
-                    ev.preventDefault()
-                    where.scrollIntoView()
-                }
-
-                return html`<p>
-                    Multiple definitions for ${" "}
-                    <a href="#" onclick=${onclick}>${what}</a>
-                </p>`
+            display: (/** @type{string} */ x) => {
+                return x.split("\n").map((line) => {
+                    const match = /Multiple definitions for (.*)\./.exec(line)
+                    if (match) {
+                        const what = match[1]
+                        const onclick = (ev) => {
+                            const where = document.querySelector(`pluto-cell:not([id='${cell_id}']) span[id='${encodeURI(what)}']`)
+                            ev.preventDefault()
+                            where.scrollIntoView()
+                        }
+                        return html`<p>
+                            Multiple definitions for ${" "}
+                            <a href="#" onclick=${onclick}>${what}</a>.
+                        </p>`
+                    } else {
+                        return html`<p>${line}</p>`
+                    }
+                })
             },
         },
         {
             pattern: /.?/,
-            display: (x) => x.split("\n").map((line) => html`<p>${line}</p>`),
+            display: (/** @type{string} */ x) => x.split("\n").map((line) => html`<p>${line}</p>`),
         },
     ]
 
