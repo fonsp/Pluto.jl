@@ -1058,7 +1058,7 @@ export let ScopeStateField = StateField.define({
     create(state) {
         try {
             let cursor = syntaxTree(state).cursor()
-            let scopestate = explore_variable_usage(cursor, state.doc)
+            let scopestate = explore_variable_usage(cursor, state.doc, undefined)
             return scopestate
         } catch (error) {
             console.error("Something went wrong while parsing variables...", error)
@@ -1071,9 +1071,9 @@ export let ScopeStateField = StateField.define({
 
     update(value, tr) {
         try {
-            if (tr.docChanged) {
+            if (syntaxTree(tr.state) != syntaxTree(tr.startState)) {
                 let cursor = syntaxTree(tr.state).cursor()
-                let scopestate = explore_variable_usage(cursor, tr.state.doc)
+                let scopestate = explore_variable_usage(cursor, tr.state.doc, undefined)
                 return scopestate
             } else {
                 return value
@@ -1094,10 +1094,9 @@ export const go_to_definition_plugin = ViewPlugin.fromClass(
          * @param {EditorView} view
          */
         constructor(view) {
-            let used_variables = view.state.facet(UsedVariablesFacet)
             this.decorations = get_variable_marks(view.state, {
                 scopestate: view.state.field(ScopeStateField),
-                used_variables,
+                used_variables: view.state.facet(UsedVariablesFacet),
             })
         }
 
