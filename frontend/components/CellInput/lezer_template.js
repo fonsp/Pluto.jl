@@ -439,7 +439,7 @@ export let to_template = function* (julia_code_object) {
                 }
             })
         if (unused_substitutions.length > 0) {
-            console.error(`Some substitutions not applied, this means it couldn't be matched to a AST position:`, unused_substitutions)
+            throw new Error(`Some substitutions not applied, this means it couldn't be matched to a AST position:`, unused_substitutions)
         }
         return result
     } else if (typeof julia_code_object === "function") {
@@ -520,7 +520,7 @@ export let template = weak_memo1((julia_code_object) => {
 
             let matches = /** @type {{ [key: string]: MatchResult }} */ ({})
 
-            verbose && console.group("Starting a .match")
+            verbose && console.groupCollapsed(`Starting a match at ${haystack_cursor.name}`)
             try {
                 return match_template(haystack_cursor, template_description, matches, verbose) ? matches : null
             } finally {
@@ -582,6 +582,33 @@ function* any() {
     }
 }
 
+/**
+ * @param {TemplateGenerator} template_generator
+ * @return {TemplateGenerator}
+ * */
+function* narrow_template(template_generator) {
+    let ast = yield intermediate_value(template_generator.next())
+
+    if (ast.node.firstChild && ast.node.from === ast.node.firstChild.from && ast.node.to === ast.node.firstChild.to) {
+        console.log("Narrowing!!!!", ast.node, ast.node.firstChild)
+        return {
+            node: ast.node,
+            from: ast.from,
+            to: ast.to,
+            children: [
+                return_value(
+                    template_generator.next({
+                        ...ast,
+                        node: ast.node.firstChild,
+                    })
+                ),
+            ],
+        }
+    } else {
+        return return_value(template_generator.next(ast))
+    }
+}
+
 export const t = /** @type {const} */ ({
     any: any,
     /**
@@ -594,34 +621,69 @@ export const t = /** @type {const} */ ({
      */
     many: memo_first_argument_weakmemo_second((name, of_what = any) => {
         return function* many() {
-            let sub_template = yield* to_template(of_what)
+            let template_generator = to_template(of_what)
+            let ast = yield intermediate_value(template_generator.next())
+
+            // Ugly but it works
+            let narrowed_node = null
+            let sub_template = null
+            if (ast.node.firstChild && ast.node.from === ast.node.firstChild.from && ast.node.to === ast.node.firstChild.to) {
+                narrowed_node = ast.node
+                sub_template = return_value(
+                    template_generator.next({
+                        ...ast,
+                        node: ast.node.firstChild,
+                    })
+                )
+            } else {
+                sub_template = return_value(template_generator.next(ast))
+            }
+
+            // let sub_template = yield* narrow_template(to_template(of_what))
 
             return {
+                narrowed_node,
+                sub_template,
                 pattern: function many(cursor, matches, verbose = false) {
                     if (!cursor) {
                         verbose && console.log("✅ Nothing to see here... I'm fine with that - many")
                         return true
                     }
 
-                    let matches_nodes = []
-                    while (true) {
-                        let local_match = {}
-                        let did_match = match_template(cursor, sub_template, local_match, verbose)
-                        if (!did_match) {
-                            // Move back on child, as that is the child that DIDN'T match
-                            // And we want to give the next template a change to maybe match it
+                    if (narrowed_node) {
+                        if (cursor.name !== narrowed_node.name) {
+                            verbose && console.log("❌ Tried to go in, but she wasn't my type - many")
                             cursor.prevSibling()
-                            break
+                            return true
                         }
-                        matches_nodes.push({ node: cursor.node, match: local_match })
-
-                        if (!cursor.nextSibling()) break
+                        cursor.firstChild()
                     }
 
-                    if (name != null) {
-                        matches[name] = matches_nodes
+                    try {
+                        let matches_nodes = []
+                        while (true) {
+                            let local_match = {}
+                            let did_match = match_template(cursor, sub_template, local_match, verbose)
+                            if (!did_match) {
+                                // Move back on child, as that is the child that DIDN'T match
+                                // And we want to give the next template a change to maybe match it
+                                cursor.prevSibling()
+                                break
+                            }
+                            matches_nodes.push({ node: cursor.node, match: local_match })
+
+                            if (!cursor.nextSibling()) break
+                        }
+
+                        if (name != null) {
+                            matches[name] = matches_nodes
+                        }
+                        return true
+                    } finally {
+                        if (narrowed_node) {
+                            cursor.parent()
+                        }
                     }
-                    return true
                 },
             }
         }
@@ -635,6 +697,7 @@ export const t = /** @type {const} */ ({
         return function* maybe() {
             let sub_template = yield* to_template(what)
             return {
+                sub_template,
                 pattern: function maybe(cursor, matches, verbose = false) {
                     if (!cursor) return true
                     if (cursor.type.isError) return true
@@ -707,6 +770,7 @@ export const t = /** @type {const} */ ({
         return function* as() {
             let sub_template = yield* to_template(what)
             return {
+                sub_template,
                 pattern: function as(cursor, matches, verbose = false) {
                     let did_match = match_template(cursor, sub_template, matches, verbose)
                     if (did_match === true) {
@@ -765,6 +829,17 @@ export let take_little_piece_of_template = weak_memo((template, meta_template) =
     if ((match = meta_template.match(template_ast))) {
         let { content } = /** @type {{ content: SyntaxNode }} */ (match)
 
+        let possible_parents = []
+        while (content.firstChild && content.firstChild.from == content.from && content.firstChild.to == content.to) {
+            possible_parents.push(content.type)
+            content = content.firstChild
+        }
+
+        if (content == null) {
+            console.log(`match:`, match)
+            throw new Error("No content match?")
+        }
+
         // Now we send just the `content` back to the template generator, which will happily accept it...
         // (We do send the original from:to though, as these are the from:to's that are also in the template AST still)
         let template_description = return_value(
@@ -781,19 +856,62 @@ export let take_little_piece_of_template = weak_memo((template, meta_template) =
         // Still feels like it shouldn't... it feels like I conjured some dark magic and I will be swiming in tartarus soon...
 
         return {
+            possible_parents,
             template_description,
             /**
              * @param {TreeCursor | SyntaxNode} haystack_cursor
              * @param {boolean} verbose?
              * */
             match(haystack_cursor, verbose = false) {
-                // Performance gain for not converting to `TreeCursor` possibly 🤷‍♀️
-                if ("node" in template_description && template_description.node.name !== haystack_cursor.name) return
-                if (haystack_cursor.type.isError) return null
+                if (haystack_cursor.type.isError) {
+                    verbose && console.log(`❌ Short circuiting because haystack(${haystack_cursor.name}) is an error`)
+                    return false
+                }
                 if ("cursor" in haystack_cursor) haystack_cursor = haystack_cursor.cursor
 
-                let matches = {}
-                return match_template(haystack_cursor, template_description, matches, verbose) ? matches : null
+                // Should possible parents be all-or-nothing?
+                // So either it matches all the possible parents, or it matches none?
+                let depth = 0
+                for (let possible_parent of possible_parents) {
+                    if (haystack_cursor.type === possible_parent) {
+                        let parent_from = haystack_cursor.from
+                        let parent_to = haystack_cursor.to
+                        // Going in
+                        if (haystack_cursor.firstChild()) {
+                            if (haystack_cursor.from === parent_from && haystack_cursor.to === parent_to) {
+                                verbose && console.log(`✅ Matched parent, going one level deeper (${possible_parent})`)
+                                depth++
+                            } else {
+                                haystack_cursor.parent()
+                                verbose &&
+                                    console.log(
+                                        `❌ Was matching possible parent (${possible_parent}), but it wasn't filling?! That's weird.... ${haystack_cursor.toString()}`
+                                    )
+                                for (let i = 0; i < depth; i++) {
+                                    haystack_cursor.parent()
+                                }
+                                return false
+                            }
+                        }
+                    } else {
+                        break
+                    }
+                }
+
+                // prettier-ignore
+                verbose && console.groupCollapsed(`Starting a specific at match haystack(${haystack_cursor.name}) vs. template(${"node" in template_description ? template_description.name : template_description.pattern.name})`)
+
+                try {
+                    let matches = {}
+                    return match_template(haystack_cursor, template_description, matches, verbose) ? matches : null
+                } finally {
+                    // ARE FOR LOOPS REALLY THE BEST I CAN DO HERE??
+                    for (let i = 0; i < depth; i++) {
+                        haystack_cursor.parent()
+                    }
+
+                    verbose && console.groupEnd()
+                }
             },
         }
     } else {
