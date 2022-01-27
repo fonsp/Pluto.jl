@@ -1,4 +1,4 @@
-import { Decoration, ViewPlugin, EditorView, Facet } from "../../imports/CodemirrorPlutoSetup.js"
+import { Decoration, ViewPlugin, EditorView, Facet, ViewUpdate } from "../../imports/CodemirrorPlutoSetup.js"
 
 const highlighted_line = Decoration.line({
     attributes: { class: "cm-highlighted-line" },

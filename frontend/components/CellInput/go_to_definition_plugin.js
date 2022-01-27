@@ -796,7 +796,7 @@ let explore_variable_usage = (
     }
 }
 
-let get_variable_marks = (state, { scopestate, used_variables }) => {
+let get_variable_marks = (state, { scopestate, global_definitions }) => {
     return Decoration.set(
         Array.from(scopestate.usages)
             .map(({ definition, usage }) => {
@@ -805,7 +805,7 @@ let get_variable_marks = (state, { scopestate, used_variables }) => {
                 if (definition == null) {
                     // TODO variables_with_origin_cell should be notebook wide, not just in the current cell
                     // .... Because now it will only show variables after it has run once
-                    if (used_variables[text]) {
+                    if (global_definitions[text]) {
                         return Decoration.mark({
                             // TODO This used to be tagName: "a", but codemirror doesn't like that...
                             // .... https://github.com/fonsp/Pluto.jl/issues/1790
@@ -851,7 +851,10 @@ let get_variable_marks = (state, { scopestate, used_variables }) => {
     )
 }
 
-export const UsedVariablesFacet = Facet.define({
+/**
+ * @type {Facet<{ [variable_name: string]: string }>}
+ */
+export const GlobalDefinitionsFacet = Facet.define({
     combine: (values) => values[0],
     compare: _.isEqual,
 })
@@ -883,20 +886,20 @@ export const go_to_definition_plugin = ViewPlugin.fromClass(
          * @param {EditorView} view
          */
         constructor(view) {
-            let used_variables = view.state.facet(UsedVariablesFacet)
+            let global_definitions = view.state.facet(GlobalDefinitionsFacet)
             this.decorations = get_variable_marks(view.state, {
                 scopestate: view.state.field(ScopeStateField),
-                used_variables,
+                global_definitions,
             })
         }
 
         update(update) {
-            // My best take on getting this to update when UsedVariablesFacet does 🤷‍♀️
-            let used_variables = update.state.facet(UsedVariablesFacet)
-            if (update.docChanged || update.viewportChanged || used_variables !== update.startState.facet(UsedVariablesFacet)) {
+            // My best take on getting this to update when GlobalDefinitionsFacet does 🤷‍♀️
+            let global_definitions = update.state.facet(GlobalDefinitionsFacet)
+            if (update.docChanged || update.viewportChanged || global_definitions !== update.startState.facet(GlobalDefinitionsFacet)) {
                 this.decorations = get_variable_marks(update.state, {
                     scopestate: update.state.field(ScopeStateField),
-                    used_variables,
+                    global_definitions,
                 })
             }
         }
@@ -923,15 +926,15 @@ export const go_to_definition_plugin = ViewPlugin.fromClass(
                         // window.history.replaceState({ scrollTop: document.documentElement.scrollTop }, null)
                         // window.history.pushState({ scrollTo: scrollto_selector }, null)
 
-                        let used_variables = view.state.facet(UsedVariablesFacet)
+                        let global_definitions = view.state.facet(GlobalDefinitionsFacet)
 
                         // TODO Something fancy where we actually emit the identifier we are looking for,
                         // .... and the cell then selects exactly that definition (using lezer and cool stuff)
-                        if (used_variables[variable]) {
+                        if (global_definitions[variable]) {
                             window.dispatchEvent(
                                 new CustomEvent("cell_focus", {
                                     detail: {
-                                        cell_id: used_variables[variable],
+                                        cell_id: global_definitions[variable],
                                         line: 0, // 1-based to 0-based index
                                         definition_of: variable,
                                     },
