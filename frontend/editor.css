@@ -2559,7 +2559,9 @@ body.ctrl_down [data-cell-variable] {
 }
 body.ctrl_down [data-pluto-variable]:hover,
 body.ctrl_down [data-pluto-variable]:hover * {
-    color: #af5bc3 !important;
+    /* This basically `color: #af5bc3`, but it works for emoji too!! */
+    color: transparent !important;
+    text-shadow: 0 0 #af5bc3;
 }
 
 /* Variable that is declared in the same cell */
@@ -2568,7 +2570,9 @@ body.ctrl_down [data-pluto-variable]:hover * {
     text-decoration: none;
 }
 body.ctrl_down [data-cell-variable]:hover * {
-    color: #af5bc3 !important;
+    /* This basically `color: #af5bc3`, but it works for emoji too!! */
+    color: transparent !important;
+    text-shadow: 0 0 #af5bc3;
 }
 
 .cm-tooltip.cm-tooltip-autocomplete {
