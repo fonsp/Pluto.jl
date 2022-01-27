@@ -1,4 +1,4 @@
-import { sha256 } from "https://cdn.esm.sh/v62/js-sha256@0.9.0/es2021/js-sha256.js"
+import { sha256 } from "https://cdn.jsdelivr.net/gh/JuliaPluto/js-sha256@v0.9.0-es6/src/sha256.mjs"
 
 export const base64_arraybuffer = async (/** @type {BufferSource} */ data) => {
     /** @type {string} */

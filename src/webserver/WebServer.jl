@@ -2,6 +2,7 @@ import MsgPack
 import UUIDs: UUID
 import HTTP
 import Sockets
+import .PkgCompat
 
 include("./WebSocketFix.jl")
 
@@ -266,8 +267,13 @@ function run(session::ServerSession, pluto_router)
     println("Press Ctrl+C in this terminal to stop Pluto")
     println()
 
-    if PLUTO_VERSION >= v"0.18.0" && frontend_directory() == "frontend"
+    if PLUTO_VERSION >= v"0.17.6" && frontend_directory() == "frontend"
         @info "It looks like you are developing the Pluto package, using the unbundled frontend..."
+    end
+    
+    # Start this in the background, so that the first notebook launch (which will trigger registry update) will be faster
+    @asynclog withtoken(pkg_token) do
+        PkgCompat.update_registries(; force=false)
     end
 
     shutdown_server[] = () -> @sync begin

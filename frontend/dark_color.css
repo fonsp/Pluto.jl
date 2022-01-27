@@ -65,6 +65,8 @@
 
         /* Logs */
         --pluto-logs-bg-color: hsl(240deg 10% 29%);
+        --pluto-logs-progress-fill: #5f7f5b;
+        --pluto-logs-progress-border: hsl(210deg 35% 72%);
 
         /*Top navbar styling*/
         --nav-h1-text-color: white;
@@ -155,15 +157,17 @@
         /* code highlighting */
         --cm-editor-text-color: #ffe9fc;
         --cm-comment-color: #e96ba8;
-        --cm-atom-color: #815ba4;
-        --cm-number-color: #815ba4;
-        --cm-property-color: #48b685;
+        --cm-atom-color: hsl(8deg 72% 62%);
+        --cm-number-color: hsl(271deg 45% 64%);
+        --cm-property-color: #f99b15;
         --cm-keyword-color: #ff7a6f;
         --cm-string-color: hsl(20deg 69% 59%);
         --cm-var-color: #afb7d3;
         --cm-var2-color: #06b6ef;
+        --cm-macro-color: #82b38b;
         --cm-builtin-color: #5e7ad3;
-        --cm-def-color: #f99b15;
+        --cm-function-color: #f99b15;
+        --cm-type-color: hsl(51deg 32% 44%);
         --cm-bracket-color: #a2a273;
         --cm-tag-color: #ef6155;
         --cm-link-color: #815ba4;

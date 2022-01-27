@@ -149,6 +149,19 @@ const first_true_key = (obj) => {
  */
 
 /**
+ * @typedef NotebookPkgData
+ * @type {{
+ *  enabled: boolean,
+ *  restart_recommended_msg: string?,
+ *  restart_required_msg: string?,
+ *  installed_versions: { [pkg_name: string]: string },
+ *  terminal_outputs: { [pkg_name: string]: string },
+ *  busy_packages: string[],
+ *  instantiated: boolean,
+ * }}
+ */
+
+/**
  * @typedef NotebookData
  * @type {{
  *  notebook_id: string,
@@ -165,7 +178,7 @@ const first_true_key = (obj) => {
  *  cell_execution_order: Array<string>,
  *  published_objects: { [objectid: string]: any},
  *  bonds: { [name: string]: any },
- *  nbpkg: Object,
+ *  nbpkg: NotebookPkgData?,
  * }}
  */
 
@@ -1207,8 +1220,7 @@ patch: ${JSON.stringify(
                             }</div>
                         </nav>
                     </header>
-                    ${
-                        /*
+                    
                     <${RecordingUI} 
                         notebook_name=${notebook.shortpath}
                         recording_waiting_to_start=${this.state.recording_waiting_to_start}
@@ -1229,8 +1241,7 @@ patch: ${JSON.stringify(
                                 })
                             )}
                     />
-                    */ null
-                    }
+                    
                     <${BinderButton} binder_phase=${this.state.binder_phase} start_binder=${() =>
             start_binder({ setStatePromise: this.setStatePromise, connect: this.connect, launch_params: launch_params })} notebookfile=${
             launch_params.notebookfile == null ? null : new URL(launch_params.notebookfile, window.location.href).href

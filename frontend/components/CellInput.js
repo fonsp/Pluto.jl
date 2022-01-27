@@ -5,7 +5,7 @@ import _ from "../imports/lodash.js"
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 import { get_selected_doc_from_state } from "./CellInput/LiveDocsFromCursor.js"
-import { go_to_definition_plugin, ScopeStateField, UsedVariablesFacet } from "./CellInput/go_to_definition_plugin.js"
+import { go_to_definition_plugin, ScopeStateField, GlobalDefinitionsFacet } from "./CellInput/go_to_definition_plugin.js"
 import { detect_deserializer } from "../common/Serialization.js"
 
 import {
@@ -62,10 +62,19 @@ const change_is_from_remote_annotation = Annotation.define()
 export const pluto_syntax_colors = HighlightStyle.define([
     /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
     // Symbol
+    // { tag: tags.controlKeyword, color: "var(--cm-keyword-color)", fontWeight: 700 },
+
+    { tag: tags.propertyName, color: "var(--cm-property-color)" },
+    { tag: tags.unit, color: "var(--cm-tag-color)" },
     { tag: tags.literal, color: "var(--cm-builtin-color)", fontWeight: 700 },
-    { tag: tags.macroName, color: "var(--cm-var-color)", fontWeight: 700 },
+    { tag: tags.macroName, color: "var(--cm-macro-color)", fontWeight: 700 },
+
     // `nothing` I guess... Any others?
-    { tag: tags.standard(tags.variableName), color: "var(--cm-builtin-color)", fontWeight: 700 },
+    {
+        tag: tags.standard(tags.variableName),
+        color: "var(--cm-builtin-color)",
+        fontWeight: 700,
+    },
 
     { tag: tags.bool, color: "var(--cm-builtin-color)", fontWeight: 700 },
 
@@ -79,12 +88,19 @@ export const pluto_syntax_colors = HighlightStyle.define([
     { tag: tags.string, color: "var(--cm-string-color)" },
     { tag: tags.variableName, color: "var(--cm-var-color)", fontWeight: 700 },
     // { tag: tags.variable2, color: "#06b6ef" },
+    { tag: tags.typeName, color: "var(--cm-type-color)", fontStyle: "italic" },
+    { tag: tags.typeOperator, color: "var(--cm-type-color)", fontStyle: "italic" },
     { tag: tags.bracket, color: "var(--cm-bracket-color)" },
     { tag: tags.brace, color: "var(--cm-bracket-color)" },
     { tag: tags.tagName, color: "var(--cm-tag-color)" },
     { tag: tags.link, color: "var(--cm-link-color)" },
-    { tag: tags.invalid, color: "var(--cm-error-color)", background: "var(--cm-error-bg-color)" },
+    {
+        tag: tags.invalid,
+        color: "var(--cm-error-color)",
+        background: "var(--cm-error-bg-color)",
+    },
     // ...Object.keys(tags).map((x) => ({ tag: x, color: x })),
+
     // Markdown
     { tag: tags.heading, color: "#081e87", fontWeight: 500 },
     { tag: tags.heading1, color: "#081e87", fontWeight: 500, fontSize: "1.5em" },
@@ -92,7 +108,12 @@ export const pluto_syntax_colors = HighlightStyle.define([
     { tag: tags.heading3, color: "#081e87", fontWeight: 500, fontSize: "1.25em" },
     { tag: tags.heading4, color: "#081e87", fontWeight: 500, fontSize: "1.1em" },
     { tag: tags.heading5, color: "#081e87", fontWeight: 500, fontSize: "1em" },
-    { tag: tags.heading6, color: "#081e87", fontWeight: "bold", fontSize: "0.8em" },
+    {
+        tag: tags.heading6,
+        color: "#081e87",
+        fontWeight: "bold",
+        fontSize: "0.8em",
+    },
     { tag: tags.url, color: "#48b685", textDecoration: "underline" },
     { tag: tags.quote, color: "#444", fontStyle: "italic" },
     { tag: tags.literal, color: "#232227", fontWeight: 700 },
@@ -143,6 +164,7 @@ let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPluto
  *  remote_code: string,
  *  scroll_into_view_after_creation: boolean,
  *  cell_dependencies: import("./Editor.js").CellDependencyData,
+ *  nbpkg: import("./Editor.js").NotebookPkgData?,
  *  variables_in_all_notebook: { [variable_name: string]: string },
  *  [key: string]: any,
  * }} props
@@ -182,7 +204,7 @@ export const CellInput = ({
     const on_change_ref = useRef(null)
     on_change_ref.current = on_change
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
-    let used_variables_compartment = useCompartment(newcm_ref, UsedVariablesFacet.of(variables_in_all_notebook))
+    let global_definitions_compartment = useCompartment(newcm_ref, GlobalDefinitionsFacet.of(variables_in_all_notebook))
     let highlighted_line_compartment = useCompartment(newcm_ref, HighlightLineFacet.of(cm_highlighted_line))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
 
@@ -283,7 +305,11 @@ export const CellInput = ({
                 cm.dispatch({
                     changes: [
                         { from: 0, to: 0, insert: prefix },
-                        { from: cm.state.doc.length, to: cm.state.doc.length, insert: suffix },
+                        {
+                            from: cm.state.doc.length,
+                            to: cm.state.doc.length,
+                            insert: suffix,
+                        },
                     ],
                     selection:
                         selection.from === 0
@@ -340,7 +366,7 @@ export const CellInput = ({
             { key: "Ctrl-Backspace", run: keyMapBackspace },
         ]
 
-        let DOCS_UPDATER_VERBOSE = true
+        let DOCS_UPDATER_VERBOSE = false
         const docs_updater = EditorView.updateListener.of((update) => {
             if (!update.view.hasFocus) {
                 return
@@ -373,7 +399,7 @@ export const CellInput = ({
                     // Compartments coming from react state/props
                     nbpkg_compartment,
                     highlighted_line_compartment,
-                    used_variables_compartment,
+                    global_definitions_compartment,
                     editable_compartment,
 
                     // This is waaaay in front of the keys it is supposed to override,
@@ -456,7 +482,9 @@ export const CellInput = ({
                     keymap.of(plutoKeyMaps),
                     // Before default keymaps (because we override some of them)
                     // but after the autocomplete plugin, because we don't want to move cell when scrolling through autocomplete
-                    cell_movement_plugin({ focus_on_neighbor: ({ cell_delta, line, character }) => on_focus_neighbor(cell_id, cell_delta, line, character) }),
+                    cell_movement_plugin({
+                        focus_on_neighbor: ({ cell_delta, line, character }) => on_focus_neighbor(cell_id, cell_delta, line, character),
+                    }),
                     keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, ...foldKeymap, ...commentKeymap]),
                     placeholder("Enter cell code..."),
 
@@ -609,22 +637,22 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled, any_
         <span class="icon"></span>
         ${open
             ? html`<ul onMouseenter=${mouseenter}>
-                  <li onClick=${on_delete} title="Delete"><span class="delete_icon" />Delete cell</li>
+                  <li onClick=${on_delete} title="Delete"><span class="delete ctx_icon" />Delete cell</li>
                   <li
                       onClick=${toggle_running_disabled}
                       title=${running_disabled ? "Enable and run the cell" : "Disable this cell, and all cells that depend on it"}
                   >
-                      ${running_disabled ? html`<span class="enable_cell_icon" />` : html`<span class="disable_cell_icon" />`}
+                      ${running_disabled ? html`<span class="enable_cell ctx_icon" />` : html`<span class="disable_cell ctx_icon" />`}
                       ${running_disabled ? html`<b>Enable cell</b>` : html`Disable cell`}
                   </li>
                   ${any_logs
                       ? html`<li title="" onClick=${toggle_logs}>
                             ${show_logs
-                                ? html`<span class="hide_logs_icon" /><span>Hide logs</span>`
-                                : html`<span class="show_logs_icon" /><span>Show logs</span>`}
+                                ? html`<span class="hide_logs ctx_icon" /><span>Hide logs</span>`
+                                : html`<span class="show_logs ctx_icon" /><span>Show logs</span>`}
                         </li>`
                       : null}
-                  <li class="coming_soon" title=""><span class="bandage_icon" /><em>Coming soon…</em></li>
+                  <li class="coming_soon" title=""><span class="bandage ctx_icon" /><em>Coming soon…</em></li>
               </ul>`
             : html``}
     </button>`

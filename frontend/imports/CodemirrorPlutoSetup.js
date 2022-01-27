@@ -56,7 +56,8 @@ import {
     sql,
     javascript,
     python,
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@0.19.6/dist/index.es.min.js"
+    Text,
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@0.25.0/dist/index.es.min.js"
 
 export {
     EditorState,
@@ -116,4 +117,5 @@ export {
     sql,
     javascript,
     python,
+    Text,
 }

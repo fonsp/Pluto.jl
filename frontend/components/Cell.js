@@ -34,6 +34,7 @@ const useCellApi = (node_ref, published_object_keys, pluto_actions) => {
  *  cell_input: import("./Editor.js").CellInputData,
  *  cell_input_local: import("./Editor.js").CellInputData,
  *  cell_dependencies: import("./Editor.js").CellDependencyData
+ *  nbpkg: import("./Editor.js").NotebookPkgData?,
  *  selected: boolean,
  *  selected_cells: Array<string>,
  *  force_hide_input: boolean,

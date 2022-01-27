@@ -113,13 +113,13 @@ body.wiggle_binder #binder_launch_help {
     box-shadow: none;
     cursor: pointer;
     background: unset;
-    background-color: white;
-    border: 3px solid #3f448c5e;
+    background-color: var(--overlay-button-bg);
+    border: 3px solid hsl(236deg 28% 50% / 70%);
     font-size: 14px;
     font-style: italic;
     font-family: "Roboto Mono";
     letter-spacing: -0.2px;
-    color: #0000009c;
+    color: var(--black);
     white-space: nowrap;
     padding: 8px 16px;
     border-radius: 30px;
@@ -140,9 +140,12 @@ body.wiggle_binder #binder_launch_help {
     border-radius: 8px;
     left: calc(50vw - var(--width) / 2);
     background-color: white;
+    color: black;
     box-shadow: 0px 0px 0px 100vmax #0000004a;
-
     font-family: "Lato", sans-serif;
+}
+#binder_help_text a {
+    color: black;
 }
 
 @media (max-width: 500px) {
