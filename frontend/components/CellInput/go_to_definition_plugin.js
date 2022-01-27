@@ -818,21 +818,31 @@ let explore_variable_usage = (
         } else if (
             (match = match_julia(cursor)`(${t.many("args")}) -> ${t.many("body")}`) ??
             (match = match_julia(cursor)`${t.as("arg")} -> ${t.many("body")}`) ??
-            (match = match_julia(cursor)`
-                ${t.as("name")}${t.maybe(jl`(${t.many("args")})`)}::${t.as("return_type")} = ${t.many("body")}
-            `) ??
+            (match = match_julia(cursor)`${t.as("name")}(${t.many("args")})::${t.as("return_type")} = ${t.many("body")}`) ??
             (match = match_julia(cursor)`${t.as("name")}(${t.many("args")}) = ${t.many("body")}`) ??
             (match = match_julia(cursor)`${t.as("name")}(${t.many("args")}) = ${t.many("body", t.anything_that_fits(jl`x, y`))}`) ??
-            (match = match_julia(cursor)`function ${t.as("name")} end`) ??
-            (match = /* prettier-ignore */ match_julia(cursor)`
-                function ${t.as("name")}${t.maybe(jl`(${t.many("args")})`)}${t.maybe(jl`::${t.as("return_type")}`)} where ${t.as("type_param")}
+            (match = match_julia(cursor)`
+                function ${t.as("name")}(${t.many("args")})::${t.as("return_type")} where ${t.as("type_param")}
                     ${t.many("body")}
                 end
             `) ??
-            (match = /* prettier-ignore */ match_julia(cursor)`
-                function ${t.as("name")}${t.maybe(jl`(${t.many("args")})`)}${t.maybe(jl`::${t.as("return_type")}`)}
+            (match = match_julia(cursor)`
+                function ${t.as("name")}(${t.many("args")}) where ${t.as("type_param")}
                     ${t.many("body")}
                 end
+            `) ??
+            (match = match_julia(cursor)`
+                function ${t.as("name")}(${t.many("args")})::${t.as("return_type")}
+                    ${t.many("body")}
+                end
+            `) ??
+            (match = match_julia(cursor)`
+                function ${t.as("name")}(${t.many("args")})
+                    ${t.many("body")}
+                end
+            `) ??
+            (match = match_julia(cursor)`
+                function ${t.as("name", t.Identifier)} end
             `) ??
             // Putting macro definitions here too because they are very similar
             (match = match_julia(cursor)`macro ${t.as("macro_name")} end`) ??
@@ -843,6 +853,8 @@ let explore_variable_usage = (
             `)
         ) {
             let { name, macro_name, arg, args = [], return_type, type_param, body = [] } = match
+
+            console.log(`match:`, match)
 
             if (arg) {
                 args.push({ node: arg })
