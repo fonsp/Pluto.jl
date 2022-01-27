@@ -15,14 +15,12 @@ import {
 } from "../../imports/CodemirrorPlutoSetup.js"
 
 const htmlParser = htmlLanguage.parser
-const mdParser = markdownLanguage.parser
 const mdParserExt = markdownLanguage.parser.configure(parseCode({ htmlParser }))
 const postgresParser = PostgreSQL.language.parser
 const sqlLang = sql({ dialect: PostgreSQL })
 const pythonParser = pythonLanguage.parser
 
-const MD_SIMPLE_TAGS = ["md", "mermaid"].flatMap((x) => [x, `@${x}`])
-const MD_EXTENDED_TAGS = ["cm", "markdown", "mdx", "mdl", "markdownliteral"].flatMap((x) => [x, `@${x}`])
+const MD_TAGS = ["md", "mermaid", "cm", "markdown", "mdx", "mdl", "markdownliteral"].flatMap((x) => [x, `@${x}`])
 
 const overlayHack = (overlay, input) => {
     return overlay.flatMap(({ from, to }) => {
@@ -45,8 +43,19 @@ const overlayHack = (overlay, input) => {
     })
 }
 
+const STRING_NODE_NAMES = new Set([
+    "TripleString",
+    "String",
+    "CommandString",
+    "CommandStringWithoutInterpolation",
+    "TripleStringWithoutInterpolation",
+    "StringWithoutInterpolation",
+])
+
+const STRING_NODE_NAMES_NO_INTERPOLATION = new Set(["CommandStringWithoutInterpolation", "TripleStringWithoutInterpolation", "StringWithoutInterpolation"])
+
 const juliaWrapper = parseMixed((node, input) => {
-    if (!["TripleString", "String", "CommandString"].includes(node.type.name)) {
+    if (!STRING_NODE_NAMES.has(node.type.name)) {
         return null
     }
     const offset = node.name === "TripleString" ? 3 : 1
@@ -67,15 +76,9 @@ const juliaWrapper = parseMixed((node, input) => {
     let parser,
         overlay = []
 
-    if (tag === "@htl") {
+    if (tag === "@htl" || tag === "html") {
         parser = htmlParser
-    } else if (tag === "html") {
-        parser = htmlParser
-        overlay = defaultOverlay
-    } else if (MD_SIMPLE_TAGS.includes(tag)) {
-        parser = mdParser
-        overlay = defaultOverlay
-    } else if (MD_EXTENDED_TAGS.includes(tag)) {
+    } else if (MD_TAGS.includes(tag)) {
         parser = mdParserExt
     } else if (tag === "@javascript") {
         parser = javascriptLanguage.parser
@@ -86,7 +89,12 @@ const juliaWrapper = parseMixed((node, input) => {
     } else {
         return null
     }
-
+    if (STRING_NODE_NAMES_NO_INTERPOLATION.has(node.type.name)) {
+        return {
+            parser,
+            overlay: defaultOverlay,
+        }
+    }
     let from = node.from
     for (let child = node.node.firstChild; overlay !== defaultOverlay && child !== null && child.to <= node.to; child = child?.nextSibling) {
         overlay.push({ from, to: child.from })
@@ -114,7 +122,7 @@ const juliaWrapper = parseMixed((node, input) => {
 
     // If javascript or markdown or htl, we want to unescape some characters
     // Until the parser is smarter, we remove the selection from the syntax highlighting overlay.
-    if (["@htl", "@javascript", ...MD_EXTENDED_TAGS].includes(tag)) {
+    if (["@htl", "@javascript", ...MD_TAGS].includes(tag)) {
         overlay = overlayHack(overlay, input)
     }
     return { parser, overlay }
