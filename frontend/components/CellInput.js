@@ -163,6 +163,8 @@ let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPluto
  *  cell_dependencies: import("./Editor.js").CellDependencyData,
  *  nbpkg: import("./Editor.js").NotebookPkgData?,
  *  variables_in_all_notebook: { [variable_name: string]: string },
+ *  register_clippy_hint: ((key: string, hint: import("./Cell.js").ClippyHint) => void)
+ *  unregister_clippy_hint: ((key: string) => void)
  *  [key: string]: any,
  * }} props
  */
@@ -191,6 +193,8 @@ export const CellInput = ({
     set_show_logs,
     cm_highlighted_line,
     variables_in_all_notebook,
+    register_clippy_hint,
+    unregister_clippy_hint,
 }) => {
     let pluto_actions = useContext(PlutoContext)
 
@@ -379,6 +383,42 @@ export const CellInput = ({
             }
         })
 
+        let last_found_dangerous = { current: [] }
+        const warn_double_definitions = EditorView.updateListener.of((update) => {
+            if (!update.view.hasFocus) {
+                return
+            }
+
+            if (update.docChanged || update.selectionSet) {
+                let state = update.state
+                let scopestate = state.field(ScopeStateField)
+                let global_definitions = state.facet(GlobalDefinitionsFacet)
+
+                const defined_here = [...scopestate.definitions.keys()]
+                const defined_elsewhere = Object.entries(global_definitions)
+                    .filter(([name, cell]) => cell !== cell_id)
+                    .map(([name, cell]) => name)
+
+                const dangerous = _.intersection(defined_here, defined_elsewhere)
+
+                _.difference(dangerous, last_found_dangerous.current).forEach((name) => {
+                    console.info("Dangerous definition:", name)
+                    register_clippy_hint("multipledefs" + name, {
+                        message: html`<code>${name}</code> is already defined in <a href=${"#" + global_definitions[name]}>another cell</a>.`,
+                        level: "warning",
+                    })
+                })
+                _.difference(last_found_dangerous.current, dangerous).forEach((name) => {
+                    console.info("Dangerous removal:", name)
+                    unregister_clippy_hint("multipledefs" + name)
+                })
+
+                last_found_dangerous.current = dangerous
+
+                console.log({ dangerous, defined_here, defined_elsewhere, scopestate, global_definitions })
+            }
+        })
+
         // TODO remove me
         //@ts-ignore
         window.tags = tags
@@ -427,6 +467,7 @@ export const CellInput = ({
                     highlightSelectionMatches(),
                     bracketMatching(),
                     docs_updater,
+                    warn_double_definitions,
                     // Remove selection on blur
                     EditorView.domEventHandlers({
                         blur: (event, view) => {

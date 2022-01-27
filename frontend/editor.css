@@ -2421,6 +2421,54 @@ pluto-log-dot-kwarg > pluto-key::after {
 pluto-log-dot-kwarg > pluto-value {
     margin-left: 30px;
 }
+
+/* CLIPPY HINTS */
+
+pluto-hints {
+    position: absolute;
+    left: -12px;
+    top: -12px;
+    /* transform: translateX(100%); */
+    margin-left: 100%;
+    font-family: system-ui;
+    z-index: 40;
+}
+
+pluto-hint {
+    display: flex;
+    flex-direction: column;
+    padding: 6px;
+}
+pluto-hint.inspecting {
+    min-width: 164px;
+    background: var(--jl-warn-color);
+    color: var(--jl-warn-accent-color);
+}
+
+pluto-hint .content {
+    display: none;
+}
+pluto-hint.inspecting .content {
+    display: block;
+}
+
+pluto-hint.warning {
+}
+pluto-hint::before {
+    content: "!";
+    background: var(--jl-warn-color);
+    color: var(--jl-warn-accent-color);
+    font-family: system-ui;
+    font-weight: 800;
+    width: 30px;
+    height: 30px;
+    display: grid;
+    text-align: center;
+    place-content: center;
+    border: 4px solid var(--jl-warn-accent-color);
+    border-radius: 10px;
+    cursor: pointer;
+}
 /* PRESENTATION MODE */
 
 body.presentation pluto-output h1,
