@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "van der Plas"
+  given-names: "Fons"
+- family-names: "Dral"
+  given-names: "Michiel"
+- family-names: "Berg"
+  given-names: "Paul"
+title: "Pluto.jl"
+doi: 10.5281/zenodo.5889169
+url: "https://github.com/fonsp/Pluto.jl"
