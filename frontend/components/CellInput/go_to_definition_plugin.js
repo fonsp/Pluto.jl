@@ -121,7 +121,14 @@ let match_function_call_named_argument = make_beautiful_specific_matcher((x) => 
 let explorer_function_definition_argument = (cursor, doc, scopestate, verbose = false) => {
     let match = null
 
-    if ((match = match_function_definition_argument(cursor)`${t.Identifier}`)) {
+    if ((match = match_function_call_argument(cursor)`; ${t.many("named_args")}`)) {
+        // "Parameters", the `y, z` in `function f(x; y, z) end`
+        let { named_args } = match
+        for (let { node: named_arg } of named_args) {
+            scopestate = explorer_function_definition_argument(named_arg, doc, scopestate, verbose)
+        }
+        return scopestate
+    } else if ((match = match_function_definition_argument(cursor)`${t.Identifier}`)) {
         return scopestate_add_definition(scopestate, doc, cursor)
     } else if ((match = match_function_definition_argument(cursor)`${t.as("subject")}...`)) {
         // `function f(x...)` => ["x"]
@@ -193,7 +200,6 @@ let explore_pattern = (node, doc, scopestate, verbose = false) => {
 
         if (prefix_string === "var") {
             let name = doc.sliceString(string.from + 1, string.to - 1)
-            console.log(`name:`, name)
             if (name.length !== 0) {
                 scopestate.definitions.set(name, {
                     from: node.from,
@@ -506,7 +512,7 @@ let explore_variable_usage = (
 
             if (do_args && do_expressions) {
                 // Cheating because lezer-julia isn't up to this task yet
-                // TODO Fix julia-lezer to work better with `do` blocks
+                // TODO julia-lezer is up to the task now!!
                 let inner_scope = lower_scope(scopestate)
 
                 // Don't ask me why, but currently `do (x, y)` is parsed as `DoClauseArguments(ArgumentList(x, y))`
@@ -758,7 +764,6 @@ let explore_variable_usage = (
 
             for (let { node: arg } of args) {
                 let match = null
-                // TODO Implement named args stuff on function definiton AND tuple side
                 if ((match = match_function_call_argument(arg)`; ${t.many("named_args")}`)) {
                     // "Parameters", the part in `f(x; y, z)` after the `;`
                     let { named_args } = match
@@ -810,7 +815,7 @@ let explore_variable_usage = (
             let inner_scope = lower_scope(scopestate)
 
             for (let { node: arg } of do_args) {
-                explorer_function_definition_argument(arg, doc, inner_scope)
+                inner_scope = explorer_function_definition_argument(arg, doc, inner_scope)
             }
             for (let { node: expression } of do_expressions) {
                 inner_scope = explore_variable_usage(expression.cursor, doc, inner_scope, verbose)
