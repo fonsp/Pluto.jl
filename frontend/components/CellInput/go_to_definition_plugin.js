@@ -109,6 +109,7 @@ let match_for_binding = make_beautiful_specific_matcher((x) => jl_dynamic`[i for
 let match_assignee = make_beautiful_specific_matcher((x) => jl_dynamic`${x} = nothing`)
 let match_function_definition_argument = make_beautiful_specific_matcher((x) => jl_dynamic`function f(${x}) end`)
 let match_function_call_argument = make_beautiful_specific_matcher((x) => jl_dynamic`f(${x})`)
+let match_function_call_named_argument = make_beautiful_specific_matcher((x) => jl_dynamic`f(; ${x})`)
 
 /**
  * @param {TreeCursor | SyntaxNode} cursor
@@ -184,15 +185,33 @@ let explore_pattern = (node, doc, scopestate, verbose = false) => {
             scopestate = explore_pattern(name.cursor, doc, scopestate, verbose)
         }
         return scopestate
+    } else if ((match = match_julia(node)`${t.as("prefix")}${t.as("string", t.String)}`)) {
+        // This one is also a bit enigmatic, but `t.String` renders in the template as `"..."`,
+        // so the template with match things that look like `prefix"..."`
+        let { prefix, string } = match
+        let prefix_string = doc.sliceString(prefix.from, prefix.to)
+
+        if (prefix_string === "var") {
+            let name = doc.sliceString(string.from + 1, string.to - 1)
+            console.log(`name:`, name)
+            if (name.length !== 0) {
+                scopestate.definitions.set(name, {
+                    from: node.from,
+                    to: node.to,
+                })
+            }
+        } else {
+            scopestate = explore_variable_usage("cursor" in node ? node.cursor : node, doc, scopestate, verbose)
+        }
+        return scopestate
     } else if ((match = match_assignee(node)`${t.as("object")}[${t.as("property")}]`)) {
         let { object, property } = match
         scopestate = explore_variable_usage(object.cursor, doc, scopestate, verbose)
-        scopestate = explore_variable_usage(property.cursor, doc, scopestate, verbose)
+        if (property) scopestate = explore_variable_usage(property.cursor, doc, scopestate, verbose)
         return scopestate
     } else if ((match = match_assignee(node)`${t.as("object")}.${t.as("property")}`)) {
         let { object, property } = match
         scopestate = explore_variable_usage(object.cursor, doc, scopestate, verbose)
-        scopestate = explore_variable_usage(property.cursor, doc, scopestate, verbose)
         return scopestate
     } else {
         verbose && console.warn("UNKNOWN PATTERN:", node.toString(), doc.sliceString(node.from, node.to))
@@ -255,7 +274,7 @@ let explore_definition = function (cursor, doc, scopestate, verbose = false) {
         return { inner: scopestate, outer: outer }
     } else {
         verbose && console.warn(`Unknown thing in definition: "${doc.sliceString(cursor.from, cursor.to)}", "${cursor.toString()}"`)
-        // return scopestate
+        return { inner: scopestate, outer: fresh_scope() }
     }
 }
 
@@ -461,6 +480,11 @@ let explore_variable_usage = (
             let { object, property } = match
             if (object) scopestate = explore_variable_usage(object.cursor, doc, scopestate, verbose)
             return scopestate
+        } else if ((match = match_julia(cursor)`${t.as("assignee")} = ${t.maybe(t.as("value"))}`)) {
+            let { assignee, value } = match
+            if (value) scopestate = explore_variable_usage(value.cursor, doc, scopestate, verbose)
+            if (assignee) scopestate = explore_pattern(assignee.cursor, doc, scopestate, verbose)
+            return scopestate
         } else if (
             (match = match_julia(cursor)`
                 ${t.as("macro", t.anything_that_fits(jl`@macro`))}(${t.many("args")}) ${t.maybe(jl`do ${t.maybe(t.many("do_args"))}
@@ -520,16 +544,16 @@ let explore_variable_usage = (
         } else if (
             (match = match_julia(cursor)`
                 struct ${t.as("defined_as")}
-                    ${t.many("expressions", t.any)}
+                    ${t.many("expressions")}
                 end
             `) ??
             (match = match_julia(cursor)`
                 mutable struct ${t.as("defined_as")}
-                    ${t.many("expressions", t.any)}
+                    ${t.many("expressions")}
                 end
             `)
         ) {
-            let { defined_as, expressions } = match
+            let { defined_as, expressions = [] } = match
             defined_as = narrow(defined_as)
 
             let inner_scope = lower_scope(scopestate)
@@ -734,7 +758,20 @@ let explore_variable_usage = (
 
             for (let { node: arg } of args) {
                 let match = null
-                if ((match = match_function_call_argument(arg)`${t.as("name")} = ${t.as("value")}`)) {
+                // TODO Implement named args stuff on function definiton AND tuple side
+                if ((match = match_function_call_argument(arg)`; ${t.many("named_args")}`)) {
+                    // "Parameters", the part in `f(x; y, z)` after the `;`
+                    let { named_args } = match
+                    for (let { node: named_arg } of named_args) {
+                        let match = null
+                        if ((match = match_function_call_named_argument(named_arg)`${t.as("name")} = ${t.as("value")}`)) {
+                            let { name, value } = match
+                            scopestate = explore_variable_usage(value.cursor, doc, scopestate, verbose)
+                        } else {
+                            scopestate = explore_variable_usage(named_arg.cursor, doc, scopestate, verbose)
+                        }
+                    }
+                } else if ((match = match_function_call_argument(arg)`${t.as("name")} = ${t.as("value")}`)) {
                     let { name, value } = match
                     if (value) scopestate = explore_variable_usage(value.cursor, doc, scopestate, verbose)
                 } else if ((match = match_function_call_argument(arg)`${t.as("result")} ${t.many("clauses", t.anything_that_fits(jl`for x = y`))}`)) {
@@ -854,8 +891,6 @@ let explore_variable_usage = (
         ) {
             let { name, macro_name, arg, args = [], return_type, type_param, body = [] } = match
 
-            console.log(`match:`, match)
-
             if (arg) {
                 args.push({ node: arg })
             }
@@ -927,11 +962,6 @@ let explore_variable_usage = (
                 innerscope = explore_variable_usage(line.cursor, doc, innerscope, verbose)
             }
             return raise_scope(innerscope, scopestate)
-        } else if ((match = match_julia(cursor)`${t.as("assignee")} = ${t.maybe(t.as("value"))}`)) {
-            let { assignee, value } = match
-            if (assignee) scopestate = explore_pattern(assignee.cursor, doc, scopestate, verbose)
-            if (value) scopestate = explore_variable_usage(value.cursor, doc, scopestate, verbose)
-            return scopestate
         } else if (
             // A bit hard to see from the template, but these are array (and generator) comprehensions
             // e.g. [x for x in y]
@@ -942,7 +972,10 @@ let explore_variable_usage = (
             // Are there syntax differences between Array or Generator expressions?
             // For now I treat them the same...
             // (Also this is one line because lezer doesn't parse multiline generator expressions yet)
-            (match = match_julia(cursor)`(${t.as("result")} ${t.many("clauses", t.anything_that_fits(jl`for x = y`))})`)
+            (match = match_julia(cursor)`(
+                ${t.as("result")}
+                ${t.many("clauses", t.anything_that_fits(jl`for x = y`))}
+            )`)
         ) {
             let { result, clauses } = match
 

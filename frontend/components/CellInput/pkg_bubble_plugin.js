@@ -3,7 +3,7 @@ import { EditorView, syntaxTree, Decoration, ViewUpdate, ViewPlugin, Facet } fro
 import { PkgStatusMark, PkgActivateMark } from "../PkgStatusMark.js"
 import { html } from "../../imports/Preact.js"
 import { ReactWidget } from "./ReactWidget.js"
-import { create_specific_template_maker, jl, jl_dynamic, narrow, t, template } from "./lezer_template.js"
+import { create_specific_template_maker, iterate_with_cursor, jl, jl_dynamic, narrow, t, template } from "./lezer_template.js"
 
 /**
  * @typedef PkgstatusmarkWidgetProps
@@ -22,24 +22,6 @@ export const pkg_disablers = [
     "quickactivate",
     "@quickactivate",
 ]
-
-function iterate_with_cursor({ tree, enter, leave, from = 0, to = tree.length }) {
-    let cursor = tree.cursor()
-    while (true) {
-        let mustLeave = false
-        if (cursor.from <= to && cursor.to >= from && (cursor.type.isAnonymous || enter(cursor) !== false)) {
-            if (cursor.firstChild()) continue
-            if (!cursor.type.isAnonymous) mustLeave = true
-        }
-        while (true) {
-            if (mustLeave && leave) leave(cursor)
-            mustLeave = cursor.type.isAnonymous
-            if (cursor.nextSibling()) break
-            if (!cursor.parent()) return
-            mustLeave = true
-        }
-    }
-}
 
 function find_import_statements({ doc, tree, from, to }) {
     // This quotelevel stuff is waaaay overengineered and precise...
