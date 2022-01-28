@@ -6,9 +6,10 @@ import { SimpleOutputBody } from "./TreeView.js"
 // Defined in editor.css
 const GRID_WIDTH = 10
 const RESIZE_THROTTLE = 60
+const PROGRESS_LOG_LEVEL = "LogLevel(-1)"
 
 const is_progress_log = (log) => {
-    return log.kwargs.find((kwarg) => kwarg[0] === "progress") !== undefined
+    return log.level == PROGRESS_LOG_LEVEL && log.kwargs.find((kwarg) => kwarg[0] === "progress") !== undefined
 }
 
 export const Logs = ({ logs, line_heights, set_cm_highlighted_line }) => {
@@ -99,7 +100,7 @@ const Dot = ({ set_cm_highlighted_line, show, msg, kwargs, x, y, level }) => {
     // }, [body])
     const [inspecting, set_inspecting] = useState(false)
 
-    const is_progress = is_progress_log({ kwargs })
+    const is_progress = is_progress_log({ level, kwargs })
     let progress = null
     if (is_progress) {
         progress = kwargs.find((p) => p[0] === "progress")[1][0]
