@@ -56,9 +56,11 @@ import {
     javascript,
     python,
     Text,
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@0.25.0/dist/index.es.min.js"
+    linter,
+} from "./index.es.js"
 
 export {
+    linter,
     EditorState,
     EditorSelection,
     Compartment,

@@ -44,6 +44,7 @@ import {
     StateField,
     StateEffect,
     autocomplete,
+    linter,
 } from "../imports/CodemirrorPlutoSetup.js"
 
 import { markdown, html as htmlLang, javascript, sqlLang, python, julia_andrey } from "./CellInput/mixedParsers.js"
@@ -384,39 +385,57 @@ export const CellInput = ({
         })
 
         let last_found_dangerous = { current: [] }
-        const warn_double_definitions = EditorView.updateListener.of((update) => {
-            if (!update.view.hasFocus) {
-                return
-            }
+        const warn_double_definitions = EditorView.updateListener.of((update) => {})
 
-            if (update.docChanged || update.selectionSet) {
-                let state = update.state
-                let scopestate = state.field(ScopeStateField)
-                let global_definitions = state.facet(GlobalDefinitionsFacet)
+        const diagnostic_linter = linter((editorView) => {
+            console.log(editorView)
 
-                const defined_here = [...scopestate.definitions.keys()]
-                const defined_elsewhere = Object.entries(global_definitions)
-                    .filter(([name, cell]) => cell !== cell_id)
-                    .map(([name, cell]) => name)
+            const state = editorView.state
+            let scopestate = state.field(ScopeStateField)
+            let global_definitions = state.facet(GlobalDefinitionsFacet)
 
-                const dangerous = _.intersection(defined_here, defined_elsewhere)
+            const defined_here = [...scopestate.definitions.keys()]
+            const defined_elsewhere = Object.entries(global_definitions)
+                .filter(([name, cell]) => cell !== cell_id)
+                .map(([name, cell]) => name)
 
-                _.difference(dangerous, last_found_dangerous.current).forEach((name) => {
-                    console.info("Dangerous definition:", name)
-                    register_clippy_hint("multipledefs" + name, {
-                        message: html`<code>${name}</code> is already defined in <a href=${"#" + global_definitions[name]}>another cell</a>.`,
-                        level: "warning",
-                    })
+            const dangerous = _.intersection(defined_here, defined_elsewhere)
+
+            _.difference(dangerous, last_found_dangerous.current).forEach((name) => {
+                console.info("Dangerous definition:", name)
+                register_clippy_hint("multipledefs" + name, {
+                    message: html`<code>${name}</code> is already defined in <a href=${"#" + global_definitions[name]}>another cell</a>.`,
+                    level: "warning",
                 })
-                _.difference(last_found_dangerous.current, dangerous).forEach((name) => {
-                    console.info("Dangerous removal:", name)
-                    unregister_clippy_hint("multipledefs" + name)
-                })
+            })
+            _.difference(last_found_dangerous.current, dangerous).forEach((name) => {
+                console.info("Dangerous removal:", name)
+                unregister_clippy_hint("multipledefs" + name)
+            })
 
-                last_found_dangerous.current = dangerous
+            last_found_dangerous.current = dangerous
 
-                console.log({ dangerous, defined_here, defined_elsewhere, scopestate, global_definitions })
-            }
+            console.log({ dangerous, defined_here, defined_elsewhere, scopestate, global_definitions })
+            return dangerous.map((variable) => {
+                const range = scopestate.definitions.get(variable)
+                const diagnostic = {
+                    ...range,
+                    severity: "warning",
+                    source: "MultipleDefinitionErrors",
+                    message: `${variable} is already defined in another cell`,
+                    actions: [
+                        {
+                            name: `Rename ${variable} in ${variable}2`,
+                            apply: (view, from, to) => {
+                                // TODO: Check that the new name is not already taken
+                                const transaction = view.state.update({ changes: { from, to, insert: variable + "2" } })
+                                view.dispatch(transaction)
+                            },
+                        },
+                    ],
+                }
+                return diagnostic
+            })
         })
 
         // TODO remove me
@@ -468,6 +487,7 @@ export const CellInput = ({
                     bracketMatching(),
                     docs_updater,
                     warn_double_definitions,
+                    diagnostic_linter,
                     // Remove selection on blur
                     EditorView.domEventHandlers({
                         blur: (event, view) => {
