@@ -67,7 +67,16 @@ export reset_notebook_environment
 export update_notebook_environment
 export activate_notebook_environment
 
-if get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") !== "0"
+"Determine whether to show banner"
+function should_show_banner()::Bool
+    if "JULIA_PLUTO_SHOW_BANNER" in keys(ENV)
+        return ENV["JULIA_PLUTO_SHOW_BANNER"] !== "0"
+    else
+        return "CI" ̸∈ keys(ENV)
+    end
+end
+
+if should_show_banner()
 @info """\n
     Welcome to Pluto $(PLUTO_VERSION_STR) 🎈
     Start a notebook server using:
