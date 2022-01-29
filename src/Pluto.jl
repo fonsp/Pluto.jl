@@ -9,7 +9,7 @@ Have a look at the FAQ:
 https://github.com/fonsp/Pluto.jl/wiki
 """
 module Pluto
-project_relative_path(xs...) = normpath(joinpath(pkgdir(Pluto)), xs...))
+project_relative_path(xs...) = normpath(joinpath(pkgdir(Pluto), xs...))
 
 import Pkg
 
