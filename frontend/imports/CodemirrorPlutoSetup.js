@@ -30,6 +30,7 @@ import {
     foldKeymap,
     commentKeymap,
     syntaxTree,
+    syntaxTreeAvailable,
     Decoration,
     ViewUpdate,
     ViewPlugin,
@@ -56,7 +57,7 @@ import {
     javascript,
     python,
     Text,
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@0.25.0/dist/index.es.min.js"
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@0.26.0/dist/index.es.min.js"
 
 export {
     EditorState,
@@ -90,6 +91,7 @@ export {
     foldKeymap,
     commentKeymap,
     syntaxTree,
+    syntaxTreeAvailable,
     Decoration,
     ViewUpdate,
     ViewPlugin,
