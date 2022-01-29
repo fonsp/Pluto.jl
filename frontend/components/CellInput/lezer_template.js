@@ -1,4 +1,4 @@
-import { julia_andrey, NodeProp, Text } from "../../imports/CodemirrorPlutoSetup.js"
+import { julia_andrey, NodeProp, syntaxTree, Text } from "../../imports/CodemirrorPlutoSetup.js"
 import lodash from "../../imports/lodash.js"
 
 // @ts-ignore
@@ -540,6 +540,10 @@ export let as_string = weak_memo1((/** @type {JuliaCodeObject} */ julia_code_obj
 
 export let as_node = weak_memo1((/** @type {JuliaCodeObject} */ julia_code_object) => {
     return julia_to_ast(as_string(julia_code_object))
+})
+
+export let as_doc = weak_memo1((/** @type {JuliaCodeObject} */ julia_code_object) => {
+    return Text.of([as_string(julia_code_object)])
 })
 
 /**

@@ -391,7 +391,7 @@ let scopestate_add_definition = (scopestate, doc, node) => {
  * @param {ScopeState} scopestate
  * @returns {ScopeState}
  */
-let explore_variable_usage = (
+export let explore_variable_usage = (
     cursor,
     doc,
     scopestate = {
