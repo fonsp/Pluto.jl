@@ -2679,6 +2679,18 @@ pluto-output > assignee {
     background: unset;
 }
 
+.cm-selectionMatch {
+    background: none !important;
+    text-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+    .cm-selectionMatch {
+        background: none !important;
+        text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+    }
+}
+
 .cm-editor .cm-matchingBracket,
 .cm-editor .cm-nonmatchingBracket {
     background-color: unset;
