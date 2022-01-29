@@ -5,7 +5,7 @@ import _ from "../imports/lodash.js"
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 import { get_selected_doc_from_state } from "./CellInput/LiveDocsFromCursor.js"
-import { go_to_definition_plugin, NotebookVariablesFacet } from "./CellInput/go_to_definition_plugin.js"
+import { go_to_definition_plugin, ScopeStateField, GlobalDefinitionsFacet } from "./CellInput/go_to_definition_plugin.js"
 import { detect_deserializer } from "../common/Serialization.js"
 
 import {
@@ -163,6 +163,7 @@ let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPluto
  *  remote_code: string,
  *  scroll_into_view_after_creation: boolean,
  *  cell_dependencies: import("./Editor.js").CellDependencyData,
+ *  nbpkg: import("./Editor.js").NotebookPkgData?,
  *  variables_in_all_notebook: { [variable_name: string]: string },
  *  [key: string]: any,
  * }} props
@@ -202,7 +203,7 @@ export const CellInput = ({
     on_change_ref.current = on_change
 
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
-    let used_variables_compartment = useCompartment(newcm_ref, NotebookVariablesFacet.of(variables_in_all_notebook))
+    let global_definitions_compartment = useCompartment(newcm_ref, GlobalDefinitionsFacet.of(variables_in_all_notebook))
     let highlighted_line_compartment = useCompartment(newcm_ref, HighlightLineFacet.of(cm_highlighted_line))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
 
@@ -395,7 +396,7 @@ export const CellInput = ({
                     // Compartments coming from react state/props
                     nbpkg_compartment,
                     highlighted_line_compartment,
-                    used_variables_compartment,
+                    global_definitions_compartment,
                     editable_compartment,
 
                     // This is waaaay in front of the keys it is supposed to override,

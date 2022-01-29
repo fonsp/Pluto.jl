@@ -7,7 +7,7 @@ import { create_specific_template_maker, iterate_with_cursor, jl, jl_dynamic, na
 
 /**
  * @typedef PkgstatusmarkWidgetProps
- * @type {{ nbpkg: any, pluto_actions: any, notebook_id: string }}
+ * @type {{ nbpkg: import("../Editor.js").NotebookPkgData, pluto_actions: any, notebook_id: string }}
  */
 
 // This list appears multiple times in our codebase. Be sure to match edits everywhere.
@@ -239,6 +239,9 @@ function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg }) {
     return Decoration.set(widgets, true)
 }
 
+/**
+ * @type {Facet<import("../Editor.js").NotebookPkgData?>}
+ */
 export const NotebookpackagesFacet = Facet.define({
     combine: (values) => values[0],
     compare: _.isEqual,

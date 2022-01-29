@@ -365,17 +365,18 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         ])
     end
     @testset "Scope modifiers" begin
-        @test testee(:(let global a, b = 1, 2 end), [], [:a, :b], [], [])
-        @test_broken testee(:(let global a = b = 1 end), [], [:a], [], []; verbose=false)
-        @test testee(:(let global k = 3 end), [], [:k], [], [])
-        @test_broken testee(:(let global k = r end), [], [:k], [], []; verbose=false)
-        @test testee(:(let global k = 3; k end), [], [:k], [], [])
-        @test testee(:(let global k += 3 end), [:k], [:k], [:+], [])
-        @test testee(:(let global k; k = 4 end), [], [:k], [], [])
-        @test testee(:(let global k; b = 5 end), [], [], [], [])
-        @test testee(:(let global x, y, z; b = 5; x = 1; (y,z) = 3 end), [], [:x, :y, :z], [], [])
-        @test testee(:(let global x, z; b = 5; x = 1; end), [], [:x], [], [])
+        @test testee(:(let; global a, b = 1, 2 end), [], [:a, :b], [], [])
+        @test_broken testee(:(let; global a = b = 1 end), [], [:a], [], []; verbose=false)
+        @test testee(:(let; global k = 3 end), [], [:k], [], [])
+        @test_broken testee(:(let; global k = r end), [], [:k], [], []; verbose=false)
+        @test testee(:(let; global k = 3; k end), [], [:k], [], [])
+        @test testee(:(let; global k += 3 end), [:k], [:k], [:+], [])
+        @test testee(:(let; global k; k = 4 end), [], [:k], [], [])
+        @test testee(:(let; global k; b = 5 end), [], [], [], [])
+        @test testee(:(let; global x, y, z; b = 5; x = 1; (y,z) = 3 end), [], [:x, :y, :z], [], [])
+        @test testee(:(let; global x, z; b = 5; x = 1; end), [], [:x], [], [])
         @test testee(:(let a = 1, b = 2; show(a + b) end), [], [], [:show, :+], [])
+        @test_broken testee(:(let a = 1; global a = 2; end), [], [:a], [], []; verbose=false)
 
         @test testee(:(begin local a, b = 1, 2 end), [], [], [], [])
         @test testee(:(begin local a = b = 1 end), [], [:b], [], [])
@@ -394,7 +395,7 @@ Some of these @test_broken lines are commented out to prevent printing to the te
             :f => ([], [:k], [], [])
         ])
         @test testee(:((begin x = 1 end, y)), [:y], [:x], [], [])
-        @test testee(:(x = let global a += 1 end), [:a], [:x, :a], [:+], [])
+        @test testee(:(x = let; global a += 1 end), [:a], [:x, :a], [:+], [])
     end
     @testset "`import` & `using`" begin
         @test testee(:(using Plots), [], [:Plots], [], [])
