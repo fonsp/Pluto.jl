@@ -67,12 +67,11 @@ export reset_notebook_environment
 export update_notebook_environment
 export activate_notebook_environment
 
-"Determine whether to show banner"
 function should_show_banner()::Bool
     if "JULIA_PLUTO_SHOW_BANNER" in keys(ENV)
         return ENV["JULIA_PLUTO_SHOW_BANNER"] !== "0"
     else
-        return "CI" ̸∈ keys(ENV)
+        return "CI" ∈ keys(ENV) && ENV["CI"] == "true"
     end
 end
 
