@@ -1,5 +1,5 @@
 import { EditorState, syntaxTree } from "../../imports/CodemirrorPlutoSetup.js"
-import { ScopeStateField } from "./go_to_definition_plugin.js"
+import { ScopeStateField } from "./scopestate_statefield.js"
 
 let get_root_variable_from_expression = (cursor) => {
     if (cursor.name === "SubscriptExpression") {

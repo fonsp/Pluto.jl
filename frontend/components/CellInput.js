@@ -5,7 +5,7 @@ import _ from "../imports/lodash.js"
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 import { get_selected_doc_from_state } from "./CellInput/LiveDocsFromCursor.js"
-import { go_to_definition_plugin, ScopeStateField, NotebookVariablesFacet } from "./CellInput/go_to_definition_plugin.js"
+import { go_to_definition_plugin, NotebookVariablesFacet } from "./CellInput/go_to_definition_plugin.js"
 import { detect_deserializer } from "../common/Serialization.js"
 
 import {
@@ -56,6 +56,7 @@ import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
 import { cl } from "../common/ClassTable.js"
 import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_line.js"
 import { debug_syntax_plugin } from "./CellInput/debug_syntax_plugin.js"
+import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
 
 export const pluto_syntax_colors = HighlightStyle.define([
     /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */

@@ -1,6 +1,6 @@
 import { assertEquals as untyped_assertEquals } from "https://deno.land/std@0.123.0/testing/asserts.ts"
 import { jl, as_node, as_doc, JuliaCodeObject, as_string } from "../lezer_template.js"
-import { explore_variable_usage } from "../go_to_definition_plugin.js"
+import { explore_variable_usage } from "../scopestate_statefield.js"
 
 /**
  * @template T
@@ -10,7 +10,7 @@ import { explore_variable_usage } from "../go_to_definition_plugin.js"
 let assertEquals = (a, b) => untyped_assertEquals(a, b)
 
 /**
- * @param {import("../go_to_definition_plugin.js").ScopeState} scopestate
+ * @param {import("../scopestate_statefield.js").ScopeState} scopestate
  */
 let simplify_scopestate = (scopestate) => {
     let { definitions, usages } = scopestate
@@ -48,8 +48,13 @@ let test_scopestate = (input, expected) => {
 function test(code) {
     let expected_scopestate = { defined: [], local_used: [], global_used: [] }
 
-    for (let variable of as_string(code).matchAll(/(global|local|defined)_[a-z0-9]*/g)) {
-        let [variable_name, usage_type] = variable
+    for (let variable of as_string(code).matchAll(/(macro_)?(global|local|defined)(_[a-z0-9_]+)?/g)) {
+        let [variable_name, is_macro, usage_type] = variable
+
+        if (is_macro != null) {
+            variable_name = `@${variable_name}`
+        }
+
         let index = variable.index
         if (usage_type === "global") {
             expected_scopestate.global_used.push(variable_name)
@@ -68,7 +73,11 @@ Deno.test("Function call", () => {
 })
 
 Deno.test("Simple definition", () => {
-    test(jl`defined_ = 10`)
+    test(jl`defined = 10`)
+})
+
+Deno.test("Tuple destructuring", () => {
+    test(jl`(defined1, defined2, defined3...) = global_call()`)
 })
 
 Deno.test("Array comprehension", () => {
@@ -98,6 +107,14 @@ Deno.test("Function definition", () => {
         function defined_function(local_argument1, local_argument2...; local_argument3, local_argument4...)
             local_argument1, local_argument2, local_argument3, local_argument4
             global_var1, global_var2
+        end
+    `)
+})
+
+Deno.test("Function definition", () => {
+    test(jl`
+        function defined_function(local_argument1 = global_default)
+            local_argument1
         end
     `)
 })
@@ -146,4 +163,25 @@ Deno.test("Typed struct", () => {
             x::local_type = global_var2
         end
   end`)
+})
+
+Deno.test("Quotes", () => {
+    test(jl`quote
+        irrelevant_1 = irrelevant_2
+        irrelevant_3 = $(global_var)
+    end`)
+})
+
+Deno.test("Nested Quotes", () => {
+    test(jl`quote
+            :($irrelevant)
+            :($$global_var)
+        end
+    end`)
+})
+
+Deno.test("Macros", () => {
+    test(jl`global_used.@irrelevant`)
+    test(jl`@global_but_not_macro.irrelevant`)
+    test(jl`@macro_global`)
 })
