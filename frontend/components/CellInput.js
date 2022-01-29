@@ -490,7 +490,9 @@ export const CellInput = ({
 
                     on_change_compartment,
 
-                    debug_syntax_plugin,
+                    // Enable this plugin if you want to see the lezer tree,
+                    // and possible lezer errors and maybe more debug info in the console:
+                    // debug_syntax_plugin,
                 ],
             }),
             parent: dom_node_ref.current,
