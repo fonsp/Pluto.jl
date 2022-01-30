@@ -271,7 +271,7 @@ end
 
 # this is stupid -- désolé
 function is_joined_funcname(joined::Symbol)
-    occursin('.', String(joined))
+    joined !== :.. #= .. is a valid identifier 😐 =# && occursin('.', String(joined))
 end
 
 assign_to_kw(e::Expr) = e.head == :(=) ? Expr(:kw, e.args...) : e
