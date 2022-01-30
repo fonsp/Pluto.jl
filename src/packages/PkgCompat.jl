@@ -216,13 +216,14 @@ end
 # (⚠️ Internal API with fallback)
 _stdlibs() = try
 	stdlibs = values(Pkg.Types.stdlibs())
-	stdlibs = if VERSION > v"1.8.0-"
+	T = eltype(stdlibs)
+	if T == String
+		stdlibs
+	elseif T <: Tuple{String,Any}
 		first.(stdlibs)
 	else
-		stdlibs
+		error()
 	end
-	@assert eltype(stdlibs) == String
-	stdlibs
 catch e
 	@warn "Pkg compat: failed to load standard libraries." exception=(e,catch_backtrace())
 

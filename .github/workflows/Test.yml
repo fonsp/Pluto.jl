@@ -29,7 +29,7 @@ jobs:
         strategy:
             matrix:
                 # We test quite a lot of versions because we do some OS and version specific things unfortunately
-                julia-version: ["1.5", "1.6", "1.7"] # , "nightly"]
+                julia-version: ["1.5", "1.6", "1.7"] #, "nightly"]
                 os: [ubuntu-latest, macOS-latest, windows-latest]
 
         steps:
