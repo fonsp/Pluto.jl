@@ -67,7 +67,7 @@ export reset_notebook_environment
 export update_notebook_environment
 export activate_notebook_environment
 
-if get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") !== "0"
+if get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") != "0" && get(ENV, "CI", "🍄") != "true"
 @info """\n
     Welcome to Pluto $(PLUTO_VERSION_STR) 🎈
     Start a notebook server using:
