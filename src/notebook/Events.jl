@@ -39,7 +39,7 @@ abstract type PlutoEvent end
 
 function try_event_call(session, event::PlutoEvent)
     return try
-        session.options.server.event_listener(event)
+        session.options.server.on_event(event)
     catch e
         @warn "Couldn't run event listener" event exception=(e, catch_backtrace())
         nothing
