@@ -156,6 +156,7 @@ export const Cell = ({
                 <button
                     onClick=${() => {
                         let cells_to_fold = selected ? selected_cells : [cell_id]
+                        console.log(cell_id)
                         pluto_actions.update_notebook((notebook) => {
                             for (let cell_id of cells_to_fold) {
                                 notebook.cell_inputs[cell_id].code_folded = !code_folded

@@ -7,9 +7,13 @@ body > header,
 preamble > button,
 pluto-cell > button,
 pluto-input > button,
-pluto-shoulder,
 footer,
 pluto-runarea,
 #helpbox-wrapper {
     display: none !important;
+}
+
+pluto-shoulder {
+    cursor: default !important;
+    background: none !important;
 }

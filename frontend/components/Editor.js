@@ -32,6 +32,7 @@ import { ProgressBar } from "./ProgressBar.js"
 import { IsolatedCell } from "./Cell.js"
 import { RawHTMLContainer } from "./CellOutput.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
+import produce from "../imports/immer.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -818,9 +819,15 @@ patch: ${JSON.stringify(
                       get_original_state: () => this.original_state,
                       get_current_state: () => this.state.notebook,
                   })
-                : nothing_actions({
-                      actions: this.actions,
-                  })
+                : {
+                      ...nothing_actions({
+                          actions: this.actions,
+                      }),
+                      update_notebook: (update_fn) => {
+                          const new_notebook = produce(this.state.notebook, update_fn)
+                          this.setState({ notebook: new_notebook })
+                      },
+                  }
 
         this.on_disable_ui = () => {
             document.body.classList.toggle("disable_ui", this.state.disable_ui)
