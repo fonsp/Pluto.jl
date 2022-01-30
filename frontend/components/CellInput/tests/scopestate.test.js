@@ -141,3 +141,7 @@ Deno.test("Macros", () => {
     test_implicit(jl`@global_but_not_macro.irrelevant`)
     test_implicit(jl`@macro_global`)
 })
+
+Deno.test("Lonely bare tuple", () => {
+    test_implicit(jl`defined, = (global_var,)`)
+})
