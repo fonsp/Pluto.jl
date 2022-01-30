@@ -163,6 +163,20 @@ function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.R
                 end
             end
 
+            maybe_max_log = findfirst(((key, _),) -> key == "maxlog", next_log["kwargs"])
+            if maybe_max_log !== nothing
+                n_logs = count(log -> log["id"] == next_log["id"], running_cell.logs)
+                try
+                    max_log = parse(Int, next_log["kwargs"][maybe_max_log][2] |> first)
+
+                    # Don't show message with id more than max_log times
+                    if max_log isa Int && n_logs >= max_log
+                        return
+                    end
+                catch
+                end
+            end
+
             push!(running_cell.logs, next_log)
             Pluto.@asynclog update_throttled()
         catch e
