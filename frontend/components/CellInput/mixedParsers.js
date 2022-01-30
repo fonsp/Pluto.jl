@@ -49,18 +49,23 @@ const STRING_NODE_NAMES = new Set([
     "TripleString",
     "String",
     "CommandString",
-    "CommandStringWithoutInterpolation",
     "TripleStringWithoutInterpolation",
     "StringWithoutInterpolation",
+    "CommandStringWithoutInterpolation",
 ])
-
-const STRING_NODE_NAMES_NO_INTERPOLATION = new Set(["CommandStringWithoutInterpolation", "TripleStringWithoutInterpolation", "StringWithoutInterpolation"])
 
 const juliaWrapper = parseMixed((node, input) => {
     if (!STRING_NODE_NAMES.has(node.type.name)) {
         return null
     }
-    const offset = node.name === "TripleString" ? 3 : 1
+
+    let is_tripple_string = node.name === "TripleString" || node.name === "TripleStringWithoutInterpolation"
+    // For now have single quotes as escape hook? Looks weird inline
+    if (!is_tripple_string) {
+        return null
+    }
+
+    const offset = is_tripple_string ? 3 : 1
     const defaultOverlay = [{ from: node.from + offset, to: Math.min(node.to - offset, input.length) }]
 
     if (defaultOverlay[0].from >= defaultOverlay[0].to) {
@@ -78,30 +83,32 @@ const juliaWrapper = parseMixed((node, input) => {
     let parser,
         overlay = []
 
+    // Disables for "interpolatable" strings now (because overlay stuff still doesn't work sometimes)
+    if (tag.startsWith("@")) {
+        // Not yet
+        return null
+    }
+
     if (tag === "@htl" || tag === "html") {
         parser = htmlParser
     } else if (MD_TAGS.includes(tag)) {
         parser = mdParserExt
-    } else if (tag === "@javascript") {
+    } else if (tag === "@javascript" || tag === "@js" || tag === "js" || tag === "javascript") {
         parser = javascriptLanguage.parser
-    } else if (tag === "py" || tag === "pyr" || tag === "python") {
+    } else if (tag === "py" || tag === "pyr" || tag === "python" || tag === "@python") {
         parser = pythonParser
     } else if (tag === "sql") {
         parser = postgresParser
     } else {
         return null
     }
-    if (STRING_NODE_NAMES_NO_INTERPOLATION.has(node.type.name)) {
-        return {
-            parser,
-            overlay: defaultOverlay,
-        }
-    }
+
     let from = node.from
     for (let child = node.node.firstChild; overlay !== defaultOverlay && child !== null && child.to <= node.to; child = child?.nextSibling) {
         overlay.push({ from, to: child.from })
         from = child.to
     }
+
     // If overlay is not the default and we haven't found anything (=interpolation) inside, use the default
     if (overlay.length === 0 || node.node.firstChild === null) {
         overlay = defaultOverlay
@@ -127,6 +134,7 @@ const juliaWrapper = parseMixed((node, input) => {
     if (["@htl", "@javascript", ...MD_TAGS].includes(tag)) {
         overlay = overlayHack(overlay, input)
     }
+
     return { parser, overlay }
 })
 
