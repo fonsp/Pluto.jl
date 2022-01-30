@@ -215,7 +215,12 @@ end
 
 # (⚠️ Internal API with fallback)
 _stdlibs() = try
-	values(Pkg.Types.stdlibs())
+	stdlibs = values(Pkg.Types.stdlibs())
+	if VERSION > v"1.7"
+		first.(stdlibs)
+	else
+		stdlibs
+	end::Vector{String}
 catch e
 	@warn "Pkg compat: failed to load standard libraries." exception=(e,catch_backtrace())
 
