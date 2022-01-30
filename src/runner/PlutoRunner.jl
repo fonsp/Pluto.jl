@@ -1401,6 +1401,7 @@ const integrations = Integration[
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::Type) = false
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:NamedTuple}) = false
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:Dict{Symbol,<:Any}}) = false
+            pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractArray{Union{}, 1}) = false
 
         end,
     ),
