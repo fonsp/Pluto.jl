@@ -230,6 +230,94 @@ const initial_notebook = () => ({
     nbpkg: null,
 })
 
+/**
+ * Very naive Pluto.jl notebook file format parser.
+ * it should not work on notebook created before pluto version 0.15.
+ *
+ * @param {String} source
+ * @returns Object
+ */
+const parse_notebook = (source) => {
+    if (!source.startsWith("### A Pluto.jl notebook ###")) {
+        throw "Remote file is not a Pluto.jl notebook"
+    }
+
+    const cell_inputs = {},
+        cell_results = {}
+    const lines = source.split("\n")
+    const prefix = "# ╔═╡ "
+    const prefix_length = prefix.length
+
+    let idx = 0
+    while (!lines[idx].startsWith(prefix)) idx++
+
+    while (true) {
+        // parse cells
+        const cell_id = lines[idx].slice(prefix_length)
+        if (cell_id == "00000000-0000-0000-0000-000000000001") {
+            // stop at PLUTO_PROJECT_TOML_CONTENTS
+            break
+        }
+
+        idx++
+        const cell_code_start = idx
+        while (!lines[idx].startsWith(prefix)) idx++
+
+        const code = lines.slice(cell_code_start, idx - 1).join("\n")
+        cell_inputs[cell_id] = {
+            cell_id,
+            code,
+            code_folded: false,
+            running_disabled: false,
+        }
+        cell_results[cell_id] = {
+            cell_id,
+            depends_on_disabled_cells: false,
+            output: {},
+            published_object_keys: [],
+            queued: false,
+            running: false,
+            errored: false,
+            runtime: undefined,
+            logs: [],
+        }
+    }
+
+    idx++
+    while (!lines[idx].startsWith(prefix)) idx++
+    idx++
+    while (!lines[idx].startsWith(prefix)) idx++
+
+    if (lines[idx].slice(prefix.length) !== "Cell order:") {
+        throw "i don't know how to parse this pluto.jl notebook"
+    }
+
+    const folded_prefix = "# ╟─",
+        not_folded_prefix = "# ╠═"
+
+    const cell_order = []
+    idx++
+    let current_cell_id = lines[idx].slice(not_folded_prefix.length)
+    while (current_cell_id !== "00000000-0000-0000-0000-000000000001") {
+        cell_order.push(current_cell_id)
+        cell_inputs[current_cell_id].code_folded = lines[idx].startsWith(folded_prefix)
+
+        idx++
+        current_cell_id = lines[idx].slice(not_folded_prefix.length)
+    }
+
+    const notebook = initial_notebook()
+    return {
+        ...notebook,
+        notebook_id: uuidv4(),
+        path: launch_params.notebookfile,
+        shortpath: launch_params.notebookfile,
+        cell_inputs,
+        cell_results,
+        cell_order,
+    }
+}
+
 export class Editor extends Component {
     constructor() {
         super()
@@ -746,18 +834,29 @@ patch: ${JSON.stringify(
         if (this.state.static_preview) {
             ;(async () => {
                 const r = await fetch(launch_params.statefile)
-                const data = await read_Uint8Array_with_progress(r, (progress) => {
+                if (launch_params.statefile.endsWith(".jl")) {
+                    this.original_state = {}
+                    const source = await r.text()
+                    const notebook = parse_notebook(source)
                     this.setState({
-                        statefile_download_progress: progress,
+                        notebook,
+                        initializing: false,
+                        binder_phase: this.state.offer_binder ? BinderPhase.wait_for_user : null,
                     })
-                })
-                const state = unpack(data)
-                this.original_state = state
-                this.setState({
-                    notebook: state,
-                    initializing: false,
-                    binder_phase: this.state.offer_binder ? BinderPhase.wait_for_user : null,
-                })
+                } else {
+                    const data = await read_Uint8Array_with_progress(r, (progress) => {
+                        this.setState({
+                            statefile_download_progress: progress,
+                        })
+                    })
+                    const state = unpack(data)
+                    this.original_state = state
+                    this.setState({
+                        notebook: state,
+                        initializing: false,
+                        binder_phase: this.state.offer_binder ? BinderPhase.wait_for_user : null,
+                    })
+                }
             })()
             // view stats on https://stats.plutojl.org/
             count_stat(`article-view`)
