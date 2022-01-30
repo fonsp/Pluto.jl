@@ -215,7 +215,14 @@ end
 
 # (⚠️ Internal API with fallback)
 _stdlibs() = try
-	values(Pkg.Types.stdlibs())
+	stdlibs = values(Pkg.Types.stdlibs())
+	stdlibs = if VERSION > v"1.8.0-"
+		first.(stdlibs)
+	else
+		stdlibs
+	end
+	@assert eltype(stdlibs) == String
+	stdlibs
 catch e
 	@warn "Pkg compat: failed to load standard libraries." exception=(e,catch_backtrace())
 
