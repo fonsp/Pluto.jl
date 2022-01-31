@@ -543,12 +543,10 @@ export const CellInput = ({
             }
 
             if (update.docChanged || update.selectionSet) {
-                let x = syntaxTree(update.state).resolveInner(update.state.selection.main.from, 0)
-                console.log(`x:`, x)
-                console.log(`x:`, x.toString())
-
                 let state = update.state
                 DOCS_UPDATER_VERBOSE && console.groupCollapsed("Selection")
+                let inner_node = syntaxTree(update.state).resolveInner(update.state.selection.main.from, 0)
+                console.log(`INNER RESOLVE:`, inner_node.toString())
                 let result = get_selected_doc_from_state(state, DOCS_UPDATER_VERBOSE)
                 DOCS_UPDATER_VERBOSE && console.log("Result:", result)
                 DOCS_UPDATER_VERBOSE && console.groupEnd()

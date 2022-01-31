@@ -83,12 +83,6 @@ const juliaWrapper = parseMixed((node, input) => {
     let parser,
         overlay = []
 
-    // Disables for "interpolatable" strings now (because overlay stuff still doesn't work sometimes)
-    if (tag.startsWith("@")) {
-        // Not yet
-        return null
-    }
-
     if (tag === "@htl" || tag === "html") {
         parser = htmlParser
     } else if (MD_TAGS.includes(tag)) {
@@ -135,9 +129,19 @@ const juliaWrapper = parseMixed((node, input) => {
         overlay = overlayHack(overlay, input)
     }
 
-    // TODO Re-affirming our non-inteprolatingness
-    overlay = defaultOverlay
-    return { parser, overlay: defaultOverlay }
+    // Mounted parsers have a hard time with overlays smaller than 2 characters it seems...
+    // with this rough hack in there they work? - NOT ALWAYS PFFFT
+    // overlay = overlay.filter((x) => Math.abs(x.from - x.to) >= 4)
+
+    // // Disables for "interpolatable" strings now (because overlay stuff still doesn't work sometimes)
+    // if (tag.startsWith("@")) {
+    //     // Not yet
+    //     return null
+    // }
+    // // TODO Re-affirming our non-inteprolatingness
+    // overlay = defaultOverlay
+
+    return { parser, overlay }
 })
 
 const julia_andrey = (config) => {
