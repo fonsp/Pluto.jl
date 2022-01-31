@@ -135,7 +135,9 @@ const juliaWrapper = parseMixed((node, input) => {
         overlay = overlayHack(overlay, input)
     }
 
-    return { parser, overlay }
+    // TODO Re-affirming our non-inteprolatingness
+    overlay = defaultOverlay
+    return { parser, overlay: defaultOverlay }
 })
 
 const julia_andrey = (config) => {

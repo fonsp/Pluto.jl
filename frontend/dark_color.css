@@ -186,6 +186,13 @@
 
         /* docs binding */
         --docs-binding-bg: #323431;
+
+        /* HTML in codemirror! */
+        --cm-html-color: #00ab85;
+        --cm-html-accent-color: #00e7b4;
+
+        --cm-css-accent-color: #b169ff;
+        --cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa: #e0d0ff;
     }
     body:not(.disable_ui):not(.more-specificity) {
         /* background by SVGBackgrounds.com */

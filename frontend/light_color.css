@@ -187,5 +187,12 @@
         --index-text-color: hsl(0, 0, 60);
         --index-clickable-text-color: hsl(0, 0, 30);
         --docs-binding-bg: #8383830a;
+
+        /* HTML in codemirror! */
+        --cm-html-color: #48b685;
+        --cm-html-accent-color: #00ab85;
+
+        --cm-css-accent-color: #4c00ff;
+        --cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa: #5105e1;
     }
 }

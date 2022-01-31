@@ -103,6 +103,7 @@ export const pluto_syntax_colors = HighlightStyle.define(
         },
     ],
     {
+        all: { color: `var(--cm-editor-text-color)` },
         scope: julia_andrey().language.topNode,
     }
 )
@@ -151,6 +152,7 @@ export const pluto_syntax_colors_javascript = HighlightStyle.define(
     {
         scope: javascriptLanguage.topNode,
         all: {
+            color: `var(--cm-editor-text-color)`,
             filter: `contrast(0.5)`,
         },
     }
@@ -200,7 +202,7 @@ export const pluto_syntax_colors_python = HighlightStyle.define(
     {
         scope: pythonLanguage.topNode,
         all: {
-            color: "#777",
+            color: "var(--cm-editor-text-color)",
             filter: `contrast(0.5)`,
         },
     }
@@ -208,16 +210,16 @@ export const pluto_syntax_colors_python = HighlightStyle.define(
 
 export const pluto_syntax_colors_css = HighlightStyle.define(
     [
-        { tag: tags.propertyName, color: "#6d2eff", fontWeight: 700 },
+        { tag: tags.propertyName, color: "var(--cm-css-accent-color)", fontWeight: 700 },
+        { tag: tags.variableName, color: "var(--cm-css-accent-color)", fontWeight: 700 },
         { tag: tags.definitionOperator, color: "darkred" },
         { tag: tags.keyword, color: "#a800d1", fontWeight: 700 },
-        { tag: tags.variableName, color: "#4c00ff", fontWeight: 700 },
         { tag: tags.modifier, color: "#f10ce9", fontWeight: 700 },
         { tag: tags.punctuation, opacity: 0.5 },
         { tag: tags.literal, color: "purple" },
         { tag: tags.tagName, color: "#f10ce9", fontWeight: 700 },
-        { tag: tags.className, color: "#5105e1" },
-        { tag: tags.constant(tags.className), color: "#ab00a5", fontWeight: 700 },
+        { tag: tags.className, color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)" },
+        { tag: tags.constant(tags.className), color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)", fontWeight: 700, fontStyle: "italic" },
 
         // Comment from julia
         { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
@@ -231,23 +233,19 @@ export const pluto_syntax_colors_css = HighlightStyle.define(
 
 export const pluto_syntax_colors_html = HighlightStyle.define(
     [
-        { tag: tags.url, color: "#48b685", textDecoration: "underline" },
-        { tag: tags.quote, color: "#444", fontStyle: "italic" },
-        { tag: tags.literal, color: "#232227", fontWeight: 700 },
-        // HTML
-        { tag: tags.tagName, color: "#01654f", fontWeight: 600 },
-        { tag: tags.attributeName, color: "#01654f", fontWeight: 600 },
-        { tag: tags.attributeValue, color: "#01654f" },
-        { tag: tags.angleBracket, color: "#01654f", fontWeight: 600 },
-        { tag: tags.content, color: "#01654f", fontWeight: 400 },
-        { tag: tags.documentMeta, color: "#01654f" },
-        // CSS
-        { tag: tags.className, color: "grey", fontWeight: "bold" },
+        { tag: tags.tagName, color: "var(--cm-html-accent-color)", fontWeight: 600 },
+        { tag: tags.attributeName, color: "var(--cm-html-accent-color)", fontWeight: 600 },
+        { tag: tags.attributeValue, color: "var(--cm-html-accent-color)" },
+        { tag: tags.angleBracket, color: "var(--cm-html-accent-color)", fontWeight: 600 },
+        { tag: tags.content, color: "var(--cm-html-color)", fontWeight: 400 },
+        { tag: tags.documentMeta, color: "var(--cm-html-accent-color)" },
+
+        { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
     ],
     {
         scope: htmlLanguage.topNode,
         all: {
-            color: "#48b685",
+            color: "var(--cm-html-color)",
         },
     }
 )
@@ -255,32 +253,21 @@ export const pluto_syntax_colors_html = HighlightStyle.define(
 // https://github.com/codemirror/lang-markdown/blob/main/src/markdown.ts
 export const pluto_syntax_colors_markdown = HighlightStyle.define(
     [
-        { tag: tags.content, color: "#232227" },
-        // Markdown
-        // { tag: tags.heading, color: "#081e87", fontWeight: 500 },
+        { tag: tags.content, color: "var(--pluto-output-color, #232227)" },
+        { tag: tags.quote, color: "var(--pluto-output-color, #232227)" },
+        { tag: tags.link, textDecoration: "underline" },
+        { tag: tags.url, color: "var(--pluto-output-color, #232227)", textDecoration: "none" },
+        { tag: tags.literal, color: "var(--pluto-output-color, #232227)", fontWeight: 700 },
+        { tag: tags.emphasis, fontStyle: "italic" },
+        { tag: tags.strong, fontWeight: 700 },
+
         { tag: tags.heading1, class: "nested-markdown-syntax-heading nested-markdown-syntax-heading-h1" },
         { tag: tags.heading2, class: "nested-markdown-syntax-heading nested-markdown-syntax-heading-h2" },
         { tag: tags.heading3, class: "nested-markdown-syntax-heading nested-markdown-syntax-heading-h3" },
         { tag: tags.heading4, class: "nested-markdown-syntax-heading nested-markdown-syntax-heading-h4" },
         { tag: tags.heading5, class: "nested-markdown-syntax-heading nested-markdown-syntax-heading-h5" },
-        {
-            tag: tags.heading6,
-            color: "#081e87",
-            fontWeight: "bold",
-            fontSize: "0.8em",
-        },
-        { tag: tags.link, textDecoration: "underline" },
-        { tag: tags.url, color: "var(--pluto-accent-color)", textDecoration: "none" },
+        { tag: tags.heading6, class: "nested-markdown-syntax-heading nested-markdown-syntax-heading-h6" },
 
-        { tag: tags.literal, color: "#232227", fontWeight: 700 },
-        // HTML
-        { tag: tags.tagName, color: "#01654f", fontWeight: 600 },
-        { tag: tags.attributeName, color: "#01654f", fontWeight: 400 },
-        { tag: tags.attributeValue, color: "#01654f", fontWeight: 600 },
-        { tag: tags.angleBracket, color: "#01654f", fontWeight: 600 },
-
-        { tag: tags.emphasis, fontStyle: "italic" },
-        { tag: tags.strong, fontWeight: 700 },
         {
             tag: tags.comment,
             color: "var(--cm-comment-color)",
@@ -289,23 +276,24 @@ export const pluto_syntax_colors_markdown = HighlightStyle.define(
             fontSize: `calc(var(--nested-markdown-font-size, 1rem) * 0.75)`,
         },
         {
+            // These are all the things you won't see in the result:
+            // `-` bullet points, the `#` for headers, the `>` with quoteblocks.
             tag: tags.processingInstruction,
             color: "var(--pluto-accent-color) !important",
-            fontFamily: "JuliaMono, monospace",
-            fontSize: `calc(var(--nested-markdown-font-size, 1rem) * 0.75) !important`,
+            fontFamily: "JuliaMono, monospace !important",
+            fontSize: `calc(var(--nested-markdown-font-size, 1rem) * 0.8) !important`,
             lineHeight: "1em",
             opacity: "0.8",
         },
         { tag: tags.monospace, class: "nested-markdown-syntax-code" },
         // { tag: tags.processingInstruction, color: "#00a9d1 !important", fontWeight: "bold !important" },
-        { tag: tags.quote, color: "#232227" },
     ],
     {
         scope: markdownLanguage.topNode,
         all: {
             // fontFamily: `"Vollkorn", serif`,
             "--pluto-accent-color": `#00a9d1`,
-            "color": "#232227",
+            "color": "var(--pluto-output-color, #232227)",
             "fontSize": `1rem`,
             "lineHeight": `1.45rem`,
             "fontFamily": `"Alegreya Sans", sans-serif`,
