@@ -12,10 +12,12 @@ MsgPack.msgpack_type(::Type{<:MIME}) = MsgPack.StringType()
 MsgPack.msgpack_type(::Type{UUID}) = MsgPack.StringType()
 MsgPack.msgpack_type(::Type{VersionNumber}) = MsgPack.StringType()
 MsgPack.msgpack_type(::Type{Pkg.Types.VersionRange}) = MsgPack.StringType()
+MsgPack.msgpack_type(::Type{<:Ptr}) = MsgPack.IntegerType()
 MsgPack.to_msgpack(::MsgPack.StringType, m::MIME) = string(m)
 MsgPack.to_msgpack(::MsgPack.StringType, u::UUID) = string(u)
 MsgPack.to_msgpack(::MsgPack.StringType, v::VersionNumber) = string(v)
 MsgPack.to_msgpack(::MsgPack.StringType, v::Pkg.Types.VersionRange) = string(v)
+MsgPack.to_msgpack(::MsgPack.IntegerType, x::Ptr) = 0
 
 # Support for sending Dates
 MsgPack.msgpack_type(::Type{Dates.DateTime}) = MsgPack.ExtensionType()
