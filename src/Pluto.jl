@@ -9,12 +9,28 @@ Have a look at the FAQ:
 https://github.com/fonsp/Pluto.jl/wiki
 """
 module Pluto
-project_relative_path(xs...) = normpath(joinpath(pkgdir(Pluto), xs...))
+
+import RelocatableFolders: @path
+const ROOT_DIR = normpath(joinpath(@__DIR__, ".."))
+const FRONTEND_DIR = @path(joinpath(ROOT_DIR, "frontend"))
+const FRONTEND_DIST_DIR = let dir = joinpath(ROOT_DIR, "frontend-dist")
+    isdir(dir) ? @path(dir) : FRONTEND_DIR
+end
+const frontend_dist_exists = FRONTEND_DIR !== FRONTEND_DIST_DIR
+const SAMPLE_DIR = @path(joinpath(ROOT_DIR, "sample"))
+const RUNNER_DIR = @path(joinpath(ROOT_DIR, "src", "runner"))
+function project_relative_path(root, xs...)
+    root == joinpath("src", "runner") ? joinpath(RUNNER_DIR, xs...) :
+    root == "frontend-dist" && frontend_dist_exists ? joinpath(FRONTEND_DIST_DIR, xs...) :
+    root == "frontend" ? joinpath(FRONTEND_DIR, xs...) :
+    root == "sample" ? joinpath(SAMPLE_DIR, xs...) :
+        normpath(joinpath(pkgdir(Pluto), root, xs...))
+end
 
 import Pkg
 
 include_dependency("../Project.toml")
-const PLUTO_VERSION = VersionNumber(Pkg.TOML.parsefile(project_relative_path("Project.toml"))["version"])
+const PLUTO_VERSION = VersionNumber(Pkg.TOML.parsefile(joinpath(ROOT_DIR, "Project.toml"))["version"])
 const PLUTO_VERSION_STR = 'v' * string(PLUTO_VERSION)
 const JULIA_VERSION_STR = 'v' * string(VERSION)
 
