@@ -484,7 +484,7 @@ export const CellInput = ({
 
                     EditorView.lineWrapping,
                     // Disabled awesome_line_wrapping because it still fails in a lot of cases
-                    // awesome_line_wrapping,
+                    awesome_line_wrapping,
 
                     on_change_compartment,
                 ],
