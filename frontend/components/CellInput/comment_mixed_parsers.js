@@ -52,7 +52,6 @@ export const commentKeymap = [
  */
 function getConfig(state, pos = state.selection.main.head) {
     let data = state.languageDataAt("commentTokens", pos)
-    console.log(`data:`, data)
     return data.length ? data[0] : {}
 }
 const SearchMargin = 50
