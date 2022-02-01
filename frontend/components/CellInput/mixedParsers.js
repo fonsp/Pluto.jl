@@ -48,7 +48,7 @@ const MD_TAGS = ["md", "mermaid", "cm", "markdown", "mdx", "mdl", "markdownliter
  * ```
  *
  * The overlays already remove the string interpolation parts of the julia string.
- * This hack additionally the `\` from the overlaying for common interpolations, so the underlaying parser
+ * This hack additionally removes the `\` from the overlay for common interpolations, so the underlaying parser
  * will get the javascript version of the string, and not the julia version of the string (which is invalid js)
  *
  */
