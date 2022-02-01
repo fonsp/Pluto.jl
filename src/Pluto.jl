@@ -24,7 +24,7 @@ function project_relative_path(root, xs...)
     root == "frontend-dist" && frontend_dist_exists ? joinpath(FRONTEND_DIST_DIR, xs...) :
     root == "frontend" ? joinpath(FRONTEND_DIR, xs...) :
     root == "sample" ? joinpath(SAMPLE_DIR, xs...) :
-        normpath(joinpath(dirname(dirname(pathof(Pluto))), root, xs...))
+        normpath(joinpath(pkgdir(Pluto), root, xs...))
 end
 
 import Pkg
@@ -83,7 +83,7 @@ export reset_notebook_environment
 export update_notebook_environment
 export activate_notebook_environment
 
-if get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") !== "0"
+if get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") != "0" && get(ENV, "CI", "🍄") != "true"
 @info """\n
     Welcome to Pluto $(PLUTO_VERSION_STR) 🎈
     Start a notebook server using:
