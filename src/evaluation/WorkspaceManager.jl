@@ -137,11 +137,11 @@ function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.R
 
             fn = next_log["file"]
             match = findfirst("#==#", fn)
-            
+
             # We always show the log at the currently running cell, which is given by
-            running_cell_id = UUID(next_log["cell_id"])
+            running_cell_id = next_log["cell_id"]::UUID
             running_cell = notebook.cells_dict[running_cell_id]
-            
+
             # Some logs originate from outside of the running code, through function calls. Some code here to deal with that:
             begin
                 source_cell_id = if match !== nothing
