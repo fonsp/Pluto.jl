@@ -34,7 +34,6 @@ import {
     closeBracketsKeymap,
     searchKeymap,
     foldKeymap,
-    commentKeymap,
     syntaxTree,
     Decoration,
     ViewUpdate,
@@ -59,6 +58,7 @@ import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
 import { cl } from "../common/ClassTable.js"
 import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_line.js"
+import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
 
 export const pluto_syntax_colors = HighlightStyle.define(
     [
