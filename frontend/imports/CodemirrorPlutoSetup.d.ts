@@ -4051,6 +4051,11 @@ declare const tags: {
     */
     definitionKeyword: Tag;
     /**
+    A [keyword](https://codemirror.net/6/docs/ref/#highlight.tags.keyword) related to defining or
+    interfacing with modules.
+    */
+    moduleKeyword: Tag;
+    /**
     An operator.
     */
     operator: Tag;
