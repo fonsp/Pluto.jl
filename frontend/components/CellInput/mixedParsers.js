@@ -22,6 +22,9 @@ const postgresParser = PostgreSQL.language.parser
 const sqlLang = sql({ dialect: PostgreSQL })
 const pythonParser = pythonLanguage.parser
 
+/**
+ * Markdown tags list; we create both `md""` and `@md("")` instances.
+ */
 const MD_TAGS = ["md", "mermaid", "cm", "markdown", "mdx", "mdl", "markdownliteral"].flatMap((x) => [x, `@${x}`])
 
 const overlayHack = (overlay, input) => {
