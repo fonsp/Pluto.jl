@@ -27,6 +27,31 @@ const pythonParser = pythonLanguage.parser
  */
 const MD_TAGS = ["md", "mermaid", "cm", "markdown", "mdx", "mdl", "markdownliteral"].flatMap((x) => [x, `@${x}`])
 
+/**
+ * Julia strings are do not represent the exact code that is going to run
+ * for example the following julia string:
+ *
+ * ```julia
+ * """
+ * const test = "five"
+ * const five = \${test}
+ * """
+ * ```
+ *
+ * is going to be executed as javascript, after escaping the \$ to $
+ *
+ * ```javascript
+ * """
+ * const test = "five"
+ * const five = ${test}
+ * """
+ * ```
+ *
+ * The overlays already remove the string interpolation parts of the julia string.
+ * This hack additionally the `\` from the overlaying for common interpolations, so the underlaying parser
+ * will get the javascript version of the string, and not the julia version of the string (which is invalid js)
+ *
+ */
 const overlayHack = (overlay, input) => {
     return overlay.flatMap(({ from, to }) => {
         const text = input.read(from, to)
