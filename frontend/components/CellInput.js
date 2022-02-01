@@ -5,7 +5,7 @@ import _ from "../imports/lodash.js"
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 import { get_selected_doc_from_state } from "./CellInput/LiveDocsFromCursor.js"
-import { go_to_definition_plugin, ScopeStateField, GlobalDefinitionsFacet } from "./CellInput/go_to_definition_plugin.js"
+import { go_to_definition_plugin, GlobalDefinitionsFacet } from "./CellInput/go_to_definition_plugin.js"
 import { detect_deserializer } from "../common/Serialization.js"
 
 import {
@@ -55,6 +55,8 @@ import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
 import { cl } from "../common/ClassTable.js"
 import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_line.js"
+import { debug_syntax_plugin } from "./CellInput/debug_syntax_plugin.js"
+import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
 
 export const pluto_syntax_colors = HighlightStyle.define([
     /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
@@ -368,13 +370,14 @@ export const CellInput = ({
 
             if (update.docChanged || update.selectionSet) {
                 let state = update.state
-                DOCS_UPDATER_VERBOSE && console.groupCollapsed("Selection")
-                let result = get_selected_doc_from_state(state, DOCS_UPDATER_VERBOSE)
-                DOCS_UPDATER_VERBOSE && console.log("Result:", result)
-                DOCS_UPDATER_VERBOSE && console.groupEnd()
-
-                if (result != null) {
-                    on_update_doc_query(result)
+                DOCS_UPDATER_VERBOSE && console.groupCollapsed("Live docs updater")
+                try {
+                    let result = get_selected_doc_from_state(state, DOCS_UPDATER_VERBOSE)
+                    if (result != null) {
+                        on_update_doc_query(result)
+                    }
+                } finally {
+                    DOCS_UPDATER_VERBOSE && console.groupEnd()
                 }
             }
         })
@@ -487,6 +490,10 @@ export const CellInput = ({
                     awesome_line_wrapping,
 
                     on_change_compartment,
+
+                    // Enable this plugin if you want to see the lezer tree,
+                    // and possible lezer errors and maybe more debug info in the console:
+                    // debug_syntax_plugin,
                 ],
             }),
             parent: dom_node_ref.current,
@@ -586,7 +593,13 @@ export const CellInput = ({
 
             newcm_ref.current.focus()
             newcm_ref.current.dispatch({
+                scrollIntoView: true,
                 selection: new_selection,
+                effects: [
+                    EditorView.scrollIntoView(EditorSelection.range(new_selection.anchor, new_selection.head), {
+                        yMargin: 80,
+                    }),
+                ],
             })
         }
     }, [cm_forced_focus])
