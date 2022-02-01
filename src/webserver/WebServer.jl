@@ -130,7 +130,6 @@ function run(session::ServerSession, pluto_router)
     hostIP = parse(Sockets.IPAddr, host)
     if port === nothing
         port, serversocket = Sockets.listenany(hostIP, UInt16(1234))
-        session.options.server.port = port
     else
         try
             serversocket = Sockets.listen(hostIP, UInt16(port))
