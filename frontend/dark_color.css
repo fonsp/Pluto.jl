@@ -193,6 +193,9 @@
 
         --cm-css-accent-color: #b169ff;
         --cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa: #e0d0ff;
+
+        --cm-md-color: #a2c9d5;
+        --cm-md-accent-color: #00a9d1;
     }
     body:not(.disable_ui):not(.more-specificity) {
         /* background by SVGBackgrounds.com */

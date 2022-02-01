@@ -60,10 +60,6 @@ const juliaWrapper = parseMixed((node, input) => {
     }
 
     let is_tripple_string = node.name === "TripleString" || node.name === "TripleStringWithoutInterpolation"
-    // For now have single quotes as escape hook? Looks weird inline
-    if (!is_tripple_string) {
-        return null
-    }
 
     const offset = is_tripple_string ? 3 : 1
     const defaultOverlay = [{ from: node.from + offset, to: Math.min(node.to - offset, input.length) }]
@@ -129,17 +125,10 @@ const juliaWrapper = parseMixed((node, input) => {
         overlay = overlayHack(overlay, input)
     }
 
-    // Mounted parsers have a hard time with overlays smaller than 2 characters it seems...
-    // with this rough hack in there they work? - NOT ALWAYS PFFFT
-    // overlay = overlay.filter((x) => Math.abs(x.from - x.to) >= 4)
-
-    // // Disables for "interpolatable" strings now (because overlay stuff still doesn't work sometimes)
-    // if (tag.startsWith("@")) {
-    //     // Not yet
-    //     return null
-    // }
-    // // TODO Re-affirming our non-inteprolatingness
-    // overlay = defaultOverlay
+    // No overlays for markdown yet
+    if ([...MD_TAGS].includes(tag)) {
+        return { parser, overlay: defaultOverlay }
+    }
 
     return { parser, overlay }
 })

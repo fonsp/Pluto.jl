@@ -239,7 +239,6 @@ export const pluto_syntax_colors_html = HighlightStyle.define(
         { tag: tags.angleBracket, color: "var(--cm-html-accent-color)", fontWeight: 600 },
         { tag: tags.content, color: "var(--cm-html-color)", fontWeight: 400 },
         { tag: tags.documentMeta, color: "var(--cm-html-accent-color)" },
-
         { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
     ],
     {
@@ -253,50 +252,32 @@ export const pluto_syntax_colors_html = HighlightStyle.define(
 // https://github.com/codemirror/lang-markdown/blob/main/src/markdown.ts
 export const pluto_syntax_colors_markdown = HighlightStyle.define(
     [
-        { tag: tags.content, color: "var(--pluto-output-color, #232227)" },
-        { tag: tags.quote, color: "var(--pluto-output-color, #232227)" },
+        { tag: tags.content, color: "var(--cm-md-color)" },
+        { tag: tags.quote, color: "var(--cm-md-color)" },
         { tag: tags.link, textDecoration: "underline" },
-        { tag: tags.url, color: "var(--pluto-output-color, #232227)", textDecoration: "none" },
-        { tag: tags.literal, color: "var(--pluto-output-color, #232227)", fontWeight: 700 },
+        { tag: tags.url, color: "var(--cm-md-color)", textDecoration: "none" },
         { tag: tags.emphasis, fontStyle: "italic" },
-        { tag: tags.strong, fontWeight: 700 },
+        { tag: tags.strong, fontWeight: "bolder" },
 
-        { tag: tags.heading1, class: "nested-markdown-syntax-heading nested-markdown-syntax-heading-h1" },
-        { tag: tags.heading2, class: "nested-markdown-syntax-heading nested-markdown-syntax-heading-h2" },
-        { tag: tags.heading3, class: "nested-markdown-syntax-heading nested-markdown-syntax-heading-h3" },
-        { tag: tags.heading4, class: "nested-markdown-syntax-heading nested-markdown-syntax-heading-h4" },
-        { tag: tags.heading5, class: "nested-markdown-syntax-heading nested-markdown-syntax-heading-h5" },
-        { tag: tags.heading6, class: "nested-markdown-syntax-heading nested-markdown-syntax-heading-h6" },
-
+        { tag: tags.heading, color: "var(--cm-md-color)", fontWeight: 700 },
         {
             tag: tags.comment,
             color: "var(--cm-comment-color)",
             fontStyle: "italic",
-            fontFamily: "JuliaMono, monospace",
-            fontSize: `calc(var(--nested-markdown-font-size, 1rem) * 0.75)`,
         },
         {
             // These are all the things you won't see in the result:
             // `-` bullet points, the `#` for headers, the `>` with quoteblocks.
             tag: tags.processingInstruction,
-            color: "var(--pluto-accent-color) !important",
-            fontFamily: "JuliaMono, monospace !important",
-            fontSize: `calc(var(--nested-markdown-font-size, 1rem) * 0.8) !important`,
-            lineHeight: "1em",
-            opacity: "0.8",
+            color: "var(--cm-md-accent-color) !important",
+            opacity: "0.5",
         },
-        { tag: tags.monospace, class: "nested-markdown-syntax-code" },
-        // { tag: tags.processingInstruction, color: "#00a9d1 !important", fontWeight: "bold !important" },
+        { tag: tags.monospace, color: "var(--cm-md-accent-color)" },
     ],
     {
         scope: markdownLanguage.topNode,
         all: {
-            // fontFamily: `"Vollkorn", serif`,
-            "--pluto-accent-color": `#00a9d1`,
-            "color": "var(--pluto-output-color, #232227)",
-            "fontSize": `1rem`,
-            "lineHeight": `1.45rem`,
-            "fontFamily": `"Alegreya Sans", sans-serif`,
+            color: "var(--cm-md-color)",
         },
     }
 )
