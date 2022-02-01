@@ -159,6 +159,16 @@ import Distributed
         end
     end
 
+    @testset ".. as an identifier" begin
+        notebook = Notebook(Cell.([
+           ".. = 1",
+           "..",
+        ]))
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test all(noerror, notebook.cells)
+        @test notebook.cells[end].output.body == "1"
+    end
 
     # PlutoTest.jl is only working on Julia version >= 1.6
     VERSION >= v"1.6" && @testset "Test Firebasey" begin
