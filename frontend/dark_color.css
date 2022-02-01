@@ -187,13 +187,14 @@
         /* docs binding */
         --docs-binding-bg: #323431;
 
-        /* HTML in codemirror! */
+        /* Nesed languages in codemirror! */
         --cm-html-color: #00ab85;
         --cm-html-accent-color: #00e7b4;
-
-        --cm-css-accent-color: #b169ff;
-        --cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa: #e0d0ff;
-
+        --cm-css-color: #ebd073;
+        --cm-css-accent-color: #fffed2;
+        /* This is basically --cm-css-accent-color, but because the CSS plugin shows some characters in plain white,
+            this is made also a liiiitle lighter so it doesn't stand out too much against the white prefix */
+        --cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa: #ffffea;
         --cm-md-color: #a2c9d5;
         --cm-md-accent-color: #00a9d1;
     }

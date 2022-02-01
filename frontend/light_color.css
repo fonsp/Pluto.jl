@@ -191,8 +191,9 @@
         /* HTML in codemirror! */
         --cm-html-color: #48b685;
         --cm-html-accent-color: #00ab85;
-        --cm-css-accent-color: #4c00ff;
-        --cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa: #5105e1;
+        --cm-css-color: #876800;
+        --cm-css-accent-color: #696200;
+        --cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa: #3b3700;
         --cm-md-color: #005a9b;
         --cm-md-accent-color: #00a9d1;
     }

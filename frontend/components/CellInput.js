@@ -212,14 +212,15 @@ export const pluto_syntax_colors_css = HighlightStyle.define(
     [
         { tag: tags.propertyName, color: "var(--cm-css-accent-color)", fontWeight: 700 },
         { tag: tags.variableName, color: "var(--cm-css-accent-color)", fontWeight: 700 },
-        { tag: tags.definitionOperator, color: "darkred" },
-        { tag: tags.keyword, color: "#a800d1", fontWeight: 700 },
-        { tag: tags.modifier, color: "#f10ce9", fontWeight: 700 },
+        { tag: tags.definitionOperator, color: "var(--cm-css-color)" },
+        { tag: tags.keyword, color: "var(--cm-css-color)" },
+        { tag: tags.modifier, color: "var(--cm-css-accent-color)" },
         { tag: tags.punctuation, opacity: 0.5 },
-        { tag: tags.literal, color: "purple" },
-        { tag: tags.tagName, color: "#f10ce9", fontWeight: 700 },
+        { tag: tags.literal, color: "var(--cm-css-color)" },
+        // { tag: tags.unit, color: "var(--cm-css-accent-color)" },
+        { tag: tags.tagName, color: "var(--cm-css-color)", fontWeight: 700 },
         { tag: tags.className, color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)" },
-        { tag: tags.constant(tags.className), color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)", fontWeight: 700, fontStyle: "italic" },
+        { tag: tags.constant(tags.className), color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)" },
 
         // Comment from julia
         { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
@@ -227,7 +228,7 @@ export const pluto_syntax_colors_css = HighlightStyle.define(
     {
         // scope: CSS,
         // But the css-lang packaged isn't in codemirror pluto setup and I can't be arsed now.
-        all: { color: "#f10ce9" },
+        all: { color: "var(--cm-css-color)" },
     }
 )
 
