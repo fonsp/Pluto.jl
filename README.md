@@ -9,8 +9,6 @@
 
 <h1><img alt="Pluto.jl" src="https://raw.githubusercontent.com/fonsp/Pluto.jl/dd0ead4caa2d29a3a2cfa1196d31e3114782d363/frontend/img/logo_white_contour.svg" width=300 height=74 ></h1>
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5889169.svg)](https://doi.org/10.5281/zenodo.5889169)
-
 _Writing a notebook is not just about writing the final document — Pluto empowers the experiments and discoveries that are essential to getting there._
 
 **Explore models and share results** in a notebook that is
@@ -191,3 +189,7 @@ Development of Pluto.jl is partially sponsored by
 | <a href="https://numfocus.org/"><img title="Julia Computing" src="https://user-images.githubusercontent.com/6933510/110683397-42e4a100-81dc-11eb-9bdb-db58f9c283b4.png" width=400 alt="NumFOCUS logo"></a> | The mission of **NumFOCUS** is to promote open practices in research, data, and scientific computing by serving as a fiscal sponsor for open source projects and organizing community-driven educational programs. |
 
 _Created by [**Fons van der Plas**](https://github.com/fonsp) and [**Mikołaj Bochenski**](https://github.com/malyvsen). Inspired by [Observable](https://observablehq.com/)._
+
+## Citation
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5889169.svg)](https://doi.org/10.5281/zenodo.5889169)
