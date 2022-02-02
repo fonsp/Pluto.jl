@@ -2007,7 +2007,7 @@ function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, f
             "file" => file,
             "cell_id" => currently_running_cell_id[],
             "line" => line,
-            "kwargs" => Any[(string(k), format_output_default(v)) for (k, v) in kwargs],
+            "kwargs" => Tuple{String,Any}[(string(k), format_output_default(v)) for (k, v) in kwargs],
             )
         )
         
