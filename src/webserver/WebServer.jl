@@ -266,7 +266,7 @@ function run(session::ServerSession, pluto_router)
     println()
     
     # Trigger ServerStartEvent with server details
-    try_event_call(session, ServerStartEvent(address, port))
+    try_event_call(session, ServerStartEvent(address, UInt16(port)))
 
     if PLUTO_VERSION >= v"0.17.6" && frontend_directory() == "frontend"
         @info "It looks like you are developing the Pluto package, using the unbundled frontend..."
