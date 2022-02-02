@@ -23,6 +23,20 @@ function open_url(session::ServerSession, url::AbstractString; kwargs...)
     open(session, path; kwargs...)
 end
 
+"Run `nb`. This method is useful for packages which want to run notebooks after modifying them."
+function run(session::ServerSession, nb::Notebook; run_async=true)
+    session.notebooks[nb.notebook_id] = nb
+    for c in nb.cells
+        c.queued = session.options.evaluation.run_notebook_on_load
+    end
+
+    update_save_run!(session, nb, nb.cells; run_async, prerender_text=true)
+
+    add(session, nb; run_async)
+    try_event_call(session, OpenNotebookEvent(nb))
+    nb
+end
+
 "Open the notebook at `path` into `session::ServerSession` and run it. Returns the `Notebook`."
 function open(session::ServerSession, path::AbstractString; run_async=true, compiler_options=nothing, as_sample=false, notebook_id::UUID=uuid1())
     if as_sample
@@ -46,17 +60,7 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
     if compiler_options !== nothing
         nb.compiler_options = compiler_options
     end
-
-    session.notebooks[nb.notebook_id] = nb
-    for c in nb.cells
-        c.queued = session.options.evaluation.run_notebook_on_load
-    end
-
-    update_save_run!(session, nb, nb.cells; run_async, prerender_text=true)
-    
-    add(session, nb; run_async)
-    try_event_call(session, OpenNotebookEvent(nb))
-    nb
+    run(session, nb; run_async)
 end
 
 function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
