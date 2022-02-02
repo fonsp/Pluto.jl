@@ -49,6 +49,7 @@ end
 # Triggered when the web server gets started
 struct ServerStartEvent <: PlutoEvent
     address::String
+    port::Int
 end
 
 # Triggered when a notebook is saved

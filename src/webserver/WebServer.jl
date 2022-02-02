@@ -273,7 +273,7 @@ function run(session::ServerSession, pluto_router)
 
 
     # Trigger ServerStartEvent with server details
-    try_event_call(session, ServerStartEvent(address))
+    try_event_call(session, ServerStartEvent(address, port))
 
     
     # Start this in the background, so that the first notebook launch (which will trigger registry update) will be faster
