@@ -4,16 +4,17 @@ import Pkg
 popfirst!(LOAD_PATH)
 
 # We need to Pkg.instantiate the package environment that this notebook worker process will launch in
-local my_dir = @__DIR__
-local pluto_dir = joinpath(my_dir, "..", "..")
 
 local runner_env_dir = mkpath(joinpath(Pkg.envdir(Pkg.depots()[1]), "__pluto_boot_v2_" * string(VERSION)))
 local new_ptoml_path = joinpath(runner_env_dir, "Project.toml")
 
-local ptoml_contents = read(joinpath(my_dir, "NotebookProcessProject.toml"), String)
+local ptoml_contents = read(joinpath(@__DIR__, "NotebookProcessProject.toml"), String)
 write(new_ptoml_path, ptoml_contents)
 
 local pkg_ctx = Pkg.Types.Context(env=Pkg.Types.EnvCache(new_ptoml_path))
+
+# Needs `develop()` instead of `add()` because `add()` expects a git repository!
+Pkg.develop(pkg_ctx, [Pkg.PackageSpec(; path=joinpath(@__DIR__, "PlutoRunner"))]; io=devnull)
 
 try
     Pkg.resolve(pkg_ctx; io=devnull) # supress IO
@@ -43,9 +44,7 @@ end
 
 pushfirst!(LOAD_PATH, runner_env_dir)
 
-#
-include(joinpath(my_dir, "PlutoRunner.jl"))
-#
+import PlutoRunner
 
 popfirst!(LOAD_PATH)
 end
