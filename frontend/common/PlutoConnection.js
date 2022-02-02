@@ -62,7 +62,7 @@ export const resolvable_promise = () => {
 /**
  * @returns {string}
  */
-const get_unique_short_id = () => crypto.getRandomValues(new Uint32Array(1))[0].toString(36)
+export const get_unique_short_id = () => crypto.getRandomValues(new Uint32Array(1))[0].toString(36)
 
 const socket_is_alright = (socket) => socket.readyState == WebSocket.OPEN || socket.readyState == WebSocket.CONNECTING
 
@@ -264,7 +264,8 @@ const default_ws_address = () => ws_address_from_base(window.location.href)
  *  on_reconnect: () => boolean,
  *  on_connection_status: (connection_status: boolean) => void,
  *  connect_metadata?: Object,
- *  ws_address?: String,
+ *  ws_address?: string,
+ *  client_id: string
  * }} options
  * @return {Promise<PlutoConnection>}
  */
@@ -274,6 +275,7 @@ export const create_pluto_connection = async ({
     on_connection_status,
     connect_metadata = {},
     ws_address = default_ws_address(),
+    client_id,
 }) => {
     var ws_connection = null // will be defined later i promise
     const client = {
@@ -287,7 +289,6 @@ export const create_pluto_connection = async ({
         kill: null,
     } // same
 
-    const client_id = get_unique_short_id()
     const sent_requests = new Map()
 
     /**

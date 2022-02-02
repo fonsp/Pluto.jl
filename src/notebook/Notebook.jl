@@ -54,6 +54,13 @@ Base.@kwdef mutable struct Notebook
     last_hot_reload_time::typeof(time())=zero(time())
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
+
+    # Stores all the multiplayer state (mouse position, scroll position, etc..)
+    # It doesn't store any code input state, that is stored in the cells
+    # (or when we have codemirror collab, it ill be stored in a specific stream of events)
+    # Currently just a dict, because we don't interact this anywhere on the backend.
+    # If we need more performance or idk want it more strict, we can always make this into some dedicated types.
+    users::Dict{String,Dict}=Dict{String,Dict}()
 end
 
 Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = Notebook(

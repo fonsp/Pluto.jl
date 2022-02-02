@@ -83,6 +83,14 @@ module AppendonlyMarkers
     import ..Firebasey
     include("./AppendonlyMarkers.jl")
 end
+module FirebaseyMessagepackTypePiiiiirating
+    import ..MsgPack, ..Firebasey
+    MsgPack.msgpack_type(::Type{Firebasey.ReplacePatch}) = MsgPack.StructType()
+    MsgPack.msgpack_type(::Type{Firebasey.AddPatch}) = MsgPack.StructType()
+    MsgPack.msgpack_type(::Type{Firebasey.CopyPatch}) = MsgPack.StructType()
+    MsgPack.msgpack_type(::Type{Firebasey.RemovePatch}) = MsgPack.StructType()
+end
+
 
 # All of the arrays in the notebook_to_js object are 'immutable' (we write code as if they are), so we can enable this optimization:
 Firebasey.use_triple_equals_for_arrays[] = true
@@ -169,6 +177,12 @@ function notebook_to_js(notebook::Notebook)
             )
         end,
         "cell_execution_order" => cell_id.(collect(topological_order(notebook))),
+
+        # Send as is, it's just a Dict
+        "users" => notebook.users,
+
+        # The client won't really use this, but for symmetry I also send this
+        "#on_disconnect" => get(on_disconnect_map, notebook, OnDisconnectNotebookMap()),
     )
 end
 
@@ -275,9 +289,31 @@ const effects_of_changed_state = Dict(
             Firebasey.applypatch!(request.notebook, patch)
             [BondChanged(name, patch isa Firebasey.AddPatch)]
         end,
-    )
-)
+    ),
 
+    # Just apply the patch. Again, we don't treat "users" any way special.
+    # It's really up to the frontend to play nice with.. itself?
+    "users" => Dict(
+        Wildcard() => function(name, rest...; request::ClientRequest, patch::Firebasey.JSONPatch)
+            Firebasey.applypatch!(request.notebook, patch)
+            return no_changes
+        end
+    ),
+
+    # Ohhhh, special, fanyyyy
+    # This contains fields per client_id with patches to apply when that client disconnects.
+    # This is readable and writable for every client now, but I think that is fine, we don't need
+    # privacy for people connecting with eachother in Pluto :P
+    "#on_disconnect" => function(rest...; request::ClientRequest, patch::Firebasey.JSONPatch)
+        disconnect_handlers = get(on_disconnect_map, request.notebook, OnDisconnectNotebookMap())
+        # I pass a Dict("#on_disconnect" => ...) to applypatch! because the patches expect it
+        # TODO Make patches passed to these mutators be relative to the key they are defined on
+        Firebasey.applypatch!(Dict("#on_disconnect" => disconnect_handlers), patch)
+        # Re-add it, because we might have gotten a default from `get` above
+        on_disconnect_map[request.notebook] = disconnect_handlers
+        return no_changes
+    end,
+)
 
 responses[:update_notebook] = function response_update_notebook(🙋::ClientRequest)
     require_notebook(🙋)
@@ -387,6 +423,22 @@ responses[:connect] = function response_connect(🙋::ClientRequest)
             :dismiss_update_notification => 🙋.session.options.server.dismiss_update_notification,
         ),
     ), nothing, nothing, 🙋.initiator))
+end
+
+# Magic! Disconnection stuff!
+const OnDisconnectHandlers = Dict{String, Vector{Firebasey.JSONPatch}}
+const OnDisconnectNotebookMap = Dict{Symbol, OnDisconnectHandlers}
+const on_disconnect_map = Dict{Notebook, OnDisconnectNotebookMap}()
+# This will be called in case the client disconnects
+# It will apply all the patches that are stored on the clients "#on_disconnect" field.
+responses[:disconnect] = function response_disconnect(🙋::ClientRequest)
+    disconnect_handlers = get(on_disconnect_map, 🙋.notebook, OnDisconnectNotebookMap())
+    handlers_for_client = get(disconnect_handlers, 🙋.body[:client_id], OnDisconnectHandlers())
+    for (_, patches) in handlers_for_client
+        Firebasey.applypatch!(🙋.notebook, patches)
+    end
+    disconnect_handlers[🙋.body[:client_id]] = OnDisconnectHandlers()
+    send_notebook_changes!(🙋)
 end
 
 responses[:ping] = function response_ping(🙋::ClientRequest)

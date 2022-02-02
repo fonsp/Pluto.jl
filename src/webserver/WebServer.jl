@@ -190,6 +190,22 @@ function run(session::ServerSession, pluto_router)
                                 bt = stacktrace(catch_backtrace())
                                 @warn "Reading WebSocket client stream failed for unknown reason:" exception = (ex, bt)
                             end
+                        finally
+                            # Do the cleanup per client, which is in the form of a _special_ :disconnect message.
+                            # Clients could, if they want, even send the disconnect message themselves without actually disconnecting 🤷‍♀️
+                            try
+                                clients = get(clientstream_to_client_map, clientstream, [])
+                                # I don't think we have any case of multiple clients on the same stream, but just in case...
+                                for client in clients
+                                    if client.connected_notebook !== nothing
+                                        🙋 = ClientRequest(session=session, notebook=client.connected_notebook, body=Dict(:client_id => client.id))
+                                        responses[:disconnect](🙋)
+                                    end
+                                end
+                            catch e
+                                @warn "Eyoo, something went wrong applying the #on_disconnect patches:" e trace=stacktrace(catch_backtrace())
+                                showerror(stdout, e)
+                            end
                         end
                     end
                 catch ex
@@ -345,12 +361,23 @@ function pretty_address(session::ServerSession, hostIP, port)
     merge(HTTP.URIs.URI(new_root), query=url_params) |> string
 end
 
+# Global mapping from clientstream (IO) to client.
+# The globalness is fine, because it's weak.
+const clientstream_to_client_map = WeakKeyDict{IO, Set{ClientSession}}()
+
 "All messages sent over the WebSocket get decoded+deserialized and end up here."
 function process_ws_message(session::ServerSession, parentbody::Dict, clientstream::IO)
     client_id = Symbol(parentbody["client_id"])
     client = get!(session.connected_clients, client_id, ClientSession(client_id, clientstream))
     client.stream = clientstream # it might change when the same client reconnects
-    
+
+    # Bind this client to the stream, so that when we close the stream,
+    # we know what clients we need to run cleanup for!
+    # This will run on every message, but I think that's fine.. It won't add it twice (because it is a Set!)
+    clients_for_stream = get(clientstream_to_client_map, clientstream, Set())
+    push!(clients_for_stream, client)
+    clientstream_to_client_map[clientstream] = clients_for_stream
+
     messagetype = Symbol(parentbody["type"])
     request_id = Symbol(parentbody["request_id"])
 
