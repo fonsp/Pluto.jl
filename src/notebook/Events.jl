@@ -45,6 +45,12 @@ function try_event_call(session, event::PlutoEvent)
     end
 end
 
+
+# Triggered when the web server gets started
+struct ServerStartEvent <: PlutoEvent
+    address::String
+end
+
 # Triggered when a notebook is saved
 struct FileSaveEvent <: PlutoEvent
     notebook::Notebook
