@@ -215,7 +215,15 @@ end
 
 # (⚠️ Internal API with fallback)
 _stdlibs() = try
-	values(Pkg.Types.stdlibs())
+	stdlibs = values(Pkg.Types.stdlibs())
+	T = eltype(stdlibs)
+	if T == String
+		stdlibs
+	elseif T <: Tuple{String,Any}
+		first.(stdlibs)
+	else
+		error()
+	end
 catch e
 	@warn "Pkg compat: failed to load standard libraries." exception=(e,catch_backtrace())
 

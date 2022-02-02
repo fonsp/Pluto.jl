@@ -125,14 +125,16 @@ function run(session::ServerSession, pluto_router)
     open_notebook!(session, notebook_at_startup)
 
     host = session.options.server.host
-    port = session.options.server.port
-
     hostIP = parse(Sockets.IPAddr, host)
-    if port === nothing
+    favourite_port = session.options.server.port
+    
+    local port, serversocket
+    if favourite_port === nothing
         port, serversocket = Sockets.listenany(hostIP, UInt16(1234))
     else
+        port = UInt16(favourite_port)
         try
-            serversocket = Sockets.listen(hostIP, UInt16(port))
+            serversocket = Sockets.listen(hostIP, port)
         catch e
             @error "Port with number $port is already in use. Use Pluto.run() to automatically select an available port."
             return
@@ -141,7 +143,7 @@ function run(session::ServerSession, pluto_router)
 
     shutdown_server = Ref{Function}(() -> ())
 
-    servertask = @async HTTP.serve(hostIP, UInt16(port), stream=true, server=serversocket) do http::HTTP.Stream
+    servertask = @async HTTP.serve(hostIP, port, stream=true, server=serversocket) do http::HTTP.Stream
         # messy messy code so that we can use the websocket on the same port as the HTTP server
         if HTTP.WebSockets.is_upgrade(http.message)
             secret_required = let
@@ -267,14 +269,12 @@ function run(session::ServerSession, pluto_router)
     catch
         false
     end
+    # Wait for the server to start up before opening the browser. We have a 5 second grace period for allowing the connection, and then 10 seconds for the server to write data.
+    WorkspaceManager.poll(server_running, 5.0, 1.0)
     
     address = pretty_address(session, hostIP, port)
     println()
-    if session.options.server.launch_browser && (
-        # Wait for the server to start up before opening the browser. We have a 5 second grace period for allowing the connection, and then 10 seconds for the server to write data.
-        WorkspaceManager.poll(server_running, 5.0, 1.0) && 
-        open_in_default_browser(address)
-    )
+    if session.options.server.launch_browser && open_in_default_browser(address)
         println("Opening $address in your default browser... ~ have fun!")
     else
         println("Go to $address in your browser to start writing ~ have fun!")
@@ -282,11 +282,14 @@ function run(session::ServerSession, pluto_router)
     println()
     println("Press Ctrl+C in this terminal to stop Pluto")
     println()
+    
+    # Trigger ServerStartEvent with server details
+    try_event_call(session, ServerStartEvent(address, port))
 
     if PLUTO_VERSION >= v"0.17.6" && frontend_directory() == "frontend"
         @info "It looks like you are developing the Pluto package, using the unbundled frontend..."
     end
-    
+
     # Start this in the background, so that the first notebook launch (which will trigger registry update) will be faster
     @asynclog withtoken(pkg_token) do
         PkgCompat.update_registries(; force=false)
