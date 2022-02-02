@@ -1,6 +1,7 @@
 using Test
 import UUIDs
 import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, ClientSession, update_run!
+using Pluto.WorkspaceManager: poll
 
 @testset "Logging" begin
     🍭 = ServerSession()
@@ -21,9 +22,9 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         update_run!(🍭, notebook, notebook.cells)
         @test notebook.cells[begin] |> noerror
 
-        sleep(.1)
-
-        @test length(notebook.cells[begin].logs) == 2
+        @test poll(5, 1/60) do
+            length(notebook.cells[begin].logs) == 2
+        end
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 end
