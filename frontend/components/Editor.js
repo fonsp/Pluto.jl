@@ -35,7 +35,7 @@ import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
-let pending_local_updates = 0
+
 // from our friends at https://stackoverflow.com/a/2117523
 // i checked it and it generates Julia-legal UUIDs and that's all we need -SNOF
 const uuidv4 = () =>
@@ -261,8 +261,6 @@ export class Editor extends Component {
 
             last_created_cell: null,
             selected_cells: [],
-
-            update_is_ongoing: false,
 
             is_recording: false,
             recording_waiting_to_start: false,
@@ -779,15 +777,20 @@ patch: ${JSON.stringify(
         }, 1000 * 5)
 
         // Not completely happy with this yet, but it will do for now - DRAL
+        /** Patches that are being delayed until all cells have finished running. */
         this.bonds_changes_to_apply_when_done = []
+        /** Number of local updates that have not yet been applied to the server's state. */
+        this.pending_local_updates = 0
         this.js_init_set = new Set()
+        /** Is the notebook ready to execute code right now? (i.e. are no cells queued or running?) */
         this.notebook_is_idle = () => {
             return !(
-                this.state.update_is_ongoing ||
+                this.pending_local_updates > 0 ||
                 // a cell is running:
                 Object.values(this.state.notebook.cell_results).some((cell) => cell.running || cell.queued) ||
                 // a cell is initializing JS:
-                !_.isEmpty(this.js_init_set)
+                !_.isEmpty(this.js_init_set) ||
+                !this.is_process_ready()
             )
         }
         this.is_process_ready = () =>
@@ -832,8 +835,7 @@ patch: ${JSON.stringify(
                         throw new Error("This sounds like it is editing an array...")
                     }
                 }
-                pending_local_updates++
-                this.setState({ update_is_ongoing: pending_local_updates > 0 })
+                this.pending_local_updates++
                 this.on_patches_hook(changes)
                 try {
                     await Promise.all([
@@ -850,8 +852,7 @@ patch: ${JSON.stringify(
                         }),
                     ])
                 } finally {
-                    pending_local_updates--
-                    this.setState({ update_is_ongoing: pending_local_updates > 0 })
+                    this.pending_local_updates--
                 }
             })
             last_update_notebook_task = new_task.catch(console.error)
@@ -1085,7 +1086,7 @@ patch: ${JSON.stringify(
 
         // this class is used to tell our frontend tests that the updates are done
         //@ts-ignore
-        document.body._update_is_ongoing = pending_local_updates > 0
+        document.body._update_is_ongoing = this.pending_local_updates > 0
 
         if (this.notebook_is_idle() && this.bonds_changes_to_apply_when_done.length !== 0) {
             // `bonds_changes_to_apply_when_done:`, this.bonds_changes_to_apply_when_done
