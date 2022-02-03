@@ -10,26 +10,18 @@ md"# ChildProcesses"
 # ╔═╡ 934d18d4-936e-4ee0-aa6e-86aa6f66774c
 juliapath() = joinpath(Sys.BINDIR::String, Base.julia_exename())
 
-# ╔═╡ 4df77979-0c35-4139-aa5e-da43c1de3a77
-if VERSION >= v"1.7.0"
-	function get_task_error(t::Task)
-		throw("TODO")
-	end
-else
-	function get_task_error(t::Task)
-		CapturedException(Base.catch_stack(t)[end]...)
-	end
-end
-
 # ╔═╡ 6925ffbb-fd9e-402c-a483-c78f28f892a5
 import Serialization
 
 # ╔═╡ 8c97d5cb-e346-4b94-b2a1-4fb5ff093bd5
 import UUIDs: UUID, uuid4
 
+# ╔═╡ 19292c14-7434-4683-af34-d6887bc53448
+import Sockets
+
 # ╔═╡ 87612815-7981-4a69-a65b-4465f48c9fd9
 struct ReadMessages
-	io::IO
+	socket::Sockets.TCPSocket
 end
 
 # ╔═╡ de680a32-e053-4655-a1cd-111d81a037e6
@@ -38,33 +30,14 @@ md"""
 """
 
 # ╔═╡ ce2acdd1-b4bb-4a8f-8346-a56dfa55f56b
-Base.@kwdef mutable struct ParentProcess
-	parent_to_child=stdin
-	child_to_parent=stdout
-	channels::Dict{UUID,AbstractChannel}=Dict{UUID,AbstractChannel}()
+Base.@kwdef mutable struct MessageWriter
+	socket::Sockets.TCPSocket
 	messaging_lock=ReentrantLock()
-end
-
-# ╔═╡ 87182605-f5a1-46a7-968f-bdfb9d0e08fa
-function setup_parent_process()
-	# Redirect things written to stdout to stderr,
-	# stderr will showup in the Pluto with_terminal view.
-	real_stdout = stdout
-	redirect_stdout(stderr)
-
-	# Just take away stdin, just in case
-	real_stdin = stdin
-	redirect_stdin()
-
-	ParentProcess(
-		parent_to_child=real_stdin,
-		child_to_parent=real_stdout,
-	)
 end
 
 # ╔═╡ b05be9c7-8cc1-47f9-8baa-db66ac83c24f
 Base.@kwdef struct ParentChannel
-	process::ParentProcess
+	message_to_parent::MessageWriter
 	channel_id::UUID
 	result_channel::AbstractChannel
 end
@@ -101,7 +74,10 @@ MessageChannel = AbstractChannel{Message}
 
 # ╔═╡ 85920c27-d8a6-4b5c-93b6-41daa5866f9d
 Base.@kwdef mutable struct ChildProcess
-	process::Base.AbstractPipe
+	process
+	tcp_server
+	socket_to_child::Sockets.TCPSocket
+	
 	channels::Dict{UUID,MessageChannel}=Dict{UUID,MessageChannel}()
 
 	"Lock to make sure there are no messages being sent intervowen"
@@ -242,12 +218,23 @@ MessageLength = Int
 # ╔═╡ e393ff80-3995-11ec-1217-b3642a509067
 function read_message(stream)
 	message_length_buffer = Vector{UInt8}(undef, 8)
-	bytesread = readbytes!(stream, message_length_buffer, 8)
-	how_long_will_the_message_be = reinterpret(MessageLength, message_length_buffer)[1]
-		
-	message_buffer = Vector{UInt8}(undef, how_long_will_the_message_be)
-	_bytesread = readbytes!(stream, message_buffer, how_long_will_the_message_be)
+
+	bytesread = 0
+	while bytesread == 0
+		bytesread = readbytes!(stream, message_length_buffer, 8)
+	end
 	
+	# @info "bytesread" bytesread
+	how_long_will_the_message_be = reinterpret(MessageLength, message_length_buffer)[1]
+	# @info "how_long_will_the_message_be" how_long_will_the_message_be
+	message_buffer = Vector{UInt8}(undef, how_long_will_the_message_be)
+
+	_bytesread = 0
+	while _bytesread == 0
+		_bytesread = readbytes!(stream, message_buffer, how_long_will_the_message_be)
+	end
+	
+	# @info "message_buffer" message_buffer
 	message_buffer
 end
 
@@ -257,8 +244,8 @@ function send_message(stream, bytes)
 	message_length = convert(MessageLength, length(bytes))
 	# @info "message_length" message_length bytes
 	how_long_will_the_message_be = reinterpret(UInt8, [message_length])
-
-	# @warn "Writing to stream!!!"
+	
+	# @warn "Writing to stream!!!" stream
 	_1 = write(stream, how_long_will_the_message_be)
 	_2 = write(stream, bytes)
 	# @warn "WROTE TO STREAM"
@@ -274,18 +261,24 @@ function to_binary(message)
 	read(io)
 end
 
-# ╔═╡ 590a7882-3d69-48b0-bb1b-f476c7f8a885
-function respond_to_parent(; to::ParentProcess, about::UUID, with::Message)
-	binary_message = to_binary(Envelope(
-		channel_id=about,
-		message=with,
-	))
+# ╔═╡ e5135e56-9df0-4284-872f-7fd26b86e901
+function Base.put!(to::MessageWriter, object)
+	binary_message = to_binary(object)
 	lock(to.messaging_lock)
 	try
-		send_message(to.child_to_parent, binary_message)
+		send_message(to.socket, binary_message)
 	finally
 	    unlock(to.messaging_lock)
 	end
+end
+
+# ╔═╡ 590a7882-3d69-48b0-bb1b-f476c7f8a885
+function respond_to_parent(; to::MessageWriter, about::UUID, with::Message)
+	binary_message = Envelope(
+		channel_id=about,
+		message=with,
+	)
+	put!(to, binary_message)
 end
 
 # ╔═╡ 20f66652-bca0-4e47-a4b7-502cfbcb3db5
@@ -296,7 +289,7 @@ function send_message_without_response(process::ChildProcess, envelope::Envelope
 	
 	lock(process.messaging_lock)
 	try
-		send_message(process.process, to_binary(envelope))
+		send_message(process.socket_to_child, to_binary(envelope))
 		nothing
 	finally
 	    unlock(process.messaging_lock)
@@ -352,13 +345,13 @@ function create_channel(fn, process::ChildProcess, message)
 end
 
 # ╔═╡ 54a03cba-6d00-4632-8bd6-c60753c15ae6
-function listen_for_messages_from_child(child_process)
+function listen_for_messages_from_child(child_process::ChildProcess)
 	try
-		for result in ReadMessages(child_process.process)
+		for result in ReadMessages(child_process.socket_to_child)
 			if !(result isa Envelope && result.channel_id !== nothing)
-				throw("Huh")
+				@error "Huh wrong result" result
+				throw("Huh, wrong result")
 			end
-
 			
 			if haskey(child_process.channels, result.channel_id)
 				message = result.message
@@ -370,7 +363,8 @@ function listen_for_messages_from_child(child_process)
 		end
 	catch error
 		@error "Error in main processing" error bt=stacktrace(catch_backtrace())
-		close(child_process.process)
+		close(child_process.socket_to_client)
+		close(child_process.tcp_server)
 	finally
 		for (channel_id, channel) in collect(child_process.channels)
 			close(channel, ProcessExitedException(process=child_process))
@@ -388,7 +382,7 @@ Spawn a child process that you'll be able to `call()` on and communicate with ov
 It spawns a process using `open` with some ad-hoc julia code that also loads the `ChildProcesses` module. It then spawns a loop for listening to the spawned process.
 The returned `ChildProcess` is basically a bunch of event listeners (in the form of channels) that 
 """
-function create_child_process(; custom_stderr=stderr, exeflags=["--history-file=no", "--threads=auto"])
+function create_child_process(; port=rand(5000:9000),custom_stderr=stderr, exeflags=["--history-file=no", "--threads=auto"])
 	this_file = split(@__FILE__(), "#")[1]
 	this_module = string(nameof(@__MODULE__))
 	
@@ -397,35 +391,42 @@ function create_child_process(; custom_stderr=stderr, exeflags=["--history-file=
 	var"$this_module" = @eval Main module var"$this_module"
 		include("$this_file")
 	end
-		
-	const parent_process = var"$this_module".setup_parent_process()
 
-	Threads.@spawn begin
+	begin
 		try
-			var"$this_module".listen_for_messages_from_parent(parent_process)
+			var"$this_module".listen_for_messages_from_parent($(port))
 			@info "Done?"
 		catch error
 			@error "Shutdown error" error
 			rethrow(error)
 		end
 	end
-
-	try
-		while true
-			sleep(typemax(UInt64))
-		end
-	catch e
-		@error "HMMM SIGNINT MAYBE?" e
-	end
 	"""
 	
-	process = open(
-		pipeline(`$(juliapath()) $exeflags -e $code`, stderr=custom_stderr),
-		read=true,
-		write=true,
-	)
 
-	child_process = ChildProcess(process=process)
+	# TODO Create TCP server
+
+	tcp_server = Sockets.listen(port)
+
+	process = open(
+		pipeline(`$(juliapath()) $exeflags -e $code`),
+	)
+	
+	if !isopen(tcp_server)
+		throw("huh, server is not open?")
+	end
+	
+	# Wait for a new client to connect, accept the connection and store the stream.
+	client_stream = try
+		Sockets.accept(tcp_server)
+	catch ex
+		if isopen(tcp_server)
+			@warn "Failed to open client stream" exception = (ex, catch_backtrace())
+		end
+		nothing
+	end
+
+	child_process = ChildProcess(process=process, tcp_server=tcp_server, socket_to_child=client_stream)
 	schedule(Task() do
 		listen_for_messages_from_child(child_process)
 	end)
@@ -543,12 +544,12 @@ end
 
 # ╔═╡ 009ad714-b759-420a-b49a-6caed7ee3faf
 function Base.iterate(message_reader::ReadMessages, state=nothing)
-	if eof(message_reader.io)
+	if isopen(message_reader.socket) && isreadable(message_reader.socket)
+		message = from_binary(read_message(message_reader.socket))
+		(message, nothing)
+	else
 		return nothing
 	end
-
-	message = from_binary(read_message(message_reader.io))
-	(message, nothing)
 end
 
 # ╔═╡ 5fb65aec-3512-4f48-98ce-300ab9fdadfe
@@ -578,14 +579,14 @@ begin
 		next = iterate(parent_channel.result_channel)
 		if next === nothing
 			respond_to_parent(
-				to=parent_channel.process,
+				to=parent_channel.message_to_parent,
 				about=parent_channel.channel_id,
 				with=ChannelCloseMessage(),
 			)
 			true
 		else
 			respond_to_parent(
-				to=parent_channel.process,
+				to=parent_channel.message_to_parent,
 				about=parent_channel.channel_id,
 				with=ChannelPushMessage(next[1])
 			)
@@ -613,12 +614,12 @@ begin
 end
 
 # ╔═╡ 13089c5d-f833-4fb7-b8cd-4158b1a57103
-function create_parent_channel(; process, channel_id, result_channel)
-	Channel(Inf) do input_channel
+function create_parent_channel(; message_to_parent, channel_id, result_channel)
+	Channel{Message}(Inf) do input_channel
 		try
 			for message in input_channel
 				parent_channel = ParentChannel(
-					process=process,
+					message_to_parent=message_to_parent,
 					channel_id=channel_id,
 					result_channel=result_channel,
 				)
@@ -636,7 +637,7 @@ function create_parent_channel(; process, channel_id, result_channel)
 			else
 				@error "Error in channel" error
 				respond_to_parent(
-					to=process,
+					to=message_to_parent,
 					about=channel_id,
 					with=ErrorMessage(CapturedException(error, catch_backtrace()))
 				)
@@ -648,13 +649,17 @@ function create_parent_channel(; process, channel_id, result_channel)
 end
 
 # ╔═╡ e4109311-8252-4793-87b8-eae807df7997
-function listen_for_messages_from_parent(process::ParentProcess)
-	channels = process.channels
+function listen_for_messages_from_parent(port)
+	channels = Dict{UUID,MessageChannel}()
+
+	socket_to_parent = Sockets.connect(port)
 
 	# ?? What do these locks do?? They look cool, but are they useful actually?
 	locks = Dict{UUID, ReentrantLock}()
 
-	for envelope in ReadMessages(process.parent_to_child)
+	message_to_parent = MessageWriter(socket=socket_to_parent)
+	
+	for envelope in ReadMessages(socket_to_parent)
 		channel_id = envelope.channel_id
 		message = envelope.message
 		
@@ -666,32 +671,32 @@ function listen_for_messages_from_parent(process::ParentProcess)
 			lock(channel_lock)
 			try
 				if envelope.message isa CreateChildChannelMessage
-					@assert !haskey(process.channels, channel_id)
+					@assert !haskey(channels, channel_id)
 					
 					result_channel = Main.eval(message.expr)
-					process.channels[channel_id] = create_parent_channel(
-						process=process,
+					channels[channel_id] = create_parent_channel(
+						message_to_parent=message_to_parent,
 						channel_id=channel_id,
 						result_channel=result_channel,
 					)
 				else
 					if (
-						haskey(process.channels, channel_id) &&
-						isopen(process.channels[channel_id])
+						haskey(channels, channel_id) &&
+						isopen(channels[channel_id])
 					)
-						put!(process.channels[channel_id], message)
+						put!(channels[channel_id], message)
 					else
 						respond_to_parent(
-							to=process,
+							to=message_to_parent,
 							about=channel_id,
 							with=ChannelCloseMessage(),
 						)
 					end
 				end
 			catch error
-				@error "Does it error here already?" error
+				@error "Does it error here already?" error stacktrace(catch_backtrace())
 				respond_to_parent(
-					to=process,
+					to=message_to_parent,
 					about=envelope.channel_id, 
 					with=ErrorMessage(CapturedException(error, catch_backtrace()))
 				)
@@ -706,6 +711,7 @@ end
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
+Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 """
 
@@ -723,6 +729,9 @@ uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 [[Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
+[[Sockets]]
+uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
+
 [[UUIDs]]
 deps = ["Random", "SHA"]
 uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
@@ -730,32 +739,32 @@ uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 # ╔═╡ Cell order:
 # ╟─4c4b77dc-8545-4922-9897-110fa67c99f4
-# ╟─d3fe8144-6ba8-4dd9-b0e3-941a96422267
-# ╟─f99f4659-f71e-4f2e-a674-67ba69289817
+# ╠═d3fe8144-6ba8-4dd9-b0e3-941a96422267
+# ╠═e4109311-8252-4793-87b8-eae807df7997
+# ╠═f99f4659-f71e-4f2e-a674-67ba69289817
 # ╟─2342d663-030f-4ed2-b1d5-5be1910b6d4c
 # ╠═4b42e233-1f06-49c9-8c6a-9dc21c21ffb7
 # ╠═e3e16a8b-7124-4678-8fe7-12ed449e1954
 # ╟─934d18d4-936e-4ee0-aa6e-86aa6f66774c
-# ╟─54a03cba-6d00-4632-8bd6-c60753c15ae6
-# ╠═4df77979-0c35-4139-aa5e-da43c1de3a77
+# ╠═54a03cba-6d00-4632-8bd6-c60753c15ae6
 # ╠═6925ffbb-fd9e-402c-a483-c78f28f892a5
 # ╠═8c97d5cb-e346-4b94-b2a1-4fb5ff093bd5
-# ╠═63531683-e295-4ba6-811f-63b0d384ba0f
-# ╠═9ba8ee0c-c80c-41d9-8739-11e6ef5d3c15
+# ╟─63531683-e295-4ba6-811f-63b0d384ba0f
+# ╟─9ba8ee0c-c80c-41d9-8739-11e6ef5d3c15
 # ╠═4289b4ba-45f2-4be7-b983-68f7d97510fa
-# ╠═e6b3d1d9-0245-4dc8-a0a5-5831c254479b
-# ╠═2a538f97-a9d1-4dcf-a098-5b1e5a8df3ae
+# ╟─e6b3d1d9-0245-4dc8-a0a5-5831c254479b
+# ╟─2a538f97-a9d1-4dcf-a098-5b1e5a8df3ae
+# ╠═19292c14-7434-4683-af34-d6887bc53448
 # ╠═87612815-7981-4a69-a65b-4465f48c9fd9
 # ╠═009ad714-b759-420a-b49a-6caed7ee3faf
 # ╟─de680a32-e053-4655-a1cd-111d81a037e6
 # ╠═ce2acdd1-b4bb-4a8f-8346-a56dfa55f56b
-# ╠═87182605-f5a1-46a7-968f-bdfb9d0e08fa
+# ╠═e5135e56-9df0-4284-872f-7fd26b86e901
 # ╠═b05be9c7-8cc1-47f9-8baa-db66ac83c24f
-# ╟─590a7882-3d69-48b0-bb1b-f476c7f8a885
+# ╠═590a7882-3d69-48b0-bb1b-f476c7f8a885
 # ╠═46d905fc-d41e-4c9a-a808-14710f64293a
 # ╠═13089c5d-f833-4fb7-b8cd-4158b1a57103
 # ╠═3fd22ac5-e1c9-42a2-8ae1-7cc4e154764a
-# ╠═e4109311-8252-4793-87b8-eae807df7997
 # ╟─17cb5a65-2a72-4e7d-8fba-901452b2c19f
 # ╠═3431051e-55ce-46c1-a0f5-364662f5c77b
 # ╠═85920c27-d8a6-4b5c-93b6-41daa5866f9d
@@ -789,8 +798,8 @@ uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 # ╠═b0bcdbdf-a043-4d25-8582-ed173006e040
 # ╟─a6e50946-dd3d-4738-adc1-26534e184776
 # ╟─131a123b-e319-4939-90bf-7fb035ab2e75
-# ╟─e393ff80-3995-11ec-1217-b3642a509067
-# ╟─faf3c68e-d0fb-4dd9-ac1b-1ff8d922134b
+# ╠═e393ff80-3995-11ec-1217-b3642a509067
+# ╠═faf3c68e-d0fb-4dd9-ac1b-1ff8d922134b
 # ╟─52495855-a52d-4edf-9c7c-811a5060e641
 # ╟─7da416d1-5dfb-4510-9d32-62c1464a83d4
 # ╟─00000000-0000-0000-0000-000000000001

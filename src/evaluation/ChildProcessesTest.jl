@@ -11,7 +11,7 @@ end
 
 # ╔═╡ 6ff77f91-ee9c-407c-a243-09fc7e555d73
 function with_process(fn)
-	process = ChildProcesses.create_child_process(port=10112)
+	process = ChildProcesses.create_child_process()
 	try
 		fn(process)
 	finally
@@ -62,17 +62,17 @@ import BenchmarkTools
 # end
 
 # ╔═╡ 4baac7f2-60fe-4a6f-8612-2acf80c43ef3
-# let
-# 	process = ChildProcesses.create_child_process()
+let
+	process = ChildProcesses.create_child_process()
 	
-# 	benchmark = BenchmarkTools.@benchmark begin
-# 		ChildProcesses.call($process, :(1 + 1))
-# 	end
+	benchmark = BenchmarkTools.@benchmark begin
+		ChildProcesses.call($process, :(1 + 1))
+	end
 
-# 	kill(process)
+	kill(process)
 	
-# 	benchmark
-# end
+	benchmark
+end
 
 # ╔═╡ ae150877-7ea7-4049-ae7b-7ada459731ad
 md"""# Appendix"""
