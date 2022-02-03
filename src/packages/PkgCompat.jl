@@ -340,32 +340,28 @@ package_exists(package_name::AbstractString)::Bool =
 
 # 🐸 "Public API", but using PkgContext
 function dependencies(ctx)
-	# Pkg.dependencies(ctx) should also work on 1.5, but there is some weird bug (run the tests without this patch). This is probably some Pkg bug that got fixed.
-	@static if VERSION < v"1.6.0-a"
-		ctx.env.manifest
-	else
-		try
-			# ctx.env.manifest
-			@static if hasmethod(Pkg.dependencies, (PkgContext,))
-				Pkg.dependencies(ctx)
-			else
-				Pkg.dependencies(ctx.env)
-			end
-		catch e
-			if !occursin(r"expected.*exist.*manifest", sprint(showerror, e))
-				@error """
-				Pkg error: you might need to use
-
-				Pluto.reset_notebook_environment(notebook_path)
-
-				to reset this notebook's environment.
-
-				Before doing so, consider sending your notebook file to https://github.com/fonsp/Pluto.jl/issues together with the following info:
-				""" Pluto.PLUTO_VERSION VERSION exception=(e,catch_backtrace())
-			end
-
-			Dict()
+	try
+		# ctx.env.manifest
+		@static if hasmethod(Pkg.dependencies, (PkgContext,))
+			Pkg.dependencies(ctx)
+		else
+			Pkg.dependencies(ctx.env)
 		end
+	catch e
+		if !occursin(r"expected.*exist.*manifest", sprint(showerror, e))
+			@error """
+			Pkg error: you might need to use
+
+			Pluto.reset_notebook_environment(notebook_path)
+
+			to reset this notebook's environment.
+
+			Before doing so, consider sending your notebook file to https://github.com/fonsp/Pluto.jl/issues together with the following info:
+			""" Pluto.PLUTO_VERSION VERSION exception=(e,catch_backtrace())
+		end
+
+		Dict()
+	
 	end
 end
 

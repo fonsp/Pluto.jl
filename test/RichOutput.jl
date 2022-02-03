@@ -152,10 +152,8 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             s = string(notebook.cells[2].output.body)
             @test occursin("OffsetArray", s)
             @test occursin("21", s)
-            if VERSION >= v"1.3"
-                # once in the prefix, once as index
-                @test count("22", s) >= 2
-            end
+            # once in the prefix, once as index
+            @test count("22", s) >= 2
             
             WorkspaceManager.unmake_workspace((🍭, notebook))
             🍭.options.evaluation.workspace_use_distributed = false
