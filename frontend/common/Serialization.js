@@ -6,7 +6,7 @@ import { in_textarea_or_input } from "./KeyboardShortcuts.js"
  * Used for implementing clipboard functionality. This isn't in topological
  * order, so you won't necessarily be able to run it directly.
  *
- * @param {Array<import("../components/Editor.js").CellInputData>} cells
+ * @param {Array<{ cell_id: string, code: string }>} cells
  * @return {String}
  */
 export function serialize_cells(cells) {

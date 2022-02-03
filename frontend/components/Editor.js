@@ -899,8 +899,18 @@ patch: ${JSON.stringify(
 
         this.serialize_selected = (cell_id = null) => {
             const cells_to_serialize = cell_id == null || this.state.selected_cells.includes(cell_id) ? this.state.selected_cells : [cell_id]
-            if (cells_to_serialize.length) {
-                return serialize_cells(cells_to_serialize.map((id) => this.state.notebook.cell_inputs[id]))
+            if (cells_to_serialize.length !== 0) {
+                return serialize_cells(
+                    cells_to_serialize.map((id) => {
+                        let local_input = this.state.notebook.cell_inputs[id]
+                        return {
+                            cell_id: local_input.cell_id,
+                            code: local_input.local_code,
+                        }
+                    })
+                )
+            } else {
+                return null
             }
         }
 
@@ -991,14 +1001,19 @@ patch: ${JSON.stringify(
         })
 
         document.addEventListener("copy", (e) => {
-            if (!in_textarea_or_input()) {
-                const serialized = this.serialize_selected()
-                if (serialized) {
-                    navigator.clipboard.writeText(serialized).catch((err) => {
-                        alert(`Error copying cells: ${e}`)
-                    })
-                }
+            if (in_textarea_or_input()) return
+
+            const serialized = this.serialize_selected()
+            if (serialized == null) return
+
+            if (navigator.clipboard == null) {
+                alert("For some reason we are not allowed to copy text to your clipboard")
+                return
             }
+
+            navigator.clipboard.writeText(serialized).catch((err) => {
+                alert(`Error copying cells: ${e}`)
+            })
         })
 
         document.addEventListener("cut", (e) => {
