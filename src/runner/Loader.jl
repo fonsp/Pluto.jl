@@ -45,15 +45,8 @@ begin
         # Instantiate
         try
             # we don't suppress IO for this one because it can take very long, and that would be a frustrating experience without IO
-            if VERSION >= v"1.6.0-a"
-                # precompilation switched off because of https://github.com/fonsp/Pluto.jl/issues/875
-                Pkg.instantiate(; update_registry=false, allow_autoprecomp=false) 
-            elseif VERSION >= v"1.3.0"
-                # registry update is not required here (because you were able to install Pluto) and may save some time for startup
-                Pkg.instantiate(; update_registry=false)
-            else
-                Pkg.instantiate()
-            end
+            # precompilation switched off because of https://github.com/fonsp/Pluto.jl/issues/875
+            Pkg.instantiate(; update_registry=false, allow_autoprecomp=false) 
         catch e
             @error "Failed to instantiate notebook boot environment" exception=(e, catch_backtrace())
         end
