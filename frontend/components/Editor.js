@@ -214,7 +214,7 @@ console.log("Launch parameters: ", launch_params)
  *
  * @returns {NotebookData}
  */
-const initial_notebook = (initialLocalCells = {}) => ({
+const initial_notebook = () => ({
     notebook_id: launch_params.notebook_id,
     path: default_path,
     shortpath: "",
@@ -222,7 +222,7 @@ const initial_notebook = (initialLocalCells = {}) => ({
     process_status: "starting",
     last_save_time: 0.0,
     last_hot_reload_time: 0.0,
-    cell_inputs: Object.keys(initialLocalCells).reduce((p, c) => ({ ...p, [c]: { code: "", local_code: initialLocalCells[c] } }), {}),
+    cell_inputs: {},
     cell_results: {},
     cell_dependencies: {},
     cell_order: [],
