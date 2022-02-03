@@ -1,8 +1,8 @@
-import { html, Component, useState, useEffect, useMemo, useRef } from "../imports/Preact.js"
+import { html, Component, useState, useEffect, useMemo } from "../imports/Preact.js"
 import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
-import { create_pluto_connection, get_unique_short_id } from "../common/PlutoConnection.js"
+import { create_pluto_connection } from "../common/PlutoConnection.js"
 import { init_feedback } from "../common/Feedback.js"
 import { serialize_cells, deserialize_cells, detect_deserializer } from "../common/Serialization.js"
 
@@ -32,7 +32,6 @@ import { ProgressBar } from "./ProgressBar.js"
 import { IsolatedCell } from "./Cell.js"
 import { RawHTMLContainer } from "./CellOutput.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
-import { MultiplayerStalker } from "./MultiplayerStalker.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -163,16 +162,6 @@ const first_true_key = (obj) => {
  */
 
 /**
- * @typedef UserData
- * @type {{
- *  color: string,
- *  mouse: { relative_to_cell: string, offsetY: number, screenX: number, mousedown: boolean, at_scroll: number },
- *  scroll: { relative_to_cell: string, offsetY: number, height: number },
- *  last_update: number,
- * }}
- */
-
-/**
  * @typedef NotebookData
  * @type {{
  *  notebook_id: string,
@@ -190,7 +179,6 @@ const first_true_key = (obj) => {
  *  published_objects: { [objectid: string]: any},
  *  bonds: { [name: string]: any },
  *  nbpkg: NotebookPkgData?,
- *  users: { [author_id: string]: UserData },
  * }}
  */
 
@@ -242,7 +230,6 @@ const initial_notebook = (initialLocalCells = {}) => ({
     published_objects: {},
     bonds: {},
     nbpkg: null,
-    users: null,
 })
 
 export class Editor extends Component {
@@ -710,7 +697,6 @@ patch: ${JSON.stringify(
                 : `${this.state.binder_session_url}${u}?id=${this.state.notebook.notebook_id}&token=${this.state.binder_session_token}`
 
         this.client = {}
-        this.client_id = get_unique_short_id()
 
         this.connect = (ws_address = undefined) =>
             create_pluto_connection({
@@ -719,7 +705,6 @@ patch: ${JSON.stringify(
                 on_connection_status: on_connection_status,
                 on_reconnect: on_reconnect,
                 connect_metadata: { notebook_id: this.state.notebook.notebook_id },
-                client_id: this.client_id,
             }).then(on_establish_connection)
 
         this.real_actions = this.actions
@@ -745,12 +730,9 @@ patch: ${JSON.stringify(
         }
         this.on_disable_ui()
 
-        // I love this so much I'll put it everywhere I go - dral
-        let async = async (async) => async()
-
         this.original_state = null
         if (this.state.static_preview) {
-            async(async () => {
+            ;(async () => {
                 const r = await fetch(launch_params.statefile)
                 const data = await read_Uint8Array_with_progress(r, (progress) => {
                     this.setState({
@@ -764,7 +746,7 @@ patch: ${JSON.stringify(
                     initializing: false,
                     binder_phase: this.state.offer_binder ? BinderPhase.wait_for_user : null,
                 })
-            })
+            })()
             // view stats on https://stats.plutojl.org/
             count_stat(`article-view`)
         } else {
@@ -802,11 +784,6 @@ patch: ${JSON.stringify(
         let last_update_notebook_task = Promise.resolve()
         /** @param {(notebook: NotebookData) => void} mutate_fn */
         let update_notebook = (mutate_fn) => {
-            if (this.client.send == null) {
-                console.warn("Notebook not yet connected; batch this and send on connect?")
-                return
-            }
-
             const new_task = last_update_notebook_task.then(async () => {
                 // if (this.state.initializing) {
                 //     console.error("Update notebook done during initializing, strange")
@@ -1177,12 +1154,6 @@ patch: ${JSON.stringify(
             <${PlutoContext.Provider} value=${pluto_actions_with_my_author_name}>
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                     <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
-                    <${MultiplayerStalker}
-                        force=${this.state.is_recording || launch_params.recording_url}
-                        users=${this.state.notebook.users}
-                        update_notebook=${this.update_notebook}
-                        client_id=${this.client_id}
-                    />
                     <${Scroller} active=${this.state.scroller} />
                     <${ProgressBar} notebook=${this.state.notebook} binder_phase=${this.state.binder_phase} status=${status}/>
                     <header className=${export_menu_open ? "show_export" : ""}>

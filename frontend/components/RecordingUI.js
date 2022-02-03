@@ -55,13 +55,11 @@ export const RecordingUI = ({ notebook_name, is_recording, recording_waiting_to_
 
         let initial_html = await (await fetch(export_url("notebookexport"))).text()
 
-        // For debugging (or showing unreleased features), it's often useful to uncomment either of these two lines
-        // Make sure you update the version number that gets replaced to the one you are on (else it won't replace a thing)
-        // initial_html = initial_html.replaceAll("https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.7/frontend/", "http://localhost:1234/")
-        // initial_html = initial_html.replaceAll(
-        //     "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.7/frontend/",
-        //     "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@8d243df/frontend/"
-        // )
+        initial_html = initial_html.replaceAll(
+            "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.3/frontend/",
+            "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@8d243df/frontend/"
+        )
+        // initial_html = initial_html.replaceAll("https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.3/frontend/", "http://localhost:1234/")
 
         const scroll_handler_direct = () => {
             let y = window.scrollY + window.innerHeight / 2
@@ -202,18 +200,18 @@ let get_scroll_top = ({ cell_id, relative_distance }) => {
     return cell.offsetTop + relative_distance * cell.offsetHeight - window.innerHeight / 2
 }
 
-let async = async (async) => async()
-
 export const RecordingPlaybackUI = ({ recording_url, audio_src, initializing, apply_notebook_patches, reset_notebook_state }) => {
-    let loaded_recording = useMemo(() => {
-        return async(async () => {
-            if (recording_url) {
-                return await unpack(new Uint8Array(await (await fetch(recording_url)).arrayBuffer()))
-            } else {
-                return null
-            }
-        })
-    }, [recording_url])
+    let loaded_recording = useMemo(
+        () =>
+            Promise.resolve().then(async () => {
+                if (recording_url) {
+                    return unpack(new Uint8Array(await (await fetch(recording_url)).arrayBuffer()))
+                } else {
+                    return null
+                }
+            }),
+        [recording_url]
+    )
     let computed_reverse_patches_ref = useRef(null)
 
     useEffect(() => {
