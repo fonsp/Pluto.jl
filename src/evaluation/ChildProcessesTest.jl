@@ -4,30 +4,14 @@
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ 7e613bd2-616a-4687-8af5-a22c7a747d97
-import Serialization
-
-# ╔═╡ d30e1e1b-fa6f-4fbc-bccb-1fcfc7b829df
-import UUIDs: UUID, uuid4
-
-# ╔═╡ f7d14367-27d7-41a5-9f6a-79cf5e721a7d
-import PlutoUI
-
-# ╔═╡ fe669218-18c3-46c7-80e8-7b1ab6fa77d2
-import PlutoLinks: @ingredients, @use_task
-
-# ╔═╡ f9675ee0-e728-420b-81bd-22e57583c587
-import PlutoHooks: @use_effect, @use_ref, @use_state, @use_memo
-
-# ╔═╡ a26cc458-4578-427f-840d-71d78c5c8b01
-begin
-	ChildProcesses = @ingredients("./ChildProcesses.jl").ChildProcesses
-	var"ChildProcesses.jl" = ChildProcesses
+# ╔═╡ ed5616e7-2126-4393-b192-764ca6c053fa
+ChildProcesses = let
+	include("./ChildProcesses.jl")
 end
 
 # ╔═╡ 6ff77f91-ee9c-407c-a243-09fc7e555d73
 function with_process(fn)
-	process = ChildProcesses.create_child_process()
+	process = ChildProcesses.create_child_process(port=10112)
 	try
 		fn(process)
 	finally
@@ -37,13 +21,14 @@ end
 
 # ╔═╡ 730cfe5e-1541-4c08-8d4a-86d1f9e4115e
 with_process() do process
-	ChildProcesses.call(process, :(throw("Hi")))
+	@info "hiiii"
+	ChildProcesses.call(process, :(1 + 1))
 end
 
 # ╔═╡ 6ab96c70-ad5d-4614-9a77-2d44d1085567
-with_process() do process
-	ChildProcesses.call(process, :(1 + 1))
-end
+# with_process() do process
+# 	ChildProcesses.call(process, :(1 + 1))
+# end
 
 # ╔═╡ de602aaa-704c-45c4-8b7b-fc58e41236ce
 begin
@@ -63,31 +48,34 @@ md"---"
 import BenchmarkTools
 
 # ╔═╡ ced9d1e9-7075-4ff2-8ca2-6a349f2a69c4
-let
-	stream = PipeBuffer()
-	BenchmarkTools.@benchmark begin
-		input = Dict(:x => 1)
-		ChildProcesses.send_message($stream, ChildProcesses.to_binary(input))
-		output = ChildProcesses.from_binary(ChildProcesses.read_message($stream))
+# let
+# 	stream = PipeBuffer()
+# 	BenchmarkTools.@benchmark begin
+# 		input = Dict(:x => 1)
+# 		ChildProcesses.send_message($stream, ChildProcesses.to_binary(input))
+# 		output = ChildProcesses.from_binary(ChildProcesses.read_message($stream))
 		
-		if input != output
-			throw("Waoh, input and output should match but didn't!")
-		end
-	end
-end
+# 		if input != output
+# 			throw("Waoh, input and output should match but didn't!")
+# 		end
+# 	end
+# end
 
 # ╔═╡ 4baac7f2-60fe-4a6f-8612-2acf80c43ef3
-let
-	process = ChildProcesses.create_child_process()
+# let
+# 	process = ChildProcesses.create_child_process()
 	
-	benchmark = BenchmarkTools.@benchmark begin
-		ChildProcesses.call($process, :(1 + 1))
-	end
+# 	benchmark = BenchmarkTools.@benchmark begin
+# 		ChildProcesses.call($process, :(1 + 1))
+# 	end
 
-	kill(process)
+# 	kill(process)
 	
-	benchmark
-end
+# 	benchmark
+# end
+
+# ╔═╡ ae150877-7ea7-4049-ae7b-7ada459731ad
+md"""# Appendix"""
 
 # ╔═╡ be18d157-6b55-4eaa-99fe-c398e992a9fa
 md"### @task_result"
@@ -100,6 +88,24 @@ struct Result value end
 
 # ╔═╡ 83540498-f317-4d8b-8dc6-80a93247b3b2
 struct Failure error end
+
+# ╔═╡ a5d0660b-1bed-4623-950d-3b58fe9fec4b
+md"""### Imports"""
+
+# ╔═╡ 7e613bd2-616a-4687-8af5-a22c7a747d97
+import Serialization
+
+# ╔═╡ d30e1e1b-fa6f-4fbc-bccb-1fcfc7b829df
+import UUIDs: UUID, uuid4
+
+# ╔═╡ f7d14367-27d7-41a5-9f6a-79cf5e721a7d
+import PlutoUI
+
+# ╔═╡ fe669218-18c3-46c7-80e8-7b1ab6fa77d2
+import PlutoLinks: @ingredients, @use_task
+
+# ╔═╡ f9675ee0-e728-420b-81bd-22e57583c587
+import PlutoHooks: @use_effect, @use_ref, @use_state, @use_memo
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -250,23 +256,25 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 """
 
 # ╔═╡ Cell order:
-# ╠═7e613bd2-616a-4687-8af5-a22c7a747d97
-# ╠═d30e1e1b-fa6f-4fbc-bccb-1fcfc7b829df
-# ╠═f7d14367-27d7-41a5-9f6a-79cf5e721a7d
-# ╠═fe669218-18c3-46c7-80e8-7b1ab6fa77d2
-# ╠═f9675ee0-e728-420b-81bd-22e57583c587
 # ╠═730cfe5e-1541-4c08-8d4a-86d1f9e4115e
+# ╠═ed5616e7-2126-4393-b192-764ca6c053fa
 # ╠═6ff77f91-ee9c-407c-a243-09fc7e555d73
 # ╠═6ab96c70-ad5d-4614-9a77-2d44d1085567
-# ╠═a26cc458-4578-427f-840d-71d78c5c8b01
 # ╠═de602aaa-704c-45c4-8b7b-fc58e41236ce
 # ╟─49fdc8a3-0e1a-42f0-acc4-b823eec91d31
 # ╠═95c5a5bc-db23-4ad3-8ae8-81bc8f0edfd4
 # ╠═ced9d1e9-7075-4ff2-8ca2-6a349f2a69c4
 # ╠═4baac7f2-60fe-4a6f-8612-2acf80c43ef3
+# ╠═ae150877-7ea7-4049-ae7b-7ada459731ad
 # ╟─be18d157-6b55-4eaa-99fe-c398e992a9fa
 # ╠═12578b59-0161-4e72-afef-825166a62121
 # ╠═34d90560-5a3e-4c7f-8126-35e1a6153aa1
 # ╠═83540498-f317-4d8b-8dc6-80a93247b3b2
+# ╟─a5d0660b-1bed-4623-950d-3b58fe9fec4b
+# ╠═7e613bd2-616a-4687-8af5-a22c7a747d97
+# ╠═d30e1e1b-fa6f-4fbc-bccb-1fcfc7b829df
+# ╠═f7d14367-27d7-41a5-9f6a-79cf5e721a7d
+# ╠═fe669218-18c3-46c7-80e8-7b1ab6fa77d2
+# ╠═f9675ee0-e728-420b-81bd-22e57583c587
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
