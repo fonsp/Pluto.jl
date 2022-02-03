@@ -710,11 +710,18 @@ export const CellInput = ({
         }
     }, [])
 
+    // Update local code if the code is changed by someone else
+    // working on the code. This could be another human, but might also
+    // be a computer (when you wrap cells in `begin..end`, or paste code)
     useEffect(() => {
+        // No need to update if we are the ones who made the change!
+        if (local_code_author_name === my_author_name) return
+
         if (newcm_ref.current == null) return // Not sure when and why this gave an error, but now it doesn't
+
         const current_value = getValue6(newcm_ref.current) ?? ""
-        const will_update_code = local_code_author_name !== my_author_name && current_value !== local_code
-        if (will_update_code) {
+        // Only update if the code actually changed
+        if (current_value !== local_code) {
             newcm_ref.current.dispatch({
                 changes: { from: 0, to: newcm_ref.current.state.doc.length, insert: local_code },
                 annotations: [change_is_from_remote_annotation.of(1)], // Maybe cursor in the future??
@@ -722,6 +729,7 @@ export const CellInput = ({
         }
     }, [local_code, my_author_name])
 
+    // Handles forced focus coming from above
     useEffect(() => {
         const cm = newcm_ref.current
         if (cm_forced_focus == null) {

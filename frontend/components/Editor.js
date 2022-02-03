@@ -95,7 +95,7 @@ const first_true_key = (obj) => {
  *  cell_id: string,
  *  code: string,
  *  local_code: string,
- *  local_code_author_name?: string,
+ *  local_code_author_name: string,
  *  code_folded: boolean,
  *  running_disabled: boolean,
  * }}
@@ -304,19 +304,8 @@ export class Editor extends Component {
                 }
             },
             add_deserialized_cells: async (data, index_or_id, deserializer = deserialize_cells) => {
-                let new_codes = deserializer(data)
-                /** @type {Array<CellInputData>} */
-                /** Create copies of the cells with fresh ids */
-                let new_cells = new_codes.map((code) => ({
-                    cell_id: uuidv4(),
-                    code: code,
-                    code_folded: false,
-                    running_disabled: false,
-                    local_code: code,
-                }))
-
+                // Look for an index to paste the cells between
                 let index
-
                 if (typeof index_or_id === "number") {
                     index = index_or_id
                 } else {
@@ -327,10 +316,24 @@ export class Editor extends Component {
                         index += 1
                     }
                 }
-
+                // TODO Make this select a position that is on screen!!
                 if (index === -1) {
                     index = this.state.notebook.cell_order.length
                 }
+
+                let new_codes = deserializer(data)
+                /** Create copies of the cells with fresh ids
+                 *  @type {Array<CellInputData>}
+                 * */
+                let new_cells = new_codes.map((code) => ({
+                    cell_id: uuidv4(),
+                    // Fill the cell with empty code remotely, so it doesn't run unsafe code
+                    code: "",
+                    code_folded: false,
+                    running_disabled: false,
+                    local_code: code,
+                    local_code_author_name: `${this.state.my_author_name}-💻-from-paste`,
+                }))
 
                 /** Update local_code. Local code doesn't force CM to update it's state
                  * (the usual flow is keyboard event -> cm -> local_code and not the opposite )
@@ -340,12 +343,7 @@ export class Editor extends Component {
                  */
                 await update_notebook((notebook) => {
                     for (const cell of new_cells) {
-                        notebook.cell_inputs[cell.cell_id] = {
-                            ...cell,
-                            // Fill the cell with empty code remotely, so it doesn't run unsafe code
-                            code: "",
-                            local_code: cell.code,
-                        }
+                        notebook.cell_inputs[cell.cell_id] = cell
                     }
                     notebook.cell_order = [
                         ...notebook.cell_order.slice(0, index),
@@ -355,22 +353,19 @@ export class Editor extends Component {
                 })
                 await this.setStatePromise(
                     immer((state) => {
+                        // TODO Select the just pasted cells?
                         // Deselect everything first, to clean things up
                         state.selected_cells = []
                         state.last_created_cell = new_cells[0]?.cell_id
                     })
                 )
             },
-            wrap_remote_cell: async (cell_id, block_start = "begin", block_end = "end") => {
-                const cell = this.state.notebook.cell_inputs[cell_id]
-                const new_code = `${block_start}\n\t${cell.code.replace(/\n/g, "\n\t")}\n${block_end}`
-
+            wrap_remote_cell_in_begin_end: async (cell_id) => {
                 await update_notebook((notebook) => {
-                    notebook.cell_inputs[cell_id] = {
-                        ...cell,
-                        ...notebook.cell_inputs[cell_id],
-                        local_code: new_code,
-                    }
+                    const cell = notebook.cell_inputs[cell_id]
+                    const new_code = `begin\n\t${cell.code.replace(/\n/g, "\n\t")}\nend`
+                    notebook.cell_inputs[cell_id].local_code = new_code
+                    notebook.cell_inputs[cell_id].local_code_author_name = `${this.state.my_author_name}-💻-begin-end-wrapper`
                 })
                 await this.actions.set_and_run_multiple([cell_id])
             },
@@ -387,6 +382,7 @@ export class Editor extends Component {
                         cell_id: uuidv4(),
                         code: code,
                         local_code: code,
+                        local_code_author_name: `${this.state.my_author_name}-💻-cell-splitter`,
                         code_folded: false,
                         running_disabled: false,
                     }
@@ -439,6 +435,7 @@ export class Editor extends Component {
                         cell_id: id,
                         code,
                         local_code: code,
+                        local_code_author_name: `${this.state.my_author_name}-💻-mother-of-cells`,
                         code_folded: false,
                         running_disabled: false,
                     }
