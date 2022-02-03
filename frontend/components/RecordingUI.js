@@ -57,7 +57,7 @@ export const RecordingUI = ({ notebook_name, is_recording, recording_waiting_to_
 
         // For debugging (or showing unreleased features), it's often useful to uncomment either of these two lines
         // Make sure you update the version number that gets replaced to the one you are on (else it won't replace a thing)
-        // initial_html = initial_html.replaceAll("https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.7/frontend/", "http://localhost:1234/")
+        initial_html = initial_html.replaceAll("https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.7/frontend/", "http://localhost:1234/")
         // initial_html = initial_html.replaceAll(
         //     "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.7/frontend/",
         //     "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@8d243df/frontend/"

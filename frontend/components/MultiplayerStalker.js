@@ -9,6 +9,8 @@ const uuidv4 = () =>
     "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16))
 
 /**
+ * Ha! This is a sham! It actually listens on `document` but I'm too lazy to change it! Ha!
+ *
  * @param {Parameters<typeof document.addEventListener>[0]} event_name
  * @param {Parameters<typeof document.addEventListener>[1]} handler_fn
  * @param {Parameters<typeof useEffect>[1]} deps
@@ -75,6 +77,8 @@ export let MultiplayerStalker = ({ users: users_possibly_null, force, update_not
     }, [is_ready])
 
     if (!is_ready) return null
+    console.log(`Object.keys(users).length < 2:`, Object.keys(users).length < 2)
+    console.log(`force === false:`, force === false)
     if (Object.keys(users).length < 2 && force === false) return null
     return html` <${MultiplayerStalkerActivate} users=${users} update_notebook=${update_notebook} client_id=${client_id} /> `
 }
@@ -193,6 +197,25 @@ export let MultiplayerStalkerActivate = ({ users, update_notebook, client_id }) 
                     notebook.users[client_id].mouse.mousedown = false
                 }
             })
+        },
+        []
+    )
+
+    // So I added this... but now I don't know a nice mechanism to communicate this to
+    // the actual codemirror editors.. so dunno what to do now
+    usePassiveWindowEventListener(
+        "focusin",
+        (event) => {
+            if (event.target.matches(".cm-editor *")) {
+                let cell_id = event.target.closest("pluto-cell").id
+                update_notebook((notebook) => {
+                    notebook.users[client_id].focussed_cell = cell_id
+                })
+            } else {
+                update_notebook((notebook) => {
+                    notebook.users[client_id].focussed_cell = null
+                })
+            }
         },
         []
     )

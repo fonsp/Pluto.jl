@@ -33,6 +33,7 @@ import { IsolatedCell } from "./Cell.js"
 import { RawHTMLContainer } from "./CellOutput.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
 import { MultiplayerStalker } from "./MultiplayerStalker.js"
+import { EditorState } from "../imports/CodemirrorPlutoSetup.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -1178,7 +1179,7 @@ patch: ${JSON.stringify(
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                     <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
                     <${MultiplayerStalker}
-                        force=${this.state.is_recording || launch_params.recording_url}
+                        force=${this.state.is_recording || launch_params.recording_url != null}
                         users=${this.state.notebook.users}
                         update_notebook=${this.update_notebook}
                         client_id=${this.client_id}
