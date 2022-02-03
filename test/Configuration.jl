@@ -27,19 +27,15 @@ end
 end
 
 @testset "flag conversion" begin
-    if VERSION > v"1.5.0-"
-        @test _convert_to_flags(Configuration.CompilerOptions(threads="123")) ==
-            ["--startup-file=no", "--history-file=no", "--threads=123"]
+    @test _convert_to_flags(Configuration.CompilerOptions(threads="123")) ==
+        ["--startup-file=no", "--history-file=no", "--threads=123"]
 
-        @test _convert_to_flags(Configuration.CompilerOptions(threads=123)) ==
-            ["--startup-file=no", "--history-file=no", "--threads=123"]
+    @test _convert_to_flags(Configuration.CompilerOptions(threads=123)) ==
+        ["--startup-file=no", "--history-file=no", "--threads=123"]
 
-        @test _convert_to_flags(Configuration.CompilerOptions()) ⊇
-            ["--startup-file=no", "--history-file=no"]
-    else
-        @test _convert_to_flags(Configuration.CompilerOptions()) ==
-            ["--startup-file=no", "--history-file=no"]
-    end
+    @test _convert_to_flags(Configuration.CompilerOptions()) ⊇
+        ["--startup-file=no", "--history-file=no"]
+
     @test _convert_to_flags(Configuration.CompilerOptions(compile="min")) ⊇
     ["--compile=min", "--startup-file=no", "--history-file=no"]
 end
