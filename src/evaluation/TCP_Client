@@ -1,0 +1,169 @@
+### A Pluto.jl notebook ###
+# v0.17.7
+
+using Markdown
+using InteractiveUtils
+
+# ╔═╡ fcec90ee-26c6-4842-86f1-0af43ac0c6ca
+using Logging
+
+# ╔═╡ f0222d08-51f1-4cc7-b033-004c21771122
+using Sockets
+
+# ╔═╡ 9d2ea7e1-99b2-486c-b085-2f868fdf6a76
+"Wrap `expr` in `try ... catch`. The exception is logged and then ignored."
+macro trylog(expr, logmsg, loglevel = Logging.Warn)
+    quote
+        try
+            $(esc(expr))
+        catch ex
+            @logmsg $(loglevel) $(logmsg) exception = (ex, catch_backtrace())
+        end
+    end
+end
+
+# ╔═╡ 12b39940-ef15-4a25-8776-4681644ef1fd
+Base.@kwdef struct 🐸ServerConnection
+    stream::IO
+    read_task::Task
+end
+
+# ╔═╡ dd3837b7-bcf0-4818-8df7-01469ef98d46
+function send_message(sc::🐸ServerConnection, message::Union{Vector{UInt8},String})
+    write(sc.stream, message)
+end
+
+# ╔═╡ e2230b02-b276-4472-8140-4ffff5795468
+Base.wait(sc::🐸ServerConnection) = wait(sc.read_task)
+
+# ╔═╡ 0766bdf5-4ca6-4369-819c-d57b110c7c4c
+Base.isopen(sc::🐸ServerConnection) = isopen(sc.stream)
+
+# ╔═╡ 251548f6-fb6d-49cc-a7f4-dfe671b9017d
+function Base.close(server::🐸ServerConnection)
+    @trylog(
+        isopen(server.stream) && close(server.stream),
+        "Failed to close connection"
+    )
+    @trylog(
+        wait(server.read_task),
+        "Something went wrong with the read task"
+    )
+end
+
+# ╔═╡ 22247d35-5f65-425e-b31b-5f795e235c42
+md"## `@skip_as_script`"
+
+# ╔═╡ 249b56ff-cca4-4f85-97fc-732f05439903
+function is_inside_pluto(m::Module)
+	if isdefined(m, :PlutoForceDisplay)
+		return m.PlutoForceDisplay
+	else
+		isdefined(m, :PlutoRunner) && parentmodule(m) == Main
+	end
+end
+
+# ╔═╡ 63006fe6-3fc4-4863-b586-4325a40c4eb8
+"""
+	@skip_as_script expression
+
+Marks a expression as Pluto-only, which means that it won't be executed when running outside Pluto. Do not use this for your own projects.
+"""
+macro skip_as_script(ex)
+	if is_inside_pluto(__module__)
+		esc(ex)
+	else
+		nothing
+	end
+end
+
+# ╔═╡ 6e845097-7f67-4f51-a20c-7945583e10cc
+import Sockets: connect
+
+# ╔═╡ 1a85362e-8e8b-4e3c-ade7-5403b6a3fe49
+function create_connection(;
+    port::Integer,
+    on_message::Function
+)
+    stream = connect(port)
+    @info "Client: Connected!"
+
+    read_task = @async try
+        while isopen(stream) && isreadable(stream)
+            incoming = readavailable(stream)
+            if !isempty(incoming)
+                on_message(incoming)
+            end
+        end
+        @info "Client: stopped reading"
+    catch e
+        @error "Client: read error" exception = (e, catch_backtrace())
+    end
+
+
+    return 🐸ServerConnection(;
+        stream = stream,
+        read_task
+    )
+end
+
+# ╔═╡ 44ea60c2-12d7-4ef7-ae61-7a13d4cb8a41
+@skip_as_script conn = create_connection(;
+    port = 9090,
+    on_message = data -> begin
+        @info "Client: Received: " String(data)
+    end
+)
+
+# ╔═╡ e9e409b0-848c-11ec-1eab-37457a276267
+@skip_as_script begin
+	sleep(1)
+	
+	send_message(conn, "Hi!!")
+	sleep(1)
+	
+	send_message(conn, "fonsi")
+	sleep(1)
+	
+	send_message(conn, "Hannesssss")
+	sleep(1)
+	
+	close(conn)
+end
+
+# ╔═╡ 00000000-0000-0000-0000-000000000001
+PLUTO_PROJECT_TOML_CONTENTS = """
+[deps]
+Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
+Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
+"""
+
+# ╔═╡ 00000000-0000-0000-0000-000000000002
+PLUTO_MANIFEST_TOML_CONTENTS = """
+# This file is machine-generated - editing it directly is not advised
+
+[[Logging]]
+uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
+
+[[Sockets]]
+uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
+"""
+
+# ╔═╡ Cell order:
+# ╠═9d2ea7e1-99b2-486c-b085-2f868fdf6a76
+# ╠═44ea60c2-12d7-4ef7-ae61-7a13d4cb8a41
+# ╠═e9e409b0-848c-11ec-1eab-37457a276267
+# ╠═12b39940-ef15-4a25-8776-4681644ef1fd
+# ╠═dd3837b7-bcf0-4818-8df7-01469ef98d46
+# ╠═1a85362e-8e8b-4e3c-ade7-5403b6a3fe49
+# ╠═fcec90ee-26c6-4842-86f1-0af43ac0c6ca
+# ╠═251548f6-fb6d-49cc-a7f4-dfe671b9017d
+# ╠═e2230b02-b276-4472-8140-4ffff5795468
+# ╠═0766bdf5-4ca6-4369-819c-d57b110c7c4c
+# ╠═22247d35-5f65-425e-b31b-5f795e235c42
+# ╠═249b56ff-cca4-4f85-97fc-732f05439903
+# ╠═63006fe6-3fc4-4863-b586-4325a40c4eb8
+# ╠═f0222d08-51f1-4cc7-b033-004c21771122
+# ╠═6e845097-7f67-4f51-a20c-7945583e10cc
+# ╟─00000000-0000-0000-0000-000000000001
+# ╟─00000000-0000-0000-0000-000000000002
