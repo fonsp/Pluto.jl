@@ -12,7 +12,8 @@ import UUIDs: UUID
         @info "this run!"
         push!(events, typeof(a))
     end
-    🍭 = ServerSession(; event_listener = test_listener)
+    🍭 = ServerSession()
+    🍭.options.server.on_event = test_listener
     🍭.options.evaluation.workspace_use_distributed = false
 
     fakeclient = ClientSession(:fake, nothing)

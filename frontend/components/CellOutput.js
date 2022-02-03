@@ -223,6 +223,42 @@ let execute_dynamic_function = async ({ environment, code }) => {
     return result
 }
 
+/**
+ * Runs the code `fn` with `document.currentScript` being set to a new script_element thats
+ * is placed on the page where `script_element` was.
+ *
+ * Why? So we can run the javascript code with extra cool Pluto variables and return value,
+ * but still have a script at the same position as `document.currentScript`.
+ * This way you can do `document.currentScript.insertBefore()` and have it work!
+ *
+ * This will remove the passed in `script_element` from the DOM!
+ *
+ * @param {HTMLOrSVGScriptElement} script_element
+ * @param {() => any} fn
+ */
+let execute_inside_script_tag_that_replaces = async (script_element, fn) => {
+    // Mimick as much as possible from the original script (only attributes but sure)
+    let new_script_tag = document.createElement("script")
+    for (let attr of script_element.attributes) {
+        new_script_tag.attributes.setNamedItem(attr.cloneNode(true))
+    }
+
+    // @ts-ignore
+    // I use this long variable name to pass the function and result to and from the script we created
+    window.____FUNCTION_TO_RUN_INSIDE_SCRIPT = { function_to_run: fn, result: null }
+    new_script_tag.textContent = `{
+        window.____FUNCTION_TO_RUN_INSIDE_SCRIPT.result = window.____FUNCTION_TO_RUN_INSIDE_SCRIPT.function_to_run()
+    }`
+    // Put the script in the DOM, this will run the script
+    script_element.parentNode.replaceChild(new_script_tag, script_element)
+    // @ts-ignore - Get the result back
+    let result = await window.____FUNCTION_TO_RUN_INSIDE_SCRIPT.result
+    // @ts-ignore - Reset the global variable "just in case"
+    window.____FUNCTION_TO_RUN_INSIDE_SCRIPT = { function_to_run: fn, result: null }
+
+    return { node: new_script_tag, result: result }
+}
+
 const is_displayable = (result) => result instanceof Element && result.nodeType === Node.ELEMENT_NODE
 
 /**
@@ -284,16 +320,19 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                     }
 
                     const cell = root_node.closest("pluto-cell")
-                    let result = await execute_dynamic_function({
-                        environment: {
-                            this: script_id ? old_result : window,
-                            currentScript: node,
-                            invalidation: invalidation,
-                            getPublishedObject: (id) => cell.getPublishedObject(id),
-                            ...observablehq_for_cells,
-                        },
-                        code: node.innerText,
+                    let { node: new_node, result } = await execute_inside_script_tag_that_replaces(node, async () => {
+                        return await execute_dynamic_function({
+                            environment: {
+                                this: script_id ? old_result : window,
+                                currentScript: document.currentScript,
+                                invalidation: invalidation,
+                                getPublishedObject: (id) => cell.getPublishedObject(id),
+                                ...observablehq_for_cells,
+                            },
+                            code: node.innerText,
+                        })
                     })
+
                     // Save result for next run
                     if (script_id != null) {
                         results_map.set(script_id, result)
@@ -304,7 +343,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                             old_result.remove()
                         }
                         if (is_displayable(result)) {
-                            node.parentElement.insertBefore(result, node)
+                            new_node.parentElement.insertBefore(result, new_node)
                         }
                     }
                 }
@@ -321,14 +360,17 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
 
 let run = (f) => f()
 
-/** @param {HTMLTemplateElement} template */
+/**
+ * Support declarative shadowroot 😼
+ * https://web.dev/declarative-shadow-dom/
+ * The polyfill they mention on the page is nice and all, but we need more.
+ * For one, we need the polyfill anyway as we're adding html using innerHTML (just like we need to run the scripts ourselves)
+ * Also, we want to run the scripts inside the shadow roots, ideally in the same order that a browser would.
+ * And we want nested shadowroots, which their polyfill doesn't provide (and I hope the spec does)
+ *
+ * @param {HTMLTemplateElement} template
+ */
 let declarative_shadow_dom_polyfill = (template) => {
-    // Support declarative shadowroot 😼
-    // https://web.dev/declarative-shadow-dom/
-    // The polyfill they mention on the page is nice and all, but we need more.
-    // For one, we need the polyfill anyway as we're adding html using innerHTML (just like we need to run the scripts ourselves)
-    // Also, we want to run the scripts inside the shadow roots, ideally in the same order that a browser would.
-    // And we want nested shadowroots, which their polyfill doesn't provide (and I hope the spec does)
     try {
         const mode = template.getAttribute("shadowroot")
         // @ts-ignore

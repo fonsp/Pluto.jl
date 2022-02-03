@@ -147,6 +147,19 @@ const first_true_key = (obj) => {
  */
 
 /**
+ * @typedef NotebookPkgData
+ * @type {{
+ *  enabled: boolean,
+ *  restart_recommended_msg: string?,
+ *  restart_required_msg: string?,
+ *  installed_versions: { [pkg_name: string]: string },
+ *  terminal_outputs: { [pkg_name: string]: string },
+ *  busy_packages: string[],
+ *  instantiated: boolean,
+ * }}
+ */
+
+/**
  * @typedef NotebookData
  * @type {{
  *  notebook_id: string,
@@ -163,7 +176,7 @@ const first_true_key = (obj) => {
  *  cell_execution_order: Array<string>,
  *  published_objects: { [objectid: string]: any},
  *  bonds: { [name: string]: any },
- *  nbpkg: Object,
+ *  nbpkg: NotebookPkgData?,
  * }}
  */
 

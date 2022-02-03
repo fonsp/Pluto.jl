@@ -1,3 +1,5 @@
+import _ from "../../imports/lodash.js"
+
 import {
     html,
     htmlLanguage,
@@ -15,15 +17,41 @@ import {
 } from "../../imports/CodemirrorPlutoSetup.js"
 
 const htmlParser = htmlLanguage.parser
-const mdParser = markdownLanguage.parser
 const mdParserExt = markdownLanguage.parser.configure(parseCode({ htmlParser }))
 const postgresParser = PostgreSQL.language.parser
 const sqlLang = sql({ dialect: PostgreSQL })
 const pythonParser = pythonLanguage.parser
 
-const MD_SIMPLE_TAGS = ["md", "mermaid"].flatMap((x) => [x, `@${x}`])
-const MD_EXTENDED_TAGS = ["cm", "markdown", "mdx", "mdl", "markdownliteral"].flatMap((x) => [x, `@${x}`])
+/**
+ * Markdown tags list; we create both `md""` and `@md("")` instances.
+ */
+const MD_TAGS = ["md", "mermaid", "cm", "markdown", "mdx", "mdl", "markdownliteral"].flatMap((x) => [x, `@${x}`])
 
+/**
+ * Julia strings are do not represent the exact code that is going to run
+ * for example the following julia string:
+ *
+ * ```julia
+ * """
+ * const test = "five"
+ * const five = \${test}
+ * """
+ * ```
+ *
+ * is going to be executed as javascript, after escaping the \$ to $
+ *
+ * ```javascript
+ * """
+ * const test = "five"
+ * const five = ${test}
+ * """
+ * ```
+ *
+ * The overlays already remove the string interpolation parts of the julia string.
+ * This hack additionally removes the `\` from the overlay for common interpolations, so the underlaying parser
+ * will get the javascript version of the string, and not the julia version of the string (which is invalid js)
+ *
+ */
 const overlayHack = (overlay, input) => {
     return overlay.flatMap(({ from, to }) => {
         const text = input.read(from, to)
@@ -45,11 +73,23 @@ const overlayHack = (overlay, input) => {
     })
 }
 
+const STRING_NODE_NAMES = new Set([
+    "TripleString",
+    "String",
+    "CommandString",
+    "TripleStringWithoutInterpolation",
+    "StringWithoutInterpolation",
+    "CommandStringWithoutInterpolation",
+])
+
 const juliaWrapper = parseMixed((node, input) => {
-    if (!["TripleString", "String", "CommandString"].includes(node.type.name)) {
+    if (!STRING_NODE_NAMES.has(node.type.name)) {
         return null
     }
-    const offset = node.name === "TripleString" ? 3 : 1
+
+    let is_tripple_string = node.name === "TripleString" || node.name === "TripleStringWithoutInterpolation"
+
+    const offset = is_tripple_string ? 3 : 1
     const defaultOverlay = [{ from: node.from + offset, to: Math.min(node.to - offset, input.length) }]
 
     if (defaultOverlay[0].from >= defaultOverlay[0].to) {
@@ -67,19 +107,13 @@ const juliaWrapper = parseMixed((node, input) => {
     let parser,
         overlay = []
 
-    if (tag === "@htl") {
+    if (tag === "@htl" || tag === "html") {
         parser = htmlParser
-    } else if (tag === "html") {
-        parser = htmlParser
-        overlay = defaultOverlay
-    } else if (MD_SIMPLE_TAGS.includes(tag)) {
-        parser = mdParser
-        overlay = defaultOverlay
-    } else if (MD_EXTENDED_TAGS.includes(tag)) {
+    } else if (MD_TAGS.includes(tag)) {
         parser = mdParserExt
-    } else if (tag === "@javascript") {
+    } else if (tag === "@javascript" || tag === "@js" || tag === "js" || tag === "javascript") {
         parser = javascriptLanguage.parser
-    } else if (tag === "py" || tag === "pyr" || tag === "python") {
+    } else if (tag === "py" || tag === "pyr" || tag === "python" || tag === "@python") {
         parser = pythonParser
     } else if (tag === "sql") {
         parser = postgresParser
@@ -92,6 +126,7 @@ const juliaWrapper = parseMixed((node, input) => {
         overlay.push({ from, to: child.from })
         from = child.to
     }
+
     // If overlay is not the default and we haven't found anything (=interpolation) inside, use the default
     if (overlay.length === 0 || node.node.firstChild === null) {
         overlay = defaultOverlay
@@ -114,17 +149,22 @@ const juliaWrapper = parseMixed((node, input) => {
 
     // If javascript or markdown or htl, we want to unescape some characters
     // Until the parser is smarter, we remove the selection from the syntax highlighting overlay.
-    if (["@htl", "@javascript", ...MD_EXTENDED_TAGS].includes(tag)) {
+    if (["@htl", "@javascript", ...MD_TAGS].includes(tag)) {
         overlay = overlayHack(overlay, input)
     }
+
+    // No overlays for markdown yet
+    if ([...MD_TAGS].includes(tag)) {
+        return { parser, overlay: defaultOverlay }
+    }
+
     return { parser, overlay }
 })
 
 const julia_andrey = (config) => {
     const julia = julia_andrey_original(config)
-    /* We need to revert this due to https://github.com/fonsp/Pluto.jl/issues/1800 - fix is WIP
-        julia.language.parser = julia.language.parser.configure({ wrap: juliaWrapper })
-    */
+    // @ts-ignore
+    julia.language.parser = julia.language.parser.configure({ wrap: juliaWrapper })
     return julia
 }
 

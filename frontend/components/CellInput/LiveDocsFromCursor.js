@@ -1,5 +1,5 @@
 import { EditorState, syntaxTree } from "../../imports/CodemirrorPlutoSetup.js"
-import { ScopeStateField } from "./go_to_definition_plugin.js"
+import { ScopeStateField } from "./scopestate_statefield.js"
 
 let get_root_variable_from_expression = (cursor) => {
     if (cursor.name === "SubscriptExpression") {
@@ -285,7 +285,7 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                     }
 
                     // We have do find the current usage of the variable, and make sure it has no definition inside this cell
-                    let usage = Array.from(scopestate.usages).find((x) => x.usage.from === root_variable_node.from && x.usage.to === root_variable_node.to)
+                    let usage = scopestate.usages.find((x) => x.usage.from === root_variable_node.from && x.usage.to === root_variable_node.to)
                     // If we can't find the usage... we just assume it can be docs showed I guess
                     if (usage?.definition == null) {
                         return state.doc.sliceString(cursor.from, cursor.to)
