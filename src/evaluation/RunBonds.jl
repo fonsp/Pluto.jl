@@ -1,4 +1,10 @@
-function set_bond_values_reactive(; session::ServerSession, notebook::Notebook, bound_sym_names::AbstractVector{Symbol}, is_first_values::AbstractVector{Bool}=[true for x in bound_sym_names], kwargs...)::Union{Task,TopologicalOrder}
+function set_bond_values_reactive(; 
+    session::ServerSession, notebook::Notebook, 
+    bound_sym_names::AbstractVector{Symbol}, 
+    is_first_values::AbstractVector{Bool}=[true for x in bound_sym_names], 
+    initiator=nothing,
+    kwargs...
+)::Union{Task,TopologicalOrder}
     # filter out the bonds that don't need to be set
     to_set = filter(zip(bound_sym_names, is_first_values) |> collect) do (bound_sym, is_first_value)
         new_value = notebook.bonds[bound_sym].value
@@ -25,6 +31,7 @@ function set_bond_values_reactive(; session::ServerSession, notebook::Notebook, 
     end .|> first
 
     if isempty(to_set) || !will_run_code(notebook)
+        send_notebook_changes!(ClientRequest(; session, notebook, initiator))
         return TopologicalOrder(notebook.topology, Cell[], Dict{Cell, ReactivityError}())
     end
 
