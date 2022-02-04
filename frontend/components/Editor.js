@@ -651,18 +651,23 @@ patch: ${JSON.stringify(
                 const message = update.message
                 switch (update.type) {
                     case "notebook_diff":
-                        const on_applied = () => (this.waiting_for_bond_to_trigger_execution = false)
+                        let apply_promise = Promise.resolve()
                         if (message?.response?.from_reset) {
                             console.log("Trying to reset state after failure")
-                            apply_notebook_patches(message.patches, initial_notebook()).catch((e) => {
+                            apply_promise = apply_notebook_patches(message.patches, initial_notebook()).catch((e) => {
                                 alert("Oopsie!! please refresh your browser and everything will be alright!")
                                 throw e
                             })
                         } else if (message.patches.length !== 0) {
-                            apply_notebook_patches(message.patches).then(on_applied)
-                        } else {
-                            on_applied()
+                            apply_promise = apply_notebook_patches(message.patches)
                         }
+
+                        const set_waiting = () => (this.waiting_for_bond_to_trigger_execution = false)
+                        apply_promise.then(set_waiting).catch((e) => {
+                            set_waiting()
+                            throw e
+                        })
+
                         break
                     default:
                         console.error("Received unknown update type!", update)
@@ -861,7 +866,7 @@ patch: ${JSON.stringify(
                             if (response.message.response.update_went_well === "👎") {
                                 // We only throw an error for functions that are waiting for this
                                 // Notebook state will already have the changes reversed
-                                throw new Error(`Pluto update_notebook error: ${response.message.response.why_not})`)
+                                throw new Error(`Pluto update_notebook error: (from Julia: ${response.message.response.why_not})`)
                             }
                         }),
                         this.setStatePromise({
