@@ -2,7 +2,7 @@ using Test
 using Pluto.Configuration: CompilerOptions
 using Pluto.WorkspaceManager: _merge_notebook_compiler_options
 import Pluto: update_save_run!, update_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell, project_relative_path
-import Distributed
+import Distributed2
 
 @testset "Workspace manager" begin
 # basic functionality is already tested by the reactivity tests
@@ -102,12 +102,12 @@ import Distributed
         @test notebook.cells[5].errored == false
 
 
-        desired_nprocs = Distributed.nprocs() - 1
+        desired_nprocs = Distributed2.nprocs() - 1
         setcode(notebook.cells[5], "Pluto.SessionActions.shutdown(s, nb)")
         update_run!(🍭, notebook, notebook.cells[5])
         @test noerror(notebook.cells[5])
 
-        while Distributed.nprocs() != desired_nprocs
+        while Distributed2.nprocs() != desired_nprocs
             sleep(.1)
         end
         sleep(.1)

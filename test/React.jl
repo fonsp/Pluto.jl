@@ -1,7 +1,7 @@
 using Test
 import Pluto: Configuration, Notebook, ServerSession, ClientSession, update_run!, Cell, WorkspaceManager
 import Pluto.Configuration: Options, EvaluationOptions
-import Distributed
+import Distributed2
 
 @testset "Reactivity" begin
     🍭 = ServerSession()
@@ -25,8 +25,8 @@ import Distributed
             end"""),
             Cell("g(6) + g(6,6)"),
 
-            Cell("import Distributed"),
-            Cell("Distributed.myid()"),
+            Cell("import Distributed2"),
+            Cell("Distributed2.myid()"),
         ])
         fakeclient.connected_notebook = notebook
 
@@ -75,9 +75,9 @@ import Distributed
 
         update_run!(🍭, notebook, notebook.cells[7:8])
         @test if parallel
-            notebook.cells[8].output.body != string(Distributed.myid())
+            notebook.cells[8].output.body != string(Distributed2.myid())
         else
-            notebook.cells[8].output.body == string(Distributed.myid())
+            notebook.cells[8].output.body == string(Distributed2.myid())
         end
 
         WorkspaceManager.unmake_workspace((🍭, notebook))

@@ -6,7 +6,7 @@ using Pluto.WorkspaceManager: _merge_notebook_compiler_options
 import Pluto: update_save_run!, update_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell, project_relative_path, SessionActions, load_notebook
 import Pluto.PkgUtils
 import Pluto.PkgCompat
-import Distributed
+import Distributed2
 
 const pluto_test_registry_spec = Pkg.RegistrySpec(;
     url="https://github.com/JuliaPluto/PlutoPkgTestRegistry", 
@@ -417,11 +417,11 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
     @testset "File format -- Forwards compat" begin
         # Using Distributed, we will create a new Julia process in which we install Pluto 0.14.7 (before PlutoPkg). We run the new notebook file on the old Pluto.
-        p = Distributed.addprocs(1) |> first
+        p = Distributed2.addprocs(1) |> first
 
         @test post_pkg_notebook isa String
 
-        Distributed.remotecall_eval(Main, p, quote
+        Distributed2.remotecall_eval(Main, p, quote
             path = tempname()
             write(path, $(post_pkg_notebook))
             import Pkg
@@ -445,20 +445,20 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
         # Cells that use Example will error because the package is not installed.
 
-        # @test Distributed.remotecall_eval(Main, p, quote
+        # @test Distributed2.remotecall_eval(Main, p, quote
         #     nb.cells[1].errored == false
         # end)
-        @test Distributed.remotecall_eval(Main, p, quote
+        @test Distributed2.remotecall_eval(Main, p, quote
             nb.cells[2].errored == false
         end)
-        # @test Distributed.remotecall_eval(Main, p, quote
+        # @test Distributed2.remotecall_eval(Main, p, quote
         #     nb.cells[3].errored == false
         # end)
-        # @test Distributed.remotecall_eval(Main, p, quote
+        # @test Distributed2.remotecall_eval(Main, p, quote
         #     nb.cells[3].output.body == "25"
         # end)
 
-        Distributed.rmprocs([p])
+        Distributed2.rmprocs([p])
     end
 
     @testset "PkgUtils -- reset" begin

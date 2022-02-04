@@ -14,7 +14,7 @@ import InteractiveUtils
 
 using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
-import Distributed
+import Distributed2
 import Base64
 import FuzzyCompletions: Completion, ModuleCompletion, PropertyCompletion, FieldCompletion, PathCompletion, DictCompletion, completions, completion_text, score
 import Base: show, istextmime
@@ -2019,7 +2019,7 @@ end
 
 # we put this in __init__ to fix a world age problem
 function __init__()
-    if !isdefined(Main, Symbol("##Pluto_logger_switched")) && Distributed.myid() != 1
+    if !isdefined(Main, Symbol("##Pluto_logger_switched")) && Distributed2.myid() != 1
         old_logger[] = Logging.global_logger()
         Logging.global_logger(PlutoLogger(nothing))
         Core.eval(Main, Expr(:(=), Symbol("##Pluto_logger_switched"), true)) # if Pluto is loaded again on the same process, prevent it from also setting the logger

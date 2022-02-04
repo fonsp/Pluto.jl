@@ -1,7 +1,7 @@
 using Test
 import Pluto: Configuration, Notebook, ServerSession, ClientSession, update_run!, Cell, WorkspaceManager, SessionActions
 import Pluto.Configuration: Options, EvaluationOptions
-import Distributed
+import Distributed2
 using Pluto.WorkspaceManager: poll
 import Pkg
 
