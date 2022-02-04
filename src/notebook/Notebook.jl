@@ -91,6 +91,9 @@ const _order_delimiter = "# ╠═"
 const _order_delimiter_folded = "# ╟─"
 const _cell_suffix = "\n\n"
 
+const _disabled_prefix =               "#=╠═╡\n"
+const _disabled_suffix =             "\n  ╠═╡ =#"
+
 const _ptoml_cell_id = UUID(1)
 const _mtoml_cell_id = UUID(2)
 
@@ -129,9 +132,16 @@ function save_notebook(io, notebook::Notebook)
             end
         end
 
-        # write the cell code and prevent collisions with the cell delimiter
-        print(io, replace(c.code, _cell_id_delimiter => "# "))
-        print(io, _cell_suffix)
+        if c.running_disabled || c.depends_on_disabled_cells
+            print(io, _disabled_prefix)
+            print(io, replace(c.code, _cell_id_delimiter => "# "))
+            print(io, _disabled_suffix)
+            print(io, _cell_suffix)
+        else
+            # write the cell code and prevent collisions with the cell delimiter
+            print(io, replace(c.code, _cell_id_delimiter => "# "))
+            print(io, _cell_suffix)
+        end
     end
 
     
@@ -230,6 +240,10 @@ function load_notebook_nobackup(io, path)::Notebook
             code_raw = initial_code_line * "\n" * String(readuntil(io, _cell_id_delimiter))
             # change Windows line endings to Linux
             code_normalised = replace(code_raw, "\r\n" => "\n")
+
+            # remove the disabled on startup comments for further processing in Julia
+            code_normalised = replace(replace(code_normalised, _disabled_prefix => ""), _disabled_suffix => "")
+
             # remove the cell suffix
             code = code_normalised[1:prevind(code_normalised, end, length(_cell_suffix))]
 
