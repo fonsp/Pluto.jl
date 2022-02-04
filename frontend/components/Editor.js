@@ -662,11 +662,34 @@ patch: ${JSON.stringify(
                             apply_promise = apply_notebook_patches(message.patches)
                         }
 
-                        const set_waiting = () => (this.waiting_for_bond_to_trigger_execution = false)
-                        apply_promise.then(set_waiting).catch((e) => {
-                            set_waiting()
-                            throw e
-                        })
+                        const set_waiting = () => {
+                            let from_update = message?.response?.update_went_well != null
+                            let is_just_acknowledgement = from_update && message.patches.length === 0
+                            // console.log("Received patches!", message.patches, message.response, is_just_acknowledgement)
+
+                            if (!is_just_acknowledgement) {
+                                this.waiting_for_bond_to_trigger_execution = false
+                            }
+                        }
+                        apply_promise
+                            .then(set_waiting)
+                            .catch((e) => {
+                                set_waiting()
+                                throw e
+                            })
+                            .then(() => {
+                                // console.log("Applying done! Idle? ", this.notebook_is_idle(), {
+                                //     waithing: this.waiting_for_bond_to_trigger_execution,
+                                //     pending: this.pending_local_updates > 0,
+                                //     // a cell is running:
+                                //     running: Object.values(this.state.notebook.cell_results).some((cell) => cell.running || cell.queued),
+                                //     // a cell is initializing JS:
+                                //     jsinit: !_.isEmpty(this.js_init_set),
+                                //     ready: !this.is_process_ready(),
+                                // })
+                                // TODO: ADD ME
+                                // this.send_queued_bond_changes()
+                            })
 
                         break
                     default:
@@ -861,9 +884,10 @@ patch: ${JSON.stringify(
                 this.pending_local_updates++
                 this.on_patches_hook(changes)
                 try {
+                    // console.log("Sending changes to server:", changes)
                     await Promise.all([
                         this.client.send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false).then((response) => {
-                            if (response.message.response.update_went_well === "👎") {
+                            if (response.message?.response?.update_went_well === "👎") {
                                 // We only throw an error for functions that are waiting for this
                                 // Notebook state will already have the changes reversed
                                 throw new Error(`Pluto update_notebook error: (from Julia: ${response.message.response.why_not})`)
