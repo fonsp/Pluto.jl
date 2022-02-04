@@ -18,13 +18,13 @@ function set_bond_values_reactive(; session::ServerSession, notebook::Notebook, 
         # Check if the variable does not already have that value.
         # because if the initial value is already set, then we don't want to run dependent cells again.
         eq_tester = :(try !ismissing($bound_sym) && ($bound_sym == Main.PlutoRunner.transform_bond_value($(QuoteNode(bound_sym)), $(new_value))) === true catch; false end) # not just a === comparison because JS might send back the same value but with a different type (Float64 becomes Int64 in JS when it's an integer. The `=== true` check handles cases like `[missing] == [123]`, which returns `missing`, not `true` or `false`.)
-        if is_first_value && WorkspaceManager.eval_fetch_in_workspace((session, notebook), eq_tester)
+        if is_first_value && will_run_code(notebook) && WorkspaceManager.eval_fetch_in_workspace((session, notebook), eq_tester)
             return false
         end
         return true
     end .|> first
 
-    if isempty(to_set)
+    if isempty(to_set) || !will_run_code(notebook)
         return TopologicalOrder(notebook.topology, Cell[], Dict{Cell, ReactivityError}())
     end
 
