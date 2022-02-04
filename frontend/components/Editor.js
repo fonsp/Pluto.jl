@@ -678,17 +678,7 @@ patch: ${JSON.stringify(
                                 throw e
                             })
                             .then(() => {
-                                // console.log("Applying done! Idle? ", this.notebook_is_idle(), {
-                                //     waithing: this.waiting_for_bond_to_trigger_execution,
-                                //     pending: this.pending_local_updates > 0,
-                                //     // a cell is running:
-                                //     running: Object.values(this.state.notebook.cell_results).some((cell) => cell.running || cell.queued),
-                                //     // a cell is initializing JS:
-                                //     jsinit: !_.isEmpty(this.js_init_set),
-                                //     ready: !this.is_process_ready(),
-                                // })
-                                // TODO: ADD ME
-                                // this.send_queued_bond_changes()
+                                this.send_queued_bond_changes()
                             })
 
                         break
@@ -870,11 +860,7 @@ patch: ${JSON.stringify(
                 // this will no longer be necessary
                 let is_idle = this.notebook_is_idle()
                 let changes_involving_bonds = changes.filter((x) => x.path[0] === "bonds")
-                if (is_idle) {
-                    this.waiting_for_bond_to_trigger_execution ||= changes_involving_bonds.some(
-                        (x) => x.path.length >= 1 && bond_will_trigger_evaluation(x.path[1])
-                    )
-                } else {
+                if (!is_idle) {
                     this.bonds_changes_to_apply_when_done = [...this.bonds_changes_to_apply_when_done, ...changes_involving_bonds]
                     changes = changes.filter((x) => x.path[0] !== "bonds")
                 }
@@ -885,14 +871,19 @@ patch: ${JSON.stringify(
                         console.log(`Changes to send to server from "${previous_function_name}":`, changes)
                     } catch (error) {}
                 }
-                if (changes.length === 0) {
-                    return
-                }
-
                 for (let change of changes) {
                     if (change.path.some((x) => typeof x === "number")) {
                         throw new Error("This sounds like it is editing an array...")
                     }
+                }
+
+                if (changes.length === 0) {
+                    return
+                }
+                if (is_idle) {
+                    this.waiting_for_bond_to_trigger_execution ||= changes_involving_bonds.some(
+                        (x) => x.path.length >= 1 && bond_will_trigger_evaluation(x.path[1])
+                    )
                 }
                 this.pending_local_updates++
                 this.on_patches_hook(changes)
