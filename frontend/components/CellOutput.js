@@ -240,6 +240,7 @@ let execute_inside_script_tag_that_replaces = async (script_element, fn) => {
     // Mimick as much as possible from the original script (only attributes but sure)
     let new_script_tag = document.createElement("script")
     for (let attr of script_element.attributes) {
+        //@ts-ignore because of https://github.com/microsoft/TypeScript-DOM-lib-generator/issues/1260
         new_script_tag.attributes.setNamedItem(attr.cloneNode(true))
     }
 
