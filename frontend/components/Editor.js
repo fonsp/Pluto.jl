@@ -21,7 +21,7 @@ import { PkgPopup } from "./PkgPopup.js"
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { handle_log } from "../common/Logging.js"
-import { PlutoContext, PlutoBondsContext, PlutoJSInitializingContext } from "../common/PlutoContext.js"
+import { PlutoContext, PlutoBondsContext, PlutoJSInitializingContext, SetWithEmptyCallback } from "../common/PlutoContext.js"
 import { unpack } from "../common/MsgPack.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
 import { start_binder, BinderPhase, count_stat } from "../common/Binder.js"
@@ -778,9 +778,22 @@ patch: ${JSON.stringify(
         // Not completely happy with this yet, but it will do for now - DRAL
         /** Patches that are being delayed until all cells have finished running. */
         this.bonds_changes_to_apply_when_done = []
+        this.send_queued_bond_changes = () => {
+            if (this.notebook_is_idle() && this.bonds_changes_to_apply_when_done.length !== 0) {
+                // console.log("Applying queued bond changes!", this.bonds_changes_to_apply_when_done)
+                let bonds_patches = this.bonds_changes_to_apply_when_done
+                this.bonds_changes_to_apply_when_done = []
+                this.update_notebook((notebook) => {
+                    applyPatches(notebook, bonds_patches)
+                })
+            }
+        }
         /** Number of local updates that have not yet been applied to the server's state. */
         this.pending_local_updates = 0
-        this.js_init_set = new Set()
+        this.js_init_set = new SetWithEmptyCallback(() => {
+            // console.info("All scripts finished!")
+            this.send_queued_bond_changes()
+        })
         /** Is the notebook ready to execute code right now? (i.e. are no cells queued or running?) */
         this.notebook_is_idle = () => {
             return !(
@@ -1087,14 +1100,7 @@ patch: ${JSON.stringify(
         //@ts-ignore
         document.body._update_is_ongoing = this.pending_local_updates > 0
 
-        if (this.notebook_is_idle() && this.bonds_changes_to_apply_when_done.length !== 0) {
-            // `bonds_changes_to_apply_when_done:`, this.bonds_changes_to_apply_when_done
-            let bonds_patches = this.bonds_changes_to_apply_when_done
-            this.bonds_changes_to_apply_when_done = []
-            this.update_notebook((notebook) => {
-                applyPatches(notebook, bonds_patches)
-            })
-        }
+        this.send_queued_bond_changes()
 
         if (old_state.binder_phase !== this.state.binder_phase && this.state.binder_phase != null) {
             const phase = Object.entries(BinderPhase).find(([k, v]) => v == this.state.binder_phase)[0]
