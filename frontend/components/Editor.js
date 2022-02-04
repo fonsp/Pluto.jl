@@ -654,11 +654,10 @@ patch: ${JSON.stringify(
                         const on_applied = () => (this.waiting_for_bond_to_trigger_execution = false)
                         if (message?.response?.from_reset) {
                             console.log("Trying to reset state after failure")
-                            try {
-                                apply_notebook_patches(message.patches, initial_notebook()).then(on_applied)
-                            } catch (exception) {
+                            apply_notebook_patches(message.patches, initial_notebook()).catch((e) => {
                                 alert("Oopsie!! please refresh your browser and everything will be alright!")
-                            }
+                                throw e
+                            })
                         } else if (message.patches.length !== 0) {
                             apply_notebook_patches(message.patches).then(on_applied)
                         } else {

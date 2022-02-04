@@ -1995,16 +1995,17 @@ Logging.min_enabled_level(::PlutoLogger) = Logging.Debug
 Logging.catch_exceptions(::PlutoLogger) = false
 function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, file, line; kwargs...)
     # println("receiving msg from ", _module, " ", group, " ", id, " ", msg, " ", level, " ", line, " ", file)
+    # println("with types: ", "_module: ", typeof(_module), ", ", "msg: ", typeof(msg), ", ", "group: ", typeof(group), ", ", "id: ", typeof(id), ", ", "file: ", typeof(file), ", ", "line: ", typeof(line), ", ", "kwargs: ", typeof(kwargs)) # thanks Copilot
 
     try
         put!(log_channel, Dict{String,Any}(
             "level" => string(level),
             "msg" => format_output_default(msg isa String ? Text(msg) : msg),
-            "group" => group,
-            "id" => id,
-            "file" => file,
+            "group" => string(group),
+            "id" => string(id),
+            "file" => string(file),
             "cell_id" => currently_running_cell_id[],
-            "line" => line,
+            "line" => line isa Union{Int32,Int64} ? line : nothing,
             "kwargs" => Tuple{String,Any}[(string(k), format_output_default(v)) for (k, v) in kwargs],
             )
         )
