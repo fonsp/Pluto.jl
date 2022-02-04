@@ -31,6 +31,7 @@ MsgPack = "1.1"
 RelocatableFolders = "0.1"
 Tables = "1"
 julia = "^1.6"
+Distributed2 = "1.7.1"
 
 [extras]
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
