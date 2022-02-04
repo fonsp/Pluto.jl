@@ -433,46 +433,49 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
         const new_scripts = [...scripts_in_shadowroots, ...Array.from(container.current.querySelectorAll("script"))]
 
         run(async () => {
-            js_init_set?.add(container.current)
-            previous_results_map.current = await execute_scripttags({
-                root_node: container.current,
-                script_nodes: new_scripts,
-                invalidation: invalidation,
-                previous_results_map: persist_js_state ? previous_results_map.current : new Map(),
-            })
-
-            if (pluto_actions != null) {
-                set_bound_elements_to_their_value(container.current, pluto_bonds)
-                let remove_bonds_listener = add_bonds_listener(container.current, pluto_actions.set_bond, pluto_bonds)
-                invalidation.then(remove_bonds_listener)
-            }
-
-            // Convert LaTeX to svg
-            // @ts-ignore
-            if (window.MathJax?.typeset != undefined) {
-                try {
-                    // @ts-ignore
-                    window.MathJax.typeset(container.current.querySelectorAll(".tex"))
-                } catch (err) {
-                    console.info("Failed to typeset TeX:")
-                    console.info(err)
-                }
-            }
-
-            // Apply syntax highlighting
             try {
-                container.current.querySelectorAll("code").forEach((code_element) => {
-                    code_element.classList.forEach((className) => {
-                        if (className.startsWith("language-")) {
-                            let language = className.substr(9)
-
-                            // Remove "language-"
-                            highlight(code_element, language)
-                        }
-                    })
+                js_init_set?.add(container.current)
+                previous_results_map.current = await execute_scripttags({
+                    root_node: container.current,
+                    script_nodes: new_scripts,
+                    invalidation: invalidation,
+                    previous_results_map: persist_js_state ? previous_results_map.current : new Map(),
                 })
-            } catch (err) {}
-            js_init_set?.delete(container.current)
+
+                if (pluto_actions != null) {
+                    set_bound_elements_to_their_value(container.current, pluto_bonds)
+                    let remove_bonds_listener = add_bonds_listener(container.current, pluto_actions.set_bond, pluto_bonds)
+                    invalidation.then(remove_bonds_listener)
+                }
+
+                // Convert LaTeX to svg
+                // @ts-ignore
+                if (window.MathJax?.typeset != undefined) {
+                    try {
+                        // @ts-ignore
+                        window.MathJax.typeset(container.current.querySelectorAll(".tex"))
+                    } catch (err) {
+                        console.info("Failed to typeset TeX:")
+                        console.info(err)
+                    }
+                }
+
+                // Apply syntax highlighting
+                try {
+                    container.current.querySelectorAll("code").forEach((code_element) => {
+                        code_element.classList.forEach((className) => {
+                            if (className.startsWith("language-")) {
+                                let language = className.substr(9)
+
+                                // Remove "language-"
+                                highlight(code_element, language)
+                            }
+                        })
+                    })
+                } catch (err) {}
+            } finally {
+                js_init_set?.delete(container.current)
+            }
         })
 
         return () => {
