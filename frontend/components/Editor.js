@@ -661,6 +661,8 @@ patch: ${JSON.stringify(
                             }
                         } else if (message.patches.length !== 0) {
                             apply_notebook_patches(message.patches).then(on_applied)
+                        } else {
+                            on_applied()
                         }
                         break
                     default:
