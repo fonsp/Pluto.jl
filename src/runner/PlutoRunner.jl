@@ -21,6 +21,7 @@ import Base: show, istextmime
 import UUIDs: UUID, uuid4
 import Dates: DateTime
 import Logging
+import Random
 
 export @bind
 
@@ -513,34 +514,36 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
         throw("Expression still contains macro calls!!")
     end
 
-    result, runtime = if function_wrapped_info === nothing
-        toplevel_expr = Expr(:toplevel, expr)
-        wrapped = timed_expr(toplevel_expr)
-        ans, runtime = run_inside_trycatch(m, wrapped)
-        (ans, add_runtimes(runtime, expansion_runtime))
-    else
-        expr_id = forced_expr_id !== nothing ? forced_expr_id : expr_hash(expr)
-        local computer = get(computers, cell_id, nothing)
-        if computer === nothing || computer.expr_id !== expr_id
-            try
-                computer = register_computer(expr, expr_id, cell_id, collect.(function_wrapped_info)...)
-            catch e
-                # @error "Failed to generate computer function" expr exception=(e,stacktrace(catch_backtrace()))
-                return run_expression(m, original_expr, cell_id, nothing; user_requested_run=user_requested_run)
-            end
-        end
-
-        # This check solves the problem of a cell like `false && variable_that_does_not_exist`. This should run without error, but will fail in our function-wrapping-magic because we get the value of `variable_that_does_not_exist` before calling the generated function.
-        # The fix is to detect this situation and run the expression in the classical way.
-        ans, runtime = if any(name -> !isdefined(m, name), computer.input_globals)
-            # Do run_expression but with function_wrapped_info=nothing so it doesn't go in a Computer()
-            # @warn "Got variables that don't exist, running outside of computer" not_existing=filter(name -> !isdefined(m, name), computer.input_globals)
-            run_expression(m, original_expr, cell_id; user_requested_run)
+    result, runtime = with_io_to_logs(;loglevel=stdout_log_level) do
+        if function_wrapped_info === nothing
+            toplevel_expr = Expr(:toplevel, expr)
+            wrapped = timed_expr(toplevel_expr)
+            ans, runtime = run_inside_trycatch(m, wrapped)
+            (ans, add_runtimes(runtime, expansion_runtime))
         else
-            run_inside_trycatch(m, () -> compute(m, computer))
-        end
+            expr_id = forced_expr_id !== nothing ? forced_expr_id : expr_hash(expr)
+            local computer = get(computers, cell_id, nothing)
+            if computer === nothing || computer.expr_id !== expr_id
+                try
+                    computer = register_computer(expr, expr_id, cell_id, collect.(function_wrapped_info)...)
+                catch e
+                    # @error "Failed to generate computer function" expr exception=(e,stacktrace(catch_backtrace()))
+                    return run_expression(m, original_expr, cell_id, nothing; user_requested_run=user_requested_run)
+                end
+            end
 
-        ans, add_runtimes(runtime, expansion_runtime)
+            # This check solves the problem of a cell like `false && variable_that_does_not_exist`. This should run without error, but will fail in our function-wrapping-magic because we get the value of `variable_that_does_not_exist` before calling the generated function.
+            # The fix is to detect this situation and run the expression in the classical way.
+            ans, runtime = if any(name -> !isdefined(m, name), computer.input_globals)
+                # Do run_expression but with function_wrapped_info=nothing so it doesn't go in a Computer()
+                # @warn "Got variables that don't exist, running outside of computer" not_existing=filter(name -> !isdefined(m, name), computer.input_globals)
+                run_expression(m, original_expr, cell_id; user_requested_run)
+            else
+                run_inside_trycatch(m, () -> compute(m, computer))
+            end
+
+            ans, add_runtimes(runtime, expansion_runtime)
+        end
     end
 
     if (result isa CapturedException) && (result.ex isa InterruptException)
@@ -1988,10 +1991,11 @@ function Logging.shouldlog(::PlutoLogger, level, _module, _...)
     level = convert(Logging.LogLevel, level)
     (_module isa Module && is_pluto_workspace(_module)) ||
         level >= Logging.Info ||
-        level == Logging.LogLevel(-1)
+        level == Logging.LogLevel(-1) ||
+        level == stdout_log_level
 end
 
-Logging.min_enabled_level(::PlutoLogger) = Logging.Debug
+Logging.min_enabled_level(::PlutoLogger) = min(Logging.Debug, stdout_log_level)
 Logging.catch_exceptions(::PlutoLogger) = false
 function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, file, line; kwargs...)
     # println("receiving msg from ", _module, " ", group, " ", id, " ", msg, " ", level, " ", line, " ", file)
@@ -2015,6 +2019,68 @@ function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, f
         println(stderr, "Failed to relay log from PlutoRunner")
         showerror(stderr, e, stacktrace(catch_backtrace()))
     end
+end
+
+const stdout_log_level = Logging.LogLevel(-555) # https://en.wikipedia.org/wiki/555_timer_IC
+function with_io_to_logs(f::Function; color = false, loglevel = Logging.LogLevel(1))
+    # Taken from https://github.com/JuliaDocs/IOCapture.jl/blob/master/src/IOCapture.jl with some modifications to make it log.
+    
+    # Original implementation from Documenter.jl (MIT license)
+    # Save the default output streams.
+    default_stdout = stdout
+    default_stderr = stderr
+
+    # Redirect both the `stdout` and `stderr` streams to a single `Pipe` object.
+    pipe = Pipe()
+    Base.link_pipe!(pipe; reader_supports_async = true, writer_supports_async = true)
+    pe_stdout = IOContext(pipe.in, :color => get(stdout, :color, false) & color)
+    pe_stderr = IOContext(pipe.in, :color => get(stderr, :color, false) & color)
+    redirect_stdout(pe_stdout)
+    redirect_stderr(pe_stderr)
+    # Also redirect logging stream to the same pipe
+    # logger = ConsoleLogger(pe_stderr)
+
+    old_rng = nothing
+    if VERSION >= v"1.7.0-DEV.1226" # JuliaLang/julia#40546
+        # In Julia >= 1.7 each task has its own rng seed. This seed
+        # is obtained by calling rand(...) in the current task which
+        # modifies the random stream. We therefore copy the current seed
+        # and reset it after creating the read/write task below.
+        # See https://github.com/JuliaLang/julia/pull/41184 for more details.
+        old_rng = copy(Random.default_rng())
+    end
+
+    # Bytes written to the `pipe` are captured in `output` and eventually converted to a
+    # `String`. We need to use an asynchronous task to continously tranfer bytes from the
+    # pipe to `output` in order to avoid the buffer filling up and stalling write() calls in
+    # user code.
+    output = IOBuffer()
+    buffer_redirect_task = @async write(output, pipe)
+
+    if old_rng !== nothing
+        copy!(Random.default_rng(), old_rng)
+    end
+
+    # Run the function `f`, capturing all output that it might have generated.
+    # Success signals whether the function `f` did or did not throw an exception.
+    result = try
+        f()
+    finally
+        # Restore the original output streams.
+        redirect_stdout(default_stdout)
+        redirect_stderr(default_stderr)
+        close(pe_stdout)
+        close(pe_stderr)
+        wait(buffer_redirect_task)
+    end
+
+
+    output = String(take!(output))
+    if !isempty(output)
+        Logging.@logmsg loglevel output
+    end
+
+    result
 end
 
 # we put this in __init__ to fix a world age problem

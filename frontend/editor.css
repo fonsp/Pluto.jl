@@ -2394,6 +2394,52 @@ pluto-log-dot.Progress {
     overflow: hidden;
     padding: 0px;
 }
+pluto-log-dot.Stdout {
+    /* filter: sepia(0.3); */
+    --inner: hsl(36deg 20% 37%);
+    --outer: hsl(31deg 12% 28%);
+    background: radial-gradient(var(--inner), var(--inner) 20%, var(--outer));
+    color: #8ed975;
+    border: 6px solid #b7b7b7;
+    text-shadow: 1px 1px 2px #0000005e;
+}
+pluto-log-dot.Stdout::after,
+pluto-log-dot.Stdout::before {
+    content: " ";
+    left: 6px;
+    right: 6px;
+    top: 6px;
+    bottom: 6px;
+    position: absolute;
+    display: block;
+    pointer-events: none;
+}
+pluto-log-dot.Stdout::before {
+    opacity: 0.3;
+    background: linear-gradient(349deg, #000000, transparent);
+}
+pluto-log-dot.Stdout::after {
+    --crt-spacing: 7px;
+    background: linear-gradient(180deg, hsl(37deg 20% 27%), transparent, #1a1a1a);
+    background-size: 100% var(--crt-spacing);
+    background-repeat: repeat;
+    opacity: 0.2;
+    animation: scroll-crt 1s linear infinite;
+    animation-play-state: paused;
+}
+@keyframes scroll-crt {
+    0% {
+        background-position: 0px 0px;
+    }
+    100% {
+        background-position: 0px var(--crt-spacing);
+    }
+}
+@media (prefers-reduced-motion: no-preference) {
+    pluto-log-dot.Stdout:hover::after {
+        animation-play-state: running;
+    }
+}
 
 pluto-log-dot jltree,
 pluto-log-dot jlpair {

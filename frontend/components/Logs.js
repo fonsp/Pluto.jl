@@ -115,6 +115,9 @@ const Dot = ({ set_cm_highlighted_line, show, msg, kwargs, x, y, level }) => {
         level = "Progress"
         y = 0
     }
+    if (level === "LogLevel(-555)") {
+        level = "Stdout"
+    }
 
     useLayoutEffect(() => {
         node_ref.current.style.gridColumn = `${x + 1}`
