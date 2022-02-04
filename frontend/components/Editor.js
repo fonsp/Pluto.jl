@@ -780,7 +780,7 @@ patch: ${JSON.stringify(
         // Not completely happy with this yet, but it will do for now - DRAL
         /** Patches that are being delayed until all cells have finished running. */
         this.bonds_changes_to_apply_when_done = []
-        /** Whether we just set a bond value which will trigger a cell to run, but we are still waiting for the server to process the bond value (and run the cell). */
+        /** Whether we just set a bond value which will trigger a cell to run, but we are still waiting for the server to process the bond value (and run the cell). See https://github.com/fonsp/Pluto.jl/issues/1891 for more info. */
         this.waiting_for_bond_to_trigger_execution = false
         /** Number of local updates that have not yet been applied to the server's state. */
         this.pending_local_updates = 0
