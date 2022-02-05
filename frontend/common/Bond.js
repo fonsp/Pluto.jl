@@ -78,6 +78,9 @@ function input_generator(input) {
  * @param {any} new_value
  */
 const set_input_value = (input, new_value) => {
+    if (input instanceof HTMLInputElement && input.type === "file") {
+        return
+    }
     if (new_value == null) {
         //@ts-ignore
         input.value = new_value
