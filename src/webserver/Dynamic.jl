@@ -327,10 +327,11 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
                 bound_sym_names=bound_sym_names,
                 is_first_values=is_first_values,
                 run_async=true,
+                initiator=🙋.initiator,
             )
         end
     
-        send_notebook_changes!(🙋; commentary=Dict(:update_went_well => :👍))    
+        send_notebook_changes!(🙋; commentary=Dict(:update_went_well => :👍))
     catch ex
         @error "Update notebook failed"  🙋.body["updates"] exception=(ex, stacktrace(catch_backtrace()))
         response = Dict(
