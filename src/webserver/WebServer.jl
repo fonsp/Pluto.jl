@@ -115,7 +115,13 @@ function run(session::ServerSession)
     Base.invokelatest(run, session, pluto_router)
 end
 
+const is_first_run = Ref(true)
+
 function run(session::ServerSession, pluto_router)
+    if is_first_run[]
+        is_first_run[] = false
+        @info "Loading..."
+    end
     
     if VERSION < v"1.6.2"
         @info "Pluto is running on an old version of Julia ($(VERSION)) that is no longer supported. Visit https://julialang.org/downloads/ for more information about upgrading Julia."
@@ -277,6 +283,7 @@ function run(session::ServerSession, pluto_router)
     # Start this in the background, so that the first notebook launch (which will trigger registry update) will be faster
     @asynclog withtoken(pkg_token) do
         PkgCompat.update_registries(; force=false)
+        println("    Updating registry done ✓")
     end
 
     shutdown_server[] = () -> @sync begin
