@@ -211,16 +211,19 @@ function split_funcname(funcname_ex::Symbol)::FunctionName
     Symbol[funcname_ex|>without_dotprefix|>without_dotsuffix]
 end
 
+# this includes GlobalRef - it's fine that we don't recognise it, because you can't assign to a globalref?
+function split_funcname(::Any)::FunctionName
+    Symbol[]
+end
+
+"Allows comparing tuples to vectors since having constant vectors can be slower"
+all_iters_eq(a, b) = length(a) == length(b) && all((aa == bb for (aa, bb) in zip(a, b)))
+
 function is_just_dots(ex::Expr)
     ex.head == :(.) && all(is_just_dots, ex.args)
 end
 is_just_dots(::Union{QuoteNode,Symbol,GlobalRef}) = true
 is_just_dots(::Any) = false
-
-# this includes GlobalRef - it's fine that we don't recognise it, because you can't assign to a globalref?
-function split_funcname(::Any)::FunctionName
-    Symbol[]
-end
 
 """Turn `Symbol(".+")` into `:(+)`"""
 function without_dotprefix(funcname::Symbol)::Symbol
@@ -474,14 +477,23 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
                 SymbolsState(references = Set{Symbol}([funcname[1]]), funccalls = Set{FunctionName}([funcname]))
             end
 
+            # Explore code inside function arguments:
+            union!(symstate, explore!(Expr(:block, ex.args[2:end]...), scopestate))
+
             # Make `@macroexpand` and `Base.macroexpand` reactive by referencing the first macro in the second
             # argument to the call.
-            if ([:Base, :macroexpand] == funcname || [:macroexpand] == funcname) &&
+            if (all_iters_eq((:Base, :macroexpand), funcname) || all_iters_eq((:macroexpand,), funcname)) &&
                length(ex.args) >= 3 &&
                ex.args[3] isa QuoteNode &&
                Meta.isexpr(ex.args[3].value, :macrocall)
                 expanded_macro = split_funcname(ex.args[3].value.args[1])
                 union!(symstate, SymbolsState(macrocalls = Set{FunctionName}([expanded_macro])))
+            elseif all_iters_eq((:BenchmarkTools, :generate_benchmark_definition), funcname) &&
+                length(ex.args) == 10
+                for child in ex.args[7:9]
+                    (Meta.isexpr(child, :copyast, 1) && child.args[1] isa QuoteNode && child.args[1].value isa Expr) || continue
+                    union!(symstate, explore!(child.args[1].value, scopestate))
+                end
             end
 
             # Explore code inside function arguments:
