@@ -21,7 +21,7 @@ import { PkgPopup } from "./PkgPopup.js"
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { handle_log } from "../common/Logging.js"
-import { PlutoContext, PlutoBondsContext, PlutoJSInitializingContext } from "../common/PlutoContext.js"
+import { PlutoContext, PlutoBondsContext, PlutoJSInitializingContext, SetWithEmptyCallback } from "../common/PlutoContext.js"
 import { unpack } from "../common/MsgPack.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
 import { start_binder, BinderPhase, count_stat } from "../common/Binder.js"
@@ -38,7 +38,7 @@ import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
-let pending_local_updates = 0
+
 // from our friends at https://stackoverflow.com/a/2117523
 // i checked it and it generates Julia-legal UUIDs and that's all we need -SNOF
 const uuidv4 = () =>
@@ -150,6 +150,19 @@ const first_true_key = (obj) => {
  */
 
 /**
+ * @typedef NotebookPkgData
+ * @type {{
+ *  enabled: boolean,
+ *  restart_recommended_msg: string?,
+ *  restart_required_msg: string?,
+ *  installed_versions: { [pkg_name: string]: string },
+ *  terminal_outputs: { [pkg_name: string]: string },
+ *  busy_packages: string[],
+ *  instantiated: boolean,
+ * }}
+ */
+
+/**
  * @typedef NotebookData
  * @type {{
  *  notebook_id: string,
@@ -166,7 +179,7 @@ const first_true_key = (obj) => {
  *  cell_execution_order: Array<string>,
  *  published_objects: { [objectid: string]: any},
  *  bonds: { [name: string]: any },
- *  nbpkg: Object,
+ *  nbpkg: NotebookPkgData?,
  * }}
  */
 
@@ -646,16 +659,36 @@ patch: ${JSON.stringify(
                 const message = update.message
                 switch (update.type) {
                     case "notebook_diff":
+                        let apply_promise = Promise.resolve()
                         if (message?.response?.from_reset) {
                             console.log("Trying to reset state after failure")
-                            try {
-                                apply_notebook_patches(message.patches, initial_notebook())
-                            } catch (exception) {
+                            apply_promise = apply_notebook_patches(message.patches, initial_notebook()).catch((e) => {
                                 alert("Oopsie!! please refresh your browser and everything will be alright!")
-                            }
+                                throw e
+                            })
                         } else if (message.patches.length !== 0) {
-                            apply_notebook_patches(message.patches)
+                            apply_promise = apply_notebook_patches(message.patches)
                         }
+
+                        const set_waiting = () => {
+                            let from_update = message?.response?.update_went_well != null
+                            let is_just_acknowledgement = from_update && message.patches.length === 0
+                            // console.log("Received patches!", message.patches, message.response, is_just_acknowledgement)
+
+                            if (!is_just_acknowledgement) {
+                                this.waiting_for_bond_to_trigger_execution = false
+                            }
+                        }
+                        apply_promise
+                            .then(set_waiting)
+                            .catch((e) => {
+                                set_waiting()
+                                throw e
+                            })
+                            .then(() => {
+                                this.send_queued_bond_changes()
+                            })
+
                         break
                     default:
                         console.error("Received unknown update type!", update)
@@ -782,19 +815,49 @@ patch: ${JSON.stringify(
         }, 1000 * 5)
 
         // Not completely happy with this yet, but it will do for now - DRAL
+        /** Patches that are being delayed until all cells have finished running. */
         this.bonds_changes_to_apply_when_done = []
-        this.js_init_set = new Set()
+        this.send_queued_bond_changes = () => {
+            if (this.notebook_is_idle() && this.bonds_changes_to_apply_when_done.length !== 0) {
+                // console.log("Applying queued bond changes!", this.bonds_changes_to_apply_when_done)
+                let bonds_patches = this.bonds_changes_to_apply_when_done
+                this.bonds_changes_to_apply_when_done = []
+                this.update_notebook((notebook) => {
+                    applyPatches(notebook, bonds_patches)
+                })
+            }
+        }
+        /** Whether we just set a bond value which will trigger a cell to run, but we are still waiting for the server to process the bond value (and run the cell). See https://github.com/fonsp/Pluto.jl/issues/1891 for more info. */
+        this.waiting_for_bond_to_trigger_execution = false
+        /** Number of local updates that have not yet been applied to the server's state. */
+        this.pending_local_updates = 0
+        this.js_init_set = new SetWithEmptyCallback(() => {
+            // console.info("All scripts finished!")
+            this.send_queued_bond_changes()
+        })
+        /** Is the notebook ready to execute code right now? (i.e. are no cells queued or running?) */
         this.notebook_is_idle = () => {
             return !(
-                this.state.update_is_ongoing ||
+                this.waiting_for_bond_to_trigger_execution ||
+                this.pending_local_updates > 0 ||
                 // a cell is running:
                 Object.values(this.state.notebook.cell_results).some((cell) => cell.running || cell.queued) ||
                 // a cell is initializing JS:
-                !_.isEmpty(this.js_init_set)
+                !_.isEmpty(this.js_init_set) ||
+                !this.is_process_ready()
             )
         }
         this.is_process_ready = () =>
             this.state.notebook.process_status === ProcessStatus.starting || this.state.notebook.process_status === ProcessStatus.ready
+
+        let bond_will_trigger_evaluation = (/** @type {string|PropertyKey} */ sym) =>
+            Object.entries(this.state.notebook.cell_dependencies).some(([cell_id, deps]) => {
+                // if the other cell depends on the variable `sym`...
+                if (deps.upstream_cells_map.hasOwnProperty(sym)) {
+                    // and the cell is not disabled
+                    return !(this.state.notebook.cell_inputs[cell_id]?.running_disabled ?? true)
+                }
+            })
 
         let last_update_notebook_task = Promise.resolve()
         /** @param {(notebook: NotebookData) => void} mutate_fn */
@@ -809,13 +872,13 @@ patch: ${JSON.stringify(
                     mutate_fn(notebook)
                 })
 
-                // If "notebook is not idle" I seperate and store the bonds updates,
+                // If "notebook is not idle" we seperate and store the bonds updates,
                 // to send when the notebook is idle. This delays the updating of the bond for performance,
                 // but when the server can discard bond updates itself (now it executes them one by one, even if there is a newer update ready)
                 // this will no longer be necessary
-                // console.log(`this.notebook_is_idle():`, this.notebook_is_idle())
-                if (!this.notebook_is_idle()) {
-                    let changes_involving_bonds = changes.filter((x) => x.path[0] === "bonds")
+                let is_idle = this.notebook_is_idle()
+                let changes_involving_bonds = changes.filter((x) => x.path[0] === "bonds")
+                if (!is_idle) {
                     this.bonds_changes_to_apply_when_done = [...this.bonds_changes_to_apply_when_done, ...changes_involving_bonds]
                     changes = changes.filter((x) => x.path[0] !== "bonds")
                 }
@@ -826,25 +889,30 @@ patch: ${JSON.stringify(
                         console.log(`Changes to send to server from "${previous_function_name}":`, changes)
                     } catch (error) {}
                 }
-                if (changes.length === 0) {
-                    return
-                }
-
                 for (let change of changes) {
                     if (change.path.some((x) => typeof x === "number")) {
                         throw new Error("This sounds like it is editing an array...")
                     }
                 }
-                pending_local_updates++
-                this.setState({ update_is_ongoing: pending_local_updates > 0 })
+
+                if (changes.length === 0) {
+                    return
+                }
+                if (is_idle) {
+                    this.waiting_for_bond_to_trigger_execution ||= changes_involving_bonds.some(
+                        (x) => x.path.length >= 1 && bond_will_trigger_evaluation(x.path[1])
+                    )
+                }
+                this.pending_local_updates++
                 this.on_patches_hook(changes)
                 try {
+                    // console.log("Sending changes to server:", changes)
                     await Promise.all([
                         this.client.send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false).then((response) => {
-                            if (response.message.response.update_went_well === "👎") {
+                            if (response.message?.response?.update_went_well === "👎") {
                                 // We only throw an error for functions that are waiting for this
                                 // Notebook state will already have the changes reversed
-                                throw new Error(`Pluto update_notebook error: ${response.message.response.why_not})`)
+                                throw new Error(`Pluto update_notebook error: (from Julia: ${response.message.response.why_not})`)
                             }
                         }),
                         this.setStatePromise({
@@ -853,8 +921,7 @@ patch: ${JSON.stringify(
                         }),
                     ])
                 } finally {
-                    pending_local_updates--
-                    this.setState({ update_is_ongoing: pending_local_updates > 0 })
+                    this.pending_local_updates--
                 }
             })
             last_update_notebook_task = new_task.catch(console.error)
@@ -1088,16 +1155,9 @@ patch: ${JSON.stringify(
 
         // this class is used to tell our frontend tests that the updates are done
         //@ts-ignore
-        document.body._update_is_ongoing = pending_local_updates > 0
+        document.body._update_is_ongoing = this.pending_local_updates > 0
 
-        if (this.notebook_is_idle() && this.bonds_changes_to_apply_when_done.length !== 0) {
-            // `bonds_changes_to_apply_when_done:`, this.bonds_changes_to_apply_when_done
-            let bonds_patches = this.bonds_changes_to_apply_when_done
-            this.bonds_changes_to_apply_when_done = []
-            this.update_notebook((notebook) => {
-                applyPatches(notebook, bonds_patches)
-            })
-        }
+        this.send_queued_bond_changes()
 
         if (old_state.binder_phase !== this.state.binder_phase && this.state.binder_phase != null) {
             const phase = Object.entries(BinderPhase).find(([k, v]) => v == this.state.binder_phase)[0]

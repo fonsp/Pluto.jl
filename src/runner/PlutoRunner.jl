@@ -1034,7 +1034,7 @@ pluto_showable(m::MIME, @nospecialize(x))::Bool = Base.invokelatest(showable, m,
 
 
 # We invent our own MIME _because we can_ but don't use it somewhere else because it might change :)
-pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractArray{<:Any,1}) = true
+pluto_showable(::MIME"application/vnd.pluto.tree+object", x::AbstractArray{<:Any,1}) = eltype(eachindex(x)) === Int
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractSet{<:Any}) = true
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractDict{<:Any,<:Any}) = true
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Tuple) = true
@@ -1401,6 +1401,7 @@ const integrations = Integration[
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::Type) = false
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:NamedTuple}) = false
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:Dict{Symbol,<:Any}}) = false
+            pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractArray{Union{}, 1}) = false
 
         end,
     ),
@@ -1983,24 +1984,29 @@ function Logging.shouldlog(::PlutoLogger, level, _module, _...)
     # Accept logs
     # - From the user's workspace module
     # - Info level and above for other modules
-    (_module isa Module && is_pluto_workspace(_module)) || convert(Logging.LogLevel, level) >= Logging.Info
+    # - LogLevel(-1) because that's what ProgressLogging.jl uses for its messages
+    level = convert(Logging.LogLevel, level)
+    (_module isa Module && is_pluto_workspace(_module)) ||
+        level >= Logging.Info ||
+        level == Logging.LogLevel(-1)
 end
 
 Logging.min_enabled_level(::PlutoLogger) = Logging.Debug
 Logging.catch_exceptions(::PlutoLogger) = false
 function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, file, line; kwargs...)
     # println("receiving msg from ", _module, " ", group, " ", id, " ", msg, " ", level, " ", line, " ", file)
+    # println("with types: ", "_module: ", typeof(_module), ", ", "msg: ", typeof(msg), ", ", "group: ", typeof(group), ", ", "id: ", typeof(id), ", ", "file: ", typeof(file), ", ", "line: ", typeof(line), ", ", "kwargs: ", typeof(kwargs)) # thanks Copilot
 
     try
         put!(log_channel, Dict{String,Any}(
             "level" => string(level),
             "msg" => format_output_default(msg isa String ? Text(msg) : msg),
-            "group" => group,
-            "id" => id,
-            "file" => file,
+            "group" => string(group),
+            "id" => string(id),
+            "file" => string(file),
             "cell_id" => currently_running_cell_id[],
-            "line" => line,
-            "kwargs" => Any[(string(k), format_output_default(v)) for (k, v) in kwargs],
+            "line" => line isa Union{Int32,Int64} ? line : nothing,
+            "kwargs" => Tuple{String,Any}[(string(k), format_output_default(v)) for (k, v) in kwargs],
             )
         )
         
