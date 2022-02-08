@@ -342,6 +342,7 @@ function load_notebook(path::String; disable_writing_notebook_files::Bool=false)
     # Analyze cells so that the initial save is in topological order
     loaded.topology = updated_topology(loaded.topology, loaded, loaded.cells) |> static_resolve_topology
     update_dependency_cache!(loaded)
+    disable_dependent_cells!(loaded)
 
     disable_writing_notebook_files || save_notebook(loaded)
     loaded.topology = NotebookTopology()
