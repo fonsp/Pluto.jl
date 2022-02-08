@@ -58,10 +58,10 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
 
     Distributed2.remotecall_eval(Main, [pid], :(PlutoRunner.notebook_id[] = $(notebook.notebook_id)))
     log_channel = Core.eval(Main, quote
-        $(Distributed2).RemoteChannel(() -> eval(:(Main.PlutoRunner.log_channel)), $pid)
+        $(Distributed_expr).RemoteChannel(() -> eval(:(Main.PlutoRunner.log_channel)), $pid)
     end)
     run_channel = Core.eval(Main, quote
-        $(Distributed2).RemoteChannel(() -> eval(:(Main.PlutoRunner.run_channel)), $pid)
+        $(Distributed_expr).RemoteChannel(() -> eval(:(Main.PlutoRunner.run_channel)), $pid)
     end)
     module_name = create_emptyworkspacemodule(pid)
     
