@@ -457,7 +457,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		sync_nbpkg(session, notebook; save=(save && !session.options.server.disable_writing_notebook_files))
 		if !(isempty(to_run_online) && session.options.evaluation.lazy_workspace_creation) && will_run_code(notebook)
 			# not async because that would be double async
-			run_reactive_async!(session, notebook, old, new, to_run_online; run_async=false, indirectly_deactivated=indirectly_deactivated, kwargs...)
+			run_reactive_async!(session, notebook, old, new, to_run_online; run_async=false, indirectly_deactivated, kwargs...)
 			# run_reactive_async!(session, notebook, old, new, to_run_online; deletion_hook=deletion_hook, run_async=false, kwargs...)
 		end
 	end
