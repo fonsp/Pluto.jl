@@ -144,6 +144,7 @@ function globalref_to_workspaceref(expr)
         # Create new lines to assign to the replaced names of the global refs.
         # This way the expression explorer doesn't care (it just sees references to variables outside of the workspace), 
         # and the variables don't get overwriten by local assigments to the same name (because we have special names). 
+        (mutable_ref_list .|> ref -> :(local $(ref[2])))...,
         map(mutable_ref_list) do ref
             # I can just do Expr(:isdefined, ref[1]) here, but it feels better to macroexpand,
             #   because it's more obvious what's going on, and when they ever change the ast, we're safe :D
