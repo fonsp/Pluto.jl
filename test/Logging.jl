@@ -26,6 +26,16 @@ using Pluto.WorkspaceManager: poll
             @test poll(5, 1/60) do
                 length(notebook.cells[begin].logs) == 2
             end
+
+            # Check that maxlog doesn't occur in the message
+            @test poll(5, 1/60) do
+                all(notebook.cells[begin].logs) do log
+                    all(log["kwargs"]) do kwarg
+                        kwarg[1] != "maxlog"
+                    end
+                end
+            end
+
             WorkspaceManager.unmake_workspace((🍭, notebook))
         end
 
@@ -47,6 +57,15 @@ using Pluto.WorkspaceManager: poll
                 ids = unique(getindex.(notebook.cells[begin].logs, "id"))
                 counts = [count(log -> log["id"] == id, notebook.cells[begin].logs) for id in ids]
                 counts == [2, 4]
+            end
+
+            # Check that maxlog doesn't occur in the message
+            @test poll(5, 1/60) do
+                all(notebook.cells[begin].logs) do log
+                    all(log["kwargs"]) do kwarg
+                        kwarg[1] != "maxlog"
+                    end
+                end
             end
 
             WorkspaceManager.unmake_workspace((🍭, notebook))
