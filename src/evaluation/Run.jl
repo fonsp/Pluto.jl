@@ -30,18 +30,17 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		unresolved_cells=new_topology.unresolved_cells,
 	)
 
-	# is the workspace being overridden?
-	if isnothing(workspace_override)
-		# if not, then bump the workspace module
+	# is the workspace being overridden? (by REST API)
+	old_workspace_name, _ = if isnothing(workspace_override)
+		# if not, then bump the workspace module as usual
 		old_workspace_name, new_workspace_name = WorkspaceManager.bump_workspace_module((session, notebook))
 		workspace = WorkspaceManager.get_workspace((session, notebook))
+		old_workspace_name, new_workspace_name
 	else
 		# otherwise use the provided workspace instead
 		workspace = workspace_override
-		old_workspace_name = old_workspace_name_override
-		new_workspace_name = workspace.module_name
+		old_workspace_name, new_workspace_name = old_workspace_name_override, workspace.module_name
 	end
-    old_workspace_name, _ = WorkspaceManager.bump_workspace_module((session, notebook))
 
     if !is_resolved(new_topology)
         unresolved_topology = new_topology
