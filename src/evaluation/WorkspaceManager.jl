@@ -171,7 +171,7 @@ function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.R
 
                     # Don't show message with id more than max_log times
                     if max_log isa Int && n_logs >= max_log
-                        return
+                        continue
                     end
                 catch
                 end

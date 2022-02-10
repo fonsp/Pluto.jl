@@ -11,20 +11,45 @@ using Pluto.WorkspaceManager: poll
     🍭.connected_clients[fakeclient.id] = fakeclient
 
     @testset "Logging respects maxlog" begin
-        notebook = Notebook(Cell.([
-            """
-            for i in 1:10
-                @info "logging" i maxlog=2
+        @testset "Single log" begin
+            notebook = Notebook(Cell.([
+                """
+                for i in 1:10
+                    @info "logging" i maxlog=2
+                end
+                """,
+            ]))
+
+            update_run!(🍭, notebook, notebook.cells)
+            @test notebook.cells[begin] |> noerror
+
+            @test poll(5, 1/60) do
+                length(notebook.cells[begin].logs) == 2
             end
-            """,
-        ]))
-
-        update_run!(🍭, notebook, notebook.cells)
-        @test notebook.cells[begin] |> noerror
-
-        @test poll(5, 1/60) do
-            length(notebook.cells[begin].logs) == 2
+            WorkspaceManager.unmake_workspace((🍭, notebook))
         end
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+
+        @testset "Multiple log" begin
+            notebook = Notebook(Cell.([
+                """
+                for i in 1:10
+                    @info "logging" i maxlog=2
+                    @info "logging more" maxlog = 4
+                end
+                """,
+            ]))
+
+            update_run!(🍭, notebook, notebook.cells)
+            @test notebook.cells[begin] |> noerror
+
+            @test poll(5, 1/60) do
+                # Get the ids of the two logs and their counts
+                ids = unique(getindex.(notebook.cells[begin].logs, "id"))
+                counts = [count(log -> log["id"] == id, notebook.cells[begin].logs) for id in ids]
+                counts == [2, 4]
+            end
+
+            WorkspaceManager.unmake_workspace((🍭, notebook))
+        end
     end
 end
