@@ -67,15 +67,4 @@ function Base.convert(::Type{UUID}, string::String)
     UUID(string)
 end
 
-function get_cell_metadata(cell::Cell)::Dict{String,Any}
-    Dict(
-        if cell.running_disabled
-            Dict("disabled" => "directly")
-        elseif cell.depends_on_disabled_cells
-            Dict("disabled" => "indirectly")
-        else
-            Dict()
-        end...,
-        cell.metadata...,
-    )
-end
+get_cell_metadata(cell::Cell)::Dict{String,Any} = cell.metadata

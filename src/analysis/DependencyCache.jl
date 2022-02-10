@@ -46,7 +46,8 @@ function update_dependency_cache!(notebook::Notebook)
 end
 
 """
-find (indirectly) deactivated cells and update their status
+Find (indirectly) deactivated cells and update their status. 
+Fills also disabling status into cell metadata.
 """
 function disable_dependent_cells!(notebook:: Notebook, topology:: NotebookTopology):: Vector{Cell}
     for cell in notebook.cells
@@ -54,10 +55,21 @@ function disable_dependent_cells!(notebook:: Notebook, topology:: NotebookTopolo
 	end
 	deactivated = filter(c -> c.running_disabled, notebook.cells)
     indirectly_deactivated = collect(topological_order(notebook, topology, deactivated))
-    for cell in indirectly_deactivated
-        cell.running = false
-        cell.queued = false
-        cell.depends_on_disabled_cells = true
+
+    for cell in notebook.cells
+        if cell.running_disabled
+            cell.metadata["disabled"] = "directly"
+            cell.running = false
+            cell.queued = false
+            cell.depends_on_disabled_cells = true
+        elseif cell in indirectly_deactivated
+            cell.metadata["disabled"] =  "indirectly"
+            cell.running = false
+            cell.queued = false
+            cell.depends_on_disabled_cells = true
+        else
+            pop!(cell.metadata, "disabled", "")
+        end
     end
 	return indirectly_deactivated
 end
