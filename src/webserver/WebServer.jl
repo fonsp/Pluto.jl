@@ -2,13 +2,7 @@ import MsgPack
 import UUIDs: UUID
 import HTTP
 import Sockets
-
-import Base: endswith
-function endswith(vec::Vector{T}, suffix::Vector{T}) where T
-    local liv = lastindex(vec)
-    local lis = lastindex(suffix)
-    liv >= lis && (view(vec, (liv - lis + 1):liv) == suffix)
-end
+import .PkgCompat
 
 include("./WebSocketFix.jl")
 
@@ -117,20 +111,36 @@ end
 Specifiy the [`Pluto.ServerSession`](@ref) to run the web server on, which includes the configuration. Passing a session as argument allows you to start the web server with some notebooks already running. See [`SessionActions`](@ref) to learn more about manipulating a `ServerSession`.
 """
 function run(session::ServerSession)
+    pluto_router = http_router_for(session)
+    Base.invokelatest(run, session, pluto_router)
+end
+
+const is_first_run = Ref(true)
+
+function run(session::ServerSession, pluto_router)
+    if is_first_run[]
+        is_first_run[] = false
+        @info "Loading..."
+    end
+    
+    if VERSION < v"1.6.2"
+        @info "Pluto is running on an old version of Julia ($(VERSION)) that is no longer supported. Visit https://julialang.org/downloads/ for more information about upgrading Julia."
+    end
 
     notebook_at_startup = session.options.server.notebook
     open_notebook!(session, notebook_at_startup)
 
-    pluto_router = http_router_for(session)
     host = session.options.server.host
-    port = session.options.server.port
-
     hostIP = parse(Sockets.IPAddr, host)
-    if port === nothing
+    favourite_port = session.options.server.port
+    
+    local port, serversocket
+    if favourite_port === nothing
         port, serversocket = Sockets.listenany(hostIP, UInt16(1234))
     else
+        port = UInt16(favourite_port)
         try
-            serversocket = Sockets.listen(hostIP, UInt16(port))
+            serversocket = Sockets.listen(hostIP, port)
         catch e
             @error "Port with number $port is already in use. Use Pluto.run() to automatically select an available port."
             return
@@ -139,7 +149,7 @@ function run(session::ServerSession)
 
     shutdown_server = Ref{Function}(() -> ())
 
-    servertask = @async HTTP.serve(hostIP, UInt16(port), stream=true, server=serversocket) do http::HTTP.Stream
+    servertask = @async HTTP.serve(hostIP, port, stream=true, server=serversocket) do http::HTTP.Stream
         # messy messy code so that we can use the websocket on the same port as the HTTP server
         if HTTP.WebSockets.is_upgrade(http.message)
             secret_required = let
@@ -164,7 +174,7 @@ function run(session::ServerSession)
                                 
                                 let
                                     lag = session.options.server.simulated_lag
-                                    (lag > 0) && sleep(lag) # sleep(0) would yield to the process manager which we dont want
+                                    (lag > 0) && sleep(lag * (0.5 + rand())) # sleep(0) would yield to the process manager which we dont want
                                 end
 
                                 process_ws_message(session, parentbody, clientstream)
@@ -243,9 +253,16 @@ function run(session::ServerSession)
             end
         end
     end
-
+    
+    server_running() = try
+        HTTP.get("http://$(hostIP):$(port)/ping"; status_exception=false, retry=false, connect_timeout=10, readtimeout=10).status == 200
+    catch
+        false
+    end
+    # Wait for the server to start up before opening the browser. We have a 5 second grace period for allowing the connection, and then 10 seconds for the server to write data.
+    WorkspaceManager.poll(server_running, 5.0, 1.0)
+    
     address = pretty_address(session, hostIP, port)
-
     println()
     if session.options.server.launch_browser && open_in_default_browser(address)
         println("Opening $address in your default browser... ~ have fun!")
@@ -255,6 +272,19 @@ function run(session::ServerSession)
     println()
     println("Press Ctrl+C in this terminal to stop Pluto")
     println()
+    
+    # Trigger ServerStartEvent with server details
+    try_event_call(session, ServerStartEvent(address, port))
+
+    if PLUTO_VERSION >= v"0.17.6" && frontend_directory() == "frontend"
+        @info "It looks like you are developing the Pluto package, using the unbundled frontend..."
+    end
+
+    # Start this in the background, so that the first notebook launch (which will trigger registry update) will be faster
+    @asynclog withtoken(pkg_token) do
+        PkgCompat.update_registries(; force=false)
+        println("    Updating registry done ✓")
+    end
 
     shutdown_server[] = () -> @sync begin
         println("\n\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈")
@@ -360,7 +390,7 @@ function process_ws_message(session::ServerSession, parentbody::Dict, clientstre
         try
             responsefunc(ClientRequest(session, notebook, body, Initiator(client, request_id)))
         catch ex
-            @warn "Response function to message of type $(messagetype) failed"
+            @warn "Response function to message of type $(repr(messagetype)) failed"
             rethrow(ex)
         end
     else

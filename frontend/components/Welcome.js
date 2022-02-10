@@ -6,6 +6,22 @@ import { create_pluto_connection, fetch_pluto_releases } from "../common/PlutoCo
 import { cl } from "../common/ClassTable.js"
 import { PasteHandler } from "./PasteHandler.js"
 
+/**
+ * @typedef CombinedNotebook
+ * @type {{
+ *    path: String,
+ *    transitioning: Boolean,
+ *    notebook_id: String?,
+ * }}
+ */
+
+/**
+ *
+ * @param {string} path
+ * @param {string?} notebook_id
+ * @returns {CombinedNotebook}
+ */
+
 const create_empty_notebook = (path, notebook_id = null) => {
     return {
         transitioning: false, // between running and being shut down
@@ -74,6 +90,11 @@ export const process_path_or_url = async (path_or_url) => {
             path_or_url: u.href,
         }
     } catch (ex) {
+        /* Remove eventual single/double quotes from the path if they surround it, see
+          https://github.com/fonsp/Pluto.jl/issues/1639 */
+        if (path_or_url[path_or_url.length - 1] === '"' && path_or_url[0] === '"') {
+            path_or_url = path_or_url.slice(1, -1) /* Remove first and last character */
+        }
         return {
             type: "path",
             path_or_url: path_or_url,
@@ -93,7 +114,7 @@ export class Welcome extends Component {
         this.state = {
             // running_notebooks: null,
             // recent_notebooks: null,
-            combined_notebooks: null, // will become an array
+            combined_notebooks: /** @type {Array<CombinedNotebook>} */ (null), // will become an array
             connected: false,
         }
         const set_notebook_state = (this.set_notebook_state = (path, new_state_props) => {
@@ -183,13 +204,15 @@ export class Welcome extends Component {
                         const recommended_updates = updates.filter((r) => r.body.toLowerCase().includes("recommended update"))
                         if (recommended_updates.length > 0) {
                             console.log(`Newer version ${latest} is available`)
-                            alert(
-                                "A new version of Pluto.jl is available! 🎉\n\n    You have " +
-                                    local +
-                                    ", the latest is " +
-                                    latest +
-                                    '.\n\nYou can update Pluto.jl using the julia package manager:\n    import Pkg; Pkg.update("Pluto")\nAfterwards, exit Pluto.jl and restart julia.'
-                            )
+                            if (!this.client.version_info.dismiss_update_notification) {
+                                alert(
+                                    "A new version of Pluto.jl is available! 🎉\n\n    You have " +
+                                        local +
+                                        ", the latest is " +
+                                        latest +
+                                        '.\n\nYou can update Pluto.jl using the julia package manager:\n    import Pkg; Pkg.update("Pluto")\nAfterwards, exit Pluto.jl and restart julia.'
+                                )
+                            }
                         }
                     }
                 })

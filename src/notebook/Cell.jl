@@ -36,6 +36,8 @@ Base.@kwdef mutable struct Cell
 
     published_objects::Dict{String,Any}=Dict{String,Any}()
     
+    logs::Vector{Dict{String,Any}}=Vector{Dict{String,Any}}()
+    
     errored::Bool=false
     runtime::Union{Nothing,UInt64}=nothing
 

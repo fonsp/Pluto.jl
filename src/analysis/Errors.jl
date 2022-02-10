@@ -7,11 +7,8 @@ struct CyclicReferenceError <: ReactivityError
 	syms::Set{Symbol}
 end
 
-function CyclicReferenceError(topology::NotebookTopology, cycle::Cell...)
-	referenced_during_cycle = union((topology.nodes[c].references for c in cycle)...)
-	assigned_during_cycle = union((topology.nodes[c].definitions ∪ topology.nodes[c].funcdefs_without_signatures for c in cycle)...)
-	
-	CyclicReferenceError(referenced_during_cycle ∩ assigned_during_cycle)
+function CyclicReferenceError(topology::NotebookTopology, cycle::AbstractVector{Cell})
+	CyclicReferenceError(cyclic_variables(topology, cycle))
 end
 
 struct MultipleDefinitionsError <: ReactivityError

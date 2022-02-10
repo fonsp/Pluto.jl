@@ -64,7 +64,7 @@ import Distributed
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
-    Sys.iswindows() || (VERSION < v"1.6.0-a") || @testset "Pluto inside Pluto" begin
+    Sys.iswindows() || @testset "Pluto inside Pluto" begin
 
         client = ClientSession(:fakeA, nothing)
         🍭 = ServerSession()

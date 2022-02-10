@@ -14,9 +14,16 @@ using Configurations # https://github.com/Roger-luo/Configurations.jl
 
 import ..Pluto: tamepath
 
+# This can't be a simple `const` because this would hard-code it into the precompile image.
+const notebook_path_suggestion_ref = Ref{Union{Nothing,String}}(nothing)
 function notebook_path_suggestion()
-    preferred_dir = startswith(Sys.BINDIR, pwd()) ? homedir() : pwd()
-    return joinpath(preferred_dir, "") # so that it ends with / or \
+    if notebook_path_suggestion_ref[] === nothing
+        notebook_path_suggestion_ref[] = let
+            preferred_dir = startswith(Sys.BINDIR, pwd()) ? homedir() : pwd()
+            joinpath(preferred_dir, "") # so that it ends with / or \
+        end
+    end
+    notebook_path_suggestion_ref[]
 end
 
 """
@@ -38,7 +45,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 - `auto_reload_from_file_cooldown::Real = 0.5` Experimental, will be removed
 - `auto_reload_from_file_ignore_pkg::Bool = false` Experimental flag, will be removed
 - `notebook::Union{Nothing,String} = nothing` Optional path of notebook to launch at start
-- `simulated_lag::Real=0.0`
+- `simulated_lag::Real=0.0` (internal) Extra lag to add to our server responses. Will be multiplied by `0.5 + rand()`.
 """
 @option mutable struct ServerOptions
     root_url::Union{Nothing,String} = nothing
@@ -56,6 +63,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
     init_with_file_viewer::Bool=false
     simulated_lag::Real=0.0
     enable_rest::Bool = true
+    on_event::Function = function(a) #= @info "$(typeof(a))" =# end
 end
 
 """
@@ -137,7 +145,10 @@ end
 
 function default_number_of_threads()
     env_value = get(ENV, "JULIA_NUM_THREADS", "")
-    all(isspace, env_value) ? roughly_the_number_of_physical_cpu_cores() : parse(Int,env_value)
+
+    all(isspace, env_value) ?
+        roughly_the_number_of_physical_cpu_cores() :
+        env_value
 end
 
 function roughly_the_number_of_physical_cpu_cores()
@@ -180,7 +191,7 @@ function _merge_notebook_compiler_options(notebook, options::CompilerOptions)::C
             kwargs[each] = getfield(notebook.compiler_options, each)
         end
     end
-    return CompilerOptions(;kwargs...)
+    return CompilerOptions(; kwargs...)
 end
 
 function _convert_to_flags(options::CompilerOptions)::Vector{String}
@@ -190,9 +201,7 @@ function _convert_to_flags(options::CompilerOptions)::Vector{String}
         flagname = string("--", replace(String(name), "_" => "-"))
         value = getfield(options, name)
         if value !== nothing
-            if !(VERSION <= v"1.5.0-" && name === :threads)
-                push!(option_list, string(flagname, "=", value))
-            end
+            push!(option_list, string(flagname, "=", value))
         end
     end
 

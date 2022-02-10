@@ -125,6 +125,11 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(a .+= b), [:b, :a], [], [:+], [])
         @test testee(:(a[i] .+= b), [:b, :a, :i], [], [:+], [])
         @test testee(:(a .+ b ./ sqrt.(c, d)), [:a, :b, :c, :d], [], [:+, :/, :sqrt], [])
+
+        # in 1.5 :(.+) is a symbol, in 1.6 its Expr:(:(.), :+)
+        broadcasted_add = :(.+) isa Symbol ? :(.+) : :+
+        @test testee(:(f = .+), [broadcasted_add], [:f], [], [])
+        @test testee(:(reduce(.+, foo)), [broadcasted_add, :foo], [], [:reduce], [])
     end
     @testset "`for` & `while`" begin
         @test testee(:(for k in 1:n; k + s; end), [:n, :s], [], [:+, :(:)], [])
@@ -146,6 +151,7 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:([a for a in b if a != 2]), [:b], [], [:(!=)], [])
         @test testee(:([a for a in f() if g(a)]), [], [], [:f, :g], [])
         @test testee(:([c(a) for a in f() if g(a)]), [], [], [:c, :f, :g], [])
+        @test testee(:([k for k in P, j in 1:k]), [:k, :P], [], [:(:)], [])
 
         @test testee(:([a for a in a]), [:a], [], [], [])
         @test testee(:(for a in a; a; end), [:a], [], [], [])
@@ -359,17 +365,18 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         ])
     end
     @testset "Scope modifiers" begin
-        @test testee(:(let global a, b = 1, 2 end), [], [:a, :b], [], [])
-        @test_broken testee(:(let global a = b = 1 end), [], [:a], [], []; verbose=false)
-        @test testee(:(let global k = 3 end), [], [:k], [], [])
-        @test_broken testee(:(let global k = r end), [], [:k], [], []; verbose=false)
-        @test testee(:(let global k = 3; k end), [], [:k], [], [])
-        @test testee(:(let global k += 3 end), [:k], [:k], [:+], [])
-        @test testee(:(let global k; k = 4 end), [], [:k], [], [])
-        @test testee(:(let global k; b = 5 end), [], [], [], [])
-        @test testee(:(let global x, y, z; b = 5; x = 1; (y,z) = 3 end), [], [:x, :y, :z], [], [])
-        @test testee(:(let global x, z; b = 5; x = 1; end), [], [:x], [], [])
+        @test testee(:(let; global a, b = 1, 2 end), [], [:a, :b], [], [])
+        @test_broken testee(:(let; global a = b = 1 end), [], [:a], [], []; verbose=false)
+        @test testee(:(let; global k = 3 end), [], [:k], [], [])
+        @test_broken testee(:(let; global k = r end), [], [:k], [], []; verbose=false)
+        @test testee(:(let; global k = 3; k end), [], [:k], [], [])
+        @test testee(:(let; global k += 3 end), [:k], [:k], [:+], [])
+        @test testee(:(let; global k; k = 4 end), [], [:k], [], [])
+        @test testee(:(let; global k; b = 5 end), [], [], [], [])
+        @test testee(:(let; global x, y, z; b = 5; x = 1; (y,z) = 3 end), [], [:x, :y, :z], [], [])
+        @test testee(:(let; global x, z; b = 5; x = 1; end), [], [:x], [], [])
         @test testee(:(let a = 1, b = 2; show(a + b) end), [], [], [:show, :+], [])
+        @test_broken testee(:(let a = 1; global a = 2; end), [], [:a], [], []; verbose=false)
 
         @test testee(:(begin local a, b = 1, 2 end), [], [], [], [])
         @test testee(:(begin local a = b = 1 end), [], [:b], [], [])
@@ -388,7 +395,7 @@ Some of these @test_broken lines are commented out to prevent printing to the te
             :f => ([], [:k], [], [])
         ])
         @test testee(:((begin x = 1 end, y)), [:y], [:x], [], [])
-        @test testee(:(x = let global a += 1 end), [:a], [:x, :a], [:+], [])
+        @test testee(:(x = let; global a += 1 end), [:a], [:x, :a], [:+], [])
     end
     @testset "`import` & `using`" begin
         @test testee(:(using Plots), [], [:Plots], [], [])
@@ -494,6 +501,9 @@ Some of these @test_broken lines are commented out to prevent printing to the te
             expr=:(@parent begin @child 1 + @grandchild 10 end),
             macrocalls=[Symbol("@parent"), Symbol("@child"), Symbol("@grandchild")],
         )
+        @test testee(macroexpand(Main, :(@noinline f(x) = x)), [], [], [], [
+            Symbol("f") => ([], [], [], [])
+        ])
     end
     @testset "Macros and heuristics" begin
         @test test_expression_explorer(
@@ -611,8 +621,6 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test ExpressionExplorer.external_package_names(:(using Plots, Something.Else, .LocalModule)) == Set([:Plots, :Something])
         @test ExpressionExplorer.external_package_names(:(import Plots.A: b, c)) == Set([:Plots])
 
-        if VERSION >= v"1.6.0"
-            @test ExpressionExplorer.external_package_names(Meta.parse("import Foo as Bar, Baz.Naz as Jazz")) == Set([:Foo, :Baz])
-        end
+        @test ExpressionExplorer.external_package_names(Meta.parse("import Foo as Bar, Baz.Naz as Jazz")) == Set([:Foo, :Baz])
     end
 end

@@ -16,7 +16,7 @@ using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
 import Distributed
 import Base64
-import FuzzyCompletions: Completion, ModuleCompletion, PropertyCompletion, FieldCompletion, completions, completion_text, score
+import FuzzyCompletions: Completion, ModuleCompletion, PropertyCompletion, FieldCompletion, PathCompletion, DictCompletion, completions, completion_text, score
 import Base: show, istextmime
 import UUIDs: UUID, uuid4
 import Dates: DateTime
@@ -178,10 +178,12 @@ end
 function sanitize_expr(expr::Expr)
     Expr(expr.head, sanitize_expr.(expr.args)...)
 end
-sanitize_expr(symbol::Symbol) = symbol
 sanitize_expr(linenumbernode::LineNumberNode) = linenumbernode
-sanitize_expr(bool::Bool) = bool
 sanitize_expr(quoted::QuoteNode) = QuoteNode(sanitize_expr(quoted.value))
+
+sanitize_expr(bool::Bool) = bool
+sanitize_expr(symbol::Symbol) = symbol
+sanitize_expr(number::Union{Int,Int8,Float32,Float64}) = number
 
 # In all cases of more complex objects, we just don't send it.
 # It's not like the expression explorer will look into them at all.
@@ -211,6 +213,9 @@ module CantReturnInPluto
             :(throw($(CantReturnInPlutoException())))
         elseif expr.head == :quote
             Expr(:quote, replace_returns_with_error_in_interpolation(expr.args[1]))
+        elseif Meta.isexpr(expr, :(=)) && expr.args[1] isa Expr && (expr.args[1].head == :call || expr.args[1].head == :where || (expr.args[1].head == :(::) && expr.args[1].args[1] isa Expr && expr.args[1].args[1].head == :call))
+            # f(x) = ...
+            expr
         elseif expr.head == :function || expr.head == :macro || expr.head == :(->)
             expr
         else
@@ -233,11 +238,15 @@ end
 
 
 function try_macroexpand(mod, cell_uuid, expr)
+    # Remove the precvious cached expansion, so when we error somewhere before we update,
+    # the old one won't linger around and get run accidentally.
+    delete!(cell_expanded_exprs, cell_uuid)
+
     # Remove toplevel block, as that screws with the computer and everything
     expr_not_toplevel = if expr.head == :toplevel || expr.head == :block
         Expr(:block, expr.args...)
     else
-        @warn "try_macroexpression expression not :toplevel or :block" expr
+        @warn "try_macroexpand expression not :toplevel or :block" expr
         Expr(:block, expr)
     end
     
@@ -452,28 +461,28 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
     end
 
     currently_running_cell_id[] = cell_id
-    
+
     # reset published objects
     cell_published_objects[cell_id] = Dict{String,Any}()
-    
+
     # reset registered bonds
     for s in get(cell_registered_bond_names, cell_id, Set{Symbol}())
         delete!(registered_bond_elements, s)
     end
     cell_registered_bond_names[cell_id] = Set{Symbol}()
-    
 
     # If the cell contains macro calls, we want those macro calls to preserve their identity,
     # so we macroexpand this earlier (during expression explorer stuff), and then we find it here.
     # NOTE Turns out sometimes there is no macroexpanded version even though the expression contains macro calls...
     # .... So I macroexpand when there is no cached version just to be sure 🤷‍♀️
+    # NOTE Errors during try_macroexpand will cause no expanded version to be stored.
+    # .... This is fine, because it allows us to try again here and throw the error...
+    # .... But ideally we wouldn't re-macroexpand and store the error the first time (TODO-ish)
     if !haskey(cell_expanded_exprs, cell_id) || cell_expanded_exprs[cell_id].original_expr_hash != expr_hash(expr)
         try
             try_macroexpand(m, cell_id, expr)
         catch e
-            # On error during macroexpand, we override the stacktrace with this faux one
-            bt = [StackTraces.StackFrame(Symbol("Macro Expansion"), Symbol("pluto-cell"), 1, nothing, false, false, 0)]
-            result = CapturedException(e, bt)
+            result = CapturedException(e, stacktrace(catch_backtrace()))
             cell_results[cell_id], cell_runtimes[cell_id] = (result, nothing)
             return (result, nothing)
         end
@@ -481,6 +490,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
 
     # We can be sure there is a cached expression now, yay
     expanded_cache = cell_expanded_exprs[cell_id]
+    original_expr = expr
     expr = expanded_cache.expanded_expr
 
     # We add the time it took to macroexpand to the time for the first call,
@@ -505,7 +515,6 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
     end
 
     result, runtime = if function_wrapped_info === nothing
-
         toplevel_expr = Expr(:toplevel, expr)
         wrapped = timed_expr(toplevel_expr)
         ans, runtime = run_inside_trycatch(m, wrapped)
@@ -518,7 +527,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
                 computer = register_computer(expr, expr_id, cell_id, collect.(function_wrapped_info)...)
             catch e
                 # @error "Failed to generate computer function" expr exception=(e,stacktrace(catch_backtrace()))
-                return run_expression(m, expr, cell_id, nothing; user_requested_run=user_requested_run)
+                return run_expression(m, original_expr, cell_id, nothing; user_requested_run=user_requested_run)
             end
         end
 
@@ -527,7 +536,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
         ans, runtime = if any(name -> !isdefined(m, name), computer.input_globals)
             # Do run_expression but with function_wrapped_info=nothing so it doesn't go in a Computer()
             # @warn "Got variables that don't exist, running outside of computer" not_existing=filter(name -> !isdefined(m, name), computer.input_globals)
-            run_expression(m, expr, cell_id, nothing; user_requested_run=user_requested_run)
+            run_expression(m, original_expr, cell_id; user_requested_run)
         else
             run_inside_trycatch(m, () -> compute(m, computer))
         end
@@ -634,7 +643,7 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
             # var will not be redefined in the new workspace, move it over
             if !(symbol == :eval || symbol == :include || string(symbol)[1] == '#' || startswith(string(symbol), "workspace#"))
                 try
-                    val = getfield(old_workspace, symbol)
+                    getfield(old_workspace, symbol)
 
                     # Expose the variable in the scope of `new_workspace`
                     Core.eval(new_workspace, :(import ..($(old_workspace_name)).$(symbol)))
@@ -755,7 +764,13 @@ const table_column_display_limit_increase = 30
 
 const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 
-function formatted_result_of(cell_id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing, workspace::Module=Main)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
+function formatted_result_of(
+    cell_id::UUID, 
+    ends_with_semicolon::Bool, 
+    known_published_objects::Vector{String}=String[],
+    showmore::Union{ObjectDimPair,Nothing}=nothing, 
+    workspace::Module=Main,
+)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
     load_integrations_if_needed()
     currently_running_cell_id[] = cell_id
 
@@ -776,13 +791,22 @@ function formatted_result_of(cell_id::UUID, ends_with_semicolon::Bool, showmore:
     else
         ("", MIME"text/plain"())
     end
+    
+    published_objects = get(cell_published_objects, cell_id, Dict{String,Any}())
+    
+    for k in known_published_objects
+        if haskey(published_objects, k)
+            published_objects[k] = nothing
+        end
+    end
+    
     return (
         output_formatted = output_formatted,
         errored = errored, 
         interrupted = false, 
         process_exited = false, 
         runtime = get(cell_runtimes, cell_id, nothing),
-        published_objects = get(cell_published_objects, cell_id, Dict{String,Any}()),
+        published_objects = published_objects,
         has_pluto_hook_features = has_pluto_hook_features,
     )
 end
@@ -893,21 +917,8 @@ end
 function format_output(binding::Base.Docs.Binding; context=default_iocontext)
     try
         ("""
-        <div class="pluto-docs-binding" style="margin: .5em; padding: 1em; background: #8383830a; border-radius: 1em;">
-        <span style="
-            display: inline-block;
-            transform: translate(-19px, -16px);
-            font-family: 'JuliaMono', monospace;
-            font-size: .9rem;
-            font-weight: 700;
-            /* height: 1px; */
-            margin-top: -1em;
-            background: white;
-            padding: 4px;
-            border-radius: 7px;
-            /* color: #646464; */
-            /* border: 3px solid #f99b1536;
-        ">$(binding.var)</span>
+        <div class="pluto-docs-binding">
+        <span>$(binding.var)</span>
         $(repr(MIME"text/html"(), Base.Docs.doc(binding)))
         </div>
         """, MIME"text/html"()) 
@@ -1028,7 +1039,7 @@ pluto_showable(m::MIME, @nospecialize(x))::Bool = Base.invokelatest(showable, m,
 
 
 # We invent our own MIME _because we can_ but don't use it somewhere else because it might change :)
-pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractArray{<:Any,1}) = true
+pluto_showable(::MIME"application/vnd.pluto.tree+object", x::AbstractArray{<:Any,1}) = eltype(eachindex(x)) === Int
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractSet{<:Any}) = true
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractDict{<:Any,<:Any}) = true
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Tuple) = true
@@ -1302,12 +1313,14 @@ const integrations = Integration[
             @assert v"1.0.0" <= AbstractPlutoDingetjes.MY_VERSION < v"2.0.0"
             initial_value_getter_ref[] = AbstractPlutoDingetjes.Bonds.initial_value
             transform_value_ref[] = AbstractPlutoDingetjes.Bonds.transform_value
-            
+            possible_bond_values_ref[] = AbstractPlutoDingetjes.Bonds.possible_values
+
             push!(supported_integration_features,
                 AbstractPlutoDingetjes,
                 AbstractPlutoDingetjes.Bonds,
                 AbstractPlutoDingetjes.Bonds.initial_value,
                 AbstractPlutoDingetjes.Bonds.transform_value,
+                AbstractPlutoDingetjes.Bonds.possible_values,
             )
         end,
     ),
@@ -1324,7 +1337,7 @@ const integrations = Integration[
                 if truncate
                     result = Any[
                         # not xs[1:limit] because of https://github.com/JuliaLang/julia/issues/38364
-                        f(xs[i]) for i in 1:limit
+                        f(xs[i]) for i in Iterators.take(eachindex(xs), limit)
                     ]
                     push!(result, filler)
                     result
@@ -1392,6 +1405,8 @@ const integrations = Integration[
             pluto_showable(::MIME"application/vnd.pluto.table+object", x::Any) = try Tables.rowaccess(x)::Bool catch; false end
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::Type) = false
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:NamedTuple}) = false
+            pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:Dict{Symbol,<:Any}}) = false
+            pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractArray{Union{}, 1}) = false
 
         end,
     ),
@@ -1399,7 +1414,7 @@ const integrations = Integration[
         id = Base.PkgId(UUID("91a5bcdd-55d7-5caf-9e0b-520d859cae80"), "Plots"),
         code = quote
             approx_size(p::Plots.Plot) = try
-                sum(p.series_list) do series
+                sum(p.series_list; init=0) do series
                     length(series[:y])
                 end
             catch e
@@ -1486,12 +1501,22 @@ end
 completion_from_notebook(c::ModuleCompletion) = is_pluto_workspace(c.parent) && c.mod != "include" && c.mod != "eval"
 completion_from_notebook(c::Completion) = false
 
+only_special_completion_types(c::PathCompletion) = :path
+only_special_completion_types(c::DictCompletion) = :dict
+only_special_completion_types(c::Completion) = nothing
+
 "You say Linear, I say Algebra!"
 function completion_fetcher(query, pos, workspace::Module)
     results, loc, found = completions(query, pos, workspace)
     if endswith(query, '.')
         filter!(is_dot_completion, results)
         # we are autocompleting a module, and we want to see its fields alphabetically
+        sort!(results; by=(r -> completion_text(r)))
+    elseif endswith(query, '/')
+        filter!(is_path_completion, results)
+        sort!(results; by=(r -> completion_text(r)))
+    elseif endswith(query, '[')
+        filter!(is_dict_completion, results)
         sort!(results; by=(r -> completion_text(r)))
     else
         isenough(x) = x ≥ 0
@@ -1502,8 +1527,9 @@ function completion_fetcher(query, pos, workspace::Module)
     descriptions = completion_description.(results)
     exported = completions_exported(results)
     from_notebook = completion_from_notebook.(results)
+    completion_type = only_special_completion_types.(results)
 
-    smooshed_together = collect(zip(texts, descriptions, exported, from_notebook))
+    smooshed_together = collect(zip(texts, descriptions, exported, from_notebook, completion_type))
 
     p = if endswith(query, '.')
         sortperm(smooshed_together; alg=MergeSort, by=basic_completion_priority)
@@ -1518,7 +1544,14 @@ function completion_fetcher(query, pos, workspace::Module)
 end
 
 is_dot_completion(::Union{ModuleCompletion,PropertyCompletion,FieldCompletion}) = true
-is_dot_completion(::Completion)                                                   = false
+is_dot_completion(::Completion)                                                 = false
+
+is_path_completion(::Union{PathCompletion}) = true
+is_path_completion(::Completion)            = false
+
+is_dict_completion(::Union{DictCompletion}) = true
+is_dict_completion(::Completion)            = false
+
 
 """
     is_pure_expression(expression::ReturnValue{Meta.parse})
@@ -1611,9 +1644,40 @@ function transform_bond_value(s::Symbol, value_from_js)
         transform_value_ref[](element, value_from_js)
     catch e
         @error "AbstractPlutoDingetjes: Bond value transformation errored." exception=(e, catch_backtrace())
-        (Text("❌ AbstractPlutoDingetjes: Bond value transformation errored."), e, stacktrace(catch_backtrace()))
+        (Text("❌ AbstractPlutoDingetjes: Bond value transformation errored."), e, stacktrace(catch_backtrace()), value_from_js)
     end
 end
+
+function possible_bond_values(s::Symbol; get_length::Bool=false)
+    element = registered_bond_elements[s]
+    possible_values = possible_bond_values_ref[](element)
+
+    if possible_values === :NotGiven
+        # Short-circuit to avoid the checks below, which only work if AbstractPlutoDingetjes is loaded.
+        :NotGiven
+    elseif possible_values isa AbstractPlutoDingetjes.Bonds.InfinitePossibilities
+        # error("Bond \"$s\" has an unlimited number of possible values, try changing the `@bind` to something with a finite number of possible values like `PlutoUI.CheckBox(...)` or `PlutoUI.Slider(...)` instead.")
+        :InfinitePossibilities
+    elseif (possible_values isa AbstractPlutoDingetjes.Bonds.NotGiven)
+        # error("Bond \"$s\" did not specify its possible values with `AbstractPlutoDingetjes.Bond.possible_values()`. Try using PlutoUI for the `@bind` values.")
+        
+        # If you change this, change it everywhere in this file.
+        :NotGiven
+    else
+        get_length ? 
+            try
+                length(possible_values)
+            catch
+                length(make_distributed_serializable(possible_values))
+            end : 
+            make_distributed_serializable(possible_values)
+    end
+end
+
+make_distributed_serializable(x::Any) = x
+make_distributed_serializable(x::Union{AbstractVector,AbstractSet,Base.Generator}) = collect(x)
+make_distributed_serializable(x::Union{Vector,Set,OrdinalRange}) = x
+
 
 """
 _“The name is Bond, James Bond.”_
@@ -1639,7 +1703,8 @@ The actual reactive-interactive functionality is not done in Julia - it is handl
 struct Bond
     element::Any
     defines::Symbol
-    Bond(element, defines::Symbol) = showable(MIME"text/html"(), element) ? new(element, defines) : error("""Can only bind to html-showable objects, ie types T for which show(io, ::MIME"text/html", x::T) is defined.""")
+    unique_id::String
+    Bond(element, defines::Symbol) = showable(MIME"text/html"(), element) ? new(element, defines, Base64.base64encode(rand(UInt8,9))) : error("""Can only bind to html-showable objects, ie types T for which show(io, ::MIME"text/html", x::T) is defined.""")
 end
 
 function create_bond(element, defines::Symbol)
@@ -1648,18 +1713,20 @@ function create_bond(element, defines::Symbol)
     Bond(element, defines)
 end
 
-import Base: show
-function show(io::IO, ::MIME"text/html", bond::Bond)
-    withtag(io, :bond, :def => bond.defines) do
-        show(io, MIME"text/html"(), bond.element)
+function Base.show(io::IO, m::MIME"text/html", bond::Bond)
+    withtag(io, :bond, :def => bond.defines, :unique_id => bond.unique_id) do
+        show(io, m, bond.element)
     end
 end
 
 const initial_value_getter_ref = Ref{Function}(element -> missing)
 const transform_value_ref = Ref{Function}((element, x) -> x)
+const possible_bond_values_ref = Ref{Function}((_args...; _kwargs...) -> :NotGiven)
 
 """
-    `@bind symbol element`
+```julia
+@bind symbol element
+```
 
 Return the HTML `element`, and use its latest JavaScript value as the definition of `symbol`.
 
@@ -1719,9 +1786,12 @@ end"""
 # PUBLISHED OBJECTS
 ###
 
+"""
+**(Internal API.)** A `Ref` containing the id of the cell that is currently **running** or **displaying**.
+"""
 const currently_running_cell_id = Ref{UUID}(uuid4())
 
-function publish(x, id_start)::String
+function _publish(x, id_start)::String
     assertpackable(x)
     
     id = string(notebook_id[], "/", currently_running_cell_id[], "/", id_start)
@@ -1730,7 +1800,22 @@ function publish(x, id_start)::String
     return id
 end
 
-publish(x) = publish(x, string(objectid(x), base=16))
+_publish(x) = _publish(x, string(objectid(x), base=16))
+
+# TODO? Possibly move this to it's own package, with fallback that actually msgpack?
+# ..... Ideally we'd make this require `await` on the javascript side too...
+Base.@kwdef struct PublishedToJavascript
+    published_id
+    cell_id
+end
+function Base.show(io::IO, ::MIME"text/javascript", published::PublishedToJavascript)
+    if published.cell_id != currently_running_cell_id[]
+        error("Showing result from PlutoRunner.publish_to_js() in a cell different from where it was created, not (yet?) supported.")
+    end
+    write(io, "/* See the documentation for PlutoRunner.publish_to_js */ getPublishedObject(\"$(published.published_id)\")")
+end
+Base.show(io::IO, ::MIME"text/plain", published::PublishedToJavascript) = show(io, MIME("text/javascript"), published)    
+Base.show(io::IO, published::PublishedToJavascript) = show(io, MIME("text/javascript"), published)    
 
 """
     publish_to_js(x)
@@ -1760,9 +1845,11 @@ let
 end
 ```
 """
-function publish_to_js(args...)::String
-    id = publish(args...)
-    return "/* See the documentation for PlutoRunner.publish_to_js */ getPublishedObject(\"$(id)\")"
+function publish_to_js(args...)
+    PublishedToJavascript(
+        published_id=_publish(args...),
+        cell_id=currently_running_cell_id[],
+    )
 end
 
 const Packable = Union{Nothing,Missing,String,Symbol,Int64,Int32,Int16,Int8,UInt64,UInt32,UInt16,UInt8,Float32,Float64,Bool,MIME,UUID,DateTime}
@@ -1778,39 +1865,46 @@ end
 assertpackable(t::Tuple) = foreach(assertpackable, t)
 assertpackable(t::NamedTuple) = foreach(assertpackable, t)
 
+const _EmbeddableDisplay_enable_html_shortcut = Ref{Bool}(true)
+
 struct EmbeddableDisplay
     x
-    script_id
+    script_id::String
 end
 
 function Base.show(io::IO, m::MIME"text/html", e::EmbeddableDisplay)
     body, mime = format_output_default(e.x, io)
 	
-    write(io, """
-    <pluto-display></pluto-display>
-    <script id=$(e.script_id)>
+    to_write = if mime === m && _EmbeddableDisplay_enable_html_shortcut[]
+        # In this case, we can just embed the HTML content directly.
+        body
+    else
+        s = """<pluto-display></pluto-display><script id=$(e.script_id)>
 
         // see https://plutocon2021-demos.netlify.app/fonsp%20%E2%80%94%20javascript%20inside%20pluto to learn about the techniques used in this script
         
-        const body = $(publish_to_js(body, e.script_id))
-        const mime = "$(string(mime))"
+        const body = $(publish_to_js(body, e.script_id));
+        const mime = "$(string(mime))";
         
-        const create_new = this == null || this._mime !== mime
+        const create_new = this == null || this._mime !== mime;
         
-        const display = create_new ? currentScript.previousElementSibling : this
+        const display = create_new ? currentScript.previousElementSibling : this;
         
-        display.persist_js_state = true
-        display.body = body
+        display.persist_js_state = true;
+        display.body = body;
         if(create_new) {
             // only set the mime if necessary, it triggers a second preact update
-            display.mime = mime
+            display.mime = mime;
             // add it also as unwatched property to prevent interference from Preact
-            display._mime = mime
+            display._mime = mime;
         }
-        return display
+        return display;
 
-    </script>
-	""")
+        </script>"""
+        
+        replace(replace(s, r"//.+" => ""), "\n" => "")
+    end
+    write(io, to_write)
 end
 
 export embed_display
@@ -1877,6 +1971,9 @@ tree_data(@nospecialize(e::DivElement), context::IOContext) = Dict{Symbol, Any}(
 )
 pluto_showable(::MIME"application/vnd.pluto.divelement+object", ::DivElement) = true
 
+function Base.show(io::IO, m::MIME"text/html", e::DivElement)
+    Base.show(io, m, embed_display(e))
+end
 
 ###
 # LOGGING
@@ -1893,21 +1990,34 @@ function Logging.shouldlog(::PlutoLogger, level, _module, _...)
     # Accept logs
     # - From the user's workspace module
     # - Info level and above for other modules
-    (_module isa Module && is_pluto_workspace(_module)) || convert(Logging.LogLevel, level) >= Logging.Info
+    # - LogLevel(-1) because that's what ProgressLogging.jl uses for its messages
+    level = convert(Logging.LogLevel, level)
+    (_module isa Module && is_pluto_workspace(_module)) ||
+        level >= Logging.Info ||
+        level == Logging.LogLevel(-1)
 end
+
 Logging.min_enabled_level(::PlutoLogger) = Logging.Debug
 Logging.catch_exceptions(::PlutoLogger) = false
 function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, file, line; kwargs...)
+    # println("receiving msg from ", _module, " ", group, " ", id, " ", msg, " ", level, " ", line, " ", file)
+    # println("with types: ", "_module: ", typeof(_module), ", ", "msg: ", typeof(msg), ", ", "group: ", typeof(group), ", ", "id: ", typeof(id), ", ", "file: ", typeof(file), ", ", "line: ", typeof(line), ", ", "kwargs: ", typeof(kwargs)) # thanks Copilot
+
     try
-        put!(log_channel, (level=string(level),
-            msg=(msg isa String) ? msg : repr(msg),
-            group=group,
-            # id=id,
-            file=file,
-            line=line,
-            kwargs=Dict((k=>repr(v) for (k, v) in kwargs)...),))
-        # also print to console
-        Logging.handle_message(old_logger[], level, msg, _module, group, id, file, line; kwargs...)
+        put!(log_channel, Dict{String,Any}(
+            "level" => string(level),
+            "msg" => format_output_default(msg isa String ? Text(msg) : msg),
+            "group" => string(group),
+            "id" => string(id),
+            "file" => string(file),
+            "cell_id" => currently_running_cell_id[],
+            "line" => line isa Union{Int32,Int64} ? line : nothing,
+            "kwargs" => Tuple{String,Any}[(string(k), format_output_default(v)) for (k, v) in kwargs],
+            )
+        )
+        
+        # Also print to console (disabled)
+        # Logging.handle_message(old_logger[], level, msg, _module, group, id, file, line; kwargs...)
     catch e
         println(stderr, "Failed to relay log from PlutoRunner")
         showerror(stderr, e, stacktrace(catch_backtrace()))

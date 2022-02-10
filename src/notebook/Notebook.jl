@@ -6,11 +6,9 @@ import Pkg
 
 mutable struct BondValue
     value::Any
-    # This is only so the client can send this, the updater will always put this to `false`
-    is_first_value::Bool
 end
-function Base.convert(::Type{BondValue}, dict::Dict)
-    BondValue(dict["value"], something(get(dict, "is_first_value", false), false))
+function Base.convert(::Type{BondValue}, dict::AbstractDict)
+    BondValue(dict["value"])
 end
 
 const ProcessStatus = (
@@ -167,17 +165,15 @@ function save_notebook(io, notebook::Notebook)
     notebook
 end
 
-function open_safe_write(fn::Function, path, mode)
+function write_buffered(fn::Function, path)
     file_content = sprint(fn)
-    open(path, mode) do io
-        print(io, file_content)
-    end
+    write(path, file_content)
 end
     
 function save_notebook(notebook::Notebook, path::String)
     # @warn "Saving to file!!" exception=(ErrorException(""), backtrace())
     notebook.last_save_time = time()
-    open_safe_write(path, "w") do io
+    write_buffered(path) do io
         save_notebook(io, notebook)
     end
 end
@@ -269,7 +265,16 @@ function load_notebook_nobackup(io, path)::Notebook
         PkgCompat.create_empty_ctx()
     end
 
-    appeared_order = setdiff(cell_order ∩ keys(collected_cells), [_ptoml_cell_id, _mtoml_cell_id])
+    appeared_order = setdiff!(
+        union!(
+            # don't include cells that only appear in the order, but no code was given
+            intersect!(cell_order, keys(collected_cells)),
+            # add cells that appeared in code, but not in the order.
+            keys(collected_cells)
+        ), 
+        # remove Pkg cells
+        (_ptoml_cell_id, _mtoml_cell_id)
+    )
     appeared_cells_dict = filter(collected_cells) do (k, v)
         k ∈ appeared_order
     end

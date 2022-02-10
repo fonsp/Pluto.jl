@@ -13,7 +13,7 @@ jobs:
         strategy:
             matrix:
                 # We test quite a lot of versions because we do some OS and version specific things unfortunately
-                julia-version: ["1.0", "1.5", "^1.6.0-0"]
+                julia-version: ["1.6", "1.7"]
                 os: [windows-latest, ubuntu-latest]
 
         steps:

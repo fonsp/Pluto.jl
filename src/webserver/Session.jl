@@ -49,6 +49,15 @@ Base.@kwdef mutable struct ServerSession
     options::Configuration.Options = Configuration.Options()
 end
 
+function save_notebook(session::ServerSession, notebook::Notebook)
+    
+    # Notify event_listener from here
+    try_event_call(session, FileSaveEvent(notebook))
+    if !session.options.server.disable_writing_notebook_files
+        save_notebook(notebook, notebook.path)
+    end
+end
+
 ###
 # UPDATE MESSAGE
 ###
