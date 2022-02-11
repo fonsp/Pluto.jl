@@ -1304,7 +1304,7 @@ end
 # This is similar to how Requires.jl works, except we don't use a callback, we just check every time.
 const integrations = Integration[
     Integration(
-        id = Base.PkgId(Base.UUID(reinterpret(Int128, codeunits("Paul Berg Berlin")) |> first), "AbstractPlutoDingetjes"),
+        id = Base.PkgId(Base.UUID(reinterpret(UInt128, codeunits("Paul Berg Berlin")) |> first), "AbstractPlutoDingetjes"),
         code = quote
             @assert v"1.0.0" <= AbstractPlutoDingetjes.MY_VERSION < v"2.0.0"
             initial_value_getter_ref[] = AbstractPlutoDingetjes.Bonds.initial_value
