@@ -237,7 +237,7 @@ using PlutoRESTClient
         🍭.notebooks[test_nb.notebook_id] = test_nb
         update_run!(🍭, test_nb, test_nb.cells)
 
-        rest_nb = PlutoNotebook(basename(nb_path), "$host:$port")
+        rest_nb = PlutoNotebook(basename(nb_path), "http://$host:$port")
         # check values
         @test rest_nb.i64  == ints[1]
         @test rest_nb.i32  == ints[2]
