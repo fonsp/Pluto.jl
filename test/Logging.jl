@@ -28,11 +28,9 @@ using Pluto.WorkspaceManager: poll
             end
 
             # Check that maxlog doesn't occur in the message
-            @test poll(5, 1/60) do
-                all(notebook.cells[begin].logs) do log
-                    all(log["kwargs"]) do kwarg
-                        kwarg[1] != "maxlog"
-                    end
+            @test all(notebook.cells[begin].logs) do log
+                all(log["kwargs"]) do kwarg
+                    kwarg[1] != "maxlog"
                 end
             end
 
@@ -45,6 +43,7 @@ using Pluto.WorkspaceManager: poll
                 for i in 1:10
                     @info "logging" i maxlog=2
                     @info "logging more" maxlog = 4
+                    @info "even more logging"
                 end
                 """,
             ]))
@@ -52,19 +51,21 @@ using Pluto.WorkspaceManager: poll
             update_run!(🍭, notebook, notebook.cells)
             @test notebook.cells[begin] |> noerror
 
+            # Wait until all 16 logs are in
             @test poll(5, 1/60) do
-                # Get the ids of the two logs and their counts
-                ids = unique(getindex.(notebook.cells[begin].logs, "id"))
-                counts = [count(log -> log["id"] == id, notebook.cells[begin].logs) for id in ids]
-                counts == [2, 4]
+                length(notebook.cells[begin].logs) == 16
             end
 
-            # Check that maxlog doesn't occur in the message
-            @test poll(5, 1/60) do
-                all(notebook.cells[begin].logs) do log
-                    all(log["kwargs"]) do kwarg
-                        kwarg[1] != "maxlog"
-                    end
+            # Get the ids of the three logs and their counts. We are
+            # assuming that the logs are ordered same as in the loop.
+            ids = unique(getindex.(notebook.cells[begin].logs, "id"))
+            counts = [count(log -> log["id"] == id, notebook.cells[begin].logs) for id in ids]
+            @test counts == [2, 4, 10]
+
+            # Check that maxlog doesn't occur in the messages
+            @test all(notebook.cells[begin].logs) do log
+                all(log["kwargs"]) do kwarg
+                    kwarg[1] != "maxlog"
                 end
             end
 
