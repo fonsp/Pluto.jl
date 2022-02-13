@@ -200,7 +200,7 @@ let get_scroll_top = ({ cell_id, relative_distance }) => {
     return cell.offsetTop + relative_distance * cell.offsetHeight - window.innerHeight / 2
 }
 
-export const RecordingPlaybackUI = ({ recording_url, audio_src, initializing, apply_notebook_patches, reset_notebook_state }) => {
+export const RecordingPlaybackUI = ({ recording_url, audio_src, initializing, apply_notebook_patches }) => {
     let loaded_recording = useMemo(
         () =>
             Promise.resolve().then(async () => {

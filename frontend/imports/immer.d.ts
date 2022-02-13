@@ -17,3 +17,6 @@ export { applyPatches }
 
 declare function produceWithPatches<T>(value: T, mutator: (draft: T) => void | T): [T, Array<Patch>, Array<Patch>]
 export { produceWithPatches }
+
+declare function original<T>(value: T): T
+export { original }

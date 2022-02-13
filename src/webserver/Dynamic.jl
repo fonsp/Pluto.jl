@@ -176,6 +176,7 @@ end
 For each connected client, we keep a copy of their current state. This way we know exactly which updates to send when the server-side state changes.
 """
 const current_state_for_clients = WeakKeyDict{ClientSession,Any}()
+const current_confirmed_patches_for_client = WeakKeyDict{ClientSession,Vector{String}}()
 
 """
 Update the local state of all clients connected to this notebook.
@@ -195,7 +196,8 @@ function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing)
             if !isempty(patches) || is_response
                 response = Dict(
                     :patches => patches_as_dicts,
-                    :response => is_response ? commentary : nothing
+                    :response => is_response ? commentary : nothing,
+                    :confirmed_patches => get(current_confirmed_patches_for_client, client, []),
                 )
                 putclientupdates!(client, UpdateMessage(:notebook_diff, response, 🙋.notebook, nothing, 🙋.initiator))
             end
@@ -285,7 +287,14 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
         notebook = 🙋.notebook
         patches = (Base.convert(Firebasey.JSONPatch, update) for update in 🙋.body["updates"])
 
+        patch_id = 🙋.body["patch_id"]
+        parent_patch_id = 🙋.body["parent_patch_id"]
+
         if length(patches) == 0
+            current_confirmed_patches_for_client[🙋.client] = [
+                get(current_confirmed_patches_for_client, 🙋.client, [])...,
+                patch_id,
+            ]
             send_notebook_changes!(🙋)
             return nothing
         end

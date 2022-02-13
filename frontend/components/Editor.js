@@ -1,4 +1,4 @@
-import { html, Component, useState, useEffect, useMemo } from "../imports/Preact.js"
+import { html, Component, useState, useEffect, useMemo, useRef } from "../imports/Preact.js"
 import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
@@ -32,6 +32,7 @@ import { ProgressBar } from "./ProgressBar.js"
 import { IsolatedCell } from "./Cell.js"
 import { RawHTMLContainer } from "./CellOutput.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
+import { use_firebasey } from "./Core/Firebasey.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -232,13 +233,15 @@ const initial_notebook = () => ({
     nbpkg: null,
 })
 
-export class Editor extends Component {
-    constructor() {
+export class Editor_without_Firebasey extends Component {
+    constructor(props) {
         super()
+
+        this.client = props.client
 
         this.state = {
             my_author_name: uuidv4(),
-            notebook: /** @type {NotebookData} */ initial_notebook(),
+            notebook: props.notebook,
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
             last_update_time: 0,
@@ -250,7 +253,6 @@ export class Editor extends Component {
             binder_phase: null,
             binder_session_url: null,
             binder_session_token: null,
-            connected: false,
             initializing: true,
 
             moving_file: false,
@@ -264,7 +266,7 @@ export class Editor extends Component {
             last_created_cell: null,
             selected_cells: [],
 
-            update_is_ongoing: false,
+            // update_is_ongoing: false,
 
             is_recording: false,
             recording_waiting_to_start: false,
@@ -276,7 +278,7 @@ export class Editor extends Component {
         this.actions = {
             get_notebook: () => this?.state?.notebook || {},
             send: (...args) => this.client.send(...args),
-            get_published_object: (objectid) => this.state.notebook.published_objects[objectid],
+            get_published_object: (objectid) => this.props.notebook.published_objects[objectid],
             //@ts-ignore
             update_notebook: (...args) => this.update_notebook(...args),
             set_doc_query: (query) => this.setState({ desired_doc_query: query }),
@@ -289,13 +291,13 @@ export class Editor extends Component {
                 })
             },
             focus_on_neighbor: (cell_id, delta, line = delta === -1 ? Infinity : -1, ch = 0) => {
-                const i = this.state.notebook.cell_order.indexOf(cell_id)
+                const i = this.props.notebook.cell_order.indexOf(cell_id)
                 const new_i = i + delta
-                if (new_i >= 0 && new_i < this.state.notebook.cell_order.length) {
+                if (new_i >= 0 && new_i < this.props.notebook.cell_order.length) {
                     window.dispatchEvent(
                         new CustomEvent("cell_focus", {
                             detail: {
-                                cell_id: this.state.notebook.cell_order[new_i],
+                                cell_id: this.props.notebook.cell_order[new_i],
                                 line: line,
                                 ch: ch,
                             },
@@ -310,7 +312,7 @@ export class Editor extends Component {
                     index = index_or_id
                 } else {
                     /* if the input is not an integer, try interpreting it as a cell id */
-                    index = this.state.notebook.cell_order.indexOf(index_or_id)
+                    index = this.props.notebook.cell_order.indexOf(index_or_id)
                     if (index !== -1) {
                         /* Make sure that the cells are pasted after the current cell */
                         index += 1
@@ -318,7 +320,7 @@ export class Editor extends Component {
                 }
                 // TODO Make this select a position that is on screen!!
                 if (index === -1) {
-                    index = this.state.notebook.cell_order.length
+                    index = this.props.notebook.cell_order.length
                 }
 
                 let new_codes = deserializer(data)
@@ -370,7 +372,7 @@ export class Editor extends Component {
                 await this.actions.set_and_run_multiple([cell_id])
             },
             split_remote_cell: async (cell_id, boundaries, submit = false) => {
-                const cell = this.state.notebook.cell_inputs[cell_id]
+                const cell = this.props.notebook.cell_inputs[cell_id]
 
                 const old_code = cell.code
                 const padded_boundaries = [0, ...boundaries]
@@ -418,7 +420,7 @@ export class Editor extends Component {
                 //         }),
                 //     }
                 // })
-                this.client.send("interrupt_all", {}, { notebook_id: this.state.notebook.notebook_id }, false)
+                this.client.send("interrupt_all", {}, { notebook_id: this.props.notebook.notebook_id }, false)
             },
             move_remote_cells: (cell_ids, new_index) => {
                 update_notebook((notebook) => {
@@ -441,17 +443,17 @@ export class Editor extends Component {
                     }
                     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
                 })
-                await this.client.send("run_multiple_cells", { cells: [id] }, { notebook_id: this.state.notebook.notebook_id })
+                await this.client.send("run_multiple_cells", { cells: [id] }, { notebook_id: this.props.notebook.notebook_id })
                 return id
             },
             add_remote_cell: async (cell_id, before_or_after, code) => {
-                const index = this.state.notebook.cell_order.indexOf(cell_id)
+                const index = this.props.notebook.cell_order.indexOf(cell_id)
                 const delta = before_or_after == "before" ? 0 : 1
                 return await this.actions.add_remote_cell_at(index + delta, code)
             },
             confirm_delete_multiple: async (verb, cell_ids) => {
                 if (cell_ids.length <= 1 || confirm(`${verb} ${cell_ids.length} cells?`)) {
-                    if (cell_ids.some((cell_id) => this.state.notebook.cell_results[cell_id].running || this.state.notebook.cell_results[cell_id].queued)) {
+                    if (cell_ids.some((cell_id) => this.props.notebook.cell_results[cell_id].running || this.props.notebook.cell_results[cell_id].queued)) {
                         if (confirm("This cell is still running - would you like to interrupt the notebook?")) {
                             this.actions.interrupt_remote(cell_ids[0])
                         }
@@ -459,8 +461,8 @@ export class Editor extends Component {
                         this.setState({
                             recently_deleted: cell_ids.map((cell_id) => {
                                 return {
-                                    index: this.state.notebook.cell_order.indexOf(cell_id),
-                                    cell: this.state.notebook.cell_inputs[cell_id],
+                                    index: this.props.notebook.cell_order.indexOf(cell_id),
+                                    cell: this.props.notebook.cell_inputs[cell_id],
                                 }
                             }),
                             selected_cells: [],
@@ -471,7 +473,7 @@ export class Editor extends Component {
                             }
                             notebook.cell_order = notebook.cell_order.filter((cell_id) => !cell_ids.includes(cell_id))
                         })
-                        await this.client.send("run_multiple_cells", { cells: [] }, { notebook_id: this.state.notebook.notebook_id })
+                        await this.client.send("run_multiple_cells", { cells: [] }, { notebook_id: this.props.notebook.notebook_id })
                     }
                 }
             },
@@ -484,10 +486,10 @@ export class Editor extends Component {
                 })
             },
             set_and_run_all_changed_remote_cells: () => {
-                const changed = this.state.notebook.cell_order.filter(
+                const changed = this.props.notebook.cell_order.filter(
                     (cell_id) =>
-                        this.state.notebook.cell_inputs[cell_id] != null &&
-                        this.state.notebook.cell_inputs[cell_id].code !== this.state.notebook.cell_inputs[cell_id]?.local_code
+                        this.props.notebook.cell_inputs[cell_id] != null &&
+                        this.props.notebook.cell_inputs[cell_id].code !== this.props.notebook.cell_inputs[cell_id]?.local_code
                 )
                 this.actions.set_and_run_multiple(changed)
                 return changed.length > 0
@@ -504,18 +506,19 @@ export class Editor extends Component {
                     })
                     // This is a "dirty" trick, as this should actually be stored in some shared request_status => status state
                     // But for now... this is fine 😼
-                    await this.setStatePromise(
-                        immer((state) => {
-                            for (let cell_id of cell_ids) {
-                                if (state.notebook.cell_results[cell_id] != null) {
-                                    state.notebook.cell_results[cell_id].queued = this.is_process_ready()
-                                } else {
-                                    // nothing
-                                }
-                            }
-                        })
-                    )
-                    await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.state.notebook.notebook_id })
+
+                    // await this.setStatePromise(
+                    //     immer((state) => {
+                    //         for (let cell_id of cell_ids) {
+                    //             if (state.notebook.cell_results[cell_id] != null) {
+                    //                 state.notebook.cell_results[cell_id].queued = this.is_process_ready()
+                    //             } else {
+                    //                 // nothing
+                    //             }
+                    //         }
+                    //     })
+                    // )
+                    await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.props.notebook.notebook_id })
                 }
             },
             /**
@@ -538,7 +541,7 @@ export class Editor extends Component {
                         dim: dim,
                         cell_id: cell_id,
                     },
-                    { notebook_id: this.state.notebook.notebook_id },
+                    { notebook_id: this.props.notebook.notebook_id },
                     false
                 )
             },
@@ -548,182 +551,37 @@ export class Editor extends Component {
             },
         }
 
-        const apply_notebook_patches = (patches, old_state = undefined, get_reverse_patches = false) =>
-            new Promise((resolve) => {
-                if (patches.length !== 0) {
-                    let copy_of_patches,
-                        reverse_of_patches = []
-                    this.setState(
-                        immer((state) => {
-                            let new_notebook
-                            try {
-                                // To test this, uncomment the lines below:
-                                // if (Math.random() < 0.25) {
-                                //     throw new Error(`Error: [Immer] minified error nr: 15 '${patches?.[0]?.path?.join("/")}'    .`)
-                                // }
-
-                                if (get_reverse_patches) {
-                                    ;[new_notebook, copy_of_patches, reverse_of_patches] = produceWithPatches(old_state ?? state.notebook, (state) => {
-                                        applyPatches(state, patches)
-                                    })
-                                    // TODO: why was `new_notebook` not updated?
-                                    // this is why the line below is also called when `get_reverse_patches === true`
-                                }
-                                new_notebook = applyPatches(old_state ?? state.notebook, patches)
-                            } catch (exception) {
-                                const failing_path = String(exception).match(".*'(.*)'.*")[1].replace(/\//gi, ".")
-                                const path_value = _.get(this.state.notebook, failing_path, "Not Found")
-                                console.log(String(exception).match(".*'(.*)'.*")[1].replace(/\//gi, "."), failing_path, typeof failing_path)
-                                // The alert below is not catastrophic: the editor will try to recover.
-                                // Deactivating to be user-friendly!
-                                // alert(`Ooopsiee.`)
-
-                                console.error(
-                                    `#######################**************************########################
-PlutoError: StateOutOfSync: Failed to apply patches.
-Please report this: https://github.com/fonsp/Pluto.jl/issues adding the info below:
-failing path: ${failing_path}
-notebook previous value: ${path_value}
-patch: ${JSON.stringify(
-                                        patches?.find(({ path }) => path.join("") === failing_path),
-                                        null,
-                                        1
-                                    )}
-#######################**************************########################`,
-                                    exception
-                                )
-                                console.log("Trying to recover: Refetching notebook...")
-                                this.client.send(
-                                    "reset_shared_state",
-                                    {},
-                                    {
-                                        notebook_id: this.state.notebook.notebook_id,
-                                    },
-                                    false
-                                )
-                                return
-                            }
-
-                            if (DEBUG_DIFFING) {
-                                console.group("Update!")
-                                for (let patch of patches) {
-                                    console.group(`Patch :${patch.op}`)
-                                    console.log(patch.path)
-                                    console.log(patch.value)
-                                    console.groupEnd()
-                                }
-                                console.groupEnd()
-                            }
-
-                            let cells_stuck_in_limbo = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] == null)
-                            if (cells_stuck_in_limbo.length !== 0) {
-                                console.warn(`cells_stuck_in_limbo:`, cells_stuck_in_limbo)
-                                new_notebook.cell_order = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] != null)
-                            }
-                            this.on_patches_hook(patches)
-                            state.notebook = new_notebook
-                        }),
-                        () => resolve(reverse_of_patches)
-                    )
-                } else {
-                    resolve([])
-                }
-            })
-
-        this.apply_notebook_patches = apply_notebook_patches
+        // this.apply_notebook_patches = apply_notebook_patches
         // these are update message that are _not_ a response to a `send(*, *, {create_promise: true})`
-        const on_update = (update, by_me) => {
-            if (this.state.notebook.notebook_id === update.notebook_id) {
-                if (this.state.binder_phase != null) console.debug("on_update", update, by_me)
-                const message = update.message
-                switch (update.type) {
-                    case "notebook_diff":
-                        if (message?.response?.from_reset) {
-                            console.log("Trying to reset state after failure")
-                            try {
-                                apply_notebook_patches(message.patches, initial_notebook())
-                            } catch (exception) {
-                                alert("Oopsie!! please refresh your browser and everything will be alright!")
-                            }
-                        } else if (message.patches.length !== 0) {
-                            apply_notebook_patches(message.patches)
-                        }
-                        break
-                    default:
-                        console.error("Received unknown update type!", update)
-                        // alert("Something went wrong 🙈\n Try clearing your browser cache and refreshing the page")
-                        break
-                }
-                if (this.state.binder_phase != null) console.debug("on_update done")
-            } else {
-                // Update for a different notebook, TODO maybe log this as it shouldn't happen
-            }
-        }
-
-        const on_establish_connection = async (client) => {
-            // nasty
-            Object.assign(this.client, client)
-
-            // @ts-ignore
-            window.version_info = this.client.version_info // for debugging
-
-            console.debug("Sending update_notebook request...")
-            await this.client.send("update_notebook", { updates: [] }, { notebook_id: this.state.notebook.notebook_id }, false)
-            console.debug("Received update_notebook request")
-
-            this.setState({ initializing: false, static_preview: false, binder_phase: this.state.binder_phase == null ? null : BinderPhase.ready })
-
-            // do one autocomplete to trigger its precompilation
-            // TODO Do this from julia itself
-            this.client.send("complete", { query: "sq" }, { notebook_id: this.state.notebook.notebook_id })
-
-            setTimeout(init_feedback, 2 * 1000) // 2 seconds - load feedback a little later for snappier UI
-        }
-
-        const on_connection_status = (val) => this.setState({ connected: val })
-
-        const on_reconnect = () => {
-            console.warn("Reconnected! Checking states")
-
-            return true
-        }
 
         this.export_url = (/** @type {string} */ u) =>
             this.state.binder_session_url == null
-                ? `./${u}?id=${this.state.notebook.notebook_id}`
-                : `${this.state.binder_session_url}${u}?id=${this.state.notebook.notebook_id}&token=${this.state.binder_session_token}`
-
-        this.client = {}
-
-        this.connect = (ws_address = undefined) =>
-            create_pluto_connection({
-                ws_address: ws_address,
-                on_unrequested_update: on_update,
-                on_connection_status: on_connection_status,
-                on_reconnect: on_reconnect,
-                connect_metadata: { notebook_id: this.state.notebook.notebook_id },
-            }).then(on_establish_connection)
+                ? `./${u}?id=${this.props.notebook.notebook_id}`
+                : `${this.state.binder_session_url}${u}?id=${this.props.notebook.notebook_id}&token=${this.state.binder_session_token}`
 
         this.real_actions = this.actions
-        this.fake_actions =
-            launch_params.slider_server_url != null
-                ? slider_server_actions({
-                      setStatePromise: this.setStatePromise,
-                      actions: this.actions,
-                      launch_params: launch_params,
-                      apply_notebook_patches,
-                      get_original_state: () => this.original_state,
-                      get_current_state: () => this.state.notebook,
-                  })
-                : nothing_actions({
-                      actions: this.actions,
-                  })
+        // this.fake_actions =
+        //     launch_params.slider_server_url != null
+        //         ? slider_server_actions({
+        //               setStatePromise: this.setStatePromise,
+        //               actions: this.actions,
+        //               launch_params: launch_params,
+        //               apply_notebook_patches,
+        //               get_original_state: () => this.original_state,
+        //               get_current_state: () => this.props.notebook,
+        //           })
+        //         : nothing_actions({
+        //               actions: this.actions,
+        //           })
+        this.fake_actions = nothing_actions({
+            actions: this.actions,
+        })
 
         this.on_disable_ui = () => {
             document.body.classList.toggle("disable_ui", this.state.disable_ui)
             document.head.querySelector("link[data-pluto-file='hide-ui']").setAttribute("media", this.state.disable_ui ? "all" : "print")
             //@ts-ignore
-            this.actions = this.state.disable_ui || (launch_params.slider_server_url != null && !this.state.connected) ? this.fake_actions : this.real_actions //heyo
+            this.actions = this.state.disable_ui || (launch_params.slider_server_url != null && !this.props.connected) ? this.fake_actions : this.real_actions //heyo
         }
         this.on_disable_ui()
 
@@ -747,7 +605,22 @@ patch: ${JSON.stringify(
             // view stats on https://stats.plutojl.org/
             count_stat(`article-view`)
         } else {
-            this.connect()
+            props.connect().then(async () => {
+                // @ts-ignore
+                window.version_info = this.client.version_info // for debugging
+
+                console.debug("Sending update_notebook request...")
+                await this.client.send("update_notebook", { updates: [] }, { notebook_id: this.props.notebook.notebook_id }, false)
+                console.debug("Received update_notebook request")
+
+                this.setState({ initializing: false, static_preview: false, binder_phase: this.state.binder_phase == null ? null : BinderPhase.ready })
+
+                // do one autocomplete to trigger its precompilation
+                // TODO Do this from julia itself
+                this.client.send("complete", { query: "sq" }, { notebook_id: this.props.notebook.notebook_id })
+
+                setTimeout(init_feedback, 2 * 1000) // 2 seconds - load feedback a little later for snappier UI
+            })
         }
 
         setInterval(() => {
@@ -759,7 +632,7 @@ patch: ${JSON.stringify(
         }, 1000 * 15 * 60)
         setInterval(() => {
             if (!this.state.static_preview && document.visibilityState === "visible") {
-                update_stored_recent_notebooks(this.state.notebook.path)
+                update_stored_recent_notebooks(this.props.notebook.path)
             }
         }, 1000 * 5)
 
@@ -767,81 +640,21 @@ patch: ${JSON.stringify(
         this.bonds_changes_to_apply_when_done = []
         this.js_init_set = new Set()
         this.notebook_is_idle = () => {
-            return !(
-                this.state.update_is_ongoing ||
-                // a cell is running:
-                Object.values(this.state.notebook.cell_results).some((cell) => cell.running || cell.queued) ||
-                // a cell is initializing JS:
-                !_.isEmpty(this.js_init_set)
-            )
+            // return !(
+            //     this.state.update_is_ongoing ||
+            //     // a cell is running:
+            //     Object.values(this.props.notebook.cell_results).some((cell) => cell.running || cell.queued) ||
+            //     // a cell is initializing JS:
+            //     !_.isEmpty(this.js_init_set)
+            // )
+            return false
         }
         this.is_process_ready = () =>
-            this.state.notebook.process_status === ProcessStatus.starting || this.state.notebook.process_status === ProcessStatus.ready
+            this.props.notebook.process_status === ProcessStatus.starting || this.props.notebook.process_status === ProcessStatus.ready
 
         let last_update_notebook_task = Promise.resolve()
         /** @param {(notebook: NotebookData) => void} mutate_fn */
-        let update_notebook = (mutate_fn) => {
-            const new_task = last_update_notebook_task.then(async () => {
-                // if (this.state.initializing) {
-                //     console.error("Update notebook done during initializing, strange")
-                //     return
-                // }
-
-                let [new_notebook, changes, inverseChanges] = produceWithPatches(this.state.notebook, (notebook) => {
-                    mutate_fn(notebook)
-                })
-
-                // If "notebook is not idle" I seperate and store the bonds updates,
-                // to send when the notebook is idle. This delays the updating of the bond for performance,
-                // but when the server can discard bond updates itself (now it executes them one by one, even if there is a newer update ready)
-                // this will no longer be necessary
-                // console.log(`this.notebook_is_idle():`, this.notebook_is_idle())
-                if (!this.notebook_is_idle()) {
-                    let changes_involving_bonds = changes.filter((x) => x.path[0] === "bonds")
-                    this.bonds_changes_to_apply_when_done = [...this.bonds_changes_to_apply_when_done, ...changes_involving_bonds]
-                    changes = changes.filter((x) => x.path[0] !== "bonds")
-                }
-
-                if (DEBUG_DIFFING) {
-                    try {
-                        let previous_function_name = new Error().stack.split("\n")[2].trim().split(" ")[1]
-                        console.log(`Changes to send to server from "${previous_function_name}":`, changes)
-                    } catch (error) {}
-                }
-                if (changes.length === 0) {
-                    return
-                }
-
-                for (let change of changes) {
-                    if (change.path.some((x) => typeof x === "number")) {
-                        throw new Error("This sounds like it is editing an array...")
-                    }
-                }
-                pending_local_updates++
-                this.setState({ update_is_ongoing: pending_local_updates > 0 })
-                this.on_patches_hook(changes)
-                try {
-                    await Promise.all([
-                        this.client.send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false).then((response) => {
-                            if (response.message.response.update_went_well === "👎") {
-                                // We only throw an error for functions that are waiting for this
-                                // Notebook state will already have the changes reversed
-                                throw new Error(`Pluto update_notebook error: ${response.message.response.why_not})`)
-                            }
-                        }),
-                        this.setStatePromise({
-                            notebook: new_notebook,
-                            last_update_time: Date.now(),
-                        }),
-                    ])
-                } finally {
-                    pending_local_updates--
-                    this.setState({ update_is_ongoing: pending_local_updates > 0 })
-                }
-            })
-            last_update_notebook_task = new_task.catch(console.error)
-            return new_task
-        }
+        let update_notebook = props.update_notebook
         this.update_notebook = update_notebook
         //@ts-ignore
         window.shutdownNotebook = this.close = () => {
@@ -851,17 +664,17 @@ patch: ${JSON.stringify(
                     keep_in_session: false,
                 },
                 {
-                    notebook_id: this.state.notebook.notebook_id,
+                    notebook_id: this.props.notebook.notebook_id,
                 },
                 false
             )
         }
         this.submit_file_change = async (new_path, reset_cm_value) => {
-            const old_path = this.state.notebook.path
+            const old_path = this.props.notebook.path
             if (old_path === new_path) {
                 return
             }
-            if (!this.state.notebook.in_temp_dir) {
+            if (!this.props.notebook.in_temp_dir) {
                 if (!confirm("Are you sure? Will move from\n\n" + old_path + "\n\nto\n\n" + new_path)) {
                     throw new Error("Declined by user")
                 }
@@ -899,7 +712,7 @@ patch: ${JSON.stringify(
             if (cells_to_serialize.length !== 0) {
                 return serialize_cells(
                     cells_to_serialize.map((id) => {
-                        let local_input = this.state.notebook.cell_inputs[id]
+                        let local_input = this.props.notebook.cell_inputs[id]
                         return {
                             cell_id: local_input.cell_id,
                             code: local_input.local_code,
@@ -933,7 +746,7 @@ patch: ${JSON.stringify(
             // }
             if (e.key.toLowerCase() === "q" && has_ctrl_or_cmd_pressed(e)) {
                 // This one can't be done as cmd+q on mac, because that closes chrome - Dral
-                if (Object.values(this.state.notebook.cell_results).some((c) => c.running || c.queued)) {
+                if (Object.values(this.props.notebook.cell_results).some((c) => c.running || c.queued)) {
                     this.actions.interrupt_remote()
                 }
                 e.preventDefault()
@@ -1040,13 +853,13 @@ patch: ${JSON.stringify(
         })
 
         window.addEventListener("beforeunload", (event) => {
-            const unsaved_cells = this.state.notebook.cell_order.filter(
-                (id) => this.state.notebook.cell_inputs[id] && this.state.notebook.cell_inputs[id].code !== this.state.notebook.cell_inputs[id].local_code
+            const unsaved_cells = this.props.notebook.cell_order.filter(
+                (id) => this.props.notebook.cell_inputs[id] && this.props.notebook.cell_inputs[id].code !== this.props.notebook.cell_inputs[id].local_code
             )
             const first_unsaved = unsaved_cells[0]
             if (first_unsaved != null) {
                 window.dispatchEvent(new CustomEvent("cell_focus", { detail: { cell_id: first_unsaved } }))
-                // } else if (this.state.notebook.in_temp_dir) {
+                // } else if (this.props.notebook.in_temp_dir) {
                 //     window.scrollTo(0, 0)
                 //     // TODO: focus file picker
                 console.log("Preventing unload")
@@ -1068,15 +881,20 @@ patch: ${JSON.stringify(
 
     componentDidUpdate(old_props, old_state) {
         //@ts-ignore
-        window.editor_state = this.state
+        window.editor_state = {
+            notebook: this.props.notebook,
+            connected: this.props.connected,
+            ...this.state,
+        }
 
         const new_state = this.state
+        const new_props = this.props
 
-        if (old_state?.notebook?.path !== new_state.notebook.path) {
-            update_stored_recent_notebooks(new_state.notebook.path, old_state?.notebook?.path)
+        if (old_props.notebook?.path !== new_props.path) {
+            update_stored_recent_notebooks(new_props.path, old_props?.notebook?.path)
         }
-        if (old_state?.notebook?.shortpath !== new_state.notebook.shortpath) {
-            document.title = "🎈 " + new_state.notebook.shortpath + " — Pluto.jl"
+        if (old_props.notebook?.shortpath !== new_props.notebook.shortpath) {
+            document.title = "🎈 " + new_props.notebook.shortpath + " — Pluto.jl"
         }
 
         Object.entries(this.cached_status).forEach(([k, v]) => {
@@ -1085,7 +903,7 @@ patch: ${JSON.stringify(
 
         // this class is used to tell our frontend tests that the updates are done
         //@ts-ignore
-        document.body._update_is_ongoing = pending_local_updates > 0
+        // document.body._update_is_ongoing = pending_local_updates > 0
 
         if (this.notebook_is_idle() && this.bonds_changes_to_apply_when_done.length !== 0) {
             // `bonds_changes_to_apply_when_done:`, this.bonds_changes_to_apply_when_done
@@ -1105,22 +923,44 @@ patch: ${JSON.stringify(
             this.on_disable_ui()
         }
 
-        if (old_state.notebook.nbpkg?.restart_recommended_msg !== new_state.notebook.nbpkg?.restart_recommended_msg) {
-            console.warn(`New restart recommended message: ${new_state.notebook.nbpkg?.restart_recommended_msg}`)
+        if (old_props.notebook.nbpkg?.restart_recommended_msg !== new_props.notebook.nbpkg?.restart_recommended_msg) {
+            console.warn(`New restart recommended message: ${new_props.notebook.nbpkg?.restart_recommended_msg}`)
         }
-        if (old_state.notebook.nbpkg?.restart_required_msg !== new_state.notebook.nbpkg?.restart_required_msg) {
-            console.warn(`New restart required message: ${new_state.notebook.nbpkg?.restart_required_msg}`)
+        if (old_props.notebook.nbpkg?.restart_required_msg !== new_props.notebook.nbpkg?.restart_required_msg) {
+            console.warn(`New restart required message: ${new_props.notebook.nbpkg?.restart_required_msg}`)
         }
     }
 
     componentWillUpdate(new_props, new_state) {
-        this.cached_status = statusmap(new_state)
+        this.cached_status = statusmap({
+            ...new_state,
+            notebook: new_props.notebook,
+            connected: new_props.connected,
+        })
     }
 
     render() {
-        let { export_menu_open, notebook } = this.state
+        let { export_menu_open } = this.state
+        let { notebook } = this.props
 
-        const status = this.cached_status ?? statusmap(this.state)
+        // DEBUG
+        try {
+            let cells_stuck_in_limbo = notebook.cell_order.filter((cell_id) => notebook.cell_inputs[cell_id] == null)
+            if (cells_stuck_in_limbo.length !== 0) {
+                console.warn(`cells_stuck_in_limbo:`, cells_stuck_in_limbo)
+                notebook.cell_order = notebook.cell_order.filter((cell_id) => notebook.cell_inputs[cell_id] != null)
+            }
+        } catch (error) {
+            console.log(`error:`, error)
+        }
+
+        const status =
+            this.cached_status ??
+            statusmap({
+                ...this.state,
+                notebook: this.props.notebook,
+                connected: this.props.connected,
+            })
         const statusval = first_true_key(status)
         const pluto_actions_with_my_author_name = useMemo(
             () => ({ ...this.actions, my_author_name: this.state.my_author_name }),
@@ -1129,14 +969,14 @@ patch: ${JSON.stringify(
         if (status.isolated_cell_view) {
             return html`
                 <${PlutoContext.Provider} value=${pluto_actions_with_my_author_name}>
-                    <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
+                    <${PlutoBondsContext.Provider} value=${this.props.notebook.bonds}>
                         <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
                             <div style="width: 100%">
-                                ${this.state.notebook.cell_order.map(
+                                ${this.props.notebook.cell_order.map(
                                     (cell_id, i) => html`
                                         <${IsolatedCell}
                                             cell_id=${cell_id}
-                                            cell_results=${this.state.notebook.cell_results[cell_id]}
+                                            cell_results=${this.props.notebook.cell_results[cell_id]}
                                             hidden=${!launch_params.isolated_cell_ids.includes(cell_id)}
                                         />
                                     `
@@ -1164,10 +1004,10 @@ patch: ${JSON.stringify(
 
         return html`
             <${PlutoContext.Provider} value=${pluto_actions_with_my_author_name}>
-                <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
+                <${PlutoBondsContext.Provider} value=${this.props.notebook.bonds}>
                     <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
                     <${Scroller} active=${this.state.scroller} />
-                    <${ProgressBar} notebook=${this.state.notebook} binder_phase=${this.state.binder_phase} status=${status}/>
+                    <${ProgressBar} notebook=${this.props.notebook} binder_phase=${this.state.binder_phase} status=${status}/>
                     <header className=${export_menu_open ? "show_export" : ""}>
                         <${ExportBanner}
                             notebookfile_url=${this.export_url("notebookfile")}
@@ -1241,39 +1081,41 @@ patch: ${JSON.stringify(
                         patch_listeners=${this.patch_listeners}
                         export_url=${this.export_url}
                     />
-                    <${RecordingPlaybackUI} 
+                    ${
+                        /*<${RecordingPlaybackUI} 
                         recording_url=${launch_params.recording_url}
                         audio_src=${launch_params.recording_audio_url}
                         initializing=${this.state.initializing}
                         apply_notebook_patches=${this.apply_notebook_patches}
-                        reset_notebook_state=${() =>
-                            this.setStatePromise(
-                                immer((state) => {
-                                    state.notebook = this.original_state
-                                })
-                            )}
-                    />
+                    />*/ null
+                    }
                     
                     <${BinderButton} binder_phase=${this.state.binder_phase} start_binder=${() =>
-            start_binder({ setStatePromise: this.setStatePromise, connect: this.connect, launch_params: launch_params })} notebookfile=${
+            start_binder({ setStatePromise: this.setStatePromise, connect: this.props.connect, launch_params: launch_params })} notebookfile=${
             launch_params.notebookfile == null ? null : new URL(launch_params.notebookfile, window.location.href).href
         } />
                     <${FetchProgress} progress=${this.state.statefile_download_progress} />
                     ${launch_params.preamble_html ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />` : null}
                     <${Main}>
                         <${Preamble}
-                            last_update_time=${this.state.last_update_time}
+                            ${
+                                /*
+                                last_update_time=${this.state.last_update_time} -->
+                                <!-- TODO -->
+                            */ null
+                            }
+                            last_update_time=${Date.now() + 10e5}
                             any_code_differs=${status.code_differs}
-                            last_hot_reload_time=${this.state.notebook.last_hot_reload_time}
-                            connected=${this.state.connected}
+                            last_hot_reload_time=${this.props.notebook.last_hot_reload_time}
+                            connected=${this.props.connected}
                         />
                         <${Notebook}
-                            notebook=${this.state.notebook}
-                            cell_inputs_local=${this.state.notebook.cell_inputs}
+                            notebook=${this.props.notebook}
+                            cell_inputs_local=${this.props.notebook.cell_inputs}
                             on_update_doc_query=${this.actions.set_doc_query}
                             on_cell_input=${this.actions.set_local_cell}
                             on_focus_neighbor=${this.actions.focus_on_neighbor}
-                            disable_input=${this.state.disable_ui || !this.state.connected /* && this.state.binder_phase == null*/}
+                            disable_input=${this.state.disable_ui || !this.props.connected /* && this.state.binder_phase == null*/}
                             show_logs=${this.state.show_logs}
                             set_show_logs=${(enabled) => this.setState({ show_logs: enabled })}
                             last_created_cell=${this.state.last_created_cell}
@@ -1291,7 +1133,7 @@ patch: ${JSON.stringify(
                             this.state.disable_ui ||
                             html`<${SelectionArea}
                                 actions=${this.actions}
-                                cell_order=${this.state.notebook.cell_order}
+                                cell_order=${this.props.notebook.cell_order}
                                 selected_cell_ids=${this.state.selected_cell_ids}
                                 set_scroller=${(enabled) => {
                                     this.setState({ scroller: enabled })
@@ -1313,9 +1155,9 @@ patch: ${JSON.stringify(
                     <${LiveDocs}
                         desired_doc_query=${this.state.desired_doc_query}
                         on_update_doc_query=${this.actions.set_doc_query}
-                        notebook=${this.state.notebook}
+                        notebook=${this.props.notebook}
                     />
-                    <${PkgPopup} notebook=${this.state.notebook}/>
+                    <${PkgPopup} notebook=${this.props.notebook}/>
                     <${UndoDelete}
                         recently_deleted=${this.state.recently_deleted}
                         on_click=${() => {
@@ -1346,6 +1188,93 @@ patch: ${JSON.stringify(
             </${PlutoContext.Provider}>
         `
     }
+}
+
+export const Editor = (...props) => {
+    let [notebook_id, set_notebook_id] = useState(launch_params.notebook_id)
+
+    let client = useRef({})
+
+    let [onStatePatches, emitStatePatches] = useMemo(() => {
+        let patch_listeners = new Set()
+        return [
+            (patch_listener) => {
+                patch_listeners.add(patch_listener)
+                return () => {
+                    patch_listeners.delete(patch_listener)
+                }
+            },
+            (message) => {
+                for (let patch_listener of patch_listeners) {
+                    patch_listener(message)
+                }
+            },
+        ]
+    }, [])
+
+    let [is_connected, set_is_connected] = useState(false)
+
+    let connect = async (ws_address = undefined) => {
+        console.log("On connect!")
+
+        const on_update = (update, by_me) => {
+            if (notebook_id === update.notebook_id) {
+                // if (this.state.binder_phase != null) console.debug("on_update", update, by_me)
+                switch (update.type) {
+                    case "notebook_diff":
+                        emitStatePatches(update.message)
+                        break
+                    default:
+                        console.error("Received unknown update type!", update)
+                        // alert("Something went wrong 🙈\n Try clearing your browser cache and refreshing the page")
+                        break
+                }
+                // if (this.state.binder_phase != null) console.debug("on_update done")
+            } else {
+                // Update for a different notebook, TODO maybe log this as it shouldn't happen
+            }
+        }
+
+        let new_client = await create_pluto_connection({
+            ws_address: ws_address,
+            on_unrequested_update: on_update,
+            on_connection_status: (is_connected) => set_is_connected(is_connected),
+            on_reconnect: () => {
+                console.warn("Reconnected! Checking states")
+                return true
+            },
+            connect_metadata: { notebook_id: notebook_id },
+        })
+
+        // nasty
+        Object.assign(client.current, new_client)
+    }
+
+    let [notebook, update_notebook] = use_firebasey({
+        initial_state: initial_notebook(),
+        server: {
+            sendPatches: ({ id, parent_patch_id, patches }) => {
+                client.current.send("update_notebook", { updates: patches, patch_id: id, parent_patch_id: parent_patch_id }, { notebook_id: notebook.notebook_id }, false).then((response) => {
+                    if (response.message.response.update_went_well === "👎") {
+                        // We only throw an error for functions that are waiting for this
+                        // Notebook state will already have the changes reversed
+                        throw new Error(`Pluto update_notebook error: ${response.message.response.why_not})`)
+                    }
+                }),
+
+            },
+            onStatePatches: onStatePatches,
+        },
+    })
+
+    return html`<${Editor_without_Firebasey}
+        ...${props}
+        client=${client.current}
+        connected=${is_connected}
+        notebook=${notebook}
+        update_notebook=${update_notebook}
+        connect=${connect}
+    />`
 }
 
 /* LOCALSTORAGE NOTEBOOKS LIST */
