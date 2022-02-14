@@ -76,7 +76,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
 
         old_A_terminal = deepcopy(terminals["PlutoPkgTestA"])
-        @show old_A_terminal
+        # @show old_A_terminal
 
         update_save_run!(🍭, notebook, notebook.cells[[3, 4]]) # import B
 
