@@ -64,6 +64,11 @@ export const Cell = ({
     let variables_in_all_notebook = Object.fromEntries(
         Object.values(notebook?.cell_dependencies ?? {}).flatMap((x) => Object.keys(x.downstream_cells_map).map((variable) => [variable, x.cell_id]))
     )
+    // We need to unmount & remount when a destructive error occurs.
+    // For that reason, we will use a simple react key and increment it on error
+    const [key, setKey] = useState(0)
+    const cell_key = useMemo(() => cell_id + key, [cell_id, key])
+    const remount = useMemo(() => () => setKey(key + 1))
     const variables = Object.keys(notebook?.cell_dependencies?.[cell_id]?.downstream_cells_map || {})
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
@@ -134,6 +139,7 @@ export const Cell = ({
 
     return html`
         <pluto-cell
+            key=${cell_key}
             ref=${node_ref}
             class=${cl({
                 queued: queued || (waiting_to_run && is_process_ready),
@@ -223,6 +229,7 @@ export const Cell = ({
                 set_show_logs=${set_show_logs}
                 cm_highlighted_line=${cm_highlighted_line}
                 set_cm_highlighted_line=${set_cm_highlighted_line}
+                onerror=${remount}
             />
             ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${line_heights} set_cm_highlighted_line=${set_cm_highlighted_line} />` : null}
             <${RunArea}

@@ -122,6 +122,9 @@ const juliaWrapper = parseMixed((node, input) => {
     }
 
     let from = node.from
+    // This little code snippet goes to interpolations within the string
+    // (something like: "$(x)  $(x + 1)" ) and creates regions for these interpolations
+    // in order for them to be excluded
     for (let child = node.node.firstChild; overlay !== defaultOverlay && child !== null && child.to <= node.to; child = child?.nextSibling) {
         overlay.push({ from, to: child.from })
         from = child.to

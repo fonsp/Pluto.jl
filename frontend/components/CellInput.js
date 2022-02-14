@@ -351,6 +351,7 @@ export const CellInput = ({
     set_show_logs,
     cm_highlighted_line,
     variables_in_all_notebook,
+    onerror,
 }) => {
     let pluto_actions = useContext(PlutoContext)
 
@@ -548,7 +549,6 @@ export const CellInput = ({
             /** Migration #0: New */
             state: EditorState.create({
                 doc: local_code,
-
                 extensions: [
                     EditorView.theme({}, { dark: usesDarkTheme }),
                     // Compartments coming from react state/props
@@ -659,6 +659,14 @@ export const CellInput = ({
                     // Enable this plugin if you want to see the lezer tree,
                     // and possible lezer errors and maybe more debug info in the console:
                     // debug_syntax_plugin,
+                    // Handle errors hopefully?
+                    EditorView.exceptionSink.of((exception) => {
+                        console.error(`Exception Sink captured an exception and will reload codemirror:\n${exception}`)
+                        onerror()
+                        alert(
+                            "We run into an issue; We have lost your cursor 😞😓😿\n If this appears again, please report an issue at https://github.com/fonsp/Pluto.jl/issues"
+                        )
+                    }),
                 ],
             }),
             parent: dom_node_ref.current,
