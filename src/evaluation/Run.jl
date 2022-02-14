@@ -6,7 +6,7 @@ import .WorkspaceManager: macroexpand_in_workspace
 Base.push!(x::Set{Cell}) = x
 
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
-function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, roots::Vector{Cell}; deletion_hook::Function = WorkspaceManager.move_vars, user_requested_run::Bool = true, already_in_run::Bool = false, already_run::Vector{Cell} = Cell[], indirectly_deactivated::Union{Nothing, Vector{Cell}}=nothing)::TopologicalOrder
+function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, roots::Vector{Cell}; deletion_hook::Function = WorkspaceManager.move_vars, user_requested_run::Bool = true, already_in_run::Bool = false, already_run::Vector{Cell} = Cell[])::TopologicalOrder
     if !already_in_run
         # make sure that we're the only `run_reactive!` being executed - like a semaphor
         take!(notebook.executetoken)
@@ -55,9 +55,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
     to_run_raw = setdiff(union(new_runnable, old_runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
 
     # find (indirectly) deactivated cells and update their status
-	if indirectly_deactivated === nothing
-		indirectly_deactivated = disable_dependent_cells!(notebook, new_topology)
-	end
+	indirectly_deactivated = disable_dependent_cells!(notebook, new_topology)
     to_run = setdiff(to_run_raw, indirectly_deactivated)
 
     # change the bar on the sides of cells to "queued"
@@ -457,7 +455,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		sync_nbpkg(session, notebook; save=(save && !session.options.server.disable_writing_notebook_files))
 		if !(isempty(to_run_online) && session.options.evaluation.lazy_workspace_creation) && will_run_code(notebook)
 			# not async because that would be double async
-			run_reactive_async!(session, notebook, old, new, to_run_online; run_async=false, indirectly_deactivated, kwargs...)
+			run_reactive_async!(session, notebook, old, new, to_run_online; run_async=false, kwargs...)
 			# run_reactive_async!(session, notebook, old, new, to_run_online; deletion_hook=deletion_hook, run_async=false, kwargs...)
 		end
 	end
