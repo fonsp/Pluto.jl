@@ -5,6 +5,49 @@ import .WorkspaceManager: macroexpand_in_workspace
 
 Base.push!(x::Set{Cell}) = x
 
+"Returns the cells that should be indirectly deactivated based on the explicitely deactivated cells"
+function find_indirectly_deactivated_cells(notebook::Notebook, topology::NotebookTopology, deactivated_cells)
+    length(deactivated_cells) == 0 && return Cell[]
+
+    order = topological_order(notebook, topology, deactivated_cells)
+    to_delete = Set{Int}()
+
+    for cell in order.runnable
+        if !cell.running_disabled
+            continue
+        end
+
+        others = where_assigned(notebook, topology, cell)
+
+        if length(others) > 1
+            @assert length(others) == 2 "There can only be 2 assignees, otherwise it should be a MultipleDefinitionsError"
+
+            other_other = others[findfirst(!=(cell), others)]
+
+            # NOTE(paul):
+            #   This is pretty unoptimized since we somehow need to recompute a lot of things from the
+            #   topological_order call, maybe could be solved as a tree traversal instead
+            parents = where_assigned(notebook, topology, notebook.topology.nodes[other_other].references)
+            if any(p -> p.running_disabled, parents)
+                continue # this is disabled down the line
+            end
+
+            # There is a cycle, find its childs
+            childs = topological_order(notebook, topology, [other_other]).runnable |> Set{Cell}
+            childs_and_other = findall(
+                c -> c != cell && (c == other_other || c ∈ childs),
+                order.runnable
+            )
+
+            push!(to_delete, childs_and_other...)
+        end
+    end
+
+    deleteat!(order.runnable, sort(collect(to_delete)))
+
+    collect(order)
+end
+
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
 function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, roots::Vector{Cell}; deletion_hook::Function = WorkspaceManager.move_vars, user_requested_run::Bool = true, already_in_run::Bool = false, already_run::Vector{Cell} = Cell[])::TopologicalOrder
     if !already_in_run
@@ -55,7 +98,8 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
     # find (indirectly) deactivated cells and update their status
     deactivated = filter(c -> c.running_disabled, notebook.cells)
-    indirectly_deactivated = collect(topological_order(notebook, new_topology, deactivated))
+    # indirectly_deactivated = collect(topological_order(notebook, new_topology, deactivated))
+    indirectly_deactivated = find_indirectly_deactivated_cells(notebook, new_topology, deactivated)
     for cell in indirectly_deactivated
         cell.running = false
         cell.queued = false

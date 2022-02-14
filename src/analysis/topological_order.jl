@@ -40,7 +40,10 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 		push!(entries, cell)
 
 		assigners = where_assigned(notebook, topology, cell)
-		if !allow_multiple_defs && length(assigners) > 1
+		n_not_disabled_assigners = count(c -> !c.running_disabled, assigners) # we can have multiple defs if all others are disabled
+
+		if !allow_multiple_defs && length(assigners) > 1 &&
+				n_not_disabled_assigners > 1
 			for c in assigners
 				errable[c] = MultipleDefinitionsError(topology, c, assigners)
 			end
