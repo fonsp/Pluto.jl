@@ -8,18 +8,21 @@ import Pluto.PkgUtils
 import Pluto.PkgCompat
 import Distributed
 
+# We have our own registry for these test! Take a look at https://github.com/JuliaPluto/PlutoPkgTestRegistry#readme for more info about the test packages and their dependencies.
+
 const pluto_test_registry_spec = Pkg.RegistrySpec(;
     url="https://github.com/JuliaPluto/PlutoPkgTestRegistry", 
     uuid=Base.UUID("96d04d5f-8721-475f-89c4-5ee455d3eda0"),
     name="PlutoPkgTestRegistry",
 )
 
+
 @testset "Built-in Pkg" begin
     
     # Pkg.Registry.rm("General")
     Pkg.Registry.add(pluto_test_registry_spec)
 
-
+    # We have our own registry for these test! Take a look at https://github.com/JuliaPluto/PlutoPkgTestRegistry#readme for more info about the test packages and their dependencies.
     @testset "Basic" begin
         fakeclient = ClientSession(:fake, nothing)
         🍭 = ServerSession()
@@ -282,7 +285,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
         @test noerror(notebook.cells[3])
         @test noerror(notebook.cells[4])
-        @test notebook.cells[5].errored == false
+        @test notebook.cells[5] |> noerror
 
         @test !has_embedded_pkgfiles(notebook)
 
@@ -446,13 +449,13 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         # Cells that use Example will error because the package is not installed.
 
         # @test Distributed.remotecall_eval(Main, p, quote
-        #     nb.cells[1].errored == false
+        #     nb.cells[1] |> noerror
         # end)
         @test Distributed.remotecall_eval(Main, p, quote
-            nb.cells[2].errored == false
+            nb.cells[2] |> noerror
         end)
         # @test Distributed.remotecall_eval(Main, p, quote
-        #     nb.cells[3].errored == false
+        #     nb.cells[3] |> noerror
         # end)
         # @test Distributed.remotecall_eval(Main, p, quote
         #     nb.cells[3].output.body == "25"
