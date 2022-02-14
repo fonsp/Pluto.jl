@@ -148,11 +148,11 @@ import Distributed
         ])
         notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
 
-        let topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells[[1]])
+        let topo_order = Pluto.topological_order(notebook.topology, notebook.cells[[1]])
             @test indexin(topo_order.runnable, notebook.cells) == [1,2]
             @test topo_order.errable |> keys == notebook.cells[[3,4]] |> Set
         end
-        let topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells[[1]], allow_multiple_defs=true)
+        let topo_order = Pluto.topological_order(notebook.topology, notebook.cells[[1]], allow_multiple_defs=true)
             @test indexin(topo_order.runnable, notebook.cells) == [1,3,4,2] # x first, y second and third, z last
             # this also tests whether multiple defs run in page order
             @test topo_order.errable == Dict()
@@ -204,14 +204,14 @@ import Distributed
         ])
         notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
 
-        topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells)
+        topo_order = Pluto.topological_order(notebook.topology, notebook.cells)
         @test indexin(topo_order.runnable, notebook.cells) == [6, 5, 4, 7, 3, 1, 2, 8]
         # 6, 5, 4, 3 should run first (this is implemented using `cell_precedence_heuristic`), in that order
         # 1, 2, 7 remain, and should run in notebook order.
 
         # if the cells were placed in reverse order...
         reverse!(notebook.cell_order)
-        topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells)
+        topo_order = Pluto.topological_order(notebook.topology, notebook.cells)
         @test indexin(topo_order.runnable, reverse(notebook.cells)) == [6, 5, 4, 7, 3, 8, 2, 1]
         # 6, 5, 4, 3 should run first (this is implemented using `cell_precedence_heuristic`), in that order
         # 1, 2, 7 remain, and should run in notebook order, which is 7, 2, 1.
@@ -233,7 +233,7 @@ import Distributed
 
         notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
 
-        topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells)
+        topo_order = Pluto.topological_order(notebook.topology, notebook.cells)
 
         comesbefore(A, first, second) = findfirst(isequal(first),A) < findfirst(isequal(second), A)
 
@@ -261,7 +261,7 @@ import Distributed
         ])
 
         notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
-        topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells)
+        topo_order = Pluto.topological_order(notebook.topology, notebook.cells)
         run_order = indexin(topo_order.runnable, notebook.cells)
 
         @test run_order == [3, 1, 2]

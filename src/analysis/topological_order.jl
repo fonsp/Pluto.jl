@@ -5,10 +5,10 @@ struct Cycle <: ChildExplorationResult
 	cycled_cells::Vector{Cell}
 end
 
-topological_order(::Notebook, args...) = topological_order(args...)
+@deprecate topological_order(::Notebook, topology::NotebookTopology, args...; kwargs...) topological_order(topology, args...; kwargs...)
 
 "Return a `TopologicalOrder` that lists the cells to be evaluated in a single reactive run, in topological order. Includes the given roots."
-function topological_order(topology::NotebookTopology, roots::Vector{Cell}; allow_multiple_defs=false)::TopologicalOrder
+function topological_order(topology::NotebookTopology, roots::AbstractVector{Cell}; allow_multiple_defs=false)::TopologicalOrder
 	entries = Cell[]
 	exits = Cell[]
 	errable = Dict{Cell,ReactivityError}()
@@ -97,8 +97,8 @@ end
 
 function topological_order(notebook::Notebook)
 	cached = notebook._cached_topological_order
-	if cached === nothing || cached.input_topology !== notebook.executed_topology
-		topological_order(notebook, notebook.executed_topology, all_cells(notebook.executed_topology))
+	if cached === nothing || cached.input_topology !== notebook.topology
+		topological_order(notebook.topology, all_cells(notebook.topology))
 	else
 		cached
 	end
@@ -121,8 +121,7 @@ function where_referenced(topology::NotebookTopology, to_compare::Set{Symbol})::
 		!disjoint(to_compare, topology.nodes[cell].references)
 	end
 end
-where_referenced(notebook::Notebook, args...) = where_referenced(args...)
-where_referenced(notebook::Notebook, args...) = where_referenced(args...)
+where_referenced(::Notebook, args...) = where_referenced(args...)
 
 "Returns whether or not the edge between two cells is composed only of \"soft\"-definitions"
 function is_soft_edge(topology::NotebookTopology, parent_cell::Cell, child_cell::Cell)

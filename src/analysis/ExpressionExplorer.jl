@@ -310,7 +310,8 @@ function macro_has_special_heuristic_inside(; symstate::SymbolsState, expr::Expr
     )
     local fake_topology = Pluto.NotebookTopology(
         nodes = Pluto.DefaultDict(Pluto.ReactiveNode, Dict(fake_cell => fake_reactive_node)),
-        codes = Pluto.DefaultDict(Pluto.ExprAnalysisCache, Dict(fake_cell => fake_expranalysiscache))
+        codes = Pluto.DefaultDict(Pluto.ExprAnalysisCache, Dict(fake_cell => fake_expranalysiscache)),
+        cell_order = Pluto.ImmutableVector([fake_cell]),
     )
 
     return Pluto.cell_precedence_heuristic(fake_topology, fake_cell) < 9
