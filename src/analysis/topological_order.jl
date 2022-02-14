@@ -42,7 +42,10 @@ function topological_order(topology::NotebookTopology, roots::AbstractVector{Cel
 		push!(entries, cell)
 
 		assigners = where_assigned(topology, cell)
-		if !allow_multiple_defs && length(assigners) > 1
+		n_not_disabled_assigners = count(!is_disabled, assigners) # we can have multiple defs if all others are disabled
+
+		if !allow_multiple_defs && length(assigners) > 1 &&
+				n_not_disabled_assigners > 1
 			for c in assigners
 				errable[c] = MultipleDefinitionsError(topology, c, assigners)
 			end
@@ -190,6 +193,52 @@ function cycle_is_among_functions(topology::NotebookTopology, cycle::AbstractVec
 		any(s ∈ topology.nodes[c].funcdefs_without_signatures for c in cycle)
 		for s in cyclics
 	)
+end
+
+
+"""
+    find_indirectly_deactivated_cells(topology::NotebookTopology, deactivated_cells::AbstractVector{Cell})::Vector{Cell}
+
+Returns the cells that should be indirectly deactivated based on the explicitely deactivated cells.
+"""
+function find_indirectly_deactivated_cells(topology::NotebookTopology, deactivated_cells)
+    length(deactivated_cells) == 0 && return Cell[]
+
+    order = topological_order(topology, deactivated_cells)
+    to_delete = Set{Int}()
+
+    for cell in order.runnable
+        if !is_disabled(cell)
+            continue
+        end
+
+        others = where_assigned(topology, cell)
+
+        if length(others) > 1
+            other_other = others[findfirst(c -> c != cell && !is_disabled(c), others)]
+
+            # NOTE(paul):
+            #   This is pretty unoptimized since we somehow need to recompute a lot of things from the
+            #   topological_order call, maybe could be solved as a tree traversal instead
+            parents = where_assigned(topology, topology.nodes[other_other].references)
+            if any(is_disabled, parents)
+                continue # this is disabled down the line
+            end
+
+            # There is a cycle, find its childs
+            childs = topological_order(topology, [other_other]).runnable |> Set{Cell}
+            childs_and_other = findall(
+                c -> c != cell && (c == other_other || c ∈ childs),
+                order.runnable
+            )
+
+            push!(to_delete, childs_and_other...)
+        end
+    end
+
+    deleteat!(order.runnable, sort(collect(to_delete)))
+
+    collect(order)
 end
 
 
