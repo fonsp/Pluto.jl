@@ -79,6 +79,7 @@ export const waitForPlutoToCalmDown = async (page) => {
 }
 
 /**
+ * Wait for the cells to have output that is not empty. So a cell that returns `nothing` will make this function fail.
  * @param {Page} page
  * @param {string} cellId
  */
@@ -120,23 +121,48 @@ export const writeSingleLineInPlutoInput = async (page, plutoInputSelector, text
         text
     )
 }
+/**
+ * @param {Page} page
+ * @param {string} plutoInputSelector
+ */
+export const clearPlutoInput = async (page, plutoInputSelector) => {
+    await page.click(`${plutoInputSelector} .cm-content`)
+    await page.keyboard.down(platform === "darwin" ? "Meta" : "Control")
+    await page.keyboard.press("A")
+    await page.keyboard.up(platform === "darwin" ? "Meta" : "Control")
+    await page.keyboard.press("Delete")
+    // Wait for CodeMirror to process the input and display the text
+    return await page.waitForFunction(
+        (plutoInputSelector, text) => {
+            const codeMirrorLine = document.querySelector(`${plutoInputSelector} .cm-content`)
+            const c = codeMirrorLine?.textContent?.trim()
+            // console.log(c, JSON.stringify(c), c === "" || c === "Enter cell code...")
+            return /Enter cell code/.test(c)
+        },
+        { polling: 100 },
+        plutoInputSelector
+    )
+}
 
 /**
  * @param {Page} page
  * @param {string} plutoInputSelector
  * @param {import("puppeteer").KeyInput} key
+ * @param {{timeout: number, at_end: boolean}} options
  */
-export const keyboardPressInPlutoInput = async (page, plutoInputSelector, key) => {
+export const keyboardPressInPlutoInput = async (page, plutoInputSelector, key, { timeout = 500, at_end = true }) => {
     const currentLineText = await getTextContent(page, `${plutoInputSelector} .cm-line`)
     await page.focus(`${plutoInputSelector} .cm-content`)
-    await page.waitForTimeout(500)
-    // Move to end of the input
-    await page.keyboard.down(platform === "darwin" ? "Meta" : "Control")
-    await page.keyboard.press("ArrowDown")
-    await page.keyboard.up(platform === "darwin" ? "Meta" : "Control")
+    if (timeout > 0) await page.waitForTimeout(timeout)
+    if (at_end) {
+        // Move to end of the input
+        await page.keyboard.down(platform === "darwin" ? "Meta" : "Control")
+        await page.keyboard.press("ArrowDown")
+        await page.keyboard.up(platform === "darwin" ? "Meta" : "Control")
+    }
     // Press the key we care about
     await page.keyboard.press(key)
-    await page.waitForTimeout(500)
+    if (timeout > 0) await page.waitForTimeout(timeout)
     // Wait for CodeMirror to process the input and display the text
     return waitForContentToChange(page, `${plutoInputSelector} .cm-line`, currentLineText)
 }
