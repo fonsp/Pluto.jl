@@ -8,7 +8,7 @@ end
 topological_order(::Notebook, args...) = topological_order(args...)
 
 "Return a `TopologicalOrder` that lists the cells to be evaluated in a single reactive run, in topological order. Includes the given roots."
-function topological_order(topology::NotebookTopology, roots::Array{Cell,1}; allow_multiple_defs=false)::TopologicalOrder
+function topological_order(topology::NotebookTopology, roots::Vector{Cell}; allow_multiple_defs=false)::TopologicalOrder
 	entries = Cell[]
 	exits = Cell[]
 	errable = Dict{Cell,ReactivityError}()
@@ -111,12 +111,12 @@ function disjoint(a::Set, b::Set)
 end
 
 "Return the cells that reference any of the symbols defined by the given cell. Non-recursive: only direct dependencies are found."
-function where_referenced(topology::NotebookTopology, myself::Cell)::Array{Cell,1}
+function where_referenced(topology::NotebookTopology, myself::Cell)::Vector{Cell}
 	to_compare = union(topology.nodes[myself].definitions, topology.nodes[myself].soft_definitions, topology.nodes[myself].funcdefs_without_signatures)
 	where_referenced(topology, to_compare)
 end
 "Return the cells that reference any of the given symbols. Non-recursive: only direct dependencies are found."
-function where_referenced(topology::NotebookTopology, to_compare::Set{Symbol})::Array{Cell,1}
+function where_referenced(topology::NotebookTopology, to_compare::Set{Symbol})::Vector{Cell}
 	return filter(all_cells(topology)) do cell
 		!disjoint(to_compare, topology.nodes[cell].references)
 	end
@@ -136,7 +136,7 @@ end
 
 
 "Return the cells that also assign to any variable or method defined by the given cell. If more than one cell is returned (besides the given cell), then all of them should throw a `MultipleDefinitionsError`. Non-recursive: only direct dependencies are found."
-function where_assigned(topology::NotebookTopology, myself::Cell)::Array{Cell,1}
+function where_assigned(topology::NotebookTopology, myself::Cell)::Vector{Cell}
 	self = topology.nodes[myself]
 	return filter(all_cells(topology)) do cell
 		other = topology.nodes[cell]
@@ -151,7 +151,7 @@ function where_assigned(topology::NotebookTopology, myself::Cell)::Array{Cell,1}
 	end
 end
 
-function where_assigned(topology::NotebookTopology, to_compare::Set{Symbol})::Array{Cell,1}
+function where_assigned(topology::NotebookTopology, to_compare::Set{Symbol})::Vector{Cell}
 	filter(all_cells(topology)) do cell
 		other = topology.nodes[cell]
 		!(
