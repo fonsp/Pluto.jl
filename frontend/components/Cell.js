@@ -70,7 +70,7 @@ export const Cell = ({
     const cell_key = useMemo(() => cell_id + key, [cell_id, key])
 
     const [, resetError] = useErrorBoundary((error) => {
-        console.log(`Got an error from below, resetting CellInput\n${error}`)
+        console.log(`Got an error from below, resetting CellInput\n${error.stack}`)
         setKey(key + 1)
         resetError()
     })

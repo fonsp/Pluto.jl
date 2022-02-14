@@ -1,4 +1,4 @@
-import { syntaxTree, StateField } from "../../imports/CodemirrorPlutoSetup.js"
+import { syntaxTree, StateField, syntaxTreeAvailable } from "../../imports/CodemirrorPlutoSetup.js"
 import _ from "../../imports/lodash.js"
 import { child_cursors, child_nodes, create_specific_template_maker, jl, jl_dynamic, narrow, t, template } from "./lezer_template.js"
 
@@ -1027,8 +1027,12 @@ export let explore_variable_usage = (
  */
 export let ScopeStateField = StateField.define({
     create(state) {
+        // Sometimes, it turns out, calling `syntaxTree(state)` gives an error?
+        // And I want those errors to gently float up to exceptionSink, instead of handling them here.
+        // When there is an error with `explore_variable_usage` though, I don't want the editor to crash
+        let cursor = syntaxTree(state).cursor()
+
         try {
-            let cursor = syntaxTree(state).cursor()
             let scopestate = explore_variable_usage(cursor, state.doc, undefined)
             return scopestate
         } catch (error) {
@@ -1041,20 +1045,21 @@ export let ScopeStateField = StateField.define({
     },
 
     update(value, tr) {
-        try {
-            if (syntaxTree(tr.state) != syntaxTree(tr.startState)) {
-                let cursor = syntaxTree(tr.state).cursor()
+        if (syntaxTree(tr.state) != syntaxTree(tr.startState)) {
+            let cursor = syntaxTree(tr.state).cursor()
+
+            try {
                 let scopestate = explore_variable_usage(cursor, tr.state.doc, undefined)
                 return scopestate
-            } else {
-                return value
+            } catch (error) {
+                console.error("Something went wrong while parsing variables...", error)
+                return {
+                    usages: [],
+                    definitions: new Map(),
+                }
             }
-        } catch (error) {
-            console.error("Something went wrong while parsing variables...", error)
-            return {
-                usages: [],
-                definitions: new Map(),
-            }
+        } else {
+            return value
         }
     },
 })
