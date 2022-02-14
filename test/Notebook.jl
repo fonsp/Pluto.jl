@@ -158,11 +158,36 @@ end
     end
 
     @testset "Metadata" begin
+        🍭 = ServerSession()
+        🍭.options.evaluation.workspace_use_distributed = false
+        fakeclient = ClientSession(:fake, nothing)
+        🍭.connected_clients[fakeclient.id] = fakeclient
+
         nb = metadata_notebook()
+        update_run!(🍭, nb, nb.cells)
+        cell = first(values(nb.cells_dict))
+        @test cell.metadata == Dict(
+            "a metadata tag" => Dict(
+                "boolean" => true,
+                "string" => "String",
+                "number" => 10000,
+            ),
+            "disabled" => "directly", # enhanced metadata because cell is disabled
+        )
+
         save_notebook(nb)
         @info "File" Text(read(nb.path,String))
         result = load_notebook_nobackup(nb.path)
         @test notebook_inputs_equal(nb, result)
+        cell = first(values(result.cells_dict))
+        @test cell.metadata == Dict(
+            "a metadata tag" => Dict(
+                "boolean" => true,
+                "string" => "String",
+                "number" => 10000,
+            ),
+            "disabled" => "directly",
+        )
     end
 
     @testset "I/O overloaded" begin
