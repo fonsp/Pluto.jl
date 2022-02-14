@@ -64,9 +64,9 @@ const tabCompletionState = StateField.define({
 const tab_completion_command = (cm) => {
     // This will return true if the autocomplete select popup is open
     // To test the exception sink, uncomment these lines:
-    // if (Math.random() > 0.7) {
-    //     throw "LETS CRASH THIS"
-    // }
+    if (Math.random() > 0.7) {
+        throw "LETS CRASH THIS"
+    }
     if (autocomplete.acceptCompletion(cm)) {
         return true
     }

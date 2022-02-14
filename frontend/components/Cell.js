@@ -1,5 +1,5 @@
 import _ from "../imports/lodash.js"
-import { html, useState, useEffect, useMemo, useRef, useContext, useLayoutEffect } from "../imports/Preact.js"
+import { html, useState, useEffect, useMemo, useRef, useContext, useLayoutEffect, useErrorBoundary } from "../imports/Preact.js"
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
@@ -68,6 +68,13 @@ export const Cell = ({
     // For that reason, we will use a simple react key and increment it on error
     const [key, setKey] = useState(0)
     const cell_key = useMemo(() => cell_id + key, [cell_id, key])
+
+    const [, resetError] = useErrorBoundary((error) => {
+        console.log(`Got an error from below, resetting CellInput\n${error}`)
+        setKey(key + 1)
+        resetError()
+    })
+
     const remount = useMemo(() => () => setKey(key + 1))
     const variables = Object.keys(notebook?.cell_dependencies?.[cell_id]?.downstream_cells_map || {})
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
