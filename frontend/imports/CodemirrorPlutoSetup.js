@@ -57,7 +57,7 @@ import {
     javascript,
     python,
     Text,
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@0.26.0/dist/index.es.min.js"
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@8334677b0aaa0c8ac51f74994c5bf39bea063a9c/dist/index.es.min.js"
 
 export {
     EditorState,
