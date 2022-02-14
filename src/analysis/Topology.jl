@@ -39,6 +39,8 @@ Base.@kwdef struct NotebookTopology
     unresolved_cells::Set{Cell} = Set{Cell}()
 end
 
+# BIG TODO HERE: CELL ORDER
+all_cells(topology::NotebookTopology) = collect(keys(topology.nodes))
 
 is_resolved(topology::NotebookTopology) = isempty(topology.unresolved_cells)
 

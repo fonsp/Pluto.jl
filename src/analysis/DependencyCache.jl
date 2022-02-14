@@ -4,15 +4,16 @@ Gets a dictionary of all symbols and the respective cells which are dependent on
 Changes in the given cell cause re-evaluation of these cells.
 Note that only direct dependents are given here, not indirect dependents.
 """
-function downstream_cells_map(cell::Cell, notebook::Notebook)::Dict{Symbol,Vector{Cell}}
-    defined_symbols = let node = notebook.topology.nodes[cell]
+function downstream_cells_map(cell::Cell, topology::NotebookTopology)::Dict{Symbol,Vector{Cell}}
+    defined_symbols = let node = topology.nodes[cell]
         node.definitions ∪ node.funcdefs_without_signatures
     end
     return Dict{Symbol,Vector{Cell}}(
-        sym => where_referenced(notebook, notebook.topology, Set([sym]))
+        sym => where_referenced(notebook, topology, Set([sym]))
         for sym in defined_symbols
     )
 end
+downstream_cells_map(cell::Cell, notebook::Notebook) = downstream_cells_map(cell, notebook.topology)
 
 """
 Gets a dictionary of all symbols and the respective cells on which the given cell depends.
@@ -20,13 +21,14 @@ Gets a dictionary of all symbols and the respective cells on which the given cel
 Changes in these cells cause re-evaluation of the given cell.
 Note that only direct dependencies are given here, not indirect dependencies.
 """
-function upstream_cells_map(cell::Cell, notebook::Notebook)::Dict{Symbol,Vector{Cell}}
-    referenced_symbols = notebook.topology.nodes[cell].references
+function upstream_cells_map(cell::Cell, topology::NotebookTopology)::Dict{Symbol,Vector{Cell}}
+    referenced_symbols = topology.nodes[cell].references
     return Dict{Symbol,Vector{Cell}}(
-        sym => where_assigned(notebook, notebook.topology, Set([sym]) )
+        sym => where_assigned(notebook, topology, Set([sym]) )
         for sym in referenced_symbols
     )
 end
+upstream_cells_map(cell::Cell, notebook::Notebook) = upstream_cells_map(cell, notebook.topology)
 
 "Fills cell dependency information for display in the GUI"
 function update_dependency_cache!(cell::Cell, notebook::Notebook)
