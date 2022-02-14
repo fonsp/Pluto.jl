@@ -49,7 +49,7 @@ Update the notebook package environment to match the notebook's code. This will:
 - Make sure that the environment is instantiated.
 - Detect the use of `Pkg.activate` and enable/disabled nbpkg accordingly.
 """
-function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args...) -> nothing))
+function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args...) -> nothing), lag::Real=0)
     
     👺 = false
 
@@ -74,6 +74,7 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
         notebook.nbpkg_ctx = nothing
     end
     
+    (lag > 0) && sleep(lag * (0.5 + rand())) # sleep(0) would yield to the process manager which we dont want
 
     if notebook.nbpkg_ctx !== nothing
         PkgCompat.mark_original!(notebook.nbpkg_ctx)
@@ -259,7 +260,7 @@ function sync_nbpkg(session, notebook; save::Bool=true)
                 update_nbpkg_cache!(notebook)
 				send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 			end
-			sync_nbpkg_core(notebook; on_terminal_output=iocallback)
+			sync_nbpkg_core(notebook; on_terminal_output=iocallback, lag = session.options.server.simulated_pkg_lag)
 		end
 
 		if pkg_result.did_something

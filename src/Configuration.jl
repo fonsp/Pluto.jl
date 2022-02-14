@@ -46,6 +46,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 - `auto_reload_from_file_ignore_pkg::Bool = false` Experimental flag, will be removed
 - `notebook::Union{Nothing,String} = nothing` Optional path of notebook to launch at start
 - `simulated_lag::Real=0.0` (internal) Extra lag to add to our server responses. Will be multiplied by `0.5 + rand()`.
+- `simulated_pkg_lag::Real=0.0` (internal) Extra lag to add to operations done by Pluto's package manager. Will be multiplied by `0.5 + rand()`.
 """
 @option mutable struct ServerOptions
     root_url::Union{Nothing,String} = nothing
@@ -62,6 +63,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
     notebook::Union{Nothing,String,Vector{<:String}} = nothing
     init_with_file_viewer::Bool = false
     simulated_lag::Real = 0.0
+    simulated_pkg_lag::Real = 0.0
     on_event::Function = function(a) #= @info "$(typeof(a))" =# end
 end
 
