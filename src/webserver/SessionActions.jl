@@ -95,7 +95,7 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
     end
 
     in_session() = get(session.notebooks, nb.notebook_id, nothing) === nb
-    session.options.server.auto_reload_from_file && @spawnlog while in_session()
+    session.options.server.auto_reload_from_file && @asynclog while in_session()
         if !isfile(nb.path)
             # notebook file deleted... let's ignore this, changing the notebook will cause it to save again. Fine for now
             sleep(2)
