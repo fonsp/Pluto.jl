@@ -460,12 +460,14 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Vec
 		end
 		
 		# for the remaining cells, clear their topology info so that they won't run as dependencies
-		for cell in setdiff(to_run_online, setup_cells)
-			# TODO: we shouldn't need delete_unsafe! here
-			delete_unsafe!(notebook.topology.nodes, cell)
-			delete_unsafe!(notebook.topology.codes, cell)
-			delete_unsafe!(notebook.topology.unresolved_cells, cell)
-		end
+		old = notebook.topology
+		to_remove = setdiff(to_run_online, setup_cells)
+		notebook.topology = NotebookTopology(
+			nodes=setdiffkeys(old.nodes, to_remove),
+			codes=setdiffkeys(old.codes, to_remove),
+			unresolved_cells=setdiff(old.unresolved_cells, to_remove),
+			cell_order=old.cell_order,
+		)
 		
 		# and don't run them
 		to_run_online = to_run_online ∩ setup_cells

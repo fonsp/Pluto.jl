@@ -92,8 +92,13 @@ ImmutableSet([123,234])
 
 
 
+@test setdiffkeys(Dict(1=>2,3=>4),[3]) == Dict(1=>2)
 
+let
+	d = setdiffkeys(ImmutableDefaultDict(() -> 7, Dict(1=>2,3=>4)),[3])
+	@test d[1] == 2 && d[3] == 7
+end
 
-
+@test setdiff(ImmutableSet([1,2]), [2]) isa ImmutableSet
 
 end

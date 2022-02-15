@@ -27,6 +27,7 @@ begin
 	Base.isempty(s::ImmutableSet) = Base.isempty(s.c)
 	Base.length(s::ImmutableSet) = Base.length(s.c)
 	Base.iterate(s::ImmutableSet, i...) = Base.iterate(s.c, i...)
+    Base.setdiff(s::ImmutableSet, i...) = ImmutableSet(setdiff(s.c, i...))
 end
 
 begin
@@ -85,8 +86,25 @@ begin
     # Base.setindex!(aid::ImmutableDefaultDict{K,V}, args...) where {K,V} = Base.setindex!(aid.container, args...)
     # Base.delete!(aid::ImmutableDefaultDict{K,V}, args...) where {K,V} = Base.delete!(aid.container, args...)
     delete_unsafe!(aid::ImmutableDefaultDict{K,V}, args...) where {K,V} = Base.delete!(aid.container, args...)
+    Base.copy(aid::ImmutableDefaultDict{K,V}) where {K,V} = ImmutableDefaultDict{K,V}(aid.default, copy(aid.container))
     Base.keys(aid::ImmutableDefaultDict) = Base.keys(aid.container)
     Base.values(aid::ImmutableDefaultDict) = Base.values(aid.container)
     Base.length(aid::ImmutableDefaultDict) = Base.length(aid.container)
     Base.iterate(aid::ImmutableDefaultDict, args...) = Base.iterate(aid.container, args...)
 end
+
+"""
+```julia
+setdiffkeys(d::Dict{K,V}, key_itrs...)::Dict{K,V}
+```
+
+Apply `setdiff` on the keys of a dictionary.
+
+# Example
+```julia
+setdiffkeys(Dict(1 => "one", 2 => "two", 3 => "three"), [1, 3])
+# result: `Dict(2 => "two")`
+```
+"""
+setdiffkeys(d::Dict{K,V}, key_itrs...) where {K,V} = Dict{K,V}(k => d[k] for k in setdiff(keys(d), key_itrs...))
+setdiffkeys(d::ImmutableDefaultDict{K,V}, key_itrs...) where {K,V} = ImmutableDefaultDict{K,V}(d.default, setdiffkeys(d.container, key_itrs...))
