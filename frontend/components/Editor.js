@@ -97,6 +97,7 @@ const first_true_key = (obj) => {
  *  code: string,
  *  code_folded: boolean,
  *  running_disabled: boolean,
+ *  metadata: Object,
  * }}
  */
 
@@ -356,6 +357,7 @@ export class Editor extends Component {
                             ...cell,
                             // Fill the cell with empty code remotely, so it doesn't run unsafe code
                             code: "",
+                            metadata: {},
                         }
                     }
                     notebook.cell_order = [
@@ -394,6 +396,7 @@ export class Editor extends Component {
                         code: code,
                         code_folded: false,
                         running_disabled: false,
+                        metadata: {},
                     }
                 })
 
@@ -452,6 +455,7 @@ export class Editor extends Component {
                         code,
                         code_folded: false,
                         running_disabled: false,
+                        metadata: {},
                     }
                     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
                 })

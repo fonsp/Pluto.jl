@@ -61,6 +61,7 @@ function Base.convert(::Type{Cell}, cell::Dict)
         code=cell["code"],
         code_folded=cell["code_folded"],
         running_disabled=cell["running_disabled"],
+        metadata=cell["metadata"],
     )
 end
 function Base.convert(::Type{UUID}, string::String)
