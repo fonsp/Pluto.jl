@@ -31,11 +31,11 @@ end
 @deprecate upstream_cells_map(cell::Cell, notebook::Notebook) upstream_cells_map(cell, notebook.topology)
 
 "Fills cell dependency information for display in the GUI"
-function update_dependency_cache!(cell::Cell, notebook::Notebook)
+function update_dependency_cache!(cell::Cell, topology::NotebookTopology)
     cell.cell_dependencies = CellDependencies(
-        downstream_cells_map(cell, notebook.topology), 
-        upstream_cells_map(cell, notebook.topology), 
-        cell_precedence_heuristic(notebook.topology, cell),
+        downstream_cells_map(cell, topology), 
+        upstream_cells_map(cell, topology), 
+        cell_precedence_heuristic(topology, cell),
     )
 end
 
@@ -43,6 +43,6 @@ end
 function update_dependency_cache!(notebook::Notebook)
     notebook._cached_topological_order = topological_order(notebook)
     for cell in values(notebook.cells_dict)
-        update_dependency_cache!(cell, notebook)
+        update_dependency_cache!(cell, notebook.topology)
     end
 end
