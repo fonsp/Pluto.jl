@@ -30,9 +30,11 @@ const with_connections_debug = (page, action) => {
   const tracker = new InflightRequests(page);
   return action().finally(() => {
     tracker.dispose();
-  }).catch(e => {
     const inflight = tracker.inflightRequests();
-    console.warn("Open connections: ", inflight.map(request => request.url()));
+    if(inflight.length > 0) {
+      console.warn("Open connections: ", inflight.map(request => request.url()));
+    }
+  }).catch(e => {
     throw e
   })
 }
