@@ -61,6 +61,7 @@ import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_l
 import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
 import { debug_syntax_plugin } from "./CellInput/debug_syntax_plugin.js"
 import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
+import { is_mac_keyboard } from "../common/KeyboardShortcuts.js"
 
 export const pluto_syntax_colors = HighlightStyle.define(
     [
@@ -666,9 +667,10 @@ export const CellInput = ({
                     // Handle errors hopefully?
                     EditorView.exceptionSink.of((exception) => {
                         set_error(exception)
-                        alert(
-                            "We run into an issue; We have lost your cursor 😞😓😿\n If this appears again, please report an issue at https://github.com/fonsp/Pluto.jl/issues"
-                        )
+                        console.error("EditorView exception!", exception)
+                        // alert(
+                        //     `We ran into an issue! We have lost your cursor 😞😓😿\n If this appears again, please press F12, then click the "Console" tab,  eport an issue at https://github.com/fonsp/Pluto.jl/issues`
+                        // )
                     }),
                 ],
             }),
