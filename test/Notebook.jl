@@ -178,7 +178,7 @@ end
         save_notebook(nb)
         @info "File" Text(read(nb.path,String))
         result = load_notebook_nobackup(nb.path)
-        @test notebook_inputs_equal(nb, result)
+        @test_notebook_inputs_equal(nb, result)
         cell = first(values(result.cells_dict))
         @test cell.metadata == Dict(
             "a metadata tag" => Dict(
