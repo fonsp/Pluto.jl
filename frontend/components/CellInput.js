@@ -551,7 +551,7 @@ export const CellInput = ({
             let scopestate = state.field(ScopeStateField)
             let global_definitions = state.facet(GlobalDefinitionsFacet)
             const dangerous = Object.entries(global_definitions)
-                .filter(([_, cell_ids]) => cell_ids.length > 1 && cell_ids.includes(cell_id))
+                .filter(([name, cell_ids]) => scopestate.definitions.has(name) && cell_ids.find((cell) => cell !== cell_id) !== undefined)
                 .map(([name, _]) => name)
 
             return dangerous.map((variable) => {
