@@ -55,6 +55,7 @@ include("./notebook/Events.jl")
 include("./webserver/Session.jl")
 include("./webserver/PutUpdates.jl")
 
+include("./analysis/data structures.jl")
 include("./analysis/Parse.jl")
 include("./analysis/topological_order.jl")
 include("./analysis/is_just_text.jl")
