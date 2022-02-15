@@ -1,8 +1,9 @@
 module REST
-import ..Pluto: ServerSession, Notebook, NotebookTopology, Cell, FunctionName, WorkspaceManager, where_assigned, where_referenced, update_save_run!, topological_order
+import ..Pluto: ServerSession, Notebook, NotebookTopology, Cell, FunctionName, WorkspaceManager, ReactiveNode, ExprAnalysisCache, where_assigned, where_referenced, update_save_run!, topological_order, is_joined_funcname
 import Pluto.PlutoRunner
 import UUIDs: UUID
 import Distributed
+import REPL: ends_with_semicolon
 
 WYSIWYR_VERSION = "v1"
 
@@ -97,6 +98,29 @@ function get_notebook_output(session::ServerSession, notebook::Notebook, topolog
         end
     end
 
+    rest_formatted_errors = Dict{Cell, Any}()
+
+    "Run a single cell non-reactively without updating ouputs, but saving errors"
+    function run_single_rest!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell, reactive_node::ReactiveNode, expr_cache::ExprAnalysisCache; user_requested_run::Bool=true)
+        run = WorkspaceManager.eval_format_fetch_in_workspace(
+            session_notebook, 
+            expr_cache.parsedcode, 
+            cell.cell_id, 
+            ends_with_semicolon(cell.code), 
+            expr_cache.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing,
+            expr_cache.forced_expr_id,
+            user_requested_run,
+            collect(keys(cell.published_objects)),
+        )
+        if run.errored
+            rest_formatted_errors[cell] = run
+        end
+        if session_notebook isa Tuple && run.process_exited
+            session_notebook[2].process_status = ProcessStatus.no_process
+        end
+        return run
+    end
+
     current_workspace = WorkspaceManager.get_workspace((session, notebook))
     new_workspace_name = WorkspaceManager.create_emptyworkspacemodule(current_workspace.pid)
     workspace = WorkspaceManager.Workspace(;
@@ -106,15 +130,29 @@ function get_notebook_output(session::ServerSession, notebook::Notebook, topolog
         original_LOAD_PATH=current_workspace.original_LOAD_PATH,
         original_ACTIVE_PROJECT=current_workspace.original_ACTIVE_PROJECT,
     )
-    update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, dependency_mod=Cell[intersection_path...], workspace_override=workspace, old_workspace_name_override=current_workspace.module_name, send_notebook_changes=false, run_async=false, save=false, update_outputs=false)
+    update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, dependency_mod=Cell[intersection_path...], workspace_override=workspace, old_workspace_name_override=current_workspace.module_name, send_notebook_changes=false, run_async=false, save=false, run_single_fn! = run_single_rest!)
 
-    Dict(out_symbol => WorkspaceManager.eval_fetch_in_workspace(workspace, out_symbol) for out_symbol in outputs)
+    if isempty(rest_formatted_errors)
+        Dict(out_symbol => WorkspaceManager.eval_fetch_in_workspace(workspace, out_symbol) for out_symbol in outputs)
+    else
+        Dict(
+            :errored => true,
+            :errors => Dict(cell.cell_id => error_output.output_formatted[1] for (cell, error_output) ∈ rest_formatted_errors)
+        )
+    end
 end
 get_notebook_output(session::ServerSession, notebook::Notebook, topology::NotebookTopology, inputs::Dict{Symbol, Any}, outputs::Vector{Symbol}) = get_notebook_output(session, notebook, topology, inputs, Set(outputs))
 
 function get_notebook_call(session::ServerSession, notebook::Notebook, name::Symbol, args, kwargs)
     fn_symbol = :($(name)($(args...); $([:($k=$v) for (k, v) ∈ kwargs]...)))
-    return WorkspaceManager.eval_fetch_in_workspace((session, notebook), fn_symbol)
+    try
+        return WorkspaceManager.eval_fetch_in_workspace((session, notebook), fn_symbol)
+    catch exs
+        return Dict(
+            :errored => true,
+            :errors => [PlutoRunner.format_output(CapturedException(exs, []))[1]]
+        )
+    end
 end
 
 function get_notebook_static_function(session::ServerSession, notebook::Notebook, topology::NotebookTopology, inputs::Vector{Symbol}, outputs::Vector{Symbol})
