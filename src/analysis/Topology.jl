@@ -27,8 +27,8 @@ end
 
 "The (information needed to create the) dependency graph of a notebook. Cells are linked by the names of globals that they define and reference. 🕸"
 Base.@kwdef struct NotebookTopology
-    nodes::DefaultDict{Cell,ReactiveNode} = DefaultDict{Cell,ReactiveNode}(ReactiveNode)
-    codes::DefaultDict{Cell,ExprAnalysisCache}=DefaultDict{Cell,ExprAnalysisCache}(ExprAnalysisCache)
+    nodes::ImmutableDefaultDict{Cell,ReactiveNode}=ImmutableDefaultDict{Cell,ReactiveNode}(ReactiveNode)
+    codes::ImmutableDefaultDict{Cell,ExprAnalysisCache}=ImmutableDefaultDict{Cell,ExprAnalysisCache}(ExprAnalysisCache)
     cell_order::ImmutableVector{Cell}=ImmutableVector{Cell}()
 
     unresolved_cells::ImmutableSet{Cell} = ImmutableSet{Cell}()
