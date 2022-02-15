@@ -546,6 +546,10 @@ export const CellInput = ({
         const warn_double_definitions = EditorView.updateListener.of((update) => {})
 
         const diagnostic_linter = linter((editorView) => {
+            if (running_disabled) {
+                return []
+            }
+
             const state = editorView.state
 
             let scopestate = state.field(ScopeStateField)
@@ -566,7 +570,7 @@ export const CellInput = ({
                 const diagnostic = {
                     ...range,
                     severity: "warning",
-                    source: "MultipleDefinitionErrors",
+                    source: "MultipleDefinitionWarnings",
                     message: `${variable} is already defined in another cell`,
                     actions: [
                         {
