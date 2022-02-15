@@ -9,6 +9,7 @@ on:
             - "frontend/**"
             - "frontend-bundler/**"
             - "frontend-dist/**"
+            - "test/frontend/**"
             - "**.md"
         branches:
             - main
