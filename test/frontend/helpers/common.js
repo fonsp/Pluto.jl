@@ -120,7 +120,9 @@ export const waitForContentToBecome = async (page, selector, targetContent) => {
 };
 
 export const clickAndWaitForNavigation = async (page, selector) => {
-  let t = with_connections_debug(page, () => page.waitForNavigation({ waitUntil: "networkidle0" }))
+  let t = with_connections_debug(page, () => page.waitForNavigation({ waitUntil: "networkidle0" })).catch(e => {
+    console.warn("Network idle never happened after navigation... weird!", e)
+  })
   await page.click(selector)
   await t
 }
