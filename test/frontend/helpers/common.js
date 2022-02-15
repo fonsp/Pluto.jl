@@ -6,7 +6,7 @@ import * as process from "process";
 class InflightRequests {
   constructor(page) {
     this._page = page;
-    this._requests = new Set();
+    this._requests = new Map();
     this._onStarted = this._onStarted.bind(this);
     this._onFinished = this._onFinished.bind(this);
     this._page.on('request', this._onStarted);
@@ -14,10 +14,10 @@ class InflightRequests {
     this._page.on('requestfailed', this._onFinished);
   }
 
-  _onStarted(request) { this._requests.add(request); }
-  _onFinished(request) { this._requests.delete(request); }
+  _onStarted(request) { this._requests.set(request, 1 + (this._requests.get(request) ?? 0)); }
+  _onFinished(request) { this._requests.set(request, -1 + (this._requests.get(request) ?? 0)); }
  
-  inflightRequests() { return Array.from(this._requests); }  
+  inflightRequests() { return Array.from([...this._requests.entries()].flatMap(([k,v]) => v > 0 ? [k] : [])); }  
 
   dispose() {
     this._page.removeListener('request', this._onStarted);
@@ -35,6 +35,7 @@ const with_connections_debug = (page, action) => {
       console.warn("Open connections: ", inflight.map(request => request.url()));
     }
   }).catch(e => {
+    
     throw e
   })
 }
