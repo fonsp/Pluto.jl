@@ -2607,7 +2607,9 @@ body.ctrl_down [data-cell-variable] {
 }
 body.ctrl_down [data-pluto-variable]:hover,
 body.ctrl_down [data-pluto-variable]:hover * {
-    color: #af5bc3 !important;
+    /* This basically `color: #af5bc3`, but it works for emoji too!! */
+    color: transparent !important;
+    text-shadow: 0 0 #af5bc3;
 }
 
 /* Variable that is declared in the same cell */
@@ -2616,7 +2618,9 @@ body.ctrl_down [data-pluto-variable]:hover * {
     text-decoration: none;
 }
 body.ctrl_down [data-cell-variable]:hover * {
-    color: #af5bc3 !important;
+    /* This basically `color: #af5bc3`, but it works for emoji too!! */
+    color: transparent !important;
+    text-shadow: 0 0 #af5bc3;
 }
 
 .cm-tooltip.cm-tooltip-autocomplete {
@@ -2723,6 +2727,18 @@ pluto-output > assignee {
     background: unset;
 }
 
+.cm-selectionMatch {
+    background: none !important;
+    text-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+    .cm-selectionMatch {
+        background: none !important;
+        text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+    }
+}
+
 .cm-editor .cm-matchingBracket,
 .cm-editor .cm-nonmatchingBracket {
     background-color: unset;
@@ -2745,16 +2761,24 @@ pluto-input:focus-within .cm-editor .cm-matchingBracket {
 }
 
 /* Required for awesome-line-wrapping-plugin */
-.awesome-wrapping-plugin-indent {
-    /* Seems like tabs don't play too well with negative text-indent, and there seem to be some kind of cut-off point
-       before it even has any effect... Honestly need to look at this better because I can't figure it out yet */
-    --correction: 1px;
-    text-indent: calc(-1 * var(--indented, 0px) - var(--correction, 0px)) !important;
-    padding-left: calc(var(--indented, 0px) + var(--cm-left-padding, 4px)) + var(--correction, 0px) !important;
+.awesome-wrapping-plugin-the-line {
+    --correction: 0px;
+    margin-left: calc(var(--indented));
+    text-indent: calc(-1 * var(--indented));
 }
-.awesome-wrapping-plugin-indent > * {
+.awesome-wrapping-plugin-the-line > * {
     /* text-indent apparently cascades... which I think is pretty stupid but this is the fix */
     text-indent: initial;
+}
+.awesome-wrapping-plugin-the-tabs {
+    /* So FOR SOME REASON text-ident is kinda buggy
+        but that gets fixed with inline-block...
+        But that brought some other problems...
+        But margin-left: -1px seems to also do the trick?? */
+    /* display: inline-block; */
+    white-space: pre;
+    vertical-align: top;
+    margin-left: -1px;
 }
 
 /* PLUTO HOOKS - special styling for cell that runs hook */

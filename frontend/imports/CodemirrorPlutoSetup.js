@@ -30,6 +30,7 @@ import {
     foldKeymap,
     commentKeymap,
     syntaxTree,
+    syntaxTreeAvailable,
     Decoration,
     ViewUpdate,
     ViewPlugin,
@@ -57,10 +58,12 @@ import {
     python,
     Text,
     linter,
+    lintGutter,
 } from "./index.es.js"
 
 export {
     linter,
+    lintGutter,
     EditorState,
     EditorSelection,
     Compartment,
@@ -92,6 +95,7 @@ export {
     foldKeymap,
     commentKeymap,
     syntaxTree,
+    syntaxTreeAvailable,
     Decoration,
     ViewUpdate,
     ViewPlugin,

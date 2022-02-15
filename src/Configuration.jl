@@ -62,6 +62,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
     notebook::Union{Nothing,String,Vector{<:String}} = nothing
     init_with_file_viewer::Bool = false
     simulated_lag::Real = 0.0
+    on_event::Function = function(a) #= @info "$(typeof(a))" =# end
 end
 
 """
@@ -199,9 +200,7 @@ function _convert_to_flags(options::CompilerOptions)::Vector{String}
         flagname = string("--", replace(String(name), "_" => "-"))
         value = getfield(options, name)
         if value !== nothing
-            if !(VERSION <= v"1.5.0-" && name === :threads)
-                push!(option_list, string(flagname, "=", value))
-            end
+            push!(option_list, string(flagname, "=", value))
         end
     end
 

@@ -45,7 +45,7 @@ import Pkg
     end
     
     @test notebook.cells[2].output.body == "246"
-    @test notebook.cells[3].errored == false
+    @test notebook.cells[3] |> noerror
     
     original_rand_output = notebook.cells[3].output.body
     

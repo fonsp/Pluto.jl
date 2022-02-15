@@ -81,11 +81,11 @@ export const waitForContentToBecome = async (page, selector, targetContent) => {
   return getTextContent(page, selector);
 };
 
-export const clickAndWaitForNavigation = (page, selector) =>
-  Promise.all([
-    page.waitForNavigation({ waitUntil: "networkidle0" }),
-    page.click(selector),
-  ]);
+export const clickAndWaitForNavigation = async (page, selector) => {
+  let t = page.waitForNavigation({ waitUntil: "networkidle0" })
+  await page.click(selector)
+  await t
+}
 
 const dismissBeforeUnloadDialogs = (page) => {
   page.on("dialog", async (dialog) => {

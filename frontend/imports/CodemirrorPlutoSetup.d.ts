@@ -2593,7 +2593,7 @@ declare class EditorView {
     (`view.contentDOM.getBoundingClientRect().top`) to limit layout
     queries.
     
-    *Deprecated: use `blockAtHeight` instead.*
+    *Deprecated: use `elementAtHeight` instead.*
     */
     blockAtHeight(height: number, docTop?: number): BlockInfo;
     /**
@@ -2947,6 +2947,13 @@ declare class EditorView {
         dark?: boolean;
     }): Extension;
     /**
+    This facet records whether a dark theme is active. The extension
+    returned by [`theme`](https://codemirror.net/6/docs/ref/#view.EditorView^theme) automatically
+    includes an instance of this when the `dark` option is set to
+    true.
+    */
+    static darkTheme: Facet<boolean, boolean>;
+    /**
     Create an extension that adds styles to the base theme. Like
     with [`theme`](https://codemirror.net/6/docs/ref/#view.EditorView^theme), use `&` to indicate the
     place of the editor wrapper element when directly targeting
@@ -3268,6 +3275,16 @@ incomplete) parse tree of active [language](https://codemirror.net/6/docs/ref/#l
 or the empty tree if there is no language available.
 */
 declare function syntaxTree(state: EditorState): Tree;
+/**
+Queries whether there is a full syntax tree available up to the
+given document position. If there isn't, the background parse
+process _might_ still be working and update the tree further, but
+there is no guarantee of that—the parser will [stop
+working](https://codemirror.net/6/docs/ref/#language.syntaxParserStopped) when it has spent a
+certain amount of time or has moved beyond the visible viewport.
+Always returns false if no language has been enabled.
+*/
+declare function syntaxTreeAvailable(state: EditorState, upto?: number): boolean;
 /**
 This class bundles a [language object](https://codemirror.net/6/docs/ref/#language.Language) with an
 optional set of supporting extensions. Language packages are
@@ -4050,6 +4067,11 @@ declare const tags: {
     A [keyword](https://codemirror.net/6/docs/ref/#highlight.tags.keyword) that defines something.
     */
     definitionKeyword: Tag;
+    /**
+    A [keyword](https://codemirror.net/6/docs/ref/#highlight.tags.keyword) related to defining or
+    interfacing with modules.
+    */
+    moduleKeyword: Tag;
     /**
     An operator.
     */
@@ -5166,4 +5188,4 @@ Create an instance of the collaborative editing plugin.
 */
 declare function collab(config?: CollabConfig): Extension;
 
-export { Annotation, Compartment, Decoration, EditorSelection, EditorState, EditorView, Facet, HighlightStyle, NodeProp, PostgreSQL, SelectionRange, StateEffect, StateField, StreamLanguage, Text, Transaction, TreeCursor, ViewPlugin, ViewUpdate, WidgetType, index as autocomplete, bracketMatching, closeBrackets, closeBracketsKeymap, collab, combineConfig, commentKeymap, completionKeymap, defaultHighlightStyle, defaultKeymap, drawSelection, foldGutter, foldKeymap, highlightSelectionMatches, highlightSpecialChars, history, historyKeymap, html, htmlLanguage, indentLess, indentMore, indentOnInput, indentUnit, javascript, javascriptLanguage, julia as julia_andrey, julia$1 as julia_legacy, keymap, lineNumbers, markdown, markdownLanguage, parseCode, parseMixed, placeholder, python, pythonLanguage, rectangularSelection, searchKeymap, sql, syntaxTree, tags };
+export { Annotation, Compartment, Decoration, EditorSelection, EditorState, EditorView, Facet, HighlightStyle, NodeProp, PostgreSQL, SelectionRange, StateEffect, StateField, StreamLanguage, Text, Transaction, TreeCursor, ViewPlugin, ViewUpdate, WidgetType, index as autocomplete, bracketMatching, closeBrackets, closeBracketsKeymap, collab, combineConfig, commentKeymap, completionKeymap, defaultHighlightStyle, defaultKeymap, drawSelection, foldGutter, foldKeymap, highlightSelectionMatches, highlightSpecialChars, history, historyKeymap, html, htmlLanguage, indentLess, indentMore, indentOnInput, indentUnit, javascript, javascriptLanguage, julia as julia_andrey, julia$1 as julia_legacy, keymap, lineNumbers, markdown, markdownLanguage, parseCode, parseMixed, placeholder, python, pythonLanguage, rectangularSelection, searchKeymap, sql, syntaxTree, syntaxTreeAvailable, tags };

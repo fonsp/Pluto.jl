@@ -78,6 +78,9 @@ function input_generator(input) {
  * @param {any} new_value
  */
 const set_input_value = (input, new_value) => {
+    if (input instanceof HTMLInputElement && input.type === "file") {
+        return
+    }
     if (new_value == null) {
         //@ts-ignore
         input.value = new_value
@@ -155,7 +158,8 @@ export const add_bonds_listener = (node, on_bond_change, known_values) => {
 
         // see the docs on Generators.input from observablehq/stdlib
         let skippped_first = false
-        for (let val of input_generator(bond_node.firstElementChild)) {
+        const bound_element_node = bond_node.firstElementChild
+        for (let val of input_generator(bound_element_node)) {
             if (node_is_invalidated) break
 
             if (skippped_first === false) {
