@@ -349,14 +349,11 @@ export const CellInput = ({
     cell_id,
     notebook_id,
     running_disabled,
-    cell_dependencies,
     any_logs,
     show_logs,
     set_show_logs,
     cm_highlighted_line,
     variables_in_all_notebook,
-    register_clippy_hint,
-    unregister_clippy_hint,
 }) => {
     let pluto_actions = useContext(PlutoContext)
 
@@ -577,6 +574,20 @@ export const CellInput = ({
                             apply: (view, from, to) => {
                                 const transaction = view.state.update({ changes: { from, to, insert: new_name } })
                                 view.dispatch(transaction)
+                            },
+                        },
+                        {
+                            name: `Disable the other definition of ${variable}`,
+                            apply: async () => {
+                                // Can we group update?
+                                await pluto_actions.update_notebook((notebook) => {
+                                    for (let cell of global_definitions[variable]) {
+                                        if (cell !== cell_id) {
+                                            notebook.cell_inputs[cell].running_disabled = true
+                                        }
+                                    }
+                                })
+                                await pluto_actions.set_and_run_multiple([cell_id])
                             },
                         },
                     ],

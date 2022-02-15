@@ -693,6 +693,15 @@ nav#at_the_top:after {
     color: black;
 }
 
+.cm-tooltip-lint {
+    font-family: "JuliaMono";
+    font-size: 0.75rem;
+}
+
+.cm-tooltip-lint button {
+    cursor: pointer;
+}
+
 @media (any-pointer: fine) {
     nav#at_the_top > pluto-filepicker .cm-editor {
         border: 2px solid transparent;

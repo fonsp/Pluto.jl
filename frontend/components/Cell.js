@@ -70,7 +70,10 @@ export const Cell = ({
 }) => {
     let pluto_actions = useContext(PlutoContext)
     const notebook = pluto_actions.get_notebook()
-    let variables_in_all_notebook = Object.values(notebook?.cell_dependencies ?? {}).reduce((all, x) => {
+    let variables_in_all_notebook = Object.entries(notebook?.cell_dependencies ?? {}).reduce((all, [cell_id, x]) => {
+        if (notebook.cell_inputs[cell_id].running_disabled) {
+            return all
+        }
         Object.keys(x.downstream_cells_map).forEach((variable) => {
             if (variable in all) {
                 all[variable].push(x.cell_id)
