@@ -70,9 +70,16 @@ export const Cell = ({
 }) => {
     let pluto_actions = useContext(PlutoContext)
     const notebook = pluto_actions.get_notebook()
-    let variables_in_all_notebook = Object.fromEntries(
-        Object.values(notebook?.cell_dependencies ?? {}).flatMap((x) => Object.keys(x.downstream_cells_map).map((variable) => [variable, x.cell_id]))
-    )
+    let variables_in_all_notebook = Object.values(notebook?.cell_dependencies ?? {}).reduce((all, x) => {
+        Object.keys(x.downstream_cells_map).forEach((variable) => {
+            if (variable in all) {
+                all[variable].push(x.cell_id)
+            } else {
+                all[variable] = [x.cell_id]
+            }
+        })
+        return all
+    }, {})
     const variables = Object.keys(notebook?.cell_dependencies?.[cell_id]?.downstream_cells_map || {})
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
