@@ -38,7 +38,7 @@ apples = [15, 25, 80, 75, 50, 30, 35, 15, 25, 35]
 
 # ╔═╡ a405ae4c-9ad9-11ea-0008-f763e098846d
 md"""
-Great, let's plot them! The basic syntax of of `Plots` is very simple.
+Great, let's plot them! The basic syntax of `Plots` is very simple.
 """
 
 # ╔═╡ 12a8c222-9ad9-11ea-2544-355bd080367f

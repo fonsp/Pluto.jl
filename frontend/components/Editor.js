@@ -32,6 +32,7 @@ import { ProgressBar } from "./ProgressBar.js"
 import { IsolatedCell } from "./Cell.js"
 import { RawHTMLContainer } from "./CellOutput.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
+import { HijackExternalLinksToOpenInNewTab } from "./HackySideStuff/HijackExternalLinksToOpenInNewTab.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -1205,6 +1206,8 @@ patch: ${JSON.stringify(
         >`
 
         return html`
+            ${this.state.disable_ui === false && html`<${HijackExternalLinksToOpenInNewTab} />`}
+            
             <${PlutoContext.Provider} value=${this.actions}>
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                     <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>

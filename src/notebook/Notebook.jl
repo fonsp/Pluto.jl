@@ -57,7 +57,7 @@ Base.@kwdef mutable struct Notebook
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
 end
 
-Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = Notebook(
+Notebook(cells::Vector{Cell}, path::AbstractString, notebook_id::UUID) = Notebook(
     cells_dict=Dict(map(cells) do cell
         (cell.cell_id, cell)
     end),
@@ -66,7 +66,7 @@ Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = Notebo
     notebook_id=notebook_id,
 )
 
-Notebook(cells::Array{Cell,1}, path::AbstractString=numbered_until_new(joinpath(new_notebooks_directory(), cutename()))) = Notebook(cells, path, uuid1())
+Notebook(cells::Vector{Cell}, path::AbstractString=numbered_until_new(joinpath(new_notebooks_directory(), cutename()))) = Notebook(cells, path, uuid1())
 
 function Base.getproperty(notebook::Notebook, property::Symbol)
     if property == :cells

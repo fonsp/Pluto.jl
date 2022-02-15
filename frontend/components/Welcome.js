@@ -65,7 +65,7 @@ export const process_path_or_url = async (path_or_url) => {
             const gist = await (
                 await fetch(`https://api.github.com/gists/${gist_id}`, {
                     headers: { Accept: "application/vnd.github.v3+json" },
-                })
+                }).then((r) => (r.ok ? r : Promise.reject(r)))
             ).json()
             console.log(gist)
             const files = Object.values(gist.files)

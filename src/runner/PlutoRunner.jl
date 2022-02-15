@@ -144,6 +144,7 @@ function globalref_to_workspaceref(expr)
         # Create new lines to assign to the replaced names of the global refs.
         # This way the expression explorer doesn't care (it just sees references to variables outside of the workspace), 
         # and the variables don't get overwriten by local assigments to the same name (because we have special names). 
+        (mutable_ref_list .|> ref -> :(local $(ref[2])))...,
         map(mutable_ref_list) do ref
             # I can just do Expr(:isdefined, ref[1]) here, but it feels better to macroexpand,
             #   because it's more obvious what's going on, and when they ever change the ast, we're safe :D
@@ -1303,7 +1304,7 @@ end
 # This is similar to how Requires.jl works, except we don't use a callback, we just check every time.
 const integrations = Integration[
     Integration(
-        id = Base.PkgId(Base.UUID(reinterpret(Int128, codeunits("Paul Berg Berlin")) |> first), "AbstractPlutoDingetjes"),
+        id = Base.PkgId(Base.UUID(reinterpret(UInt128, codeunits("Paul Berg Berlin")) |> first), "AbstractPlutoDingetjes"),
         code = quote
             @assert v"1.0.0" <= AbstractPlutoDingetjes.MY_VERSION < v"2.0.0"
             initial_value_getter_ref[] = AbstractPlutoDingetjes.Bonds.initial_value
