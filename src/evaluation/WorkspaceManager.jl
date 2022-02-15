@@ -169,9 +169,13 @@ function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.R
                 try
                     max_log = parse(Int, next_log["kwargs"][maybe_max_log][2] |> first)
 
+                    # Don't include maxlog in the log-message, in line
+                    # with how Julia handles it.
+                    deleteat!(next_log["kwargs"], maybe_max_log)
+
                     # Don't show message with id more than max_log times
                     if max_log isa Int && n_logs >= max_log
-                        return
+                        continue
                     end
                 catch
                 end
