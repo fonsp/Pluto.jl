@@ -26,7 +26,7 @@ let CellMemo = ({
     const selected_cells_diffable_primitive = (selected_cells || []).join("")
     const { body, last_run_timestamp, mime, persist_js_state, rootassignee } = cell_result?.output || {}
     const { queued, running, runtime, errored, depends_on_disabled_cells, logs } = cell_result || {}
-    const { cell_id, code, code_folded, running_disabled } = cell_input || {}
+    const { cell_id, code, code_folded, running_disabled, local_code, local_code_author_name } = cell_input || {}
     return useMemo(() => {
         return html`
             <${Cell}
@@ -51,6 +51,8 @@ let CellMemo = ({
         `
     }, [
         cell_id,
+        local_code,
+        local_code_author_name,
         running_disabled,
         depends_on_disabled_cells,
         queued,
@@ -110,7 +112,6 @@ const render_cell_outputs_minimum = 20
  * */
 export const Notebook = ({
     notebook,
-    cell_inputs_local,
     on_update_doc_query,
     on_cell_input,
     on_focus_neighbor,
@@ -162,7 +163,6 @@ export const Notebook = ({
                         }}
                         cell_input=${notebook.cell_inputs[cell_id]}
                         cell_dependencies=${notebook.cell_dependencies[cell_id] ?? {}}
-                        cell_input_local=${cell_inputs_local[cell_id]}
                         notebook_id=${notebook.notebook_id}
                         on_update_doc_query=${on_update_doc_query}
                         on_cell_input=${on_cell_input}

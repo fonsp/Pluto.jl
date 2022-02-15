@@ -42,6 +42,7 @@ import {
     indentUnit,
     StateField,
     StateEffect,
+    Annotation,
     autocomplete,
     htmlLanguage,
     markdownLanguage,
@@ -61,6 +62,8 @@ import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_l
 import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
 import { debug_syntax_plugin } from "./CellInput/debug_syntax_plugin.js"
 import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
+
+const change_is_from_remote_annotation = Annotation.define()
 
 export const pluto_syntax_colors = HighlightStyle.define(
     [
@@ -328,6 +331,7 @@ let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPluto
  */
 export const CellInput = ({
     local_code,
+    local_code_author_name,
     remote_code,
     disable_input,
     focus_after_creation,
@@ -353,13 +357,12 @@ export const CellInput = ({
     variables_in_all_notebook,
 }) => {
     let pluto_actions = useContext(PlutoContext)
-
+    const my_author_name = pluto_actions.my_author_name
     const newcm_ref = useRef(/** @type {EditorView} */ (null))
     const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))
     const remote_code_ref = useRef(null)
     const on_change_ref = useRef(null)
     on_change_ref.current = on_change
-
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
     let global_definitions_compartment = useCompartment(newcm_ref, GlobalDefinitionsFacet.of(variables_in_all_notebook))
     let highlighted_line_compartment = useCompartment(newcm_ref, HighlightLineFacet.of(cm_highlighted_line))
@@ -368,13 +371,16 @@ export const CellInput = ({
     let on_change_compartment = useCompartment(
         newcm_ref,
         // Functions are hard to compare, so I useMemo manually
-        useMemo(() => {
-            return EditorView.updateListener.of((update) => {
-                if (update.docChanged) {
-                    on_change(update.state.doc.toString())
-                }
-            })
-        }, [on_change])
+        useMemo(
+            _.throttle(() => {
+                return EditorView.updateListener.of((update) => {
+                    if (update.docChanged && !update.transactions.some((t) => t.annotation(change_is_from_remote_annotation))) {
+                        on_change(update.state.doc.toString())
+                    }
+                })
+            }, 200),
+            [on_change]
+        )
     )
 
     useLayoutEffect(() => {
@@ -704,24 +710,26 @@ export const CellInput = ({
         }
     }, [])
 
-    // Effect to apply "remote_code" to the cell when it changes...
-    // ideally this won't be necessary as we'll have actual multiplayer,
-    // or something to tell the user that the cell is out of sync.
+    // Update local code if the code is changed by someone else
+    // working on the code. This could be another human, but might also
+    // be a computer (when you wrap cells in `begin..end`, or paste code)
     useEffect(() => {
+        // No need to update if we are the ones who made the change!
+        if (local_code_author_name === my_author_name) return
+
         if (newcm_ref.current == null) return // Not sure when and why this gave an error, but now it doesn't
 
         const current_value = getValue6(newcm_ref.current) ?? ""
-        if (remote_code_ref.current == null && remote_code === "" && current_value !== "") {
-            // this cell is being initialized with empty code, but it already has local code set.
-            // this happens when pasting or dropping cells
-            return
+        // Only update if the code actually changed
+        if (current_value !== local_code) {
+            newcm_ref.current.dispatch({
+                changes: { from: 0, to: newcm_ref.current.state.doc.length, insert: local_code },
+                annotations: [change_is_from_remote_annotation.of(1)], // Maybe cursor in the future??
+            })
         }
-        remote_code_ref.current = remote_code
-        if (current_value !== remote_code) {
-            setValue6(newcm_ref.current, remote_code)
-        }
-    }, [remote_code])
+    }, [local_code, my_author_name])
 
+    // Handles forced focus coming from above
     useEffect(() => {
         const cm = newcm_ref.current
         if (cm_forced_focus == null) {

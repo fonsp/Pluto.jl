@@ -23,7 +23,7 @@ Base.@kwdef mutable struct Notebook
     "Cells are ordered in a `Notebook`, and this order can be changed by the user. Cells will always have a constant UUID."
     cells_dict::Dict{UUID,Cell}
     cell_order::Array{UUID,1}
-    
+
     path::String
     notebook_id::UUID=uuid1()
     topology::NotebookTopology=NotebookTopology()
@@ -101,7 +101,7 @@ In the produced file, cells are not saved in the notebook order. If `notebook.to
 
 Have a look at our [JuliaCon 2020 presentation](https://youtu.be/IAF8DjrQSSk?t=1085) to learn more!
 """
-function save_notebook(io, notebook::Notebook)
+function save_notebook(io, notebook::Notebook, serialize_temp=false)
     println(io, _notebook_header)
     println(io, "# ", PLUTO_VERSION_STR)
     # Anything between the version string and the first UUID delimiter will be ignored by the notebook loader.
@@ -109,11 +109,9 @@ function save_notebook(io, notebook::Notebook)
     println(io, "using Markdown")
     println(io, "using InteractiveUtils")
     # Super Advanced Code Analysis™ to add the @bind macro to the saved file if it's used somewhere.
-    if any(occursin("@bind", c.code) for c in notebook.cells)
-        println(io, "")
-        println(io, "# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).")
-        println(io, PlutoRunner.fake_bind)
-    end
+    println(io, "")
+    println(io, "# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).")
+    println(io, PlutoRunner.fake_bind)
     println(io)
 
     cells_ordered = collect(topological_order(notebook))
@@ -121,7 +119,7 @@ function save_notebook(io, notebook::Notebook)
     for c in cells_ordered
         println(io, _cell_id_delimiter, string(c.cell_id))
         # write the cell code and prevent collisions with the cell delimiter
-        print(io, replace(c.code, _cell_id_delimiter => "# "))
+        print(io, replace(serialize_temp ? c.local_code : c.code, _cell_id_delimiter => "# "))
         print(io, _cell_suffix)
     end
 

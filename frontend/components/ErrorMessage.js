@@ -48,7 +48,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                     href="#"
                     onClick=${(e) => {
                         e.preventDefault()
-                        pluto_actions.wrap_remote_cell(cell_id, "begin")
+                        pluto_actions.wrap_remote_cell_in_begin_end(cell_id)
                     }}
                     >Wrap all code in a <em>begin ... end</em> block.</a
                 >`

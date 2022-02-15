@@ -28,6 +28,8 @@ Base.@kwdef mutable struct Cell
     cell_id::UUID=uuid1()
 
     code::String=""
+    local_code::String=""
+    local_code_author_name::String=""
     code_folded::Bool=false
     
     output::CellOutput=CellOutput()
@@ -48,7 +50,7 @@ Base.@kwdef mutable struct Cell
     depends_on_disabled_cells::Bool=false
 end
 
-Cell(cell_id, code) = Cell(cell_id=cell_id, code=code)
+Cell(cell_id, code) = Cell(cell_id=cell_id, code=code, local_code=code)
 Cell(code) = Cell(uuid1(), code)
 
 cell_id(cell::Cell) = cell.cell_id
@@ -57,6 +59,7 @@ function Base.convert(::Type{Cell}, cell::Dict)
 	Cell(
         cell_id=UUID(cell["cell_id"]),
         code=cell["code"],
+        local_code=get(cell, "local_code", get(cell, "code", "")),
         code_folded=cell["code_folded"],
         running_disabled=cell["running_disabled"],
     )

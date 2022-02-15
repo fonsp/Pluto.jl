@@ -74,7 +74,7 @@ const statusmap = (state) => ({
     static_preview: state.static_preview,
     binder: state.offer_binder || state.binder_phase != null,
     code_differs: state.notebook.cell_order.some(
-        (cell_id) => state.cell_inputs_local[cell_id] != null && state.notebook.cell_inputs[cell_id].code !== state.cell_inputs_local[cell_id].code
+        (cell_id) => state.notebook.cell_inputs[cell_id] != null && state.notebook.cell_inputs[cell_id].code !== state.notebook.cell_inputs[cell_id].local_code
     ),
     recording_waiting_to_start: state.recording_waiting_to_start,
     is_recording: state.is_recording,
@@ -94,6 +94,8 @@ const first_true_key = (obj) => {
  * @type {{
  *  cell_id: string,
  *  code: string,
+ *  local_code: string,
+ *  local_code_author_name: string,
  *  code_folded: boolean,
  *  running_disabled: boolean,
  * }}
@@ -235,8 +237,8 @@ export class Editor extends Component {
         super()
 
         this.state = {
+            my_author_name: uuidv4(),
             notebook: /** @type {NotebookData} */ initial_notebook(),
-            cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
             last_update_time: 0,
@@ -277,14 +279,12 @@ export class Editor extends Component {
             update_notebook: (...args) => this.update_notebook(...args),
             set_doc_query: (query) => this.setState({ desired_doc_query: query }),
             set_local_cell: (cell_id, new_val) => {
-                return this.setStatePromise(
-                    immer((state) => {
-                        state.cell_inputs_local[cell_id] = {
-                            code: new_val,
-                        }
-                        state.selected_cells = []
-                    })
-                )
+                update_notebook((notebook) => {
+                    if (notebook.cell_inputs[cell_id].local_code !== new_val) {
+                        notebook.cell_inputs[cell_id].local_code = new_val
+                        notebook.cell_inputs[cell_id].local_code_author_name = this.state.my_author_name
+                    }
+                })
             },
             focus_on_neighbor: (cell_id, delta, line = delta === -1 ? Infinity : -1, ch = 0) => {
                 const i = this.state.notebook.cell_order.indexOf(cell_id)
@@ -302,18 +302,8 @@ export class Editor extends Component {
                 }
             },
             add_deserialized_cells: async (data, index_or_id, deserializer = deserialize_cells) => {
-                let new_codes = deserializer(data)
-                /** @type {Array<CellInputData>} */
-                /** Create copies of the cells with fresh ids */
-                let new_cells = new_codes.map((code) => ({
-                    cell_id: uuidv4(),
-                    code: code,
-                    code_folded: false,
-                    running_disabled: false,
-                }))
-
+                // Look for an index to paste the cells between
                 let index
-
                 if (typeof index_or_id === "number") {
                     index = index_or_id
                 } else {
@@ -324,38 +314,34 @@ export class Editor extends Component {
                         index += 1
                     }
                 }
-
+                // TODO Make this select a position that is on screen!!
                 if (index === -1) {
                     index = this.state.notebook.cell_order.length
                 }
 
+                let new_codes = deserializer(data)
+                /** Create copies of the cells with fresh ids
+                 *  @type {Array<CellInputData>}
+                 * */
+                let new_cells = new_codes.map((code) => ({
+                    cell_id: uuidv4(),
+                    // Fill the cell with empty code remotely, so it doesn't run unsafe code
+                    code: "",
+                    code_folded: false,
+                    running_disabled: false,
+                    local_code: code,
+                    local_code_author_name: `${this.state.my_author_name}-💻-from-paste`,
+                }))
+
                 /** Update local_code. Local code doesn't force CM to update it's state
                  * (the usual flow is keyboard event -> cm -> local_code and not the opposite )
                  * See ** 1 **
-                 */
-                this.setState(
-                    immer((state) => {
-                        // Deselect everything first, to clean things up
-                        state.selected_cells = []
-
-                        for (let cell of new_cells) {
-                            state.cell_inputs_local[cell.cell_id] = cell
-                        }
-                        state.last_created_cell = new_cells[0]?.cell_id
-                    })
-                )
-
-                /**
                  * Create an empty cell in the julia-side.
                  * Code will differ, until the user clicks 'run' on the new code
                  */
                 await update_notebook((notebook) => {
                     for (const cell of new_cells) {
-                        notebook.cell_inputs[cell.cell_id] = {
-                            ...cell,
-                            // Fill the cell with empty code remotely, so it doesn't run unsafe code
-                            code: "",
-                        }
+                        notebook.cell_inputs[cell.cell_id] = cell
                     }
                     notebook.cell_order = [
                         ...notebook.cell_order.slice(0, index),
@@ -363,20 +349,22 @@ export class Editor extends Component {
                         ...notebook.cell_order.slice(index, Infinity),
                     ]
                 })
-            },
-            wrap_remote_cell: async (cell_id, block_start = "begin", block_end = "end") => {
-                const cell = this.state.notebook.cell_inputs[cell_id]
-                const new_code = `${block_start}\n\t${cell.code.replace(/\n/g, "\n\t")}\n${block_end}`
-
                 await this.setStatePromise(
                     immer((state) => {
-                        state.cell_inputs_local[cell_id] = {
-                            ...cell,
-                            ...state.cell_inputs_local[cell_id],
-                            code: new_code,
-                        }
+                        // TODO Select the just pasted cells?
+                        // Deselect everything first, to clean things up
+                        state.selected_cells = []
+                        state.last_created_cell = new_cells[0]?.cell_id
                     })
                 )
+            },
+            wrap_remote_cell_in_begin_end: async (cell_id) => {
+                await update_notebook((notebook) => {
+                    const cell = notebook.cell_inputs[cell_id]
+                    const new_code = `begin\n\t${cell.code.replace(/\n/g, "\n\t")}\nend`
+                    notebook.cell_inputs[cell_id].local_code = new_code
+                    notebook.cell_inputs[cell_id].local_code_author_name = `${this.state.my_author_name}-💻-begin-end-wrapper`
+                })
                 await this.actions.set_and_run_multiple([cell_id])
             },
             split_remote_cell: async (cell_id, boundaries, submit = false) => {
@@ -391,18 +379,13 @@ export class Editor extends Component {
                     return {
                         cell_id: uuidv4(),
                         code: code,
+                        local_code: code,
+                        local_code_author_name: `${this.state.my_author_name}-💻-cell-splitter`,
                         code_folded: false,
                         running_disabled: false,
                     }
                 })
 
-                this.setState(
-                    immer((state) => {
-                        for (let cell of cells_to_add) {
-                            state.cell_inputs_local[cell.cell_id] = cell
-                        }
-                    })
-                )
                 await update_notebook((notebook) => {
                     // delete the old cell
                     delete notebook.cell_inputs[cell_id]
@@ -449,6 +432,8 @@ export class Editor extends Component {
                     notebook.cell_inputs[id] = {
                         cell_id: id,
                         code,
+                        local_code: code,
+                        local_code_author_name: `${this.state.my_author_name}-💻-mother-of-cells`,
                         code_folded: false,
                         running_disabled: false,
                     }
@@ -499,8 +484,8 @@ export class Editor extends Component {
             set_and_run_all_changed_remote_cells: () => {
                 const changed = this.state.notebook.cell_order.filter(
                     (cell_id) =>
-                        this.state.cell_inputs_local[cell_id] != null &&
-                        this.state.notebook.cell_inputs[cell_id].code !== this.state.cell_inputs_local[cell_id]?.code
+                        this.state.notebook.cell_inputs[cell_id] != null &&
+                        this.state.notebook.cell_inputs[cell_id].code !== this.state.notebook.cell_inputs[cell_id]?.local_code
                 )
                 this.actions.set_and_run_multiple(changed)
                 return changed.length > 0
@@ -510,8 +495,8 @@ export class Editor extends Component {
                 if (cell_ids.length > 0) {
                     await update_notebook((notebook) => {
                         for (let cell_id of cell_ids) {
-                            if (this.state.cell_inputs_local[cell_id]) {
-                                notebook.cell_inputs[cell_id].code = this.state.cell_inputs_local[cell_id].code
+                            if (notebook.cell_inputs[cell_id]?.local_code) {
+                                notebook.cell_inputs[cell_id].code = notebook.cell_inputs[cell_id].local_code
                             }
                         }
                     })
@@ -963,8 +948,18 @@ patch: ${JSON.stringify(
 
         this.serialize_selected = (cell_id = null) => {
             const cells_to_serialize = cell_id == null || this.state.selected_cells.includes(cell_id) ? this.state.selected_cells : [cell_id]
-            if (cells_to_serialize.length) {
-                return serialize_cells(cells_to_serialize.map((id) => this.state.notebook.cell_inputs[id]))
+            if (cells_to_serialize.length !== 0) {
+                return serialize_cells(
+                    cells_to_serialize.map((id) => {
+                        let local_input = this.state.notebook.cell_inputs[id]
+                        return {
+                            cell_id: local_input.cell_id,
+                            code: local_input.local_code,
+                        }
+                    })
+                )
+            } else {
+                return null
             }
         }
 
@@ -1055,14 +1050,19 @@ patch: ${JSON.stringify(
         })
 
         document.addEventListener("copy", (e) => {
-            if (!in_textarea_or_input()) {
-                const serialized = this.serialize_selected()
-                if (serialized) {
-                    navigator.clipboard.writeText(serialized).catch((err) => {
-                        alert(`Error copying cells: ${e}`)
-                    })
-                }
+            if (in_textarea_or_input()) return
+
+            const serialized = this.serialize_selected()
+            if (serialized == null) return
+
+            if (navigator.clipboard == null) {
+                alert("For some reason we are not allowed to copy text to your clipboard")
+                return
             }
+
+            navigator.clipboard.writeText(serialized).catch((err) => {
+                alert(`Error copying cells: ${e}`)
+            })
         })
 
         document.addEventListener("cut", (e) => {
@@ -1093,7 +1093,7 @@ patch: ${JSON.stringify(
 
         window.addEventListener("beforeunload", (event) => {
             const unsaved_cells = this.state.notebook.cell_order.filter(
-                (id) => this.state.cell_inputs_local[id] && this.state.notebook.cell_inputs[id].code !== this.state.cell_inputs_local[id].code
+                (id) => this.state.notebook.cell_inputs[id] && this.state.notebook.cell_inputs[id].code !== this.state.notebook.cell_inputs[id].local_code
             )
             const first_unsaved = unsaved_cells[0]
             if (first_unsaved != null) {
@@ -1167,10 +1167,13 @@ patch: ${JSON.stringify(
 
         const status = this.cached_status ?? statusmap(this.state)
         const statusval = first_true_key(status)
-
+        const pluto_actions_with_my_author_name = useMemo(
+            () => ({ ...this.actions, my_author_name: this.state.my_author_name }),
+            [this.actions, this.state.my_author_name]
+        )
         if (status.isolated_cell_view) {
             return html`
-                <${PlutoContext.Provider} value=${this.actions}>
+                <${PlutoContext.Provider} value=${pluto_actions_with_my_author_name}>
                     <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                         <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
                             <div style="width: 100%">
@@ -1205,7 +1208,7 @@ patch: ${JSON.stringify(
         >`
 
         return html`
-            <${PlutoContext.Provider} value=${this.actions}>
+            <${PlutoContext.Provider} value=${pluto_actions_with_my_author_name}>
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                     <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
                     <${Scroller} active=${this.state.scroller} />
@@ -1311,7 +1314,7 @@ patch: ${JSON.stringify(
                         />
                         <${Notebook}
                             notebook=${this.state.notebook}
-                            cell_inputs_local=${this.state.cell_inputs_local}
+                            cell_inputs_local=${this.state.notebook.cell_inputs}
                             on_update_doc_query=${this.actions.set_doc_query}
                             on_cell_input=${this.actions.set_local_cell}
                             on_focus_neighbor=${this.actions.focus_on_neighbor}
