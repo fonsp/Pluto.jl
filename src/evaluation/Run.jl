@@ -6,7 +6,7 @@ import .WorkspaceManager: macroexpand_in_workspace
 Base.push!(x::Set{Cell}) = x
 
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
-function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, roots::Vector{Cell}; deletion_hook::Function=WorkspaceManager.move_vars, user_requested_run::Bool=true, already_in_run::Bool=false, already_run::Vector{Cell}=Cell[], send_notebook_changes::Bool=true, dependency_mod::Union{Vector{Cell}, Nothing}=nothing, workspace_override::Union{WorkspaceManager.Workspace, Nothing}=nothing, old_workspace_name_override=nothing)::TopologicalOrder
+function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, roots::Vector{Cell}; deletion_hook::Function=WorkspaceManager.move_vars, user_requested_run::Bool=true, already_in_run::Bool=false, already_run::Vector{Cell}=Cell[], send_notebook_changes::Bool=true, dependency_mod::Union{Vector{Cell}, Nothing}=nothing, workspace_override::Union{WorkspaceManager.Workspace, Nothing}=nothing, old_workspace_name_override=nothing, update_outputs::Bool=true)::TopologicalOrder
 	if !already_in_run
         # make sure that we're the only `run_reactive!` being executed - like a semaphor
         take!(notebook.executetoken)
@@ -150,7 +150,8 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 			run = run_single!(
 				workspace, cell, 
 				new_topology.nodes[cell], new_topology.codes[cell]; 
-				user_requested_run=(user_requested_run && cell ∈ roots)
+				user_requested_run=(user_requested_run && cell ∈ roots),
+				update_output=update_outputs
 			)
 			any_interrupted |= run.interrupted
 		end
@@ -229,7 +230,7 @@ function defined_functions(topology::NotebookTopology, cells)
 end
 
 "Run a single cell non-reactively, set its output, return run information."
-function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell, reactive_node::ReactiveNode, expr_cache::ExprAnalysisCache; user_requested_run::Bool=true)
+function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell, reactive_node::ReactiveNode, expr_cache::ExprAnalysisCache; user_requested_run::Bool=true, update_output::Bool=true)
 	run = WorkspaceManager.eval_format_fetch_in_workspace(
 		session_notebook, 
 		expr_cache.parsedcode, 
@@ -240,7 +241,9 @@ function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},Works
 		user_requested_run,
 		collect(keys(cell.published_objects)),
 	)
-	set_output!(cell, run, expr_cache; persist_js_state=!user_requested_run)
+	if update_output
+		set_output!(cell, run, expr_cache; persist_js_state=!user_requested_run)
+	end
 	if session_notebook isa Tuple && run.process_exited
 		session_notebook[2].process_status = ProcessStatus.no_process
 	end

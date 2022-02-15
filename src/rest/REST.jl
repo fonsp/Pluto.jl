@@ -106,7 +106,7 @@ function get_notebook_output(session::ServerSession, notebook::Notebook, topolog
         original_LOAD_PATH=current_workspace.original_LOAD_PATH,
         original_ACTIVE_PROJECT=current_workspace.original_ACTIVE_PROJECT,
     )
-    update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, dependency_mod=Cell[intersection_path...], workspace_override=workspace, old_workspace_name_override=current_workspace.module_name, send_notebook_changes=false, run_async=false, save=false)
+    update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, dependency_mod=Cell[intersection_path...], workspace_override=workspace, old_workspace_name_override=current_workspace.module_name, send_notebook_changes=false, run_async=false, save=false, update_outputs=false)
 
     Dict(out_symbol => WorkspaceManager.eval_fetch_in_workspace(workspace, out_symbol) for out_symbol in outputs)
 end
