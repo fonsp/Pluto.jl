@@ -29,7 +29,7 @@ end
 Base.@kwdef struct NotebookTopology
     nodes::DefaultDict{Cell,ReactiveNode} = DefaultDict{Cell,ReactiveNode}(ReactiveNode)
     codes::DefaultDict{Cell,ExprAnalysisCache}=DefaultDict{Cell,ExprAnalysisCache}(ExprAnalysisCache)
-    cell_order::ImmutableVector{Cell} # must be given
+    cell_order::ImmutableVector{Cell}=ImmutableVector{Cell}()
 
     unresolved_cells::ImmutableSet{Cell} = ImmutableSet{Cell}()
 end
