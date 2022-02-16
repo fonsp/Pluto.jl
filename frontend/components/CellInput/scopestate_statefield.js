@@ -370,17 +370,19 @@ let raise_scope = (nested_scope, scopestate, nested_scope_validity = null) => {
         locals: [
             ...(nested_scope_validity === null
                 ? []
-                : Array.from(nested_scope.definitions).map(([name, definition]) => ({
-                      name,
-                      definition,
-                      validity: {
-                          // FIXME: Using definition.to is not quite right here, because the
-                          // name is not valid until the assignment expression is done and will
-                          // currently be autocompleted on the right hand side of its own assignment :'(
-                          from: definition.to,
-                          to: nested_scope_validity,
-                      },
-                  }))),
+                : Array.from(nested_scope.definitions)
+                      .filter(([name, _]) => !scopestate.definitions.has(name))
+                      .map(([name, definition]) => ({
+                          name,
+                          definition,
+                          validity: {
+                              // FIXME: Using definition.to is not quite right here, because the
+                              // name is not valid until the assignment expression is done and will
+                              // currently be autocompleted on the right hand side of its own assignment :'(
+                              from: definition.to,
+                              to: nested_scope_validity,
+                          },
+                      }))),
             ...nested_scope.locals,
             ...scopestate.locals,
         ],
