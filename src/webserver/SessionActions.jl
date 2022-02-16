@@ -30,8 +30,10 @@ function open_url(session::ServerSession, url::AbstractString; kwargs...)
      
     nb = open(session, path; kwargs...)
     isid = try_event_call(session, NewNotebookEvent(nb))
-    isnothing(isid) && return nb
-    change_notebook_id(session, nb, UUID(isid))
+    if result isa UUID
+        change_notebook_id(s, n, result)
+    end
+    return nb
 end
 
 "Open the notebook at `path` into `session::ServerSession` and run it. Returns the `Notebook`."
