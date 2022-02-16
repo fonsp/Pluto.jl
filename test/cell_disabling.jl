@@ -34,9 +34,8 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
     update_run!(🍭, notebook, notebook.cells)
     should_be_disabled = [1, 3, 5]
     @test get_disabled_cells(notebook) == should_be_disabled
-    @test notebook.cells[1].metadata["disabled"] == "directly"
-    @test notebook.cells[3].metadata["disabled"] == "indirectly"
-    @test notebook.cells[5].metadata["disabled"] == "indirectly"
+    @test notebook.cells[1].metadata["disabled"] == true
+    @test !any(haskey(notebook.cells[i].metadata , "disabled") for i=2:5)
 
     # change x, this change should not propagate through y
     original_y_output = notebook.cells[1].output.body

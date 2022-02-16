@@ -172,7 +172,7 @@ end
                 "string" => "String",
                 "number" => 10000,
             ),
-            "disabled" => "directly", # enhanced metadata because cell is disabled
+            "disabled" => true, # enhanced metadata because cell is disabled
         )
 
         save_notebook(nb)
@@ -186,7 +186,7 @@ end
                 "string" => "String",
                 "number" => 10000,
             ),
-            "disabled" => "directly",
+            "disabled" => true,
         )
     end
 

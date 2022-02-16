@@ -256,8 +256,7 @@ function load_notebook_nobackup(io, path)::Notebook
 
             # parse metadata
             metadata = TOML.parse(join(metadata_toml_lines, "\n"))
-            cell_disabling_status = get(metadata, "disabled", "") # the disabling metadata is part of the "normal" metadata but is also stored in separate fields due to its importance in notebook evaluation
-            running_disabled = cell_disabling_status == "directly"
+            running_disabled = get(metadata, "disabled", false) # the disabling metadata is part of the "normal" metadata but is also stored in separate fields due to its importance in notebook evaluation
 
             read_cell = Cell(; cell_id, code, running_disabled, metadata)
             collected_cells[cell_id] = read_cell

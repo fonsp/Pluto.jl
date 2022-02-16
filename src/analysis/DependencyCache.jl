@@ -53,21 +53,20 @@ Fills also disabling status into cell metadata.
 """
 function disable_dependent_cells!(notebook:: Notebook, topology:: NotebookTopology):: Vector{Cell}
 	deactivated = filter(c -> c.running_disabled, notebook.cells)
-    indirectly_deactivated = collect(topological_order(notebook, topology, deactivated))
-
+    indirectly_deactivated = collect(topological_order(topology, deactivated))
     for cell in notebook.cells
         if cell.running_disabled
-            cell.metadata["disabled"] = "directly"
+            cell.metadata["disabled"] = true
             cell.running = false
             cell.queued = false
             cell.depends_on_disabled_cells = true
         elseif cell in indirectly_deactivated
-            cell.metadata["disabled"] =  "indirectly"
+            pop!(cell.metadata, "disabled", false)
             cell.running = false
             cell.queued = false
             cell.depends_on_disabled_cells = true
         else
-            pop!(cell.metadata, "disabled", "")
+            pop!(cell.metadata, "disabled", false)
             cell.depends_on_disabled_cells = false
         end
     end
