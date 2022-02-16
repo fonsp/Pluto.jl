@@ -17,7 +17,7 @@ let get_variable_marks = (state, { scopestate, global_definitions }) => {
                 if (definition == null) {
                     // TODO variables_with_origin_cell should be notebook wide, not just in the current cell
                     // .... Because now it will only show variables after it has run once
-                    if (global_definitions[name].length > 0) {
+                    if (name in global_definitions && global_definitions[name].length > 0) {
                         return Decoration.mark({
                             // TODO This used to be tagName: "a", but codemirror doesn't like that...
                             // .... https://github.com/fonsp/Pluto.jl/issues/1790
