@@ -24,6 +24,7 @@ import { child_cursors, child_nodes, create_specific_template_maker, jl, jl_dyna
  *  name: string,
  * }>} usages
  * @property {Map<String, Range>} definitions
+ * @property {Array<{ definition: Range, validity: Range, name: string }>} locals
  */
 
 /**
@@ -39,7 +40,8 @@ let merge_scope_state = (a, b) => {
     for (let [key, value] of b.definitions) {
         definitions.set(key, value)
     }
-    return { usages, definitions }
+    let locals = [...a.locals, ...b.locals]
+    return { usages, definitions, locals }
 }
 
 /** @param {TreeCursor} cursor */
@@ -330,6 +332,7 @@ let fresh_scope = () => {
     return {
         usages: [],
         definitions: new Map(),
+        locals: [],
     }
 }
 
@@ -346,6 +349,7 @@ let lower_scope = (scopestate) => {
     return {
         usages: [],
         definitions: new Map(scopestate.definitions),
+        locals: [],
     }
 }
 
@@ -356,12 +360,30 @@ let lower_scope = (scopestate) => {
  *
  * @param {ScopeState} nested_scope
  * @param {ScopeState} scopestate
+ * @param {number} nested_scope_validity
  * @returns {ScopeState}
  */
-let raise_scope = (nested_scope, scopestate) => {
+let raise_scope = (nested_scope, scopestate, nested_scope_validity = null) => {
     return {
         usages: [...scopestate.usages, ...nested_scope.usages],
         definitions: scopestate.definitions,
+        locals: [
+            ...(nested_scope_validity === null
+                ? []
+                : Array.from(nested_scope.definitions).map(([name, definition]) => ({
+                      name,
+                      definition,
+                      validity: {
+                          // FIXME: Using definition.to is not quite right here, because the
+                          // name is not valid until the assignment expression is done and will
+                          // currently be autocompleted on the right hand side of its own assignment :'(
+                          from: definition.to,
+                          to: nested_scope_validity,
+                      },
+                  }))),
+            ...nested_scope.locals,
+            ...scopestate.locals,
+        ],
     }
 }
 
@@ -390,6 +412,7 @@ export let explore_variable_usage = (
     scopestate = {
         usages: [],
         definitions: new Map(),
+        locals: [],
     },
     verbose = false
 ) => {
@@ -528,7 +551,7 @@ export let explore_variable_usage = (
                 for (let { node: expression } of do_expressions) {
                     inner_scope = explore_variable_usage(expression.cursor, doc, inner_scope, verbose)
                 }
-                return raise_scope(inner_scope, scopestate)
+                return raise_scope(inner_scope, scopestate, cursor.to)
             }
 
             return scopestate
@@ -580,7 +603,7 @@ export let explore_variable_usage = (
                 }
             }
 
-            scopestate = raise_scope(inner_scope, scopestate)
+            scopestate = raise_scope(inner_scope, scopestate, cursor.to)
             scopestate = merge_scope_state(scopestate, outer_scope)
             return scopestate
         } else if ((match = match_julia(cursor)`abstract type ${t.as("name")} end`)) {
@@ -617,6 +640,7 @@ export let explore_variable_usage = (
             scopestate = merge_scope_state(scopestate, {
                 usages: Array.from(module_scope.usages).filter((x) => x.definition != null),
                 definitions: new Map(),
+                locals: [],
             })
 
             for (let { node: expression } of expressions) {
@@ -740,7 +764,7 @@ export let explore_variable_usage = (
                 inner_scope = explore_variable_usage(expression.cursor, doc, inner_scope, verbose)
             }
 
-            return raise_scope(inner_scope, scopestate)
+            return raise_scope(inner_scope, scopestate, cursor.to)
         } else if (
             (match = match_julia(cursor)`
                 ${t.as("callee")}(${t.many("args")}) ${t.maybe(jl`do ${t.maybe(t.many("do_args"))}
@@ -799,7 +823,7 @@ export let explore_variable_usage = (
 
                     nested_scope = explore_variable_usage(result.cursor, doc, nested_scope, verbose)
 
-                    return raise_scope(nested_scope, scopestate)
+                    return raise_scope(nested_scope, scopestate, cursor.to)
                 } else {
                     scopestate = explore_variable_usage(arg.cursor, doc, scopestate, verbose)
                 }
@@ -813,7 +837,7 @@ export let explore_variable_usage = (
             for (let { node: expression } of do_expressions) {
                 inner_scope = explore_variable_usage(expression.cursor, doc, inner_scope, verbose)
             }
-            return raise_scope(inner_scope, scopestate)
+            return raise_scope(inner_scope, scopestate, cursor.to)
         } else if ((match = match_julia(cursor)`(${t.many("tuple_elements")},)`)) {
             // TODO.. maybe? `(x, g = y)` is a "ParenthesizedExpression", but lezer parses it as a tuple...
             // For now I fix it here hackily by checking if there is only NamedFields
@@ -937,7 +961,7 @@ export let explore_variable_usage = (
             for (let { node: expression } of body) {
                 inner_scope = explore_variable_usage(expression.cursor, doc, inner_scope, verbose)
             }
-            return raise_scope(inner_scope, scopestate)
+            return raise_scope(inner_scope, scopestate, cursor.to)
         } else if (
             (match = match_julia(cursor)`
                 let ${t.many("assignments", jl`${t.as("assignee")} = ${t.as("value")}`)}
@@ -945,6 +969,7 @@ export let explore_variable_usage = (
                 end
             `)
         ) {
+            console.log(match)
             let { assignments = [], body = [] } = match
             let innerscope = lower_scope(scopestate)
             for (let {
@@ -959,7 +984,7 @@ export let explore_variable_usage = (
             for (let { node: line } of body) {
                 innerscope = explore_variable_usage(line.cursor, doc, innerscope, verbose)
             }
-            return raise_scope(innerscope, scopestate)
+            return raise_scope(innerscope, scopestate, cursor.to)
         } else if (
             // A bit hard to see from the template, but these are array (and generator) comprehensions
             // e.g. [x for x in y]
@@ -1003,7 +1028,7 @@ export let explore_variable_usage = (
 
             nested_scope = explore_variable_usage(result.cursor, doc, nested_scope, verbose)
 
-            return raise_scope(nested_scope, scopestate)
+            return raise_scope(nested_scope, scopestate, cursor.to)
         } else {
             if (verbose) {
                 console.groupCollapsed(`Cycling through all children of`, cursor.name)
@@ -1036,6 +1061,7 @@ export let ScopeStateField = StateField.define({
             return {
                 usages: [],
                 definitions: new Map(),
+                locals: [],
             }
         }
     },
@@ -1054,6 +1080,7 @@ export let ScopeStateField = StateField.define({
             return {
                 usages: [],
                 definitions: new Map(),
+                locals: [],
             }
         }
     },

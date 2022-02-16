@@ -15,6 +15,7 @@ import {
 } from "../../imports/CodemirrorPlutoSetup.js"
 import { get_selected_doc_from_state } from "./LiveDocsFromCursor.js"
 import { cl } from "../../common/ClassTable.js"
+import { ScopeStateField } from "./scopestate_statefield.js"
 
 let { autocompletion, completionKeymap } = autocomplete
 
@@ -236,6 +237,23 @@ const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ reque
     }
 }
 
+const local_variables_completion = (ctx) => {
+    let scopestate = ctx.state.field(ScopeStateField)
+    let unicode = ctx.tokenBefore(["Identifier"])
+
+    if (unicode === null) return null
+
+    let { from, to, text } = unicode
+
+    return {
+        from,
+        to,
+        options: scopestate.locals
+            .filter(({ validity, name }) => name.startsWith(text) && from > validity.from && to <= validity.to)
+            .map(({ name }) => ({ label: name })),
+    }
+}
+
 /**
  * @typedef PlutoAutocompleteResults
  * @type {{ start: number, stop: number, results: Array<[string, (string | null), boolean, boolean, (string | null)]> }}
@@ -277,6 +295,7 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
                 unfiltered_julia_generator(memoize_last_request_autocomplete),
                 juliahints_cool_generator(memoize_last_request_autocomplete),
                 // TODO completion for local variables
+                local_variables_completion,
             ],
             defaultKeymap: false, // We add these manually later, so we can override them if necessary
             maxRenderedOptions: 512, // fons's magic number
