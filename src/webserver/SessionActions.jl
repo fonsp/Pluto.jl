@@ -29,7 +29,7 @@ function open_url(session::ServerSession, url::AbstractString; kwargs...)
     path = download_cool(url, emptynotebook().path)
      
     nb = open(session, path; kwargs...)
-    isid = try_event_call(session, NewNotebookEvent(nb))
+    result = try_event_call(session, NewNotebookEvent(nb))
     if result isa UUID
         change_notebook_id(s, n, result)
     end
