@@ -372,7 +372,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         ])
         fakeclient.connected_notebook = notebook
 
-        notebook.topology = Pluto.updated_topology(Pluto.NotebookTopology(), notebook, notebook.cells) |> Pluto.static_resolve_topology
+        notebook.topology = Pluto.updated_topology(Pluto.NotebookTopology(cell_order=Pluto.ImmutableVector(notebook.cells)), notebook, notebook.cells) |> Pluto.static_resolve_topology
 
         @test !Pluto.use_plutopkg(notebook.topology)
         order = collect(Pluto.topological_order(notebook))

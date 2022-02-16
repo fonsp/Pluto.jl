@@ -62,7 +62,7 @@ end
 function _upstream_recursive!(found::Set{Cell}, notebook::Notebook, topology::NotebookTopology, from::Vector{Cell})::Nothing
     for cell in from
         references = topology.nodes[cell].references
-        for upstream in Pluto.where_assigned(notebook, topology, references)
+        for upstream in Pluto.where_assigned(topology, references)
             if upstream ∉ found
                 push!(found, upstream)
                 _upstream_recursive!(found, notebook, topology, Cell[upstream])
