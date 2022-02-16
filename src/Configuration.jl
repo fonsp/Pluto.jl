@@ -46,7 +46,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 - `auto_reload_from_file_ignore_pkg::Bool = false` Experimental flag, will be removed
 - `notebook::Union{Nothing,String} = nothing` Optional path of notebook to launch at start
 - `simulated_lag::Real=0.0` (internal) Extra lag to add to our server responses. Will be multiplied by `0.5 + rand()`.
-- `injected_javascript_data_url`::String = "data:text/javascript;base64," Optional javascript injectables to the front-end. Useful to customize editor.
+- `injected_javascript_data_url`::String = "data:text/javascript;base64," (internal) Optional javascript injectables to the front-end. Can be used to customize the editor, but this API is not meant for general use yet.
 
 """
 @option mutable struct ServerOptions
