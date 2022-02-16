@@ -1199,7 +1199,7 @@ patch: ${JSON.stringify(
                             }
                             <div class="flex_grow_1"></div>
                             ${
-                                this.state.extended_components.CustomHeader === null &&
+                                this.state.extended_components.CustomHeader == null &&
                                 (status.binder
                                     ? html`<pluto-filepicker><a href=${this.export_url("notebookfile")} target="_blank">Save notebook...</a></pluto-filepicker>`
                                     : html`<${FilePicker}
