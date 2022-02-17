@@ -20,9 +20,7 @@ function find_indirectly_deactivated_cells(topology::NotebookTopology, deactivat
         others = where_assigned(topology, cell)
 
         if length(others) > 1
-            @assert length(others) == 2 "There can only be 2 assignees, otherwise it should be a MultipleDefinitionsError"
-
-            other_other = others[findfirst(!=(cell), others)]
+            other_other = others[findfirst(c -> c != cell && !c.running_disabled, others)]
 
             # NOTE(paul):
             #   This is pretty unoptimized since we somehow need to recompute a lot of things from the
