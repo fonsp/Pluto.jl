@@ -26,11 +26,11 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
     id(i) = notebook.cells[i].cell_id
     get_disabled_cells(notebook) = [i for (i, c) in pairs(notebook.cells) if c.depends_on_disabled_cells]
 
-    @test !any(c.metadata.get("disabled", false) for c in notebook.cells)
+    @test !any(get(c.metadata, "disabled", false) for c in notebook.cells)
     @test !any(c.depends_on_disabled_cells for c in notebook.cells)
 
     # disable first cell
-    notebook.cells[1].metadata.get("disabled", false) = true
+    get(notebook.cells[1].metadata, "disabled", false) = true
     update_run!(🍭, notebook, notebook.cells)
     should_be_disabled = [1, 3, 5]
     @test get_disabled_cells(notebook) == should_be_disabled
