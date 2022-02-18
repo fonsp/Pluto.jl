@@ -30,7 +30,7 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
     @test !any(c.depends_on_disabled_cells for c in notebook.cells)
 
     # disable first cell
-    get(notebook.cells[1].metadata, "disabled", false) = true
+    notebook.cells[1].metadata["disabled"] = true
     update_run!(🍭, notebook, notebook.cells)
     should_be_disabled = [1, 3, 5]
     @test get_disabled_cells(notebook) == should_be_disabled
@@ -83,7 +83,7 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
     @test notebook.cells[5].output.body == original_w_output
 
     # reactivate root cell
-    pop!(notebook.cells[1].metadata, "disabled", false)
+    pop!(notebook.cells[2].metadata, "disabled", false)
     update_run!(🍭, notebook, notebook.cells)
     @test get_disabled_cells(notebook) == []
 
@@ -94,7 +94,7 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
     @test notebook.cells[5].output.body != original_w_output
 
     # disable first cell again
-    notebook.cells[2].metadata["disabled"] = true
+    notebook.cells[1].metadata["disabled"] = true
     update_run!(🍭, notebook, notebook.cells)
     should_be_disabled = [1, 3, 5]
     @test get_disabled_cells(notebook) == should_be_disabled
