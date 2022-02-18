@@ -33,7 +33,6 @@ function metadata_notebook()
     Notebook([
         Cell(
             code="100*a + b",
-            running_disabled=true,
             metadata=Dict(
                 "a metadata tag" => Dict(
                     "boolean" => true,

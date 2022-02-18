@@ -138,8 +138,8 @@ function save_notebook(io, notebook::Notebook)
                 println(io, _cell_metadata_prefix, line)
             end
         end
-
-        if c.running_disabled || c.depends_on_disabled_cells
+        cell_running_disabled = get(c.metadata, "disabled", false)
+        if cell_running_disabled || c.depends_on_disabled_cells
             print(io, _disabled_prefix)
             print(io, replace(c.code, _cell_id_delimiter => "# "))
             print(io, _disabled_suffix)
@@ -256,9 +256,8 @@ function load_notebook_nobackup(io, path)::Notebook
 
             # parse metadata
             metadata = TOML.parse(join(metadata_toml_lines, "\n"))
-            running_disabled = get(metadata, "disabled", false) # the disabling metadata is part of the "normal" metadata but is also stored in separate fields due to its importance in notebook evaluation
 
-            read_cell = Cell(; cell_id, code, running_disabled, metadata)
+            read_cell = Cell(; cell_id, code, metadata)
             collected_cells[cell_id] = read_cell
         end
     end

@@ -349,7 +349,7 @@ export const CellInput = ({
     set_show_logs,
     cm_highlighted_line,
     variables_in_all_notebook,
-    running_disabled,
+    metadata,
 }) => {
     let pluto_actions = useContext(PlutoContext)
 
@@ -358,6 +358,7 @@ export const CellInput = ({
     const remote_code_ref = useRef(null)
     const on_change_ref = useRef(null)
     on_change_ref.current = on_change
+    const running_disabled = metadata.disabled || false
 
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
     let global_definitions_compartment = useCompartment(newcm_ref, GlobalDefinitionsFacet.of(variables_in_all_notebook))
@@ -795,7 +796,7 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled, any_
         e.preventDefault()
         e.stopPropagation()
         await pluto_actions.update_notebook((notebook) => {
-            notebook.cell_inputs[cell_id].running_disabled = new_val
+            notebook.cell_inputs[cell_id].metadata['disabled'] = new_val
         })
         // we also 'run' the cell if it is disabled, this will make the backend propage the disabled state to dependent cells
         await run_cell()

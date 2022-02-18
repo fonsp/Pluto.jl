@@ -144,6 +144,7 @@ export const Cell = ({
                 selected: selected,
                 code_differs: class_code_differs,
                 code_folded: class_code_folded,
+                metadata: metadata,
                 running_disabled: running_disabled,
                 depends_on_disabled_cells: depends_on_disabled_cells,
                 show_input: show_input,
@@ -218,7 +219,7 @@ export const Cell = ({
                 nbpkg=${nbpkg}
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
-                running_disabled=${running_disabled}
+                metadata=${metadata}
                 any_logs=${any_logs}
                 show_logs=${show_logs}
                 set_show_logs=${set_show_logs}
