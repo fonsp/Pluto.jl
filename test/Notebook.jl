@@ -40,6 +40,7 @@ function metadata_notebook()
                     "string" => "String",
                     "number" => 10000,
                 ),
+                "disabled" => true,
             ),
         ),
     ]) |> init_packages!

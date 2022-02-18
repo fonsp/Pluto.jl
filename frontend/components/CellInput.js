@@ -344,13 +344,12 @@ export const CellInput = ({
     nbpkg,
     cell_id,
     notebook_id,
-    running_disabled,
-    cell_dependencies,
     any_logs,
     show_logs,
     set_show_logs,
     cm_highlighted_line,
     variables_in_all_notebook,
+    running_disabled,
 }) => {
     let pluto_actions = useContext(PlutoContext)
 

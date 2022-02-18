@@ -43,7 +43,7 @@ const useCellApi = (node_ref, published_object_keys, pluto_actions) => {
  * }} props
  * */
 export const Cell = ({
-    cell_input: { cell_id, code, code_folded, running_disabled },
+    cell_input: { cell_id, code, code_folded, metadata },
     cell_result: { queued, running, runtime, errored, output, logs, published_object_keys, depends_on_disabled_cells },
     cell_dependencies,
     cell_input_local,
@@ -59,6 +59,7 @@ export const Cell = ({
     disable_input,
     nbpkg,
 }) => {
+    const running_disabled = metadata.disabled || false
     let pluto_actions = useContext(PlutoContext)
     const notebook = pluto_actions.get_notebook()
     let variables_in_all_notebook = Object.fromEntries(
