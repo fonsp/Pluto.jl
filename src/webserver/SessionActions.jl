@@ -137,6 +137,7 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
     
     nb
 end
+precompile(SessionActions.open, (ServerSession, String))
 
 function save_upload(content::Vector{UInt8})
     save_path = emptynotebook().path
