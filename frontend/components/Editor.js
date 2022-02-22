@@ -992,18 +992,28 @@ patch: ${JSON.stringify(
             this.patch_listeners.forEach((f) => f(patches))
         }
 
+        let ctrl_down_last_val = { current: false }
+        const set_ctrl_down = (value) => {
+            if (value !== ctrl_down_last_val.current) {
+                ctrl_down_last_val.current = value
+                document.body.querySelectorAll("pluto-variable-link").forEach((el) => {
+                    el.setAttribute("data-ctrl-down", value ? "true" : "false")
+                })
+            }
+        }
+
         document.addEventListener("keyup", (e) => {
-            document.body.classList.toggle("ctrl_down", has_ctrl_or_cmd_pressed(e))
+            set_ctrl_down(has_ctrl_or_cmd_pressed(e))
         })
         document.addEventListener("visibilitychange", (e) => {
-            document.body.classList.toggle("ctrl_down", false)
+            set_ctrl_down(false)
             setTimeout(() => {
-                document.body.classList.toggle("ctrl_down", false)
+                set_ctrl_down(false)
             }, 100)
         })
 
         document.addEventListener("keydown", (e) => {
-            document.body.classList.toggle("ctrl_down", has_ctrl_or_cmd_pressed(e))
+            set_ctrl_down(has_ctrl_or_cmd_pressed(e))
             // if (e.defaultPrevented) {
             //     return
             // }
