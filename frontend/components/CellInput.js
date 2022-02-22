@@ -50,6 +50,7 @@ import {
 } from "../imports/CodemirrorPlutoSetup.js"
 
 import { markdown, html as htmlLang, javascript, sqlLang, python, julia_andrey } from "./CellInput/mixedParsers.js"
+import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
 import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"
@@ -61,6 +62,8 @@ import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_l
 import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
 import { debug_syntax_plugin } from "./CellInput/debug_syntax_plugin.js"
 import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
+
+const ENABLE_CM_MIXED_PARSER = false
 
 export const pluto_syntax_colors = HighlightStyle.define(
     [
@@ -618,14 +621,21 @@ export const CellInput = ({
                     }),
                     EditorState.tabSize.of(4),
                     indentUnit.of("\t"),
-                    julia_andrey(),
-                    markdown({
-                        defaultCodeLanguage: julia_andrey(),
-                    }),
-                    htmlLang(), //Provides tag closing!,
-                    javascript(),
-                    python(),
-                    sqlLang,
+                    ...(ENABLE_CM_MIXED_PARSER
+                        ? [
+                              julia_mixed(),
+                              markdown({
+                                  defaultCodeLanguage: julia_mixed(),
+                              }),
+                              htmlLang(), //Provides tag closing!,
+                              javascript(),
+                              python(),
+                              sqlLang,
+                          ]
+                        : [
+                              //
+                              julia_andrey(),
+                          ]),
                     go_to_definition_plugin,
                     pluto_autocomplete({
                         request_autocomplete: async ({ text }) => {
