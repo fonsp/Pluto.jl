@@ -76,6 +76,7 @@ include("./webserver/Static.jl")
 include("./webserver/Dynamic.jl")
 include("./webserver/REPLTools.jl")
 include("./webserver/WebServer.jl")
+include("./rest/REST.jl")
 
 const reset_notebook_environment = PkgUtils.reset_notebook_environment
 const update_notebook_environment = PkgUtils.update_notebook_environment

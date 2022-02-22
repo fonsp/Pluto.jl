@@ -6,15 +6,41 @@ import .WorkspaceManager: macroexpand_in_workspace
 Base.push!(x::Set{Cell}) = x
 
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
-function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, roots::Vector{Cell}; deletion_hook::Function = WorkspaceManager.move_vars, user_requested_run::Bool = true, already_in_run::Bool = false, already_run::Vector{Cell} = Cell[])::TopologicalOrder
-    if !already_in_run
+function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, roots::Vector{Cell}; deletion_hook::Function=WorkspaceManager.move_vars, user_requested_run::Bool=true, already_in_run::Bool=false, already_run::Vector{Cell}=Cell[], send_notebook_changes::Bool=true, dependency_mod::Union{Vector{Cell}, Nothing}=nothing, workspace_override::Union{WorkspaceManager.Workspace, Nothing}=nothing, old_workspace_name_override=nothing, run_single_fn! = run_single!)::TopologicalOrder
+	if !already_in_run
         # make sure that we're the only `run_reactive!` being executed - like a semaphor
         take!(notebook.executetoken)
     else
         @assert !isready(notebook.executetoken) "run_reactive!(; already_in_run=true) was called when no reactive run was launched."
     end
 
-    old_workspace_name, _ = WorkspaceManager.bump_workspace_module((session, notebook))
+	removed_cells = setdiff(keys(old_topology.nodes), keys(new_topology.nodes))
+	roots = Cell[roots..., removed_cells...]
+
+	# by setting the reactive node and expression caches of deleted cells to "empty", we are essentially pretending that those cells still exist, but now have empty code. this makes our algorithm simpler.
+	new_topology = NotebookTopology(
+		nodes=merge(
+			new_topology.nodes,
+			Dict(cell => ReactiveNode() for cell in removed_cells),
+		),
+		codes=merge(
+			new_topology.codes,
+			Dict(cell => ExprAnalysisCache() for cell in removed_cells)
+		),
+		unresolved_cells=new_topology.unresolved_cells,
+	)
+
+	# is the workspace being overridden? (by REST API)
+	old_workspace_name, _ = if isnothing(workspace_override)
+		# if not, then bump the workspace module as usual
+		old_workspace_name, new_workspace_name = WorkspaceManager.bump_workspace_module((session, notebook))
+		workspace = WorkspaceManager.get_workspace((session, notebook))
+		old_workspace_name, new_workspace_name
+	else
+		# otherwise use the provided workspace instead
+		workspace = workspace_override
+		old_workspace_name, new_workspace_name = old_workspace_name_override, workspace.module_name
+	end
 
     if !is_resolved(new_topology)
         unresolved_topology = new_topology
@@ -65,23 +91,35 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
     to_run = setdiff(to_run_raw, indirectly_deactivated)
 
-    # change the bar on the sides of cells to "queued"
-    for cell in to_run
-        cell.queued = true
-        cell.depends_on_disabled_cells = false
-    end
-    for (cell, error) in new_order.errable
-        cell.running = false
-        cell.queued = false
-        relay_reactivity_error!(cell, error)
-    end
+	# custom dependency modification through a set intersection
+	#   "trim" down the amount of code to run for REST API
+	if !isnothing(dependency_mod)
+		to_run = intersect(to_run, dependency_mod)
+	end
 
-    # Send intermediate updates to the clients at most 20 times / second during a reactive run. (The effective speed of a slider is still unbounded, because the last update is not throttled.)
-    # flush_send_notebook_changes_throttled, 
-    send_notebook_changes_throttled, flush_notebook_changes = throttled(1.0 / 20) do
-        send_notebook_changes!(ClientRequest(session = session, notebook = notebook))
-    end
-    send_notebook_changes_throttled()
+	# change the bar on the sides of cells to "queued"
+	for cell in to_run
+		cell.queued = true
+		cell.depends_on_disabled_cells = false
+	end
+	for (cell, error) in new_order.errable
+		cell.running = false
+		cell.queued = false
+		relay_reactivity_error!(cell, error)
+	end
+
+	# Send intermediate updates to the clients at most 20 times / second during a reactive run. (The effective speed of a slider is still unbounded, because the last update is not throttled.)
+	# flush_send_notebook_changes_throttled, 
+	send_notebook_changes_throttled, flush_notebook_changes = if send_notebook_changes
+		throttled(1.0 / 20) do
+			send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
+		end
+	else
+		# don't do anything when asked to send notebook changes
+		do_nothing = (args...; kwargs...) -> ()
+		do_nothing, do_nothing
+	end
+	send_notebook_changes_throttled()
 
     # delete new variables that will be defined by a cell unless this cell has already run in the current reactive run
     to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_runnable)...)
@@ -92,8 +130,8 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
     to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_errable)...)
     to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_errable)...)
 
-    to_reimport = union!(Set{Expr}(), map(c -> new_topology.codes[c].module_usings_imports.usings, setdiff(notebook.cells, to_run))...)
-    deletion_hook((session, notebook), old_workspace_name, nothing, to_delete_vars, to_delete_funcs, to_reimport; to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
+	to_reimport = union!(Set{Expr}(), map(c -> new_topology.codes[c].module_usings_imports.usings, setdiff(notebook.cells, to_run))...)
+	deletion_hook(workspace, old_workspace_name, nothing, to_delete_vars, to_delete_funcs, to_reimport; to_run=to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
 
     delete!.([notebook.bonds], to_delete_vars)
 
@@ -107,17 +145,17 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		cell.logs = []
 		send_notebook_changes_throttled()
 
-        if any_interrupted || notebook.wants_to_interrupt
-            relay_reactivity_error!(cell, InterruptException())
-        else
-            run = run_single!(
-                (session, notebook), cell,
-                new_topology.nodes[cell], new_topology.codes[cell];
-                user_requested_run = (user_requested_run && cell ∈ roots)
-            )
-            any_interrupted |= run.interrupted
-        end
-
+		if any_interrupted || notebook.wants_to_interrupt
+			relay_reactivity_error!(cell, InterruptException())
+		else
+			run = run_single_fn!(
+				workspace, cell, 
+				new_topology.nodes[cell], new_topology.codes[cell]; 
+				user_requested_run=(user_requested_run && cell ∈ roots)
+			)
+			any_interrupted |= run.interrupted
+		end
+		
         cell.running = false
 
         defined_macros_in_cell = defined_macros(new_topology, cell) |> Set{Symbol}
@@ -131,27 +169,27 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
         if !is_resolved(new_topology) && can_help_resolve_cells(new_topology, cell)
             notebook.topology = new_new_topology = resolve_topology(session, notebook, new_topology, old_workspace_name)
 
-            if !isempty(implicit_usings)
-                new_soft_definitions = WorkspaceManager.collect_soft_definitions((session, notebook), implicit_usings)
-                notebook.topology = new_new_topology = with_new_soft_definitions(new_new_topology, cell, new_soft_definitions)
-            end
+			if !isempty(implicit_usings)
+				new_soft_definitions = WorkspaceManager.collect_soft_definitions(workspace, implicit_usings)
+				notebook.topology = new_new_topology = with_new_soft_definitions(new_new_topology, cell, new_soft_definitions)
+			end
 
             # update cache and save notebook because the dependencies might have changed after expanding macros
             update_dependency_cache!(notebook)
             save_notebook(session, notebook)
 
-            return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook, user_requested_run, already_in_run = true, already_run = to_run[1:i])
-        elseif !isempty(implicit_usings)
-            new_soft_definitions = WorkspaceManager.collect_soft_definitions((session, notebook), implicit_usings)
-            notebook.topology = new_new_topology = with_new_soft_definitions(new_topology, cell, new_soft_definitions)
+			return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook, user_requested_run, already_in_run = true, already_run = to_run[1:i], dependency_mod, workspace_override, old_workspace_name_override)
+		elseif !isempty(implicit_usings)
+			new_soft_definitions = WorkspaceManager.collect_soft_definitions(workspace, implicit_usings)
+			notebook.topology = new_new_topology = with_new_soft_definitions(new_topology, cell, new_soft_definitions)
 
             # update cache and save notebook because the dependencies might have changed after expanding macros
             update_dependency_cache!(notebook)
             save_notebook(session, notebook)
 
-            return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook, user_requested_run, already_in_run = true, already_run = to_run[1:i])
-        end
-    end
+			return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook, user_requested_run, already_in_run = true, already_run = to_run[1:i], dependency_mod, workspace_override, old_workspace_name_override)
+		end
+	end
 
     notebook.wants_to_interrupt = false
     flush_notebook_changes()

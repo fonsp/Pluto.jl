@@ -416,7 +416,7 @@ function format_fetch_in_workspace(
     end
 end
 
-function collect_soft_definitions(session_notebook::SN, modules::Set{Expr})
+function collect_soft_definitions(session_notebook::Union{SN,Workspace}, modules::Set{Expr})
     workspace = get_workspace(session_notebook)
     module_name = workspace.module_name
 
@@ -462,11 +462,11 @@ function do_reimports(session_notebook::Union{SN,Workspace}, module_imports_to_m
 end
 
 "Move variables to a new module. A given set of variables to be 'deleted' will not be moved to the new module, making them unavailable. "
-function move_vars(session_notebook::Union{SN,Workspace}, old_workspace_name::Symbol, new_workspace_name::Union{Nothing,Symbol}, to_delete::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,FunctionName}}, module_imports_to_move::Set{Expr}; kwargs...)
+function move_vars(session_notebook::Union{SN,Workspace}, old_workspace_name::Symbol, new_workspace_name::Union{Nothing,Symbol}, to_delete::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,FunctionName}}, module_imports_to_move::Set{Expr}, keep_deleted_variables::Bool=false; kwargs...)
     workspace = get_workspace(session_notebook)
     new_workspace_name = something(new_workspace_name, workspace.module_name)
     
-    Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.move_vars($(old_workspace_name |> QuoteNode), $(new_workspace_name |> QuoteNode), $to_delete, $methods_to_delete, $module_imports_to_move)))
+    Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.move_vars($(old_workspace_name |> QuoteNode), $(new_workspace_name |> QuoteNode), $to_delete, $methods_to_delete, $module_imports_to_move, $keep_deleted_variables)))
 end
 
 move_vars(session_notebook::Union{SN,Workspace}, to_delete::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,FunctionName}}, module_imports_to_move::Set{Expr}; kwargs...) =

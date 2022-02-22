@@ -59,9 +59,10 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
     auto_reload_from_file::Bool = false
     auto_reload_from_file_cooldown::Real = 0.4
     auto_reload_from_file_ignore_pkg::Bool = false
-    notebook::Union{Nothing,String,Vector{<:String}} = nothing
-    init_with_file_viewer::Bool = false
-    simulated_lag::Real = 0.0
+    notebook::Union{Nothing,String, Vector{<: String}} = nothing
+    init_with_file_viewer::Bool=false
+    simulated_lag::Real=0.0
+    enable_rest::Bool = true
     on_event::Function = function(a) #= @info "$(typeof(a))" =# end
 end
 

@@ -23,6 +23,7 @@ import Dates: DateTime
 import Logging
 
 export @bind
+export PlutoNotebook
 
 MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
 const ObjectID = typeof(objectid("hello computer"))
@@ -600,7 +601,7 @@ The trick boils down to two things:
 1. When we create a new workspace module, we move over some of the global from the old workspace. (But not the ones that we want to 'delete'!)
 2. If a function used to be defined, but now we want to delete it, then we go through the method table of that function and snoop out all methods that we defined by us, and not by another package. This is how we reverse extending external functions. For example, if you run a cell with `Base.sqrt(s::String) = "the square root of" * s`, and then delete that cell, then you can still call `sqrt(1)` but `sqrt("one")` will err. Cool right!
 """
-function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_to_delete::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,Vector{Symbol}}}, module_imports_to_move::Set{Expr})
+function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_to_delete::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,Vector{Symbol}}}, module_imports_to_move::Set{Expr}, keep_deleted_variables::Bool=false)
     old_workspace = getfield(Main, old_workspace_name)
     new_workspace = getfield(Main, new_workspace_name)
 
@@ -624,7 +625,11 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
             # for example, the old module might extend an imported function:
             # `import Base: show; show(io::IO, x::Flower) = print(io, "🌷")`
             # when you delete/change this cell, you want this extension to disappear.
-            if isdefined(old_workspace, symbol)
+
+            # unless keep_deleted_variables is true, in which case we want to delete methods
+            # and variables but keep them defined in the old workspace. This is used for 
+            # the REST API
+            if !keep_deleted_variables && isdefined(old_workspace, symbol)
                 # try_delete_toplevel_methods(old_workspace, symbol)
 
                 try
@@ -1763,6 +1768,7 @@ const fake_bind = """macro bind(def, element)
         el
     end
 end"""
+
 
 
 
