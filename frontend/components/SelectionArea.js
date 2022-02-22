@@ -1,5 +1,5 @@
 import { html, Component, useState, useEffect, useRef } from "../imports/Preact.js"
-import _ from "../imports/lodash.js"
+
 import { has_ctrl_or_cmd_pressed } from "../common/KeyboardShortcuts.js"
 
 const get_element_position_in_document = (element) => {
@@ -103,10 +103,8 @@ export const SelectionArea = ({ on_selection, set_scroller, cell_order }) => {
             })
 
             set_scroller({ up: selection_start.y > new_selection_end.y, down: selection_start.y < new_selection_end.y })
-            //            _.throttle(() => {
             on_selection(in_selection.map((x) => x.id))
             set_selection_end(new_selection_end)
-            //          }, 200)
         })
 
         const onscroll = (e) => {
