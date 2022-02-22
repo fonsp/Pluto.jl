@@ -16,6 +16,9 @@ on:
     pull_request:
         paths-ignore:
             - "frontend/**"
+            - "frontend-bundler/**"
+            - "frontend-dist/**"
+            - "test/frontend/**"
             - "**.md"
         branches-ignore:
             - release
