@@ -466,10 +466,9 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
                     container.current.querySelectorAll("code").forEach((code_element) => {
                         code_element.classList.forEach((className) => {
                             if (className.startsWith("language-")) {
-                                let language = className.substr(9)
-
                                 // Remove "language-"
-                                highlight(code_element, language)
+                                let language = className.substring(9)
+                                // highlight(code_element, language)
                             }
                         })
                     })
