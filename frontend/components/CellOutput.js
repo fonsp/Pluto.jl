@@ -16,7 +16,7 @@ import { pluto_syntax_colors } from "./CellInput.js"
 import { useState } from "../imports/Preact.js"
 
 import hljs from "../imports/highlightjs.js"
-import { julia_andrey } from "./CellInput/mixedParsers.js"
+import { julia_mixed } from "./CellInput/mixedParsers.js"
 
 export class CellOutput extends Component {
     constructor() {
@@ -514,7 +514,7 @@ export let highlight = (code_element, language) => {
                         defaultHighlightStyle.fallback,
                         EditorState.tabSize.of(4),
                         // TODO Other languages possibly?
-                        language === "julia" ? julia_andrey() : null,
+                        language === "julia" ? julia_mixed() : null,
                         EditorView.lineWrapping,
                         EditorView.editable.of(false),
                     ].filter((x) => x != null),
