@@ -6,7 +6,16 @@ import .WorkspaceManager: macroexpand_in_workspace
 Base.push!(x::Set{Cell}) = x
 
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
-function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, roots::Vector{Cell}; deletion_hook::Function = WorkspaceManager.move_vars, user_requested_run::Bool = true, already_in_run::Bool = false, already_run::Vector{Cell} = Cell[])::TopologicalOrder
+function run_reactive!(
+	session::ServerSession, 
+	notebook::Notebook, 
+	old_topology::NotebookTopology, new_topology::NotebookTopology, 
+	roots::Vector{Cell}; 
+	deletion_hook::Function = WorkspaceManager.move_vars, 
+	user_requested_run::Bool = true, 
+	already_in_run::Bool = false, 
+	already_run::Vector{Cell} = Cell[]
+)::TopologicalOrder
     if !already_in_run
         # make sure that we're the only `run_reactive!` being executed - like a semaphor
         take!(notebook.executetoken)
@@ -192,7 +201,13 @@ function defined_functions(topology::NotebookTopology, cells)
 end
 
 "Run a single cell non-reactively, set its output, return run information."
-function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell, reactive_node::ReactiveNode, expr_cache::ExprAnalysisCache; user_requested_run::Bool=true)
+function run_single!(
+	session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, 
+	cell::Cell, 
+	reactive_node::ReactiveNode, 
+	expr_cache::ExprAnalysisCache; 
+	user_requested_run::Bool=true
+)
 	run = WorkspaceManager.eval_format_fetch_in_workspace(
 		session_notebook, 
 		expr_cache.parsedcode, 
@@ -418,7 +433,15 @@ end
 
 
 "Do all the things!"
-function update_save_run!(session::ServerSession, notebook::Notebook, cells::Vector{Cell}; save::Bool=true, run_async::Bool=false, prerender_text::Bool=false, kwargs...)
+function update_save_run!(
+	session::ServerSession, 
+	notebook::Notebook, 
+	cells::Vector{Cell}; 
+	save::Bool=true, 
+	run_async::Bool=false, 
+	prerender_text::Bool=false, 
+	kwargs...
+)
 	old = notebook.topology
 	new = notebook.topology = updated_topology(old, notebook, cells) # macros are not yet resolved
 
