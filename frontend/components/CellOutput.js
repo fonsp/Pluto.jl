@@ -468,11 +468,13 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
                             if (className.startsWith("language-")) {
                                 // Remove "language-"
                                 let language = className.substring(9)
-                                // highlight(code_element, language)
+                                highlight(code_element, language)
                             }
                         })
                     })
-                } catch (err) {}
+                } catch (err) {
+                    console.warn("Highlighting failed", err)
+                }
             } finally {
                 js_init_set?.delete(container.current)
             }
