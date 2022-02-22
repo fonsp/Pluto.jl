@@ -94,18 +94,15 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
         end
     end
 
-    in_session() = get(session.notebooks, nb.notebook_id, nothing) === nb
-    session.options.server.auto_reload_from_file && @asynclog while in_session()
-        if !isfile(nb.path)
-            # notebook file deleted... let's ignore this, changing the notebook will cause it to save again. Fine for now
-            sleep(2)
-        else
-            e = watch_file(nb.path, 3)
-            if e.timedout
-                continue
+    
+    if session.options.server.auto_reload_from_file
+        in_session() = get(session.notebooks, nb.notebook_id, nothing) === nb
+        
+        function on_file_event()
+            if !isfile(nb.path)
+                # notebook file deleted... let's ignore this, changing the notebook will cause it to save again. Fine for now
+                return
             end
-            
-            # the above call is blocking until the file changes
             
             local modified_time = mtime(nb.path)
             local _tries = 0
@@ -120,7 +117,7 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
             # current_time = time()
             # @info "File changed" (current_time - nb.last_save_time) (modified_time - nb.last_save_time) (current_time - modified_time)
             if !in_session()
-                break
+                return
             end
             
             # if current_time - nb.last_save_time < 2.0
@@ -131,6 +128,21 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
                 # @info "Modified time is very close to my last save time, not reloading from file."
             else
                 update_from_file_throttled()
+            end
+        end
+        
+        @asynclog while in_session()
+            if !isfile(nb.path)
+                # notebook file deleted... let's ignore this, changing the notebook will cause it to save again. Fine for now
+                sleep(2)
+            else
+                e = watch_file(nb.path, 3)
+                # the above call is blocking until the file changes
+                if e.timedout
+                    continue
+                end
+                # run event handler async so that we don't miss the next event
+                @asynclog on_file_event()
             end
         end
     end
