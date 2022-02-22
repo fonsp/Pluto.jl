@@ -14,7 +14,6 @@ export class DropRuler extends Component {
             this.cell_edges.push(last(cell_nodes).offsetTop + last(cell_nodes).scrollHeight)
         }
         this.getDropIndexOf = ({ pageX, pageY }) => {
-            const notebook = document.querySelector("pluto-notebook")
             const distances = this.cell_edges.map((p) => Math.abs(p - pageY - 8)) // 8 is the magic computer number: https://en.wikipedia.org/wiki/8
             return argmin(distances)
         }
@@ -29,14 +28,7 @@ export class DropRuler extends Component {
     componentDidMount() {
         document.addEventListener("dragstart", (e) => {
             let target = /** @type {Element} */ (e.target)
-            if (!target.matches("pluto-shoulder")) {
-                this.setState({
-                    drag_start: false,
-                    drag_target: false,
-                })
-                this.props.set_scroller({ up: false, down: false })
-                this.dropee = null
-            } else {
+            if (target.matches("pluto-shoulder")) {
                 this.dropee = target.parentElement
                 e.dataTransfer.setData("text/pluto-cell", this.props.serialize_selected(this.dropee.id))
                 this.dropped = false
@@ -47,6 +39,13 @@ export class DropRuler extends Component {
                     drop_index: this.getDropIndexOf(e),
                 })
                 this.props.set_scroller({ up: true, down: true })
+            } else {
+                this.setState({
+                    drag_start: false,
+                    drag_target: false,
+                })
+                this.props.set_scroller({ up: false, down: false })
+                this.dropee = null
             }
         })
         document.addEventListener("dragenter", (e) => {
@@ -54,6 +53,7 @@ export class DropRuler extends Component {
             if (!this.state.drag_target) this.precompute_cell_edges()
             this.lastenter = e.target
             this.setState({ drag_target: true })
+            e.preventDefault()
         })
         document.addEventListener("dragleave", (e) => {
             if (e.dataTransfer.types[0] !== "text/pluto-cell") return
@@ -69,6 +69,10 @@ export class DropRuler extends Component {
             this.setState({
                 drop_index: this.getDropIndexOf(e),
             })
+            if (this.state.drag_start) {
+                // Then we're dragging a cell from within the notebook. Use a move icon:
+                e.dataTransfer.dropEffect = "move"
+            }
             e.preventDefault()
         })
         document.addEventListener("dragend", (e) => {
