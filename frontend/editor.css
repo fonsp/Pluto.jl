@@ -2488,6 +2488,7 @@ body > nav#slide_controls > button.next > span::after {
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
     /* this is the line height rounded to an integer to prevent jiggle */
     height: 16px;
+    overflow-y: hidden;
     /* font-size: 16px; */
     line-height: 16px;
     border-radius: 3px;
