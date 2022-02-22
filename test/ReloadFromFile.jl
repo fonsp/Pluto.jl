@@ -58,7 +58,7 @@ import Pkg
     file2 = sprint(Pluto.save_notebook, nb2)
     write(notebook.path, file2)
     
-    @test poll(10) do
+    @test poll(30) do
         notebook.cells[3].output.body == "123"
     end
     
@@ -74,7 +74,7 @@ import Pkg
     write(notebook.path, file3)
     
     
-    @test poll(10) do
+    @test poll(30) do
         notebook.cells[1].output.body == "6"
     end
     @test poll(5) do
@@ -93,7 +93,7 @@ import Pkg
     write(notebook.path, file4)
     
     
-    @test poll(10) do
+    @test poll(30) do
         notebook.cells[2].output.body == "false"
     end
     @test length(notebook.cells) == 2
