@@ -463,6 +463,24 @@ export class Editor extends Component {
                 const delta = before_or_after == "before" ? 0 : 1
                 return await this.actions.add_remote_cell_at(index + delta, code)
             },
+            // These actions are basically helpers because pushing selected cells all
+            // the way down is too heavy to handle!
+            fold_code: async (cell_id, selected) => {
+                let cells_to_fold = selected ? this.state.selected_cells : [cell_id]
+                this.actions.update_notebook((notebook) => {
+                    for (let cell_id of cells_to_fold) {
+                        notebook.cell_inputs[cell_id].code_folded = !notebook.cell_inputs[cell_id].code_folded
+                    }
+                })
+            },
+            set_and_run_multiple_from_cell: async (cell_id, selected) => {
+                let cell_to_run = selected ? this.state.selected_cells : [cell_id]
+                this.actions.set_and_run_multiple(cell_to_run)
+            },
+            confirm_delete_multiple_from_cell: async (verb, cell_id, selected) => {
+                let cells_to_delete = selected ? this.state.selected_cells : [cell_id]
+                this.actions.confirm_delete_multiple(verb, cells_to_delete)
+            },
             confirm_delete_multiple: async (verb, cell_ids) => {
                 if (cell_ids.length <= 1 || confirm(`${verb} ${cell_ids.length} cells?`)) {
                     if (cell_ids.some((cell_id) => this.state.notebook.cell_results[cell_id].running || this.state.notebook.cell_results[cell_id].queued)) {
@@ -1315,9 +1333,6 @@ patch: ${JSON.stringify(
                         <${Notebook}
                             notebook=${this.state.notebook}
                             cell_inputs_local=${this.state.cell_inputs_local}
-                            on_update_doc_query=${this.actions.set_doc_query}
-                            on_cell_input=${this.actions.set_local_cell}
-                            on_focus_neighbor=${this.actions.focus_on_neighbor}
                             disable_input=${this.state.disable_ui || !this.state.connected /* && this.state.binder_phase == null*/}
                             show_logs=${this.state.show_logs}
                             set_show_logs=${(enabled) => this.setState({ show_logs: enabled })}
@@ -1344,7 +1359,7 @@ patch: ${JSON.stringify(
                                 on_selection=${(selected_cell_ids) => {
                                     // @ts-ignore
                                     if (
-                                        selected_cell_ids.length !== this.state.selected_cells ||
+                                        selected_cell_ids.length !== this.state.selected_cells.length ||
                                         _.difference(selected_cell_ids, this.state.selected_cells).length !== 0
                                     ) {
                                         this.setState({
