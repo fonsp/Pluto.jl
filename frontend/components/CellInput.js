@@ -63,7 +63,7 @@ import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
 import { debug_syntax_plugin } from "./CellInput/debug_syntax_plugin.js"
 import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
 
-const ENABLE_CM_MIXED_PARSER = false
+export const ENABLE_CM_MIXED_PARSER = false
 
 export const pluto_syntax_colors = HighlightStyle.define(
     [
