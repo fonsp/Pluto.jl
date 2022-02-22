@@ -16,7 +16,7 @@ import { pluto_syntax_colors } from "./CellInput.js"
 import { useState } from "../imports/Preact.js"
 
 import hljs from "../imports/highlightjs.js"
-import { julia_andrey } from "./CellInput/mixedParsers.js"
+import { julia_mixed } from "./CellInput/mixedParsers.js"
 
 export class CellOutput extends Component {
     constructor() {
@@ -466,14 +466,15 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
                     container.current.querySelectorAll("code").forEach((code_element) => {
                         code_element.classList.forEach((className) => {
                             if (className.startsWith("language-")) {
-                                let language = className.substr(9)
-
                                 // Remove "language-"
+                                let language = className.substring(9)
                                 highlight(code_element, language)
                             }
                         })
                     })
-                } catch (err) {}
+                } catch (err) {
+                    console.warn("Highlighting failed", err)
+                }
             } finally {
                 js_init_set?.delete(container.current)
             }
@@ -514,7 +515,7 @@ export let highlight = (code_element, language) => {
                         defaultHighlightStyle.fallback,
                         EditorState.tabSize.of(4),
                         // TODO Other languages possibly?
-                        language === "julia" ? julia_andrey() : null,
+                        language === "julia" ? julia_mixed() : null,
                         EditorView.lineWrapping,
                         EditorView.editable.of(false),
                     ].filter((x) => x != null),
