@@ -62,6 +62,7 @@ export class DropRuler extends Component {
                 this.setState({ drag_target: false })
             }
         })
+        const precompute_cell_edges_throttled = _.throttle(this.precompute_cell_edges, 4000, { leading: false, trailing: true })
         const update_drop_index_throttled = _.throttle(
             () => {
                 this.setState({
@@ -76,6 +77,7 @@ export class DropRuler extends Component {
             if (e.dataTransfer.types[0] !== "text/pluto-cell") return
             this.pointer_position = e
 
+            precompute_cell_edges_throttled()
             update_drop_index_throttled()
 
             if (this.state.drag_start) {
