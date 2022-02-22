@@ -2553,13 +2553,13 @@ Based on "Paraíso (Light)" by Jan T. Sott:
     }
 }
 
-body.ctrl_down [data-pluto-variable],
-body.ctrl_down [data-cell-variable] {
+[data-ctrl-down="true"][data-pluto-variable],
+[data-ctrl-down="true"][data-cell-variable] {
     text-decoration-color: #d177e6;
     cursor: pointer;
 }
-body.ctrl_down [data-pluto-variable]:hover,
-body.ctrl_down [data-pluto-variable]:hover * {
+[data-ctrl-down="true"][data-pluto-variable]:hover,
+[data-ctrl-down="true"][data-pluto-variable]:hover * {
     /* This basically `color: #af5bc3`, but it works for emoji too!! */
     color: transparent !important;
     text-shadow: 0 0 #af5bc3;
@@ -2570,7 +2570,7 @@ body.ctrl_down [data-pluto-variable]:hover * {
     /* Can give this cool styles later as well, but not for now nahhh */
     text-decoration: none;
 }
-body.ctrl_down [data-cell-variable]:hover * {
+[data-ctrl-down="true"][data-cell-variable]:hover * {
     /* This basically `color: #af5bc3`, but it works for emoji too!! */
     color: transparent !important;
     text-shadow: 0 0 #af5bc3;
