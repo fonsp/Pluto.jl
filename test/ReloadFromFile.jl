@@ -37,7 +37,7 @@ import Pkg
     @test poll(30) do
         length(notebook.cells) == 3
     end
-    @test poll(5) do
+    @test poll(30) do
         notebook.cells[1].output.body == "123"
     end
     @test poll(5) do
