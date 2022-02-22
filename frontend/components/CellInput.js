@@ -63,6 +63,8 @@ import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
 import { debug_syntax_plugin } from "./CellInput/debug_syntax_plugin.js"
 import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
 
+export const ENABLE_CM_MIXED_PARSER = false
+
 export const pluto_syntax_colors = HighlightStyle.define(
     [
         /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
@@ -619,14 +621,21 @@ export const CellInput = ({
                     }),
                     EditorState.tabSize.of(4),
                     indentUnit.of("\t"),
-                    julia_mixed(),
-                    markdown({
-                        defaultCodeLanguage: julia_mixed(),
-                    }),
-                    htmlLang(), //Provides tag closing!,
-                    javascript(),
-                    python(),
-                    sqlLang,
+                    ...(ENABLE_CM_MIXED_PARSER
+                        ? [
+                              julia_mixed(),
+                              markdown({
+                                  defaultCodeLanguage: julia_mixed(),
+                              }),
+                              htmlLang(), //Provides tag closing!,
+                              javascript(),
+                              python(),
+                              sqlLang,
+                          ]
+                        : [
+                              //
+                              julia_andrey(),
+                          ]),
                     go_to_definition_plugin,
                     pluto_autocomplete({
                         request_autocomplete: async ({ text }) => {
