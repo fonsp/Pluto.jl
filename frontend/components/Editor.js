@@ -463,24 +463,6 @@ export class Editor extends Component {
                 const delta = before_or_after == "before" ? 0 : 1
                 return await this.actions.add_remote_cell_at(index + delta, code)
             },
-            // These actions are basically helpers because pushing selected cells all
-            // the way down is too heavy to handle!
-            fold_code: async (cell_id, selected) => {
-                let cells_to_fold = selected ? this.state.selected_cells : [cell_id]
-                this.actions.update_notebook((notebook) => {
-                    for (let cell_id of cells_to_fold) {
-                        notebook.cell_inputs[cell_id].code_folded = !notebook.cell_inputs[cell_id].code_folded
-                    }
-                })
-            },
-            set_and_run_multiple_from_cell: async (cell_id, selected) => {
-                let cell_to_run = selected ? this.state.selected_cells : [cell_id]
-                this.actions.set_and_run_multiple(cell_to_run)
-            },
-            confirm_delete_multiple_from_cell: async (verb, cell_id, selected) => {
-                let cells_to_delete = selected ? this.state.selected_cells : [cell_id]
-                this.actions.confirm_delete_multiple(verb, cells_to_delete)
-            },
             confirm_delete_multiple: async (verb, cell_ids) => {
                 if (cell_ids.length <= 1 || confirm(`${verb} ${cell_ids.length} cells?`)) {
                     if (cell_ids.some((cell_id) => this.state.notebook.cell_results[cell_id].running || this.state.notebook.cell_results[cell_id].queued)) {
@@ -507,12 +489,14 @@ export class Editor extends Component {
                     }
                 }
             },
-            fold_remote_cell: async (cell_id, newFolded) => {
-                if (!newFolded) {
-                    this.setState({ last_created_cell: cell_id })
+            fold_remote_cells: async (cell_ids, newFolded) => {
+                if (!newFolded && cell_ids.length > 0) {
+                    this.setState({ last_created_cell: cell_ids[cell_ids.length - 1] })
                 }
                 await update_notebook((notebook) => {
-                    notebook.cell_inputs[cell_id].code_folded = newFolded
+                    for (let cell_id of cell_ids) {
+                        notebook.cell_inputs[cell_id].code_folded = newFolded
+                    }
                 })
             },
             set_and_run_all_changed_remote_cells: () => {
@@ -574,6 +558,9 @@ export class Editor extends Component {
                     false
                 )
             },
+            /** This actions avoids pushing selected cells all the way down, which is too heavy to handle! */
+            get_selected_cells: (cell_id, /** @type {boolean} */ allow_other_selected_cells) =>
+                allow_other_selected_cells ? this.state.selected_cells : [cell_id],
             get_avaible_versions: async ({ package_name, notebook_id }) => {
                 const { message } = await this.client.send("nbpkg_available_versions", { package_name: package_name }, { notebook_id: notebook_id })
                 return message.versions

@@ -128,7 +128,7 @@ export const Cell = ({
 
     const cell_api_ready = useCellApi(node_ref, published_object_keys, pluto_actions)
     const on_delete = useCallback(() => {
-        pluto_actions.confirm_delete_multiple_from_cell("Delete", cell_id, selected)
+        pluto_actions.confirm_delete_multiple("Delete", pluto_actions.get_selected_cells(cell_id, selected))
     }, [pluto_actions, selected, cell_id])
     const on_submit = useCallback(() => {
         if (!disable_input_ref.current) {
@@ -140,7 +140,7 @@ export const Cell = ({
         (new_code) => {
             if (!disable_input_ref.current) {
                 if (code_folded && cm_forced_focus != null) {
-                    pluto_actions.fold_remote_cell(cell_id, false)
+                    pluto_actions.fold_remote_cells([cell_id], false)
                 }
                 on_change(new_code)
             }
@@ -151,10 +151,10 @@ export const Cell = ({
         pluto_actions.add_remote_cell(cell_id, "after")
     }, [pluto_actions, cell_id, selected])
     const on_code_fold = useCallback(() => {
-        pluto_actions.fold_code(cell_id, selected)
-    }, [pluto_actions, cell_id, selected])
+        pluto_actions.fold_remote_cells(pluto_actions.get_selected_cells(cell_id, selected), !code_folded)
+    }, [pluto_actions, cell_id, selected, code_folded])
     const on_run = useCallback(() => {
-        pluto_actions.set_and_run_multiple_from_cell(cell_id, selected)
+        pluto_actions.set_and_run_multiple(pluto_actions.get_selected_cells(cell_id, selected))
         set_waiting_to_run_smart(true)
     }, [pluto_actions, cell_id, selected, set_waiting_to_run_smart])
     return html`
@@ -206,7 +206,6 @@ export const Cell = ({
                 on_submit=${on_submit}
                 on_delete=${on_delete}
                 on_add_after=${on_add_after}
-                on_fold=${(new_folded) => pluto_actions.fold_remote_cell(cell_id, new_folded)}
                 on_change=${on_change_cell_input}
                 on_update_doc_query=${on_update_doc_query}
                 on_focus_neighbor=${on_focus_neighbor}
