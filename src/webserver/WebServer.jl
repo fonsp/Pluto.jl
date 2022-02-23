@@ -242,7 +242,8 @@ function run(session::ServerSession, pluto_router)
             request.response::HTTP.Response = response_body
             request.response.request = request
             try
-                HTTP.setheader(http, "Referrer-Policy" => "origin-when-cross-origin")
+                # https://github.com/fonsp/Pluto.jl/pull/722
+                HTTP.setheader(http, "Referrer-Policy" => "same-origin")
                 HTTP.startwrite(http)
                 write(http, request.response.body)
                 HTTP.closewrite(http)
