@@ -31,7 +31,7 @@ function open_url(session::ServerSession, url::AbstractString; kwargs...)
     nb = open(session, path; kwargs...)
     result = try_event_call(session, NewNotebookEvent(nb))
     if result isa UUID
-        change_notebook_id(s, n, result)
+        change_notebook_id(session, nb, result)
     end
     return nb
 end
