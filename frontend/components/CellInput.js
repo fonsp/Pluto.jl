@@ -64,7 +64,7 @@ import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_l
 import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
 import { debug_syntax_plugin } from "./CellInput/debug_syntax_plugin.js"
 import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
-import { diagnostic_linter } from "./linter.js"
+import { diagnostic_linter, RunningDisabledFacet } from "./linter.js"
 
 export const ENABLE_CM_MIXED_PARSER = false
 
@@ -368,6 +368,7 @@ export const CellInput = ({
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
     let global_definitions_compartment = useCompartment(newcm_ref, GlobalDefinitionsFacet.of(global_definition_locations))
     let highlighted_line_compartment = useCompartment(newcm_ref, HighlightLineFacet.of(cm_highlighted_line))
+    let running_disabled_compartment = useCompartment(newcm_ref, RunningDisabledFacet.of(running_disabled))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
 
     let on_change_compartment = useCompartment(
@@ -562,6 +563,7 @@ export const CellInput = ({
                     nbpkg_compartment,
                     highlighted_line_compartment,
                     global_definitions_compartment,
+                    running_disabled_compartment,
                     editable_compartment,
 
                     // This is waaaay in front of the keys it is supposed to override,

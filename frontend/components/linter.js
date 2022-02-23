@@ -1,15 +1,21 @@
-import { EditorView } from "../imports/CodemirrorPlutoSetup.js"
+import { EditorView, Facet } from "../imports/CodemirrorPlutoSetup.js"
 import { linter } from "../imports/CodemirrorPlutoSetup.js"
 import { GlobalDefinitionsFacet } from "./CellInput/go_to_definition_plugin.js"
 import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
 
-export const diagnostic_linter = ({ cell_id, running_disabled, pluto_actions }) =>
+export const RunningDisabledFacet = Facet.define({
+    combine: (values) => values[0],
+    compare: (a, b) => a === b,
+})
+
+export const diagnostic_linter = ({ cell_id, pluto_actions }) =>
     linter((/** @type EditorView */ editorView) => {
+        const state = editorView.state
+        const running_disabled = state.facet(RunningDisabledFacet)
+
         if (running_disabled) {
             return []
         }
-
-        const state = editorView.state
 
         let scopestate = state.field(ScopeStateField)
         let global_definitions = state.facet(GlobalDefinitionsFacet)

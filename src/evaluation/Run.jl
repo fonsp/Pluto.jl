@@ -121,9 +121,10 @@ function run_reactive!(
         cell.queued = true
         cell.depends_on_disabled_cells = false
     end
-    for (cell, error) in new_order.errable
+    for (cell, error) in setdiff(new_order.errable, indirectly_deactivated)
         cell.running = false
         cell.queued = false
+		cell.depends_on_disabled_cells = false
         relay_reactivity_error!(cell, error)
     end
 

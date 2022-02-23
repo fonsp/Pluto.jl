@@ -165,7 +165,7 @@ export const Notebook = ({
                 })
                 return all
             }, {}),
-        [notebook?.cell_dependencies]
+        [notebook?.cell_dependencies, notebook?.cell_inputs]
     )
     return html`
         <pluto-notebook id=${notebook.notebook_id}>
