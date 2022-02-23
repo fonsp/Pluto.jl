@@ -489,12 +489,14 @@ export class Editor extends Component {
                     }
                 }
             },
-            fold_remote_cell: async (cell_id, newFolded) => {
-                if (!newFolded) {
-                    this.setState({ last_created_cell: cell_id })
+            fold_remote_cells: async (cell_ids, newFolded) => {
+                if (!newFolded && cell_ids.length > 0) {
+                    this.setState({ last_created_cell: cell_ids[cell_ids.length - 1] })
                 }
                 await update_notebook((notebook) => {
-                    notebook.cell_inputs[cell_id].code_folded = newFolded
+                    for (let cell_id of cell_ids) {
+                        notebook.cell_inputs[cell_id].code_folded = newFolded
+                    }
                 })
             },
             set_and_run_all_changed_remote_cells: () => {
@@ -556,6 +558,9 @@ export class Editor extends Component {
                     false
                 )
             },
+            /** This actions avoids pushing selected cells all the way down, which is too heavy to handle! */
+            get_selected_cells: (cell_id, /** @type {boolean} */ allow_other_selected_cells) =>
+                allow_other_selected_cells ? this.state.selected_cells : [cell_id],
             get_avaible_versions: async ({ package_name, notebook_id }) => {
                 const { message } = await this.client.send("nbpkg_available_versions", { package_name: package_name }, { notebook_id: notebook_id })
                 return message.versions
@@ -1325,9 +1330,6 @@ patch: ${JSON.stringify(
                         <${Notebook}
                             notebook=${this.state.notebook}
                             cell_inputs_local=${this.state.cell_inputs_local}
-                            on_update_doc_query=${this.actions.set_doc_query}
-                            on_cell_input=${this.actions.set_local_cell}
-                            on_focus_neighbor=${this.actions.focus_on_neighbor}
                             disable_input=${this.state.disable_ui || !this.state.connected /* && this.state.binder_phase == null*/}
                             show_logs=${this.state.show_logs}
                             set_show_logs=${(enabled) => this.setState({ show_logs: enabled })}
@@ -1354,7 +1356,7 @@ patch: ${JSON.stringify(
                                 on_selection=${(selected_cell_ids) => {
                                     // @ts-ignore
                                     if (
-                                        selected_cell_ids.length !== this.state.selected_cells ||
+                                        selected_cell_ids.length !== this.state.selected_cells.length ||
                                         _.difference(selected_cell_ids, this.state.selected_cells).length !== 0
                                     ) {
                                         this.setState({
