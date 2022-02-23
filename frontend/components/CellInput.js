@@ -63,6 +63,7 @@ import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_l
 import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
 import { debug_syntax_plugin } from "./CellInput/debug_syntax_plugin.js"
 import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
+import { diagnostic_linter } from "./linter.js"
 
 export const pluto_syntax_colors = HighlightStyle.define(
     [
@@ -545,61 +546,6 @@ export const CellInput = ({
 
         const warn_double_definitions = EditorView.updateListener.of((update) => {})
 
-        const diagnostic_linter = linter((editorView) => {
-            if (running_disabled) {
-                return []
-            }
-
-            const state = editorView.state
-
-            let scopestate = state.field(ScopeStateField)
-            let global_definitions = state.facet(GlobalDefinitionsFacet)
-            const dangerous = Object.entries(global_definitions)
-                .filter(([name, cell_ids]) => scopestate.definitions.has(name) && cell_ids.find((cell) => cell !== cell_id) !== undefined)
-                .map(([name, _]) => name)
-
-            return dangerous.map((variable) => {
-                const range = scopestate.definitions.get(variable)
-                let i = 2
-                let new_name = variable + i
-                // TODO: Should also check at the cursor insertion point that the name is not taken locally
-                while (new_name in global_definitions) {
-                    i++
-                    new_name = variable + i
-                }
-                const diagnostic = {
-                    ...range,
-                    severity: "warning",
-                    source: "MultipleDefinitionWarnings",
-                    message: `${variable} is already defined in another cell`,
-                    actions: [
-                        {
-                            name: `Rename ${variable} in ${new_name}`,
-                            apply: (view, from, to) => {
-                                const transaction = view.state.update({ changes: { from, to, insert: new_name } })
-                                view.dispatch(transaction)
-                            },
-                        },
-                        {
-                            name: `Disable the other definition of ${variable}`,
-                            apply: async () => {
-                                // Can we group update?
-                                await pluto_actions.update_notebook((notebook) => {
-                                    for (let cell of global_definitions[variable]) {
-                                        if (cell !== cell_id) {
-                                            notebook.cell_inputs[cell].running_disabled = true
-                                        }
-                                    }
-                                })
-                                await pluto_actions.set_and_run_multiple([cell_id])
-                            },
-                        },
-                    ],
-                }
-                return diagnostic
-            })
-        })
-
         // TODO remove me
         //@ts-ignore
         window.tags = tags
@@ -657,7 +603,7 @@ export const CellInput = ({
                     bracketMatching(),
                     docs_updater,
                     warn_double_definitions,
-                    diagnostic_linter,
+                    diagnostic_linter({ cell_id, running_disabled, pluto_actions }),
                     // Remove selection on blur
                     EditorView.domEventHandlers({
                         blur: (event, view) => {
