@@ -18,7 +18,7 @@ let CellMemo = ({
     show_logs,
     set_show_logs,
     nbpkg,
-    variables_in_all_notebook,
+    global_definition_locations,
 }) => {
     const { body, last_run_timestamp, mime, persist_js_state, rootassignee } = cell_result?.output || {}
     const { queued, running, runtime, errored, depends_on_disabled_cells, logs } = cell_result || {}
@@ -39,7 +39,7 @@ let CellMemo = ({
                 show_logs=${show_logs}
                 set_show_logs=${set_show_logs}
                 nbpkg=${nbpkg}
-                variables_in_all_notebook=${variables_in_all_notebook}
+                global_definition_locations=${global_definition_locations}
             />
         `
     }, [
@@ -68,7 +68,7 @@ let CellMemo = ({
         disable_input,
         show_logs,
         ...nbpkg_fingerprint(nbpkg),
-        variables_in_all_notebook,
+        global_definition_locations,
     ])
 }
 
@@ -130,7 +130,7 @@ export const Notebook = ({
             }, render_cell_outputs_delay(notebook.cell_order.length))
         }
     }, [cell_outputs_delayed, notebook.cell_order.length])
-    let variables_in_all_notebook = useMemo(
+    let global_definition_locations = useMemo(
         () =>
             Object.fromEntries(
                 Object.values(notebook?.cell_dependencies ?? {}).flatMap((x) => Object.keys(x.downstream_cells_map).map((variable) => [variable, x.cell_id]))
@@ -154,7 +154,7 @@ export const Notebook = ({
                             logs: [],
                         }}
                         cell_input=${notebook.cell_inputs[cell_id]}
-                        cell_dependencies=${notebook.cell_dependencies[cell_id] ?? {}}
+                        cell_dependencies=${notebook?.cell_dependencies?.[cell_id] ?? {}}
                         cell_input_local=${cell_inputs_local[cell_id]}
                         notebook_id=${notebook.notebook_id}
                         selected=${selected_cells.includes(cell_id)}
@@ -165,7 +165,7 @@ export const Notebook = ({
                         show_logs=${show_logs}
                         set_show_logs=${set_show_logs}
                         nbpkg=${notebook.nbpkg}
-                        variables_in_all_notebook=${variables_in_all_notebook}
+                        global_definition_locations=${global_definition_locations}
                     />`
                 )}
         </pluto-notebook>

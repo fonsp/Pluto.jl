@@ -53,7 +53,7 @@ export const Cell = ({
     is_process_ready,
     disable_input,
     nbpkg,
-    variables_in_all_notebook,
+    global_definition_locations,
 }) => {
     let pluto_actions = useContext(PlutoContext)
     const on_update_doc_query = pluto_actions.set_doc_query
@@ -196,7 +196,7 @@ export const Cell = ({
                 local_code=${cell_input_local?.code ?? code}
                 remote_code=${code}
                 cell_dependencies=${cell_dependencies}
-                variables_in_all_notebook=${variables_in_all_notebook}
+                global_definition_locations=${global_definition_locations}
                 disable_input=${disable_input}
                 focus_after_creation=${focus_after_creation}
                 cm_forced_focus=${cm_forced_focus}
