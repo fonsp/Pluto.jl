@@ -20,7 +20,6 @@ responses[:completepath] = function response_completepath(🙋::ClientRequest)
     # too many candiates otherwise. -0.1 instead of 0 to enable autocompletions for paths: `/` or `/asdf/`
     isenough(x) = x ≥ -0.1
     ishidden(path_completion) = let p = path_completion.path
-        @info p basename(isdirpath(p) ? dirname(p) : p)
         startswith(basename(isdirpath(p) ? dirname(p) : p), ".")
     end
     filter!(p -> !ishidden(p) && (isenough ∘ score)(p), results)
