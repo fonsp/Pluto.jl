@@ -344,7 +344,7 @@ function eval_format_fetch_in_workspace(
     forced_expr_id::Union{PlutoRunner.ObjectID,Nothing}=nothing,
     user_requested_run::Bool=true,
     known_published_objects::Vector{String}=String[],
-)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
+)::PlutoRunner.FormattedCellResult
 
     workspace = get_workspace(session_notebook)
 
@@ -397,7 +397,7 @@ function format_fetch_in_workspace(
     ends_with_semicolon, 
     known_published_objects::Vector{String}=String[],
     showmore_id::Union{PlutoRunner.ObjectDimPair,Nothing}=nothing,
-)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
+)::PlutoRunner.FormattedCellResult
     workspace = get_workspace(session_notebook)
     
     # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.
