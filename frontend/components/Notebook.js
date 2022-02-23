@@ -4,6 +4,26 @@ import { html, useContext, useEffect, useMemo, useRef, useState } from "../impor
 import { Cell } from "./Cell.js"
 import { nbpkg_fingerprint } from "./PkgStatusMark.js"
 
+/** Like `useMemo`, but explain to the console what invalidated the memo. */
+const useMemoDebug = (fn, args) => {
+    const last_values = useRef(args)
+    return useMemo(() => {
+        const new_values = args
+        console.group("useMemoDebug: something changed!")
+        if (last_values.current.length !== new_values.length) {
+            console.log("Length changed. ", " old ", last_values.current, " new ", new_values)
+        } else {
+            for (let i = 0; i < last_values.current.length; i++) {
+                if (last_values.current[i] !== new_values[i]) {
+                    console.log("Element changed. Index: ", i, " old ", last_values.current[i], " new ", new_values[i])
+                }
+            }
+        }
+        console.groupEnd()
+        return fn()
+    }, args)
+}
+
 let CellMemo = ({
     cell_result,
     cell_input,
