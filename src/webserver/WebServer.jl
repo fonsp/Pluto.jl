@@ -226,6 +226,8 @@ function run(session::ServerSession, pluto_router)
                 end
             end
         else
+            # then it's a regular HTTP request, not a WS upgrade
+            
             request::HTTP.Request = http.message
             request.body = read(http)
             HTTP.closeread(http)
@@ -242,6 +244,7 @@ function run(session::ServerSession, pluto_router)
             request.response::HTTP.Response = response_body
             request.response.request = request
             try
+                HTTP.setheader(http, "Content-Length" => string(length(request.response.body)))
                 # https://github.com/fonsp/Pluto.jl/pull/722
                 HTTP.setheader(http, "Referrer-Policy" => "same-origin")
                 # https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#:~:text=is%202%20minutes.-,14.38%20Server
