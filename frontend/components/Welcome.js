@@ -1,5 +1,6 @@
 import _ from "../imports/lodash.js"
 import { html, Component, useEffect, useState, useMemo } from "../imports/Preact.js"
+import * as preact from "../imports/Preact.js"
 
 import { FilePicker } from "./FilePicker.js"
 import { create_pluto_connection, fetch_pluto_releases } from "../common/PlutoConnection.js"
@@ -192,7 +193,7 @@ export class Welcome extends Component {
             Object.assign(this.client, client)
             try {
                 const { default: environment } = await import(this.client.session_options.server.injected_javascript_data_url)
-                const { custom_welcome, custom_recent, custom_filepicker, show_samples = true } = environment(client, html, useEffect, useState, useMemo)
+                const { custom_welcome, custom_recent, custom_filepicker, show_samples = true } = environment({ client, editor: this, imports: { preact } })
                 this.setState({
                     extended_components: {
                         ...this.state.extended_components,

@@ -1,4 +1,5 @@
-import { html, Component, useState, useEffect, useMemo } from "../imports/Preact.js"
+import { html, Component } from "../imports/Preact.js"
+import * as preact from "../imports/Preact.js"
 import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
@@ -673,7 +674,7 @@ patch: ${JSON.stringify(
             Object.assign(this.client, client)
             try {
                 const { default: environment } = await import(this.client.session_options.server.injected_javascript_data_url)
-                const { custom_editor_header_component } = environment(client, html, useEffect, useState, useMemo)
+                const { custom_editor_header_component } = environment({ client, editor: this, imports: { preact } })
                 this.setState({
                     extended_components: {
                         ...this.state.extended_components,

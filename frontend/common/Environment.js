@@ -1,4 +1,10 @@
-function environment(client, html, useEffect, useState, useMemo) {
+function environment({
+    client,
+    editor,
+    imports: {
+        preact: { html, useEffect, useState, useMemo },
+    },
+}) {
     const noop = () => false
 
     return {
