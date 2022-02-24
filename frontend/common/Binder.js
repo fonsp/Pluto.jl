@@ -1,5 +1,6 @@
 import immer from "../imports/immer.js"
 import { timeout_promise, ws_address_from_base } from "./PlutoConnection.js"
+import { alert, confirm } from "./alert_confirm.js"
 
 export const BinderPhase = {
     wait_for_user: 0,

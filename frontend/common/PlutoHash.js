@@ -12,6 +12,11 @@ export const base64_arraybuffer = async (/** @type {BufferSource} */ data) => {
     return base64url.split(",", 2)[1]
 }
 
+export const decode_base64_to_arraybuffer = async (/** @type {string} */ data) => {
+    let r = await fetch(`data:;base64,${data}`)
+    return await r.arrayBuffer()
+}
+
 export const hash_arraybuffer = async (/** @type {BufferSource} */ data) => {
     const hash = sha256.create()
     hash.update(data)

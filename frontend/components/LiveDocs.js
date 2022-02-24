@@ -2,6 +2,7 @@ import { html, useState, useRef, useLayoutEffect, useEffect, useMemo, useContext
 import immer from "../imports/immer.js"
 import observablehq from "../common/SetupCellEnvironment.js"
 import { cl } from "../common/ClassTable.js"
+import { alert, confirm } from "../common/alert_confirm.js"
 
 import { RawHTMLContainer, highlight } from "./CellOutput.js"
 import { PlutoContext } from "../common/PlutoContext.js"

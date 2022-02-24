@@ -2,6 +2,7 @@ import { timeout_promise } from "./PlutoConnection.js"
 
 // Sorry Fons, even this part of the code is now unnessarily overengineered.
 // But at least, I overengineered this on purpose. - DRAL
+import { alert, confirm } from "./alert_confirm.js"
 
 let async = async (async) => async()
 

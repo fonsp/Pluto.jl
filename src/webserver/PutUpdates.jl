@@ -1,6 +1,10 @@
 
-function serialize_message_to_stream(io::IO, message::UpdateMessage)
-    to_send = Dict(:type => message.type, :message => message.message)
+function serialize_message_to_stream(io::IO, message::UpdateMessage, recipient::ClientSession)
+    to_send = Dict{Symbol,Any}(
+        :type => message.type, 
+        :message => message.message,
+        :recipient_id => recipient.id,
+    )
     if message.notebook !== nothing
         to_send[:notebook_id] = message.notebook.notebook_id
     end
@@ -15,8 +19,8 @@ function serialize_message_to_stream(io::IO, message::UpdateMessage)
     pack(io, to_send)
 end
 
-function serialize_message(message::UpdateMessage)
-    sprint(serialize_message_to_stream, message)
+function serialize_message(message::UpdateMessage, recipient::ClientSession)
+    sprint(serialize_message_to_stream, message, recipient)
 end
 
 "Send `messages` to all clients connected to the `notebook`."
@@ -76,7 +80,7 @@ function flushclient(client::ClientSession)
                     if client.stream isa HTTP.WebSockets.WebSocket
                         client.stream.frame_type = HTTP.WebSockets.WS_BINARY
                     end
-                    write(client.stream, serialize_message(next_to_send))
+                    write(client.stream, serialize_message(next_to_send, client))
                 else
                     put!(flushtoken)
                     return false

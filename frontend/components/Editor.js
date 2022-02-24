@@ -31,11 +31,14 @@ import { BinderButton } from "./BinderButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
 import { ProgressBar } from "./ProgressBar.js"
 import { IsolatedCell } from "./Cell.js"
+import { available as vscode_available, api as vscode } from "../common/VSCodeApi.js"
 import { RawHTMLContainer } from "./CellOutput.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
 import { HijackExternalLinksToOpenInNewTab } from "./HackySideStuff/HijackExternalLinksToOpenInNewTab.js"
 
 const default_path = "..."
+import { alert, confirm } from "../common/alert_confirm.js"
+
 const DEBUG_DIFFING = false
 
 // from our friends at https://stackoverflow.com/a/2117523
@@ -188,7 +191,7 @@ const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']
 const url_params = new URLSearchParams(window.location.search)
 const launch_params = {
     //@ts-ignore
-    notebook_id: url_params.get("id") ?? window.pluto_notebook_id,
+    notebook_id: (vscode_available ? null : url_params.get("id")) ?? window.pluto_notebook_id,
     //@ts-ignore
     statefile: url_params.get("statefile") ?? window.pluto_statefile,
     //@ts-ignore
@@ -238,7 +241,7 @@ export class Editor extends Component {
 
         this.state = {
             notebook: /** @type {NotebookData} */ initial_notebook(),
-            cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
+            cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ vscode.load_cell_inputs_from_vscode_state(),
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
             last_update_time: 0,
@@ -279,6 +282,7 @@ export class Editor extends Component {
             update_notebook: (...args) => this.update_notebook(...args),
             set_doc_query: (query) => this.setState({ desired_doc_query: query }),
             set_local_cell: (cell_id, new_val) => {
+                vscode.store_cell_input_in_vscode_state(cell_id, new_val)
                 return this.setStatePromise(
                     immer((state) => {
                         state.cell_inputs_local[cell_id] = {
@@ -465,9 +469,9 @@ export class Editor extends Component {
                 return await this.actions.add_remote_cell_at(index + delta, code)
             },
             confirm_delete_multiple: async (verb, cell_ids) => {
-                if (cell_ids.length <= 1 || confirm(`${verb} ${cell_ids.length} cells?`)) {
+                if (cell_ids.length <= 1 || (await confirm(`${verb} ${cell_ids.length} cells?`))) {
                     if (cell_ids.some((cell_id) => this.state.notebook.cell_results[cell_id].running || this.state.notebook.cell_results[cell_id].queued)) {
-                        if (confirm("This cell is still running - would you like to interrupt the notebook?")) {
+                        if (await confirm("This cell is still running - would you like to interrupt the notebook?")) {
                             this.actions.interrupt_remote(cell_ids[0])
                         }
                     } else {
@@ -936,7 +940,7 @@ patch: ${JSON.stringify(
                 return
             }
             if (!this.state.notebook.in_temp_dir) {
-                if (!confirm("Are you sure? Will move from\n\n" + old_path + "\n\nto\n\n" + new_path)) {
+                if (!(await confirm("Are you sure? Will move from\n\n" + old_path + "\n\nto\n\n" + new_path))) {
                     throw new Error("Declined by user")
                 }
             }
@@ -1263,6 +1267,8 @@ patch: ${JSON.stringify(
                             ${
                                 status.binder
                                     ? html`<pluto-filepicker><a href=${this.export_url("notebookfile")} target="_blank">Save notebook...</a></pluto-filepicker>`
+                                    : vscode_available
+                                    ? null
                                     : html`<${FilePicker}
                                           client=${this.client}
                                           value=${notebook.in_temp_dir ? "" : notebook.path}
