@@ -12,4 +12,4 @@ Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 [compat]
-FuzzyCompletions = "0.3,0.4"
+FuzzyCompletions = "0.3,0.4,0.5"

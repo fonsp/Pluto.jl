@@ -9,10 +9,11 @@ import UUIDs: UUID
 
     events = []
     function test_listener(a::PlutoEvent)
-        @info "this run!"
+        # @info "this run!"
         push!(events, typeof(a))
     end
-    🍭 = ServerSession(; event_listener = test_listener)
+    🍭 = ServerSession()
+    🍭.options.server.on_event = test_listener
     🍭.options.evaluation.workspace_use_distributed = false
 
     fakeclient = ClientSession(:fake, nothing)

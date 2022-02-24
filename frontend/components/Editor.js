@@ -22,7 +22,7 @@ import { PkgPopup } from "./PkgPopup.js"
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { handle_log } from "../common/Logging.js"
-import { PlutoContext, PlutoBondsContext, PlutoJSInitializingContext } from "../common/PlutoContext.js"
+import { PlutoContext, PlutoBondsContext, PlutoJSInitializingContext, SetWithEmptyCallback } from "../common/PlutoContext.js"
 import { unpack } from "../common/MsgPack.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
 import { start_binder, BinderPhase, count_stat } from "../common/Binder.js"
@@ -33,13 +33,14 @@ import { ProgressBar } from "./ProgressBar.js"
 import { IsolatedCell } from "./Cell.js"
 import { RawHTMLContainer } from "./CellOutput.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
+import { HijackExternalLinksToOpenInNewTab } from "./HackySideStuff/HijackExternalLinksToOpenInNewTab.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
-let pending_local_updates = 0
+
 // from our friends at https://stackoverflow.com/a/2117523
 // i checked it and it generates Julia-legal UUIDs and that's all we need -SNOF
 const uuidv4 = () =>
@@ -151,6 +152,19 @@ const first_true_key = (obj) => {
  */
 
 /**
+ * @typedef NotebookPkgData
+ * @type {{
+ *  enabled: boolean,
+ *  restart_recommended_msg: string?,
+ *  restart_required_msg: string?,
+ *  installed_versions: { [pkg_name: string]: string },
+ *  terminal_outputs: { [pkg_name: string]: string },
+ *  busy_packages: string[],
+ *  instantiated: boolean,
+ * }}
+ */
+
+/**
  * @typedef NotebookData
  * @type {{
  *  notebook_id: string,
@@ -167,7 +181,7 @@ const first_true_key = (obj) => {
  *  cell_execution_order: Array<string>,
  *  published_objects: { [objectid: string]: any},
  *  bonds: { [name: string]: any },
- *  nbpkg: Object,
+ *  nbpkg: NotebookPkgData?,
  * }}
  */
 
@@ -253,7 +267,6 @@ export class Editor extends Component {
             last_created_cell: null,
             selected_cells: [],
 
-            update_is_ongoing: false,
             extended_components: {
                 CustomHeader: null,
             },
@@ -484,12 +497,14 @@ export class Editor extends Component {
                     }
                 }
             },
-            fold_remote_cell: async (cell_id, newFolded) => {
-                if (!newFolded) {
-                    this.setState({ last_created_cell: cell_id })
+            fold_remote_cells: async (cell_ids, newFolded) => {
+                if (!newFolded && cell_ids.length > 0) {
+                    this.setState({ last_created_cell: cell_ids[cell_ids.length - 1] })
                 }
                 await update_notebook((notebook) => {
-                    notebook.cell_inputs[cell_id].code_folded = newFolded
+                    for (let cell_id of cell_ids) {
+                        notebook.cell_inputs[cell_id].code_folded = newFolded
+                    }
                 })
             },
             set_and_run_all_changed_remote_cells: () => {
@@ -551,6 +566,9 @@ export class Editor extends Component {
                     false
                 )
             },
+            /** This actions avoids pushing selected cells all the way down, which is too heavy to handle! */
+            get_selected_cells: (cell_id, /** @type {boolean} */ allow_other_selected_cells) =>
+                allow_other_selected_cells ? this.state.selected_cells : [cell_id],
             get_avaible_versions: async ({ package_name, notebook_id }) => {
                 const { message } = await this.client.send("nbpkg_available_versions", { package_name: package_name }, { notebook_id: notebook_id })
                 return message.versions
@@ -647,16 +665,36 @@ patch: ${JSON.stringify(
                 const message = update.message
                 switch (update.type) {
                     case "notebook_diff":
+                        let apply_promise = Promise.resolve()
                         if (message?.response?.from_reset) {
                             console.log("Trying to reset state after failure")
-                            try {
-                                apply_notebook_patches(message.patches, initial_notebook())
-                            } catch (exception) {
+                            apply_promise = apply_notebook_patches(message.patches, initial_notebook()).catch((e) => {
                                 alert("Oopsie!! please refresh your browser and everything will be alright!")
-                            }
+                                throw e
+                            })
                         } else if (message.patches.length !== 0) {
-                            apply_notebook_patches(message.patches)
+                            apply_promise = apply_notebook_patches(message.patches)
                         }
+
+                        const set_waiting = () => {
+                            let from_update = message?.response?.update_went_well != null
+                            let is_just_acknowledgement = from_update && message.patches.length === 0
+                            // console.log("Received patches!", message.patches, message.response, is_just_acknowledgement)
+
+                            if (!is_just_acknowledgement) {
+                                this.waiting_for_bond_to_trigger_execution = false
+                            }
+                        }
+                        apply_promise
+                            .then(set_waiting)
+                            .catch((e) => {
+                                set_waiting()
+                                throw e
+                            })
+                            .then(() => {
+                                this.send_queued_bond_changes()
+                            })
+
                         break
                     default:
                         console.error("Received unknown update type!", update)
@@ -783,19 +821,49 @@ patch: ${JSON.stringify(
         }, 1000 * 5)
 
         // Not completely happy with this yet, but it will do for now - DRAL
+        /** Patches that are being delayed until all cells have finished running. */
         this.bonds_changes_to_apply_when_done = []
-        this.js_init_set = new Set()
+        this.send_queued_bond_changes = () => {
+            if (this.notebook_is_idle() && this.bonds_changes_to_apply_when_done.length !== 0) {
+                // console.log("Applying queued bond changes!", this.bonds_changes_to_apply_when_done)
+                let bonds_patches = this.bonds_changes_to_apply_when_done
+                this.bonds_changes_to_apply_when_done = []
+                this.update_notebook((notebook) => {
+                    applyPatches(notebook, bonds_patches)
+                })
+            }
+        }
+        /** Whether we just set a bond value which will trigger a cell to run, but we are still waiting for the server to process the bond value (and run the cell). See https://github.com/fonsp/Pluto.jl/issues/1891 for more info. */
+        this.waiting_for_bond_to_trigger_execution = false
+        /** Number of local updates that have not yet been applied to the server's state. */
+        this.pending_local_updates = 0
+        this.js_init_set = new SetWithEmptyCallback(() => {
+            // console.info("All scripts finished!")
+            this.send_queued_bond_changes()
+        })
+        /** Is the notebook ready to execute code right now? (i.e. are no cells queued or running?) */
         this.notebook_is_idle = () => {
             return !(
-                this.state.update_is_ongoing ||
+                this.waiting_for_bond_to_trigger_execution ||
+                this.pending_local_updates > 0 ||
                 // a cell is running:
                 Object.values(this.state.notebook.cell_results).some((cell) => cell.running || cell.queued) ||
                 // a cell is initializing JS:
-                !_.isEmpty(this.js_init_set)
+                !_.isEmpty(this.js_init_set) ||
+                !this.is_process_ready()
             )
         }
         this.is_process_ready = () =>
             this.state.notebook.process_status === ProcessStatus.starting || this.state.notebook.process_status === ProcessStatus.ready
+
+        let bond_will_trigger_evaluation = (/** @type {string|PropertyKey} */ sym) =>
+            Object.entries(this.state.notebook.cell_dependencies).some(([cell_id, deps]) => {
+                // if the other cell depends on the variable `sym`...
+                if (deps.upstream_cells_map.hasOwnProperty(sym)) {
+                    // and the cell is not disabled
+                    return !(this.state.notebook.cell_inputs[cell_id]?.running_disabled ?? true)
+                }
+            })
 
         let last_update_notebook_task = Promise.resolve()
         /** @param {(notebook: NotebookData) => void} mutate_fn */
@@ -810,13 +878,13 @@ patch: ${JSON.stringify(
                     mutate_fn(notebook)
                 })
 
-                // If "notebook is not idle" I seperate and store the bonds updates,
+                // If "notebook is not idle" we seperate and store the bonds updates,
                 // to send when the notebook is idle. This delays the updating of the bond for performance,
                 // but when the server can discard bond updates itself (now it executes them one by one, even if there is a newer update ready)
                 // this will no longer be necessary
-                // console.log(`this.notebook_is_idle():`, this.notebook_is_idle())
-                if (!this.notebook_is_idle()) {
-                    let changes_involving_bonds = changes.filter((x) => x.path[0] === "bonds")
+                let is_idle = this.notebook_is_idle()
+                let changes_involving_bonds = changes.filter((x) => x.path[0] === "bonds")
+                if (!is_idle) {
                     this.bonds_changes_to_apply_when_done = [...this.bonds_changes_to_apply_when_done, ...changes_involving_bonds]
                     changes = changes.filter((x) => x.path[0] !== "bonds")
                 }
@@ -827,25 +895,30 @@ patch: ${JSON.stringify(
                         console.log(`Changes to send to server from "${previous_function_name}":`, changes)
                     } catch (error) {}
                 }
-                if (changes.length === 0) {
-                    return
-                }
-
                 for (let change of changes) {
                     if (change.path.some((x) => typeof x === "number")) {
                         throw new Error("This sounds like it is editing an array...")
                     }
                 }
-                pending_local_updates++
-                this.setState({ update_is_ongoing: pending_local_updates > 0 })
+
+                if (changes.length === 0) {
+                    return
+                }
+                if (is_idle) {
+                    this.waiting_for_bond_to_trigger_execution ||= changes_involving_bonds.some(
+                        (x) => x.path.length >= 1 && bond_will_trigger_evaluation(x.path[1])
+                    )
+                }
+                this.pending_local_updates++
                 this.on_patches_hook(changes)
                 try {
+                    // console.log("Sending changes to server:", changes)
                     await Promise.all([
                         this.client.send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false).then((response) => {
-                            if (response.message.response.update_went_well === "👎") {
+                            if (response.message?.response?.update_went_well === "👎") {
                                 // We only throw an error for functions that are waiting for this
                                 // Notebook state will already have the changes reversed
-                                throw new Error(`Pluto update_notebook error: ${response.message.response.why_not})`)
+                                throw new Error(`Pluto update_notebook error: (from Julia: ${response.message.response.why_not})`)
                             }
                         }),
                         this.setStatePromise({
@@ -854,8 +927,7 @@ patch: ${JSON.stringify(
                         }),
                     ])
                 } finally {
-                    pending_local_updates--
-                    this.setState({ update_is_ongoing: pending_local_updates > 0 })
+                    this.pending_local_updates--
                 }
             })
             last_update_notebook_task = new_task.catch(console.error)
@@ -925,18 +997,28 @@ patch: ${JSON.stringify(
             this.patch_listeners.forEach((f) => f(patches))
         }
 
+        let ctrl_down_last_val = { current: false }
+        const set_ctrl_down = (value) => {
+            if (value !== ctrl_down_last_val.current) {
+                ctrl_down_last_val.current = value
+                document.body.querySelectorAll("pluto-variable-link").forEach((el) => {
+                    el.setAttribute("data-ctrl-down", value ? "true" : "false")
+                })
+            }
+        }
+
         document.addEventListener("keyup", (e) => {
-            document.body.classList.toggle("ctrl_down", has_ctrl_or_cmd_pressed(e))
+            set_ctrl_down(has_ctrl_or_cmd_pressed(e))
         })
         document.addEventListener("visibilitychange", (e) => {
-            document.body.classList.toggle("ctrl_down", false)
+            set_ctrl_down(false)
             setTimeout(() => {
-                document.body.classList.toggle("ctrl_down", false)
+                set_ctrl_down(false)
             }, 100)
         })
 
         document.addEventListener("keydown", (e) => {
-            document.body.classList.toggle("ctrl_down", has_ctrl_or_cmd_pressed(e))
+            set_ctrl_down(has_ctrl_or_cmd_pressed(e))
             // if (e.defaultPrevented) {
             //     return
             // }
@@ -1089,16 +1171,9 @@ patch: ${JSON.stringify(
 
         // this class is used to tell our frontend tests that the updates are done
         //@ts-ignore
-        document.body._update_is_ongoing = pending_local_updates > 0
+        document.body._update_is_ongoing = this.pending_local_updates > 0
 
-        if (this.notebook_is_idle() && this.bonds_changes_to_apply_when_done.length !== 0) {
-            // `bonds_changes_to_apply_when_done:`, this.bonds_changes_to_apply_when_done
-            let bonds_patches = this.bonds_changes_to_apply_when_done
-            this.bonds_changes_to_apply_when_done = []
-            this.update_notebook((notebook) => {
-                applyPatches(notebook, bonds_patches)
-            })
-        }
+        this.send_queued_bond_changes()
 
         if (old_state.binder_phase !== this.state.binder_phase && this.state.binder_phase != null) {
             const phase = Object.entries(BinderPhase).find(([k, v]) => v == this.state.binder_phase)[0]
@@ -1164,6 +1239,8 @@ patch: ${JSON.stringify(
         >`
 
         return html`
+            ${this.state.disable_ui === false && html`<${HijackExternalLinksToOpenInNewTab} />`}
+            
             <${PlutoContext.Provider} value=${this.actions}>
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                     <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
@@ -1276,9 +1353,6 @@ patch: ${JSON.stringify(
                         <${Notebook}
                             notebook=${this.state.notebook}
                             cell_inputs_local=${this.state.cell_inputs_local}
-                            on_update_doc_query=${this.actions.set_doc_query}
-                            on_cell_input=${this.actions.set_local_cell}
-                            on_focus_neighbor=${this.actions.focus_on_neighbor}
                             disable_input=${this.state.disable_ui || !this.state.connected /* && this.state.binder_phase == null*/}
                             show_logs=${this.state.show_logs}
                             set_show_logs=${(enabled) => this.setState({ show_logs: enabled })}
@@ -1305,7 +1379,7 @@ patch: ${JSON.stringify(
                                 on_selection=${(selected_cell_ids) => {
                                     // @ts-ignore
                                     if (
-                                        selected_cell_ids.length !== this.state.selected_cells ||
+                                        selected_cell_ids.length !== this.state.selected_cells.length ||
                                         _.difference(selected_cell_ids, this.state.selected_cells).length !== 0
                                     ) {
                                         this.setState({

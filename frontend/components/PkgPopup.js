@@ -79,7 +79,7 @@ export const PkgPopup = ({ notebook }) => {
 
     const [showterminal, set_showterminal] = useState(false)
 
-    const busy = recent_event != null && ((notebook.nbpkg?.busy_packages ?? []).includes(recent_event.package_name) || (notebook.nbpkg?.instantiating ?? false))
+    const busy = recent_event != null && ((notebook.nbpkg?.busy_packages ?? []).includes(recent_event.package_name) || !(notebook.nbpkg?.instantiated ?? true))
 
     const debounced_busy = useDebouncedTruth(busy, 2)
     useEffect(() => {

@@ -271,7 +271,7 @@ end
 
 # this is stupid -- désolé
 function is_joined_funcname(joined::Symbol)
-    occursin('.', String(joined))
+    joined !== :.. #= .. is a valid identifier 😐 =# && occursin('.', String(joined))
 end
 
 assign_to_kw(e::Expr) = e.head == :(=) ? Expr(:kw, e.args...) : e
@@ -309,8 +309,9 @@ function macro_has_special_heuristic_inside(; symstate::SymbolsState, expr::Expr
         module_usings_imports = ExpressionExplorer.compute_usings_imports(expr),
     )
     local fake_topology = Pluto.NotebookTopology(
-        nodes = Pluto.DefaultDict(Pluto.ReactiveNode, Dict(fake_cell => fake_reactive_node)),
-        codes = Pluto.DefaultDict(Pluto.ExprAnalysisCache, Dict(fake_cell => fake_expranalysiscache))
+        nodes = Pluto.ImmutableDefaultDict(Pluto.ReactiveNode, Dict(fake_cell => fake_reactive_node)),
+        codes = Pluto.ImmutableDefaultDict(Pluto.ExprAnalysisCache, Dict(fake_cell => fake_expranalysiscache)),
+        cell_order = Pluto.ImmutableVector([fake_cell]),
     )
 
     return Pluto.cell_precedence_heuristic(fake_topology, fake_cell) < 9
