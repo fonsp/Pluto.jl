@@ -1,4 +1,5 @@
 import { html, Component } from "../imports/Preact.js"
+import _ from "../imports/lodash.js"
 
 export class DropRuler extends Component {
     constructor() {
@@ -6,7 +7,7 @@ export class DropRuler extends Component {
         this.dropee = null
         this.dropped = null
         this.cell_edges = []
-        this.pointer_position = {}
+        this.pointer_position = { pageX: 0, pageY: 0 }
         this.precompute_cell_edges = () => {
             /** @type {Array<HTMLElement>} */
             const cell_nodes = Array.from(document.querySelectorAll("pluto-notebook > pluto-cell"))
@@ -14,7 +15,6 @@ export class DropRuler extends Component {
             this.cell_edges.push(last(cell_nodes).offsetTop + last(cell_nodes).scrollHeight)
         }
         this.getDropIndexOf = ({ pageX, pageY }) => {
-            const notebook = document.querySelector("pluto-notebook")
             const distances = this.cell_edges.map((p) => Math.abs(p - pageY - 8)) // 8 is the magic computer number: https://en.wikipedia.org/wiki/8
             return argmin(distances)
         }
@@ -29,14 +29,7 @@ export class DropRuler extends Component {
     componentDidMount() {
         document.addEventListener("dragstart", (e) => {
             let target = /** @type {Element} */ (e.target)
-            if (!target.matches("pluto-shoulder")) {
-                this.setState({
-                    drag_start: false,
-                    drag_target: false,
-                })
-                this.props.set_scroller({ up: false, down: false })
-                this.dropee = null
-            } else {
+            if (target.matches("pluto-shoulder")) {
                 this.dropee = target.parentElement
                 e.dataTransfer.setData("text/pluto-cell", this.props.serialize_selected(this.dropee.id))
                 this.dropped = false
@@ -47,6 +40,13 @@ export class DropRuler extends Component {
                     drop_index: this.getDropIndexOf(e),
                 })
                 this.props.set_scroller({ up: true, down: true })
+            } else {
+                this.setState({
+                    drag_start: false,
+                    drag_target: false,
+                })
+                this.props.set_scroller({ up: false, down: false })
+                this.dropee = null
             }
         })
         document.addEventListener("dragenter", (e) => {
@@ -54,6 +54,7 @@ export class DropRuler extends Component {
             if (!this.state.drag_target) this.precompute_cell_edges()
             this.lastenter = e.target
             this.setState({ drag_target: true })
+            e.preventDefault()
         })
         document.addEventListener("dragleave", (e) => {
             if (e.dataTransfer.types[0] !== "text/pluto-cell") return
@@ -61,18 +62,33 @@ export class DropRuler extends Component {
                 this.setState({ drag_target: false })
             }
         })
+        const precompute_cell_edges_throttled = _.throttle(this.precompute_cell_edges, 4000, { leading: false, trailing: true })
+        const update_drop_index_throttled = _.throttle(
+            () => {
+                this.setState({
+                    drop_index: this.getDropIndexOf(this.pointer_position),
+                })
+            },
+            300,
+            { leading: false, trailing: true }
+        )
         document.addEventListener("dragover", (e) => {
             // Called continuously during drag
             if (e.dataTransfer.types[0] !== "text/pluto-cell") return
             this.pointer_position = e
 
-            this.setState({
-                drop_index: this.getDropIndexOf(e),
-            })
+            precompute_cell_edges_throttled()
+            update_drop_index_throttled()
+
+            if (this.state.drag_start) {
+                // Then we're dragging a cell from within the notebook. Use a move icon:
+                e.dataTransfer.dropEffect = "move"
+            }
             e.preventDefault()
         })
         document.addEventListener("dragend", (e) => {
             // Called after drag, also when dropped outside of the browser or when ESC is pressed
+            update_drop_index_throttled.flush()
             this.setState({
                 drag_start: false,
                 drag_target: false,
