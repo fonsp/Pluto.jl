@@ -2,6 +2,7 @@ import _ from "../imports/lodash.js"
 import { cl } from "../common/ClassTable.js"
 import { html, useState, useEffect, useLayoutEffect, useRef, useMemo } from "../imports/Preact.js"
 import { SimpleOutputBody } from "./TreeView.js"
+import { help_circle_icon } from "./Popup.js"
 
 // Defined in editor.css
 const GRID_WIDTH = 10
@@ -101,6 +102,7 @@ const Dot = ({ set_cm_highlighted_line, show, msg, kwargs, x, y, level }) => {
     const [inspecting, set_inspecting] = useState(false)
 
     const is_progress = is_progress_log({ level, kwargs })
+    const is_stdout = level === "LogLevel(-555)"
     let progress = null
     if (is_progress) {
         progress = kwargs.find((p) => p[0] === "progress")[1][0]
@@ -115,7 +117,7 @@ const Dot = ({ set_cm_highlighted_line, show, msg, kwargs, x, y, level }) => {
         level = "Progress"
         y = 0
     }
-    if (level === "LogLevel(-555)") {
+    if (is_stdout) {
         level = "Stdout"
     }
 
@@ -154,17 +156,55 @@ const Dot = ({ set_cm_highlighted_line, show, msg, kwargs, x, y, level }) => {
               onMouseleave=${() => set_cm_highlighted_line(null)}
           >
               <pluto-log-dot-sizer>
+                  ${is_stdout
+                      ? html`<${MoreInfo}
+                            body=${html`This text was written to the ${" "}<a href="https://en.wikipedia.org/wiki/Standard_streams" target="_blank"
+                                    >terminal stream</a
+                                >${" "}while running the cell. It is not the${" "}<em>output value</em>${" "}of this cell.`}
+                        />`
+                      : null}
                   <pluto-log-dot class=${level}
-                      >${!is_progress
-                          ? html`${mimepair_output(msg)}${kwargs.map(
+                      >${is_progress
+                          ? html`<${Progress} progress=${progress} />`
+                          : is_stdout
+                          ? html`<${MoreInfo}
+                                    body=${html`${"This text was written to the "}
+                                        <a href="https://en.wikipedia.org/wiki/Standard_streams" target="_blank">terminal stream</a
+                                        >${" while running the cell. "}<span style="opacity: .5"
+                                            >${"(It is not the "}<em>return value</em>${" of the cell.)"}</span
+                                        >`}
+                                />
+                                <pre>${msg[0]}</pre>`
+                          : html`${mimepair_output(msg)}${kwargs.map(
                                 ([k, v]) =>
                                     html`
                                         <pluto-log-dot-kwarg><pluto-key>${k}</pluto-key> <pluto-value>${mimepair_output(v)}</pluto-value></pluto-log-dot-kwarg>
                                     `
-                            )}`
-                          : html`<${Progress} progress=${progress} />`}</pluto-log-dot
+                            )}`}</pluto-log-dot
                   >
               </pluto-log-dot-sizer>
           </pluto-log-dot-positioner>`
         : html`<pluto-log-dot-positioner ref=${node_ref}></pluto-log-dot-positioner>`
+}
+
+const MoreInfo = ({ body }) => {
+    return html`<a
+        class="stdout-info"
+        target="_blank"
+        title="Click for more info"
+        href="#"
+        onClick=${(e) => {
+            window.dispatchEvent(
+                new CustomEvent("open pluto popup", {
+                    detail: {
+                        type: "info",
+                        source_element: e.currentTarget,
+                        body,
+                    },
+                })
+            )
+            e.preventDefault()
+        }}
+        ><img alt="❔" src=${help_circle_icon} width="17"
+    /></a>`
 }

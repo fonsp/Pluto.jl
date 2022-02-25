@@ -1732,10 +1732,12 @@ pkg-popup .pkg-buttons {
     flex-direction: row;
 }
 
+a.stdout-info img,
 pkg-popup .pkg-buttons img {
     filter: var(--image-filters);
 }
 
+a.stdout-info,
 pkg-popup .pkg-buttons > * {
     display: block;
     height: 17px;
@@ -2431,6 +2433,22 @@ pluto-log-dot.Stdout::after {
     animation: scroll-crt 1s linear infinite;
     animation-play-state: paused;
 }
+/* To make space in the top right for the info button. */
+pluto-log-dot.Stdout pre::before {
+    content: " ";
+    width: 20px;
+    /* float is weird but it does exactly what we want here: take up space or trigger text wrapping only if needed to clear the top right corner. */
+    float: right;
+}
+
+a.stdout-info {
+    position: absolute;
+    right: 2px;
+    top: 2px;
+    z-index: 50;
+    pointer-events: initial;
+}
+
 @keyframes scroll-crt {
     0% {
         background-position: 0px 0px;
