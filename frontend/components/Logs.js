@@ -84,7 +84,7 @@ const Progress = ({ progress }) => {
     const bar_ref = useRef(null)
 
     useLayoutEffect(() => {
-        bar_ref.current.style.backgroundSize = `${progress * 100}%`
+        bar_ref.current.style.backgroundSize = `${progress * 100}% 100%`
     }, [progress])
 
     return html`<pluto-progress-bar ref=${bar_ref}>${Math.ceil(100 * progress)}%</pluto-progress-bar>`
