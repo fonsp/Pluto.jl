@@ -1707,12 +1707,12 @@ pluto-popup > * {
     /* Slightly changes the layout of the three pkg buttons... in just the way that we want it! */
     position: absolute;
 }
-pluto-popup > pkg-popup-really {
+pluto-popup > pkg-popup {
     background: var(--pkg-popup-bg);
     border: 3px solid var(--pkg-popup-border-color);
 }
 
-pkg-popup-really.busy {
+pkg-popup.busy {
     border: 3px solid hsl(282deg 31% 62%);
 }
 
@@ -1722,7 +1722,7 @@ pkg-version {
     opacity: 0.5;
 }
 
-pkg-popup-really .pkg-buttons {
+pkg-popup .pkg-buttons {
     float: right;
     /* position: absolute; */
     /* right: 0px; */
@@ -1733,12 +1733,12 @@ pkg-popup-really .pkg-buttons {
 }
 
 more-info > a img,
-pkg-popup-really .pkg-buttons img {
+pkg-popup .pkg-buttons img {
     filter: var(--image-filters);
 }
 
 more-info > a,
-pkg-popup-really .pkg-buttons > * {
+pkg-popup .pkg-buttons > * {
     display: block;
     height: 17px;
     padding: 4px;
@@ -1749,7 +1749,7 @@ pkg-popup-really .pkg-buttons > * {
     margin-left: -4px;
 }
 
-pkg-popup-really .toggle-terminal {
+pkg-popup .toggle-terminal {
     right: 20px;
 }
 
@@ -1780,11 +1780,11 @@ pkg-terminal pre {
     margin: 0;
 }
 
-pkg-popup-really pkg-terminal {
+pkg-popup pkg-terminal {
     display: none;
 }
 
-pkg-popup-really.showterminal pkg-terminal {
+pkg-popup.showterminal pkg-terminal {
     display: block;
 }
 

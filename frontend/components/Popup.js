@@ -28,17 +28,12 @@ export const Popup = ({ notebook }) => {
         const elb = el.getBoundingClientRect()
         const bodyb = document.body.getBoundingClientRect()
 
-        console.log(elb, bodyb)
-        console.log(elb.left, bodyb.left)
-        console.log(elb.right, bodyb.right)
-
         pos_ref.current = `top: ${0.5 * (elb.top + elb.bottom) - bodyb.top}px; left: min(max(0px,100vw - 251px - 30px), ${elb.right - bodyb.left}px);`
         set_recent_event(e.detail)
     }
 
     useEffect(() => {
         const onpointerdown = (e) => {
-            console.log(recent_source_element_ref.current)
             if (e.target?.closest("pluto-popup") == null && (e.target == null || !recent_source_element_ref.current?.contains(e.target))) {
                 set_recent_event(null)
             }
@@ -64,11 +59,9 @@ export const Popup = ({ notebook }) => {
         recent_event,
         clear_recent_event: () => set_recent_event(null),
     })
-
     const info_popup = html`<div>${recent_event?.body}</div>`
 
     const type = recent_event?.type
-
     return html`<pluto-popup
         class=${cl({
             visible: recent_event != null,
@@ -128,7 +121,7 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event }) => {
     const showupdate = pkg_status?.offer_update ?? false
 
     // <header>${recent_event?.package_name}</header>
-    return html`<pkg-popup-really
+    return html`<pkg-popup
         class=${cl({
             busy,
             showterminal,
@@ -173,5 +166,5 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event }) => {
             /></a>
         </div>
         <${PkgTerminalView} value=${terminal_value ?? "Loading..."} />
-    </pkg-popup-really>`
+    </pkg-popup>`
 }
