@@ -2013,6 +2013,7 @@ pluto-helpbox .cm-line {
     /* from https://docs.julialang.org/en/v1/assets/themes/documenter-light.css */
     font-family: "Roboto Mono", "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", "DejaVu Sans Mono", monospace;
     font-size: 0.95em;
+    line-height: initial;
 }
 pluto-helpbox pre code {
     font-size: 1em;
