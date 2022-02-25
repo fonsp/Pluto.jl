@@ -1732,12 +1732,10 @@ pkg-popup .pkg-buttons {
     flex-direction: row;
 }
 
-more-info > a img,
 pkg-popup .pkg-buttons img {
     filter: var(--image-filters);
 }
 
-more-info > a,
 pkg-popup .pkg-buttons > * {
     display: block;
     height: 17px;
