@@ -932,6 +932,9 @@ main > preamble #saveall-container {
     }
 }
 
+main > preamble #saveall-container.ask_to_save {
+    border-color: var(--overlay-button-border-save);
+}
 main > preamble #saveall-container.saving,
 main > preamble #saveall-container.saved {
     border-color: transparent;
@@ -1666,7 +1669,7 @@ pkg-status-mark.disable_pkg > button > span::after {
     filter: var(--image-filters);
 }
 
-pkg-popup {
+pluto-popup {
     display: block;
     position: absolute;
     z-index: 50;
@@ -1674,13 +1677,10 @@ pkg-popup {
     /* top: calc((1.5em - 200px) * 0.5); */
     width: min(90vw, 251px);
     /* min-height: 80px; */
-    margin-left: 1.1rem;
-    margin-top: calc(0.5 * (1rem - 80px));
-    background: var(--pkg-popup-bg);
-    border: 3px solid var(--pkg-popup-border-color);
-    color: var(--black);
-    border-radius: 10px;
-    padding: 8px;
+    margin-left: 0.4rem;
+    margin-top: 0px;
+    margin-top: -1rem;
+    /* margin-top: calc(0.5 * (1rem - 80px)); */
     overflow-wrap: break-word;
     font-family: var(--lato-ui-font-stack);
     opacity: 0;
@@ -1690,14 +1690,29 @@ pkg-popup {
     pointer-events: none;
 }
 
-pkg-popup.visible {
+pluto-popup.visible {
     opacity: 1;
     transform: scale(1);
     transition: transform 0.2s ease-in-out, opacity 0.2s ease-in-out;
     pointer-events: initial;
 }
 
-pkg-popup.busy {
+pluto-popup > * {
+    display: block;
+    background: var(--overlay-button-bg);
+    border: 3px solid var(--overlay-button-border);
+    color: var(--black);
+    border-radius: 10px;
+    padding: 8px;
+    /* Slightly changes the layout of the three pkg buttons... in just the way that we want it! */
+    position: absolute;
+}
+pluto-popup > pkg-popup-really {
+    background: var(--pkg-popup-bg);
+    border: 3px solid var(--pkg-popup-border-color);
+}
+
+pkg-popup-really.busy {
     border: 3px solid hsl(282deg 31% 62%);
 }
 
@@ -1707,7 +1722,7 @@ pkg-version {
     opacity: 0.5;
 }
 
-pkg-popup .pkg-buttons {
+pkg-popup-really .pkg-buttons {
     float: right;
     /* position: absolute; */
     /* right: 0px; */
@@ -1717,11 +1732,13 @@ pkg-popup .pkg-buttons {
     flex-direction: row;
 }
 
-pkg-popup .pkg-buttons img {
+more-info > a img,
+pkg-popup-really .pkg-buttons img {
     filter: var(--image-filters);
 }
 
-pkg-popup .pkg-buttons > * {
+more-info > a,
+pkg-popup-really .pkg-buttons > * {
     display: block;
     height: 17px;
     padding: 4px;
@@ -1732,7 +1749,7 @@ pkg-popup .pkg-buttons > * {
     margin-left: -4px;
 }
 
-pkg-popup .toggle-terminal {
+pkg-popup-really .toggle-terminal {
     right: 20px;
 }
 
@@ -1763,11 +1780,11 @@ pkg-terminal pre {
     margin: 0;
 }
 
-pkg-popup pkg-terminal {
+pkg-popup-really pkg-terminal {
     display: none;
 }
 
-pkg-popup.showterminal pkg-terminal {
+pkg-popup-really.showterminal pkg-terminal {
     display: block;
 }
 
