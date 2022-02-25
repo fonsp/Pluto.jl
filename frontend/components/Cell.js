@@ -1,5 +1,5 @@
 import _ from "../imports/lodash.js"
-import { html, useState, useEffect, useMemo, useRef, useContext, useLayoutEffect } from "../imports/Preact.js"
+import { html, useState, useEffect, useMemo, useRef, useContext, useLayoutEffect, useCallback } from "../imports/Preact.js"
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
@@ -36,7 +36,6 @@ const useCellApi = (node_ref, published_object_keys, pluto_actions) => {
  *  cell_dependencies: import("./Editor.js").CellDependencyData
  *  nbpkg: import("./Editor.js").NotebookPkgData?,
  *  selected: boolean,
- *  selected_cells: Array<string>,
  *  force_hide_input: boolean,
  *  focus_after_creation: boolean,
  *  [key: string]: any,
@@ -48,23 +47,19 @@ export const Cell = ({
     cell_dependencies,
     cell_input_local,
     notebook_id,
-    on_update_doc_query,
-    on_change,
-    on_focus_neighbor,
     selected,
-    selected_cells,
     force_hide_input,
     focus_after_creation,
     is_process_ready,
     disable_input,
     nbpkg,
+    global_definition_locations,
 }) => {
     let pluto_actions = useContext(PlutoContext)
-    const notebook = pluto_actions.get_notebook()
-    let variables_in_all_notebook = Object.fromEntries(
-        Object.values(notebook?.cell_dependencies ?? {}).flatMap((x) => Object.keys(x.downstream_cells_map).map((variable) => [variable, x.cell_id]))
-    )
-    const variables = Object.keys(notebook?.cell_dependencies?.[cell_id]?.downstream_cells_map || {})
+    const on_update_doc_query = pluto_actions.set_doc_query
+    const on_focus_neighbor = pluto_actions.focus_on_neighbor
+    const on_change = useCallback((val) => pluto_actions.set_local_cell(cell_id, val), [cell_id, pluto_actions])
+    const variables = useMemo(() => Object.keys(cell_dependencies), [cell_dependencies])
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
     const [cm_highlighted_line, set_cm_highlighted_line] = useState(null)
@@ -131,7 +126,36 @@ export const Cell = ({
     const set_waiting_to_run_smart = (x) => set_waiting_to_run(x && should_set_waiting_to_run_ref.current)
 
     const cell_api_ready = useCellApi(node_ref, published_object_keys, pluto_actions)
-
+    const on_delete = useCallback(() => {
+        pluto_actions.confirm_delete_multiple("Delete", pluto_actions.get_selected_cells(cell_id, selected))
+    }, [pluto_actions, selected, cell_id])
+    const on_submit = useCallback(() => {
+        if (!disable_input_ref.current) {
+            set_waiting_to_run_smart(true)
+            pluto_actions.set_and_run_multiple([cell_id])
+        }
+    }, [pluto_actions, set_waiting_to_run, cell_id])
+    const on_change_cell_input = useCallback(
+        (new_code) => {
+            if (!disable_input_ref.current) {
+                if (code_folded && cm_forced_focus != null) {
+                    pluto_actions.fold_remote_cells([cell_id], false)
+                }
+                on_change(new_code)
+            }
+        },
+        [code_folded, cm_forced_focus, pluto_actions, on_change]
+    )
+    const on_add_after = useCallback(() => {
+        pluto_actions.add_remote_cell(cell_id, "after")
+    }, [pluto_actions, cell_id, selected])
+    const on_code_fold = useCallback(() => {
+        pluto_actions.fold_remote_cells(pluto_actions.get_selected_cells(cell_id, selected), !code_folded)
+    }, [pluto_actions, cell_id, selected, code_folded])
+    const on_run = useCallback(() => {
+        pluto_actions.set_and_run_multiple(pluto_actions.get_selected_cells(cell_id, selected))
+        set_waiting_to_run_smart(true)
+    }, [pluto_actions, cell_id, selected, set_waiting_to_run_smart])
     return html`
         <pluto-cell
             ref=${node_ref}
@@ -153,18 +177,7 @@ export const Cell = ({
         >
             ${variables.map((name) => html`<span id=${encodeURI(name)} />`)}
             <pluto-shoulder draggable="true" title="Drag to move cell">
-                <button
-                    onClick=${() => {
-                        let cells_to_fold = selected ? selected_cells : [cell_id]
-                        pluto_actions.update_notebook((notebook) => {
-                            for (let cell_id of cells_to_fold) {
-                                notebook.cell_inputs[cell_id].code_folded = !code_folded
-                            }
-                        })
-                    }}
-                    class="foldcode"
-                    title="Show/hide code"
-                >
+                <button onClick=${on_code_fold} class="foldcode" title="Show/hide code">
                     <span></span>
                 </button>
             </pluto-shoulder>
@@ -183,34 +196,16 @@ export const Cell = ({
                 local_code=${cell_input_local?.code ?? code}
                 remote_code=${code}
                 cell_dependencies=${cell_dependencies}
-                variables_in_all_notebook=${variables_in_all_notebook}
+                global_definition_locations=${global_definition_locations}
                 disable_input=${disable_input}
                 focus_after_creation=${focus_after_creation}
                 cm_forced_focus=${cm_forced_focus}
                 set_cm_forced_focus=${set_cm_forced_focus}
                 show_input=${show_input}
-                on_submit=${() => {
-                    if (!disable_input_ref.current) {
-                        set_waiting_to_run_smart(true)
-                        pluto_actions.set_and_run_multiple([cell_id])
-                    }
-                }}
-                on_delete=${() => {
-                    let cells_to_delete = selected ? selected_cells : [cell_id]
-                    pluto_actions.confirm_delete_multiple("Delete", cells_to_delete)
-                }}
-                on_add_after=${() => {
-                    pluto_actions.add_remote_cell(cell_id, "after")
-                }}
-                on_fold=${(new_folded) => pluto_actions.fold_remote_cell(cell_id, new_folded)}
-                on_change=${(new_code) => {
-                    if (!disable_input_ref.current) {
-                        if (code_folded && cm_forced_focus != null) {
-                            pluto_actions.fold_remote_cell(cell_id, false)
-                        }
-                        on_change(new_code)
-                    }
-                }}
+                on_submit=${on_submit}
+                on_delete=${on_delete}
+                on_add_after=${on_add_after}
+                on_change=${on_change_cell_input}
                 on_update_doc_query=${on_update_doc_query}
                 on_focus_neighbor=${on_focus_neighbor}
                 on_line_heights=${set_line_heights}
@@ -229,11 +224,7 @@ export const Cell = ({
                 cell_id=${cell_id}
                 running_disabled=${running_disabled}
                 depends_on_disabled_cells=${depends_on_disabled_cells}
-                on_run=${() => {
-                    set_waiting_to_run_smart(true)
-                    let cell_to_run = selected ? selected_cells : [cell_id]
-                    pluto_actions.set_and_run_multiple(cell_to_run)
-                }}
+                on_run=${on_run}
                 on_interrupt=${() => {
                     pluto_actions.interrupt_remote(cell_id)
                 }}

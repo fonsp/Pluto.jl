@@ -55,6 +55,8 @@ For the full list, see the [`Pluto.Configuration`](@ref) module. Some **common p
 - `launch_browser`: Optional. Whether to launch the system default browser. Disable this on SSH and such.
 - `host`: Optional. The default `host` is `"127.0.0.1"`. For wild setups like Docker and heroku, you might need to change this to `"0.0.0.0"`.
 - `port`: Optional. The default `port` is `1234`.
+- `auto_reload_from_file`: Reload when the `.jl` file is modified. The default is `false`.
+- `secret`: Set a fixed secret for access.
 
 ## Technobabble
 
@@ -115,7 +117,13 @@ function run(session::ServerSession)
     Base.invokelatest(run, session, pluto_router)
 end
 
+const is_first_run = Ref(true)
+
 function run(session::ServerSession, pluto_router)
+    if is_first_run[]
+        is_first_run[] = false
+        @info "Loading..."
+    end
     
     if VERSION < v"1.6.2"
         @info "Pluto is running on an old version of Julia ($(VERSION)) that is no longer supported. Visit https://julialang.org/downloads/ for more information about upgrading Julia."
@@ -218,6 +226,8 @@ function run(session::ServerSession, pluto_router)
                 end
             end
         else
+            # then it's a regular HTTP request, not a WS upgrade
+            
             request::HTTP.Request = http.message
             request.body = read(http)
             HTTP.closeread(http)
@@ -234,7 +244,11 @@ function run(session::ServerSession, pluto_router)
             request.response::HTTP.Response = response_body
             request.response.request = request
             try
-                HTTP.setheader(http, "Referrer-Policy" => "origin-when-cross-origin")
+                HTTP.setheader(http, "Content-Length" => string(length(request.response.body)))
+                # https://github.com/fonsp/Pluto.jl/pull/722
+                HTTP.setheader(http, "Referrer-Policy" => "same-origin")
+                # https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#:~:text=is%202%20minutes.-,14.38%20Server
+                HTTP.setheader(http, "Server" => "Pluto.jl/$(PLUTO_VERSION_STR[2:end]) Julia/$(JULIA_VERSION_STR[2:end])")
                 HTTP.startwrite(http)
                 write(http, request.response.body)
                 HTTP.closewrite(http)
@@ -277,6 +291,7 @@ function run(session::ServerSession, pluto_router)
     # Start this in the background, so that the first notebook launch (which will trigger registry update) will be faster
     @asynclog withtoken(pkg_token) do
         PkgCompat.update_registries(; force=false)
+        println("    Updating registry done ✓")
     end
 
     shutdown_server[] = () -> @sync begin

@@ -4,6 +4,8 @@ import { pack, unpack } from "./MsgPack.js"
 import immer from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
+const assert_response_ok = (/** @type {Response} */ r) => (r.ok ? r : Promise.reject(r))
+
 const actions_to_keep = ["get_published_object"]
 
 export const nothing_actions = ({ actions }) =>
@@ -20,6 +22,7 @@ export const nothing_actions = ({ actions }) =>
 
 export const slider_server_actions = ({ setStatePromise, launch_params, actions, get_original_state, get_current_state, apply_notebook_patches }) => {
     const notebookfile_hash = fetch(launch_params.notebookfile)
+        .then(assert_response_ok)
         .then((r) => r.arrayBuffer())
         .then(hash_arraybuffer)
 
@@ -27,6 +30,7 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
 
     const bond_connections = notebookfile_hash
         .then((hash) => fetch(trailingslash(launch_params.slider_server_url) + "bondconnections/" + encodeURIComponent(hash)))
+        .then(assert_response_ok)
         .then((r) => r.arrayBuffer())
         .then((b) => unpack(new Uint8Array(b)))
 
@@ -65,11 +69,11 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
                 const response = use_get
                     ? await fetch(url + encodeURIComponent(await base64_arraybuffer(packed)), {
                           method: "GET",
-                      })
+                      }).then(assert_response_ok)
                     : await fetch(url, {
                           method: "POST",
                           body: packed,
-                      })
+                      }).then(assert_response_ok)
 
                 unpacked = unpack(new Uint8Array(await response.arrayBuffer()))
                 const { patches, ids_of_cells_that_ran } = unpacked

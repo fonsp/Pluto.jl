@@ -169,9 +169,13 @@ function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.R
                 try
                     max_log = parse(Int, next_log["kwargs"][maybe_max_log][2] |> first)
 
+                    # Don't include maxlog in the log-message, in line
+                    # with how Julia handles it.
+                    deleteat!(next_log["kwargs"], maybe_max_log)
+
                     # Don't show message with id more than max_log times
                     if max_log isa Int && n_logs >= max_log
-                        return
+                        continue
                     end
                 catch
                 end
@@ -340,7 +344,7 @@ function eval_format_fetch_in_workspace(
     forced_expr_id::Union{PlutoRunner.ObjectID,Nothing}=nothing,
     user_requested_run::Bool=true,
     known_published_objects::Vector{String}=String[],
-)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
+)::PlutoRunner.FormattedCellResult
 
     workspace = get_workspace(session_notebook)
 
@@ -393,7 +397,7 @@ function format_fetch_in_workspace(
     ends_with_semicolon, 
     known_published_objects::Vector{String}=String[],
     showmore_id::Union{PlutoRunner.ObjectDimPair,Nothing}=nothing,
-)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
+)::PlutoRunner.FormattedCellResult
     workspace = get_workspace(session_notebook)
     
     # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.
@@ -474,6 +478,40 @@ move_vars(session_notebook, bump_workspace_module(session_notebook)..., to_delet
     move_vars(args...; kwargs...)
 )
 
+"""
+```julia
+poll(query::Function, timeout::Real=Inf64, interval::Real=1/20)::Bool
+```
+
+Keep running your function `query()` in intervals until it returns `true`, or until `timeout` seconds have passed.
+
+`poll` returns `true` if `query()` returned `true`. If `timeout` seconds have passed, `poll` returns `false`.
+
+# Example
+```julia
+vals = [1,2,3]
+
+@async for i in 1:5
+    sleep(1)
+    vals[3] = 99
+end
+
+poll(8 #= seconds =#) do
+    vals[3] == 99
+end # returns `true` (after 5 seconds)!
+
+###
+
+@async for i in 1:5
+    sleep(1)
+    vals[3] = 5678
+end
+
+poll(2 #= seconds =#) do
+    vals[3] == 5678
+end # returns `false` (after 2 seconds)!
+```
+"""
 function poll(query::Function, timeout::Real=Inf64, interval::Real=1/20)
     start = time()
     while time() < start + timeout

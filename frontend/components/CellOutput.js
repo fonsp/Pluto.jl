@@ -12,11 +12,12 @@ import register from "../imports/PreactCustomElement.js"
 
 import { EditorState, EditorView, defaultHighlightStyle } from "../imports/CodemirrorPlutoSetup.js"
 
-import { pluto_syntax_colors } from "./CellInput.js"
+import { pluto_syntax_colors, ENABLE_CM_MIXED_PARSER } from "./CellInput.js"
 import { useState } from "../imports/Preact.js"
 
 import hljs from "../imports/highlightjs.js"
-import { julia_andrey } from "./CellInput/mixedParsers.js"
+import { julia_mixed } from "./CellInput/mixedParsers.js"
+import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
 
 export class CellOutput extends Component {
     constructor() {
@@ -240,6 +241,7 @@ let execute_inside_script_tag_that_replaces = async (script_element, fn) => {
     // Mimick as much as possible from the original script (only attributes but sure)
     let new_script_tag = document.createElement("script")
     for (let attr of script_element.attributes) {
+        //@ts-ignore because of https://github.com/microsoft/TypeScript-DOM-lib-generator/issues/1260
         new_script_tag.attributes.setNamedItem(attr.cloneNode(true))
     }
 
@@ -433,55 +435,63 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
         const new_scripts = [...scripts_in_shadowroots, ...Array.from(container.current.querySelectorAll("script"))]
 
         run(async () => {
-            js_init_set?.add(container.current)
-            previous_results_map.current = await execute_scripttags({
-                root_node: container.current,
-                script_nodes: new_scripts,
-                invalidation: invalidation,
-                previous_results_map: persist_js_state ? previous_results_map.current : new Map(),
-            })
-
-            if (pluto_actions != null) {
-                set_bound_elements_to_their_value(container.current, pluto_bonds)
-                let remove_bonds_listener = add_bonds_listener(container.current, pluto_actions.set_bond, pluto_bonds)
-                invalidation.then(remove_bonds_listener)
-            }
-
-            // Convert LaTeX to svg
-            // @ts-ignore
-            if (window.MathJax?.typeset != undefined) {
-                try {
-                    // @ts-ignore
-                    window.MathJax.typeset(container.current.querySelectorAll(".tex"))
-                } catch (err) {
-                    console.info("Failed to typeset TeX:")
-                    console.info(err)
-                }
-            }
-
-            // Apply syntax highlighting
             try {
-                container.current.querySelectorAll("code").forEach((code_element) => {
-                    code_element.classList.forEach((className) => {
-                        if (className.startsWith("language-")) {
-                            let language = className.substr(9)
-
-                            // Remove "language-"
-                            highlight(code_element, language)
-                        }
-                    })
+                js_init_set?.add(container.current)
+                previous_results_map.current = await execute_scripttags({
+                    root_node: container.current,
+                    script_nodes: new_scripts,
+                    invalidation: invalidation,
+                    previous_results_map: persist_js_state ? previous_results_map.current : new Map(),
                 })
-            } catch (err) {}
-            js_init_set?.delete(container.current)
+
+                if (pluto_actions != null) {
+                    set_bound_elements_to_their_value(container.current, pluto_bonds)
+                    let remove_bonds_listener = add_bonds_listener(container.current, pluto_actions.set_bond, pluto_bonds)
+                    invalidation.then(remove_bonds_listener)
+                }
+
+                // Convert LaTeX to svg
+                // @ts-ignore
+                if (window.MathJax?.typeset != undefined) {
+                    try {
+                        // @ts-ignore
+                        window.MathJax.typeset(container.current.querySelectorAll(".tex"))
+                    } catch (err) {
+                        console.info("Failed to typeset TeX:")
+                        console.info(err)
+                    }
+                }
+
+                // Apply syntax highlighting
+                try {
+                    container.current.querySelectorAll("code").forEach((code_element) => {
+                        code_element.classList.forEach((className) => {
+                            if (className.startsWith("language-")) {
+                                // Remove "language-"
+                                let language = className.substring(9)
+                                highlight(code_element, language)
+                            }
+                        })
+                    })
+                } catch (err) {
+                    console.warn("Highlighting failed", err)
+                }
+            } finally {
+                js_init_set?.delete(container.current)
+            }
         })
 
         return () => {
+            js_init_set?.delete(container.current)
             invalidate_scripts.current?.()
         }
     }, [body, persist_js_state, last_run_timestamp, pluto_actions])
 
     return html`<div class="raw-html-wrapper ${className}" ref=${container}></div>`
 }
+
+// https://github.com/fonsp/Pluto.jl/issues/1692
+const ENABLE_CM_HIGHLIGHTING = false
 
 /** @param {HTMLElement} code_element */
 export let highlight = (code_element, language) => {
@@ -490,6 +500,7 @@ export let highlight = (code_element, language) => {
 
     if (code_element.children.length === 0) {
         if (
+            ENABLE_CM_HIGHLIGHTING &&
             language === "julia" &&
             // CodeMirror does not want to render inside a `<details>`...
             // I tried to debug this, it does not happen on a clean webpage with the same CM versions:
@@ -510,7 +521,7 @@ export let highlight = (code_element, language) => {
                         defaultHighlightStyle.fallback,
                         EditorState.tabSize.of(4),
                         // TODO Other languages possibly?
-                        language === "julia" ? julia_andrey() : null,
+                        language === "julia" ? (ENABLE_CM_MIXED_PARSER ? julia_mixed() : julia_andrey()) : null,
                         EditorView.lineWrapping,
                         EditorView.editable.of(false),
                     ].filter((x) => x != null),
