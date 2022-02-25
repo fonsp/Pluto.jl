@@ -2064,12 +2064,22 @@ function with_io_to_logs(f::Function; color = false, loglevel = Logging.LogLevel
     if old_rng !== nothing
         copy!(Random.default_rng(), old_rng)
     end
+    
+    redirect_display = TextDisplay(pe_stdout)
+    pushdisplay(redirect_display)
 
     # Run the function `f`, capturing all output that it might have generated.
     # Success signals whether the function `f` did or did not throw an exception.
     result = try
         f()
     finally
+        # Restore display
+        try
+            popdisplay(redirect_display)
+        catch e
+            # This happens when the user calls `popdisplay()`, fine.
+            # @warn "Pluto's display was already removed?" e
+        end
         # Restore the original output streams.
         redirect_stdout(default_stdout)
         redirect_stderr(default_stderr)
