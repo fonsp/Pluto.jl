@@ -2408,6 +2408,7 @@ pluto-log-dot.Stdout {
     color: #8ed975;
     border: 6px solid #b7b7b7;
     text-shadow: 1px 1px 2px #0000005e;
+    min-width: 18em;
 }
 pluto-log-dot.Stdout::after,
 pluto-log-dot.Stdout::before {
@@ -2436,7 +2437,7 @@ pluto-log-dot.Stdout::after {
 /* To make space in the top right for the info button. */
 pluto-log-dot.Stdout pre::before {
     content: " ";
-    width: 20px;
+    width: 24px;
     /* float is weird but it does exactly what we want here: take up space or trigger text wrapping only if needed to clear the top right corner. */
     float: right;
 }
