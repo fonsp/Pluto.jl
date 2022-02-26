@@ -348,7 +348,7 @@ function eval_format_fetch_in_workspace(
 
     workspace = get_workspace(session_notebook)
     
-    const is_on_this_process = workspace.pid == Distributed.myid()
+    is_on_this_process = workspace.pid == Distributed.myid()
 
     # if multiple notebooks run on the same process, then we need to `cd` between the different notebook paths
     if session_notebook isa Tuple
