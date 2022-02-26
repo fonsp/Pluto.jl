@@ -347,10 +347,12 @@ function eval_format_fetch_in_workspace(
 )::PlutoRunner.FormattedCellResult
 
     workspace = get_workspace(session_notebook)
+    
+    const is_on_this_process = workspace.pid == Distributed.myid()
 
     # if multiple notebooks run on the same process, then we need to `cd` between the different notebook paths
     if session_notebook isa Tuple
-        if workspace.pid == Distributed.myid()
+        if is_on_this_process
             cd_workspace(workspace, session_notebook[2].path)
         end
         use_nbpkg_environment(session_notebook, workspace)
@@ -367,8 +369,9 @@ function eval_format_fetch_in_workspace(
             $(QuoteNode(expr)), 
             $cell_id, 
             $function_wrapped_info,
-            $forced_expr_id,
+            $forced_expr_id;
             user_requested_run=$user_requested_run,
+            capture_stdout=$(!is_on_this_process),
         )))
         put!(workspace.dowork_token)
         nothing

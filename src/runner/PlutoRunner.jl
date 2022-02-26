@@ -453,7 +453,15 @@ If the third argument is a `Tuple{Set{Symbol}, Set{Symbol}}` containing the refe
 
 This function is memoized: running the same expression a second time will simply call the same generated function again. This is much faster than evaluating the expression, because the function only needs to be Julia-compiled once. See https://github.com/fonsp/Pluto.jl/pull/720
 """
-function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing, forced_expr_id::Union{ObjectID,Nothing}=nothing; user_requested_run::Bool=true)
+function run_expression(
+    m::Module, 
+    expr::Any, 
+    cell_id::UUID, 
+    function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing, 
+    forced_expr_id::Union{ObjectID,Nothing}=nothing; 
+    user_requested_run::Bool=true,
+    capture_stdout::Bool=true,
+)
     if user_requested_run
         # TODO Time elapsed? Possibly relays errors in cleanup function?
         UseEffectCleanups.trigger_cleanup(cell_id)
@@ -515,7 +523,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
         throw("Expression still contains macro calls!!")
     end
 
-    result, runtime = with_io_to_logs(;loglevel=stdout_log_level) do
+    result, runtime = with_io_to_logs(; enabled=capture_stdout, loglevel=stdout_log_level) do
         if function_wrapped_info === nothing
             toplevel_expr = Expr(:toplevel, expr)
             wrapped = timed_expr(toplevel_expr)
@@ -2026,7 +2034,10 @@ function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, f
 end
 
 const stdout_log_level = Logging.LogLevel(-555) # https://en.wikipedia.org/wiki/555_timer_IC
-function with_io_to_logs(f::Function; color = false, loglevel = Logging.LogLevel(1))
+function with_io_to_logs(f::Function; enabled::Bool=true, color::Bool=false, loglevel::Logging.LogLevel=Logging.LogLevel(1))
+    if !enabled
+        return f()
+    end
     # Taken from https://github.com/JuliaDocs/IOCapture.jl/blob/master/src/IOCapture.jl with some modifications to make it log.
     
     # Original implementation from Documenter.jl (MIT license)
