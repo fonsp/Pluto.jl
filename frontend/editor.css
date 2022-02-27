@@ -703,6 +703,27 @@ nav#at_the_top:after {
     cursor: pointer;
 }
 
+.cm-lintRange {
+    -webkit-text-decoration-style: wavy;
+    text-decoration-style: wavy;
+    text-decoration-line: underline;
+}
+
+.cm-lintRange-warning {
+    background-image: none !important;
+    text-decoration-color: orange;
+}
+
+.cm-lintRange-info {
+    background-image: none !important;
+    text-decoration-color: blue;
+}
+
+.cm-lintRange-error {
+    background-image: none !important;
+    text-decoration-color: red;
+}
+
 @media (any-pointer: fine) {
     nav#at_the_top > pluto-filepicker .cm-editor {
         border: 2px solid transparent;
