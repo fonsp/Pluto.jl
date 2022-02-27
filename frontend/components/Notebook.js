@@ -153,7 +153,7 @@ export const Notebook = ({
     let global_definition_locations = useMemo(
         () =>
             Object.entries(notebook?.cell_dependencies ?? {}).reduce((all, [cell_id, x]) => {
-                if (notebook.cell_inputs[cell_id].running_disabled) {
+                if (notebook.cell_inputs[cell_id]?.running_disabled) {
                     return all
                 }
                 Object.keys(x.downstream_cells_map).forEach((variable) => {
