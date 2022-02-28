@@ -1,0 +1,17 @@
+name: Benchmark compile times
+
+jobs:
+    benchmark-compile-times:
+        runs-on: "ubuntu-latest"
+        timeout-minutes: 30
+
+        steps:
+            - uses: actions/checkout@v2
+            - uses: julia-actions/setup-julia@v1
+            - uses: julia-actions/cache@v1
+            - uses: julia-actions/julia-buildpkg@v1
+            - run: julia perf/compiletimes.jl
+              env:
+                PLUTO_COMPILE_TIMES_MODE: "without_precompile_directives"
+            - run: julia perf/compiletimes.jl
+
