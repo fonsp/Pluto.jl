@@ -31,5 +31,7 @@ jobs:
             - uses: julia-actions/setup-julia@v1
             - uses: julia-actions/cache@v1
             - uses: julia-actions/julia-buildpkg@v1
-            - run: julia perf/compiletimes.jl
-
+            - name: Run the benchmarks
+              run: julia perf/run-benchmark-compilation.jl
+            - name: Show the benchmark results
+              run: cat perf/compiletimes.txt
