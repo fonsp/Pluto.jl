@@ -35,5 +35,6 @@ jobs:
               run: julia perf/run-benchmark-compilation.jl
             - name: Show the benchmark results
               run: |
-                echo "Beware that the reported times may differ between CPU (GitHub Runner). Look at allocations for more reliable estimates.\n\n"
                 cat perf/compiletimes.txt
+                echo ""
+                echo "Note that the reported times may differ between CPU (GitHub Runner). Look at allocations for more reliable estimates."
