@@ -1,4 +1,25 @@
-name: Benchmark compile times
+name: Pluto benchmark compile times
+
+on:
+    workflow_dispatch:
+    push:
+        paths-ignore:
+            - "frontend/**"
+            - "frontend-bundler/**"
+            - "frontend-dist/**"
+            - "test/frontend/**"
+            - "**.md"
+        branches:
+            - main
+    pull_request:
+        paths-ignore:
+            - "frontend/**"
+            - "frontend-bundler/**"
+            - "frontend-dist/**"
+            - "test/frontend/**"
+            - "**.md"
+        branches-ignore:
+            - release
 
 jobs:
     benchmark-compile-times:
