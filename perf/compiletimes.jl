@@ -11,8 +11,9 @@ if MODE == "without_precompile_directives"
     function Base.precompile(@nospecialize(f), args::Tuple)
         return nothing
     end
-    @assert precompile(sum, ()) == nothing
 end
+
+@show precompile(sum, ()) == nothing
 
 println("\nPrecompile:")
 @time Pkg.precompile()

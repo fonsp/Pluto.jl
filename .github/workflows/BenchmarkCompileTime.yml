@@ -31,8 +31,10 @@ jobs:
             - uses: julia-actions/setup-julia@v1
             - uses: julia-actions/cache@v1
             - uses: julia-actions/julia-buildpkg@v1
-            - run: julia perf/compiletimes.jl
+            - name: Benchmark without precompile directives
+              run: julia perf/compiletimes.jl
               env:
                 PLUTO_COMPILE_TIMES_MODE: "without_precompile_directives"
-            - run: julia perf/compiletimes.jl
+            - name: Benchmark with precompile directives
+              run: julia perf/compiletimes.jl
 
