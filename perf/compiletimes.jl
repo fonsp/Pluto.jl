@@ -13,7 +13,7 @@ if MODE == "without_precompile_directives"
     end
 end
 
-@show precompile(sum, ()) == nothing
+@show isnothing(precompile(sum, ()))
 
 println("\nPrecompile:")
 @time Pkg.precompile()
