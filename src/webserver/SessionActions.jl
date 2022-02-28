@@ -58,6 +58,7 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
     try_event_call(session, OpenNotebookEvent(nb))
     nb
 end
+precompile(open, (ServerSession, String))
 
 function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
     session.notebooks[nb.notebook_id] = nb
@@ -137,7 +138,7 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
     
     nb
 end
-precompile(SessionActions.open, (ServerSession, String))
+precompile(add, (ServerSession, Notebook))
 
 function save_upload(content::Vector{UInt8})
     save_path = emptynotebook().path
@@ -197,6 +198,7 @@ function new(session::ServerSession; run_async=true, notebook_id::UUID=uuid1())
     try_event_call(session, OpenNotebookEvent(nb))
     nb
 end
+precompile(new, (ServerSession,))
 
 "Shut down `notebook` inside `session`."
 function shutdown(session::ServerSession, notebook::Notebook; keep_in_session=false, async=false)
@@ -214,5 +216,6 @@ function shutdown(session::ServerSession, notebook::Notebook; keep_in_session=fa
     WorkspaceManager.unmake_workspace((session, notebook); async=async)
     try_event_call(session, ShutdownNotebookEvent(notebook))
 end
+precompile(shutdown, (ServerSession, Notebook))
 
 end

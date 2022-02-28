@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.18.1
+# v0.18.0
 
 using Markdown
 using InteractiveUtils
@@ -35,6 +35,8 @@ begin
 	# We collect the output to make it easy to show it in a separate GitHub Actions step. 
 	out = OrderedDict()
 
+	Pkg.precompile()
+	
 	out["warmup"] = @timed 1 + 1
 	
 	out["using Pluto"] = @timed using Pluto
