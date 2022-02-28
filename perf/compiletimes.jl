@@ -2,18 +2,9 @@ using Pkg
 const PKGDIR = dirname(@__DIR__)
 Pkg.activate(PKGDIR)
 
-import Base
-
-const MODE = get(ENV, "PLUTO_COMPILE_TIMES_MODE", "with_precompile_directives")
-
-if MODE == "without_precompile_directives"
-    # Disable precompilation by overriding the method.
-    function Base.precompile(@nospecialize(f), args::Tuple)
-        return nothing
-    end
-end
-
-@show isnothing(precompile(sum, ()))
+print("""
+\nHi! Have fun looking at the benchmark results. One note though: beware that the reported time may differ per CPU and that GitHub Runners don't all have the same CPU. Therefore, it's better to look at allocations.
+""")
 
 println("\nPrecompile:")
 @time Pkg.precompile()
