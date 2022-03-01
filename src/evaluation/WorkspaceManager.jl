@@ -1,7 +1,7 @@
 module WorkspaceManager
 import UUIDs: UUID
 import ..Pluto
-import ..Pluto: Configuration, Notebook, Cell, ProcessStatus, ServerSession, ExpressionExplorer, pluto_filename, Token, withtoken, Promise, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
+import ..Pluto: Configuration, Notebook, Cell, ProcessStatus, ServerSession, ExpressionExplorer, pluto_filename, Token, withtoken, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
 import ..Pluto.PkgCompat
 import ..Configuration: CompilerOptions, _merge_notebook_compiler_options, _convert_to_flags
 import ..Pluto.ExpressionExplorer: FunctionName
@@ -29,7 +29,7 @@ process_preamble() = quote
     ENV["JULIA_REVISE_WORKER_ONLY"] = "1"
 end
 
-const workspaces = Dict{UUID,Promise{Workspace}}()
+const workspaces = Dict{UUID,Task}()
 
 const SN = Tuple{ServerSession,Notebook}
 
@@ -251,10 +251,11 @@ end
 "Return the `Workspace` of `notebook`; will be created if none exists yet."
 function get_workspace(session_notebook::SN)::Workspace
     session, notebook = session_notebook
-    promise = get!(workspaces, notebook.notebook_id) do
-        Promise{Workspace}(() -> make_workspace(session_notebook))
+    task = get!(workspaces, notebook.notebook_id) do
+        Task(() -> make_workspace(session_notebook))
     end
-    fetch(promise)
+    istaskstarted(task) || schedule(task)
+    fetch(task)
 end
 get_workspace(workspace::Workspace)::Workspace = workspace
 
