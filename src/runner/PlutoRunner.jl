@@ -854,6 +854,8 @@ Base.IOContext(io::IOContext, ::Nothing) = io
 "The `IOContext` used for converting arbitrary objects to pretty strings."
 const default_iocontext = IOContext(devnull, :color => false, :limit => true, :displaysize => (18, 88), :is_pluto => true, :pluto_supported_integration_features => supported_integration_features)
 
+const default_stdout_iocontext = IOContext(devnull, :color => false, :limit => true, :displaysize => (18, 75), :is_pluto => false)
+
 const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
 # in descending order of coolness
 # text/plain always matches - almost always
@@ -2033,7 +2035,7 @@ function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, f
 end
 
 const stdout_log_level = Logging.LogLevel(-555) # https://en.wikipedia.org/wiki/555_timer_IC
-function with_io_to_logs(f::Function; enabled::Bool=true, color::Bool=false, loglevel::Logging.LogLevel=Logging.LogLevel(1))
+function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogLevel=Logging.LogLevel(1))
     if !enabled
         return f()
     end
@@ -2047,8 +2049,8 @@ function with_io_to_logs(f::Function; enabled::Bool=true, color::Bool=false, log
     # Redirect both the `stdout` and `stderr` streams to a single `Pipe` object.
     pipe = Pipe()
     Base.link_pipe!(pipe; reader_supports_async = true, writer_supports_async = true)
-    pe_stdout = IOContext(pipe.in, :color => get(stdout, :color, false) & color)
-    pe_stderr = IOContext(pipe.in, :color => get(stderr, :color, false) & color)
+    pe_stdout = IOContext(pipe.in, default_stdout_iocontext)
+    pe_stderr = IOContext(pipe.in, default_stdout_iocontext)
     redirect_stdout(pe_stdout)
     redirect_stderr(pe_stderr)
 
