@@ -21,7 +21,6 @@ import Base: show, istextmime
 import UUIDs: UUID, uuid4
 import Dates: DateTime
 import Logging
-import Random
 
 export @bind
 
@@ -2052,18 +2051,6 @@ function with_io_to_logs(f::Function; enabled::Bool=true, color::Bool=false, log
     pe_stderr = IOContext(pipe.in, :color => get(stderr, :color, false) & color)
     redirect_stdout(pe_stdout)
     redirect_stderr(pe_stderr)
-    # Also redirect logging stream to the same pipe
-    # logger = ConsoleLogger(pe_stderr)
-
-    old_rng = nothing
-    if VERSION >= v"1.7.0-DEV.1226" # JuliaLang/julia#40546
-        # In Julia >= 1.7 each task has its own rng seed. This seed
-        # is obtained by calling rand(...) in the current task which
-        # modifies the random stream. We therefore copy the current seed
-        # and reset it after creating the read/write task below.
-        # See https://github.com/JuliaLang/julia/pull/41184 for more details.
-        old_rng = copy(Random.default_rng())
-    end
 
     # Bytes written to the `pipe` are captured in `output` and eventually converted to a
     # `String`. We need to use an asynchronous task to continously tranfer bytes from the
@@ -2072,10 +2059,7 @@ function with_io_to_logs(f::Function; enabled::Bool=true, color::Bool=false, log
     output = IOBuffer()
     buffer_redirect_task = @async write(output, pipe)
 
-    if old_rng !== nothing
-        copy!(Random.default_rng(), old_rng)
-    end
-    
+    # To make the `display` function work.
     redirect_display = TextDisplay(pe_stdout)
     pushdisplay(redirect_display)
 
