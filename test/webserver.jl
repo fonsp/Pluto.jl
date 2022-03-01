@@ -24,7 +24,7 @@ using Pluto.WorkspaceManager: WorkspaceManager, poll
     server_task = @async Pluto.run(🍭)
     
     # FYI, you should normally use a PlutoEvent for things we do in this test instead of polling! Don't use this as an example.
-    @test poll(5) do
+    @test poll(10) do
         server_running()
     end
     
@@ -33,14 +33,14 @@ using Pluto.WorkspaceManager: WorkspaceManager, poll
     HTTP.get(local_url("sample/JavaScript.jl"); retry=false)
     
     # wait for the notebook to be added to the session
-    @test poll(5) do
+    @test poll(10) do
         length(🍭.notebooks) == 1
     end
     
     notebook = only(values(🍭.notebooks))
     
     # right now, the notebook was only added to the session and assigned an ID. Let's wait for it to get a process:
-    @test poll(15) do
+    @test poll(60) do
         haskey(WorkspaceManager.workspaces, notebook.notebook_id)
     end
     sleep(1)
