@@ -259,8 +259,8 @@ function get_workspace(session_notebook::SN)::Workspace
 end
 get_workspace(workspace::Workspace)::Workspace = workspace
 
-"Try our best to delete the workspace. `ProcessWorkspace` will have its worker process terminated."
-function unmake_workspace(session_notebook::Union{SN,Workspace}; async=false)
+"Try our best to delete the workspace. `Workspace` will have its worker process terminated."
+function unmake_workspace(session_notebook::SN; async::Bool=false, verbose::Bool=true)
     workspace = get_workspace(session_notebook)
     workspace.discarded = true
 
@@ -275,6 +275,12 @@ function unmake_workspace(session_notebook::Union{SN,Workspace}; async=false)
             end)
         end
         async || wait(t)
+    else
+        if !isready(workspace.dowork_token)
+            @error "Cannot unmake a workspace running inside the same process: the notebook is still running."
+        elseif verbose
+            @warn "Cannot unmake a workspace running inside the same process: the notebook might still be running. If you are sure that your code is not running the notebook async, then you can use the `verbose=false` keyword argument to disable this message."
+        end
     end
 end
 
