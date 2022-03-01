@@ -37,34 +37,34 @@ using Pluto.WorkspaceManager: poll
     ]))
     
     
-    # @testset "Stdout" begin
+    @testset "Stdout" begin
         
-    #     idx_123 = [1,2,3,4,5,7,9]
+        idx_123 = [1,2,3,4,5,7,9]
 
-    #     update_run!(🍭, notebook, notebook.cells[1:9])
-    #     @test notebook.cells[1] |> noerror
-    #     @test notebook.cells[2] |> noerror
-    #     @test notebook.cells[3] |> noerror
-    #     @test notebook.cells[4] |> noerror
-    #     @test notebook.cells[5] |> noerror
-    #     @test notebook.cells[6] |> noerror
-    #     @test notebook.cells[7] |> noerror
-    #     @test notebook.cells[8] |> noerror
-    #     @test notebook.cells[9] |> noerror
+        update_run!(🍭, notebook, notebook.cells[1:9])
+        @test notebook.cells[1] |> noerror
+        @test notebook.cells[2] |> noerror
+        @test notebook.cells[3] |> noerror
+        @test notebook.cells[4] |> noerror
+        @test notebook.cells[5] |> noerror
+        @test notebook.cells[6] |> noerror
+        @test notebook.cells[7] |> noerror
+        @test notebook.cells[8] |> noerror
+        @test notebook.cells[9] |> noerror
 
-    #     @test poll(5, 1/60) do
-    #         all(notebook.cells[idx_123]) do c
-    #             length(c.logs) == 1
-    #         end
-    #     end
+        @test poll(5, 1/60) do
+            all(notebook.cells[idx_123]) do c
+                length(c.logs) == 1
+            end
+        end
         
-    #     @testset "123 - $(i)" for i in idx_123
-    #         log = only(notebook.cells[i].logs)
-    #         @test log["level"] == "LogLevel(-555)"
-    #         @test strip(log["msg"][1]) == "123"
-    #         @test log["msg"][2] == MIME"text/plain"()
-    #     end
-    # end
+        @testset "123 - $(i)" for i in idx_123
+            log = only(notebook.cells[i].logs)
+            @test log["level"] == "LogLevel(-555)"
+            @test strip(log["msg"][1]) == "123"
+            @test log["msg"][2] == MIME"text/plain"()
+        end
+    end
 
     @testset "Logging respects maxlog" begin
         @testset "Single log" begin

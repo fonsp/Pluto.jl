@@ -252,6 +252,156 @@ m.g(123)
 # ╔═╡ 0c9de395-19a9-4ec3-a918-ea3f9835ef18
 
 
+# ╔═╡ 091d33fe-fffe-11ea-131f-01f4248b30ea
+@info "23aaa"
+
+# ╔═╡ e35e35f4-71c8-4f3b-8c72-4b3ffe4766a3
+@info collect(1:100)
+
+# ╔═╡ 2d01cdaa-fffe-11ea-09f5-63527a1b0f87
+x = 233564653
+
+# ╔═╡ c50f7178-8c7d-4319-82d9-b9154e8892d9
+for x in 1:20
+	@info "This is too long."
+end
+
+# ╔═╡ e5a8e7bd-5734-4254-914d-6f87670bf7d4
+@bind wow html"<input type=checkbox>"
+
+# ╔═╡ 2883b3d8-fffe-11ea-0a0f-bbd85ec665ea
+begin
+	
+	wow && @info "a"
+	wow && @info "b"
+	wow && @info "c"
+	wow && @info "d"
+	
+	try
+		sqrt(-1)
+	catch e
+		@error "99" exception=(e, catch_backtrace())
+	end
+	nothing
+end
+
+# ╔═╡ 786b7146-8eab-4390-a746-3ccf25d1c4c8
+for i in 1:10
+	@info i
+	@debug i
+	sleep(.05)
+end
+
+# ╔═╡ 3599eb82-0003-11eb-3814-dfd0f5737846
+for i in 1:10
+	
+	@debug i
+	@info i*100
+	if isodd(i)
+		@warn "Oh no!" i
+		@error i
+	end
+	sleep(.1)
+end
+
+# ╔═╡ f6147e0c-796f-4f5d-b000-93d790683a54
+@info md"# hello"
+
+# ╔═╡ f017b4d5-38ac-4498-8e58-770337a0d17d
+md"""
+
+# Hello
+
+
+I am a footnote $(@info("Inside text!")), how cool is that!
+
+But im not working :(
+"""
+
+
+# ╔═╡ edde2e33-9b83-4502-85d6-13c947589f55
+md"# Logging"
+
+# ╔═╡ e68681b0-df0c-4b4d-8304-d600d511cc74
+function f(x,y)
+	sin(3*sqrt(x^2 + y^2)) < 0.0
+end
+
+# ╔═╡ 988f6343-c1b2-41e2-a3f0-b5eb6653087a
+md"""
+![](https://cdn.vox-cdn.com/thumbor/sgjCRJzWvyufDoVKCPKPrsyhZoA=/1400x0/filters:no_upscale()/cdn.vox-cdn.com/uploads/chorus_asset/file/10161377/iprimus_180205_2248_0003.jpg)
+"""
+
+# ╔═╡ c07a9c5f-3807-431f-a020-8eb127a226dc
+begin
+	println("Here is some ascii art!")
+	println()
+
+	@time for y in LinRange(5,-5,21)
+		for x in LinRange(-5,5,40)
+			print(f(x,y) ? "X" : " ")
+		end
+		println()
+	end
+end
+
+# ╔═╡ eb26cb00-1196-41a7-8e81-92641aa8dbd7
+run(`ls -lha $(first(DEPOT_PATH))`)
+
+# ╔═╡ 9e27dc8c-0a18-4adb-b3b1-9bdd315caaa9
+with_terminal() do
+	println(123)
+end
+
+# ╔═╡ 755e37af-0f21-4612-8c4c-cc294048b527
+for p in readdir(first(DEPOT_PATH))
+	print(p)
+	print("/")
+	print("\t\t")
+	print("(", Base.format_bytes(rand(1:10_000_000)), ")")
+	println()
+	print("  ")
+	print()
+	println()
+end
+
+# ╔═╡ 51f4dc20-7cf6-4f08-b500-0c71f6ac01b7
+
+
+# ╔═╡ 94380ba8-247b-4e9c-9c6b-a40b04e2bcfb
+import FileTrees
+
+# ╔═╡ 7dcf9a68-4a73-4301-a1ed-39963309d028
+t = FileTrees.FileTree(joinpath(first(DEPOT_PATH), "environments"))
+
+# ╔═╡ 7a9c4221-27c7-4195-9946-3a7190dfb07f
+FileTrees.load(t) do z
+	rand()
+end
+
+# ╔═╡ 1ea9e96a-ce26-4807-9d80-114638a3952b
+FileTrees.children(t)
+
+# ╔═╡ 05461fd2-a7ce-4ed7-a622-102242547874
+import Logging
+
+# ╔═╡ 3cbaa462-5714-4d7c-83e3-a957763b8d91
+begin
+	print(123)
+	@info 123
+	@info 123
+end
+
+# ╔═╡ 1e49c42a-364e-47eb-85d9-42e73fdc2371
+Logging.@logmsg Logging.LogLevel(-10) "asdf"
+
+# ╔═╡ 13c5ce42-4eee-480b-b490-c40ef4bc8cb5
+Logging.@logmsg Logging.LogLevel(-100) "asdf"
+
+# ╔═╡ b38ae226-0a6c-49e3-b55d-ebdbf0652842
+Logging.@logmsg Logging.LogLevel(-555) "asdf"
+
+
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
