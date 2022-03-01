@@ -1,6 +1,6 @@
 module SessionActions
 
-import ..Pluto: ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, readwrite, update_save_run!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, try_event_call, NewNotebookEvent, OpenNotebookEvent, ShutdownNotebookEvent, @asynclog
+import ..Pluto: ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, readwrite, update_save_run!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, try_event_call, NewNotebookEvent, OpenNotebookEvent, ShutdownNotebookEvent, @asynclog, ProcessStatus
 using FileWatching
 import ..Pluto.DownloadCool: download_cool
 
@@ -198,10 +198,14 @@ function new(session::ServerSession; run_async=true, notebook_id::UUID=uuid1())
     nb
 end
 
-"Shut down `notebook` inside `session`."
-function shutdown(session::ServerSession, notebook::Notebook; keep_in_session=false, async=false)
+"Shut down `notebook` inside `session`. If `keep_in_session` is `false` (default), you will not be allowed to run a notebook with the same notebook_id again."
+function shutdown(session::ServerSession, notebook::Notebook; keep_in_session::Bool=false, async::Bool=false, verbose::Bool=true)
     notebook.nbpkg_restart_recommended_msg = nothing
     notebook.nbpkg_restart_required_msg = nothing
+    
+    if notebook.process_status == ProcessStatus.ready || notebook.process_status == ProcessStatus.starting
+        notebook.process_status = ProcessStatus.no_process
+    end
 
     if !keep_in_session
         listeners = putnotebookupdates!(session, notebook) # TODO: shutdown message
@@ -211,7 +215,7 @@ function shutdown(session::ServerSession, notebook::Notebook; keep_in_session=fa
             @async close(client.stream)
         end
     end
-    WorkspaceManager.unmake_workspace((session, notebook); async=async)
+    WorkspaceManager.unmake_workspace((session, notebook); async, verbose, allow_restart=keep_in_session)
     try_event_call(session, ShutdownNotebookEvent(notebook))
 end
 
