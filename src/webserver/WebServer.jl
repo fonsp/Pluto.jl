@@ -303,8 +303,10 @@ function run(session::ServerSession, pluto_router)
             @async swallow_exception(() -> close(client.stream), Base.IOError)
         end
         empty!(session.connected_clients)
+        for nb in values(session.notebooks)
+            @asynclog SessionActions.shutdown(session, nb; keep_in_session=false, async=false, verbose=false)
+        end
         for (notebook_id, ws) in WorkspaceManager.workspaces
-            @async WorkspaceManager.unmake_workspace(fetch(ws))
         end
     end
 
