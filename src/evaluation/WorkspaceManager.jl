@@ -30,6 +30,8 @@ process_preamble() = quote
 end
 
 const workspaces = Dict{UUID,Task}()
+"Set of notebook IDs that we will never make a process for again."
+const discarded_workspaces = Set{UUID}()
 
 const SN = Tuple{ServerSession,Notebook}
 
@@ -44,6 +46,7 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
     end
 
     pid = if use_distributed
+        @debug "Creating workspace process" notebook.path length(notebook.cells)
         create_workspaceprocess(;compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler))
     else
         pid = Distributed.myid()
@@ -81,7 +84,9 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
     cd_workspace(workspace, notebook.path)
     use_nbpkg_environment((session, notebook), workspace)
 
-    is_offline_renderer || (notebook.process_status = ProcessStatus.ready)
+    is_offline_renderer || if notebook.process_status == ProcessStatus.starting
+        notebook.process_status = ProcessStatus.ready
+    end
     return workspace
 end
 
@@ -251,6 +256,11 @@ end
 "Return the `Workspace` of `notebook`; will be created if none exists yet."
 function get_workspace(session_notebook::SN)::Workspace
     session, notebook = session_notebook
+    if notebook.notebook_id in discarded_workspaces
+        @debug "This should not happen" notebook.process_status
+        error("Cannot run code in this notebook: it has already shut down.")
+    end
+    
     task = get!(workspaces, notebook.notebook_id) do
         Task(() -> make_workspace(session_notebook))
     end
@@ -260,9 +270,11 @@ end
 get_workspace(workspace::Workspace)::Workspace = workspace
 
 "Try our best to delete the workspace. `Workspace` will have its worker process terminated."
-function unmake_workspace(session_notebook::SN; async::Bool=false, verbose::Bool=true)
+function unmake_workspace(session_notebook::SN; async::Bool=false, verbose::Bool=true, allow_restart::Bool=true)
+    session, notebook = session_notebook
     workspace = get_workspace(session_notebook)
     workspace.discarded = true
+    allow_restart || push!(discarded_workspaces, notebook.notebook_id)
 
     if workspace.pid != Distributed.myid()
         filter!(p -> fetch(p.second).pid != workspace.pid, workspaces)
