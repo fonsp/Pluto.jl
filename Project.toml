@@ -17,7 +17,6 @@ Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 MsgPack = "99f44e22-a591-53d1-9472-aa23ef4bd671"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
-Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 REPL = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 RelocatableFolders = "05181044-ff0b-4ac5-8273-598c1e38db00"
 Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
@@ -36,6 +35,7 @@ julia = "^1.6"
 [extras]
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
