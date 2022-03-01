@@ -409,9 +409,9 @@ function _modify_compat(f!::Function, ctx::PkgContext)::PkgContext
 
 	isempty(compat) && delete!(toml, "compat")
 
-	write(project_file(ctx), @show(sprint() do io
+	write(project_file(ctx), sprint() do io
 		Pkg.TOML.print(io, toml; sorted=true, by=(key -> (project_key_order(key), key)))
-	end))
+	end)
 	
 	return load_ctx(ctx)
 end
