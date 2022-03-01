@@ -95,43 +95,49 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
     end
 
     in_session() = get(session.notebooks, nb.notebook_id, nothing) === nb
-    session.options.server.auto_reload_from_file && @asynclog while in_session()
-        if !isfile(nb.path)
-            # notebook file deleted... let's ignore this, changing the notebook will cause it to save again. Fine for now
-            sleep(2)
-        else
-            e = watch_file(nb.path, 3)
-            if e.timedout
-                continue
-            end
-            
-            # the above call is blocking until the file changes
-            
-            local modified_time = mtime(nb.path)
-            local _tries = 0
-            
-            # mtime might return zero if the file is temporarily removed
-            while modified_time == 0.0 && _tries < 10
-                modified_time = mtime(nb.path)
-                _tries += 1
-                sleep(.05)
-            end
-            
-            # current_time = time()
-            # @info "File changed" (current_time - nb.last_save_time) (modified_time - nb.last_save_time) (current_time - modified_time)
-            if !in_session()
-                break
-            end
-            
-            # if current_time - nb.last_save_time < 2.0
-                # @info "Notebook was saved by me very recently, not reloading from file."
-            if modified_time == 0.0
-                # @warn "Failed to hot reload: file no longer exists."
-            elseif modified_time - nb.last_save_time < session.options.server.auto_reload_from_file_cooldown
-                # @info "Modified time is very close to my last save time, not reloading from file."
+    session.options.server.auto_reload_from_file && @asynclog try
+        while in_session()
+            if !isfile(nb.path)
+                # notebook file deleted... let's ignore this, changing the notebook will cause it to save again. Fine for now
+                sleep(2)
             else
-                update_from_file_throttled()
+                e = watch_file(nb.path, 3)
+                if e.timedout
+                    continue
+                end
+                
+                # the above call is blocking until the file changes
+                
+                local modified_time = mtime(nb.path)
+                local _tries = 0
+                
+                # mtime might return zero if the file is temporarily removed
+                while modified_time == 0.0 && _tries < 10
+                    modified_time = mtime(nb.path)
+                    _tries += 1
+                    sleep(.05)
+                end
+                
+                # current_time = time()
+                # @info "File changed" (current_time - nb.last_save_time) (modified_time - nb.last_save_time) (current_time - modified_time)
+                if !in_session()
+                    break
+                end
+                
+                # if current_time - nb.last_save_time < 2.0
+                    # @info "Notebook was saved by me very recently, not reloading from file."
+                if modified_time == 0.0
+                    # @warn "Failed to hot reload: file no longer exists."
+                elseif modified_time - nb.last_save_time < session.options.server.auto_reload_from_file_cooldown
+                    # @info "Modified time is very close to my last save time, not reloading from file."
+                else
+                    update_from_file_throttled()
+                end
             end
+        end
+    catch e
+        if !(e isa InterruptException)
+            rethrow(e)
         end
     end
     
