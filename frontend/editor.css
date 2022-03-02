@@ -2464,6 +2464,12 @@ a.stdout-info {
     }
 }
 
+pluto-log-dot jlerror {
+    display: block;
+    background: var(--main-bg-color);
+    padding: 0.6rem;
+    border-radius: 0.5rem;
+}
 pluto-log-dot jltree,
 pluto-log-dot jlpair {
     font-size: 0.6rem;
