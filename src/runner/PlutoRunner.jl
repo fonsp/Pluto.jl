@@ -2022,7 +2022,7 @@ function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, f
             "file" => string(file),
             "cell_id" => currently_running_cell_id[],
             "line" => line isa Union{Int32,Int64} ? line : nothing,
-            "kwargs" => Tuple{String,Any}[(string(k), format_output_default(v)) for (k, v) in kwargs],
+            "kwargs" => Tuple{String,Any}[(string(k), format_log_value(v)) for (k, v) in kwargs],
             )
         )
         
@@ -2033,6 +2033,9 @@ function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, f
         showerror(stderr, e, stacktrace(catch_backtrace()))
     end
 end
+
+format_log_value(v) = format_output_default(v)
+format_log_value(v::Tuple{<:Exception,Vector{<:Any}}) = format_output(CapturedException(v...))
 
 const stdout_log_level = Logging.LogLevel(-555) # https://en.wikipedia.org/wiki/555_timer_IC
 function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogLevel=Logging.LogLevel(1))
