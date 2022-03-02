@@ -159,6 +159,11 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
                 return html`<div></div>`
             }
             break
+        case null:
+        case undefined:
+        case "":
+            return html``
+            break
         default:
             return html`<pre title="Something went wrong displaying this object">🛑</pre>`
             break
