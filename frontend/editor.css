@@ -2478,7 +2478,7 @@ pluto-log-dot-kwarg {
     flex-direction: row;
 }
 pluto-log-dot-kwarg > * {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
 }
 pluto-log-dot-kwarg > pluto-key {
     color: var(--pluto-schema-types-color);
