@@ -77,7 +77,10 @@ function increment_current_module()::Symbol
     new_workspace_name = Symbol("workspace#", id)
 
     new_module = Core.eval(Main, :(
-        module $(new_workspace_name) $(workspace_preamble...) end
+        module $(new_workspace_name)
+            $(workspace_preamble...)
+            const var"#___this_module_name" = $(new_workspace_name)
+        end
     ))
 
     new_workspace_name
@@ -162,6 +165,11 @@ replace_pluto_properties_in_expr(::GiveMeCellID; cell_id, kwargs...) = cell_id
 replace_pluto_properties_in_expr(::GiveMeRerunCellFunction; rerun_cell_function, kwargs...) = rerun_cell_function
 replace_pluto_properties_in_expr(::GiveMeRegisterCleanupFunction; register_cleanup_function, kwargs...) = register_cleanup_function
 replace_pluto_properties_in_expr(expr::Expr; kwargs...) = Expr(expr.head, map(arg -> replace_pluto_properties_in_expr(arg; kwargs...), expr.args)...)
+replace_pluto_properties_in_expr(m::Module; kwargs...) = if startswith(string(nameof(m)), "workspace#")
+    Symbol("#___this_module_name")
+else
+    m
+end
 replace_pluto_properties_in_expr(other; kwargs...) = other
 
 "Similar to [`replace_pluto_properties_in_expr`](@ref), but just checks for existance and doesn't check for [`GiveMeCellID`](@ref)"
@@ -248,7 +256,7 @@ function try_macroexpand(mod, cell_uuid, expr)
         @warn "try_macroexpand expression not :toplevel or :block" expr
         Expr(:block, expr)
     end
-    
+
     elapsed_ns = time_ns()
     expanded_expr = macroexpand(mod, expr_not_toplevel)
     elapsed_ns = time_ns() - elapsed_ns
