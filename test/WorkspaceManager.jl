@@ -61,7 +61,7 @@ import Distributed
         @test notebook.cells[3].output.body == "3"
         @test notebook.cells[4].output.body == "3"
         
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
     end
 
     Sys.iswindows() || @testset "Pluto inside Pluto" begin

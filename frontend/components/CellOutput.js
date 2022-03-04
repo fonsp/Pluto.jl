@@ -142,12 +142,11 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
             </div>`
             break
         case "application/vnd.pluto.table+object":
-            return html` <${TableView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`
+            return html`<${TableView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`
             break
         case "application/vnd.pluto.stacktrace+object":
             return html`<div><${ErrorMessage} cell_id=${cell_id} ...${body} /></div>`
             break
-            body.cell_id
         case "application/vnd.pluto.divelement+object":
             return DivElement({ cell_id, ...body })
             break
@@ -160,8 +159,13 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
                 return html`<div></div>`
             }
             break
-        default:
+        case null:
+        case undefined:
+        case "":
             return html``
+            break
+        default:
+            return html`<pre title="Something went wrong displaying this object">🛑</pre>`
             break
     }
 }

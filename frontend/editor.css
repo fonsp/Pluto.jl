@@ -1732,10 +1732,12 @@ pkg-popup .pkg-buttons {
     flex-direction: row;
 }
 
+a.stdout-info img,
 pkg-popup .pkg-buttons img {
     filter: var(--image-filters);
 }
 
+a.stdout-info,
 pkg-popup .pkg-buttons > * {
     display: block;
     height: 17px;
@@ -2398,7 +2400,76 @@ pluto-log-dot.Progress {
     overflow: hidden;
     padding: 0px;
 }
+pluto-log-dot.Stdout {
+    /* filter: sepia(0.3); */
+    --inner: hsl(36deg 20% 37%);
+    --outer: hsl(31deg 12% 28%);
+    background: radial-gradient(var(--inner), var(--inner) 20%, var(--outer));
+    color: #8ed975;
+    border: 6px solid #b7b7b7;
+    text-shadow: 1px 1px 2px #0000005e;
+    min-width: 18em;
+}
+pluto-log-dot.Stdout::after,
+pluto-log-dot.Stdout::before {
+    content: " ";
+    left: 6px;
+    right: 6px;
+    top: 6px;
+    bottom: 6px;
+    position: absolute;
+    display: block;
+    pointer-events: none;
+}
+pluto-log-dot.Stdout::before {
+    opacity: 0.3;
+    background: linear-gradient(349deg, #000000, transparent);
+}
+pluto-log-dot.Stdout::after {
+    --crt-spacing: 7px;
+    background: linear-gradient(180deg, hsl(37deg 20% 27%), transparent, #1a1a1a);
+    background-size: 100% var(--crt-spacing);
+    background-repeat: repeat;
+    opacity: 0.2;
+    animation: scroll-crt 1s linear infinite;
+    animation-play-state: paused;
+}
+/* To make space in the top right for the info button. */
+pluto-log-dot.Stdout pre::before {
+    content: " ";
+    width: 24px;
+    /* float is weird but it does exactly what we want here: take up space or trigger text wrapping only if needed to clear the top right corner. */
+    float: right;
+}
 
+a.stdout-info {
+    position: absolute;
+    right: 2px;
+    top: 2px;
+    z-index: 50;
+    pointer-events: initial;
+}
+
+@keyframes scroll-crt {
+    0% {
+        background-position: 0px 0px;
+    }
+    100% {
+        background-position: 0px var(--crt-spacing);
+    }
+}
+@media (prefers-reduced-motion: no-preference) {
+    pluto-log-dot.Stdout:hover::after {
+        animation-play-state: running;
+    }
+}
+
+pluto-log-dot jlerror {
+    display: block;
+    background: var(--main-bg-color);
+    padding: 0.6rem;
+    border-radius: 0.5rem;
+}
 pluto-log-dot jltree,
 pluto-log-dot jlpair {
     font-size: 0.6rem;
@@ -2413,7 +2484,7 @@ pluto-log-dot-kwarg {
     flex-direction: row;
 }
 pluto-log-dot-kwarg > * {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
 }
 pluto-log-dot-kwarg > pluto-key {
     color: var(--pluto-schema-types-color);
