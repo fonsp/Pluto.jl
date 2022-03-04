@@ -21,25 +21,21 @@ begin
     
     Pkg.activate(; temp=true)
     Pkg.add([
-		"DataFrames",
-		"OrderedCollections"
+		"TimerOutputs"
     ])
     Pkg.develop(; path=PKGDIR)
+
+	# Loading in this block to avoid a "Undefined @timeit" in the next block.
+	using TimerOutputs
 end
 
 # ╔═╡ 4d561fbd-2c21-4606-b245-88e4ae235919
 begin
-	using DataFrames
-	using OrderedCollections
-
-	# We collect the output to make it easy to show it in a separate GitHub Actions step. 
-	out = OrderedDict()
+	tout = TimerOutput()
 
 	Pkg.precompile()
 	
-	out["warmup"] = @timed 1 + 1
-	
-	out["using Pluto"] = @timed using Pluto
+	@timeit tout "using Pluto" using Pluto
 
 	function wait_for_ready(notebook::Pluto.Notebook)
     	while notebook.process_status != Pluto.ProcessStatus.ready
@@ -47,44 +43,31 @@ begin
     	end
 	end;
 	
-	out["Pluto.ServerSession()"] = @timed Pluto.ServerSession()
-	session = out["Pluto.ServerSession()"].value
+	@timeit tout "Pluto.ServerSession()" session = Pluto.ServerSession()
 	session.options.server.disable_writing_notebook_files = true
 
-	out["SessionActions.open"] = @timed let
-    	path = joinpath(PKGDIR, "sample", "Basic.jl")
-    	Pluto.SessionActions.open(session, path; run_async=true)
-	end	
-	nb = out["SessionActions.open"].value
+	path = joinpath(PKGDIR, "sample", "Basic.jl")
+	
+	@timeit tout "SessionActions.open" nb = Pluto.SessionActions.open(session, path; run_async=true)
 
 	wait_for_ready(nb)
 
-	out["SessionActions.shutdown"] = @timed Pluto.SessionActions.shutdown(session, nb; async=true)
+	@timeit tout "SessionActions.shutdown" Pluto.SessionActions.shutdown(session, nb; async=true)
 
 	# Let the shutdown complete.
 	sleep(10)
 	# @show nb.process_status
 
-	out["SessionActions.new"] = @timed Pluto.SessionActions.new(session; run_async=true)
+	@timeit tout "SessionActions.new" Pluto.SessionActions.new(session; run_async=true)
 
 	wait_for_ready(nb)
 end
 
 # ╔═╡ 5ff034f9-b851-4e6d-8eba-8215fb5a32ed
 let
-	pop!(out, "warmup")
-	names = [first(x) for x in out]
-	times = [round(last(x).time; digits=1) for x in out]
-	allocations = [round(last(x).bytes / 10^6, digits=1) for x in out]
-	df = DataFrame(
-		"Operation" => names,
-		"Allocations (MB)" => allocations,
-		"Time (seconds)" => times
-	)
-	text = string(df)
-	# To show it in the next step in GitHub Actions which makes looking things up easier.
-	write(joinpath(PKGDIR, "perf", "compiletimes.txt"), text)
-	Base.Text(text)
+	table = sprint((io, tout) -> show(io, tout; compact=true, sortby=:firstexec), tout)
+	write(joinpath(PKGDIR, "perf", "compiletimes.txt"), table)
+	Base.Text(table)
 end
 
 # ╔═╡ Cell order:
