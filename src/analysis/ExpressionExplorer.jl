@@ -496,8 +496,6 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
                 end
             end
 
-            # Explore code inside function arguments:
-            union!(symstate, explore!(Expr(:block, ex.args[2:end]...), scopestate))
             return symstate
         else
             return explore!(Expr(:block, ex.args...), scopestate)
