@@ -149,22 +149,36 @@ function run_reactive!(
             if !isempty(implicit_usings)
                 new_soft_definitions = WorkspaceManager.collect_soft_definitions((session, notebook), implicit_usings)
                 notebook.topology = new_new_topology = with_new_soft_definitions(new_new_topology, cell, new_soft_definitions)
+            else
+                new_soft_definitions = Set{Symbol}()
             end
 
             # update cache and save notebook because the dependencies might have changed after expanding macros
             update_dependency_cache!(notebook)
             save_notebook(session, notebook)
 
-            return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook, user_requested_run, already_in_run = true, already_run = to_run[1:i])
+            custom_deletion_hook = (a, b, c, d, e, f) -> WorkspaceManager.move_vars(a, b, c, d, e, f, new_soft_definitions)
+            return run_reactive!(session,
+                notebook,
+                new_topology,
+                new_new_topology,
+                to_run;
+                user_requested_run,
+                already_in_run=true,
+                already_run=to_run[1:i],
+                deletion_hook=custom_deletion_hook,
+            )
         elseif !isempty(implicit_usings)
             new_soft_definitions = WorkspaceManager.collect_soft_definitions((session, notebook), implicit_usings)
             notebook.topology = new_new_topology = with_new_soft_definitions(new_topology, cell, new_soft_definitions)
+
+            custom_deletion_hook = (a, b, c, d, e, f; kwargs...) -> WorkspaceManager.move_vars(a, b, c, d, e, f, new_soft_definitions)
 
             # update cache and save notebook because the dependencies might have changed after expanding macros
             update_dependency_cache!(notebook)
             save_notebook(session, notebook)
 
-            return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook, user_requested_run, already_in_run = true, already_run = to_run[1:i])
+            return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook=custom_deletion_hook, user_requested_run, already_in_run = true, already_run = to_run[1:i])
         end
     end
 
@@ -273,8 +287,8 @@ function with_new_soft_definitions(topology::NotebookTopology, cell::Cell, soft_
     old_node = topology.nodes[cell]
     new_node = union!(ReactiveNode(), old_node, ReactiveNode(soft_definitions=soft_definitions))
     NotebookTopology(
-		codes=topology.codes, 
-		nodes=merge(topology.nodes, Dict(cell => new_node)), 
+		codes=topology.codes,
+		nodes=merge(topology.nodes, Dict(cell => new_node)),
 		unresolved_cells=topology.unresolved_cells,
 		cell_order=topology.cell_order,
 	)
