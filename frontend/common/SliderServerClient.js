@@ -1,5 +1,5 @@
 import { trailingslash } from "./Binder.js"
-import { hash_arraybuffer, debounced_promises, base64_arraybuffer } from "./PlutoHash.js"
+import { plutohash_arraybuffer, debounced_promises, base64url_arraybuffer } from "./PlutoHash.js"
 import { pack, unpack } from "./MsgPack.js"
 import immer from "../imports/immer.js"
 import _ from "../imports/lodash.js"
@@ -24,7 +24,7 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
     const notebookfile_hash = fetch(launch_params.notebookfile)
         .then(assert_response_ok)
         .then((r) => r.arrayBuffer())
-        .then(hash_arraybuffer)
+        .then(plutohash_arraybuffer)
 
     notebookfile_hash.then((x) => console.log("Notebook file hash:", x))
 
@@ -67,7 +67,7 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
                 const use_get = url.length + (packed.length * 4) / 3 + 20 < 8000
 
                 const response = use_get
-                    ? await fetch(url + encodeURIComponent(await base64_arraybuffer(packed)), {
+                    ? await fetch(url + encodeURIComponent(await base64url_arraybuffer(packed)), {
                           method: "GET",
                       }).then(assert_response_ok)
                     : await fetch(url, {
