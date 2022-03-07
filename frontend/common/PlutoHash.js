@@ -12,7 +12,9 @@ export const base64_arraybuffer = async (/** @type {BufferSource} */ data) => {
     return base64url.split(",", 2)[1]
 }
 
+/** Encode a buffer using the `base64url` encoding, which uses URL-safe special characters, see https://en.wikipedia.org/wiki/Base64#Variants_summary_table */
 export const base64url_arraybuffer = async (/** @type {BufferSource} */ data) => {
+    // This is roughly 0.5 as fast as `base64_arraybuffer`. See https://gist.github.com/fonsp/d2b84265012942dc40d0082b1fd405ba for benchmark and even slower alternatives.
     let original = await base64_arraybuffer(data)
     return original.replaceAll(/[\+\/\=]/g, (s) => {
         const c = s.charCodeAt(0)
