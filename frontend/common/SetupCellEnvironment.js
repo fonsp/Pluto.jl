@@ -1,8 +1,10 @@
 // import Library from "https://unpkg.com/@observablehq/stdlib@3.3.1/src/library.js?module"
 
+import { Library } from "https://esm.sh/@observablehq/stdlib@3.3.1"
+
 export let make_library = () => {
     // @ts-ignore
-    let library = new window.observablehq.Library()
+    let library = new Library()
     return {
         DOM: library.DOM,
         Files: library.Files,

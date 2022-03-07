@@ -170,7 +170,7 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
     }
 }
 
-register(OutputBody, "pluto-display", ["mime", "body", "cell_id", "persist_js_state", "last_run_timestamp"])
+// register(OutputBody, "pluto-display", ["mime", "body", "cell_id", "persist_js_state", "last_run_timestamp"])
 
 let IframeContainer = ({ body }) => {
     let iframeref = useRef()

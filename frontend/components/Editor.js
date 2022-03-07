@@ -1,3 +1,15 @@
+let a = () => a
+a = new Proxy(a, {
+    get(t, p) {
+        return a
+    },
+    set(t, p, v) {
+        return a
+    },
+})
+
+window.document = a
+
 import { html, Component, useState, useEffect, useMemo } from "../imports/Preact.js"
 import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
@@ -182,10 +194,10 @@ const first_true_key = (obj) => {
  * }}
  */
 
-const url_logo_big = document.head.querySelector("link[rel='pluto-logo-big']").getAttribute("href")
-const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']").getAttribute("href")
+const url_logo_big = window?.document?.head?.querySelector("link[rel='pluto-logo-big']")?.getAttribute("href") ?? "asdf"
+const url_logo_small = window?.document?.head?.querySelector("link[rel='pluto-logo-small']")?.getAttribute("href") ?? "asdf"
 
-const url_params = new URLSearchParams(window.location.search)
+const url_params = new URLSearchParams(window?.location?.search ?? "")
 const launch_params = {
     //@ts-ignore
     notebook_id: url_params.get("id") ?? window.pluto_notebook_id,
@@ -760,8 +772,8 @@ patch: ${JSON.stringify(
                   })
 
         this.on_disable_ui = () => {
-            document.body.classList.toggle("disable_ui", this.state.disable_ui)
-            document.head.querySelector("link[data-pluto-file='hide-ui']").setAttribute("media", this.state.disable_ui ? "all" : "print")
+            window.document.body.classList.toggle("disable_ui", this.state.disable_ui)
+            window.document.head.querySelector("link[data-pluto-file='hide-ui']").setAttribute("media", this.state.disable_ui ? "all" : "print")
             //@ts-ignore
             this.actions = this.state.disable_ui || (launch_params.slider_server_url != null && !this.state.connected) ? this.fake_actions : this.real_actions //heyo
         }
@@ -791,14 +803,14 @@ patch: ${JSON.stringify(
         }
 
         setInterval(() => {
-            if (!this.state.static_preview && document.visibilityState === "visible") {
+            if (!this.state.static_preview && window.document.visibilityState === "visible") {
                 // view stats on https://stats.plutojl.org/
                 //@ts-ignore
                 count_stat(`editing/${window?.version_info?.pluto ?? "unknown"}`)
             }
         }, 1000 * 15 * 60)
         setInterval(() => {
-            if (!this.state.static_preview && document.visibilityState === "visible") {
+            if (!this.state.static_preview && window.document.visibilityState === "visible") {
                 update_stored_recent_notebooks(this.state.notebook.path)
             }
         }, 1000 * 5)
@@ -949,7 +961,7 @@ patch: ${JSON.stringify(
                     notebook.path = new_path
                 })
                 // @ts-ignore
-                document.activeElement?.blur()
+                window.document.activeElement?.blur()
             } catch (error) {
                 alert("Failed to move file:\n\n" + error.message)
             } finally {
@@ -984,23 +996,23 @@ patch: ${JSON.stringify(
         const set_ctrl_down = (value) => {
             if (value !== ctrl_down_last_val.current) {
                 ctrl_down_last_val.current = value
-                document.body.querySelectorAll("pluto-variable-link").forEach((el) => {
+                window.document.body.querySelectorAll("pluto-variable-link").forEach((el) => {
                     el.setAttribute("data-ctrl-down", value ? "true" : "false")
                 })
             }
         }
 
-        document.addEventListener("keyup", (e) => {
+        window.document.addEventListener("keyup", (e) => {
             set_ctrl_down(has_ctrl_or_cmd_pressed(e))
         })
-        document.addEventListener("visibilitychange", (e) => {
+        window.document.addEventListener("visibilitychange", (e) => {
             set_ctrl_down(false)
             setTimeout(() => {
                 set_ctrl_down(false)
             }, 100)
         })
 
-        document.addEventListener("keydown", (e) => {
+        window.document.addEventListener("keydown", (e) => {
             set_ctrl_down(has_ctrl_or_cmd_pressed(e))
             // if (e.defaultPrevented) {
             //     return
@@ -1061,17 +1073,17 @@ patch: ${JSON.stringify(
             if (this.state.disable_ui && this.state.offer_binder) {
                 // const code = e.key.charCodeAt(0)
                 if (e.key === "Enter" || e.key.length === 1) {
-                    if (!document.body.classList.contains("wiggle_binder")) {
-                        document.body.classList.add("wiggle_binder")
+                    if (!window.document.body.classList.contains("wiggle_binder")) {
+                        window.document.body.classList.add("wiggle_binder")
                         setTimeout(() => {
-                            document.body.classList.remove("wiggle_binder")
+                            window.document.body.classList.remove("wiggle_binder")
                         }, 1000)
                     }
                 }
             }
         })
 
-        document.addEventListener("copy", (e) => {
+        window.document.addEventListener("copy", (e) => {
             if (!in_textarea_or_input()) {
                 const serialized = this.serialize_selected()
                 if (serialized) {
@@ -1082,7 +1094,7 @@ patch: ${JSON.stringify(
             }
         })
 
-        document.addEventListener("cut", (e) => {
+        window.document.addEventListener("cut", (e) => {
             // Disabled because we don't want to accidentally delete cells
             // or we can enable it with a prompt
             // Even better would be excel style: grey out until you paste it. If you paste within the same notebook, then it is just a move.
@@ -1099,7 +1111,7 @@ patch: ${JSON.stringify(
             // }
         })
 
-        document.addEventListener("paste", async (e) => {
+        window.document.addEventListener("paste", async (e) => {
             const topaste = e.clipboardData.getData("text/plain")
             const deserializer = detect_deserializer(topaste)
             if (deserializer != null) {
@@ -1145,16 +1157,16 @@ patch: ${JSON.stringify(
             update_stored_recent_notebooks(new_state.notebook.path, old_state?.notebook?.path)
         }
         if (old_state?.notebook?.shortpath !== new_state.notebook.shortpath) {
-            document.title = "🎈 " + new_state.notebook.shortpath + " — Pluto.jl"
+            window.document.title = "🎈 " + new_state.notebook.shortpath + " — Pluto.jl"
         }
 
         Object.entries(this.cached_status).forEach(([k, v]) => {
-            document.body.classList.toggle(k, v === true)
+            window.document.body.classList.toggle(k, v === true)
         })
 
         // this class is used to tell our frontend tests that the updates are done
         //@ts-ignore
-        document.body._update_is_ongoing = this.pending_local_updates > 0
+        window.document.body._update_is_ongoing = this.pending_local_updates > 0
 
         this.send_queued_bond_changes()
 
@@ -1227,7 +1239,7 @@ patch: ${JSON.stringify(
         >`
 
         return html`
-            ${this.state.disable_ui === false && html`<${HijackExternalLinksToOpenInNewTab} />`}
+            <!-- ${this.state.disable_ui === false && html`<${HijackExternalLinksToOpenInNewTab} />`} -->
             
             <${PlutoContext.Provider} value=${this.actions}>
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
@@ -1322,7 +1334,7 @@ patch: ${JSON.stringify(
                     
                     <${BinderButton} binder_phase=${this.state.binder_phase} start_binder=${() =>
             start_binder({ setStatePromise: this.setStatePromise, connect: this.connect, launch_params: launch_params })} notebookfile=${
-            launch_params.notebookfile == null ? null : new URL(launch_params.notebookfile, window.location.href).href
+            launch_params.notebookfile == null ? null : new URL(launch_params.notebookfile, window?.location?.href).href
         } />
                     <${FetchProgress} progress=${this.state.statefile_download_progress} />
                     ${launch_params.preamble_html ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />` : null}

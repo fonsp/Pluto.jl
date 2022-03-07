@@ -1,6 +1,6 @@
 import { Promises } from "../common/SetupCellEnvironment.js"
 import { pack, unpack } from "./MsgPack.js"
-import "./Polyfill.js"
+// import "./Polyfill.js"
 
 // https://github.com/denysdovhan/wtfjs/issues/61
 const different_Infinity_because_js_is_yuck = 2147483646

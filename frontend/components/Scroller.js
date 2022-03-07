@@ -13,11 +13,11 @@ export const Scroller = ({ active }) => {
         const handler = (e) => {
             pointer.current = { x: e.clientX, y: e.clientY }
         }
-        document.addEventListener("pointermove", handler)
-        document.addEventListener("dragover", handler)
+        // window.document.addEventListener("pointermove", handler)
+        // window.document.addEventListener("dragover", handler)
         return () => {
-            document.removeEventListener("pointermove", handler)
-            document.removeEventListener("dragover", handler)
+            // window.document.removeEventListener("pointermove", handler)
+            // window.document.removeEventListener("dragover", handler)
         }
     }, [])
 
