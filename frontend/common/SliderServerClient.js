@@ -60,14 +60,14 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
 
             const packed = pack(mybonds_filtered)
 
-            const url = base + "staterequest/" + encodeURIComponent(hash) + "/"
+            const url = base + "staterequest/" + hash + "/"
 
             let unpacked = null
             try {
                 const use_get = url.length + (packed.length * 4) / 3 + 20 < 8000
 
                 const response = use_get
-                    ? await fetch(url + encodeURIComponent(await base64url_arraybuffer(packed)), {
+                    ? await fetch(url + (await base64url_arraybuffer(packed)), {
                           method: "GET",
                       }).then(assert_response_ok)
                     : await fetch(url, {
