@@ -18,20 +18,14 @@ function Base.showerror(io::IO, e::UserError)
     print(io, e.msg)
 end
 
-function change_notebook_id(session::ServerSession, nb::Notebook, new_id::UUID)
-    haskey(session.notebooks, nb.notebook_id) && delete!(session.notebooks, nb.notebook_id)
-    session.notebooks[new_id] = nb
-    nb.notebook_id = new_id
-    nb
-end
-
 function open_url(session::ServerSession, url::AbstractString; kwargs...)
-    path = download_cool(url, emptynotebook().path)
-     
-    nb = open(session, path; kwargs...)
-    result = try_event_call(session, NewNotebookEvent(nb))
-    if result isa UUID
-        change_notebook_id(session, nb, result)
+    random_notebook = emptynotebook()
+    path = download_cool(url, random_notebook.path)
+    result = try_event_call(session, NewNotebookEvent(random_notebook))
+    nb = if result isa UUID
+        open(session, path; notebook_id=result, kwargs...)
+    else
+        open(session, path; notebook_id=result, kwargs...)
     end
     return nb
 end
