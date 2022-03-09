@@ -25,7 +25,7 @@ function open_url(session::ServerSession, url::AbstractString; kwargs...)
     nb = if result isa UUID
         open(session, path; notebook_id=result, kwargs...)
     else
-        open(session, path; notebook_id=result, kwargs...)
+        open(session, path; kwargs...)
     end
     return nb
 end
