@@ -223,7 +223,7 @@ pluto-filepicker button {
 }
 
 .cm-editor .cm-tooltip-autocomplete .cm-completionLabel {
-    font-family: JuliaMono, monospace !important;
+    font-family: JuliaMono, Menlo, "Roboto Mono", "Lucida Sans Typewriter", "Source Code Pro", monospace !important;
     font-variant-ligatures: none;
     font-size: 0.75rem;
 }

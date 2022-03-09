@@ -26,6 +26,7 @@ import { PlutoContext, PlutoBondsContext, PlutoJSInitializingContext, SetWithEmp
 import { unpack } from "../common/MsgPack.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
 import { start_binder, BinderPhase, count_stat } from "../common/Binder.js"
+import { setup_mathjax } from "../common/SetupMathJax.js"
 import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js"
 import { BinderButton } from "./BinderButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
@@ -1182,6 +1183,10 @@ patch: ${JSON.stringify(
 
         if (old_state.disable_ui !== this.state.disable_ui) {
             this.on_disable_ui()
+        }
+        if (old_state.initializing && !this.state.initializing) {
+            console.info("Initialization done!")
+            setup_mathjax()
         }
 
         if (old_state.notebook.nbpkg?.restart_recommended_msg !== new_state.notebook.nbpkg?.restart_recommended_msg) {

@@ -482,6 +482,7 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
         })
 
         return () => {
+            js_init_set?.delete(container.current)
             invalidate_scripts.current?.()
         }
     }, [body, persist_js_state, last_run_timestamp, pluto_actions])
