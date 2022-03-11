@@ -9,6 +9,22 @@ import { RawHTMLContainer } from "./components/CellOutput.js"
 
 const url_params = new URLSearchParams(window.location.search)
 
+//////////////
+// utils:
+
+const set_attribute_if_needed = (element, attr, value) => {
+    if (element.getAttribute(attr) !== value) {
+        element.setAttribute(attr, value)
+    }
+}
+export const set_disable_ui_css = (val) => {
+    document.body.classList.toggle("disable_ui", val)
+    set_attribute_if_needed(document.head.querySelector("link[data-pluto-file='hide-ui']"), "media", val ? "all" : "print")
+}
+
+/////////////
+// the rest:
+
 /**
  *
  * @type {import("./components/Editor.js").LaunchParameters}
@@ -102,16 +118,3 @@ const EditorLoader = ({ launch_params }) => {
 
 // it's like a Rube Goldberg machine
 render(html`<${EditorLoader} launch_params=${launch_params} />`, document.body)
-
-//////////////
-// utils:
-
-const set_attribute_if_needed = (element, attr, value) => {
-    if (element.getAttribute(attr) !== value) {
-        element.setAttribute(attr, value)
-    }
-}
-export const set_disable_ui_css = (val) => {
-    document.body.classList.toggle("disable_ui", val)
-    set_attribute_if_needed(document.head.querySelector("link[data-pluto-file='hide-ui']"), "media", val ? "all" : "print")
-}
