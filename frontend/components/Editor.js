@@ -66,7 +66,7 @@ const ProcessStatus = {
 /**
  * Map of status => Bool. In order of decreasing prioirty.
  */
-const statusmap = (state) => ({
+const statusmap = (state, launch_params) => ({
     disconnected: !(state.connected || state.initializing || state.static_preview),
     loading:
         (state.binder_phase != null && BinderPhase.wait_for_user < state.binder_phase && state.binder_phase < BinderPhase.ready) ||
@@ -189,37 +189,12 @@ const first_true_key = (obj) => {
 const url_logo_big = document.head.querySelector("link[rel='pluto-logo-big']").getAttribute("href")
 const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']").getAttribute("href")
 
-const url_params = new URLSearchParams(window.location.search)
-const launch_params = {
-    //@ts-ignore
-    notebook_id: url_params.get("id") ?? window.pluto_notebook_id,
-    //@ts-ignore
-    statefile: url_params.get("statefile") ?? window.pluto_statefile,
-    //@ts-ignore
-    notebookfile: url_params.get("notebookfile") ?? window.pluto_notebookfile,
-    //@ts-ignore
-    disable_ui: !!(url_params.get("disable_ui") ?? window.pluto_disable_ui),
-    //@ts-ignore
-    preamble_html: url_params.get("preamble_html") ?? window.pluto_preamble_html,
-    //@ts-ignore
-    isolated_cell_ids: url_params.has("isolated_cell_id") ? url_params.getAll("isolated_cell_id") : window.pluto_isolated_cell_ids,
-    //@ts-ignore
-    binder_url: url_params.get("binder_url") ?? window.pluto_binder_url,
-    //@ts-ignore
-    slider_server_url: url_params.get("slider_server_url") ?? window.pluto_slider_server_url,
-    //@ts-ignore
-    recording_url: url_params.get("recording_url") ?? window.pluto_recording_url,
-    //@ts-ignore
-    recording_audio_url: url_params.get("recording_audio_url") ?? window.pluto_recording_audio_url,
-}
-console.log("Launch parameters: ", launch_params)
-
 /**
  *
  * @returns {NotebookData}
  */
-const initial_notebook = () => ({
-    notebook_id: launch_params.notebook_id,
+const initial_notebook = ({ notebook_id }) => ({
+    notebook_id: notebook_id,
     path: default_path,
     shortpath: "",
     in_temp_dir: true,
@@ -237,11 +212,14 @@ const initial_notebook = () => ({
 })
 
 export class Editor extends Component {
-    constructor() {
-        super()
+    constructor(props) {
+        super(props)
+
+        console.log(this.props)
+        const { launch_params } = this.props
 
         this.state = {
-            notebook: /** @type {NotebookData} */ initial_notebook(),
+            notebook: /** @type {NotebookData} */ initial_notebook(this.props.launch_params),
             cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
@@ -1198,13 +1176,14 @@ patch: ${JSON.stringify(
     }
 
     componentWillUpdate(new_props, new_state) {
-        this.cached_status = statusmap(new_state)
+        this.cached_status = statusmap(new_state, this.props.launch_params)
     }
 
     render() {
+        const { launch_params } = this.props
         let { export_menu_open, notebook } = this.state
 
-        const status = this.cached_status ?? statusmap(this.state)
+        const status = this.cached_status ?? statusmap(this.state, launch_params)
         const statusval = first_true_key(status)
 
         if (status.isolated_cell_view) {
