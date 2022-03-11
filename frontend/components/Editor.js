@@ -3,7 +3,7 @@ import * as preact from "../imports/Preact.js"
 import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
-import { empty_notebook_state, set_disable_ui_css } from "../editor.js"
+import { EmbedHTMLElement, empty_notebook_state, set_disable_ui_css } from "../editor.js"
 import { create_pluto_connection } from "../common/PlutoConnection.js"
 import { init_feedback } from "../common/Feedback.js"
 import { serialize_cells, deserialize_cells, detect_deserializer } from "../common/Serialization.js"
@@ -204,7 +204,11 @@ const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']
 
 /**
  * @typedef EditorProps
- * @type {{launch_params: LaunchParameters,initial_notebook_state: NotebookData,}}
+ * @type {{
+ *  launch_params: LaunchParameters,
+ *  initial_notebook_state: NotebookData,
+ *  preamble_element: any,
+ * }}
  * @augments Component<EditorProps,{}>
  */
 export class Editor extends Component {
@@ -1313,7 +1317,7 @@ patch: ${JSON.stringify(
                         start_binder=${() => start_binder({ setStatePromise: this.setStatePromise, connect: this.connect, launch_params: launch_params })} 
                         notebookfile=${launch_params.notebookfile == null ? null : new URL(launch_params.notebookfile, window.location.href).href} />
                     
-                    ${launch_params.preamble_html ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />` : null}
+                    <${EmbedHTMLElement} element=${this.props.preamble_element} />
                     <${Main}>
                         <${Preamble}
                             last_update_time=${this.state.last_update_time}

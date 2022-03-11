@@ -1,11 +1,11 @@
-import { html, render, useEffect, useRef, useState } from "./imports/Preact.js"
+import { html, hydrate, render, useEffect, useLayoutEffect, useMemo, useRef, useState } from "./imports/Preact.js"
 import "./common/NodejsCompatibilityPolyfill.js"
 
 import { Editor, default_path } from "./components/Editor.js"
-import { FetchProgress, read_Uint8Array_with_progress } from "./components/FetchProgress.js"
+import { FetchProgress, fake_read_Uint8Array_with_progress } from "./components/FetchProgress.js"
 import { BinderPhase } from "./common/Binder.js"
 import { unpack } from "./common/MsgPack.js"
-import { RawHTMLContainer } from "./components/CellOutput.js"
+import { OutputBody, RawHTMLContainer } from "./components/CellOutput.js"
 
 const url_params = new URLSearchParams(window.location.search)
 
@@ -20,6 +20,17 @@ const set_attribute_if_needed = (element, attr, value) => {
 export const set_disable_ui_css = (val) => {
     document.body.classList.toggle("disable_ui", val)
     set_attribute_if_needed(document.head.querySelector("link[data-pluto-file='hide-ui']"), "media", val ? "all" : "print")
+}
+
+export const EmbedHTMLElement = ({ element }) => {
+    const node_ref = useRef(null)
+
+    useLayoutEffect(() => {
+        node_ref.current.style.display = "contents"
+        node_ref.current.appendChild(element)
+    }, [node_ref.current])
+
+    return html`<span ref=${node_ref}></span>`
 }
 
 /////////////
@@ -93,7 +104,7 @@ const EditorLoader = ({ launch_params }) => {
         if (!ready_for_editor && static_preview) {
             ;(async () => {
                 const r = await fetch(launch_params.statefile)
-                const data = await read_Uint8Array_with_progress(r, set_statefile_download_progress)
+                const data = await fake_read_Uint8Array_with_progress(r, set_statefile_download_progress)
                 const state = unpack(data)
                 initial_notebook_state_ref.current = state
                 set_ready_for_editor(true)
@@ -105,16 +116,40 @@ const EditorLoader = ({ launch_params }) => {
         set_disable_ui_css(launch_params.disable_ui)
     }, [launch_params.disable_ui])
 
-    const preamble_element = launch_params.preamble_html ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />` : null
+    const preamble_element = useMemo(() => {
+        // Instead of just doing this:
+        // return new DOMParser().parseFromString(launch_params.preamble_html, "text/html")
+
+        // We do this instead, to allow you to write <script>s in the preamble. They will be executed just like scripts in cell outputs (i.e. with currentScript and stuff).
+        const element = document.createElement("span")
+        console.log("Creating span!", element)
+        element.style.display = "contents"
+        // so that it's in DOM
+        document.body.append(element)
+
+        if (launch_params.preamble_html != null) {
+            render(html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />`, element)
+        }
+
+        return element
+    }, [launch_params.preamble_html])
+
+    // const preamble_element = launch_params.preamble_html ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />` : null
 
     return ready_for_editor
         ? html`<${Editor} initial_notebook_state=${initial_notebook_state_ref.current} launch_params=${launch_params} preamble_element=${preamble_element} />`
-        : // todo: show preamble html
-          html`
-              ${preamble_element}
+        : html`
+              <${EmbedHTMLElement} element=${preamble_element} />
               <${FetchProgress} progress=${statefile_download_progress} />
           `
 }
 
 // it's like a Rube Goldberg machine
+render(html`<${EditorLoader} launch_params=${launch_params} />`, document.body)
+
+// html` <div style="display: flex; flex-direction: row;">
+//               <${Editor} initial_notebook_state=${initial_notebook_state_ref.current} launch_params=${launch_params} preamble_element=${preamble_element} />
+//               <${Editor} initial_notebook_state=${initial_notebook_state_ref.current} launch_params=${launch_params} preamble_element=${preamble_element} />
+//           </div>`
+
 render(html`<${EditorLoader} launch_params=${launch_params} />`, document.body)
