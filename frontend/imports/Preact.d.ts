@@ -36,7 +36,7 @@ export declare class Component<P = {}, S = {}> {
 	componentDidCatch?(error: any, errorInfo: ErrorInfo): void;
     state: S
     setState(state: any, callback?: any): void
-    props: any
+    props: P
     base: HTMLElement
     render(): ComponentChild
 }
