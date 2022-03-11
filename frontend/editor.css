@@ -446,7 +446,7 @@ pluto-output mjx-assistive-mml {
 
 /* HEADER */
 
-body > header {
+header#pluto-nav {
     /* position: absolute;
     top: 0px; */
     width: 100%;
@@ -461,7 +461,7 @@ body > header {
     font-size: 0.75rem;
 }
 
-body > header.show_export {
+header#pluto-nav.show_export {
     position: sticky;
     top: 0;
     transform: translateY(130px);
@@ -717,10 +717,10 @@ nav#at_the_top:after {
     }
 }
 
-body.binder > header > nav#at_the_top > pluto-filepicker > * {
+body.binder header#pluto-nav > nav#at_the_top > pluto-filepicker > * {
     display: none;
 }
-body.binder > header > nav#at_the_top > pluto-filepicker > a {
+body.binder header#pluto-nav > nav#at_the_top > pluto-filepicker > a {
     display: block;
     font-size: 16px;
     font-family: var(--julia-mono-font-stack);
@@ -728,33 +728,33 @@ body.binder > header > nav#at_the_top > pluto-filepicker > a {
     text-decoration: none;
 }
 
-body.nbpkg_restart_recommended > header,
-body.nbpkg_restart_required > header,
-body.binder.loading > header,
-body.process_dead > header,
-body.disconnected > header {
+body.nbpkg_restart_recommended header#pluto-nav,
+body.nbpkg_restart_required header#pluto-nav,
+body.binder.loading header#pluto-nav,
+body.process_dead header#pluto-nav,
+body.disconnected header#pluto-nav {
     position: sticky;
     top: 0;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
 }
 
-body.nbpkg_restart_recommended > header {
+body.nbpkg_restart_recommended header#pluto-nav {
     background-color: var(--restart-recc-header-color);
 }
-body.nbpkg_restart_required > header {
+body.nbpkg_restart_required header#pluto-nav {
     background-color: var(--restart-req-header-color);
 }
-body.process_dead > header {
+body.process_dead header#pluto-nav {
     background-color: var(--dead-process-header-color);
 }
-body.loading > header {
+body.loading header#pluto-nav {
     background-color: var(--loading-header-color);
 }
-body.disconnected > header {
+body.disconnected header#pluto-nav {
     background-color: var(--disconnected-header-color);
 }
-body.binder.loading > header {
+body.binder.loading header#pluto-nav {
     background-color: var(--binder-loading-header-color);
 }
 
@@ -838,8 +838,8 @@ body.is_recording .outline-frame.recording {
     box-shadow: inset 0px 0px 20px 20px #919bff2b;
 }
 
-body.recording_waiting_to_start > header,
-body.is_recording > header {
+body.recording_waiting_to_start header#pluto-nav,
+body.is_recording header#pluto-nav {
     display: none;
 }
 
@@ -2153,7 +2153,7 @@ footer input {
     border-right: none;
 }
 
-body > header pluto-filepicker button,
+header#pluto-nav pluto-filepicker button,
 footer button {
     margin: 0px;
     background: var(--footer-filepicker-focus-color);
@@ -2509,7 +2509,7 @@ body.presentation #helpbox-wrapper {
     display: none !important;
 }
 
-body > nav#slide_controls {
+nav#slide_controls {
     display: none;
 }
 body.presentation > nav#slide_controls {
@@ -2520,23 +2520,23 @@ body.presentation > nav#slide_controls {
     z-index: 100;
 }
 
-body > nav#slide_controls > button {
+nav#slide_controls > button {
     position: static;
     padding: 5px;
 }
 
-body > nav#slide_controls > button > span::after {
+nav#slide_controls > button > span::after {
     content: " " !important;
     display: block;
     height: 30px;
     width: 30px;
     background-size: 30px 30px;
 }
-body > nav#slide_controls > button.prev > span::after {
+nav#slide_controls > button.prev > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-back-outline.svg);
     filter: var(--image-filters);
 }
-body > nav#slide_controls > button.next > span::after {
+nav#slide_controls > button.next > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-forward-outline.svg);
     filter: var(--image-filters);
 }
