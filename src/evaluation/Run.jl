@@ -517,7 +517,7 @@ function update_save_run!(
 end
 
 update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs...) = update_save_run!(session, notebook, [cell]; kwargs...)
-update_run!(args...) = update_save_run!(args...; save=false)
+update_run!(args...; kwargs...) = update_save_run!(args...; save=false, kwargs...)
 
 function notebook_differences(from::Notebook, to::Notebook)
 	old_codes = Dict(
