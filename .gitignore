@@ -16,5 +16,3 @@ node_modules
 frontend/dist
 .net
 net
-
-perf/**.txt
