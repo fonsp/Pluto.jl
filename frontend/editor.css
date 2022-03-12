@@ -52,8 +52,6 @@ body {
     overflow-x: hidden;
     position: relative;
     min-height: 100vh;
-    flex-direction: column;
-    align-items: center;
     background-color: var(--main-bg-color);
 }
 
