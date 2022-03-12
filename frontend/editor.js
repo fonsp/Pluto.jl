@@ -105,13 +105,11 @@ const EditorLoader = ({ launch_params }) => {
         set_disable_ui_css(launch_params.disable_ui)
     }, [launch_params.disable_ui])
 
-    const preamble_element = launch_params.preamble_html ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />` : null
-
     return ready_for_editor
-        ? html`<${Editor} initial_notebook_state=${initial_notebook_state_ref.current} launch_params=${launch_params} preamble_element=${preamble_element} />`
+        ? html`<${Editor} initial_notebook_state=${initial_notebook_state_ref.current} launch_params=${launch_params} />`
         : // todo: show preamble html
           html`
-              ${preamble_element}
+              ${launch_params.preamble_html ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />` : null}
               <${FetchProgress} progress=${statefile_download_progress} />
           `
 }
