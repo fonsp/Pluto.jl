@@ -19,8 +19,15 @@ function Base.showerror(io::IO, e::UserError)
 end
 
 function open_url(session::ServerSession, url::AbstractString; kwargs...)
-    path = download_cool(url, emptynotebook().path)
-    open(session, path; kwargs...)
+    random_notebook = emptynotebook()
+    path = download_cool(url, random_notebook.path)
+    result = try_event_call(session, NewNotebookEvent(random_notebook))
+    nb = if result isa UUID
+        open(session, path; notebook_id=result, kwargs...)
+    else
+        open(session, path; kwargs...)
+    end
+    return nb
 end
 
 "Open the notebook at `path` into `session::ServerSession` and run it. Returns the `Notebook`."

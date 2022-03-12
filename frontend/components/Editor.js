@@ -1,4 +1,5 @@
-import { html, Component, useState, useEffect, useMemo } from "../imports/Preact.js"
+import { html, Component } from "../imports/Preact.js"
+import * as preact from "../imports/Preact.js"
 import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
@@ -34,6 +35,9 @@ import { IsolatedCell } from "./Cell.js"
 import { RawHTMLContainer } from "./CellOutput.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
 import { HijackExternalLinksToOpenInNewTab } from "./HackySideStuff/HijackExternalLinksToOpenInNewTab.js"
+
+// This is imported asynchronously - uncomment for development
+// import environment from "../common/Environment.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -263,6 +267,10 @@ export class Editor extends Component {
 
             last_created_cell: null,
             selected_cells: [],
+
+            extended_components: {
+                CustomHeader: null,
+            },
 
             is_recording: false,
             recording_waiting_to_start: false,
@@ -703,6 +711,16 @@ patch: ${JSON.stringify(
         const on_establish_connection = async (client) => {
             // nasty
             Object.assign(this.client, client)
+            try {
+                const { default: environment } = await import(this.client.session_options.server.injected_javascript_data_url)
+                const { custom_editor_header_component } = environment({ client, editor: this, imports: { preact } })
+                this.setState({
+                    extended_components: {
+                        ...this.state.extended_components,
+                        CustomHeader: custom_editor_header_component,
+                    },
+                })
+            } catch (e) {}
 
             // @ts-ignore
             window.version_info = this.client.version_info // for debugging
@@ -1234,7 +1252,7 @@ patch: ${JSON.stringify(
                     <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
                     <${Scroller} active=${this.state.scroller} />
                     <${ProgressBar} notebook=${this.state.notebook} binder_phase=${this.state.binder_phase} status=${status}/>
-                    <header className=${export_menu_open ? "show_export" : ""}>
+                    <header id="pluto-nav" className=${export_menu_open ? "show_export" : ""}>
                         <${ExportBanner}
                             notebookfile_url=${this.export_url("notebookfile")}
                             notebookexport_url=${this.export_url("notebookexport")}
@@ -1259,9 +1277,14 @@ patch: ${JSON.stringify(
                             }>
                                 <h1><img id="logo-big" src=${url_logo_big} alt="Pluto.jl" /><img id="logo-small" src=${url_logo_small} /></h1>
                             </a>
+                            ${
+                                this.state.extended_components.CustomHeader &&
+                                html`<${this.state.extended_components.CustomHeader} notebook_id=${this.state.notebook.notebook_id} />`
+                            }
                             <div class="flex_grow_1"></div>
                             ${
-                                status.binder
+                                this.state.extended_components.CustomHeader == null &&
+                                (status.binder
                                     ? html`<pluto-filepicker><a href=${this.export_url("notebookfile")} target="_blank">Save notebook...</a></pluto-filepicker>`
                                     : html`<${FilePicker}
                                           client=${this.client}
@@ -1273,7 +1296,7 @@ patch: ${JSON.stringify(
                                           }}
                                           placeholder="Save notebook..."
                                           button_label=${notebook.in_temp_dir ? "Choose" : "Move"}
-                                      />`
+                                      />`)
                             }
                             <div class="flex_grow_2"></div>
                             <button class="toggle_export" title="Export..." onClick=${() => {
