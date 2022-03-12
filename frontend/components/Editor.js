@@ -223,7 +223,6 @@ export class Editor extends Component {
     constructor(/** @type {EditorProps} */ props) {
         super(props)
 
-        console.log(this.props)
         const { launch_params, initial_notebook_state } = this.props
 
         this.state = {

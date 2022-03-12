@@ -1,3 +1,7 @@
+import { render as ssr_render } from "https://esm.sh/preact-render-to-string@5.1.20?target=es2020&deps=preact10.6.6"
+
+/////////////
+
 import { html, render, useEffect, useRef, useState } from "./imports/Preact.js"
 import "./common/NodejsCompatibilityPolyfill.js"
 
@@ -25,32 +29,8 @@ export const set_disable_ui_css = (val) => {
 /////////////
 // the rest:
 
-/**
- *
- * @type {import("./components/Editor.js").LaunchParameters}
- */
-const launch_params = {
-    //@ts-ignore
-    notebook_id: url_params.get("id") ?? window.pluto_notebook_id,
-    //@ts-ignore
-    statefile: url_params.get("statefile") ?? window.pluto_statefile,
-    //@ts-ignore
-    notebookfile: url_params.get("notebookfile") ?? window.pluto_notebookfile,
-    //@ts-ignore
-    disable_ui: !!(url_params.get("disable_ui") ?? window.pluto_disable_ui),
-    //@ts-ignore
-    preamble_html: url_params.get("preamble_html") ?? window.pluto_preamble_html,
-    //@ts-ignore
-    isolated_cell_ids: url_params.has("isolated_cell_id") ? url_params.getAll("isolated_cell_id") : window.pluto_isolated_cell_ids,
-    //@ts-ignore
-    binder_url: url_params.get("binder_url") ?? window.pluto_binder_url,
-    //@ts-ignore
-    slider_server_url: url_params.get("slider_server_url") ?? window.pluto_slider_server_url,
-    //@ts-ignore
-    recording_url: url_params.get("recording_url") ?? window.pluto_recording_url,
-    //@ts-ignore
-    recording_audio_url: url_params.get("recording_audio_url") ?? window.pluto_recording_audio_url,
-}
+import { launch_params } from "../ssr/ssr.js"
+
 console.log("Launch parameters: ", launch_params)
 
 /**
@@ -81,36 +61,33 @@ export const empty_notebook_state = ({ notebook_id }) => ({
  *  launch_params: import("./components/Editor.js").LaunchParameters,
  * }} props
  */
-const EditorLoader = ({ launch_params }) => {
+const EditorLoader = async ({ launch_params }) => {
     const static_preview = launch_params.statefile != null
 
-    const [statefile_download_progress, set_statefile_download_progress] = useState(null)
+    const initial_notebook_state = await new Promise((res) => {
+        ;(async () => {
+            const r = await fetch(launch_params.statefile)
+            const data = await read_Uint8Array_with_progress(r, () => {})
+            const state = unpack(data)
+            res(state)
+        })()
+    })
 
-    const initial_notebook_state_ref = useRef(empty_notebook_state(launch_params))
-    const [ready_for_editor, set_ready_for_editor] = useState(!static_preview)
-
-    useEffect(() => {
-        if (!ready_for_editor && static_preview) {
-            ;(async () => {
-                const r = await fetch(launch_params.statefile)
-                const data = await read_Uint8Array_with_progress(r, set_statefile_download_progress)
-                const state = unpack(data)
-                initial_notebook_state_ref.current = state
-                set_ready_for_editor(true)
-            })()
-        }
-    }, [ready_for_editor, static_preview, launch_params.statefile])
-
-    useEffect(() => {
-        set_disable_ui_css(launch_params.disable_ui)
-    }, [launch_params.disable_ui])
+    const statefile_download_progress = null
+    const ready_for_editor = true
 
     return ready_for_editor
-        ? html`<${Editor} initial_notebook_state=${initial_notebook_state_ref.current} launch_params=${launch_params} />`
+        ? html`<${Editor} initial_notebook_state=${initial_notebook_state} launch_params=${launch_params} />`
         : // todo: show preamble html while loading. the problem is that it will re-render once the editor is ready, because the `RawHTMLContainer` element goes to a different place in the vdom.
           // ${launch_params.preamble_html ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />` : null}
           html`<${FetchProgress} progress=${statefile_download_progress} />`
 }
 
 // it's like a Rube Goldberg machine
-render(html`<${EditorLoader} launch_params=${launch_params} />`, document.body)
+const result = ssr_render(await EditorLoader({ launch_params }))
+
+const filename = `output${Math.random()}.html`
+
+await Deno.writeTextFile(filename, result)
+console.info(`\n\n🎉 Output written to ${filename}\n\n`)
+Deno.exit(0)
