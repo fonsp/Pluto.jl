@@ -107,11 +107,9 @@ const EditorLoader = ({ launch_params }) => {
 
     return ready_for_editor
         ? html`<${Editor} initial_notebook_state=${initial_notebook_state_ref.current} launch_params=${launch_params} />`
-        : // todo: show preamble html
-          html`
-              ${launch_params.preamble_html ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />` : null}
-              <${FetchProgress} progress=${statefile_download_progress} />
-          `
+        : // todo: show preamble html while loading. the problem is that it will re-render once the editor is ready, because the `RawHTMLContainer` element goes to a different place in the vdom.
+          // ${launch_params.preamble_html ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />` : null}
+          html`<${FetchProgress} progress=${statefile_download_progress} />`
 }
 
 // it's like a Rube Goldberg machine
