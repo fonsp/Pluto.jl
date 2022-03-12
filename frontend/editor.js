@@ -131,6 +131,22 @@ const EditorLoader = ({ launch_params }) => {
 
 // Create a web component for EditorLoader that takes in additional launch parameters as attributes
 // possible attribute names are `Object.keys(launch_params)`
+
+// This means that you can do stuff like:
+/* 
+<pluto-editor disable_ui notebookfile="https://juliapluto.github.io/weekly-call-notes/2022/02-10/notes.jl" statefile="https://juliapluto.github.io/weekly-call-notes/2022/02-10/notes.plutostate"  ></pluto-editor>
+        
+<pluto-editor disable_ui notebookfile="https://juliapluto.github.io/weekly-call-notes/2022/02-10/notes.jl" statefile="https://juliapluto.github.io/weekly-call-notes/2022/02-10/notes.plutostate"  ></pluto-editor> 
+*/
+
+// or:
+
+/* 
+<pluto-editor notebook_id="fcc1b498-a141-11ec-342a-593db1016648"></pluto-editor>
+
+<pluto-editor notebook_id="21ebc942-a1ed-11ec-2505-7b242b18daf3"></pluto-editor>
+*/
+
 class PlutoEditorComponent extends HTMLElement {
     constructor() {
         super()
