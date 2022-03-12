@@ -52,10 +52,15 @@ body {
     overflow-x: hidden;
     position: relative;
     min-height: 100vh;
+    background-color: var(--main-bg-color);
+}
+
+pluto-editor {
+    flex: 1 1 auto;
     display: flex;
     flex-direction: column;
     align-items: center;
-    background-color: var(--main-bg-color);
+    min-width: 0;
 }
 
 main {
@@ -81,14 +86,15 @@ body:not(.disable_ui) {
 /* | main=25px+700px+6px=731px | pluto-helpbox=350px - 500px | */
 /* min-width: 731px+ */
 
+/* CAN WE HAVE CONTAINER QUERIES PLESSSSS */
 @media screen and (min-width: calc(700px + 25px + 6px)) and (max-width: calc(700px + 25px + 6px + 500px)) {
-    body:not(.disable_ui) main {
+    body:not(.disable_ui) pluto-editor.fullscreen main {
         margin-left: 0px;
         align-self: flex-start;
     }
 }
 @media screen and (min-width: calc(700px + 25px + 6px + 500px)) and (max-width: calc(700px + 25px + 6px + 500px + 500px)) {
-    body:not(.disable_ui) main {
+    body:not(.disable_ui) pluto-editor.fullscreen main {
         margin-right: 500px;
         align-self: flex-end;
     }
@@ -922,13 +928,15 @@ main > preamble {
 
 main > preamble #saveall-container {
     margin-left: auto;
-    right: min(0px, 700px + 25px - 100vw);
-    position: relative;
+}
+pluto-editor.fullscreen main > preamble #saveall-container {
+    transform: translateX(max(0px, 100vw - 700px - 25px));
+    /* position: relative; */
 }
 
 @media screen and (min-width: calc(700px + 25px + 6px + 500px)) {
-    main > preamble #saveall-container {
-        right: -500px;
+    pluto-editor.fullscreen main > preamble #saveall-container {
+        transform: translateX(500px);
     }
 }
 
@@ -994,7 +1002,6 @@ pluto-output {
     padding-right: 10px;
     align-items: baseline;
     overflow-x: auto;
-
     background-color: var(--pluto-output-bg-color);
 }
 
@@ -1195,18 +1202,26 @@ pluto-shoulder {
     position: absolute;
     /* top: 0px; */
     /* bottom: 0px; */
-    left: -2000px;
-    width: 2000px;
+    --invisible-border: calc(0.5 * var(--pluto-cell-spacing));
+    --shoulder-width: calc(28px + var(--invisible-border));
+    --border-radius: calc(5px + var(--invisible-border));
+
+    left: calc(0px - var(--shoulder-width));
+    width: var(--shoulder-width);
+    border-radius: var(--border-radius) 0px 0px var(--border-radius);
     cursor: move;
     display: flex;
     flex-direction: row;
     justify-content: flex-end;
     align-items: flex-start;
-    /* Add an invisible border around the shoulder, to make it easier to click on. (The are between two cells is divided in two, each half belongs to the closest pluto-cell.) */
-    top: calc(0px - 0.5 * var(--pluto-cell-spacing));
-    bottom: calc(0px - 0.5 * var(--pluto-cell-spacing));
-    border-top: calc(0.5 * var(--pluto-cell-spacing)) solid rgba(0, 0, 0, 0);
-    border-bottom: calc(0.5 * var(--pluto-cell-spacing)) solid rgba(0, 0, 0, 0);
+    /* Add an invisible border around the shoulder, to make it easier to click on. (The area between two cells is divided in two, each half belongs to the closest pluto-cell.) */
+    top: calc(0px - var(--invisible-border));
+    bottom: calc(0px - var(--invisible-border));
+    border: var(--invisible-border) solid rgba(0, 0, 0, 0);
+    border-right: none;
+}
+pluto-editor.fullscreen pluto-shoulder {
+    --shoulder-width: 2000px;
 }
 
 pluto-shoulder:hover {
