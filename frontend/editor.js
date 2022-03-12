@@ -53,6 +53,19 @@ const launch_params = {
 }
 console.log("Launch parameters: ", launch_params)
 
+const truthy = (x) => x === "" || x === "true"
+
+const from_attribute = (element, name) => {
+    const val = element.getAttribute(name)
+    if (name === "disable_ui") {
+        return truthy(val)
+    } else if (name === "isolated_cell_id") {
+        return val == null ? null : val.split(",")
+    } else {
+        return val
+    }
+}
+
 /**
  *
  * @returns {import("./components/Editor.js").NotebookData}
@@ -116,5 +129,17 @@ const EditorLoader = ({ launch_params }) => {
           `
 }
 
-// it's like a Rube Goldberg machine
-document.body.querySelectorAll("pluto-editor").forEach((el) => render(html`<${EditorLoader} launch_params=${launch_params} />`, el))
+// Create a web component for EditorLoader that takes in additional launch parameters as attributes
+// possible attribute names are `Object.keys(launch_params)`
+class PlutoEditorComponent extends HTMLElement {
+    constructor() {
+        super()
+    }
+
+    connectedCallback() {
+        const new_launch_params = Object.fromEntries(Object.entries(launch_params).map(([k, v]) => [k, from_attribute(this, k) ?? v]))
+
+        render(html`<${EditorLoader} launch_params=${new_launch_params} />`, this)
+    }
+}
+customElements.define("pluto-editor", PlutoEditorComponent)
