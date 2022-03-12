@@ -52,10 +52,17 @@ body {
     overflow-x: hidden;
     position: relative;
     min-height: 100vh;
-    display: flex;
     flex-direction: column;
     align-items: center;
     background-color: var(--main-bg-color);
+}
+
+pluto-editor {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
 }
 
 main {
@@ -81,14 +88,15 @@ body:not(.disable_ui) {
 /* | main=25px+700px+6px=731px | pluto-helpbox=350px - 500px | */
 /* min-width: 731px+ */
 
+/* CAN WE HAVE CONTAINER QUERIES PLESSSSS */
 @media screen and (min-width: calc(700px + 25px + 6px)) and (max-width: calc(700px + 25px + 6px + 500px)) {
-    body:not(.disable_ui) main {
+    body:not(.disable_ui) pluto-editor.fullscreen main {
         margin-left: 0px;
         align-self: flex-start;
     }
 }
 @media screen and (min-width: calc(700px + 25px + 6px + 500px)) and (max-width: calc(700px + 25px + 6px + 500px + 500px)) {
-    body:not(.disable_ui) main {
+    body:not(.disable_ui) pluto-editor.fullscreen main {
         margin-right: 500px;
         align-self: flex-end;
     }
