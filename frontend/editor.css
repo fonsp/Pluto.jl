@@ -2098,7 +2098,7 @@ pluto-helpbox > section hr {
 
 footer {
     width: 100%;
-    height: 3.5rem;
+    min-height: 3.5rem;
     font-family: "Roboto Mono", monospace;
     font-size: 0.75rem;
     background-color: var(--footer-bg-color);
@@ -2107,10 +2107,11 @@ footer {
 }
 
 footer form {
-    height: 1.5rem;
+    min-height: 1.5rem;
     opacity: 1;
     transition: opacity 5s;
     display: flex;
+    flex-wrap: wrap;
 }
 
 footer form > * {
