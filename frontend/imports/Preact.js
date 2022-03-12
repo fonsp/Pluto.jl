@@ -8,7 +8,7 @@ import {
     createContext,
     createRef,
     hydrate,
-} from "https://esm.sh/preact@10.6.6?target=es2020"
+} from "https://esm.sh/v66/preact@10.6.6?target=es2020"
 import {
     //
     useEffect,
@@ -18,9 +18,9 @@ import {
     useMemo,
     useCallback,
     useContext,
-} from "https://esm.sh/preact@10.6.6/hooks?target=es2020"
+} from "https://esm.sh/v66/preact@10.6.6/hooks?target=es2020"
 
-import htm from "https://esm.sh/htm@3.0.4?target=es2020"
+import htm from "https://esm.sh/v66/htm@3.1.0?target=es2020"
 
 const html = htm.bind(h)
 
