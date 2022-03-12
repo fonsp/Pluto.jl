@@ -928,13 +928,15 @@ main > preamble {
 
 main > preamble #saveall-container {
     margin-left: auto;
-    right: min(0px, 700px + 25px - 100vw);
-    position: relative;
+}
+pluto-editor.fullscreen main > preamble #saveall-container {
+    transform: translateX(max(0px, 100vw - 700px - 25px));
+    /* position: relative; */
 }
 
 @media screen and (min-width: calc(700px + 25px + 6px + 500px)) {
-    main > preamble #saveall-container {
-        right: -500px;
+    pluto-editor.fullscreen main > preamble #saveall-container {
+        transform: translateX(500px);
     }
 }
 
