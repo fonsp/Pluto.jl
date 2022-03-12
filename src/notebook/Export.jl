@@ -27,6 +27,8 @@ function generate_html(;
         preamble_html_js::AbstractString="undefined",
         notebook_id_js::AbstractString="undefined", 
         isolated_cell_ids_js::AbstractString="undefined",
+        
+        create_body_html::Union{Function,Nothing}=nothing,
     )::String
 
     # Here we don't use frontend-dist (bundled code) yet, might want to
@@ -65,8 +67,24 @@ function generate_html(;
         <!-- [automatically generated launch parameters can be inserted here] -->
         """
     )
-
-    return result
+    
+    result_with_body = if create_body_html === nothing
+        result
+    else
+        new_body = create_body_html(HTML("<pluto-editor></pluto-editor>"))
+        
+        s = result
+        m = match(r"<body.*?>(.*)</body>"s, s)
+        cap = m.captures[1]
+        
+        join((
+            s[1 : cap.offset],
+            repr(MIME"text/html"(), new_body),
+            s[nextind(s, cap.offset + cap.ncodeunits) : end]
+        ))
+    end
+    
+    return result_with_body
 end
 
 
