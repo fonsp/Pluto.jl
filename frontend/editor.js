@@ -117,4 +117,4 @@ const EditorLoader = ({ launch_params }) => {
 }
 
 // it's like a Rube Goldberg machine
-render(html`<${EditorLoader} launch_params=${launch_params} />`, document.body)
+document.body.querySelectorAll("pluto-editor").forEach((el) => render(html`<${EditorLoader} launch_params=${launch_params} />`, el))
