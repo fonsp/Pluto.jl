@@ -1002,7 +1002,6 @@ pluto-output {
     padding-right: 10px;
     align-items: baseline;
     overflow-x: auto;
-
     background-color: var(--pluto-output-bg-color);
 }
 
@@ -1203,18 +1202,26 @@ pluto-shoulder {
     position: absolute;
     /* top: 0px; */
     /* bottom: 0px; */
-    left: -2000px;
-    width: 2000px;
+    --invisible-border: calc(0.5 * var(--pluto-cell-spacing));
+    --shoulder-width: calc(28px + var(--invisible-border));
+    --border-radius: calc(5px + var(--invisible-border));
+
+    left: calc(0px - var(--shoulder-width));
+    width: var(--shoulder-width);
+    border-radius: var(--border-radius) 0px 0px var(--border-radius);
     cursor: move;
     display: flex;
     flex-direction: row;
     justify-content: flex-end;
     align-items: flex-start;
-    /* Add an invisible border around the shoulder, to make it easier to click on. (The are between two cells is divided in two, each half belongs to the closest pluto-cell.) */
-    top: calc(0px - 0.5 * var(--pluto-cell-spacing));
-    bottom: calc(0px - 0.5 * var(--pluto-cell-spacing));
-    border-top: calc(0.5 * var(--pluto-cell-spacing)) solid rgba(0, 0, 0, 0);
-    border-bottom: calc(0.5 * var(--pluto-cell-spacing)) solid rgba(0, 0, 0, 0);
+    /* Add an invisible border around the shoulder, to make it easier to click on. (The area between two cells is divided in two, each half belongs to the closest pluto-cell.) */
+    top: calc(0px - var(--invisible-border));
+    bottom: calc(0px - var(--invisible-border));
+    border: var(--invisible-border) solid rgba(0, 0, 0, 0);
+    border-right: none;
+}
+pluto-editor.fullscreen pluto-shoulder {
+    --shoulder-width: 2000px;
 }
 
 pluto-shoulder:hover {
