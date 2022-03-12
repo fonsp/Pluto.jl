@@ -53,6 +53,19 @@ const launch_params = {
 }
 console.log("Launch parameters: ", launch_params)
 
+const truthy = (x) => x === "" || x === "true"
+
+const from_attribute = (element, name) => {
+    const val = element.getAttribute(name)
+    if (name === "disable_ui") {
+        return truthy(val)
+    } else if (name === "isolated_cell_id") {
+        return val == null ? null : val.split(",")
+    } else {
+        return val
+    }
+}
+
 /**
  *
  * @returns {import("./components/Editor.js").NotebookData}
@@ -112,5 +125,33 @@ const EditorLoader = ({ launch_params }) => {
           html`<${FetchProgress} progress=${statefile_download_progress} />`
 }
 
-// it's like a Rube Goldberg machine
-render(html`<${EditorLoader} launch_params=${launch_params} />`, document.body)
+// Create a web component for EditorLoader that takes in additional launch parameters as attributes
+// possible attribute names are `Object.keys(launch_params)`
+
+// This means that you can do stuff like:
+/* 
+<pluto-editor disable_ui notebookfile="https://juliapluto.github.io/weekly-call-notes/2022/02-10/notes.jl" statefile="https://juliapluto.github.io/weekly-call-notes/2022/02-10/notes.plutostate"  ></pluto-editor>
+        
+<pluto-editor disable_ui notebookfile="https://juliapluto.github.io/weekly-call-notes/2022/02-10/notes.jl" statefile="https://juliapluto.github.io/weekly-call-notes/2022/02-10/notes.plutostate"  ></pluto-editor> 
+*/
+
+// or:
+
+/* 
+<pluto-editor notebook_id="fcc1b498-a141-11ec-342a-593db1016648"></pluto-editor>
+
+<pluto-editor notebook_id="21ebc942-a1ed-11ec-2505-7b242b18daf3"></pluto-editor>
+*/
+
+class PlutoEditorComponent extends HTMLElement {
+    constructor() {
+        super()
+    }
+
+    connectedCallback() {
+        const new_launch_params = Object.fromEntries(Object.entries(launch_params).map(([k, v]) => [k, from_attribute(this, k) ?? v]))
+
+        render(html`<${EditorLoader} launch_params=${new_launch_params} />`, this)
+    }
+}
+customElements.define("pluto-editor", PlutoEditorComponent)
