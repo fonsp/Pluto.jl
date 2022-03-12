@@ -1,4 +1,9 @@
-import Pluto
+# Collect timing and allocations information; this is printed later.
+using TimerOutputs: TimerOutput, @timeit
+const TOUT = TimerOutput()
+macro timeit_include(path::AbstractString) :(@timeit TOUT $path include($path)) end
+
+@timeit TOUT "import Pluto" import Pluto
 import Pluto.ExpressionExplorer
 import Pluto.ExpressionExplorer: SymbolsState, compute_symbolreferences, FunctionNameSignaturePair, UsingsImports, compute_usings_imports
 using Test
