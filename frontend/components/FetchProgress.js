@@ -35,12 +35,27 @@ export const read_Uint8Array_with_progress = async (response, on_progress) => {
     }
 }
 
+export const fake_read_Uint8Array_with_progress = async (response, on_progress) => {
+    const data = await response.arrayBuffer()
+    return new Promise((r) => {
+        let progress = 0
+        let handler = setInterval(() => {
+            on_progress(progress)
+            progress += 0.04
+            if (progress > 1) {
+                clearInterval(handler)
+                r(new Uint8Array(data))
+            }
+        }, 50)
+    })
+}
+
 export const FetchProgress = ({ progress }) =>
     progress == null || progress === 1
         ? null
         : html`<div
               style="
-              width: 200px;
+              width: 200px; 
               height: 27px;
               background: white;
               border: 5px solid #d1d9e4;

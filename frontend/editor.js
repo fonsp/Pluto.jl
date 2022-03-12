@@ -2,7 +2,7 @@ import { html, render, useEffect, useRef, useState } from "./imports/Preact.js"
 import "./common/NodejsCompatibilityPolyfill.js"
 
 import { Editor, default_path } from "./components/Editor.js"
-import { FetchProgress, read_Uint8Array_with_progress } from "./components/FetchProgress.js"
+import { FetchProgress, fake_read_Uint8Array_with_progress } from "./components/FetchProgress.js"
 import { BinderPhase } from "./common/Binder.js"
 import { unpack } from "./common/MsgPack.js"
 import { RawHTMLContainer } from "./components/CellOutput.js"
@@ -93,7 +93,7 @@ const EditorLoader = ({ launch_params }) => {
         if (!ready_for_editor && static_preview) {
             ;(async () => {
                 const r = await fetch(launch_params.statefile)
-                const data = await read_Uint8Array_with_progress(r, set_statefile_download_progress)
+                const data = await fake_read_Uint8Array_with_progress(r, set_statefile_download_progress)
                 const state = unpack(data)
                 initial_notebook_state_ref.current = state
                 set_ready_for_editor(true)
