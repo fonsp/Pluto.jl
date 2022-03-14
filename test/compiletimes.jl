@@ -28,7 +28,7 @@ wait_for_ready(nb)
     🍭 = Pluto.ServerSession(; options)
     server_task = @async Pluto.run(🍭)
 
-    retry(; delays=ExponentialBackOff(n=5, first_delay=0.5)) do
+    retry(; delays=fill(0.1, 20)) do
         HTTP.get("http://localhost:$port/edit").status == 200
     end
     server_task
