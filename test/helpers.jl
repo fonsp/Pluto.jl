@@ -7,6 +7,7 @@ macro timeit_include(path::AbstractString) :(@timeit TOUT $path include($path)) 
 import Pluto.ExpressionExplorer
 import Pluto.ExpressionExplorer: SymbolsState, compute_symbolreferences, FunctionNameSignaturePair, UsingsImports, compute_usings_imports
 using Test
+using HTTP
 import Distributed
 
 function Base.show(io::IO, s::SymbolsState)
