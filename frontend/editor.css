@@ -30,6 +30,8 @@
     --pluto-operator-ligatures: none;
     --julia-mono-font-stack: JuliaMono, Menlo, "Roboto Mono", "Lucida Sans Typewriter", "Source Code Pro", monospace;
     --sans-serif-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    --lato-ui-font-stack: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, Helvetica, Arial, "Apple Color Emoji",
+        "Segoe UI Emoji", "Segoe UI Symbol", system-ui, sans-serif;
 
     color-scheme: light dark;
 }
@@ -50,10 +52,15 @@ body {
     overflow-x: hidden;
     position: relative;
     min-height: 100vh;
+    background-color: var(--main-bg-color);
+}
+
+pluto-editor {
+    flex: 1 1 auto;
     display: flex;
     flex-direction: column;
     align-items: center;
-    background-color: var(--main-bg-color);
+    min-width: 0;
 }
 
 main {
@@ -79,14 +86,15 @@ body:not(.disable_ui) {
 /* | main=25px+700px+6px=731px | pluto-helpbox=350px - 500px | */
 /* min-width: 731px+ */
 
+/* CAN WE HAVE CONTAINER QUERIES PLESSSSS */
 @media screen and (min-width: calc(700px + 25px + 6px)) and (max-width: calc(700px + 25px + 6px + 500px)) {
-    body:not(.disable_ui) main {
+    body:not(.disable_ui) pluto-editor.fullscreen main {
         margin-left: 0px;
         align-self: flex-start;
     }
 }
 @media screen and (min-width: calc(700px + 25px + 6px + 500px)) and (max-width: calc(700px + 25px + 6px + 500px + 500px)) {
-    body:not(.disable_ui) main {
+    body:not(.disable_ui) pluto-editor.fullscreen main {
         margin-right: 500px;
         align-self: flex-end;
     }
@@ -444,7 +452,7 @@ pluto-output mjx-assistive-mml {
 
 /* HEADER */
 
-body > header {
+header#pluto-nav {
     /* position: absolute;
     top: 0px; */
     width: 100%;
@@ -459,7 +467,7 @@ body > header {
     font-size: 0.75rem;
 }
 
-body > header.show_export {
+header#pluto-nav.show_export {
     position: sticky;
     top: 0;
     transform: translateY(130px);
@@ -715,10 +723,10 @@ nav#at_the_top:after {
     }
 }
 
-body.binder > header > nav#at_the_top > pluto-filepicker > * {
+body.binder header#pluto-nav > nav#at_the_top > pluto-filepicker > * {
     display: none;
 }
-body.binder > header > nav#at_the_top > pluto-filepicker > a {
+body.binder header#pluto-nav > nav#at_the_top > pluto-filepicker > a {
     display: block;
     font-size: 16px;
     font-family: var(--julia-mono-font-stack);
@@ -726,33 +734,33 @@ body.binder > header > nav#at_the_top > pluto-filepicker > a {
     text-decoration: none;
 }
 
-body.nbpkg_restart_recommended > header,
-body.nbpkg_restart_required > header,
-body.binder.loading > header,
-body.process_dead > header,
-body.disconnected > header {
+body.nbpkg_restart_recommended header#pluto-nav,
+body.nbpkg_restart_required header#pluto-nav,
+body.binder.loading header#pluto-nav,
+body.process_dead header#pluto-nav,
+body.disconnected header#pluto-nav {
     position: sticky;
     top: 0;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
 }
 
-body.nbpkg_restart_recommended > header {
+body.nbpkg_restart_recommended header#pluto-nav {
     background-color: var(--restart-recc-header-color);
 }
-body.nbpkg_restart_required > header {
+body.nbpkg_restart_required header#pluto-nav {
     background-color: var(--restart-req-header-color);
 }
-body.process_dead > header {
+body.process_dead header#pluto-nav {
     background-color: var(--dead-process-header-color);
 }
-body.loading > header {
+body.loading header#pluto-nav {
     background-color: var(--loading-header-color);
 }
-body.disconnected > header {
+body.disconnected header#pluto-nav {
     background-color: var(--disconnected-header-color);
 }
-body.binder.loading > header {
+body.binder.loading header#pluto-nav {
     background-color: var(--binder-loading-header-color);
 }
 
@@ -836,8 +844,8 @@ body.is_recording .outline-frame.recording {
     box-shadow: inset 0px 0px 20px 20px #919bff2b;
 }
 
-body.recording_waiting_to_start > header,
-body.is_recording > header {
+body.recording_waiting_to_start header#pluto-nav,
+body.is_recording header#pluto-nav {
     display: none;
 }
 
@@ -901,24 +909,9 @@ main > preamble {
     pointer-events: none;
 }
 
-main > preamble #saveall-container {
-    margin-left: auto;
-    pointer-events: all;
-    right: min(0px, 700px + 25px - 100vw);
-    position: relative;
-    background: var(--overlay-button-bg);
-    color: var(--overlay-button-color);
-    padding: 5px 8px;
-    border: 3px solid var(--overlay-button-border);
-    border-radius: 12px;
-    height: 35px;
-    font-family: "Segoe UI Emoji", "Roboto Mono", monospace;
-    font-size: 0.75rem;
-    pointer-events: all;
-}
-
 .overlay-button {
     background: var(--overlay-button-bg);
+    color: var(--overlay-button-color);
     padding: 5px 8px;
     border: 3px solid var(--overlay-button-border);
     border-radius: 12px;
@@ -935,16 +928,21 @@ main > preamble #saveall-container {
 
 main > preamble #saveall-container {
     margin-left: auto;
-    right: min(0px, 700px + 25px - 100vw);
-    position: relative;
+}
+pluto-editor.fullscreen main > preamble #saveall-container {
+    transform: translateX(max(0px, 100vw - 700px - 25px));
+    /* position: relative; */
 }
 
 @media screen and (min-width: calc(700px + 25px + 6px + 500px)) {
-    main > preamble #saveall-container {
-        right: -500px;
+    pluto-editor.fullscreen main > preamble #saveall-container {
+        transform: translateX(500px);
     }
 }
 
+main > preamble #saveall-container.ask_to_save {
+    border-color: var(--overlay-button-border-save);
+}
 main > preamble #saveall-container.saving,
 main > preamble #saveall-container.saved {
     border-color: transparent;
@@ -1004,7 +1002,6 @@ pluto-output {
     padding-right: 10px;
     align-items: baseline;
     overflow-x: auto;
-
     background-color: var(--pluto-output-bg-color);
 }
 
@@ -1205,18 +1202,26 @@ pluto-shoulder {
     position: absolute;
     /* top: 0px; */
     /* bottom: 0px; */
-    left: -2000px;
-    width: 2000px;
+    --invisible-border: calc(0.5 * var(--pluto-cell-spacing));
+    --shoulder-width: calc(28px + var(--invisible-border));
+    --border-radius: calc(5px + var(--invisible-border));
+
+    left: calc(0px - var(--shoulder-width));
+    width: var(--shoulder-width);
+    border-radius: var(--border-radius) 0px 0px var(--border-radius);
     cursor: move;
     display: flex;
     flex-direction: row;
     justify-content: flex-end;
     align-items: flex-start;
-    /* Add an invisible border around the shoulder, to make it easier to click on. (The are between two cells is divided in two, each half belongs to the closest pluto-cell.) */
-    top: calc(0px - 0.5 * var(--pluto-cell-spacing));
-    bottom: calc(0px - 0.5 * var(--pluto-cell-spacing));
-    border-top: calc(0.5 * var(--pluto-cell-spacing)) solid rgba(0, 0, 0, 0);
-    border-bottom: calc(0.5 * var(--pluto-cell-spacing)) solid rgba(0, 0, 0, 0);
+    /* Add an invisible border around the shoulder, to make it easier to click on. (The area between two cells is divided in two, each half belongs to the closest pluto-cell.) */
+    top: calc(0px - var(--invisible-border));
+    bottom: calc(0px - var(--invisible-border));
+    border: var(--invisible-border) solid rgba(0, 0, 0, 0);
+    border-right: none;
+}
+pluto-editor.fullscreen pluto-shoulder {
+    --shoulder-width: 2000px;
 }
 
 pluto-shoulder:hover {
@@ -1679,7 +1684,7 @@ pkg-status-mark.disable_pkg > button > span::after {
     filter: var(--image-filters);
 }
 
-pkg-popup {
+pluto-popup {
     display: block;
     position: absolute;
     z-index: 50;
@@ -1687,15 +1692,12 @@ pkg-popup {
     /* top: calc((1.5em - 200px) * 0.5); */
     width: min(90vw, 251px);
     /* min-height: 80px; */
-    margin-left: 1.1rem;
-    margin-top: calc(0.5 * (1rem - 80px));
-    background: var(--pkg-popup-bg);
-    border: 3px solid var(--pkg-popup-border-color);
-    color: var(--black);
-    border-radius: 10px;
-    padding: 8px;
+    margin-left: 0.4rem;
+    margin-top: 0px;
+    margin-top: -1rem;
+    /* margin-top: calc(0.5 * (1rem - 80px)); */
     overflow-wrap: break-word;
-    font-family: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+    font-family: var(--lato-ui-font-stack);
     opacity: 0;
     transform: scale(0.2);
     transform-origin: left;
@@ -1703,11 +1705,26 @@ pkg-popup {
     pointer-events: none;
 }
 
-pkg-popup.visible {
+pluto-popup.visible {
     opacity: 1;
     transform: scale(1);
     transition: transform 0.2s ease-in-out, opacity 0.2s ease-in-out;
     pointer-events: initial;
+}
+
+pluto-popup > * {
+    display: block;
+    background: var(--overlay-button-bg);
+    border: 3px solid var(--overlay-button-border);
+    color: var(--black);
+    border-radius: 10px;
+    padding: 8px;
+    /* Slightly changes the layout of the three pkg buttons... in just the way that we want it! */
+    position: absolute;
+}
+pluto-popup > pkg-popup {
+    background: var(--pkg-popup-bg);
+    border: 3px solid var(--pkg-popup-border-color);
 }
 
 pkg-popup.busy {
@@ -1730,10 +1747,12 @@ pkg-popup .pkg-buttons {
     flex-direction: row;
 }
 
+a.stdout-info img,
 pkg-popup .pkg-buttons img {
     filter: var(--image-filters);
 }
 
+a.stdout-info,
 pkg-popup .pkg-buttons > * {
     display: block;
     height: 17px;
@@ -2013,6 +2032,7 @@ pluto-helpbox .cm-line {
     /* from https://docs.julialang.org/en/v1/assets/themes/documenter-light.css */
     font-family: "Roboto Mono", "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", "DejaVu Sans Mono", monospace;
     font-size: 0.95em;
+    line-height: initial;
 }
 pluto-helpbox pre code {
     font-size: 1em;
@@ -2093,7 +2113,7 @@ pluto-helpbox > section hr {
 
 footer {
     width: 100%;
-    height: 3.5rem;
+    min-height: 3.5rem;
     font-family: "Roboto Mono", monospace;
     font-size: 0.75rem;
     background-color: var(--footer-bg-color);
@@ -2102,10 +2122,11 @@ footer {
 }
 
 footer form {
-    height: 1.5rem;
+    min-height: 1.5rem;
     opacity: 1;
     transition: opacity 5s;
     display: flex;
+    flex-wrap: wrap;
 }
 
 footer form > * {
@@ -2148,7 +2169,7 @@ footer input {
     border-right: none;
 }
 
-body > header pluto-filepicker button,
+header#pluto-nav pluto-filepicker button,
 footer button {
     margin: 0px;
     background: var(--footer-filepicker-focus-color);
@@ -2395,7 +2416,76 @@ pluto-log-dot.Progress {
     overflow: hidden;
     padding: 0px;
 }
+pluto-log-dot.Stdout {
+    /* filter: sepia(0.3); */
+    --inner: hsl(36deg 20% 37%);
+    --outer: hsl(31deg 12% 28%);
+    background: radial-gradient(var(--inner), var(--inner) 20%, var(--outer));
+    color: #8ed975;
+    border: 6px solid #b7b7b7;
+    text-shadow: 1px 1px 2px #0000005e;
+    min-width: 18em;
+}
+pluto-log-dot.Stdout::after,
+pluto-log-dot.Stdout::before {
+    content: " ";
+    left: 6px;
+    right: 6px;
+    top: 6px;
+    bottom: 6px;
+    position: absolute;
+    display: block;
+    pointer-events: none;
+}
+pluto-log-dot.Stdout::before {
+    opacity: 0.3;
+    background: linear-gradient(349deg, #000000, transparent);
+}
+pluto-log-dot.Stdout::after {
+    --crt-spacing: 7px;
+    background: linear-gradient(180deg, hsl(37deg 20% 27%), transparent, #1a1a1a);
+    background-size: 100% var(--crt-spacing);
+    background-repeat: repeat;
+    opacity: 0.2;
+    animation: scroll-crt 1s linear infinite;
+    animation-play-state: paused;
+}
+/* To make space in the top right for the info button. */
+pluto-log-dot.Stdout pre::before {
+    content: " ";
+    width: 24px;
+    /* float is weird but it does exactly what we want here: take up space or trigger text wrapping only if needed to clear the top right corner. */
+    float: right;
+}
 
+a.stdout-info {
+    position: absolute;
+    right: 2px;
+    top: 2px;
+    z-index: 50;
+    pointer-events: initial;
+}
+
+@keyframes scroll-crt {
+    0% {
+        background-position: 0px 0px;
+    }
+    100% {
+        background-position: 0px var(--crt-spacing);
+    }
+}
+@media (prefers-reduced-motion: no-preference) {
+    pluto-log-dot.Stdout:hover::after {
+        animation-play-state: running;
+    }
+}
+
+pluto-log-dot jlerror {
+    display: block;
+    background: var(--main-bg-color);
+    padding: 0.6rem;
+    border-radius: 0.5rem;
+}
 pluto-log-dot jltree,
 pluto-log-dot jlpair {
     font-size: 0.6rem;
@@ -2410,7 +2500,7 @@ pluto-log-dot-kwarg {
     flex-direction: row;
 }
 pluto-log-dot-kwarg > * {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
 }
 pluto-log-dot-kwarg > pluto-key {
     color: var(--pluto-schema-types-color);
@@ -2435,7 +2525,7 @@ body.presentation #helpbox-wrapper {
     display: none !important;
 }
 
-body > nav#slide_controls {
+nav#slide_controls {
     display: none;
 }
 body.presentation > nav#slide_controls {
@@ -2446,23 +2536,23 @@ body.presentation > nav#slide_controls {
     z-index: 100;
 }
 
-body > nav#slide_controls > button {
+nav#slide_controls > button {
     position: static;
     padding: 5px;
 }
 
-body > nav#slide_controls > button > span::after {
+nav#slide_controls > button > span::after {
     content: " " !important;
     display: block;
     height: 30px;
     width: 30px;
     background-size: 30px 30px;
 }
-body > nav#slide_controls > button.prev > span::after {
+nav#slide_controls > button.prev > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-back-outline.svg);
     filter: var(--image-filters);
 }
-body > nav#slide_controls > button.next > span::after {
+nav#slide_controls > button.next > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-forward-outline.svg);
     filter: var(--image-filters);
 }

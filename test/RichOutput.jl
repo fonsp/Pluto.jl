@@ -98,7 +98,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             @test sizes[2] < sizes[1] * 1.5
             @test sizes[4] < sizes[3] * 1.5
 
-            WorkspaceManager.unmake_workspace((🍭, notebook))
+            WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
         end
 
         @testset "Overloaded Base.show" begin
@@ -133,7 +133,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             @test notebook.cells[3].output.mime isa MIME"text/plain"
             @test notebook.cells[3].output.body == "3"
             
-            WorkspaceManager.unmake_workspace((🍭, notebook))
+            WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
         end
 
         
@@ -336,7 +336,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             @test occursinerror("syntax: extra token after", notebook.cells[11])
         end
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
     end
 
     @testset "Stack traces" begin
@@ -417,7 +417,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                 @test occursin(escape_me, st[:msg])
             end
 
-            WorkspaceManager.unmake_workspace((🍭, notebook))
+            WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
         end
 
     end

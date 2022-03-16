@@ -188,6 +188,9 @@ export const Notebook = ({
                         global_definition_locations=${global_definition_locations}
                     />`
                 )}
+            ${cell_outputs_delayed && notebook.cell_order.length >= render_cell_outputs_minimum
+                ? html`<div style="font-family: system-ui; font-style: italic; text-align: center; padding: 5rem 1rem;">Loading...</div>`
+                : null}
         </pluto-notebook>
     `
 }

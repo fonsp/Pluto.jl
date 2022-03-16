@@ -142,12 +142,11 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
             </div>`
             break
         case "application/vnd.pluto.table+object":
-            return html` <${TableView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`
+            return html`<${TableView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`
             break
         case "application/vnd.pluto.stacktrace+object":
             return html`<div><${ErrorMessage} cell_id=${cell_id} ...${body} /></div>`
             break
-            body.cell_id
         case "application/vnd.pluto.divelement+object":
             return DivElement({ cell_id, ...body })
             break
@@ -160,8 +159,13 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
                 return html`<div></div>`
             }
             break
-        default:
+        case null:
+        case undefined:
+        case "":
             return html``
+            break
+        default:
+            return html`<pre title="Something went wrong displaying this object">🛑</pre>`
             break
     }
 }
@@ -244,13 +248,13 @@ let execute_inside_script_tag_that_replaces = async (script_element, fn) => {
         //@ts-ignore because of https://github.com/microsoft/TypeScript-DOM-lib-generator/issues/1260
         new_script_tag.attributes.setNamedItem(attr.cloneNode(true))
     }
+    new_script_tag.textContent = `{
+        window.____FUNCTION_TO_RUN_INSIDE_SCRIPT.result = window.____FUNCTION_TO_RUN_INSIDE_SCRIPT.function_to_run(window.____FUNCTION_TO_RUN_INSIDE_SCRIPT.currentScript)
+    }`
 
     // @ts-ignore
     // I use this long variable name to pass the function and result to and from the script we created
-    window.____FUNCTION_TO_RUN_INSIDE_SCRIPT = { function_to_run: fn, result: null }
-    new_script_tag.textContent = `{
-        window.____FUNCTION_TO_RUN_INSIDE_SCRIPT.result = window.____FUNCTION_TO_RUN_INSIDE_SCRIPT.function_to_run()
-    }`
+    window.____FUNCTION_TO_RUN_INSIDE_SCRIPT = { function_to_run: fn, currentScript: new_script_tag, result: null }
     // Put the script in the DOM, this will run the script
     script_element.parentNode.replaceChild(new_script_tag, script_element)
     // @ts-ignore - Get the result back
@@ -322,11 +326,11 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                     }
 
                     const cell = root_node.closest("pluto-cell")
-                    let { node: new_node, result } = await execute_inside_script_tag_that_replaces(node, async () => {
+                    let { node: new_node, result } = await execute_inside_script_tag_that_replaces(node, async (currentScript) => {
                         return await execute_dynamic_function({
                             environment: {
                                 this: script_id ? old_result : window,
-                                currentScript: document.currentScript,
+                                currentScript: currentScript,
                                 invalidation: invalidation,
                                 getPublishedObject: (id) => cell.getPublishedObject(id),
                                 ...observablehq_for_cells,

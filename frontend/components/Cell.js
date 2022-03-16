@@ -60,7 +60,7 @@ export const Cell = ({
     const on_update_doc_query = pluto_actions.set_doc_query
     const on_focus_neighbor = pluto_actions.focus_on_neighbor
     const on_change = useCallback((val) => pluto_actions.set_local_cell(cell_id, val), [cell_id, pluto_actions])
-    const variables = useMemo(() => Object.keys(cell_dependencies), [cell_dependencies])
+    const variables = useMemo(() => Object.keys(cell_dependencies?.downstream_cells_map ?? {}), [cell_dependencies])
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
     const [cm_highlighted_line, set_cm_highlighted_line] = useState(null)

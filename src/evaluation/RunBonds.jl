@@ -1,7 +1,7 @@
 function set_bond_values_reactive(; 
     session::ServerSession, notebook::Notebook, 
     bound_sym_names::AbstractVector{Symbol}, 
-    is_first_values::AbstractVector{Bool}=[true for x in bound_sym_names], 
+    is_first_values::AbstractVector{Bool}=[false for x in bound_sym_names], 
     initiator=nothing,
     kwargs...
 )::Union{Task,TopologicalOrder}

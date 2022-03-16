@@ -38,16 +38,34 @@ const in_request_animation_frame = (fn) => {
 export const SelectionArea = ({ on_selection, set_scroller, cell_order }) => {
     const mouse_position_ref = useRef()
     const is_selecting_ref = useRef(false)
+    const element_ref = useRef(/** @type {HTMLElement} */ (null))
 
     const [selection_start, set_selection_start] = useState(null)
     const [selection_end, set_selection_end] = useState(null)
 
     useEffect(() => {
+        const event_target_inside_this_notebook = (e) => {
+            if (e.target == null) {
+                return false
+            }
+
+            // this should also work for notebooks inside notebooks!
+            let closest_editor = e.target.closest("pluto-editor")
+            let my_editor = element_ref.current.closest("pluto-editor")
+
+            return closest_editor === my_editor
+        }
+
         const onmousedown = (e) => {
             // @ts-ignore
-            const t = e.target.tagName
+            const t = e.target?.tagName
+
             // TODO: also allow starting the selection in one codemirror and stretching it to another cell
-            if (e.button === 0 && (t === "BODY" || t === "MAIN" || t === "PLUTO-NOTEBOOK" || t === "PREAMBLE")) {
+            if (
+                e.button === 0 &&
+                event_target_inside_this_notebook(e) &&
+                (t === "PLUTO-EDITOR" || t === "MAIN" || t === "PLUTO-NOTEBOOK" || t === "PREAMBLE")
+            ) {
                 on_selection([])
                 set_selection_start({ x: e.pageX, y: e.pageY })
                 set_selection_end({ x: e.pageX, y: e.pageY })
@@ -155,17 +173,17 @@ export const SelectionArea = ({ on_selection, set_scroller, cell_order }) => {
         }
     }, [selection_start])
 
-    if (selection_start == null) {
-        return null
-    }
-
     // let translateY = `translateY(${Math.min(selection_start.y, selection_end.y)}px)`
     // let translateX = `translateX(${Math.min(selection_start.x, selection_end.x)}px)`
     // let scaleX = `scaleX(${Math.abs(selection_start.x - selection_end.x)})`
     // let scaleY = `scaleY(${Math.abs(selection_start.y - selection_end.y)})`
 
+    if (selection_start == null) {
+        return html`<span ref=${element_ref}></span>`
+    }
     return html`
-        <selectarea
+        <pl-select-area
+            ref=${element_ref}
             style=${{
                 position: "absolute",
                 background: "rgba(40, 78, 189, 0.24)",
@@ -183,6 +201,6 @@ export const SelectionArea = ({ on_selection, set_scroller, cell_order }) => {
                 // transformOrigin: "top left",
                 // transform: `${translateX} ${translateY} ${scaleX} ${scaleY}`,
             }}
-        />
+        ></pl-select-area>
     `
 }

@@ -1,7 +1,9 @@
-import { html, Component, useState, useEffect, useMemo } from "../imports/Preact.js"
+import { html, Component } from "../imports/Preact.js"
+import * as preact from "../imports/Preact.js"
 import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
+import { empty_notebook_state, set_disable_ui_css } from "../editor.js"
 import { create_pluto_connection } from "../common/PlutoConnection.js"
 import { init_feedback } from "../common/Feedback.js"
 import { serialize_cells, deserialize_cells, detect_deserializer } from "../common/Serialization.js"
@@ -16,17 +18,13 @@ import { UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
 import { Scroller } from "./Scroller.js"
 import { ExportBanner } from "./ExportBanner.js"
-import { PkgPopup } from "./PkgPopup.js"
+import { Popup } from "./Popup.js"
 
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
-import { handle_log } from "../common/Logging.js"
 import { PlutoContext, PlutoBondsContext, PlutoJSInitializingContext, SetWithEmptyCallback } from "../common/PlutoContext.js"
-import { unpack } from "../common/MsgPack.js"
-import { PkgTerminalView } from "./PkgTerminalView.js"
 import { start_binder, BinderPhase, count_stat } from "../common/Binder.js"
 import { setup_mathjax } from "../common/SetupMathJax.js"
-import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js"
 import { BinderButton } from "./BinderButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
 import { ProgressBar } from "./ProgressBar.js"
@@ -35,7 +33,10 @@ import { RawHTMLContainer } from "./CellOutput.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
 import { HijackExternalLinksToOpenInNewTab } from "./HackySideStuff/HijackExternalLinksToOpenInNewTab.js"
 
-const default_path = "..."
+// This is imported asynchronously - uncomment for development
+// import environment from "../common/Environment.js"
+
+export const default_path = "..."
 const DEBUG_DIFFING = false
 
 // from our friends at https://stackoverflow.com/a/2117523
@@ -62,7 +63,7 @@ const ProcessStatus = {
 /**
  * Map of status => Bool. In order of decreasing prioirty.
  */
-const statusmap = (state) => ({
+const statusmap = (state, launch_params) => ({
     disconnected: !(state.connected || state.initializing || state.static_preview),
     loading:
         (state.binder_phase != null && BinderPhase.wait_for_user < state.binder_phase && state.binder_phase < BinderPhase.ready) ||
@@ -161,6 +162,22 @@ const first_true_key = (obj) => {
  */
 
 /**
+ * @typedef LaunchParameters
+ * @type {{
+ *  notebook_id: string?,
+ *  statefile: string?,
+ *  notebookfile: string?,
+ *  disable_ui: boolean,
+ *  preamble_html: string?,
+ *  isolated_cell_ids: string[]?,
+ *  binder_url: string?,
+ *  slider_server_url: string?,
+ *  recording_url: string?,
+ *  recording_audio_url: string?,
+ * }}
+ */
+
+/**
  * @typedef NotebookData
  * @type {{
  *  notebook_id: string,
@@ -184,59 +201,20 @@ const first_true_key = (obj) => {
 const url_logo_big = document.head.querySelector("link[rel='pluto-logo-big']").getAttribute("href")
 const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']").getAttribute("href")
 
-const url_params = new URLSearchParams(window.location.search)
-const launch_params = {
-    //@ts-ignore
-    notebook_id: url_params.get("id") ?? window.pluto_notebook_id,
-    //@ts-ignore
-    statefile: url_params.get("statefile") ?? window.pluto_statefile,
-    //@ts-ignore
-    notebookfile: url_params.get("notebookfile") ?? window.pluto_notebookfile,
-    //@ts-ignore
-    disable_ui: !!(url_params.get("disable_ui") ?? window.pluto_disable_ui),
-    //@ts-ignore
-    preamble_html: url_params.get("preamble_html") ?? window.pluto_preamble_html,
-    //@ts-ignore
-    isolated_cell_ids: url_params.has("isolated_cell_id") ? url_params.getAll("isolated_cell_id") : window.pluto_isolated_cell_ids,
-    //@ts-ignore
-    binder_url: url_params.get("binder_url") ?? window.pluto_binder_url,
-    //@ts-ignore
-    slider_server_url: url_params.get("slider_server_url") ?? window.pluto_slider_server_url,
-    //@ts-ignore
-    recording_url: url_params.get("recording_url") ?? window.pluto_recording_url,
-    //@ts-ignore
-    recording_audio_url: url_params.get("recording_audio_url") ?? window.pluto_recording_audio_url,
-}
-console.log("Launch parameters: ", launch_params)
-
 /**
- *
- * @returns {NotebookData}
+ * @typedef EditorProps
+ * @type {{launch_params: LaunchParameters,initial_notebook_state: NotebookData,}}
+ * @augments Component<EditorProps,{}>
  */
-const initial_notebook = () => ({
-    notebook_id: launch_params.notebook_id,
-    path: default_path,
-    shortpath: "",
-    in_temp_dir: true,
-    process_status: "starting",
-    last_save_time: 0.0,
-    last_hot_reload_time: 0.0,
-    cell_inputs: {},
-    cell_results: {},
-    cell_dependencies: {},
-    cell_order: [],
-    cell_execution_order: [],
-    published_objects: {},
-    bonds: {},
-    nbpkg: null,
-})
-
 export class Editor extends Component {
-    constructor() {
-        super()
+    constructor(/** @type {EditorProps} */ props) {
+        super(props)
+
+        console.log(this.props)
+        const { launch_params, initial_notebook_state } = this.props
 
         this.state = {
-            notebook: /** @type {NotebookData} */ initial_notebook(),
+            notebook: /** @type {NotebookData} */ initial_notebook_state,
             cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
@@ -244,7 +222,6 @@ export class Editor extends Component {
 
             disable_ui: launch_params.disable_ui,
             static_preview: launch_params.statefile != null,
-            statefile_download_progress: null,
             offer_binder: launch_params.notebookfile != null && launch_params.binder_url != null,
             binder_phase: null,
             binder_session_url: null,
@@ -262,6 +239,10 @@ export class Editor extends Component {
 
             last_created_cell: null,
             selected_cells: [],
+
+            extended_components: {
+                CustomHeader: null,
+            },
 
             is_recording: false,
             recording_waiting_to_start: false,
@@ -660,7 +641,10 @@ patch: ${JSON.stringify(
                         let apply_promise = Promise.resolve()
                         if (message?.response?.from_reset) {
                             console.log("Trying to reset state after failure")
-                            apply_promise = apply_notebook_patches(message.patches, initial_notebook()).catch((e) => {
+                            apply_promise = apply_notebook_patches(
+                                message.patches,
+                                empty_notebook_state({ notebook_id: this.state.notebook.notebook_id })
+                            ).catch((e) => {
                                 alert("Oopsie!! please refresh your browser and everything will be alright!")
                                 throw e
                             })
@@ -702,6 +686,16 @@ patch: ${JSON.stringify(
         const on_establish_connection = async (client) => {
             // nasty
             Object.assign(this.client, client)
+            try {
+                const { default: environment } = await import(this.client.session_options.server.injected_javascript_data_url)
+                const { custom_editor_header_component } = environment({ client, editor: this, imports: { preact } })
+                this.setState({
+                    extended_components: {
+                        ...this.state.extended_components,
+                        CustomHeader: custom_editor_header_component,
+                    },
+                })
+            } catch (e) {}
 
             // @ts-ignore
             window.version_info = this.client.version_info // for debugging
@@ -751,7 +745,7 @@ patch: ${JSON.stringify(
                       actions: this.actions,
                       launch_params: launch_params,
                       apply_notebook_patches,
-                      get_original_state: () => this.original_state,
+                      get_original_state: () => this.props.initial_notebook_state,
                       get_current_state: () => this.state.notebook,
                   })
                 : nothing_actions({
@@ -759,30 +753,18 @@ patch: ${JSON.stringify(
                   })
 
         this.on_disable_ui = () => {
-            document.body.classList.toggle("disable_ui", this.state.disable_ui)
-            document.head.querySelector("link[data-pluto-file='hide-ui']").setAttribute("media", this.state.disable_ui ? "all" : "print")
+            set_disable_ui_css(this.state.disable_ui)
+
             //@ts-ignore
             this.actions = this.state.disable_ui || (launch_params.slider_server_url != null && !this.state.connected) ? this.fake_actions : this.real_actions //heyo
         }
         this.on_disable_ui()
 
-        this.original_state = null
         if (this.state.static_preview) {
-            ;(async () => {
-                const r = await fetch(launch_params.statefile)
-                const data = await read_Uint8Array_with_progress(r, (progress) => {
-                    this.setState({
-                        statefile_download_progress: progress,
-                    })
-                })
-                const state = unpack(data)
-                this.original_state = state
-                this.setState({
-                    notebook: state,
-                    initializing: false,
-                    binder_phase: this.state.offer_binder ? BinderPhase.wait_for_user : null,
-                })
-            })()
+            this.setState({
+                initializing: false,
+                binder_phase: this.state.offer_binder ? BinderPhase.wait_for_user : null,
+            })
             // view stats on https://stats.plutojl.org/
             count_stat(`article-view`)
         } else {
@@ -1180,13 +1162,14 @@ patch: ${JSON.stringify(
     }
 
     componentWillUpdate(new_props, new_state) {
-        this.cached_status = statusmap(new_state)
+        this.cached_status = statusmap(new_state, this.props.launch_params)
     }
 
     render() {
+        const { launch_params } = this.props
         let { export_menu_open, notebook } = this.state
 
-        const status = this.cached_status ?? statusmap(this.state)
+        const status = this.cached_status ?? statusmap(this.state, launch_params)
         const statusval = first_true_key(status)
 
         if (status.isolated_cell_view) {
@@ -1234,7 +1217,7 @@ patch: ${JSON.stringify(
                     <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
                     <${Scroller} active=${this.state.scroller} />
                     <${ProgressBar} notebook=${this.state.notebook} binder_phase=${this.state.binder_phase} status=${status}/>
-                    <header className=${export_menu_open ? "show_export" : ""}>
+                    <header id="pluto-nav" className=${export_menu_open ? "show_export" : ""}>
                         <${ExportBanner}
                             notebookfile_url=${this.export_url("notebookfile")}
                             notebookexport_url=${this.export_url("notebookexport")}
@@ -1259,9 +1242,14 @@ patch: ${JSON.stringify(
                             }>
                                 <h1><img id="logo-big" src=${url_logo_big} alt="Pluto.jl" /><img id="logo-small" src=${url_logo_small} /></h1>
                             </a>
+                            ${
+                                this.state.extended_components.CustomHeader &&
+                                html`<${this.state.extended_components.CustomHeader} notebook_id=${this.state.notebook.notebook_id} />`
+                            }
                             <div class="flex_grow_1"></div>
                             ${
-                                status.binder
+                                this.state.extended_components.CustomHeader == null &&
+                                (status.binder
                                     ? html`<pluto-filepicker><a href=${this.export_url("notebookfile")} target="_blank">Save notebook...</a></pluto-filepicker>`
                                     : html`<${FilePicker}
                                           client=${this.client}
@@ -1273,7 +1261,7 @@ patch: ${JSON.stringify(
                                           }}
                                           placeholder="Save notebook..."
                                           button_label=${notebook.in_temp_dir ? "Choose" : "Move"}
-                                      />`
+                                      />`)
                             }
                             <div class="flex_grow_2"></div>
                             <button class="toggle_export" title="Export..." onClick=${() => {
@@ -1315,16 +1303,16 @@ patch: ${JSON.stringify(
                         reset_notebook_state=${() =>
                             this.setStatePromise(
                                 immer((state) => {
-                                    state.notebook = this.original_state
+                                    state.notebook = this.props.initial_notebook_state
                                 })
                             )}
                     />
                     
-                    <${BinderButton} binder_phase=${this.state.binder_phase} start_binder=${() =>
-            start_binder({ setStatePromise: this.setStatePromise, connect: this.connect, launch_params: launch_params })} notebookfile=${
-            launch_params.notebookfile == null ? null : new URL(launch_params.notebookfile, window.location.href).href
-        } />
-                    <${FetchProgress} progress=${this.state.statefile_download_progress} />
+                    <${BinderButton} 
+                        binder_phase=${this.state.binder_phase} 
+                        start_binder=${() => start_binder({ setStatePromise: this.setStatePromise, connect: this.connect, launch_params: launch_params })} 
+                        notebookfile=${launch_params.notebookfile == null ? null : new URL(launch_params.notebookfile, window.location.href).href} />
+                    
                     ${launch_params.preamble_html ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />` : null}
                     <${Main}>
                         <${Preamble}
@@ -1378,7 +1366,7 @@ patch: ${JSON.stringify(
                         on_update_doc_query=${this.actions.set_doc_query}
                         notebook=${this.state.notebook}
                     />
-                    <${PkgPopup} notebook=${this.state.notebook}/>
+                    <${Popup} notebook=${this.state.notebook}/>
                     <${UndoDelete}
                         recently_deleted=${this.state.recently_deleted}
                         on_click=${() => {

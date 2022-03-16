@@ -22,6 +22,8 @@ function run_reactive!(
     else
         @assert !isready(notebook.executetoken) "run_reactive!(; already_in_run=true) was called when no reactive run was launched."
     end
+	
+	@assert will_run_code(notebook)
 
     old_workspace_name, _ = WorkspaceManager.bump_workspace_module((session, notebook))
 
@@ -96,7 +98,9 @@ function run_reactive!(
     to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_errable)...)
 
     to_reimport = union!(Set{Expr}(), map(c -> new_topology.codes[c].module_usings_imports.usings, setdiff(notebook.cells, to_run))...)
-    deletion_hook((session, notebook), old_workspace_name, nothing, to_delete_vars, to_delete_funcs, to_reimport; to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
+    if will_run_code(notebook)
+		deletion_hook((session, notebook), old_workspace_name, nothing, to_delete_vars, to_delete_funcs, to_reimport; to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
+	end
 
     delete!.([notebook.bonds], to_delete_vars)
 
@@ -110,7 +114,7 @@ function run_reactive!(
 		cell.logs = []
 		send_notebook_changes_throttled()
 
-        if any_interrupted || notebook.wants_to_interrupt
+        if any_interrupted || notebook.wants_to_interrupt || !will_run_code(notebook)
             relay_reactivity_error!(cell, InterruptException())
         else
             run = run_single!(
@@ -131,7 +135,9 @@ function run_reactive!(
         end
 
         implicit_usings = collect_implicit_usings(new_topology, cell)
-        if !is_resolved(new_topology) && can_help_resolve_cells(new_topology, cell)
+		if !will_run_code(notebook)
+			# then skip these special cases.
+        elseif !is_resolved(new_topology) && can_help_resolve_cells(new_topology, cell)
             notebook.topology = new_new_topology = resolve_topology(session, notebook, new_topology, old_workspace_name)
 
             if !isempty(implicit_usings)
@@ -367,7 +373,11 @@ function resolve_topology(
 			end
 
 			result = try
-				analyze_macrocell(cell)
+				if will_run_code(notebook)
+					analyze_macrocell(cell)
+				else
+					Failure(ErrorException("shutdown"))
+				end
 			catch error
 				@error "Macro call expansion failed with a non-macroexpand error" error
 				Failure(error)
@@ -504,7 +514,7 @@ function update_save_run!(
 end
 
 update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs...) = update_save_run!(session, notebook, [cell]; kwargs...)
-update_run!(args...) = update_save_run!(args...; save=false)
+update_run!(args...; kwargs...) = update_save_run!(args...; save=false, kwargs...)
 
 function notebook_differences(from::Notebook, to::Notebook)
 	old_codes = Dict(

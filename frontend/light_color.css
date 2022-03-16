@@ -93,6 +93,7 @@
         /*saveall container*/
         --overlay-button-bg: #ffffff;
         --overlay-button-border: #f3f2f2;
+        --overlay-button-border-save: #f3f2f2;
 
         /*input_context_menu*/
         --input-context-menu-border-color: rgba(0, 0, 0, 0.1);
