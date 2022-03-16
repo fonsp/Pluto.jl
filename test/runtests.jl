@@ -4,6 +4,9 @@ include("helpers.jl")
 
 @timeit_include("compiletimes.jl")
 verify_no_running_processes()
+show(TOUT; compact=true, sortby=:firstexec)
+exit(0)
+
 @timeit_include("Events.jl")
 verify_no_running_processes()
 @timeit_include("WorkspaceManager.jl")
