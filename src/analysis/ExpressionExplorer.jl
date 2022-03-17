@@ -995,7 +995,8 @@ function maybe_macroexpand(ex::Expr; recursive::Bool=false, expand_bind::Bool=tr
         # Not using broadcasting because that is expensive compilation-wise for `result.args::Any`.
         expanded = Any[]
         for arg in result.args
-            push!(expanded, arg)
+            ex = maybe_macroexpand(arg; recursive, expand_bind)
+            push!(expanded, ex)
         end
         return Expr(result.head, expanded...)
     else
