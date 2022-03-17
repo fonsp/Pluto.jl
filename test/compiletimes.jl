@@ -29,16 +29,15 @@ wait_for_ready(nb)
 
 HTTP.get("http://github.com")
 
-# This part doesn't terminate on any Windows system.
-# @timeit TOUT "Pluto.run" server_task = @eval let
-#     port = 13435
-#     options = Pluto.Configuration.from_flat_kwargs(; port, launch_browser=false, workspace_use_distributed=false, require_secret_for_access=false, require_secret_for_open_links=false)
-#     🍭 = Pluto.ServerSession(; options)
-#     server_task = @async Pluto.run(🍭)
-#
-#     # Give the async task time to start.
-#     sleep(1)
-#
-#     HTTP.get("http://localhost:$port/edit").status == 200
-#     server_task
-# end
+@timeit TOUT "Pluto.run" server_task = @eval let
+    port = 13435
+    options = Pluto.Configuration.from_flat_kwargs(; port, launch_browser=false, workspace_use_distributed=false, require_secret_for_access=false, require_secret_for_open_links=false)
+    🍭 = Pluto.ServerSession(; options)
+    server_task = @async Pluto.run(🍭)
+
+    # Give the async task time to start.
+    sleep(1)
+
+    HTTP.get("http://localhost:$port/edit").status == 200
+    server_task
+end
