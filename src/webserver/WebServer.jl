@@ -69,7 +69,7 @@ function run(; kwargs...)
 end
 
 function run(options::Configuration.Options)
-    session = ServerSession(;options=options)
+    session = ServerSession(; options)
     run(session)
 end
 
