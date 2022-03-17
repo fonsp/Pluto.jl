@@ -9,8 +9,7 @@ import Base: union, union!, ==, push!
 # TWO STATE OBJECTS
 ###
 
-# TODO: use GlobalRef instead
-FunctionName = Array{Symbol,1}
+const FunctionName = Array{Symbol,1}
 
 struct FunctionNameSignaturePair
     name::FunctionName
@@ -192,11 +191,16 @@ uncurly!(s::Symbol, scopestate = nothing)::Tuple{Symbol,SymbolsState} = s, Symbo
 "Turn `:(Base.Submodule.f)` into `[:Base, :Submodule, :f]` and `:f` into `[:f]`."
 function split_funcname(funcname_ex::Expr)::FunctionName
     if funcname_ex.head == :(.)
-        vcat(split_funcname.(funcname_ex.args)...)
+        out = FunctionName()
+        args = funcname_ex.args
+        for arg in args
+            push!(out, split_funcname(arg)...)
+        end
+        return out
     else
         # a call to a function that's not a global, like calling an array element: `funcs[12]()`
         # TODO: explore symstate!
-        Symbol[]
+        return Symbol[]
     end
 end
 
@@ -264,13 +268,13 @@ function generate_funcnames(funccall::FunctionName)
     calls
 end
 
-"""Turn `Symbol[:Module, :func]` into Symbol("Module.func").
+"""
+Turn `Symbol[:Module, :func]` into Symbol("Module.func").
 
 This is **not** the same as the expression `:(Module.func)`, but is used to identify the function name using a single `Symbol` (like normal variables).
-This means that it is only the inverse of `ExpressionExplorer.split_funcname` iff `length(parts) ≤ 1`."""
-function join_funcname_parts(parts::FunctionName)::Symbol
-    join(parts .|> String, ".") |> Symbol
-end
+This means that it is only the inverse of `ExpressionExplorer.split_funcname` iff `length(parts) ≤ 1`.
+"""
+join_funcname_parts(parts::FunctionName) = Symbol(join(parts, '.'))
 
 # this is stupid -- désolé
 function is_joined_funcname(joined::Symbol)
@@ -968,15 +972,15 @@ maybe_untuple(es) =
 """
 If the macro is **known to Pluto**, expand or 'mock expand' it, if not, return the expression. Macros from external packages are not expanded, this is done later in the pipeline. See https://github.com/fonsp/Pluto.jl/pull/1032
 """
-function maybe_macroexpand(ex::Expr; recursive = false, expand_bind = true)
-    result = if ex.head === :macrocall
-        funcname = ex.args[1] |> split_funcname
+function maybe_macroexpand(ex::Expr; recursive::Bool=false, expand_bind::Bool=true)
+    result::Expr = if ex.head === :macrocall
+        funcname = split_funcname(ex.args[1])
         funcname_joined = join_funcname_parts(funcname)
 
         args = ex.args[3:end]
 
         if funcname_joined ∈ (expand_bind ? can_macroexpand : can_macroexpand_no_bind)
-            macroexpand(PlutoRunner, ex; recursive = false)
+            macroexpand(PlutoRunner, ex; recursive=false)::Expr
         elseif length(args) ≥ 2 && ex.args[1] != GlobalRef(Core, Symbol("@doc"))
             # for macros like @test a ≈ b atol=1e-6, read assignment in 2nd & later arg as keywords
             macro_kwargs_as_kw(ex)
@@ -988,9 +992,15 @@ function maybe_macroexpand(ex::Expr; recursive = false, expand_bind = true)
     end
 
     if recursive && (result isa Expr)
-        Expr(result.head, maybe_macroexpand.(result.args; recursive = recursive, expand_bind = expand_bind)...)
+        # Not using broadcasting because that is expensive compilation-wise for `result.args::Any`.
+        expanded = Any[]
+        for arg in result.args
+            ex = maybe_macroexpand(arg; recursive, expand_bind)
+            push!(expanded, ex)
+        end
+        return Expr(result.head, expanded...)
     else
-        result
+        return result
     end
 end
 
