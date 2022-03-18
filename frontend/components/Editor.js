@@ -762,10 +762,9 @@ patch: ${JSON.stringify(
         this.on_disable_ui()
 
         if (this.state.static_preview) {
-            this.setState({
-                initializing: false,
-                binder_phase: this.state.offer_binder ? BinderPhase.wait_for_user : null,
-            })
+            // Modifying this.state directly because this is inside the constructor, and setState does not work the way you expect it to.
+            this.state.initializing = false
+            this.state.binder_phase = this.state.offer_binder ? BinderPhase.wait_for_user : null
             // view stats on https://stats.plutojl.org/
             count_stat(`article-view`)
         } else {
@@ -1115,6 +1114,9 @@ patch: ${JSON.stringify(
                 // and don't prevent the unload
             }
         })
+
+        this.componentWillUpdate(this.props, this.state)
+        this.componentDidUpdate(this.props, this.state)
     }
 
     componentDidUpdate(old_props, old_state) {
