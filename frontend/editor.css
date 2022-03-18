@@ -508,9 +508,8 @@ header.show_export aside#export div#container {
 a.export_card {
     margin: 20px 5px;
     flex: 0 0 auto;
-    width: 160px;
+    width: 169px;
     height: 90px;
-
     border: 5px solid transparent;
     background: var(--export-card-bg-color);
     border-radius: 8px;
@@ -543,6 +542,8 @@ a.export_card section {
     color: var(--export-card-text-color);
     font-weight: 500;
     /* font-family: system-ui; */
+    /* font-size: 14px; */
+    padding: 3px;
 }
 aside#export button.toggle_export {
     margin-left: auto;
