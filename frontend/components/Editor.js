@@ -1108,7 +1108,6 @@ patch: ${JSON.stringify(
 
     componentDidMount() {
         if (this.state.static_preview) {
-            console.log("setting state to initializing: false")
             this.setState({
                 initializing: false,
                 binder_phase: this.state.offer_binder ? BinderPhase.wait_for_user : null,
