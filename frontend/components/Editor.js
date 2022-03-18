@@ -761,17 +761,6 @@ patch: ${JSON.stringify(
         }
         this.on_disable_ui()
 
-        if (this.state.static_preview) {
-            this.setState({
-                initializing: false,
-                binder_phase: this.state.offer_binder ? BinderPhase.wait_for_user : null,
-            })
-            // view stats on https://stats.plutojl.org/
-            count_stat(`article-view`)
-        } else {
-            this.connect()
-        }
-
         setInterval(() => {
             if (!this.state.static_preview && document.visibilityState === "visible") {
                 // view stats on https://stats.plutojl.org/
@@ -1115,6 +1104,20 @@ patch: ${JSON.stringify(
                 // and don't prevent the unload
             }
         })
+    }
+
+    componentDidMount() {
+        if (this.state.static_preview) {
+            console.log("setting state to initializing: false")
+            this.setState({
+                initializing: false,
+                binder_phase: this.state.offer_binder ? BinderPhase.wait_for_user : null,
+            })
+            // view stats on https://stats.plutojl.org/
+            count_stat(`article-view`)
+        } else {
+            this.connect()
+        }
     }
 
     componentDidUpdate(old_props, old_state) {
