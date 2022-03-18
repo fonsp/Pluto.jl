@@ -153,7 +153,7 @@ class PlutoEditorComponent extends HTMLElement {
     }
 
     connectedCallback() {
-        const new_launch_params = Object.fromEntries(Object.entries(launch_params).map(([k, v]) => [k, from_attribute(this, k) || v]))
+        const new_launch_params = Object.fromEntries(Object.entries(launch_params).map(([k, v]) => [k, from_attribute(this, k) ?? v]))
 
         render(html`<${EditorLoader} launch_params=${new_launch_params} />`, this)
     }
