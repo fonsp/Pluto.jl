@@ -98,7 +98,9 @@ const first_true_key = (obj) => {
  *  cell_id: string,
  *  code: string,
  *  code_folded: boolean,
- *  metadata: Object,
+ *  metadata: {
+ *    disabled: boolean
+ *  },
  * }}
  */
 
@@ -336,7 +338,9 @@ export class Editor extends Component {
                             ...cell,
                             // Fill the cell with empty code remotely, so it doesn't run unsafe code
                             code: "",
-                            metadata: {},
+                            metadata: {
+                                disabled: false,
+                            },
                         }
                     }
                     notebook.cell_order = [
@@ -374,7 +378,9 @@ export class Editor extends Component {
                         cell_id: uuidv4(),
                         code: code,
                         code_folded: false,
-                        metadata: {},
+                        metadata: {
+                            disabled: false,
+                        },
                     }
                 })
 
@@ -432,7 +438,7 @@ export class Editor extends Component {
                         cell_id: id,
                         code,
                         code_folded: false,
-                        metadata: {},
+                        metadata: { disabled: false },
                     }
                     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
                 })
@@ -825,7 +831,7 @@ patch: ${JSON.stringify(
                 // if the other cell depends on the variable `sym`...
                 if (deps.upstream_cells_map.hasOwnProperty(sym)) {
                     // and the cell is not disabled
-                    const running_disabled = this.state.notebook.cell_inputs[cell_id]?.metadata.disabled || false
+                    const running_disabled = this.state.notebook.cell_inputs[cell_id].metadata.disabled
                     return !running_disabled
                 }
             })

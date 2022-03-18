@@ -55,7 +55,7 @@ export const Cell = ({
     nbpkg,
     global_definition_locations,
 }) => {
-    const running_disabled = metadata.disabled || false
+    const { disabled: running_disabled } = metadata;
     let pluto_actions = useContext(PlutoContext)
     const on_update_doc_query = pluto_actions.set_doc_query
     const on_focus_neighbor = pluto_actions.focus_on_neighbor
