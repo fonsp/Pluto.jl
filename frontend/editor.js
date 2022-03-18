@@ -54,11 +54,12 @@ const launch_params = {
 console.log("Launch parameters: ", launch_params)
 
 const truthy = (x) => x === "" || x === "true"
+const falsey = (x) => x === "false"
 
 const from_attribute = (element, name) => {
     const val = element.getAttribute(name)
     if (name === "disable_ui") {
-        return truthy(val)
+        return truthy(val) ? true : falsey(val) ? false : null
     } else if (name === "isolated_cell_id") {
         return val == null ? null : val.split(",")
     } else {
