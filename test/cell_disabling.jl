@@ -35,7 +35,9 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
     should_be_disabled = [1, 3, 5]
     @test get_disabled_cells(notebook) == should_be_disabled
     @test notebook.cells[1].metadata["disabled"] == true
-    @test !any(haskey(notebook.cells[i].metadata , "disabled") for i=2:5)
+
+    # metadatum will exists in memory, but not in the serialized form
+    @test all(haskey(notebook.cells[i].metadata , "disabled") for i=1:5)
 
     # change x, this change should not propagate through y
     original_y_output = notebook.cells[1].output.body
@@ -70,7 +72,7 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
     @test notebook.cells[6].output.body == original_6_output
 
     # reactivate first cell - still all cells should be running_disabled
-    pop!(notebook.cells[1].metadata, "disabled", false)
+    notebook.cells[1].metadata["disabled"] = false
     update_run!(🍭, notebook, notebook.cells)
     @test get_disabled_cells(notebook) == collect(1:6)
 
@@ -83,7 +85,7 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
     @test notebook.cells[5].output.body == original_w_output
 
     # reactivate root cell
-    pop!(notebook.cells[2].metadata, "disabled", false)
+    notebook.cells[2].metadata["disabled"] = false
     update_run!(🍭, notebook, notebook.cells)
     @test get_disabled_cells(notebook) == []
 
@@ -100,7 +102,7 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
     @test get_disabled_cells(notebook) == should_be_disabled
 
     # and reactivate it
-    pop!(notebook.cells[1].metadata, "disabled", false)
+    notebook.cells[1].metadata["disabled"] = false
     update_run!(🍭, notebook, notebook.cells)
     @test get_disabled_cells(notebook) == []
 

@@ -132,13 +132,13 @@ function save_notebook(io, notebook::Notebook)
     
     for c in cells_ordered
         println(io, _cell_id_delimiter, string(c.cell_id))
-        metadata_toml = strip(sprint(TOML.print, get_cell_metadata(c)))
+        metadata_toml = strip(sprint(TOML.print, get_cell_metadata_no_default(c)))
         if metadata_toml != ""
             for line in split(metadata_toml, "\n")
                 println(io, _cell_metadata_prefix, line)
             end
         end
-        cell_running_disabled = get(c.metadata, "disabled", false)
+        cell_running_disabled = c.metadata["disabled"]
         if cell_running_disabled || c.depends_on_disabled_cells
             print(io, _disabled_prefix)
             print(io, replace(c.code, _cell_id_delimiter => "# "))
@@ -255,7 +255,7 @@ function load_notebook_nobackup(io, path)::Notebook
             code = code_normalised[1:prevind(code_normalised, end, length(_cell_suffix))]
 
             # parse metadata
-            metadata = TOML.parse(join(metadata_toml_lines, "\n"))
+            metadata = Dict{String, Any}(DEFAULT_METADATA..., TOML.parse(join(metadata_toml_lines, "\n"))...)
 
             read_cell = Cell(; cell_id, code, metadata)
             collected_cells[cell_id] = read_cell
@@ -359,7 +359,6 @@ function load_notebook(path::String; disable_writing_notebook_files::Bool=false)
     # Analyze cells so that the initial save is in topological order
     loaded.topology = updated_topology(loaded.topology, loaded, loaded.cells) |> static_resolve_topology
     update_dependency_cache!(loaded)
-    disable_dependent_cells!(loaded)
 
     disable_writing_notebook_files || save_notebook(loaded)
     loaded.topology = NotebookTopology(; cell_order=ImmutableVector(loaded.cells))

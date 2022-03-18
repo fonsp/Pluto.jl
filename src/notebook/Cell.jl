@@ -1,6 +1,10 @@
 import UUIDs: UUID, uuid1
 import .ExpressionExplorer: SymbolsState, UsingsImports
 
+const DEFAULT_METADATA = Dict{String, Any}(
+    "disabled" => false
+)
+
 Base.@kwdef struct CellOutput
     body::Union{Nothing,String,Vector{UInt8},Dict}=nothing
     mime::MIME=MIME("text/plain")
@@ -46,7 +50,7 @@ Base.@kwdef mutable struct Cell
 
     depends_on_disabled_cells::Bool=false
 
-    metadata::Dict{String,Any}=Dict{String,Dict{String,Any}}()
+    metadata::Dict{String,Any}=copy(DEFAULT_METADATA)
 end
 
 Cell(cell_id, code) = Cell(cell_id=cell_id, code=code)
@@ -67,3 +71,4 @@ function Base.convert(::Type{UUID}, string::String)
 end
 
 get_cell_metadata(cell::Cell)::Dict{String,Any} = cell.metadata
+get_cell_metadata_no_default(cell::Cell)::Dict{String,Any} = Dict{String,Any}(setdiff(pairs(cell.metadata), pairs(DEFAULT_METADATA)))
