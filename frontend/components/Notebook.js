@@ -63,8 +63,9 @@ let CellMemo = ({
             />
         `
     }, [
+        // Object references may invalidate this faster than the optimal. To avoid this, spread out objects to primitives!
         cell_id,
-        metadata,
+        metadata.disabled,
         depends_on_disabled_cells,
         queued,
         running,
