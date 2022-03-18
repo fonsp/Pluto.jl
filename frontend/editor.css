@@ -2528,7 +2528,7 @@ body.presentation #helpbox-wrapper {
 nav#slide_controls {
     display: none;
 }
-body.presentation > nav#slide_controls {
+body.presentation nav#slide_controls {
     display: flex;
     position: fixed;
     bottom: 0px;
