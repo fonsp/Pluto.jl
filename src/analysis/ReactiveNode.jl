@@ -69,3 +69,7 @@ end
 
 # Convenience functions
 ReactiveNode(code::String) = ReactiveNode(try_compute_symbolreferences(Meta.parse(code)))
+ReactiveNode(code::Expr) = error("Use ReactiveNode_from_expr(code) instead.")
+
+# Mot just a method of ReactiveNode because an expression is not necessarily a `Expr`, e.g. `Meta.parse("\"hello!\"") isa String`.
+ReactiveNode_from_expr(expr::Any) = ReactiveNode(try_compute_symbolreferences(expr))

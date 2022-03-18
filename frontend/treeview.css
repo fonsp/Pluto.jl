@@ -8,7 +8,7 @@
 
 pluto-tree,
 pluto-tree-pair {
-    font-family: JuliaMono, monospace;
+    font-family: var(--julia-mono-font-stack);
     font-size: 0.75rem;
 }
 pluto-tree {
@@ -49,7 +49,7 @@ pluto-tree > pluto-tree-prefix::before {
     bottom: -2px;
     opacity: 0.5;
     cursor: pointer;
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-down-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-down-outline.svg");
     filter: var(--image-filters);
 }
 
@@ -256,7 +256,7 @@ jlerror > section > ol > li > mark {
     background: var(--jlerror-mark-bg-color);
     border-radius: 6px;
     color: var(--jlerror-mark-color);
-    font-family: JuliaMono, monospace;
+    font-family: var(--julia-mono-font-stack);
     font-variant-ligatures: none;
 }
 jlerror > section > ol > li > em > a {
@@ -282,7 +282,7 @@ table.pluto-table td {
 
 table.pluto-table .schema-types {
     color: var(--pluto-schema-types-color);
-    font-family: "JuliaMono", monospace;
+    font-family: var(--julia-mono-font-stack);
     font-size: 0.75rem;
     opacity: 0;
 }
