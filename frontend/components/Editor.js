@@ -211,7 +211,6 @@ export class Editor extends Component {
     constructor(/** @type {EditorProps} */ props) {
         super(props)
 
-        console.log(this.props)
         const { launch_params, initial_notebook_state } = this.props
 
         this.state = {
@@ -1130,11 +1129,7 @@ patch: ${JSON.stringify(
             document.title = "🎈 " + new_state.notebook.shortpath + " — Pluto.jl"
         }
 
-        Object.entries(this.cached_status).forEach(([k, v]) => {
-            document.body.classList.toggle(k, v === true)
-        })
-
-        // this class is used to tell our frontend tests that the updates are done
+        // this property is used to tell our frontend tests that the updates are done
         //@ts-ignore
         document.body._update_is_ongoing = this.pending_local_updates > 0
 
@@ -1163,6 +1158,10 @@ patch: ${JSON.stringify(
 
     componentWillUpdate(new_props, new_state) {
         this.cached_status = statusmap(new_state, this.props.launch_params)
+
+        Object.entries(this.cached_status).forEach(([k, v]) => {
+            document.body.classList.toggle(k, v === true)
+        })
     }
 
     render() {
