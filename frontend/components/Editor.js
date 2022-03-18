@@ -760,17 +760,6 @@ patch: ${JSON.stringify(
         }
         this.on_disable_ui()
 
-        if (this.state.static_preview) {
-            this.setState({
-                initializing: false,
-                binder_phase: this.state.offer_binder ? BinderPhase.wait_for_user : null,
-            })
-            // view stats on https://stats.plutojl.org/
-            count_stat(`article-view`)
-        } else {
-            this.connect()
-        }
-
         setInterval(() => {
             if (!this.state.static_preview && document.visibilityState === "visible") {
                 // view stats on https://stats.plutojl.org/
@@ -1116,6 +1105,19 @@ patch: ${JSON.stringify(
         })
     }
 
+    componentDidMount() {
+        if (this.state.static_preview) {
+            this.setState({
+                initializing: false,
+                binder_phase: this.state.offer_binder ? BinderPhase.wait_for_user : null,
+            })
+            // view stats on https://stats.plutojl.org/
+            count_stat(`article-view`)
+        } else {
+            this.connect()
+        }
+    }
+
     componentDidUpdate(old_props, old_state) {
         //@ts-ignore
         window.editor_state = this.state
@@ -1143,8 +1145,7 @@ patch: ${JSON.stringify(
         if (old_state.disable_ui !== this.state.disable_ui) {
             this.on_disable_ui()
         }
-        if (old_state.initializing && !this.state.initializing) {
-            console.info("Initialization done!")
+        if (!this.state.initializing) {
             setup_mathjax()
         }
 
