@@ -1,6 +1,13 @@
 import "https://cdn.jsdelivr.net/npm/requestidlecallback-polyfill@1.0.2/index.js"
 
+let setup_done = false
+
 export const setup_mathjax = () => {
+    if (setup_done) {
+        return
+    }
+    setup_done = true
+
     const deprecated = () => console.warn("Pluto uses MathJax 3, but a MathJax 2 function was called.")
 
     // @ts-ignore
