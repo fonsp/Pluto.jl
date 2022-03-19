@@ -152,7 +152,7 @@ function get_assignees(ex::Expr)::FunctionName
         # filter(s->s isa Symbol, ex.args)
     elseif ex.head == :(::)
         # TODO: type is referenced
-        Symbol[ex.args[1]]
+        get_assignees(ex.args[1])
     elseif ex.head == :ref || ex.head == :(.)
         Symbol[]
     else
