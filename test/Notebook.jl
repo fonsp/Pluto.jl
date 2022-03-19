@@ -29,6 +29,22 @@ function basic_notebook()
     ]) |> init_packages!
 end
 
+function metadata_notebook()
+    Notebook([
+        Cell(
+            code="100*a + b",
+            metadata=Dict(
+                "a metadata tag" => Dict(
+                    "boolean" => true,
+                    "string" => "String",
+                    "number" => 10000,
+                ),
+                "disabled" => true,
+            ),
+        ),
+    ]) |> init_packages!
+end
+
 function shuffled_notebook()
     Notebook([
         Cell("z = y"),
@@ -139,6 +155,39 @@ end
             result = load_notebook_nobackup(nb.path)
             @test_notebook_inputs_equal(nb, result)
         end
+    end
+
+    @testset "Metadata" begin
+        🍭 = ServerSession()
+        🍭.options.evaluation.workspace_use_distributed = false
+        fakeclient = ClientSession(:fake, nothing)
+        🍭.connected_clients[fakeclient.id] = fakeclient
+
+        nb = metadata_notebook()
+        update_run!(🍭, nb, nb.cells)
+        cell = first(values(nb.cells_dict))
+        @test cell.metadata == Dict(
+            "a metadata tag" => Dict(
+                "boolean" => true,
+                "string" => "String",
+                "number" => 10000,
+            ),
+            "disabled" => true, # enhanced metadata because cell is disabled
+        )
+
+        save_notebook(nb)
+        @info "File" Text(read(nb.path,String))
+        result = load_notebook_nobackup(nb.path)
+        @test_notebook_inputs_equal(nb, result)
+        cell = first(values(result.cells_dict))
+        @test cell.metadata == Dict(
+            "a metadata tag" => Dict(
+                "boolean" => true,
+                "string" => "String",
+                "number" => 10000,
+            ),
+            "disabled" => true,
+        )
     end
 
     @testset "I/O overloaded" begin

@@ -33,7 +33,6 @@ function run_reactive!(
 
         # update cache and save notebook because the dependencies might have changed after expanding macros
         update_dependency_cache!(notebook)
-        save_notebook(session, notebook)
     end
 
     removed_cells = setdiff(keys(old_topology.nodes), keys(new_topology.nodes))
@@ -66,7 +65,7 @@ function run_reactive!(
     to_run_raw = setdiff(union(new_runnable, old_runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
 
     # find (indirectly) deactivated cells and update their status
-    deactivated = filter(c -> c.running_disabled, notebook.cells)
+	deactivated = filter(c -> c.metadata["disabled"], notebook.cells)
     indirectly_deactivated = collect(topological_order(new_topology, deactivated))
     for cell in indirectly_deactivated
         cell.running = false
@@ -81,6 +80,11 @@ function run_reactive!(
         cell.queued = true
         cell.depends_on_disabled_cells = false
     end
+
+	# Move this save to after the last point the
+	# notebook serialization representation changes
+	# (currently, `depends_on_disabled_cells`)
+	save_notebook(session, notebook)
     for (cell, error) in new_order.errable
         cell.running = false
         cell.queued = false
