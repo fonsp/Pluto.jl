@@ -63,10 +63,8 @@ export class FilePicker extends Component {
     componentDidMount() {
         const usesDarkTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
         this.cm = new EditorView({
-            /** Migration #0: New */
             state: EditorState.create({
                 doc: "",
-
                 extensions: [
                     drawSelection(),
                     EditorView.domEventHandlers({

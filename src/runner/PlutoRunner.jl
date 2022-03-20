@@ -77,7 +77,10 @@ function increment_current_module()::Symbol
     new_workspace_name = Symbol("workspace#", id)
 
     new_module = Core.eval(Main, :(
-        module $(new_workspace_name) $(workspace_preamble...) end
+        module $(new_workspace_name)
+            $(workspace_preamble...)
+            const var"#___this_module_name" = $(new_workspace_name)
+        end
     ))
 
     new_workspace_name
@@ -163,6 +166,11 @@ replace_pluto_properties_in_expr(::GiveMeCellID; cell_id, kwargs...) = cell_id
 replace_pluto_properties_in_expr(::GiveMeRerunCellFunction; rerun_cell_function, kwargs...) = rerun_cell_function
 replace_pluto_properties_in_expr(::GiveMeRegisterCleanupFunction; register_cleanup_function, kwargs...) = register_cleanup_function
 replace_pluto_properties_in_expr(expr::Expr; kwargs...) = Expr(expr.head, map(arg -> replace_pluto_properties_in_expr(arg; kwargs...), expr.args)...)
+replace_pluto_properties_in_expr(m::Module; kwargs...) = if startswith(string(nameof(m)), "workspace#")
+    Symbol("#___this_module_name")
+else
+    m
+end
 replace_pluto_properties_in_expr(other; kwargs...) = other
 
 "Similar to [`replace_pluto_properties_in_expr`](@ref), but just checks for existance and doesn't check for [`GiveMeCellID`](@ref)"
@@ -249,7 +257,7 @@ function try_macroexpand(mod, cell_uuid, expr)
         @warn "try_macroexpand expression not :toplevel or :block" expr
         Expr(:block, expr)
     end
-    
+
     elapsed_ns = time_ns()
     expanded_expr = macroexpand(mod, expr_not_toplevel)
     elapsed_ns = time_ns() - elapsed_ns
@@ -452,7 +460,15 @@ If the third argument is a `Tuple{Set{Symbol}, Set{Symbol}}` containing the refe
 
 This function is memoized: running the same expression a second time will simply call the same generated function again. This is much faster than evaluating the expression, because the function only needs to be Julia-compiled once. See https://github.com/fonsp/Pluto.jl/pull/720
 """
-function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing, forced_expr_id::Union{ObjectID,Nothing}=nothing; user_requested_run::Bool=true)
+function run_expression(
+    m::Module, 
+    expr::Any, 
+    cell_id::UUID, 
+    function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing, 
+    forced_expr_id::Union{ObjectID,Nothing}=nothing; 
+    user_requested_run::Bool=true,
+    capture_stdout::Bool=true,
+)
     if user_requested_run
         # TODO Time elapsed? Possibly relays errors in cleanup function?
         UseEffectCleanups.trigger_cleanup(cell_id)
@@ -514,34 +530,36 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
         throw("Expression still contains macro calls!!")
     end
 
-    result, runtime = if function_wrapped_info === nothing
-        toplevel_expr = Expr(:toplevel, expr)
-        wrapped = timed_expr(toplevel_expr)
-        ans, runtime = run_inside_trycatch(m, wrapped)
-        (ans, add_runtimes(runtime, expansion_runtime))
-    else
-        expr_id = forced_expr_id !== nothing ? forced_expr_id : expr_hash(expr)
-        local computer = get(computers, cell_id, nothing)
-        if computer === nothing || computer.expr_id !== expr_id
-            try
-                computer = register_computer(expr, expr_id, cell_id, collect.(function_wrapped_info)...)
-            catch e
-                # @error "Failed to generate computer function" expr exception=(e,stacktrace(catch_backtrace()))
-                return run_expression(m, original_expr, cell_id, nothing; user_requested_run=user_requested_run)
-            end
-        end
-
-        # This check solves the problem of a cell like `false && variable_that_does_not_exist`. This should run without error, but will fail in our function-wrapping-magic because we get the value of `variable_that_does_not_exist` before calling the generated function.
-        # The fix is to detect this situation and run the expression in the classical way.
-        ans, runtime = if any(name -> !isdefined(m, name), computer.input_globals)
-            # Do run_expression but with function_wrapped_info=nothing so it doesn't go in a Computer()
-            # @warn "Got variables that don't exist, running outside of computer" not_existing=filter(name -> !isdefined(m, name), computer.input_globals)
-            run_expression(m, original_expr, cell_id; user_requested_run)
+    result, runtime = with_io_to_logs(; enabled=capture_stdout, loglevel=stdout_log_level) do
+        if function_wrapped_info === nothing
+            toplevel_expr = Expr(:toplevel, expr)
+            wrapped = timed_expr(toplevel_expr)
+            ans, runtime = run_inside_trycatch(m, wrapped)
+            (ans, add_runtimes(runtime, expansion_runtime))
         else
-            run_inside_trycatch(m, () -> compute(m, computer))
-        end
+            expr_id = forced_expr_id !== nothing ? forced_expr_id : expr_hash(expr)
+            local computer = get(computers, cell_id, nothing)
+            if computer === nothing || computer.expr_id !== expr_id
+                try
+                    computer = register_computer(expr, expr_id, cell_id, collect.(function_wrapped_info)...)
+                catch e
+                    # @error "Failed to generate computer function" expr exception=(e,stacktrace(catch_backtrace()))
+                    return run_expression(m, original_expr, cell_id, nothing; user_requested_run=user_requested_run)
+                end
+            end
 
-        ans, add_runtimes(runtime, expansion_runtime)
+            # This check solves the problem of a cell like `false && variable_that_does_not_exist`. This should run without error, but will fail in our function-wrapping-magic because we get the value of `variable_that_does_not_exist` before calling the generated function.
+            # The fix is to detect this situation and run the expression in the classical way.
+            ans, runtime = if any(name -> !isdefined(m, name), computer.input_globals)
+                # Do run_expression but with function_wrapped_info=nothing so it doesn't go in a Computer()
+                # @warn "Got variables that don't exist, running outside of computer" not_existing=filter(name -> !isdefined(m, name), computer.input_globals)
+                run_expression(m, original_expr, cell_id; user_requested_run)
+            else
+                run_inside_trycatch(m, () -> compute(m, computer))
+            end
+
+            ans, add_runtimes(runtime, expansion_runtime)
+        end
     end
 
     if (result isa CapturedException) && (result.ex isa InterruptException)
@@ -843,6 +861,8 @@ Base.IOContext(io::IOContext, ::Nothing) = io
 
 "The `IOContext` used for converting arbitrary objects to pretty strings."
 const default_iocontext = IOContext(devnull, :color => false, :limit => true, :displaysize => (18, 88), :is_pluto => true, :pluto_supported_integration_features => supported_integration_features)
+
+const default_stdout_iocontext = IOContext(devnull, :color => false, :limit => true, :displaysize => (18, 75), :is_pluto => false)
 
 const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
 # in descending order of coolness
@@ -1991,10 +2011,11 @@ function Logging.shouldlog(::PlutoLogger, level, _module, _...)
     level = convert(Logging.LogLevel, level)
     (_module isa Module && is_pluto_workspace(_module)) ||
         level >= Logging.Info ||
-        level == Logging.LogLevel(-1)
+        level == Logging.LogLevel(-1) ||
+        level == stdout_log_level
 end
 
-Logging.min_enabled_level(::PlutoLogger) = Logging.Debug
+Logging.min_enabled_level(::PlutoLogger) = min(Logging.Debug, stdout_log_level)
 Logging.catch_exceptions(::PlutoLogger) = false
 function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, file, line; kwargs...)
     # println("receiving msg from ", _module, " ", group, " ", id, " ", msg, " ", level, " ", line, " ", file)
@@ -2009,7 +2030,7 @@ function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, f
             "file" => string(file),
             "cell_id" => currently_running_cell_id[],
             "line" => line isa Union{Int32,Int64} ? line : nothing,
-            "kwargs" => Tuple{String,Any}[(string(k), format_output_default(v)) for (k, v) in kwargs],
+            "kwargs" => Tuple{String,Any}[(string(k), format_log_value(v)) for (k, v) in kwargs],
             )
         )
         
@@ -2019,6 +2040,69 @@ function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, f
         println(stderr, "Failed to relay log from PlutoRunner")
         showerror(stderr, e, stacktrace(catch_backtrace()))
     end
+end
+
+format_log_value(v) = format_output_default(v)
+format_log_value(v::Tuple{<:Exception,Vector{<:Any}}) = format_output(CapturedException(v...))
+
+const stdout_log_level = Logging.LogLevel(-555) # https://en.wikipedia.org/wiki/555_timer_IC
+function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogLevel=Logging.LogLevel(1))
+    if !enabled
+        return f()
+    end
+    # Taken from https://github.com/JuliaDocs/IOCapture.jl/blob/master/src/IOCapture.jl with some modifications to make it log.
+    
+    # Original implementation from Documenter.jl (MIT license)
+    # Save the default output streams.
+    default_stdout = stdout
+    default_stderr = stderr
+
+    # Redirect both the `stdout` and `stderr` streams to a single `Pipe` object.
+    pipe = Pipe()
+    Base.link_pipe!(pipe; reader_supports_async = true, writer_supports_async = true)
+    pe_stdout = IOContext(pipe.in, default_stdout_iocontext)
+    pe_stderr = IOContext(pipe.in, default_stdout_iocontext)
+    redirect_stdout(pe_stdout)
+    redirect_stderr(pe_stderr)
+
+    # Bytes written to the `pipe` are captured in `output` and eventually converted to a
+    # `String`. We need to use an asynchronous task to continously tranfer bytes from the
+    # pipe to `output` in order to avoid the buffer filling up and stalling write() calls in
+    # user code.
+    output = IOBuffer()
+    buffer_redirect_task = @async write(output, pipe)
+
+    # To make the `display` function work.
+    redirect_display = TextDisplay(pe_stdout)
+    pushdisplay(redirect_display)
+
+    # Run the function `f`, capturing all output that it might have generated.
+    # Success signals whether the function `f` did or did not throw an exception.
+    result = try
+        f()
+    finally
+        # Restore display
+        try
+            popdisplay(redirect_display)
+        catch e
+            # This happens when the user calls `popdisplay()`, fine.
+            # @warn "Pluto's display was already removed?" e
+        end
+        # Restore the original output streams.
+        redirect_stdout(default_stdout)
+        redirect_stderr(default_stderr)
+        close(pe_stdout)
+        close(pe_stderr)
+        wait(buffer_redirect_task)
+    end
+
+
+    output = String(take!(output))
+    if !isempty(output)
+        Logging.@logmsg loglevel output
+    end
+
+    result
 end
 
 # we put this in __init__ to fix a world age problem

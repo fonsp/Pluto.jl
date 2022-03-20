@@ -9,8 +9,7 @@ import Base: union, union!, ==, push!
 # TWO STATE OBJECTS
 ###
 
-# TODO: use GlobalRef instead
-FunctionName = Array{Symbol,1}
+const FunctionName = Array{Symbol,1}
 
 struct FunctionNameSignaturePair
     name::FunctionName
@@ -192,11 +191,16 @@ uncurly!(s::Symbol, scopestate = nothing)::Tuple{Symbol,SymbolsState} = s, Symbo
 "Turn `:(Base.Submodule.f)` into `[:Base, :Submodule, :f]` and `:f` into `[:f]`."
 function split_funcname(funcname_ex::Expr)::FunctionName
     if funcname_ex.head == :(.)
-        vcat(split_funcname.(funcname_ex.args)...)
+        out = FunctionName()
+        args = funcname_ex.args
+        for arg in args
+            push!(out, split_funcname(arg)...)
+        end
+        return out
     else
         # a call to a function that's not a global, like calling an array element: `funcs[12]()`
         # TODO: explore symstate!
-        Symbol[]
+        return Symbol[]
     end
 end
 
@@ -211,16 +215,19 @@ function split_funcname(funcname_ex::Symbol)::FunctionName
     Symbol[funcname_ex|>without_dotprefix|>without_dotsuffix]
 end
 
+# this includes GlobalRef - it's fine that we don't recognise it, because you can't assign to a globalref?
+function split_funcname(::Any)::FunctionName
+    Symbol[]
+end
+
+"Allows comparing tuples to vectors since having constant vectors can be slower"
+all_iters_eq(a, b) = length(a) == length(b) && all((aa == bb for (aa, bb) in zip(a, b)))
+
 function is_just_dots(ex::Expr)
     ex.head == :(.) && all(is_just_dots, ex.args)
 end
 is_just_dots(::Union{QuoteNode,Symbol,GlobalRef}) = true
 is_just_dots(::Any) = false
-
-# this includes GlobalRef - it's fine that we don't recognise it, because you can't assign to a globalref?
-function split_funcname(::Any)::FunctionName
-    Symbol[]
-end
 
 """Turn `Symbol(".+")` into `:(+)`"""
 function without_dotprefix(funcname::Symbol)::Symbol
@@ -261,13 +268,13 @@ function generate_funcnames(funccall::FunctionName)
     calls
 end
 
-"""Turn `Symbol[:Module, :func]` into Symbol("Module.func").
+"""
+Turn `Symbol[:Module, :func]` into Symbol("Module.func").
 
 This is **not** the same as the expression `:(Module.func)`, but is used to identify the function name using a single `Symbol` (like normal variables).
-This means that it is only the inverse of `ExpressionExplorer.split_funcname` iff `length(parts) ≤ 1`."""
-function join_funcname_parts(parts::FunctionName)::Symbol
-    join(parts .|> String, ".") |> Symbol
-end
+This means that it is only the inverse of `ExpressionExplorer.split_funcname` iff `length(parts) ≤ 1`.
+"""
+join_funcname_parts(parts::FunctionName) = Symbol(join(parts, '.'))
 
 # this is stupid -- désolé
 function is_joined_funcname(joined::Symbol)
@@ -475,18 +482,25 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
                 SymbolsState(references = Set{Symbol}([funcname[1]]), funccalls = Set{FunctionName}([funcname]))
             end
 
+            # Explore code inside function arguments:
+            union!(symstate, explore!(Expr(:block, ex.args[2:end]...), scopestate))
+
             # Make `@macroexpand` and `Base.macroexpand` reactive by referencing the first macro in the second
             # argument to the call.
-            if ([:Base, :macroexpand] == funcname || [:macroexpand] == funcname) &&
+            if (all_iters_eq((:Base, :macroexpand), funcname) || all_iters_eq((:macroexpand,), funcname)) &&
                length(ex.args) >= 3 &&
                ex.args[3] isa QuoteNode &&
                Meta.isexpr(ex.args[3].value, :macrocall)
                 expanded_macro = split_funcname(ex.args[3].value.args[1])
                 union!(symstate, SymbolsState(macrocalls = Set{FunctionName}([expanded_macro])))
+            elseif all_iters_eq((:BenchmarkTools, :generate_benchmark_definition), funcname) &&
+                length(ex.args) == 10
+                for child in ex.args[7:9]
+                    (Meta.isexpr(child, :copyast, 1) && child.args[1] isa QuoteNode && child.args[1].value isa Expr) || continue
+                    union!(symstate, explore!(child.args[1].value, scopestate))
+                end
             end
 
-            # Explore code inside function arguments:
-            union!(symstate, explore!(Expr(:block, ex.args[2:end]...), scopestate))
             return symstate
         else
             return explore!(Expr(:block, ex.args...), scopestate)
@@ -958,15 +972,15 @@ maybe_untuple(es) =
 """
 If the macro is **known to Pluto**, expand or 'mock expand' it, if not, return the expression. Macros from external packages are not expanded, this is done later in the pipeline. See https://github.com/fonsp/Pluto.jl/pull/1032
 """
-function maybe_macroexpand(ex::Expr; recursive = false, expand_bind = true)
-    result = if ex.head === :macrocall
-        funcname = ex.args[1] |> split_funcname
+function maybe_macroexpand(ex::Expr; recursive::Bool=false, expand_bind::Bool=true)
+    result::Expr = if ex.head === :macrocall
+        funcname = split_funcname(ex.args[1])
         funcname_joined = join_funcname_parts(funcname)
 
         args = ex.args[3:end]
 
         if funcname_joined ∈ (expand_bind ? can_macroexpand : can_macroexpand_no_bind)
-            macroexpand(PlutoRunner, ex; recursive = false)
+            macroexpand(PlutoRunner, ex; recursive=false)::Expr
         elseif length(args) ≥ 2 && ex.args[1] != GlobalRef(Core, Symbol("@doc"))
             # for macros like @test a ≈ b atol=1e-6, read assignment in 2nd & later arg as keywords
             macro_kwargs_as_kw(ex)
@@ -978,9 +992,15 @@ function maybe_macroexpand(ex::Expr; recursive = false, expand_bind = true)
     end
 
     if recursive && (result isa Expr)
-        Expr(result.head, maybe_macroexpand.(result.args; recursive = recursive, expand_bind = expand_bind)...)
+        # Not using broadcasting because that is expensive compilation-wise for `result.args::Any`.
+        expanded = Any[]
+        for arg in result.args
+            ex = maybe_macroexpand(arg; recursive, expand_bind)
+            push!(expanded, ex)
+        end
+        return Expr(result.head, expanded...)
     else
-        result
+        return result
     end
 end
 

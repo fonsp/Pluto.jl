@@ -17,6 +17,9 @@ Some of these @test_broken lines are commented out to prevent printing to the te
 -fons =#
 
 @testset "Explore Expressions" begin
+    @inferred Pluto.ExpressionExplorer.split_funcname(:(Base.Submodule.f))
+    @inferred Pluto.ExpressionExplorer.maybe_macroexpand(:(@time 1))
+
     @testset "Basics" begin
         @test testee(:(a), [:a], [], [], [])
         @test testee(:(1 + 1), [], [], [:+], [])
@@ -586,6 +589,16 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test test_expression_explorer(
             expr=:(:(z = a + $(x) + b())),
             references=[:x],
+        )
+    end
+    @testset "Special reactivity rules" begin
+        @test testee(
+            :(BenchmarkTools.generate_benchmark_definition(Main, Symbol[], Any[], Symbol[], (), $(Expr(:copyast, QuoteNode(:(f(x, y, z))))), $(Expr(:copyast, QuoteNode(:(A + B)))), $(Expr(:copyast, QuoteNode(nothing))), BenchmarkTools.parameters())),
+            [:Main, :BenchmarkTools, :Any, :Symbol, :x, :y, :z, :A, :B], [], [[:BenchmarkTools, :generate_benchmark_definition], [:BenchmarkTools, :parameters], :f, :+], []
+        )
+        @test testee(
+            :(Base.macroexpand(Main, $(QuoteNode(:(@enum a b c))))),
+            [:Main, :Base], [], [[:Base, :macroexpand]], [], [Symbol("@enum")]
         )
     end
     @testset "Extracting `using` and `import`" begin

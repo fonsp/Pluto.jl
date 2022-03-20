@@ -112,8 +112,7 @@ julia> ]
 (v1.7) pkg> add Pluto
 ```
 
-_Tip for new Julia users: To return to the `julia>` prompt from the Pkg REPL,
-either press backspace when the input line is empty or press Ctrl+C._
+_Press `Ctrl+C` to return to the `julia>` prompt._
 
 ### Usage
 

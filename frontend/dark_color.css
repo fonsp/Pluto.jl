@@ -88,7 +88,8 @@
         --loading-grad-color-2: #d0d4d7;
         /*saveall container*/
         --overlay-button-bg: #2c2c2c;
-        --overlay-button-border: #c7a74670;
+        --overlay-button-border: #9e9e9e70;
+        --overlay-button-border-save: #c7a74670;
         --overlay-button-color: white;
 
         /*input_context_menu*/

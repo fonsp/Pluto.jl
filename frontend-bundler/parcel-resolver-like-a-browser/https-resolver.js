@@ -41,12 +41,21 @@ module.exports = new Resolver({
             let url = new URL(specifier)
 
             if (url.port !== "") throw new Error(`Port in urls not supported yet (${specifier})`)
-            if (url.search !== "") throw new Error(`Search in urls not supported yet (${specifier})`)
             if (url.hash !== "") throw new Error(`Hash in urls not supported yet (${specifier})`)
             if (url.username !== "") throw new Error(`Username in urls not supported (${specifier})`)
             if (url.password !== "") throw new Error(`Password in urls not supported (${specifier})`)
 
-            let url_to_path = path.join(url.protocol.slice(0, -1), url.hostname, ...url.pathname.slice(1).split("/"))
+            // If no file extension is given in the URL, guess one automatically.
+            let found_extension = /\.[a-zA-Z][a-zA-Z0-9]+$/.exec(url.pathname)?.[0]
+
+            let extension_to_add = found_extension ?? (dependency.specifierType === "esm" ? ".mjs" : "")
+            // If a search is given in the URL, this will search be appended to the path, so we need to repeat the extension.
+            let should_add_extension = url.search !== "" || found_extension == null
+            let suffix = should_add_extension ? extension_to_add : ""
+
+            // Create a folder structure and file for the import. This folder structure will match the URL structure, to make sure that relative imports still work.
+            let filename_parts = (url.pathname.slice(1) + encodeURIComponent(url.search) + suffix).split("/")
+            let url_to_path = path.join(url.protocol.slice(0, -1), url.hostname, ...filename_parts)
             let fullpath = path.join(my_temp_cave, url_to_path)
             let folder = path.dirname(fullpath)
 

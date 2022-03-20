@@ -48,49 +48,6 @@ function request!(queue::RequestQueue)
     end
 end
 
-###
-
-mutable struct Promise{T}
-    value::Union{Nothing,Some{T}}
-    task::Union{Nothing,Task}
-end
-
-"
-    Promise{T}(f::Function)
-
-Run `f` asynchronously, and return a `Promise` to its result of type `T`. Call `fetch` on the returned `Promise` to await the result.
-
-It's just like a `Task`, except the result is a type parameter.
-
-# Example
-
-```
-julia> p = Promise() do
-    sleep(5)
-    1 + 2
-end;
-
-julia> fetch(p)
-3
-```
-
-"
-function Promise{T}(f::Function) where T
-    p = Promise{T}(nothing, nothing)
-    p.task = @async begin
-        p.value = Some(f())
-    end
-    return p
-end
-Promise(f::Function) = Promise{Any}(f)
-
-function Base.fetch(p::Promise{T})::T where T
-	wait(p.task)
-	something(p.value)
-end
-
-
-
 
 "Like @async except it prints errors to the terminal. 👶"
 macro asynclog(expr)

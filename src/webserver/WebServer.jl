@@ -69,7 +69,7 @@ function run(; kwargs...)
 end
 
 function run(options::Configuration.Options)
-    session = ServerSession(;options=options)
+    session = ServerSession(; options)
     run(session)
 end
 
@@ -234,7 +234,7 @@ function run(session::ServerSession, pluto_router)
 
             # If a "token" url parameter is passed in from binder, then we store it to add to every URL (so that you can share the URL to collaborate).
             params = HTTP.queryparams(HTTP.URI(request.target))
-            if haskey(params, "token") && session.binder_token === nothing 
+            if haskey(params, "token") && params["token"] ∉ ("null", "undefined", "") && session.binder_token === nothing
                 session.binder_token = params["token"]
             end
 
@@ -303,8 +303,10 @@ function run(session::ServerSession, pluto_router)
             @async swallow_exception(() -> close(client.stream), Base.IOError)
         end
         empty!(session.connected_clients)
+        for nb in values(session.notebooks)
+            @asynclog SessionActions.shutdown(session, nb; keep_in_session=false, async=false, verbose=false)
+        end
         for (notebook_id, ws) in WorkspaceManager.workspaces
-            @async WorkspaceManager.unmake_workspace(fetch(ws))
         end
     end
 
