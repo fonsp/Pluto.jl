@@ -68,8 +68,13 @@ export const setup_mathjax = () => {
     requestIdleCallback(
         () => {
             console.log("Loading mathjax!!")
-            const script = document.head.querySelector("#MathJax-script")
-            script.setAttribute("src", script.getAttribute("not-the-src-yet"))
+            const script_src = document.head.querySelector("#MathJax-script-src")
+
+            const script = document.createElement("script")
+            script.type = "text/javascript"
+            script.async = true
+            script.setAttribute("src", script_src.getAttribute("href"))
+            document.head.append(script)
         },
         { timeout: 2000 }
     )
