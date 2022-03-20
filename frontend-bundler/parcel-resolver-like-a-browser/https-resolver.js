@@ -46,8 +46,9 @@ module.exports = new Resolver({
             if (url.password !== "") throw new Error(`Password in urls not supported (${specifier})`)
 
             // If no file extension is given in the URL, guess one automatically.
-            let found_extension = /\.[a-zA-Z][a-zA-Z0-9].$/.exec(url.pathname)?.[0]
-            let extension_to_add = found_extension ?? (dependency.specifierType === "esm" ? ".mjs" : null)
+            let found_extension = /\.[a-zA-Z][a-zA-Z0-9]+$/.exec(url.pathname)?.[0]
+
+            let extension_to_add = found_extension ?? (dependency.specifierType === "esm" ? ".mjs" : "")
             // If a search is given in the URL, this will search be appended to the path, so we need to repeat the extension.
             let should_add_extension = url.search !== "" || found_extension == null
             let suffix = should_add_extension ? extension_to_add : ""
