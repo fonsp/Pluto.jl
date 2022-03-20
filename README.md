@@ -156,7 +156,7 @@ Pluto.jl is open source! Specifically, it is [MIT Licensed](https://github.com/f
 -   `observablehq/stdlib` - [license](https://github.com/observablehq/stdlib/blob/master/LICENSE)
 -   `preact` - [license](https://github.com/preactjs/preact/blob/master/LICENSE)
 -   `developit/htm` - [license](https://github.com/developit/htm/blob/master/LICENSE)
--   `MathJax` - [license](https://github.com/mathjax/MathJax-src/blob/master/LICENSE)
+-   `KaTeX` - [license](https://github.com/KaTeX/KaTeX/blob/main/LICENSE)
 
 If you want to reference Pluto.jl in scientific writing, you can use our DOI: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5889169.svg)](https://doi.org/10.5281/zenodo.5889169)
 

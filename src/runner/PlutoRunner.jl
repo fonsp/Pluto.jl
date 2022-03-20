@@ -840,19 +840,15 @@ end
 
 # We add a method for the Markdown -> HTML conversion that takes a LaTeX chunk from the Markdown tree and adds our custom span
 function htmlinline(io::IO, x::LaTeX)
-    withtag(io, :span, :class => "tex") do
-        print(io, '$')
+    withtag(io, :span, :class => "pluto-tex pluto-tex-inline") do
         htmlesc(io, x.formula)
-        print(io, '$')
     end
 end
 
 # this one for block equations: (double $$)
 function html(io::IO, x::LaTeX)
-    withtag(io, :p, :class => "tex") do
-        print(io, '$', '$')
+    withtag(io, :p, :class => "pluto-tex pluto-tex-display") do
         htmlesc(io, x.formula)
-        print(io, '$', '$')
     end
 end
 
@@ -1033,7 +1029,7 @@ function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
     elseif mime isa MIME"text/latex"
         # Some reprs include $ at the start and end.
         # We strip those, since Markdown.LaTeX should contain the math content.
-        # (It will be rendered by MathJax, which is math-first, not text-first.)
+        # (It will be rendered by KaTeX, which is math-first, not text-first.)
         texed = repr(mime, x)
         Markdown.html(io, Markdown.LaTeX(strip(texed, ('$', '\n', ' '))))
         nothing, MIME"text/html"()

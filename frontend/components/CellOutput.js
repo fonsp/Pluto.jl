@@ -18,6 +18,7 @@ import { useState } from "../imports/Preact.js"
 import hljs from "../imports/highlightjs.js"
 import { julia_mixed } from "./CellInput/mixedParsers.js"
 import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
+import katex from "../imports/KaTeX.js"
 
 export class CellOutput extends Component {
     constructor() {
@@ -455,11 +456,15 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
                 }
 
                 // Convert LaTeX to svg
-                // @ts-ignore
-                if (window.MathJax?.typeset != undefined) {
+                if (true) {
                     try {
                         // @ts-ignore
-                        window.MathJax.typeset(container.current.querySelectorAll(".tex"))
+                        container.current.querySelectorAll(".pluto-tex").forEach((el) => {
+                            katex.render(el.innerText, el, {
+                                throwOnError: false,
+                                displayMode: el.classList.contains("pluto-tex-display"),
+                            })
+                        })
                     } catch (err) {
                         console.info("Failed to typeset TeX:")
                         console.info(err)
