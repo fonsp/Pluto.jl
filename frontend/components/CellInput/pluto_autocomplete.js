@@ -174,12 +174,15 @@ let override_text_to_apply_in_field_expression = (text) => {
  * @param {number} context_pos
  */
 const generate_scopestate_completions = function* (definitions, proposed, context_pos) {
+    let i = 0
     for (let [name, { valid_from }] of definitions.entries()) {
         if (!proposed.has(name) && valid_from < context_pos) {
             yield {
-                label: "Scopestate = " + name,
-                apply: name,
+                label: name,
+                type: "c_Any",
+                boost: 99 - i,
             }
+            i += 1
         }
     }
 }
