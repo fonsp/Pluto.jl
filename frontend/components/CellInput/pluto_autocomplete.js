@@ -168,6 +168,22 @@ let override_text_to_apply_in_field_expression = (text) => {
     return !/^[@a-zA-Z_][a-zA-Z0-9!_]*\"?$/.test(text) ? (text === ":" ? `:(${text})` : `:${text}`) : null
 }
 
+/**
+ * @param {Map<String,import("./scopestate_statefield.js").Definition>} definitions
+ * @param {Set<String>} proposed
+ * @param {number} context_pos
+ */
+const generate_scopestate_completions = function* (definitions, proposed, context_pos) {
+    for (let [name, { valid_from }] of definitions.entries()) {
+        if (!proposed.has(name) && valid_from < context_pos) {
+            yield {
+                label: "Scopestate = " + name,
+                apply: name,
+            }
+        }
+    }
+}
+
 const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (ctx) => {
     let to_complete = ctx.state.sliceDoc(0, ctx.pos)
 
@@ -184,6 +200,9 @@ const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ reque
         // If this is a symbol completion thing, we need to add the `:` back in by moving the end a bit furher
         stop = stop + 1
     }
+
+    const definitions = ctx.state.field(ScopeStateField).definitions
+    const proposed = new Set()
 
     let to_complete_onto = to_complete.slice(0, start)
     let is_field_expression = to_complete_onto.slice(-1) === "."
@@ -202,6 +221,9 @@ const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ reque
                 // (quick) fix for identifiers that need to be escaped
                 // Ideally this is done with Meta.isoperator on the julia side
                 let text_to_apply = is_field_expression ? override_text_to_apply_in_field_expression(text) ?? text : text
+
+                if (definitions.has(text)) proposed.add(text)
+
                 return {
                     label: text,
                     apply: text_to_apply,
@@ -233,6 +255,8 @@ const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ reque
                         is_not_exported: !is_exported,
                     }
                 }),
+
+            ...Array.from(generate_scopestate_completions(definitions, proposed, ctx.pos)),
         ],
     }
 }
