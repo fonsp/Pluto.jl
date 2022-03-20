@@ -211,7 +211,7 @@ const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ reque
                         [`completion_${completion_type}`]: completion_type != null,
                         c_from_notebook: is_from_notebook,
                     }),
-                    boost: 99 - i / results.length,
+                    boost: 50 - i / results.length,
                 }
             }),
             // This is a small thing that I really want:
@@ -249,8 +249,11 @@ const local_variables_completion = (ctx) => {
         from,
         to,
         options: scopestate.locals
-            .filter(({ validity, name }) => name.startsWith(text) && from > validity.from && to <= validity.to)
-            .map(({ name }) => ({ label: name })),
+            .filter(
+                ({ validity, name }) =>
+                    name.startsWith(text) /** <- NOTE: A smarter matching strategy can be used here */ && from > validity.from && to <= validity.to
+            )
+            .map(({ name }, i) => ({ label: name, type: "c_Any", boost: 99 - i })),
     }
 }
 
@@ -294,7 +297,6 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
             override: [
                 unfiltered_julia_generator(memoize_last_request_autocomplete),
                 juliahints_cool_generator(memoize_last_request_autocomplete),
-                // TODO completion for local variables
                 local_variables_completion,
             ],
             defaultKeymap: false, // We add these manually later, so we can override them if necessary
