@@ -136,12 +136,16 @@ let update_docs_from_autocomplete_selection = (on_update_doc_query) => {
     })
 }
 
-let match_unicode_complete = (ctx) => ctx.matchBefore(/\\[^\s"'.`]*/)
+/** Are we matching something like `\lambd...`? */
+let match_latex_complete = (ctx) => ctx.matchBefore(/\\[^\s"'.`]*/)
+/** Are we matching something like `:writing_a_symbo...`? */
 let match_symbol_complete = (ctx) => ctx.matchBefore(/\.\:[^\s"'`()\[\].]*/)
+/** Are we matching exactly `~/`? */
 let match_expanduser_complete = (ctx) => ctx.matchBefore(/~\//)
 
-let unfiltered_julia_generator = (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (ctx) => {
-    let unicode_match = match_unicode_complete(ctx) || match_expanduser_complete(ctx)
+/** Use the completion results from the Julia server to create CM completion objects, but only for path completions (TODO: broken) and latex completions. */
+let julia_special_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (ctx) => {
+    let unicode_match = match_latex_complete(ctx) || match_expanduser_complete(ctx)
     if (unicode_match == null) return null
 
     let to_complete = ctx.state.sliceDoc(0, ctx.pos)
@@ -187,7 +191,8 @@ const generate_scopestate_completions = function* (definitions, proposed, contex
     }
 }
 
-const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (ctx) => {
+/** Use the completion results from the Julia server to create CM completion objects. */
+const julia_code_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (ctx) => {
     let to_complete = ctx.state.sliceDoc(0, ctx.pos)
 
     // Another rough hack... If it detects a `.:`, we want to cut out the `:` so we get all results from julia,
@@ -302,7 +307,7 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
     let last_result = null
     /**
      * To make stuff a bit easier, we let all the generators fetch all the time and run their logic, but just do one request.
-     * Previously I had checks to make sure when `unicode_hint_generator` matches it wouldn't fetch in `juliahints_cool_generator`..
+     * Previously I had checks to make sure when `unicode_hint_generator` matches it wouldn't fetch in `julia_code_completions_to_cm`..
      * but that became cumbersome with `expanduser` autocomplete.. also because THERE MIGHT be a case where
      * `~/` actually needs a different completion? Idk, I decided to put this "memoize last" thing here deal with it.
      * @type {PlutoRequestAutocomplete}
@@ -322,8 +327,8 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
         autocompletion({
             activateOnTyping: false,
             override: [
-                unfiltered_julia_generator(memoize_last_request_autocomplete),
-                juliahints_cool_generator(memoize_last_request_autocomplete),
+                julia_special_completions_to_cm(memoize_last_request_autocomplete),
+                julia_code_completions_to_cm(memoize_last_request_autocomplete),
                 local_variables_completion,
             ],
             defaultKeymap: false, // We add these manually later, so we can override them if necessary
