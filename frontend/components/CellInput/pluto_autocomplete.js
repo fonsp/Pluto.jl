@@ -16,11 +16,11 @@ import {
 import { get_selected_doc_from_state } from "./LiveDocsFromCursor.js"
 import { cl } from "../../common/ClassTable.js"
 
-let { autocompletion, completionKeymap } = autocomplete
+let { autocompletion, completionKeymap, acceptCompletion } = autocomplete
 
-// These should be imported from  @codemirror/autocomplete
+// These should be imported from  @codemirror/autocomplete, but they are not exported.
 let completionState = autocompletion()[0]
-let acceptCompletion = (/** @type {EditorView} */ view, option) => {
+let applyCompletion = (/** @type {EditorView} */ view, option) => {
     let apply = option.completion.apply || option.completion.label
     let result = option.source
     if (typeof apply == "string") {
@@ -63,7 +63,7 @@ const tabCompletionState = StateField.define({
 /** @param {EditorView} cm */
 const tab_completion_command = (cm) => {
     // This will return true if the autocomplete select popup is open
-    if (autocomplete.acceptCompletion(cm)) {
+    if (acceptCompletion(cm)) {
         return true
     }
 
@@ -93,7 +93,7 @@ let open_docs_if_autocomplete_is_open_command = (cm) => {
 /** @param {EditorView} cm */
 let complete_and_also_type = (cm) => {
     // Possibly autocomplete
-    autocomplete.acceptCompletion(cm)
+    acceptCompletion(cm)
     // And then do nothing, in the hopes that codemirror will add whatever we typed
     return false
 }
@@ -291,7 +291,8 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
             let is_tab_completion = update.state.field(tabCompletionState, false)
 
             if (autocompletion_state?.open != null && is_tab_completion && autocompletion_state.open.options.length === 1) {
-                acceptCompletion(update.view, autocompletion_state.open.options[0])
+                // We can't use `acceptCompletion` here because that function has a minimum delay of 75ms between creating the completion options and applying one.
+                applyCompletion(update.view, autocompletion_state.open.options[0])
             }
         }),
 
