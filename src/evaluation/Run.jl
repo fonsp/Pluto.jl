@@ -81,15 +81,14 @@ function run_reactive!(
         cell.depends_on_disabled_cells = false
     end
 
-	# Move this save to after the last point the
-	# notebook serialization representation changes
-	# (currently, `depends_on_disabled_cells`)
-	save_notebook(session, notebook)
     for (cell, error) in new_order.errable
         cell.running = false
         cell.queued = false
         relay_reactivity_error!(cell, error)
     end
+
+	# Save the notebook. This is the only time that we save the notebook, so any state changes that influence the file contents (like `depends_on_disabled_cells`) should be behind this point.
+	save_notebook(session, notebook)
 
     # Send intermediate updates to the clients at most 20 times / second during a reactive run. (The effective speed of a slider is still unbounded, because the last update is not throttled.)
     # flush_send_notebook_changes_throttled, 
