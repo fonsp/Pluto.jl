@@ -15,8 +15,9 @@ import {
 } from "../../imports/CodemirrorPlutoSetup.js"
 import { get_selected_doc_from_state } from "./LiveDocsFromCursor.js"
 import { cl } from "../../common/ClassTable.js"
+import { ScopeStateField } from "./scopestate_statefield.js"
 
-let { autocompletion, completionKeymap, acceptCompletion } = autocomplete
+let { autocompletion, completionKeymap, completionStatus, acceptCompletion } = autocomplete
 
 // These should be imported from  @codemirror/autocomplete, but they are not exported.
 let completionState = autocompletion()[0]
@@ -167,6 +168,25 @@ let override_text_to_apply_in_field_expression = (text) => {
     return !/^[@a-zA-Z_][a-zA-Z0-9!_]*\"?$/.test(text) ? (text === ":" ? `:(${text})` : `:${text}`) : null
 }
 
+/**
+ * @param {Map<String,import("./scopestate_statefield.js").Definition>} definitions
+ * @param {Set<String>} proposed
+ * @param {number} context_pos
+ */
+const generate_scopestate_completions = function* (definitions, proposed, context_pos) {
+    let i = 0
+    for (let [name, { valid_from }] of definitions.entries()) {
+        if (!proposed.has(name) && valid_from < context_pos) {
+            yield {
+                label: name,
+                type: "c_Any",
+                boost: 99 - i,
+            }
+            i += 1
+        }
+    }
+}
+
 const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (ctx) => {
     let to_complete = ctx.state.sliceDoc(0, ctx.pos)
 
@@ -183,6 +203,9 @@ const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ reque
         // If this is a symbol completion thing, we need to add the `:` back in by moving the end a bit furher
         stop = stop + 1
     }
+
+    const definitions = ctx.state.field(ScopeStateField).definitions
+    const proposed = new Set()
 
     let to_complete_onto = to_complete.slice(0, start)
     let is_field_expression = to_complete_onto.slice(-1) === "."
@@ -201,6 +224,9 @@ const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ reque
                 // (quick) fix for identifiers that need to be escaped
                 // Ideally this is done with Meta.isoperator on the julia side
                 let text_to_apply = is_field_expression ? override_text_to_apply_in_field_expression(text) ?? text : text
+
+                if (definitions.has(text)) proposed.add(text)
+
                 return {
                     label: text,
                     apply: text_to_apply,
@@ -210,7 +236,7 @@ const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ reque
                         [`completion_${completion_type}`]: completion_type != null,
                         c_from_notebook: is_from_notebook,
                     }),
-                    boost: 99 - i / results.length,
+                    boost: 50 - i / results.length,
                 }
             }),
             // This is a small thing that I really want:
@@ -232,7 +258,29 @@ const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ reque
                         is_not_exported: !is_exported,
                     }
                 }),
+
+            ...Array.from(generate_scopestate_completions(definitions, proposed, ctx.pos)),
         ],
+    }
+}
+
+const local_variables_completion = (ctx) => {
+    let scopestate = ctx.state.field(ScopeStateField)
+    let unicode = ctx.tokenBefore(["Identifier"])
+
+    if (unicode === null) return null
+
+    let { from, to, text } = unicode
+
+    return {
+        from,
+        to,
+        options: scopestate.locals
+            .filter(
+                ({ validity, name }) =>
+                    name.startsWith(text) /** <- NOTE: A smarter matching strategy can be used here */ && from > validity.from && to <= validity.to
+            )
+            .map(({ name }, i) => ({ label: name, type: "c_Any", boost: 99 - i })),
     }
 }
 
@@ -276,7 +324,7 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
             override: [
                 unfiltered_julia_generator(memoize_last_request_autocomplete),
                 juliahints_cool_generator(memoize_last_request_autocomplete),
-                // TODO completion for local variables
+                local_variables_completion,
             ],
             defaultKeymap: false, // We add these manually later, so we can override them if necessary
             maxRenderedOptions: 512, // fons's magic number
@@ -290,7 +338,12 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
             let autocompletion_state = update.state.field(completionState, false)
             let is_tab_completion = update.state.field(tabCompletionState, false)
 
-            if (autocompletion_state?.open != null && is_tab_completion && autocompletion_state.open.options.length === 1) {
+            if (
+                autocompletion_state?.open != null &&
+                is_tab_completion &&
+                completionStatus(update.state) === "active" &&
+                autocompletion_state.open.options.length === 1
+            ) {
                 // We can't use `acceptCompletion` here because that function has a minimum delay of 75ms between creating the completion options and applying one.
                 applyCompletion(update.view, autocompletion_state.open.options[0])
             }
