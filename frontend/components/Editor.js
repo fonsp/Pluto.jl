@@ -24,7 +24,6 @@ import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { PlutoContext, PlutoBondsContext, PlutoJSInitializingContext, SetWithEmptyCallback } from "../common/PlutoContext.js"
 import { start_binder, BinderPhase, count_stat } from "../common/Binder.js"
-import { setup_mathjax } from "../common/SetupMathJax.js"
 import { BinderButton } from "./BinderButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
 import { ProgressBar } from "./ProgressBar.js"
@@ -1150,9 +1149,6 @@ patch: ${JSON.stringify(
 
         if (old_state.disable_ui !== this.state.disable_ui) {
             this.on_disable_ui()
-        }
-        if (!this.state.initializing) {
-            setup_mathjax()
         }
 
         if (old_state.notebook.nbpkg?.restart_recommended_msg !== new_state.notebook.nbpkg?.restart_recommended_msg) {
