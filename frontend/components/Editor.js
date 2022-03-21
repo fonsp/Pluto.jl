@@ -254,7 +254,7 @@ export class Editor extends Component {
         // these are things that can be done to the local notebook
         this.actions = {
             get_notebook: () => this?.state?.notebook || {},
-            send: (...args) => this.client.send(...args),
+            send: (message_type, ...args) => this.client.send(message_type, ...args),
             get_published_object: (objectid) => this.state.notebook.published_objects[objectid],
             //@ts-ignore
             update_notebook: (...args) => this.update_notebook(...args),
@@ -705,6 +705,10 @@ patch: ${JSON.stringify(
             // @ts-ignore
             window.version_info = this.client.version_info // for debugging
 
+            if (!client.notebook_exists) {
+                console.error("Notebook does not exist. Not connecting.")
+                return
+            }
             console.debug("Sending update_notebook request...")
             await this.client.send("update_notebook", { updates: [] }, { notebook_id: this.state.notebook.notebook_id }, false)
             console.debug("Received update_notebook request")
@@ -731,7 +735,8 @@ patch: ${JSON.stringify(
                 ? `./${u}?id=${this.state.notebook.notebook_id}`
                 : `${this.state.binder_session_url}${u}?id=${this.state.notebook.notebook_id}&token=${this.state.binder_session_token}`
 
-        this.client = {}
+        /** @type {import('../common/PlutoConnection').PlutoConnection} */
+        this.client = /** @type {import('../common/PlutoConnection').PlutoConnection} */ ({})
 
         this.connect = (ws_address = undefined) =>
             create_pluto_connection({
