@@ -17,7 +17,7 @@ import { get_selected_doc_from_state } from "./LiveDocsFromCursor.js"
 import { cl } from "../../common/ClassTable.js"
 import { ScopeStateField } from "./scopestate_statefield.js"
 
-let { autocompletion, completionKeymap } = autocomplete
+let { autocompletion, completionKeymap, completionStatus } = autocomplete
 
 // These should be imported from  @codemirror/autocomplete
 let completionState = autocompletion()[0]
@@ -338,7 +338,12 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
             let autocompletion_state = update.state.field(completionState, false)
             let is_tab_completion = update.state.field(tabCompletionState, false)
 
-            if (autocompletion_state?.open != null && is_tab_completion && autocompletion_state.open.options.length === 1) {
+            if (
+                autocompletion_state?.open != null &&
+                is_tab_completion &&
+                completionStatus(update.state) === "active" &&
+                autocompletion_state.open.options.length === 1
+            ) {
                 acceptCompletion(update.view, autocompletion_state.open.options[0])
             }
         }),
