@@ -17,6 +17,9 @@ Some of these @test_broken lines are commented out to prevent printing to the te
 -fons =#
 
 @testset "Explore Expressions" begin
+    @inferred Pluto.ExpressionExplorer.split_funcname(:(Base.Submodule.f))
+    @inferred Pluto.ExpressionExplorer.maybe_macroexpand(:(@time 1))
+
     @testset "Basics" begin
         @test testee(:(a), [:a], [], [], [])
         @test testee(:(1 + 1), [], [], [:+], [])

@@ -33,7 +33,6 @@ function run_reactive!(
 
         # update cache and save notebook because the dependencies might have changed after expanding macros
         update_dependency_cache!(notebook)
-        save_notebook(session, notebook)
     end
 
     removed_cells = setdiff(keys(old_topology.nodes), keys(new_topology.nodes))
@@ -66,7 +65,7 @@ function run_reactive!(
     to_run_raw = setdiff(union(new_runnable, old_runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
 
     # find (indirectly) deactivated cells and update their status
-    deactivated = filter(c -> c.running_disabled, notebook.cells)
+	deactivated = filter(c -> c.metadata["disabled"], notebook.cells)
     indirectly_deactivated = collect(topological_order(new_topology, deactivated))
     for cell in indirectly_deactivated
         cell.running = false
@@ -81,11 +80,15 @@ function run_reactive!(
         cell.queued = true
         cell.depends_on_disabled_cells = false
     end
+
     for (cell, error) in new_order.errable
         cell.running = false
         cell.queued = false
         relay_reactivity_error!(cell, error)
     end
+
+	# Save the notebook. This is the only time that we save the notebook, so any state changes that influence the file contents (like `depends_on_disabled_cells`) should be behind this point.
+	save_notebook(session, notebook)
 
     # Send intermediate updates to the clients at most 20 times / second during a reactive run. (The effective speed of a slider is still unbounded, because the last update is not throttled.)
     # flush_send_notebook_changes_throttled, 

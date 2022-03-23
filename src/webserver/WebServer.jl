@@ -70,7 +70,7 @@ end
 precompile(run, ())
 
 function run(options::Configuration.Options)
-    session = ServerSession(;options=options)
+    session = ServerSession(; options)
     run(session)
 end
 
@@ -235,7 +235,7 @@ function run(session::ServerSession, pluto_router)
 
             # If a "token" url parameter is passed in from binder, then we store it to add to every URL (so that you can share the URL to collaborate).
             params = HTTP.queryparams(HTTP.URI(request.target))
-            if haskey(params, "token") && session.binder_token === nothing 
+            if haskey(params, "token") && params["token"] ∉ ("null", "undefined", "") && session.binder_token === nothing
                 session.binder_token = params["token"]
             end
 

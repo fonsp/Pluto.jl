@@ -67,7 +67,8 @@ function asset_response(path; cacheable::Bool=false)
     end
 end
 
-function error_response(status_code::Integer, title, advice, body="")
+function error_response(
+    status_code::Integer, title, advice, body="")
     template = read(project_relative_path(frontend_directory(), "error.jl.html"), String)
 
     body_title = body == "" ? "" : "Error message:"
@@ -215,13 +216,25 @@ function http_router_for(session::ServerSession)
             if haskey(query, "path")
                 path = tamepath(query["path"])
                 if isfile(path)
-                    return try_launch_notebook_response(SessionActions.open, path, as_redirect=(request.method == "GET"), as_sample=as_sample, title="Failed to load notebook", advice="The file <code>$(htmlesc(path))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
+                    return try_launch_notebook_response(
+                        SessionActions.open, path; 
+                        as_redirect=(request.method == "GET"), 
+                        as_sample, 
+                        title="Failed to load notebook", 
+                        advice="The file <code>$(htmlesc(path))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!",
+                    )
                 else
                     return error_response(404, "Can't find a file here", "Please check whether <code>$(htmlesc(path))</code> exists.")
                 end
             elseif haskey(query, "url")
                 url = query["url"]
-                return try_launch_notebook_response(SessionActions.open_url, url, as_redirect=(request.method == "GET"), as_sample=as_sample, title="Failed to load notebook", advice="The notebook from <code>$(htmlesc(url))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
+                return try_launch_notebook_response(
+                    SessionActions.open_url, url;
+                    as_redirect=(request.method == "GET"), 
+                    as_sample, 
+                    title="Failed to load notebook", 
+                    advice="The notebook from <code>$(htmlesc(url))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!"
+                )
             else
                 # You can ask Pluto to handle CustomLaunch events
                 # and do some magic with how you open files.
@@ -248,7 +261,14 @@ function http_router_for(session::ServerSession)
         sample_filename = split(HTTP.unescapeuri(uri.path), "sample/")[2]
         sample_path = project_relative_path("sample", sample_filename)
         
-        try_launch_notebook_response(SessionActions.open, sample_path; as_redirect=(request.method == "GET"), home_url="../", as_sample=true, title="Failed to load sample", advice="Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
+        try_launch_notebook_response(
+            SessionActions.open, sample_path; 
+            as_redirect=(request.method == "GET"), 
+            home_url="../", 
+            as_sample=true, 
+            title="Failed to load sample", 
+            advice="Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!"
+        )
     end
     HTTP.@register(router, "GET", "/sample/*", serve_sample)
     HTTP.@register(router, "POST", "/sample/*", serve_sample)
@@ -314,11 +334,11 @@ function http_router_for(session::ServerSession)
         save_path = SessionActions.save_upload(request.body)
         try_launch_notebook_response(
             SessionActions.open,
-            save_path,
+            save_path;
             as_redirect=false,
             as_sample=false,
             title="Failed to load notebook",
-            advice="Make sure that you copy the entire notebook file. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!"
+            advice="The contents could not be read as a Pluto notebook file. When copying contents from somewhere else, make sure that you copy the entire notebook file.  You can also <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!"
         )
     end
     HTTP.@register(router, "POST", "/notebookupload", serve_notebookupload)
