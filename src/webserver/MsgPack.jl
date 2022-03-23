@@ -82,7 +82,6 @@ decode_extension_and_addbits(x::Any) = x
 function pack(args...)
     MsgPack.pack(args...)
 end
-precompile(pack, (Dict{String,Any},))
 
 function unpack(args...)
     MsgPack.unpack(args...) |> decode_extension_and_addbits
