@@ -52,7 +52,7 @@ export const diagnostic_linter = ({ cell_id, pluto_actions }) =>
                             await pluto_actions.update_notebook((notebook) => {
                                 for (let cell of global_definitions[variable]) {
                                     if (cell !== cell_id) {
-                                        notebook.cell_inputs[cell].running_disabled = true
+                                        notebook.cell_inputs[cell].metadata.disabled = true
                                     }
                                 }
                             })

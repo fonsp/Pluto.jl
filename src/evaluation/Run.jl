@@ -13,20 +13,20 @@ function find_indirectly_deactivated_cells(topology::NotebookTopology, deactivat
     to_delete = Set{Int}()
 
     for cell in order.runnable
-        if !cell.running_disabled
+        if !is_disabled(cell)
             continue
         end
 
         others = where_assigned(topology, cell)
 
         if length(others) > 1
-            other_other = others[findfirst(c -> c != cell && !c.running_disabled, others)]
+            other_other = others[findfirst(c -> c != cell && !is_disabled(c), others)]
 
             # NOTE(paul):
             #   This is pretty unoptimized since we somehow need to recompute a lot of things from the
             #   topological_order call, maybe could be solved as a tree traversal instead
             parents = where_assigned(topology, topology.nodes[other_other].references)
-            if any(p -> p.running_disabled, parents)
+            if any(is_disabled, parents)
                 continue # this is disabled down the line
             end
 
@@ -105,6 +105,7 @@ function run_reactive!(
     new_runnable = setdiff(new_order.runnable, already_run)
     to_run_raw = setdiff(union(new_runnable, old_runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
 
+    deactivated = filter(c -> c.metadata["disabled"], notebook.cells)
     # find (indirectly) deactivated cells and update their status
     # indirectly_deactivated = collect(topological_order(notebook, new_topology, deactivated))
     indirectly_deactivated = find_indirectly_deactivated_cells(new_topology, deactivated)

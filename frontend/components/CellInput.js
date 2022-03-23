@@ -350,7 +350,6 @@ export const CellInput = ({
     nbpkg,
     cell_id,
     notebook_id,
-    running_disabled,
     any_logs,
     show_logs,
     set_show_logs,
