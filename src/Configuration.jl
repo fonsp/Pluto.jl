@@ -14,7 +14,7 @@ using Configurations # https://github.com/Roger-luo/Configurations.jl
 
 import ..Pluto: tamepath
 
-# Using a ref to avoid fixing variables during the compilation phase. We don't want this value to be baked into the sysimage, because it depends on the `pwd()`. We do want to cache it, because the pwd might change while Pluto is running.
+# Using a ref to avoid fixing the pwd() output during the compilation phase. We don't want this value to be baked into the sysimage, because it depends on the `pwd()`. We do want to cache it, because the pwd might change while Pluto is running.
 const pwd_ref = Ref{Union{Nothing,String}}()
 function notebook_path_suggestion()
     pwd_val = something(pwd_ref[], pwd())
