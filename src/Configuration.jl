@@ -14,14 +14,17 @@ using Configurations # https://github.com/Roger-luo/Configurations.jl
 
 import ..Pluto: tamepath
 
-# Using a dict to avoid const propation fixing variables during the compilation phase. We don't want this value to be baked into the sysimage, because it depends on the `pwd()`. We do want to cache it, because the pwd might change while Pluto is running.
-const notebook_path_suggestion_cache = Dict{Symbol,String}()
+# Using a ref to avoid fixing variables during the compilation phase. We don't want this value to be baked into the sysimage, because it depends on the `pwd()`. We do want to cache it, because the pwd might change while Pluto is running.
+const pwd_ref = Ref{Union{Nothing,String}}()
 function notebook_path_suggestion()
-    get!(notebook_path_suggestion_cache, :suggestion) do
-        preferred_dir = startswith(Sys.BINDIR, pwd()) ? homedir() : pwd()
-        # so that it ends with / or \
-        string(joinpath(preferred_dir, ""))
-    end
+    pwd_val = something(pwd_ref[], pwd())
+    preferred_dir = startswith(Sys.BINDIR, pwd_val) ? homedir() : pwd_val
+    # so that it ends with / or \
+    string(joinpath(preferred_dir, ""))
+end
+
+function __init__()
+    pwd_ref[] = pwd()
 end
 
 """
