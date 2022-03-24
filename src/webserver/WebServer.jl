@@ -67,6 +67,7 @@ function run(; kwargs...)
     options = Configuration.from_flat_kwargs(; kwargs...)
     run(options)
 end
+precompile(run, ())
 
 function run(options::Configuration.Options)
     session = ServerSession(; options)
@@ -323,6 +324,7 @@ function run(session::ServerSession, pluto_router)
         end
     end
 end
+precompile(run, (ServerSession, HTTP.Handlers.Router{Symbol("##001")}))
 
 get_favorite_notebook(notebook:: Nothing) = nothing
 get_favorite_notebook(notebook:: String) = notebook
