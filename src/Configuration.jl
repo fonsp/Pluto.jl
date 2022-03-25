@@ -10,8 +10,6 @@ Note that Pluto is designed to be _zero-configuration_, and most users should no
 """
 module Configuration
 
-using Configurations # https://github.com/Roger-luo/Configurations.jl
-
 import ..Pluto: tamepath
 
 # Using a ref to avoid fixing the pwd() output during the compilation phase. We don't want this value to be baked into the sysimage, because it depends on the `pwd()`. We do want to cache it, because the pwd might change while Pluto is running.
@@ -67,7 +65,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 - `injected_javascript_data_url::String = "$INJECTED_JAVASCRIPT_DATA_URL_DEFAULT"` (internal) Optional javascript injectables to the front-end. Can be used to customize the editor, but this API is not meant for general use yet.
 - `on_event::Function = $ON_EVENT_DEFAULT`
 """
-@option mutable struct ServerOptions
+Base.@kwdef mutable struct ServerOptions
     root_url::Union{Nothing,String} = ROOT_URL_DEFAULT
     host::String = HOST_DEFAULT
     port::Union{Nothing,Integer} = PORT_DEFAULT
@@ -112,7 +110,7 @@ Security settings for the HTTP server.
 
 Note that Pluto is quickly evolving software, maintained by designers, educators and enthusiasts — not security experts. If security is a serious concern for your application, then we recommend running Pluto inside a container and verifying the relevant security aspects of Pluto yourself.
 """
-@option mutable struct SecurityOptions
+Base.@kwdef mutable struct SecurityOptions
     require_secret_for_open_links::Bool = REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT
     require_secret_for_access::Bool = REQUIRE_SECRET_FOR_ACESS_DEFAULT
 end
@@ -130,7 +128,7 @@ Options to change Pluto's evaluation behaviour during internal testing. These op
 - `workspace_use_distributed::Bool = $WORKSPACE_USE_DISTRIBUTED_DEFAULT` Whether to start notebooks in a separate process.
 - `lazy_workspace_creation::Bool = $LAZY_WORKSPACE_CREATION_DEFAULT`
 """
-@option mutable struct EvaluationOptions
+Base.@kwdef mutable struct EvaluationOptions
     run_notebook_on_load::Bool = RUN_NOTEBOOK_ON_LOAD_DEFAULT
     workspace_use_distributed::Bool = WORKSPACE_USE_DISTRIBUTED_DEFAULT
     lazy_workspace_creation::Bool = LAZY_WORKSPACE_CREATION_DEFAULT
@@ -178,7 +176,7 @@ These options will be passed as command line argument to newly launched processe
 - `history_file::Union{Nothing,String} = "$HISTORY_FILE_DEFAULT"` By default, the history isn't loaded in notebooks.
 - `threads::Union{Nothing,String,Int} = default_number_of_threads()`
 """
-@option mutable struct CompilerOptions
+Base.@kwdef mutable struct CompilerOptions
     compile::Union{Nothing,String} = COMPILE_DEFAULT
     sysimage::Union{Nothing,String} = SYSIMAGE_DEFAULT
     banner::Union{Nothing,String} = BANNER_DEFAULT
@@ -199,7 +197,7 @@ Collection of all settings that configure a Pluto session.
 
 `ServerSession` contains a `Configuration`.
 """
-@option struct Options
+Base.@kwdef struct Options
     server::ServerOptions = ServerOptions()
     security::SecurityOptions = SecurityOptions()
     evaluation::EvaluationOptions = EvaluationOptions()
