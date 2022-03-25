@@ -32,6 +32,7 @@ Tables = "1"
 julia = "^1.6"
 
 [extras]
+Configurations = "5218b696-f38b-4ac9-8b61-a12ec717816d"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
@@ -39,4 +40,4 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 
 [targets]
-test = ["Test", "Random", "DataFrames", "OffsetArrays", "TimerOutputs"]
+test = ["Configurations", "DataFrames", "OffsetArrays", "Random", "Test", "TimerOutputs"]
