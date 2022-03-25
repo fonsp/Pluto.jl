@@ -26,18 +26,19 @@ end
             Pluto.Configuration.EvaluationOptions,
             Pluto.Configuration.CompilerOptions
         ]
-        sets = [Set(fieldnames(s)) for s in structs]
-        union(sets...)
+        sets = [collect(fieldnames(s)) for s in structs]
+        vcat(sets...)::Vector{Symbol}
     end
 
     from_flat_kwargs_kwargs = let
         method = only(methods(Pluto.Configuration.from_flat_kwargs))
         syms = method.slot_syms
         names = split(syms, "\0")[2:end-1]
-        Set(Symbol.(names))::Set{Symbol}
+        Symbol.(names)::Vector{Symbol}
     end
 
     # Verify that all struct fields can be set via `from_flat_kwargs`.
+    # Also verifies ordering to improve code readability.
     @test structs_kwargs == from_flat_kwargs_kwargs
 end
 
