@@ -204,7 +204,6 @@ Base.@kwdef struct Options
     compiler::CompilerOptions = CompilerOptions()
 end
 
-# TODO: Add test that all possible settings are keyword arguments of this method.
 function from_flat_kwargs(;
         root_url::Union{Nothing,String} = ROOT_URL_DEFAULT,
         host::String = HOST_DEFAULT,
