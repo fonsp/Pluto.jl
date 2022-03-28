@@ -7,7 +7,9 @@ const FrontMatter = Dict{String,Any}
 frontmatter(nb::Notebook; raise::Bool=false)::Dict{String,Any}
 ```
 
-Extract frontmatter from a notebook. If `raise` is true, then parsing errors will be rethrown.
+Extract frontmatter from a notebook, which is extra meta-information that the author attaches to the notebook, often including *title*, *description*, *tags*, *author*, and more. Search for *frontmatter* online to learn more.
+
+If `raise` is true, then parsing errors will be rethrown. If `false`, this function will always return a `Dict`.
 
 Currently, you can give frontmatter to a notebook by defining a global variable `frontmatter` anywhere in the notebook, which should be a named tuple. This might change in the future, because we might make this a GUI thing!
 """
