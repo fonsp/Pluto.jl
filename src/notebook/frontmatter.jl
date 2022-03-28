@@ -11,7 +11,23 @@ Extract frontmatter from a notebook, which is extra meta-information that the au
 
 If `raise` is true, then parsing errors will be rethrown. If `false`, this function will always return a `Dict`.
 
-Currently, you can give frontmatter to a notebook by defining a global variable `frontmatter` anywhere in the notebook, which should be a named tuple. This might change in the future, because we might make this a GUI thing!
+Currently, you can give frontmatter to a notebook by defining a global variable `frontmatter` anywhere in the notebook, which should be a named tuple. Like so:
+
+```julia
+frontmatter = (
+	title = "⚡️ JavaScript for widgets",
+	description = "A simple notebook demonstrating the Julia syntax essentials",
+	layout = "layout.jlhtml",
+	tags = ["docs", "advanced", "widgets"],
+);
+```
+
+This definition will be picked up (using syntax analysis) and evaluated. Note:
+- You are not allowed to use variables defined in other cells. (But you can *use* `frontmatter` in your notebook.)
+- You can use `;` to hide it from being displayed, only the definition matters.
+
+
+This might change in the future, because we might make this a GUI thing!
 """
 function frontmatter(nb::Notebook; raise::Bool=false)
     top = updated_topology(nb.topology, nb, nb.cells)
