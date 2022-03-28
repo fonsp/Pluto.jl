@@ -1,0 +1,46 @@
+
+const FrontMatter = Dict{String,Any}
+
+
+"""
+```julia
+frontmatter(nb::Notebook; raise::Bool=false)::Dict{String,Any}
+```
+
+Extract frontmatter from a notebook. If `raise` is true, then parsing errors will be rethrown.
+
+Currently, you can give frontmatter to a notebook by defining a global variable `frontmatter` anywhere in the notebook, which should be a named tuple. This might change in the future, because we might make this a GUI thing!
+"""
+function frontmatter(nb::Notebook; raise::Bool=false)
+    top = updated_topology(nb.topology, nb, nb.cells)
+    
+	cs = where_assigned(top, Set([:frontmatter]))
+	if isempty(cs)
+		FrontMatter()
+	else
+		try
+			c = only(cs)
+			m = Module()
+			Core.eval(m, Meta.parse(c.code))
+			result = Core.eval(m, :frontmatter)
+			if result isa FrontMatter
+				result
+			else
+				FrontMatter(String(k)=>v for (k,v) in pairs(result))
+			end
+		catch e
+            if raise
+                rethrow(e)
+            else
+                @error "Error reading frontmatter. Make sure that `frontmatter` is a `NamedTuple` or a `Dict{String,Any}`, and that it does not use global variables." nb.path exception=(e,catch_backtrace())
+                FrontMatter()
+            end
+		end
+	end
+end
+
+
+function frontmatter(abs_path::String)
+	# this will load the notebook to analyse, it won't run it
+    frontmatter(load_notebook_nobackup(abs_path))
+end
