@@ -329,7 +329,7 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
             override: [
                 julia_special_completions_to_cm(memoize_last_request_autocomplete),
                 julia_code_completions_to_cm(memoize_last_request_autocomplete),
-                local_variables_completion,
+                // local_variables_completion,
             ],
             defaultKeymap: false, // We add these manually later, so we can override them if necessary
             maxRenderedOptions: 512, // fons's magic number
