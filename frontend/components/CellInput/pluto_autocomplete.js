@@ -338,6 +338,7 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
                 julia_special_completions_to_cm(memoize_last_request_autocomplete),
                 julia_code_completions_to_cm(memoize_last_request_autocomplete),
                 complete_anyword,
+                // TODO: Disabled because of performance problems, see https://github.com/fonsp/Pluto.jl/pull/1925. Remove `complete_anyword` once fixed. See https://github.com/fonsp/Pluto.jl/pull/2013
                 // local_variables_completion,
             ],
             defaultKeymap: false, // We add these manually later, so we can override them if necessary
