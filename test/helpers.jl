@@ -147,6 +147,7 @@ macro test_notebook_inputs_equal(nbA, nbB, check_paths_equality::Bool=true)
         @test getproperty.(nbA.cells, :cell_id) == getproperty.(nbB.cells, :cell_id)
         @test getproperty.(nbA.cells, :code_folded) == getproperty.(nbB.cells, :code_folded)
         @test getproperty.(nbA.cells, :code) == getproperty.(nbB.cells, :code)
+        @test getproperty.(nbA.cells, :metadata) == getproperty.(nbB.cells, :metadata)
         
     end |> Base.remove_linenums!
 end

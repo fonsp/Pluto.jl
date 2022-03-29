@@ -98,7 +98,9 @@ const first_true_key = (obj) => {
  *  cell_id: string,
  *  code: string,
  *  code_folded: boolean,
- *  running_disabled: boolean,
+ *  metadata: {
+ *    disabled: boolean
+ *  },
  * }}
  */
 
@@ -124,7 +126,6 @@ const first_true_key = (obj) => {
  *  downstream_cells_map: { string: [string]},
  *  upstream_cells_map: { string: [string]},
  *  precedence_heuristic: ?number,
- *  running_disabled: boolean,
  *  depends_on_disabled_cells: boolean,
  *  output: {
  *      body: string,
@@ -253,7 +254,7 @@ export class Editor extends Component {
         // these are things that can be done to the local notebook
         this.actions = {
             get_notebook: () => this?.state?.notebook || {},
-            send: (...args) => this.client.send(...args),
+            send: (message_type, ...args) => this.client.send(message_type, ...args),
             get_published_object: (objectid) => this.state.notebook.published_objects[objectid],
             //@ts-ignore
             update_notebook: (...args) => this.update_notebook(...args),
@@ -291,7 +292,6 @@ export class Editor extends Component {
                     cell_id: uuidv4(),
                     code: code,
                     code_folded: false,
-                    running_disabled: false,
                 }))
 
                 let index
@@ -337,6 +337,9 @@ export class Editor extends Component {
                             ...cell,
                             // Fill the cell with empty code remotely, so it doesn't run unsafe code
                             code: "",
+                            metadata: {
+                                disabled: false,
+                            },
                         }
                     }
                     notebook.cell_order = [
@@ -374,7 +377,9 @@ export class Editor extends Component {
                         cell_id: uuidv4(),
                         code: code,
                         code_folded: false,
-                        running_disabled: false,
+                        metadata: {
+                            disabled: false,
+                        },
                     }
                 })
 
@@ -432,7 +437,7 @@ export class Editor extends Component {
                         cell_id: id,
                         code,
                         code_folded: false,
-                        running_disabled: false,
+                        metadata: { disabled: false },
                     }
                     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
                 })
@@ -700,6 +705,10 @@ patch: ${JSON.stringify(
             // @ts-ignore
             window.version_info = this.client.version_info // for debugging
 
+            if (!client.notebook_exists) {
+                console.error("Notebook does not exist. Not connecting.")
+                return
+            }
             console.debug("Sending update_notebook request...")
             await this.client.send("update_notebook", { updates: [] }, { notebook_id: this.state.notebook.notebook_id }, false)
             console.debug("Received update_notebook request")
@@ -726,7 +735,8 @@ patch: ${JSON.stringify(
                 ? `./${u}?id=${this.state.notebook.notebook_id}`
                 : `${this.state.binder_session_url}${u}?id=${this.state.notebook.notebook_id}&token=${this.state.binder_session_token}`
 
-        this.client = {}
+        /** @type {import('../common/PlutoConnection').PlutoConnection} */
+        this.client = /** @type {import('../common/PlutoConnection').PlutoConnection} */ ({})
 
         this.connect = (ws_address = undefined) =>
             create_pluto_connection({
@@ -814,7 +824,8 @@ patch: ${JSON.stringify(
                 // if the other cell depends on the variable `sym`...
                 if (deps.upstream_cells_map.hasOwnProperty(sym)) {
                     // and the cell is not disabled
-                    return !(this.state.notebook.cell_inputs[cell_id]?.running_disabled ?? true)
+                    const running_disabled = this.state.notebook.cell_inputs[cell_id].metadata.disabled
+                    return !running_disabled
                 }
             })
 

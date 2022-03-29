@@ -86,3 +86,4 @@ end
 function unpack(args...)
     MsgPack.unpack(args...) |> decode_extension_and_addbits
 end
+precompile(unpack, (Vector{UInt8},))

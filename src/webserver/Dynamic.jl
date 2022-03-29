@@ -87,6 +87,7 @@ end
 # All of the arrays in the notebook_to_js object are 'immutable' (we write code as if they are), so we can enable this optimization:
 Firebasey.use_triple_equals_for_arrays[] = true
 
+
 # the only possible Arrays are:
 # - cell_order
 # - cell_execution_order
@@ -109,7 +110,7 @@ function notebook_to_js(notebook::Notebook)
                 "cell_id" => cell.cell_id,
                 "code" => cell.code,
                 "code_folded" => cell.code_folded,
-                "running_disabled" => cell.running_disabled,
+                "metadata" => cell.metadata,
             )
         for (id, cell) in notebook.cells_dict),
         "cell_dependencies" => Dict{UUID,Dict{String,Any}}(
@@ -169,6 +170,7 @@ function notebook_to_js(notebook::Notebook)
         "cell_execution_order" => cell_id.(collect(topological_order(notebook))),
     )
 end
+precompile(notebook_to_js, (Notebook,))
 
 """
 For each connected client, we keep a copy of their current state. This way we know exactly which updates to send when the server-side state changes.
