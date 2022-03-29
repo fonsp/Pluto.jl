@@ -269,6 +269,14 @@ const julia_code_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ re
     }
 }
 
+const complete_anyword = async (ctx) => {
+    const results_from_cm = await autocomplete.completeAnyWord(ctx)
+    return {
+        from: results_from_cm.from,
+        options: results_from_cm.options.map(({ label }, i) => ({ label, boost: 0 - i })),
+    }
+}
+
 const local_variables_completion = (ctx) => {
     let scopestate = ctx.state.field(ScopeStateField)
     let unicode = ctx.tokenBefore(["Identifier"])
@@ -329,6 +337,7 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
             override: [
                 julia_special_completions_to_cm(memoize_last_request_autocomplete),
                 julia_code_completions_to_cm(memoize_last_request_autocomplete),
+                complete_anyword,
                 // local_variables_completion,
             ],
             defaultKeymap: false, // We add these manually later, so we can override them if necessary
