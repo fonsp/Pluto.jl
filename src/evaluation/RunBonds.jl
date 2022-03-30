@@ -36,6 +36,7 @@ function set_bond_values_reactive(;
     end
 
     new_values = [notebook.bonds[bound_sym].value for bound_sym in to_set]
+    externally_updated_variables = Dict{Symbol, Any}(zip(bound_sym_names, new_values))
     
     function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Notebook}, old_workspace_name, new_workspace_name, to_delete_vars::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}; to_run::AbstractVector{Cell})
         to_delete_vars = Set([to_delete_vars..., to_set...]) # also delete the bound symbols
@@ -46,7 +47,7 @@ function set_bond_values_reactive(;
     end
     to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}(to_set))
 
-    run_reactive_async!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, user_requested_run=false, run_async=false, kwargs...)
+    run_reactive_async!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, user_requested_run=false, run_async=false, externally_updated_variables, kwargs...)
 end
 
 """

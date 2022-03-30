@@ -2,6 +2,7 @@ import REPL:ends_with_semicolon
 import .Configuration
 import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname, UsingsImports, external_package_names
 import .WorkspaceManager: macroexpand_in_workspace
+import .MoreAnalysis: find_bound_variables
 
 Base.push!(x::Set{Cell}) = x
 
@@ -14,7 +15,8 @@ function run_reactive!(
 	deletion_hook::Function = WorkspaceManager.move_vars, 
 	user_requested_run::Bool = true, 
 	already_in_run::Bool = false, 
-	already_run::Vector{Cell} = Cell[]
+	already_run::Vector{Cell} = Cell[],
+	externally_updated_variables::Dict{Symbol, Any} = Dict{Symbol, Any}()
 )::TopologicalOrder
     if !already_in_run
         # make sure that we're the only `run_reactive!` being executed - like a semaphor
@@ -132,6 +134,18 @@ function run_reactive!(
                 user_requested_run = (user_requested_run && cell ∈ roots)
             )
             any_interrupted |= run.interrupted
+
+			# Support one bond defining another when setting both simultaneously in PlutoSliderServer
+			# https://github.com/fonsp/Pluto.jl/issues/1695
+			bound_variables_defined_by_this_cell = find_bound_variables(notebook.topology.codes[cell].parsedcode)
+			redefined_external_bound_variables = bound_variables_defined_by_this_cell ∩ keys(externally_updated_variables)
+			for bond_var ∈ redefined_external_bound_variables
+				# set the redefined bound variables to their original value from the request
+				bond_val = externally_updated_variables[bond_var]
+				expr = :($bond_var = $bond_val)
+				WorkspaceManager.eval_in_workspace((session, notebook), expr)
+			end
+
         end
 
         cell.running = false
