@@ -142,7 +142,7 @@ function run_reactive!(
 			for bond_var ∈ redefined_external_bound_variables
 				# set the redefined bound variables to their original value from the request
 				bond_val = externally_updated_variables[bond_var]
-				expr = :($bond_var = $bond_val)
+				expr = :($bond_var = Main.PlutoRunner.transform_value($(QuoteNode(bond_var)), $bond_val))
 				WorkspaceManager.eval_in_workspace((session, notebook), expr)
 			end
 
