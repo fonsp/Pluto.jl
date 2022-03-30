@@ -5,6 +5,9 @@ import .PkgCompat: PkgCompat, PkgContext
 import Pkg
 import TOML
 
+
+const DEFAULT_NOTEBOOK_METADATA = Dict{String, Any}()
+
 mutable struct BondValue
     value::Any
 end
@@ -55,6 +58,8 @@ Base.@kwdef mutable struct Notebook
     last_hot_reload_time::typeof(time())=zero(time())
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
+
+    metadata::Dict{String, Any}=copy(DEFAULT_NOTEBOOK_METADATA)
 end
 
 _collect_cells(cells_dict::Dict{UUID,Cell}, cells_order::Vector{UUID}) = 
@@ -90,6 +95,7 @@ function Base.getproperty(notebook::Notebook, property::Symbol)
 end
 
 const _notebook_header = "### A Pluto.jl notebook ###"
+const _notebook_metadata_prefix = "#> "
 # We use a creative delimiter to avoid accidental use in code
 # so don't get inspired to suddenly use these in your code!
 const _cell_id_delimiter = "# ╔═╡ "
@@ -116,6 +122,17 @@ Have a look at our [JuliaCon 2020 presentation](https://youtu.be/IAF8DjrQSSk?t=1
 function save_notebook(io, notebook::Notebook)
     println(io, _notebook_header)
     println(io, "# ", PLUTO_VERSION_STR)
+    
+    # Notebook metadata
+    if length(keys(notebook.metadata)) > 0
+        nb_metadata_toml = strip(sprint(TOML.print, notebook.metadata))
+        if nb_metadata_toml != ""
+            for line in split(nb_metadata_toml, "\n")
+                println(io, _notebook_metadata_prefix, line)
+            end
+        end
+    end
+
     # Anything between the version string and the first UUID delimiter will be ignored by the notebook loader.
     println(io, "")
     println(io, "using Markdown")
@@ -219,6 +236,18 @@ function load_notebook_nobackup(io, path)::Notebook
         # @info "Loading a notebook saved with Pluto $(file_VERSION_STR). This is Pluto $(PLUTO_VERSION_STR)."
     end
 
+    nb_metadata_toml_lines = String[]
+    nb_prefix_length = length(_notebook_metadata_prefix)
+    while !eof(io)
+        line = String(readline(io))
+        if startswith(line, _notebook_metadata_prefix)
+            push!(nb_metadata_toml_lines, line[begin+nb_prefix_length:end])
+        else
+            break
+        end
+    end
+    notebook_metadata = Dict{String, Any}(DEFAULT_NOTEBOOK_METADATA..., TOML.parse(join(nb_metadata_toml_lines, "\n"))...)
+
     collected_cells = Dict{UUID,Cell}()
 
     # ignore first bits of file
@@ -255,7 +284,7 @@ function load_notebook_nobackup(io, path)::Notebook
             code = code_normalised[1:prevind(code_normalised, end, length(_cell_suffix))]
 
             # parse metadata
-            metadata = Dict{String, Any}(DEFAULT_METADATA..., TOML.parse(join(metadata_toml_lines, "\n"))...)
+            metadata = Dict{String, Any}(DEFAULT_CELL_METADATA..., TOML.parse(join(metadata_toml_lines, "\n"))...)
 
             read_cell = Cell(; cell_id, code, metadata)
             collected_cells[cell_id] = read_cell
@@ -333,6 +362,7 @@ function load_notebook_nobackup(io, path)::Notebook
         path=path, 
         nbpkg_ctx=nbpkg_ctx, 
         nbpkg_installed_versions_cache=nbpkg_cache(nbpkg_ctx),
+        metadata=notebook_metadata,
     )
 end
 
