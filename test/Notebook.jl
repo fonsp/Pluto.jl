@@ -189,6 +189,7 @@ end
                 "number" => 10000,
             ),
             "disabled" => true,
+            "skip_as_script" => true,
         )
     end
 
