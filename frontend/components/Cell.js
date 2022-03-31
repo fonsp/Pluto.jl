@@ -55,7 +55,7 @@ export const Cell = ({
     nbpkg,
     global_definition_locations,
 }) => {
-    const { disabled: running_disabled } = metadata
+    const { disabled: running_disabled, skip_as_script } = metadata
     let pluto_actions = useContext(PlutoContext)
     const on_update_doc_query = pluto_actions.set_doc_query
     const on_focus_neighbor = pluto_actions.focus_on_neighbor
@@ -168,6 +168,7 @@ export const Cell = ({
                 selected: selected,
                 code_differs: class_code_differs,
                 code_folded: class_code_folded,
+                skip_as_script: skip_as_script,
                 running_disabled: running_disabled,
                 depends_on_disabled_cells: depends_on_disabled_cells,
                 show_input: show_input,

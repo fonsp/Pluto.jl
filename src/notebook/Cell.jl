@@ -2,7 +2,8 @@ import UUIDs: UUID, uuid1
 import .ExpressionExplorer: SymbolsState, UsingsImports
 
 const DEFAULT_METADATA = Dict{String, Any}(
-    "disabled" => false
+    "disabled" => false,
+    "skip_as_script" => false,
 )
 
 Base.@kwdef struct CellOutput

@@ -100,6 +100,7 @@ const first_true_key = (obj) => {
  *  code_folded: boolean,
  *  metadata: {
  *    disabled: boolean
+ *    skip_as_script: boolean
  *  },
  * }}
  */
@@ -339,6 +340,7 @@ export class Editor extends Component {
                             code: "",
                             metadata: {
                                 disabled: false,
+                                skip_as_script: false,
                             },
                         }
                     }
@@ -379,6 +381,7 @@ export class Editor extends Component {
                         code_folded: false,
                         metadata: {
                             disabled: false,
+                            skip_as_script: false,
                         },
                     }
                 })
@@ -437,7 +440,7 @@ export class Editor extends Component {
                         cell_id: id,
                         code,
                         code_folded: false,
-                        metadata: { disabled: false },
+                        metadata: { disabled: false, skip_as_script: false },
                     }
                     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
                 })

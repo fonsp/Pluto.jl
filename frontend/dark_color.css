@@ -59,6 +59,7 @@
         --selected-cell-bg-color: rgb(42 115 205 / 78%);
         --hover-scrollbar-color-1: rgba(0, 0, 0, 0.15);
         --hover-scrollbar-color-2: rgba(0, 0, 0, 0.05);
+        --skip-as-script-border-color: #888;
 
         /* Pluto shoulders */
         --shoulder-hover-bg-color: rgba(255, 255, 255, 0.05);

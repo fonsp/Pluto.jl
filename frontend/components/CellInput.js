@@ -355,7 +355,7 @@ export const CellInput = ({
     global_definition_locations,
 }) => {
     let pluto_actions = useContext(PlutoContext)
-    const { disabled: running_disabled } = metadata
+    const { disabled: running_disabled, skip_as_script } = metadata
 
     const newcm_ref = useRef(/** @type {EditorView} */ (null))
     const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))
@@ -785,6 +785,7 @@ export const CellInput = ({
                 on_delete=${on_delete}
                 cell_id=${cell_id}
                 run_cell=${on_submit}
+                skip_as_script=${skip_as_script}
                 running_disabled=${running_disabled}
                 any_logs=${any_logs}
                 show_logs=${show_logs}
@@ -794,12 +795,21 @@ export const CellInput = ({
     `
 }
 
-const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled, any_logs, show_logs, set_show_logs }) => {
+const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, running_disabled, any_logs, show_logs, set_show_logs }) => {
     const timeout = useRef(null)
     let pluto_actions = useContext(PlutoContext)
     const [open, setOpen] = useState(false)
     const mouseenter = () => {
         clearTimeout(timeout.current)
+    }
+    const toggle_skip_as_script = async (e) => {
+        const new_val = !skip_as_script
+        e.preventDefault()
+        e.stopPropagation()
+        await pluto_actions.update_notebook((notebook) => {
+            notebook.cell_inputs[cell_id].metadata["skip_as_script"] = new_val
+        })
+        await run_cell()
     }
     const toggle_running_disabled = async (e) => {
         const new_val = !running_disabled
@@ -832,6 +842,15 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled, any_
                   >
                       ${running_disabled ? html`<span class="enable_cell ctx_icon" />` : html`<span class="disable_cell ctx_icon" />`}
                       ${running_disabled ? html`<b>Enable cell</b>` : html`Disable cell`}
+                  </li>
+                  <li
+                      onClick=${toggle_skip_as_script}
+                      title=${skip_as_script
+                          ? "Skip this cell when running the notebook as script, making it exclusive to the notebook"
+                          : "Run this cell also when calling the notebook as a script"}
+                  >
+                      ${skip_as_script ? html`<span class="skip_as_script ctx_icon" />` : html`<span class="run_as_script ctx_icon" />`}
+                      ${skip_as_script ? html`<b>Run as script</b>` : html`Skip as script`}
                   </li>
                   ${any_logs
                       ? html`<li title="" onClick=${toggle_logs}>

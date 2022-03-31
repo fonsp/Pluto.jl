@@ -139,7 +139,8 @@ function save_notebook(io, notebook::Notebook)
             end
         end
         cell_running_disabled = c.metadata["disabled"]
-        if cell_running_disabled || c.depends_on_disabled_cells
+        cell_skip_as_script = c.metadata["skip_as_script"]
+        if cell_skip_as_script || cell_running_disabled || c.depends_on_disabled_cells
             print(io, _disabled_prefix)
             print(io, replace(c.code, _cell_id_delimiter => "# "))
             print(io, _disabled_suffix)

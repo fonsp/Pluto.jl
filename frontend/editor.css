@@ -1085,6 +1085,20 @@ pluto-cell.running_disabled > pluto-output {
     background-color: var(--disabled-cell-bg-color);
 }
 
+/* SKIP AS SCRIPT CELLS */
+pluto-cell.skip_as_script::after {
+    content: "";
+    display: block;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: -1;
+    right: -4.85px;
+    border-radius: 8px;
+    border-right: 5px solid var(--skip-as-script-border-color);
+}
+
 /* SELECTION */
 
 pluto-cell.selected {
@@ -1602,6 +1616,12 @@ pluto-input > button.input_context_menu ul {
 }
 .ctx_icon.delete {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle-outline.svg");
+}
+.ctx_icon.run_as_script {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-lock-outline.svg);
+}
+.ctx_icon.skip_as_script {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-text-outline.svg);
 }
 
 pluto-input > button.input_context_menu {
