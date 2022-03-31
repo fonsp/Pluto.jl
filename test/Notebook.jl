@@ -40,6 +40,7 @@ function metadata_notebook()
                     "number" => 10000,
                 ),
                 "disabled" => true,
+                "skip_as_script" => true,
             ),
         ),
     ]) |> init_packages!
@@ -173,6 +174,7 @@ end
                 "number" => 10000,
             ),
             "disabled" => true, # enhanced metadata because cell is disabled
+            "skip_as_script" => true,
         )
 
         save_notebook(nb)
