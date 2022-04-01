@@ -155,6 +155,10 @@ pluto-filepicker button {
     border-bottom-left-radius: 0;
 }
 
+pluto-filepicker button:disabled {
+    cursor: not-allowed;
+}
+
 .cm-editor .cm-tooltip {
     border: 1px solid var(--cm-editor-tooltip-border-color);
     box-shadow: 3px 3px 4px rgb(0 0 0 / 20%);

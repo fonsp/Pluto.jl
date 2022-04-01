@@ -89,6 +89,16 @@ export class FilePicker extends Component {
                                 }
                             }, 200)
                         },
+                        input: (event, cm) => {
+                            setTimeout(() => {
+                                cm.state.doc.length === 0 ?
+                                    // @ts-ignore
+                                    document.getElementById('open_button').disabled = true :
+                                    // @ts-ignore
+                                    document.getElementById('open_button').disabled = false
+                            }, 0)
+                            return true
+                        }
                     }),
                     EditorView.theme({
                         "&": {
@@ -180,7 +190,7 @@ export class FilePicker extends Component {
     render() {
         return html`
             <pluto-filepicker>
-                <button onClick=${this.on_submit}>${this.props.button_label}</button>
+                <button id='open_button' onClick=${this.on_submit} disabled>${this.props.button_label}</button>
             </pluto-filepicker>
         `
     }
