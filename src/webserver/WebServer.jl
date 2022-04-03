@@ -56,7 +56,6 @@ For the full list, see the [`Pluto.Configuration`](@ref) module. Some **common p
 - `host`: Optional. The default `host` is `"127.0.0.1"`. For wild setups like Docker and heroku, you might need to change this to `"0.0.0.0"`.
 - `port`: Optional. The default `port` is `1234`.
 - `auto_reload_from_file`: Reload when the `.jl` file is modified. The default is `false`.
-- `secret`: Set a fixed secret for access.
 
 ## Technobabble
 
