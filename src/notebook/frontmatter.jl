@@ -25,7 +25,8 @@ This definition will be picked up (using syntax analysis) and evaluated. Note:
 - You can use `;` to hide it from being displayed, only the definition matters.
 
 
-This might change in the future, because we might make this a GUI thing!
+!!! warning
+    This will change in the future, because we might make this a GUI thing! Consider this function in the experimental phase.
 """
 function frontmatter(nb::Notebook; raise::Bool=false)
     top = updated_topology(nb.topology, nb, nb.cells)
