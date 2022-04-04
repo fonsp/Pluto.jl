@@ -1,5 +1,4 @@
 using Test
-import Configurations
 import UUIDs
 import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, ClientSession, update_run!
 
@@ -721,7 +720,6 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         ]))
         cell(idx) = notebook.cells[idx]
 
-        # Make sure to have Configurations installed or this will fail.
         update_run!(🍭, notebook, notebook.cells)
 
         @test :option_type ∈ notebook.topology.nodes[cell(1)].references
