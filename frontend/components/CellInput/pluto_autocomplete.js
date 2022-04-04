@@ -183,13 +183,17 @@ const generate_scopestate_completions = function* (definitions, proposed, contex
         if (!proposed.has(name) && valid_from < context_pos) {
             yield {
                 label: name,
-                type: "c_Any",
-                boost: 99 - i,
+                boost: 99,
             }
             i += 1
         }
     }
 }
+
+const starts_with_upper = (t) => t.charAt(0).toUpperCase() === t.charAt(0)
+const starts_with_lower = (t) => t.charAt(0).toLowerCase() === t.charAt(0)
+
+const boost = (t, is_exported) => (starts_with_lower(t) ? 3 : starts_with_upper(t) ? 2 : 1) + (is_exported ? 10 : -50)
 
 /** Use the completion results from the Julia server to create CM completion objects. */
 const julia_code_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (ctx) => {
@@ -241,7 +245,7 @@ const julia_code_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ re
                         [`completion_${completion_type}`]: completion_type != null,
                         c_from_notebook: is_from_notebook,
                     }),
-                    boost: 50 - i / results.length,
+                    boost: boost(text, is_exported),
                 }
             }),
             // This is a small thing that I really want:
@@ -258,7 +262,7 @@ const julia_code_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ re
                         label: text_to_apply,
                         apply: text_to_apply,
                         type: (is_exported ? "" : "c_notexported ") + (type_description == null ? "" : "c_" + type_description),
-                        boost: -99 - i / results.length, // Display below all normal results
+                        boost: -60, // Display below all normal results
                         // Non-standard
                         is_not_exported: !is_exported,
                     }
@@ -271,16 +275,18 @@ const julia_code_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ re
 
 const complete_anyword = async (ctx) => {
     const results_from_cm = await autocomplete.completeAnyWord(ctx)
-    return {
-        from: results_from_cm.from,
-        options: results_from_cm.options.map(({ label }, i) => ({
-            // See https://github.com/codemirror/codemirror.next/issues/788 about `type: null`
-            label,
-            apply: label,
-            type: null,
-            boost: 0 - i,
-        })),
-    }
+    return results_from_cm == null
+        ? null
+        : {
+              from: results_from_cm.from,
+              options: results_from_cm.options.map(({ label }, i) => ({
+                  // See https://github.com/codemirror/codemirror.next/issues/788 about `type: null`
+                  label,
+                  apply: label,
+                  type: null,
+                  boost: 50,
+              })),
+          }
 }
 
 const local_variables_completion = (ctx) => {
