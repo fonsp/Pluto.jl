@@ -249,10 +249,9 @@ In addition to the steps performed by [`sync_nbpkg_core`](@ref):
 - Update the clients connected to `notebook`
 - `try` `catch` and reset the package environment on failure.
 """
-function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topology::NotebookTopology; save::Bool=true)
+function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topology::NotebookTopology; save::Bool=true, take_token::Bool=true)
 	try
-		pkg_result = withtoken(notebook.executetoken) do
-            println("Syncing!!!")
+        pkg_result = (take_token ? withtoken : (f, _) -> f())(notebook.executetoken) do
 			function iocallback(pkgs, s)
 				notebook.nbpkg_busy_packages = pkgs
 				for p in pkgs

@@ -452,7 +452,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         #     nb.cells[1] |> noerror
         # end)
         @test Distributed.remotecall_eval(Main, p, quote
-            nb.cells[2] |> noerror
+            !nb.cells[2].errored
         end)
         # @test Distributed.remotecall_eval(Main, p, quote
         #     nb.cells[3] |> noerror
