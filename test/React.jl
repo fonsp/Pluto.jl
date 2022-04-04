@@ -80,7 +80,7 @@ import Distributed
             notebook.cells[8].output.body == string(Distributed.myid())
         end
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
     
     end
 
@@ -136,7 +136,7 @@ import Distributed
         @test notebook.cells[5] |> noerror
         @test notebook.cells[6] |> noerror
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
     end
 
     @testset "Mutliple assignments topology" begin
@@ -148,11 +148,11 @@ import Distributed
         ])
         notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
 
-        let topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells[[1]])
+        let topo_order = Pluto.topological_order(notebook.topology, notebook.cells[[1]])
             @test indexin(topo_order.runnable, notebook.cells) == [1,2]
             @test topo_order.errable |> keys == notebook.cells[[3,4]] |> Set
         end
-        let topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells[[1]], allow_multiple_defs=true)
+        let topo_order = Pluto.topological_order(notebook.topology, notebook.cells[[1]], allow_multiple_defs=true)
             @test indexin(topo_order.runnable, notebook.cells) == [1,3,4,2] # x first, y second and third, z last
             # this also tests whether multiple defs run in page order
             @test topo_order.errable == Dict()
@@ -204,14 +204,14 @@ import Distributed
         ])
         notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
 
-        topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells)
+        topo_order = Pluto.topological_order(notebook.topology, notebook.cells)
         @test indexin(topo_order.runnable, notebook.cells) == [6, 5, 4, 7, 3, 1, 2, 8]
         # 6, 5, 4, 3 should run first (this is implemented using `cell_precedence_heuristic`), in that order
         # 1, 2, 7 remain, and should run in notebook order.
 
         # if the cells were placed in reverse order...
         reverse!(notebook.cell_order)
-        topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells)
+        topo_order = Pluto.topological_order(notebook.topology, notebook.cells)
         @test indexin(topo_order.runnable, reverse(notebook.cells)) == [6, 5, 4, 7, 3, 8, 2, 1]
         # 6, 5, 4, 3 should run first (this is implemented using `cell_precedence_heuristic`), in that order
         # 1, 2, 7 remain, and should run in notebook order, which is 7, 2, 1.
@@ -233,7 +233,7 @@ import Distributed
 
         notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
 
-        topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells)
+        topo_order = Pluto.topological_order(notebook.topology, notebook.cells)
 
         comesbefore(A, first, second) = findfirst(isequal(first),A) < findfirst(isequal(second), A)
 
@@ -261,7 +261,7 @@ import Distributed
         ])
 
         notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
-        topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells)
+        topo_order = Pluto.topological_order(notebook.topology, notebook.cells)
         run_order = indexin(topo_order.runnable, notebook.cells)
 
         @test run_order == [3, 1, 2]
@@ -396,7 +396,7 @@ import Distributed
 
         @test all(noerror, notebook.cells)
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
     end
 
     @testset "Function dependencies" begin
@@ -447,7 +447,7 @@ import Distributed
         setcode.(notebook.cells, [""])
         update_run!(🍭, notebook, notebook.cells)
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
     end
 
     @testset "More challenging reactivity of extended function" begin
@@ -486,7 +486,7 @@ import Distributed
         # Empty and run cells to remove the Base overloads that we created, just to be sure
         setcode.(notebook.cells, [""])
         update_run!(🍭, notebook, notebook.cells)
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
     end
 
     @testset "multiple cells cycle" begin
@@ -521,7 +521,7 @@ import Distributed
 
         setcode.(notebook.cells, [""])
         update_run!(🍭, notebook, notebook.cells)
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
     end
 
     @testset "Reactive methods definitions" begin
@@ -555,7 +555,7 @@ import Distributed
 
         setcode.(notebook.cells, [""])
         update_run!(🍭, notebook, notebook.cells)
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
     end
 
     @testset "Don't lose basic generic types with macros" begin
@@ -602,7 +602,7 @@ import Distributed
 
         setcode.(notebook.cells, [""])
         update_run!(🍭, notebook, notebook.cells)
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
     end
 
     @testset "Multiple methods across cells" begin
@@ -803,7 +803,7 @@ import Distributed
         update_run!(🍭, notebook, notebook.cells[23])
         @test notebook.cells[23] |> noerror
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
 
         # for some unsupported edge cases, see:
         # https://github.com/fonsp/Pluto.jl/issues/177#issuecomment-645039993
@@ -953,7 +953,7 @@ import Distributed
         setcode.(notebook.cells, [""])
         update_run!(🍭, notebook, notebook.cells)
         
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
     end
 
     @testset "Variable deletion" begin
@@ -990,7 +990,7 @@ import Distributed
         @test notebook.cells[4].errored == true
 
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
     end
 
     @testset "Recursion" begin
@@ -1024,7 +1024,7 @@ import Distributed
         update_run!(🍭, notebook, notebook.cells[2])
         @test notebook.cells[4].output.body == "4"
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
     end
 
     @testset "Variable cannot reference its previous value" begin
@@ -1038,7 +1038,7 @@ import Distributed
         update_run!(🍭, notebook, notebook.cells[1])
         @test occursinerror("UndefVarError", notebook.cells[1])
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
     end
 
     notebook = Notebook([
@@ -1244,7 +1244,7 @@ import Distributed
         update_run!(🍭, notebook, notebook.cells[30:31])
         @test occursinerror("UndefVarError", notebook.cells[31])
     end
-    WorkspaceManager.unmake_workspace((🍭, notebook))
+    WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
 
     @testset "Functional programming" begin
         notebook = Notebook([
@@ -1284,7 +1284,7 @@ import Distributed
         update_run!(🍭, notebook, notebook.cells[3])
         @test notebook.cells[8].output.body == "11"
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
         
     end
 
@@ -1365,7 +1365,7 @@ import Distributed
         update_run!(🍭, notebook, notebook.cells[15])
         @test notebook.cells[13].output.body == "10005"
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
     end
 
     @testset "No top level return" begin
@@ -1437,7 +1437,7 @@ import Distributed
         @test notebook.cells[17] |> noerror
         @test notebook.cells[18] |> noerror
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
     end
 
     @testset "Function wrapping" begin
@@ -1562,7 +1562,7 @@ import Distributed
         @test notebook.cells[30] |> noerror
         
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
 
 
         @testset "Expression hash" begin
@@ -1664,6 +1664,6 @@ import Distributed
         update_run!(🍭, notebook, notebook.cells[22])
         @test notebook.cells[19].output.body == "38"
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
     end
 end

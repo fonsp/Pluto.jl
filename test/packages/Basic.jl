@@ -76,7 +76,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
 
         old_A_terminal = deepcopy(terminals["PlutoPkgTestA"])
-        @show old_A_terminal
+        # @show old_A_terminal
 
         update_save_run!(🍭, notebook, notebook.cells[[3, 4]]) # import B
 
@@ -372,7 +372,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         ])
         fakeclient.connected_notebook = notebook
 
-        notebook.topology = Pluto.updated_topology(Pluto.NotebookTopology(), notebook, notebook.cells) |> Pluto.static_resolve_topology
+        notebook.topology = Pluto.updated_topology(Pluto.NotebookTopology(cell_order=Pluto.ImmutableVector(notebook.cells)), notebook, notebook.cells) |> Pluto.static_resolve_topology
 
         @test !Pluto.use_plutopkg(notebook.topology)
         order = collect(Pluto.topological_order(notebook))
@@ -449,13 +449,13 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         # Cells that use Example will error because the package is not installed.
 
         # @test Distributed.remotecall_eval(Main, p, quote
-        #     nb.cells[1] |> noerror
+        #     nb.cells[1].errored == false
         # end)
         @test Distributed.remotecall_eval(Main, p, quote
-            !nb.cells[2].errored
+            nb.cells[2].errored == false
         end)
         # @test Distributed.remotecall_eval(Main, p, quote
-        #     nb.cells[3] |> noerror
+        #     nb.cells[3].errored == false
         # end)
         # @test Distributed.remotecall_eval(Main, p, quote
         #     nb.cells[3].output.body == "25"

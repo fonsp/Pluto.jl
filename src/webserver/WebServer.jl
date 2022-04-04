@@ -55,6 +55,7 @@ For the full list, see the [`Pluto.Configuration`](@ref) module. Some **common p
 - `launch_browser`: Optional. Whether to launch the system default browser. Disable this on SSH and such.
 - `host`: Optional. The default `host` is `"127.0.0.1"`. For wild setups like Docker and heroku, you might need to change this to `"0.0.0.0"`.
 - `port`: Optional. The default `port` is `1234`.
+- `auto_reload_from_file`: Reload when the `.jl` file is modified. The default is `false`.
 
 ## Technobabble
 
@@ -65,9 +66,10 @@ function run(; kwargs...)
     options = Configuration.from_flat_kwargs(; kwargs...)
     run(options)
 end
+precompile(run, ())
 
 function run(options::Configuration.Options)
-    session = ServerSession(;options=options)
+    session = ServerSession(; options)
     run(session)
 end
 
@@ -224,13 +226,15 @@ function run(session::ServerSession, pluto_router)
                 end
             end
         else
+            # then it's a regular HTTP request, not a WS upgrade
+            
             request::HTTP.Request = http.message
             request.body = read(http)
             HTTP.closeread(http)
 
             # If a "token" url parameter is passed in from binder, then we store it to add to every URL (so that you can share the URL to collaborate).
             params = HTTP.queryparams(HTTP.URI(request.target))
-            if haskey(params, "token") && session.binder_token === nothing 
+            if haskey(params, "token") && params["token"] ∉ ("null", "undefined", "") && session.binder_token === nothing
                 session.binder_token = params["token"]
             end
 
@@ -240,7 +244,11 @@ function run(session::ServerSession, pluto_router)
             request.response::HTTP.Response = response_body
             request.response.request = request
             try
-                HTTP.setheader(http, "Referrer-Policy" => "origin-when-cross-origin")
+                HTTP.setheader(http, "Content-Length" => string(length(request.response.body)))
+                # https://github.com/fonsp/Pluto.jl/pull/722
+                HTTP.setheader(http, "Referrer-Policy" => "same-origin")
+                # https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#:~:text=is%202%20minutes.-,14.38%20Server
+                HTTP.setheader(http, "Server" => "Pluto.jl/$(PLUTO_VERSION_STR[2:end]) Julia/$(JULIA_VERSION_STR[2:end])")
                 HTTP.startwrite(http)
                 write(http, request.response.body)
                 HTTP.closewrite(http)
@@ -295,8 +303,10 @@ function run(session::ServerSession, pluto_router)
             @async swallow_exception(() -> close(client.stream), Base.IOError)
         end
         empty!(session.connected_clients)
+        for nb in values(session.notebooks)
+            @asynclog SessionActions.shutdown(session, nb; keep_in_session=false, async=false, verbose=false)
+        end
         for (notebook_id, ws) in WorkspaceManager.workspaces
-            @async WorkspaceManager.unmake_workspace(fetch(ws))
         end
     end
 
@@ -313,6 +323,7 @@ function run(session::ServerSession, pluto_router)
         end
     end
 end
+precompile(run, (ServerSession, HTTP.Handlers.Router{Symbol("##001")}))
 
 get_favorite_notebook(notebook:: Nothing) = nothing
 get_favorite_notebook(notebook:: String) = notebook

@@ -50,11 +50,14 @@ code.hljs {
 }
 .hljs-bullet,
 .hljs-link,
-.hljs-meta,
 .hljs-selector-id,
 .hljs-symbol,
 .hljs-title {
     color: var(--cm-link-color);
+}
+.hljs-meta {
+    color: var(--cm-macro-color);
+    font-weight: 700;
 }
 .hljs-built_in,
 .hljs-class .hljs-title,

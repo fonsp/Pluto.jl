@@ -5,8 +5,10 @@ struct Cycle <: ChildExplorationResult
 	cycled_cells::Vector{Cell}
 end
 
+@deprecate topological_order(::Notebook, topology::NotebookTopology, args...; kwargs...) topological_order(topology, args...; kwargs...)
+
 "Return a `TopologicalOrder` that lists the cells to be evaluated in a single reactive run, in topological order. Includes the given roots."
-function topological_order(notebook::Notebook, topology::NotebookTopology, roots::Array{Cell,1}; allow_multiple_defs=false)::TopologicalOrder
+function topological_order(topology::NotebookTopology, roots::AbstractVector{Cell}; allow_multiple_defs=false)::TopologicalOrder
 	entries = Cell[]
 	exits = Cell[]
 	errable = Dict{Cell,ReactivityError}()
@@ -39,13 +41,13 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 
 		push!(entries, cell)
 
-		assigners = where_assigned(notebook, topology, cell)
+		assigners = where_assigned(topology, cell)
 		if !allow_multiple_defs && length(assigners) > 1
 			for c in assigners
 				errable[c] = MultipleDefinitionsError(topology, c, assigners)
 			end
 		end
-		referencers = where_referenced(notebook, topology, cell) |> Iterators.reverse
+		referencers = where_referenced(topology, cell) |> Iterators.reverse
 		for c in (allow_multiple_defs ? referencers : union(assigners, referencers))
 			if c != cell
 				child_result = bfs(c)
@@ -96,7 +98,7 @@ end
 function topological_order(notebook::Notebook)
 	cached = notebook._cached_topological_order
 	if cached === nothing || cached.input_topology !== notebook.topology
-		topological_order(notebook, notebook.topology, notebook.cells)
+		topological_order(notebook.topology, all_cells(notebook.topology))
 	else
 		cached
 	end
@@ -109,16 +111,17 @@ function disjoint(a::Set, b::Set)
 end
 
 "Return the cells that reference any of the symbols defined by the given cell. Non-recursive: only direct dependencies are found."
-function where_referenced(notebook::Notebook, topology::NotebookTopology, myself::Cell)::Array{Cell,1}
+function where_referenced(topology::NotebookTopology, myself::Cell)::Vector{Cell}
 	to_compare = union(topology.nodes[myself].definitions, topology.nodes[myself].soft_definitions, topology.nodes[myself].funcdefs_without_signatures)
-	where_referenced(notebook, topology, to_compare)
+	where_referenced(topology, to_compare)
 end
 "Return the cells that reference any of the given symbols. Non-recursive: only direct dependencies are found."
-function where_referenced(notebook::Notebook, topology::NotebookTopology, to_compare::Set{Symbol})::Array{Cell,1}
-	return filter(notebook.cells) do cell
+function where_referenced(topology::NotebookTopology, to_compare::Set{Symbol})::Vector{Cell}
+	return filter(all_cells(topology)) do cell
 		!disjoint(to_compare, topology.nodes[cell].references)
 	end
 end
+where_referenced(::Notebook, args...) = where_referenced(args...)
 
 "Returns whether or not the edge between two cells is composed only of \"soft\"-definitions"
 function is_soft_edge(topology::NotebookTopology, parent_cell::Cell, child_cell::Cell)
@@ -132,9 +135,9 @@ end
 
 
 "Return the cells that also assign to any variable or method defined by the given cell. If more than one cell is returned (besides the given cell), then all of them should throw a `MultipleDefinitionsError`. Non-recursive: only direct dependencies are found."
-function where_assigned(notebook::Notebook, topology::NotebookTopology, myself::Cell)::Array{Cell,1}
+function where_assigned(topology::NotebookTopology, myself::Cell)::Vector{Cell}
 	self = topology.nodes[myself]
-	return filter(notebook.cells) do cell
+	return filter(all_cells(topology)) do cell
 		other = topology.nodes[cell]
 		!(
 			disjoint(self.definitions,                 other.definitions) &&
@@ -147,8 +150,8 @@ function where_assigned(notebook::Notebook, topology::NotebookTopology, myself::
 	end
 end
 
-function where_assigned(notebook::Notebook, topology::NotebookTopology, to_compare::Set{Symbol})::Array{Cell,1}
-	filter(notebook.cells) do cell
+function where_assigned(topology::NotebookTopology, to_compare::Set{Symbol})::Vector{Cell}
+	filter(all_cells(topology)) do cell
 		other = topology.nodes[cell]
 		!(
 			disjoint(to_compare, other.definitions) &&
@@ -156,6 +159,8 @@ function where_assigned(notebook::Notebook, topology::NotebookTopology, to_compa
 		)
 	end
 end
+where_assigned(::Notebook, args...) = where_assigned(args...)
+
 
 "Return whether any cell references the given symbol. Used for the @bind mechanism."
 function is_referenced_anywhere(notebook::Notebook, topology::NotebookTopology, sym::Symbol)::Bool

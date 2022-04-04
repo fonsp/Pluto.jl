@@ -115,9 +115,10 @@ export const PkgStatusMark = ({ package_name, pluto_actions, notebook_id, nbpkg 
             <button
                 onClick=${(event) => {
                     window.dispatchEvent(
-                        new CustomEvent("open nbpkg popup", {
+                        new CustomEvent("open pluto popup", {
                             detail: {
-                                status_mark_element: event.currentTarget.parentElement,
+                                type: "nbpkg",
+                                source_element: event.currentTarget.parentElement,
                                 package_name: package_name,
                                 is_disable_pkg: false,
                             },
@@ -144,9 +145,10 @@ export const PkgActivateMark = ({ package_name }) => {
             <button
                 onClick=${(event) => {
                     window.dispatchEvent(
-                        new CustomEvent("open nbpkg popup", {
+                        new CustomEvent("open pluto popup", {
                             detail: {
-                                status_mark_element: event.currentTarget.parentElement,
+                                type: "nbpkg",
+                                source_element: event.currentTarget.parentElement,
                                 package_name: package_name,
                                 is_disable_pkg: true,
                             },

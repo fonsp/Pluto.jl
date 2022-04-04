@@ -14,16 +14,17 @@ using Configurations # https://github.com/Roger-luo/Configurations.jl
 
 import ..Pluto: tamepath
 
-# This can't be a simple `const` because this would hard-code it into the precompile image.
-const notebook_path_suggestion_ref = Ref{Union{Nothing,String}}(nothing)
+# Using a ref to avoid fixing the pwd() output during the compilation phase. We don't want this value to be baked into the sysimage, because it depends on the `pwd()`. We do want to cache it, because the pwd might change while Pluto is running.
+const pwd_ref = Ref{Union{Nothing,String}}()
 function notebook_path_suggestion()
-    if notebook_path_suggestion_ref[] === nothing
-        notebook_path_suggestion_ref[] = let
-            preferred_dir = startswith(Sys.BINDIR, pwd()) ? homedir() : pwd()
-            joinpath(preferred_dir, "") # so that it ends with / or \
-        end
-    end
-    notebook_path_suggestion_ref[]
+    pwd_val = something(pwd_ref[], pwd())
+    preferred_dir = startswith(Sys.BINDIR, pwd_val) ? homedir() : pwd_val
+    # so that it ends with / or \
+    string(joinpath(preferred_dir, ""))
+end
+
+function __init__()
+    pwd_ref[] = pwd()
 end
 
 """
@@ -47,6 +48,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 - `notebook::Union{Nothing,String} = nothing` Optional path of notebook to launch at start
 - `simulated_lag::Real=0.0` (internal) Extra lag to add to our server responses. Will be multiplied by `0.5 + rand()`.
 - `simulated_pkg_lag::Real=0.0` (internal) Extra lag to add to operations done by Pluto's package manager. Will be multiplied by `0.5 + rand()`.
+- `injected_javascript_data_url`::String = "data:text/javascript;base64," (internal) Optional javascript injectables to the front-end. Can be used to customize the editor, but this API is not meant for general use yet.
 """
 @option mutable struct ServerOptions
     root_url::Union{Nothing,String} = nothing
@@ -64,6 +66,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
     init_with_file_viewer::Bool = false
     simulated_lag::Real = 0.0
     simulated_pkg_lag::Real = 0.0
+    injected_javascript_data_url::String = "data:text/javascript;base64,"
     on_event::Function = function(a) #= @info "$(typeof(a))" =# end
 end
 

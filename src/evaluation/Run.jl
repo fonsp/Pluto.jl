@@ -57,7 +57,6 @@ function run_reactive_core!(
 
         # update cache and save notebook because the dependencies might have changed after expanding macros
         update_dependency_cache!(notebook)
-        save_notebook(session, notebook)
     end
 
     removed_cells = setdiff(keys(old_topology.nodes), keys(new_topology.nodes))
@@ -74,23 +73,24 @@ function run_reactive_core!(
             Dict(cell => ExprAnalysisCache() for cell in removed_cells)
         ),
         unresolved_cells = new_topology.unresolved_cells,
+        cell_order = new_topology.cell_order,
     )
 
     # save the old topological order - we'll delete variables assigned from it and re-evalutate its cells unless the cells have already run previously in the reactive run
-    old_order = topological_order(notebook, old_topology, roots)
+    old_order = topological_order(old_topology, roots)
 
     old_runnable = setdiff(old_order.runnable, already_run)
     to_delete_vars = union!(Set{Symbol}(), defined_variables(old_topology, old_runnable)...)
     to_delete_funcs = union!(Set{Tuple{UUID,FunctionName}}(), defined_functions(old_topology, old_runnable)...)
 
     # get the new topological order
-    new_order = topological_order(notebook, new_topology, union(roots, keys(old_order.errable)))
+    new_order = topological_order(new_topology, union(roots, keys(old_order.errable)))
     new_runnable = setdiff(new_order.runnable, already_run)
     to_run_raw = setdiff(union(new_runnable, old_runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
 
     # find (indirectly) deactivated cells and update their status
-    deactivated = filter(c -> c.running_disabled, notebook.cells)
-    indirectly_deactivated = collect(topological_order(notebook, new_topology, deactivated))
+	deactivated = filter(c -> c.metadata["disabled"], notebook.cells)
+    indirectly_deactivated = collect(topological_order(new_topology, deactivated))
     for cell in indirectly_deactivated
         cell.running = false
         cell.queued = false
@@ -104,11 +104,15 @@ function run_reactive_core!(
         cell.queued = true
         cell.depends_on_disabled_cells = false
     end
+
     for (cell, error) in new_order.errable
         cell.running = false
         cell.queued = false
         relay_reactivity_error!(cell, error)
     end
+
+	# Save the notebook. This is the only time that we save the notebook, so any state changes that influence the file contents (like `depends_on_disabled_cells`) should be behind this point.
+	save_notebook(session, notebook)
 
     # Send intermediate updates to the clients at most 20 times / second during a reactive run. (The effective speed of a slider is still unbounded, because the last update is not throttled.)
     # flush_send_notebook_changes_throttled, 
@@ -127,7 +131,9 @@ function run_reactive_core!(
     to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_errable)...)
 
     to_reimport = union!(Set{Expr}(), map(c -> new_topology.codes[c].module_usings_imports.usings, setdiff(notebook.cells, to_run))...)
-    deletion_hook((session, notebook), old_workspace_name, nothing, to_delete_vars, to_delete_funcs, to_reimport; to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
+    if will_run_code(notebook)
+		deletion_hook((session, notebook), old_workspace_name, nothing, to_delete_vars, to_delete_funcs, to_reimport; to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
+	end
 
     delete!.([notebook.bonds], to_delete_vars)
 
@@ -141,7 +147,7 @@ function run_reactive_core!(
 		cell.logs = []
 		send_notebook_changes_throttled()
 
-        if any_interrupted || notebook.wants_to_interrupt
+        if any_interrupted || notebook.wants_to_interrupt || !will_run_code(notebook)
             relay_reactivity_error!(cell, InterruptException())
         else
             run = run_single!(
@@ -162,7 +168,9 @@ function run_reactive_core!(
         end
 
         implicit_usings = collect_implicit_usings(new_topology, cell)
-        if !is_resolved(new_topology) && can_help_resolve_cells(new_topology, cell)
+		if !will_run_code(notebook)
+			# then skip these special cases.
+        elseif !is_resolved(new_topology) && can_help_resolve_cells(new_topology, cell)
             notebook.topology = new_new_topology = resolve_topology(session, notebook, new_topology, old_workspace_name)
 
             if !isempty(implicit_usings)
@@ -224,7 +232,13 @@ function defined_functions(topology::NotebookTopology, cells)
 end
 
 "Run a single cell non-reactively, set its output, return run information."
-function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell, reactive_node::ReactiveNode, expr_cache::ExprAnalysisCache; user_requested_run::Bool=true)
+function run_single!(
+	session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, 
+	cell::Cell, 
+	reactive_node::ReactiveNode, 
+	expr_cache::ExprAnalysisCache; 
+	user_requested_run::Bool=true
+)
 	run = WorkspaceManager.eval_format_fetch_in_workspace(
 		session_notebook, 
 		expr_cache.parsedcode, 
@@ -283,7 +297,12 @@ is_macro_identifier(symbol::Symbol) = startswith(string(symbol), "@")
 function with_new_soft_definitions(topology::NotebookTopology, cell::Cell, soft_definitions)
     old_node = topology.nodes[cell]
     new_node = union!(ReactiveNode(), old_node, ReactiveNode(soft_definitions=soft_definitions))
-    NotebookTopology(codes=topology.codes, nodes=merge(topology.nodes, Dict(cell => new_node)), unresolved_cells=topology.unresolved_cells)
+    NotebookTopology(
+		codes=topology.codes, 
+		nodes=merge(topology.nodes, Dict(cell => new_node)), 
+		unresolved_cells=topology.unresolved_cells,
+		cell_order=topology.cell_order,
+	)
 end
 
 collect_implicit_usings(topology::NotebookTopology, cell::Cell) = ExpressionExplorer.collect_implicit_usings(topology.codes[cell].module_usings_imports)
@@ -383,7 +402,11 @@ function resolve_topology(
 			end
 
 			result = try
-				analyze_macrocell(cell)
+				if will_run_code(notebook)
+					analyze_macrocell(cell)
+				else
+					Failure(ErrorException("shutdown"))
+				end
 			catch error
 				@error "Macro call expansion failed with a non-macroexpand error" error
 				Failure(error)
@@ -407,7 +430,12 @@ function resolve_topology(
 	all_nodes = merge(unresolved_topology.nodes, new_nodes)
 	all_codes = merge(unresolved_topology.codes, new_codes)
 
-	NotebookTopology(nodes=all_nodes, codes=all_codes, unresolved_cells=still_unresolved_nodes)
+	NotebookTopology(
+		nodes=all_nodes, 
+		codes=all_codes, 
+		unresolved_cells=ImmutableSet(still_unresolved_nodes; skip_copy=true),
+		cell_order=unresolved_topology.cell_order,
+	)
 end
 
 """Tries to add information about macro calls without running any code, using knowledge about common macros.
@@ -426,7 +454,12 @@ function static_resolve_topology(topology::NotebookTopology)
 	new_nodes = Dict{Cell,ReactiveNode}(cell => static_macroexpand(topology, cell) for cell in topology.unresolved_cells)
 	all_nodes = merge(topology.nodes, new_nodes)
 
-	NotebookTopology(nodes=all_nodes, codes=topology.codes, unresolved_cells=topology.unresolved_cells)
+	NotebookTopology(
+		nodes=all_nodes, 
+		codes=topology.codes, 
+		unresolved_cells=topology.unresolved_cells,
+		cell_order=topology.cell_order,
+	)
 end
 
 ###
@@ -435,7 +468,15 @@ end
 
 
 "Do all the things!"
-function update_save_run!(session::ServerSession, notebook::Notebook, cells::Array{Cell,1}; save::Bool=true, run_async::Bool=false, prerender_text::Bool=false, kwargs...)
+function update_save_run!(
+	session::ServerSession, 
+	notebook::Notebook, 
+	cells::Vector{Cell}; 
+	save::Bool=true, 
+	run_async::Bool=false, 
+	prerender_text::Bool=false, 
+	kwargs...
+)
 	old = notebook.topology
 	new = notebook.topology = updated_topology(old, notebook, cells) # macros are not yet resolved
 
@@ -477,11 +518,14 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		end
 		
 		# for the remaining cells, clear their topology info so that they won't run as dependencies
-		for cell in setdiff(to_run_online, setup_cells)
-			delete!(notebook.topology.nodes, cell)
-			delete!(notebook.topology.codes, cell)
-			delete!(notebook.topology.unresolved_cells, cell)
-		end
+		old = notebook.topology
+		to_remove = setdiff(to_run_online, setup_cells)
+		notebook.topology = NotebookTopology(
+			nodes=setdiffkeys(old.nodes, to_remove),
+			codes=setdiffkeys(old.codes, to_remove),
+			unresolved_cells=setdiff(old.unresolved_cells, to_remove),
+			cell_order=old.cell_order,
+		)
 		
 		# and don't run them
 		to_run_online = to_run_online ∩ setup_cells
@@ -500,7 +544,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 end
 
 update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs...) = update_save_run!(session, notebook, [cell]; kwargs...)
-update_run!(args...) = update_save_run!(args...; save=false)
+update_run!(args...; kwargs...) = update_save_run!(args...; save=false, kwargs...)
 
 function notebook_differences(from::Notebook, to::Notebook)
 	old_codes = Dict(

@@ -12,11 +12,12 @@ import register from "../imports/PreactCustomElement.js"
 
 import { EditorState, EditorView, defaultHighlightStyle } from "../imports/CodemirrorPlutoSetup.js"
 
-import { pluto_syntax_colors } from "./CellInput.js"
+import { pluto_syntax_colors, ENABLE_CM_MIXED_PARSER } from "./CellInput.js"
 import { useState } from "../imports/Preact.js"
 
 import hljs from "../imports/highlightjs.js"
-import { julia_andrey } from "./CellInput/mixedParsers.js"
+import { julia_mixed } from "./CellInput/mixedParsers.js"
+import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
 
 export class CellOutput extends Component {
     constructor() {
@@ -141,12 +142,11 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
             </div>`
             break
         case "application/vnd.pluto.table+object":
-            return html` <${TableView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`
+            return html`<${TableView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`
             break
         case "application/vnd.pluto.stacktrace+object":
             return html`<div><${ErrorMessage} cell_id=${cell_id} ...${body} /></div>`
             break
-            body.cell_id
         case "application/vnd.pluto.divelement+object":
             return DivElement({ cell_id, ...body })
             break
@@ -159,8 +159,13 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
                 return html`<div></div>`
             }
             break
-        default:
+        case null:
+        case undefined:
+        case "":
             return html``
+            break
+        default:
+            return html`<pre title="Something went wrong displaying this object">🛑</pre>`
             break
     }
 }
@@ -243,13 +248,13 @@ let execute_inside_script_tag_that_replaces = async (script_element, fn) => {
         //@ts-ignore because of https://github.com/microsoft/TypeScript-DOM-lib-generator/issues/1260
         new_script_tag.attributes.setNamedItem(attr.cloneNode(true))
     }
+    new_script_tag.textContent = `{
+        window.____FUNCTION_TO_RUN_INSIDE_SCRIPT.result = window.____FUNCTION_TO_RUN_INSIDE_SCRIPT.function_to_run(window.____FUNCTION_TO_RUN_INSIDE_SCRIPT.currentScript)
+    }`
 
     // @ts-ignore
     // I use this long variable name to pass the function and result to and from the script we created
-    window.____FUNCTION_TO_RUN_INSIDE_SCRIPT = { function_to_run: fn, result: null }
-    new_script_tag.textContent = `{
-        window.____FUNCTION_TO_RUN_INSIDE_SCRIPT.result = window.____FUNCTION_TO_RUN_INSIDE_SCRIPT.function_to_run()
-    }`
+    window.____FUNCTION_TO_RUN_INSIDE_SCRIPT = { function_to_run: fn, currentScript: new_script_tag, result: null }
     // Put the script in the DOM, this will run the script
     script_element.parentNode.replaceChild(new_script_tag, script_element)
     // @ts-ignore - Get the result back
@@ -321,11 +326,11 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                     }
 
                     const cell = root_node.closest("pluto-cell")
-                    let { node: new_node, result } = await execute_inside_script_tag_that_replaces(node, async () => {
+                    let { node: new_node, result } = await execute_inside_script_tag_that_replaces(node, async (currentScript) => {
                         return await execute_dynamic_function({
                             environment: {
                                 this: script_id ? old_result : window,
-                                currentScript: document.currentScript,
+                                currentScript: currentScript,
                                 invalidation: invalidation,
                                 getPublishedObject: (id) => cell.getPublishedObject(id),
                                 ...observablehq_for_cells,
@@ -466,26 +471,31 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
                     container.current.querySelectorAll("code").forEach((code_element) => {
                         code_element.classList.forEach((className) => {
                             if (className.startsWith("language-")) {
-                                let language = className.substr(9)
-
                                 // Remove "language-"
+                                let language = className.substring(9)
                                 highlight(code_element, language)
                             }
                         })
                     })
-                } catch (err) {}
+                } catch (err) {
+                    console.warn("Highlighting failed", err)
+                }
             } finally {
                 js_init_set?.delete(container.current)
             }
         })
 
         return () => {
+            js_init_set?.delete(container.current)
             invalidate_scripts.current?.()
         }
     }, [body, persist_js_state, last_run_timestamp, pluto_actions])
 
     return html`<div class="raw-html-wrapper ${className}" ref=${container}></div>`
 }
+
+// https://github.com/fonsp/Pluto.jl/issues/1692
+const ENABLE_CM_HIGHLIGHTING = false
 
 /** @param {HTMLElement} code_element */
 export let highlight = (code_element, language) => {
@@ -494,6 +504,7 @@ export let highlight = (code_element, language) => {
 
     if (code_element.children.length === 0) {
         if (
+            ENABLE_CM_HIGHLIGHTING &&
             language === "julia" &&
             // CodeMirror does not want to render inside a `<details>`...
             // I tried to debug this, it does not happen on a clean webpage with the same CM versions:
@@ -514,7 +525,7 @@ export let highlight = (code_element, language) => {
                         defaultHighlightStyle.fallback,
                         EditorState.tabSize.of(4),
                         // TODO Other languages possibly?
-                        language === "julia" ? julia_andrey() : null,
+                        language === "julia" ? (ENABLE_CM_MIXED_PARSER ? julia_mixed() : julia_andrey()) : null,
                         EditorView.lineWrapping,
                         EditorView.editable.of(false),
                     ].filter((x) => x != null),
