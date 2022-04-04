@@ -3,7 +3,7 @@ import { html, Component } from "../imports/Preact.js"
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 
-import { EditorState, EditorSelection, EditorView, placeholder, keymap, history, autocomplete, drawSelection } from "../imports/CodemirrorPlutoSetup.js"
+import { EditorState, EditorSelection, EditorView, placeholder, keymap, history, autocomplete, drawSelection, Compartment } from "../imports/CodemirrorPlutoSetup.js"
 
 let { autocompletion, completionKeymap } = autocomplete
 
@@ -65,6 +65,7 @@ export class FilePicker extends Component {
     }
     componentDidMount() {
         const usesDarkTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const buttonDisable = new Compartment
         this.cm = new EditorView({
             state: EditorState.create({
                 doc: "",
@@ -92,14 +93,12 @@ export class FilePicker extends Component {
                                 }
                             }, 200)
                         },
-                        input: (event, cm) => {
-                            // work around for unexpected behavior of setState
-                            // see https://github.com/preactjs/preact/issues/1840
-                            setTimeout(() => {
-                                this.setState({ is_button_disabled: cm.state.doc.length === 0 })
-                            }, 0)
-                        }
                     }),
+                    buttonDisable.of(EditorView.updateListener.of((update) => {
+                        if (update.docChanged) {
+                            this.setState({ is_button_disabled: this.cm.state.doc.length === 0 })
+                        }
+                    })),
                     EditorView.theme({
                         "&": {
                             fontSize: "inherit",
