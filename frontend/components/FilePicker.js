@@ -14,6 +14,9 @@ let close_autocomplete_command = completionKeymap.find((keybinding) => keybindin
 export class FilePicker extends Component {
     constructor() {
         super()
+        this.state = {
+            is_button_disabled: true
+        }
         this.forced_value = ""
         this.cm = null
 
@@ -90,14 +93,11 @@ export class FilePicker extends Component {
                             }, 200)
                         },
                         input: (event, cm) => {
+                            // work around for unexpected behavior of setState
+                            // see https://github.com/preactjs/preact/issues/1840
                             setTimeout(() => {
-                                cm.state.doc.length === 0 ?
-                                    // @ts-ignore
-                                    document.getElementById('open_button').disabled = true :
-                                    // @ts-ignore
-                                    document.getElementById('open_button').disabled = false
+                                this.setState({ is_button_disabled: cm.state.doc.length === 0 })
                             }, 0)
-                            return true
                         }
                     }),
                     EditorView.theme({
@@ -190,7 +190,7 @@ export class FilePicker extends Component {
     render() {
         return html`
             <pluto-filepicker>
-                <button id='open_button' onClick=${this.on_submit} disabled>${this.props.button_label}</button>
+                <button onClick=${this.on_submit} disabled=${this.state.is_button_disabled}>${this.props.button_label}</button>
             </pluto-filepicker>
         `
     }
