@@ -260,9 +260,7 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
                 update_nbpkg_cache!(notebook)
 				send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 			end
-			r = sync_nbpkg_core(notebook, old_topology, new_topology; on_terminal_output=iocallback, lag = session.options.server.simulated_pkg_lag)
-            println("Syncing done")
-            r
+			 sync_nbpkg_core(notebook, old_topology, new_topology; on_terminal_output=iocallback, lag = session.options.server.simulated_pkg_lag)
 		end
 
 		if pkg_result.did_something
