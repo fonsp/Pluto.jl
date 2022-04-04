@@ -56,8 +56,6 @@ let CellMemo = ({
                 focus_after_creation=${focus_after_creation}
                 is_process_ready=${is_process_ready}
                 disable_input=${disable_input}
-                show_logs=${show_logs}
-                set_show_logs=${set_show_logs}
                 nbpkg=${nbpkg}
                 global_definition_locations=${global_definition_locations}
             />
@@ -66,6 +64,7 @@ let CellMemo = ({
         // Object references may invalidate this faster than the optimal. To avoid this, spread out objects to primitives!
         cell_id,
         metadata.disabled,
+        metadata.show_logs,
         depends_on_disabled_cells,
         queued,
         running,
@@ -87,7 +86,6 @@ let CellMemo = ({
         focus_after_creation,
         is_process_ready,
         disable_input,
-        show_logs,
         ...nbpkg_fingerprint(nbpkg),
         global_definition_locations,
     ])
@@ -115,21 +113,9 @@ const render_cell_outputs_minimum = 20
  *  is_initializing: boolean,
  *  is_process_ready: boolean,
  *  disable_input: any,
- *  show_logs: boolean,
- *  set_show_logs: any,
  * }} props
  * */
-export const Notebook = ({
-    notebook,
-    cell_inputs_local,
-    last_created_cell,
-    selected_cells,
-    is_initializing,
-    is_process_ready,
-    disable_input,
-    show_logs,
-    set_show_logs,
-}) => {
+export const Notebook = ({ notebook, cell_inputs_local, last_created_cell, selected_cells, is_initializing, is_process_ready, disable_input }) => {
     let pluto_actions = useContext(PlutoContext)
 
     // Add new cell when the last cell gets deleted
@@ -183,8 +169,6 @@ export const Notebook = ({
                         force_hide_input=${false}
                         is_process_ready=${is_process_ready}
                         disable_input=${disable_input}
-                        show_logs=${show_logs}
-                        set_show_logs=${set_show_logs}
                         nbpkg=${notebook.nbpkg}
                         global_definition_locations=${global_definition_locations}
                     />`

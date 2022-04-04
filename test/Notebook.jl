@@ -1,5 +1,6 @@
 using Test
-import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new, readwrite, without_pluto_file_extension
+import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new, readwrite, without_pluto_file_extension, update_run!, get_cell_metadata_no_default, is_disabled, can_show_logs, create_metadata
+import Pluto.WorkspaceManager: poll, WorkspaceManager
 import Random
 import Pkg
 import UUIDs: UUID
@@ -40,7 +41,7 @@ function metadata_notebook()
                     "number" => 10000,
                 ),
                 "disabled" => true,
-            ),
+            ) |> create_metadata,
         ),
     ]) |> init_packages!
 end
@@ -163,31 +164,55 @@ end
         fakeclient = ClientSession(:fake, nothing)
         🍭.connected_clients[fakeclient.id] = fakeclient
 
-        nb = metadata_notebook()
-        update_run!(🍭, nb, nb.cells)
-        cell = first(values(nb.cells_dict))
-        @test cell.metadata == Dict(
-            "a metadata tag" => Dict(
-                "boolean" => true,
-                "string" => "String",
-                "number" => 10000,
-            ),
-            "disabled" => true, # enhanced metadata because cell is disabled
-        )
+        @testset "Disabling & Metadata" begin
+            nb = metadata_notebook()
+            update_run!(🍭, nb, nb.cells)
+            cell = first(values(nb.cells_dict))
+            @test get_cell_metadata_no_default(cell) == Dict(
+                "a metadata tag" => Dict(
+                    "boolean" => true,
+                    "string" => "String",
+                    "number" => 10000,
+                ),
+                "disabled" => true, # enhanced metadata because cell is disabled
+            )
 
-        save_notebook(nb)
-        @info "File" Text(read(nb.path,String))
-        result = load_notebook_nobackup(nb.path)
-        @test_notebook_inputs_equal(nb, result)
-        cell = first(values(result.cells_dict))
-        @test cell.metadata == Dict(
-            "a metadata tag" => Dict(
-                "boolean" => true,
-                "string" => "String",
-                "number" => 10000,
-            ),
-            "disabled" => true,
-        )
+            save_notebook(nb)
+            result = load_notebook_nobackup(nb.path)
+            @test_notebook_inputs_equal(nb, result)
+            cell = first(nb.cells)
+            @test is_disabled(cell)
+            @test get_cell_metadata_no_default(cell) == Dict(
+                "a metadata tag" => Dict(
+                    "boolean" => true,
+                    "string" => "String",
+                    "number" => 10000,
+                ),
+                "disabled" => true,
+            )
+        end
+
+        @testset "Show/Hide logs" begin
+            🍭.options.evaluation.workspace_use_distributed = true
+            notebook = Notebook([
+                Cell(code = """@info "🍕🍕🍕" """, 
+                     metadata= Dict("show_logs" => false) |> create_metadata),
+                Cell("""@info "🍝🍝🍝" """)
+            ])
+            update_run!(🍭, notebook, notebook.cells)
+
+            @test can_show_logs.(notebook.cells) == [false, true]
+            @test notebook.cells[begin].logs |> isempty
+
+            @show notebook.cells[begin+1].output
+
+            @test poll(5, 1/60) do
+                length(notebook.cells[begin+1].logs) == 1
+            end
+
+            WorkspaceManager.unmake_workspace((🍭, notebook))
+            🍭.options.evaluation.workspace_use_distributed = false
+        end
     end
 
     @testset "I/O overloaded" begin

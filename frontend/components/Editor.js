@@ -99,7 +99,8 @@ const first_true_key = (obj) => {
  *  code: string,
  *  code_folded: boolean,
  *  metadata: {
- *    disabled: boolean
+ *    disabled: boolean,
+ *    show_logs: boolean,
  *  },
  * }}
  */
@@ -236,7 +237,6 @@ export class Editor extends Component {
                 down: false,
             },
             export_menu_open: false,
-            show_logs: true,
 
             last_created_cell: null,
             selected_cells: [],
@@ -1336,8 +1336,6 @@ patch: ${JSON.stringify(
                             notebook=${this.state.notebook}
                             cell_inputs_local=${this.state.cell_inputs_local}
                             disable_input=${this.state.disable_ui || !this.state.connected /* && this.state.binder_phase == null*/}
-                            show_logs=${this.state.show_logs}
-                            set_show_logs=${(enabled) => this.setState({ show_logs: enabled })}
                             last_created_cell=${this.state.last_created_cell}
                             selected_cells=${this.state.selected_cells}
                             is_initializing=${this.state.initializing}

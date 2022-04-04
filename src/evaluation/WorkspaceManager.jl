@@ -1,7 +1,7 @@
 module WorkspaceManager
 import UUIDs: UUID
 import ..Pluto
-import ..Pluto: Configuration, Notebook, Cell, ProcessStatus, ServerSession, ExpressionExplorer, pluto_filename, Token, withtoken, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
+import ..Pluto: Configuration, Notebook, Cell, ProcessStatus, ServerSession, ExpressionExplorer, pluto_filename, Token, withtoken, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage, can_show_logs
 import ..Pluto.PkgCompat
 import ..Configuration: CompilerOptions, _merge_notebook_compiler_options, _convert_to_flags
 import ..Pluto.ExpressionExplorer: FunctionName
@@ -146,6 +146,10 @@ function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.R
             # We always show the log at the currently running cell, which is given by
             running_cell_id = next_log["cell_id"]::UUID
             running_cell = notebook.cells_dict[running_cell_id]
+
+            if !can_show_logs(running_cell)
+                continue
+            end
 
             # Some logs originate from outside of the running code, through function calls. Some code here to deal with that:
             begin

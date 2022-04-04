@@ -2,7 +2,8 @@ import UUIDs: UUID, uuid1
 import .ExpressionExplorer: SymbolsState, UsingsImports
 
 const DEFAULT_METADATA = Dict{String, Any}(
-    "disabled" => false
+    "disabled" => false,
+    "show_logs" => true,
 )
 
 Base.@kwdef struct CellOutput
@@ -70,5 +71,11 @@ function Base.convert(::Type{UUID}, string::String)
     UUID(string)
 end
 
+create_metadata(metadata::Dict{String,<:Any}) = merge(DEFAULT_METADATA, metadata)
 get_cell_metadata(cell::Cell)::Dict{String,Any} = cell.metadata
 get_cell_metadata_no_default(cell::Cell)::Dict{String,Any} = Dict{String,Any}(setdiff(pairs(cell.metadata), pairs(DEFAULT_METADATA)))
+
+"Returns whether or not the cell is **explicitely** disabled."
+is_disabled(c::Cell) = get(c.metadata, "disabled", false)
+
+can_show_logs(c::Cell) = get(c.metadata, "show_logs", true)
