@@ -8,7 +8,7 @@
 
 module PlutoRunner
 
-__precompile__()
+# __precompile__()
 
 # import these two so that they can be imported from Main on the worker process if it launches without the stdlibs in its LOAD_PATH
 import Markdown
