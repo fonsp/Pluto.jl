@@ -269,6 +269,20 @@ const julia_code_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ re
     }
 }
 
+const complete_anyword = async (ctx) => {
+    const results_from_cm = await autocomplete.completeAnyWord(ctx)
+    return {
+        from: results_from_cm.from,
+        options: results_from_cm.options.map(({ label }, i) => ({
+            // See https://github.com/codemirror/codemirror.next/issues/788 about `type: null`
+            label,
+            apply: label,
+            type: null,
+            boost: 0 - i,
+        })),
+    }
+}
+
 const local_variables_completion = (ctx) => {
     let scopestate = ctx.state.field(ScopeStateField)
     let unicode = ctx.tokenBefore(["Identifier"])
@@ -285,7 +299,13 @@ const local_variables_completion = (ctx) => {
                 ({ validity, name }) =>
                     name.startsWith(text) /** <- NOTE: A smarter matching strategy can be used here */ && from > validity.from && to <= validity.to
             )
-            .map(({ name }, i) => ({ label: name, type: "c_Any", boost: 99 - i })),
+            .map(({ name }, i) => ({
+                // See https://github.com/codemirror/codemirror.next/issues/788 about `type: null`
+                label: name,
+                apply: name,
+                type: null,
+                boost: 99 - i,
+            })),
     }
 }
 
@@ -329,7 +349,9 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
             override: [
                 julia_special_completions_to_cm(memoize_last_request_autocomplete),
                 julia_code_completions_to_cm(memoize_last_request_autocomplete),
-                local_variables_completion,
+                complete_anyword,
+                // TODO: Disabled because of performance problems, see https://github.com/fonsp/Pluto.jl/pull/1925. Remove `complete_anyword` once fixed. See https://github.com/fonsp/Pluto.jl/pull/2013
+                // local_variables_completion,
             ],
             defaultKeymap: false, // We add these manually later, so we can override them if necessary
             maxRenderedOptions: 512, // fons's magic number
