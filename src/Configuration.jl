@@ -105,11 +105,13 @@ Options to change Pluto's evaluation behaviour during internal testing. These op
 - `run_notebook_on_load::Bool = true`
 - `workspace_use_distributed::Bool = true`
 - `lazy_workspace_creation::Bool = false`
+- `capture_stdout::Bool = true`
 """
 @option mutable struct EvaluationOptions
     run_notebook_on_load::Bool = true
     workspace_use_distributed::Bool = true
     lazy_workspace_creation::Bool = false
+    capture_stdout::Bool = true
 end
 
 """
