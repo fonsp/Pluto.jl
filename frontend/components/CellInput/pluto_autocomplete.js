@@ -273,7 +273,7 @@ const complete_anyword = async (ctx) => {
     const results_from_cm = await autocomplete.completeAnyWord(ctx)
     return {
         from: results_from_cm.from,
-        options: results_from_cm.options.map(({ label }, i) => ({ label, boost: 0 - i })),
+        options: results_from_cm.options.map(({ label }, i) => ({ label, apply: label, type: null, boost: 0 - i })),
     }
 }
 
@@ -293,7 +293,7 @@ const local_variables_completion = (ctx) => {
                 ({ validity, name }) =>
                     name.startsWith(text) /** <- NOTE: A smarter matching strategy can be used here */ && from > validity.from && to <= validity.to
             )
-            .map(({ name }, i) => ({ label: name, type: "c_Any", boost: 99 - i })),
+            .map(({ name }, i) => ({ label: name, apply: name, type: null, boost: 99 - i })),
     }
 }
 
