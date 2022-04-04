@@ -3,9 +3,7 @@ const FrontMatter = Dict{String,Any}
 
 
 """
-```julia
-frontmatter(nb::Notebook; raise::Bool=false)::Dict{String,Any}
-```
+    frontmatter(nb::Notebook; raise::Bool=false)::Dict{String,Any}
 
 Extract frontmatter from a notebook, which is extra meta-information that the author attaches to the notebook, often including *title*, *description*, *tags*, *author*, and more. Search for *frontmatter* online to learn more.
 
