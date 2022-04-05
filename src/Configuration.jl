@@ -58,7 +58,6 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 - `dismiss_update_notification::Bool = $DISMISS_UPDATE_NOTIFICATION_DEFAULT`
 - `show_file_system::Bool = $SHOW_FILE_SYSTEM_DEFAULT`
 - `notebook_path_suggestion::String = notebook_path_suggestion()`
-<<<<<<< HEAD
 - `disable_writing_notebook_files::Bool = $DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT`
 - `auto_reload_from_file::Bool = $AUTO_RELOAD_FROM_FILE_DEFAULT` Watch notebook files for outside changes and update running notebook state automatically
 - `auto_reload_from_file_cooldown::Real = $AUTO_RELOAD_FROM_FILE_COOLDOWN_DEFAULT` Experimental, will be removed
