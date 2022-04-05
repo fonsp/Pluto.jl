@@ -184,6 +184,7 @@
         /* Landing colors */
         --index-text-color: rgb(199, 199, 199);
         --index-clickable-text-color: rgb(235, 235, 235);
+        --index-card-bg: #313131;
 
         /* docs binding */
         --docs-binding-bg: #323431;

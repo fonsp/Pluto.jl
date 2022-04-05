@@ -1,5 +1,6 @@
 import _ from "../../imports/lodash.js"
 import { html, Component, useEffect, useState, useMemo } from "../../imports/Preact.js"
+import { FeaturedCard } from "./FeaturedCard.js"
 
 const run = (f) => f()
 
@@ -61,28 +62,22 @@ export const Featured = () => {
     }, [sources])
 
     return html`
-        <div class="featured">
-            <h2>Featured</h2>
-            <div class="featured-sources">
-                ${source_data != null
-                    ? source_data.map(
-                          (data) => html`
-                              <div class="featured-source">
-                                  <h3>${data.source_url}</h3>
-                                  <div class="featured-source-notebooks">
-                                      ${Object.entries(data.notebooks).map(
-                                          ([id, entry]) => html`
-                                              <div class="featured-source-notebook">
-                                                  <a href="${entry.html_path}">${entry.frontmatter.title}</a>
-                                              </div>
-                                          `
-                                      )}
-                                  </div>
+        <h2>Featured</h2>
+        <div class="featured-sources">
+            ${source_data != null
+                ? source_data.map(
+                      (data) => html`
+                          <div class="featured-source">
+                              <h3>${data.source_url}</h3>
+                              <div class="featured-source-notebooks">
+                                  ${Object.entries(data.notebooks).map(
+                                      ([id, entry]) => html` <${FeaturedCard} entry=${entry} source_url=${data.source_url} /> `
+                                  )}
                               </div>
-                          `
-                      )
-                    : null}
-            </div>
+                          </div>
+                      `
+                  )
+                : null}
         </div>
     `
 }
