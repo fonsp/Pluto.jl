@@ -6,6 +6,7 @@ import { create_pluto_connection } from "../../common/PlutoConnection.js"
 import { new_update_message } from "../../common/NewUpdateMessage.js"
 import { Open } from "./Open.js"
 import { Recent } from "./Recent.js"
+import { Featured } from "./Featured.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../../common/Environment.js"
@@ -75,5 +76,6 @@ export const Welcome = () => {
         <${Open} client=${client_ref.current} connected=${connected} CustomPicker=${CustomPicker} show_samples=${show_samples} />
         <br />
         <${Recent} client=${client_ref.current} connected=${connected} remote_notebooks=${remote_notebooks} CustomRecent=${CustomRecent} />
+        <${Featured} />
     `
 }
