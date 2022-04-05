@@ -40,6 +40,7 @@ const AUTO_RELOAD_FROM_FILE_IGNORE_PKG_DEFAULT = false
 const NOTEBOOK_DEFAULT = nothing
 const INIT_WITH_FILE_VIEWER_DEFAULT = false
 const SIMULATED_LAG_DEFAULT = 0.0
+const SIMULATED_PKG_LAG_DEFAULT = 0.0
 const INJECTED_JAVASCRIPT_DATA_URL_DEFAULT = "data:text/javascript;base64,"
 const ON_EVENT_DEFAULT = function(a) #= @info "$(typeof(a))" =# end
 
@@ -57,6 +58,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 - `dismiss_update_notification::Bool = $DISMISS_UPDATE_NOTIFICATION_DEFAULT`
 - `show_file_system::Bool = $SHOW_FILE_SYSTEM_DEFAULT`
 - `notebook_path_suggestion::String = notebook_path_suggestion()`
+<<<<<<< HEAD
 - `disable_writing_notebook_files::Bool = $DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT`
 - `auto_reload_from_file::Bool = $AUTO_RELOAD_FROM_FILE_DEFAULT` Watch notebook files for outside changes and update running notebook state automatically
 - `auto_reload_from_file_cooldown::Real = $AUTO_RELOAD_FROM_FILE_COOLDOWN_DEFAULT` Experimental, will be removed
@@ -64,6 +66,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 - `notebook::Union{Nothing,String} = $NOTEBOOK_DEFAULT` Optional path of notebook to launch at start
 - `init_with_file_viewer::Bool = $INIT_WITH_FILE_VIEWER_DEFAULT`
 - `simulated_lag::Real=$SIMULATED_LAG_DEFAULT` (internal) Extra lag to add to our server responses. Will be multiplied by `0.5 + rand()`.
+- `simulated_pkg_lag::Real=$SIMULATED_PKG_LAG_DEFAULT` (internal) Extra lag to add to operations done by Pluto's package manager. Will be multiplied by `0.5 + rand()`.
 - `injected_javascript_data_url::String = "$INJECTED_JAVASCRIPT_DATA_URL_DEFAULT"` (internal) Optional javascript injectables to the front-end. Can be used to customize the editor, but this API is not meant for general use yet.
 - `on_event::Function = $ON_EVENT_DEFAULT`
 """
@@ -82,6 +85,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
     notebook::Union{Nothing,String,Vector{<:String}} = NOTEBOOK_DEFAULT
     init_with_file_viewer::Bool = INIT_WITH_FILE_VIEWER_DEFAULT
     simulated_lag::Real = SIMULATED_LAG_DEFAULT
+    simulated_pkg_lag::Real = SIMULATED_PKG_LAG_DEFAULT
     injected_javascript_data_url::String = INJECTED_JAVASCRIPT_DATA_URL_DEFAULT
     on_event::Function = ON_EVENT_DEFAULT
 end
@@ -221,6 +225,7 @@ function from_flat_kwargs(;
         notebook::Union{Nothing,String,Vector{<:String}} = NOTEBOOK_DEFAULT,
         init_with_file_viewer::Bool = INIT_WITH_FILE_VIEWER_DEFAULT,
         simulated_lag::Real = SIMULATED_LAG_DEFAULT,
+        simulated_pkg_lag::Real = SIMULATED_PKG_LAG_DEFAULT,
         injected_javascript_data_url::String = INJECTED_JAVASCRIPT_DATA_URL_DEFAULT,
         on_event::Function = ON_EVENT_DEFAULT,
         require_secret_for_open_links::Bool = REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT,
@@ -252,6 +257,7 @@ function from_flat_kwargs(;
         notebook,
         init_with_file_viewer,
         simulated_lag,
+        simulated_pkg_lag,
         injected_javascript_data_url,
         on_event
     )
