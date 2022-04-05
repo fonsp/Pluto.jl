@@ -1,5 +1,5 @@
 using Test
-import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new, readwrite, without_pluto_file_extension
+import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new, readwrite, without_pluto_file_extension, update_run!
 import Random
 import Pkg
 import UUIDs: UUID
@@ -29,7 +29,7 @@ function basic_notebook()
     ]) |> init_packages!
 end
 
-function metadata_notebook()
+function cell_metadata_notebook()
     Notebook([
         Cell(
             code="100*a + b",
@@ -43,6 +43,23 @@ function metadata_notebook()
             ),
         ),
     ]) |> init_packages!
+end
+
+function notebook_metadata_notebook()
+    nb = Notebook([
+        Cell(code="n * (n + 1) / 2"),
+    ]) |> init_packages!
+    nb.metadata = Dict(
+        "boolean" => true,
+        "string" => "String",
+        "number" => 10000,
+        "ozymandias" => Dict(
+            "l1" => "And on the pedestal, these words appear:",
+            "l2" => "My name is Ozymandias, King of Kings;",
+            "l3" => "Look on my Works, ye Mighty, and despair!",
+        ),
+    )
+    nb
 end
 
 function shuffled_notebook()
@@ -157,13 +174,13 @@ end
         end
     end
 
-    @testset "Metadata" begin
+    @testset "Cell Metadata" begin
         🍭 = ServerSession()
         🍭.options.evaluation.workspace_use_distributed = false
         fakeclient = ClientSession(:fake, nothing)
         🍭.connected_clients[fakeclient.id] = fakeclient
 
-        nb = metadata_notebook()
+        nb = cell_metadata_notebook()
         update_run!(🍭, nb, nb.cells)
         cell = first(values(nb.cells_dict))
         @test cell.metadata == Dict(
@@ -188,6 +205,31 @@ end
             ),
             "disabled" => true,
         )
+    end
+
+    @testset "Notebook Metadata" begin
+        🍭 = ServerSession()
+        🍭.options.evaluation.workspace_use_distributed = false
+        fakeclient = ClientSession(:fake, nothing)
+        🍭.connected_clients[fakeclient.id] = fakeclient
+
+        nb = notebook_metadata_notebook()
+        update_run!(🍭, nb, nb.cells)
+        
+        @test nb.metadata == Dict(
+            "boolean" => true,
+            "string" => "String",
+            "number" => 10000,
+            "ozymandias" => Dict(
+                "l1" => "And on the pedestal, these words appear:",
+                "l2" => "My name is Ozymandias, King of Kings;",
+                "l3" => "Look on my Works, ye Mighty, and despair!",
+            ),
+        )
+
+        save_notebook(nb)
+        nb_loaded = load_notebook_nobackup(nb.path)
+        @test nb.metadata == nb_loaded.metadata
     end
 
     @testset "I/O overloaded" begin
