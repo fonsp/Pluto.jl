@@ -29,7 +29,7 @@ const run = (f) => f()
  */
 
 export const Featured = () => {
-    const [sources, set_sources] = useState(/** @type{Array<String>} */ (null))
+    const [sources, set_sources] = useState(/** @type{Array<{url: String, integrity: String?}>} */ (null))
 
     const [source_data, set_source_data] = useState(/** @type{Array<SourceManifest>} */ ([]))
 
@@ -43,8 +43,8 @@ export const Featured = () => {
 
     useEffect(() => {
         if (sources != null) {
-            const promises = sources.map(async (src) => {
-                const data = await (await fetch(src)).json()
+            const promises = sources.map(async ({ url, integrity }) => {
+                const data = await (await fetch(new Request(url, { integrity }))).json()
 
                 if (data.format_version !== "1") {
                     throw new Error(`Invalid format version: ${data.format_version}`)
@@ -54,7 +54,7 @@ export const Featured = () => {
                     ...old,
                     {
                         ...data,
-                        source_url: src,
+                        source_url: url,
                     },
                 ])
             })

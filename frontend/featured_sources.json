@@ -1,3 +1,6 @@
 {
-    "sources": ["https://cdn.jsdelivr.net/gh/JuliaPluto/featured@7fa12b2/pluto_export.json"]
+    "sources": [{
+        "url": "https://cdn.jsdelivr.net/gh/JuliaPluto/featured@7fa12b2/pluto_export.json",
+        "integrity": "sha256-P9KCJ+a4tDoNCdCkiqo2Q50zjQNydzuRwJ87zMv3X3U="
+    }]
 }
