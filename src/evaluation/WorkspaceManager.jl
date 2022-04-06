@@ -13,7 +13,7 @@ Base.@kwdef mutable struct Workspace
     pid::Integer
     notebook_id::UUID
     discarded::Bool=false
-    remote_log_channel::Union{Distributed.RemoteChannel,Channel}
+    remote_log_channel::Distributed.RemoteChannel
     module_name::Symbol
     dowork_token::Token=Token()
     nbpkg_was_active::Bool=false
@@ -145,7 +145,7 @@ function start_relaying_self_updates((session, notebook)::SN, run_channel::Distr
     end
 end
 
-function start_relaying_logs((session, notebook)::SN, log_channel::Union{Distributed.RemoteChannel,Channel})
+function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.RemoteChannel)
     update_throttled, flush_throttled = Pluto.throttled(0.1) do 
         Pluto.send_notebook_changes!(Pluto.ClientRequest(session=session, notebook=notebook))
     end
@@ -153,7 +153,7 @@ function start_relaying_logs((session, notebook)::SN, log_channel::Union{Distrib
     while true
         try
             next_log::Dict{String,Any} = take!(log_channel)
-            
+
             fn = next_log["file"]
             match = findfirst("#==#", fn)
 
@@ -206,7 +206,7 @@ function start_relaying_logs((session, notebook)::SN, log_channel::Union{Distrib
             if !isopen(log_channel)
                 break
             end
-            @error "Failed to relay log" isopen(log_channel) exception=(e, catch_backtrace())
+            @error "Failed to relay log" exception=(e, catch_backtrace())
         end
     end
 end

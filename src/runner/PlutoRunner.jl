@@ -2087,7 +2087,7 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     pe_stderr = IOContext(pipe.in, default_stdout_iocontext)
     redirect_stdout(pe_stdout)
     redirect_stderr(pe_stderr)
-    
+
     # Bytes written to the `pipe` are captured in `output` and eventually converted to a
     # `String`. We need to use an asynchronous task to continously tranfer bytes from the
     # pipe to `output` in order to avoid the buffer filling up and stalling write() calls in
@@ -2098,7 +2098,6 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     # To make the `display` function work.
     redirect_display = TextDisplay(pe_stdout)
     pushdisplay(redirect_display)
-    
 
     # Run the function `f`, capturing all output that it might have generated.
     # Success signals whether the function `f` did or did not throw an exception.
@@ -2112,7 +2111,6 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
             # This happens when the user calls `popdisplay()`, fine.
             # @warn "Pluto's display was already removed?" e
         end
-        
         # Restore the original output streams.
         redirect_stdout(default_stdout)
         redirect_stderr(default_stderr)
