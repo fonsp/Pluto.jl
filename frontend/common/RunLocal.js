@@ -14,7 +14,7 @@ export const start_local = async ({ setStatePromise, connect, launch_params }) =
     try {
         await setStatePromise(
             immer((state) => {
-                state.binder_phase = BackendLaunchPhase.created
+                state.backend_launch_phase = BackendLaunchPhase.created
                 state.disable_ui = false
             })
         )
@@ -39,7 +39,7 @@ export const start_local = async ({ setStatePromise, connect, launch_params }) =
         await setStatePromise(
             immer((state) => {
                 state.notebook.notebook_id = new_notebook_id
-                state.binder_phase = BackendLaunchPhase.notebook_running
+                state.backend_launch_phase = BackendLaunchPhase.notebook_running
             })
         )
         console.log("Connecting WebSocket")
