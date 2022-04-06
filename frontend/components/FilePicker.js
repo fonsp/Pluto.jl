@@ -65,7 +65,7 @@ export class FilePicker extends Component {
     }
     componentDidMount() {
         const usesDarkTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const buttonDisable = new Compartment
+        const buttonDisable = new Compartment()
         this.cm = new EditorView({
             state: EditorState.create({
                 doc: "",
