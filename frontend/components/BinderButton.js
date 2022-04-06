@@ -1,7 +1,7 @@
-import { BinderPhase } from "../common/Binder.js"
+import { BackendLaunchPhase } from "../common/Binder.js"
 import { html, useEffect, useState, useRef } from "../imports/Preact.js"
 
-export const BinderButton = ({ binder_phase, start_binder, notebookfile }) => {
+export const BinderButton = ({ offer_binder, start_binder, notebookfile }) => {
     const [popupOpen, setPopupOpen] = useState(false)
     const [showCopyPopup, setShowCopyPopup] = useState(false)
     const notebookfile_ref = useRef("")
@@ -27,14 +27,19 @@ export const BinderButton = ({ binder_phase, start_binder, notebookfile }) => {
             document.body.removeEventListener("click", handleclick)
         }
     }, [popupOpen])
-    const show = binder_phase === BinderPhase.wait_for_user
-    //@ts-ignore
-    // allow user-written JS to start the binder
-    window.start_binder = show ? start_binder : () => {}
-    if (!show) return null
-    const show_binder = binder_phase != null
+
+    useEffect(() => {
+        //@ts-ignore
+        // allow user-written JS to start the binder
+        window.start_binder = offer_binder ? start_binder : null
+        return () => {
+            //@ts-ignore
+            window.start_binder = null
+        }
+    }, [start_binder, offer_binder])
+
     const recommend_download = notebookfile_ref.current.startsWith("data:")
-    return html` <div class="edit_or_run">
+    return html`<div class="edit_or_run">
         <button
             onClick=${(e) => {
                 e.stopPropagation()
@@ -47,7 +52,7 @@ export const BinderButton = ({ binder_phase, start_binder, notebookfile }) => {
         ${popupOpen &&
         html`<div class="binder_help_text">
             <span onClick=${() => setPopupOpen(false)} class="close"></span>
-            ${show_binder
+            ${offer_binder
                 ? html`
                       <p style="text-align: center;">
                           ${`To be able to edit code and run cells, you need to run the notebook yourself. `}
