@@ -173,6 +173,7 @@ const first_true_key = (obj) => {
  *  preamble_html: string?,
  *  isolated_cell_ids: string[]?,
  *  binder_url: string?,
+ *  pluto_server_url: string?,
  *  slider_server_url: string?,
  *  recording_url: string?,
  *  recording_audio_url: string?,
@@ -1123,7 +1124,11 @@ patch: ${JSON.stringify(
                 binder_phase: this.state.offer_binder ? BinderPhase.wait_for_user : null,
             })
             // view stats on https://stats.plutojl.org/
-            count_stat(`article-view`)
+            if (this.state.pluto_server_url != null) {
+                count_stat(`article-view`)
+            } else {
+                count_stat(`article-view`)
+            }
         } else {
             this.connect()
         }

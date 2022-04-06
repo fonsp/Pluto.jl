@@ -45,6 +45,8 @@ const launch_params = {
     //@ts-ignore
     binder_url: url_params.get("binder_url") ?? window.pluto_binder_url,
     //@ts-ignore
+    pluto_server_url: url_params.get("pluto_server_url") ?? window.pluto_pluto_server_url,
+    //@ts-ignore
     slider_server_url: url_params.get("slider_server_url") ?? window.pluto_slider_server_url,
     //@ts-ignore
     recording_url: url_params.get("recording_url") ?? window.pluto_recording_url,
