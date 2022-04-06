@@ -1,6 +1,7 @@
 import UUIDs: UUID, uuid1
 import .ExpressionExplorer: SymbolsState, UsingsImports
 
+# Make sure to keep this in sync with DEFAULT_METADATA in ../frontend/components/Editor.js
 const DEFAULT_METADATA = Dict{String, Any}(
     "disabled" => false,
     "show_logs" => true,
