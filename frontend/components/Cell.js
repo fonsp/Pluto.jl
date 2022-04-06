@@ -65,6 +65,7 @@ export const Cell = ({
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
     const [cm_highlighted_line, set_cm_highlighted_line] = useState(null)
 
+    const any_logs = useMemo(() => !_.isEmpty(logs), [logs])
     const set_show_logs = (show_logs) =>
         pluto_actions.update_notebook((notebook) => {
             notebook.cell_inputs[cell_id].metadata.show_logs = show_logs
@@ -210,6 +211,7 @@ export const Cell = ({
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
                 metadata=${metadata}
+                any_logs=${any_logs}
                 show_logs=${show_logs}
                 set_show_logs=${set_show_logs}
                 cm_highlighted_line=${cm_highlighted_line}

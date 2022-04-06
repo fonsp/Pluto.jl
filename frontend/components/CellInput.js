@@ -833,11 +833,13 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled, any_
                       ${running_disabled ? html`<span class="enable_cell ctx_icon" />` : html`<span class="disable_cell ctx_icon" />`}
                       ${running_disabled ? html`<b>Enable cell</b>` : html`Disable cell`}
                   </li>
-                  <li title="" onClick=${toggle_logs}>
-                      ${show_logs
-                          ? html`<span class="hide_logs ctx_icon" /><span>Hide logs</span>`
-                          : html`<span class="show_logs ctx_icon" /><span>Show logs</span>`}
-                  </li>
+                  ${any_logs
+                      ? html`<li title="" onClick=${toggle_logs}>
+                            ${show_logs
+                                ? html`<span class="hide_logs ctx_icon" /><span>Hide logs</span>`
+                                : html`<span class="show_logs ctx_icon" /><span>Show logs</span>`}
+                        </li>`
+                      : null}
                   <li class="coming_soon" title=""><span class="bandage ctx_icon" /><em>Coming soon…</em></li>
               </ul>`
             : html``}

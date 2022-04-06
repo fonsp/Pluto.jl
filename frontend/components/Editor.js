@@ -39,6 +39,12 @@ import { HijackExternalLinksToOpenInNewTab } from "./HackySideStuff/HijackExtern
 export const default_path = "..."
 const DEBUG_DIFFING = false
 
+// Be sure to keep this in sync with DEFAULT_METADATA in Cell.jl
+const DEFAULT_METADATA = {
+    disabled: false,
+    show_logs: true,
+}
+
 // from our friends at https://stackoverflow.com/a/2117523
 // i checked it and it generates Julia-legal UUIDs and that's all we need -SNOF
 const uuidv4 = () =>
@@ -338,8 +344,7 @@ export class Editor extends Component {
                             // Fill the cell with empty code remotely, so it doesn't run unsafe code
                             code: "",
                             metadata: {
-                                disabled: false,
-                                show_logs: true,
+                                ...DEFAULT_METADATA,
                             },
                         }
                     }
@@ -379,8 +384,7 @@ export class Editor extends Component {
                         code: code,
                         code_folded: false,
                         metadata: {
-                            disabled: false,
-                            show_logs: true,
+                            ...DEFAULT_METADATA,
                         },
                     }
                 })
@@ -439,7 +443,7 @@ export class Editor extends Component {
                         cell_id: id,
                         code,
                         code_folded: false,
-                        metadata: { show_logs: true, disabled: false },
+                        metadata: { ...DEFAULT_METADATA },
                     }
                     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
                 })

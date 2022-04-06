@@ -1,5 +1,5 @@
 using Test
-import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new, readwrite, without_pluto_file_extension, update_run!, get_cell_metadata_no_default, is_disabled, can_show_logs, create_metadata
+import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new, readwrite, without_pluto_file_extension, update_run!, get_cell_metadata_no_default, is_disabled, create_metadata
 import Pluto.WorkspaceManager: poll, WorkspaceManager
 import Random
 import Pkg
@@ -190,28 +190,6 @@ end
                 ),
                 "disabled" => true,
             )
-        end
-
-        @testset "Show/Hide logs" begin
-            🍭.options.evaluation.workspace_use_distributed = true
-            notebook = Notebook([
-                Cell(code = """@info "🍕🍕🍕" """, 
-                     metadata= Dict("show_logs" => false) |> create_metadata),
-                Cell("""@info "🍝🍝🍝" """)
-            ])
-            update_run!(🍭, notebook, notebook.cells)
-
-            @test can_show_logs.(notebook.cells) == [false, true]
-            @test notebook.cells[begin].logs |> isempty
-
-            @show notebook.cells[begin+1].output
-
-            @test poll(5, 1/60) do
-                length(notebook.cells[begin+1].logs) == 1
-            end
-
-            WorkspaceManager.unmake_workspace((🍭, notebook))
-            🍭.options.evaluation.workspace_use_distributed = false
         end
     end
 
