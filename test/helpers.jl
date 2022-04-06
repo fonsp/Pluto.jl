@@ -6,6 +6,7 @@ macro timeit_include(path::AbstractString) :(@timeit TOUT $path include($path)) 
 @timeit TOUT "import Pluto" import Pluto
 import Pluto.ExpressionExplorer
 import Pluto.ExpressionExplorer: SymbolsState, compute_symbolreferences, FunctionNameSignaturePair, UsingsImports, compute_usings_imports
+using Sockets
 using Test
 using HTTP
 import Distributed
