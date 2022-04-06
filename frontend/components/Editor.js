@@ -227,7 +227,10 @@ export class Editor extends Component {
 
             disable_ui: launch_params.disable_ui,
             static_preview: launch_params.statefile != null,
-            backend_launch_phase: launch_params.notebookfile != null && launch_params.binder_url != null ? BackendLaunchPhase.wait_for_user : null,
+            backend_launch_phase:
+                launch_params.notebookfile != null && (launch_params.binder_url != null || launch_params.pluto_server_url != null)
+                    ? BackendLaunchPhase.wait_for_user
+                    : null,
             binder_session_url: null,
             binder_session_token: null,
             connected: false,
@@ -1232,6 +1235,7 @@ patch: ${JSON.stringify(
         >`
 
         const wfu = this.state.backend_launch_phase === BackendLaunchPhase.wait_for_user
+        const offer_local = wfu && launch_params.pluto_server_url != null
         const offer_binder = wfu && launch_params.binder_url != null
 
         return html`
@@ -1334,7 +1338,16 @@ patch: ${JSON.stringify(
                     />
                     
                     ${
-                        offer_binder
+                        offer_local
+                            ? html`<${RunLocalButton}
+                                  start_local=${() =>
+                                      start_local({
+                                          setStatePromise: this.setStatePromise,
+                                          connect: this.connect,
+                                          launch_params: launch_params,
+                                      })}
+                              />`
+                            : offer_binder
                             ? html`<${BinderButton}
                                   offer_binder=${offer_binder}
                                   start_binder=${() =>
