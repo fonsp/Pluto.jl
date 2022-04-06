@@ -12,7 +12,7 @@ export const BinderButton = ({ binder_phase, start_binder, notebookfile }) => {
             e.key === "Escape" && setPopupOpen(false)
         }
         const handleclick = (e) => {
-            if (popupOpen && !e.composedPath().find((el) => el.id === "binder_help_text")) {
+            if (popupOpen && !e.target?.closest(".binder_help_text")) {
                 setPopupOpen(false)
                 // Avoid activating whatever was below
                 e.stopPropagation()
@@ -34,19 +34,18 @@ export const BinderButton = ({ binder_phase, start_binder, notebookfile }) => {
     if (!show) return null
     const show_binder = binder_phase != null
     const recommend_download = notebookfile_ref.current.startsWith("data:")
-    return html` <div id="launch_binder">
-        <span
-            id="binder_launch_help"
+    return html` <div class="edit_or_run">
+        <button
             onClick=${(e) => {
                 e.stopPropagation()
                 e.preventDefault()
                 setPopupOpen(!popupOpen)
             }}
-            class="explain_binder"
-            ><b>Edit</b> or <b>run</b> this notebook</span
         >
+            <b>Edit</b> or <b>run</b> this notebook
+        </button>
         ${popupOpen &&
-        html`<div id="binder_help_text">
+        html`<div class="binder_help_text">
             <span onClick=${() => setPopupOpen(false)} class="close"></span>
             ${show_binder
                 ? html`
