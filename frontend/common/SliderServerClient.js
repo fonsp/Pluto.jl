@@ -1,5 +1,5 @@
 import { trailingslash } from "./Binder.js"
-import { hash_arraybuffer, debounced_promises, base64_arraybuffer } from "./PlutoHash.js"
+import { plutohash_arraybuffer, debounced_promises, base64url_arraybuffer } from "./PlutoHash.js"
 import { pack, unpack } from "./MsgPack.js"
 import immer from "../imports/immer.js"
 import _ from "../imports/lodash.js"
@@ -24,12 +24,12 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
     const notebookfile_hash = fetch(launch_params.notebookfile)
         .then(assert_response_ok)
         .then((r) => r.arrayBuffer())
-        .then(hash_arraybuffer)
+        .then(plutohash_arraybuffer)
 
     notebookfile_hash.then((x) => console.log("Notebook file hash:", x))
 
     const bond_connections = notebookfile_hash
-        .then((hash) => fetch(trailingslash(launch_params.slider_server_url) + "bondconnections/" + encodeURIComponent(hash)))
+        .then((hash) => fetch(trailingslash(launch_params.slider_server_url) + "bondconnections/" + hash))
         .then(assert_response_ok)
         .then((r) => r.arrayBuffer())
         .then((b) => unpack(new Uint8Array(b)))
@@ -60,14 +60,14 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
 
             const packed = pack(mybonds_filtered)
 
-            const url = base + "staterequest/" + encodeURIComponent(hash) + "/"
+            const url = base + "staterequest/" + hash + "/"
 
             let unpacked = null
             try {
                 const use_get = url.length + (packed.length * 4) / 3 + 20 < 8000
 
                 const response = use_get
-                    ? await fetch(url + encodeURIComponent(await base64_arraybuffer(packed)), {
+                    ? await fetch(url + (await base64url_arraybuffer(packed)), {
                           method: "GET",
                       }).then(assert_response_ok)
                     : await fetch(url, {
