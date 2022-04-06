@@ -2040,8 +2040,6 @@ function Logging.handle_message(pl::PlutoLogger, level, msg, _module, group, id,
     # println("with types: ", "_module: ", typeof(_module), ", ", "msg: ", typeof(msg), ", ", "group: ", typeof(group), ", ", "id: ", typeof(id), ", ", "file: ", typeof(file), ", ", "line: ", typeof(line), ", ", "kwargs: ", typeof(kwargs)) # thanks Copilot
 
     try
-        # println(original_stdout, "Adding to log_channel 1")
-        # println(original_stdout, msg)
         
         yield()
         
@@ -2058,7 +2056,6 @@ function Logging.handle_message(pl::PlutoLogger, level, msg, _module, group, id,
         )
         
         yield()
-        # println(original_stdout, "Adding to log_channel 2")
         
         # Also print to console (disabled)
         # Logging.handle_message(old_logger[], level, msg, _module, group, id, file, line; kwargs...)
@@ -2076,7 +2073,6 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     if !enabled
         return f()
     end
-    # print(original_stdout, "Starting io redirect")
     # Taken from https://github.com/JuliaDocs/IOCapture.jl/blob/master/src/IOCapture.jl with some modifications to make it log.
     
     # Original implementation from Documenter.jl (MIT license)
@@ -2089,15 +2085,9 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     Base.link_pipe!(pipe; reader_supports_async = true, writer_supports_async = true)
     pe_stdout = IOContext(pipe.in, default_stdout_iocontext)
     pe_stderr = IOContext(pipe.in, default_stdout_iocontext)
-    
-    # print(original_stdout, "Starting io redirect 2")
-    
     redirect_stdout(pe_stdout)
     redirect_stderr(pe_stderr)
     
-    # print(original_stdout, "Starting io redirect 3")
-    
-
     # Bytes written to the `pipe` are captured in `output` and eventually converted to a
     # `String`. We need to use an asynchronous task to continously tranfer bytes from the
     # pipe to `output` in order to avoid the buffer filling up and stalling write() calls in
@@ -2108,8 +2098,6 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     # To make the `display` function work.
     redirect_display = TextDisplay(pe_stdout)
     pushdisplay(redirect_display)
-    
-    # print(original_stdout, "Starting io redirect 4")
     
 
     # Run the function `f`, capturing all output that it might have generated.
@@ -2124,22 +2112,17 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
             # This happens when the user calls `popdisplay()`, fine.
             # @warn "Pluto's display was already removed?" e
         end
-        # print(original_stdout, "Starting io redirect 5")
         
         # Restore the original output streams.
         redirect_stdout(default_stdout)
         redirect_stderr(default_stderr)
-        # print(original_stdout, "Starting io redirect 6")
         close(pe_stdout)
         close(pe_stderr)
-        # print(original_stdout, "Starting io redirect 7")
         wait(buffer_redirect_task)
-        # print(original_stdout, "Starting io redirect 8")
     end
 
 
     output = String(take!(output))
-    # print(original_stdout, "Starting io redirect 9")
     if !isempty(output)
         Logging.@logmsg loglevel output
     end

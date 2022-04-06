@@ -154,8 +154,6 @@ function start_relaying_logs((session, notebook)::SN, log_channel::Union{Distrib
         try
             next_log::Dict{String,Any} = take!(log_channel)
             
-            @info "Received log:" next_log["msg"]
-
             fn = next_log["file"]
             match = findfirst("#==#", fn)
 
@@ -202,7 +200,6 @@ function start_relaying_logs((session, notebook)::SN, log_channel::Union{Distrib
                 end
             end
 
-            @info "pushing! " running_cell.cell_id length(running_cell.logs)
             push!(running_cell.logs, next_log)
             Pluto.@asynclog update_throttled()
         catch e
