@@ -113,11 +113,11 @@ body.wiggle_binder .edit_or_run > button {
     cursor: pointer;
     background: unset;
     background-color: var(--overlay-button-bg);
-    border: 3px solid hsl(236deg 28% 50% / 70%);
-    font-size: 14px;
-    font-style: italic;
+    border: 3px solid hsl(236deg 28% 50% / 46%);
+    font-size: 16px;
+    /* font-style: italic; */
     font-family: "Roboto Mono";
-    letter-spacing: -0.2px;
+    font-family: var(--lato-ui-font-stack);letter-spacing: 0.1px;
     color: var(--black);
     white-space: nowrap;
     padding: 8px 16px;

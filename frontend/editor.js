@@ -3,7 +3,6 @@ import "./common/NodejsCompatibilityPolyfill.js"
 
 import { Editor, default_path } from "./components/Editor.js"
 import { FetchProgress, read_Uint8Array_with_progress } from "./components/FetchProgress.js"
-import { BinderPhase } from "./common/Binder.js"
 import { unpack } from "./common/MsgPack.js"
 import { RawHTMLContainer } from "./components/CellOutput.js"
 
