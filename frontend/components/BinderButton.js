@@ -2,6 +2,20 @@ import { BinderPhase } from "../common/Binder.js"
 import { html, useEffect, useState, useRef } from "../imports/Preact.js"
 
 export const BinderButton = ({ binder_phase, start_binder, notebookfile }) => {
+export const RunLocalButton = ({ show, start_local }) => {
+    return html`<div class="edit_or_run">
+        <button
+            onClick=${(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+                start_local()
+            }}
+        >
+            <b>Edit</b> or <b>run</b> this notebook
+        </button>
+    </div>`
+}
+
     const [popupOpen, setPopupOpen] = useState(false)
     const [showCopyPopup, setShowCopyPopup] = useState(false)
     const notebookfile_ref = useRef("")
