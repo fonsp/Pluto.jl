@@ -339,6 +339,7 @@ export class Editor extends Component {
                             code: "",
                             metadata: {
                                 disabled: false,
+                                show_logs: true,
                             },
                         }
                     }
@@ -379,6 +380,7 @@ export class Editor extends Component {
                         code_folded: false,
                         metadata: {
                             disabled: false,
+                            show_logs: true,
                         },
                     }
                 })
@@ -437,7 +439,7 @@ export class Editor extends Component {
                         cell_id: id,
                         code,
                         code_folded: false,
-                        metadata: { disabled: false },
+                        metadata: { show_logs: true, disabled: false },
                     }
                     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
                 })
