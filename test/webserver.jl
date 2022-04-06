@@ -11,7 +11,6 @@ using Pluto.WorkspaceManager: WorkspaceManager, poll
 
 @testset "Exports" begin
     @inferred Pluto.port_serversocket(Sockets.ip"0.0.0.0", nothing)
-    @inferred Pluto.port_serversocket(Sockets.ip"0.0.0.0", 13439)
 
     port = 13432
     host = "localhost"
