@@ -49,12 +49,12 @@ Update the notebook package environment to match the notebook's code. This will:
 - Make sure that the environment is instantiated.
 - Detect the use of `Pkg.activate` and enable/disabled nbpkg accordingly.
 """
-function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args...) -> nothing))
+function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology; on_terminal_output::Function=((args...) -> nothing), lag::Real=0)
     
     👺 = false
 
     use_plutopkg_old = notebook.nbpkg_ctx !== nothing
-    use_plutopkg_new = use_plutopkg(notebook.topology)
+    use_plutopkg_new = use_plutopkg(new_topology)
     
     if !use_plutopkg_old && use_plutopkg_new
         @debug "Started using PlutoPkg!! HELLO reproducibility!"
@@ -74,12 +74,13 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
         notebook.nbpkg_ctx = nothing
     end
     
+    (lag > 0) && sleep(lag * (0.5 + rand())) # sleep(0) would yield to the process manager which we dont want
 
     if notebook.nbpkg_ctx !== nothing
         PkgCompat.mark_original!(notebook.nbpkg_ctx)
 
         old_packages = String.(keys(PkgCompat.project(notebook.nbpkg_ctx).dependencies))
-        new_packages = String.(external_package_names(notebook.topology)) # search all cells for imports and usings
+        new_packages = String.(external_package_names(new_topology)) # search all cells for imports and usings
         
         removed = setdiff(old_packages, new_packages)
         added = setdiff(new_packages, old_packages)
@@ -111,7 +112,7 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
                                 Pkg.resolve(notebook.nbpkg_ctx)
                             catch e
                                 @warn "Failed to resolve Pkg environment. Removing Manifest and trying again..." exception=e
-                                reset_nbpkg(notebook; keep_project=true, save=false, backup=false)
+                                reset_nbpkg(notebook, new_topology; keep_project=true, save=false, backup=false)
                                 Pkg.resolve(notebook.nbpkg_ctx)
                             end
                         end
@@ -248,9 +249,9 @@ In addition to the steps performed by [`sync_nbpkg_core`](@ref):
 - Update the clients connected to `notebook`
 - `try` `catch` and reset the package environment on failure.
 """
-function sync_nbpkg(session, notebook; save::Bool=true)
+function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topology::NotebookTopology; save::Bool=true, take_token::Bool=true)
 	try
-		pkg_result = withtoken(notebook.executetoken) do
+        pkg_result = (take_token ? withtoken : (f, _) -> f())(notebook.executetoken) do
 			function iocallback(pkgs, s)
 				notebook.nbpkg_busy_packages = pkgs
 				for p in pkgs
@@ -259,7 +260,7 @@ function sync_nbpkg(session, notebook; save::Bool=true)
                 update_nbpkg_cache!(notebook)
 				send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 			end
-			sync_nbpkg_core(notebook; on_terminal_output=iocallback)
+			 sync_nbpkg_core(notebook, old_topology, new_topology; on_terminal_output=iocallback, lag = session.options.server.simulated_pkg_lag)
 		end
 
 		if pkg_result.did_something
@@ -282,7 +283,7 @@ function sync_nbpkg(session, notebook; save::Bool=true)
 	catch e
 		bt = catch_backtrace()
 		old_packages = try String.(keys(PkgCompat.project(notebook.nbpkg_ctx).dependencies)); catch; ["unknown"] end
-		new_packages = try String.(external_package_names(notebook.topology)); catch; ["unknown"] end
+		new_packages = try String.(external_package_names(new_topology)); catch; ["unknown"] end
 		@warn """
 		PlutoPkg: Failed to add/remove packages! Resetting package environment...
 		""" PLUTO_VERSION VERSION old_packages new_packages exception=(e, bt)
@@ -298,7 +299,7 @@ function sync_nbpkg(session, notebook; save::Bool=true)
 		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 
 		# Clear the embedded Project and Manifest and require a restart from the user.
-		reset_nbpkg(notebook; keep_project=false, save=save)
+		reset_nbpkg(notebook, new_topology; keep_project=false, save=save)
 		notebook.nbpkg_restart_required_msg = "Yes, because sync_nbpkg_core failed. \n\n$(error_text)"
         notebook.nbpkg_ctx_instantiated = false
         update_nbpkg_cache!(notebook)
@@ -317,7 +318,7 @@ function writebackup(notebook::Notebook)
     backup_path
 end
 
-function reset_nbpkg(notebook::Notebook; keep_project::Bool=false, backup::Bool=true, save::Bool=true)
+function reset_nbpkg(notebook::Notebook, topology::Union{NotebookTopology,Nothing}=nothing; keep_project::Bool=false, backup::Bool=true, save::Bool=true)
     backup && save && writebackup(notebook)
 
     if notebook.nbpkg_ctx !== nothing
@@ -328,7 +329,7 @@ function reset_nbpkg(notebook::Notebook; keep_project::Bool=false, backup::Bool=
 
         notebook.nbpkg_ctx = PkgCompat.load_ctx(PkgCompat.env_dir(notebook.nbpkg_ctx))
     else
-        notebook.nbpkg_ctx = use_plutopkg(notebook.topology) ? PkgCompat.create_empty_ctx() : nothing
+        notebook.nbpkg_ctx = use_plutopkg(something(topology, notebook.topology)) ? PkgCompat.create_empty_ctx() : nothing
     end
 
     save && save_notebook(notebook)
