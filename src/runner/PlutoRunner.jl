@@ -463,6 +463,7 @@ This function is memoized: running the same expression a second time will simply
 function run_expression(
     m::Module, 
     expr::Any, 
+    notebook_id::UUID,
     cell_id::UUID, 
     function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing, 
     forced_expr_id::Union{ObjectID,Nothing}=nothing; 
@@ -476,7 +477,10 @@ function run_expression(
         # TODO Could also put explicit `try_macroexpand` here, to make clear that user_requested_run => fresh macro identity
     end
 
+    old_currently_running_cell_id = currently_running_cell_id[]
     currently_running_cell_id[] = cell_id
+    logger = pluto_loggers[notebook_id]
+    logger.currently_running_cell_id[] = cell_id
 
     # reset published objects
     cell_published_objects[cell_id] = Dict{String,Any}()
@@ -530,37 +534,42 @@ function run_expression(
         throw("Expression still contains macro calls!!")
     end
 
-    result, runtime = with_io_to_logs(; enabled=capture_stdout, loglevel=stdout_log_level) do
-        if function_wrapped_info === nothing
-            toplevel_expr = Expr(:toplevel, expr)
-            wrapped = timed_expr(toplevel_expr)
-            ans, runtime = run_inside_trycatch(m, wrapped)
-            (ans, add_runtimes(runtime, expansion_runtime))
-        else
-            expr_id = forced_expr_id !== nothing ? forced_expr_id : expr_hash(expr)
-            local computer = get(computers, cell_id, nothing)
-            if computer === nothing || computer.expr_id !== expr_id
-                try
-                    computer = register_computer(expr, expr_id, cell_id, collect.(function_wrapped_info)...)
-                catch e
-                    # @error "Failed to generate computer function" expr exception=(e,stacktrace(catch_backtrace()))
-                    return run_expression(m, original_expr, cell_id, nothing; user_requested_run=user_requested_run)
-                end
-            end
-
-            # This check solves the problem of a cell like `false && variable_that_does_not_exist`. This should run without error, but will fail in our function-wrapping-magic because we get the value of `variable_that_does_not_exist` before calling the generated function.
-            # The fix is to detect this situation and run the expression in the classical way.
-            ans, runtime = if any(name -> !isdefined(m, name), computer.input_globals)
-                # Do run_expression but with function_wrapped_info=nothing so it doesn't go in a Computer()
-                # @warn "Got variables that don't exist, running outside of computer" not_existing=filter(name -> !isdefined(m, name), computer.input_globals)
-                run_expression(m, original_expr, cell_id; user_requested_run)
+    result, runtime = Logging.with_logger(logger) do # about 200ns overhead
+        with_io_to_logs(; enabled=capture_stdout, loglevel=stdout_log_level) do # about 3ms overhead i think?
+            if function_wrapped_info === nothing
+                toplevel_expr = Expr(:toplevel, expr)
+                wrapped = timed_expr(toplevel_expr)
+                ans, runtime = run_inside_trycatch(m, wrapped)
+                (ans, add_runtimes(runtime, expansion_runtime))
             else
-                run_inside_trycatch(m, () -> compute(m, computer))
-            end
+                expr_id = forced_expr_id !== nothing ? forced_expr_id : expr_hash(expr)
+                local computer = get(computers, cell_id, nothing)
+                if computer === nothing || computer.expr_id !== expr_id
+                    try
+                        computer = register_computer(expr, expr_id, cell_id, collect.(function_wrapped_info)...)
+                    catch e
+                        # @error "Failed to generate computer function" expr exception=(e,stacktrace(catch_backtrace()))
+                        return run_expression(m, original_expr, notebook_id, cell_id, nothing; user_requested_run=user_requested_run)
+                    end
+                end
 
-            ans, add_runtimes(runtime, expansion_runtime)
+                # This check solves the problem of a cell like `false && variable_that_does_not_exist`. This should run without error, but will fail in our function-wrapping-magic because we get the value of `variable_that_does_not_exist` before calling the generated function.
+                # The fix is to detect this situation and run the expression in the classical way.
+                ans, runtime = if any(name -> !isdefined(m, name), computer.input_globals)
+                    # Do run_expression but with function_wrapped_info=nothing so it doesn't go in a Computer()
+                    # @warn "Got variables that don't exist, running outside of computer" not_existing=filter(name -> !isdefined(m, name), computer.input_globals)
+                    run_expression(m, original_expr, notebook_id, cell_id; user_requested_run)
+                else
+                    run_inside_trycatch(m, () -> compute(m, computer))
+                end
+
+                ans, add_runtimes(runtime, expansion_runtime)
+            end
         end
     end
+    
+    currently_running_cell_id[] = old_currently_running_cell_id
+    
 
     if (result isa CapturedException) && (result.ex isa InterruptException)
         throw(result.ex)
@@ -781,6 +790,7 @@ const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 const FormattedCellResult = NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
 
 function formatted_result_of(
+    notebook_id::UUID, 
     cell_id::UUID, 
     ends_with_semicolon::Bool, 
     known_published_objects::Vector{String}=String[],
@@ -789,6 +799,8 @@ function formatted_result_of(
 )::FormattedCellResult
     load_integrations_if_needed()
     currently_running_cell_id[] = cell_id
+    logger = pluto_loggers[notebook_id]
+    logger.currently_running_cell_id[] = cell_id
 
     extra_items = if showmore === nothing
         tree_display_extra_items[cell_id] = Dict{ObjectDimPair,Int64}()
@@ -1999,13 +2011,15 @@ end
 const original_stdout = stdout
 const original_stderr = stderr
 
-
-const log_channel = Channel{Any}(10)
 const old_logger = Ref{Any}(nothing)
 
 struct PlutoLogger <: Logging.AbstractLogger
-    stream
+    stream # some packages expect this field to exist...
+    log_channel::Channel{Any}
+    currently_running_cell_id::Ref{UUID}
 end
+
+const pluto_loggers = Dict{UUID,PlutoLogger}()
 
 function Logging.shouldlog(::PlutoLogger, level, _module, _...)
     # Accept logs
@@ -2021,27 +2035,30 @@ end
 
 Logging.min_enabled_level(::PlutoLogger) = min(Logging.Debug, stdout_log_level)
 Logging.catch_exceptions(::PlutoLogger) = false
-function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, file, line; kwargs...)
+function Logging.handle_message(pl::PlutoLogger, level, msg, _module, group, id, file, line; kwargs...)
     # println("receiving msg from ", _module, " ", group, " ", id, " ", msg, " ", level, " ", line, " ", file)
     # println("with types: ", "_module: ", typeof(_module), ", ", "msg: ", typeof(msg), ", ", "group: ", typeof(group), ", ", "id: ", typeof(id), ", ", "file: ", typeof(file), ", ", "line: ", typeof(line), ", ", "kwargs: ", typeof(kwargs)) # thanks Copilot
 
     try
+        # println(original_stdout, "Adding to log_channel 1")
+        # println(original_stdout, msg)
         
         yield()
         
-        put!(log_channel, Dict{String,Any}(
+        put!(pl.log_channel, Dict{String,Any}(
             "level" => string(level),
             "msg" => format_output_default(msg isa String ? Text(msg) : msg),
             "group" => string(group),
             "id" => string(id),
             "file" => string(file),
-            "cell_id" => currently_running_cell_id[],
+            "cell_id" => pl.currently_running_cell_id[],
             "line" => line isa Union{Int32,Int64} ? line : nothing,
             "kwargs" => Tuple{String,Any}[(string(k), format_log_value(v)) for (k, v) in kwargs],
             )
         )
         
         yield()
+        # println(original_stdout, "Adding to log_channel 2")
         
         # Also print to console (disabled)
         # Logging.handle_message(old_logger[], level, msg, _module, group, id, file, line; kwargs...)
@@ -2059,6 +2076,7 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     if !enabled
         return f()
     end
+    # print(original_stdout, "Starting io redirect")
     # Taken from https://github.com/JuliaDocs/IOCapture.jl/blob/master/src/IOCapture.jl with some modifications to make it log.
     
     # Original implementation from Documenter.jl (MIT license)
@@ -2071,8 +2089,14 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     Base.link_pipe!(pipe; reader_supports_async = true, writer_supports_async = true)
     pe_stdout = IOContext(pipe.in, default_stdout_iocontext)
     pe_stderr = IOContext(pipe.in, default_stdout_iocontext)
+    
+    # print(original_stdout, "Starting io redirect 2")
+    
     redirect_stdout(pe_stdout)
     redirect_stderr(pe_stderr)
+    
+    # print(original_stdout, "Starting io redirect 3")
+    
 
     # Bytes written to the `pipe` are captured in `output` and eventually converted to a
     # `String`. We need to use an asynchronous task to continously tranfer bytes from the
@@ -2084,6 +2108,9 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     # To make the `display` function work.
     redirect_display = TextDisplay(pe_stdout)
     pushdisplay(redirect_display)
+    
+    # print(original_stdout, "Starting io redirect 4")
+    
 
     # Run the function `f`, capturing all output that it might have generated.
     # Success signals whether the function `f` did or did not throw an exception.
@@ -2097,16 +2124,22 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
             # This happens when the user calls `popdisplay()`, fine.
             # @warn "Pluto's display was already removed?" e
         end
+        # print(original_stdout, "Starting io redirect 5")
+        
         # Restore the original output streams.
         redirect_stdout(default_stdout)
         redirect_stderr(default_stderr)
+        # print(original_stdout, "Starting io redirect 6")
         close(pe_stdout)
         close(pe_stderr)
+        # print(original_stdout, "Starting io redirect 7")
         wait(buffer_redirect_task)
+        # print(original_stdout, "Starting io redirect 8")
     end
 
 
     output = String(take!(output))
+    # print(original_stdout, "Starting io redirect 9")
     if !isempty(output)
         Logging.@logmsg loglevel output
     end
@@ -2114,13 +2147,16 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     result
 end
 
-# we put this in __init__ to fix a world age problem
-function __init__()
-    if !isdefined(Main, Symbol("##Pluto_logger_switched")) && Distributed.myid() != 1
+
+function setup_plutologger(notebook_id::UUID, log_channel::Channel{Any}; make_global::Bool=false)
+    logger = pluto_loggers[notebook_id] = 
+        PlutoLogger(nothing, log_channel, Ref{UUID}(uuid4()))
+    
+    if make_global
         old_logger[] = Logging.global_logger()
-        Logging.global_logger(PlutoLogger(nothing))
-        Core.eval(Main, Expr(:(=), Symbol("##Pluto_logger_switched"), true)) # if Pluto is loaded again on the same process, prevent it from also setting the logger
+        Logging.global_logger(logger)
     end
+    logger
 end
 
 end

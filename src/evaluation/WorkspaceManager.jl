@@ -11,8 +11,9 @@ import Distributed
 "Contains the Julia process (in the sense of `Distributed.addprocs`) to evaluate code in. Each notebook gets at most one `Workspace` at any time, but it can also have no `Workspace` (it cannot `eval` code in this case)."
 Base.@kwdef mutable struct Workspace
     pid::Integer
+    notebook_id::UUID
     discarded::Bool=false
-    log_channel::Distributed.RemoteChannel
+    remote_log_channel::Union{Distributed.RemoteChannel,Channel}
     module_name::Symbol
     dowork_token::Token=Token()
     nbpkg_was_active::Bool=false
@@ -60,9 +61,21 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
     end
 
     Distributed.remotecall_eval(Main, [pid], :(PlutoRunner.notebook_id[] = $(notebook.notebook_id)))
-    log_channel = Core.eval(Main, quote
-        $(Distributed).RemoteChannel(() -> eval(:(Main.PlutoRunner.log_channel)), $pid)
+    
+    remote_log_channel = Core.eval(Main, quote
+        $(Distributed).RemoteChannel(() -> eval(quote
+        
+            channel = Channel{Any}(10)
+            Main.PlutoRunner.setup_plutologger(
+                $($(notebook.notebook_id)), 
+                channel; 
+                make_global=$($(use_distributed))
+            )
+            
+            channel
+        end), $pid)
     end)
+    
     run_channel = Core.eval(Main, quote
         $(Distributed).RemoteChannel(() -> eval(:(Main.PlutoRunner.run_channel)), $pid)
     end)
@@ -71,15 +84,16 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
     original_LOAD_PATH, original_ACTIVE_PROJECT = Distributed.remotecall_eval(Main, pid, :(Base.LOAD_PATH, Base.ACTIVE_PROJECT[]))
     
     workspace = Workspace(;
-        pid=pid,
-        log_channel=log_channel, 
-        module_name=module_name,
-        original_LOAD_PATH=original_LOAD_PATH,
-        original_ACTIVE_PROJECT=original_ACTIVE_PROJECT,
-        is_offline_renderer=is_offline_renderer,
+        pid,
+        notebook_id=notebook.notebook_id,
+        remote_log_channel, 
+        module_name,
+        original_LOAD_PATH,
+        original_ACTIVE_PROJECT,
+        is_offline_renderer,
     )
 
-    @async start_relaying_logs((session, notebook), log_channel)
+    @async start_relaying_logs((session, notebook), remote_log_channel)
     @async start_relaying_self_updates((session, notebook), run_channel)
     cd_workspace(workspace, notebook.path)
     use_nbpkg_environment((session, notebook), workspace)
@@ -131,7 +145,7 @@ function start_relaying_self_updates((session, notebook)::SN, run_channel::Distr
     end
 end
 
-function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.RemoteChannel)
+function start_relaying_logs((session, notebook)::SN, log_channel::Union{Distributed.RemoteChannel,Channel})
     update_throttled, flush_throttled = Pluto.throttled(0.1) do 
         Pluto.send_notebook_changes!(Pluto.ClientRequest(session=session, notebook=notebook))
     end
@@ -139,6 +153,8 @@ function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.R
     while true
         try
             next_log::Dict{String,Any} = take!(log_channel)
+            
+            @info "Received log:" next_log["msg"]
 
             fn = next_log["file"]
             match = findfirst("#==#", fn)
@@ -186,13 +202,14 @@ function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.R
                 end
             end
 
+            @info "pushing! " running_cell.cell_id length(running_cell.logs)
             push!(running_cell.logs, next_log)
             Pluto.@asynclog update_throttled()
         catch e
             if !isopen(log_channel)
                 break
             end
-            @error "Failed to relay log" exception=(e, catch_backtrace())
+            @error "Failed to relay log" isopen(log_channel) exception=(e, catch_backtrace())
         end
     end
 end
@@ -387,7 +404,8 @@ function eval_format_fetch_in_workspace(
         Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.run_expression(
             getfield(Main, $(QuoteNode(workspace.module_name))), 
             $(QuoteNode(expr)), 
-            $cell_id, 
+            $(workspace.notebook_id),
+            $cell_id,
             $function_wrapped_info,
             $forced_expr_id;
             user_requested_run=$user_requested_run,
@@ -427,6 +445,7 @@ function format_fetch_in_workspace(
     withtoken(workspace.dowork_token) do
         try
             Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.formatted_result_of(
+                $(workspace.notebook_id),
                 $cell_id, 
                 $ends_with_semicolon, 
                 $known_published_objects,
