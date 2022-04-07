@@ -119,7 +119,7 @@ end
 
 const is_first_run = Ref(true)
 
-"Return a port and serversocket to use while taking into acoount the `favourite_port`."
+"Return a port and serversocket to use while taking into account the `favourite_port`."
 function port_serversocket(hostIP::Sockets.IPAddr, favourite_port)
     local port, serversocket
     if favourite_port === nothing
