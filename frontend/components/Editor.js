@@ -39,6 +39,12 @@ import { HijackExternalLinksToOpenInNewTab } from "./HackySideStuff/HijackExtern
 export const default_path = "..."
 const DEBUG_DIFFING = false
 
+// Be sure to keep this in sync with DEFAULT_METADATA in Cell.jl
+const DEFAULT_METADATA = {
+    disabled: false,
+    show_logs: true,
+}
+
 // from our friends at https://stackoverflow.com/a/2117523
 // i checked it and it generates Julia-legal UUIDs and that's all we need -SNOF
 const uuidv4 = () =>
@@ -101,7 +107,8 @@ const first_true_key = (obj) => {
  *  code: string,
  *  code_folded: boolean,
  *  metadata: {
- *    disabled: boolean
+ *    disabled: boolean,
+ *    show_logs: boolean,
  *  },
  * }}
  */
@@ -237,7 +244,6 @@ export class Editor extends Component {
                 down: false,
             },
             export_menu_open: false,
-            show_logs: true,
 
             last_created_cell: null,
             selected_cells: [],
@@ -339,7 +345,7 @@ export class Editor extends Component {
                             // Fill the cell with empty code remotely, so it doesn't run unsafe code
                             code: "",
                             metadata: {
-                                disabled: false,
+                                ...DEFAULT_METADATA,
                             },
                         }
                     }
@@ -379,7 +385,7 @@ export class Editor extends Component {
                         code: code,
                         code_folded: false,
                         metadata: {
-                            disabled: false,
+                            ...DEFAULT_METADATA,
                         },
                     }
                 })
@@ -438,7 +444,7 @@ export class Editor extends Component {
                         cell_id: id,
                         code,
                         code_folded: false,
-                        metadata: { disabled: false },
+                        metadata: { ...DEFAULT_METADATA },
                     }
                     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
                 })
@@ -1353,8 +1359,6 @@ patch: ${JSON.stringify(
                             notebook=${this.state.notebook}
                             cell_inputs_local=${this.state.cell_inputs_local}
                             disable_input=${this.state.disable_ui || !this.state.connected /* && this.state.backend_launch_phase == null*/}
-                            show_logs=${this.state.show_logs}
-                            set_show_logs=${(enabled) => this.setState({ show_logs: enabled })}
                             last_created_cell=${this.state.last_created_cell}
                             selected_cells=${this.state.selected_cells}
                             is_initializing=${this.state.initializing}
