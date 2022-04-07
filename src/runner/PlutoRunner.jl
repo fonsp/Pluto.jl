@@ -664,7 +664,7 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
                 catch ex
                     if !(ex isa UndefVarError)
                         @warn "Failed to move variable $(symbol) to new workspace:"
-                        showerror(stderr, ex, stacktrace(catch_backtrace()))
+                        showerror(original_stderr, ex, stacktrace(catch_backtrace()))
                     end
                 end
             end
@@ -728,7 +728,7 @@ function try_delete_toplevel_methods(workspace::Module, (cell_id, name_parts)::T
             (val isa Function) && delete_toplevel_methods(val, cell_id)
         catch ex
             @warn "Failed to delete methods for $(name_parts)"
-            showerror(stderr, ex, stacktrace(catch_backtrace()))
+            showerror(original_stderr, ex, stacktrace(catch_backtrace()))
             false
         end
     catch
@@ -1996,6 +1996,10 @@ end
 # LOGGING
 ###
 
+const original_stdout = stdout
+const original_stderr = stderr
+
+
 const log_channel = Channel{Any}(10)
 const old_logger = Ref{Any}(nothing)
 
@@ -2022,6 +2026,9 @@ function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, f
     # println("with types: ", "_module: ", typeof(_module), ", ", "msg: ", typeof(msg), ", ", "group: ", typeof(group), ", ", "id: ", typeof(id), ", ", "file: ", typeof(file), ", ", "line: ", typeof(line), ", ", "kwargs: ", typeof(kwargs)) # thanks Copilot
 
     try
+        
+        yield()
+        
         put!(log_channel, Dict{String,Any}(
             "level" => string(level),
             "msg" => format_output_default(msg isa String ? Text(msg) : msg),
@@ -2034,11 +2041,13 @@ function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, f
             )
         )
         
+        yield()
+        
         # Also print to console (disabled)
         # Logging.handle_message(old_logger[], level, msg, _module, group, id, file, line; kwargs...)
     catch e
-        println(stderr, "Failed to relay log from PlutoRunner")
-        showerror(stderr, e, stacktrace(catch_backtrace()))
+        println(original_stderr, "Failed to relay log from PlutoRunner")
+        showerror(original_stderr, e, stacktrace(catch_backtrace()))
     end
 end
 

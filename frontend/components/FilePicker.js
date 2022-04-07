@@ -15,6 +15,7 @@ export class FilePicker extends Component {
     constructor() {
         super()
         this.forced_value = ""
+        /** @type {EditorView} */
         this.cm = null
 
         this.suggest_not_tmp = () => {
@@ -58,10 +59,17 @@ export class FilePicker extends Component {
                 selection: EditorSelection.cursor(this.props.value.length),
             })
             this.forced_value = this.props.value
+
+            // a long path like /Users/fons/Documents/article-test-1/asdfasdfasdfsadf.jl does not fit in the little box, so we scroll it to the left so that you can see the filename easily.
+            this.cm.scrollDOM.scrollLeft = 100000
+            setTimeout(() => {
+                // TODO: do we need this?
+                this.cm.scrollDOM.scrollLeft = 100000
+            }, 100)
         }
     }
     componentDidMount() {
-        const usesDarkTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const usesDarkTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         this.cm = new EditorView({
             state: EditorState.create({
                 doc: "",
@@ -90,16 +98,19 @@ export class FilePicker extends Component {
                             }, 200)
                         },
                     }),
-                    EditorView.theme({
-                        "&": {
-                            fontSize: "inherit",
+                    EditorView.theme(
+                        {
+                            "&": {
+                                fontSize: "inherit",
+                            },
+                            ".cm-scroller": {
+                                fontFamily: "inherit",
+                                overflowY: "hidden",
+                                overflowX: "auto",
+                            },
                         },
-                        ".cm-scroller": {
-                            fontFamily: "inherit",
-                            overflowY: "hidden",
-                            overflowX: "auto",
-                        },
-                    }, {dark : usesDarkTheme}),
+                        { dark: usesDarkTheme }
+                    ),
                     // EditorView.updateListener.of(onCM6Update),
                     history(),
                     autocompletion({
@@ -168,9 +179,6 @@ export class FilePicker extends Component {
         })
         this.base.insertBefore(this.cm.dom, this.base.firstElementChild)
 
-        setTimeout(() => {
-            this.cm.scrollPosIntoView(this.props.value.length)
-        }, 100)
         // window.addEventListener("resize", () => {
         //     if (!this.cm.hasFocus()) {
         //         deselect(this.cm)
