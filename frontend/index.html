@@ -20,19 +20,25 @@
     <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.20/lodash.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/@observablehq/stdlib@3.3.1/dist/stdlib.js" defer></script>
 
+    <link rel="stylesheet" href="welcome.css">
     <link rel="stylesheet" href="index.css">
 
-    <script src="index.js" type="module" defer></script>
+    <!-- <script src="index.js" type="module" defer></script> -->
     <script src="warn_old_browsers.js"></script>
     <link rel="prefetch" as="stylesheet" type="text/html" href="editor.css">
     <link rel="prefetch" as="script" type="text/javascript" href="editor.js">
     <link rel="prerender" href="editor.html">
 </head>
 
-<body class="loading nosessions">
+<!-- <body class="loading nosessions"> -->
+    <body class="nosessions">
     <loading-bar></loading-bar>
-    <div id="title">
-        <h1>welcome to <img src="img/logo.svg"></h1>
+    <header>
+        <main>
+            <h1>welcome to <span class="pluto-logo"><img src="img/favicon_unsaturated_bg.svg"> Pluto.jl</span></h1>
+        </main>
+    </header>
+    <section id="mywork">
         <main>
             <p>New session:</p>
             <ul id="new">
@@ -44,7 +50,11 @@
                 </li>
             </ul>
         </main>
-    </div>
+    </section>
+    <section id="featured">
+        <main>
+        </main>
+    </section>
 </body>
 
 </html>

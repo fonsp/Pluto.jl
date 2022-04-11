@@ -60,7 +60,7 @@ body {
     background: var(--main-bg-color);
 }
 
-main {
+body.error main {
     max-width: 53rem;
     margin: 20vh auto;
     margin-top: 20vh;
@@ -325,6 +325,7 @@ featured-card {
     word-break: break-word;
     hyphens: auto;
     background: var(--index-card-bg);
+    max-width: 280px;
 }
 
 .featured-source-notebooks {
@@ -332,9 +333,9 @@ featured-card {
     /* grid-auto-columns: 50px; */
     place-items: center;
     align-items: start;
-    grid-template-columns: repeat(auto-fit, minmax(var(--card-width),1fr));
+    grid-template-columns: repeat(auto-fit, minmax(var(--card-width), 1fr));
     gap: 1rem;
-    justify-items: stretch;
+    justify-items: center;
 }
 
 featured-card .banner img {
@@ -367,7 +368,6 @@ featured-card a {
 
 featured-card a.banner {
     display: flex;
-    
 }
 
 featured-card .author {
@@ -401,19 +401,15 @@ featured-card h3 {
     margin: 0.6rem 0rem 0rem 0rem;
 }
 
-
 featured-card.big {
     grid-column-end: span 2;
     grid-row-end: span 2;
     /* width: 2000px; */
 }
 
-
 featured-card.big .banner img {
     height: 16rem;
 }
-
-
 
 featured-card.special::before {
     content: "New!";
