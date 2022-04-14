@@ -179,7 +179,7 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent }) =>
                       })}
                   >
                       <button onclick=${() => on_session_click(nb)} title=${running ? "Shut down notebook" : "Start notebook in background"}>
-                          <span></span>
+                          <span class="ionicon"></span>
                       </button>
                       <a
                           href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path)}
@@ -201,7 +201,11 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent }) =>
         return html`
             <h2>My work</h2>
             <ul id="recent">
-                <li>Create a <a href="new">new notebook</a></li>
+                <li class="new">
+                    <a href="new"
+                        ><button><span class="ionicon"></span></button>Create a <strong>new notebook</strong></a
+                    >
+                </li>
                 ${recents}
             </ul>
         `

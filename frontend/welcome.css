@@ -29,9 +29,12 @@ main {
 /* font-size: 1.7em; */
 
 header {
-    background-color: antiquewhite; /* background-image: linear-gradient(to top, white, #fff0), var(--noise-4); */
+    background-color: #f5efd2; /* background-image: linear-gradient(to top, white, #fff0), var(--noise-4); */
     /* filter: var(--noise-filter-1); */
+    display: flex;
     background-size: cover;
+    justify-content: center;
+    padding: 1.3rem;
 }
 header h1 {
     font-weight: 500;
@@ -41,32 +44,21 @@ header h1 {
     /* color: white; */
 }
 
-section#mywork {
-    --c1: rgba(0, 0, 0, 0.2);
-    --c2: rgba(0, 0, 0, 0.1);
-    /* background-color: #434343; */
-    --grad-stops: transparent 9%, var(--c1) 10%, var(--c1) 12%, transparent 13%,
-        /* transparent 29%,
-    var(--c2) 30%,
-    var(--c2) 31%,
-    transparent 32%,
-    transparent 49%,
-    var(--c2) 50%,
-    var(--c2) 51%,
-    transparent 52%,
-    transparent 69%,
-    var(--c2) 70%,
-    var(--c2) 71%,
-    transparent 72%,
-    transparent 89%,
-    var(--c2) 90%,
-    var(--c2) 91%,
-    transparent 92%, */
-            transparent;
+section#mywork,
+section#open {
+    --c1: rgb(255 255 255 / 20%);
+    --c2: rgb(255 255 255 / 7%);
+    background-color: #92add9;
+    --grad-stops: transparent 9%, var(--c1) 10%, var(--c1) 12%, transparent 13%, transparent 29%, var(--c2) 30%, var(--c2) 31%, transparent 32%, transparent 49%,
+        var(--c2) 50%, var(--c2) 51%, transparent 52%, transparent 69%, var(--c2) 70%, var(--c2) 71%, transparent 72%, transparent 89%, var(--c2) 90%,
+        var(--c2) 91%, transparent 92%, transparent;
     background-size: 40px 40px;
     background-position: 20px 20px;
-    /* background-image: linear-gradient(0deg, var(--grad-stops)), linear-gradient(90deg, var(--grad-stops)); */
+    background-image: linear-gradient(360deg, var(--grad-stops)), linear-gradient(90deg, var(--grad-stops));
     background: #f5f5f6;
+    position: relative;
+    /* background: url("https://computationalthinking.mit.edu/Spring21/homepage/bg.svg"); */ /* background-size: cover; */ /* background-position: 0% 70%; */
+    background: hsl(46deg 72% 94%);
 }
 
 .pluto-logo {
@@ -74,7 +66,7 @@ section#mywork {
     font-weight: 800;
     color: inherit;
     /* padding: 0.3em; */
-    display: inline-flex;
+    display: flex;
     flex-direction: row;
     padding: 0.5em;
     align-items: center;
@@ -101,18 +93,96 @@ section#mywork {
 }
 
 section {
-    display: grid; /* place-items: center; */ /* margin: 0rem 0rem; */
+    display: flex; /* overflow: hidden; */ /* place-items: center; */ /* margin: 0rem 0rem; */
+    justify-content: center;
 }
 
 section > div {
     margin: 1rem 1rem;
+    max-width: 614px; /* margin: auto; */
+    flex: 1 1 auto;
+    z-index: 1;
 }
 
 .pluto-logo {
     background: white;
     border-radius: 0.4em;
+    display: flex;
+    flex: 0 1 auto;
+    transform: none;
+    font-size: 1.6rem;
 }
 
 section#open {
-    background: #f5f5f6;
+    /* background: #f5f5f6; */
+    /* box-shadow: inset 1px 1px 20px red; */
+    position: relative;
+}
+
+section#featured > div {
+    max-width: 900px;
+}
+
+header > div {
+    max-width: 62rem; /* margin: 0 auto; */
+    flex: 1 1 auto;
+    display: flex;
+    z-index: 1;
+}
+
+section#mywork::before,
+section#open::after {
+    --c: hsl(196deg 20% 26% / 6%);
+    content: "";
+    height: 50px;
+    top: 0px;
+    left: 0;
+    right: 0;
+    position: absolute;
+    display: block;
+    background: linear-gradient(0deg, transparent, var(--c));
+    pointer-events: none;
+    z-index: 0;
+}
+
+:where(#mywork, #open) h2 {
+    color: black;
+    --off: 4px;
+    --offm: -4px;
+    --oc: #ffffff;
+    /* text-shadow: var(--off) 0 var(--oc), var(--off) var(--off) var(--oc), 0 var(--off) var(--oc), var(--offm) var(--off) var(--oc), var(--offm) 0 var(--oc),
+        var(--offm) var(--offm) var(--oc), 0 var(--offm) var(--oc), var(--off) var(--offm) var(--oc); */
+    display: inline-block; /* background: #fffffffc; */ /* padding: 0.4em; */
+    border-radius: 0.4em;
+    /* color: white; */ /* text-transform: uppercase; */
+    margin: 2rem 0rem 0rem 0;
+}
+
+section#open::after {
+    top: unset;
+    bottom: 0;
+    background: linear-gradient(0deg, var(--c), transparent);
+}
+
+div#app {
+    /* background: url(https://computationalthinking.mit.edu/Spring21/homepage/bg.svg); */
+    background-size: cover;
+    background-position: 0% 77%;
+}
+
+section#featured {
+    background: white;
+}
+
+.new a {
+    text-decoration: none; /* font-weight: 700; */
+    font-weight: 500;
+    font-style: italic;
+}
+
+li.new {
+    position: sticky;
+    background: whitesmoke;
+    top: 0;
+    z-index: 2;
 }

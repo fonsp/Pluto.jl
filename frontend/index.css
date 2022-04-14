@@ -87,13 +87,14 @@ p {
 }
 
 ul {
-    padding-left: 0.5em;
+    padding-left: 0;
     list-style: none;
 }
 
 li {
     white-space: nowrap;
-    margin-bottom: 0.9em;
+    padding: 0.4em;
+    border-bottom: 1px solid #ededed;
 }
 
 a {
@@ -239,9 +240,12 @@ body.nosessions ul#new ~ * {
 }
 
 #recent {
-    /* margin-bottom: 8em; */
-    max-height: 11.700000000000003em;
+    background: white; /* margin-bottom: 8em; */
+    max-height: 16em;
     overflow-y: scroll;
+    border-radius: 0.4rem;
+    box-shadow: -2px 4px 9px 0px #00000012;
+    border: 0.2rem solid #d5d5d5;
 }
 
 #recent > li.recent {
@@ -260,28 +264,30 @@ body.nosessions ul#new ~ * {
     color: var(--ui-button-color);
 }
 
-#recent button > span::after {
-    display: block;
+span.ionicon::after {
+    display: inline-block;
     content: " ";
     background-size: 1rem 1rem;
     height: 1rem;
     width: 1rem;
     margin-bottom: -0.17rem;
+    filter: var(--image-filters);
 }
 
 #recent li.running button > span::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle.svg");
-    filter: var(--image-filters);
 }
 
 #recent li.recent button > span::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg");
-    filter: var(--image-filters);
 }
 
 #recent li.transitioning button > span::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ellipsis-horizontal-outline.svg");
-    filter: var(--image-filters);
+}
+
+#recent li.new span::after {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/add-outline.svg");
 }
 
 loading-bar {
@@ -312,7 +318,7 @@ body.loading loading-bar {
 }
 
 :root {
-    --card-width: 16rem;
+    --card-width: 14rem;
 }
 
 featured-card {
@@ -326,7 +332,7 @@ featured-card {
     margin: 10px;
     padding-bottom: 0.3rem;
     box-shadow: 0px 2px 6px 0px #00000014;
-    font-family: system-ui;
+    font-family: var(--inter-ui-font-stack);
     position: relative;
     word-break: break-word;
     hyphens: auto;
@@ -340,7 +346,7 @@ featured-card {
     place-items: center;
     align-items: start;
     grid-template-columns: repeat(auto-fit, minmax(var(--card-width), 1fr));
-    gap: 1rem;
+    gap: 0rem;
     justify-items: center;
 }
 
