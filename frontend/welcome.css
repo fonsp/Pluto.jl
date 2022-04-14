@@ -17,7 +17,8 @@
 
 html {
     font-family: var(--inter-ui-font-stack);
-font-size: 17px;}
+    font-size: 17px;
+}
 
 main {
     display: block;
@@ -28,7 +29,7 @@ main {
 /* font-size: 1.7em; */
 
 header {
-    background-color: antiquewhite;/* background-image: linear-gradient(to top, white, #fff0), var(--noise-4); */
+    background-color: antiquewhite; /* background-image: linear-gradient(to top, white, #fff0), var(--noise-4); */
     /* filter: var(--noise-filter-1); */
     background-size: cover;
 }
@@ -65,7 +66,8 @@ section#mywork {
     background-size: 40px 40px;
     background-position: 20px 20px;
     /* background-image: linear-gradient(0deg, var(--grad-stops)), linear-gradient(90deg, var(--grad-stops)); */
-background: #f5f5f6;}
+    background: #f5f5f6;
+}
 
 .pluto-logo {
     font-style: normal;
@@ -88,10 +90,15 @@ background: #f5f5f6;}
 
 #new {
     background: #fbfbfb;
-    box-shadow: -2px 4px 9px 0px #00000012;padding: 1.3rem;
+    box-shadow: -2px 4px 9px 0px #00000012;
+    padding: 1.3rem;
     border-radius: 0.6rem;
     margin: 1rem;
-/* border: 0.3rem solid #d6e0d8; */}
+    /* border: 0.3rem solid #d6e0d8; */
+    display: flex;
+    flex-direction: column;
+    align-content: stretch;
+}
 
 section {
     display: grid; /* place-items: center; */ /* margin: 0rem 0rem; */
@@ -106,5 +113,6 @@ section > div {
     border-radius: 0.4em;
 }
 
-
-section#open {background: #f5f5f6;}
+section#open {
+    background: #f5f5f6;
+}
