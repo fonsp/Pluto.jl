@@ -73,9 +73,9 @@ export const Welcome = () => {
     const { show_samples, CustomRecent, CustomPicker } = extended_components
 
     return html`
+        <${Recent} client=${client_ref.current} connected=${connected} remote_notebooks=${remote_notebooks} CustomRecent=${CustomRecent} />
         <${Open} client=${client_ref.current} connected=${connected} CustomPicker=${CustomPicker} show_samples=${show_samples} />
         <br />
-        <${Recent} client=${client_ref.current} connected=${connected} remote_notebooks=${remote_notebooks} CustomRecent=${CustomRecent} />
         <${Featured} />
     `
 }

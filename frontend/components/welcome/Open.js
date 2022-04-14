@@ -32,23 +32,18 @@ export const Open = ({ client, connected, CustomPicker, show_samples }) => {
         placeholder: "Enter path or URL...",
     }
 
-    return html`<p>New session:</p>
-        <${PasteHandler} />
-        <ul id="new">
-            ${show_samples && html`<li>Open a <a href="sample">sample notebook</a></li>`}
-            <li>Create a <a href="new">new notebook</a></li>
-            <li>
-                ${picker.text}:
-                <${FilePicker}
-                    key=${picker.placeholder}
-                    client=${client}
-                    value=""
-                    on_submit=${on_open_path}
-                    button_label="Open"
-                    placeholder=${picker.placeholder}
-                />
-            </li>
-        </ul>`
+    return html`<${PasteHandler} />
+        <div id="new">
+            ${picker.text}:
+            <${FilePicker}
+                key=${picker.placeholder}
+                client=${client}
+                value=""
+                on_submit=${on_open_path}
+                button_label="Open"
+                placeholder=${picker.placeholder}
+            />
+        </div>`
 }
 
 // /open will execute a script from your hard drive, so we include a token in the URL to prevent a mean person from getting a bad file on your computer _using another hypothetical intrusion_, and executing it using Pluto
