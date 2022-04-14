@@ -199,8 +199,9 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent }) =>
 
     if (CustomRecent == null) {
         return html`
-            <p>Recent sessions:</p>
+            <p>My work:</p>
             <ul id="recent">
+                <li>Create a <a href="new">new notebook</a></li>
                 ${recents}
             </ul>
         `

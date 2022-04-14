@@ -332,7 +332,7 @@ featured-card {
     /* grid-auto-columns: 50px; */
     place-items: center;
     align-items: start;
-    grid-template-columns: repeat(auto-fit, minmax(var(--card-width),1fr));
+    grid-template-columns: repeat(auto-fit, minmax(var(--card-width), 1fr));
     gap: 1rem;
     justify-items: stretch;
 }
@@ -367,7 +367,6 @@ featured-card a {
 
 featured-card a.banner {
     display: flex;
-    
 }
 
 featured-card .author {
@@ -401,19 +400,15 @@ featured-card h3 {
     margin: 0.6rem 0rem 0rem 0rem;
 }
 
-
 featured-card.big {
     grid-column-end: span 2;
     grid-row-end: span 2;
     /* width: 2000px; */
 }
 
-
 featured-card.big .banner img {
     height: 16rem;
 }
-
-
 
 featured-card.special::before {
     content: "New!";
