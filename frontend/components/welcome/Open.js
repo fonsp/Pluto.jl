@@ -28,13 +28,13 @@ export const Open = ({ client, connected, CustomPicker, show_samples }) => {
     }
 
     const picker = CustomPicker ?? {
-        text: "Open from file",
+        text: "Open a notebook",
         placeholder: "Enter path or URL...",
     }
 
     return html`<${PasteHandler} />
+        <h2>${picker.text}</h2>
         <div id="new">
-            ${picker.text}:
             <${FilePicker}
                 key=${picker.placeholder}
                 client=${client}

@@ -68,7 +68,7 @@ export const Featured = () => {
                 ? source_data.map(
                       (data) => html`
                           <div class="featured-source">
-                              <h3>${data.source_url}</h3>
+                              <p>${data.description ?? "Blasdfjklhaksdjfh kajsdhf kajdsfh kjhasd fkjshdfkjshdf kwehfwuhefiwfk  m dfsa dsfbm s dbf"}</p>
                               <div class="featured-source-notebooks">
                                   ${Object.entries(data.notebooks).map(
                                       ([id, entry]) => html` <${FeaturedCard} entry=${entry} source_url=${data.source_url} /> `
