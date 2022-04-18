@@ -197,6 +197,7 @@ const first_true_key = (obj) => {
  *  published_objects: { [objectid: string]: any},
  *  bonds: { [name: string]: any },
  *  nbpkg: NotebookPkgData?,
+ *  metadata: object,
  * }}
  */
 
@@ -910,6 +911,22 @@ patch: ${JSON.stringify(
                 },
                 false
             )
+        }
+        //@ts-ignore
+        window.getNotebookMetadata = () => {
+            return this.state.notebook.metadata
+        }
+        //@ts-ignore
+        window.putNotebookMetadata = (key, value) => {
+            this.actions.update_notebook((notebook) => {
+                notebook.metadata[key] = value
+            })
+        }
+        //@ts-ignore
+        window.deleteNotebookMetadata = (key) => {
+            this.actions.update_notebook((notebook) => {
+                delete notebook.metadata[key]
+            })
         }
         this.submit_file_change = async (new_path, reset_cm_value) => {
             const old_path = this.state.notebook.path
