@@ -46,19 +46,19 @@ header h1 {
 
 section#mywork,
 section#open {
-    --c1: rgb(255 255 255 / 20%);
-    --c2: rgb(255 255 255 / 7%);
-    background-color: #92add9;
-    --grad-stops: transparent 9%, var(--c1) 10%, var(--c1) 12%, transparent 13%, transparent 29%, var(--c2) 30%, var(--c2) 31%, transparent 32%, transparent 49%,
+    /* --c1: rgb(255 255 255 / 20%); */
+    /* --c2: rgb(255 255 255 / 7%); */
+    /* background-color: #92add9; */
+    /* --grad-stops: transparent 9%, var(--c1) 10%, var(--c1) 12%, transparent 13%, transparent 29%, var(--c2) 30%, var(--c2) 31%, transparent 32%, transparent 49%,
         var(--c2) 50%, var(--c2) 51%, transparent 52%, transparent 69%, var(--c2) 70%, var(--c2) 71%, transparent 72%, transparent 89%, var(--c2) 90%,
-        var(--c2) 91%, transparent 92%, transparent;
-    background-size: 40px 40px;
-    background-position: 20px 20px;
-    background-image: linear-gradient(360deg, var(--grad-stops)), linear-gradient(90deg, var(--grad-stops));
-    background: #f5f5f6;
-    position: relative;
+        var(--c2) 91%, transparent 92%, transparent; */
+    /* background-size: 40px 40px; */
+    /* background-position: 20px 20px; */
+    /* background-image: linear-gradient(360deg, var(--grad-stops)), linear-gradient(90deg, var(--grad-stops)); */
+    /* background: #f5f5f6; */
+    /* position: relative; */
     /* background: url("https://computationalthinking.mit.edu/Spring21/homepage/bg.svg"); */ /* background-size: cover; */ /* background-position: 0% 70%; */
-    background: hsl(46deg 72% 94%);
+    background: hsl(35deg 66% 93%);
 }
 
 .pluto-logo {
@@ -101,7 +101,6 @@ section > div {
     margin: 1rem 1rem;
     max-width: 614px; /* margin: auto; */
     flex: 1 1 auto;
-    z-index: 1;
 }
 
 .pluto-logo {
