@@ -11,9 +11,21 @@ let start_autocomplete_command = completionKeymap.find((keybinding) => keybindin
 let accept_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Enter")
 let close_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Escape")
 
+/**
+ * @typedef FilePickerProps
+ * @type {{
+ *  value: String,
+ *  suggest_new_file: {base: String},
+ *  button_label: String,
+ *  placeholder: String,
+ *  on_submit: (new_path: String) => Promise<void>,
+ *  client: import("../common/PlutoConnection.js").PlutoConnection,
+ * }}
+ * @augments Component<FilePickerProps,{}>
+ */
 export class FilePicker extends Component {
-    constructor() {
-        super()
+    constructor(/** @type {FilePickerProps} */ props) {
+        super(props)
         this.forced_value = ""
         /** @type {EditorView} */
         this.cm = null
@@ -45,7 +57,7 @@ export class FilePicker extends Component {
                 } catch (error) {
                     this.cm.dispatch({
                         changes: { from: 0, to: this.cm.state.doc.length, insert: this.props.value },
-                        selection: EditorSelection.cursor(this.props.value),
+                        selection: EditorSelection.cursor(this.props.value.length),
                     })
                 }
             })
@@ -78,7 +90,11 @@ export class FilePicker extends Component {
                     EditorView.domEventHandlers({
                         focus: (event, cm) => {
                             setTimeout(() => {
-                                this.suggest_not_tmp()
+                                if (this.props.suggest_new_file) {
+                                    this.suggest_not_tmp()
+                                } else if (cm.state.doc.length === 0) {
+                                    this.request_path_completions()
+                                }
                             }, 0)
                             return true
                         },
