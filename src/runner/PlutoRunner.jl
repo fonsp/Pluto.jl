@@ -28,12 +28,12 @@ MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
 const ObjectID = typeof(objectid("hello computer"))
 const ObjectDimPair = Tuple{ObjectID,Int64}
 
-Base.@kwdef struct CachedMacroExpansion
+struct CachedMacroExpansion
     original_expr_hash::UInt64
     expanded_expr::Expr
     expansion_duration::UInt64
     has_pluto_hook_features::Bool
-    did_mention_expansion_time::Bool=false
+    did_mention_expansion_time::Bool
 end
 const cell_expanded_exprs = Dict{UUID,CachedMacroExpansion}()
 
@@ -176,7 +176,7 @@ replace_pluto_properties_in_expr(other; kwargs...) = other
 "Similar to [`replace_pluto_properties_in_expr`](@ref), but just checks for existance and doesn't check for [`GiveMeCellID`](@ref)"
 has_hook_style_pluto_properties_in_expr(::GiveMeRerunCellFunction) = true
 has_hook_style_pluto_properties_in_expr(::GiveMeRegisterCleanupFunction) = true
-has_hook_style_pluto_properties_in_expr(expr::Expr) = any(has_hook_style_pluto_properties_in_expr, expr.args)
+has_hook_style_pluto_properties_in_expr(expr::Expr)::Bool = any(has_hook_style_pluto_properties_in_expr, expr.args)
 has_hook_style_pluto_properties_in_expr(other) = false
 
 
@@ -216,7 +216,7 @@ module CantReturnInPluto
     We do macro expansion now, so we can also check for `return` statements "statically".
     This method goes through an expression and replaces all `return` statements with `throw(CantReturnInPlutoException())`
     """
-    function replace_returns_with_error(expr::Expr)
+    function replace_returns_with_error(expr::Expr)::Expr
         if expr.head == :return
             :(throw($(CantReturnInPlutoException())))
         elseif expr.head == :quote
@@ -259,12 +259,12 @@ function try_macroexpand(mod, cell_uuid, expr)
     end
 
     elapsed_ns = time_ns()
-    expanded_expr = macroexpand(mod, expr_not_toplevel)
+    expanded_expr = macroexpand(mod, expr_not_toplevel)::Expr
     elapsed_ns = time_ns() - elapsed_ns
 
     # Removes baked in references to the module this was macroexpanded in.
     # Fix for https://github.com/fonsp/Pluto.jl/issues/1112
-    expr_without_return = CantReturnInPluto.replace_returns_with_error(expanded_expr)
+    expr_without_return = CantReturnInPluto.replace_returns_with_error(expanded_expr)::Expr
     expr_without_globalrefs = globalref_to_workspaceref(expr_without_return)
 
     has_pluto_hook_features = has_hook_style_pluto_properties_in_expr(expr_without_globalrefs)
@@ -274,11 +274,13 @@ function try_macroexpand(mod, cell_uuid, expr)
         register_cleanup_function=(fn) -> UseEffectCleanups.register_cleanup(fn, cell_uuid),
     )
 
+    did_mention_expansion_time = false
     cell_expanded_exprs[cell_uuid] = CachedMacroExpansion(
-        original_expr_hash=expr_hash(expr),
-        expanded_expr=expr_to_save,
-        expansion_duration=elapsed_ns,
-        has_pluto_hook_features=has_pluto_hook_features,
+        expr_hash(expr),
+        expr_to_save,
+        elapsed_ns,
+        has_pluto_hook_features,
+        did_mention_expansion_time
     )
 
     return (sanitize_expr(expr_to_save), expr_hash(expr_to_save))
@@ -512,13 +514,13 @@ function run_expression(
     # We add the time it took to macroexpand to the time for the first call,
     # but we make sure we don't mention it on subsequent calls
     expansion_runtime = if expanded_cache.did_mention_expansion_time === false
-        # Is this really the easiest way to clone a struct with some changes? Pfffft
+        did_mention_expansion_time = false
         cell_expanded_exprs[cell_id] = CachedMacroExpansion(
-            original_expr_hash=expanded_cache.original_expr_hash,
-            expanded_expr=expanded_cache.expanded_expr,
-            expansion_duration=expanded_cache.expansion_duration,
-            did_mention_expansion_time=true,
-            has_pluto_hook_features=expanded_cache.has_pluto_hook_features,
+            expanded_cache.original_expr_hash,
+            expanded_cache.expanded_expr,
+            expanded_cache.expansion_duration,
+            expanded_cache.has_pluto_hook_features,
+            did_mention_expansion_time
         )
         expanded_cache.expansion_duration
     else
@@ -2011,7 +2013,7 @@ const original_stderr = stderr
 
 
 const log_channel = Channel{Any}(10)
-const old_logger = Ref{Any}(nothing)
+const old_logger = Ref{Union{Logging.AbstractLogger,Nothing}}(nothing)
 
 struct PlutoLogger <: Logging.AbstractLogger
     stream
