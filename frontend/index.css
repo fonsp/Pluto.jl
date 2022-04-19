@@ -135,6 +135,8 @@ pluto-filepicker .cm-editor {
     border-right: none;
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
+    flex: 1 1 100%;
+    width: 0px; /* min-width: 0px; */
 }
 
 pluto-filepicker .cm-scroller {
@@ -169,9 +171,12 @@ pluto-filepicker button {
 }
 
 .cm-tooltip-autocomplete {
-    max-height: calc(20 * 16px);
     box-sizing: content-box;
     z-index: 100;
+}
+
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul {
+    max-height: max(3em, min(50dvh, 20em));
 }
 
 .cm-tooltip.cm-completionInfo.cm-completionInfo-right:empty {
