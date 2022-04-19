@@ -141,19 +141,23 @@ export class FilePicker extends Component {
                         maxRenderedOptions: 512, // fons's magic number
                         optionClass: (c) => c.type,
                     }),
+                    // When a completion is picked, immediately start autocompleting again
+                    EditorView.updateListener.of((update) => {
+                        update.transactions.forEach((transaction) => {
+                            const completion = transaction.annotation(autocomplete.pickedCompletion)
+                            if (completion != null) {
+                                update.view.scrollPosIntoView(update.state.doc.length)
+
+                                this.request_path_completions()
+                            }
+                        })
+                    }),
                     keymap.of([
                         {
                             key: "Enter",
                             run: (cm) => {
-                                // If there is autocomplete open, accept that
-                                if (accept_autocomplete_command.run(cm)) {
-                                    cm.scrollPosIntoView(cm.state.doc.length)
-                                    // and request the next ones
-                                    this.request_path_completions()
-                                    return true
-                                }
-                                // Else, fall down
-                                return false
+                                // If there is autocomplete open, accept that. It will return `true`
+                                return accept_autocomplete_command.run(cm)
                             },
                         },
                         { key: "Enter", run: this.on_submit },
@@ -239,16 +243,20 @@ const pathhints =
                     return null
                 }
 
-                var styledResults = results.map((r) => ({
-                    label: r,
-                    type: r.endsWith("/") || r.endsWith("\\") ? "dir" : "file",
-                }))
+                let styledResults = results.map((r) => {
+                    let dir = r.endsWith("/") || r.endsWith("\\")
+                    return {
+                        label: r,
+                        type: dir ? "dir" : "file",
+                        boost: dir ? 1 : 0,
+                    }
+                })
 
                 if (suggest_new_file != null) {
-                    for (var initLength = 3; initLength >= 0; initLength--) {
+                    for (let initLength = 3; initLength >= 0; initLength--) {
                         const init = ".jl".substring(0, initLength)
                         if (queryFileName.endsWith(init)) {
-                            var suggestedFileName = queryFileName + ".jl".substring(initLength)
+                            let suggestedFileName = queryFileName + ".jl".substring(initLength)
 
                             if (suggestedFileName == ".jl") {
                                 suggestedFileName = "notebook.jl"
@@ -262,6 +270,7 @@ const pathhints =
                                     label: suggestedFileName + " (new)",
                                     apply: suggestedFileName,
                                     type: "file new",
+                                    boost: -99,
                                 })
                             }
                             break
