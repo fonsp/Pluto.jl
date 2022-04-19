@@ -570,8 +570,6 @@ function run_expression(
     
     cell_results[cell_id], cell_runtimes[cell_id] = result, runtime
 end
-# Saves about 30 MiB allocations for
-# module Foo end; @time @eval Pluto.PlutoRunner.run_expression(Foo, :(1 + 1), Pluto.uuid1(), nothing);
 precompile(run_expression, (Module, Expr, UUID, Nothing))
 
 # Channel to trigger implicits run
@@ -723,8 +721,6 @@ function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
     end
     return !isempty(methods(f).ms)
 end
-# Saves about 10 MiB allocations on f() = 3; PlutoRunner.delete_toplevel_methods(f, Pluto.uuid1())
-precompile(delete_toplevel_methods, (Function, UUID))
 
 # function try_delete_toplevel_methods(workspace::Module, name::Symbol)
 #     try_delete_toplevel_methods(workspace, [name])
