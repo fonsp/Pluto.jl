@@ -514,7 +514,7 @@ function run_expression(
     # We add the time it took to macroexpand to the time for the first call,
     # but we make sure we don't mention it on subsequent calls
     expansion_runtime = if expanded_cache.did_mention_expansion_time === false
-        did_mention_expansion_time = false
+        did_mention_expansion_time = true
         cell_expanded_exprs[cell_id] = CachedMacroExpansion(
             expanded_cache.original_expr_hash,
             expanded_cache.expanded_expr,
