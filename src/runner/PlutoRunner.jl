@@ -461,14 +461,14 @@ If the third argument is a `Tuple{Set{Symbol}, Set{Symbol}}` containing the refe
 This function is memoized: running the same expression a second time will simply call the same generated function again. This is much faster than evaluating the expression, because the function only needs to be Julia-compiled once. See https://github.com/fonsp/Pluto.jl/pull/720
 """
 function run_expression(
-    m::Module, 
-    expr::Any, 
-    cell_id::UUID, 
-    function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing, 
-    forced_expr_id::Union{ObjectID,Nothing}=nothing; 
-    user_requested_run::Bool=true,
-    capture_stdout::Bool=true,
-)
+        m::Module,
+        expr::Any,
+        cell_id::UUID,
+        function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing,
+        forced_expr_id::Union{ObjectID,Nothing}=nothing;
+        user_requested_run::Bool=true,
+        capture_stdout::Bool=true,
+    )
     if user_requested_run
         # TODO Time elapsed? Possibly relays errors in cleanup function?
         UseEffectCleanups.trigger_cleanup(cell_id)
@@ -568,6 +568,9 @@ function run_expression(
     
     cell_results[cell_id], cell_runtimes[cell_id] = result, runtime
 end
+# Saves about 30 MiB allocations for
+# module Foo end; @time @eval Pluto.PlutoRunner.run_expression(Foo, :(1 + 1), Pluto.uuid1(), nothing);
+precompile(run_expression, (Module, Expr, UUID, Nothing))
 
 # Channel to trigger implicits run
 const run_channel = Channel{UUID}(10)
@@ -582,15 +585,12 @@ function rerun_cell_from_notebook(cell_id::UUID)
             push!(new_uuids, uuid)
         end
     end
-    size = length(new_uuids)
     for uuid in new_uuids
         put!(run_channel, uuid)
     end
 
     put!(run_channel, cell_id)
 end
-
-
 
 
 
@@ -618,7 +618,13 @@ The trick boils down to two things:
 1. When we create a new workspace module, we move over some of the global from the old workspace. (But not the ones that we want to 'delete'!)
 2. If a function used to be defined, but now we want to delete it, then we go through the method table of that function and snoop out all methods that we defined by us, and not by another package. This is how we reverse extending external functions. For example, if you run a cell with `Base.sqrt(s::String) = "the square root of" * s`, and then delete that cell, then you can still call `sqrt(1)` but `sqrt("one")` will err. Cool right!
 """
-function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_to_delete::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,Vector{Symbol}}}, module_imports_to_move::Set{Expr})
+function move_vars(
+        old_workspace_name::Symbol,
+        new_workspace_name::Symbol,
+        vars_to_delete::Set{Symbol},
+        methods_to_delete::Set{Tuple{UUID,Vector{Symbol}}},
+        module_imports_to_move::Set{Expr}
+    )
     old_workspace = getfield(Main, old_workspace_name)
     new_workspace = getfield(Main, new_workspace_name)
 
@@ -677,9 +683,11 @@ end
 "Return whether the `method` was defined inside this notebook, and not in external code."
 isfromcell(method::Method, cell_id::UUID) = endswith(String(method.file), string(cell_id))
 
-"Delete all methods of `f` that were defined in this notebook, and leave the ones defined in other packages, base, etc. ✂
+"""
+Delete all methods of `f` that were defined in this notebook, and leave the ones defined in other packages, base, etc. ✂
 
-Return whether the function has any methods left after deletion."
+Return whether the function has any methods left after deletion.
+"""
 function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
     # we can delete methods of functions!
     # instead of deleting all methods, we only delete methods that were defined in this notebook. This is necessary when the notebook code extends a function from remote code
@@ -713,6 +721,8 @@ function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
     end
     return !isempty(methods(f).ms)
 end
+# Saves about 10 MiB allocations on f() = 3; PlutoRunner.delete_toplevel_methods(f, Pluto.uuid1())
+precompile(delete_toplevel_methods, (Function, UUID))
 
 # function try_delete_toplevel_methods(workspace::Module, name::Symbol)
 #     try_delete_toplevel_methods(workspace, [name])

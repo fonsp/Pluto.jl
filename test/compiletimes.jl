@@ -27,7 +27,7 @@ wait_for_ready(nb)
 # However, it's very tricky to measure this via the `Pluto.run` below.
 @timeit TOUT "Configuration.from_flat_kwargs" @eval Pluto.Configuration.from_flat_kwargs()
 
-# Precompile 
+# Compile HTTP get.
 HTTP.get("http://github.com")
 
 @timeit TOUT "Pluto.run" server_task = @eval let
