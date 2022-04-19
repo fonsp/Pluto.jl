@@ -5,6 +5,9 @@
 
 @timeit TOUT "Pluto.Notebook" nb = @eval Pluto.Notebook([cell])
 
+module Foo end
+@timeit TOUT "PlutoRunner.run_expression" @eval Pluto.PlutoRunner.run_expression(Foo, :(1 + 1), Pluto.uuid1(), nothing);
+
 function wait_for_ready(notebook::Pluto.Notebook)
     while notebook.process_status != Pluto.ProcessStatus.ready
         sleep(0.1)
