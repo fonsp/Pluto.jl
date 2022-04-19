@@ -141,6 +141,15 @@ export class FilePicker extends Component {
                         maxRenderedOptions: 512, // fons's magic number
                         optionClass: (c) => c.type,
                     }),
+                    // When a completion is picked, immediately start autocompleting again
+                    EditorView.updateListener.of((update) => {
+                        update.transactions.forEach((transaction) => {
+                            const completion = transaction.annotation(autocomplete.pickedCompletion)
+                            if (completion != null) {
+                                this.request_path_completions()
+                            }
+                        })
+                    }),
                     keymap.of([
                         {
                             key: "Enter",
@@ -148,8 +157,6 @@ export class FilePicker extends Component {
                                 // If there is autocomplete open, accept that
                                 if (accept_autocomplete_command.run(cm)) {
                                     cm.scrollPosIntoView(cm.state.doc.length)
-                                    // and request the next ones
-                                    this.request_path_completions()
                                     return true
                                 }
                                 // Else, fall down
