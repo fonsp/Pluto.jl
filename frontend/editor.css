@@ -647,10 +647,15 @@ pluto-filepicker .cm-scroller::-webkit-scrollbar {
     display: none; /* Safari and Chrome */
 }
 
-nav#at_the_top > pluto-filepicker button {
+pluto-filepicker button {
     cursor: pointer;
     height: auto;
 }
+
+pluto-filepicker button:disabled {
+    cursor: not-allowed;
+}
+
 
 button.start_stop_recording,
 button.toggle_export {

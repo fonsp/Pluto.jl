@@ -3,7 +3,17 @@ import { html, Component } from "../imports/Preact.js"
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 
-import { EditorState, EditorSelection, EditorView, placeholder, keymap, history, autocomplete, drawSelection } from "../imports/CodemirrorPlutoSetup.js"
+import {
+    EditorState,
+    EditorSelection,
+    EditorView,
+    placeholder,
+    keymap,
+    history,
+    autocomplete,
+    drawSelection,
+    Compartment,
+} from "../imports/CodemirrorPlutoSetup.js"
 
 let { autocompletion, completionKeymap } = autocomplete
 
@@ -26,6 +36,9 @@ let close_autocomplete_command = completionKeymap.find((keybinding) => keybindin
 export class FilePicker extends Component {
     constructor(/** @type {FilePickerProps} */ props) {
         super(props)
+        this.state = {
+            is_button_disabled: true,
+        }
         this.forced_value = ""
         /** @type {EditorView} */
         this.cm = null
@@ -113,6 +126,11 @@ export class FilePicker extends Component {
                                 }
                             }, 200)
                         },
+                    }),
+                    EditorView.updateListener.of((update) => {
+                        if (update.docChanged) {
+                            this.setState({ is_button_disabled: update.state.doc.length === 0 })
+                        }
                     }),
                     EditorView.theme(
                         {
@@ -208,7 +226,7 @@ export class FilePicker extends Component {
     render() {
         return html`
             <pluto-filepicker>
-                <button onClick=${this.on_submit}>${this.props.button_label}</button>
+                <button onClick=${this.on_submit} disabled=${this.state.is_button_disabled}>${this.props.button_label}</button>
             </pluto-filepicker>
         `
     }
