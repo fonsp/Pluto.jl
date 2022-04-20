@@ -3,7 +3,17 @@ import { html, Component } from "../imports/Preact.js"
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 
-import { EditorState, EditorSelection, EditorView, placeholder, keymap, history, autocomplete, drawSelection, Compartment } from "../imports/CodemirrorPlutoSetup.js"
+import {
+    EditorState,
+    EditorSelection,
+    EditorView,
+    placeholder,
+    keymap,
+    history,
+    autocomplete,
+    drawSelection,
+    Compartment,
+} from "../imports/CodemirrorPlutoSetup.js"
 
 let { autocompletion, completionKeymap } = autocomplete
 
@@ -15,7 +25,7 @@ export class FilePicker extends Component {
     constructor() {
         super()
         this.state = {
-            is_button_disabled: true
+            is_button_disabled: true,
         }
         this.forced_value = ""
         this.cm = null
@@ -64,7 +74,7 @@ export class FilePicker extends Component {
         }
     }
     componentDidMount() {
-        const usesDarkTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const usesDarkTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         const buttonDisable = new Compartment()
         this.cm = new EditorView({
             state: EditorState.create({
@@ -94,21 +104,26 @@ export class FilePicker extends Component {
                             }, 200)
                         },
                     }),
-                    buttonDisable.of(EditorView.updateListener.of((update) => {
-                        if (update.docChanged) {
-                            this.setState({ is_button_disabled: this.cm.state.doc.length === 0 })
-                        }
-                    })),
-                    EditorView.theme({
-                        "&": {
-                            fontSize: "inherit",
+                    buttonDisable.of(
+                        EditorView.updateListener.of((update) => {
+                            if (update.docChanged) {
+                                this.setState({ is_button_disabled: this.cm.state.doc.length === 0 })
+                            }
+                        })
+                    ),
+                    EditorView.theme(
+                        {
+                            "&": {
+                                fontSize: "inherit",
+                            },
+                            ".cm-scroller": {
+                                fontFamily: "inherit",
+                                overflowY: "hidden",
+                                overflowX: "auto",
+                            },
                         },
-                        ".cm-scroller": {
-                            fontFamily: "inherit",
-                            overflowY: "hidden",
-                            overflowX: "auto",
-                        },
-                    }, {dark : usesDarkTheme}),
+                        { dark: usesDarkTheme }
+                    ),
                     // EditorView.updateListener.of(onCM6Update),
                     history(),
                     autocompletion({
