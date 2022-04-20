@@ -95,7 +95,6 @@ export class FilePicker extends Component {
     }
     componentDidMount() {
         const usesDarkTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
-        const buttonDisable = new Compartment()
         this.cm = new EditorView({
             state: EditorState.create({
                 doc: "",
@@ -128,13 +127,11 @@ export class FilePicker extends Component {
                             }, 200)
                         },
                     }),
-                    buttonDisable.of(
-                        EditorView.updateListener.of((update) => {
-                            if (update.docChanged) {
-                                this.setState({ is_button_disabled: this.cm.state.doc.length === 0 })
-                            }
-                        })
-                    ),
+                    EditorView.updateListener.of((update) => {
+                        if (update.docChanged) {
+                            this.setState({ is_button_disabled: update.state.doc.length === 0 })
+                        }
+                    }),
                     EditorView.theme(
                         {
                             "&": {
