@@ -16,7 +16,9 @@ export const nothing_actions = ({ actions }) =>
                 ? // the original action
                   v
                 : // a no-op action
-                  () => {},
+                  (...args) => {
+                      console.info("Ignoring action", k, { args })
+                  },
         ])
     )
 
