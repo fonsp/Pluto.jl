@@ -1,7 +1,7 @@
 import immer from "../imports/immer.js"
 import { timeout_promise, ws_address_from_base } from "./PlutoConnection.js"
 
-export const BinderPhase = {
+export const BackendLaunchPhase = {
     wait_for_user: 0,
     requesting: 0.4,
     created: 0.6,
@@ -88,8 +88,7 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
         count_stat(`binder-start`)
         await setStatePromise(
             immer((state) => {
-                state.binder_phase = BinderPhase.requesting
-                state.loading = true
+                state.backend_launch_phase = BackendLaunchPhase.requesting
                 state.disable_ui = false
             })
         )
@@ -108,7 +107,7 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
 
         await setStatePromise(
             immer((state) => {
-                state.binder_phase = BinderPhase.created
+                state.backend_launch_phase = BackendLaunchPhase.created
                 state.binder_session_url = binder_session_url
                 state.binder_session_token = binder_session_token
             })
@@ -148,7 +147,7 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
         await setStatePromise(
             immer((state) => {
                 state.notebook.notebook_id = new_notebook_id
-                state.binder_phase = BinderPhase.notebook_running
+                state.backend_launch_phase = BackendLaunchPhase.notebook_running
             })
         )
         console.log("Connecting WebSocket")

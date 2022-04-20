@@ -4,6 +4,10 @@ include("helpers.jl")
 
 @timeit_include("compiletimes.jl")
 verify_no_running_processes()
+if get(ENV, "PLUTO_TEST_ONLY_COMPILETIMES", nothing) == "true"
+    show(TOUT; compact=true, sortby=:firstexec)
+    exit(0)
+end
 @timeit_include("Events.jl")
 verify_no_running_processes()
 @timeit_include("WorkspaceManager.jl")
@@ -30,6 +34,7 @@ verify_no_running_processes()
 verify_no_running_processes()
 
 # tests that don't start new processes:
+@timeit_include("frontmatter.jl")
 @timeit_include("ReloadFromFile.jl")
 @timeit_include("packages/PkgCompat.jl")
 @timeit_include("ExpressionExplorer.jl")

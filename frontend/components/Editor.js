@@ -23,7 +23,7 @@ import { Popup } from "./Popup.js"
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { PlutoContext, PlutoBondsContext, PlutoJSInitializingContext, SetWithEmptyCallback } from "../common/PlutoContext.js"
-import { start_binder, BinderPhase, count_stat } from "../common/Binder.js"
+import { start_binder, BackendLaunchPhase, count_stat } from "../common/Binder.js"
 import { setup_mathjax } from "../common/SetupMathJax.js"
 import { BinderButton } from "./BinderButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
@@ -38,6 +38,12 @@ import { HijackExternalLinksToOpenInNewTab } from "./HackySideStuff/HijackExtern
 
 export const default_path = "..."
 const DEBUG_DIFFING = false
+
+// Be sure to keep this in sync with DEFAULT_METADATA in Cell.jl
+const DEFAULT_METADATA = {
+    disabled: false,
+    show_logs: true,
+}
 
 // from our friends at https://stackoverflow.com/a/2117523
 // i checked it and it generates Julia-legal UUIDs and that's all we need -SNOF
@@ -66,7 +72,9 @@ const ProcessStatus = {
 const statusmap = (state, launch_params) => ({
     disconnected: !(state.connected || state.initializing || state.static_preview),
     loading:
-        (state.binder_phase != null && BinderPhase.wait_for_user < state.binder_phase && state.binder_phase < BinderPhase.ready) ||
+        (state.backend_launch_phase != null &&
+            BackendLaunchPhase.wait_for_user < state.backend_launch_phase &&
+            state.backend_launch_phase < BackendLaunchPhase.ready) ||
         state.initializing ||
         state.moving_file,
     process_restarting: state.notebook.process_status === ProcessStatus.waiting_to_restart,
@@ -75,7 +83,7 @@ const statusmap = (state, launch_params) => ({
     nbpkg_restart_recommended: state.notebook.nbpkg?.restart_recommended_msg != null,
     nbpkg_disabled: state.notebook.nbpkg?.enabled === false,
     static_preview: state.static_preview,
-    binder: state.offer_binder || state.binder_phase != null,
+    binder: launch_params.binder_url != null && state.backend_launch_phase != null,
     code_differs: state.notebook.cell_order.some(
         (cell_id) => state.cell_inputs_local[cell_id] != null && state.notebook.cell_inputs[cell_id].code !== state.cell_inputs_local[cell_id].code
     ),
@@ -99,7 +107,8 @@ const first_true_key = (obj) => {
  *  code: string,
  *  code_folded: boolean,
  *  metadata: {
- *    disabled: boolean
+ *    disabled: boolean,
+ *    show_logs: boolean,
  *  },
  * }}
  */
@@ -223,8 +232,7 @@ export class Editor extends Component {
 
             disable_ui: launch_params.disable_ui,
             static_preview: launch_params.statefile != null,
-            offer_binder: launch_params.notebookfile != null && launch_params.binder_url != null,
-            binder_phase: null,
+            backend_launch_phase: launch_params.notebookfile != null && launch_params.binder_url != null ? BackendLaunchPhase.wait_for_user : null,
             binder_session_url: null,
             binder_session_token: null,
             connected: false,
@@ -236,7 +244,6 @@ export class Editor extends Component {
                 down: false,
             },
             export_menu_open: false,
-            show_logs: true,
 
             last_created_cell: null,
             selected_cells: [],
@@ -254,7 +261,7 @@ export class Editor extends Component {
         // these are things that can be done to the local notebook
         this.actions = {
             get_notebook: () => this?.state?.notebook || {},
-            send: (...args) => this.client.send(...args),
+            send: (message_type, ...args) => this.client.send(message_type, ...args),
             get_published_object: (objectid) => this.state.notebook.published_objects[objectid],
             //@ts-ignore
             update_notebook: (...args) => this.update_notebook(...args),
@@ -338,7 +345,7 @@ export class Editor extends Component {
                             // Fill the cell with empty code remotely, so it doesn't run unsafe code
                             code: "",
                             metadata: {
-                                disabled: false,
+                                ...DEFAULT_METADATA,
                             },
                         }
                     }
@@ -378,7 +385,7 @@ export class Editor extends Component {
                         code: code,
                         code_folded: false,
                         metadata: {
-                            disabled: false,
+                            ...DEFAULT_METADATA,
                         },
                     }
                 })
@@ -437,7 +444,7 @@ export class Editor extends Component {
                         cell_id: id,
                         code,
                         code_folded: false,
-                        metadata: { disabled: false },
+                        metadata: { ...DEFAULT_METADATA },
                     }
                     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
                 })
@@ -639,7 +646,8 @@ patch: ${JSON.stringify(
         // these are update message that are _not_ a response to a `send(*, *, {create_promise: true})`
         const on_update = (update, by_me) => {
             if (this.state.notebook.notebook_id === update.notebook_id) {
-                if (this.state.binder_phase != null) console.debug("on_update", update, by_me)
+                const show_debugs = launch_params.binder_url != null
+                if (show_debugs) console.debug("on_update", update, by_me)
                 const message = update.message
                 switch (update.type) {
                     case "notebook_diff":
@@ -682,7 +690,7 @@ patch: ${JSON.stringify(
                         // alert("Something went wrong 🙈\n Try clearing your browser cache and refreshing the page")
                         break
                 }
-                if (this.state.binder_phase != null) console.debug("on_update done")
+                if (show_debugs) console.debug("on_update done")
             } else {
                 // Update for a different notebook, TODO maybe log this as it shouldn't happen
             }
@@ -705,11 +713,19 @@ patch: ${JSON.stringify(
             // @ts-ignore
             window.version_info = this.client.version_info // for debugging
 
+            if (!client.notebook_exists) {
+                console.error("Notebook does not exist. Not connecting.")
+                return
+            }
             console.debug("Sending update_notebook request...")
             await this.client.send("update_notebook", { updates: [] }, { notebook_id: this.state.notebook.notebook_id }, false)
             console.debug("Received update_notebook request")
 
-            this.setState({ initializing: false, static_preview: false, binder_phase: this.state.binder_phase == null ? null : BinderPhase.ready })
+            this.setState({
+                initializing: false,
+                static_preview: false,
+                backend_launch_phase: this.state.backend_launch_phase == null ? null : BackendLaunchPhase.ready,
+            })
 
             // do one autocomplete to trigger its precompilation
             // TODO Do this from julia itself
@@ -731,7 +747,8 @@ patch: ${JSON.stringify(
                 ? `./${u}?id=${this.state.notebook.notebook_id}`
                 : `${this.state.binder_session_url}${u}?id=${this.state.notebook.notebook_id}&token=${this.state.binder_session_token}`
 
-        this.client = {}
+        /** @type {import('../common/PlutoConnection').PlutoConnection} */
+        this.client = /** @type {import('../common/PlutoConnection').PlutoConnection} */ ({})
 
         this.connect = (ws_address = undefined) =>
             create_pluto_connection({
@@ -1034,7 +1051,7 @@ patch: ${JSON.stringify(
                 })
             }
 
-            if (this.state.disable_ui && this.state.offer_binder) {
+            if (this.state.disable_ui && this.state.backend_launch_phase === BackendLaunchPhase.wait_for_user) {
                 // const code = e.key.charCodeAt(0)
                 if (e.key === "Enter" || e.key.length === 1) {
                     if (!document.body.classList.contains("wiggle_binder")) {
@@ -1115,7 +1132,6 @@ patch: ${JSON.stringify(
         if (this.state.static_preview) {
             this.setState({
                 initializing: false,
-                binder_phase: this.state.offer_binder ? BinderPhase.wait_for_user : null,
             })
             // view stats on https://stats.plutojl.org/
             count_stat(`article-view`)
@@ -1143,8 +1159,8 @@ patch: ${JSON.stringify(
 
         this.send_queued_bond_changes()
 
-        if (old_state.binder_phase !== this.state.binder_phase && this.state.binder_phase != null) {
-            const phase = Object.entries(BinderPhase).find(([k, v]) => v == this.state.binder_phase)[0]
+        if (old_state.backend_launch_phase !== this.state.backend_launch_phase && this.state.backend_launch_phase != null) {
+            const phase = Object.entries(BackendLaunchPhase).find(([k, v]) => v == this.state.backend_launch_phase)[0]
             console.info(`Binder phase: ${phase} at ${new Date().toLocaleTimeString()}`)
         }
 
@@ -1183,7 +1199,7 @@ patch: ${JSON.stringify(
                 <${PlutoContext.Provider} value=${this.actions}>
                     <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                         <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
-                            <${ProgressBar} notebook=${this.state.notebook} binder_phase=${this.state.binder_phase} status=${status}/>
+                            <${ProgressBar} notebook=${this.state.notebook} backend_launch_phase=${this.state.backend_launch_phase} status=${status}/>
                             <div style="width: 100%">
                                 ${this.state.notebook.cell_order.map(
                                     (cell_id, i) => html`
@@ -1215,6 +1231,9 @@ patch: ${JSON.stringify(
             >${text}</a
         >`
 
+        const wfu = this.state.backend_launch_phase === BackendLaunchPhase.wait_for_user
+        const offer_binder = wfu && launch_params.binder_url != null
+
         return html`
             ${this.state.disable_ui === false && html`<${HijackExternalLinksToOpenInNewTab} />`}
             
@@ -1222,7 +1241,7 @@ patch: ${JSON.stringify(
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                     <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
                     <${Scroller} active=${this.state.scroller} />
-                    <${ProgressBar} notebook=${this.state.notebook} binder_phase=${this.state.binder_phase} status=${status}/>
+                    <${ProgressBar} notebook=${this.state.notebook} backend_launch_phase=${this.state.backend_launch_phase} status=${status}/>
                     <header id="pluto-nav" className=${export_menu_open ? "show_export" : ""}>
                         <${ExportBanner}
                             notebookfile_url=${this.export_url("notebookfile")}
@@ -1242,7 +1261,7 @@ patch: ${JSON.stringify(
                         }
                         <nav id="at_the_top">
                             <a href=${
-                                this.state.static_preview || this.state.binder_phase != null
+                                this.state.static_preview || this.state.binder_session_url != null
                                     ? `${this.state.binder_session_url}?token=${this.state.binder_session_token}`
                                     : "./"
                             }>
@@ -1314,11 +1333,20 @@ patch: ${JSON.stringify(
                             )}
                     />
                     
-                    <${BinderButton} 
-                        binder_phase=${this.state.binder_phase} 
-                        start_binder=${() => start_binder({ setStatePromise: this.setStatePromise, connect: this.connect, launch_params: launch_params })} 
-                        notebookfile=${launch_params.notebookfile == null ? null : new URL(launch_params.notebookfile, window.location.href).href} />
-                    
+                    ${
+                        offer_binder
+                            ? html`<${BinderButton}
+                                  offer_binder=${offer_binder}
+                                  start_binder=${() =>
+                                      start_binder({
+                                          setStatePromise: this.setStatePromise,
+                                          connect: this.connect,
+                                          launch_params: launch_params,
+                                      })}
+                                  notebookfile=${launch_params.notebookfile == null ? null : new URL(launch_params.notebookfile, window.location.href).href}
+                              />`
+                            : null
+                    }
                     ${launch_params.preamble_html ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />` : null}
                     <${Main}>
                         <${Preamble}
@@ -1330,9 +1358,7 @@ patch: ${JSON.stringify(
                         <${Notebook}
                             notebook=${this.state.notebook}
                             cell_inputs_local=${this.state.cell_inputs_local}
-                            disable_input=${this.state.disable_ui || !this.state.connected /* && this.state.binder_phase == null*/}
-                            show_logs=${this.state.show_logs}
-                            set_show_logs=${(enabled) => this.setState({ show_logs: enabled })}
+                            disable_input=${this.state.disable_ui || !this.state.connected /* && this.state.backend_launch_phase == null*/}
                             last_created_cell=${this.state.last_created_cell}
                             selected_cells=${this.state.selected_cells}
                             is_initializing=${this.state.initializing}

@@ -13,17 +13,33 @@ cd(Pluto.project_relative_path("test")) do
 end
 
 @testset "from_flat_kwargs" begin
-    opt = from_flat_kwargs(;compile="min", launch_browser=false)
+    opt = from_flat_kwargs(; compile="min", launch_browser=false)
     @test opt.compiler.compile == "min"
     @test opt.server.launch_browser == false
 
-    et = @static if isdefined(Pluto.Configuration.Configurations, :InvalidKeyError)
-        Pluto.Configuration.Configurations.InvalidKeyError
-    else
-        ArgumentError
+    @test_throws MethodError from_flat_kwargs(; asdfasdf="test")
+
+    structs_kwargs = let
+        structs = [
+            Pluto.Configuration.ServerOptions,
+            Pluto.Configuration.SecurityOptions,
+            Pluto.Configuration.EvaluationOptions,
+            Pluto.Configuration.CompilerOptions
+        ]
+        sets = [collect(fieldnames(s)) for s in structs]
+        vcat(sets...)::Vector{Symbol}
     end
 
-    @test_throws et from_flat_kwargs(;asdfasdf="test")    
+    from_flat_kwargs_kwargs = let
+        method = only(methods(Pluto.Configuration.from_flat_kwargs))
+        syms = method.slot_syms
+        names = split(syms, "\0")[2:end-1]
+        Symbol.(names)::Vector{Symbol}
+    end
+
+    # Verify that all struct fields can be set via `from_flat_kwargs`.
+    # Also verifies ordering to improve code readability.
+    @test structs_kwargs == from_flat_kwargs_kwargs
 end
 
 @testset "flag conversion" begin

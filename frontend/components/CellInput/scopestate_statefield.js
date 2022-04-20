@@ -17,13 +17,16 @@ import { child_cursors, child_nodes, create_specific_template_maker, jl, jl_dyna
  * @property {number} from
  * @property {number} to
  *
+ * @typedef {Range & {valid_from: number}} Definition
+ *
  * @typedef ScopeState
  * @property {Array<{
  *  usage: Range,
  *  definition: Range | null,
  *  name: string,
  * }>} usages
- * @property {Map<String, Range>} definitions
+ * @property {Map<String, Definition>} definitions
+ * @property {Array<{ definition: Range, validity: Range, name: string }>} locals
  */
 
 /**
@@ -39,7 +42,8 @@ let merge_scope_state = (a, b) => {
     for (let [key, value] of b.definitions) {
         definitions.set(key, value)
     }
-    return { usages, definitions }
+    let locals = [...a.locals, ...b.locals]
+    return { usages, definitions, locals }
 }
 
 /** @param {TreeCursor} cursor */
@@ -131,11 +135,11 @@ let explorer_function_definition_argument = (cursor, doc, scopestate, verbose = 
         return scopestate_add_definition(scopestate, doc, cursor)
     } else if ((match = match_function_definition_argument(cursor)`${t.as("subject")}...`)) {
         // `function f(x...)` => ["x"]
-        return explore_pattern(match.subject, doc, scopestate, verbose)
+        return explore_pattern(match.subject, doc, scopestate, null, verbose)
     } else if ((match = match_function_definition_argument(cursor)`${t.as("name")} = ${t.as("value")}`)) {
         // `function f(x = 10)` => ["x"]
         let { name, value } = match
-        scopestate = explore_pattern(name, doc, scopestate, verbose)
+        scopestate = explore_pattern(name, doc, scopestate, value.to, verbose)
         scopestate = explore_variable_usage(value.cursor, doc, scopestate, verbose)
         return scopestate
     } else if (
@@ -145,7 +149,7 @@ let explorer_function_definition_argument = (cursor, doc, scopestate, verbose = 
         (match = match_function_definition_argument(cursor)`::${t.as("type")}`)
     ) {
         let { name, type } = match
-        if (name) scopestate = explore_pattern(name, doc, scopestate, verbose)
+        if (name) scopestate = explore_pattern(name, doc, scopestate, type.to, verbose)
         if (type) scopestate = explore_variable_usage(type.cursor, doc, scopestate, verbose)
         return scopestate
     } else {
@@ -158,14 +162,15 @@ let explorer_function_definition_argument = (cursor, doc, scopestate, verbose = 
  * @param {TreeCursor | SyntaxNode} node
  * @param {any} doc
  * @param {ScopeState} scopestate
+ * @param {number?} valid_from
  * @param {boolean?} verbose
  * @returns {ScopeState}
  */
-let explore_pattern = (node, doc, scopestate, verbose = false) => {
+let explore_pattern = (node, doc, scopestate, valid_from = null, verbose = false) => {
     let match = null
 
     if ((match = match_assignee(node)`${t.Identifier}`)) {
-        return scopestate_add_definition(scopestate, doc, node)
+        return scopestate_add_definition(scopestate, doc, node, valid_from)
     } else if ((match = match_assignee(node)`${t.as("object")}::${t.as("type")}`)) {
         let { object, type } = match
         scopestate = explore_variable_usage(type.cursor, doc, scopestate, verbose)
@@ -173,16 +178,16 @@ let explore_pattern = (node, doc, scopestate, verbose = false) => {
         return scopestate
     } else if ((match = match_assignee(node)`${t.as("subject")}...`)) {
         // `x... = [1,2,3]` => ["x"]
-        return explore_pattern(match.subject, doc, scopestate, verbose)
+        return explore_pattern(match.subject, doc, scopestate, valid_from, verbose)
     } else if ((match = match_function_definition_argument(node)`${t.as("name")} = ${t.as("value")}`)) {
         let { name, value } = match
-        scopestate = explore_pattern(name, doc, scopestate, verbose)
+        scopestate = explore_pattern(name, doc, scopestate, value.from, verbose)
         scopestate = explore_variable_usage(value.cursor, doc, scopestate, verbose)
         return scopestate
     } else if ((match = match_assignee(node)`${t.as("first")}, ${t.many("rest")}`) ?? (match = match_assignee(node)`(${t.as("first")}, ${t.many("rest")})`)) {
         // console.warn("Tuple assignment... but the bad one")
         for (let { node: name } of [{ node: match.first }, ...(match.rest ?? [])]) {
-            scopestate = explore_pattern(name.cursor, doc, scopestate, verbose)
+            scopestate = explore_pattern(name.cursor, doc, scopestate, valid_from, verbose)
         }
         return scopestate
     } else if ((match = match_julia(node)`${t.as("prefix")}${t.as("string", t.String)}`)) {
@@ -197,6 +202,7 @@ let explore_pattern = (node, doc, scopestate, verbose = false) => {
                 scopestate.definitions.set(name, {
                     from: node.from,
                     to: node.to,
+                    valid_from: node.to,
                 })
             }
         } else {
@@ -330,6 +336,7 @@ let fresh_scope = () => {
     return {
         usages: [],
         definitions: new Map(),
+        locals: [],
     }
 }
 
@@ -346,6 +353,7 @@ let lower_scope = (scopestate) => {
     return {
         usages: [],
         definitions: new Map(scopestate.definitions),
+        locals: [],
     }
 }
 
@@ -356,12 +364,30 @@ let lower_scope = (scopestate) => {
  *
  * @param {ScopeState} nested_scope
  * @param {ScopeState} scopestate
+ * @param {number} nested_scope_validity
  * @returns {ScopeState}
  */
-let raise_scope = (nested_scope, scopestate) => {
+let raise_scope = (nested_scope, scopestate, nested_scope_validity = null) => {
     return {
         usages: [...scopestate.usages, ...nested_scope.usages],
         definitions: scopestate.definitions,
+        locals: [
+            // TODO: Disabled because of performance problems, see https://github.com/fonsp/Pluto.jl/pull/1925
+            // ...(nested_scope_validity === null
+            //     ? []
+            //     : Array.from(nested_scope.definitions)
+            //           .filter(([name, _]) => !scopestate.definitions.has(name))
+            //           .map(([name, definition]) => ({
+            //               name,
+            //               definition,
+            //               validity: {
+            //                   from: definition.valid_from,
+            //                   to: nested_scope_validity,
+            //               },
+            //           }))),
+            // ...nested_scope.locals,
+            // ...scopestate.locals,
+        ],
     }
 }
 
@@ -369,11 +395,14 @@ let raise_scope = (nested_scope, scopestate) => {
  * @param {ScopeState} scopestate
  * @param {any} doc
  * @param {SyntaxNode | TreeCursor} node
+ * @param {number?} valid_from
  */
-let scopestate_add_definition = (scopestate, doc, node) => {
+let scopestate_add_definition = (scopestate, doc, node, valid_from = null) => {
+    valid_from = valid_from === null ? node.to : valid_from
     scopestate.definitions.set(doc.sliceString(node.from, node.to), {
         from: node.from,
         to: node.to,
+        valid_from,
     })
     return scopestate
 }
@@ -390,6 +419,7 @@ export let explore_variable_usage = (
     scopestate = {
         usages: [],
         definitions: new Map(),
+        locals: [],
     },
     verbose = false
 ) => {
@@ -482,7 +512,7 @@ export let explore_variable_usage = (
         } else if ((match = match_julia(cursor)`${t.as("assignee")} = ${t.maybe(t.as("value"))}`)) {
             let { assignee, value } = match
             if (value) scopestate = explore_variable_usage(value.cursor, doc, scopestate, verbose)
-            if (assignee) scopestate = explore_pattern(assignee.cursor, doc, scopestate, verbose)
+            if (assignee) scopestate = explore_pattern(assignee.cursor, doc, scopestate, value?.to ?? null, verbose)
             return scopestate
         } else if (
             (match = match_julia(cursor)`
@@ -528,7 +558,7 @@ export let explore_variable_usage = (
                 for (let { node: expression } of do_expressions) {
                     inner_scope = explore_variable_usage(expression.cursor, doc, inner_scope, verbose)
                 }
-                return raise_scope(inner_scope, scopestate)
+                return raise_scope(inner_scope, scopestate, cursor.to)
             }
 
             return scopestate
@@ -580,7 +610,7 @@ export let explore_variable_usage = (
                 }
             }
 
-            scopestate = raise_scope(inner_scope, scopestate)
+            scopestate = raise_scope(inner_scope, scopestate, cursor.to)
             scopestate = merge_scope_state(scopestate, outer_scope)
             return scopestate
         } else if ((match = match_julia(cursor)`abstract type ${t.as("name")} end`)) {
@@ -617,6 +647,7 @@ export let explore_variable_usage = (
             scopestate = merge_scope_state(scopestate, {
                 usages: Array.from(module_scope.usages).filter((x) => x.definition != null),
                 definitions: new Map(),
+                locals: [],
             })
 
             for (let { node: expression } of expressions) {
@@ -730,7 +761,7 @@ export let explore_variable_usage = (
                 ) {
                     let { name, range } = match
                     if (range) inner_scope = explore_variable_usage(range.cursor, doc, inner_scope, verbose)
-                    if (name) inner_scope = explore_pattern(name, doc, inner_scope)
+                    if (name) inner_scope = explore_pattern(name, doc, inner_scope, range?.to ?? null, verbose)
                 } else {
                     verbose && console.warn("Unrecognized for loop binding", binding.toString())
                 }
@@ -740,7 +771,7 @@ export let explore_variable_usage = (
                 inner_scope = explore_variable_usage(expression.cursor, doc, inner_scope, verbose)
             }
 
-            return raise_scope(inner_scope, scopestate)
+            return raise_scope(inner_scope, scopestate, cursor.to)
         } else if (
             (match = match_julia(cursor)`
                 ${t.as("callee")}(${t.many("args")}) ${t.maybe(jl`do ${t.maybe(t.many("do_args"))}
@@ -799,7 +830,7 @@ export let explore_variable_usage = (
 
                     nested_scope = explore_variable_usage(result.cursor, doc, nested_scope, verbose)
 
-                    return raise_scope(nested_scope, scopestate)
+                    return raise_scope(nested_scope, scopestate, cursor.to)
                 } else {
                     scopestate = explore_variable_usage(arg.cursor, doc, scopestate, verbose)
                 }
@@ -813,7 +844,7 @@ export let explore_variable_usage = (
             for (let { node: expression } of do_expressions) {
                 inner_scope = explore_variable_usage(expression.cursor, doc, inner_scope, verbose)
             }
-            return raise_scope(inner_scope, scopestate)
+            return raise_scope(inner_scope, scopestate, cursor.to)
         } else if ((match = match_julia(cursor)`(${t.many("tuple_elements")},)`)) {
             // TODO.. maybe? `(x, g = y)` is a "ParenthesizedExpression", but lezer parses it as a tuple...
             // For now I fix it here hackily by checking if there is only NamedFields
@@ -842,8 +873,8 @@ export let explore_variable_usage = (
                     if ((match = match_tuple_element(cursor)`${t.as("name")} = ${t.as("value")}`)) {
                         // 🚨 actually an assignment 🚨
                         let { name, value } = match
-                        if (name) scopestate = scopestate_add_definition(scopestate, doc, name)
                         if (value) scopestate = explore_variable_usage(value.cursor, doc, scopestate, verbose)
+                        if (name) scopestate = scopestate_add_definition(scopestate, doc, name, value?.to ?? null)
                     } else {
                         scopestate = explore_variable_usage(element.cursor, doc, scopestate, verbose)
                     }
@@ -899,6 +930,7 @@ export let explore_variable_usage = (
                 scopestate.definitions.set(`@${doc.sliceString(macro_name.from, macro_name.to)}`, {
                     from: macro_name.from,
                     to: macro_name.to,
+                    valid_from: macro_name.to,
                 })
             }
 
@@ -937,7 +969,7 @@ export let explore_variable_usage = (
             for (let { node: expression } of body) {
                 inner_scope = explore_variable_usage(expression.cursor, doc, inner_scope, verbose)
             }
-            return raise_scope(inner_scope, scopestate)
+            return raise_scope(inner_scope, scopestate, cursor.to)
         } else if (
             (match = match_julia(cursor)`
                 let ${t.many("assignments", jl`${t.as("assignee")} = ${t.as("value")}`)}
@@ -951,7 +983,7 @@ export let explore_variable_usage = (
                 match: { assignee, value },
             } of assignments) {
                 // Explorer lefthandside in inner scope
-                if (assignee) innerscope = explore_pattern(assignee, doc, innerscope)
+                if (assignee) innerscope = explore_pattern(assignee, doc, innerscope, value?.to ?? null, verbose)
                 // Explorer righthandside in the outer scope
                 if (value) scopestate = explore_variable_usage(value.cursor, doc, scopestate, verbose)
             }
@@ -959,7 +991,7 @@ export let explore_variable_usage = (
             for (let { node: line } of body) {
                 innerscope = explore_variable_usage(line.cursor, doc, innerscope, verbose)
             }
-            return raise_scope(innerscope, scopestate)
+            return raise_scope(innerscope, scopestate, cursor.to)
         } else if (
             // A bit hard to see from the template, but these are array (and generator) comprehensions
             // e.g. [x for x in y]
@@ -1003,7 +1035,7 @@ export let explore_variable_usage = (
 
             nested_scope = explore_variable_usage(result.cursor, doc, nested_scope, verbose)
 
-            return raise_scope(nested_scope, scopestate)
+            return raise_scope(nested_scope, scopestate, cursor.to)
         } else {
             if (verbose) {
                 console.groupCollapsed(`Cycling through all children of`, cursor.name)
@@ -1036,6 +1068,7 @@ export let ScopeStateField = StateField.define({
             return {
                 usages: [],
                 definitions: new Map(),
+                locals: [],
             }
         }
     },
@@ -1054,6 +1087,7 @@ export let ScopeStateField = StateField.define({
             return {
                 usages: [],
                 definitions: new Map(),
+                locals: [],
             }
         }
     },

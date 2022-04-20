@@ -2,6 +2,7 @@ import HTTP
 import Markdown: htmlesc
 import UUIDs: UUID
 import Pkg
+import MIMEs
 
 const found_is_pluto_dev = Ref{Union{Nothing,Bool}}(nothing)
 function is_pluto_dev()
@@ -35,14 +36,6 @@ end
 
 # Serve everything from `/frontend`, and create HTTP endpoints to open notebooks.
 
-"Attempts to find the MIME pair corresponding to the extension of a filename. Defaults to `text/plain`."
-function mime_fromfilename(filename)
-    # This bad boy is from: https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
-    mimepairs = Dict(".aac" => "audio/aac", ".bin" => "application/octet-stream", ".bmp" => "image/bmp", ".css" => "text/css", ".csv" => "text/csv", ".eot" => "application/vnd.ms-fontobject", ".gz" => "application/gzip", ".gif" => "image/gif", ".htm" => "text/html", ".html" => "text/html", ".ico" => "image/vnd.microsoft.icon", ".jpeg" => "image/jpeg", ".jpg" => "image/jpeg", ".js" => "text/javascript", ".json" => "application/json", ".jsonld" => "application/ld+json", ".mjs" => "text/javascript", ".mp3" => "audio/mpeg", ".mp4" => "video/mp4", ".mpeg" => "video/mpeg", ".oga" => "audio/ogg", ".ogv" => "video/ogg", ".ogx" => "application/ogg", ".opus" => "audio/opus", ".otf" => "font/otf", ".png" => "image/png", ".pdf" => "application/pdf", ".rtf" => "application/rtf", ".sh" => "application/x-sh", ".svg" => "image/svg+xml", ".tar" => "application/x-tar", ".tif" => "image/tiff", ".tiff" => "image/tiff", ".ttf" => "font/ttf", ".txt" => "text/plain", ".wav" => "audio/wav", ".weba" => "audio/webm", ".webm" => "video/webm", ".webp" => "image/webp", ".woff" => "font/woff", ".woff2" => "font/woff2", ".xhtml" => "application/xhtml+xml", ".xml" => "application/xml", ".xul" => "application/vnd.mozilla.xul+xml", ".zip" => "application/zip", ".wasm" => "application/wasm")
-    file_extension = getkey(mimepairs, '.' * split(filename, '.')[end], ".txt")
-    MIME(mimepairs[file_extension])
-end
-
 const day = let 
     second = 1
     hour = 60second
@@ -56,8 +49,7 @@ function asset_response(path; cacheable::Bool=false)
     if isfile(path)
         data = read(path)
         response = HTTP.Response(200, data)
-        m = mime_fromfilename(path)
-        push!(response.headers, "Content-Type" => Base.istextmime(m) ? "$(m); charset=UTF-8" : string(m))
+        push!(response.headers, "Content-Type" => MIMEs.contenttype_from_mime(MIMEs.mime_from_path(path)))
         push!(response.headers, "Content-Length" => string(length(data)))
         push!(response.headers, "Access-Control-Allow-Origin" => "*")
         cacheable && push!(response.headers, "Cache-Control" => "public, max-age=$(30day), immutable")
@@ -80,7 +72,7 @@ function error_response(
         "\$BODY" => htmlesc(body))
 
     response = HTTP.Response(status_code, filled_in)
-    push!(response.headers, "Content-Type" => string(mime_fromfilename(".html")))
+    push!(response.headers, "Content-Type" => MIMEs.contenttype_from_mime(MIME"text/html"()))
     response
 end
 

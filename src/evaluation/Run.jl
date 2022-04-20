@@ -5,25 +5,49 @@ import .WorkspaceManager: macroexpand_in_workspace
 
 Base.push!(x::Set{Cell}) = x
 
-"Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
+"""
+Run given cells and all the cells that depend on them, based on the topology information before and after the changes.
+"""
 function run_reactive!(
-	session::ServerSession, 
-	notebook::Notebook, 
-	old_topology::NotebookTopology, new_topology::NotebookTopology, 
-	roots::Vector{Cell}; 
-	deletion_hook::Function = WorkspaceManager.move_vars, 
-	user_requested_run::Bool = true, 
-	already_in_run::Bool = false, 
-	already_run::Vector{Cell} = Cell[]
+    session::ServerSession,
+    notebook::Notebook,
+    old_topology::NotebookTopology,
+    new_topology::NotebookTopology,
+    roots::Vector{Cell};
+    deletion_hook::Function = WorkspaceManager.move_vars,
+    user_requested_run::Bool = true,
 )::TopologicalOrder
-    if !already_in_run
-        # make sure that we're the only `run_reactive!` being executed - like a semaphor
-        take!(notebook.executetoken)
-    else
-        @assert !isready(notebook.executetoken) "run_reactive!(; already_in_run=true) was called when no reactive run was launched."
+    withtoken(notebook.executetoken) do
+        run_reactive_core!(
+            session,
+            notebook,
+            old_topology,
+            new_topology,
+            roots;
+            deletion_hook,
+            user_requested_run,
+        )
     end
-	
-	@assert will_run_code(notebook)
+end
+
+"""
+Run given cells and all the cells that depend on them, based on the topology information before and after the changes.
+
+!!! warning
+    You should probably should not call this directly and use `run_reactive!` instead.
+"""
+function run_reactive_core!(
+    session::ServerSession,
+    notebook::Notebook,
+    old_topology::NotebookTopology,
+    new_topology::NotebookTopology,
+    roots::Vector{Cell};
+    deletion_hook::Function = WorkspaceManager.move_vars,
+    user_requested_run::Bool = true,
+    already_run::Vector{Cell} = Cell[]
+)::TopologicalOrder
+    @assert !isready(notebook.executetoken) "run_reactive_core!() was called with a free notebook.executetoken."
+    @assert will_run_code(notebook)
 
     old_workspace_name, _ = WorkspaceManager.bump_workspace_module((session, notebook))
 
@@ -81,15 +105,14 @@ function run_reactive!(
         cell.depends_on_disabled_cells = false
     end
 
-	# Move this save to after the last point the
-	# notebook serialization representation changes
-	# (currently, `depends_on_disabled_cells`)
-	save_notebook(session, notebook)
     for (cell, error) in new_order.errable
         cell.running = false
         cell.queued = false
         relay_reactivity_error!(cell, error)
     end
+
+	# Save the notebook. This is the only time that we save the notebook, so any state changes that influence the file contents (like `depends_on_disabled_cells`) should be behind this point.
+	save_notebook(session, notebook)
 
     # Send intermediate updates to the clients at most 20 times / second during a reactive run. (The effective speed of a slider is still unbounded, because the last update is not throttled.)
     # flush_send_notebook_changes_throttled, 
@@ -130,7 +153,8 @@ function run_reactive!(
             run = run_single!(
                 (session, notebook), cell,
                 new_topology.nodes[cell], new_topology.codes[cell];
-                user_requested_run = (user_requested_run && cell ∈ roots)
+                user_requested_run = (user_requested_run && cell ∈ roots),
+				capture_stdout = session.options.evaluation.capture_stdout,
             )
             any_interrupted |= run.interrupted
         end
@@ -159,7 +183,7 @@ function run_reactive!(
             update_dependency_cache!(notebook)
             save_notebook(session, notebook)
 
-            return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook, user_requested_run, already_in_run = true, already_run = to_run[1:i])
+            return run_reactive_core!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook, user_requested_run, already_run = to_run[1:i])
         elseif !isempty(implicit_usings)
             new_soft_definitions = WorkspaceManager.collect_soft_definitions((session, notebook), implicit_usings)
             notebook.topology = new_new_topology = with_new_soft_definitions(new_topology, cell, new_soft_definitions)
@@ -168,14 +192,12 @@ function run_reactive!(
             update_dependency_cache!(notebook)
             save_notebook(session, notebook)
 
-            return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook, user_requested_run, already_in_run = true, already_run = to_run[1:i])
+            return run_reactive_core!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook, user_requested_run, already_run = to_run[1:i])
         end
     end
 
     notebook.wants_to_interrupt = false
     flush_notebook_changes()
-    # allow other `run_reactive!` calls to be executed
-    put!(notebook.executetoken)
     return new_order
 end
 
@@ -216,17 +238,24 @@ function run_single!(
 	cell::Cell, 
 	reactive_node::ReactiveNode, 
 	expr_cache::ExprAnalysisCache; 
-	user_requested_run::Bool=true
+	user_requested_run::Bool=true,
+	capture_stdout::Bool=true,
 )
 	run = WorkspaceManager.eval_format_fetch_in_workspace(
 		session_notebook, 
 		expr_cache.parsedcode, 
-		cell.cell_id, 
-		ends_with_semicolon(cell.code), 
-		expr_cache.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing,
-		expr_cache.forced_expr_id,
+		cell.cell_id;
+		
+		ends_with_semicolon = 
+			ends_with_semicolon(cell.code), 
+		function_wrapped_info = 
+			expr_cache.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing,
+		forced_expr_id = 
+			expr_cache.forced_expr_id,
+		known_published_objects = 
+			collect(keys(cell.published_objects)),
 		user_requested_run,
-		collect(keys(cell.published_objects)),
+		capture_stdout,
 	)
 	set_output!(cell, run, expr_cache; persist_js_state=!user_requested_run)
 	if session_notebook isa Tuple && run.process_exited
@@ -511,12 +540,14 @@ function update_save_run!(
 	end
 
 	maybe_async(run_async) do
-		sync_nbpkg(session, notebook; save=(save && !session.options.server.disable_writing_notebook_files))
-		if !(isempty(to_run_online) && session.options.evaluation.lazy_workspace_creation) && will_run_code(notebook)
-			# not async because that would be double async
-			run_reactive_async!(session, notebook, old, new, to_run_online; run_async=false, kwargs...)
-			# run_reactive_async!(session, notebook, old, new, to_run_online; deletion_hook=deletion_hook, run_async=false, kwargs...)
-		end
+        withtoken(notebook.executetoken) do
+            sync_nbpkg(session, notebook, old, new; save=(save && !session.options.server.disable_writing_notebook_files), take_token=false)
+            if !(isempty(to_run_online) && session.options.evaluation.lazy_workspace_creation) && will_run_code(notebook)
+                # not async because that would be double async
+                run_reactive_core!(session, notebook, old, new, to_run_online; kwargs...)
+                # run_reactive_async!(session, notebook, old, new, to_run_online; deletion_hook=deletion_hook, run_async=false, kwargs...)
+            end
+        end
 	end
 end
 

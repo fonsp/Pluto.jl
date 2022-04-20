@@ -357,12 +357,13 @@ end
 function eval_format_fetch_in_workspace(
     session_notebook::Union{SN,Workspace},
     expr::Expr,
-    cell_id::UUID,
+    cell_id::UUID;
     ends_with_semicolon::Bool=false,
     function_wrapped_info::Union{Nothing,Tuple}=nothing,
     forced_expr_id::Union{PlutoRunner.ObjectID,Nothing}=nothing,
-    user_requested_run::Bool=true,
     known_published_objects::Vector{String}=String[],
+    user_requested_run::Bool=true,
+    capture_stdout::Bool=true,
 )::PlutoRunner.FormattedCellResult
 
     workspace = get_workspace(session_notebook)
@@ -390,7 +391,7 @@ function eval_format_fetch_in_workspace(
             $function_wrapped_info,
             $forced_expr_id;
             user_requested_run=$user_requested_run,
-            capture_stdout=$(!is_on_this_process),
+            capture_stdout=$(capture_stdout && !is_on_this_process),
         )))
         put!(workspace.dowork_token)
         nothing
