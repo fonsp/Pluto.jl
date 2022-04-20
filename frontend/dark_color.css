@@ -185,6 +185,11 @@
         --index-text-color: rgb(199, 199, 199);
         --index-clickable-text-color: rgb(235, 235, 235);
         --index-card-bg: #313131;
+        --welcome-mywork-bg: var(--header-bg-color);
+        --welcome-newnotebook-bg: rgb(68 72 102);
+        --welcome-recentnotebook-bg: #3b3b3b;
+        --welcome-recentnotebook-border: #6e6e6e;
+        --welcome-open-bg: hsl(0deg 0% 31%);
 
         /* docs binding */
         --docs-binding-bg: #323431;

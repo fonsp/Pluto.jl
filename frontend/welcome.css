@@ -58,7 +58,8 @@ section#open {
     /* background: #f5f5f6; */
     /* position: relative; */
     /* background: url("https://computationalthinking.mit.edu/Spring21/homepage/bg.svg"); */ /* background-size: cover; */ /* background-position: 0% 70%; */
-    background: hsl(35deg 66% 93%);
+    background: var(--welcome-mywork-bg);
+    /* background: var(--header-bg-color); */
 }
 
 .pluto-logo {
@@ -81,7 +82,7 @@ section#open {
 }
 
 #new {
-    background: #fbfbfb;
+    background: var(--welcome-open-bg);
     box-shadow: -2px 4px 9px 0px #00000012;
     padding: 1.3rem;
     border-radius: 0.6rem;
@@ -145,7 +146,7 @@ section#open::after {
 }
 
 :where(#mywork, #open) h2 {
-    color: black;
+    /* color: black; */
     --off: 4px;
     --offm: -4px;
     --oc: #ffffff;
@@ -170,7 +171,7 @@ div#app {
 }
 
 section#featured {
-    background: white;
+    /* background: white; */
 }
 
 .new a {
@@ -181,7 +182,7 @@ section#featured {
 
 li.new {
     position: sticky;
-    background: whitesmoke;
+    background: var(--welcome-newnotebook-bg);
     top: 0;
     z-index: 2;
 }

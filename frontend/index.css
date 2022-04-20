@@ -94,7 +94,7 @@ ul {
 li {
     white-space: nowrap;
     padding: 0.4em;
-    border-bottom: 1px solid #ededed;
+    border-bottom: 1px solid var(--welcome-recentnotebook-border);
 }
 
 a {
@@ -245,7 +245,7 @@ body.nosessions ul#new ~ * {
 }
 
 #recent {
-    background: white; /* margin-bottom: 8em; */
+    background: var(--welcome-recentnotebook-bg); /* margin-bottom: 8em; */
     max-height: 16em;
     overflow-y: scroll;
     border-radius: 0.4rem;
