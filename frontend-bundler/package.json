@@ -7,7 +7,7 @@
     "description": "",
     "scripts": {
         "start": "cd ../frontend && parcel --dist-dir ../frontend-dist --config ../frontend-bundler/.parcelrc editor.html index.html error.jl.html sample.html",
-        "build": "cd ../frontend && parcel build --public-url . --dist-dir ../frontend-dist --config ../frontend-bundler/.parcelrc editor.html index.html error.jl.html sample.html",
+        "build": "cd ../frontend && parcel build --no-source-maps --public-url . --dist-dir ../frontend-dist --config ../frontend-bundler/.parcelrc editor.html index.html error.jl.html sample.html",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "author": "",
@@ -16,6 +16,7 @@
         "@parcel/config-default": "^2.0.0",
         "mkdirp": "^1.0.4",
         "parcel": "^2.0.0",
+        "parcel-reporter-bundle-manifest": "^1.0.0",
         "parcel-resolver-like-a-browser": "file:../frontend-bundler/parcel-resolver-like-a-browser"
     },
     "devDependencies": {

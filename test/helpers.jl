@@ -1,7 +1,14 @@
-import Pluto
+# Collect timing and allocations information; this is printed later.
+using TimerOutputs: TimerOutput, @timeit
+const TOUT = TimerOutput()
+macro timeit_include(path::AbstractString) :(@timeit TOUT $path include($path)) end
+
+@timeit TOUT "import Pluto" import Pluto
 import Pluto.ExpressionExplorer
 import Pluto.ExpressionExplorer: SymbolsState, compute_symbolreferences, FunctionNameSignaturePair, UsingsImports, compute_usings_imports
+using Sockets
 using Test
+using HTTP
 import Distributed
 
 function Base.show(io::IO, s::SymbolsState)
@@ -129,13 +136,21 @@ function occursinerror(needle, haystack::Pluto.Cell)
 end
 
 "Test notebook equality, ignoring cell UUIDs and such."
-function notebook_inputs_equal(nbA, nbB; check_paths_equality=true)
-    x = !check_paths_equality || (normpath(nbA.path) == normpath(nbB.path))
-
-    to_compare(cell) = (cell.cell_id, cell.code_folded, cell.code)
-    y = to_compare.(nbA.cells) == to_compare.(nbB.cells)
-    
-    x && y
+macro test_notebook_inputs_equal(nbA, nbB, check_paths_equality::Bool=true)
+    quote
+        nbA = $(esc(nbA))
+        nbB = $(esc(nbB))
+        if $(check_paths_equality)
+            @test normpath(nbA.path) == normpath(nbB.path)
+        end
+        
+        @test length(nbA.cells) == length(nbB.cells)
+        @test getproperty.(nbA.cells, :cell_id) == getproperty.(nbB.cells, :cell_id)
+        @test getproperty.(nbA.cells, :code_folded) == getproperty.(nbB.cells, :code_folded)
+        @test getproperty.(nbA.cells, :code) == getproperty.(nbB.cells, :code)
+        @test get_cell_metadata_no_default.(nbA.cells) ==  get_cell_metadata_no_default.(nbB.cells)
+        
+    end |> Base.remove_linenums!
 end
 
 "Whether the given .jl file can be run without any errors. While notebooks cells can be in arbitrary order, their order in the save file must be topological.

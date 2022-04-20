@@ -1,6 +1,6 @@
 import { html, useRef, useState, useContext } from "../imports/Preact.js"
 
-import { PlutoImage, RawHTMLContainer } from "./CellOutput.js"
+import { OutputBody, PlutoImage, RawHTMLContainer } from "./CellOutput.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 
 // this is different from OutputBody because:
@@ -8,8 +8,10 @@ import { PlutoContext } from "../common/PlutoContext.js"
 // i think this is because i wrote those css classes with the assumption that pluto cell output is wrapped in a div, and tree viewer contents are not
 // whatever
 //
-// TODO: remove this, use OutputBody instead, and fix the CSS classes so that i all looks nice again
-const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state }) => {
+// We use a `<pre>${body}` instead of `<pre><code>${body}`, also for some CSS reasons that I forgot
+//
+// TODO: remove this, use OutputBody instead (maybe add a `wrap_in_div` option), and fix the CSS classes so that i all looks nice again
+export const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state }) => {
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -19,22 +21,13 @@ const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state }) => {
         case "image/svg+xml":
             return html`<${PlutoImage} mime=${mime} body=${body} />`
             break
-        case "text/html":
-            return html`<${RawHTMLContainer} body=${body} persist_js_state=${persist_js_state} />`
-            break
+        case "text/plain":
+            return html`<pre class="no-block">${body}</pre>`
         case "application/vnd.pluto.tree+object":
             return html`<${TreeView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`
             break
-        case "application/vnd.pluto.table+object":
-            return html` <${TableView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`
-            break
-        case "application/vnd.pluto.divelement+object":
-            return DivElement({ cell_id, ...body })
-            break
-        case "text/plain":
-            return html`<pre class="no-block">${body}</pre>`
         default:
-            return html`<pre title="Something went wrong displaying this object">🛑</pre>`
+            return OutputBody({ mime, body, cell_id, persist_js_state, last_run_timestamp: null })
             break
     }
 }

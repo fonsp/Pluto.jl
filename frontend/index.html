@@ -9,16 +9,13 @@
         console.log("Pluto.jl, by Fons van der Plas (https://github.com/fonsp) and Mikołaj Bochenski (https://github.com/malyvsen) 🌈");
     </script>
     <meta name="author" content="Fons van der Plas; Mikołaj Bochenski" />
-    <meta name="theme-color" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="white">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#2a2928">
+    <meta name="color-scheme" content="light dark">
     <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
     <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="96x96" href="img/favicon-96x96.png">
     <meta name="description" content="Pluto.jl notebooks" />
-
-    <link rel="pluto-sw" href="./sw.js" />
-    <script>
-        navigator.serviceWorker?.register(document.head.querySelector("link[rel='pluto-sw']").getAttribute("href"), { scope: "./" }).catch(console.warn)
-    </script>
 
     <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.20/lodash.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/@observablehq/stdlib@3.3.1/dist/stdlib.js" defer></script>
@@ -27,6 +24,9 @@
 
     <script src="index.js" type="module" defer></script>
     <script src="warn_old_browsers.js"></script>
+    <link rel="prefetch" as="stylesheet" type="text/html" href="editor.css">
+    <link rel="prefetch" as="script" type="text/javascript" href="editor.js">
+    <link rel="prerender" href="editor.html">
 </head>
 
 <body class="loading nosessions">

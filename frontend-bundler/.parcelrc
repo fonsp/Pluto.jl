@@ -3,5 +3,9 @@
     "resolvers": [
         "parcel-resolver-like-a-browser",
         "..."
+    ],
+    "reporters": [
+        "...", 
+        "parcel-reporter-bundle-manifest"
     ]
 }

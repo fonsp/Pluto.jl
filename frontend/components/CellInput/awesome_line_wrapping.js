@@ -1,5 +1,7 @@
 import _ from "../../imports/lodash.js"
 import { StateEffect, StateField, EditorView, Decoration } from "../../imports/CodemirrorPlutoSetup.js"
+import { ReactWidget } from "./ReactWidget.js"
+import { html } from "../../imports/Preact.js"
 
 /**
  * Plugin that makes line wrapping in the editor respect the identation of the line.
@@ -27,25 +29,6 @@ const extra_cycle_character_width = StateField.define({
         return value
     },
 })
-
-// https://github.com/codemirror/view/blob/590690c71df9a3f25fd4d78edea5322f18114507/src/dom.ts#L223
-/** @type {Range} */
-let scratchRange
-export function textRange(node, from, to = from) {
-    let range = scratchRange || (scratchRange = document.createRange())
-    range.setEnd(node, to)
-    range.setStart(node, from)
-    console.log(`range:`, range.cloneContents())
-    console.log(`range:`, range.startOffset, range.endOffset)
-    console.log(`range:`, range)
-    return range
-}
-// https://github.com/codemirror/view/blob/590690c71df9a3f25fd4d78edea5322f18114507/src/dom.ts#L41
-export function clientRectsFor(dom) {
-    if (dom.nodeType == 3) return textRange(dom, 0, dom.nodeValue.length).getClientRects()
-    else if (dom.nodeType == 1) return dom.getClientRects()
-    else return []
-}
 
 let character_width_listener = EditorView.updateListener.of((viewupdate) => {
     let width = viewupdate.view.defaultCharacterWidth
@@ -76,66 +59,14 @@ let character_width_listener = EditorView.updateListener.of((viewupdate) => {
     }
 })
 
-let indent_decorations = StateField.define({
-    create() {
-        return Decoration.none
-    },
-    update(deco, tr) {
-        if (!tr.docChanged && deco !== Decoration.none) return deco
-
-        let decorations = []
-
-        for (let i of _.range(0, tr.state.doc.lines)) {
-            let line = tr.state.doc.line(i + 1)
-            if (line.length === 0) continue
-
-            let indented_chars = 0
-            for (let ch of line.text) {
-                if (ch === "\t") {
-                    indented_chars = indented_chars + 1
-                } else if (ch === " ") {
-                    indented_chars = indented_chars + 1
-                } else {
-                    break
-                }
-            }
-
-            const line_wrapping = Decoration.line({
-                attributes: {
-                    style: "display: flex",
-                },
-            })
-            decorations.push(line_wrapping.range(line.from, line.from))
-
-            if (indented_chars !== 0) {
-                const wrap_indentation = Decoration.mark({
-                    class: "indentation",
-                    attributes: {
-                        style: "flex-shrink: 0;",
-                    },
-                })
-                decorations.push(wrap_indentation.range(line.from, line.from + indented_chars))
-            }
-
-            if (line.from + indented_chars - line.to !== 0) {
-                const wrap_rest = Decoration.mark({
-                    class: "indentation-rest",
-                })
-                decorations.push(wrap_rest.range(line.from + indented_chars, line.to))
-            }
-        }
-        return Decoration.set(decorations, true)
-    },
-    provide: (f) => EditorView.decorations.from(f),
-})
-
-let ARBITRARY_INDENT_LINE_WRAP_LIMIT = 48
+let ARBITRARY_INDENT_LINE_WRAP_LIMIT = 12
 let line_wrapping_decorations = StateField.define({
     create() {
         return Decoration.none
     },
     update(deco, tr) {
-        let tabSize = tr.state.tabSize
+        // let tabSize = tr.state.tabSize
+        let tabSize = 4
         let previous = tr.startState.field(extra_cycle_character_width, false)
         let previous_space_width = previous.measuredSpaceWidth ?? previous.defaultCharacterWidth
         let { measuredSpaceWidth, defaultCharacterWidth } = tr.state.field(extra_cycle_character_width, false)
@@ -146,27 +77,57 @@ let line_wrapping_decorations = StateField.define({
 
         let decorations = []
 
-        console.log(`space_width:`, space_width)
-
         // TODO? Only apply to visible lines? Wouldn't that screw stuff up??
         // TODO? Don't create new decorations when a line hasn't changed?
         for (let i of _.range(0, tr.state.doc.lines)) {
             let line = tr.state.doc.line(i + 1)
             if (line.length === 0) continue
 
-            let indented_chars = 0
+            let indented_tabs = 0
             for (let ch of line.text) {
                 if (ch === "\t") {
-                    indented_chars = indented_chars + tabSize
-                } else if (ch === " ") {
-                    indented_chars = indented_chars + 1
+                    indented_tabs++
+                    // For now I ignore spaces... because they are weird... and stupid!
+                    // } else if (ch === " ") {
+                    //     indented_chars = indented_chars + 1
+                    //     indented_text_characters++
                 } else {
                     break
                 }
             }
 
+            const characters_to_count = Math.min(indented_tabs, ARBITRARY_INDENT_LINE_WRAP_LIMIT)
+            const offset = characters_to_count * tabSize * space_width
+
+            const linerwapper = Decoration.line({
+                attributes: {
+                    // style: rules.cssText,
+                    style: `--indented: ${offset}px;`,
+                    class: "awesome-wrapping-plugin-the-line",
+                },
+            })
+            // Need to push before the tabs one else codemirror gets madddd
+            decorations.push(linerwapper.range(line.from, line.from))
+
+            if (characters_to_count !== 0) {
+                decorations.push(
+                    Decoration.mark({
+                        class: "awesome-wrapping-plugin-the-tabs",
+                    }).range(line.from, line.from + characters_to_count)
+                )
+            }
+            if (indented_tabs > characters_to_count) {
+                for (let i of _.range(characters_to_count, indented_tabs)) {
+                    decorations.push(
+                        Decoration.replace({
+                            widget: new ReactWidget(html`<span style=${{ opacity: 0.2 }}>⇥ </span>`),
+                            block: false,
+                        }).range(line.from + i, line.from + i + 1)
+                    )
+                }
+            }
+
             // let tabs_in_front = Math.min(line.text.match(/^\t*/)[0].length) * tabSize
-            const offset = Math.min(indented_chars, ARBITRARY_INDENT_LINE_WRAP_LIMIT) * space_width
 
             // TODO? Cache the CSSStyleDeclaration?
             // This is used when we don't use a css class, but we do need a css class because
@@ -175,21 +136,95 @@ let line_wrapping_decorations = StateField.define({
             // rules.setProperty("--idented", `${offset}px`)
             // rules.setProperty("text-indent", "calc(-1 * var(--idented) - 1px)") // I have no idea why, but without the - 1px it behaves weirdly periodically
             // rules.setProperty("padding-left", "calc(var(--idented) + var(--cm-left-padding, 4px))")
+        }
+        return Decoration.set(decorations)
+    },
+    provide: (f) => EditorView.decorations.from(f),
+})
 
-            const linerwapper = Decoration.line({
-                attributes: {
-                    // style: rules.cssText,
-                    style: `--indented: ${offset}px;`,
-                    class: "awesome-wrapping-plugin-indent",
-                },
-            })
+// Add this back in
+// let dont_break_before_spaces_matcher = new MatchDecorator({
+//     regexp: /[^ \t]+[ \t]+/g,
+//     decoration: Decoration.mark({
+//         class: "indentation-so-dont-break",
+//     }),
+// })
 
-            decorations.push(linerwapper.range(line.from, line.from))
+let identation_so_dont_break_marker = Decoration.mark({
+    class: "indentation-so-dont-break",
+})
+
+let dont_break_before_spaces = StateField.define({
+    create() {
+        return Decoration.none
+    },
+    update(deco, tr) {
+        let decorations = []
+        let pos = 0
+        for (let line of tr.newDoc) {
+            for (let match of line.matchAll(/[^ \t]+([ \t]|$)+/g)) {
+                if (match.index === 0) continue // Sneaky negative lookbehind
+                decorations.push(identation_so_dont_break_marker.range(pos + match.index, pos + match.index + match[0].length))
+            }
         }
         return Decoration.set(decorations, true)
     },
     provide: (f) => EditorView.decorations.from(f),
 })
 
-// export let awesome_line_wrapping = [extra_cycle_character_width, character_width_listener, line_wrapping_decorations]
-export let awesome_line_wrapping = [indent_decorations]
+// let break_after_space_matcher = new MatchDecorator({
+//     regexp: /[ ](?=[^ \t])/g,
+//     decoration: Decoration.widget({
+//         widget: new ReactWidget(html` <wbr></wbr>`),
+//         block: false,
+//         side: 1,
+//     }),
+// })
+
+// let break_after_space = ViewPlugin.define(
+//     (view) => {
+//         return {
+//             decorations: break_after_space_matcher.createDeco(view),
+//             update(update) {
+//                 this.decorations = break_after_space_matcher.updateDeco(update, this.decorations)
+//             },
+//         }
+//     },
+//     {
+//         decorations: (v) => v.decorations,
+//     }
+// )
+
+// let dont_break_start_of_line_matcher = new MatchDecorator({
+//     regexp: /^[ \t]+[^ \t]/g,
+//     decoration: Decoration.mark({
+//         class: "Uhhh",
+//     }),
+// })
+
+// let dont_break_start_of_line = ViewPlugin.define(
+//     (view) => {
+//         return {
+//             decorations: dont_break_start_of_line_matcher.createDeco(view),
+//             update(update) {
+//                 this.decorations = dont_break_start_of_line_matcher.updateDeco(update, this.decorations)
+//             },
+//         }
+//     },
+//     {
+//         decorations: (v) => v.decorations,
+//     }
+// )
+
+// console.log(`awesome_line_wrapping:`, indent_decorations)
+export let awesome_line_wrapping = [
+    // dont_break_start_of_line,
+    extra_cycle_character_width,
+    character_width_listener,
+    line_wrapping_decorations,
+    // break_after_space,
+    // dont_break_before_spaces,
+]
+// export let awesome_line_wrapping = []
+// export let awesome_line_wrapping = indent_decorations
+// export let awesome_line_wrapping = [dont_break_before_spaces, break_after_space]

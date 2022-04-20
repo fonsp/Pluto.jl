@@ -36,12 +36,14 @@ const Funccall = ({ frame }) => {
     }
 }
 
+const insert_commas_and_and = (/** @type {any[]} */ xs) => xs.flatMap((x, i) => (i === xs.length - 1 ? [x] : i === xs.length - 2 ? [x, " and "] : [x, ", "]))
+
 export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
     let pluto_actions = useContext(PlutoContext)
     const rewriters = [
         {
             pattern: /syntax: extra token after end of expression/,
-            display: (x) => {
+            display: (/** @type{string} */ x) => {
                 const begin_hint = html`<a
                     href="#"
                     onClick=${(e) => {
@@ -86,41 +88,54 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
         },
         {
             pattern: /MethodError: no method matching .*\nClosest candidates are:/,
-            display: (x) => x.split("\n").map((line) => html`<p style="white-space: nowrap;">${line}</p>`),
+            display: (/** @type{string} */ x) => x.split("\n").map((line) => html`<p style="white-space: nowrap;">${line}</p>`),
         },
         {
-            pattern: /Cyclic references among ([^\s]+)(, .*)* and ([^\s.]+).*/,
-            display: (x) => {
-                const reg = x.match(/Cyclic references among ([^\s]+)(, .*)* and ([^\s.]+).*/)
-                const first = reg[1]
-                const last = reg[3]
-                const mids = reg[2]?.split(", ").slice(1) || []
-                return html`<p>
-                    Cyclic references among <a href="#${encodeURI(first)}">${first}</a>,
-                    ${mids.map((varName) => html`<a href="#${encodeURI(varName)}">${varName}</a>`)} <a href="#${encodeURI(last)}">${last}</a>
-                </p>`
-            },
-        },
-        {
-            pattern: /Multiple definitions for (.*)./,
-            display: (x) => {
-                const reg = x.match(/Multiple definitions for (.*)./)
-                const what = reg[1]
-                const onclick = (ev) => {
-                    const where = document.querySelector(`pluto-cell:not([id='${cell_id}']) span[id='${encodeURI(what)}']`)
-                    ev.preventDefault()
-                    where.scrollIntoView()
-                }
+            pattern: /Cyclic references among (.*)\./,
+            display: (/** @type{string} */ x) =>
+                x.split("\n").map((line) => {
+                    const match = line.match(/Cyclic references among (.*)\./)
 
-                return html`<p>
-                    Multiple definitions for ${" "}
-                    <a href="#" onclick=${onclick}>${what}</a>
-                </p>`
-            },
+                    if (match) {
+                        let syms_string = match[1]
+                        let syms = syms_string.split(/, | and /)
+
+                        let symbol_links = syms.map((what) => html`<a href="#${encodeURI(what)}">${what}</a>`)
+
+                        return html`<p>Cyclic references among${" "}${insert_commas_and_and(symbol_links)}.</p>`
+                    } else {
+                        return html`<p>${line}</p>`
+                    }
+                }),
+        },
+        {
+            pattern: /Multiple definitions for (.*)\./,
+            display: (/** @type{string} */ x) =>
+                x.split("\n").map((line) => {
+                    const match = line.match(/Multiple definitions for (.*)\./)
+
+                    if (match) {
+                        let syms_string = match[1]
+                        let syms = syms_string.split(/, | and /)
+
+                        let symbol_links = syms.map((what) => {
+                            const onclick = (ev) => {
+                                const where = document.querySelector(`pluto-cell:not([id='${cell_id}']) span[id='${encodeURI(what)}']`)
+                                ev.preventDefault()
+                                where.scrollIntoView()
+                            }
+                            return html`<a href="#" onclick=${onclick}>${what}</a>`
+                        })
+
+                        return html`<p>Multiple definitions for${" "}${insert_commas_and_and(symbol_links)}.</p>`
+                    } else {
+                        return html`<p>${line}</p>`
+                    }
+                }),
         },
         {
             pattern: /.?/,
-            display: (x) => x.split("\n").map((line) => html`<p>${line}</p>`),
+            display: (/** @type{string} */ x) => x.split("\n").map((line) => html`<p>${line}</p>`),
         },
     ]
 

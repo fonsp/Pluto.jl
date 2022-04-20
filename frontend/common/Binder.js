@@ -1,7 +1,7 @@
 import immer from "../imports/immer.js"
 import { timeout_promise, ws_address_from_base } from "./PlutoConnection.js"
 
-export const BinderPhase = {
+export const BackendLaunchPhase = {
     wait_for_user: 0,
     requesting: 0.4,
     created: 0.6,
@@ -88,8 +88,7 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
         count_stat(`binder-start`)
         await setStatePromise(
             immer((state) => {
-                state.binder_phase = BinderPhase.requesting
-                state.loading = true
+                state.backend_launch_phase = BackendLaunchPhase.requesting
                 state.disable_ui = false
             })
         )
@@ -108,7 +107,7 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
 
         await setStatePromise(
             immer((state) => {
-                state.binder_phase = BinderPhase.created
+                state.backend_launch_phase = BackendLaunchPhase.created
                 state.binder_session_url = binder_session_url
                 state.binder_session_token = binder_session_token
             })
@@ -148,14 +147,14 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
         await setStatePromise(
             immer((state) => {
                 state.notebook.notebook_id = new_notebook_id
-                state.binder_phase = BinderPhase.notebook_running
+                state.backend_launch_phase = BackendLaunchPhase.notebook_running
             })
         )
         console.log("Connecting WebSocket")
 
         const connect_promise = connect(with_token(ws_address_from_base(binder_session_url) + "channels"))
-        await timeout_promise(connect_promise, 10_000).catch((e) => {
-            console.error("Failed to establish connection within 10 seconds. Navigating to the edit URL directly.", e)
+        await timeout_promise(connect_promise, 20_000).catch((e) => {
+            console.error("Failed to establish connection within 20 seconds. Navigating to the edit URL directly.", e)
             const edit_url = new URL("edit", binder_session_url)
             edit_url.searchParams.set("id", new_notebook_id)
             window.parent.location.href = with_token(edit_url)

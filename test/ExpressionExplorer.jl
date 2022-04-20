@@ -17,6 +17,9 @@ Some of these @test_broken lines are commented out to prevent printing to the te
 -fons =#
 
 @testset "Explore Expressions" begin
+    @inferred Pluto.ExpressionExplorer.split_funcname(:(Base.Submodule.f))
+    @inferred Pluto.ExpressionExplorer.maybe_macroexpand(:(@time 1))
+
     @testset "Basics" begin
         @test testee(:(a), [:a], [], [], [])
         @test testee(:(1 + 1), [], [], [:+], [])
@@ -60,6 +63,9 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(Foo[]), [:Foo], [], [], [])
         @test testee(:(x isa Foo), [:x, :Foo], [], [:isa], [])
 
+        @test testee(:((x[])::Int = 1), [:Int, :x], [], [], [])
+        @test testee(:((x[])::Int, y = 1, 2), [:Int, :x], [:y], [], [])
+
         @test testee(:(A{B} = B), [], [:A], [], [])
         @test testee(:(A{T} = Union{T,Int}), [:Int, :Union], [:A], [], [])
 
@@ -71,7 +77,7 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(abstract type a{T} <: b end), [], [:a], [], [:a => ([:b], [], [], [])])
         @test testee(:(abstract type a{T} <: b{T} end), [], [:a], [], [:a => ([:b], [], [], [])])
         @test_nowarn testee(macroexpand(Main, :(@enum a b c)), [], [], [], []; verbose=false)
-        
+
         e = :(struct a end) # needs to be on its own line to create LineNumberNode
         @test testee(e, [], [:a], [], [:a => ([], [], [], [])])
         @test testee(:(struct a <: b; c; d::Foo; end), [], [:a], [], [:a => ([:b, :Foo], [], [], [])])
@@ -365,17 +371,18 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         ])
     end
     @testset "Scope modifiers" begin
-        @test testee(:(let global a, b = 1, 2 end), [], [:a, :b], [], [])
-        @test_broken testee(:(let global a = b = 1 end), [], [:a], [], []; verbose=false)
-        @test testee(:(let global k = 3 end), [], [:k], [], [])
-        @test_broken testee(:(let global k = r end), [], [:k], [], []; verbose=false)
-        @test testee(:(let global k = 3; k end), [], [:k], [], [])
-        @test testee(:(let global k += 3 end), [:k], [:k], [:+], [])
-        @test testee(:(let global k; k = 4 end), [], [:k], [], [])
-        @test testee(:(let global k; b = 5 end), [], [], [], [])
-        @test testee(:(let global x, y, z; b = 5; x = 1; (y,z) = 3 end), [], [:x, :y, :z], [], [])
-        @test testee(:(let global x, z; b = 5; x = 1; end), [], [:x], [], [])
+        @test testee(:(let; global a, b = 1, 2 end), [], [:a, :b], [], [])
+        @test_broken testee(:(let; global a = b = 1 end), [], [:a], [], []; verbose=false)
+        @test testee(:(let; global k = 3 end), [], [:k], [], [])
+        @test_broken testee(:(let; global k = r end), [], [:k], [], []; verbose=false)
+        @test testee(:(let; global k = 3; k end), [], [:k], [], [])
+        @test testee(:(let; global k += 3 end), [:k], [:k], [:+], [])
+        @test testee(:(let; global k; k = 4 end), [], [:k], [], [])
+        @test testee(:(let; global k; b = 5 end), [], [], [], [])
+        @test testee(:(let; global x, y, z; b = 5; x = 1; (y,z) = 3 end), [], [:x, :y, :z], [], [])
+        @test testee(:(let; global x, z; b = 5; x = 1; end), [], [:x], [], [])
         @test testee(:(let a = 1, b = 2; show(a + b) end), [], [], [:show, :+], [])
+        @test_broken testee(:(let a = 1; global a = 2; end), [], [:a], [], []; verbose=false)
 
         @test testee(:(begin local a, b = 1, 2 end), [], [], [], [])
         @test testee(:(begin local a = b = 1 end), [], [:b], [], [])
@@ -394,7 +401,7 @@ Some of these @test_broken lines are commented out to prevent printing to the te
             :f => ([], [:k], [], [])
         ])
         @test testee(:((begin x = 1 end, y)), [:y], [:x], [], [])
-        @test testee(:(x = let global a += 1 end), [:a], [:x, :a], [:+], [])
+        @test testee(:(x = let; global a += 1 end), [:a], [:x, :a], [:+], [])
     end
     @testset "`import` & `using`" begin
         @test testee(:(using Plots), [], [:Plots], [], [])
@@ -587,6 +594,16 @@ Some of these @test_broken lines are commented out to prevent printing to the te
             references=[:x],
         )
     end
+    @testset "Special reactivity rules" begin
+        @test testee(
+            :(BenchmarkTools.generate_benchmark_definition(Main, Symbol[], Any[], Symbol[], (), $(Expr(:copyast, QuoteNode(:(f(x, y, z))))), $(Expr(:copyast, QuoteNode(:(A + B)))), $(Expr(:copyast, QuoteNode(nothing))), BenchmarkTools.parameters())),
+            [:Main, :BenchmarkTools, :Any, :Symbol, :x, :y, :z, :A, :B], [], [[:BenchmarkTools, :generate_benchmark_definition], [:BenchmarkTools, :parameters], :f, :+], []
+        )
+        @test testee(
+            :(Base.macroexpand(Main, $(QuoteNode(:(@enum a b c))))),
+            [:Main, :Base], [], [[:Base, :macroexpand]], [], [Symbol("@enum")]
+        )
+    end
     @testset "Extracting `using` and `import`" begin
         expr = quote
             using A
@@ -620,8 +637,6 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test ExpressionExplorer.external_package_names(:(using Plots, Something.Else, .LocalModule)) == Set([:Plots, :Something])
         @test ExpressionExplorer.external_package_names(:(import Plots.A: b, c)) == Set([:Plots])
 
-        if VERSION >= v"1.6.0"
-            @test ExpressionExplorer.external_package_names(Meta.parse("import Foo as Bar, Baz.Naz as Jazz")) == Set([:Foo, :Baz])
-        end
+        @test ExpressionExplorer.external_package_names(Meta.parse("import Foo as Bar, Baz.Naz as Jazz")) == Set([:Foo, :Baz])
     end
 end

@@ -3,6 +3,7 @@ import .ExpressionExplorer: SymbolsState, FunctionNameSignaturePair, FunctionNam
 import .Configuration
 import .PkgCompat: PkgCompat, PkgContext
 import Pkg
+import TOML
 
 mutable struct BondValue
     value::Any
@@ -26,7 +27,7 @@ Base.@kwdef mutable struct Notebook
     
     path::String
     notebook_id::UUID=uuid1()
-    topology::NotebookTopology=NotebookTopology()
+    topology::NotebookTopology
     _cached_topological_order::Union{Nothing,TopologicalOrder}=nothing
 
     # buffer will contain all unfetched updates - must be big enough
@@ -56,26 +57,33 @@ Base.@kwdef mutable struct Notebook
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
 end
 
-Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = Notebook(
+_collect_cells(cells_dict::Dict{UUID,Cell}, cells_order::Vector{UUID}) = 
+    map(i -> cells_dict[i], cells_order)
+_initial_topology(cells_dict::Dict{UUID,Cell}, cells_order::Vector{UUID}) =
+    NotebookTopology(;
+        cell_order=ImmutableVector(_collect_cells(cells_dict, cells_order)),
+    )
+    
+function Notebook(cells::Vector{Cell}, path::AbstractString, notebook_id::UUID)
     cells_dict=Dict(map(cells) do cell
         (cell.cell_id, cell)
-    end),
-    cell_order=map(x -> x.cell_id, cells),
-    path=path,
-    notebook_id=notebook_id,
-)
+    end)
+    cell_order=map(x -> x.cell_id, cells)
+    Notebook(;
+        cells_dict, cell_order,
+        topology=_initial_topology(cells_dict, cell_order),
+        path=path,
+        notebook_id=notebook_id,
+    )
+end
 
-Notebook(cells::Array{Cell,1}, path::AbstractString=numbered_until_new(joinpath(new_notebooks_directory(), cutename()))) = Notebook(cells, path, uuid1())
+Notebook(cells::Vector{Cell}, path::AbstractString=numbered_until_new(joinpath(new_notebooks_directory(), cutename()))) = Notebook(cells, path, uuid1())
 
 function Base.getproperty(notebook::Notebook, property::Symbol)
     if property == :cells
-        cells_dict = getfield(notebook, :cells_dict)
-        cell_order = getfield(notebook, :cell_order)
-        map(cell_order) do id
-            cells_dict[id]
-        end
+        _collect_cells(notebook.cells_dict, notebook.cell_order)
     elseif property == :cell_inputs
-        getfield(notebook, :cells_dict)
+        notebook.cells_dict
     else
         getfield(notebook, property)
     end
@@ -85,9 +93,13 @@ const _notebook_header = "### A Pluto.jl notebook ###"
 # We use a creative delimiter to avoid accidental use in code
 # so don't get inspired to suddenly use these in your code!
 const _cell_id_delimiter = "# ╔═╡ "
+const _cell_metadata_prefix = "# ╠═╡ "
 const _order_delimiter = "# ╠═"
 const _order_delimiter_folded = "# ╟─"
 const _cell_suffix = "\n\n"
+
+const _disabled_prefix = "#=╠═╡\n"
+const _disabled_suffix = "\n  ╠═╡ =#"
 
 const _ptoml_cell_id = UUID(1)
 const _mtoml_cell_id = UUID(2)
@@ -120,9 +132,23 @@ function save_notebook(io, notebook::Notebook)
     
     for c in cells_ordered
         println(io, _cell_id_delimiter, string(c.cell_id))
-        # write the cell code and prevent collisions with the cell delimiter
-        print(io, replace(c.code, _cell_id_delimiter => "# "))
-        print(io, _cell_suffix)
+        metadata_toml = strip(sprint(TOML.print, get_cell_metadata_no_default(c)))
+        if metadata_toml != ""
+            for line in split(metadata_toml, "\n")
+                println(io, _cell_metadata_prefix, line)
+            end
+        end
+        cell_running_disabled = c.metadata["disabled"]
+        if cell_running_disabled || c.depends_on_disabled_cells
+            print(io, _disabled_prefix)
+            print(io, replace(c.code, _cell_id_delimiter => "# "))
+            print(io, _disabled_suffix)
+            print(io, _cell_suffix)
+        else
+            # write the cell code and prevent collisions with the cell delimiter
+            print(io, replace(c.code, _cell_id_delimiter => "# "))
+            print(io, _cell_suffix)
+        end
     end
 
     
@@ -204,13 +230,34 @@ function load_notebook_nobackup(io, path)::Notebook
             break
         else
             cell_id = UUID(cell_id_str)
-            code_raw = String(readuntil(io, _cell_id_delimiter))
+            
+            metadata_toml_lines = String[]
+            initial_code_line = ""
+            while !eof(io)
+                line = String(readline(io))
+                if startswith(line, _cell_metadata_prefix)
+                    prefix_length = ncodeunits(_cell_metadata_prefix)
+                    push!(metadata_toml_lines, line[begin+prefix_length:end])
+                else
+                    initial_code_line = line
+                    break
+                end
+            end
+
+            code_raw = initial_code_line * "\n" * String(readuntil(io, _cell_id_delimiter))
             # change Windows line endings to Linux
             code_normalised = replace(code_raw, "\r\n" => "\n")
+
+            # remove the disabled on startup comments for further processing in Julia
+            code_normalised = replace(replace(code_normalised, _disabled_prefix => ""), _disabled_suffix => "")
+
             # remove the cell suffix
             code = code_normalised[1:prevind(code_normalised, end, length(_cell_suffix))]
 
-            read_cell = Cell(cell_id, code)
+            # parse metadata
+            metadata = Dict{String, Any}(DEFAULT_METADATA..., TOML.parse(join(metadata_toml_lines, "\n"))...)
+
+            read_cell = Cell(; cell_id, code, metadata)
             collected_cells[cell_id] = read_cell
         end
     end
@@ -279,7 +326,14 @@ function load_notebook_nobackup(io, path)::Notebook
         k ∈ appeared_order
     end
 
-    Notebook(cells_dict=appeared_cells_dict, cell_order=appeared_order, path=path, nbpkg_ctx=nbpkg_ctx, nbpkg_installed_versions_cache=nbpkg_cache(nbpkg_ctx))
+    Notebook(;
+        cells_dict=appeared_cells_dict, 
+        cell_order=appeared_order,
+        topology=_initial_topology(appeared_cells_dict, appeared_order),
+        path=path, 
+        nbpkg_ctx=nbpkg_ctx, 
+        nbpkg_installed_versions_cache=nbpkg_cache(nbpkg_ctx),
+    )
 end
 
 function load_notebook_nobackup(path::String)::Notebook
@@ -307,7 +361,7 @@ function load_notebook(path::String; disable_writing_notebook_files::Bool=false)
     update_dependency_cache!(loaded)
 
     disable_writing_notebook_files || save_notebook(loaded)
-    loaded.topology = NotebookTopology()
+    loaded.topology = NotebookTopology(; cell_order=ImmutableVector(loaded.cells))
 
     disable_writing_notebook_files || if only_versions_or_lineorder_differ(path, backup_path)
         rm(backup_path)

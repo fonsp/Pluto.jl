@@ -3,7 +3,17 @@ import { html, Component } from "../imports/Preact.js"
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 
-import { EditorState, EditorSelection, EditorView, placeholder, keymap, history, autocomplete, drawSelection } from "../imports/CodemirrorPlutoSetup.js"
+import {
+    EditorState,
+    EditorSelection,
+    EditorView,
+    placeholder,
+    keymap,
+    history,
+    autocomplete,
+    drawSelection,
+    Compartment,
+} from "../imports/CodemirrorPlutoSetup.js"
 
 let { autocompletion, completionKeymap } = autocomplete
 
@@ -11,10 +21,26 @@ let start_autocomplete_command = completionKeymap.find((keybinding) => keybindin
 let accept_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Enter")
 let close_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Escape")
 
+/**
+ * @typedef FilePickerProps
+ * @type {{
+ *  value: String,
+ *  suggest_new_file: {base: String},
+ *  button_label: String,
+ *  placeholder: String,
+ *  on_submit: (new_path: String) => Promise<void>,
+ *  client: import("../common/PlutoConnection.js").PlutoConnection,
+ * }}
+ * @augments Component<FilePickerProps,{}>
+ */
 export class FilePicker extends Component {
-    constructor() {
-        super()
+    constructor(/** @type {FilePickerProps} */ props) {
+        super(props)
+        this.state = {
+            is_button_disabled: true,
+        }
         this.forced_value = ""
+        /** @type {EditorView} */
         this.cm = null
 
         this.suggest_not_tmp = () => {
@@ -44,7 +70,7 @@ export class FilePicker extends Component {
                 } catch (error) {
                     this.cm.dispatch({
                         changes: { from: 0, to: this.cm.state.doc.length, insert: this.props.value },
-                        selection: EditorSelection.cursor(this.props.value),
+                        selection: EditorSelection.cursor(this.props.value.length),
                     })
                 }
             })
@@ -58,20 +84,30 @@ export class FilePicker extends Component {
                 selection: EditorSelection.cursor(this.props.value.length),
             })
             this.forced_value = this.props.value
+
+            // a long path like /Users/fons/Documents/article-test-1/asdfasdfasdfsadf.jl does not fit in the little box, so we scroll it to the left so that you can see the filename easily.
+            this.cm.scrollDOM.scrollLeft = 100000
+            setTimeout(() => {
+                // TODO: do we need this?
+                this.cm.scrollDOM.scrollLeft = 100000
+            }, 100)
         }
     }
     componentDidMount() {
+        const usesDarkTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         this.cm = new EditorView({
-            /** Migration #0: New */
             state: EditorState.create({
                 doc: "",
-
                 extensions: [
                     drawSelection(),
                     EditorView.domEventHandlers({
                         focus: (event, cm) => {
                             setTimeout(() => {
-                                this.suggest_not_tmp()
+                                if (this.props.suggest_new_file) {
+                                    this.suggest_not_tmp()
+                                } else if (cm.state.doc.length === 0) {
+                                    this.request_path_completions()
+                                }
                             }, 0)
                             return true
                         },
@@ -91,16 +127,24 @@ export class FilePicker extends Component {
                             }, 200)
                         },
                     }),
-                    EditorView.theme({
-                        "&": {
-                            fontSize: "inherit",
-                        },
-                        ".cm-scroller": {
-                            fontFamily: "inherit",
-                            overflowY: "hidden",
-                            overflowX: "auto",
-                        },
+                    EditorView.updateListener.of((update) => {
+                        if (update.docChanged) {
+                            this.setState({ is_button_disabled: update.state.doc.length === 0 })
+                        }
                     }),
+                    EditorView.theme(
+                        {
+                            "&": {
+                                fontSize: "inherit",
+                            },
+                            ".cm-scroller": {
+                                fontFamily: "inherit",
+                                overflowY: "hidden",
+                                overflowX: "auto",
+                            },
+                        },
+                        { dark: usesDarkTheme }
+                    ),
                     // EditorView.updateListener.of(onCM6Update),
                     history(),
                     autocompletion({
@@ -115,19 +159,23 @@ export class FilePicker extends Component {
                         maxRenderedOptions: 512, // fons's magic number
                         optionClass: (c) => c.type,
                     }),
+                    // When a completion is picked, immediately start autocompleting again
+                    EditorView.updateListener.of((update) => {
+                        update.transactions.forEach((transaction) => {
+                            const completion = transaction.annotation(autocomplete.pickedCompletion)
+                            if (completion != null) {
+                                update.view.scrollPosIntoView(update.state.doc.length)
+
+                                this.request_path_completions()
+                            }
+                        })
+                    }),
                     keymap.of([
                         {
                             key: "Enter",
                             run: (cm) => {
-                                // If there is autocomplete open, accept that
-                                if (accept_autocomplete_command.run(cm)) {
-                                    cm.scrollPosIntoView(cm.state.doc.length)
-                                    // and request the next ones
-                                    this.request_path_completions()
-                                    return true
-                                }
-                                // Else, fall down
-                                return false
+                                // If there is autocomplete open, accept that. It will return `true`
+                                return accept_autocomplete_command.run(cm)
                             },
                         },
                         { key: "Enter", run: this.on_submit },
@@ -169,9 +217,6 @@ export class FilePicker extends Component {
         })
         this.base.insertBefore(this.cm.dom, this.base.firstElementChild)
 
-        setTimeout(() => {
-            this.cm.scrollPosIntoView(this.props.value.length)
-        }, 100)
         // window.addEventListener("resize", () => {
         //     if (!this.cm.hasFocus()) {
         //         deselect(this.cm)
@@ -181,7 +226,7 @@ export class FilePicker extends Component {
     render() {
         return html`
             <pluto-filepicker>
-                <button onClick=${this.on_submit}>${this.props.button_label}</button>
+                <button onClick=${this.on_submit} disabled=${this.state.is_button_disabled}>${this.props.button_label}</button>
             </pluto-filepicker>
         `
     }
@@ -216,16 +261,20 @@ const pathhints =
                     return null
                 }
 
-                var styledResults = results.map((r) => ({
-                    label: r,
-                    type: r.endsWith("/") || r.endsWith("\\") ? "dir" : "file",
-                }))
+                let styledResults = results.map((r) => {
+                    let dir = r.endsWith("/") || r.endsWith("\\")
+                    return {
+                        label: r,
+                        type: dir ? "dir" : "file",
+                        boost: dir ? 1 : 0,
+                    }
+                })
 
                 if (suggest_new_file != null) {
-                    for (var initLength = 3; initLength >= 0; initLength--) {
+                    for (let initLength = 3; initLength >= 0; initLength--) {
                         const init = ".jl".substring(0, initLength)
                         if (queryFileName.endsWith(init)) {
-                            var suggestedFileName = queryFileName + ".jl".substring(initLength)
+                            let suggestedFileName = queryFileName + ".jl".substring(initLength)
 
                             if (suggestedFileName == ".jl") {
                                 suggestedFileName = "notebook.jl"
@@ -239,6 +288,7 @@ const pathhints =
                                     label: suggestedFileName + " (new)",
                                     apply: suggestedFileName,
                                     type: "file new",
+                                    boost: -99,
                                 })
                             }
                             break

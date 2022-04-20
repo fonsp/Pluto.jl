@@ -7,7 +7,7 @@ using InteractiveUtils
 # ╔═╡ c581d17a-c965-11eb-1607-bbeb44933d25
 # This file imports an outdated version of PlutoPkgTestA: 0.2.1 (which is stored in the embedded Manifest file) and Artifacts, which is now a standard library (as of Julia 1.6), but it used to be a registered package (https://github.com/JuliaPackaging/Artifacts.jl). This notebook was generated on Julia 1.5, so the Manifest will be very very confusing for Julia 1.6 and up.
 
-# It is generated on Julia 1.5 (our oldest supported Julia version, Manifest.toml is not backwards-compatible):
+# It is generated on Julia 1.5 (our oldest supported Julia version (at the time of writing), Manifest.toml is not backwards-compatible):
 
 # 1. add our test registry: 
 #   pkg> registry add https://github.com/JuliaPluto/PlutoPkgTestRegistry

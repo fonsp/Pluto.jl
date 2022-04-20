@@ -5,14 +5,14 @@ import HTTP.WebSockets
 
 function readframe(ws::WebSockets.WebSocket)
     header = WebSockets.readheader(ws.io)
-    @debug 1 "WebSocket ➡️  $header"
+    # @debug 1 "WebSocket ➡️  $header"
 
     if header.length > 0
         if length(ws.rxpayload) < header.length
             resize!(ws.rxpayload, header.length)
         end
         unsafe_read(ws.io, pointer(ws.rxpayload), header.length)
-        @debug 2 "          ➡️  \"$(String(ws.rxpayload[1:header.length]))\""
+        # @debug 2 "          ➡️  \"$(String(ws.rxpayload[1:header.length]))\""
     end
     l = Int(header.length)
     if header.hasmask

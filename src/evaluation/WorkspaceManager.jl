@@ -1,7 +1,7 @@
 module WorkspaceManager
 import UUIDs: UUID
 import ..Pluto
-import ..Pluto: Configuration, Notebook, Cell, ProcessStatus, ServerSession, ExpressionExplorer, pluto_filename, Token, withtoken, Promise, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
+import ..Pluto: Configuration, Notebook, Cell, ProcessStatus, ServerSession, ExpressionExplorer, pluto_filename, Token, withtoken, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
 import ..Pluto.PkgCompat
 import ..Configuration: CompilerOptions, _merge_notebook_compiler_options, _convert_to_flags
 import ..Pluto.ExpressionExplorer: FunctionName
@@ -22,14 +22,16 @@ Base.@kwdef mutable struct Workspace
 end
 
 "These expressions get evaluated whenever a new `Workspace` process is created."
-const process_preamble = [
-    :(ccall(:jl_exit_on_sigint, Cvoid, (Cint,), 0)),
-    :(include($(project_relative_path("src", "runner", "Loader.jl")))),
-    :(ENV["GKSwstype"] = "nul"), 
-    :(ENV["JULIA_REVISE_WORKER_ONLY"] = "1"), 
-]
+process_preamble() = quote
+    ccall(:jl_exit_on_sigint, Cvoid, (Cint,), 0)
+    include($(project_relative_path(joinpath("src", "runner"), "Loader.jl")))
+    ENV["GKSwstype"] = "nul"
+    ENV["JULIA_REVISE_WORKER_ONLY"] = "1"
+end
 
-const workspaces = Dict{UUID,Promise{Workspace}}()
+const workspaces = Dict{UUID,Task}()
+"Set of notebook IDs that we will never make a process for again."
+const discarded_workspaces = Set{UUID}()
 
 const SN = Tuple{ServerSession,Notebook}
 
@@ -44,6 +46,7 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
     end
 
     pid = if use_distributed
+        @debug "Creating workspace process" notebook.path length(notebook.cells)
         create_workspaceprocess(;compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler))
     else
         pid = Distributed.myid()
@@ -81,7 +84,9 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
     cd_workspace(workspace, notebook.path)
     use_nbpkg_environment((session, notebook), workspace)
 
-    is_offline_renderer || (notebook.process_status = ProcessStatus.ready)
+    is_offline_renderer || if notebook.process_status == ProcessStatus.starting
+        notebook.process_status = ProcessStatus.ready
+    end
     return workspace
 end
 
@@ -127,10 +132,62 @@ function start_relaying_self_updates((session, notebook)::SN, run_channel::Distr
 end
 
 function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.RemoteChannel)
+    update_throttled, flush_throttled = Pluto.throttled(0.1) do 
+        Pluto.send_notebook_changes!(Pluto.ClientRequest(session=session, notebook=notebook))
+    end
+    
     while true
         try
-            next_log = take!(log_channel)
-            putnotebookupdates!(session, notebook, UpdateMessage(:log, next_log, notebook))
+            next_log::Dict{String,Any} = take!(log_channel)
+
+            fn = next_log["file"]
+            match = findfirst("#==#", fn)
+
+            # We always show the log at the currently running cell, which is given by
+            running_cell_id = next_log["cell_id"]::UUID
+            running_cell = notebook.cells_dict[running_cell_id]
+
+            # Some logs originate from outside of the running code, through function calls. Some code here to deal with that:
+            begin
+                source_cell_id = if match !== nothing
+                    # the log originated from within the notebook
+                    
+                    UUID(fn[findfirst("#==#", fn)[end]+1:end])
+                else
+                    # the log originated from a function call defined outside of the notebook
+                    
+                    # we will show the log at the currently running cell, at "line -1", i.e. without line info.
+                    next_log["line"] = -1
+                    UUID(next_log["cell_id"])
+                end
+                
+                if running_cell_id != source_cell_id
+                    # the log originated from a function in another cell of the notebook
+                    # we will show the log at the currently running cell, at "line -1", i.e. without line info.
+                    next_log["line"] = -1
+                end
+            end
+
+            maybe_max_log = findfirst(((key, _),) -> key == "maxlog", next_log["kwargs"])
+            if maybe_max_log !== nothing
+                n_logs = count(log -> log["id"] == next_log["id"], running_cell.logs)
+                try
+                    max_log = parse(Int, next_log["kwargs"][maybe_max_log][2] |> first)
+
+                    # Don't include maxlog in the log-message, in line
+                    # with how Julia handles it.
+                    deleteat!(next_log["kwargs"], maybe_max_log)
+
+                    # Don't show message with id more than max_log times
+                    if max_log isa Int && n_logs >= max_log
+                        continue
+                    end
+                catch
+                end
+            end
+
+            push!(running_cell.logs, next_log)
+            Pluto.@asynclog update_throttled()
         catch e
             if !isopen(log_channel)
                 break
@@ -183,9 +240,7 @@ function create_workspaceprocess(;compiler_options=CompilerOptions())::Integer
         $(Distributed_expr).addprocs(1; exeflags=$(_convert_to_flags(compiler_options))) |> first
     end)
 
-    for expr in process_preamble
-        Distributed.remotecall_eval(Main, [pid], expr)
-    end
+    Distributed.remotecall_eval(Main, [pid], process_preamble())
 
     # so that we NEVER break the workspace with an interrupt 🤕
     @async Distributed.remotecall_eval(Main, [pid],
@@ -201,17 +256,25 @@ end
 "Return the `Workspace` of `notebook`; will be created if none exists yet."
 function get_workspace(session_notebook::SN)::Workspace
     session, notebook = session_notebook
-    promise = get!(workspaces, notebook.notebook_id) do
-        Promise{Workspace}(() -> make_workspace(session_notebook))
+    if notebook.notebook_id in discarded_workspaces
+        @debug "This should not happen" notebook.process_status
+        error("Cannot run code in this notebook: it has already shut down.")
     end
-    fetch(promise)
+    
+    task = get!(workspaces, notebook.notebook_id) do
+        Task(() -> make_workspace(session_notebook))
+    end
+    istaskstarted(task) || schedule(task)
+    fetch(task)
 end
 get_workspace(workspace::Workspace)::Workspace = workspace
 
-"Try our best to delete the workspace. `ProcessWorkspace` will have its worker process terminated."
-function unmake_workspace(session_notebook::Union{SN,Workspace}; async=false)
+"Try our best to delete the workspace. `Workspace` will have its worker process terminated."
+function unmake_workspace(session_notebook::SN; async::Bool=false, verbose::Bool=true, allow_restart::Bool=true)
+    session, notebook = session_notebook
     workspace = get_workspace(session_notebook)
     workspace.discarded = true
+    allow_restart || push!(discarded_workspaces, notebook.notebook_id)
 
     if workspace.pid != Distributed.myid()
         filter!(p -> fetch(p.second).pid != workspace.pid, workspaces)
@@ -224,6 +287,12 @@ function unmake_workspace(session_notebook::Union{SN,Workspace}; async=false)
             end)
         end
         async || wait(t)
+    else
+        if !isready(workspace.dowork_token)
+            @error "Cannot unmake a workspace running inside the same process: the notebook is still running."
+        elseif verbose
+            @warn "Cannot unmake a workspace running inside the same process: the notebook might still be running. If you are sure that your code is not running the notebook async, then you can use the `verbose=false` keyword argument to disable this message."
+        end
     end
 end
 
@@ -288,19 +357,22 @@ end
 function eval_format_fetch_in_workspace(
     session_notebook::Union{SN,Workspace},
     expr::Expr,
-    cell_id::UUID,
+    cell_id::UUID;
     ends_with_semicolon::Bool=false,
     function_wrapped_info::Union{Nothing,Tuple}=nothing,
     forced_expr_id::Union{PlutoRunner.ObjectID,Nothing}=nothing,
-    user_requested_run::Bool=true,
     known_published_objects::Vector{String}=String[],
-)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
+    user_requested_run::Bool=true,
+    capture_stdout::Bool=true,
+)::PlutoRunner.FormattedCellResult
 
     workspace = get_workspace(session_notebook)
+    
+    is_on_this_process = workspace.pid == Distributed.myid()
 
     # if multiple notebooks run on the same process, then we need to `cd` between the different notebook paths
     if session_notebook isa Tuple
-        if workspace.pid == Distributed.myid()
+        if is_on_this_process
             cd_workspace(workspace, session_notebook[2].path)
         end
         use_nbpkg_environment(session_notebook, workspace)
@@ -317,8 +389,9 @@ function eval_format_fetch_in_workspace(
             $(QuoteNode(expr)), 
             $cell_id, 
             $function_wrapped_info,
-            $forced_expr_id,
+            $forced_expr_id;
             user_requested_run=$user_requested_run,
+            capture_stdout=$(capture_stdout && !is_on_this_process),
         )))
         put!(workspace.dowork_token)
         nothing
@@ -347,7 +420,7 @@ function format_fetch_in_workspace(
     ends_with_semicolon, 
     known_published_objects::Vector{String}=String[],
     showmore_id::Union{PlutoRunner.ObjectDimPair,Nothing}=nothing,
-)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
+)::PlutoRunner.FormattedCellResult
     workspace = get_workspace(session_notebook)
     
     # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.
@@ -428,6 +501,40 @@ move_vars(session_notebook, bump_workspace_module(session_notebook)..., to_delet
     move_vars(args...; kwargs...)
 )
 
+"""
+```julia
+poll(query::Function, timeout::Real=Inf64, interval::Real=1/20)::Bool
+```
+
+Keep running your function `query()` in intervals until it returns `true`, or until `timeout` seconds have passed.
+
+`poll` returns `true` if `query()` returned `true`. If `timeout` seconds have passed, `poll` returns `false`.
+
+# Example
+```julia
+vals = [1,2,3]
+
+@async for i in 1:5
+    sleep(1)
+    vals[3] = 99
+end
+
+poll(8 #= seconds =#) do
+    vals[3] == 99
+end # returns `true` (after 5 seconds)!
+
+###
+
+@async for i in 1:5
+    sleep(1)
+    vals[3] = 5678
+end
+
+poll(2 #= seconds =#) do
+    vals[3] == 5678
+end # returns `false` (after 2 seconds)!
+```
+"""
 function poll(query::Function, timeout::Real=Inf64, interval::Real=1/20)
     start = time()
     while time() < start + timeout

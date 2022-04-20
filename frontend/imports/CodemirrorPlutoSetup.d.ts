@@ -295,7 +295,9 @@ declare class ChangeSet extends ChangeDesc {
     map(other: ChangeDesc, before?: boolean): ChangeSet;
     /**
     Iterate over the changed ranges in the document, calling `f` for
-    each.
+    each, with the range in the original document (`fromA`-`toA`)
+    and the range that replaces it in the new document
+    (`fromB`-`toB`).
     
     When `individual` is true, adjacent changes are reported
     separately.
@@ -1487,6 +1489,559 @@ interface NestedParse {
 }
 declare function parseMixed(nest: (node: TreeCursor, input: Input) => NestedParse | null): ParseWrapper;
 
+declare class StyleModule {
+  constructor(spec: {[selector: string]: StyleSpec}, options?: {
+    finish?(sel: string): string
+  })
+  getRules(): string
+  static mount(root: Document | ShadowRoot | DocumentOrShadowRoot, module: StyleModule | ReadonlyArray<StyleModule>): void
+  static newName(): string
+}
+
+type StyleSpec = {
+  [propOrSelector: string]: string | number | StyleSpec | null
+}
+
+/**
+Highlighting tags are markers that denote a highlighting category.
+They are [associated](https://codemirror.net/6/docs/ref/#highlight.styleTags) with parts of a syntax
+tree by a language mode, and then mapped to an actual CSS style by
+a [highlight style](https://codemirror.net/6/docs/ref/#highlight.HighlightStyle).
+
+Because syntax tree node types and highlight styles have to be
+able to talk the same language, CodeMirror uses a mostly _closed_
+[vocabulary](https://codemirror.net/6/docs/ref/#highlight.tags) of syntax tags (as opposed to
+traditional open string-based systems, which make it hard for
+highlighting themes to cover all the tokens produced by the
+various languages).
+
+It _is_ possible to [define](https://codemirror.net/6/docs/ref/#highlight.Tag^define) your own
+highlighting tags for system-internal use (where you control both
+the language package and the highlighter), but such tags will not
+be picked up by regular highlighters (though you can derive them
+from standard tags to allow highlighters to fall back to those).
+*/
+declare class Tag {
+    /**
+    Define a new tag. If `parent` is given, the tag is treated as a
+    sub-tag of that parent, and [highlight
+    styles](https://codemirror.net/6/docs/ref/#highlight.HighlightStyle) that don't mention this tag
+    will try to fall back to the parent tag (or grandparent tag,
+    etc).
+    */
+    static define(parent?: Tag): Tag;
+    /**
+    Define a tag _modifier_, which is a function that, given a tag,
+    will return a tag that is a subtag of the original. Applying the
+    same modifier to a twice tag will return the same value (`m1(t1)
+    == m1(t1)`) and applying multiple modifiers will, regardless or
+    order, produce the same tag (`m1(m2(t1)) == m2(m1(t1))`).
+    
+    When multiple modifiers are applied to a given base tag, each
+    smaller set of modifiers is registered as a parent, so that for
+    example `m1(m2(m3(t1)))` is a subtype of `m1(m2(t1))`,
+    `m1(m3(t1)`, and so on.
+    */
+    static defineModifier(): (tag: Tag) => Tag;
+}
+/**
+A highlight style associates CSS styles with higlighting
+[tags](https://codemirror.net/6/docs/ref/#highlight.Tag).
+*/
+declare class HighlightStyle {
+    /**
+    Extension that registers this style with an editor. When
+    multiple highlight styles are given, they _all_ apply, assigning
+    the combination of their matching styles to tokens.
+    */
+    readonly extension: Extension;
+    /**
+    An extension that installs this highlighter as a fallback
+    highlight style, which will only be used if no other highlight
+    styles are configured.
+    */
+    readonly fallback: Extension;
+    /**
+    A style module holding the CSS rules for this highlight style.
+    When using [`highlightTree`](https://codemirror.net/6/docs/ref/#highlight.highlightTree), you may
+    want to manually mount this module to show the highlighting.
+    */
+    readonly module: StyleModule | null;
+    private map;
+    private scope;
+    private all;
+    private constructor();
+    /**
+    Returns the CSS class associated with the given tag, if any.
+    This method is bound to the instance by the constructor.
+    */
+    match(tag: Tag, scope: NodeType): string | null;
+    /**
+    Combines an array of highlight styles into a single match
+    function that returns all of the classes assigned by the styles
+    for a given tag.
+    */
+    static combinedMatch(styles: readonly HighlightStyle[]): (tag: Tag, scope: NodeType) => any;
+    /**
+    Create a highlighter style that associates the given styles to
+    the given tags. The spec must be objects that hold a style tag
+    or array of tags in their `tag` property, and either a single
+    `class` property providing a static CSS class (for highlighters
+    like [`classHighlightStyle`](https://codemirror.net/6/docs/ref/#highlight.classHighlightStyle)
+    that rely on external styling), or a
+    [`style-mod`](https://github.com/marijnh/style-mod#documentation)-style
+    set of CSS properties (which define the styling for those tags).
+    
+    The CSS rules created for a highlighter will be emitted in the
+    order of the spec's properties. That means that for elements that
+    have multiple tags associated with them, styles defined further
+    down in the list will have a higher CSS precedence than styles
+    defined earlier.
+    */
+    static define(specs: readonly TagStyle[], options?: {
+        /**
+        By default, highlighters apply to the entire document. You can
+        scope them to a single language by providing the language's
+        [top node](https://codemirror.net/6/docs/ref/#language.Language.topNode) here.
+        */
+        scope?: NodeType;
+        /**
+        Add a style to _all_ content. Probably only useful in
+        combination with `scope`.
+        */
+        all?: string | StyleSpec;
+        /**
+        Specify that this highlight style should only be active then
+        the theme is dark or light. By default, it is active
+        regardless of theme.
+        */
+        themeType?: "dark" | "light";
+    }): HighlightStyle;
+    /**
+    Returns the CSS classes (if any) that the highlight styles
+    active in the given state would assign to the given a style
+    [tag](https://codemirror.net/6/docs/ref/#highlight.Tag) and (optional) language
+    [scope](https://codemirror.net/6/docs/ref/#highlight.HighlightStyle^define^options.scope).
+    */
+    static get(state: EditorState, tag: Tag, scope?: NodeType): string | null;
+}
+/**
+The type of object used in
+[`HighlightStyle.define`](https://codemirror.net/6/docs/ref/#highlight.HighlightStyle^define).
+Assigns a style to one or more highlighting
+[tags](https://codemirror.net/6/docs/ref/#highlight.Tag), which can either be a fixed class name
+(which must be defined elsewhere), or a set of CSS properties, for
+which the library will define an anonymous class.
+*/
+interface TagStyle {
+    /**
+    The tag or tags to target.
+    */
+    tag: Tag | readonly Tag[];
+    /**
+    If given, this maps the tags to a fixed class name.
+    */
+    class?: string;
+    /**
+    Any further properties (if `class` isn't given) will be
+    interpreted as in style objects given to
+    [style-mod](https://github.com/marijnh/style-mod#documentation).
+    The type here is `any` because of TypeScript limitations.
+    */
+    [styleProperty: string]: any;
+}
+/**
+The default set of highlighting [tags](https://codemirror.net/6/docs/ref/#highlight.Tag^define) used
+by regular language packages and themes.
+
+This collection is heavily biased towards programming languages,
+and necessarily incomplete. A full ontology of syntactic
+constructs would fill a stack of books, and be impractical to
+write themes for. So try to make do with this set. If all else
+fails, [open an
+issue](https://github.com/codemirror/codemirror.next) to propose a
+new tag, or [define](https://codemirror.net/6/docs/ref/#highlight.Tag^define) a local custom tag for
+your use case.
+
+Note that it is not obligatory to always attach the most specific
+tag possible to an element—if your grammar can't easily
+distinguish a certain type of element (such as a local variable),
+it is okay to style it as its more general variant (a variable).
+
+For tags that extend some parent tag, the documentation links to
+the parent.
+*/
+declare const tags: {
+    /**
+    A comment.
+    */
+    comment: Tag;
+    /**
+    A line [comment](https://codemirror.net/6/docs/ref/#highlight.tags.comment).
+    */
+    lineComment: Tag;
+    /**
+    A block [comment](https://codemirror.net/6/docs/ref/#highlight.tags.comment).
+    */
+    blockComment: Tag;
+    /**
+    A documentation [comment](https://codemirror.net/6/docs/ref/#highlight.tags.comment).
+    */
+    docComment: Tag;
+    /**
+    Any kind of identifier.
+    */
+    name: Tag;
+    /**
+    The [name](https://codemirror.net/6/docs/ref/#highlight.tags.name) of a variable.
+    */
+    variableName: Tag;
+    /**
+    A type [name](https://codemirror.net/6/docs/ref/#highlight.tags.name).
+    */
+    typeName: Tag;
+    /**
+    A tag name (subtag of [`typeName`](https://codemirror.net/6/docs/ref/#highlight.tags.typeName)).
+    */
+    tagName: Tag;
+    /**
+    A property or field [name](https://codemirror.net/6/docs/ref/#highlight.tags.name).
+    */
+    propertyName: Tag;
+    /**
+    An attribute name (subtag of [`propertyName`](https://codemirror.net/6/docs/ref/#highlight.tags.propertyName)).
+    */
+    attributeName: Tag;
+    /**
+    The [name](https://codemirror.net/6/docs/ref/#highlight.tags.name) of a class.
+    */
+    className: Tag;
+    /**
+    A label [name](https://codemirror.net/6/docs/ref/#highlight.tags.name).
+    */
+    labelName: Tag;
+    /**
+    A namespace [name](https://codemirror.net/6/docs/ref/#highlight.tags.name).
+    */
+    namespace: Tag;
+    /**
+    The [name](https://codemirror.net/6/docs/ref/#highlight.tags.name) of a macro.
+    */
+    macroName: Tag;
+    /**
+    A literal value.
+    */
+    literal: Tag;
+    /**
+    A string [literal](https://codemirror.net/6/docs/ref/#highlight.tags.literal).
+    */
+    string: Tag;
+    /**
+    A documentation [string](https://codemirror.net/6/docs/ref/#highlight.tags.string).
+    */
+    docString: Tag;
+    /**
+    A character literal (subtag of [string](https://codemirror.net/6/docs/ref/#highlight.tags.string)).
+    */
+    character: Tag;
+    /**
+    An attribute value (subtag of [string](https://codemirror.net/6/docs/ref/#highlight.tags.string)).
+    */
+    attributeValue: Tag;
+    /**
+    A number [literal](https://codemirror.net/6/docs/ref/#highlight.tags.literal).
+    */
+    number: Tag;
+    /**
+    An integer [number](https://codemirror.net/6/docs/ref/#highlight.tags.number) literal.
+    */
+    integer: Tag;
+    /**
+    A floating-point [number](https://codemirror.net/6/docs/ref/#highlight.tags.number) literal.
+    */
+    float: Tag;
+    /**
+    A boolean [literal](https://codemirror.net/6/docs/ref/#highlight.tags.literal).
+    */
+    bool: Tag;
+    /**
+    Regular expression [literal](https://codemirror.net/6/docs/ref/#highlight.tags.literal).
+    */
+    regexp: Tag;
+    /**
+    An escape [literal](https://codemirror.net/6/docs/ref/#highlight.tags.literal), for example a
+    backslash escape in a string.
+    */
+    escape: Tag;
+    /**
+    A color [literal](https://codemirror.net/6/docs/ref/#highlight.tags.literal).
+    */
+    color: Tag;
+    /**
+    A URL [literal](https://codemirror.net/6/docs/ref/#highlight.tags.literal).
+    */
+    url: Tag;
+    /**
+    A language keyword.
+    */
+    keyword: Tag;
+    /**
+    The [keyword](https://codemirror.net/6/docs/ref/#highlight.tags.keyword) for the self or this
+    object.
+    */
+    self: Tag;
+    /**
+    The [keyword](https://codemirror.net/6/docs/ref/#highlight.tags.keyword) for null.
+    */
+    null: Tag;
+    /**
+    A [keyword](https://codemirror.net/6/docs/ref/#highlight.tags.keyword) denoting some atomic value.
+    */
+    atom: Tag;
+    /**
+    A [keyword](https://codemirror.net/6/docs/ref/#highlight.tags.keyword) that represents a unit.
+    */
+    unit: Tag;
+    /**
+    A modifier [keyword](https://codemirror.net/6/docs/ref/#highlight.tags.keyword).
+    */
+    modifier: Tag;
+    /**
+    A [keyword](https://codemirror.net/6/docs/ref/#highlight.tags.keyword) that acts as an operator.
+    */
+    operatorKeyword: Tag;
+    /**
+    A control-flow related [keyword](https://codemirror.net/6/docs/ref/#highlight.tags.keyword).
+    */
+    controlKeyword: Tag;
+    /**
+    A [keyword](https://codemirror.net/6/docs/ref/#highlight.tags.keyword) that defines something.
+    */
+    definitionKeyword: Tag;
+    /**
+    A [keyword](https://codemirror.net/6/docs/ref/#highlight.tags.keyword) related to defining or
+    interfacing with modules.
+    */
+    moduleKeyword: Tag;
+    /**
+    An operator.
+    */
+    operator: Tag;
+    /**
+    An [operator](https://codemirror.net/6/docs/ref/#highlight.tags.operator) that defines something.
+    */
+    derefOperator: Tag;
+    /**
+    Arithmetic-related [operator](https://codemirror.net/6/docs/ref/#highlight.tags.operator).
+    */
+    arithmeticOperator: Tag;
+    /**
+    Logical [operator](https://codemirror.net/6/docs/ref/#highlight.tags.operator).
+    */
+    logicOperator: Tag;
+    /**
+    Bit [operator](https://codemirror.net/6/docs/ref/#highlight.tags.operator).
+    */
+    bitwiseOperator: Tag;
+    /**
+    Comparison [operator](https://codemirror.net/6/docs/ref/#highlight.tags.operator).
+    */
+    compareOperator: Tag;
+    /**
+    [Operator](https://codemirror.net/6/docs/ref/#highlight.tags.operator) that updates its operand.
+    */
+    updateOperator: Tag;
+    /**
+    [Operator](https://codemirror.net/6/docs/ref/#highlight.tags.operator) that defines something.
+    */
+    definitionOperator: Tag;
+    /**
+    Type-related [operator](https://codemirror.net/6/docs/ref/#highlight.tags.operator).
+    */
+    typeOperator: Tag;
+    /**
+    Control-flow [operator](https://codemirror.net/6/docs/ref/#highlight.tags.operator).
+    */
+    controlOperator: Tag;
+    /**
+    Program or markup punctuation.
+    */
+    punctuation: Tag;
+    /**
+    [Punctuation](https://codemirror.net/6/docs/ref/#highlight.tags.punctuation) that separates
+    things.
+    */
+    separator: Tag;
+    /**
+    Bracket-style [punctuation](https://codemirror.net/6/docs/ref/#highlight.tags.punctuation).
+    */
+    bracket: Tag;
+    /**
+    Angle [brackets](https://codemirror.net/6/docs/ref/#highlight.tags.bracket) (usually `<` and `>`
+    tokens).
+    */
+    angleBracket: Tag;
+    /**
+    Square [brackets](https://codemirror.net/6/docs/ref/#highlight.tags.bracket) (usually `[` and `]`
+    tokens).
+    */
+    squareBracket: Tag;
+    /**
+    Parentheses (usually `(` and `)` tokens). Subtag of
+    [bracket](https://codemirror.net/6/docs/ref/#highlight.tags.bracket).
+    */
+    paren: Tag;
+    /**
+    Braces (usually `{` and `}` tokens). Subtag of
+    [bracket](https://codemirror.net/6/docs/ref/#highlight.tags.bracket).
+    */
+    brace: Tag;
+    /**
+    Content, for example plain text in XML or markup documents.
+    */
+    content: Tag;
+    /**
+    [Content](https://codemirror.net/6/docs/ref/#highlight.tags.content) that represents a heading.
+    */
+    heading: Tag;
+    /**
+    A level 1 [heading](https://codemirror.net/6/docs/ref/#highlight.tags.heading).
+    */
+    heading1: Tag;
+    /**
+    A level 2 [heading](https://codemirror.net/6/docs/ref/#highlight.tags.heading).
+    */
+    heading2: Tag;
+    /**
+    A level 3 [heading](https://codemirror.net/6/docs/ref/#highlight.tags.heading).
+    */
+    heading3: Tag;
+    /**
+    A level 4 [heading](https://codemirror.net/6/docs/ref/#highlight.tags.heading).
+    */
+    heading4: Tag;
+    /**
+    A level 5 [heading](https://codemirror.net/6/docs/ref/#highlight.tags.heading).
+    */
+    heading5: Tag;
+    /**
+    A level 6 [heading](https://codemirror.net/6/docs/ref/#highlight.tags.heading).
+    */
+    heading6: Tag;
+    /**
+    A prose separator (such as a horizontal rule).
+    */
+    contentSeparator: Tag;
+    /**
+    [Content](https://codemirror.net/6/docs/ref/#highlight.tags.content) that represents a list.
+    */
+    list: Tag;
+    /**
+    [Content](https://codemirror.net/6/docs/ref/#highlight.tags.content) that represents a quote.
+    */
+    quote: Tag;
+    /**
+    [Content](https://codemirror.net/6/docs/ref/#highlight.tags.content) that is emphasized.
+    */
+    emphasis: Tag;
+    /**
+    [Content](https://codemirror.net/6/docs/ref/#highlight.tags.content) that is styled strong.
+    */
+    strong: Tag;
+    /**
+    [Content](https://codemirror.net/6/docs/ref/#highlight.tags.content) that is part of a link.
+    */
+    link: Tag;
+    /**
+    [Content](https://codemirror.net/6/docs/ref/#highlight.tags.content) that is styled as code or
+    monospace.
+    */
+    monospace: Tag;
+    /**
+    [Content](https://codemirror.net/6/docs/ref/#highlight.tags.content) that has a strike-through
+    style.
+    */
+    strikethrough: Tag;
+    /**
+    Inserted text in a change-tracking format.
+    */
+    inserted: Tag;
+    /**
+    Deleted text.
+    */
+    deleted: Tag;
+    /**
+    Changed text.
+    */
+    changed: Tag;
+    /**
+    An invalid or unsyntactic element.
+    */
+    invalid: Tag;
+    /**
+    Metadata or meta-instruction.
+    */
+    meta: Tag;
+    /**
+    [Metadata](https://codemirror.net/6/docs/ref/#highlight.tags.meta) that applies to the entire
+    document.
+    */
+    documentMeta: Tag;
+    /**
+    [Metadata](https://codemirror.net/6/docs/ref/#highlight.tags.meta) that annotates or adds
+    attributes to a given syntactic element.
+    */
+    annotation: Tag;
+    /**
+    Processing instruction or preprocessor directive. Subtag of
+    [meta](https://codemirror.net/6/docs/ref/#highlight.tags.meta).
+    */
+    processingInstruction: Tag;
+    /**
+    [Modifier](https://codemirror.net/6/docs/ref/#highlight.Tag^defineModifier) that indicates that a
+    given element is being defined. Expected to be used with the
+    various [name](https://codemirror.net/6/docs/ref/#highlight.tags.name) tags.
+    */
+    definition: (tag: Tag) => Tag;
+    /**
+    [Modifier](https://codemirror.net/6/docs/ref/#highlight.Tag^defineModifier) that indicates that
+    something is constant. Mostly expected to be used with
+    [variable names](https://codemirror.net/6/docs/ref/#highlight.tags.variableName).
+    */
+    constant: (tag: Tag) => Tag;
+    /**
+    [Modifier](https://codemirror.net/6/docs/ref/#highlight.Tag^defineModifier) used to indicate that
+    a [variable](https://codemirror.net/6/docs/ref/#highlight.tags.variableName) or [property
+    name](https://codemirror.net/6/docs/ref/#highlight.tags.propertyName) is being called or defined
+    as a function.
+    */
+    function: (tag: Tag) => Tag;
+    /**
+    [Modifier](https://codemirror.net/6/docs/ref/#highlight.Tag^defineModifier) that can be applied to
+    [names](https://codemirror.net/6/docs/ref/#highlight.tags.name) to indicate that they belong to
+    the language's standard environment.
+    */
+    standard: (tag: Tag) => Tag;
+    /**
+    [Modifier](https://codemirror.net/6/docs/ref/#highlight.Tag^defineModifier) that indicates a given
+    [names](https://codemirror.net/6/docs/ref/#highlight.tags.name) is local to some scope.
+    */
+    local: (tag: Tag) => Tag;
+    /**
+    A generic variant [modifier](https://codemirror.net/6/docs/ref/#highlight.Tag^defineModifier) that
+    can be used to tag language-specific alternative variants of
+    some common tag. It is recommended for themes to define special
+    forms of at least the [string](https://codemirror.net/6/docs/ref/#highlight.tags.string) and
+    [variable name](https://codemirror.net/6/docs/ref/#highlight.tags.variableName) tags, since those
+    come up a lot.
+    */
+    special: (tag: Tag) => Tag;
+};
+/**
+A default highlight style (works well with light themes).
+*/
+declare const defaultHighlightStyle: HighlightStyle;
+
 declare class Stack {
     pos: number;
     get context(): any;
@@ -1647,6 +2202,11 @@ interface SpanIterator<T extends RangeValue> {
     `active.length + 1` to signal this.
     */
     point(from: number, to: number, value: T, active: readonly T[], openStart: number): void;
+    /**
+    When provided, this will be called for each point processed,
+    causing the ones for which it returns false to be ignored.
+    */
+    filterPoint?(from: number, to: number, value: T, index: number): boolean;
 }
 /**
 A range cursor is an object that moves to the next range every
@@ -1790,19 +2350,6 @@ declare class RangeSet<T extends RangeValue> {
     The empty set of ranges.
     */
     static empty: RangeSet<any>;
-}
-
-declare class StyleModule {
-  constructor(spec: {[selector: string]: StyleSpec}, options?: {
-    finish?(sel: string): string
-  })
-  getRules(): string
-  static mount(root: Document | ShadowRoot | DocumentOrShadowRoot, module: StyleModule | ReadonlyArray<StyleModule>): void
-  static newName(): string
-}
-
-type StyleSpec = {
-  [propOrSelector: string]: string | number | StyleSpec | null
 }
 
 declare type Attrs = {
@@ -2063,6 +2610,7 @@ interface Rect {
     readonly top: number;
     readonly bottom: number;
 }
+declare type ScrollStrategy = "nearest" | "start" | "end" | "center";
 
 /**
 Command functions are used in key bindings and other types of user
@@ -2125,11 +2673,13 @@ declare class PluginField<T> {
     **Note**: For reasons of data flow (plugins are only updated
     after the viewport is computed), decorations produced by plugins
     are _not_ taken into account when predicting the vertical layout
-    structure of the editor. Thus, things like large widgets or big
-    replacements (i.e. code folding) should be provided through the
-    state-level [`decorations` facet](https://codemirror.net/6/docs/ref/#view.EditorView^decorations),
-    not this plugin field. Specifically, replacing decorations that
-    cross line boundaries will break if provided through a plugin.
+    structure of the editor. They **must not** introduce block
+    widgets (that will raise an error) or replacing decorations that
+    cover line breaks (these will be ignored if they occur). Such
+    decorations, or others that cause a large amount of vertical
+    size shift compared to the undecorated content, should be
+    provided through the state-level [`decorations`
+    facet](https://codemirror.net/6/docs/ref/#view.EditorView^decorations) instead.
     */
     static decorations: PluginField<DecorationSet>;
     /**
@@ -2196,12 +2746,12 @@ declare class ViewPlugin<V extends PluginValue> {
     Define a plugin from a constructor function that creates the
     plugin's value, given an editor view.
     */
-    static define<V extends PluginValue>(create: (view: EditorView) => V, spec?: PluginSpec<V>): ViewPlugin<V>;
+    static define<V extends PluginValue & object>(create: (view: EditorView) => V, spec?: PluginSpec<V>): ViewPlugin<V>;
     /**
     Create a plugin for a class whose constructor takes a single
     editor view as argument.
     */
-    static fromClass<V extends PluginValue>(cls: {
+    static fromClass<V extends PluginValue & object>(cls: {
         new (view: EditorView): V;
     }, spec?: PluginSpec<V>): ViewPlugin<V>;
 }
@@ -2255,12 +2805,13 @@ declare class ViewUpdate {
     */
     get viewportChanged(): boolean;
     /**
-    Indicates whether the line height in the editor changed in this update.
+    Indicates whether the height of an element in the editor changed
+    in this update.
     */
     get heightChanged(): boolean;
     /**
-    Returns true when the document changed or the size of the editor
-    or the lines or characters within it has changed.
+    Returns true when the document was modified or the size of the
+    editor, or elements within the editor, changed.
     */
     get geometryChanged(): boolean;
     /**
@@ -2458,9 +3009,17 @@ declare class EditorView {
     get inView(): boolean;
     /**
     Indicates whether the user is currently composing text via
-    [IME](https://en.wikipedia.org/wiki/Input_method).
+    [IME](https://en.wikipedia.org/wiki/Input_method), and at least
+    one change has been made in the current composition.
     */
     get composing(): boolean;
+    /**
+    Indicates whether the user is currently in composing state. Note
+    that on some platforms, like Android, this will be the case a
+    lot, since just putting the cursor on a word starts a
+    composition there.
+    */
+    get compositionStarted(): boolean;
     private _dispatch;
     /**
     The document or shadow root that the view lives in.
@@ -2584,7 +3143,7 @@ declare class EditorView {
     (`view.contentDOM.getBoundingClientRect().top`) to limit layout
     queries.
     
-    *Deprecated: use `blockAtHeight` instead.*
+    *Deprecated: use `elementAtHeight` instead.*
     */
     blockAtHeight(height: number, docTop?: number): BlockInfo;
     /**
@@ -2705,6 +3264,11 @@ declare class EditorView {
     Find the DOM parent node and offset (child offset if `node` is
     an element, character offset when it is a text node) at the
     given document position.
+    
+    Note that for positions that aren't currently in
+    `visibleRanges`, the resulting DOM position isn't necessarily
+    meaningful (it may just point before or after a placeholder
+    element).
     */
     domAtPos(pos: number): {
         node: Node;
@@ -2717,8 +3281,11 @@ declare class EditorView {
     */
     posAtDOM(node: Node, offset?: number): number;
     /**
-    Get the document position at the given screen coordinates.
-    Returns null if no valid position could be found.
+    Get the document position at the given screen coordinates. For
+    positions not covered by the visible viewport's DOM structure,
+    this will return null, unless `false` is passed as second
+    argument, in which case it'll return an estimated position that
+    would be near the coordinates if it were rendered.
     */
     posAtCoords(coords: {
         x: number;
@@ -2787,13 +3354,48 @@ declare class EditorView {
     /**
     Effect that can be [added](https://codemirror.net/6/docs/ref/#state.TransactionSpec.effects) to a
     transaction to make it scroll the given range into view.
+    
+    *Deprecated*. Use [`scrollIntoView`](https://codemirror.net/6/docs/ref/#view.EditorView^scrollIntoView) instead.
     */
     static scrollTo: StateEffectType<SelectionRange>;
     /**
     Effect that makes the editor scroll the given range to the
     center of the visible view.
+    
+    *Deprecated*. Use [`scrollIntoView`](https://codemirror.net/6/docs/ref/#view.EditorView^scrollIntoView) instead.
     */
     static centerOn: StateEffectType<SelectionRange>;
+    /**
+    Returns an effect that can be
+    [added](https://codemirror.net/6/docs/ref/#state.TransactionSpec.effects) to a transaction to
+    cause it to scroll the given position or range into view.
+    */
+    static scrollIntoView(pos: number | SelectionRange, options?: {
+        /**
+        By default (`"nearest"`) the position will be vertically
+        scrolled only the minimal amount required to move the given
+        position into view. You can set this to `"start"` to move it
+        to the top of the view, `"end"` to move it to the bottom, or
+        `"center"` to move it to the center.
+        */
+        y?: ScrollStrategy;
+        /**
+        Effect similar to
+        [`y`](https://codemirror.net/6/docs/ref/#view.EditorView^scrollIntoView^options.y), but for the
+        horizontal scroll position.
+        */
+        x?: ScrollStrategy;
+        /**
+        Extra vertical distance to add when moving something into
+        view. Not used with the `"center"` strategy. Defaults to 5.
+        */
+        yMargin?: number;
+        /**
+        Extra horizontal distance to add. Not used with the `"center"`
+        strategy. Defaults to 5.
+        */
+        xMargin?: number;
+    }): StateEffect<unknown>;
     /**
     Facet to add a [style
     module](https://github.com/marijnh/style-mod#documentation) to
@@ -2894,6 +3496,13 @@ declare class EditorView {
     }, options?: {
         dark?: boolean;
     }): Extension;
+    /**
+    This facet records whether a dark theme is active. The extension
+    returned by [`theme`](https://codemirror.net/6/docs/ref/#view.EditorView^theme) automatically
+    includes an instance of this when the `dark` option is set to
+    true.
+    */
+    static darkTheme: Facet<boolean, boolean>;
     /**
     Create an extension that adds styles to the base theme. Like
     with [`theme`](https://codemirror.net/6/docs/ref/#view.EditorView^theme), use `&` to indicate the
@@ -3216,6 +3825,16 @@ incomplete) parse tree of active [language](https://codemirror.net/6/docs/ref/#l
 or the empty tree if there is no language available.
 */
 declare function syntaxTree(state: EditorState): Tree;
+/**
+Queries whether there is a full syntax tree available up to the
+given document position. If there isn't, the background parse
+process _might_ still be working and update the tree further, but
+there is no guarantee of that—the parser will [stop
+working](https://codemirror.net/6/docs/ref/#language.syntaxParserStopped) when it has spent a
+certain amount of time or has moved beyond the visible viewport.
+Always returns false if no language has been enabled.
+*/
+declare function syntaxTreeAvailable(state: EditorState, upto?: number): boolean;
 /**
 This class bundles a [language object](https://codemirror.net/6/docs/ref/#language.Language) with an
 optional set of supporting extensions. Language packages are
@@ -3592,6 +4211,14 @@ interface StreamParser<State> {
     languageData?: {
         [name: string]: any;
     };
+    /**
+    Extra tokens to use in this parser. When the tokenizer returns a
+    token name that exists as a property in this object, the
+    corresponding tag will be assigned to the token.
+    */
+    tokenTable?: {
+        [name: string]: Tag;
+    };
 }
 /**
 A [language](https://codemirror.net/6/docs/ref/#language.Language) class based on a streaming
@@ -3612,7 +4239,7 @@ declare type JuliaLanguageConfig = {
 };
 declare function julia(config?: JuliaLanguageConfig): LanguageSupport;
 
-declare type Handlers = {
+declare type Handlers$1 = {
     [event: string]: (view: EditorView, line: BlockInfo, event: Event) => boolean;
 };
 interface LineNumberConfig {
@@ -3624,7 +4251,7 @@ interface LineNumberConfig {
     /**
     Supply event handlers for DOM events on this gutter.
     */
-    domEventHandlers?: Handlers;
+    domEventHandlers?: Handlers$1;
 }
 /**
 Create a line number gutter extension.
@@ -3689,535 +4316,6 @@ The default keymap. Includes all bindings from
 declare const defaultKeymap: readonly KeyBinding[];
 
 /**
-Highlighting tags are markers that denote a highlighting category.
-They are [associated](https://codemirror.net/6/docs/ref/#highlight.styleTags) with parts of a syntax
-tree by a language mode, and then mapped to an actual CSS style by
-a [highlight style](https://codemirror.net/6/docs/ref/#highlight.HighlightStyle).
-
-Because syntax tree node types and highlight styles have to be
-able to talk the same language, CodeMirror uses a mostly _closed_
-[vocabulary](https://codemirror.net/6/docs/ref/#highlight.tags) of syntax tags (as opposed to
-traditional open string-based systems, which make it hard for
-highlighting themes to cover all the tokens produced by the
-various languages).
-
-It _is_ possible to [define](https://codemirror.net/6/docs/ref/#highlight.Tag^define) your own
-highlighting tags for system-internal use (where you control both
-the language package and the highlighter), but such tags will not
-be picked up by regular highlighters (though you can derive them
-from standard tags to allow highlighters to fall back to those).
-*/
-declare class Tag {
-    /**
-    Define a new tag. If `parent` is given, the tag is treated as a
-    sub-tag of that parent, and [highlight
-    styles](https://codemirror.net/6/docs/ref/#highlight.HighlightStyle) that don't mention this tag
-    will try to fall back to the parent tag (or grandparent tag,
-    etc).
-    */
-    static define(parent?: Tag): Tag;
-    /**
-    Define a tag _modifier_, which is a function that, given a tag,
-    will return a tag that is a subtag of the original. Applying the
-    same modifier to a twice tag will return the same value (`m1(t1)
-    == m1(t1)`) and applying multiple modifiers will, regardless or
-    order, produce the same tag (`m1(m2(t1)) == m2(m1(t1))`).
-    
-    When multiple modifiers are applied to a given base tag, each
-    smaller set of modifiers is registered as a parent, so that for
-    example `m1(m2(m3(t1)))` is a subtype of `m1(m2(t1))`,
-    `m1(m3(t1)`, and so on.
-    */
-    static defineModifier(): (tag: Tag) => Tag;
-}
-/**
-A highlight style associates CSS styles with higlighting
-[tags](https://codemirror.net/6/docs/ref/#highlight.Tag).
-*/
-declare class HighlightStyle {
-    /**
-    Extension that registers this style with an editor. When
-    multiple highlight styles are given, they _all_ apply, assigning
-    the combination of their matching styles to tokens.
-    */
-    readonly extension: Extension;
-    /**
-    An extension that installs this highlighter as a fallback
-    highlight style, which will only be used if no other highlight
-    styles are configured.
-    */
-    readonly fallback: Extension;
-    /**
-    A style module holding the CSS rules for this highlight style.
-    When using [`highlightTree`](https://codemirror.net/6/docs/ref/#highlight.highlightTree), you may
-    want to manually mount this module to show the highlighting.
-    */
-    readonly module: StyleModule | null;
-    private map;
-    private scope;
-    private all;
-    private constructor();
-    /**
-    Returns the CSS class associated with the given tag, if any.
-    This method is bound to the instance by the constructor.
-    */
-    match(tag: Tag, scope: NodeType): string | null;
-    /**
-    Combines an array of highlight styles into a single match
-    function that returns all of the classes assigned by the styles
-    for a given tag.
-    */
-    static combinedMatch(styles: readonly HighlightStyle[]): (tag: Tag, scope: NodeType) => any;
-    /**
-    Create a highlighter style that associates the given styles to
-    the given tags. The spec must be objects that hold a style tag
-    or array of tags in their `tag` property, and either a single
-    `class` property providing a static CSS class (for highlighters
-    like [`classHighlightStyle`](https://codemirror.net/6/docs/ref/#highlight.classHighlightStyle)
-    that rely on external styling), or a
-    [`style-mod`](https://github.com/marijnh/style-mod#documentation)-style
-    set of CSS properties (which define the styling for those tags).
-    
-    The CSS rules created for a highlighter will be emitted in the
-    order of the spec's properties. That means that for elements that
-    have multiple tags associated with them, styles defined further
-    down in the list will have a higher CSS precedence than styles
-    defined earlier.
-    */
-    static define(specs: readonly TagStyle[], options?: {
-        /**
-        By default, highlighters apply to the entire document. You can
-        scope them to a single language by providing the language's
-        [top node](https://codemirror.net/6/docs/ref/#language.Language.topNode) here.
-        */
-        scope?: NodeType;
-        /**
-        Add a style to _all_ content. Probably only useful in
-        combination with `scope`.
-        */
-        all?: string | StyleSpec;
-    }): HighlightStyle;
-    /**
-    Returns the CSS classes (if any) that the highlight styles
-    active in the given state would assign to the given a style
-    [tag](https://codemirror.net/6/docs/ref/#highlight.Tag) and (optional) language
-    [scope](https://codemirror.net/6/docs/ref/#highlight.HighlightStyle^define^options.scope).
-    */
-    static get(state: EditorState, tag: Tag, scope?: NodeType): string | null;
-}
-/**
-The type of object used in
-[`HighlightStyle.define`](https://codemirror.net/6/docs/ref/#highlight.HighlightStyle^define).
-Assigns a style to one or more highlighting
-[tags](https://codemirror.net/6/docs/ref/#highlight.Tag), which can either be a fixed class name
-(which must be defined elsewhere), or a set of CSS properties, for
-which the library will define an anonymous class.
-*/
-interface TagStyle {
-    /**
-    The tag or tags to target.
-    */
-    tag: Tag | readonly Tag[];
-    /**
-    If given, this maps the tags to a fixed class name.
-    */
-    class?: string;
-    /**
-    Any further properties (if `class` isn't given) will be
-    interpreted as in style objects given to
-    [style-mod](https://github.com/marijnh/style-mod#documentation).
-    The type here is `any` because of TypeScript limitations.
-    */
-    [styleProperty: string]: any;
-}
-/**
-The default set of highlighting [tags](https://codemirror.net/6/docs/ref/#highlight.Tag^define) used
-by regular language packages and themes.
-
-This collection is heavily biased towards programming languages,
-and necessarily incomplete. A full ontology of syntactic
-constructs would fill a stack of books, and be impractical to
-write themes for. So try to make do with this set. If all else
-fails, [open an
-issue](https://github.com/codemirror/codemirror.next) to propose a
-new tag, or [define](https://codemirror.net/6/docs/ref/#highlight.Tag^define) a local custom tag for
-your use case.
-
-Note that it is not obligatory to always attach the most specific
-tag possible to an element—if your grammar can't easily
-distinguish a certain type of element (such as a local variable),
-it is okay to style it as its more general variant (a variable).
-
-For tags that extend some parent tag, the documentation links to
-the parent.
-*/
-declare const tags: {
-    /**
-    A comment.
-    */
-    comment: Tag;
-    /**
-    A line [comment](https://codemirror.net/6/docs/ref/#highlight.tags.comment).
-    */
-    lineComment: Tag;
-    /**
-    A block [comment](https://codemirror.net/6/docs/ref/#highlight.tags.comment).
-    */
-    blockComment: Tag;
-    /**
-    A documentation [comment](https://codemirror.net/6/docs/ref/#highlight.tags.comment).
-    */
-    docComment: Tag;
-    /**
-    Any kind of identifier.
-    */
-    name: Tag;
-    /**
-    The [name](https://codemirror.net/6/docs/ref/#highlight.tags.name) of a variable.
-    */
-    variableName: Tag;
-    /**
-    A type [name](https://codemirror.net/6/docs/ref/#highlight.tags.name).
-    */
-    typeName: Tag;
-    /**
-    A tag name (subtag of [`typeName`](https://codemirror.net/6/docs/ref/#highlight.tags.typeName)).
-    */
-    tagName: Tag;
-    /**
-    A property or field [name](https://codemirror.net/6/docs/ref/#highlight.tags.name).
-    */
-    propertyName: Tag;
-    /**
-    An attribute name (subtag of [`propertyName`](https://codemirror.net/6/docs/ref/#highlight.tags.propertyName)).
-    */
-    attributeName: Tag;
-    /**
-    The [name](https://codemirror.net/6/docs/ref/#highlight.tags.name) of a class.
-    */
-    className: Tag;
-    /**
-    A label [name](https://codemirror.net/6/docs/ref/#highlight.tags.name).
-    */
-    labelName: Tag;
-    /**
-    A namespace [name](https://codemirror.net/6/docs/ref/#highlight.tags.name).
-    */
-    namespace: Tag;
-    /**
-    The [name](https://codemirror.net/6/docs/ref/#highlight.tags.name) of a macro.
-    */
-    macroName: Tag;
-    /**
-    A literal value.
-    */
-    literal: Tag;
-    /**
-    A string [literal](https://codemirror.net/6/docs/ref/#highlight.tags.literal).
-    */
-    string: Tag;
-    /**
-    A documentation [string](https://codemirror.net/6/docs/ref/#highlight.tags.string).
-    */
-    docString: Tag;
-    /**
-    A character literal (subtag of [string](https://codemirror.net/6/docs/ref/#highlight.tags.string)).
-    */
-    character: Tag;
-    /**
-    An attribute value (subtag of [string](https://codemirror.net/6/docs/ref/#highlight.tags.string)).
-    */
-    attributeValue: Tag;
-    /**
-    A number [literal](https://codemirror.net/6/docs/ref/#highlight.tags.literal).
-    */
-    number: Tag;
-    /**
-    An integer [number](https://codemirror.net/6/docs/ref/#highlight.tags.number) literal.
-    */
-    integer: Tag;
-    /**
-    A floating-point [number](https://codemirror.net/6/docs/ref/#highlight.tags.number) literal.
-    */
-    float: Tag;
-    /**
-    A boolean [literal](https://codemirror.net/6/docs/ref/#highlight.tags.literal).
-    */
-    bool: Tag;
-    /**
-    Regular expression [literal](https://codemirror.net/6/docs/ref/#highlight.tags.literal).
-    */
-    regexp: Tag;
-    /**
-    An escape [literal](https://codemirror.net/6/docs/ref/#highlight.tags.literal), for example a
-    backslash escape in a string.
-    */
-    escape: Tag;
-    /**
-    A color [literal](https://codemirror.net/6/docs/ref/#highlight.tags.literal).
-    */
-    color: Tag;
-    /**
-    A URL [literal](https://codemirror.net/6/docs/ref/#highlight.tags.literal).
-    */
-    url: Tag;
-    /**
-    A language keyword.
-    */
-    keyword: Tag;
-    /**
-    The [keyword](https://codemirror.net/6/docs/ref/#highlight.tags.keyword) for the self or this
-    object.
-    */
-    self: Tag;
-    /**
-    The [keyword](https://codemirror.net/6/docs/ref/#highlight.tags.keyword) for null.
-    */
-    null: Tag;
-    /**
-    A [keyword](https://codemirror.net/6/docs/ref/#highlight.tags.keyword) denoting some atomic value.
-    */
-    atom: Tag;
-    /**
-    A [keyword](https://codemirror.net/6/docs/ref/#highlight.tags.keyword) that represents a unit.
-    */
-    unit: Tag;
-    /**
-    A modifier [keyword](https://codemirror.net/6/docs/ref/#highlight.tags.keyword).
-    */
-    modifier: Tag;
-    /**
-    A [keyword](https://codemirror.net/6/docs/ref/#highlight.tags.keyword) that acts as an operator.
-    */
-    operatorKeyword: Tag;
-    /**
-    A control-flow related [keyword](https://codemirror.net/6/docs/ref/#highlight.tags.keyword).
-    */
-    controlKeyword: Tag;
-    /**
-    A [keyword](https://codemirror.net/6/docs/ref/#highlight.tags.keyword) that defines something.
-    */
-    definitionKeyword: Tag;
-    /**
-    An operator.
-    */
-    operator: Tag;
-    /**
-    An [operator](https://codemirror.net/6/docs/ref/#highlight.tags.operator) that defines something.
-    */
-    derefOperator: Tag;
-    /**
-    Arithmetic-related [operator](https://codemirror.net/6/docs/ref/#highlight.tags.operator).
-    */
-    arithmeticOperator: Tag;
-    /**
-    Logical [operator](https://codemirror.net/6/docs/ref/#highlight.tags.operator).
-    */
-    logicOperator: Tag;
-    /**
-    Bit [operator](https://codemirror.net/6/docs/ref/#highlight.tags.operator).
-    */
-    bitwiseOperator: Tag;
-    /**
-    Comparison [operator](https://codemirror.net/6/docs/ref/#highlight.tags.operator).
-    */
-    compareOperator: Tag;
-    /**
-    [Operator](https://codemirror.net/6/docs/ref/#highlight.tags.operator) that updates its operand.
-    */
-    updateOperator: Tag;
-    /**
-    [Operator](https://codemirror.net/6/docs/ref/#highlight.tags.operator) that defines something.
-    */
-    definitionOperator: Tag;
-    /**
-    Type-related [operator](https://codemirror.net/6/docs/ref/#highlight.tags.operator).
-    */
-    typeOperator: Tag;
-    /**
-    Control-flow [operator](https://codemirror.net/6/docs/ref/#highlight.tags.operator).
-    */
-    controlOperator: Tag;
-    /**
-    Program or markup punctuation.
-    */
-    punctuation: Tag;
-    /**
-    [Punctuation](https://codemirror.net/6/docs/ref/#highlight.tags.punctuation) that separates
-    things.
-    */
-    separator: Tag;
-    /**
-    Bracket-style [punctuation](https://codemirror.net/6/docs/ref/#highlight.tags.punctuation).
-    */
-    bracket: Tag;
-    /**
-    Angle [brackets](https://codemirror.net/6/docs/ref/#highlight.tags.bracket) (usually `<` and `>`
-    tokens).
-    */
-    angleBracket: Tag;
-    /**
-    Square [brackets](https://codemirror.net/6/docs/ref/#highlight.tags.bracket) (usually `[` and `]`
-    tokens).
-    */
-    squareBracket: Tag;
-    /**
-    Parentheses (usually `(` and `)` tokens). Subtag of
-    [bracket](https://codemirror.net/6/docs/ref/#highlight.tags.bracket).
-    */
-    paren: Tag;
-    /**
-    Braces (usually `{` and `}` tokens). Subtag of
-    [bracket](https://codemirror.net/6/docs/ref/#highlight.tags.bracket).
-    */
-    brace: Tag;
-    /**
-    Content, for example plain text in XML or markup documents.
-    */
-    content: Tag;
-    /**
-    [Content](https://codemirror.net/6/docs/ref/#highlight.tags.content) that represents a heading.
-    */
-    heading: Tag;
-    /**
-    A level 1 [heading](https://codemirror.net/6/docs/ref/#highlight.tags.heading).
-    */
-    heading1: Tag;
-    /**
-    A level 2 [heading](https://codemirror.net/6/docs/ref/#highlight.tags.heading).
-    */
-    heading2: Tag;
-    /**
-    A level 3 [heading](https://codemirror.net/6/docs/ref/#highlight.tags.heading).
-    */
-    heading3: Tag;
-    /**
-    A level 4 [heading](https://codemirror.net/6/docs/ref/#highlight.tags.heading).
-    */
-    heading4: Tag;
-    /**
-    A level 5 [heading](https://codemirror.net/6/docs/ref/#highlight.tags.heading).
-    */
-    heading5: Tag;
-    /**
-    A level 6 [heading](https://codemirror.net/6/docs/ref/#highlight.tags.heading).
-    */
-    heading6: Tag;
-    /**
-    A prose separator (such as a horizontal rule).
-    */
-    contentSeparator: Tag;
-    /**
-    [Content](https://codemirror.net/6/docs/ref/#highlight.tags.content) that represents a list.
-    */
-    list: Tag;
-    /**
-    [Content](https://codemirror.net/6/docs/ref/#highlight.tags.content) that represents a quote.
-    */
-    quote: Tag;
-    /**
-    [Content](https://codemirror.net/6/docs/ref/#highlight.tags.content) that is emphasized.
-    */
-    emphasis: Tag;
-    /**
-    [Content](https://codemirror.net/6/docs/ref/#highlight.tags.content) that is styled strong.
-    */
-    strong: Tag;
-    /**
-    [Content](https://codemirror.net/6/docs/ref/#highlight.tags.content) that is part of a link.
-    */
-    link: Tag;
-    /**
-    [Content](https://codemirror.net/6/docs/ref/#highlight.tags.content) that is styled as code or
-    monospace.
-    */
-    monospace: Tag;
-    /**
-    [Content](https://codemirror.net/6/docs/ref/#highlight.tags.content) that has a strike-through
-    style.
-    */
-    strikethrough: Tag;
-    /**
-    Inserted text in a change-tracking format.
-    */
-    inserted: Tag;
-    /**
-    Deleted text.
-    */
-    deleted: Tag;
-    /**
-    Changed text.
-    */
-    changed: Tag;
-    /**
-    An invalid or unsyntactic element.
-    */
-    invalid: Tag;
-    /**
-    Metadata or meta-instruction.
-    */
-    meta: Tag;
-    /**
-    [Metadata](https://codemirror.net/6/docs/ref/#highlight.tags.meta) that applies to the entire
-    document.
-    */
-    documentMeta: Tag;
-    /**
-    [Metadata](https://codemirror.net/6/docs/ref/#highlight.tags.meta) that annotates or adds
-    attributes to a given syntactic element.
-    */
-    annotation: Tag;
-    /**
-    Processing instruction or preprocessor directive. Subtag of
-    [meta](https://codemirror.net/6/docs/ref/#highlight.tags.meta).
-    */
-    processingInstruction: Tag;
-    /**
-    [Modifier](https://codemirror.net/6/docs/ref/#highlight.Tag^defineModifier) that indicates that a
-    given element is being defined. Expected to be used with the
-    various [name](https://codemirror.net/6/docs/ref/#highlight.tags.name) tags.
-    */
-    definition: (tag: Tag) => Tag;
-    /**
-    [Modifier](https://codemirror.net/6/docs/ref/#highlight.Tag^defineModifier) that indicates that
-    something is constant. Mostly expected to be used with
-    [variable names](https://codemirror.net/6/docs/ref/#highlight.tags.variableName).
-    */
-    constant: (tag: Tag) => Tag;
-    /**
-    [Modifier](https://codemirror.net/6/docs/ref/#highlight.Tag^defineModifier) used to indicate that
-    a [variable](https://codemirror.net/6/docs/ref/#highlight.tags.variableName) or [property
-    name](https://codemirror.net/6/docs/ref/#highlight.tags.propertyName) is being called or defined
-    as a function.
-    */
-    function: (tag: Tag) => Tag;
-    /**
-    [Modifier](https://codemirror.net/6/docs/ref/#highlight.Tag^defineModifier) that can be applied to
-    [names](https://codemirror.net/6/docs/ref/#highlight.tags.name) to indicate that they belong to
-    the language's standard environment.
-    */
-    standard: (tag: Tag) => Tag;
-    /**
-    [Modifier](https://codemirror.net/6/docs/ref/#highlight.Tag^defineModifier) that indicates a given
-    [names](https://codemirror.net/6/docs/ref/#highlight.tags.name) is local to some scope.
-    */
-    local: (tag: Tag) => Tag;
-    /**
-    A generic variant [modifier](https://codemirror.net/6/docs/ref/#highlight.Tag^defineModifier) that
-    can be used to tag language-specific alternative variants of
-    some common tag. It is recommended for themes to define special
-    forms of at least the [string](https://codemirror.net/6/docs/ref/#highlight.tags.string) and
-    [variable name](https://codemirror.net/6/docs/ref/#highlight.tags.variableName) tags, since those
-    come up a lot.
-    */
-    special: (tag: Tag) => Tag;
-};
-/**
-A default highlight style (works well with light themes).
-*/
-declare const defaultHighlightStyle: HighlightStyle;
-
-/**
 Create an extension that enables rectangular selections. By
 default, it will react to left mouse drag with the Alt key held
 down. When such a selection occurs, the text within the rectangle
@@ -4241,6 +4339,9 @@ Default fold-related key bindings.
  - Ctrl-Alt-]: [`unfoldAll`](https://codemirror.net/6/docs/ref/#fold.unfoldAll).
 */
 declare const foldKeymap: readonly KeyBinding[];
+declare type Handlers = {
+    [event: string]: (view: EditorView, line: BlockInfo, event: Event) => boolean;
+};
 interface FoldGutterConfig {
     /**
     A function that creates the DOM element used to indicate a
@@ -4258,6 +4359,10 @@ interface FoldGutterConfig {
     Defaults to `"›"`.
     */
     closedText?: string;
+    /**
+    Supply event handlers for DOM events on this gutter.
+    */
+    domEventHandlers?: Handlers;
 }
 /**
 Create an extension that registers a fold gutter, which shows a
@@ -4388,7 +4493,7 @@ interface Completion {
     a plain string or a function that'll render the DOM structure to
     show when invoked.
     */
-    info?: string | ((completion: Completion) => (Node | Promise<Node>));
+    info?: string | ((completion: Completion) => (Node | null | Promise<Node | null>));
     /**
     How to apply the completion. The default is to replace it with
     its [label](https://codemirror.net/6/docs/ref/#autocomplete.Completion.label). When this holds a
@@ -4669,6 +4774,16 @@ declare function currentCompletions(state: EditorState): readonly Completion[];
 Return the currently selected completion, if any.
 */
 declare function selectedCompletion(state: EditorState): Completion | null;
+/**
+Returns the currently selected position in the active completion
+list, or null if no completions are active.
+*/
+declare function selectedCompletionIndex(state: EditorState): number | null;
+/**
+Create an effect that can be attached to a transaction to change
+the currently selected completion.
+*/
+declare function setSelectedCompletion(index: number): StateEffect<unknown>;
 
 type index_Completion = Completion;
 type index_CompletionContext = CompletionContext;
@@ -4691,6 +4806,8 @@ declare const index_nextSnippetField: typeof nextSnippetField;
 declare const index_pickedCompletion: typeof pickedCompletion;
 declare const index_prevSnippetField: typeof prevSnippetField;
 declare const index_selectedCompletion: typeof selectedCompletion;
+declare const index_selectedCompletionIndex: typeof selectedCompletionIndex;
+declare const index_setSelectedCompletion: typeof setSelectedCompletion;
 declare const index_snippet: typeof snippet;
 declare const index_snippetCompletion: typeof snippetCompletion;
 declare const index_snippetKeymap: typeof snippetKeymap;
@@ -4717,6 +4834,8 @@ declare namespace index {
     index_pickedCompletion as pickedCompletion,
     index_prevSnippetField as prevSnippetField,
     index_selectedCompletion as selectedCompletion,
+    index_selectedCompletionIndex as selectedCompletionIndex,
+    index_setSelectedCompletion as setSelectedCompletion,
     index_snippet as snippet,
     index_snippetCompletion as snippetCompletion,
     index_snippetKeymap as snippetKeymap,
@@ -4740,6 +4859,10 @@ declare type HighlightOptions = {
     highlighting. Defaults to 100.
     */
     maxMatches?: number;
+    /**
+    Whether to only highlight whole words.
+    */
+    wholeWords?: boolean;
 };
 /**
 This extension highlights text that matches the selection. It uses
@@ -4770,6 +4893,7 @@ declare const commentKeymap: readonly KeyBinding[];
 declare class LeafBlock {
     readonly start: number;
     content: string;
+    parsers: LeafBlockParser[];
 }
 declare class Line {
     text: string;
@@ -4798,6 +4922,8 @@ declare class BlockContext implements PartialParse {
     advance(): Tree;
     stopAt(pos: number): void;
     private reuseFragment;
+    get depth(): number;
+    parentType(depth?: number): NodeType;
     nextLine(): boolean;
     private moveRangeI;
     private lineChunkAt;
@@ -4825,7 +4951,7 @@ interface BlockParser {
     name: string;
     parse?(cx: BlockContext, line: Line): BlockResult;
     leaf?(cx: BlockContext, leaf: LeafBlock): LeafBlockParser | null;
-    endLeaf?(cx: BlockContext, line: Line): boolean;
+    endLeaf?(cx: BlockContext, line: Line, leaf: LeafBlock): boolean;
     before?: string;
     after?: string;
 }
@@ -4875,6 +5001,11 @@ declare class InlineContext {
     elt(type: string, from: number, to: number, children?: readonly Element$1[]): Element$1;
     elt(tree: Tree, at: number): Element$1;
 }
+
+declare function parseCode(config: {
+    codeParser?: (info: string) => null | Parser;
+    htmlParser?: Parser;
+}): MarkdownExtension;
 
 /**
 Language support for [GFM](https://github.github.com/gfm/) plus
@@ -5109,4 +5240,4 @@ Create an instance of the collaborative editing plugin.
 */
 declare function collab(config?: CollabConfig): Extension;
 
-export { Annotation, Compartment, Decoration, EditorSelection, EditorState, EditorView, Facet, HighlightStyle, NodeProp, PostgreSQL, SelectionRange, StateEffect, StateField, StreamLanguage, Text, Transaction, TreeCursor, ViewPlugin, ViewUpdate, WidgetType, index as autocomplete, bracketMatching, closeBrackets, closeBracketsKeymap, collab, combineConfig, commentKeymap, completionKeymap, defaultHighlightStyle, defaultKeymap, drawSelection, foldGutter, foldKeymap, highlightSelectionMatches, highlightSpecialChars, history, historyKeymap, html, htmlLanguage, indentLess, indentMore, indentOnInput, indentUnit, javascript, javascriptLanguage, julia as julia_andrey, julia$1 as julia_legacy, keymap, lineNumbers, markdown, markdownLanguage, parseMixed, placeholder, python, pythonLanguage, rectangularSelection, searchKeymap, sql, syntaxTree, tags };
+export { Annotation, Compartment, Decoration, EditorSelection, EditorState, EditorView, Facet, HighlightStyle, NodeProp, PostgreSQL, SelectionRange, StateEffect, StateField, StreamLanguage, Text, Transaction, TreeCursor, ViewPlugin, ViewUpdate, WidgetType, index as autocomplete, bracketMatching, closeBrackets, closeBracketsKeymap, collab, combineConfig, commentKeymap, completionKeymap, defaultHighlightStyle, defaultKeymap, drawSelection, foldGutter, foldKeymap, highlightSelectionMatches, highlightSpecialChars, history, historyKeymap, html, htmlLanguage, indentLess, indentMore, indentOnInput, indentUnit, javascript, javascriptLanguage, julia as julia_andrey, julia$1 as julia_legacy, keymap, lineNumbers, markdown, markdownLanguage, parseCode, parseMixed, placeholder, python, pythonLanguage, rectangularSelection, searchKeymap, sql, syntaxTree, syntaxTreeAvailable, tags };

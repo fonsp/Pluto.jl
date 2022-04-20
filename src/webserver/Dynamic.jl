@@ -1,7 +1,5 @@
 import UUIDs: uuid1
 
-import TableIOInterface: get_example_code, is_extension_supported
-
 import .PkgCompat
 
 "Will hold all 'response handlers': functions that respond to a WebSocket request from the client."
@@ -80,9 +78,15 @@ Besides `:update_notebook`, you will find more functions in [`responses`](@ref) 
 
 """
 module Firebasey include("./Firebasey.jl") end
+module AppendonlyMarkers
+    # I put Firebasey here manually THANKS JULIA
+    import ..Firebasey
+    include("./AppendonlyMarkers.jl")
+end
 
 # All of the arrays in the notebook_to_js object are 'immutable' (we write code as if they are), so we can enable this optimization:
 Firebasey.use_triple_equals_for_arrays[] = true
+
 
 # the only possible Arrays are:
 # - cell_order
@@ -106,7 +110,7 @@ function notebook_to_js(notebook::Notebook)
                 "cell_id" => cell.cell_id,
                 "code" => cell.code,
                 "code_folded" => cell.code_folded,
-                "running_disabled" => cell.running_disabled,
+                "metadata" => cell.metadata,
             )
         for (id, cell) in notebook.cells_dict),
         "cell_dependencies" => Dict{UUID,Dict{String,Any}}(
@@ -140,6 +144,7 @@ function notebook_to_js(notebook::Notebook)
                 "running" => cell.running,
                 "errored" => cell.errored,
                 "runtime" => cell.runtime,
+                "logs" => AppendonlyMarkers.AppendonlyMarker(cell.logs),
             )
         for (id, cell) in notebook.cells_dict),
         "cell_order" => notebook.cell_order,
@@ -165,6 +170,7 @@ function notebook_to_js(notebook::Notebook)
         "cell_execution_order" => cell_id.(collect(topological_order(notebook))),
     )
 end
+precompile(notebook_to_js, (Notebook,))
 
 """
 For each connected client, we keep a copy of their current state. This way we know exactly which updates to send when the server-side state changes.
@@ -195,6 +201,7 @@ function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing)
             end
         end
     end
+    try_event_call(🙋.session, FileEditEvent(🙋.notebook))
 end
 
 "Like `deepcopy`, but anything onther than `Dict` gets a shallow (reference) copy."
@@ -298,9 +305,9 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
             (mutator, matches, rest) = trigger_resolver(effects_of_changed_state, patch.path)
             
             current_changes = if isempty(rest) && applicable(mutator, matches...)
-                mutator(matches...; request=🙋, patch=patch)
+                mutator(matches...; request=🙋, patch)
             else
-                mutator(matches..., rest...; request=🙋, patch=patch)
+                mutator(matches..., rest...; request=🙋, patch)
             end
 
             push!(changes, current_changes...)
@@ -322,10 +329,11 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
                 bound_sym_names=bound_sym_names,
                 is_first_values=is_first_values,
                 run_async=true,
+                initiator=🙋.initiator,
             )
         end
     
-        send_notebook_changes!(🙋; commentary=Dict(:update_went_well => :👍))    
+        send_notebook_changes!(🙋; commentary=Dict(:update_went_well => :👍))
     catch ex
         @error "Update notebook failed"  🙋.body["updates"] exception=(ex, stacktrace(catch_backtrace()))
         response = Dict(
@@ -467,72 +475,6 @@ responses[:reshow_cell] = function response_reshow_cell(🙋::ClientRequest)
     set_output!(cell, run, ExprAnalysisCache(🙋.notebook, cell); persist_js_state=true)
     # send to all clients, why not
     send_notebook_changes!(🙋 |> without_initiator)
-end
-
-
-responses[:write_file] = function (🙋::ClientRequest)
-    require_notebook(🙋)
-    path = 🙋.notebook.path
-    reldir = "$(path |> basename).assets"
-    dir = joinpath(path |> dirname, reldir)
-    file_noext = reduce(*, split(🙋.body["name"], ".")[1:end - 1])
-    extension = split(🙋.body["name"], ".")[end]
-    save_path = numbered_until_new(joinpath(dir, file_noext); sep=" ", suffix=".$(extension)", create_file=false)
-
-    if !ispath(dir)
-        mkpath(dir)
-    end
-    success = try
-        io = open(save_path, "w")
-        write(io, 🙋.body["file"])
-        close(io)
-        true
-    catch e
-        false
-    end
-
-    code = template_code(basename(save_path), reldir, 🙋.body["file"])
-
-    msg = UpdateMessage(:write_file_reply, 
-        Dict(
-            :success => success,
-            :code => code
-        ), 🙋.notebook, nothing, 🙋.initiator)
-
-    putclientupdates!(🙋.session, 🙋.initiator, msg)
-end
-
-# helpers
-
-function template_code(filename, directory, iofilecontents)
-    path = """joinpath(split(@__FILE__, '#')[1] * ".assets", "$(filename)")"""
-    extension = split(filename, ".")[end]
-    varname = replace(basename(path), r"[\"\-,\.#@!\%\s+\;()\$&*\[\]\{\}'^]" => "")
-
-    if extension ∈ ["jpg", "jpeg", "png", "svg", "webp", "tiff", "bmp", "gif", "wav", "aac", "mp3", "mpeg", "mp4", "webm", "ogg"]
-        req_code = "import PlutoUI"
-        code = """$(extension)_$(varname) = let
-    $(req_code)
-    PlutoUI.LocalResource($(path))
-end"""
-
-    elseif extension ∈ ["txt", "text"]
-        code = """txt_$(varname) = let
-    $(varname) = open($(path))
-    read($(varname), String)
-end"""
-
-    elseif extension ∈ ["jl"]
-        io = IOBuffer();
-        write(io, iofilecontents)
-        code = String(take!(io))
-
-    elseif is_extension_supported(extension)
-        code = get_example_code(directory, filename)
-
-    else
-        code = missing
-    end
 end
 
 responses[:nbpkg_available_versions] = function response_nbpkg_available_versions(🙋::ClientRequest)

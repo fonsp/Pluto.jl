@@ -96,7 +96,7 @@ _([video](https://www.youtube.com/watch?v=rpB6zQNsbQU)) Grant Sanderson ([3Blue1
 
 For one tasty notebook 🥞 you will need:
 
-- [**Julia** v1.5 or above](https://julialang.org/downloads/#current_stable_release)
+- [**Julia** v1.6 or above](https://julialang.org/downloads/#current_stable_release)
 - **Linux**, **MacOS** or **Windows**, _Linux and MacOS will work best_
 - Mozilla **Firefox** or Google **Chrome**
 
@@ -112,8 +112,7 @@ julia> ]
 (v1.7) pkg> add Pluto
 ```
 
-_Tip for new Julia users: To return to the `julia>` prompt from the Pkg REPL,
-either press backspace when the input line is empty or press Ctrl+C._
+_Press `Ctrl+C` to return to the `julia>` prompt._
 
 ### Usage
 
@@ -147,9 +146,7 @@ Follow [these instructions](https://github.com/fonsp/Pluto.jl/blob/main/CONTRIBU
 
 ## License
 
-Pluto.jl is open source! Specifically, it is [MIT Licensed](https://github.com/fonsp/Pluto.jl/blob/main/LICENSE). The included sample notebooks have a more permissive license: the [Unlicense](https://github.com/fonsp/Pluto.jl/blob/main/sample/LICENSE). This means that you can use sample notebook code however you like - you do not need to credit us!
-
-Pluto.jl is built by gluing together open source software:
+Pluto.jl is open source! Specifically, it is [MIT Licensed](https://github.com/fonsp/Pluto.jl/blob/main/LICENSE). Pluto.jl is built by gluing together open source software:
 
 -   `Julia` - [license](https://github.com/JuliaLang/julia/blob/master/LICENSE.md)
 -   `CodeMirror` - [license](https://github.com/codemirror/codemirror.next/blob/master/LICENSE-MIT)
@@ -161,7 +158,13 @@ Pluto.jl is built by gluing together open source software:
 -   `developit/htm` - [license](https://github.com/developit/htm/blob/master/LICENSE)
 -   `MathJax` - [license](https://github.com/mathjax/MathJax-src/blob/master/LICENSE)
 
-Your notebook files are _yours_, you do not need to credit us. Have fun!
+If you want to reference Pluto.jl in scientific writing, you can use our DOI: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5889169.svg)](https://doi.org/10.5281/zenodo.5889169)
+
+### Sample notebooks
+
+The included sample notebooks have a more permissive license: the [Unlicense](https://github.com/fonsp/Pluto.jl/blob/main/sample/LICENSE). This means that you can use sample notebook code however you like - you do not need to credit us! 
+
+Your notebook files are _yours_, you also do not need to credit us. Have fun!
 
 ## From the authors
 

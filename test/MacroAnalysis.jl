@@ -700,7 +700,7 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         module_from_cell2 = cell(2).output.body[:elements][1][2][1]
         module_from_cell3 = cell(3).output.body
 
-        @test_broken module_from_cell2 == module_from_cell3
+        @test module_from_cell2 == module_from_cell3
     end
 
     @testset "Definitions" begin

@@ -1,6 +1,12 @@
 import UUIDs: UUID, uuid1
 import .ExpressionExplorer: SymbolsState, UsingsImports
 
+# Make sure to keep this in sync with DEFAULT_METADATA in ../frontend/components/Editor.js
+const DEFAULT_METADATA = Dict{String, Any}(
+    "disabled" => false,
+    "show_logs" => true,
+)
+
 Base.@kwdef struct CellOutput
     body::Union{Nothing,String,Vector{UInt8},Dict}=nothing
     mime::MIME=MIME("text/plain")
@@ -36,14 +42,17 @@ Base.@kwdef mutable struct Cell
 
     published_objects::Dict{String,Any}=Dict{String,Any}()
     
+    logs::Vector{Dict{String,Any}}=Vector{Dict{String,Any}}()
+    
     errored::Bool=false
     runtime::Union{Nothing,UInt64}=nothing
 
     # note that this field might be moved somewhere else later. If you are interested in visualizing the cell dependencies, take a look at the cell_dependencies field in the frontend instead.
     cell_dependencies::CellDependencies{Cell}=CellDependencies{Cell}(Dict{Symbol,Vector{Cell}}(), Dict{Symbol,Vector{Cell}}(), 99)
 
-    running_disabled::Bool=false
     depends_on_disabled_cells::Bool=false
+
+    metadata::Dict{String,Any}=copy(DEFAULT_METADATA)
 end
 
 Cell(cell_id, code) = Cell(cell_id=cell_id, code=code)
@@ -56,9 +65,17 @@ function Base.convert(::Type{Cell}, cell::Dict)
         cell_id=UUID(cell["cell_id"]),
         code=cell["code"],
         code_folded=cell["code_folded"],
-        running_disabled=cell["running_disabled"],
+        metadata=cell["metadata"],
     )
 end
 function Base.convert(::Type{UUID}, string::String)
     UUID(string)
 end
+
+create_metadata(metadata::Dict{String,<:Any}) = merge(DEFAULT_METADATA, metadata)
+get_cell_metadata(cell::Cell)::Dict{String,Any} = cell.metadata
+get_cell_metadata_no_default(cell::Cell)::Dict{String,Any} = Dict{String,Any}(setdiff(pairs(cell.metadata), pairs(DEFAULT_METADATA)))
+
+"Returns whether or not the cell is **explicitely** disabled."
+is_disabled(c::Cell) = get(c.metadata, "disabled", false)
+can_show_logs(c::Cell) = get(c.metadata, "show_logs", true)

@@ -1,5 +1,6 @@
 using Test
-import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new, readwrite, without_pluto_file_extension
+import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new, readwrite, without_pluto_file_extension, update_run!, get_cell_metadata_no_default, is_disabled, create_metadata
+import Pluto.WorkspaceManager: poll, WorkspaceManager
 import Random
 import Pkg
 import UUIDs: UUID
@@ -26,6 +27,22 @@ function basic_notebook()
         """),
         # test included InteractiveUtils import
         Cell("subtypes(Number)"),
+    ]) |> init_packages!
+end
+
+function metadata_notebook()
+    Notebook([
+        Cell(
+            code="100*a + b",
+            metadata=Dict(
+                "a metadata tag" => Dict(
+                    "boolean" => true,
+                    "string" => "String",
+                    "number" => 10000,
+                ),
+                "disabled" => true,
+            ) |> create_metadata,
+        ),
     ]) |> init_packages!
 end
 
@@ -67,7 +84,7 @@ end
 
 function init_packages!(nb::Notebook)
     nb.topology = Pluto.updated_topology(nb.topology, nb, nb.cells)
-    Pluto.sync_nbpkg_core(nb)
+    Pluto.sync_nbpkg_core(nb, nb.topology, nb.topology)
     return nb
 end
 
@@ -137,13 +154,48 @@ end
             save_notebook(nb)
             # @info "File" name Text(read(nb.path,String))
             result = load_notebook_nobackup(nb.path)
-            @test notebook_inputs_equal(nb, result)
+            @test_notebook_inputs_equal(nb, result)
+        end
+    end
+
+    @testset "Metadata" begin
+        🍭 = ServerSession()
+        🍭.options.evaluation.workspace_use_distributed = false
+        fakeclient = ClientSession(:fake, nothing)
+        🍭.connected_clients[fakeclient.id] = fakeclient
+
+        @testset "Disabling & Metadata" begin
+            nb = metadata_notebook()
+            update_run!(🍭, nb, nb.cells)
+            cell = first(values(nb.cells_dict))
+            @test get_cell_metadata_no_default(cell) == Dict(
+                "a metadata tag" => Dict(
+                    "boolean" => true,
+                    "string" => "String",
+                    "number" => 10000,
+                ),
+                "disabled" => true, # enhanced metadata because cell is disabled
+            )
+
+            save_notebook(nb)
+            result = load_notebook_nobackup(nb.path)
+            @test_notebook_inputs_equal(nb, result)
+            cell = first(nb.cells)
+            @test is_disabled(cell)
+            @test get_cell_metadata_no_default(cell) == Dict(
+                "a metadata tag" => Dict(
+                    "boolean" => true,
+                    "string" => "String",
+                    "number" => 10000,
+                ),
+                "disabled" => true,
+            )
         end
     end
 
     @testset "I/O overloaded" begin
         @testset "$(name)" for (name, nb) in nbs
-            @test let
+            let
                 tasks = []
                 for i in 1:16
                     push!(tasks, @async save_notebook(nb))
@@ -153,7 +205,7 @@ end
                 end
                 wait.(tasks)
                 result = load_notebook_nobackup(nb.path)
-                notebook_inputs_equal(nb, result)
+                @test_notebook_inputs_equal(nb, result)
             end
         end
     end
@@ -251,15 +303,15 @@ end
         @testset "$(name)" for (name, nb) in nbs
             file_contents = sprint(save_notebook, nb)
 
-            @test let
+            let
                 result = sread(load_notebook_nobackup, file_contents, nb.path)
-                notebook_inputs_equal(nb, result)
+                @test_notebook_inputs_equal(nb, result)
             end
 
-            @test let
+            let
                 file_contents_windowsed = replace(file_contents, "\n" => "\r\n")
                 result_windowsed = sread(load_notebook_nobackup, file_contents_windowsed, nb.path)
-                notebook_inputs_equal(nb, result_windowsed)
+                @test_notebook_inputs_equal(nb, result_windowsed)
             end
         end
     end
@@ -343,7 +395,7 @@ end
         write(jl_path, embedded_jl)
         
         result = load_notebook_nobackup(jl_path)
-        @test notebook_inputs_equal(nb, result; check_paths_equality=false)
+        @test_notebook_inputs_equal(nb, result, false)
 
         
         filename = "howdy.jl"

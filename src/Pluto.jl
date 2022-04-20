@@ -9,12 +9,28 @@ Have a look at the FAQ:
 https://github.com/fonsp/Pluto.jl/wiki
 """
 module Pluto
-project_relative_path(xs...) = normpath(joinpath(dirname(dirname(pathof(Pluto))), xs...))
+
+import RelocatableFolders: @path
+const ROOT_DIR = normpath(joinpath(@__DIR__, ".."))
+const FRONTEND_DIR = @path(joinpath(ROOT_DIR, "frontend"))
+const FRONTEND_DIST_DIR = let dir = joinpath(ROOT_DIR, "frontend-dist")
+    isdir(dir) ? @path(dir) : FRONTEND_DIR
+end
+const frontend_dist_exists = FRONTEND_DIR !== FRONTEND_DIST_DIR
+const SAMPLE_DIR = @path(joinpath(ROOT_DIR, "sample"))
+const RUNNER_DIR = @path(joinpath(ROOT_DIR, "src", "runner"))
+function project_relative_path(root, xs...)
+    root == joinpath("src", "runner") ? joinpath(RUNNER_DIR, xs...) :
+    root == "frontend-dist" && frontend_dist_exists ? joinpath(FRONTEND_DIST_DIR, xs...) :
+    root == "frontend" ? joinpath(FRONTEND_DIR, xs...) :
+    root == "sample" ? joinpath(SAMPLE_DIR, xs...) :
+        normpath(joinpath(pkgdir(Pluto), root, xs...))
+end
 
 import Pkg
 
 include_dependency("../Project.toml")
-const PLUTO_VERSION = VersionNumber(Pkg.TOML.parsefile(project_relative_path("Project.toml"))["version"])
+const PLUTO_VERSION = VersionNumber(Pkg.TOML.parsefile(joinpath(ROOT_DIR, "Project.toml"))["version"])
 const PLUTO_VERSION_STR = 'v' * string(PLUTO_VERSION)
 const JULIA_VERSION_STR = 'v' * string(VERSION)
 
@@ -23,6 +39,7 @@ include("./notebook/Export.jl")
 include("./Configuration.jl")
 
 include("./evaluation/Tokens.jl")
+include("./evaluation/Throttled.jl")
 include("./runner/PlutoRunner.jl")
 include("./analysis/ExpressionExplorer.jl")
 include("./analysis/FunctionDependencies.jl")
@@ -30,10 +47,13 @@ include("./analysis/ReactiveNode.jl")
 include("./packages/PkgCompat.jl")
 
 include("./notebook/Cell.jl")
+include("./analysis/data structures.jl")
 include("./analysis/Topology.jl")
 include("./analysis/Errors.jl")
 include("./analysis/TopologicalOrder.jl")
 include("./notebook/Notebook.jl")
+include("./notebook/frontmatter.jl")
+include("./notebook/Events.jl")
 include("./webserver/Session.jl")
 include("./webserver/PutUpdates.jl")
 
@@ -65,7 +85,7 @@ export reset_notebook_environment
 export update_notebook_environment
 export activate_notebook_environment
 
-if get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") !== "0"
+if get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") != "0" && get(ENV, "CI", "🍄") != "true"
 @info """\n
     Welcome to Pluto $(PLUTO_VERSION_STR) 🎈
     Start a notebook server using:

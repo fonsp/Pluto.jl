@@ -4,6 +4,9 @@
 @import url("vollkorn.css");
 @import url("juliamono.css");
 
+@import url("light_color.css");
+@import url("dark_color.css");
+
 * {
     box-sizing: border-box;
 }
@@ -32,9 +35,9 @@ body.error #title {
     letter-spacing: 0.08em;
     font-weight: 500;
     font-family: "Vollkorn", serif;
-    color: hsl(0, 0%, 26%);
+    color: var(--pluto-output-h-color);
     margin: 0px;
-    border-bottom: solid 2px hsl(0, 0%, 88%);
+    border-bottom: solid 2px var(--rule-color);
 }
 
 #title h2 {
@@ -46,6 +49,7 @@ body.error #title {
     margin-bottom: -0.27em;
     /* margin-right: -1.5em; */
     margin-left: 0.1em;
+    filter: var(--image-filters);
 }
 
 body {
@@ -53,7 +57,7 @@ body {
     position: absolute;
     width: 100%;
     min-height: 100%;
-    background: white;
+    background: var(--main-bg-color);
 }
 
 main {
@@ -62,7 +66,7 @@ main {
     margin-top: 20vh;
     text-align: left;
     font-family: "Roboto Mono", monospace;
-    color: hsl(0, 0%, 60%);
+    color: var(--index-text-color);
 }
 
 body.error main {
@@ -74,7 +78,7 @@ body.error main {
 }
 
 p {
-    color: hsl(0, 0%, 30%);
+    color: var(--index-clickable-text-color);
 }
 
 ul {
@@ -89,7 +93,7 @@ li {
 
 a {
     color: inherit;
-    color: hsl(0, 0%, 30%);
+    color: var(--index-clickable-text-color);
 }
 
 /* input {
@@ -118,8 +122,8 @@ pluto-filepicker .cm-editor {
     font-size: 0.75rem;
     letter-spacing: 1px;
     background: none;
-    color: #6f6f6f;
-    border: 2px solid #b2b2b2;
+    color: var(--nav-filepicker-color);
+    border: 2px solid var(--nav-filepicker-border-color);
     border-radius: 3px;
     border-right: none;
     border-top-right-radius: 0;
@@ -135,10 +139,10 @@ pluto-filepicker .cm-scroller::-webkit-scrollbar {
 
 pluto-filepicker button {
     margin: 0px;
-    background: #6c8489;
+    background: var(--footer-filepicker-focus-color);
     border-radius: 3px;
-    border: 2px solid #6c8489;
-    color: white;
+    border: 2px solid var(--nav-filepicker-focus-color);
+    color: var(--white);
     /* border: none; */
     font-family: "Roboto Mono", monospace;
     font-weight: 600;
@@ -151,8 +155,13 @@ pluto-filepicker button {
     border-bottom-left-radius: 0;
 }
 
+pluto-filepicker button:disabled {
+    cursor: not-allowed;
+    opacity: .7;
+}
+
 .cm-editor .cm-tooltip {
-    border: 1px solid rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--cm-editor-tooltip-border-color);
     box-shadow: 3px 3px 4px rgb(0 0 0 / 20%);
     border-radius: 4px;
 }
@@ -171,6 +180,7 @@ pluto-filepicker button {
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
     /* this is the line height rounded to an integer to prevent jiggle */
     height: 16px;
+    overflow-y: hidden;
     /* font-size: 16px; */
     line-height: 16px;
     border-radius: 3px;
@@ -178,8 +188,8 @@ pluto-filepicker button {
 }
 
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] {
-    color: white;
-    background: #16659d;
+    color: var(--cm-editor-li-aria-selected-color);
+    background: var(--cm-editor-li-aria-selected-bg-color);
 }
 
 .cm-editor .cm-completionIcon {
@@ -198,7 +208,7 @@ pluto-filepicker button {
 .cm-tooltip.cm-tooltip-autocomplete {
     padding: 0;
     margin-left: -1.5em;
-    background: white;
+    background: var(--autocomplete-menu-bg-color);
 }
 
 .cm-tooltip-autocomplete li.file.new:before {
@@ -218,7 +228,7 @@ pluto-filepicker button {
 }
 
 .cm-editor .cm-tooltip-autocomplete .cm-completionLabel {
-    font-family: JuliaMono, monospace !important;
+    font-family: JuliaMono, Menlo, "Roboto Mono", "Lucida Sans Typewriter", "Source Code Pro", monospace !important;
     font-variant-ligatures: none;
     font-size: 0.75rem;
 }
@@ -244,7 +254,7 @@ body.nosessions ul#new ~ * {
     background: none;
     cursor: pointer;
     /* color: hsl(204, 86%, 35%); */
-    color: black;
+    color: var(--ui-button-color);
 }
 
 #recent button > span::after {
@@ -258,20 +268,23 @@ body.nosessions ul#new ~ * {
 
 #recent li.running button > span::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle.svg");
+    filter: var(--image-filters);
 }
 
 #recent li.recent button > span::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg");
+    filter: var(--image-filters);
 }
 
 #recent li.transitioning button > span::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ellipsis-horizontal-outline.svg");
+    filter: var(--image-filters);
 }
 
 loading-bar {
     height: 6px;
     width: 100vw;
-    background-color: #b1c9dd;
+    background-color: var(--loading-grad-color-1);
     position: fixed;
     top: 0px;
     display: none;

@@ -2,7 +2,7 @@ name = "Pluto"
 uuid = "c3e4b0f8-55cb-11ea-2926-15256bba5781"
 license = "MIT"
 authors = ["Fons van der Plas <fons@plutojl.org>"]
-version = "0.17.3"
+version = "0.19.0"
 
 [deps]
 Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
@@ -14,29 +14,34 @@ FuzzyCompletions = "fb4132e2-a121-4a70-b8a1-d5b831dcdcc2"
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
+MIMEs = "6c6e2e6c-3030-632d-7369-2d6c69616d65"
 Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 MsgPack = "99f44e22-a591-53d1-9472-aa23ef4bd671"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 REPL = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
+RelocatableFolders = "05181044-ff0b-4ac5-8273-598c1e38db00"
 Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
-TableIOInterface = "d1efa939-5518-4425-949f-ab857e148477"
+TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 Tables = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 [compat]
 Configurations = "0.15, 0.16, 0.17"
-FuzzyCompletions = "0.3,0.4"
+FuzzyCompletions = "0.3,0.4,0.5"
 HTTP = "^0.9.1"
+MIMEs = "0.1"
 MsgPack = "1.1"
-TableIOInterface = "0.1"
+RelocatableFolders = "0.1, 0.2"
 Tables = "1"
-julia = "^1.5"
+julia = "^1.6"
 
 [extras]
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 
 [targets]
-test = ["Test", "Random", "DataFrames", "OffsetArrays"]
+test = ["DataFrames", "OffsetArrays", "Random", "Sockets", "Test", "TimerOutputs"]

@@ -17,8 +17,12 @@ responses[:completepath] = function response_completepath(🙋::ClientRequest)
     pos = lastindex(path)
 
     results, loc, found = complete_path(path, pos)
+    # too many candiates otherwise. -0.1 instead of 0 to enable autocompletions for paths: `/` or `/asdf/`
     isenough(x) = x ≥ -0.1
-    filter!(isenough ∘ score, results) # too many candiates otherwise. -0.1 instead of 0 to enable autocompletions for paths: `/` or `/asdf/`
+    ishidden(path_completion) = let p = path_completion.path
+        startswith(basename(isdirpath(p) ? dirname(p) : p), ".")
+    end
+    filter!(p -> !ishidden(p) && (isenough ∘ score)(p), results)
 
     start_utf8 = let
         # REPLCompletions takes into account that spaces need to be prefixed with `\` in the shell, so it subtracts the number of spaces in the filename from `start`:

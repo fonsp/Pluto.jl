@@ -5,6 +5,9 @@ on:
         branches:
             - main
     workflow_dispatch:
+concurrency:
+    group: bundle
+    cancel-in-progress: true
 
 jobs:
     trigger:
@@ -45,5 +48,5 @@ jobs:
             - name: Force push frontend-dist changes
               run: |
                   git add frontend-dist --force
-                  git commit -m "$GITHUB_WORKFLOW"
+                  git commit -m "$GITHUB_WORKFLOW" -m "Built from hash $GITHUB_SHA"
                   git push origin release --force

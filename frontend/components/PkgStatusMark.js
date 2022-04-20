@@ -15,13 +15,21 @@ const can_update = (installed, available) => {
     }
 }
 
+/**
+ * @param {{
+ *  package_name: string,
+ *  is_disable_pkg: boolean,
+ *  available_versions: string[],
+ *  nbpkg: import("./Editor.js").NotebookPkgData?,
+ * }} props
+ */
 export const package_status = ({ nbpkg, package_name, available_versions, is_disable_pkg }) => {
     let status = null
     let hint_raw = null
     let hint = null
     let offer_update = false
     const chosen_version = nbpkg?.installed_versions[package_name]
-    const busy = (nbpkg?.busy_packages ?? []).includes(package_name) || nbpkg?.instantiating
+    const busy = (nbpkg?.busy_packages ?? []).includes(package_name) || !(nbpkg?.instantiated ?? true)
 
     if (is_disable_pkg) {
         const f_name = package_name
@@ -66,6 +74,14 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
     return { status, hint, hint_raw, available_versions, chosen_version, busy, offer_update }
 }
 
+/**
+ * @param {{
+ *  package_name: string,
+ *  pluto_actions: any,
+ *  notebook_id: string,
+ *  nbpkg: import("./Editor.js").NotebookPkgData?,
+ * }} props
+ */
 export const PkgStatusMark = ({ package_name, pluto_actions, notebook_id, nbpkg }) => {
     const [available_versions, set_available_versions] = useState(null)
 
@@ -99,9 +115,10 @@ export const PkgStatusMark = ({ package_name, pluto_actions, notebook_id, nbpkg 
             <button
                 onClick=${(event) => {
                     window.dispatchEvent(
-                        new CustomEvent("open nbpkg popup", {
+                        new CustomEvent("open pluto popup", {
                             detail: {
-                                status_mark_element: event.currentTarget.parentElement,
+                                type: "nbpkg",
+                                source_element: event.currentTarget.parentElement,
                                 package_name: package_name,
                                 is_disable_pkg: false,
                             },
@@ -128,9 +145,10 @@ export const PkgActivateMark = ({ package_name }) => {
             <button
                 onClick=${(event) => {
                     window.dispatchEvent(
-                        new CustomEvent("open nbpkg popup", {
+                        new CustomEvent("open pluto popup", {
                             detail: {
-                                status_mark_element: event.currentTarget.parentElement,
+                                type: "nbpkg",
+                                source_element: event.currentTarget.parentElement,
                                 package_name: package_name,
                                 is_disable_pkg: true,
                             },
