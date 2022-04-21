@@ -69,7 +69,7 @@ const ProcessStatus = {
 /**
  * Map of status => Bool. In order of decreasing prioirty.
  */
-const statusmap = (state, launch_params) => ({
+const statusmap = (/** @type {EditorState} */ state, /** @type {LaunchParameters} */ launch_params) => ({
     disconnected: !(state.connected || state.initializing || state.static_preview),
     loading:
         (state.backend_launch_phase != null &&
@@ -214,8 +214,43 @@ const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']
 
 /**
  * @typedef EditorProps
- * @type {{launch_params: LaunchParameters,initial_notebook_state: NotebookData,}}
- * @augments Component<EditorProps,{}>
+ * @type {{
+ * launch_params: LaunchParameters,
+ * initial_notebook_state: NotebookData,
+ * }}
+ */
+
+/**
+ * @typedef EditorState
+ * @type {{
+ * notebook: NotebookData,
+ * cell_inputs_local: { [uuid: string]: CellInputData },
+ * desired_doc_query: ?String,
+ * recently_deleted: ?Array<{ index: number, cell: CellInputData }>,
+ * last_update_time: number,
+ * disable_ui: boolean,
+ * static_preview: boolean,
+ * backend_launch_phase: ?number,
+ * binder_session_url: ?string,
+ * binder_session_token: ?string,
+ * connected: boolean,
+ * initializing: boolean,
+ * moving_file: boolean,
+ * scroller: {
+ * up: boolean,
+ * down: boolean,
+ * },
+ * export_menu_open: boolean,
+ * last_created_cell: ?string,
+ * selected_cells: Array<string>,
+ * extended_components: any,
+ * is_recording: boolean,
+ * recording_waiting_to_start: boolean,
+ * }}
+ */
+
+/**
+ * @augments Component<EditorProps,EditorState>
  */
 export class Editor extends Component {
     constructor(/** @type {EditorProps} */ props) {
