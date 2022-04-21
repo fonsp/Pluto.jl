@@ -73,35 +73,47 @@ export const Featured = () => {
     }, [sources])
 
     useEffect(() => {
-        if (source_data.length > 0) {
+        if (source_data?.length > 0) {
             console.log("Sources:", source_data)
         }
     }, [source_data])
 
+    const placeholder_data = [
+        {
+            title: "Featured Notebooks",
+            description: "These notebooks from the Julia community show off what you can do with Pluto. Give it a try, you might learn something new!",
+            collections: [
+                {
+                    title: "Loading...",
+                    tags: [],
+                },
+            ],
+            notebooks: [],
+        },
+    ]
+
     return html`
-        ${source_data != null
-            ? source_data.map(
-                  (data) => html`
-                      <div class="featured-source">
-                          <h1>${data.title}</h1>
-                          <p>${data.description}</p>
-                          ${data.collections.map((coll) => {
-                              return html`
-                                  <div class="collection">
-                                      <h2>${coll.title}</h2>
-                                      <p>${coll.description}</p>
-                                      <div class="card-list">
-                                          ${collection(Object.values(data.notebooks), coll.tags).map(
-                                              (entry) => html`<${FeaturedCard} entry=${entry} source_url=${data.source_url} />`
-                                          )}
-                                      </div>
-                                  </div>
-                              `
-                          })}
-                      </div>
-                  `
-              )
-            : null}
+        ${(source_data?.length > 0 ? source_data : placeholder_data).map(
+            (data) => html`
+                <div class="featured-source">
+                    <h1>${data.title}</h1>
+                    <p>${data.description}</p>
+                    ${data.collections.map((coll) => {
+                        return html`
+                            <div class="collection">
+                                <h2>${coll.title}</h2>
+                                <p>${coll.description}</p>
+                                <div class="card-list">
+                                    ${collection(Object.values(data.notebooks), coll.tags).map(
+                                        (entry) => html`<${FeaturedCard} entry=${entry} source_url=${data.source_url} />`
+                                    )}
+                                </div>
+                            </div>
+                        `
+                    })}
+                </div>
+            `
+        )}
     `
 }
 

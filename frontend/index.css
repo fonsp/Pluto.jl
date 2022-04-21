@@ -130,7 +130,7 @@ pluto-filepicker .cm-editor {
     letter-spacing: 1px;
     background: none;
     color: var(--nav-filepicker-color);
-    border: 2px solid var(--nav-filepicker-border-color);
+    border: 2px solid var(--footer-filepicker-focus-color);
     border-radius: 3px;
     border-right: none;
     border-top-right-radius: 0;

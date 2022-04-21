@@ -66,7 +66,7 @@ const author_info = (x) => {
         let { name, image, url } = x
 
         if (image == null && url != null) {
-            image = url + ".png"
+            image = url + ".png?size=48"
         }
 
         return {
