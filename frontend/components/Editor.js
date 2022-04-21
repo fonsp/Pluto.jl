@@ -84,6 +84,7 @@ const statusmap = (/** @type {EditorState} */ state, /** @type {LaunchParameters
     nbpkg_disabled: state.notebook.nbpkg?.enabled === false,
     static_preview: state.static_preview,
     bonds_disabled: !(state.connected || state.initializing || launch_params.slider_server_url != null),
+    offer_binder: state.backend_launch_phase === BackendLaunchPhase.wait_for_user && launch_params.binder_url != null,
     binder: launch_params.binder_url != null && state.backend_launch_phase != null,
     code_differs: state.notebook.cell_order.some(
         (cell_id) => state.cell_inputs_local[cell_id] != null && state.notebook.cell_inputs[cell_id].code !== state.cell_inputs_local[cell_id].code
@@ -1267,9 +1268,6 @@ patch: ${JSON.stringify(
             >${text}</a
         >`
 
-        const wfu = this.state.backend_launch_phase === BackendLaunchPhase.wait_for_user
-        const offer_binder = wfu && launch_params.binder_url != null
-
         return html`
             ${this.state.disable_ui === false && html`<${HijackExternalLinksToOpenInNewTab} />`}
             
@@ -1370,9 +1368,9 @@ patch: ${JSON.stringify(
                     />
                     
                     ${
-                        offer_binder
+                        status.offer_binder
                             ? html`<${BinderButton}
-                                  offer_binder=${offer_binder}
+                                  offer_binder=${status.offer_binder}
                                   start_binder=${() =>
                                       start_binder({
                                           setStatePromise: this.setStatePromise,
