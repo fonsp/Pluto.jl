@@ -83,6 +83,7 @@ const statusmap = (state, launch_params) => ({
     nbpkg_restart_recommended: state.notebook.nbpkg?.restart_recommended_msg != null,
     nbpkg_disabled: state.notebook.nbpkg?.enabled === false,
     static_preview: state.static_preview,
+    bonds_disabled: !(state.connected || state.initializing || launch_params.slider_server_url != null),
     binder: launch_params.binder_url != null && state.backend_launch_phase != null,
     code_differs: state.notebook.cell_order.some(
         (cell_id) => state.cell_inputs_local[cell_id] != null && state.notebook.cell_inputs[cell_id].code !== state.cell_inputs_local[cell_id].code
