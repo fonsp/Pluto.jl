@@ -157,7 +157,7 @@ export const add_bonds_disabled_message_handler = (bond_nodes, invalidation) => 
                         detail: {
                             type: "info",
                             source_element: e.target,
-                            body: html`This is a static document.
+                            body: html`${`This is a static document. `}
                                 <a
                                     href="#"
                                     onClick=${(e) => {
@@ -167,7 +167,7 @@ export const add_bonds_disabled_message_handler = (bond_nodes, invalidation) => 
                                     }}
                                     >Run this notebook</a
                                 >
-                                to enable interactivity.`,
+                                ${` to enable interactivity.`}`,
                         },
                     })
                 )
