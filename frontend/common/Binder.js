@@ -82,6 +82,9 @@ export const request_binder = (build_url) =>
 export const count_stat = (page) =>
     fetch(`https://stats.plutojl.org/count?p=/${page}&s=${screen.width},${screen.height},${devicePixelRatio}#skip_sw`, { cache: "no-cache" }).catch(() => {})
 
+/**
+ * Start a 'headless' binder session, open our notebook in it, and connect to it.
+ */
 export const start_binder = async ({ setStatePromise, connect, launch_params }) => {
     try {
         // view stats on https://stats.plutojl.org/
@@ -92,6 +95,8 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
                 state.disable_ui = false
             })
         )
+
+        /// PART 1: Creating a binder session..
         const { binder_session_url, binder_session_token } = await request_binder(launch_params.binder_url.replace("mybinder.org/v2/", "mybinder.org/build/"))
         const with_token = (u) => {
             const new_url = new URL(u)
@@ -115,6 +120,8 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
 
         // fetch index to say hello
         await fetch(with_token(binder_session_url))
+
+        /// PART 2: Using Pluto's REST API to open the notebook file. We either upload the notebook with a POST request, or we let the server open by giving it the filename/URL.
 
         let open_response
 
@@ -141,6 +148,8 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
             }
         }
 
+        // Opening a notebook gives us the notebook ID, which means that we have a running session! Time to connect.
+
         const new_notebook_id = await open_response.text()
         console.info("notebook_id:", new_notebook_id)
 
@@ -150,6 +159,9 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
                 state.backend_launch_phase = BackendLaunchPhase.notebook_running
             })
         )
+
+        /// PART 3: We open the WebSocket connection to the Pluto server, connecting to the notebook ID that was created for us. If this fails, or after a 20 second timeout, we give up on hot-swapping a live backend into this static view, and instead we just redirect to the binder URL.
+
         console.log("Connecting WebSocket")
 
         const connect_promise = connect(with_token(ws_address_from_base(binder_session_url) + "channels"))

@@ -1173,7 +1173,7 @@ patch: ${JSON.stringify(
             console.info(`Binder phase: ${phase} at ${new Date().toLocaleTimeString()}`)
         }
 
-        if (old_state.disable_ui !== this.state.disable_ui) {
+        if (old_state.disable_ui !== this.state.disable_ui || old_state.connected !== this.state.connected) {
             this.on_disable_ui()
         }
         if (!this.state.initializing) {
