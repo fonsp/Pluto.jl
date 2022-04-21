@@ -65,7 +65,7 @@ export const Welcome = () => {
             new_update_message(client)
 
             // to start JIT'ting
-            client.send("completepath", { query: "zzz" }, {})
+            client.send("completepath", { query: "" }, {})
         })
     }, [])
 

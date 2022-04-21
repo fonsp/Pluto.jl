@@ -46,7 +46,6 @@ html {
 }
 
 body {
-    overscroll-behavior: contain;
     margin: 0px;
     overflow-anchor: none;
     overflow-x: hidden;
@@ -80,7 +79,7 @@ body:not(.disable_ui) main {
 }
 
 body:not(.disable_ui) {
-    overscroll-behavior-x: contain;
+    overscroll-behavior: contain;
 }
 
 /* | main=25px+700px+6px=731px | pluto-helpbox=350px - 500px | */
@@ -648,10 +647,15 @@ pluto-filepicker .cm-scroller::-webkit-scrollbar {
     display: none; /* Safari and Chrome */
 }
 
-nav#at_the_top > pluto-filepicker button {
+pluto-filepicker button {
     cursor: pointer;
     height: auto;
 }
+
+pluto-filepicker button:disabled {
+    cursor: not-allowed;
+}
+
 
 button.start_stop_recording,
 button.toggle_export {

@@ -123,6 +123,7 @@ end
 const RUN_NOTEBOOK_ON_LOAD_DEFAULT = true
 const WORKSPACE_USE_DISTRIBUTED_DEFAULT = true
 const LAZY_WORKSPACE_CREATION_DEFAULT = false
+const CAPTURE_STDOUT_DEFAULT = true
 
 """
     EvaluationOptions([; kwargs...])
@@ -132,11 +133,13 @@ Options to change Pluto's evaluation behaviour during internal testing. These op
 - `run_notebook_on_load::Bool = $RUN_NOTEBOOK_ON_LOAD_DEFAULT` Whether to evaluate a notebook on load.
 - `workspace_use_distributed::Bool = $WORKSPACE_USE_DISTRIBUTED_DEFAULT` Whether to start notebooks in a separate process.
 - `lazy_workspace_creation::Bool = $LAZY_WORKSPACE_CREATION_DEFAULT`
+- `capture_stdout::Bool = $CAPTURE_STDOUT_DEFAULT`
 """
 @option mutable struct EvaluationOptions
     run_notebook_on_load::Bool = RUN_NOTEBOOK_ON_LOAD_DEFAULT
     workspace_use_distributed::Bool = WORKSPACE_USE_DISTRIBUTED_DEFAULT
     lazy_workspace_creation::Bool = LAZY_WORKSPACE_CREATION_DEFAULT
+    capture_stdout::Bool = CAPTURE_STDOUT_DEFAULT
 end
 
 const COMPILE_DEFAULT = nothing
@@ -232,6 +235,7 @@ function from_flat_kwargs(;
         run_notebook_on_load::Bool = RUN_NOTEBOOK_ON_LOAD_DEFAULT,
         workspace_use_distributed::Bool = WORKSPACE_USE_DISTRIBUTED_DEFAULT,
         lazy_workspace_creation::Bool = LAZY_WORKSPACE_CREATION_DEFAULT,
+        capture_stdout::Bool = CAPTURE_STDOUT_DEFAULT,
         compile::Union{Nothing,String} = COMPILE_DEFAULT,
         sysimage::Union{Nothing,String} = SYSIMAGE_DEFAULT,
         banner::Union{Nothing,String} = BANNER_DEFAULT,
@@ -239,7 +243,7 @@ function from_flat_kwargs(;
         math_mode::Union{Nothing,String} = MATH_MODE_DEFAULT,
         startup_file::Union{Nothing,String} = STARTUP_FILE_DEFAULT,
         history_file::Union{Nothing,String} = HISTORY_FILE_DEFAULT,
-        threads::Union{Nothing,String,Int} = default_number_of_threads()
+        threads::Union{Nothing,String,Int} = default_number_of_threads(),
     )
     server = ServerOptions(;
         root_url,
@@ -258,16 +262,17 @@ function from_flat_kwargs(;
         simulated_lag,
         simulated_pkg_lag,
         injected_javascript_data_url,
-        on_event
+        on_event,
     )
     security = SecurityOptions(;
         require_secret_for_open_links,
-        require_secret_for_access
+        require_secret_for_access,
     )
     evaluation = EvaluationOptions(;
         run_notebook_on_load,
         workspace_use_distributed,
-        lazy_workspace_creation
+        lazy_workspace_creation,
+        capture_stdout,
     )
     compiler = CompilerOptions(;
         compile,
@@ -277,7 +282,7 @@ function from_flat_kwargs(;
         math_mode,
         startup_file,
         history_file,
-        threads
+        threads,
     )
     return Options(; server, security, evaluation, compiler)
 end

@@ -119,6 +119,22 @@ end
 
 const is_first_run = Ref(true)
 
+"Return a port and serversocket to use while taking into account the `favourite_port`."
+function port_serversocket(hostIP::Sockets.IPAddr, favourite_port)
+    local port, serversocket
+    if favourite_port === nothing
+        port, serversocket = Sockets.listenany(hostIP, UInt16(1234))
+    else
+        port = UInt16(favourite_port)
+        try
+            serversocket = Sockets.listen(hostIP, port)
+        catch e
+            error("Port with number $port is already in use. Use Pluto.run() to automatically select an available port.")
+        end
+    end
+    return port, serversocket
+end
+
 function run(session::ServerSession, pluto_router)
     if is_first_run[]
         is_first_run[] = false
@@ -135,23 +151,12 @@ function run(session::ServerSession, pluto_router)
     host = session.options.server.host
     hostIP = parse(Sockets.IPAddr, host)
     favourite_port = session.options.server.port
-    
-    local port, serversocket
-    if favourite_port === nothing
-        port, serversocket = Sockets.listenany(hostIP, UInt16(1234))
-    else
-        port = UInt16(favourite_port)
-        try
-            serversocket = Sockets.listen(hostIP, port)
-        catch e
-            @error "Port with number $port is already in use. Use Pluto.run() to automatically select an available port."
-            return
-        end
-    end
+
+    local port, serversocket = port_serversocket(hostIP, favourite_port)
 
     shutdown_server = Ref{Function}(() -> ())
 
-    servertask = @async HTTP.serve(hostIP, port, stream=true, server=serversocket) do http::HTTP.Stream
+    servertask = @async HTTP.serve(hostIP, port; stream=true, server=serversocket) do http::HTTP.Stream
         # messy messy code so that we can use the websocket on the same port as the HTTP server
         if HTTP.WebSockets.is_upgrade(http.message)
             secret_required = let

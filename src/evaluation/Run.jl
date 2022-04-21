@@ -157,7 +157,8 @@ function run_reactive_core!(
             run = run_single!(
                 (session, notebook), cell,
                 new_topology.nodes[cell], new_topology.codes[cell];
-                user_requested_run = (user_requested_run && cell ∈ roots)
+                user_requested_run = (user_requested_run && cell ∈ roots),
+				capture_stdout = session.options.evaluation.capture_stdout,
             )
             any_interrupted |= run.interrupted
 
@@ -253,17 +254,24 @@ function run_single!(
 	cell::Cell, 
 	reactive_node::ReactiveNode, 
 	expr_cache::ExprAnalysisCache; 
-	user_requested_run::Bool=true
+	user_requested_run::Bool=true,
+	capture_stdout::Bool=true,
 )
 	run = WorkspaceManager.eval_format_fetch_in_workspace(
 		session_notebook, 
 		expr_cache.parsedcode, 
-		cell.cell_id, 
-		ends_with_semicolon(cell.code), 
-		expr_cache.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing,
-		expr_cache.forced_expr_id,
+		cell.cell_id;
+		
+		ends_with_semicolon = 
+			ends_with_semicolon(cell.code), 
+		function_wrapped_info = 
+			expr_cache.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing,
+		forced_expr_id = 
+			expr_cache.forced_expr_id,
+		known_published_objects = 
+			collect(keys(cell.published_objects)),
 		user_requested_run,
-		collect(keys(cell.published_objects)),
+		capture_stdout,
 	)
 	set_output!(cell, run, expr_cache; persist_js_state=!user_requested_run)
 	if session_notebook isa Tuple && run.process_exited
