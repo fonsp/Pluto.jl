@@ -6,8 +6,8 @@
     "version": "1.0.0",
     "description": "",
     "scripts": {
-        "start": "cd ../frontend && parcel --dist-dir ../frontend-dist --config ../frontend-bundler/.parcelrc editor.html index.html error.jl.html sample.html",
-        "build": "cd ../frontend && parcel build --no-source-maps --public-url . --dist-dir ../frontend-dist --config ../frontend-bundler/.parcelrc editor.html index.html error.jl.html sample.html",
+        "start": "cd ../frontend && parcel --dist-dir ../frontend-dist --config ../frontend-bundler/.parcelrc editor.html index.html error.jl.html",
+        "build": "cd ../frontend && parcel build --no-source-maps --public-url . --dist-dir ../frontend-dist --config ../frontend-bundler/.parcelrc editor.html index.html error.jl.html",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "author": "",
