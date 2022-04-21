@@ -117,7 +117,8 @@ body.wiggle_binder .edit_or_run > button {
     font-size: 16px;
     /* font-style: italic; */
     font-family: "Roboto Mono";
-    font-family: var(--lato-ui-font-stack);letter-spacing: 0.1px;
+    font-family: var(--lato-ui-font-stack);
+    letter-spacing: 0.1px;
     color: var(--black);
     white-space: nowrap;
     padding: 8px 16px;
@@ -140,8 +141,9 @@ body.wiggle_binder .edit_or_run > button {
     left: calc(50vw - var(--width) / 2);
     background-color: white;
     color: black;
+    color-scheme: light;
     box-shadow: 0px 0px 0px 100vmax #0000004a;
-    font-family: "Lato", sans-serif;
+    font-family: var(--lato-ui-font-stack);
 }
 .binder_help_text a {
     color: black;

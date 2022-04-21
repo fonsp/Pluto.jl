@@ -3,7 +3,7 @@ import { html, Component, useRef, useLayoutEffect, useContext, useEffect, useMem
 import { ErrorMessage } from "./ErrorMessage.js"
 import { TreeView, TableView, DivElement } from "./TreeView.js"
 
-import { add_bonds_listener, set_bound_elements_to_their_value } from "../common/Bond.js"
+import { add_bonds_disabled_message_handler, add_bonds_listener, set_bound_elements_to_their_value } from "../common/Bond.js"
 import { cl } from "../common/ClassTable.js"
 
 import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
@@ -412,7 +412,7 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
     let container = useRef(/** @type {HTMLElement} */ (null))
 
     useLayoutEffect(() => {
-        set_bound_elements_to_their_value(container.current, pluto_bonds)
+        set_bound_elements_to_their_value(container.current.querySelectorAll("bond"), pluto_bonds)
     }, [body, persist_js_state, pluto_actions, pluto_bonds])
 
     useLayoutEffect(() => {
@@ -449,9 +449,10 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
                 })
 
                 if (pluto_actions != null) {
-                    set_bound_elements_to_their_value(container.current, pluto_bonds)
-                    let remove_bonds_listener = add_bonds_listener(container.current, pluto_actions.set_bond, pluto_bonds)
-                    invalidation.then(remove_bonds_listener)
+                    const bond_nodes = container.current.querySelectorAll("bond")
+                    set_bound_elements_to_their_value(bond_nodes, pluto_bonds)
+                    add_bonds_listener(bond_nodes, pluto_actions.set_bond, pluto_bonds, invalidation)
+                    add_bonds_disabled_message_handler(bond_nodes, invalidation)
                 }
 
                 // Convert LaTeX to svg
