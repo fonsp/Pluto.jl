@@ -323,4 +323,42 @@ import Distributed
         end)
         Distributed.rmprocs(test_proc)
     end
+
+    @testset "Dependent Bound Variables" begin
+        🍭 = ServerSession()
+        🍭.options.evaluation.workspace_use_distributed = false
+        fakeclient = ClientSession(:fake, nothing)
+        🍭.connected_clients[fakeclient.id] = fakeclient
+        notebook = Notebook([
+            Cell("""@bind x HTML("<input type=range min=1 max=10>")"""),
+            Cell(raw"""@bind y HTML("<input type=range min=1 max=$(x)>")"""),
+            Cell("""x"""),
+            Cell("""y"""),
+        ])
+        fakeclient.connected_notebook = notebook
+        update_run!(🍭, notebook, notebook.cells)
+
+        function set_bond_values!(notebook:: Notebook, bonds:: Dict; is_first_value=false)
+            for (name, value) in bonds
+                notebook.bonds[name] = Dict("value" => value)
+            end
+            Pluto.set_bond_values_reactive(; session=🍭, notebook, bound_sym_names=collect(keys(bonds)), run_async=false, is_first_values=fill(is_first_value, length(bonds)))
+        end
+
+        set_bond_values!(notebook, Dict(:x => 1, :y => 1); is_first_value=true)
+        @test notebook.cells[3].output.body == "1"
+        @test notebook.cells[4].output.body == "1"
+
+        set_bond_values!(notebook, Dict(:x => 5))
+        @test notebook.cells[3].output.body == "5"
+        @test notebook.cells[4].output.body == "missing" # the slider object is re-defined, therefore its value is the default one
+
+        set_bond_values!(notebook, Dict(:y => 3))
+        @test notebook.cells[3].output.body == "5"
+        @test notebook.cells[4].output.body == "3"
+
+        set_bond_values!(notebook, Dict(:x => 10, :y => 5))
+        @test notebook.cells[3].output.body == "10"
+        @test notebook.cells[4].output.body == "5" # this would fail without PR #2014 - previously `y` was reset to the default value `missing`
+    end
 end
