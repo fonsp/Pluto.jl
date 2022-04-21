@@ -2,6 +2,11 @@ import { BackendLaunchPhase } from "../common/Binder.js"
 import { html, useEffect, useState, useRef } from "../imports/Preact.js"
 
 export const RunLocalButton = ({ show, start_local }) => {
+    //@ts-ignore
+    window.open_edit_or_run_popup = () => {
+        start_local()
+    }
+
     return html`<div class="edit_or_run">
         <button
             onClick=${(e) => {

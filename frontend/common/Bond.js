@@ -151,7 +151,7 @@ export const set_bound_elements_to_their_value = (bond_nodes, bond_values) => {
 export const add_bonds_disabled_message_handler = (bond_nodes, invalidation) => {
     bond_nodes.forEach((bond_node) => {
         const listener = (e) => {
-            if (e.target.closest(".bonds_disabled.offer_binder")) {
+            if (e.target.closest(".bonds_disabled:where(.offer_binder, .offer_local)")) {
                 window.dispatchEvent(
                     new CustomEvent("open pluto popup", {
                         detail: {
@@ -164,6 +164,7 @@ export const add_bonds_disabled_message_handler = (bond_nodes, invalidation) => 
                                         //@ts-ignore
                                         window.open_edit_or_run_popup()
                                         e.preventDefault()
+                                        window.dispatchEvent(new CustomEvent("close pluto popup"))
                                     }}
                                     >Run this notebook</a
                                 >

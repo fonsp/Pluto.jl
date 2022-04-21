@@ -1053,7 +1053,7 @@ pluto-output:not(.rich_output) > div > pre {
     display: flex;
 }
 
-.bonds_disabled.offer_binder bond {
+.bonds_disabled:where(.offer_binder, .offer_local) bond {
     opacity: 0.6;
     filter: grayscale(1);
 }
