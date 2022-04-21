@@ -83,7 +83,7 @@ body.error main {
 }
 
 p {
-    color: var(--index-clickable-text-color);
+    color: var(--index-text-color);
 }
 
 ul {
@@ -166,7 +166,7 @@ pluto-filepicker button {
 
 pluto-filepicker button:disabled {
     cursor: not-allowed;
-    opacity: .7;
+    opacity: 0.7;
 }
 
 .cm-editor .cm-tooltip {
@@ -350,7 +350,7 @@ featured-card {
     max-width: 280px;
 }
 
-.featured-source-notebooks {
+.card-list {
     display: grid;
     /* grid-auto-columns: 50px; */
     place-items: center;

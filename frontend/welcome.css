@@ -186,3 +186,12 @@ li.new {
     top: 0;
     z-index: 2;
 }
+
+
+h1 {font-size: 2.8rem;margin-block-end: 0em;}
+
+.collection {margin: 6em 0;}
+
+.collection h2 {font-size: 2.5rem;font-weight: 600;margin: 0;}
+
+#featured p {max-width: 54ch;color: #757575;}
