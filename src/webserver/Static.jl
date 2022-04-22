@@ -323,7 +323,10 @@ function http_router_for(session::ServerSession)
         required=security.require_secret_for_access || 
         security.require_secret_for_open_links
     ) do request::HTTP.Request
-        save_path = SessionActions.save_upload(request.body)
+        uri = HTTP.URI(request.target)
+        query = HTTP.queryparams(uri)
+        
+        save_path = SessionActions.save_upload(request.body; filename_base=get(query, "name", nothing))
         try_launch_notebook_response(
             SessionActions.open,
             save_path;
