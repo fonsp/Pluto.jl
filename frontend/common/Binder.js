@@ -126,7 +126,7 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
         if (launch_params.notebookfile.startsWith("data:")) {
             open_response = await fetch(with_token(new URL("notebookupload", binder_session_url)), {
                 method: "POST",
-                body: await (await fetch(launch_params.notebookfile)).arrayBuffer(),
+                body: await (await fetch(new Request(launch_params.notebookfile, { integrity: launch_params.notebookfile_integrity }))).arrayBuffer(),
             })
         } else {
             for (const [p1, p2] of [
