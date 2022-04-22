@@ -1,5 +1,6 @@
 import immer from "../imports/immer.js"
 import { timeout_promise, ws_address_from_base } from "./PlutoConnection.js"
+import { with_query_params } from "./URLTools.js"
 
 export const BackendLaunchPhase = {
     wait_for_user: 0,
@@ -98,11 +99,8 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
 
         /// PART 1: Creating a binder session..
         const { binder_session_url, binder_session_token } = await request_binder(launch_params.binder_url.replace("mybinder.org/v2/", "mybinder.org/build/"))
-        const with_token = (u) => {
-            const new_url = new URL(u)
-            new_url.searchParams.set("token", binder_session_token)
-            return String(new_url)
-        }
+        const with_token = (u) => with_query_params(u, { token: binder_session_token })
+
         console.log("Binder URL:", with_token(binder_session_url))
 
         //@ts-ignore
@@ -135,10 +133,9 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
                 ["path", launch_params.notebookfile],
                 ["url", new URL(launch_params.notebookfile, window.location.href).href],
             ]) {
-                const open_url = new URL("open", binder_session_url)
-                open_url.searchParams.set(p1, p2)
+                const open_url = with_query_params(new URL("open", binder_session_url), { [p1]: p2 })
 
-                console.log(`open ${p1}:`, String(open_url))
+                console.log(`open ${p1}:`, open_url)
                 open_response = await fetch(with_token(open_url), {
                     method: "POST",
                 })
@@ -167,8 +164,7 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
         const connect_promise = connect(with_token(ws_address_from_base(binder_session_url) + "channels"))
         await timeout_promise(connect_promise, 20_000).catch((e) => {
             console.error("Failed to establish connection within 20 seconds. Navigating to the edit URL directly.", e)
-            const edit_url = new URL("edit", binder_session_url)
-            edit_url.searchParams.set("id", new_notebook_id)
+            const edit_url = with_query_params(new URL("edit", binder_session_url), { id: new_notebook_id })
             window.parent.location.href = with_token(edit_url)
         })
     } catch (err) {
