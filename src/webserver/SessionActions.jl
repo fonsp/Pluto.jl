@@ -21,7 +21,7 @@ end
 function open_url(session::ServerSession, url::AbstractString; kwargs...)
     random_notebook = emptynotebook()
     path = download_cool(url, random_notebook.path)
-    result = try_event_call(session, NewNotebookEvent(random_notebook))
+    result = try_event_call(session, NewNotebookEvent())
     nb = if result isa UUID
         open(session, path; notebook_id=result, kwargs...)
     else
@@ -202,7 +202,7 @@ function new(session::ServerSession; run_async=true, notebook_id::UUID=uuid1())
         end
     end
     # Run NewNotebookEvent handler before assigning ID
-    isid = try_event_call(session, NewNotebookEvent(nb))
+    isid = try_event_call(session, NewNotebookEvent())
     nb.notebook_id = isnothing(isid) ? notebook_id : isid
 
     update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
