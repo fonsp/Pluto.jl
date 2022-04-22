@@ -354,10 +354,10 @@ featured-card {
     display: grid;
     /* grid-auto-columns: 50px; */
     place-items: center;
-    align-items: start;
+    align-items: stretch;
     grid-template-columns: repeat(auto-fit, minmax(var(--card-width), 1fr));
     gap: 0rem;
-    justify-items: center;
+    justify-items: stretch;
 }
 
 featured-card .banner img {
@@ -368,6 +368,8 @@ featured-card .banner img {
     /* background-color: hsl(16deg 100% 66%); */
     background: var(--card-color);
     border-radius: var(--zz) var(--zz) 0 0;
+    flex: 1 0 200px;
+    min-width: 0;
 }
 
 featured-card .author img {
