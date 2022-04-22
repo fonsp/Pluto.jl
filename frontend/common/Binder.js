@@ -132,7 +132,7 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
                 ),
                 {
                     method: "POST",
-                    body: await (await fetch(launch_params.notebookfile)).arrayBuffer(),
+                    body: await (await fetch(new Request(launch_params.notebookfile, { integrity: launch_params.notebookfile_integrity }))).arrayBuffer(),
                 }
             )
         } else {
