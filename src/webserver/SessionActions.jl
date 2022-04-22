@@ -163,12 +163,21 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
 end
 precompile(add, (ServerSession, Notebook))
 
-function save_upload(content::Vector{UInt8})
-    save_path = emptynotebook().path
-    Base.open(save_path, "w") do io
-        write(io, content)
-    end
+"""
+Generate a non-existing new notebook filename, and write `contents` to that file. Return the generated filename.
 
+# Example
+```julia
+save_upload(some_notebook_data; filename_base="hello") == "~/.julia/pluto_notebooks/hello 5.jl"
+```
+"""
+function save_upload(contents::Union{String,Vector{UInt8}}; filename_base::Union{Nothing,AbstractString}=nothing)
+    save_path = numbered_until_new(
+        joinpath(
+            new_notebooks_directory(), 
+            something(filename_base, cutename())
+        ); suffix=".jl")
+    write(save_path, contents)
     save_path
 end
 
