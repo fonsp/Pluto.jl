@@ -1,3 +1,4 @@
+import { with_query_params } from "../../common/URLTools.js"
 import _ from "../../imports/lodash.js"
 import { html, Component, useEffect, useState, useMemo } from "../../imports/Preact.js"
 
@@ -7,15 +8,19 @@ const str_to_degree = (s) => ([...s].reduce((a, b) => a + b.charCodeAt(0), 0) * 
 
 /**
  * @param {{
- *  entry: import("./Featured.js").SourceManifestEntry,
+ *  entry: import("./Featured.js").SourceManifestNotebookEntry,
  *  source_url: String,
  * }} props
  */
 export const FeaturedCard = ({ entry, source_url }) => {
     const u = (x) => (x == null ? null : new URL(x, source_url).href)
-    const ue = (x) => (x == null ? null : encodeURIComponent(u(x)))
 
-    const href = `editor.html?statefile=${ue(entry.statefile_path)}&notebookfile=${ue(entry.notebookfile_path)}&disable_ui=true&pluto_server_url=.`
+    const href = with_query_params(`editor.html`, {
+        statefile: u(entry.statefile_path),
+        notebookfile: u(entry.notebookfile_path),
+        disable_ui: true,
+        pluto_server_url: `.`,
+    })
 
     const author = author_info(entry.frontmatter.author)
 
