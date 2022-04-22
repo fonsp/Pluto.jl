@@ -1,8 +1,9 @@
 module SessionActions
 
-import ..Pluto: ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, readwrite, update_save_run!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, try_event_call, NewNotebookEvent, OpenNotebookEvent, ShutdownNotebookEvent, @asynclog, ProcessStatus
+import ..Pluto: ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, cutename, readwrite, update_save_run!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, try_event_call, NewNotebookEvent, OpenNotebookEvent, ShutdownNotebookEvent, @asynclog, ProcessStatus
 using FileWatching
 import ..Pluto.DownloadCool: download_cool
+import HTTP
 
 import UUIDs: UUID, uuid1
 
@@ -19,7 +20,16 @@ function Base.showerror(io::IO, e::UserError)
 end
 
 function open_url(session::ServerSession, url::AbstractString; kwargs...)
+    name_from_url = startswith(url, r"https?://") ? strip(HTTP.unescapeuri(splitext(basename(HTTP.URI(url).path))[1])) : ""
+    new_name = isempty(name_from_url) ? cutename() : name_from_url
+    
     random_notebook = emptynotebook()
+    random_notebook.path = numbered_until_new(
+        joinpath(
+            new_notebooks_directory(), 
+            new_name
+        ); suffix=".jl")
+    
     path = download_cool(url, random_notebook.path)
     result = try_event_call(session, NewNotebookEvent(random_notebook))
     nb = if result isa UUID
