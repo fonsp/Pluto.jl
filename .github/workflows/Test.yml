@@ -45,7 +45,10 @@ jobs:
               with:
                   version: ${{ matrix.julia-version }}
             - uses: julia-actions/cache@v1
-            
+
+            - name: (Don't merge this! Temporary.) Install from repo.
+              run: julia --project -e 'using Pkg; Pkg.add("https://github.com/rikhuijzer/PrecompileSignatures.jl")'
+
             # 🚗
             - uses: julia-actions/julia-runtest@v1
               continue-on-error: ${{ matrix.julia-version == 'nightly' }}

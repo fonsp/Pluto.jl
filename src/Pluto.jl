@@ -97,4 +97,10 @@ if get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") != "0" && get(ENV, "CI", "🍄") != 
 \n"""
 end
 
+import FuzzyCompletions
+
+# Generate and include `precompile` directives.
+using PrecompileSignatures: precompile_directives
+# include(precompile_directives(Pluto))
+
 end

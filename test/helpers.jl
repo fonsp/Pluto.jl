@@ -2,6 +2,11 @@
 using TimerOutputs: TimerOutput, @timeit
 const TOUT = TimerOutput()
 macro timeit_include(path::AbstractString) :(@timeit TOUT $path include($path)) end
+function print_timeroutput()
+    println()
+    show(TOUT; compact=true, sortby=:firstexec)
+    println()
+end
 
 @timeit TOUT "import Pluto" import Pluto
 import Pluto.ExpressionExplorer
