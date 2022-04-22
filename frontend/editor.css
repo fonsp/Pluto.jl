@@ -656,7 +656,6 @@ pluto-filepicker button:disabled {
     cursor: not-allowed;
 }
 
-
 button.start_stop_recording,
 button.toggle_export {
     border: none;
@@ -1052,6 +1051,11 @@ pluto-output div.raw-html-wrapper {
 
 pluto-output:not(.rich_output) > div > pre {
     display: flex;
+}
+
+.bonds_disabled.offer_binder bond {
+    opacity: 0.6;
+    filter: grayscale(1);
 }
 
 /* as embedded display: */
