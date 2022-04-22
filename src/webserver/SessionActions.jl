@@ -20,7 +20,7 @@ function Base.showerror(io::IO, e::UserError)
 end
 
 function open_url(session::ServerSession, url::AbstractString; kwargs...)
-    name_from_url = strip(HTTP.unescapeuri(splitext(basename(HTTP.URI(url).path))[1]))
+    name_from_url = startswith(url, r"https?://") ? strip(HTTP.unescapeuri(splitext(basename(HTTP.URI(url).path))[1])) : ""
     new_name = isempty(name_from_url) ? cutename() : name_from_url
     
     random_notebook = emptynotebook()
