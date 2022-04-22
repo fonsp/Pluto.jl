@@ -1,6 +1,6 @@
 import { with_query_params } from "../../common/URLTools.js"
 import _ from "../../imports/lodash.js"
-import { html, Component, useEffect, useState, useMemo } from "../../imports/Preact.js"
+import { html, useEffect, useState, useMemo } from "../../imports/Preact.js"
 
 const transparent_svg = "data:image/svg+xml;charset=utf8,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%3E%3C/svg%3E"
 
@@ -13,6 +13,7 @@ const str_to_degree = (s) => ([...s].reduce((a, b) => a + b.charCodeAt(0), 0) * 
  * }} props
  */
 export const FeaturedCard = ({ entry, source_url }) => {
+    const title = entry.frontmatter?.title
     const u = (x) => (x == null ? null : new URL(x, source_url).href)
 
     const href = with_query_params(`editor.html`, {
@@ -20,6 +21,7 @@ export const FeaturedCard = ({ entry, source_url }) => {
         notebookfile: u(entry.notebookfile_path),
         disable_ui: true,
         pluto_server_url: `.`,
+        name: title == null ? null : `sample ${title}`,
     })
 
     const author = author_info(entry.frontmatter.author)

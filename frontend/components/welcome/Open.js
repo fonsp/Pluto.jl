@@ -1,5 +1,5 @@
 import _ from "../../imports/lodash.js"
-import { html, Component, useEffect, useState, useMemo } from "../../imports/Preact.js"
+import { html } from "../../imports/Preact.js"
 
 import { FilePicker } from "../FilePicker.js"
 import { PasteHandler } from "../PasteHandler.js"

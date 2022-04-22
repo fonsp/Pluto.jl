@@ -25,10 +25,17 @@ export const start_local = async ({ setStatePromise, connect, launch_params }) =
 
         let open_response
 
-        open_response = await fetch(with_token(new URL("notebookupload", binder_session_url)), {
-            method: "POST",
-            body: await (await fetch(launch_params.notebookfile)).arrayBuffer(),
-        })
+        open_response = await fetch(
+            with_token(
+                with_query_params(new URL("notebookupload", binder_session_url), {
+                    name: new URLSearchParams(window.location.search).get("name"),
+                })
+            ),
+            {
+                method: "POST",
+                body: await (await fetch(launch_params.notebookfile)).arrayBuffer(),
+            }
+        )
 
         const new_notebook_id = await open_response.text()
         const edit_url = with_query_params(new URL("edit", binder_session_url), { id: new_notebook_id })

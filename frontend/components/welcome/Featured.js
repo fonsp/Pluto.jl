@@ -1,5 +1,5 @@
 import _ from "../../imports/lodash.js"
-import { html, Component, useEffect, useState, useMemo } from "../../imports/Preact.js"
+import { html, useEffect, useState } from "../../imports/Preact.js"
 import { FeaturedCard } from "./FeaturedCard.js"
 
 const run = (f) => f()
