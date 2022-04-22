@@ -921,9 +921,9 @@ patch: ${JSON.stringify(
                     return
                 }
                 if (is_idle) {
-                    this.waiting_for_bond_to_trigger_execution ||= changes_involving_bonds.some(
-                        (x) => x.path.length >= 1 && bond_will_trigger_evaluation(x.path[1])
-                    )
+                    this.waiting_for_bond_to_trigger_execution =
+                        this.waiting_for_bond_to_trigger_execution ||
+                        changes_involving_bonds.some((x) => x.path.length >= 1 && bond_will_trigger_evaluation(x.path[1]))
                 }
                 this.pending_local_updates++
                 this.on_patches_hook(changes)
