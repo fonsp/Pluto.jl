@@ -99,8 +99,10 @@ end
 
 import FuzzyCompletions
 
-# Generate and include `precompile` directives.
+# Generate and include `precompile` directives during the precompilation phase.
 using PrecompileSignatures: precompile_directives
-# include(precompile_directives(Pluto))
+if ccall(:jl_generating_output, Cint, ()) == 1
+    include(precompile_directives(Pluto))
+end
 
 end
