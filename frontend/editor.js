@@ -92,6 +92,13 @@ export const empty_notebook_state = ({ notebook_id }) => ({
 
 /**
  *
+ * @param {import("./components/Editor.js").NotebookData} state
+ * @returns {import("./components/Editor.js").NotebookData}
+ */
+const without_path_entries = (state) => ({ ...state, path: default_path, shortpath: "" })
+
+/**
+ *
  * @param {{
  *  launch_params: import("./components/Editor.js").LaunchParameters,
  * }} props
@@ -109,7 +116,7 @@ const EditorLoader = ({ launch_params }) => {
             ;(async () => {
                 const r = await fetch(launch_params.statefile)
                 const data = await read_Uint8Array_with_progress(r, set_statefile_download_progress)
-                const state = unpack(data)
+                const state = without_path_entries(unpack(data))
                 initial_notebook_state_ref.current = state
                 set_ready_for_editor(true)
             })()
