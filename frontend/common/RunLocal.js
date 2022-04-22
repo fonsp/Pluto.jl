@@ -59,6 +59,6 @@ export const start_local = async ({ setStatePromise, connect, launch_params }) =
         })
     } catch (err) {
         console.error("Failed to initialize binder!", err)
-        alert("Something went wrong! 😮\n\nWe failed to initialize the binder connection. Please try again with a different browser, or come back later.")
+        alert("Something went wrong! 😮\n\nWe failed to open this notebook. Please try again with a different browser, or come back later.")
     }
 }

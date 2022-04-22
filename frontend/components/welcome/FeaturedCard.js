@@ -1,3 +1,4 @@
+import { base64url_to_base64 } from "../../common/PlutoHash.js"
 import { with_query_params } from "../../common/URLTools.js"
 import _ from "../../imports/lodash.js"
 import { html, useEffect, useState, useMemo } from "../../imports/Preact.js"
@@ -19,6 +20,7 @@ export const FeaturedCard = ({ entry, source_url }) => {
     const href = with_query_params(`editor.html`, {
         statefile: u(entry.statefile_path),
         notebookfile: u(entry.notebookfile_path),
+        notebookfile_integrity: `sha256-${base64url_to_base64(entry.hash)}`,
         disable_ui: true,
         pluto_server_url: `.`,
         name: title == null ? null : `sample ${title}`,
