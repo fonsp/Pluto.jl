@@ -130,7 +130,7 @@ function run_reactive_core!(
     to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_errable)...)
     to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_errable)...)
 
-    cells_to_macro_invalidate = map(c -> c.cell_id, cells_with_deleted_macros(notebook, old_topology, new_topology)) |> Set{UUID}
+    cells_to_macro_invalidate = map(c -> c.cell_id, cells_with_deleted_macros(old_topology, new_topology)) |> Set{UUID}
 
     to_reimport = union!(Set{Expr}(), map(c -> new_topology.codes[c].module_usings_imports.usings, setdiff(notebook.cells, to_run))...)
     if will_run_code(notebook)
@@ -317,12 +317,12 @@ end
 
 collect_implicit_usings(topology::NotebookTopology, cell::Cell) = ExpressionExplorer.collect_implicit_usings(topology.codes[cell].module_usings_imports)
 
-function cells_with_deleted_macros(notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology)
-    old_macros = mapreduce(c -> defined_macros(old_topology, c), union!, notebook.cells; init=Set{Symbol}())
-    new_macros = mapreduce(c -> defined_macros(new_topology, c), union!, notebook.cells; init=Set{Symbol}())
+function cells_with_deleted_macros(old_topology::NotebookTopology, new_topology::NotebookTopology)
+    old_macros = mapreduce(c -> defined_macros(old_topology, c), union!, all_cells(old_topology); init=Set{Symbol}())
+    new_macros = mapreduce(c -> defined_macros(new_topology, c), union!, all_cells(new_topology); init=Set{Symbol}())
     removed_macros = setdiff(old_macros, new_macros)
 
-    where_referenced(notebook, old_topology, removed_macros)
+    where_referenced(old_topology, removed_macros)
 end
 
 "Returns the set of macros names defined by this cell"
