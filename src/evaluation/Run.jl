@@ -171,9 +171,7 @@ function run_reactive_core!(
         end
 
         implicit_usings = collect_implicit_usings(new_topology, cell)
-		if !will_run_code(notebook)
-			# then skip these special cases.
-        elseif !is_resolved(new_topology) && can_help_resolve_cells(new_topology, cell)
+        if !is_resolved(new_topology) && can_help_resolve_cells(new_topology, cell)
             notebook.topology = new_new_topology = resolve_topology(session, notebook, new_topology, old_workspace_name)
 
             if !isempty(implicit_usings)
