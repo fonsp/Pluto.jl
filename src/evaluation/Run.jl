@@ -242,17 +242,17 @@ function run_single!(
 	capture_stdout::Bool=true,
 )
 	run = WorkspaceManager.eval_format_fetch_in_workspace(
-		session_notebook, 
-		expr_cache.parsedcode, 
+		session_notebook,
+		expr_cache.parsedcode,
 		cell.cell_id;
 		
-		ends_with_semicolon = 
-			ends_with_semicolon(cell.code), 
-		function_wrapped_info = 
+		ends_with_semicolon =
+			ends_with_semicolon(cell.code),
+		function_wrapped_info =
 			expr_cache.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing,
-		forced_expr_id = 
+		forced_expr_id =
 			expr_cache.forced_expr_id,
-		known_published_objects = 
+		known_published_objects =
 			collect(keys(cell.published_objects)),
 		user_requested_run,
 		capture_stdout,
@@ -325,7 +325,7 @@ end
 
 "Returns the set of macros names defined by this cell"
 defined_macros(topology::NotebookTopology, cell::Cell) = defined_macros(topology.nodes[cell])
-defined_macros(node::ReactiveNode) = filter(is_macro_identifier, node.funcdefs_without_signatures) ∪ filter(is_macro_identifier, node.definitions) # macro definitions can come from imports
+defined_macros(node::ReactiveNode) = union!(filter(is_macro_identifier, node.funcdefs_without_signatures), filter(is_macro_identifier, node.definitions)) # macro definitions can come from imports
 
 "Tells whether or not a cell can 'unlock' the resolution of other cells"
 function can_help_resolve_cells(topology::NotebookTopology, cell::Cell)
@@ -411,36 +411,36 @@ function resolve_topology(
 	still_unresolved_nodes = Set{Cell}()
 
 	for cell in unresolved_topology.unresolved_cells
-			if unresolved_topology.nodes[cell].macrocalls ⊆ run_defined_macros
-				# Do not try to expand if a newer version of the macro is also scheduled to run in the
-				# current run. The recursive reactive runs will take care of it.
-				push!(still_unresolved_nodes, cell)
-			end
+		if unresolved_topology.nodes[cell].macrocalls ⊆ run_defined_macros
+			# Do not try to expand if a newer version of the macro is also scheduled to run in the
+			# current run. The recursive reactive runs will take care of it.
+			push!(still_unresolved_nodes, cell)
+		end
 
-			result = try
-				if will_run_code(notebook)
-					analyze_macrocell(cell)
-				else
-					Failure(ErrorException("shutdown"))
-				end
-			catch error
-				@error "Macro call expansion failed with a non-macroexpand error" error
-				Failure(error)
-			end
-			if result isa Success
-				(new_node, function_wrapped, forced_expr_id) = result.result
-				union!(new_node.macrocalls, unresolved_topology.nodes[cell].macrocalls)
-				union!(new_node.references, new_node.macrocalls)
-				new_nodes[cell] = new_node
-
-				# set function_wrapped to the function wrapped analysis of the expanded expression.
-				new_codes[cell] = ExprAnalysisCache(unresolved_topology.codes[cell]; forced_expr_id, function_wrapped)
+		result = try
+			if will_run_code(notebook)
+				analyze_macrocell(cell)
 			else
-				if result isa Failure
-					@debug "Expansion failed" err=result.error
-				end
-				push!(still_unresolved_nodes, cell)
+				Failure(ErrorException("shutdown"))
 			end
+		catch error
+			@error "Macro call expansion failed with a non-macroexpand error" error
+			Failure(error)
+		end
+		if result isa Success
+			(new_node, function_wrapped, forced_expr_id) = result.result
+			union!(new_node.macrocalls, unresolved_topology.nodes[cell].macrocalls)
+			union!(new_node.references, new_node.macrocalls)
+			new_nodes[cell] = new_node
+
+			# set function_wrapped to the function wrapped analysis of the expanded expression.
+			new_codes[cell] = ExprAnalysisCache(unresolved_topology.codes[cell]; forced_expr_id, function_wrapped)
+		else
+			if result isa Failure
+				@debug "Expansion failed" err=result.error
+			end
+			push!(still_unresolved_nodes, cell)
+		end
 	end
 
 	all_nodes = merge(unresolved_topology.nodes, new_nodes)
