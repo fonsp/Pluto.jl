@@ -150,22 +150,23 @@ export const Notebook = ({ notebook, cell_inputs_local, last_created_cell, selec
                 .filter((_, i) => !(cell_outputs_delayed && i > render_cell_outputs_minimum))
                 .map(
                     (cell_id, i) => {
-                        // is there an error beacause the cell depends on a variable 
+                        // is there an error because the cell depends on a variable 
                         // that should have been defined in an erred cell
-                        let is_error_from_upstream = notebook.cell_results[cell_id]?.errored
+                        let have_UndefVarError = notebook.cell_results[cell_id]?.errored
                             && notebook.cell_results[cell_id].output.body["msg"]?.startsWith("UndefVarError: ")
+                        let undefined_var = have_UndefVarError ? 
+                            notebook.cell_results[cell_id].output.body["msg"].split(" ")[1] : false
+                        let is_errored_from_upstream = undefined_var 
+                            && notebook.cell_dependencies[cell_id]?.upstream_cells_map[undefined_var].length
                         // if there is such an error, point the error to the source error
-                        if (is_error_from_upstream) {
-                            let undefined_var = notebook.cell_results[cell_id].output.body["msg"].split(" ")[1]
+                        if (is_errored_from_upstream) {
                             // find relevant upstream cell
-                            // this may be undefined if upstream_cells_map of undefined_var isempty
-                            // means that cell does not depend on any
                             let upstream_cell = notebook.cell_dependencies[cell_id].upstream_cells_map[undefined_var].find(
                                 upstream_cell_id => notebook.cell_results[upstream_cell_id] 
                                     && notebook.cell_results[upstream_cell_id].errored
                             )
                             // if there is such errored upstream cell
-                            if(upstream_cell) {
+                            if(upstream_cell && notebook.cell_results[upstream_cell]?.output.body) {
                                 // update the output body pointing to the source error
                                 notebook.cell_results[cell_id].output.body = notebook.cell_results[upstream_cell]?.output.body
                             }
