@@ -37,7 +37,7 @@ import { start_local } from "../common/RunLocal.js"
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
 
-export const default_path = "..."
+export const default_path = ""
 const DEBUG_DIFFING = false
 
 // Be sure to keep this in sync with DEFAULT_METADATA in Cell.jl
