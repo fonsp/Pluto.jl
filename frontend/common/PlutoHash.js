@@ -17,14 +17,34 @@ export const base64_arraybuffer = async (/** @type {BufferSource} */ data) => {
 export const base64url_arraybuffer = async (/** @type {BufferSource} */ data) => {
     // This is roughly 0.5 as fast as `base64_arraybuffer`. See https://gist.github.com/fonsp/d2b84265012942dc40d0082b1fd405ba for benchmark and even slower alternatives.
     let original = await base64_arraybuffer(data)
+    return base64_to_base64url(original)
+}
+
+/** Turn a base64-encoded string into a base64url-encoded string containing the same data. Do not apply on a `data://` URL. */
+export const base64_to_base64url = (/** @type {string} */ original) => {
     return original.replaceAll(/[\+\/\=]/g, (s) => {
         const c = s.charCodeAt(0)
         return c === 43 ? "-" : c === 47 ? "_" : ""
     })
 }
 
-base64_arraybuffer(new Uint8Array([0, 0, 63, 0, 0, 62, 100, 200])).then((r) => console.assert(r === "AAA/AAA+ZMg=", r))
-base64url_arraybuffer(new Uint8Array([0, 0, 63, 0, 0, 62, 100, 200])).then((r) => console.assert(r === "AAA_AAA-ZMg", r))
+/** Turn a base64url-encoded string into a base64-encoded string containing the same data. Do not apply on a `data://` URL. */
+export const base64url_to_base64 = (/** @type {string} */ original) => {
+    const result_before_padding = original.replaceAll(/[-_]/g, (s) => {
+        const c = s.charCodeAt(0)
+        return c === 45 ? "+" : c === 95 ? "/" : ""
+    })
+    return result_before_padding + "=".repeat((4 - (result_before_padding.length % 4)) % 4)
+}
+
+const t1 = "AAA/AAA+ZMg="
+const t2 = "AAA_AAA-ZMg"
+
+console.assert(base64_to_base64url(t1) === t2)
+console.assert(base64url_to_base64(t2) === t1)
+
+base64_arraybuffer(new Uint8Array([0, 0, 63, 0, 0, 62, 100, 200])).then((r) => console.assert(r === t1, r))
+base64url_arraybuffer(new Uint8Array([0, 0, 63, 0, 0, 62, 100, 200])).then((r) => console.assert(r === t2, r))
 
 export const plutohash_arraybuffer = async (/** @type {BufferSource} */ data) => {
     const hash = sha256.create()

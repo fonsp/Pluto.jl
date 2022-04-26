@@ -618,16 +618,21 @@ The trick boils down to two things:
 2. If a function used to be defined, but now we want to delete it, then we go through the method table of that function and snoop out all methods that we defined by us, and not by another package. This is how we reverse extending external functions. For example, if you run a cell with `Base.sqrt(s::String) = "the square root of" * s`, and then delete that cell, then you can still call `sqrt(1)` but `sqrt("one")` will err. Cool right!
 """
 function move_vars(
-        old_workspace_name::Symbol,
-        new_workspace_name::Symbol,
-        vars_to_delete::Set{Symbol},
-        methods_to_delete::Set{Tuple{UUID,Vector{Symbol}}},
-        module_imports_to_move::Set{Expr}
-    )
+    old_workspace_name::Symbol,
+    new_workspace_name::Symbol,
+    vars_to_delete::Set{Symbol},
+    methods_to_delete::Set{Tuple{UUID,Vector{Symbol}}},
+    module_imports_to_move::Set{Expr},
+    invalidated_cell_uuids::Set{UUID},
+)
     old_workspace = getfield(Main, old_workspace_name)
     new_workspace = getfield(Main, new_workspace_name)
 
     do_reimports(new_workspace, module_imports_to_move)
+
+    for uuid in invalidated_cell_uuids
+        pop!(cell_expanded_exprs, uuid, nothing)
+    end
 
     # TODO: delete
     Core.eval(new_workspace, :(import ..($(old_workspace_name))))
