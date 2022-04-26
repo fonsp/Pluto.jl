@@ -179,13 +179,16 @@ const first_true_key = (obj) => {
  * @type {{
  *  notebook_id: string?,
  *  statefile: string?,
+ *  statefile_integrity: string?,
  *  notebookfile: string?,
+ *  notebookfile_integrity: string?,
  *  disable_ui: boolean,
  *  preamble_html: string?,
  *  isolated_cell_ids: string[]?,
  *  binder_url: string?,
  *  slider_server_url: string?,
  *  recording_url: string?,
+ *  recording_url_integrity: string?,
  *  recording_audio_url: string?,
  * }}
  */
@@ -918,9 +921,9 @@ patch: ${JSON.stringify(
                     return
                 }
                 if (is_idle) {
-                    this.waiting_for_bond_to_trigger_execution ||= changes_involving_bonds.some(
-                        (x) => x.path.length >= 1 && bond_will_trigger_evaluation(x.path[1])
-                    )
+                    this.waiting_for_bond_to_trigger_execution =
+                        this.waiting_for_bond_to_trigger_execution ||
+                        changes_involving_bonds.some((x) => x.path.length >= 1 && bond_will_trigger_evaluation(x.path[1]))
                 }
                 this.pending_local_updates++
                 this.on_patches_hook(changes)
@@ -1355,8 +1358,7 @@ patch: ${JSON.stringify(
                         export_url=${this.export_url}
                     />
                     <${RecordingPlaybackUI} 
-                        recording_url=${launch_params.recording_url}
-                        audio_src=${launch_params.recording_audio_url}
+                        launch_params=${launch_params}
                         initializing=${this.state.initializing}
                         apply_notebook_patches=${this.apply_notebook_patches}
                         reset_notebook_state=${() =>
