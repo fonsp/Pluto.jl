@@ -1156,14 +1156,14 @@ function tree_data(@nospecialize(x::AbstractSet{<:Any}), context::IOContext)
     end
 end
 
-function tree_data(@nospecialize(x::AbstractArray{<:Any,1}), context::IOContext)
+function tree_data(@nospecialize(x::AbstractVector{<:Any}), @nospecialize(context::IOContext))
     if Base.show_circular(context, x)
         Dict{Symbol,Any}(
             :objectid => string(objectid(x), base=16),
             :type => :circular,
         )
     else
-        depth = get(context, :tree_viewer_depth, 0)
+        depth = get(context, :tree_viewer_depth, 0)::Int
         recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x), Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
 
         indices = eachindex(x)
@@ -1197,10 +1197,15 @@ function tree_data(@nospecialize(x::Tuple), context::IOContext)
     depth = get(context, :tree_viewer_depth, 0)
     recur_io = IOContext(context, Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
 
+    elements = Tuple[]
+    for val in x
+        out = format_output_default(val, recur_io)
+        push!(elements, out)
+    end
     Dict{Symbol,Any}(
         :objectid => string(objectid(x), base=16),
         :type => :Tuple,
-        :elements => collect(enumerate(format_output_default.(x, [recur_io]))),
+        :elements => collect(enumerate(elements)),
     )
 end
 
@@ -1239,21 +1244,28 @@ function tree_data(@nospecialize(x::AbstractDict{<:Any,<:Any}), context::IOConte
     end
 end
 
-function tree_data_nt_row(pair::Tuple, context::IOContext)
+function tree_data_nt_row(@nospecialize(pair::Tuple), context::IOContext)
     # this is an entry of a NamedTuple, the first element of the Tuple is a Symbol, which we want to print as `x` instead of `:x`
     k, element = pair
     string(k), format_output_default(element, context)
 end
 
 
-function tree_data(@nospecialize(x::NamedTuple), context::IOContext)
+function tree_data(@nospecialize(x::NamedTuple), @nospecialize(context::IOContext))
     depth = get(context, :tree_viewer_depth, 0)
     recur_io = IOContext(context, Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
 
+    # Writing a manual loop because Julia tends to overspecialize on tuples.
+    elements = Tuple[]
+    for key in eachindex(x)
+        val = x[key]
+        data = tree_data_nt_row((key, val), recur_io)
+        push!(elements, data)
+    end
     Dict{Symbol,Any}(
         :objectid => string(objectid(x), base=16),
         :type => :NamedTuple,
-        :elements => tree_data_nt_row.(zip(eachindex(x), x), (recur_io,))
+        :elements => elements # [tree_data_nt_row(z, recur_io) for z in zip(eachindex(x), x)]
     )
 end
 
