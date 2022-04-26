@@ -26,11 +26,6 @@ wait_for_ready(nb)
 
 @timeit TOUT "SessionActions.shutdown" @eval Pluto.SessionActions.shutdown(🍭, nb; async=true)
 
-let
-    val = (; a=[1, 2], c=Dict("d" => (5, 6, true)))
-    @timeit TOUT "PlutoRunner.format_output" @eval Pluto.PlutoRunner.format_output(val)
-end
-
 # According to SnoopCompile, this is a big part of the time for `Pluto.run()`.
 # However, it's very tricky to measure this via the `Pluto.run` below.
 @timeit TOUT "Configuration.from_flat_kwargs" @eval Pluto.Configuration.from_flat_kwargs()

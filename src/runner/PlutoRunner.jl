@@ -1084,7 +1084,7 @@ pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Any) = false
 # in the next functions you see a `context` argument
 # this is really only used for the circular reference tracking
 
-function tree_data_array_elements(@nospecialize(x::AbstractArray{<:Any,1}), indices::AbstractVector{I}, context::IOContext)::Vector{Tuple{I,Any}} where {I<:Integer}
+function tree_data_array_elements(@nospecialize(x::AbstractVector{<:Any}), indices::AbstractVector{I}, context::IOContext)::Vector{Tuple{I,Any}} where {I<:Integer}
     Tuple{I,Any}[
         if isassigned(x, i)
             i, format_output_default(x[i], context)
@@ -1176,9 +1176,9 @@ function tree_data(@nospecialize(x::AbstractVector{<:Any}), @nospecialize(contex
             firsti = firstindex(x)
             from_end = my_limit > 20 ? 10 : my_limit > 1 ? 1 : 0
             Any[
-                tree_data_array_elements(x, indices[firsti:firsti-1+my_limit-from_end], recur_io)...,
-                "more",
-                tree_data_array_elements(x, indices[end+1-from_end:end], recur_io)...,
+                tree_data_array_elements(x, indices[firsti:firsti-1+my_limit-from_end], recur_io);
+                "more";
+                tree_data_array_elements(x, indices[end+1-from_end:end], recur_io)
             ]
         end
 
