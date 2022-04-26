@@ -439,7 +439,7 @@ import Distributed
         
         
 
-
+        WorkspaceManager.unmake_workspace((🍭, notebook))
 
     end
 end
