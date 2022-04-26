@@ -7,6 +7,18 @@ import .MoreAnalysis: find_bound_variables
 Base.push!(x::Set{Cell}) = x
 
 """
+Utility function to update variables inside a notebook process
+
+	symbol_value_itr is an iterator returning a tuple of variable names (Symbol) and variable values (Any)
+
+"""
+function update_variables_in_notebook!(session:: ServerSession, notebook:: Notebook, symbol_value_itr)
+	for (bound_sym, new_value) in symbol_value_itr
+		WorkspaceManager.eval_in_workspace((session, notebook), :($(bound_sym) = Main.PlutoRunner.transform_bond_value($(QuoteNode(bound_sym)), $(new_value))))
+	end
+end
+
+"""
 Run given cells and all the cells that depend on them, based on the topology information before and after the changes.
 """
 function run_reactive!(
@@ -165,14 +177,9 @@ function run_reactive_core!(
 			# Support one bond defining another when setting both simultaneously in PlutoSliderServer
 			# https://github.com/fonsp/Pluto.jl/issues/1695
 			bound_variables_defined_by_this_cell = find_bound_variables(notebook.topology.codes[cell].parsedcode)
-			redefined_external_bound_variables = bound_variables_defined_by_this_cell ∩ keys(externally_updated_variables)
-			for bond_var ∈ redefined_external_bound_variables
-				# set the redefined bound variables to their original value from the request
-				bond_val = externally_updated_variables[bond_var]
-				expr = :($bond_var = Main.PlutoRunner.transform_bond_value($(QuoteNode(bond_var)), $bond_val))
-				WorkspaceManager.eval_in_workspace((session, notebook), expr)
-			end
 
+			# set the redefined bound variables to their original value from the request
+			update_variables_in_notebook!(session, notebook, filter(kv -> kv.first ∈ bound_variables_defined_by_this_cell, externally_updated_variables))
         end
 
         cell.running = false
