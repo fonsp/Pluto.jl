@@ -348,10 +348,18 @@ import Distributed
                 Bonds.transform_value(os::TransformSlider, from_js) = from_js * 2
             end
             """),
-            Cell(raw"""@bind a TransformSlider(1:10)"""),
-            Cell(raw"""@bind b TransformSlider(1:a)"""),
+            Cell(raw"""begin
+                hello1 = 123
+                @bind a TransformSlider(1:10)
+            end"""),
+            Cell(raw"""begin
+                hello2 = 234
+                @bind b TransformSlider(1:a)
+            end"""),
             Cell(raw"""a"""), #8
             Cell(raw"""b"""), #9
+            Cell(raw"""hello1"""), #10
+            Cell(raw"""hello2"""), #11
             Cell(raw"""using AbstractPlutoDingetjes"""),
         ])
         fakeclient.connected_notebook = notebook
@@ -363,18 +371,29 @@ import Distributed
             end
             Pluto.set_bond_values_reactive(; session=🍭, notebook, bound_sym_names=collect(keys(bonds)), run_async=false, is_first_values=fill(is_first_value, length(bonds)))
         end
+        
+        @test notebook.cells[3].output.body == "missing"
+        @test notebook.cells[4].output.body == "missing" # no initial value defined for simple html slider (in contrast to TransformSlider)
+        @test notebook.cells[8].output.body == "2"
+        @test notebook.cells[9].output.body == "2"
+        @test notebook.cells[10].output.body == "123"
+        @test notebook.cells[11].output.body == "234"
 
         set_bond_values!(notebook, Dict(:x => 1, :a => 1); is_first_value=true)
         @test notebook.cells[3].output.body == "1"
         @test notebook.cells[4].output.body == "missing" # no initial value defined for simple html slider (in contrast to TransformSlider)
         @test notebook.cells[8].output.body == "2" # TransformSlider scales values *2
         @test notebook.cells[9].output.body == "2"
+        @test notebook.cells[10].output.body == "123"
+        @test notebook.cells[11].output.body == "234"
 
         set_bond_values!(notebook, Dict(:y => 1, :b => 1); is_first_value=true)
         @test notebook.cells[3].output.body == "1"
         @test notebook.cells[4].output.body == "1"
         @test notebook.cells[8].output.body == "2"
         @test notebook.cells[9].output.body == "2"
+        @test notebook.cells[10].output.body == "123"
+        @test notebook.cells[11].output.body == "234"
 
         set_bond_values!(notebook, Dict(:x => 5))
         @test notebook.cells[3].output.body == "5"
@@ -391,10 +410,34 @@ import Distributed
         set_bond_values!(notebook, Dict(:b => 2))
         @test notebook.cells[8].output.body == "2"
         @test notebook.cells[9].output.body == "4"
+        @test notebook.cells[10].output.body == "123"
+        @test notebook.cells[11].output.body == "234"
 
         set_bond_values!(notebook, Dict(:a => 8, :b => 12))
         @test notebook.cells[8].output.body == "16"
         @test notebook.cells[9].output.body == "24" # this would fail without PR #2014
+        @test notebook.cells[10].output.body == "123"
+        @test notebook.cells[11].output.body == "234"
+        
+        set_bond_values!(notebook, Dict(:a => 1, :b => 1))
+        setcode(notebook.cells[10], "a + hello1")
+        setcode(notebook.cells[11], "b + hello2")
+        update_run!(🍭, notebook, notebook.cells[10:11])
+        
+        @test notebook.cells[10].output.body == "125"
+        @test notebook.cells[11].output.body == "236"
+        
+        set_bond_values!(notebook, Dict(:a => 2, :b => 2))
+        @test notebook.cells[10].output.body == "127"
+        @test notebook.cells[11].output.body == "238"
+        set_bond_values!(notebook, Dict(:b => 3))
+        @test notebook.cells[10].output.body == "127"
+        @test notebook.cells[11].output.body == "240"
+        set_bond_values!(notebook, Dict(:a => 1))
+        @test notebook.cells[10].output.body == "125"
+        @test notebook.cells[11].output.body == "236" # changing a will reset b
+        
+        
 
 
 
