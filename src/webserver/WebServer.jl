@@ -322,6 +322,7 @@ function run(session::ServerSession, pluto_router)
         end
     end
 end
+precompile(run, (ServerSession, HTTP.Handlers.Router{Symbol("##001")}))
 
 get_favorite_notebook(notebook:: Nothing) = nothing
 get_favorite_notebook(notebook:: String) = notebook
