@@ -29,11 +29,6 @@ html {
     /* border-bottom: solid 2px var(--rule-color); */
 }
 
-body.error #title {
-    margin-top: 10vh;
-    /* text-align: left; */
-}
-
 #title h1,
 #title h2 {
     font-style: italic;
@@ -65,23 +60,6 @@ body {
     width: 100%;
     min-height: 100%;
     background: var(--main-bg-color);
-}
-
-body.error main {
-    max-width: 53rem;
-    margin: 20vh auto;
-    margin-top: 20vh;
-    text-align: left;
-    font-family: "Roboto Mono", monospace;
-    color: var(--index-text-color);
-}
-
-body.error main {
-    width: unset;
-    max-width: 40em;
-    padding: 0.5em;
-    margin-top: 5vh;
-    font-size: 14px;
 }
 
 p {
