@@ -14,8 +14,26 @@ class InflightRequests {
     this._page.on('requestfailed', this._onFinished);
   }
 
-  _onStarted(request) { this._requests.set(request, 1 + (this._requests.get(request) ?? 0)); }
-  _onFinished(request) { this._requests.set(request, -1 + (this._requests.get(request) ?? 0)); }
+  _onStarted(request) { 
+    // if(request.url().includes("data")) {
+    //   console.log('Start', request.url())
+    // }; 
+    this._requests.set(
+      request.url(), 
+      1 + (this._requests.get(request.url()) ?? 0)
+    ); 
+  }
+  _onFinished(request) { 
+    // if(request.url().includes("data")) {
+    //   console.log('Finish', request.url())
+    // }; 
+    this._requests.set(
+      request.url(), 
+      -1 + 
+        /* Multiple requests starts can have a single finish event. */
+        Math.min(1, this._requests.get(request.url()) ?? 0)
+    ); 
+  }
  
   inflightRequests() { return Array.from([...this._requests.entries()].flatMap(([k,v]) => v > 0 ? [k] : [])); }  
 
@@ -32,7 +50,8 @@ const with_connections_debug = (page, action) => {
     tracker.dispose();
     const inflight = tracker.inflightRequests();
     if(inflight.length > 0) {
-      console.warn("Open connections: ", inflight.map(request => request.url()));
+      console.warn("Open connections: ", inflight);
+      // console.warn([...tracker._requests.entries()])
     }
   }).catch(e => {
     
@@ -161,6 +180,9 @@ let should_be_offline_input = process.env["PLUTO_TEST_OFFLINE"]?.toLowerCase() ?
 let should_be_offline = [true, 1, "true", "1"].includes(should_be_offline_input)
 console.log(`Offline mode enabled: ${should_be_offline}`)
 
+const blocked_domains = ["cdn.jsdelivr.net", "unpkg.com", "cdn.skypack.dev", "esm.sh", "firebase.google.com"]
+const hide_warning = url => url.includes("mathjax")
+
 export const setupPage = (page) => {
   failOnError(page);
   dismissBeforeUnloadDialogs(page);
@@ -169,8 +191,9 @@ export const setupPage = (page) => {
   if(should_be_offline) {
     page.setRequestInterception(true);
     page.on("request", (request) => {
-      if(["cdn.jsdelivr.net", "unpkg.com", "cdn.skypack.dev", "esm.sh", "firebase.google.com"].some(domain => request.url().includes(domain))) {
-        console.error(`Blocking request to ${request.url()}`)
+      if(blocked_domains.some(domain => request.url().includes(domain))) {
+        if(!hide_warning(request.url()))
+          console.error(`Blocking request to ${request.url()}`)
         request.abort();
       } else {
         request.continue();
