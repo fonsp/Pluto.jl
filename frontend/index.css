@@ -16,21 +16,7 @@ html {
     font-size: 17px;
 }
 
-#title {
-    /* position: absolute; */
-    /* left: 0; */
-    /* right: 0; */
-    /* margin-top: 14vh; */
-    /* bottom: 0; */
-    /* margin: auto; */
-    /* display: block; */
-    /* width: 100%; */
-    /* text-align: center; */
-    /* border-bottom: solid 2px var(--rule-color); */
-}
-
-#title h1,
-#title h2 {
+#title h1 {
     font-style: italic;
     font-size: 2em;
     letter-spacing: 0.08em;
@@ -40,10 +26,6 @@ html {
     margin: 0px;
     padding: 4rem 1rem 3rem 1rem;
     /* flex: 1 1 auto; */ /* max-width: 920px; */
-}
-
-#title h2 {
-    font-size: 1.4em;
 }
 
 #title h1 img {
@@ -315,7 +297,7 @@ featured-card {
     --card-color: hsl(var(--card-color-hue), 77%, 82%);
     --card-border-radius: 10px;
     --card-border-width: 3px;
-    
+
     display: block;
     /* width: var(--card-width); */
     border: var(--card-border-width) solid var(--card-color);
@@ -390,7 +372,8 @@ featured-card h3 a {
     overflow: hidden;
     background: var(--index-card-bg);
     border-radius: 0.6em;
-/* border-top-left-radius: 0; */}
+    /* border-top-left-radius: 0; */
+}
 
 featured-card p {
     margin: 0.3rem 0.8rem;
