@@ -10,6 +10,10 @@ https://github.com/fonsp/Pluto.jl/wiki
 """
 module Pluto
 
+if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@max_methods"))
+    @eval Base.Experimental.@max_methods 1
+end
+
 import RelocatableFolders: @path
 const ROOT_DIR = normpath(joinpath(@__DIR__, ".."))
 const FRONTEND_DIR = @path(joinpath(ROOT_DIR, "frontend"))
