@@ -7,6 +7,7 @@ class InflightRequests {
   constructor(page) {
     this._page = page;
     this._requests = new Map();
+    this._history = [];
     this._onStarted = this._onStarted.bind(this);
     this._onFinished = this._onFinished.bind(this);
     this._page.on('request', this._onStarted);
@@ -18,6 +19,7 @@ class InflightRequests {
     // if(request.url().includes("data")) {
     //   console.log('Start', request.url())
     // }; 
+    this._history.push(["started", request.url()]);
     this._requests.set(
       request.url(), 
       1 + (this._requests.get(request.url()) ?? 0)
@@ -27,6 +29,7 @@ class InflightRequests {
     // if(request.url().includes("data")) {
     //   console.log('Finish', request.url())
     // }; 
+    this._history.push(["finished", request.url()]);
     this._requests.set(
       request.url(), 
       -1 + 
@@ -50,7 +53,7 @@ const with_connections_debug = (page, action) => {
     tracker.dispose();
     const inflight = tracker.inflightRequests();
     if(inflight.length > 0) {
-      console.warn("Open connections: ", inflight);
+      console.warn("Open connections: ", inflight, tracker._history.filter(([n,u]) => inflight.includes(u)));
       // console.warn([...tracker._requests.entries()])
     }
   }).catch(e => {
