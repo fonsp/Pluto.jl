@@ -68,8 +68,19 @@ module.exports = new Resolver({
                 // and converting binary assets into strings and then passing them doesn't work 🤷‍♀️.
                 let buffer = await response.buffer()
 
+                const response_length = buffer.length
+
+                if (response_length === 0) {
+                    throw new Error(`${specifier} returned an empty reponse.`)
+                }
+
                 await mkdirp(folder)
-                await fs.writeFile(fullpath, buffer)
+                const write_result = await fs.writeFile(fullpath, buffer)
+
+                // Verify that the file was written correctly:
+                if (write_result !== undefined || (await fs.readFile(fullpath)).length !== response_length) {
+                    throw new Error(`Failed to write file ${fullpath}`)
+                }
             }
 
             return { filePath: fullpath }
