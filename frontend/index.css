@@ -20,12 +20,13 @@ html {
     /* position: absolute; */
     /* left: 0; */
     /* right: 0; */
-    margin-top: 14vh;
+    /* margin-top: 14vh; */
     /* bottom: 0; */
     /* margin: auto; */
-    display: block;
-    width: 100%;
-    text-align: center;
+    /* display: block; */
+    /* width: 100%; */
+    /* text-align: center; */
+    /* border-bottom: solid 2px var(--rule-color); */
 }
 
 body.error #title {
@@ -42,7 +43,8 @@ body.error #title {
     font-family: "Vollkorn", serif;
     color: var(--pluto-output-h-color);
     margin: 0px;
-    border-bottom: solid 2px var(--rule-color);
+    padding: 4rem 1rem 3rem 1rem;
+    /* flex: 1 1 auto; */ /* max-width: 920px; */
 }
 
 #title h2 {
@@ -328,13 +330,14 @@ body.loading loading-bar {
 }
 
 :root {
-    --card-width: 14rem;
+    --card-width: 15rem;
 }
 
 featured-card {
+    --card-color: hsl(var(--card-color-hue), 77%, 82%);
     --card-border-radius: 10px;
     --card-border-width: 3px;
-    --card-color: attr(data-color);
+    
     display: block;
     /* width: var(--card-width); */
     border: var(--card-border-width) solid var(--card-color);
@@ -347,7 +350,7 @@ featured-card {
     word-break: break-word;
     hyphens: auto;
     background: var(--index-card-bg);
-    max-width: 280px;
+    max-width: var(--card-width);
 }
 
 .card-list {
@@ -363,19 +366,20 @@ featured-card {
 featured-card .banner img {
     --zz: calc(var(--card-border-radius) - var(--card-border-width));
     width: 100%;
-    height: 8rem;
+    /* height: 8rem; */
+    aspect-ratio: 3/2;
     object-fit: cover;
     /* background-color: hsl(16deg 100% 66%); */
     background: var(--card-color);
     border-radius: var(--zz) var(--zz) 0 0;
-    flex: 1 0 200px;
+    flex: 1 1 200px;
     min-width: 0;
 }
 
 featured-card .author img {
     --size: 1.6em;
-    margin: 0.4em 0.4em;
-    margin-bottom: -0.4em;
+    /* margin: 0.4em 0.4em; */
+    /* margin-bottom: -0.4em; */
     width: var(--size);
     height: var(--size);
     object-fit: cover;
@@ -395,7 +399,6 @@ featured-card a.banner {
 }
 
 featured-card .author {
-    color: #737373;
     font-weight: 600;
 }
 
@@ -407,10 +410,12 @@ featured-card h3 a {
     display: -webkit-inline-box;
     -webkit-box-orient: vertical;
     overflow: hidden;
-}
+    background: var(--index-card-bg);
+    border-radius: 0.6em;
+/* border-top-left-radius: 0; */}
 
 featured-card p {
-    margin: 0.6rem 0.8rem;
+    margin: 0.3rem 0.8rem;
     /* padding-top: 0; */
     /* margin-block: 0; */
     color: #838383;
@@ -422,7 +427,7 @@ featured-card p {
 }
 
 featured-card h3 {
-    margin: 0.6rem 0rem 0rem 0rem;
+    margin: -1.1rem 0rem 0rem 0rem;
 }
 
 featured-card.big {

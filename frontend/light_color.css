@@ -194,6 +194,7 @@
         --welcome-recentnotebook-bg: white;
         --welcome-recentnotebook-border: #dfdfdf;
         --welcome-open-bg: #fbfbfb;
+        --welcome-card-author-backdrop: #ffffffb0;
 
         /* HTML in codemirror! */
         --cm-html-color: #48b685;

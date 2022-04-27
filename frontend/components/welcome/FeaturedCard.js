@@ -44,17 +44,15 @@ export const FeaturedCard = ({ entry, source_url }) => {
     }, [entry.frontmatter.image])
 
     return html`
-        <featured-card style=${`--card-color: hsl(${str_to_degree(entry.id)}deg 77% 82%);`}>
+        <featured-card style=${`--card-color-hue: ${str_to_degree(entry.id)}deg;`}>
             <a class="banner" href=${href}><img src=${img_src} /></a>
-            <div class="pretitle">
-                ${author?.name == null
-                    ? null
-                    : html`
-                          <span class="author"
-                              ><a href=${author.url}> <img src=${author.image ?? transparent_svg} />${author.name} </a>
-                          </span>
-                      `}
-            </div>
+            ${author?.name == null
+                ? null
+                : html`
+                      <div class="author">
+                          <a href=${author.url}> <img src=${author.image ?? transparent_svg} /><span>${author.name}</span></a>
+                      </div>
+                  `}
             <h3><a href=${href} title=${entry.frontmatter.title}>${entry.frontmatter.title}</a></h3>
             <p title=${entry.frontmatter.description}>${entry.frontmatter.description}</p>
         </featured-card>

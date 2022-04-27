@@ -73,6 +73,9 @@ export const Welcome = () => {
     const { show_samples, CustomRecent, CustomPicker } = extended_components
 
     return html`
+        <section id="title">
+            <h1>welcome to <img src="img/logo.svg" /></h1>
+        </section>
         <section id="mywork">
             <div>
                 <${Recent} client=${client_ref.current} connected=${connected} remote_notebooks=${remote_notebooks} CustomRecent=${CustomRecent} />

@@ -190,6 +190,7 @@
         --welcome-recentnotebook-bg: #3b3b3b;
         --welcome-recentnotebook-border: #6e6e6e;
         --welcome-open-bg: hsl(233deg 20% 33%);
+        --welcome-card-author-backdrop: #0000006b;
 
         /* docs binding */
         --docs-binding-bg: #323431;
