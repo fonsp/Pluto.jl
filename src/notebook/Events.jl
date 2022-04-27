@@ -85,7 +85,6 @@ end
 
 # Triggered when we open a new notebook
 struct NewNotebookEvent <: PlutoEvent
-    notebook::Notebook
 end
 
 # Triggered when a user opens a notebook
