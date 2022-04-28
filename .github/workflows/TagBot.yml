@@ -52,3 +52,15 @@ jobs:
                     - {{ issue.title }} (#{{ issue.number }})
                     {% endfor %}
                     {% endif %}
+                    
+                    # New features
+                    *(TODO)*
+
+                    # Performance improvements
+                    *(TODO)*
+
+                    # Fixes
+                    *(TODO)*
+
+                    # Internal changes
+                    *(TODO)*
