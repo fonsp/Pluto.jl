@@ -231,3 +231,17 @@ h1 {
     align-items: center;
     gap: 0.4ch;
 }
+
+#github img {
+    aspect-ratio: 1;
+    filter: var(--image-filters);
+    width: 2rem;
+}
+
+a#github {
+    display: block;
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+}
+

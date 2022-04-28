@@ -61,8 +61,8 @@ li {
 
 a {
     color: inherit;
-    color: var(--index-clickable-text-color);
-}
+    
+color: var(--index-clickable-text-color);}
 
 /* input {
             width: 70%;

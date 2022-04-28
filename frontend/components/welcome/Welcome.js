@@ -75,6 +75,9 @@ export const Welcome = () => {
     return html`
         <section id="title">
             <h1>welcome to <img src="img/logo.svg" /></h1>
+            <!-- <a id="github" href="https://github.com/fonsp/Pluto.jl"
+                ><img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/logo-github.svg"
+            /></a> -->
         </section>
         <section id="mywork">
             <div>
