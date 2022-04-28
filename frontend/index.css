@@ -26,10 +26,11 @@ html {
     margin: 0px;
     padding: 4rem 1rem 3rem 1rem;
     /* flex: 1 1 auto; */ /* max-width: 920px; */
-}
+text-align: center;}
 
 #title h1 img {
     height: 1.2em;
+    width: 4.9em;
     margin-bottom: -0.27em;
     /* margin-right: -1.5em; */
     margin-left: 0.1em;
@@ -61,8 +62,9 @@ li {
 
 a {
     color: inherit;
-    
-color: var(--index-clickable-text-color);}
+
+    color: var(--index-clickable-text-color);
+}
 
 /* input {
             width: 70%;
@@ -87,7 +89,8 @@ pluto-filepicker .cm-editor {
     width: 100%;
     font-style: normal;
     font-weight: 500;
-    font-family: "Roboto Mono", monospace;
+
+    font-family: var(--inter-ui-font-stack);
     font-size: 0.75rem;
     letter-spacing: 1px;
     background: none;
@@ -153,10 +156,10 @@ pluto-filepicker button:disabled {
 
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
     /* this is the line height rounded to an integer to prevent jiggle */
-    height: 16px;
+    height: 18px;
     overflow-y: hidden;
     /* font-size: 16px; */
-    line-height: 16px;
+    /* line-height: 16px; */
     border-radius: 3px;
     margin-bottom: unset;
 }
@@ -167,9 +170,7 @@ pluto-filepicker button:disabled {
 }
 
 .cm-editor .cm-completionIcon {
-    opacity: 1;
-    width: 1em;
-    transform: translateY(-1.5px);
+    display: none;
 }
 
 .cm-completionIcon::before {
@@ -202,9 +203,10 @@ pluto-filepicker button:disabled {
 }
 
 .cm-editor .cm-tooltip-autocomplete .cm-completionLabel {
-    font-family: JuliaMono, Menlo, "Roboto Mono", "Lucida Sans Typewriter", "Source Code Pro", monospace !important;
+    font-family: var(--inter-ui-font-stack);
+    font-weight: 400;
     font-variant-ligatures: none;
-    font-size: 0.75rem;
+    font-size: 0.8rem;
 }
 
 body.nosessions ul#new ~ * {
