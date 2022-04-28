@@ -284,7 +284,7 @@ function load_notebook_nobackup(io, path)::Notebook
             code = code_normalised[1:prevind(code_normalised, end, length(_cell_suffix))]
 
             # parse metadata
-            metadata = Dict{String, Any}(DEFAULT_CELL_METADATA..., TOML.parse(join(metadata_toml_lines, "\n"))...)
+            metadata = Dict{String, Any}(DEFAULT_METADATA..., TOML.parse(join(metadata_toml_lines, "\n"))...)
 
             read_cell = Cell(; cell_id, code, metadata)
             collected_cells[cell_id] = read_cell

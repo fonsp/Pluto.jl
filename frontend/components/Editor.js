@@ -965,8 +965,8 @@ patch: ${JSON.stringify(
             )
         }
         //@ts-ignore
-        window.getNotebookMetadata = () => {
-            return this.state.notebook.metadata
+        window.getNotebookMetadata = (key) => {
+            return this.state.notebook.metadata[key]
         }
         //@ts-ignore
         window.putNotebookMetadata = (key, value) => {

@@ -52,7 +52,7 @@ Base.@kwdef mutable struct Cell
 
     depends_on_disabled_cells::Bool=false
 
-    metadata::Dict{String,Any}=copy(DEFAULT_CELL_METADATA)
+    metadata::Dict{String,Any}=copy(DEFAULT_METADATA)
 end
 
 Cell(cell_id, code) = Cell(cell_id=cell_id, code=code)
