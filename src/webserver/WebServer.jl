@@ -119,23 +119,8 @@ end
 
 const is_first_run = Ref(true)
 
-function run(session::ServerSession, pluto_router)
-    if is_first_run[]
-        is_first_run[] = false
-        @info "Loading..."
-    end
-    
-    if VERSION < v"1.6.2"
-        @info "Pluto is running on an old version of Julia ($(VERSION)) that is no longer supported. Visit https://julialang.org/downloads/ for more information about upgrading Julia."
-    end
-
-    notebook_at_startup = session.options.server.notebook
-    open_notebook!(session, notebook_at_startup)
-
-    host = session.options.server.host
-    hostIP = parse(Sockets.IPAddr, host)
-    favourite_port = session.options.server.port
-    
+"Return a port and serversocket to use while taking into account the `favourite_port`."
+function port_serversocket(hostIP::Sockets.IPAddr, favourite_port)
     local port, serversocket
     if favourite_port === nothing
         port, serversocket = Sockets.listenany(hostIP, UInt16(1234))
@@ -144,14 +129,34 @@ function run(session::ServerSession, pluto_router)
         try
             serversocket = Sockets.listen(hostIP, port)
         catch e
-            @error "Port with number $port is already in use. Use Pluto.run() to automatically select an available port."
-            return
+            error("Port with number $port is already in use. Use Pluto.run() to automatically select an available port.")
         end
     end
+    return port, serversocket
+end
+
+function run(session::ServerSession, pluto_router)
+    if is_first_run[]
+        is_first_run[] = false
+        @info "Loading..."
+    end
+    
+    if VERSION < v"1.6.2"
+        @warn("\nPluto is running on an old version of Julia ($(VERSION)) that is no longer supported. Visit https://julialang.org/downloads/ for more information about upgrading Julia.")
+    end
+
+    notebook_at_startup = session.options.server.notebook
+    open_notebook!(session, notebook_at_startup)
+
+    host = session.options.server.host
+    hostIP = parse(Sockets.IPAddr, host)
+    favourite_port = session.options.server.port
+
+    local port, serversocket = port_serversocket(hostIP, favourite_port)
 
     shutdown_server = Ref{Function}(() -> ())
 
-    servertask = @async HTTP.serve(hostIP, port, stream=true, server=serversocket) do http::HTTP.Stream
+    servertask = @async HTTP.serve(hostIP, port; stream=true, server=serversocket) do http::HTTP.Stream
         # messy messy code so that we can use the websocket on the same port as the HTTP server
         if HTTP.WebSockets.is_upgrade(http.message)
             secret_required = let
@@ -271,21 +276,18 @@ function run(session::ServerSession, pluto_router)
     WorkspaceManager.poll(server_running, 5.0, 1.0)
     
     address = pretty_address(session, hostIP, port)
-    println()
     if session.options.server.launch_browser && open_in_default_browser(address)
-        println("Opening $address in your default browser... ~ have fun!")
+        @info("\nOpening $address in your default browser... ~ have fun!")
     else
-        println("Go to $address in your browser to start writing ~ have fun!")
+        @info("\nGo to $address in your browser to start writing ~ have fun!")
     end
-    println()
-    println("Press Ctrl+C in this terminal to stop Pluto")
-    println()
+    @info("\nPress Ctrl+C in this terminal to stop Pluto\n\n")
     
     # Trigger ServerStartEvent with server details
     try_event_call(session, ServerStartEvent(address, port))
 
     if PLUTO_VERSION >= v"0.17.6" && frontend_directory() == "frontend"
-        @info "It looks like you are developing the Pluto package, using the unbundled frontend..."
+        @info("It looks like you are developing the Pluto package, using the unbundled frontend...")
     end
 
     # Start this in the background, so that the first notebook launch (which will trigger registry update) will be faster
@@ -295,7 +297,7 @@ function run(session::ServerSession, pluto_router)
     end
 
     shutdown_server[] = () -> @sync begin
-        println("\n\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈")
+        @info("\n\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈\n\n")
         @async swallow_exception(() -> close(serversocket), Base.IOError)
         # TODO: HTTP has a kill signal?
         # TODO: put do_work tokens back 
@@ -305,8 +307,6 @@ function run(session::ServerSession, pluto_router)
         empty!(session.connected_clients)
         for nb in values(session.notebooks)
             @asynclog SessionActions.shutdown(session, nb; keep_in_session=false, async=false, verbose=false)
-        end
-        for (notebook_id, ws) in WorkspaceManager.workspaces
         end
     end
 

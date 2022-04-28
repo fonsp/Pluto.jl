@@ -28,12 +28,12 @@ MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
 const ObjectID = typeof(objectid("hello computer"))
 const ObjectDimPair = Tuple{ObjectID,Int64}
 
-Base.@kwdef struct CachedMacroExpansion
+struct CachedMacroExpansion
     original_expr_hash::UInt64
     expanded_expr::Expr
     expansion_duration::UInt64
     has_pluto_hook_features::Bool
-    did_mention_expansion_time::Bool=false
+    did_mention_expansion_time::Bool
 end
 const cell_expanded_exprs = Dict{UUID,CachedMacroExpansion}()
 
@@ -176,7 +176,7 @@ replace_pluto_properties_in_expr(other; kwargs...) = other
 "Similar to [`replace_pluto_properties_in_expr`](@ref), but just checks for existance and doesn't check for [`GiveMeCellID`](@ref)"
 has_hook_style_pluto_properties_in_expr(::GiveMeRerunCellFunction) = true
 has_hook_style_pluto_properties_in_expr(::GiveMeRegisterCleanupFunction) = true
-has_hook_style_pluto_properties_in_expr(expr::Expr) = any(has_hook_style_pluto_properties_in_expr, expr.args)
+has_hook_style_pluto_properties_in_expr(expr::Expr)::Bool = any(has_hook_style_pluto_properties_in_expr, expr.args)
 has_hook_style_pluto_properties_in_expr(other) = false
 
 
@@ -216,7 +216,7 @@ module CantReturnInPluto
     We do macro expansion now, so we can also check for `return` statements "statically".
     This method goes through an expression and replaces all `return` statements with `throw(CantReturnInPlutoException())`
     """
-    function replace_returns_with_error(expr::Expr)
+    function replace_returns_with_error(expr::Expr)::Expr
         if expr.head == :return
             :(throw($(CantReturnInPlutoException())))
         elseif expr.head == :quote
@@ -259,12 +259,12 @@ function try_macroexpand(mod, cell_uuid, expr)
     end
 
     elapsed_ns = time_ns()
-    expanded_expr = macroexpand(mod, expr_not_toplevel)
+    expanded_expr = macroexpand(mod, expr_not_toplevel)::Expr
     elapsed_ns = time_ns() - elapsed_ns
 
     # Removes baked in references to the module this was macroexpanded in.
     # Fix for https://github.com/fonsp/Pluto.jl/issues/1112
-    expr_without_return = CantReturnInPluto.replace_returns_with_error(expanded_expr)
+    expr_without_return = CantReturnInPluto.replace_returns_with_error(expanded_expr)::Expr
     expr_without_globalrefs = globalref_to_workspaceref(expr_without_return)
 
     has_pluto_hook_features = has_hook_style_pluto_properties_in_expr(expr_without_globalrefs)
@@ -274,11 +274,13 @@ function try_macroexpand(mod, cell_uuid, expr)
         register_cleanup_function=(fn) -> UseEffectCleanups.register_cleanup(fn, cell_uuid),
     )
 
+    did_mention_expansion_time = false
     cell_expanded_exprs[cell_uuid] = CachedMacroExpansion(
-        original_expr_hash=expr_hash(expr),
-        expanded_expr=expr_to_save,
-        expansion_duration=elapsed_ns,
-        has_pluto_hook_features=has_pluto_hook_features,
+        expr_hash(expr),
+        expr_to_save,
+        elapsed_ns,
+        has_pluto_hook_features,
+        did_mention_expansion_time
     )
 
     return (sanitize_expr(expr_to_save), expr_hash(expr_to_save))
@@ -461,14 +463,14 @@ If the third argument is a `Tuple{Set{Symbol}, Set{Symbol}}` containing the refe
 This function is memoized: running the same expression a second time will simply call the same generated function again. This is much faster than evaluating the expression, because the function only needs to be Julia-compiled once. See https://github.com/fonsp/Pluto.jl/pull/720
 """
 function run_expression(
-    m::Module, 
-    expr::Any, 
-    cell_id::UUID, 
-    function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing, 
-    forced_expr_id::Union{ObjectID,Nothing}=nothing; 
-    user_requested_run::Bool=true,
-    capture_stdout::Bool=true,
-)
+        m::Module,
+        expr::Any,
+        cell_id::UUID,
+        function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing,
+        forced_expr_id::Union{ObjectID,Nothing}=nothing;
+        user_requested_run::Bool=true,
+        capture_stdout::Bool=true,
+    )
     if user_requested_run
         # TODO Time elapsed? Possibly relays errors in cleanup function?
         UseEffectCleanups.trigger_cleanup(cell_id)
@@ -512,13 +514,13 @@ function run_expression(
     # We add the time it took to macroexpand to the time for the first call,
     # but we make sure we don't mention it on subsequent calls
     expansion_runtime = if expanded_cache.did_mention_expansion_time === false
-        # Is this really the easiest way to clone a struct with some changes? Pfffft
+        did_mention_expansion_time = true
         cell_expanded_exprs[cell_id] = CachedMacroExpansion(
-            original_expr_hash=expanded_cache.original_expr_hash,
-            expanded_expr=expanded_cache.expanded_expr,
-            expansion_duration=expanded_cache.expansion_duration,
-            did_mention_expansion_time=true,
-            has_pluto_hook_features=expanded_cache.has_pluto_hook_features,
+            expanded_cache.original_expr_hash,
+            expanded_cache.expanded_expr,
+            expanded_cache.expansion_duration,
+            expanded_cache.has_pluto_hook_features,
+            did_mention_expansion_time
         )
         expanded_cache.expansion_duration
     else
@@ -568,6 +570,7 @@ function run_expression(
     
     cell_results[cell_id], cell_runtimes[cell_id] = result, runtime
 end
+precompile(run_expression, (Module, Expr, UUID, Nothing))
 
 # Channel to trigger implicits run
 const run_channel = Channel{UUID}(10)
@@ -582,15 +585,12 @@ function rerun_cell_from_notebook(cell_id::UUID)
             push!(new_uuids, uuid)
         end
     end
-    size = length(new_uuids)
     for uuid in new_uuids
         put!(run_channel, uuid)
     end
 
     put!(run_channel, cell_id)
 end
-
-
 
 
 
@@ -618,11 +618,22 @@ The trick boils down to two things:
 1. When we create a new workspace module, we move over some of the global from the old workspace. (But not the ones that we want to 'delete'!)
 2. If a function used to be defined, but now we want to delete it, then we go through the method table of that function and snoop out all methods that we defined by us, and not by another package. This is how we reverse extending external functions. For example, if you run a cell with `Base.sqrt(s::String) = "the square root of" * s`, and then delete that cell, then you can still call `sqrt(1)` but `sqrt("one")` will err. Cool right!
 """
-function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_to_delete::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,Vector{Symbol}}}, module_imports_to_move::Set{Expr})
+function move_vars(
+    old_workspace_name::Symbol,
+    new_workspace_name::Symbol,
+    vars_to_delete::Set{Symbol},
+    methods_to_delete::Set{Tuple{UUID,Vector{Symbol}}},
+    module_imports_to_move::Set{Expr},
+    invalidated_cell_uuids::Set{UUID},
+)
     old_workspace = getfield(Main, old_workspace_name)
     new_workspace = getfield(Main, new_workspace_name)
 
     do_reimports(new_workspace, module_imports_to_move)
+
+    for uuid in invalidated_cell_uuids
+        pop!(cell_expanded_exprs, uuid, nothing)
+    end
 
     # TODO: delete
     Core.eval(new_workspace, :(import ..($(old_workspace_name))))
@@ -664,7 +675,7 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
                 catch ex
                     if !(ex isa UndefVarError)
                         @warn "Failed to move variable $(symbol) to new workspace:"
-                        showerror(stderr, ex, stacktrace(catch_backtrace()))
+                        showerror(original_stderr, ex, stacktrace(catch_backtrace()))
                     end
                 end
             end
@@ -677,9 +688,11 @@ end
 "Return whether the `method` was defined inside this notebook, and not in external code."
 isfromcell(method::Method, cell_id::UUID) = endswith(String(method.file), string(cell_id))
 
-"Delete all methods of `f` that were defined in this notebook, and leave the ones defined in other packages, base, etc. ✂
+"""
+Delete all methods of `f` that were defined in this notebook, and leave the ones defined in other packages, base, etc. ✂
 
-Return whether the function has any methods left after deletion."
+Return whether the function has any methods left after deletion.
+"""
 function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
     # we can delete methods of functions!
     # instead of deleting all methods, we only delete methods that were defined in this notebook. This is necessary when the notebook code extends a function from remote code
@@ -728,7 +741,7 @@ function try_delete_toplevel_methods(workspace::Module, (cell_id, name_parts)::T
             (val isa Function) && delete_toplevel_methods(val, cell_id)
         catch ex
             @warn "Failed to delete methods for $(name_parts)"
-            showerror(stderr, ex, stacktrace(catch_backtrace()))
+            showerror(original_stderr, ex, stacktrace(catch_backtrace()))
             false
         end
     catch
@@ -1996,8 +2009,12 @@ end
 # LOGGING
 ###
 
+const original_stdout = stdout
+const original_stderr = stderr
+
+
 const log_channel = Channel{Any}(10)
-const old_logger = Ref{Any}(nothing)
+const old_logger = Ref{Union{Logging.AbstractLogger,Nothing}}(nothing)
 
 struct PlutoLogger <: Logging.AbstractLogger
     stream
@@ -2022,6 +2039,9 @@ function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, f
     # println("with types: ", "_module: ", typeof(_module), ", ", "msg: ", typeof(msg), ", ", "group: ", typeof(group), ", ", "id: ", typeof(id), ", ", "file: ", typeof(file), ", ", "line: ", typeof(line), ", ", "kwargs: ", typeof(kwargs)) # thanks Copilot
 
     try
+        
+        yield()
+        
         put!(log_channel, Dict{String,Any}(
             "level" => string(level),
             "msg" => format_output_default(msg isa String ? Text(msg) : msg),
@@ -2034,11 +2054,13 @@ function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, f
             )
         )
         
+        yield()
+        
         # Also print to console (disabled)
         # Logging.handle_message(old_logger[], level, msg, _module, group, id, file, line; kwargs...)
     catch e
-        println(stderr, "Failed to relay log from PlutoRunner")
-        showerror(stderr, e, stacktrace(catch_backtrace()))
+        println(original_stderr, "Failed to relay log from PlutoRunner")
+        showerror(original_stderr, e, stacktrace(catch_backtrace()))
     end
 end
 

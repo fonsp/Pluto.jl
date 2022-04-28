@@ -277,6 +277,7 @@ export const create_pluto_connection = async ({
     ws_address = default_ws_address(),
 }) => {
     var ws_connection = null // will be defined later i promise
+    /** @type {PlutoConnection} */
     const client = {
         send: null,
         session_options: null,
@@ -413,18 +414,4 @@ export const create_pluto_connection = async ({
     await connect()
 
     return client
-}
-
-export const fetch_pluto_releases = async () => {
-    let response = await fetch("https://api.github.com/repos/fonsp/Pluto.jl/releases", {
-        method: "GET",
-        mode: "cors",
-        cache: "no-cache",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        redirect: "follow",
-        referrerPolicy: "no-referrer",
-    })
-    return (await response.json()).reverse()
 }

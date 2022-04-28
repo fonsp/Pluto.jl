@@ -63,6 +63,9 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(Foo[]), [:Foo], [], [], [])
         @test testee(:(x isa Foo), [:x, :Foo], [], [:isa], [])
 
+        @test testee(:((x[])::Int = 1), [:Int, :x], [], [], [])
+        @test testee(:((x[])::Int, y = 1, 2), [:Int, :x], [:y], [], [])
+
         @test testee(:(A{B} = B), [], [:A], [], [])
         @test testee(:(A{T} = Union{T,Int}), [:Int, :Union], [:A], [], [])
 
@@ -74,7 +77,7 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(abstract type a{T} <: b end), [], [:a], [], [:a => ([:b], [], [], [])])
         @test testee(:(abstract type a{T} <: b{T} end), [], [:a], [], [:a => ([:b], [], [], [])])
         @test_nowarn testee(macroexpand(Main, :(@enum a b c)), [], [], [], []; verbose=false)
-        
+
         e = :(struct a end) # needs to be on its own line to create LineNumberNode
         @test testee(e, [], [:a], [], [:a => ([], [], [], [])])
         @test testee(:(struct a <: b; c; d::Foo; end), [], [:a], [], [:a => ([:b, :Foo], [], [], [])])

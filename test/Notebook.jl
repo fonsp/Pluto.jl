@@ -1,5 +1,6 @@
 using Test
-import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new, readwrite, without_pluto_file_extension, update_run!
+import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new, readwrite, without_pluto_file_extension, update_run!, get_cell_metadata_no_default, is_disabled, create_metadata
+import Pluto.WorkspaceManager: poll, WorkspaceManager
 import Random
 import Pkg
 import UUIDs: UUID
@@ -40,7 +41,7 @@ function cell_metadata_notebook()
                     "number" => 10000,
                 ),
                 "disabled" => true,
-            ),
+            ) |> create_metadata,
         ),
     ]) |> init_packages!
 end
@@ -100,7 +101,7 @@ end
 
 function init_packages!(nb::Notebook)
     nb.topology = Pluto.updated_topology(nb.topology, nb, nb.cells)
-    Pluto.sync_nbpkg_core(nb)
+    Pluto.sync_nbpkg_core(nb, nb.topology, nb.topology)
     return nb
 end
 
@@ -180,31 +181,33 @@ end
         fakeclient = ClientSession(:fake, nothing)
         🍭.connected_clients[fakeclient.id] = fakeclient
 
-        nb = cell_metadata_notebook()
-        update_run!(🍭, nb, nb.cells)
-        cell = first(values(nb.cells_dict))
-        @test cell.metadata == Dict(
-            "a metadata tag" => Dict(
-                "boolean" => true,
-                "string" => "String",
-                "number" => 10000,
-            ),
-            "disabled" => true, # enhanced metadata because cell is disabled
-        )
+        @testset "Disabling & Metadata" begin
+            nb = metadata_notebook()
+            update_run!(🍭, nb, nb.cells)
+            cell = first(values(nb.cells_dict))
+            @test get_cell_metadata_no_default(cell) == Dict(
+                "a metadata tag" => Dict(
+                    "boolean" => true,
+                    "string" => "String",
+                    "number" => 10000,
+                ),
+                "disabled" => true, # enhanced metadata because cell is disabled
+            )
 
-        save_notebook(nb)
-        @info "File" Text(read(nb.path,String))
-        result = load_notebook_nobackup(nb.path)
-        @test_notebook_inputs_equal(nb, result)
-        cell = first(values(result.cells_dict))
-        @test cell.metadata == Dict(
-            "a metadata tag" => Dict(
-                "boolean" => true,
-                "string" => "String",
-                "number" => 10000,
-            ),
-            "disabled" => true,
-        )
+            save_notebook(nb)
+            result = load_notebook_nobackup(nb.path)
+            @test_notebook_inputs_equal(nb, result)
+            cell = first(nb.cells)
+            @test is_disabled(cell)
+            @test get_cell_metadata_no_default(cell) == Dict(
+                "a metadata tag" => Dict(
+                    "boolean" => true,
+                    "string" => "String",
+                    "number" => 10000,
+                ),
+                "disabled" => true,
+            )
+        end
     end
 
     @testset "Notebook Metadata" begin

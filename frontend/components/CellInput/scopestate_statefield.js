@@ -372,20 +372,21 @@ let raise_scope = (nested_scope, scopestate, nested_scope_validity = null) => {
         usages: [...scopestate.usages, ...nested_scope.usages],
         definitions: scopestate.definitions,
         locals: [
-            ...(nested_scope_validity === null
-                ? []
-                : Array.from(nested_scope.definitions)
-                      .filter(([name, _]) => !scopestate.definitions.has(name))
-                      .map(([name, definition]) => ({
-                          name,
-                          definition,
-                          validity: {
-                              from: definition.valid_from,
-                              to: nested_scope_validity,
-                          },
-                      }))),
-            ...nested_scope.locals,
-            ...scopestate.locals,
+            // TODO: Disabled because of performance problems, see https://github.com/fonsp/Pluto.jl/pull/1925
+            // ...(nested_scope_validity === null
+            //     ? []
+            //     : Array.from(nested_scope.definitions)
+            //           .filter(([name, _]) => !scopestate.definitions.has(name))
+            //           .map(([name, definition]) => ({
+            //               name,
+            //               definition,
+            //               validity: {
+            //                   from: definition.valid_from,
+            //                   to: nested_scope_validity,
+            //               },
+            //           }))),
+            // ...nested_scope.locals,
+            // ...scopestate.locals,
         ],
     }
 }

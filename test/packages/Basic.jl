@@ -2,7 +2,7 @@
 import Pkg
 using Test
 using Pluto.Configuration: CompilerOptions
-using Pluto.WorkspaceManager: _merge_notebook_compiler_options
+using Pluto.WorkspaceManager: _merge_notebook_compiler_options, poll
 import Pluto: update_save_run!, update_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell, project_relative_path, SessionActions, load_notebook
 import Pluto.PkgUtils
 import Pluto.PkgCompat
@@ -596,8 +596,61 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
     #     save_notebook
     # end
-
     
+    @testset "Race conditions" begin
+        fakeclient = ClientSession(:fake, nothing)
+        🍭 = ServerSession()
+        🍭.connected_clients[fakeclient.id] = fakeclient
+        lag = 0.2
+        🍭.options.server.simulated_pkg_lag = lag
+
+        # See https://github.com/JuliaPluto/PlutoPkgTestRegistry
+
+        notebook = Notebook([
+            Cell("import PlutoPkgTestA"), # cell 1
+            Cell("PlutoPkgTestA.MY_VERSION |> Text"),
+            Cell("import PlutoPkgTestB"), # cell 3
+            Cell("PlutoPkgTestB.MY_VERSION |> Text"),
+            Cell("import PlutoPkgTestC"), # cell 5
+            Cell("PlutoPkgTestC.MY_VERSION |> Text"),
+            Cell("import PlutoPkgTestD"), # cell 7
+            Cell("PlutoPkgTestD.MY_VERSION |> Text"),
+            Cell("import PlutoPkgTestE"), # cell 9
+            Cell("PlutoPkgTestE.MY_VERSION |> Text"),
+        ])
+        fakeclient.connected_notebook = notebook
+
+        @test !notebook.nbpkg_ctx_instantiated
+        
+        running_tasks = Task[]
+        remember(t) = push!(running_tasks, t)
+        
+        update_save_run!(🍭, notebook, notebook.cells[[7, 8]]; run_async=false)            # import D (not async)
+        update_save_run!(🍭, notebook, notebook.cells[[1, 2]]; run_async=true) |> remember # import A
+        
+        for _ in 1:5
+            sleep(lag / 2)
+            setcode(notebook.cells[9], "import PlutoPkgTestE")
+            update_save_run!(🍭, notebook, notebook.cells[[9]]; run_async=true) |> remember # import E
+            
+            sleep(lag / 2)
+            setcode(notebook.cells[9], "")
+            update_save_run!(🍭, notebook, notebook.cells[[9]]; run_async=true) |> remember # don't import E
+        end
+        
+        while !all(istaskdone, running_tasks)
+            @test all(noerror, notebook.cells)
+            
+            sleep(lag / 3)
+        end
+        
+        @test all(istaskdone, running_tasks)
+        wait.(running_tasks)
+        empty!(running_tasks)
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
+
 
     Pkg.Registry.rm(pluto_test_registry_spec)
     # Pkg.Registry.add("General")

@@ -10,6 +10,10 @@ https://github.com/fonsp/Pluto.jl/wiki
 """
 module Pluto
 
+if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@max_methods"))
+    @eval Base.Experimental.@max_methods 1
+end
+
 import RelocatableFolders: @path
 const ROOT_DIR = normpath(joinpath(@__DIR__, ".."))
 const FRONTEND_DIR = @path(joinpath(ROOT_DIR, "frontend"))
@@ -52,6 +56,7 @@ include("./analysis/Topology.jl")
 include("./analysis/Errors.jl")
 include("./analysis/TopologicalOrder.jl")
 include("./notebook/Notebook.jl")
+include("./notebook/frontmatter.jl")
 include("./notebook/Events.jl")
 include("./webserver/Session.jl")
 include("./webserver/PutUpdates.jl")
