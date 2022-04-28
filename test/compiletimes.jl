@@ -7,7 +7,7 @@
 #   4. Note that some benchmarks depend on disk and network speeds too, so focus on the number of allocations since those are more robust.
 
 module Foo end
-@timeit TOUT "PlutoRunner.run_expression" @eval Pluto.PlutoRunner.run_expression(Foo, Expr(:toplevel :(1 + 1)), Pluto.uuid1(), nothing);
+@timeit TOUT "PlutoRunner.run_expression" @eval Pluto.PlutoRunner.run_expression(Foo, Expr(:toplevel, :(1 + 1)), Pluto.uuid1(), nothing);
 
 function wait_for_ready(notebook::Pluto.Notebook)
     while notebook.process_status != Pluto.ProcessStatus.ready
