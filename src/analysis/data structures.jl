@@ -77,10 +77,10 @@ begin
         get!(aid.default, aid.container, key)
     end
     function Base.merge(a1::ImmutableDefaultDict{K,V}, a2::ImmutableDefaultDict{K,V}) where {K,V}
-        ImmutableDefaultDict{K,V}(a1.default, merge(a1.container, a2.container))
+        isempty(a2) ? a1 : ImmutableDefaultDict{K,V}(a1.default, merge(a1.container, a2.container))
     end
     function Base.merge(a1::ImmutableDefaultDict{K,V}, a2::AbstractDict) where {K,V}
-        ImmutableDefaultDict{K,V}(a1.default, merge(a1.container, a2))
+        isempty(a2) ? a1 : ImmutableDefaultDict{K,V}(a1.default, merge(a1.container, a2))
     end
     # disabled because it's immutable!
     # Base.setindex!(aid::ImmutableDefaultDict{K,V}, args...) where {K,V} = Base.setindex!(aid.container, args...)
