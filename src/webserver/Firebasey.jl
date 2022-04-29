@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.5
+# v0.19.3
 
 using Markdown
 using InteractiveUtils
@@ -327,9 +327,6 @@ struct Cell
 	folded
 end
 
-# ╔═╡ c3c675be-9178-4176-afe0-30501786b72c
-deep_diff(old::Cell, new::Cell) = diff(Deep(old), Deep(new))
-
 # ╔═╡ 02585c72-1d92-4526-98c2-1ca07aad87a3
 function direct_diff(old::Cell, new::Cell)
 	changes = []
@@ -350,6 +347,87 @@ cell1 = Cell(1, 2, 3)
 
 # ╔═╡ 3e05200f-071a-4ebe-b685-ff980f07cde7
 cell2 = Cell(1, 2, 4)
+
+# ╔═╡ 233d1e9c-acae-46c6-8495-c111c5a4d481
+md"""
+### NamedTuple
+
+Unlike a `Dict`, a `NamedTuple` stores the keys in the type itself:
+"""
+
+# ╔═╡ c3be12f0-d2c9-4014-91a0-a51f069bbb2b
+NamedTuple{(:a,:b), Tuple{Union{Nothing,Int}, String}}((1, "two"))
+
+# ╔═╡ e14c7459-5a44-4c4f-8127-78839da84096
+md"""
+When diffing two `NamedTuples` of the same type (i.e. with the same keys and value types), we 
+"""
+
+# ╔═╡ 1bec9922-e8c1-4aeb-b462-febbb811901a
+# function d1(o1::NamedTuple, o2::NamedTuple)
+# 	changes = JSONPatch[]
+# 	# for key in keys(o1) ∪ keys(o2)
+# 	# 	for change in diff(get(o1, key, nothing), get(o2, key, nothing))
+# 	# 		push!(changes, wrappath([key], change))
+# 	# 	end
+# 	# end
+	
+# 	# same as above but faster:
+	
+# 	for (key1, val1) in pairs(o1)
+# 		for change in diff(val1, get(o2, key1, nothing))
+# 			push!(changes, wrappath([key1], change))
+# 		end
+# 	end
+# 	for (key2, val2) in pairs(o2)
+# 		if !haskey(o1, key2)
+# 			for change in diff(nothing, val2)
+# 				push!(changes, wrappath([key2], change))
+# 			end
+# 		end
+# 	end
+# 	changes
+# end
+
+# ╔═╡ b71d1291-029d-4ee7-acfc-86af08047b81
+const SimpleTypes = Union{Number,AbstractString,Bool,Base.UUID}
+
+# ╔═╡ d62219a3-3202-4ee0-b4f5-752bb4cf8dfa
+@generated function diff(o1::NT, o2::NT) where NT <: NamedTuple
+	if o1 === o2
+		names = @inbounds(o1.parameters[1])
+
+		return quote
+			changes = JSONPatch[]
+		
+			$(Expr(:block, (:(let left = o1.$(n), right = o2.$(n)
+				if left !== right
+					$(if T <: SimpleTypes
+						:(push!(changes, ReplacePatch([$(String(n))], right)))
+					else
+						:(for change in diff(left, right)
+							push!(changes, wrappath([$(String(n))], change))
+						end)
+					end)
+					
+				end
+			end) for (n,T) in zip(@inbounds(o1.parameters[1]), o1.types))...))
+			# end) for n in @inbounds(o1.parameters[1]))...))
+		
+			changes
+		end
+	else
+		return quote
+			ArgumentError("Diffing named tuples with different keys is not yet supported.")
+		end
+	end
+end
+
+# ╔═╡ c3c675be-9178-4176-afe0-30501786b72c
+deep_diff(old::Cell, new::Cell) = diff(Deep(old), Deep(new))
+
+# ╔═╡ 50ed1c0c-4532-406a-a37a-b15e2243556b
+
 
 # ╔═╡ dd312598-2de1-11eb-144c-f92ed6484f5d
 md"## Update"
@@ -603,8 +681,8 @@ end;
 # ╔═╡ 43c36ab7-e9ac-450a-8abe-435412f2be1d
 @skip_as_script diff(large_dict_1, large_dict_2)
 
-# ╔═╡ 8188de75-ae6e-48aa-9495-111fd27ffd26
-@skip_as_script many_items_1 = Dict{String,Any}(
+# ╔═╡ 3e7976ca-5885-449c-84f2-2b140012be40
+@skip_as_script create_many_items_1() = Dict{String,Any}(
 	"cell_$(i)" => Dict{String,Any}(
 		"x" => 1,
 		"y" => [2,3],
@@ -613,9 +691,13 @@ end;
 	for i in 1:100
 )
 
+# ╔═╡ 8188de75-ae6e-48aa-9495-111fd27ffd26
+@skip_as_script many_items_1 = create_many_items_1()
+
 # ╔═╡ d807195e-ba27-4015-92a7-c9294d458d47
 @skip_as_script begin
 	many_items_2 = deepcopy(many_items_1)
+	many_items_2["cell_3"]["x"] = 9
 	many_items_2["cell_5"]["y"][2] = 20
 	delete!(many_items_2, "cell_2")
 	many_items_2["hello"] = Dict("a" => 1, "b" => 2)
@@ -630,6 +712,56 @@ end
 
 # ╔═╡ aeab3363-08ba-47c2-bd33-04a004ed72c4
 @skip_as_script diff(many_items_1, many_items_1)
+
+# ╔═╡ 6b52e7c1-fde0-4384-a1ca-eab32ec08207
+@skip_as_script typeof((a=1, b="two"))
+
+# ╔═╡ c2c68ae7-85e4-4dcb-8ad3-0d758fbdbb11
+@skip_as_script nt1 = (a=1,b=2)
+
+# ╔═╡ b1ce0415-a7fb-4c88-8109-b8f35c3c23cc
+@skip_as_script nt2dict(nt) = Dict{String,Any}(String(k) => v for (k,v) in pairs(nt1))
+
+# ╔═╡ 589e6d2d-9cba-496d-a514-55ef54024d8f
+@skip_as_script nt1d = nt2dict(nt1)
+
+# ╔═╡ 52933ae7-67ff-4a46-8468-38fe09c41dde
+@skip_as_script nt2 = (a=1,b=3)
+
+# ╔═╡ e8687599-e274-4485-bca0-d2eabc3ee1cd
+@skip_as_script diff(nt1, nt2)
+
+# ╔═╡ 09ce407e-8180-4cfd-9905-0132ea69ebc0
+@skip_as_script nt2d = nt2dict(nt2)
+
+# ╔═╡ 0f1b4b57-1970-4379-872c-8da9a9d1ccee
+@skip_as_script zz() = JSONPatch[]
+
+# ╔═╡ 1ee48094-606f-4019-a1b1-52a00966b4ea
+@skip_as_script create_many_items_1_nt() = Dict{String,Any}(
+	"cell_$(i)" => (
+		x = 1,
+		y = [2,3],
+		z = "four",
+	)
+	for i in 1:100
+)
+
+# ╔═╡ e6c4b9a4-2c51-4fe7-8889-6506f3682786
+@skip_as_script many_items_1_nt = create_many_items_1_nt()
+
+# ╔═╡ 34d22036-f70e-4c1f-a863-37fef0ec86a7
+@skip_as_script begin
+	many_items_2_nt = deepcopy(many_items_1_nt)
+	many_items_2_nt["cell_5"].y[2] = 20
+	many_items_2_nt["cell_3"] = (; many_items_2_nt["cell_3"]..., x = 9)
+	delete!(many_items_2_nt, "cell_2")
+	many_items_2_nt["hello"] = (x=20, y=[9,9,9], z="asdfffff")
+	many_items_2_nt
+end
+
+# ╔═╡ dc546ca2-1318-409d-930e-c160fc468916
+@skip_as_script diff(many_items_1_nt, many_items_2_nt)
 
 # ╔═╡ c2c2b057-a88f-4cc6-ada4-fc55ac29931e
 "The opposite of `@skip_as_script`"
@@ -692,6 +824,7 @@ end
 
 # ╔═╡ 61b81430-d26e-493c-96da-b6818e58c882
 @skip_as_script @test fairly_equal(diff(many_items_1, many_items_2), [
+	ReplacePatch(["cell_3","x"], 9),
 	ReplacePatch(["cell_5","y"], [2,20]),
 	RemovePatch(["cell_2"]),
 	AddPatch(["hello"], Dict("b" => 2, "a" => 1)),
@@ -917,6 +1050,21 @@ end
 # ╔═╡ a9088341-647c-4fe1-ab85-d7da049513ae
 @skip_as_script @track for _ in 1:1000 diff(Deep(cell1), Deep(cell2)) end
 
+# ╔═╡ d8ec800d-1afc-46e6-aae4-0b4c91de3a68
+@skip_as_script @track for _ in 1:1000 diff(nt1, nt2) end
+
+# ╔═╡ 8b7de2f5-3700-400c-956e-79cb50d33de5
+@skip_as_script @track for _ in 1:1000 diff(nt1d, nt2d) end
+
+# ╔═╡ a66bc6ce-f70c-42ab-aa0c-626a916b1efd
+@skip_as_script @track for _ in 1:1000 zz() end
+
+# ╔═╡ 520f155c-7049-4adf-bcb5-02a051465bf7
+@skip_as_script @track for _ in 1:1000 create_many_items_1_nt() end
+
+# ╔═╡ 19ea9ac0-6349-477d-b12d-bcd4f040bdaf
+@skip_as_script @track for _ in 1:1000 create_many_items_1() end
+
 # ╔═╡ 1a26eed8-670c-43bf-9726-2db84b1afdab
 @skip_as_script @track sleep(0.1)
 
@@ -1012,6 +1160,7 @@ end
 # ╟─88009db3-f40e-4fd0-942a-c7f4a7eecb5a
 # ╟─ffb01ab4-e2e3-4fa4-8c0b-093d2899a536
 # ╠═8188de75-ae6e-48aa-9495-111fd27ffd26
+# ╠═3e7976ca-5885-449c-84f2-2b140012be40
 # ╠═d807195e-ba27-4015-92a7-c9294d458d47
 # ╠═2e91a1a2-469c-4123-a0d7-3dcc49715738
 # ╟─61b81430-d26e-493c-96da-b6818e58c882
@@ -1026,8 +1175,32 @@ end
 # ╠═02585c72-1d92-4526-98c2-1ca07aad87a3
 # ╟─2d084dd1-240d-4443-a8a2-82ae6e0b8900
 # ╟─3e05200f-071a-4ebe-b685-ff980f07cde7
-# ╟─fa959806-3264-4dd5-9f94-ba369697689b
+# ╠═fa959806-3264-4dd5-9f94-ba369697689b
 # ╟─a9088341-647c-4fe1-ab85-d7da049513ae
+# ╟─233d1e9c-acae-46c6-8495-c111c5a4d481
+# ╠═6b52e7c1-fde0-4384-a1ca-eab32ec08207
+# ╠═c3be12f0-d2c9-4014-91a0-a51f069bbb2b
+# ╠═e14c7459-5a44-4c4f-8127-78839da84096
+# ╠═d62219a3-3202-4ee0-b4f5-752bb4cf8dfa
+# ╟─1bec9922-e8c1-4aeb-b462-febbb811901a
+# ╠═b71d1291-029d-4ee7-acfc-86af08047b81
+# ╠═e8687599-e274-4485-bca0-d2eabc3ee1cd
+# ╠═c2c68ae7-85e4-4dcb-8ad3-0d758fbdbb11
+# ╠═b1ce0415-a7fb-4c88-8109-b8f35c3c23cc
+# ╠═589e6d2d-9cba-496d-a514-55ef54024d8f
+# ╠═52933ae7-67ff-4a46-8468-38fe09c41dde
+# ╠═09ce407e-8180-4cfd-9905-0132ea69ebc0
+# ╠═d8ec800d-1afc-46e6-aae4-0b4c91de3a68
+# ╠═8b7de2f5-3700-400c-956e-79cb50d33de5
+# ╠═a66bc6ce-f70c-42ab-aa0c-626a916b1efd
+# ╠═0f1b4b57-1970-4379-872c-8da9a9d1ccee
+# ╟─50ed1c0c-4532-406a-a37a-b15e2243556b
+# ╠═1ee48094-606f-4019-a1b1-52a00966b4ea
+# ╠═520f155c-7049-4adf-bcb5-02a051465bf7
+# ╠═19ea9ac0-6349-477d-b12d-bcd4f040bdaf
+# ╠═e6c4b9a4-2c51-4fe7-8889-6506f3682786
+# ╠═34d22036-f70e-4c1f-a863-37fef0ec86a7
+# ╠═dc546ca2-1318-409d-930e-c160fc468916
 # ╟─dd312598-2de1-11eb-144c-f92ed6484f5d
 # ╠═d2af2a4b-8982-4e43-9fd7-0ecfdfb70511
 # ╠═640663fc-06ba-491e-bd85-299514237651
