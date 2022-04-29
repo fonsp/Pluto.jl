@@ -14,6 +14,7 @@ if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@max_m
     @eval Base.Experimental.@max_methods 1
 end
 
+import FuzzyCompletions
 import RelocatableFolders: @path
 const ROOT_DIR = normpath(joinpath(@__DIR__, ".."))
 const FRONTEND_DIR = @path(joinpath(ROOT_DIR, "frontend"))
@@ -101,12 +102,9 @@ if get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") != "0" && get(ENV, "CI", "🍄") != 
 \n"""
 end
 
-import FuzzyCompletions
-
 # Generate and include `precompile` directives during the precompilation phase.
-using PrecompileSignatures: precompile_directives
-if ccall(:jl_generating_output, Cint, ()) == 1
-    include(precompile_directives(Pluto))
-end
+# This aims to reduce the time to first X (time to first running notebook in this case).
+using PrecompileSignatures: @precompile_module
+@precompile_module(Pluto)
 
 end
