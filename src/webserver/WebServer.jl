@@ -292,8 +292,9 @@ function run(session::ServerSession, pluto_router)
 
     # Start this in the background, so that the first notebook launch (which will trigger registry update) will be faster
     @asynclog withtoken(pkg_token) do
+        will_update = !PkgCompat.check_registry_age()
         PkgCompat.update_registries(; force=false)
-        println("    Updating registry done ✓")
+        will_update && println("    Updating registry done ✓")
     end
 
     shutdown_server[] = () -> @sync begin
