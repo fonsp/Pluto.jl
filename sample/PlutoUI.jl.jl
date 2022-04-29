@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.7
+# v0.19.3
 
 using Markdown
 using InteractiveUtils
@@ -14,8 +14,120 @@ macro bind(def, element)
     end
 end
 
+# ╔═╡ 5c3f0462-ff27-4938-b775-0bac18cc18f6
+using HypertextLiteral
+
 # ╔═╡ 071d9ca5-9b42-4583-ad96-a48f93453a0e
 using PlutoUI
+
+# ╔═╡ 8ff95d16-9786-4128-9e0f-95eaebf33631
+md"""
+# `PlutoUI.jl`: Sliders, buttons and more!
+
+
+"""
+
+# ╔═╡ 406d5fcb-b3cf-4a4d-b04f-95253c700f27
+md"""
+Pluto has a special macro, `@bind`, which lets you **control a Julia variable with a UI element**.
+
+Try moving the slider:
+"""
+
+# ╔═╡ e42ed456-cc83-4550-8366-25f025a22c21
+@bind my_number Slider(1:100)
+
+# ╔═╡ 6785af02-17a7-48eb-94d6-ddd3fb185403
+my_number
+
+# ╔═╡ d0e47db5-6b99-4d0e-834d-329ce1eb61d0
+my_number * 100
+
+# ╔═╡ 197f5777-2e65-48df-b75d-d2e8642e0d55
+
+
+# ╔═╡ aed8f908-91ec-4c8b-bd74-74f4aeb0f4fe
+md"""
+Notice that the slider **changes the value of `my_number`**. Because of reactivity, anything that uses **`my_number`** will re-run.
+
+It is easy to 
+"""
+
+# ╔═╡ c345951e-4cdc-4214-9b8c-cbe6868a3463
+@bind name TextField(default="Pluto")
+
+# ╔═╡ b22f0d68-52af-41f6-a760-3af67745d6d0
+@bind how_many Slider(1:10; default=3)
+
+# ╔═╡ 678cd0c6-30fa-40bd-92f1-abe4e65dff22
+repeated = repeat(name, how_many)
+
+# ╔═╡ 47e79c8c-a4d9-4995-ae37-c6e545914349
+Text("Hello from $(repeated)!")
+
+# ╔═╡ 11200d6d-16c9-47b1-bcc1-1082693e099f
+
+
+# ╔═╡ af948282-289a-4d45-a8d7-c96172aabcbe
+
+
+# ╔═╡ 295b208f-1d37-46e6-b3a2-b1111f4900f2
+jl(s) = Markdown.MD(Markdown.Code("julia", s))
+
+# ╔═╡ 15fd7cf1-ba7a-4782-8234-2bc1fd2d3221
+jl1(s) = @htl("<span style='font-weight: 700; font-size: .75rem; font-family: var(--julia-mono-font-stack), monospace;'>$(s)</span>")
+
+# ╔═╡ 23346798-8f1e-48de-ba63-6c10270e5028
+cbind = jl1(@htl("<span style='color: var(--cm-macro-color);'>@bind</span>"))
+
+# ╔═╡ 99499650-a809-4c72-9e13-f6bd5b68f894
+cvar = jl1(@htl("<span data-pluto-variable=my_number style='color: var(--cm-var-color);'>my_number</span>"))
+
+# ╔═╡ dc299f02-08e2-4ad5-83a4-641266e15cc0
+cslider = jl1(@htl("<span style='color: var(--cm-var-color);'>Slider</span><span style='font-weight: 500;'>(<span style='color: var(--cm-number-color);'>1:100</span>)</span>"))
+
+# ╔═╡ b40b4bae-f5e5-4234-a5d5-e80de1792444
+PlutoUI.ExperimentalLayout.grid([
+	@htl("")  @htl("") @htl("<div style='text-align: center; '><div style='background: hsl(15deg 49% 51% / 17%);
+    border-radius: 0.3em;
+    padding: 0.2em;'>Widget</div><span style='opacity: .5;'>|</span></div>")
+	cbind cvar cslider
+	@htl("") @htl("<div style='text-align: center; '><span style='opacity: .5;'>|</span><div style='background: hsl(15deg 49% 51% / 17%);
+    border-radius: 0.3em;
+    padding: 0.2em;'>Variable name</div></div>") @htl("")
+]; fill_width=false, column_gap="1ch", row_gap=".2em", style=Dict("justify-items" => "center"))
+
+# ╔═╡ 7b5d0ee1-6dde-4756-85b6-534fd2f79815
+
+
+# ╔═╡ 2bb79974-6e6a-4501-b696-6795dfd98d84
+
+
+# ╔═╡ 7cc352a0-90e7-44b7-b98e-3902e7c08eaf
+j
+
+# ╔═╡ b1cae2ec-6d5f-4abc-9d68-a792a1956ba8
+md"""
+!!! info "💡 Interactivity in Pluto"
+	**Interactivity** is powered by **reactivity**: create one cell that *defines* a variable, and then another cell that *references* the variable.
+
+	```julia
+	# Define x
+	@bind x Slider(1:10)
+	```
+
+	```julia
+	# Reference x
+	x + 100
+	```
+	
+"""
+
+# ╔═╡ 0c41d281-b7fc-46ae-bbc8-79126fee31f8
+
+
+# ╔═╡ d3117ea1-74f4-459f-ad4d-e71ec8bb02e7
+
 
 # ╔═╡ bc532cd2-c75b-11ea-313f-8b5e771c9227
 md"""# PlutoUI.jl
@@ -617,9 +729,11 @@ space
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
+HypertextLiteral = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 
 [compat]
+HypertextLiteral = "~0.9.3"
 PlutoUI = "~0.7.34"
 """
 
@@ -647,6 +761,10 @@ deps = ["FixedPointNumbers", "Random"]
 git-tree-sha1 = "024fe24d83e4a5bf5fc80501a314ce0d1aa35597"
 uuid = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
 version = "0.11.0"
+
+[[CompilerSupportLibraries_jll]]
+deps = ["Artifacts", "Libdl"]
+uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
 
 [[Dates]]
 deps = ["Printf"]
@@ -709,7 +827,7 @@ uuid = "29816b5a-b9ab-546f-933c-edad1886dfa8"
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 
 [[LinearAlgebra]]
-deps = ["Libdl"]
+deps = ["Libdl", "libblastrampoline_jll"]
 uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [[Logging]]
@@ -731,6 +849,10 @@ uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
 
 [[NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
+
+[[OpenBLAS_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
+uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
 
 [[Parsers]]
 deps = ["Dates"]
@@ -757,7 +879,7 @@ deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
 uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 
 [[Random]]
-deps = ["Serialization"]
+deps = ["SHA", "Serialization"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [[Reexport]]
@@ -805,6 +927,10 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 deps = ["Libdl"]
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
 
+[[libblastrampoline_jll]]
+deps = ["Artifacts", "Libdl", "OpenBLAS_jll"]
+uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
+
 [[nghttp2_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850ede-7688-5339-a07c-302acd2aaf8d"
@@ -815,6 +941,32 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 """
 
 # ╔═╡ Cell order:
+# ╟─8ff95d16-9786-4128-9e0f-95eaebf33631
+# ╟─406d5fcb-b3cf-4a4d-b04f-95253c700f27
+# ╠═e42ed456-cc83-4550-8366-25f025a22c21
+# ╠═6785af02-17a7-48eb-94d6-ddd3fb185403
+# ╠═d0e47db5-6b99-4d0e-834d-329ce1eb61d0
+# ╟─197f5777-2e65-48df-b75d-d2e8642e0d55
+# ╟─aed8f908-91ec-4c8b-bd74-74f4aeb0f4fe
+# ╠═c345951e-4cdc-4214-9b8c-cbe6868a3463
+# ╠═b22f0d68-52af-41f6-a760-3af67745d6d0
+# ╠═678cd0c6-30fa-40bd-92f1-abe4e65dff22
+# ╠═47e79c8c-a4d9-4995-ae37-c6e545914349
+# ╟─11200d6d-16c9-47b1-bcc1-1082693e099f
+# ╟─b40b4bae-f5e5-4234-a5d5-e80de1792444
+# ╟─af948282-289a-4d45-a8d7-c96172aabcbe
+# ╠═295b208f-1d37-46e6-b3a2-b1111f4900f2
+# ╠═15fd7cf1-ba7a-4782-8234-2bc1fd2d3221
+# ╠═23346798-8f1e-48de-ba63-6c10270e5028
+# ╠═99499650-a809-4c72-9e13-f6bd5b68f894
+# ╠═dc299f02-08e2-4ad5-83a4-641266e15cc0
+# ╠═5c3f0462-ff27-4938-b775-0bac18cc18f6
+# ╠═7b5d0ee1-6dde-4756-85b6-534fd2f79815
+# ╟─2bb79974-6e6a-4501-b696-6795dfd98d84
+# ╠═7cc352a0-90e7-44b7-b98e-3902e7c08eaf
+# ╟─b1cae2ec-6d5f-4abc-9d68-a792a1956ba8
+# ╠═0c41d281-b7fc-46ae-bbc8-79126fee31f8
+# ╠═d3117ea1-74f4-459f-ad4d-e71ec8bb02e7
 # ╟─bc532cd2-c75b-11ea-313f-8b5e771c9227
 # ╟─3eff9592-cc63-11ea-2b61-4170d1a7656a
 # ╟─051f31fc-cc63-11ea-1e2c-0704285ea6a9
