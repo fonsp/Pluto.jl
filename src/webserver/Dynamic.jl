@@ -131,14 +131,7 @@ function notebook_to_js(notebook::Notebook)
             id => Dict{String,Any}(
                 "cell_id" => cell.cell_id,
                 "depends_on_disabled_cells" => cell.depends_on_disabled_cells,
-                "output" => Dict{String,Any}(
-                    "body" => cell.output.body,
-                    "mime" => cell.output.mime,
-                    "rootassignee" => cell.output.rootassignee,
-                    "last_run_timestamp" => cell.output.last_run_timestamp,
-                    "persist_js_state" => cell.output.persist_js_state,
-                    "has_pluto_hook_features" => cell.output.has_pluto_hook_features,
-                ),
+                "output" => AppendonlyMarkers.ImmutableMarker(cell.output),
                 "published_object_keys" => keys(cell.published_objects),
                 "queued" => cell.queued,
                 "running" => cell.running,
