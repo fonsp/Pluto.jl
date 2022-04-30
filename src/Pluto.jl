@@ -104,7 +104,7 @@ end
 
 # Generate and include `precompile` directives during the precompilation phase.
 # This aims to reduce the time to first X (time to first running notebook in this case).
-using PrecompileSignatures: @precompile_module
-@precompile_module(Pluto)
+using PrecompileSignatures: @precompile_signatures
+@precompile_signatures(Pluto)
 
 end
