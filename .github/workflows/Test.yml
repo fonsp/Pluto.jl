@@ -48,4 +48,3 @@ jobs:
             
             # 🚗
             - uses: julia-actions/julia-runtest@v1
-              continue-on-error: ${{ matrix.julia-version == 'nightly' }}
