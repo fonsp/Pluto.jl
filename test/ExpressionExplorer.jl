@@ -596,8 +596,12 @@ Some of these @test_broken lines are commented out to prevent printing to the te
     end
     @testset "Special reactivity rules" begin
         @test testee(
-            :(BenchmarkTools.generate_benchmark_definition(Main, Symbol[], Any[], Symbol[], (), $(Expr(:copyast, QuoteNode(:(f(x, y, z))))), $(Expr(:copyast, QuoteNode(:(A + B)))), $(Expr(:copyast, QuoteNode(nothing))), BenchmarkTools.parameters())),
-            [:Main, :BenchmarkTools, :Any, :Symbol, :x, :y, :z, :A, :B], [], [[:BenchmarkTools, :generate_benchmark_definition], [:BenchmarkTools, :parameters], :f, :+], []
+            :(BenchmarkTools.generate_benchmark_definition(Main, Symbol[], Any[], Symbol[], (), $(Expr(:copyast, QuoteNode(:(f(x, y, z))))), $(Expr(:copyast, QuoteNode(:()))), $(Expr(:copyast, QuoteNode(nothing))), BenchmarkTools.parameters())),
+            [:Main, :BenchmarkTools, :Any, :Symbol, :x, :y, :z], [], [[:BenchmarkTools, :generate_benchmark_definition], [:BenchmarkTools, :parameters], :f], []
+        )
+        @test testee(
+            :(BenchmarkTools.generate_benchmark_definition(Main, Symbol[], Any[], Symbol[], (), $(Expr(:copyast, QuoteNode(:(f(x, y, z))))), $(Expr(:copyast, QuoteNode(:(x = A + B)))), $(Expr(:copyast, QuoteNode(nothing))), BenchmarkTools.parameters())),
+            [:Main, :BenchmarkTools, :Any, :Symbol, :y, :z, :A, :B], [], [[:BenchmarkTools, :generate_benchmark_definition], [:BenchmarkTools, :parameters], :f, :+], []
         )
         @test testee(
             :(Base.macroexpand(Main, $(QuoteNode(:(@enum a b c))))),
