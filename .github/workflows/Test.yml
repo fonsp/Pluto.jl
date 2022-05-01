@@ -36,7 +36,7 @@ jobs:
                 # We test quite a lot of versions because we do some OS and version specific things unfortunately
                 julia-version: ["1.6", "1.7", "~1.8.0-0"] #, "nightly"]
                 os: [ubuntu-latest, macOS-latest, windows-latest]
-                
+
         steps:
             # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
             - uses: actions/checkout@v2
