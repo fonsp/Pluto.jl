@@ -415,6 +415,7 @@ function resolve_topology(
 			# Do not try to expand if a newer version of the macro is also scheduled to run in the
 			# current run. The recursive reactive runs will take care of it.
 			push!(still_unresolved_nodes, cell)
+			continue
 		end
 
 		result = try
