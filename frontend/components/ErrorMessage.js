@@ -134,6 +134,19 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                 }),
         },
         {
+            pattern: /^UndefVarError: (.*) not defined$/,
+            display: (/** @type{string} */ x) => {
+                const undefined_var = x.match(/^UndefVarError: (.*) not defined$/)[1]
+                const notebook = pluto_actions.get_notebook()
+                const is_errored_from_upstream = undefined_var
+                    && notebook.cell_dependencies[cell_id]?.upstream_cells_map[undefined_var].length
+                if (is_errored_from_upstream) {
+                    return html`<p>Cell contains the definition for ${undefined_var} contain errors.</p>`
+                }
+                return html`<p>${x}</p>`
+            },
+        },
+        {
             pattern: /.?/,
             display: (/** @type{string} */ x) => x.split("\n").map((line) => html`<p>${line}</p>`),
         },
