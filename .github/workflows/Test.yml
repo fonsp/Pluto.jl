@@ -46,6 +46,6 @@ jobs:
               with:
                   version: ${{ matrix.julia-version }}
             - uses: julia-actions/cache@v1
-            
+
             # 🚗
             - uses: julia-actions/julia-runtest@v1

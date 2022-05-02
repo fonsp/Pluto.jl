@@ -170,7 +170,6 @@ function notebook_to_js(notebook::Notebook)
         "cell_execution_order" => cell_id.(collect(topological_order(notebook))),
     )
 end
-precompile(notebook_to_js, (Notebook,))
 
 """
 For each connected client, we keep a copy of their current state. This way we know exactly which updates to send when the server-side state changes.

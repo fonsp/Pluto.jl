@@ -66,7 +66,6 @@ function run(; kwargs...)
     options = Configuration.from_flat_kwargs(; kwargs...)
     run(options)
 end
-precompile(run, ())
 
 function run(options::Configuration.Options)
     session = ServerSession(; options)
