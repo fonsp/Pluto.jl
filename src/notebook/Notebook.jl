@@ -32,6 +32,7 @@ Base.@kwdef mutable struct Notebook
     notebook_id::UUID=uuid1()
     topology::NotebookTopology
     _cached_topological_order::Union{Nothing,TopologicalOrder}=nothing
+    _cached_cell_dependencies_source::Union{Nothing,NotebookTopology}=nothing
 
     # buffer will contain all unfetched updates - must be big enough
     # We can keep 1024 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.

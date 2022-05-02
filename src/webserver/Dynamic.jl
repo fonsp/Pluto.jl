@@ -131,7 +131,7 @@ function notebook_to_js(notebook::Notebook)
             id => Dict{String,Any}(
                 "cell_id" => cell.cell_id,
                 "depends_on_disabled_cells" => cell.depends_on_disabled_cells,
-                "output" => Dict(                
+                "output" => Dict{String,Any}(
                     "body" => cell.output.body,
                     "mime" => cell.output.mime,
                     "rootassignee" => cell.output.rootassignee,
@@ -150,7 +150,7 @@ function notebook_to_js(notebook::Notebook)
         "cell_order" => notebook.cell_order,
         "published_objects" => merge!(Dict{String,Any}(), (c.published_objects for c in values(notebook.cells_dict))...),
         "bonds" => Dict{String,Dict{String,Any}}(
-            String(key) => Dict(
+            String(key) => Dict{String,Any}(
                 "value" => bondvalue.value, 
             )
         for (key, bondvalue) in notebook.bonds),
@@ -171,7 +171,6 @@ function notebook_to_js(notebook::Notebook)
         "cell_execution_order" => cell_id.(collect(topological_order(notebook))),
     )
 end
-precompile(notebook_to_js, (Notebook,))
 
 """
 For each connected client, we keep a copy of their current state. This way we know exactly which updates to send when the server-side state changes.

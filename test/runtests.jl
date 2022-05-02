@@ -5,7 +5,7 @@ include("helpers.jl")
 @timeit_include("compiletimes.jl")
 verify_no_running_processes()
 if get(ENV, "PLUTO_TEST_ONLY_COMPILETIMES", nothing) == "true"
-    show(TOUT; compact=true, sortby=:firstexec)
+    print_timeroutput()
     exit(0)
 end
 @timeit_include("Events.jl")
@@ -49,7 +49,7 @@ verify_no_running_processes()
 
 verify_no_running_processes()
 
-show(TOUT; compact=true, sortby=:firstexec)
+print_timeroutput()
 
 # TODO: test PlutoRunner functions like:
 # - from_this_notebook
