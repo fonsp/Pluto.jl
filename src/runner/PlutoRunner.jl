@@ -1156,7 +1156,7 @@ function tree_data(@nospecialize(x::AbstractSet{<:Any}), context::IOContext)
     end
 end
 
-function tree_data(@nospecialize(x::AbstractVector{<:Any}), @nospecialize(context::IOContext))
+function tree_data(@nospecialize(x::AbstractVector{<:Any}), context::IOContext)
     if Base.show_circular(context, x)
         Dict{Symbol,Any}(
             :objectid => string(objectid(x), base=16),
@@ -1251,11 +1251,10 @@ function tree_data_nt_row(@nospecialize(pair::Tuple), context::IOContext)
 end
 
 
-function tree_data(@nospecialize(x::NamedTuple), @nospecialize(context::IOContext))
+function tree_data(@nospecialize(x::NamedTuple), context::IOContext)
     depth = get(context, :tree_viewer_depth, 0)
     recur_io = IOContext(context, Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
 
-    # Writing a manual loop because Julia tends to overspecialize on tuples.
     elements = Tuple[]
     for key in eachindex(x)
         val = x[key]
@@ -1265,7 +1264,7 @@ function tree_data(@nospecialize(x::NamedTuple), @nospecialize(context::IOContex
     Dict{Symbol,Any}(
         :objectid => string(objectid(x), base=16),
         :type => :NamedTuple,
-        :elements => elements # [tree_data_nt_row(z, recur_io) for z in zip(eachindex(x), x)]
+        :elements => elements
     )
 end
 
