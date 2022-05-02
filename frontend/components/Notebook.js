@@ -149,52 +149,29 @@ export const Notebook = ({ notebook, cell_inputs_local, last_created_cell, selec
             ${notebook.cell_order
                 .filter((_, i) => !(cell_outputs_delayed && i > render_cell_outputs_minimum))
                 .map(
-                    (cell_id, i) => {
-                        // is there an error because the cell depends on a variable 
-                        // that should have been defined in an erred cell
-                        let have_UndefVarError = notebook.cell_results[cell_id]?.errored
-                            && notebook.cell_results[cell_id].output.body["msg"]?.startsWith("UndefVarError: ")
-                        let undefined_var = have_UndefVarError ? 
-                            notebook.cell_results[cell_id].output.body["msg"].split(" ")[1] : false
-                        let is_errored_from_upstream = undefined_var 
-                            && notebook.cell_dependencies[cell_id]?.upstream_cells_map[undefined_var].length
-                        // if there is such an error, point the error to the source error
-                        if (is_errored_from_upstream) {
-                            // find relevant upstream cell
-                            let upstream_cell = notebook.cell_dependencies[cell_id].upstream_cells_map[undefined_var].find(
-                                upstream_cell_id => notebook.cell_results[upstream_cell_id] 
-                                    && notebook.cell_results[upstream_cell_id].errored
-                            )
-                            // if there is such errored upstream cell
-                            if(upstream_cell && notebook.cell_results[upstream_cell]?.output.body) {
-                                // update the output body pointing to the source error
-                                notebook.cell_results[cell_id].output.body = notebook.cell_results[upstream_cell]?.output.body
-                            }
-                        }
-                        return html`<${CellMemo}
-                            key=${cell_id}
-                            cell_result=${notebook.cell_results[cell_id] ?? {
-                                cell_id: cell_id,
-                                queued: true,
-                                running: false,
-                                errored: false,
-                                runtime: null,
-                                output: null,
-                                logs: [],
-                            }}
-                            cell_input=${notebook.cell_inputs[cell_id]}
-                            cell_dependencies=${notebook?.cell_dependencies?.[cell_id] ?? {}}
-                            cell_input_local=${cell_inputs_local[cell_id]}
-                            notebook_id=${notebook.notebook_id}
-                            selected=${selected_cells.includes(cell_id)}
-                            focus_after_creation=${last_created_cell === cell_id}
-                            force_hide_input=${false}
-                            is_process_ready=${is_process_ready}
-                            disable_input=${disable_input}
-                            nbpkg=${notebook.nbpkg}
-                            global_definition_locations=${global_definition_locations}
-                        />`
-                    }
+                    (cell_id, i) => html`<${CellMemo}
+                        key=${cell_id}
+                        cell_result=${notebook.cell_results[cell_id] ?? {
+                            cell_id: cell_id,
+                            queued: true,
+                            running: false,
+                            errored: false,
+                            runtime: null,
+                            output: null,
+                            logs: [],
+                        }}
+                        cell_input=${notebook.cell_inputs[cell_id]}
+                        cell_dependencies=${notebook?.cell_dependencies?.[cell_id] ?? {}}
+                        cell_input_local=${cell_inputs_local[cell_id]}
+                        notebook_id=${notebook.notebook_id}
+                        selected=${selected_cells.includes(cell_id)}
+                        focus_after_creation=${last_created_cell === cell_id}
+                        force_hide_input=${false}
+                        is_process_ready=${is_process_ready}
+                        disable_input=${disable_input}
+                        nbpkg=${notebook.nbpkg}
+                        global_definition_locations=${global_definition_locations}
+                    />`
                 )}
             ${cell_outputs_delayed && notebook.cell_order.length >= render_cell_outputs_minimum
                 ? html`<div style="font-family: system-ui; font-style: italic; text-align: center; padding: 5rem 1rem;">Loading...</div>`
