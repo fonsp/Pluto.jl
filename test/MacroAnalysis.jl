@@ -729,6 +729,20 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         @test ":world" == cell(4).output.body
     end
 
+    @testset "Is just text macros" begin
+        notebook = Notebook(Cell.([
+            """
+            md"# Hello world!"
+            """,
+            """
+            "no julia value here"
+            """,
+        ]))
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test isempty(notebook.topology.unresolved_cells)
+    end
+
     @testset "Macros using import" begin
         notebook = Notebook(Cell.([
             """
