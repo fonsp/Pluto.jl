@@ -446,11 +446,18 @@ function resolve_topology(
 
 	all_nodes = merge(unresolved_topology.nodes, new_nodes)
 	all_codes = merge(unresolved_topology.codes, new_codes)
+	
+	new_unresolved_cells = if length(still_unresolved_nodes) == length(unresolved_topology.unresolved_cells)
+		# then they must equal, and we can skip creating a new one to preserve identity:
+		unresolved_topology.unresolved_cells
+	else
+		ImmutableSet(still_unresolved_nodes; skip_copy=true)
+	end
 
 	NotebookTopology(
 		nodes=all_nodes, 
 		codes=all_codes, 
-		unresolved_cells=ImmutableSet(still_unresolved_nodes; skip_copy=true),
+		unresolved_cells=new_unresolved_cells,
 		cell_order=unresolved_topology.cell_order,
 	)
 end
