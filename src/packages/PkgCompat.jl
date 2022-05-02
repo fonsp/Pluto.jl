@@ -194,6 +194,30 @@ function update_registries(; force::Bool=false)
 	end
 end
 
+# ✅ Public API
+"""
+Check when the registries were last updated. If it is recent (max 7 days), `Pkg.UPDATED_REGISTRY_THIS_SESSION` is set to `true`, which will prevent Pkg from doing an automatic registry update.
+
+Returns the new value of `Pkg.UPDATED_REGISTRY_THIS_SESSION`.
+"""
+function check_registry_age(max_age_ms = 1000.0 * 60 * 60 * 24 * 7)::Bool
+	paths = _get_registry_paths()
+	isempty(paths) && return _updated_registries_compat[]
+	
+	ages = map(paths) do p
+		try
+			mtime(p)
+		catch
+			zero(time())
+		end
+	end
+	
+	if all(ages .> time() - max_age_ms)
+		_updated_registries_compat[] = true
+	end
+	_updated_registries_compat[]
+end
+
 
 ###
 # Instantiate

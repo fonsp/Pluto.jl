@@ -65,7 +65,7 @@ function error_response(
 
     body_title = body == "" ? "" : "Error message:"
     filled_in = replace(replace(replace(replace(replace(template, 
-        "\$STYLE" => """<style>$(read(project_relative_path("frontend", "index.css"), String))</style>"""), 
+        "\$STYLE" => """<style>$(read(project_relative_path("frontend", "error.css"), String))</style>"""), 
         "\$TITLE" => title), 
         "\$ADVICE" => advice), 
         "\$BODYTITLE" => body_title), 
