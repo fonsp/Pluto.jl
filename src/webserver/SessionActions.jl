@@ -30,14 +30,23 @@ function open_url(session::ServerSession, url::AbstractString; kwargs...)
     return nb
 end
 
+function convert_path_to_wsl(path)
+    "Code to check whether the system is wsl, in which case, path is changed to corresponding wsl path"
+    init_path = path
+    try
+        if Sys.islinux() && isfile("/proc/sys/kernel/osrelease") &&
+            contains(read("/proc/sys/kernel/osrelease", String), r"Microsoft|WSL"i)
+            temp_path = read(`wslpath -u $(path)`, String)
+        end
+    catch
+        temp_path = init_path
+    end
+    return temp_path
+end
+
 "Open the notebook at `path` into `session::ServerSession` and run it. Returns the `Notebook`."
 function open(session::ServerSession, path::AbstractString; run_async=true, compiler_options=nothing, as_sample=false, notebook_id::UUID=uuid1())
-    "Code to check whether the system is wsl, in which case, path is changed to corresponding wsl path"
-    if Sys.islinux() && isfile("/proc/sys/kernel/osrelease") &&
-        contains(read("/proc/sys/kernel/osrelease", String), r"Microsoft|WSL"i)
-        path = read(`wslpath -u $(path)`, String)
-    end
-    
+    path = convert_path_to_wsl(path)
     if as_sample
         new_filename = "sample " * without_pluto_file_extension(basename(path))
         new_path = numbered_until_new(joinpath(new_notebooks_directory(), new_filename); suffix=".jl")
