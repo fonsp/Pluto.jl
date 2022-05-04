@@ -33,6 +33,7 @@ end
 function convert_path_to_wsl(path)
     "Code to check whether the system is wsl, in which case, path is changed to corresponding wsl path"
     init_path = path
+    temp_path = path
     try
         if Sys.islinux() && isfile("/proc/sys/kernel/osrelease") &&
             contains(read("/proc/sys/kernel/osrelease", String), r"Microsoft|WSL"i)
