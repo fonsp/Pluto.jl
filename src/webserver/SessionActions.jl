@@ -40,6 +40,8 @@ function convert_path_to_wsl(path)
     catch
         return path
     end
+    
+    return path
 end
 
 "Open the notebook at `path` into `session::ServerSession` and run it. Returns the `Notebook`."
