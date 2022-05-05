@@ -8,6 +8,9 @@ function detectwsl()
 end
 
 """
+    maybe_convert_path_to_wsl(path)
+    
+Return the WSL path if the system is using the Windows Subsystem for Linux (WSL) and return `path` otherwise.
 WSL mounts the windows drive to /mnt/ and provides a utility tool to convert windows
 paths into WSL paths. This function will try to use this tool to automagically
 convert paths pasted from windows (with the right click -> copy as path functionality)

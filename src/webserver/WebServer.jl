@@ -11,7 +11,7 @@ function open_in_default_browser(url::AbstractString)::Bool
         if Sys.isapple()
             Base.run(`open $url`)
             true
-        elseif Sys.iswindows() || detectwsl()  #= see PathHelpers.jl =#
+        elseif Sys.iswindows() || detectwsl()
             Base.run(`powershell.exe Start "'$url'"`)
             true
         elseif Sys.islinux()
