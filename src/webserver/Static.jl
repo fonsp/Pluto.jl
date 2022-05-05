@@ -206,7 +206,7 @@ function http_router_for(session::ServerSession)
             query = HTTP.queryparams(uri)
             as_sample = haskey(query, "as_sample")
             if haskey(query, "path")
-                path = tamepath(query["path"])
+                path = tamepath(maybe_convert_path_to_wsl(query["path"]))
                 if isfile(path)
                     return try_launch_notebook_response(
                         SessionActions.open, path; 
