@@ -14,7 +14,7 @@ convert paths pasted from windows (with the right click -> copy as path function
 into paths Pluto can understand.
 
 Example:
-raw"C:\Users\pankg\OneDrive\Desktop\pluto\bakery_pnl_ready2.jl"
+$(raw"C:\Users\pankg\OneDrive\Desktop\pluto\bakery_pnl_ready2.jl")
 →
 "/mnt/c/Users/pankg/OneDrive/Desktop/pluto/bakery_pnl_ready2.jl"
 
