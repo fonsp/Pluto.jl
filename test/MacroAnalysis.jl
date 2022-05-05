@@ -276,6 +276,27 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         @test cell(1).output.body == "42"
     end
 
+    @testset "Removing macros undefvar errors dependent cells" begin
+        notebook = Notebook(Cell.([
+            """macro m()
+                :(1 + 1)
+            end""",
+            "@m()",
+        ]))
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test all(noerror, notebook.cells)
+
+        setcode(notebook.cells[begin], "") # remove definition of m
+        update_run!(🍭, notebook, notebook.cells[begin])
+
+        @test notebook.cells[begin] |> noerror
+        @test notebook.cells[end].errored
+
+        @test occursinerror("UndefVarError: @m", notebook.cells[end])
+    end
+
     @testset "Redefines macro with new SymbolsState" begin
         notebook = Notebook(Cell.([
             "@b x",
@@ -706,6 +727,20 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
 
         @test ":world" == cell(3).output.body
         @test ":world" == cell(4).output.body
+    end
+
+    @testset "Is just text macros" begin
+        notebook = Notebook(Cell.([
+            """
+            md"# Hello world!"
+            """,
+            """
+            "no julia value here"
+            """,
+        ]))
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test isempty(notebook.topology.unresolved_cells)
     end
 
     @testset "Macros using import" begin

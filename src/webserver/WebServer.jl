@@ -59,7 +59,6 @@ function run(; kwargs...)
     options = Configuration.from_flat_kwargs(; kwargs...)
     run(options)
 end
-precompile(run, ())
 
 function run(options::Configuration.Options)
     session = ServerSession(; options)
@@ -135,7 +134,7 @@ function run(session::ServerSession, pluto_router)
     end
     
     if VERSION < v"1.6.2"
-        @info "Pluto is running on an old version of Julia ($(VERSION)) that is no longer supported. Visit https://julialang.org/downloads/ for more information about upgrading Julia."
+        @warn("\nPluto is running on an old version of Julia ($(VERSION)) that is no longer supported. Visit https://julialang.org/downloads/ for more information about upgrading Julia.")
     end
 
     notebook_at_startup = session.options.server.notebook
@@ -269,31 +268,29 @@ function run(session::ServerSession, pluto_router)
     WorkspaceManager.poll(server_running, 5.0, 1.0)
     
     address = pretty_address(session, hostIP, port)
-    println()
     if session.options.server.launch_browser && open_in_default_browser(address)
-        println("Opening $address in your default browser... ~ have fun!")
+        @info("\nOpening $address in your default browser... ~ have fun!")
     else
-        println("Go to $address in your browser to start writing ~ have fun!")
+        @info("\nGo to $address in your browser to start writing ~ have fun!")
     end
-    println()
-    println("Press Ctrl+C in this terminal to stop Pluto")
-    println()
+    @info("\nPress Ctrl+C in this terminal to stop Pluto\n\n")
     
     # Trigger ServerStartEvent with server details
     try_event_call(session, ServerStartEvent(address, port))
 
     if PLUTO_VERSION >= v"0.17.6" && frontend_directory() == "frontend"
-        @info "It looks like you are developing the Pluto package, using the unbundled frontend..."
+        @info("It looks like you are developing the Pluto package, using the unbundled frontend...")
     end
 
     # Start this in the background, so that the first notebook launch (which will trigger registry update) will be faster
     @asynclog withtoken(pkg_token) do
+        will_update = !PkgCompat.check_registry_age()
         PkgCompat.update_registries(; force=false)
-        println("    Updating registry done ✓")
+        will_update && println("    Updating registry done ✓")
     end
 
     shutdown_server[] = () -> @sync begin
-        println("\n\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈")
+        @info("\n\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈\n\n")
         @async swallow_exception(() -> close(serversocket), Base.IOError)
         # TODO: HTTP has a kill signal?
         # TODO: put do_work tokens back 
@@ -303,8 +300,6 @@ function run(session::ServerSession, pluto_router)
         empty!(session.connected_clients)
         for nb in values(session.notebooks)
             @asynclog SessionActions.shutdown(session, nb; keep_in_session=false, async=false, verbose=false)
-        end
-        for (notebook_id, ws) in WorkspaceManager.workspaces
         end
     end
 

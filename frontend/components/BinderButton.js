@@ -7,6 +7,11 @@ export const BinderButton = ({ offer_binder, start_binder, notebookfile }) => {
     const notebookfile_ref = useRef("")
     notebookfile_ref.current = notebookfile
 
+    //@ts-ignore
+    window.open_edit_or_run_popup = () => {
+        setPopupOpen(true)
+    }
+
     useEffect(() => {
         const handlekeyup = (e) => {
             e.key === "Escape" && setPopupOpen(false)

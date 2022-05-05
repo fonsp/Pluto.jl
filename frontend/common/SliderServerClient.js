@@ -16,12 +16,14 @@ export const nothing_actions = ({ actions }) =>
                 ? // the original action
                   v
                 : // a no-op action
-                  () => {},
+                  (...args) => {
+                      console.info("Ignoring action", k, { args })
+                  },
         ])
     )
 
 export const slider_server_actions = ({ setStatePromise, launch_params, actions, get_original_state, get_current_state, apply_notebook_patches }) => {
-    const notebookfile_hash = fetch(launch_params.notebookfile)
+    const notebookfile_hash = fetch(new Request(launch_params.notebookfile, { integrity: launch_params.notebookfile_integrity }))
         .then(assert_response_ok)
         .then((r) => r.arrayBuffer())
         .then(plutohash_arraybuffer)

@@ -65,7 +65,7 @@ function error_response(
 
     body_title = body == "" ? "" : "Error message:"
     filled_in = replace(replace(replace(replace(replace(template, 
-        "\$STYLE" => """<style>$(read(project_relative_path("frontend", "index.css"), String))</style>"""), 
+        "\$STYLE" => """<style>$(read(project_relative_path("frontend", "error.css"), String))</style>"""), 
         "\$TITLE" => title), 
         "\$ADVICE" => advice), 
         "\$BODYTITLE" => body_title), 
@@ -323,7 +323,10 @@ function http_router_for(session::ServerSession)
         required=security.require_secret_for_access || 
         security.require_secret_for_open_links
     ) do request::HTTP.Request
-        save_path = SessionActions.save_upload(request.body)
+        uri = HTTP.URI(request.target)
+        query = HTTP.queryparams(uri)
+        
+        save_path = SessionActions.save_upload(request.body; filename_base=get(query, "name", nothing))
         try_launch_notebook_response(
             SessionActions.open,
             save_path;

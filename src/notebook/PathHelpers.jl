@@ -76,6 +76,9 @@ const nouns = [
 	"conjecture"
 ]
 
+"""
+Generate a filename like `"Cute discovery"`. Does not end with `.jl`.
+"""
 function cutename()
     titlecase(rand(adjectives)) * " " * rand(nouns)
 end

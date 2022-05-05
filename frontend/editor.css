@@ -647,9 +647,13 @@ pluto-filepicker .cm-scroller::-webkit-scrollbar {
     display: none; /* Safari and Chrome */
 }
 
-nav#at_the_top > pluto-filepicker button {
+pluto-filepicker button {
     cursor: pointer;
     height: auto;
+}
+
+pluto-filepicker button:disabled {
+    cursor: not-allowed;
 }
 
 button.start_stop_recording,
@@ -1047,6 +1051,11 @@ pluto-output div.raw-html-wrapper {
 
 pluto-output:not(.rich_output) > div > pre {
     display: flex;
+}
+
+.bonds_disabled.offer_binder bond {
+    opacity: 0.6;
+    filter: grayscale(1);
 }
 
 /* as embedded display: */

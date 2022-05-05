@@ -130,10 +130,12 @@ function run_reactive_core!(
     to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_errable)...)
     to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_errable)...)
 
+    cells_to_macro_invalidate = map(c -> c.cell_id, cells_with_deleted_macros(old_topology, new_topology)) |> Set{UUID}
+
     to_reimport = union!(Set{Expr}(), map(c -> new_topology.codes[c].module_usings_imports.usings, setdiff(notebook.cells, to_run))...)
     if will_run_code(notebook)
-		deletion_hook((session, notebook), old_workspace_name, nothing, to_delete_vars, to_delete_funcs, to_reimport; to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
-	end
+        deletion_hook((session, notebook), old_workspace_name, nothing, to_delete_vars, to_delete_funcs, to_reimport, cells_to_macro_invalidate; to_run = to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
+    end
 
     delete!.([notebook.bonds], to_delete_vars)
 
@@ -169,9 +171,7 @@ function run_reactive_core!(
         end
 
         implicit_usings = collect_implicit_usings(new_topology, cell)
-		if !will_run_code(notebook)
-			# then skip these special cases.
-        elseif !is_resolved(new_topology) && can_help_resolve_cells(new_topology, cell)
+        if !is_resolved(new_topology) && can_help_resolve_cells(new_topology, cell)
             notebook.topology = new_new_topology = resolve_topology(session, notebook, new_topology, old_workspace_name)
 
             if !isempty(implicit_usings)
@@ -242,17 +242,17 @@ function run_single!(
 	capture_stdout::Bool=true,
 )
 	run = WorkspaceManager.eval_format_fetch_in_workspace(
-		session_notebook, 
-		expr_cache.parsedcode, 
+		session_notebook,
+		expr_cache.parsedcode,
 		cell.cell_id;
 		
-		ends_with_semicolon = 
-			ends_with_semicolon(cell.code), 
-		function_wrapped_info = 
+		ends_with_semicolon =
+			ends_with_semicolon(cell.code),
+		function_wrapped_info =
 			expr_cache.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing,
-		forced_expr_id = 
+		forced_expr_id =
 			expr_cache.forced_expr_id,
-		known_published_objects = 
+		known_published_objects =
 			collect(keys(cell.published_objects)),
 		user_requested_run,
 		capture_stdout,
@@ -315,9 +315,17 @@ end
 
 collect_implicit_usings(topology::NotebookTopology, cell::Cell) = ExpressionExplorer.collect_implicit_usings(topology.codes[cell].module_usings_imports)
 
+function cells_with_deleted_macros(old_topology::NotebookTopology, new_topology::NotebookTopology)
+    old_macros = mapreduce(c -> defined_macros(old_topology, c), union!, all_cells(old_topology); init=Set{Symbol}())
+    new_macros = mapreduce(c -> defined_macros(new_topology, c), union!, all_cells(new_topology); init=Set{Symbol}())
+    removed_macros = setdiff(old_macros, new_macros)
+
+    where_referenced(old_topology, removed_macros)
+end
+
 "Returns the set of macros names defined by this cell"
 defined_macros(topology::NotebookTopology, cell::Cell) = defined_macros(topology.nodes[cell])
-defined_macros(node::ReactiveNode) = filter(is_macro_identifier, node.funcdefs_without_signatures) ∪ filter(is_macro_identifier, node.definitions) # macro definitions can come from imports
+defined_macros(node::ReactiveNode) = union!(filter(is_macro_identifier, node.funcdefs_without_signatures), filter(is_macro_identifier, node.definitions)) # macro definitions can come from imports
 
 "Tells whether or not a cell can 'unlock' the resolution of other cells"
 function can_help_resolve_cells(topology::NotebookTopology, cell::Cell)
@@ -403,45 +411,53 @@ function resolve_topology(
 	still_unresolved_nodes = Set{Cell}()
 
 	for cell in unresolved_topology.unresolved_cells
-			if unresolved_topology.nodes[cell].macrocalls ⊆ run_defined_macros
-				# Do not try to expand if a newer version of the macro is also scheduled to run in the
-				# current run. The recursive reactive runs will take care of it.
-				push!(still_unresolved_nodes, cell)
-			end
+		if unresolved_topology.nodes[cell].macrocalls ⊆ run_defined_macros
+			# Do not try to expand if a newer version of the macro is also scheduled to run in the
+			# current run. The recursive reactive runs will take care of it.
+			push!(still_unresolved_nodes, cell)
+			continue
+		end
 
-			result = try
-				if will_run_code(notebook)
-					analyze_macrocell(cell)
-				else
-					Failure(ErrorException("shutdown"))
-				end
-			catch error
-				@error "Macro call expansion failed with a non-macroexpand error" error
-				Failure(error)
-			end
-			if result isa Success
-				(new_node, function_wrapped, forced_expr_id) = result.result
-				union!(new_node.macrocalls, unresolved_topology.nodes[cell].macrocalls)
-				union!(new_node.references, new_node.macrocalls)
-				new_nodes[cell] = new_node
-
-				# set function_wrapped to the function wrapped analysis of the expanded expression.
-				new_codes[cell] = ExprAnalysisCache(unresolved_topology.codes[cell]; forced_expr_id, function_wrapped)
+		result = try
+			if will_run_code(notebook)
+				analyze_macrocell(cell)
 			else
-				if result isa Failure
-					@debug "Expansion failed" err=result.error
-				end
-				push!(still_unresolved_nodes, cell)
+				Failure(ErrorException("shutdown"))
 			end
+		catch error
+			@error "Macro call expansion failed with a non-macroexpand error" error
+			Failure(error)
+		end
+		if result isa Success
+			(new_node, function_wrapped, forced_expr_id) = result.result
+			union!(new_node.macrocalls, unresolved_topology.nodes[cell].macrocalls)
+			union!(new_node.references, new_node.macrocalls)
+			new_nodes[cell] = new_node
+
+			# set function_wrapped to the function wrapped analysis of the expanded expression.
+			new_codes[cell] = ExprAnalysisCache(unresolved_topology.codes[cell]; forced_expr_id, function_wrapped)
+		elseif result isa Skipped
+			# Skipped because it has already been resolved during ExpressionExplorer.
+		else
+			@debug "Could not resolve" result cell.code
+			push!(still_unresolved_nodes, cell)
+		end
 	end
 
 	all_nodes = merge(unresolved_topology.nodes, new_nodes)
 	all_codes = merge(unresolved_topology.codes, new_codes)
+	
+	new_unresolved_cells = if length(still_unresolved_nodes) == length(unresolved_topology.unresolved_cells)
+		# then they must equal, and we can skip creating a new one to preserve identity:
+		unresolved_topology.unresolved_cells
+	else
+		ImmutableSet(still_unresolved_nodes; skip_copy=true)
+	end
 
 	NotebookTopology(
 		nodes=all_nodes, 
 		codes=all_codes, 
-		unresolved_cells=ImmutableSet(still_unresolved_nodes; skip_copy=true),
+		unresolved_cells=new_unresolved_cells,
 		cell_order=unresolved_topology.cell_order,
 	)
 end
