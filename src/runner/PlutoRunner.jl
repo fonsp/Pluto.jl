@@ -688,6 +688,28 @@ end
 isfromcell(method::Method, cell_id::UUID) = endswith(String(method.file), string(cell_id))
 
 """
+    delete_method_doc(m::Method)
+
+Tries to delete the documentation for this method, this is used when methods are removed.
+"""
+function delete_method_doc(m::Method)
+    binding = Docs.Binding(m.module, m.name)
+    meta = Docs.meta(m.module)
+    if haskey(meta, binding)
+        method_sig = Tuple{m.sig.parameters[2:end]...}
+        multidoc = meta[binding]
+        filter!(multidoc.order) do msig
+            if method_sig == msig
+                pop!(multidoc.docs, msig)
+                false
+            else
+                true
+            end
+        end
+    end
+end
+
+"""
 Delete all methods of `f` that were defined in this notebook, and leave the ones defined in other packages, base, etc. ✂
 
 Return whether the function has any methods left after deletion.
@@ -700,6 +722,7 @@ function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
     Base.visit(methods_table) do method # iterates through all methods of `f`, including overridden ones
         if isfromcell(method, cell_id) && getfield(method, deleted_world) == alive_world_val
             Base.delete_method(method)
+            delete_method_doc(method)
             push!(deleted_sigs, method.sig)
         end
     end
