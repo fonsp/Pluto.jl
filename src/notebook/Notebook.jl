@@ -337,7 +337,6 @@ function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::Abstr
         nbpkg_installed_versions_cache=nbpkg_cache(nbpkg_ctx),
     )
 end
-precompile(load_notebook_nobackup, (IOStream, String))
 
 function load_notebook_nobackup(path::String)::Notebook
     local loaded
