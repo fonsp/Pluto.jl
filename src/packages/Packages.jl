@@ -73,10 +73,15 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
         👺 = !no_packages_loaded_yet
         notebook.nbpkg_ctx = nothing
     end
+    if !use_plutopkg_new
+        notebook.nbpkg_ctx_instantiated = true
+    end
     
     (lag > 0) && sleep(lag * (0.5 + rand())) # sleep(0) would yield to the process manager which we dont want
 
-    if notebook.nbpkg_ctx !== nothing
+    if use_plutopkg_new
+        @assert notebook.nbpkg_ctx !== nothing
+        
         PkgCompat.mark_original!(notebook.nbpkg_ctx)
 
         old_packages = String.(keys(PkgCompat.project(notebook.nbpkg_ctx).dependencies))
