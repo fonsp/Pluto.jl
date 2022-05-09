@@ -6,13 +6,6 @@ import .PkgCompat
 
 include("./WebSocketFix.jl")
 
-# from https://github.com/JuliaLang/julia/pull/36425
-function detectwsl()
-    Sys.islinux() &&
-    isfile("/proc/sys/kernel/osrelease") &&
-    occursin(r"Microsoft|WSL"i, read("/proc/sys/kernel/osrelease", String))
-end
-
 function open_in_default_browser(url::AbstractString)::Bool
     try
         if Sys.isapple()
