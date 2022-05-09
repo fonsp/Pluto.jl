@@ -479,10 +479,16 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
                 union!(symstate, SymbolsState(macrocalls = Set{FunctionName}([expanded_macro])))
             elseif all_iters_eq((:BenchmarkTools, :generate_benchmark_definition), funcname) &&
                 length(ex.args) == 10
-                for child in ex.args[7:9]
-                    (Meta.isexpr(child, :copyast, 1) && child.args[1] isa QuoteNode && child.args[1].value isa Expr) || continue
-                    union!(symstate, explore!(child.args[1].value, scopestate))
-                end
+                block = Expr(:block,
+                     map(ex.args[[8,7,9]]) do child
+                        if (Meta.isexpr(child, :copyast, 1) && child.args[1] isa QuoteNode && child.args[1].value isa Expr)
+                            child.args[1].value
+                        else
+                            nothing
+                        end
+                    end...
+                )
+                union!(symstate, explore_inner_scoped(block, scopestate))
             end
 
             return symstate

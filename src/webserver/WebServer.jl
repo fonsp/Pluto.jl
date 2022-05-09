@@ -6,13 +6,6 @@ import .PkgCompat
 
 include("./WebSocketFix.jl")
 
-# from https://github.com/JuliaLang/julia/pull/36425
-function detectwsl()
-    Sys.islinux() &&
-    isfile("/proc/sys/kernel/osrelease") &&
-    occursin(r"Microsoft|WSL"i, read("/proc/sys/kernel/osrelease", String))
-end
-
 function open_in_default_browser(url::AbstractString)::Bool
     try
         if Sys.isapple()
@@ -66,7 +59,6 @@ function run(; kwargs...)
     options = Configuration.from_flat_kwargs(; kwargs...)
     run(options)
 end
-precompile(run, ())
 
 function run(options::Configuration.Options)
     session = ServerSession(; options)
@@ -292,8 +284,9 @@ function run(session::ServerSession, pluto_router)
 
     # Start this in the background, so that the first notebook launch (which will trigger registry update) will be faster
     @asynclog withtoken(pkg_token) do
+        will_update = !PkgCompat.check_registry_age()
         PkgCompat.update_registries(; force=false)
-        println("    Updating registry done ✓")
+        will_update && println("    Updating registry done ✓")
     end
 
     shutdown_server[] = () -> @sync begin

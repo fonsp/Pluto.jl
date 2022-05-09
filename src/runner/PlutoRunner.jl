@@ -570,7 +570,6 @@ function run_expression(
     
     cell_results[cell_id], cell_runtimes[cell_id] = result, runtime
 end
-precompile(run_expression, (Module, Expr, UUID, Nothing))
 
 # Channel to trigger implicits run
 const run_channel = Channel{UUID}(10)
@@ -689,6 +688,28 @@ end
 isfromcell(method::Method, cell_id::UUID) = endswith(String(method.file), string(cell_id))
 
 """
+    delete_method_doc(m::Method)
+
+Tries to delete the documentation for this method, this is used when methods are removed.
+"""
+function delete_method_doc(m::Method)
+    binding = Docs.Binding(m.module, m.name)
+    meta = Docs.meta(m.module)
+    if haskey(meta, binding)
+        method_sig = Tuple{m.sig.parameters[2:end]...}
+        multidoc = meta[binding]
+        filter!(multidoc.order) do msig
+            if method_sig == msig
+                pop!(multidoc.docs, msig)
+                false
+            else
+                true
+            end
+        end
+    end
+end
+
+"""
 Delete all methods of `f` that were defined in this notebook, and leave the ones defined in other packages, base, etc. ✂
 
 Return whether the function has any methods left after deletion.
@@ -701,6 +722,7 @@ function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
     Base.visit(methods_table) do method # iterates through all methods of `f`, including overridden ones
         if isfromcell(method, cell_id) && getfield(method, deleted_world) == alive_world_val
             Base.delete_method(method)
+            delete_method_doc(method)
             push!(deleted_sigs, method.sig)
         end
     end
@@ -1085,7 +1107,7 @@ pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Any) = false
 # in the next functions you see a `context` argument
 # this is really only used for the circular reference tracking
 
-function tree_data_array_elements(@nospecialize(x::AbstractArray{<:Any,1}), indices::AbstractVector{I}, context::IOContext)::Vector{Tuple{I,Any}} where {I<:Integer}
+function tree_data_array_elements(@nospecialize(x::AbstractVector{<:Any}), indices::AbstractVector{I}, context::IOContext)::Vector{Tuple{I,Any}} where {I<:Integer}
     Tuple{I,Any}[
         if isassigned(x, i)
             i, format_output_default(x[i], context)
@@ -1157,14 +1179,14 @@ function tree_data(@nospecialize(x::AbstractSet{<:Any}), context::IOContext)
     end
 end
 
-function tree_data(@nospecialize(x::AbstractArray{<:Any,1}), context::IOContext)
+function tree_data(@nospecialize(x::AbstractVector{<:Any}), context::IOContext)
     if Base.show_circular(context, x)
         Dict{Symbol,Any}(
             :objectid => string(objectid(x), base=16),
             :type => :circular,
         )
     else
-        depth = get(context, :tree_viewer_depth, 0)
+        depth = get(context, :tree_viewer_depth, 0)::Int
         recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x), Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
 
         indices = eachindex(x)
@@ -1177,9 +1199,9 @@ function tree_data(@nospecialize(x::AbstractArray{<:Any,1}), context::IOContext)
             firsti = firstindex(x)
             from_end = my_limit > 20 ? 10 : my_limit > 1 ? 1 : 0
             Any[
-                tree_data_array_elements(x, indices[firsti:firsti-1+my_limit-from_end], recur_io)...,
-                "more",
-                tree_data_array_elements(x, indices[end+1-from_end:end], recur_io)...,
+                tree_data_array_elements(x, indices[firsti:firsti-1+my_limit-from_end], recur_io);
+                "more";
+                tree_data_array_elements(x, indices[end+1-from_end:end], recur_io)
             ]
         end
 
@@ -1198,10 +1220,15 @@ function tree_data(@nospecialize(x::Tuple), context::IOContext)
     depth = get(context, :tree_viewer_depth, 0)
     recur_io = IOContext(context, Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
 
+    elements = Tuple[]
+    for val in x
+        out = format_output_default(val, recur_io)
+        push!(elements, out)
+    end
     Dict{Symbol,Any}(
         :objectid => string(objectid(x), base=16),
         :type => :Tuple,
-        :elements => collect(enumerate(format_output_default.(x, [recur_io]))),
+        :elements => collect(enumerate(elements)),
     )
 end
 
@@ -1240,7 +1267,7 @@ function tree_data(@nospecialize(x::AbstractDict{<:Any,<:Any}), context::IOConte
     end
 end
 
-function tree_data_nt_row(pair::Tuple, context::IOContext)
+function tree_data_nt_row(@nospecialize(pair::Tuple), context::IOContext)
     # this is an entry of a NamedTuple, the first element of the Tuple is a Symbol, which we want to print as `x` instead of `:x`
     k, element = pair
     string(k), format_output_default(element, context)
@@ -1251,10 +1278,16 @@ function tree_data(@nospecialize(x::NamedTuple), context::IOContext)
     depth = get(context, :tree_viewer_depth, 0)
     recur_io = IOContext(context, Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
 
+    elements = Tuple[]
+    for key in eachindex(x)
+        val = x[key]
+        data = tree_data_nt_row((key, val), recur_io)
+        push!(elements, data)
+    end
     Dict{Symbol,Any}(
         :objectid => string(objectid(x), base=16),
         :type => :NamedTuple,
-        :elements => tree_data_nt_row.(zip(eachindex(x), x), (recur_io,))
+        :elements => elements
     )
 end
 

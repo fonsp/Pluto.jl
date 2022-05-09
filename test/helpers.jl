@@ -2,6 +2,13 @@
 using TimerOutputs: TimerOutput, @timeit
 const TOUT = TimerOutput()
 macro timeit_include(path::AbstractString) :(@timeit TOUT $path include($path)) end
+function print_timeroutput()
+    # Sleep to avoid old logs getting tangled up in the output.
+    sleep(6)
+    println()
+    show(TOUT; compact=true, sortby=:firstexec)
+    println()
+end
 
 @timeit TOUT "import Pluto" import Pluto
 import Pluto.ExpressionExplorer
@@ -120,7 +127,7 @@ function easy_symstate(expected_references, expected_definitions, expected_funcc
     SymbolsState(Set(expected_references), Set(expected_definitions), new_expected_funccalls, new_expected_funcdefs, new_expected_macrocalls)
 end
 
-function setcode(cell, newcode)
+function setcode!(cell, newcode)
     cell.code = newcode
 end
 

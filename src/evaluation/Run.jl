@@ -438,6 +438,7 @@ function resolve_topology(
 			# Do not try to expand if a newer version of the macro is also scheduled to run in the
 			# current run. The recursive reactive runs will take care of it.
 			push!(still_unresolved_nodes, cell)
+			continue
 		end
 
 		result = try
@@ -458,21 +459,28 @@ function resolve_topology(
 
 			# set function_wrapped to the function wrapped analysis of the expanded expression.
 			new_codes[cell] = ExprAnalysisCache(unresolved_topology.codes[cell]; forced_expr_id, function_wrapped)
+		elseif result isa Skipped
+			# Skipped because it has already been resolved during ExpressionExplorer.
 		else
-			if result isa Failure
-				@debug "Expansion failed" err=result.error
-			end
+			@debug "Could not resolve" result cell.code
 			push!(still_unresolved_nodes, cell)
 		end
 	end
 
 	all_nodes = merge(unresolved_topology.nodes, new_nodes)
 	all_codes = merge(unresolved_topology.codes, new_codes)
+	
+	new_unresolved_cells = if length(still_unresolved_nodes) == length(unresolved_topology.unresolved_cells)
+		# then they must equal, and we can skip creating a new one to preserve identity:
+		unresolved_topology.unresolved_cells
+	else
+		ImmutableSet(still_unresolved_nodes; skip_copy=true)
+	end
 
 	NotebookTopology(
 		nodes=all_nodes, 
 		codes=all_codes, 
-		unresolved_cells=ImmutableSet(still_unresolved_nodes; skip_copy=true),
+		unresolved_cells=new_unresolved_cells,
 		cell_order=unresolved_topology.cell_order,
 	)
 end
