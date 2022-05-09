@@ -78,10 +78,10 @@ Besides `:update_notebook`, you will find more functions in [`responses`](@ref) 
 
 """
 module Firebasey include("./Firebasey.jl") end
-module AppendonlyMarkers
+module FirebaseyUtils
     # I put Firebasey here manually THANKS JULIA
     import ..Firebasey
-    include("./AppendonlyMarkers.jl")
+    include("./FirebaseyUtils.jl")
 end
 
 # All of the arrays in the notebook_to_js object are 'immutable' (we write code as if they are), so we can enable this optimization:
@@ -131,13 +131,13 @@ function notebook_to_js(notebook::Notebook)
             id => Dict{String,Any}(
                 "cell_id" => cell.cell_id,
                 "depends_on_disabled_cells" => cell.depends_on_disabled_cells,
-                "output" => AppendonlyMarkers.ImmutableMarker(cell.output),
+                "output" => FirebaseyUtils.ImmutableMarker(cell.output),
                 "published_object_keys" => keys(cell.published_objects),
                 "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,
                 "runtime" => cell.runtime,
-                "logs" => AppendonlyMarkers.AppendonlyMarker(cell.logs),
+                "logs" => FirebaseyUtils.AppendonlyMarker(cell.logs),
             )
         for (id, cell) in notebook.cells_dict),
         "cell_order" => notebook.cell_order,
