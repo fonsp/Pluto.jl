@@ -272,12 +272,12 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 			@debug "PlutoPkg: success!" pkg_result
 
 			if pkg_result.restart_recommended
-				@debug "PlutoPkg: Notebook restart recommended"
 				notebook.nbpkg_restart_recommended_msg = "Yes, something changed during regular sync."
+				@debug "PlutoPkg: Notebook restart recommended" notebook.nbpkg_restart_recommended_msg
 			end
 			if pkg_result.restart_required
-				@debug "PlutoPkg: Notebook restart REQUIRED"
 				notebook.nbpkg_restart_required_msg = "Yes, something changed during regular sync."
+				@debug "PlutoPkg: Notebook restart REQUIRED" notebook.nbpkg_restart_required_msg
 			end
 
 			notebook.nbpkg_busy_packages = String[]
@@ -433,12 +433,12 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
 
 		if pkg_result.did_something
 			if pkg_result.restart_recommended
-				@debug "PlutoPkg: Notebook restart recommended"
 				notebook.nbpkg_restart_recommended_msg = "Yes, something changed during regular update_nbpkg."
+				@debug "PlutoPkg: Notebook restart recommended" notebook.nbpkg_restart_recommended_msg
 			end
 			if pkg_result.restart_required
-				@debug "PlutoPkg: Notebook restart REQUIRED"
 				notebook.nbpkg_restart_required_msg = "Yes, something changed during regular update_nbpkg."
+				@debug "PlutoPkg: Notebook restart REQUIRED" notebook.nbpkg_restart_required_msg
 			end
 		else
             isfile(bp) && rm(bp)
