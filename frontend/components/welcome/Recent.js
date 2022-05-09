@@ -200,7 +200,7 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent }) =>
     if (CustomRecent == null) {
         return html`
             <h2>My work</h2>
-            <ul id="recent">
+            <ul id="recent" class="show-scrollbar">
                 <li class="new">
                     <a href="new"
                         ><button><span class="ionicon"></span></button>Create a <strong>new notebook</strong></a

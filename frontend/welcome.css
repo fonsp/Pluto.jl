@@ -245,3 +245,18 @@ a#github {
     right: 0.5rem;
 }
 
+.show-scrollbar::-webkit-scrollbar {
+    width: 10px;
+    opacity: 0.1;
+}
+.show-scrollbar::-webkit-scrollbar-track {
+}
+.show-scrollbar::-webkit-scrollbar-thumb {
+    /* height: 11px; */
+    background-color: var(--black);
+    opacity: 0.6;
+    border-radius: 1000px;
+}
+.show-scrollbar::-webkit-scrollbar-thumb:hover {
+    opacity: 1;
+}
