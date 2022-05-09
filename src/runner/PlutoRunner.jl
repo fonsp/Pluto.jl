@@ -466,8 +466,8 @@ function run_expression(
         m::Module,
         expr::Any,
         cell_id::UUID,
-        function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing,
-        forced_expr_id::Union{ObjectID,Nothing}=nothing;
+        @nospecialize(function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing),
+        @nospecialize(forced_expr_id::Union{ObjectID,Nothing}=nothing);
         user_requested_run::Bool=true,
         capture_stdout::Bool=true,
     )
@@ -570,6 +570,7 @@ function run_expression(
     
     cell_results[cell_id], cell_runtimes[cell_id] = result, runtime
 end
+precompile(run_expression, (Module, Expr, UUID, Nothing, Nothing))
 
 # Channel to trigger implicits run
 const run_channel = Channel{UUID}(10)
