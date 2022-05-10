@@ -24,7 +24,7 @@ import Logging
 
 export @bind
 
-MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
+const MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
 const ObjectID = typeof(objectid("hello computer"))
 const ObjectDimPair = Tuple{ObjectID,Int64}
 
@@ -916,7 +916,7 @@ Format `val` using the richest possible output, return formatted string and used
 
 See [`allmimes`](@ref) for the ordered list of supported MIME types.
 """
-function format_output_default(@nospecialize(val), @nospecialize(context=default_iocontext))::MimedOutput
+function format_output_default(@nospecialize(val), @nospecialize(context=default_iocontext))
     try
         io_sprinted, (value, mime) = show_richest_withreturned(val; context)
         if value === nothing
@@ -1108,15 +1108,16 @@ pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Any) = false
 # in the next functions you see a `context` argument
 # this is really only used for the circular reference tracking
 
-function tree_data_array_elements(@nospecialize(x::AbstractVector{<:Any}), indices::AbstractVector{I}, context::IOContext)::Vector{Tuple{I,Any}} where {I<:Integer}
-    Tuple{I,Any}[
+function tree_data_array_elements(@nospecialize(x::AbstractVector{<:Any}), indices::AbstractVector{I}, context::IOContext) where {I<:Integer}
+    out = Tuple{I,Any}[]
+    for i in indices
         if isassigned(x, i)
-            i, format_output_default(x[i], context)
+            push!(out, (i, format_output_default(x[i], context)))
         else
-            i, format_output_default(Text(Base.undef_ref_str), context)
+            push!(out, (i, format_output_default(Text(Base.undef_ref_str), context)))
         end
-        for i in indices
-    ] |> collect
+    end
+    return out
 end
 
 function array_prefix(@nospecialize(x::Array{<:Any,1}))::String
@@ -1221,15 +1222,16 @@ function tree_data(@nospecialize(x::Tuple), context::IOContext)
     depth = get(context, :tree_viewer_depth, 0)
     recur_io = IOContext(context, Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
 
-    elements = Tuple[]
-    for val in x
-        out = format_output_default(val, recur_io)
-        push!(elements, out)
+    l = length(x)
+    elements = Vector{Tuple}(undef, l)
+    for i in 1:l
+        out = format_output_default(x[i], recur_io)
+        push!(elements, (i, out))
     end
     Dict{Symbol,Any}(
         :objectid => string(objectid(x), base=16),
         :type => :Tuple,
-        :elements => collect(enumerate(elements)),
+        :elements => elements
     )
 end
 
