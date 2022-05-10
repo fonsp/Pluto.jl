@@ -420,8 +420,8 @@ import Distributed
         @test notebook.cells[11].output.body == "234"
         
         set_bond_values!(notebook, Dict(:a => 1, :b => 1))
-        setcode(notebook.cells[10], "a + hello1")
-        setcode(notebook.cells[11], "b + hello2")
+        setcode!(notebook.cells[10], "a + hello1")
+        setcode!(notebook.cells[11], "b + hello2")
         update_run!(🍭, notebook, notebook.cells[10:11])
         
         @test notebook.cells[10].output.body == "125"
