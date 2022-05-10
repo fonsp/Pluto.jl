@@ -918,12 +918,12 @@ See [`allmimes`](@ref) for the ordered list of supported MIME types.
 """
 function format_output_default(@nospecialize(val), @nospecialize(context=default_iocontext))::MimedOutput
     try
-        io_sprinted, (value, mime) = sprint_withreturned(show_richest, val; context=context)
+        io_sprinted, (value, mime) = show_richest_withreturned(val; context)
         if value === nothing
             if mime ∈ imagemimes
                 (io_sprinted, mime)
             else
-                (String(io_sprinted), mime)
+                (String(io_sprinted)::String, mime)
             end
         else
             (value, mime)
@@ -1007,11 +1007,11 @@ function pretty_stackcall(frame::Base.StackFrame, linfo::Core.MethodInstance)
     end
 end
 
-"Like `Base.sprint`, but return a `(String, Any)` tuple containing function output as the second entry."
-function sprint_withreturned(f::Function, args...; context=nothing, sizehint::Integer=0)
-    buffer = IOBuffer(sizehint=sizehint)
-    val = f(IOContext(buffer, context), args...)
-    resize!(buffer.data, buffer.size), val
+"Return a `(String, Any)` tuple containing function output as the second entry."
+function show_richest_withreturned(@nospecialize(args...); context=nothing, sizehint::Integer=0)
+    buffer = IOBuffer(; sizehint)
+    val = show_richest(IOContext(buffer, context), args...)
+    return (resize!(buffer.data, buffer.size), val)
 end
 
 "Super important thing don't change."
@@ -1183,7 +1183,7 @@ end
 function tree_data(@nospecialize(x::AbstractVector{<:Any}), context::IOContext)
     if Base.show_circular(context, x)
         Dict{Symbol,Any}(
-            :objectid => string(objectid(x), base=16),
+            :objectid => string(objectid(x), base=16)::String,
             :type => :circular,
         )
     else
@@ -1319,7 +1319,7 @@ function tree_data(@nospecialize(x::Any), context::IOContext)
         t = typeof(x)
         nf = nfields(x)
         nb = sizeof(x)
-        
+
         elements = Any[
             let
                 f = fieldname(t, i)
@@ -1334,9 +1334,9 @@ function tree_data(@nospecialize(x::Any), context::IOContext)
         ]
 
         Dict{Symbol,Any}(
-            :prefix => repr(t; context=context),
-            :prefix_short => string(t |> trynameof),
-            :objectid => string(objectid(x), base=16),
+            :prefix => repr(t; context),
+            :prefix_short => string(trynameof(t)),
+            :objectid => string(objectid(x), base=16)::String,
             :type => :struct,
             :elements => elements,
         )
