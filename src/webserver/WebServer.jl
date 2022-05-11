@@ -121,7 +121,7 @@ function port_serversocket(hostIP::Sockets.IPAddr, favourite_port)
         try
             serversocket = Sockets.listen(hostIP, port)
         catch e
-            error("Port with number $port is already in use. Use Pluto.run() to automatically select an available port.")
+            error("Cannot listen on port $port. It may already be in use, or you may not have sufficient permissions. Use Pluto.run() to automatically select an available port.")
         end
     end
     return port, serversocket
