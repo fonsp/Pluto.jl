@@ -136,14 +136,40 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
         {
             pattern: /^UndefVarError: (.*) not defined$/,
             display: (/** @type{string} */ x) => {
-                const undefined_var = x.match(/^UndefVarError: (.*) not defined$/)[1]
                 const notebook = pluto_actions.get_notebook()
-                const is_errored_from_upstream = undefined_var
-                    && notebook.cell_dependencies[cell_id]?.upstream_cells_map[undefined_var].length
-                if (is_errored_from_upstream) {
-                    return html`<p>Cell contains the definition for ${undefined_var} contain errors.</p>`
+
+                const get_erred_upstreams = (c_id) => {
+                    let erred_upstreams = null
+                    notebook.cell_results[c_id].errored
+                        && Object.keys(notebook.cell_dependencies[c_id]?.upstream_cells_map).forEach(key => {
+                            notebook.cell_dependencies[c_id]?.upstream_cells_map[key].forEach(upstream_cell_id => {
+                                let upstream_cells = get_erred_upstreams(upstream_cell_id)
+                                erred_upstreams = { ...erred_upstreams, ...upstream_cells }
+                                // if upstream got no errors and current cell is errored
+                                // then current cell is responsible for errors
+                                if (!upstream_cells && notebook.cell_results[upstream_cell_id].errored) {
+                                    erred_upstreams[key] = upstream_cell_id
+                                }
+                            });
+                        });
+                    return erred_upstreams
                 }
-                return html`<p>${x}</p>`
+
+                const erred_upstreams = get_erred_upstreams(cell_id)
+                if (!erred_upstreams) {
+                    return html`<p>${x}</p>`
+                }
+
+                const symbol_links = Object.keys(erred_upstreams).map((key) => {
+                    const onclick = (ev) => {
+                        const where = document.querySelector(`pluto-cell[id='${erred_upstreams[key]}'] span[id='${encodeURI(key)}']`)
+                        ev.preventDefault()
+                        where.scrollIntoView()
+                    }
+                    return html`<a href="#" onclick=${onclick}>${key}</a>`
+                })
+
+                return html`<p>Definitions of ${insert_commas_and_and(symbol_links)} contain errors.</p>`
             },
         },
         {
