@@ -170,7 +170,9 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                     return html`<a href="#" onclick=${onclick}>${key}</a>`
                 })
                 setHideStacktrace(true)
-                return html`<p>Definitions of ${insert_commas_and_and(symbol_links)} contain errors.</p>`
+                return Object.keys(erred_upstreams).length > 1
+                    ? html`<p>Definitions of ${insert_commas_and_and(symbol_links)} contain errors.</p>`
+                    : html`<p>Definition of ${insert_commas_and_and(symbol_links)} contains errors.</p>`
             },
         },
         {
