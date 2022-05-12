@@ -1,5 +1,5 @@
 import { PlutoContext } from "../common/PlutoContext.js"
-import { html, useContext } from "../imports/Preact.js"
+import { html, useContext, useState } from "../imports/Preact.js"
 
 const StackFrameFilename = ({ frame, cell_id }) => {
     const sep_index = frame.file.indexOf("#==#")
@@ -40,6 +40,7 @@ const insert_commas_and_and = (/** @type {any[]} */ xs) => xs.flatMap((x, i) => 
 
 export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
     let pluto_actions = useContext(PlutoContext)
+    let [hide_stacktrace, setHideStacktrace] = useState(false)
     const rewriters = [
         {
             pattern: /syntax: extra token after end of expression/,
@@ -168,7 +169,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                     }
                     return html`<a href="#" onclick=${onclick}>${key}</a>`
                 })
-
+                setHideStacktrace(true)
                 return html`<p>Definitions of ${insert_commas_and_and(symbol_links)} contain errors.</p>`
             },
         },
@@ -182,7 +183,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
 
     return html`<jlerror>
         <header>${matched_rewriter.display(msg)}</header>
-        ${stacktrace.length == 0
+        ${stacktrace.length == 0 || hide_stacktrace
             ? null
             : html`<section>
                   <ol>
