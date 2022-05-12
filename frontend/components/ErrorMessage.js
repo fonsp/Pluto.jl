@@ -162,8 +162,8 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
 
                 const symbol_links = Object.keys(erred_upstreams).map((key) => {
                     const onclick = (ev) => {
-                        const where = document.querySelector(`pluto-cell[id='${erred_upstreams[key]}'] span[id='${encodeURI(key)}']`)
                         ev.preventDefault()
+                        const where = document.querySelector(`pluto-cell[id='${erred_upstreams[key]}']`)
                         where.scrollIntoView()
                     }
                     return html`<a href="#" onclick=${onclick}>${key}</a>`
