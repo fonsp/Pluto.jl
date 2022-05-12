@@ -910,15 +910,21 @@ The MIMEs that Pluto supports, in order of how much I like them.
 """
 const allmimes = [MIME"application/vnd.pluto.table+object"(); MIME"application/vnd.pluto.divelement+object"(); MIME"text/html"(); imagemimes; MIME"application/vnd.pluto.tree+object"(); MIME"text/latex"(); MIME"text/plain"()]
 
+"Return a `(String, Any)` tuple containing function output as the second entry."
+function show_richest_withreturned(@nospecialize(args), context::IOContext)
+    buffer = IOBuffer(; sizehint=0)
+    val = show_richest(IOContext(buffer, context), args)
+    return (resize!(buffer.data, buffer.size), val)
+end
 
 """
 Format `val` using the richest possible output, return formatted string and used MIME type.
 
 See [`allmimes`](@ref) for the ordered list of supported MIME types.
 """
-function format_output_default(@nospecialize(val), @nospecialize(context=default_iocontext))
+function format_output_default(@nospecialize(val), @nospecialize(context::IOContext=default_iocontext))
     try
-        io_sprinted, (value, mime) = show_richest_withreturned(val; context)
+        io_sprinted, (value, mime) = show_richest_withreturned(val, context)
         if value === nothing
             if mime ∈ imagemimes
                 (io_sprinted, mime)
@@ -1007,13 +1013,6 @@ function pretty_stackcall(frame::Base.StackFrame, linfo::Core.MethodInstance)
     end
 end
 
-"Return a `(String, Any)` tuple containing function output as the second entry."
-function show_richest_withreturned(@nospecialize(args...); context=nothing, sizehint::Integer=0)
-    buffer = IOBuffer(; sizehint)
-    val = show_richest(IOContext(buffer, context), args...)
-    return (resize!(buffer.data, buffer.size), val)
-end
-
 "Super important thing don't change."
 struct 🥔 end
 const struct_showmethod = which(show, (IO, 🥔))
@@ -1045,7 +1044,7 @@ Like two-argument `Base.show`, except:
 2. the used MIME type is returned as second element
 3. if the first returned element is `nothing`, then we wrote our data to `io`. If it is something else (a Dict), then that object will be the cell's output, instead of the buffered io stream. This allows us to output rich objects to the frontend that are not necessarily strings or byte streams
 """
-function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
+function show_richest(io::IOContext{IOBuffer}, @nospecialize(x))::Tuple{<:Any,MIME}
     # ugly code to fix an ugly performance problem
     local mime = nothing
     for m in allmimes
@@ -1217,6 +1216,7 @@ function tree_data(@nospecialize(x::AbstractVector{<:Any}), context::IOContext)
         )
     end
 end
+@assert precompile(tree_data, (Vector{Any}, IOContext{IOBuffer}))
 
 function tree_data(@nospecialize(x::Tuple), context::IOContext)
     depth = get(context, :tree_viewer_depth, 0)
