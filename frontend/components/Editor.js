@@ -32,6 +32,7 @@ import { IsolatedCell } from "./Cell.js"
 import { RawHTMLContainer } from "./CellOutput.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
 import { HijackExternalLinksToOpenInNewTab } from "./HackySideStuff/HijackExternalLinksToOpenInNewTab.js"
+import { FrontMatterInput } from "./FrontmatterInput.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -1383,6 +1384,14 @@ patch: ${JSON.stringify(
                               />`
                             : null
                     }
+                    <${FrontMatterInput} 
+                        remote_frontmatter=${{
+                            title: "Tower of Hanoi",
+                            tags: ["hello", "world"],
+                            layout: "md.jlhtml",
+                        }} 
+                        set_remote_frontmatter=${console.error} 
+                    />
                     ${launch_params.preamble_html ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />` : null}
                     <${Main}>
                         <${Preamble}
