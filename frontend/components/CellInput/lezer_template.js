@@ -12,6 +12,8 @@ export let julia_to_ast = (julia_code) => {
     return /** @type {any} */ (julia_andrey().language.parser.parse(julia_code).topNode.firstChild)
 }
 
+// When you get errors while creating the templates (stuff related to substitutions),
+// turn this on, and you will get a lot of info you can debug with!
 const TEMPLATE_CREATION_VERBOSE = false
 
 /**
@@ -383,70 +385,97 @@ let substitutions_to_template = (ast, substitutions) => {
     }
 }
 
+let node_to_explorable = (cursor) => {
+    if ("cursor" in cursor) {
+        cursor = cursor.cursor()
+    }
+
+    let children = []
+    if (cursor.firstChild()) {
+        try {
+            do {
+                children.push(node_to_explorable(cursor))
+            } while (cursor.nextSibling())
+        } finally {
+            cursor.parent()
+        }
+    }
+    return {
+        name: cursor.name,
+        from: cursor.from,
+        to: cursor.to,
+        children,
+    }
+}
+
 /**
  * @param {Templatable} julia_code_object
  * @returns {TemplateGenerator}
  */
 export let to_template = function* (julia_code_object) {
-    TEMPLATE_CREATION_VERBOSE && console.log(`to_template(`, julia_code_object, `)`)
-    if (julia_code_object instanceof JuliaCodeObject) {
-        let julia_code_to_parse = ""
+    TEMPLATE_CREATION_VERBOSE && console.group(`to_template(`, typeof julia_code_object === "function" ? julia_code_object.name + "()" : julia_code_object, `)`)
+    try {
+        if (julia_code_object instanceof JuliaCodeObject) {
+            let julia_code_to_parse = ""
 
-        let subsitions = []
-        for (let [string_part, substitution] of lodash.zip(julia_code_object.template, julia_code_object.substitutions)) {
-            julia_code_to_parse += string_part
+            let subsitions = []
+            for (let [string_part, substitution] of lodash.zip(julia_code_object.template, julia_code_object.substitutions)) {
+                julia_code_to_parse += string_part
 
-            if (substitution) {
-                let substitution_generator = to_template(substitution)
+                if (substitution) {
+                    let substitution_generator = to_template(substitution)
 
-                let substitution_code = intermediate_value(substitution_generator.next())
+                    let substitution_code = intermediate_value(substitution_generator.next())
 
-                subsitions.push({
-                    from: julia_code_to_parse.length,
-                    to: julia_code_to_parse.length + substitution_code.length,
-                    generator: substitution_generator,
-                })
-                julia_code_to_parse += substitution_code
+                    subsitions.push({
+                        from: julia_code_to_parse.length,
+                        to: julia_code_to_parse.length + substitution_code.length,
+                        generator: substitution_generator,
+                    })
+                    julia_code_to_parse += substitution_code
+                }
             }
-        }
 
-        let template_node = yield julia_code_to_parse
+            let template_node = yield julia_code_to_parse
 
-        let substitution_with_proper_position = subsitions.map((substitution) => {
-            return {
-                from: substitution.from + template_node.from,
-                to: substitution.to + template_node.from,
-                generator: substitution.generator,
-                used: false,
-            }
-        })
-
-        if (TEMPLATE_CREATION_VERBOSE) {
-            console.log(`julia_code_to_parse:`, julia_code_to_parse)
-            console.log(`template_node:`, template_node)
-            console.log(`subsitions:`, subsitions)
-            console.log(`substitution_with_proper_position:`, substitution_with_proper_position)
-        }
-
-        let result = substitutions_to_template(template_node.node, substitution_with_proper_position)
-        let unused_substitutions = substitution_with_proper_position
-            .filter((substitution) => !substitution.used)
-            .map((x) => {
+            let substitution_with_proper_position = subsitions.map((substitution) => {
                 return {
-                    text: julia_code_to_parse.slice(x.from, x.to),
-                    from: x.from,
-                    to: x.to,
+                    from: substitution.from + template_node.from,
+                    to: substitution.to + template_node.from,
+                    generator: substitution.generator,
+                    used: false,
                 }
             })
-        if (unused_substitutions.length > 0) {
-            throw new Error(`Some substitutions not applied, this means it couldn't be matched to a AST position:`, unused_substitutions)
+
+            if (TEMPLATE_CREATION_VERBOSE) {
+                console.log(`julia_code_to_parse:`, julia_code_to_parse)
+                console.log(`template_node:`, node_to_explorable(template_node.node.cursor()))
+                console.log(`subsitions:`, subsitions)
+                console.log(`substitution_with_proper_position:`, substitution_with_proper_position)
+            }
+
+            let result = substitutions_to_template(template_node.node, substitution_with_proper_position)
+            let unused_substitutions = substitution_with_proper_position
+                .filter((substitution) => !substitution.used)
+                .map((x) => {
+                    return {
+                        text: julia_code_to_parse.slice(x.from, x.to),
+                        from: x.from,
+                        to: x.to,
+                    }
+                })
+            if (unused_substitutions.length > 0) {
+                throw new Error(`Some substitutions not applied, this means it couldn't be matched to a AST position: ${JSON.stringify(unused_substitutions)}`)
+            }
+            return result
+        } else if (typeof julia_code_object === "function") {
+            return yield* julia_code_object()
+        } else {
+            console.log(`julia_code_object:`, julia_code_object)
+            throw new Error("Unknown substition type")
         }
-        return result
-    } else if (typeof julia_code_object === "function") {
-        return yield* julia_code_object()
-    } else {
-        console.log(`julia_code_object:`, julia_code_object)
-        throw new Error("Unknown substition type")
+    } finally {
+        TEMPLATE_CREATION_VERBOSE && console.groupEnd()
     }
 }
 
@@ -516,7 +545,7 @@ export let template = weak_memo1((julia_code_object) => {
             if ("node" in template_description && template_description.node.name !== haystack_cursor.name) return
             if (haystack_cursor.type.isError) return null
 
-            if ("cursor" in haystack_cursor) haystack_cursor = haystack_cursor.cursor
+            if ("cursor" in haystack_cursor) haystack_cursor = haystack_cursor.cursor()
 
             let matches = /** @type {{ [key: string]: MatchResult }} */ ({})
 
@@ -871,7 +900,7 @@ export let take_little_piece_of_template = weak_memo((template, meta_template) =
                     verbose && console.log(`❌ Short circuiting because haystack(${haystack_cursor.name}) is an error`)
                     return false
                 }
-                if ("cursor" in haystack_cursor) haystack_cursor = haystack_cursor.cursor
+                if ("cursor" in haystack_cursor) haystack_cursor = haystack_cursor.cursor()
 
                 // Should possible parents be all-or-nothing?
                 // So either it matches all the possible parents, or it matches none?

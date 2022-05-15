@@ -47,6 +47,10 @@ import {
     markdownLanguage,
     javascriptLanguage,
     pythonLanguage,
+    // @ts-ignore I (or codemirror) broke the codemirror pluto setup d.ts file generation
+    syntaxHighlighting,
+    // @ts-ignore I (or codemirror) broke the codemirror pluto setup d.ts file generation
+    cssLanguage,
 } from "../imports/CodemirrorPlutoSetup.js"
 
 import { markdown, html as htmlLang, javascript, sqlLang, python, julia_mixed } from "./CellInput/mixedParsers.js"
@@ -59,11 +63,26 @@ import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
 import { cl } from "../common/ClassTable.js"
 import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_line.js"
-import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
+// import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
 import { debug_syntax_plugin } from "./CellInput/debug_syntax_plugin.js"
 import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
 
-export const ENABLE_CM_MIXED_PARSER = false
+export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
+
+if (ENABLE_CM_MIXED_PARSER) {
+    console.log(`YOU ENABLED THE CODEMIRROR MIXED LANGUAGE PARSER
+Thanks! Awesome!
+Please let us know if you find any bugs...
+If enough people do this, we can make it the default parser.
+`)
+}
+
+// Added this so we can have people test the mixed parser, because I LIKE IT SO MUCH - DRAL
+// @ts-ignore
+window.PLUTO_ENABLE_CM_MIXED_PARSER = () => {
+    window.localStorage.setItem("ENABLE_CM_MIXED_PARSER", String(!ENABLE_CM_MIXED_PARSER))
+    window.location.reload()
+}
 
 export const pluto_syntax_colors = HighlightStyle.define(
     [
@@ -75,6 +94,10 @@ export const pluto_syntax_colors = HighlightStyle.define(
         { tag: tags.unit, color: "var(--cm-tag-color)" },
         { tag: tags.literal, color: "var(--cm-builtin-color)", fontWeight: 700 },
         { tag: tags.macroName, color: "var(--cm-macro-color)", fontWeight: 700 },
+
+        // I (ab)use `special(brace)` for interpolations.
+        // lang-javascript does the same so I figure it is "best practice" 😅
+        { tag: tags.special(tags.brace), color: "var(--cm-macro-color)", fontWeight: 700 },
 
         // `nothing` I guess... Any others?
         {
@@ -109,7 +132,8 @@ export const pluto_syntax_colors = HighlightStyle.define(
     ],
     {
         all: { color: `var(--cm-editor-text-color)` },
-        scope: julia_andrey().language.topNode,
+        // @ts-ignore I (or codemirror) broke the codemirror pluto setup d.ts file generation
+        scope: julia_andrey().language,
     }
 )
 
@@ -155,7 +179,8 @@ export const pluto_syntax_colors_javascript = HighlightStyle.define(
         { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic", filter: "none" },
     ],
     {
-        scope: javascriptLanguage.topNode,
+        // @ts-ignore I (or codemirror) broke the codemirror pluto setup d.ts file generation
+        scope: javascriptLanguage,
         all: {
             color: `var(--cm-editor-text-color)`,
             filter: `contrast(0.5)`,
@@ -205,7 +230,8 @@ export const pluto_syntax_colors_python = HighlightStyle.define(
         // PYTHON SPECIFIC
     ],
     {
-        scope: pythonLanguage.topNode,
+        // @ts-ignore I (or codemirror) broke the codemirror pluto setup d.ts file generation
+        scope: pythonLanguage,
         all: {
             color: "var(--cm-editor-text-color)",
             filter: `contrast(0.5)`,
@@ -231,8 +257,7 @@ export const pluto_syntax_colors_css = HighlightStyle.define(
         { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
     ],
     {
-        // scope: CSS,
-        // But the css-lang packaged isn't in codemirror pluto setup and I can't be arsed now.
+        scope: cssLanguage,
         all: { color: "var(--cm-css-color)" },
     }
 )
@@ -242,13 +267,14 @@ export const pluto_syntax_colors_html = HighlightStyle.define(
         { tag: tags.tagName, color: "var(--cm-html-accent-color)", fontWeight: 600 },
         { tag: tags.attributeName, color: "var(--cm-html-accent-color)", fontWeight: 600 },
         { tag: tags.attributeValue, color: "var(--cm-html-accent-color)" },
-        { tag: tags.angleBracket, color: "var(--cm-html-accent-color)", fontWeight: 600 },
+        { tag: tags.angleBracket, color: "var(--cm-html-accent-color)", fontWeight: 600, opacity: 0.7 },
         { tag: tags.content, color: "var(--cm-html-color)", fontWeight: 400 },
         { tag: tags.documentMeta, color: "var(--cm-html-accent-color)" },
         { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
     ],
     {
-        scope: htmlLanguage.topNode,
+        // @ts-ignore I (or codemirror) broke the codemirror pluto setup d.ts file generation
+        scope: htmlLanguage,
         all: {
             color: "var(--cm-html-color)",
         },
@@ -281,7 +307,8 @@ export const pluto_syntax_colors_markdown = HighlightStyle.define(
         { tag: tags.monospace, color: "var(--cm-md-accent-color)" },
     ],
     {
-        scope: markdownLanguage.topNode,
+        // @ts-ignore I (or codemirror) broke the codemirror pluto setup d.ts file generation
+        scope: markdownLanguage,
         all: {
             color: "var(--cm-md-color)",
         },
@@ -548,7 +575,6 @@ export const CellInput = ({
         window.tags = tags
         const usesDarkTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         const newcm = (newcm_ref.current = new EditorView({
-            /** Migration #0: New */
             state: EditorState.create({
                 doc: local_code,
 
@@ -569,12 +595,12 @@ export const CellInput = ({
 
                     pkgBubblePlugin({ pluto_actions, notebook_id }),
                     ScopeStateField,
-                    pluto_syntax_colors,
-                    pluto_syntax_colors_html,
-                    pluto_syntax_colors_markdown,
-                    pluto_syntax_colors_javascript,
-                    pluto_syntax_colors_python,
-                    pluto_syntax_colors_css,
+                    syntaxHighlighting(pluto_syntax_colors),
+                    syntaxHighlighting(pluto_syntax_colors_html),
+                    syntaxHighlighting(pluto_syntax_colors_markdown),
+                    syntaxHighlighting(pluto_syntax_colors_javascript),
+                    syntaxHighlighting(pluto_syntax_colors_python),
+                    syntaxHighlighting(pluto_syntax_colors_css),
                     lineNumbers(),
                     highlightSpecialChars(),
                     history(),
@@ -583,7 +609,6 @@ export const CellInput = ({
                     // Multiple cursors with `alt` instead of the default `ctrl` (which we use for go to definition)
                     EditorView.clickAddsSelectionRange.of((event) => event.altKey && !event.shiftKey),
                     indentOnInput(),
-                    defaultHighlightStyle.fallback,
                     // Experimental: Also add closing brackets for tripple string
                     // TODO also add closing string when typing a string macro
                     EditorState.languageData.of((state, pos, side) => {
@@ -657,11 +682,11 @@ export const CellInput = ({
                     cell_movement_plugin({
                         focus_on_neighbor: ({ cell_delta, line, character }) => on_focus_neighbor(cell_id, cell_delta, line, character),
                     }),
-                    keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, ...foldKeymap, ...commentKeymap]),
+                    keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, ...foldKeymap]),
                     placeholder("Enter cell code..."),
 
                     EditorView.lineWrapping,
-                    // Disabled awesome_line_wrapping because it still fails in a lot of cases
+                    // Wowww this has been enabled for some time now... wonder if there are issues about this yet ;) - DRAL
                     awesome_line_wrapping,
 
                     on_change_compartment,
