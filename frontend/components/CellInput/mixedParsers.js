@@ -17,6 +17,7 @@ import {
 } from "../../imports/CodemirrorPlutoSetup.js"
 
 const htmlParser = htmlLanguage.parser
+// @ts-ignore
 const mdParserExt = markdownLanguage.parser.configure(parseCode({ htmlParser }))
 const postgresParser = PostgreSQL.language.parser
 const sqlLang = sql({ dialect: PostgreSQL })
