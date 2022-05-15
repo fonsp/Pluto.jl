@@ -63,16 +63,19 @@ const overlayHack = (overlay, input) => {
         // For simplicity I removed the newlines stuff and just removed the \$ from the overlays
         // Curious to see edge cases that this misses - DRAL
 
-        const extraOverlaysNegatives = [...text.matchAll(/\\\$/g)].map(({ index }) => ({ from: from + index, to: from + index + 1 }))
-
         const result = []
-        let f = from
-        let t = to
-        for (let { from: newFrom, to: newTo } of extraOverlaysNegatives) {
-            if (f !== newFrom) result.push({ from: f, to: newFrom })
-            f = newTo
+        let last_content_start = from
+        for (let relative_escape_start of text.matchAll(/\\\$/g)) {
+            let next_escape_start = from + relative_escape_start
+            let next_content_start = next_escape_start + 1
+            if (last_content_start !== next_escape_start) {
+                result.push({ from: next_escape_start, to: next_content_start })
+            }
+            last_content_start = next_content_start
         }
-        if (f !== t) result.push({ from: f, to: t })
+        if (last_content_start !== to) {
+            result.push({ from: last_content_start, to: to })
+        }
         return result
     })
 }
@@ -133,11 +136,9 @@ const juliaWrapper = parseMixed((node, input) => {
         let child = node.node.firstChild.cursor()
 
         do {
-            if (last_content_start === child.from) {
-                last_content_start = child.to
-                continue
+            if (last_content_start !== child.from) {
+                overlay.push({ from: last_content_start, to: child.from })
             }
-            overlay.push({ from: last_content_start, to: child.from })
             last_content_start = child.to
         } while (child.nextSibling())
         overlay.push({ from: last_content_start, to: string_content_to })
@@ -145,8 +146,8 @@ const juliaWrapper = parseMixed((node, input) => {
         overlay = [{ from: string_content_from, to: string_content_to }]
     }
 
-    // If javascript or markdown or htl, we want to unescape some characters
-    // Until the parser is smarter, we remove the selection from the syntax highlighting overlay.
+    // If it is a macro, thus supports interpolations (prefixed strings only have faux-interpolations) but not raw strings (`\n` will be a newline, for the character `\n` you need to do `\\n`)
+    // we need to remove `\$` (which should just be `$` in the javascript)
     if (is_macro) {
         overlay = overlayHack(overlay, input)
     }

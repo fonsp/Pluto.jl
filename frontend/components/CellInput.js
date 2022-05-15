@@ -47,9 +47,7 @@ import {
     markdownLanguage,
     javascriptLanguage,
     pythonLanguage,
-    // @ts-ignore I (or codemirror) broke the codemirror pluto setup d.ts file generation
     syntaxHighlighting,
-    // @ts-ignore I (or codemirror) broke the codemirror pluto setup d.ts file generation
     cssLanguage,
 } from "../imports/CodemirrorPlutoSetup.js"
 
@@ -132,7 +130,6 @@ export const pluto_syntax_colors = HighlightStyle.define(
     ],
     {
         all: { color: `var(--cm-editor-text-color)` },
-        // @ts-ignore I (or codemirror) broke the codemirror pluto setup d.ts file generation
         scope: julia_andrey().language,
     }
 )
@@ -179,7 +176,6 @@ export const pluto_syntax_colors_javascript = HighlightStyle.define(
         { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic", filter: "none" },
     ],
     {
-        // @ts-ignore I (or codemirror) broke the codemirror pluto setup d.ts file generation
         scope: javascriptLanguage,
         all: {
             color: `var(--cm-editor-text-color)`,
@@ -230,7 +226,6 @@ export const pluto_syntax_colors_python = HighlightStyle.define(
         // PYTHON SPECIFIC
     ],
     {
-        // @ts-ignore I (or codemirror) broke the codemirror pluto setup d.ts file generation
         scope: pythonLanguage,
         all: {
             color: "var(--cm-editor-text-color)",
@@ -273,7 +268,6 @@ export const pluto_syntax_colors_html = HighlightStyle.define(
         { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
     ],
     {
-        // @ts-ignore I (or codemirror) broke the codemirror pluto setup d.ts file generation
         scope: htmlLanguage,
         all: {
             color: "var(--cm-html-color)",

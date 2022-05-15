@@ -1439,7 +1439,7 @@ interface SyntaxNode {
     enter(pos: number, side: -1 | 0 | 1, overlays?: boolean, buffers?: boolean): SyntaxNode | null;
     nextSibling: SyntaxNode | null;
     prevSibling: SyntaxNode | null;
-    cursor: TreeCursor;
+    cursor(): TreeCursor;
     resolve(pos: number, side?: -1 | 0 | 1): SyntaxNode;
     resolveInner(pos: number, side?: -1 | 0 | 1): SyntaxNode;
     enterUnfinishedNodesBefore(pos: number): SyntaxNode;
@@ -1604,7 +1604,7 @@ declare class HighlightStyle {
         scope them to a single language by providing the language's
         [top node](https://codemirror.net/6/docs/ref/#language.Language.topNode) here.
         */
-        scope?: NodeType;
+        scope?: Language;
         /**
         Add a style to _all_ content. Probably only useful in
         combination with `scope`.
@@ -5239,5 +5239,10 @@ declare type CollabConfig = {
 Create an instance of the collaborative editing plugin.
 */
 declare function collab(config?: CollabConfig): Extension;
+
+declare let cssLanguage: LRLanguage;
+export { cssLanguage }
+declare function syntaxHighlighting(something: any): Extension
+export { syntaxHighlighting }
 
 export { Annotation, Compartment, Decoration, EditorSelection, EditorState, EditorView, Facet, HighlightStyle, NodeProp, PostgreSQL, SelectionRange, StateEffect, StateField, StreamLanguage, Text, Transaction, TreeCursor, ViewPlugin, ViewUpdate, WidgetType, index as autocomplete, bracketMatching, closeBrackets, closeBracketsKeymap, collab, combineConfig, commentKeymap, completionKeymap, defaultHighlightStyle, defaultKeymap, drawSelection, foldGutter, foldKeymap, highlightSelectionMatches, highlightSpecialChars, history, historyKeymap, html, htmlLanguage, indentLess, indentMore, indentOnInput, indentUnit, javascript, javascriptLanguage, julia as julia_andrey, julia$1 as julia_legacy, keymap, lineNumbers, markdown, markdownLanguage, parseCode, parseMixed, placeholder, python, pythonLanguage, rectangularSelection, searchKeymap, sql, syntaxTree, syntaxTreeAvailable, tags };
