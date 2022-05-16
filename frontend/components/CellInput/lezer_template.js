@@ -695,6 +695,13 @@ export const t = /** @type {const} */ ({
                     try {
                         let matches_nodes = []
                         while (true) {
+                            // So, big oof here, but I think we shouldn't match error nodes in many
+                            if (cursor.type.isError) {
+                                cursor.prevSibling()
+                                verbose && console.log("✋ I don't do errors - many")
+                                return true // Still we did finish, lets just hope someone else cares about the error
+                            }
+
                             let local_match = {}
                             let did_match = match_template(cursor, sub_template, local_match, verbose)
                             if (!did_match) {

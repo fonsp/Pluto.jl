@@ -142,7 +142,9 @@ const juliaWrapper = parseMixed((node, input) => {
             }
             last_content_start = child.to
         } while (child.nextSibling())
-        overlay.push({ from: last_content_start, to: string_content_to })
+        if (last_content_start < string_content_to) {
+            overlay.push({ from: last_content_start, to: string_content_to })
+        }
     } else {
         overlay = [{ from: string_content_from, to: string_content_to }]
     }
