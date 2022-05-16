@@ -320,8 +320,8 @@ end
 # Possible leaf: value
 # Like: a = 1
 # 1 is a value (Int64)
-function explore!(value, scopestate::ScopeState)::SymbolsState
-    # includes: LineNumberNode, Int64, String, 
+function explore!(@nospecialize(value), scopestate::ScopeState)::SymbolsState
+    # includes: LineNumberNode, Int64, String, Markdown.LaTeX, DataType and more.
     return SymbolsState()
 end
 

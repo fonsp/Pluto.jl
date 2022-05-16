@@ -6,13 +6,6 @@ import .PkgCompat
 
 include("./WebSocketFix.jl")
 
-# from https://github.com/JuliaLang/julia/pull/36425
-function detectwsl()
-    Sys.islinux() &&
-    isfile("/proc/sys/kernel/osrelease") &&
-    occursin(r"Microsoft|WSL"i, read("/proc/sys/kernel/osrelease", String))
-end
-
 function open_in_default_browser(url::AbstractString)::Bool
     try
         if Sys.isapple()
@@ -128,7 +121,7 @@ function port_serversocket(hostIP::Sockets.IPAddr, favourite_port)
         try
             serversocket = Sockets.listen(hostIP, port)
         catch e
-            error("Port with number $port is already in use. Use Pluto.run() to automatically select an available port.")
+            error("Cannot listen on port $port. It may already be in use, or you may not have sufficient permissions. Use Pluto.run() to automatically select an available port.")
         end
     end
     return port, serversocket

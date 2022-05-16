@@ -466,8 +466,8 @@ function run_expression(
         m::Module,
         expr::Any,
         cell_id::UUID,
-        function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing,
-        forced_expr_id::Union{ObjectID,Nothing}=nothing;
+        @nospecialize(function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing),
+        @nospecialize(forced_expr_id::Union{ObjectID,Nothing}=nothing);
         user_requested_run::Bool=true,
         capture_stdout::Bool=true,
     )
@@ -570,6 +570,7 @@ function run_expression(
     
     cell_results[cell_id], cell_runtimes[cell_id] = result, runtime
 end
+precompile(run_expression, (Module, Expr, UUID, Nothing, Nothing))
 
 # Channel to trigger implicits run
 const run_channel = Channel{UUID}(10)
@@ -688,6 +689,28 @@ end
 isfromcell(method::Method, cell_id::UUID) = endswith(String(method.file), string(cell_id))
 
 """
+    delete_method_doc(m::Method)
+
+Tries to delete the documentation for this method, this is used when methods are removed.
+"""
+function delete_method_doc(m::Method)
+    binding = Docs.Binding(m.module, m.name)
+    meta = Docs.meta(m.module)
+    if haskey(meta, binding)
+        method_sig = Tuple{m.sig.parameters[2:end]...}
+        multidoc = meta[binding]
+        filter!(multidoc.order) do msig
+            if method_sig == msig
+                pop!(multidoc.docs, msig)
+                false
+            else
+                true
+            end
+        end
+    end
+end
+
+"""
 Delete all methods of `f` that were defined in this notebook, and leave the ones defined in other packages, base, etc. ✂
 
 Return whether the function has any methods left after deletion.
@@ -700,6 +723,7 @@ function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
     Base.visit(methods_table) do method # iterates through all methods of `f`, including overridden ones
         if isfromcell(method, cell_id) && getfield(method, deleted_world) == alive_world_val
             Base.delete_method(method)
+            delete_method_doc(method)
             push!(deleted_sigs, method.sig)
         end
     end
@@ -894,12 +918,12 @@ See [`allmimes`](@ref) for the ordered list of supported MIME types.
 """
 function format_output_default(@nospecialize(val), @nospecialize(context=default_iocontext))::MimedOutput
     try
-        io_sprinted, (value, mime) = sprint_withreturned(show_richest, val; context=context)
+        io_sprinted, (value, mime) = show_richest_withreturned(val; context)
         if value === nothing
             if mime ∈ imagemimes
                 (io_sprinted, mime)
             else
-                (String(io_sprinted), mime)
+                (String(io_sprinted)::String, mime)
             end
         else
             (value, mime)
@@ -983,11 +1007,11 @@ function pretty_stackcall(frame::Base.StackFrame, linfo::Core.MethodInstance)
     end
 end
 
-"Like `Base.sprint`, but return a `(String, Any)` tuple containing function output as the second entry."
-function sprint_withreturned(f::Function, args...; context=nothing, sizehint::Integer=0)
-    buffer = IOBuffer(sizehint=sizehint)
-    val = f(IOContext(buffer, context), args...)
-    resize!(buffer.data, buffer.size), val
+"Return a `(String, Any)` tuple containing function output as the second entry."
+function show_richest_withreturned(@nospecialize(args...); context=nothing, sizehint::Integer=0)
+    buffer = IOBuffer(; sizehint)
+    val = show_richest(IOContext(buffer, context), args...)
+    return (resize!(buffer.data, buffer.size), val)
 end
 
 "Super important thing don't change."
@@ -1159,7 +1183,7 @@ end
 function tree_data(@nospecialize(x::AbstractVector{<:Any}), context::IOContext)
     if Base.show_circular(context, x)
         Dict{Symbol,Any}(
-            :objectid => string(objectid(x), base=16),
+            :objectid => string(objectid(x), base=16)::String,
             :type => :circular,
         )
     else
@@ -1295,7 +1319,7 @@ function tree_data(@nospecialize(x::Any), context::IOContext)
         t = typeof(x)
         nf = nfields(x)
         nb = sizeof(x)
-        
+
         elements = Any[
             let
                 f = fieldname(t, i)
@@ -1310,9 +1334,9 @@ function tree_data(@nospecialize(x::Any), context::IOContext)
         ]
 
         Dict{Symbol,Any}(
-            :prefix => repr(t; context=context),
-            :prefix_short => string(t |> trynameof),
-            :objectid => string(objectid(x), base=16),
+            :prefix => repr(t; context),
+            :prefix_short => string(trynameof(t)),
+            :objectid => string(objectid(x), base=16)::String,
             :type => :struct,
             :elements => elements,
         )

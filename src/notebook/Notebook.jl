@@ -27,7 +27,7 @@ Base.@kwdef mutable struct Notebook
     "Cells are ordered in a `Notebook`, and this order can be changed by the user. Cells will always have a constant UUID."
     cells_dict::Dict{UUID,Cell}
     cell_order::Array{UUID,1}
-    
+
     path::String
     notebook_id::UUID=uuid1()
     topology::NotebookTopology
@@ -69,17 +69,18 @@ _initial_topology(cells_dict::Dict{UUID,Cell}, cells_order::Vector{UUID}) =
     NotebookTopology(;
         cell_order=ImmutableVector(_collect_cells(cells_dict, cells_order)),
     )
-    
-function Notebook(cells::Vector{Cell}, path::AbstractString, notebook_id::UUID)
+
+function Notebook(cells::Vector{Cell}, @nospecialize(path::AbstractString), notebook_id::UUID)
     cells_dict=Dict(map(cells) do cell
         (cell.cell_id, cell)
     end)
     cell_order=map(x -> x.cell_id, cells)
     Notebook(;
-        cells_dict, cell_order,
+        cells_dict,
+        cell_order,
         topology=_initial_topology(cells_dict, cell_order),
-        path=path,
-        notebook_id=notebook_id,
+        path,
+        notebook_id
     )
 end
 
@@ -225,8 +226,8 @@ end
 save_notebook(notebook::Notebook) = save_notebook(notebook, notebook.path)
 
 "Load a notebook without saving it or creating a backup; returns a `Notebook`. REMEMBER TO CHANGE THE NOTEBOOK PATH after loading it to prevent it from autosaving and overwriting the original file."
-function load_notebook_nobackup(io, path)::Notebook
-    firstline = String(readline(io))
+function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::AbstractString))::Notebook
+    firstline = String(readline(io))::String
 
     if firstline != _notebook_header
         error("File is not a Pluto.jl notebook")
