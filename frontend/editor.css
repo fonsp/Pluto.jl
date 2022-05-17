@@ -2882,6 +2882,24 @@ pluto-cell.hooked_up pluto-output {
     border-color: var(--pluto-cell-force-color);
 }
 
+pluto-notebook-header {
+    cursor: initial;
+}
+pluto-notebook-header [contenteditable="true"] {
+    cursor: text;
+}
+
+pluto-notebook-header [contenteditable="true"]:empty:not(:focus)::before {
+    content: attr(data-placeholder);
+    opacity: 0.3;
+}
+
+pluto-notebook-header h1 {
+    font-family: "Vollkorn", serif;
+    font-feature-settings: "lnum", "pnum";
+    font-weight: 700;
+}
+
 .fm-table {
     display: grid;
     grid-template-columns: auto 1fr min-content;

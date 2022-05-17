@@ -1,5 +1,6 @@
 import { PlutoContext } from "../common/PlutoContext.js"
 import { html, useContext, useEffect, useMemo, useRef, useState } from "../imports/Preact.js"
+import { NotebookHeader } from "./NotebookHeader.js"
 
 import { Cell } from "./Cell.js"
 import { nbpkg_fingerprint } from "./PkgStatusMark.js"
@@ -146,6 +147,7 @@ export const Notebook = ({ notebook, cell_inputs_local, last_created_cell, selec
     )
     return html`
         <pluto-notebook id=${notebook.notebook_id}>
+            <${NotebookHeader} notebook=${notebook} disable_input=${disable_input} />
             ${notebook.cell_order
                 .filter((_, i) => !(cell_outputs_delayed && i > render_cell_outputs_minimum))
                 .map(
