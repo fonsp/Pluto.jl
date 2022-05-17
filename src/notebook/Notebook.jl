@@ -5,6 +5,9 @@ import .PkgCompat: PkgCompat, PkgContext
 import Pkg
 import TOML
 
+
+const DEFAULT_NOTEBOOK_METADATA = Dict{String, Any}()
+
 mutable struct BondValue
     value::Any
 end
@@ -56,6 +59,8 @@ Base.@kwdef mutable struct Notebook
     last_hot_reload_time::typeof(time())=zero(time())
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
+
+    metadata::Dict{String, Any}=copy(DEFAULT_NOTEBOOK_METADATA)
 end
 
 _collect_cells(cells_dict::Dict{UUID,Cell}, cells_order::Vector{UUID}) = 
@@ -91,7 +96,12 @@ function Base.getproperty(notebook::Notebook, property::Symbol)
     end
 end
 
+
+emptynotebook(args...) = Notebook([Cell()], args...)
+
+
 const _notebook_header = "### A Pluto.jl notebook ###"
+const _notebook_metadata_prefix = "#> "
 # We use a creative delimiter to avoid accidental use in code
 # so don't get inspired to suddenly use these in your code!
 const _cell_id_delimiter = "# ╔═╡ "
@@ -106,7 +116,6 @@ const _disabled_suffix = "\n  ╠═╡ =#"
 const _ptoml_cell_id = UUID(1)
 const _mtoml_cell_id = UUID(2)
 
-emptynotebook(args...) = Notebook([Cell()], args...)
 
 """
 Save the notebook to `io`, `file` or to `notebook.path`.
@@ -118,6 +127,17 @@ Have a look at our [JuliaCon 2020 presentation](https://youtu.be/IAF8DjrQSSk?t=1
 function save_notebook(io, notebook::Notebook)
     println(io, _notebook_header)
     println(io, "# ", PLUTO_VERSION_STR)
+    
+    # Notebook metadata
+    let nb_metadata_toml = strip(sprint(TOML.print, get_metadata_no_default(notebook)))
+        if !isempty(nb_metadata_toml)
+            println(io)
+            for line in split(nb_metadata_toml, "\n")
+                println(io, _notebook_metadata_prefix, line)
+            end
+        end
+    end
+
     # Anything between the version string and the first UUID delimiter will be ignored by the notebook loader.
     println(io, "")
     println(io, "using Markdown")
@@ -134,13 +154,16 @@ function save_notebook(io, notebook::Notebook)
     
     for c in cells_ordered
         println(io, _cell_id_delimiter, string(c.cell_id))
-        metadata_toml = strip(sprint(TOML.print, get_cell_metadata_no_default(c)))
-        if metadata_toml != ""
-            for line in split(metadata_toml, "\n")
-                println(io, _cell_metadata_prefix, line)
+        
+        let metadata_toml = strip(sprint(TOML.print, get_metadata_no_default(c)))
+            if metadata_toml != ""
+                for line in split(metadata_toml, "\n")
+                    println(io, _cell_metadata_prefix, line)
+                end
             end
         end
-        cell_running_disabled = c.metadata["disabled"]
+        
+        cell_running_disabled = get(c.metadata, "disabled", false)::Bool
         if cell_running_disabled || c.depends_on_disabled_cells
             print(io, _disabled_prefix)
             print(io, replace(c.code, _cell_id_delimiter => "# "))
@@ -210,7 +233,10 @@ save_notebook(notebook::Notebook) = save_notebook(notebook, notebook.path)
 
 "Load a notebook without saving it or creating a backup; returns a `Notebook`. REMEMBER TO CHANGE THE NOTEBOOK PATH after loading it to prevent it from autosaving and overwriting the original file."
 function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::AbstractString))::Notebook
-    firstline = String(readline(io))::String
+    
+    ## HEADER
+    
+    firstline = String(readline(io))
 
     if firstline != _notebook_header
         error("File is not a Pluto.jl notebook")
@@ -220,12 +246,28 @@ function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::Abstr
     if file_VERSION_STR != PLUTO_VERSION_STR
         # @info "Loading a notebook saved with Pluto $(file_VERSION_STR). This is Pluto $(PLUTO_VERSION_STR)."
     end
+    
+    # Read all remaining file contents before the first cell delimiter.
+    header_content = readuntil(io, _cell_id_delimiter)
+    header_lines = split(header_content, "\n")
+    
+    nb_prefix_length = ncodeunits(_notebook_metadata_prefix)
+    nb_metadata_toml_lines = String[
+        line[begin+nb_prefix_length:end]
+        for line in header_lines if startswith(line, _notebook_metadata_prefix)
+    ]
+    
+    notebook_metadata = try
+        create_notebook_metadata(TOML.parse(join(nb_metadata_toml_lines, "\n")))
+    catch e
+        @error "Failed to parse embedded TOML content" exception=(e, catch_backtrace())
+        DEFAULT_NOTEBOOK_METADATA
+    end
 
+    
+    ### CELLS
+    
     collected_cells = Dict{UUID,Cell}()
-
-    # ignore first bits of file
-    readuntil(io, _cell_id_delimiter)
-
     while !eof(io)
         cell_id_str = String(readline(io))
         if cell_id_str == "Cell order:"
@@ -257,7 +299,12 @@ function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::Abstr
             code = code_normalised[1:prevind(code_normalised, end, length(_cell_suffix))]
 
             # parse metadata
-            metadata = Dict{String, Any}(DEFAULT_METADATA..., TOML.parse(join(metadata_toml_lines, "\n"))...)
+            metadata = try
+                create_cell_metadata(TOML.parse(join(metadata_toml_lines, "\n")))
+            catch
+                @error "Failed to parse embedded TOML content" cell_id exception=(e, catch_backtrace())
+                DEFAULT_CELL_METADATA
+            end
 
             read_cell = Cell(; cell_id, code, metadata)
             collected_cells[cell_id] = read_cell
@@ -335,6 +382,7 @@ function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::Abstr
         path=path, 
         nbpkg_ctx=nbpkg_ctx, 
         nbpkg_installed_versions_cache=nbpkg_cache(nbpkg_ctx),
+        metadata=notebook_metadata,
     )
 end
 
@@ -422,3 +470,10 @@ function sample_notebook(name::String)
     nb.path = tempname() * ".jl"
     nb
 end
+
+create_cell_metadata(metadata::Dict{String,<:Any}) = merge(DEFAULT_CELL_METADATA, metadata)
+create_notebook_metadata(metadata::Dict{String,<:Any}) = merge(DEFAULT_NOTEBOOK_METADATA, metadata)
+get_metadata(cell::Cell)::Dict{String,Any} = cell.metadata
+get_metadata(notebook::Notebook)::Dict{String,Any} = notebook.metadata
+get_metadata_no_default(cell::Cell)::Dict{String,Any} = Dict{String,Any}(setdiff(pairs(cell.metadata), pairs(DEFAULT_CELL_METADATA)))
+get_metadata_no_default(notebook::Notebook)::Dict{String,Any} = Dict{String,Any}(setdiff(pairs(notebook.metadata), pairs(DEFAULT_NOTEBOOK_METADATA)))
