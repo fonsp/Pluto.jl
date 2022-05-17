@@ -22,7 +22,7 @@ codec.addExtPacker(0x12, DataView, packTypedArray)
 // But it does throw when I create a custom @bind that has a Date value...
 // For decoding I now also use a "Invalid Date", but the code in https://stackoverflow.com/a/55338384/2681964 did work in Safari.
 // Also there is no way now to send an "Invalid Date", so it just does nothing
-codec.addExtPacker(0x0d, Date, (d) => new BigInt64Array([BigInt(d)]))
+codec.addExtPacker(0x0d, Date, (d) => new BigInt64Array([BigInt(+d)]))
 codec.addExtUnpacker(0x0d, (uintarray) => {
     if ("getBigInt64" in DataView.prototype) {
         let dataview = new DataView(uintarray.buffer, uintarray.byteOffset, uintarray.byteLength)

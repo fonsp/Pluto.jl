@@ -5,6 +5,9 @@ on:
         branches:
             - main
     workflow_dispatch:
+concurrency:
+    group: bundle
+    cancel-in-progress: false
 
 jobs:
     trigger:
@@ -35,9 +38,11 @@ jobs:
                   cache-dependency-path: frontend-bundler/package-lock.json
             - run: npm install
               working-directory: frontend-bundler
-            - name: The Actual Build
+            
+            - name: The Actual Build (try 3 times)
               working-directory: frontend-bundler
-              run: npm run build
+              run: |
+                (npm run build) || (npm run build) || (npm run build)
 
             # Push the rebuild frontend-dist to the release branch.
             # Needs to be `add --force` because frontend-dist is normally gitignored.
@@ -45,5 +50,5 @@ jobs:
             - name: Force push frontend-dist changes
               run: |
                   git add frontend-dist --force
-                  git commit -m "$GITHUB_WORKFLOW"
+                  git commit -m "$GITHUB_WORKFLOW" -m "Built from hash $GITHUB_SHA"
                   git push origin release --force

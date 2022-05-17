@@ -26,3 +26,6 @@ if (Blob.prototype.arrayBuffer == null) {
         return new Response(this).arrayBuffer()
     }
 }
+
+import { polyfill as scroll_polyfill } from "https://esm.sh/seamless-scroll-polyfill@2.1.8/lib/polyfill.js"
+scroll_polyfill()

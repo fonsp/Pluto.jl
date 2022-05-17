@@ -1,6 +1,8 @@
+import _ from "../imports/lodash.js"
+import { html, useContext, useEffect, useMemo, useState } from "../imports/Preact.js"
+
 import { in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { PlutoContext } from "../common/PlutoContext.js"
-import { html, useContext, useEffect, useMemo, useState } from "../imports/Preact.js"
 
 const upstream_of = (a_cell_id, notebook) => Object.values(notebook?.cell_dependencies?.[a_cell_id]?.upstream_cells_map || {}).flatMap((x) => x)
 
@@ -10,7 +12,7 @@ const all_upstreams_of = (a_cell_id, notebook) => {
     return [...upstreams, ...upstreams.flatMap((v) => all_upstreams_of(v, notebook))]
 }
 const hasBarrier = (a_cell_id, notebook) => {
-    return notebook?.cell_inputs?.[a_cell_id]?.running_disabled
+    return notebook?.cell_inputs?.[a_cell_id].metadata.disabled
 }
 
 export const RunArea = ({ runtime, running, queued, code_differs, on_run, on_interrupt, depends_on_disabled_cells, running_disabled, cell_id }) => {

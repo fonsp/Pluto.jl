@@ -3,6 +3,10 @@ import .ExpressionExplorer: SymbolsState, FunctionNameSignaturePair, FunctionNam
 import .Configuration
 import .PkgCompat: PkgCompat, PkgContext
 import Pkg
+import TOML
+
+
+const DEFAULT_NOTEBOOK_METADATA = Dict{String, Any}()
 
 mutable struct BondValue
     value::Any
@@ -23,11 +27,12 @@ Base.@kwdef mutable struct Notebook
     "Cells are ordered in a `Notebook`, and this order can be changed by the user. Cells will always have a constant UUID."
     cells_dict::Dict{UUID,Cell}
     cell_order::Array{UUID,1}
-    
+
     path::String
     notebook_id::UUID=uuid1()
-    topology::NotebookTopology=NotebookTopology()
+    topology::NotebookTopology
     _cached_topological_order::Union{Nothing,TopologicalOrder}=nothing
+    _cached_cell_dependencies_source::Union{Nothing,NotebookTopology}=nothing
 
     # buffer will contain all unfetched updates - must be big enough
     # We can keep 1024 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.
@@ -54,45 +59,63 @@ Base.@kwdef mutable struct Notebook
     last_hot_reload_time::typeof(time())=zero(time())
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
+
+    metadata::Dict{String, Any}=copy(DEFAULT_NOTEBOOK_METADATA)
 end
 
-Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = Notebook(
+_collect_cells(cells_dict::Dict{UUID,Cell}, cells_order::Vector{UUID}) = 
+    map(i -> cells_dict[i], cells_order)
+_initial_topology(cells_dict::Dict{UUID,Cell}, cells_order::Vector{UUID}) =
+    NotebookTopology(;
+        cell_order=ImmutableVector(_collect_cells(cells_dict, cells_order)),
+    )
+
+function Notebook(cells::Vector{Cell}, @nospecialize(path::AbstractString), notebook_id::UUID)
     cells_dict=Dict(map(cells) do cell
         (cell.cell_id, cell)
-    end),
-    cell_order=map(x -> x.cell_id, cells),
-    path=path,
-    notebook_id=notebook_id,
-)
+    end)
+    cell_order=map(x -> x.cell_id, cells)
+    Notebook(;
+        cells_dict,
+        cell_order,
+        topology=_initial_topology(cells_dict, cell_order),
+        path,
+        notebook_id
+    )
+end
 
-Notebook(cells::Array{Cell,1}, path::AbstractString=numbered_until_new(joinpath(new_notebooks_directory(), cutename()))) = Notebook(cells, path, uuid1())
+Notebook(cells::Vector{Cell}, path::AbstractString=numbered_until_new(joinpath(new_notebooks_directory(), cutename()))) = Notebook(cells, path, uuid1())
 
 function Base.getproperty(notebook::Notebook, property::Symbol)
     if property == :cells
-        cells_dict = getfield(notebook, :cells_dict)
-        cell_order = getfield(notebook, :cell_order)
-        map(cell_order) do id
-            cells_dict[id]
-        end
+        _collect_cells(notebook.cells_dict, notebook.cell_order)
     elseif property == :cell_inputs
-        getfield(notebook, :cells_dict)
+        notebook.cells_dict
     else
         getfield(notebook, property)
     end
 end
 
+
+emptynotebook(args...) = Notebook([Cell()], args...)
+
+
 const _notebook_header = "### A Pluto.jl notebook ###"
+const _notebook_metadata_prefix = "#> "
 # We use a creative delimiter to avoid accidental use in code
 # so don't get inspired to suddenly use these in your code!
 const _cell_id_delimiter = "# ╔═╡ "
+const _cell_metadata_prefix = "# ╠═╡ "
 const _order_delimiter = "# ╠═"
 const _order_delimiter_folded = "# ╟─"
 const _cell_suffix = "\n\n"
 
+const _disabled_prefix = "#=╠═╡\n"
+const _disabled_suffix = "\n  ╠═╡ =#"
+
 const _ptoml_cell_id = UUID(1)
 const _mtoml_cell_id = UUID(2)
 
-emptynotebook(args...) = Notebook([Cell()], args...)
 
 """
 Save the notebook to `io`, `file` or to `notebook.path`.
@@ -104,6 +127,17 @@ Have a look at our [JuliaCon 2020 presentation](https://youtu.be/IAF8DjrQSSk?t=1
 function save_notebook(io, notebook::Notebook)
     println(io, _notebook_header)
     println(io, "# ", PLUTO_VERSION_STR)
+    
+    # Notebook metadata
+    let nb_metadata_toml = strip(sprint(TOML.print, get_metadata_no_default(notebook)))
+        if !isempty(nb_metadata_toml)
+            println(io)
+            for line in split(nb_metadata_toml, "\n")
+                println(io, _notebook_metadata_prefix, line)
+            end
+        end
+    end
+
     # Anything between the version string and the first UUID delimiter will be ignored by the notebook loader.
     println(io, "")
     println(io, "using Markdown")
@@ -120,9 +154,26 @@ function save_notebook(io, notebook::Notebook)
     
     for c in cells_ordered
         println(io, _cell_id_delimiter, string(c.cell_id))
-        # write the cell code and prevent collisions with the cell delimiter
-        print(io, replace(c.code, _cell_id_delimiter => "# "))
-        print(io, _cell_suffix)
+        
+        let metadata_toml = strip(sprint(TOML.print, get_metadata_no_default(c)))
+            if metadata_toml != ""
+                for line in split(metadata_toml, "\n")
+                    println(io, _cell_metadata_prefix, line)
+                end
+            end
+        end
+        
+        cell_running_disabled = get(c.metadata, "disabled", false)::Bool
+        if cell_running_disabled || c.depends_on_disabled_cells
+            print(io, _disabled_prefix)
+            print(io, replace(c.code, _cell_id_delimiter => "# "))
+            print(io, _disabled_suffix)
+            print(io, _cell_suffix)
+        else
+            # write the cell code and prevent collisions with the cell delimiter
+            print(io, replace(c.code, _cell_id_delimiter => "# "))
+            print(io, _cell_suffix)
+        end
     end
 
     
@@ -181,7 +232,10 @@ end
 save_notebook(notebook::Notebook) = save_notebook(notebook, notebook.path)
 
 "Load a notebook without saving it or creating a backup; returns a `Notebook`. REMEMBER TO CHANGE THE NOTEBOOK PATH after loading it to prevent it from autosaving and overwriting the original file."
-function load_notebook_nobackup(io, path)::Notebook
+function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::AbstractString))::Notebook
+    
+    ## HEADER
+    
     firstline = String(readline(io))
 
     if firstline != _notebook_header
@@ -192,25 +246,67 @@ function load_notebook_nobackup(io, path)::Notebook
     if file_VERSION_STR != PLUTO_VERSION_STR
         # @info "Loading a notebook saved with Pluto $(file_VERSION_STR). This is Pluto $(PLUTO_VERSION_STR)."
     end
+    
+    # Read all remaining file contents before the first cell delimiter.
+    header_content = readuntil(io, _cell_id_delimiter)
+    header_lines = split(header_content, "\n")
+    
+    nb_prefix_length = ncodeunits(_notebook_metadata_prefix)
+    nb_metadata_toml_lines = String[
+        line[begin+nb_prefix_length:end]
+        for line in header_lines if startswith(line, _notebook_metadata_prefix)
+    ]
+    
+    notebook_metadata = try
+        create_notebook_metadata(TOML.parse(join(nb_metadata_toml_lines, "\n")))
+    catch e
+        @error "Failed to parse embedded TOML content" exception=(e, catch_backtrace())
+        DEFAULT_NOTEBOOK_METADATA
+    end
 
+    
+    ### CELLS
+    
     collected_cells = Dict{UUID,Cell}()
-
-    # ignore first bits of file
-    readuntil(io, _cell_id_delimiter)
-
     while !eof(io)
         cell_id_str = String(readline(io))
         if cell_id_str == "Cell order:"
             break
         else
             cell_id = UUID(cell_id_str)
-            code_raw = String(readuntil(io, _cell_id_delimiter))
+            
+            metadata_toml_lines = String[]
+            initial_code_line = ""
+            while !eof(io)
+                line = String(readline(io))
+                if startswith(line, _cell_metadata_prefix)
+                    prefix_length = ncodeunits(_cell_metadata_prefix)
+                    push!(metadata_toml_lines, line[begin+prefix_length:end])
+                else
+                    initial_code_line = line
+                    break
+                end
+            end
+
+            code_raw = initial_code_line * "\n" * String(readuntil(io, _cell_id_delimiter))
             # change Windows line endings to Linux
             code_normalised = replace(code_raw, "\r\n" => "\n")
+
+            # remove the disabled on startup comments for further processing in Julia
+            code_normalised = replace(replace(code_normalised, _disabled_prefix => ""), _disabled_suffix => "")
+
             # remove the cell suffix
             code = code_normalised[1:prevind(code_normalised, end, length(_cell_suffix))]
 
-            read_cell = Cell(cell_id, code)
+            # parse metadata
+            metadata = try
+                create_cell_metadata(TOML.parse(join(metadata_toml_lines, "\n")))
+            catch
+                @error "Failed to parse embedded TOML content" cell_id exception=(e, catch_backtrace())
+                DEFAULT_CELL_METADATA
+            end
+
+            read_cell = Cell(; cell_id, code, metadata)
             collected_cells[cell_id] = read_cell
         end
     end
@@ -265,12 +361,29 @@ function load_notebook_nobackup(io, path)::Notebook
         PkgCompat.create_empty_ctx()
     end
 
-    appeared_order = setdiff(cell_order ∩ keys(collected_cells), [_ptoml_cell_id, _mtoml_cell_id])
+    appeared_order = setdiff!(
+        union!(
+            # don't include cells that only appear in the order, but no code was given
+            intersect!(cell_order, keys(collected_cells)),
+            # add cells that appeared in code, but not in the order.
+            keys(collected_cells)
+        ), 
+        # remove Pkg cells
+        (_ptoml_cell_id, _mtoml_cell_id)
+    )
     appeared_cells_dict = filter(collected_cells) do (k, v)
         k ∈ appeared_order
     end
 
-    Notebook(cells_dict=appeared_cells_dict, cell_order=appeared_order, path=path, nbpkg_ctx=nbpkg_ctx, nbpkg_installed_versions_cache=nbpkg_cache(nbpkg_ctx))
+    Notebook(;
+        cells_dict=appeared_cells_dict, 
+        cell_order=appeared_order,
+        topology=_initial_topology(appeared_cells_dict, appeared_order),
+        path=path, 
+        nbpkg_ctx=nbpkg_ctx, 
+        nbpkg_installed_versions_cache=nbpkg_cache(nbpkg_ctx),
+        metadata=notebook_metadata,
+    )
 end
 
 function load_notebook_nobackup(path::String)::Notebook
@@ -298,7 +411,7 @@ function load_notebook(path::String; disable_writing_notebook_files::Bool=false)
     update_dependency_cache!(loaded)
 
     disable_writing_notebook_files || save_notebook(loaded)
-    loaded.topology = NotebookTopology()
+    loaded.topology = NotebookTopology(; cell_order=ImmutableVector(loaded.cells))
 
     disable_writing_notebook_files || if only_versions_or_lineorder_differ(path, backup_path)
         rm(backup_path)
@@ -357,3 +470,10 @@ function sample_notebook(name::String)
     nb.path = tempname() * ".jl"
     nb
 end
+
+create_cell_metadata(metadata::Dict{String,<:Any}) = merge(DEFAULT_CELL_METADATA, metadata)
+create_notebook_metadata(metadata::Dict{String,<:Any}) = merge(DEFAULT_NOTEBOOK_METADATA, metadata)
+get_metadata(cell::Cell)::Dict{String,Any} = cell.metadata
+get_metadata(notebook::Notebook)::Dict{String,Any} = notebook.metadata
+get_metadata_no_default(cell::Cell)::Dict{String,Any} = Dict{String,Any}(setdiff(pairs(cell.metadata), pairs(DEFAULT_CELL_METADATA)))
+get_metadata_no_default(notebook::Notebook)::Dict{String,Any} = Dict{String,Any}(setdiff(pairs(notebook.metadata), pairs(DEFAULT_NOTEBOOK_METADATA)))

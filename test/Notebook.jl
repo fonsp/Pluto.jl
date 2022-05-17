@@ -1,7 +1,9 @@
 using Test
-import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new, readwrite, without_pluto_file_extension
+import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new, readwrite, without_pluto_file_extension, update_run!, get_metadata_no_default, is_disabled, create_cell_metadata
+import Pluto.WorkspaceManager: poll, WorkspaceManager
 import Random
 import Pkg
+import UUIDs: UUID
 
 # We define some notebooks explicitly, and not as a .jl notebook file, to avoid circular reasoning 🤔
 function basic_notebook()
@@ -26,6 +28,39 @@ function basic_notebook()
         # test included InteractiveUtils import
         Cell("subtypes(Number)"),
     ]) |> init_packages!
+end
+
+function cell_metadata_notebook()
+    Notebook([
+        Cell(
+            code="100*a + b",
+            metadata=Dict(
+                "a metadata tag" => Dict(
+                    "boolean" => true,
+                    "string" => "String",
+                    "number" => 10000,
+                ),
+                "disabled" => true,
+            ) |> create_cell_metadata,
+        ),
+    ]) |> init_packages!
+end
+
+function notebook_metadata_notebook()
+    nb = Notebook([
+        Cell(code="n * (n + 1) / 2"),
+    ]) |> init_packages!
+    nb.metadata = Dict(
+        "boolean" => true,
+        "string" => "String",
+        "number" => 10000,
+        "ozymandias" => Dict(
+            "l1" => "And on the pedestal, these words appear:",
+            "l2" => "My name is Ozymandias, King of Kings;",
+            "l3" => "Look on my Works, ye Mighty, and despair!",
+        ),
+    )
+    nb
 end
 
 function shuffled_notebook()
@@ -66,7 +101,7 @@ end
 
 function init_packages!(nb::Notebook)
     nb.topology = Pluto.updated_topology(nb.topology, nb, nb.cells)
-    Pluto.sync_nbpkg_core(nb)
+    Pluto.sync_nbpkg_core(nb, nb.topology, nb.topology)
     return nb
 end
 
@@ -136,13 +171,121 @@ end
             save_notebook(nb)
             # @info "File" name Text(read(nb.path,String))
             result = load_notebook_nobackup(nb.path)
-            @test notebook_inputs_equal(nb, result)
+            @test_notebook_inputs_equal(nb, result)
         end
+    end
+
+    @testset "Cell Metadata" begin
+        🍭 = ServerSession()
+        🍭.options.evaluation.workspace_use_distributed = false
+        fakeclient = ClientSession(:fake, nothing)
+        🍭.connected_clients[fakeclient.id] = fakeclient
+
+        @testset "Disabling & Metadata" begin
+            nb = cell_metadata_notebook()
+            update_run!(🍭, nb, nb.cells)
+            cell = first(values(nb.cells_dict))
+            @test get_metadata_no_default(cell) == Dict(
+                "a metadata tag" => Dict(
+                    "boolean" => true,
+                    "string" => "String",
+                    "number" => 10000,
+                ),
+                "disabled" => true, # enhanced metadata because cell is disabled
+            )
+
+            save_notebook(nb)
+            result = load_notebook_nobackup(nb.path)
+            @test_notebook_inputs_equal(nb, result)
+            cell = first(nb.cells)
+            @test is_disabled(cell)
+            @test get_metadata_no_default(cell) == Dict(
+                "a metadata tag" => Dict(
+                    "boolean" => true,
+                    "string" => "String",
+                    "number" => 10000,
+                ),
+                "disabled" => true,
+            )
+            
+            WorkspaceManager.unmake_workspace((🍭, nb); verbose=false)
+        end
+    end
+
+    @testset "Notebook Metadata" begin
+        🍭 = ServerSession()
+        🍭.options.evaluation.workspace_use_distributed = false
+        fakeclient = ClientSession(:fake, nothing)
+        🍭.connected_clients[fakeclient.id] = fakeclient
+
+        nb = notebook_metadata_notebook()
+        update_run!(🍭, nb, nb.cells)
+        
+        @test nb.metadata == Dict(
+            "boolean" => true,
+            "string" => "String",
+            "number" => 10000,
+            "ozymandias" => Dict(
+                "l1" => "And on the pedestal, these words appear:",
+                "l2" => "My name is Ozymandias, King of Kings;",
+                "l3" => "Look on my Works, ye Mighty, and despair!",
+            ),
+        )
+
+        save_notebook(nb)
+        nb_loaded = load_notebook_nobackup(nb.path)
+        @test nb.metadata == nb_loaded.metadata
+        
+        WorkspaceManager.unmake_workspace((🍭, nb); verbose=false)
+    end
+    
+    @testset "More Metadata" begin
+        test_file_contents = """
+        ### A Pluto.jl notebook ###
+        # v0.19.4
+        
+        @hello from the future where we might put extra stuff here
+        
+        #> [hello]
+        #> world = [1, 2, 3]
+        
+        using Markdown
+        using SecretThings
+        
+        # asdfasdf
+
+        # ╔═╡ a86be878-d616-11ec-05a3-c902726cee5f
+        # ╠═╡ disabled = true
+        # ╠═╡ fonsi = 123
+        #=╠═╡
+        1 + 1
+        ╠═╡ =#
+
+        # ╔═╡ Cell order:
+        # ╠═a86be878-d616-11ec-05a3-c902726cee5f
+        
+        # ok thx byeeeee
+        
+        """
+        
+        test_filename = tempname()
+        write(test_filename, test_file_contents)
+        nb = load_notebook_nobackup(test_filename)
+        @test nb.metadata == Dict(
+            "hello" => Dict(
+                "world" => [1,2,3],
+            )
+        )
+        
+        @test get_metadata_no_default(only(nb.cells)) == Dict(
+            "disabled" => true,
+            "fonsi" => 123,
+        )
     end
 
     @testset "I/O overloaded" begin
         @testset "$(name)" for (name, nb) in nbs
-            @test let
+            let
                 tasks = []
                 for i in 1:16
                     push!(tasks, @async save_notebook(nb))
@@ -152,7 +295,7 @@ end
                 end
                 wait.(tasks)
                 result = load_notebook_nobackup(nb.path)
-                notebook_inputs_equal(nb, result)
+                @test_notebook_inputs_equal(nb, result)
             end
         end
     end
@@ -180,6 +323,42 @@ end
             end
         end
     end
+    
+    @testset "Recover from bad cell order" begin
+        contents = """
+        ### A Pluto.jl notebook ###
+        # v0.17.3
+
+        using Markdown
+        using InteractiveUtils
+
+        # ╔═╡ cdd40e28-61be-11ec-28fd-111111111111
+        x = 1
+
+        # ╔═╡ cdd40e28-61be-11ec-28fd-222222222222
+        y = 2
+
+        # ╔═╡ cdd40e28-61be-11ec-28fd-333333333333
+        z = 3
+
+        # ╔═╡ Cell order:
+        # ╠═cdd40e28-61be-11ec-28fd-111111111111
+        # ╠═cdd40e28-61be-11ec-28fd-333333333333
+        # ╠═cdd40e28-61be-11ec-28fd-444444444444
+        """
+        
+        path = tempname()
+        write(path, contents)
+        
+        nb = load_notebook(path)
+        
+        @test nb.cell_order == UUID.([
+            "cdd40e28-61be-11ec-28fd-111111111111",
+            "cdd40e28-61be-11ec-28fd-333333333333",
+            "cdd40e28-61be-11ec-28fd-222222222222",
+        ])
+        @test keys(nb.cells_dict) == Set(nb.cell_order)
+    end
 
     # Some notebooks are designed to error (inside/outside Pluto)
     expect_error = [String(nameof(bad_code_notebook)), String(nameof(project_notebook)), "sample Interactivity.jl"]
@@ -205,6 +384,7 @@ end
         @testset "$(name)" for (name, nb) in nbs
             if name ∉ expect_error
                 @test nb_is_runnable(🍭, nb)
+                WorkspaceManager.unmake_workspace((🍭, nb))
             end
         end
     end
@@ -213,15 +393,15 @@ end
         @testset "$(name)" for (name, nb) in nbs
             file_contents = sprint(save_notebook, nb)
 
-            @test let
+            let
                 result = sread(load_notebook_nobackup, file_contents, nb.path)
-                notebook_inputs_equal(nb, result)
+                @test_notebook_inputs_equal(nb, result)
             end
 
-            @test let
+            let
                 file_contents_windowsed = replace(file_contents, "\n" => "\r\n")
                 result_windowsed = sread(load_notebook_nobackup, file_contents_windowsed, nb.path)
-                notebook_inputs_equal(nb, result_windowsed)
+                @test_notebook_inputs_equal(nb, result_windowsed)
             end
         end
     end
@@ -305,7 +485,7 @@ end
         write(jl_path, embedded_jl)
         
         result = load_notebook_nobackup(jl_path)
-        @test notebook_inputs_equal(nb, result; check_paths_equality=false)
+        @test_notebook_inputs_equal(nb, result, false)
 
         
         filename = "howdy.jl"

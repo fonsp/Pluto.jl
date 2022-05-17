@@ -1,7 +1,7 @@
-import { EditorView, autocompletion, EditorState, keymap } from "../../imports/CodemirrorPlutoSetup.js"
+import { EditorView, autocomplete, EditorState, keymap } from "../../imports/CodemirrorPlutoSetup.js"
 
 // Why am I like this?
-let completionState = autocompletion()[0]
+let completionState = autocomplete.autocompletion()[0]
 
 /**
  * Cell movement plugin!

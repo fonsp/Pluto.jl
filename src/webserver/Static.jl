@@ -2,6 +2,7 @@ import HTTP
 import Markdown: htmlesc
 import UUIDs: UUID
 import Pkg
+import MIMEs
 
 const found_is_pluto_dev = Ref{Union{Nothing,Bool}}(nothing)
 function is_pluto_dev()
@@ -14,59 +15,64 @@ function is_pluto_dev()
         p_index = findfirst(p -> p.name == "Pluto", deps)
         p = deps[p_index]
 
-        return p.is_tracking_path
+        p.is_tracking_path
     catch
         false
     end
 end
 
-function frontend_directory()
-    if isdir(project_relative_path("frontend-dist")) && !is_pluto_dev()
+function frontend_directory(; allow_bundled::Bool=true)
+    if allow_bundled && isdir(project_relative_path("frontend-dist")) && (get(ENV, "JULIA_PLUTO_FORCE_BUNDLED", "nein") == "ja" || !is_pluto_dev())
         "frontend-dist"
     else
         "frontend"
     end
 end
 
-# Serve everything from `/frontend`, and create HTTP endpoints to open notebooks.
-
-"Attempts to find the MIME pair corresponding to the extension of a filename. Defaults to `text/plain`."
-function mime_fromfilename(filename)
-    # This bad boy is from: https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
-    mimepairs = Dict(".aac" => "audio/aac", ".bin" => "application/octet-stream", ".bmp" => "image/bmp", ".css" => "text/css", ".csv" => "text/csv", ".eot" => "application/vnd.ms-fontobject", ".gz" => "application/gzip", ".gif" => "image/gif", ".htm" => "text/html", ".html" => "text/html", ".ico" => "image/vnd.microsoft.icon", ".jpeg" => "image/jpeg", ".jpg" => "image/jpeg", ".js" => "text/javascript", ".json" => "application/json", ".jsonld" => "application/ld+json", ".mjs" => "text/javascript", ".mp3" => "audio/mpeg", ".mp4" => "video/mp4", ".mpeg" => "video/mpeg", ".oga" => "audio/ogg", ".ogv" => "video/ogg", ".ogx" => "application/ogg", ".opus" => "audio/opus", ".otf" => "font/otf", ".png" => "image/png", ".pdf" => "application/pdf", ".rtf" => "application/rtf", ".sh" => "application/x-sh", ".svg" => "image/svg+xml", ".tar" => "application/x-tar", ".tif" => "image/tiff", ".tiff" => "image/tiff", ".ttf" => "font/ttf", ".txt" => "text/plain", ".wav" => "audio/wav", ".weba" => "audio/webm", ".webm" => "video/webm", ".webp" => "image/webp", ".woff" => "font/woff", ".woff2" => "font/woff2", ".xhtml" => "application/xhtml+xml", ".xml" => "application/xml", ".xul" => "application/vnd.mozilla.xul+xml", ".zip" => "application/zip")
-    file_extension = getkey(mimepairs, '.' * split(filename, '.')[end], ".txt")
-    MIME(mimepairs[file_extension])
+function should_cache(path::String)
+    dir, filename = splitdir(path)
+    endswith(dir, "frontend-dist") && occursin(r"\.[0-9a-f]{8}\.", filename)
 end
 
-function asset_response(path)
+# Serve everything from `/frontend`, and create HTTP endpoints to open notebooks.
+
+const day = let 
+    second = 1
+    hour = 60second
+    day = 24hour
+end
+
+function asset_response(path; cacheable::Bool=false)
     if !isfile(path) && !endswith(path, ".html")
-        return asset_response(path * ".html")
+        return asset_response(path * ".html"; cacheable)
     end
-    try
-        @assert isfile(path)
-        response = HTTP.Response(200, read(path, String))
-        m = mime_fromfilename(path)
-        push!(response.headers, "Content-Type" => Base.istextmime(m) ? "$(m); charset=UTF-8" : string(m))
+    if isfile(path)
+        data = read(path)
+        response = HTTP.Response(200, data)
+        push!(response.headers, "Content-Type" => MIMEs.contenttype_from_mime(MIMEs.mime_from_path(path, MIME"application/octet-stream"())))
+        push!(response.headers, "Content-Length" => string(length(data)))
         push!(response.headers, "Access-Control-Allow-Origin" => "*")
+        cacheable && push!(response.headers, "Cache-Control" => "public, max-age=$(30day), immutable")
         response
-    catch e
+    else
         HTTP.Response(404, "Not found!")
     end
 end
 
-function error_response(status_code::Integer, title, advice, body="")
+function error_response(
+    status_code::Integer, title, advice, body="")
     template = read(project_relative_path(frontend_directory(), "error.jl.html"), String)
 
     body_title = body == "" ? "" : "Error message:"
     filled_in = replace(replace(replace(replace(replace(template, 
-        "\$STYLE" => """<style>$(read(project_relative_path("frontend", "index.css"), String))</style>"""), 
+        "\$STYLE" => """<style>$(read(project_relative_path("frontend", "error.css"), String))</style>"""), 
         "\$TITLE" => title), 
         "\$ADVICE" => advice), 
         "\$BODYTITLE" => body_title), 
         "\$BODY" => htmlesc(body))
 
     response = HTTP.Response(status_code, filled_in)
-    push!(response.headers, "Content-Type" => string(mime_fromfilename(".html")))
+    push!(response.headers, "Content-Type" => MIMEs.contenttype_from_mime(MIME"text/html"()))
     response
 end
 
@@ -170,10 +176,10 @@ function http_router_for(session::ServerSession)
     function try_launch_notebook_response(action::Function, path_or_url::AbstractString; title="", advice="", home_url="./", as_redirect=true, action_kwargs...)
         try
             nb = action(session, path_or_url; action_kwargs...)
-            notebook_response(nb; home_url=home_url, as_redirect=as_redirect)
+            notebook_response(nb; home_url, as_redirect)
         catch e
             if e isa SessionActions.NotebookIsRunningException
-                notebook_response(e.notebook; home_url=home_url, as_redirect=as_redirect)
+                notebook_response(e.notebook; home_url, as_redirect)
             else
                 error_response(500, title, advice, sprint(showerror, e, stacktrace(catch_backtrace())))
             end
@@ -189,6 +195,8 @@ function http_router_for(session::ServerSession)
     HTTP.@register(router, "GET", "/new", serve_newfile)
     HTTP.@register(router, "POST", "/new", serve_newfile)
 
+    # This is not in Dynamic.jl because of bookmarks, how HTML works,
+    # real loading bars and the rest; Same for CustomLaunchEvent
     serve_openfile = with_authentication(;
         required=security.require_secret_for_access || 
         security.require_secret_for_open_links
@@ -198,17 +206,36 @@ function http_router_for(session::ServerSession)
             query = HTTP.queryparams(uri)
             as_sample = haskey(query, "as_sample")
             if haskey(query, "path")
-                path = tamepath(query["path"])
+                path = tamepath(maybe_convert_path_to_wsl(query["path"]))
                 if isfile(path)
-                    return try_launch_notebook_response(SessionActions.open, path, as_redirect=(request.method == "GET"), as_sample=as_sample, title="Failed to load notebook", advice="The file <code>$(htmlesc(path))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
+                    return try_launch_notebook_response(
+                        SessionActions.open, path; 
+                        as_redirect=(request.method == "GET"), 
+                        as_sample, 
+                        title="Failed to load notebook", 
+                        advice="The file <code>$(htmlesc(path))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!",
+                    )
                 else
                     return error_response(404, "Can't find a file here", "Please check whether <code>$(htmlesc(path))</code> exists.")
                 end
             elseif haskey(query, "url")
                 url = query["url"]
-                return try_launch_notebook_response(SessionActions.open_url, url, as_redirect=(request.method == "GET"), as_sample=as_sample, title="Failed to load notebook", advice="The notebook from <code>$(htmlesc(url))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
+                return try_launch_notebook_response(
+                    SessionActions.open_url, url;
+                    as_redirect=(request.method == "GET"), 
+                    as_sample, 
+                    title="Failed to load notebook", 
+                    advice="The notebook from <code>$(htmlesc(url))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!"
+                )
             else
-                error("Empty request")
+                # You can ask Pluto to handle CustomLaunch events
+                # and do some magic with how you open files.
+                # You are responsible to keep this up to date.
+                # See Events.jl for types and explanation
+                #
+                maybe_notebook_response = try_event_call(session, CustomLaunchEvent(query, request, try_launch_notebook_response))
+                isnothing(maybe_notebook_response) && return error("Empty request")
+                return maybe_notebook_response
             end
         catch e
             return error_response(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", sprint(showerror, e, stacktrace(catch_backtrace())))
@@ -226,7 +253,14 @@ function http_router_for(session::ServerSession)
         sample_filename = split(HTTP.unescapeuri(uri.path), "sample/")[2]
         sample_path = project_relative_path("sample", sample_filename)
         
-        try_launch_notebook_response(SessionActions.open, sample_path; as_redirect=(request.method == "GET"), home_url="../", as_sample=true, title="Failed to load sample", advice="Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
+        try_launch_notebook_response(
+            SessionActions.open, sample_path; 
+            as_redirect=(request.method == "GET"), 
+            home_url="../", 
+            as_sample=true, 
+            title="Failed to load sample", 
+            advice="Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!"
+        )
     end
     HTTP.@register(router, "GET", "/sample/*", serve_sample)
     HTTP.@register(router, "POST", "/sample/*", serve_sample)
@@ -289,26 +323,28 @@ function http_router_for(session::ServerSession)
         required=security.require_secret_for_access || 
         security.require_secret_for_open_links
     ) do request::HTTP.Request
-        save_path = SessionActions.save_upload(request.body)
+        uri = HTTP.URI(request.target)
+        query = HTTP.queryparams(uri)
+        
+        save_path = SessionActions.save_upload(request.body; filename_base=get(query, "name", nothing))
         try_launch_notebook_response(
             SessionActions.open,
-            save_path,
+            save_path;
             as_redirect=false,
             as_sample=false,
             title="Failed to load notebook",
-            advice="Make sure that you copy the entire notebook file. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!"
+            advice="The contents could not be read as a Pluto notebook file. When copying contents from somewhere else, make sure that you copy the entire notebook file.  You can also <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!"
         )
     end
     HTTP.@register(router, "POST", "/notebookupload", serve_notebookupload)
     
     function serve_asset(request::HTTP.Request)
         uri = HTTP.URI(request.target)
-        
         filepath = project_relative_path(frontend_directory(), relpath(HTTP.unescapeuri(uri.path), "/"))
-        asset_response(filepath)
+        asset_response(filepath; cacheable=should_cache(filepath))
     end
     HTTP.@register(router, "GET", "/*", serve_asset)
-    HTTP.@register(router, "GET", "/favicon.ico", create_serve_onefile(project_relative_path(frontend_directory(), "img", "favicon.ico")))
+    HTTP.@register(router, "GET", "/favicon.ico", create_serve_onefile(project_relative_path(frontend_directory(allow_bundled=false), "img", "favicon.ico")))
 
     return router
 end

@@ -54,11 +54,11 @@ export const createNewNotebook = async (page) => {
 export const importNotebook = async (page, notebookName) => {
     // Copy notebook before using it, so we don't mess it up with test changes
     const notebookPath = getFixtureNotebookPath(notebookName)
-    // const artifactsPath = getTemporaryNotebookPath()
-    // fs.copyFileSync(notebookPath, artifactsPath)
+    const artifactsPath = getTemporaryNotebookPath()
+    fs.copyFileSync(notebookPath, artifactsPath)
     const openFileInputSelector = "pluto-filepicker"
-    // writeSingleLineInPlutoInput(page, openFileInputSelector, artifactsPath)
-    await writeSingleLineInPlutoInput(page, openFileInputSelector, notebookPath)
+    await writeSingleLineInPlutoInput(page, openFileInputSelector, artifactsPath)
+    // await writeSingleLineInPlutoInput(page, openFileInputSelector, notebookPath)
 
     const openFileButton = "pluto-filepicker button"
     await clickAndWaitForNavigation(page, openFileButton)
@@ -75,7 +75,9 @@ export const getCellIds = (page) => page.evaluate(() => Array.from(document.quer
  */
 export const waitForPlutoToCalmDown = async (page) => {
     await page.waitForTimeout(1000)
-    await page.waitForFunction(() => document.body._update_is_ongoing === false && document.querySelector(`pluto-cell.running, pluto-cell.queued`) === null)
+    await page.waitForFunction(
+        () => document?.querySelector("body")?._update_is_ongoing === false && document?.querySelector(`pluto-cell.running, pluto-cell.queued`) === null
+    )
 }
 
 /**
@@ -99,7 +101,7 @@ export const waitForCellOutputToChange = (page, cellId, currentOutput) => {
 
 export const waitForNoUpdateOngoing = async (page, options = {}) => {
     await page.waitForTimeout(1000)
-    return await page.waitForFunction(() => document.body._update_is_ongoing === false, options)
+    return await page.waitForFunction(() => document.querySelector("body")?._update_is_ongoing === false, options)
 }
 
 /**

@@ -41,6 +41,7 @@ export const SlideControls = () => {
         )
     }
 
+    // @ts-ignore
     window.present = () => {
         document.body.classList.toggle("presentation")
     }

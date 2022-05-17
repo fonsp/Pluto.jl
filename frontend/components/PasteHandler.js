@@ -1,5 +1,5 @@
 import { html, useEffect } from "../imports/Preact.js"
-import { link_edit } from "./Welcome.js"
+import { link_edit } from "./welcome/Open.js"
 
 const detectNotebook = (inputtext) => {
     // Add a newline in the end for the case user didn't copy it
@@ -72,11 +72,16 @@ const processFile = async (ev) => {
         return
     }
     document.body.classList.add("loading")
-    const reply = await fetch("./notebookupload", {
+    const response = await fetch("./notebookupload", {
         method: "POST",
         body: notebook,
-    }).then((res) => res.text())
-    window.location.href = link_edit(reply)
+    })
+    if (response.ok) {
+        window.location.href = link_edit(await response.text())
+    } else {
+        let b = await response.blob()
+        window.location.href = URL.createObjectURL(b)
+    }
 }
 
 export const PasteHandler = () => {

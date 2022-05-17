@@ -27,15 +27,10 @@ catch
 end
 try
     # we don't suppress IO for this one because it can take very long, and that would be a frustrating experience without IO
-    if VERSION >= v"1.6.0-a"
-        # precompilation switched off because of https://github.com/fonsp/Pluto.jl/issues/875
-        Pkg.instantiate(pkg_ctx; update_registry=false, allow_autoprecomp=false) 
-    elseif VERSION >= v"1.3.0"
-        # registry update is not required here and may save some time for startup
-        Pkg.instantiate(pkg_ctx; update_registry=false)
-    else
-        Pkg.instantiate(pkg_ctx)
-    end
+    
+    # precompilation switched off because of https://github.com/fonsp/Pluto.jl/issues/875
+    Pkg.instantiate(pkg_ctx; update_registry=false, allow_autoprecomp=false) 
+
 catch e
     @error "Failed to instantiate notebook boot environment" exception=(e, catch_backtrace())
 end

@@ -1,7 +1,22 @@
-import Pluto
+# Collect timing and allocations information; this is printed later.
+using TimerOutputs: TimerOutput, @timeit
+const TOUT = TimerOutput()
+macro timeit_include(path::AbstractString) :(@timeit TOUT $path include($path)) end
+function print_timeroutput()
+    # Sleep to avoid old logs getting tangled up in the output.
+    sleep(6)
+    println()
+    show(TOUT; compact=true, sortby=:firstexec)
+    println()
+end
+
+@timeit TOUT "import Pluto" import Pluto
 import Pluto.ExpressionExplorer
 import Pluto.ExpressionExplorer: SymbolsState, compute_symbolreferences, FunctionNameSignaturePair, UsingsImports, compute_usings_imports
+using Sockets
 using Test
+using HTTP
+import Distributed
 
 function Base.show(io::IO, s::SymbolsState)
     print(io, "SymbolsState([")
@@ -112,7 +127,7 @@ function easy_symstate(expected_references, expected_definitions, expected_funcc
     SymbolsState(Set(expected_references), Set(expected_definitions), new_expected_funccalls, new_expected_funcdefs, new_expected_macrocalls)
 end
 
-function setcode(cell, newcode)
+function setcode!(cell, newcode)
     cell.code = newcode
 end
 
@@ -128,13 +143,21 @@ function occursinerror(needle, haystack::Pluto.Cell)
 end
 
 "Test notebook equality, ignoring cell UUIDs and such."
-function notebook_inputs_equal(nbA, nbB; check_paths_equality=true)
-    x = !check_paths_equality || (normpath(nbA.path) == normpath(nbB.path))
-
-    to_compare(cell) = (cell.cell_id, cell.code_folded, cell.code)
-    y = to_compare.(nbA.cells) == to_compare.(nbB.cells)
-    
-    x && y
+macro test_notebook_inputs_equal(nbA, nbB, check_paths_equality::Bool=true)
+    quote
+        nbA = $(esc(nbA))
+        nbB = $(esc(nbB))
+        if $(check_paths_equality)
+            @test normpath(nbA.path) == normpath(nbB.path)
+        end
+        
+        @test length(nbA.cells) == length(nbB.cells)
+        @test getproperty.(nbA.cells, :cell_id) == getproperty.(nbB.cells, :cell_id)
+        @test getproperty.(nbA.cells, :code_folded) == getproperty.(nbB.cells, :code_folded)
+        @test getproperty.(nbA.cells, :code) == getproperty.(nbB.cells, :code)
+        @test get_metadata_no_default.(nbA.cells) ==  get_metadata_no_default.(nbB.cells)
+        
+    end |> Base.remove_linenums!
 end
 
 "Whether the given .jl file can be run without any errors. While notebooks cells can be in arbitrary order, their order in the save file must be topological.
@@ -192,3 +215,12 @@ has_embedded_pkgfiles(contents::AbstractString) =
 
 has_embedded_pkgfiles(nb::Pluto.Notebook) = 
     read(nb.path, String) |> has_embedded_pkgfiles
+
+"""
+Log an error message if there are any running processes created by Distrubted, that were not shut down.
+"""
+function verify_no_running_processes()
+    if length(Distributed.procs()) != 1
+        @error "Not all notebook processes were closed during tests!" Distributed.procs()
+    end
+end

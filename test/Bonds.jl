@@ -183,10 +183,7 @@ import Distributed
         
         function set_bond_value(name, value, is_first_value=false)
             notebook.bonds[name] = Dict("value" => value)
-            Pluto.set_bond_values_reactive(;
-                session=🍭,
-                notebook=notebook,
-                bound_sym_names=[name],
+            Pluto.set_bond_values_reactive(; session=🍭, notebook, bound_sym_names=[name],
                 is_first_values=[is_first_value],
                 run_async=false,
             )
@@ -257,6 +254,11 @@ import Distributed
         @test Pluto.possible_bond_values(🍭, notebook, :pv3) == [1,2,3]
         @test Pluto.possible_bond_values(🍭, notebook, :pv4) == 2:11
         @test Pluto.possible_bond_values(🍭, notebook, :pv5) === 1:10
+        @test Pluto.possible_bond_values_length(🍭, notebook, :pv1) == :NotGiven
+        @test Pluto.possible_bond_values_length(🍭, notebook, :pv2) == :InfinitePossibilities
+        @test Pluto.possible_bond_values_length(🍭, notebook, :pv3) == 3
+        @test Pluto.possible_bond_values_length(🍭, notebook, :pv4) == 10
+        @test Pluto.possible_bond_values_length(🍭, notebook, :pv5) == 10
 
         
         

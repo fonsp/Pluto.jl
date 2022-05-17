@@ -175,34 +175,79 @@ function refresh_registry_cache()
 	_parsed_registries[] = _get_registries()
 end
 
-const _updated_registries_compat = Ref(false)
+# ⚠️✅ Internal API with fallback
+const _updated_registries_compat = @static if isdefined(Pkg, :UPDATED_REGISTRY_THIS_SESSION) && Pkg.UPDATED_REGISTRY_THIS_SESSION isa Ref{Bool}
+	Pkg.UPDATED_REGISTRY_THIS_SESSION
+else
+	Ref(false)
+end
 
-# ⚠️✅ Internal API with good fallback
-function update_registries(ctx)
-	@static if isdefined(Pkg, :Types) && isdefined(Pkg.Types, :update_registries)
-		Pkg.Types.update_registries(ctx)
-	else
-		if !_updated_registries_compat[]
-			_updated_registries_compat[] = true
-			Pkg.Registry.update()
+# ✅ Public API
+function update_registries(; force::Bool=false)
+	if force || !_updated_registries_compat[]
+		Pkg.Registry.update()
+		try
+			refresh_registry_cache()
+		catch
 		end
+		_updated_registries_compat[] = true		
 	end
 end
+
+# ✅ Public API
+"""
+Check when the registries were last updated. If it is recent (max 7 days), `Pkg.UPDATED_REGISTRY_THIS_SESSION` is set to `true`, which will prevent Pkg from doing an automatic registry update.
+
+Returns the new value of `Pkg.UPDATED_REGISTRY_THIS_SESSION`.
+"""
+function check_registry_age(max_age_ms = 1000.0 * 60 * 60 * 24 * 7)::Bool
+	paths = _get_registry_paths()
+	isempty(paths) && return _updated_registries_compat[]
+	
+	ages = map(paths) do p
+		try
+			mtime(p)
+		catch
+			zero(time())
+		end
+	end
+	
+	if all(ages .> time() - max_age_ms)
+		_updated_registries_compat[] = true
+	end
+	_updated_registries_compat[]
+end
+
+
+###
+# Instantiate
+###
 
 # ⚠️✅ Internal API with fallback
 function instantiate(ctx; update_registry::Bool)
 	@static if hasmethod(Pkg.instantiate, Tuple{}, (:update_registry,))
-		Pkg.instantiate(ctx; update_registry=update_registry)
+		Pkg.instantiate(ctx; update_registry)
 	else
 		Pkg.instantiate(ctx)
 	end
 end
 
 
+###
+# Standard Libraries
+###
 
 # (⚠️ Internal API with fallback)
 _stdlibs() = try
-	values(Pkg.Types.stdlibs())
+	stdlibs = values(Pkg.Types.stdlibs())
+	T = eltype(stdlibs)
+	if T == String
+		stdlibs
+	elseif T <: Tuple{String,Any}
+		first.(stdlibs)
+	else
+		error()
+	end
 catch e
 	@warn "Pkg compat: failed to load standard libraries." exception=(e,catch_backtrace())
 
@@ -319,32 +364,28 @@ package_exists(package_name::AbstractString)::Bool =
 
 # 🐸 "Public API", but using PkgContext
 function dependencies(ctx)
-	# Pkg.dependencies(ctx) should also work on 1.5, but there is some weird bug (run the tests without this patch). This is probably some Pkg bug that got fixed.
-	@static if VERSION < v"1.6.0-a"
-		ctx.env.manifest
-	else
-		try
-			# ctx.env.manifest
-			@static if hasmethod(Pkg.dependencies, (PkgContext,))
-				Pkg.dependencies(ctx)
-			else
-				Pkg.dependencies(ctx.env)
-			end
-		catch e
-			if !occursin(r"expected.*exist.*manifest", sprint(showerror, e))
-				@error """
-				Pkg error: you might need to use
-
-				Pluto.reset_notebook_environment(notebook_path)
-
-				to reset this notebook's environment.
-
-				Before doing so, consider sending your notebook file to https://github.com/fonsp/Pluto.jl/issues together with the following info:
-				""" Pluto.PLUTO_VERSION VERSION exception=(e,catch_backtrace())
-			end
-
-			Dict()
+	try
+		# ctx.env.manifest
+		@static if hasmethod(Pkg.dependencies, (PkgContext,))
+			Pkg.dependencies(ctx)
+		else
+			Pkg.dependencies(ctx.env)
 		end
+	catch e
+		if !occursin(r"expected.*exist.*manifest", sprint(showerror, e))
+			@error """
+			Pkg error: you might need to use
+
+			Pluto.reset_notebook_environment(notebook_path)
+
+			to reset this notebook's environment.
+
+			Before doing so, consider sending your notebook file to https://github.com/fonsp/Pluto.jl/issues together with the following info:
+			""" Pluto.PLUTO_VERSION VERSION exception=(e,catch_backtrace())
+		end
+
+		Dict()
+	
 	end
 end
 

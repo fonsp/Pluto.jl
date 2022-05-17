@@ -2,6 +2,66 @@ import path from "path";
 import mkdirp from "mkdirp";
 import * as process from "process";
 
+// from https://github.com/puppeteer/puppeteer/issues/1908#issuecomment-380308269
+class InflightRequests {
+  constructor(page) {
+    this._page = page;
+    this._requests = new Map();
+    this._history = [];
+    this._onStarted = this._onStarted.bind(this);
+    this._onFinished = this._onFinished.bind(this);
+    this._page.on('request', this._onStarted);
+    this._page.on('requestfinished', this._onFinished);
+    this._page.on('requestfailed', this._onFinished);
+  }
+
+  _onStarted(request) { 
+    // if(request.url().includes("data")) {
+    //   console.log('Start', request.url())
+    // }; 
+    this._history.push(["started", request.url()]);
+    this._requests.set(
+      request.url(), 
+      1 + (this._requests.get(request.url()) ?? 0)
+    ); 
+  }
+  _onFinished(request) { 
+    // if(request.url().includes("data")) {
+    //   console.log('Finish', request.url())
+    // }; 
+    this._history.push(["finished", request.url()]);
+    this._requests.set(
+      request.url(), 
+      -1 + 
+        /* Multiple requests starts can have a single finish event. */
+        Math.min(1, this._requests.get(request.url()) ?? 0)
+    ); 
+  }
+ 
+  inflightRequests() { return Array.from([...this._requests.entries()].flatMap(([k,v]) => v > 0 ? [k] : [])); }  
+
+  dispose() {
+    this._page.removeListener('request', this._onStarted);
+    this._page.removeListener('requestfinished', this._onFinished);
+    this._page.removeListener('requestfailed', this._onFinished);
+  }
+}
+
+const with_connections_debug = (page, action) => {
+  const tracker = new InflightRequests(page);
+  return action().finally(() => {
+    tracker.dispose();
+    const inflight = tracker.inflightRequests();
+    if(inflight.length > 0) {
+      console.warn("Open connections: ", inflight, tracker._history.filter(([n,u]) => inflight.includes(u)));
+      // console.warn([...tracker._requests.entries()])
+    }
+  }).catch(e => {
+    
+    throw e
+  })
+}
+
 export const getTextContent = (page, selector) => {
   // https://developer.mozilla.org/en-US/docs/Web/API/Node/textContent#differences_from_innertext
   return page.evaluate(
@@ -81,11 +141,13 @@ export const waitForContentToBecome = async (page, selector, targetContent) => {
   return getTextContent(page, selector);
 };
 
-export const clickAndWaitForNavigation = (page, selector) =>
-  Promise.all([
-    page.waitForNavigation({ waitUntil: "networkidle0" }),
-    page.click(selector),
-  ]);
+export const clickAndWaitForNavigation = async (page, selector) => {
+  let t = with_connections_debug(page, () => page.waitForNavigation({ waitUntil: "networkidle0" })).catch(e => {
+    console.warn("Network idle never happened after navigation... weird!", e)
+  })
+  await page.click(selector)
+  await t
+}
 
 const dismissBeforeUnloadDialogs = (page) => {
   page.on("dialog", async (dialog) => {
@@ -121,6 +183,9 @@ let should_be_offline_input = process.env["PLUTO_TEST_OFFLINE"]?.toLowerCase() ?
 let should_be_offline = [true, 1, "true", "1"].includes(should_be_offline_input)
 console.log(`Offline mode enabled: ${should_be_offline}`)
 
+const blocked_domains = ["cdn.jsdelivr.net", "unpkg.com", "cdn.skypack.dev", "esm.sh", "firebase.google.com"]
+const hide_warning = url => url.includes("mathjax")
+
 export const setupPage = (page) => {
   failOnError(page);
   dismissBeforeUnloadDialogs(page);
@@ -129,8 +194,9 @@ export const setupPage = (page) => {
   if(should_be_offline) {
     page.setRequestInterception(true);
     page.on("request", (request) => {
-      if(["cdn.jsdelivr.net", "unpkg.com", "cdn.skypack.dev", "esm.sh", "firebase.google.com"].some(domain => request.url().includes(domain))) {
-        console.error(`Blocking request to ${request.url()}`)
+      if(blocked_domains.some(domain => request.url().includes(domain))) {
+        if(!hide_warning(request.url()))
+          console.error(`Blocking request to ${request.url()}`)
         request.abort();
       } else {
         request.continue();

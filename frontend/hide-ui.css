@@ -3,7 +3,7 @@ main {
     cursor: auto;
 }
 
-body > header,
+body header#pluto-nav,
 preamble > button,
 pluto-cell > button,
 pluto-input > button,

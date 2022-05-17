@@ -3,18 +3,21 @@ import { html, Component, useRef, useLayoutEffect, useContext, useEffect, useMem
 import { ErrorMessage } from "./ErrorMessage.js"
 import { TreeView, TableView, DivElement } from "./TreeView.js"
 
-import { add_bonds_listener, set_bound_elements_to_their_value, get_input_value, set_input_value, eventof } from "../common/Bond.js"
+import { add_bonds_disabled_message_handler, add_bonds_listener, set_bound_elements_to_their_value, get_input_value, set_input_value, eventof } from "../common/Bond.js"
 import { cl } from "../common/ClassTable.js"
 
 import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
 import { PlutoBondsContext, PlutoContext, PlutoJSInitializingContext } from "../common/PlutoContext.js"
 import register from "../imports/PreactCustomElement.js"
 
-import { EditorState, EditorView, julia_andrey, defaultHighlightStyle } from "../imports/CodemirrorPlutoSetup.js"
-import { pluto_syntax_colors } from "./CellInput.js"
+import { EditorState, EditorView, defaultHighlightStyle } from "../imports/CodemirrorPlutoSetup.js"
+
+import { pluto_syntax_colors, ENABLE_CM_MIXED_PARSER } from "./CellInput.js"
 import { useState } from "../imports/Preact.js"
 
-import hljs from "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.2.0/build/es/highlight.min.js"
+import hljs from "../imports/highlightjs.js"
+import { julia_mixed } from "./CellInput/mixedParsers.js"
+import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
 
 export class CellOutput extends Component {
     constructor() {
@@ -139,12 +142,11 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
             </div>`
             break
         case "application/vnd.pluto.table+object":
-            return html` <${TableView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`
+            return html`<${TableView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`
             break
         case "application/vnd.pluto.stacktrace+object":
             return html`<div><${ErrorMessage} cell_id=${cell_id} ...${body} /></div>`
             break
-            body.cell_id
         case "application/vnd.pluto.divelement+object":
             return DivElement({ cell_id, ...body })
             break
@@ -157,8 +159,13 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
                 return html`<div></div>`
             }
             break
-        default:
+        case null:
+        case undefined:
+        case "":
             return html``
+            break
+        default:
+            return html`<pre title="Something went wrong displaying this object">🛑</pre>`
             break
     }
 }
@@ -179,10 +186,11 @@ let IframeContainer = ({ body }) => {
             /** Grab the <script> tag for the iframe content window resizer
              * @type {HTMLScriptElement} */
             let original_script_element = document.querySelector("#iframe-resizer-content-window-script")
-            // Clone it into the iframe document, so we have the exact same script tag there
-            let iframe_resizer_content_script = iframeDocument.importNode(original_script_element)
-            // Fix the `src` so it isn't relative to the iframes url, but this documents url
-            iframe_resizer_content_script.src = new URL(iframe_resizer_content_script.src, original_script_element.baseURI).toString()
+
+            // Insert iframe resizer inside the iframe
+            let iframe_resizer_content_script = iframeDocument.createElement("script")
+            iframe_resizer_content_script.src = original_script_element.src
+            iframe_resizer_content_script.crossOrigin = "anonymous"
             iframeDocument.head.appendChild(iframe_resizer_content_script)
 
             // Apply iframe resizer from the host side
@@ -220,13 +228,50 @@ let execute_dynamic_function = async ({ environment, code }) => {
     return result
 }
 
+/**
+ * Runs the code `fn` with `document.currentScript` being set to a new script_element thats
+ * is placed on the page where `script_element` was.
+ *
+ * Why? So we can run the javascript code with extra cool Pluto variables and return value,
+ * but still have a script at the same position as `document.currentScript`.
+ * This way you can do `document.currentScript.insertBefore()` and have it work!
+ *
+ * This will remove the passed in `script_element` from the DOM!
+ *
+ * @param {HTMLOrSVGScriptElement} script_element
+ * @param {() => any} fn
+ */
+let execute_inside_script_tag_that_replaces = async (script_element, fn) => {
+    // Mimick as much as possible from the original script (only attributes but sure)
+    let new_script_tag = document.createElement("script")
+    for (let attr of script_element.attributes) {
+        //@ts-ignore because of https://github.com/microsoft/TypeScript-DOM-lib-generator/issues/1260
+        new_script_tag.attributes.setNamedItem(attr.cloneNode(true))
+    }
+    new_script_tag.textContent = `{
+        window.____FUNCTION_TO_RUN_INSIDE_SCRIPT.result = window.____FUNCTION_TO_RUN_INSIDE_SCRIPT.function_to_run(window.____FUNCTION_TO_RUN_INSIDE_SCRIPT.currentScript)
+    }`
+
+    // @ts-ignore
+    // I use this long variable name to pass the function and result to and from the script we created
+    window.____FUNCTION_TO_RUN_INSIDE_SCRIPT = { function_to_run: fn, currentScript: new_script_tag, result: null }
+    // Put the script in the DOM, this will run the script
+    script_element.parentNode.replaceChild(new_script_tag, script_element)
+    // @ts-ignore - Get the result back
+    let result = await window.____FUNCTION_TO_RUN_INSIDE_SCRIPT.result
+    // @ts-ignore - Reset the global variable "just in case"
+    window.____FUNCTION_TO_RUN_INSIDE_SCRIPT = { function_to_run: fn, result: null }
+
+    return { node: new_script_tag, result: result }
+}
+
 const is_displayable = (result) => result instanceof Element && result.nodeType === Node.ELEMENT_NODE
 
 /**
  * @typedef PlutoScript
  * @type {HTMLScriptElement | { pluto_is_loading_me?: boolean }}
  */
-const execute_scripttags = async ({ root_node, script_nodes, previous_results_map, invalidation }) => {
+const execute_scripttags = async ({ root_node, script_nodes, previous_results_map, invalidation, pluto_actions }) => {
     let results_map = new Map()
 
     // Reattach DOM results from old scripts, you might want to skip reading this
@@ -281,19 +326,34 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                     }
 
                     const cell = root_node.closest("pluto-cell")
-                    let result = await execute_dynamic_function({
-                        environment: {
-                            this: script_id ? old_result : window,
-                            currentScript: node,
-                            invalidation: invalidation,
-                            getPublishedObject: (id) => cell.getPublishedObject(id),
-                            getBoundElementValueLikePluto: get_input_value,
-                            setBoundElementValueLikePluto: set_input_value,
-                            getBoundElementEventNameLikePluto: eventof,
-                            ...observablehq_for_cells,
-                        },
-                        code: node.innerText,
+                    let { node: new_node, result } = await execute_inside_script_tag_that_replaces(node, async (currentScript) => {
+                        return await execute_dynamic_function({
+                            environment: {
+                                this: script_id ? old_result : window,
+                                currentScript: currentScript,
+                                invalidation: invalidation,
+                                getPublishedObject: (id) => cell.getPublishedObject(id),
+
+                                getBoundElementValueLikePluto: get_input_value,
+                                setBoundElementValueLikePluto: set_input_value,
+                                getBoundElementEventNameLikePluto: eventof,
+
+                                getNotebookMetadataExperimental: (key) => pluto_actions.get_notebook()?.metadata[key],
+                                setNotebookMetadataExperimental: (key, value) =>
+                                    pluto_actions.update_notebook((notebook) => {
+                                        notebook.metadata[key] = value
+                                    }),
+                                deleteNotebookMetadataExperimental: (key) =>
+                                    pluto_actions.update_notebook((notebook) => {
+                                        delete notebook.metadata[key]
+                                    }),
+
+                                ...observablehq_for_cells,
+                            },
+                            code: node.innerText,
+                        })
                     })
+
                     // Save result for next run
                     if (script_id != null) {
                         results_map.set(script_id, result)
@@ -304,7 +364,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                             old_result.remove()
                         }
                         if (is_displayable(result)) {
-                            node.parentElement.insertBefore(result, node)
+                            new_node.parentElement.insertBefore(result, new_node)
                         }
                     }
                 }
@@ -321,14 +381,17 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
 
 let run = (f) => f()
 
-/** @param {HTMLTemplateElement} template */
+/**
+ * Support declarative shadowroot 😼
+ * https://web.dev/declarative-shadow-dom/
+ * The polyfill they mention on the page is nice and all, but we need more.
+ * For one, we need the polyfill anyway as we're adding html using innerHTML (just like we need to run the scripts ourselves)
+ * Also, we want to run the scripts inside the shadow roots, ideally in the same order that a browser would.
+ * And we want nested shadowroots, which their polyfill doesn't provide (and I hope the spec does)
+ *
+ * @param {HTMLTemplateElement} template
+ */
 let declarative_shadow_dom_polyfill = (template) => {
-    // Support declarative shadowroot 😼
-    // https://web.dev/declarative-shadow-dom/
-    // The polyfill they mention on the page is nice and all, but we need more.
-    // For one, we need the polyfill anyway as we're adding html using innerHTML (just like we need to run the scripts ourselves)
-    // Also, we want to run the scripts inside the shadow roots, ideally in the same order that a browser would.
-    // And we want nested shadowroots, which their polyfill doesn't provide (and I hope the spec does)
     try {
         const mode = template.getAttribute("shadowroot")
         // @ts-ignore
@@ -364,7 +427,7 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
     let container = useRef(/** @type {HTMLElement} */ (null))
 
     useLayoutEffect(() => {
-        set_bound_elements_to_their_value(container.current, pluto_bonds)
+        set_bound_elements_to_their_value(container.current.querySelectorAll("bond"), pluto_bonds)
     }, [body, persist_js_state, pluto_actions, pluto_bonds])
 
     useLayoutEffect(() => {
@@ -391,49 +454,56 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
         const new_scripts = [...scripts_in_shadowroots, ...Array.from(container.current.querySelectorAll("script"))]
 
         run(async () => {
-            js_init_set?.add(container.current)
-            previous_results_map.current = await execute_scripttags({
-                root_node: container.current,
-                script_nodes: new_scripts,
-                invalidation: invalidation,
-                previous_results_map: persist_js_state ? previous_results_map.current : new Map(),
-            })
-
-            if (pluto_actions != null) {
-                set_bound_elements_to_their_value(container.current, pluto_bonds)
-                let remove_bonds_listener = add_bonds_listener(container.current, pluto_actions.set_bond, pluto_bonds)
-                invalidation.then(remove_bonds_listener)
-            }
-
-            // Convert LaTeX to svg
-            // @ts-ignore
-            if (window.MathJax?.typeset != undefined) {
-                try {
-                    // @ts-ignore
-                    window.MathJax.typeset(container.current.querySelectorAll(".tex"))
-                } catch (err) {
-                    console.info("Failed to typeset TeX:")
-                    console.info(err)
-                }
-            }
-
-            // Apply syntax highlighting
             try {
-                for (let code_element of container.current.querySelectorAll("code")) {
-                    for (let className of code_element.classList) {
-                        if (className.startsWith("language-")) {
-                            let language = className.substr(9)
+                js_init_set?.add(container.current)
+                previous_results_map.current = await execute_scripttags({
+                    root_node: container.current,
+                    script_nodes: new_scripts,
+                    invalidation,
+                    previous_results_map: persist_js_state ? previous_results_map.current : new Map(),
+                    pluto_actions,
+                })
 
-                            // Remove "language-"
-                            highlight(code_element, language)
-                        }
+                if (pluto_actions != null) {
+                    const bond_nodes = container.current.querySelectorAll("bond")
+                    set_bound_elements_to_their_value(bond_nodes, pluto_bonds)
+                    add_bonds_listener(bond_nodes, pluto_actions.set_bond, pluto_bonds, invalidation)
+                    add_bonds_disabled_message_handler(bond_nodes, invalidation)
+                }
+
+                // Convert LaTeX to svg
+                // @ts-ignore
+                if (window.MathJax?.typeset != undefined) {
+                    try {
+                        // @ts-ignore
+                        window.MathJax.typeset(container.current.querySelectorAll(".tex"))
+                    } catch (err) {
+                        console.info("Failed to typeset TeX:")
+                        console.info(err)
                     }
                 }
-            } catch (err) {}
-            js_init_set?.delete(container.current)
+
+                // Apply syntax highlighting
+                try {
+                    container.current.querySelectorAll("code").forEach((code_element) => {
+                        code_element.classList.forEach((className) => {
+                            if (className.startsWith("language-")) {
+                                // Remove "language-"
+                                let language = className.substring(9)
+                                highlight(code_element, language)
+                            }
+                        })
+                    })
+                } catch (err) {
+                    console.warn("Highlighting failed", err)
+                }
+            } finally {
+                js_init_set?.delete(container.current)
+            }
         })
 
         return () => {
+            js_init_set?.delete(container.current)
             invalidate_scripts.current?.()
         }
     }, [body, persist_js_state, last_run_timestamp, pluto_actions])
@@ -441,13 +511,23 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
     return html`<div class="raw-html-wrapper ${className}" ref=${container}></div>`
 }
 
+// https://github.com/fonsp/Pluto.jl/issues/1692
+const ENABLE_CM_HIGHLIGHTING = false
+
 /** @param {HTMLElement} code_element */
 export let highlight = (code_element, language) => {
     language = language.toLowerCase()
     language = language === "jl" ? "julia" : language
 
     if (code_element.children.length === 0) {
-        if (language === "julia") {
+        if (
+            ENABLE_CM_HIGHLIGHTING &&
+            language === "julia" &&
+            // CodeMirror does not want to render inside a `<details>`...
+            // I tried to debug this, it does not happen on a clean webpage with the same CM versions:
+            // https://glitch.com/edit/#!/wobbly-sweet-fibre?path=script.js%3A51%3A76
+            code_element.closest("details") == null
+        ) {
             const editorview = new EditorView({
                 state: EditorState.create({
                     // Remove references to `Main.workspace#xx.` in the docs since
@@ -462,7 +542,7 @@ export let highlight = (code_element, language) => {
                         defaultHighlightStyle.fallback,
                         EditorState.tabSize.of(4),
                         // TODO Other languages possibly?
-                        language === "julia" ? julia_andrey() : null,
+                        language === "julia" ? (ENABLE_CM_MIXED_PARSER ? julia_mixed() : julia_andrey()) : null,
                         EditorView.lineWrapping,
                         EditorView.editable.of(false),
                     ].filter((x) => x != null),

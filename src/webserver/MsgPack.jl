@@ -31,6 +31,10 @@ MsgPack.msgpack_type(::Type{Configuration.CompilerOptions}) = MsgPack.StructType
 MsgPack.msgpack_type(::Type{Configuration.ServerOptions}) = MsgPack.StructType()
 MsgPack.msgpack_type(::Type{Configuration.SecurityOptions}) = MsgPack.StructType()
 
+# Don't try to send callback functions which can't be serialized (see ServerOptions.event_listener)
+MsgPack.msgpack_type(::Type{Function}) = MsgPack.NilType()
+MsgPack.to_msgpack(::MsgPack.NilType, ::Function) = nothing
+
 # We want typed integer arrays to arrive as JS typed integer arrays:
 const JSTypedIntSupport = [Int8, UInt8, Int16, UInt16, Int32, UInt32, Float32, Float64]
 JSTypedInt = Union{Int8,UInt8,Int16,UInt16,Int32,UInt32,Float32,Float64}
@@ -82,3 +86,4 @@ end
 function unpack(args...)
     MsgPack.unpack(args...) |> decode_extension_and_addbits
 end
+precompile(unpack, (Vector{UInt8},))

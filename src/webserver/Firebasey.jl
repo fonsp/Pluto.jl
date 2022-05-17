@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.16.1
+# v0.17.5
 
 using Markdown
 using InteractiveUtils
@@ -20,26 +20,6 @@ md"""
 
 Computing a diff:
 """
-
-# ╔═╡ d8e73b90-24c5-4e50-830b-b1dbe6224c8e
-dict_1 = Dict{String,Any}(
-	"a" => 1,
-	"b" => Dict(
-		"c" => [3,4],
-		"d" => 99,
-	),
-	"e" => "hello!"
-);
-
-# ╔═╡ 19646596-b35b-44fa-bfcf-891f9ffb748c
-dict_2 = Dict{String,Any}(
-	"a" => 1,
-	"b" => Dict(
-		"c" => [3,4,5],
-		"d" => 99,
-		"🏝" => "👍",
-	),
-);
 
 # ╔═╡ 9d2c07d9-16a9-4b9f-a375-2adb6e5b907a
 md"""
@@ -317,74 +297,15 @@ function diff(o1::Nothing, o2::Nothing)
 	NoChanges
 end
 
-# ╔═╡ 7ca087b8-73ac-49ea-9c5a-2971f0da491f
-example_patches = diff(dict_1, dict_2)
-
 # ╔═╡ 59b46bfe-da74-43af-9c11-cb0bdb2c13a2
 md"""
 ### Dict example
 """
 
-# ╔═╡ 200516da-8cfb-42fe-a6b9-cb4730168923
-celldict1 = Dict(:x => 1, :y => 2, :z => 3)
-
-# ╔═╡ 76326e6c-b95a-4b2d-a78c-e283e5fadbe2
-celldict2 = Dict(:x => 1, :y => 2, :z => 4)
-
-# ╔═╡ 664cd334-91c7-40dd-a2bf-0da720307cfc
-notebook1 = Dict(
-	:x => 1,
-	:y => 2,
-)
-
-# ╔═╡ b7fa5625-6178-4da8-a889-cd4f014f43ba
-notebook2 = Dict(
-	:y => 4,
-	:z => 5
-)
-
-# ╔═╡ dbdd1df0-2de1-11eb-152f-8d1af1ad02fe
-notebook1_to_notebook2 = diff(notebook1, notebook2)
-
 # ╔═╡ 3924953f-787a-4912-b6ee-9c9d3030f0f0
 md"""
 ### Large Dict example 1
 """
-
-# ╔═╡ 80689881-1b7e-49b2-af97-9e3ab639d006
-big_array = rand(UInt8, 1_000_000)
-
-# ╔═╡ fd22b6af-5fd2-428a-8291-53e223ea692c
-big_string = repeat('a', 1_000_000);
-
-# ╔═╡ bcd5059b-b0d2-49d8-a756-92349aa56aca
-large_dict_1 = Dict{String,Any}(
-	"cell_$(i)" => Dict{String,Any}(
-		"x" => 1,
-		"y" => big_array,
-		"z" => big_string,
-	)
-	for i in 1:10
-);
-
-# ╔═╡ e7fd6bab-c114-4f3e-b9ad-1af2d1147770
-begin
-	large_dict_2 = Dict{String,Any}(
-		"cell_$(i)" => Dict{String,Any}(
-			"x" => 1,
-			"y" => big_array,
-			"z" => big_string,
-		)
-		for i in 1:10
-	)
-	large_dict_2["cell_5"]["y"] = [2,20]
-	delete!(large_dict_2, "cell_2")
-	large_dict_2["hello"] = Dict("a" => 1, "b" => 2)
-	large_dict_2
-end;
-
-# ╔═╡ 43c36ab7-e9ac-450a-8abe-435412f2be1d
-diff(large_dict_1, large_dict_2)
 
 # ╔═╡ 1cf22fe6-4b58-4220-87a1-d7a18410b4e8
 md"""
@@ -395,34 +316,6 @@ With `===` comparison for arrays:
 md"""
 ### Large Dict example 2
 """
-
-# ╔═╡ 8188de75-ae6e-48aa-9495-111fd27ffd26
-many_items_1 = Dict{String,Any}(
-	"cell_$(i)" => Dict{String,Any}(
-		"x" => 1,
-		"y" => [2,3],
-		"z" => "four",
-	)
-	for i in 1:100
-)
-
-# ╔═╡ d807195e-ba27-4015-92a7-c9294d458d47
-begin
-	many_items_2 = deepcopy(many_items_1)
-	many_items_2["cell_5"]["y"][2] = 20
-	delete!(many_items_2, "cell_2")
-	many_items_2["hello"] = Dict("a" => 1, "b" => 2)
-	many_items_2
-end
-
-# ╔═╡ 2e91a1a2-469c-4123-a0d7-3dcc49715738
-diff(many_items_1, many_items_2)
-
-# ╔═╡ b8061c1b-dd03-4cd1-b275-90359ae2bb39
-fairly_equal(a,b) = Set(a) == Set(b)
-
-# ╔═╡ aeab3363-08ba-47c2-bd33-04a004ed72c4
-diff(many_items_1, many_items_1)
 
 # ╔═╡ c7de406d-ccfe-41cf-8388-6bd2d7c42d64
 md"### Struct example"
@@ -588,12 +481,6 @@ function applypatch!(value, patch::RemovePatch)
 	return value
 end
 
-# ╔═╡ e65d483a-4c13-49ba-bff1-1d54de78f534
-let
-	dict_1_copy = deepcopy(dict_1)
-	applypatch!(dict_1_copy, example_patches)
-end
-
 # ╔═╡ df41caa7-f0fc-4b0d-ab3d-ebdab4804040
 md"*Should throw in strict mode:*"
 
@@ -630,6 +517,119 @@ macro skip_as_script(ex)
 		nothing
 	end
 end
+
+# ╔═╡ d8e73b90-24c5-4e50-830b-b1dbe6224c8e
+@skip_as_script dict_1 = Dict{String,Any}(
+	"a" => 1,
+	"b" => Dict(
+		"c" => [3,4],
+		"d" => 99,
+	),
+	"e" => "hello!"
+);
+
+# ╔═╡ 19646596-b35b-44fa-bfcf-891f9ffb748c
+@skip_as_script dict_2 = Dict{String,Any}(
+	"a" => 1,
+	"b" => Dict(
+		"c" => [3,4,5],
+		"d" => 99,
+		"🏝" => "👍",
+	),
+);
+
+# ╔═╡ 7ca087b8-73ac-49ea-9c5a-2971f0da491f
+@skip_as_script example_patches = diff(dict_1, dict_2)
+
+# ╔═╡ e65d483a-4c13-49ba-bff1-1d54de78f534
+@skip_as_script let
+	dict_1_copy = deepcopy(dict_1)
+	applypatch!(dict_1_copy, example_patches)
+end
+
+# ╔═╡ 200516da-8cfb-42fe-a6b9-cb4730168923
+@skip_as_script celldict1 = Dict(:x => 1, :y => 2, :z => 3)
+
+# ╔═╡ 76326e6c-b95a-4b2d-a78c-e283e5fadbe2
+@skip_as_script celldict2 = Dict(:x => 1, :y => 2, :z => 4)
+
+# ╔═╡ 664cd334-91c7-40dd-a2bf-0da720307cfc
+@skip_as_script notebook1 = Dict(
+	:x => 1,
+	:y => 2,
+)
+
+# ╔═╡ b7fa5625-6178-4da8-a889-cd4f014f43ba
+@skip_as_script notebook2 = Dict(
+	:y => 4,
+	:z => 5
+)
+
+# ╔═╡ dbdd1df0-2de1-11eb-152f-8d1af1ad02fe
+@skip_as_script notebook1_to_notebook2 = diff(notebook1, notebook2)
+
+# ╔═╡ 80689881-1b7e-49b2-af97-9e3ab639d006
+@skip_as_script big_array = rand(UInt8, 1_000_000)
+
+# ╔═╡ fd22b6af-5fd2-428a-8291-53e223ea692c
+@skip_as_script big_string = repeat('a', 1_000_000);
+
+# ╔═╡ bcd5059b-b0d2-49d8-a756-92349aa56aca
+@skip_as_script large_dict_1 = Dict{String,Any}(
+	"cell_$(i)" => Dict{String,Any}(
+		"x" => 1,
+		"y" => big_array,
+		"z" => big_string,
+	)
+	for i in 1:10
+);
+
+# ╔═╡ e7fd6bab-c114-4f3e-b9ad-1af2d1147770
+@skip_as_script begin
+	large_dict_2 = Dict{String,Any}(
+		"cell_$(i)" => Dict{String,Any}(
+			"x" => 1,
+			"y" => big_array,
+			"z" => big_string,
+		)
+		for i in 1:10
+	)
+	large_dict_2["cell_5"]["y"] = [2,20]
+	delete!(large_dict_2, "cell_2")
+	large_dict_2["hello"] = Dict("a" => 1, "b" => 2)
+	large_dict_2
+end;
+
+# ╔═╡ 43c36ab7-e9ac-450a-8abe-435412f2be1d
+@skip_as_script diff(large_dict_1, large_dict_2)
+
+# ╔═╡ 8188de75-ae6e-48aa-9495-111fd27ffd26
+@skip_as_script many_items_1 = Dict{String,Any}(
+	"cell_$(i)" => Dict{String,Any}(
+		"x" => 1,
+		"y" => [2,3],
+		"z" => "four",
+	)
+	for i in 1:100
+)
+
+# ╔═╡ d807195e-ba27-4015-92a7-c9294d458d47
+@skip_as_script begin
+	many_items_2 = deepcopy(many_items_1)
+	many_items_2["cell_5"]["y"][2] = 20
+	delete!(many_items_2, "cell_2")
+	many_items_2["hello"] = Dict("a" => 1, "b" => 2)
+	many_items_2
+end
+
+# ╔═╡ 2e91a1a2-469c-4123-a0d7-3dcc49715738
+@skip_as_script diff(many_items_1, many_items_2)
+
+# ╔═╡ b8061c1b-dd03-4cd1-b275-90359ae2bb39
+@skip_as_script fairly_equal(a,b) = Set(a) == Set(b)
+
+# ╔═╡ aeab3363-08ba-47c2-bd33-04a004ed72c4
+@skip_as_script diff(many_items_1, many_items_1)
 
 # ╔═╡ c2c2b057-a88f-4cc6-ada4-fc55ac29931e
 "The opposite of `@skip_as_script`"
@@ -678,33 +678,33 @@ end
 		Base.hash(AddPatch(["asd"], Dict("a" => 2)))
 
 # ╔═╡ 595fdfd4-3960-4fbd-956c-509c4cf03473
-@test applypatch!(deepcopy(notebook1), notebook1_to_notebook2) == notebook2
+@skip_as_script @test applypatch!(deepcopy(notebook1), notebook1_to_notebook2) == notebook2
 
 # ╔═╡ 2983f6d4-c1ca-4b66-a2d3-f858b0df2b4c
-@test fairly_equal(diff(large_dict_1, large_dict_2), [
+@skip_as_script @test fairly_equal(diff(large_dict_1, large_dict_2), [
 	ReplacePatch(["cell_5","y"], [2,20]),
 	RemovePatch(["cell_2"]),
 	AddPatch(["hello"], Dict("b" => 2, "a" => 1)),
 ])
 
 # ╔═╡ fdc427f0-dfe8-4114-beca-48fc15434534
-@test isempty(diff(many_items_1, many_items_1))
+@skip_as_script @test isempty(diff(many_items_1, many_items_1))
 
 # ╔═╡ 61b81430-d26e-493c-96da-b6818e58c882
-@test fairly_equal(diff(many_items_1, many_items_2), [
+@skip_as_script @test fairly_equal(diff(many_items_1, many_items_2), [
 	ReplacePatch(["cell_5","y"], [2,20]),
 	RemovePatch(["cell_2"]),
 	AddPatch(["hello"], Dict("b" => 2, "a" => 1)),
 ])
 
 # ╔═╡ 62de3e79-4b4e-41df-8020-769c3c255c3e
-@test isempty(diff(many_items_1, many_items_1))
+@skip_as_script @test isempty(diff(many_items_1, many_items_1))
 
 # ╔═╡ c3e4738f-4568-4910-a211-6a46a9d447ee
-@test applypatch!(Dict(:y => "x"), AddPatch([:x], "-")) == Dict(:y => "x", :x => "-")
+@skip_as_script @test applypatch!(Dict(:y => "x"), AddPatch([:x], "-")) == Dict(:y => "x", :x => "-")
 
 # ╔═╡ 0f094932-10e5-40f9-a3fc-db27a85b4999
-@test applypatch!(Dict(:x => "x"), AddPatch([:x], "-")) == Dict(:x => "-")
+@skip_as_script @test applypatch!(Dict(:x => "x"), AddPatch([:x], "-")) == Dict(:x => "-")
 
 # ╔═╡ a560fdca-ee12-469c-bda5-62d7203235b8
 @test applypatch!(Dict(:x => "x"), ReplacePatch([:x], "-")) == Dict(:x => "-")
@@ -713,25 +713,13 @@ end
 @test applypatch!(Dict(:y => "x"), ReplacePatch([:x], "-")) == Dict(:x => "-", :y => "x")
 
 # ╔═╡ 96a80a23-7c56-4c41-b489-15bc1c4e3700
-@test applypatch!(Dict(:x => "x"), RemovePatch([:x])) == Dict()
+@skip_as_script @test applypatch!(Dict(:x => "x"), RemovePatch([:x])) == Dict()
 
 # ╔═╡ fac65755-2a2a-4a3c-b5a8-fc4f6d256754
-@test applypatch!(Dict(:y => "x"), RemovePatch([:x])) == Dict(:y => "x")
+@skip_as_script @test applypatch!(Dict(:y => "x"), RemovePatch([:x])) == Dict(:y => "x")
 
 # ╔═╡ e7e8d076-2de1-11eb-0214-8160bb81370a
 @skip_as_script @test notebook1 == deepcopy(notebook1)
-
-# ╔═╡ e9d2eba8-2de1-11eb-16bf-bd2a16537a97
-@skip_as_script x = 2
-
-# ╔═╡ ea45104e-2de1-11eb-3248-5dd833d350e4
-@skip_as_script @test 1 + 1 == x
-
-# ╔═╡ ea6650bc-2de1-11eb-3016-4542c5c333a5
-@skip_as_script @test 1 + 1 + 1 == x
-
-# ╔═╡ ea934d9c-2de1-11eb-3f1d-3b60465decde
-@skip_as_script @test_throws String throw("Oh my god") == x
 
 # ╔═╡ ee70e282-36d5-4772-8585-f50b9a67ca54
 md"## Track"
@@ -878,13 +866,13 @@ macro track(expr)
 end
 
 # ╔═╡ 7b8ab89b-bf56-4ddf-b220-b4881f4a2050
-@track Base.convert(JSONPatch, convert(Dict, add_patch)) == add_patch
+@skip_as_script @track Base.convert(JSONPatch, convert(Dict, add_patch)) == add_patch
 
 # ╔═╡ 48ccd28a-060d-4214-9a39-f4c4e506d1aa
-@track Base.convert(JSONPatch, convert(Dict, remove_patch)) == remove_patch
+@skip_as_script @track Base.convert(JSONPatch, convert(Dict, remove_patch)) == remove_patch
 
 # ╔═╡ 34d86e02-dd34-4691-bb78-3023568a5d16
-@track Base.convert(JSONPatch, convert(Dict, replace_patch)) == replace_patch
+@skip_as_script @track Base.convert(JSONPatch, convert(Dict, replace_patch)) == replace_patch
 
 # ╔═╡ 95ff676d-73c8-44cb-ac35-af94418737e9
 @skip_as_script @track for _ in 1:100 diff(celldict1, celldict2) end
@@ -1014,7 +1002,7 @@ end
 # ╠═fd22b6af-5fd2-428a-8291-53e223ea692c
 # ╠═bcd5059b-b0d2-49d8-a756-92349aa56aca
 # ╠═e7fd6bab-c114-4f3e-b9ad-1af2d1147770
-# ╠═43c36ab7-e9ac-450a-8abe-435412f2be1d
+# ╟─43c36ab7-e9ac-450a-8abe-435412f2be1d
 # ╟─2983f6d4-c1ca-4b66-a2d3-f858b0df2b4c
 # ╟─fdc427f0-dfe8-4114-beca-48fc15434534
 # ╟─8c069015-d922-4c60-9340-8d65c80b1a06
@@ -1067,11 +1055,7 @@ end
 # ╟─e8d0c98a-2de1-11eb-37b9-e1df3f5cfa25
 # ╟─e907d862-2de1-11eb-11a9-4b3ac37cb0f3
 # ╟─e924a0be-2de1-11eb-2170-71d56e117af2
-# ╟─c2c2b057-a88f-4cc6-ada4-fc55ac29931e
-# ╠═e9d2eba8-2de1-11eb-16bf-bd2a16537a97
-# ╠═ea45104e-2de1-11eb-3248-5dd833d350e4
-# ╠═ea6650bc-2de1-11eb-3016-4542c5c333a5
-# ╠═ea934d9c-2de1-11eb-3f1d-3b60465decde
+# ╠═c2c2b057-a88f-4cc6-ada4-fc55ac29931e
 # ╟─ee70e282-36d5-4772-8585-f50b9a67ca54
 # ╟─1a26eed8-670c-43bf-9726-2db84b1afdab
 # ╟─0e1c6442-9040-49d9-b754-173583db7ba2
