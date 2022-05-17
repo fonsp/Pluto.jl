@@ -68,7 +68,6 @@ export const FrontMatterInput = ({ remote_frontmatter, set_remote_frontmatter })
         description: null,
         date: null,
         tags: [],
-        license: null,
         ...frontmatter,
     }
 
@@ -111,7 +110,16 @@ export const FrontMatterInput = ({ remote_frontmatter, set_remote_frontmatter })
     </dialog>`
 }
 
-const field_type = (name) => (name === "tags" ? "tags" : name === "date" ? "date" : name === "license" ? "license" : "text")
+const special_field_names = ["tags", "date", "license"]
+
+const field_type = (name) => {
+    for (const t of special_field_names) {
+        if (name === t || name.endsWith(`_${t}`)) {
+            return t
+        }
+    }
+    return "text"
+}
 
 const Input = ({ value, on_value, type, id }) => {
     const input_ref = useRef(/** @type {HTMLInputElement} */ (null))
@@ -138,7 +146,15 @@ const Input = ({ value, on_value, type, id }) => {
         : html`<input type=${type} id=${id} ref=${input_ref} />`
 }
 
-const licenses = ["AGPL-3.0", "GPL-3.0", "LGPL-3.0", "MPL-2.0", "Apache-2.0", "MIT", "BSL-1.0", "Unlicense"]
+// https://choosealicense.com/licenses/
+// and check https://github.com/sindresorhus/spdx-license-list/blob/HEAD/spdx-simple.json
+const code_licenses = ["AGPL-3.0", "GPL-3.0", "LGPL-3.0", "MPL-2.0", "Apache-2.0", "MIT", "BSL-1.0", "Unlicense"]
+
+// https://creativecommons.org/about/cclicenses/
+// and check https://github.com/sindresorhus/spdx-license-list/blob/HEAD/spdx-simple.json
+const creative_licenses = ["CC-BY-4.0", "CC-BY-SA-4.0", "CC-BY-NC-4.0", "CC-BY-NC-SA-4.0", "CC-BY-ND-4.0", "CC-BY-NC-ND-4.0", "CC0-1.0"]
+
+const licenses = [...code_licenses, ...creative_licenses]
 
 const LicenseInput = ({ ref, id }) => {
     return html`
