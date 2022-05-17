@@ -1490,7 +1490,13 @@ const integrations = Integration[
             pluto_showable(::MIME"image/svg+xml", p::Plots.Plot{Plots.GRBackend}) = approx_size(p) <= max_plot_size
             pluto_showable(::MIME"text/html", p::Plots.Plot{Plots.GRBackend}) = false
         end,
-    )
+    ),
+    Integration(
+        id = Base.PkgId(UUID("4e3cecfd-b093-5904-9786-8bbb286a6a31"), "ImageShow"),
+        code = quote
+            pluto_showable(::MIME"text/html", ::AbstractMatrix{<:ImageShow.Colorant}) = false
+        end,
+    ),
 ]
 
 function load_integration_if_needed(integration::Integration)
