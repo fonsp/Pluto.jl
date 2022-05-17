@@ -248,6 +248,8 @@ end
         
         #> [hello]
         #> world = [1, 2, 3]
+        #> [frontmatter]
+        #> title = "cool stuff"
         
         using Markdown
         using SecretThings
@@ -274,12 +276,19 @@ end
         @test nb.metadata == Dict(
             "hello" => Dict(
                 "world" => [1,2,3],
-            )
+            ),
+            "frontmatter" => Dict(
+                "title" => "cool stuff",
+            ),
         )
         
         @test get_metadata_no_default(only(nb.cells)) == Dict(
             "disabled" => true,
             "fonsi" => 123,
+        )
+        
+        @test Pluto.frontmatter(nb) == Dict(
+            "title" => "cool stuff",
         )
     end
 
