@@ -579,7 +579,7 @@ function run_expression(
     
     cell_results[cell_id], cell_runtimes[cell_id] = result, runtime
 end
-precompile(run_expression, (Module, Expr, UUID, Nothing, Nothing))
+precompile(run_expression, (Module, Expr, UUID, UUID, Nothing, Nothing))
 
 # Channel to trigger implicits run
 const run_channel = Channel{UUID}(10)
