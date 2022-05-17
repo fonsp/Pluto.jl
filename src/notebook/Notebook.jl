@@ -131,6 +131,7 @@ function save_notebook(io, notebook::Notebook)
     # Notebook metadata
     let nb_metadata_toml = strip(sprint(TOML.print, get_metadata_no_default(notebook)))
         if !isempty(nb_metadata_toml)
+            println(io)
             for line in split(nb_metadata_toml, "\n")
                 println(io, _notebook_metadata_prefix, line)
             end
