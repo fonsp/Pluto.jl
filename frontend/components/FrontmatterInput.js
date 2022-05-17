@@ -42,7 +42,7 @@ export const FrontMatterInput = ({ remote_frontmatter, set_remote_frontmatter })
         close()
     }
     const submit = () => {
-        set_remote_frontmatter(frontmatter).then(() => alert("Saved!"))
+        set_remote_frontmatter(frontmatter).then(() => alert("Frontmatter synchronized ✔\n\nThese parameters will be used in future exports."))
         close()
     }
 
@@ -55,7 +55,7 @@ export const FrontMatterInput = ({ remote_frontmatter, set_remote_frontmatter })
 
     useLayoutEffect(() => {
         const listener = (e) => {
-            if (e.key === "Enter" && has_ctrl_or_cmd_pressed(e)) submit()
+            if (dialog_ref.current.contains(e.target)) if (e.key === "Enter" && has_ctrl_or_cmd_pressed(e)) submit()
         }
         window.addEventListener("keydown", listener)
         return () => {

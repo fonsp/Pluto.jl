@@ -551,6 +551,8 @@ a.export_card section {
 aside#export .export_small_btns {
     margin-left: auto;
     height: 60px;
+    display: flex;
+    flex-direction: row;
 }
 body.static_preview button.toggle_export {
     display: none;
