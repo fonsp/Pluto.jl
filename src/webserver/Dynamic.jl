@@ -147,6 +147,7 @@ function notebook_to_js(notebook::Notebook)
                 "value" => bondvalue.value, 
             )
         for (key, bondvalue) in notebook.bonds),
+        "metadata" => notebook.metadata,
         "nbpkg" => let
             ctx = notebook.nbpkg_ctx
             Dict{String,Any}(
@@ -267,6 +268,12 @@ const effects_of_changed_state = Dict(
             Firebasey.applypatch!(request.notebook, patch)
             [BondChanged(name, patch isa Firebasey.AddPatch)]
         end,
+    ),
+    "metadata" => Dict(
+        Wildcard() => function(property; request::ClientRequest, patch::Firebasey.JSONPatch)
+            Firebasey.applypatch!(request.notebook, patch)
+            [FileChanged()]
+        end
     )
 )
 

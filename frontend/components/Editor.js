@@ -40,8 +40,8 @@ import { FrontMatterInput } from "./FrontmatterInput.js"
 export const default_path = "..."
 const DEBUG_DIFFING = false
 
-// Be sure to keep this in sync with DEFAULT_METADATA in Cell.jl
-const DEFAULT_METADATA = {
+// Be sure to keep this in sync with DEFAULT_CELL_METADATA in Cell.jl
+const DEFAULT_CELL_METADATA = {
     disabled: false,
     show_logs: true,
 }
@@ -212,6 +212,7 @@ const first_true_key = (obj) => {
  *  published_objects: { [objectid: string]: any},
  *  bonds: { [name: string]: any },
  *  nbpkg: NotebookPkgData?,
+ *  metadata: object,
  * }}
  */
 
@@ -386,7 +387,7 @@ export class Editor extends Component {
                             // Fill the cell with empty code remotely, so it doesn't run unsafe code
                             code: "",
                             metadata: {
-                                ...DEFAULT_METADATA,
+                                ...DEFAULT_CELL_METADATA,
                             },
                         }
                     }
@@ -426,7 +427,7 @@ export class Editor extends Component {
                         code: code,
                         code_folded: false,
                         metadata: {
-                            ...DEFAULT_METADATA,
+                            ...DEFAULT_CELL_METADATA,
                         },
                     }
                 })
@@ -485,7 +486,7 @@ export class Editor extends Component {
                         cell_id: id,
                         code,
                         code_folded: false,
-                        metadata: { ...DEFAULT_METADATA },
+                        metadata: { ...DEFAULT_CELL_METADATA },
                     }
                     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
                 })

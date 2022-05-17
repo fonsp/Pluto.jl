@@ -323,7 +323,12 @@ get_favorite_notebook(notebook:: String) = notebook
 get_favorite_notebook(notebook:: AbstractVector) = first(notebook)
 
 function pretty_address(session::ServerSession, hostIP, port)
-    root = if session.options.server.root_url === nothing
+    root = if session.options.server.root_url !== nothing
+        @assert endswith(session.options.server.root_url, "/")
+        session.options.server.root_url
+    elseif haskey(ENV, "JH_APP_URL")
+        "$(ENV["JH_APP_URL"])proxy/$(Int(port))/"
+    else
         host_str = string(hostIP)
         host_pretty = if isa(hostIP, Sockets.IPv6)
             if host_str == "::1"
@@ -338,9 +343,6 @@ function pretty_address(session::ServerSession, hostIP, port)
         end
         port_pretty = Int(port)
         "http://$(host_pretty):$(port_pretty)/"
-    else
-        @assert endswith(session.options.server.root_url, "/")
-        session.options.server.root_url
     end
 
     url_params = Dict{String,String}()
