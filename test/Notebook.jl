@@ -1,5 +1,5 @@
 using Test
-import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new, readwrite, without_pluto_file_extension, update_run!, get_cell_metadata_no_default, is_disabled, create_metadata
+import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new, readwrite, without_pluto_file_extension, update_run!, get_metadata_no_default, is_disabled, create_cell_metadata
 import Pluto.WorkspaceManager: poll, WorkspaceManager
 import Random
 import Pkg
@@ -41,7 +41,7 @@ function cell_metadata_notebook()
                     "number" => 10000,
                 ),
                 "disabled" => true,
-            ) |> create_metadata,
+            ) |> create_cell_metadata,
         ),
     ]) |> init_packages!
 end
@@ -185,7 +185,7 @@ end
             nb = cell_metadata_notebook()
             update_run!(🍭, nb, nb.cells)
             cell = first(values(nb.cells_dict))
-            @test get_cell_metadata_no_default(cell) == Dict(
+            @test get_metadata_no_default(cell) == Dict(
                 "a metadata tag" => Dict(
                     "boolean" => true,
                     "string" => "String",
@@ -199,7 +199,7 @@ end
             @test_notebook_inputs_equal(nb, result)
             cell = first(nb.cells)
             @test is_disabled(cell)
-            @test get_cell_metadata_no_default(cell) == Dict(
+            @test get_metadata_no_default(cell) == Dict(
                 "a metadata tag" => Dict(
                     "boolean" => true,
                     "string" => "String",
