@@ -207,6 +207,8 @@ end
                 ),
                 "disabled" => true,
             )
+            
+            WorkspaceManager.unmake_workspace((🍭, nb); verbose=false)
         end
     end
 
@@ -233,6 +235,52 @@ end
         save_notebook(nb)
         nb_loaded = load_notebook_nobackup(nb.path)
         @test nb.metadata == nb_loaded.metadata
+        
+        WorkspaceManager.unmake_workspace((🍭, nb); verbose=false)
+    end
+    
+    @testset "More Metadata" begin
+        test_file_contents = """
+        ### A Pluto.jl notebook ###
+        # v0.19.4
+        
+        @hello from the future where we might put extra stuff here
+        
+        #> [hello]
+        #> world = [1, 2, 3]
+        
+        using Markdown
+        using SecretThings
+        
+        # asdfasdf
+
+        # ╔═╡ a86be878-d616-11ec-05a3-c902726cee5f
+        # ╠═╡ disabled = true
+        # ╠═╡ fonsi = 123
+        #=╠═╡
+        1 + 1
+        ╠═╡ =#
+
+        # ╔═╡ Cell order:
+        # ╠═a86be878-d616-11ec-05a3-c902726cee5f
+        
+        # ok thx byeeeee
+        
+        """
+        
+        test_filename = tempname()
+        write(test_filename, test_file_contents)
+        nb = load_notebook_nobackup(test_filename)
+        @test nb.metadata == Dict(
+            "hello" => Dict(
+                "world" => [1,2,3],
+            )
+        )
+        
+        @test get_metadata_no_default(only(nb.cells)) == Dict(
+            "disabled" => true,
+            "fonsi" => 123,
+        )
     end
 
     @testset "I/O overloaded" begin
