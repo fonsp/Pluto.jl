@@ -73,10 +73,15 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
         👺 = !no_packages_loaded_yet
         notebook.nbpkg_ctx = nothing
     end
+    if !use_plutopkg_new
+        notebook.nbpkg_ctx_instantiated = true
+    end
     
     (lag > 0) && sleep(lag * (0.5 + rand())) # sleep(0) would yield to the process manager which we dont want
 
-    if notebook.nbpkg_ctx !== nothing
+    if use_plutopkg_new
+        @assert notebook.nbpkg_ctx !== nothing
+        
         PkgCompat.mark_original!(notebook.nbpkg_ctx)
 
         old_packages = String.(keys(PkgCompat.project(notebook.nbpkg_ctx).dependencies))
@@ -267,12 +272,12 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 			@debug "PlutoPkg: success!" pkg_result
 
 			if pkg_result.restart_recommended
-				@debug "PlutoPkg: Notebook restart recommended"
 				notebook.nbpkg_restart_recommended_msg = "Yes, something changed during regular sync."
+				@debug "PlutoPkg: Notebook restart recommended" notebook.nbpkg_restart_recommended_msg
 			end
 			if pkg_result.restart_required
-				@debug "PlutoPkg: Notebook restart REQUIRED"
 				notebook.nbpkg_restart_required_msg = "Yes, something changed during regular sync."
+				@debug "PlutoPkg: Notebook restart REQUIRED" notebook.nbpkg_restart_required_msg
 			end
 
 			notebook.nbpkg_busy_packages = String[]
@@ -428,12 +433,12 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
 
 		if pkg_result.did_something
 			if pkg_result.restart_recommended
-				@debug "PlutoPkg: Notebook restart recommended"
 				notebook.nbpkg_restart_recommended_msg = "Yes, something changed during regular update_nbpkg."
+				@debug "PlutoPkg: Notebook restart recommended" notebook.nbpkg_restart_recommended_msg
 			end
 			if pkg_result.restart_required
-				@debug "PlutoPkg: Notebook restart REQUIRED"
 				notebook.nbpkg_restart_required_msg = "Yes, something changed during regular update_nbpkg."
+				@debug "PlutoPkg: Notebook restart REQUIRED" notebook.nbpkg_restart_required_msg
 			end
 		else
             isfile(bp) && rm(bp)

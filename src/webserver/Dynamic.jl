@@ -78,10 +78,10 @@ Besides `:update_notebook`, you will find more functions in [`responses`](@ref) 
 
 """
 module Firebasey include("./Firebasey.jl") end
-module AppendonlyMarkers
+module FirebaseyUtils
     # I put Firebasey here manually THANKS JULIA
     import ..Firebasey
-    include("./AppendonlyMarkers.jl")
+    include("./FirebaseyUtils.jl")
 end
 
 # All of the arrays in the notebook_to_js object are 'immutable' (we write code as if they are), so we can enable this optimization:
@@ -131,26 +131,19 @@ function notebook_to_js(notebook::Notebook)
             id => Dict{String,Any}(
                 "cell_id" => cell.cell_id,
                 "depends_on_disabled_cells" => cell.depends_on_disabled_cells,
-                "output" => Dict(                
-                    "body" => cell.output.body,
-                    "mime" => cell.output.mime,
-                    "rootassignee" => cell.output.rootassignee,
-                    "last_run_timestamp" => cell.output.last_run_timestamp,
-                    "persist_js_state" => cell.output.persist_js_state,
-                    "has_pluto_hook_features" => cell.output.has_pluto_hook_features,
-                ),
+                "output" => FirebaseyUtils.ImmutableMarker(cell.output),
                 "published_object_keys" => keys(cell.published_objects),
                 "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,
                 "runtime" => cell.runtime,
-                "logs" => AppendonlyMarkers.AppendonlyMarker(cell.logs),
+                "logs" => FirebaseyUtils.AppendonlyMarker(cell.logs),
             )
         for (id, cell) in notebook.cells_dict),
         "cell_order" => notebook.cell_order,
         "published_objects" => merge!(Dict{String,Any}(), (c.published_objects for c in values(notebook.cells_dict))...),
         "bonds" => Dict{String,Dict{String,Any}}(
-            String(key) => Dict(
+            String(key) => Dict{String,Any}(
                 "value" => bondvalue.value, 
             )
         for (key, bondvalue) in notebook.bonds),
@@ -170,7 +163,6 @@ function notebook_to_js(notebook::Notebook)
         "cell_execution_order" => cell_id.(collect(topological_order(notebook))),
     )
 end
-precompile(notebook_to_js, (Notebook,))
 
 """
 For each connected client, we keep a copy of their current state. This way we know exactly which updates to send when the server-side state changes.

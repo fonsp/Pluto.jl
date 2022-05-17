@@ -201,12 +201,27 @@ let get_scroll_top = ({ cell_id, relative_distance }) => {
     return cell.offsetTop + relative_distance * cell.offsetHeight - window.innerHeight / 2
 }
 
-export const RecordingPlaybackUI = ({ recording_url, audio_src, initializing, apply_notebook_patches, reset_notebook_state }) => {
+/**
+ *
+ * @param {{
+ *  launch_params: import("./Editor.js").LaunchParameters,
+ *  initializing: boolean,
+ *  [key: string]: any,
+ * }} props
+ * @returns
+ */
+export const RecordingPlaybackUI = ({ launch_params, initializing, apply_notebook_patches, reset_notebook_state }) => {
+    const { recording_url, recording_url_integrity, recording_audio_url } = launch_params
+
     let loaded_recording = useMemo(
         () =>
             Promise.resolve().then(async () => {
                 if (recording_url) {
-                    return unpack(new Uint8Array(await (await fetch(recording_url).then(assert_response_ok)).arrayBuffer()))
+                    return unpack(
+                        new Uint8Array(
+                            await (await fetch(new Request(recording_url, { integrity: recording_url_integrity })).then(assert_response_ok)).arrayBuffer()
+                        )
+                    )
                 } else {
                     return null
                 }
@@ -416,7 +431,7 @@ export const RecordingPlaybackUI = ({ recording_url, audio_src, initializing, ap
                             </div>
                         </div>`
                       : null}
-                  ${frame} <${AudioPlayer} audio_element_ref=${audio_element_ref} src=${audio_src} loaded_recording=${loaded_recording} />`
+                  ${frame} <${AudioPlayer} audio_element_ref=${audio_element_ref} src=${recording_audio_url} loaded_recording=${loaded_recording} />`
             : null}
     `
 }

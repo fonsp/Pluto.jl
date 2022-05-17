@@ -2,6 +2,7 @@
 // import Generators_input from "https://unpkg.com/@observablehq/stdlib@3.3.1/src/generators/input.js"
 
 import _ from "../imports/lodash.js"
+import { html } from "../imports/Preact.js"
 import observablehq from "./SetupCellEnvironment.js"
 
 /**
@@ -125,8 +126,12 @@ const set_input_value = (input, new_value) => {
     }
 }
 
-export const set_bound_elements_to_their_value = (node, bond_values) => {
-    for (let bond_node of node.querySelectorAll("bond")) {
+/**
+ * @param {NodeListOf<Element>} bond_nodes
+ * @param {{[name: string]: any}} bond_values
+ */
+export const set_bound_elements_to_their_value = (bond_nodes, bond_values) => {
+    bond_nodes.forEach((bond_node) => {
         let bond_name = bond_node.getAttribute("def")
         if (bond_node.firstElementChild != null && bond_values[bond_name] != null) {
             let val = bond_values[bond_name].value
@@ -136,19 +141,60 @@ export const set_bound_elements_to_their_value = (node, bond_values) => {
                 console.error(`Error while setting input value`, bond_node.firstElementChild, `to value`, val, `: `, error)
             }
         }
-    }
+    })
 }
 
 /**
- * @param {Element} node
+ * @param {NodeListOf<Element>} bond_nodes
+ * @param {Promise<void>} invalidation
+ */
+export const add_bonds_disabled_message_handler = (bond_nodes, invalidation) => {
+    bond_nodes.forEach((bond_node) => {
+        const listener = (e) => {
+            if (e.target.closest(".bonds_disabled.offer_binder")) {
+                window.dispatchEvent(
+                    new CustomEvent("open pluto popup", {
+                        detail: {
+                            type: "info",
+                            source_element: e.target,
+                            body: html`${`You are viewing a static document. `}
+                                <a
+                                    href="#"
+                                    onClick=${(e) => {
+                                        //@ts-ignore
+                                        window.open_edit_or_run_popup()
+                                        e.preventDefault()
+                                    }}
+                                    >Run this notebook</a
+                                >
+                                ${` to enable interactivity.`}`,
+                        },
+                    })
+                )
+            }
+        }
+        bond_node.addEventListener("click", listener)
+        invalidation.then(() => {
+            bond_node.removeEventListener("click", listener)
+        })
+    })
+}
+
+/**
+ * @param {NodeListOf<Element>} bond_nodes
  * @param {(name: string, value: any) => Promise} on_bond_change
  * @param {{[name: string]: any}} known_values Object of variable names that already have a value in the state, which we may not want to send the initial bond value for. When reloading the page, bonds are set to their values from the state, and we don't want to trigger a change event for those.
+ * @param {Promise<void>} invalidation
  */
-export const add_bonds_listener = (node, on_bond_change, known_values) => {
+export const add_bonds_listener = (bond_nodes, on_bond_change, known_values, invalidation) => {
     // the <bond> node will be invalidated when the cell re-evaluates. when this happens, we need to stop processing input events
     let node_is_invalidated = false
 
-    node.querySelectorAll("bond").forEach(async (bond_node) => {
+    invalidation.then(() => {
+        node_is_invalidated = true
+    })
+
+    bond_nodes.forEach(async (bond_node) => {
         const name = bond_node.getAttribute("def")
         const initial_value = get_input_value(bond_node.firstElementChild)
 
@@ -176,10 +222,6 @@ export const add_bonds_listener = (node, on_bond_change, known_values) => {
             await on_bond_change(name, to_send).catch(console.error)
         }
     })
-
-    return function dispose_bond_listener() {
-        node_is_invalidated = true
-    }
 }
 
 /**

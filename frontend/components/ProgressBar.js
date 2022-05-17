@@ -14,7 +14,7 @@ export const useDelayed = (value, delay = 500) => {
     return current
 }
 
-export const ProgressBar = ({ notebook, binder_phase, status }) => {
+export const ProgressBar = ({ notebook, backend_launch_phase, status }) => {
     const [recently_running, set_recently_running] = useState([])
     const [currently_running, set_currently_running] = useState([])
 
@@ -40,7 +40,7 @@ export const ProgressBar = ({ notebook, binder_phase, status }) => {
     let cell_progress = recently_running.length === 0 ? 0 : 1 - Math.max(0, currently_running.length - 0.3) / recently_running.length
 
     let binder_loading = status.loading && status.binder
-    let progress = binder_loading ? binder_phase : cell_progress
+    let progress = binder_loading ? backend_launch_phase : cell_progress
 
     const anything = (binder_loading || recently_running.length !== 0) && progress !== 1
     const anything_for_a_short_while = useDelayed(anything, 500) ?? false
