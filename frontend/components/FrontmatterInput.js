@@ -3,19 +3,20 @@ import { has_ctrl_or_cmd_pressed } from "../common/KeyboardShortcuts.js"
 
 import "https://cdn.jsdelivr.net/gh/fonsp/rebel-tag-input@1.0.4/lib/rebel-tag-input.mjs"
 
+//@ts-ignore
 import dialogPolyfill from "https://cdn.jsdelivr.net/npm/dialog-polyfill@0.5.6/dist/dialog-polyfill.esm.min.js"
 
 /**
  * @param {{
- *  remote_frontmatter: Record<String,any>,
- *  set_remote_frontmatter: (newval: Record<String,any>) => void,
+ *  remote_frontmatter: Record<String,any>?,
+ *  set_remote_frontmatter: (newval: Record<String,any>) => Promise<void>,
  * }} props
  * */
 export const FrontMatterInput = ({ remote_frontmatter, set_remote_frontmatter }) => {
-    const [frontmatter, set_frontmatter] = useState(remote_frontmatter)
+    const [frontmatter, set_frontmatter] = useState(remote_frontmatter ?? {})
 
     useEffect(() => {
-        set_frontmatter(remote_frontmatter)
+        set_frontmatter(remote_frontmatter ?? {})
     }, [remote_frontmatter])
 
     // useEffect(() => {
@@ -37,16 +38,19 @@ export const FrontMatterInput = ({ remote_frontmatter, set_remote_frontmatter })
     const close = () => dialog_ref.current.close()
 
     const cancel = () => {
-        set_frontmatter(remote_frontmatter)
+        set_frontmatter(remote_frontmatter ?? {})
         close()
     }
     const submit = () => {
-        set_remote_frontmatter(frontmatter)
+        set_remote_frontmatter(frontmatter).then(() => alert("Saved!"))
         close()
     }
 
     useLayoutEffect(() => {
-        open()
+        window.addEventListener("open pluto frontmatter", open)
+        return () => {
+            window.removeEventListener("open pluto frontmatter", open)
+        }
     }, [])
 
     useLayoutEffect(() => {

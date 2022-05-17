@@ -1386,12 +1386,11 @@ patch: ${JSON.stringify(
                             : null
                     }
                     <${FrontMatterInput} 
-                        remote_frontmatter=${{
-                            title: "Tower of Hanoi",
-                            tags: ["hello", "world"],
-                            layout: "md.jlhtml",
-                        }} 
-                        set_remote_frontmatter=${console.error} 
+                        remote_frontmatter=${notebook.metadata?.frontmatter} 
+                        set_remote_frontmatter=${(newval) =>
+                            this.actions.update_notebook((nb) => {
+                                nb.metadata["frontmatter"] = newval
+                            })} 
                     />
                     ${launch_params.preamble_html ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />` : null}
                     <${Main}>
