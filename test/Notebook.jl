@@ -487,7 +487,19 @@ end
 
     @testset "Import & export HTML" begin
         nb = basic_notebook()
-        export_html = Pluto.generate_html(nb)
+        nb.metadata["frontmatter"] = Dict{String,Any}(
+            "title" => "My<Title",
+            "tags" => ["aaa", "bbb"],
+            "description" => "ccc",
+        )
+        export_html = replace(Pluto.generate_html(nb), "'" => "\"")
+        
+        @test occursin("<title>My&lt;Title</title>", export_html)
+        @test occursin("""<meta name="description" content="ccc">""", export_html)
+        @test occursin("""<meta property="og:description" content="ccc">""", export_html)
+        @test occursin("""<meta property="og:article:tag" content="aaa">""", export_html)
+        @test occursin("""<meta property="og:article:tag" content="bbb">""", export_html)
+        @test occursin("""<meta property="og:type" content="article">""", export_html)
 
         embedded_jl = Pluto.embedded_notebookfile(export_html)
         jl_path = tempname()
