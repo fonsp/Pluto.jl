@@ -182,7 +182,7 @@ end
         🍭.connected_clients[fakeclient.id] = fakeclient
 
         @testset "Disabling & Metadata" begin
-            nb = notebook_metadata_notebook()
+            nb = cell_metadata_notebook()
             update_run!(🍭, nb, nb.cells)
             cell = first(values(nb.cells_dict))
             @test get_cell_metadata_no_default(cell) == Dict(
