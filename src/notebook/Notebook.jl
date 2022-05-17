@@ -126,12 +126,10 @@ function save_notebook(io, notebook::Notebook)
     println(io, "# ", PLUTO_VERSION_STR)
     
     # Notebook metadata
-    if length(keys(notebook.metadata)) > 0
+    if !isempty(notebook.metadata)
         nb_metadata_toml = strip(sprint(TOML.print, notebook.metadata))
-        if nb_metadata_toml != ""
-            for line in split(nb_metadata_toml, "\n")
-                println(io, _notebook_metadata_prefix, line)
-            end
+        for line in split(nb_metadata_toml, "\n")
+            println(io, _notebook_metadata_prefix, line)
         end
     end
 
@@ -239,7 +237,7 @@ function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::Abstr
     end
 
     nb_metadata_toml_lines = String[]
-    nb_prefix_length = length(_notebook_metadata_prefix)
+    nb_prefix_length = ncodeunits(_notebook_metadata_prefix)
     while !eof(io)
         line = String(readline(io))
         if startswith(line, _notebook_metadata_prefix)
@@ -248,7 +246,7 @@ function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::Abstr
             break
         end
     end
-    notebook_metadata = Dict{String, Any}(DEFAULT_NOTEBOOK_METADATA..., TOML.parse(join(nb_metadata_toml_lines, "\n"))...)
+    notebook_metadata = fastmerge(DEFAULT_NOTEBOOK_METADATA, TOML.parse(join(nb_metadata_toml_lines, "\n")))
 
     collected_cells = Dict{UUID,Cell}()
 
@@ -452,3 +450,5 @@ function sample_notebook(name::String)
     nb.path = tempname() * ".jl"
     nb
 end
+
+fastmerge(a, b) = isempty(a) ? b : merge(a, b)
