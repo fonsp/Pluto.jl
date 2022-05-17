@@ -964,22 +964,6 @@ patch: ${JSON.stringify(
                 false
             )
         }
-        //@ts-ignore
-        window.getNotebookMetadata = (key) => {
-            return this.state.notebook.metadata[key]
-        }
-        //@ts-ignore
-        window.putNotebookMetadata = (key, value) => {
-            this.actions.update_notebook((notebook) => {
-                notebook.metadata[key] = value
-            })
-        }
-        //@ts-ignore
-        window.deleteNotebookMetadata = (key) => {
-            this.actions.update_notebook((notebook) => {
-                delete notebook.metadata[key]
-            })
-        }
         this.submit_file_change = async (new_path, reset_cm_value) => {
             const old_path = this.state.notebook.path
             if (old_path === new_path) {
