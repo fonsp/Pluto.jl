@@ -16,6 +16,7 @@
         "@parcel/config-default": "^2.0.0",
         "mkdirp": "^1.0.4",
         "parcel": "^2.0.0",
+        "parcel-reporter-bundle-manifest": "^1.0.0",
         "parcel-resolver-like-a-browser": "file:../frontend-bundler/parcel-resolver-like-a-browser"
     },
     "devDependencies": {

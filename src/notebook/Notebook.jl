@@ -3,6 +3,10 @@ import .ExpressionExplorer: SymbolsState, FunctionNameSignaturePair, FunctionNam
 import .Configuration
 import .PkgCompat: PkgCompat, PkgContext
 import Pkg
+import TOML
+
+
+const DEFAULT_NOTEBOOK_METADATA = Dict{String, Any}()
 
 mutable struct BondValue
     value::Any
@@ -23,11 +27,12 @@ Base.@kwdef mutable struct Notebook
     "Cells are ordered in a `Notebook`, and this order can be changed by the user. Cells will always have a constant UUID."
     cells_dict::Dict{UUID,Cell}
     cell_order::Array{UUID,1}
-    
+
     path::String
     notebook_id::UUID=uuid1()
     topology::NotebookTopology
     _cached_topological_order::Union{Nothing,TopologicalOrder}=nothing
+    _cached_cell_dependencies_source::Union{Nothing,NotebookTopology}=nothing
 
     # buffer will contain all unfetched updates - must be big enough
     # We can keep 1024 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.
@@ -54,6 +59,8 @@ Base.@kwdef mutable struct Notebook
     last_hot_reload_time::typeof(time())=zero(time())
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
+
+    metadata::Dict{String, Any}=copy(DEFAULT_NOTEBOOK_METADATA)
 end
 
 _collect_cells(cells_dict::Dict{UUID,Cell}, cells_order::Vector{UUID}) = 
@@ -62,17 +69,18 @@ _initial_topology(cells_dict::Dict{UUID,Cell}, cells_order::Vector{UUID}) =
     NotebookTopology(;
         cell_order=ImmutableVector(_collect_cells(cells_dict, cells_order)),
     )
-    
-function Notebook(cells::Vector{Cell}, path::AbstractString, notebook_id::UUID)
+
+function Notebook(cells::Vector{Cell}, @nospecialize(path::AbstractString), notebook_id::UUID)
     cells_dict=Dict(map(cells) do cell
         (cell.cell_id, cell)
     end)
     cell_order=map(x -> x.cell_id, cells)
     Notebook(;
-        cells_dict, cell_order,
+        cells_dict,
+        cell_order,
         topology=_initial_topology(cells_dict, cell_order),
-        path=path,
-        notebook_id=notebook_id,
+        path,
+        notebook_id
     )
 end
 
@@ -88,291 +96,8 @@ function Base.getproperty(notebook::Notebook, property::Symbol)
     end
 end
 
-const _notebook_header = "### A Pluto.jl notebook ###"
-# We use a creative delimiter to avoid accidental use in code
-# so don't get inspired to suddenly use these in your code!
-const _cell_id_delimiter = "# ╔═╡ "
-const _order_delimiter = "# ╠═"
-const _order_delimiter_folded = "# ╟─"
-const _cell_suffix = "\n\n"
-
-const _ptoml_cell_id = UUID(1)
-const _mtoml_cell_id = UUID(2)
 
 emptynotebook(args...) = Notebook([Cell()], args...)
-
-"""
-Save the notebook to `io`, `file` or to `notebook.path`.
-
-In the produced file, cells are not saved in the notebook order. If `notebook.topology` is up-to-date, I will save cells in _topological order_. This guarantees that you can run the notebook file outside of Pluto, with `julia my_notebook.jl`.
-
-Have a look at our [JuliaCon 2020 presentation](https://youtu.be/IAF8DjrQSSk?t=1085) to learn more!
-"""
-function save_notebook(io, notebook::Notebook)
-    println(io, _notebook_header)
-    println(io, "# ", PLUTO_VERSION_STR)
-    # Anything between the version string and the first UUID delimiter will be ignored by the notebook loader.
-    println(io, "")
-    println(io, "using Markdown")
-    println(io, "using InteractiveUtils")
-    # Super Advanced Code Analysis™ to add the @bind macro to the saved file if it's used somewhere.
-    if any(occursin("@bind", c.code) for c in notebook.cells)
-        println(io, "")
-        println(io, "# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).")
-        println(io, PlutoRunner.fake_bind)
-    end
-    println(io)
-
-    cells_ordered = collect(topological_order(notebook))
-    
-    for c in cells_ordered
-        println(io, _cell_id_delimiter, string(c.cell_id))
-        # write the cell code and prevent collisions with the cell delimiter
-        print(io, replace(c.code, _cell_id_delimiter => "# "))
-        print(io, _cell_suffix)
-    end
-
-    
-    using_plutopkg = notebook.nbpkg_ctx !== nothing
-    
-    write_package = if using_plutopkg
-        ptoml_contents = PkgCompat.read_project_file(notebook)
-        mtoml_contents = PkgCompat.read_manifest_file(notebook)
-        
-        !isempty(strip(ptoml_contents))
-    else
-        false
-    end
-
-    if write_package
-        println(io, _cell_id_delimiter, string(_ptoml_cell_id))
-        print(io, "PLUTO_PROJECT_TOML_CONTENTS = \"\"\"\n")
-        write(io, ptoml_contents)
-        print(io, "\"\"\"")
-        print(io, _cell_suffix)
-        
-        println(io, _cell_id_delimiter, string(_mtoml_cell_id))
-        print(io, "PLUTO_MANIFEST_TOML_CONTENTS = \"\"\"\n")
-        write(io, mtoml_contents)
-        print(io, "\"\"\"")
-        print(io, _cell_suffix)
-    end
-    
-
-    println(io, _cell_id_delimiter, "Cell order:")
-    for c in notebook.cells
-        delim = c.code_folded ? _order_delimiter_folded : _order_delimiter
-        println(io, delim, string(c.cell_id))
-    end
-    if write_package
-        println(io, _order_delimiter_folded, string(_ptoml_cell_id))
-        println(io, _order_delimiter_folded, string(_mtoml_cell_id))
-    end
-
-    notebook
-end
-
-function write_buffered(fn::Function, path)
-    file_content = sprint(fn)
-    write(path, file_content)
-end
-    
-function save_notebook(notebook::Notebook, path::String)
-    # @warn "Saving to file!!" exception=(ErrorException(""), backtrace())
-    notebook.last_save_time = time()
-    write_buffered(path) do io
-        save_notebook(io, notebook)
-    end
-end
-
-save_notebook(notebook::Notebook) = save_notebook(notebook, notebook.path)
-
-"Load a notebook without saving it or creating a backup; returns a `Notebook`. REMEMBER TO CHANGE THE NOTEBOOK PATH after loading it to prevent it from autosaving and overwriting the original file."
-function load_notebook_nobackup(io, path)::Notebook
-    firstline = String(readline(io))
-
-    if firstline != _notebook_header
-        error("File is not a Pluto.jl notebook")
-    end
-
-    file_VERSION_STR = readline(io)[3:end]
-    if file_VERSION_STR != PLUTO_VERSION_STR
-        # @info "Loading a notebook saved with Pluto $(file_VERSION_STR). This is Pluto $(PLUTO_VERSION_STR)."
-    end
-
-    collected_cells = Dict{UUID,Cell}()
-
-    # ignore first bits of file
-    readuntil(io, _cell_id_delimiter)
-
-    while !eof(io)
-        cell_id_str = String(readline(io))
-        if cell_id_str == "Cell order:"
-            break
-        else
-            cell_id = UUID(cell_id_str)
-            code_raw = String(readuntil(io, _cell_id_delimiter))
-            # change Windows line endings to Linux
-            code_normalised = replace(code_raw, "\r\n" => "\n")
-            # remove the cell suffix
-            code = code_normalised[1:prevind(code_normalised, end, length(_cell_suffix))]
-
-            read_cell = Cell(cell_id, code)
-            collected_cells[cell_id] = read_cell
-        end
-    end
-
-    cell_order = UUID[]
-    while !eof(io)
-        cell_id_str = String(readline(io))
-        if length(cell_id_str) >= 36 && (startswith(cell_id_str, _order_delimiter_folded) || startswith(cell_id_str, _order_delimiter))
-            cell_id = let
-                UUID(cell_id_str[end - 35:end])
-            end
-            next_cell = get(collected_cells, cell_id, nothing)
-            if next_cell !== nothing
-                next_cell.code_folded = startswith(cell_id_str, _order_delimiter_folded)
-            end
-            push!(cell_order, cell_id)
-        else
-            break
-        end
-    end
-
-    read_package = 
-        _ptoml_cell_id ∈ cell_order && 
-        _mtoml_cell_id ∈ cell_order && 
-        haskey(collected_cells, _ptoml_cell_id) && 
-        haskey(collected_cells, _mtoml_cell_id)
-
-    nbpkg_ctx = if read_package
-        ptoml_code = collected_cells[_ptoml_cell_id].code
-        mtoml_code = collected_cells[_mtoml_cell_id].code
-
-        ptoml_contents = lstrip(split(ptoml_code, "\"\"\"")[2])
-        mtoml_contents = lstrip(split(mtoml_code, "\"\"\"")[2])
-
-        env_dir = mktempdir()
-        write(joinpath(env_dir, "Project.toml"), ptoml_contents)
-        write(joinpath(env_dir, "Manifest.toml"), mtoml_contents)
-
-        try
-            PkgCompat.load_ctx(env_dir)
-        catch e
-            @error "Failed to load notebook files: Project.toml+Manifest.toml parse error. Trying to recover Project.toml without Manifest.toml..." exception=(e,catch_backtrace())
-            try
-                rm(joinpath(env_dir, "Manifest.toml"))
-                PkgCompat.load_ctx(env_dir)
-            catch e
-                @error "Failed to load notebook files: Project.toml parse error." exception=(e,catch_backtrace())
-                PkgCompat.create_empty_ctx()
-            end
-        end
-    else
-        PkgCompat.create_empty_ctx()
-    end
-
-    appeared_order = setdiff!(
-        union!(
-            # don't include cells that only appear in the order, but no code was given
-            intersect!(cell_order, keys(collected_cells)),
-            # add cells that appeared in code, but not in the order.
-            keys(collected_cells)
-        ), 
-        # remove Pkg cells
-        (_ptoml_cell_id, _mtoml_cell_id)
-    )
-    appeared_cells_dict = filter(collected_cells) do (k, v)
-        k ∈ appeared_order
-    end
-
-    Notebook(;
-        cells_dict=appeared_cells_dict, 
-        cell_order=appeared_order,
-        topology=_initial_topology(appeared_cells_dict, appeared_order),
-        path=path, 
-        nbpkg_ctx=nbpkg_ctx, 
-        nbpkg_installed_versions_cache=nbpkg_cache(nbpkg_ctx),
-    )
-end
-
-function load_notebook_nobackup(path::String)::Notebook
-    local loaded
-    open(path, "r") do io
-        loaded = load_notebook_nobackup(io, path)
-    end
-    loaded
-end
-
-"Create a backup of the given file, load the file as a .jl Pluto notebook, save the loaded notebook, compare the two files, and delete the backup of the newly saved file is equal to the backup."
-function load_notebook(path::String; disable_writing_notebook_files::Bool=false)::Notebook
-    backup_path = backup_filename(path)
-    # local backup_num = 1
-    # backup_path = path
-    # while isfile(backup_path)
-    #     backup_path = path * ".backup" * string(backup_num)
-    #     backup_num += 1
-    # end
-    disable_writing_notebook_files || readwrite(path, backup_path)
-
-    loaded = load_notebook_nobackup(path)
-    # Analyze cells so that the initial save is in topological order
-    loaded.topology = updated_topology(loaded.topology, loaded, loaded.cells) |> static_resolve_topology
-    update_dependency_cache!(loaded)
-
-    disable_writing_notebook_files || save_notebook(loaded)
-    loaded.topology = NotebookTopology(; cell_order=ImmutableVector(loaded.cells))
-
-    disable_writing_notebook_files || if only_versions_or_lineorder_differ(path, backup_path)
-        rm(backup_path)
-    else
-        @warn "Old Pluto notebook might not have loaded correctly. Backup saved to: " backup_path
-    end
-
-    loaded
-end
-
-_after_first_cell(lines) = lines[something(findfirst(startswith(_cell_id_delimiter), lines), 1):end]
-
-"""
-Check if two savefiles are identical, up to their version numbers and a possible line shuffle.
-
-If a notebook has not yet had all of its cells analysed, we can't deduce the topological cell order. (but can we ever??) (no)
-"""
-function only_versions_or_lineorder_differ(pathA::AbstractString, pathB::AbstractString)::Bool
-    Set(readlines(pathA) |> _after_first_cell) == Set(readlines(pathB) |> _after_first_cell)
-end
-
-function only_versions_differ(pathA::AbstractString, pathB::AbstractString)::Bool
-    readlines(pathA) |> _after_first_cell == readlines(pathB) |> _after_first_cell
-end
-
-"Set `notebook.path` to the new value, save the notebook, verify file integrity, and if all OK, delete the old savefile. Normalizes the given path to make it absolute. Moving is always hard. 😢"
-function move_notebook!(notebook::Notebook, newpath::String; disable_writing_notebook_files::Bool=false)
-    # Will throw exception and return if anything goes wrong, so at least one file is guaranteed to exist.
-    oldpath_tame = tamepath(notebook.path)
-    newpath_tame = tamepath(newpath)
-
-    if !disable_writing_notebook_files
-        save_notebook(notebook, oldpath_tame)
-        save_notebook(notebook, newpath_tame)
-
-        # @assert that the new file looks alright
-        @assert only_versions_differ(oldpath_tame, newpath_tame)
-
-        notebook.path = newpath_tame
-
-        if oldpath_tame != newpath_tame
-            rm(oldpath_tame)
-        end
-    else
-        notebook.path = newpath_tame
-    end
-    if isdir("$oldpath_tame.assets")
-        mv("$oldpath_tame.assets", "$newpath_tame.assets")
-    end
-    notebook
-end
 
 function sample_notebook(name::String)
     file = project_relative_path("sample", name * ".jl")
@@ -380,3 +105,10 @@ function sample_notebook(name::String)
     nb.path = tempname() * ".jl"
     nb
 end
+
+create_cell_metadata(metadata::Dict{String,<:Any}) = merge(DEFAULT_CELL_METADATA, metadata)
+create_notebook_metadata(metadata::Dict{String,<:Any}) = merge(DEFAULT_NOTEBOOK_METADATA, metadata)
+get_metadata(cell::Cell)::Dict{String,Any} = cell.metadata
+get_metadata(notebook::Notebook)::Dict{String,Any} = notebook.metadata
+get_metadata_no_default(cell::Cell)::Dict{String,Any} = Dict{String,Any}(setdiff(pairs(cell.metadata), pairs(DEFAULT_CELL_METADATA)))
+get_metadata_no_default(notebook::Notebook)::Dict{String,Any} = Dict{String,Any}(setdiff(pairs(notebook.metadata), pairs(DEFAULT_NOTEBOOK_METADATA)))

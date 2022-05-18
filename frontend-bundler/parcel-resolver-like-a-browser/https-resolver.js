@@ -9,6 +9,18 @@ let DONT_INCLUDE = { isExcluded: true }
 
 const fileExists = async (path) => !!(await fs.stat(path).catch((e) => false))
 
+async function keep_trying(fn, max_tries = 10) {
+    try {
+        return await fn()
+    } catch (e) {
+        if (max_tries === 0) {
+            throw e
+        } else {
+            return await keep_trying(fn, max_tries - 1)
+        }
+    }
+}
+
 module.exports = new Resolver({
     async resolve({ specifier, dependency, options }) {
         let my_temp_cave = path.join(options.cacheDir, ".net")
@@ -46,8 +58,9 @@ module.exports = new Resolver({
             if (url.password !== "") throw new Error(`Password in urls not supported (${specifier})`)
 
             // If no file extension is given in the URL, guess one automatically.
-            let found_extension = /\.[a-zA-Z][a-zA-Z0-9].$/.exec(url.pathname)?.[0]
-            let extension_to_add = found_extension ?? (dependency.specifierType === "esm" ? ".mjs" : null)
+            let found_extension = /\.[a-zA-Z][a-zA-Z0-9]+$/.exec(url.pathname)?.[0]
+
+            let extension_to_add = found_extension ?? (dependency.specifierType === "esm" ? ".mjs" : "")
             // If a search is given in the URL, this will search be appended to the path, so we need to repeat the extension.
             let should_add_extension = url.search !== "" || found_extension == null
             let suffix = should_add_extension ? extension_to_add : ""
@@ -59,16 +72,29 @@ module.exports = new Resolver({
             let folder = path.dirname(fullpath)
 
             if (!(await fileExists(fullpath))) {
-                let response = await fetch(specifier)
-                if (response.status !== 200) {
-                    throw new Error(`${specifier} returned ${response.status}`)
-                }
-                // Can't directly use the value from the request, as parcel really wants a string,
-                // and converting binary assets into strings and then passing them doesn't work 🤷‍♀️.
-                let buffer = await response.buffer()
+                await keep_trying(async () => {
+                    let response = await fetch(specifier)
+                    if (response.status !== 200) {
+                        throw new Error(`${specifier} returned ${response.status}`)
+                    }
+                    // Can't directly use the value from the request, as parcel really wants a string,
+                    // and converting binary assets into strings and then passing them doesn't work 🤷‍♀️.
+                    let buffer = await response.buffer()
 
-                await mkdirp(folder)
-                await fs.writeFile(fullpath, buffer)
+                    const response_length = buffer.length
+
+                    if (response_length === 0) {
+                        throw new Error(`${specifier} returned an empty reponse.`)
+                    }
+
+                    await mkdirp(folder)
+                    const write_result = await fs.writeFile(fullpath, buffer)
+
+                    // Verify that the file was written correctly:
+                    if (write_result !== undefined || (await fs.readFile(fullpath)).length !== response_length) {
+                        throw new Error(`Failed to write file ${fullpath}`)
+                    }
+                })
             }
 
             return { filePath: fullpath }

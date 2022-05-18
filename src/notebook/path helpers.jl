@@ -1,5 +1,40 @@
 import Base64: base64decode
 
+# from https://github.com/JuliaLang/julia/pull/36425
+function detectwsl()
+    Sys.islinux() &&
+    isfile("/proc/sys/kernel/osrelease") &&
+    occursin(r"Microsoft|WSL"i, read("/proc/sys/kernel/osrelease", String))
+end
+
+"""
+    maybe_convert_path_to_wsl(path)
+    
+Return the WSL path if the system is using the Windows Subsystem for Linux (WSL) and return `path` otherwise.
+WSL mounts the windows drive to /mnt/ and provides a utility tool to convert windows
+paths into WSL paths. This function will try to use this tool to automagically
+convert paths pasted from windows (with the right click -> copy as path functionality)
+into paths Pluto can understand.
+
+Example:
+$(raw"C:\Users\pankg\OneDrive\Desktop\pluto\bakery_pnl_ready2.jl")
+→
+"/mnt/c/Users/pankg/OneDrive/Desktop/pluto/bakery_pnl_ready2.jl"
+
+but "/mnt/c/Users/pankg/OneDrive/Desktop/pluto/bakery_pnl_ready2.jl" stays the same
+
+"""
+function maybe_convert_path_to_wsl(path)
+    try
+        if detectwsl()
+            return readchomp(`wslpath -u $(path)`)
+        end
+    catch
+        return path
+    end
+    return path
+end
+
 const adjectives = [
 	"groundbreaking"
 	"revolutionary"
@@ -44,6 +79,9 @@ const nouns = [
 	"conjecture"
 ]
 
+"""
+Generate a filename like `"Cute discovery"`. Does not end with `.jl`.
+"""
 function cutename()
     titlecase(rand(adjectives)) * " " * rand(nouns)
 end

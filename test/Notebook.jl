@@ -1,5 +1,6 @@
 using Test
-import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new, readwrite, without_pluto_file_extension
+import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new, readwrite, without_pluto_file_extension, update_run!, get_metadata_no_default, is_disabled, create_cell_metadata
+import Pluto.WorkspaceManager: poll, WorkspaceManager
 import Random
 import Pkg
 import UUIDs: UUID
@@ -27,6 +28,39 @@ function basic_notebook()
         # test included InteractiveUtils import
         Cell("subtypes(Number)"),
     ]) |> init_packages!
+end
+
+function cell_metadata_notebook()
+    Notebook([
+        Cell(
+            code="100*a + b",
+            metadata=Dict(
+                "a metadata tag" => Dict(
+                    "boolean" => true,
+                    "string" => "String",
+                    "number" => 10000,
+                ),
+                "disabled" => true,
+            ) |> create_cell_metadata,
+        ),
+    ]) |> init_packages!
+end
+
+function notebook_metadata_notebook()
+    nb = Notebook([
+        Cell(code="n * (n + 1) / 2"),
+    ]) |> init_packages!
+    nb.metadata = Dict(
+        "boolean" => true,
+        "string" => "String",
+        "number" => 10000,
+        "ozymandias" => Dict(
+            "l1" => "And on the pedestal, these words appear:",
+            "l2" => "My name is Ozymandias, King of Kings;",
+            "l3" => "Look on my Works, ye Mighty, and despair!",
+        ),
+    )
+    nb
 end
 
 function shuffled_notebook()
@@ -67,7 +101,7 @@ end
 
 function init_packages!(nb::Notebook)
     nb.topology = Pluto.updated_topology(nb.topology, nb, nb.cells)
-    Pluto.sync_nbpkg_core(nb)
+    Pluto.sync_nbpkg_core(nb, nb.topology, nb.topology)
     return nb
 end
 
@@ -139,6 +173,123 @@ end
             result = load_notebook_nobackup(nb.path)
             @test_notebook_inputs_equal(nb, result)
         end
+    end
+
+    @testset "Cell Metadata" begin
+        🍭 = ServerSession()
+        🍭.options.evaluation.workspace_use_distributed = false
+        fakeclient = ClientSession(:fake, nothing)
+        🍭.connected_clients[fakeclient.id] = fakeclient
+
+        @testset "Disabling & Metadata" begin
+            nb = cell_metadata_notebook()
+            update_run!(🍭, nb, nb.cells)
+            cell = first(values(nb.cells_dict))
+            @test get_metadata_no_default(cell) == Dict(
+                "a metadata tag" => Dict(
+                    "boolean" => true,
+                    "string" => "String",
+                    "number" => 10000,
+                ),
+                "disabled" => true, # enhanced metadata because cell is disabled
+            )
+
+            save_notebook(nb)
+            result = load_notebook_nobackup(nb.path)
+            @test_notebook_inputs_equal(nb, result)
+            cell = first(nb.cells)
+            @test is_disabled(cell)
+            @test get_metadata_no_default(cell) == Dict(
+                "a metadata tag" => Dict(
+                    "boolean" => true,
+                    "string" => "String",
+                    "number" => 10000,
+                ),
+                "disabled" => true,
+            )
+            
+            WorkspaceManager.unmake_workspace((🍭, nb); verbose=false)
+        end
+    end
+
+    @testset "Notebook Metadata" begin
+        🍭 = ServerSession()
+        🍭.options.evaluation.workspace_use_distributed = false
+        fakeclient = ClientSession(:fake, nothing)
+        🍭.connected_clients[fakeclient.id] = fakeclient
+
+        nb = notebook_metadata_notebook()
+        update_run!(🍭, nb, nb.cells)
+        
+        @test nb.metadata == Dict(
+            "boolean" => true,
+            "string" => "String",
+            "number" => 10000,
+            "ozymandias" => Dict(
+                "l1" => "And on the pedestal, these words appear:",
+                "l2" => "My name is Ozymandias, King of Kings;",
+                "l3" => "Look on my Works, ye Mighty, and despair!",
+            ),
+        )
+
+        save_notebook(nb)
+        nb_loaded = load_notebook_nobackup(nb.path)
+        @test nb.metadata == nb_loaded.metadata
+        
+        WorkspaceManager.unmake_workspace((🍭, nb); verbose=false)
+    end
+    
+    @testset "More Metadata" begin
+        test_file_contents = """
+        ### A Pluto.jl notebook ###
+        # v0.19.4
+        
+        @hello from the future where we might put extra stuff here
+        
+        #> [hello]
+        #> world = [1, 2, 3]
+        #> [frontmatter]
+        #> title = "cool stuff"
+        
+        using Markdown
+        using SecretThings
+        
+        # asdfasdf
+
+        # ╔═╡ a86be878-d616-11ec-05a3-c902726cee5f
+        # ╠═╡ disabled = true
+        # ╠═╡ fonsi = 123
+        #=╠═╡
+        1 + 1
+        ╠═╡ =#
+
+        # ╔═╡ Cell order:
+        # ╠═a86be878-d616-11ec-05a3-c902726cee5f
+        
+        # ok thx byeeeee
+        
+        """
+        
+        test_filename = tempname()
+        write(test_filename, test_file_contents)
+        nb = load_notebook_nobackup(test_filename)
+        @test nb.metadata == Dict(
+            "hello" => Dict(
+                "world" => [1,2,3],
+            ),
+            "frontmatter" => Dict(
+                "title" => "cool stuff",
+            ),
+        )
+        
+        @test get_metadata_no_default(only(nb.cells)) == Dict(
+            "disabled" => true,
+            "fonsi" => 123,
+        )
+        
+        @test Pluto.frontmatter(nb) == Dict(
+            "title" => "cool stuff",
+        )
     end
 
     @testset "I/O overloaded" begin
@@ -336,7 +487,19 @@ end
 
     @testset "Import & export HTML" begin
         nb = basic_notebook()
-        export_html = Pluto.generate_html(nb)
+        nb.metadata["frontmatter"] = Dict{String,Any}(
+            "title" => "My<Title",
+            "tags" => ["aaa", "bbb"],
+            "description" => "ccc",
+        )
+        export_html = replace(Pluto.generate_html(nb), "'" => "\"")
+        
+        @test occursin("<title>My&lt;Title</title>", export_html)
+        @test occursin("""<meta name="description" content="ccc">""", export_html)
+        @test occursin("""<meta property="og:description" content="ccc">""", export_html)
+        @test occursin("""<meta property="og:article:tag" content="aaa">""", export_html)
+        @test occursin("""<meta property="og:article:tag" content="bbb">""", export_html)
+        @test occursin("""<meta property="og:type" content="article">""", export_html)
 
         embedded_jl = Pluto.embedded_notebookfile(export_html)
         jl_path = tempname()

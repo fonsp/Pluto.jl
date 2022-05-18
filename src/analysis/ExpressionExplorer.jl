@@ -152,7 +152,7 @@ function get_assignees(ex::Expr)::FunctionName
         # filter(s->s isa Symbol, ex.args)
     elseif ex.head == :(::)
         # TODO: type is referenced
-        Symbol[ex.args[1]]
+        get_assignees(ex.args[1])
     elseif ex.head == :ref || ex.head == :(.)
         Symbol[]
     else
@@ -281,22 +281,6 @@ function is_joined_funcname(joined::Symbol)
     joined !== :.. #= .. is a valid identifier 😐 =# && occursin('.', String(joined))
 end
 
-assign_to_kw(e::Expr) = e.head == :(=) ? Expr(:kw, e.args...) : e
-assign_to_kw(x::Any) = x
-
-"Turn `A[i] * B[j,K[l+m]]` into `A[0] * B[0,K[0+0]]` to hide loop indices"
-function strip_indexing(x, inside::Bool = false)
-    if Meta.isexpr(x, :ref)
-        Expr(:ref, strip_indexing(x.args[1]), strip_indexing.(x.args[2:end], true)...)
-    elseif Meta.isexpr(x, :call)
-        Expr(x.head, x.args[1], strip_indexing.(x.args[2:end], inside)...)
-    elseif x isa Symbol && inside
-        0
-    else
-        x
-    end
-end
-
 "Module so I don't pollute the whole ExpressionExplorer scope"
 module MacroHasSpecialHeuristicInside
 import ...Pluto
@@ -336,8 +320,8 @@ end
 # Possible leaf: value
 # Like: a = 1
 # 1 is a value (Int64)
-function explore!(value, scopestate::ScopeState)::SymbolsState
-    # includes: LineNumberNode, Int64, String, 
+function explore!(@nospecialize(value), scopestate::ScopeState)::SymbolsState
+    # includes: LineNumberNode, Int64, String, Markdown.LaTeX, DataType and more.
     return SymbolsState()
 end
 
@@ -495,10 +479,16 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
                 union!(symstate, SymbolsState(macrocalls = Set{FunctionName}([expanded_macro])))
             elseif all_iters_eq((:BenchmarkTools, :generate_benchmark_definition), funcname) &&
                 length(ex.args) == 10
-                for child in ex.args[7:9]
-                    (Meta.isexpr(child, :copyast, 1) && child.args[1] isa QuoteNode && child.args[1].value isa Expr) || continue
-                    union!(symstate, explore!(child.args[1].value, scopestate))
-                end
+                block = Expr(:block,
+                     map(ex.args[[8,7,9]]) do child
+                        if (Meta.isexpr(child, :copyast, 1) && child.args[1] isa QuoteNode && child.args[1].value isa Expr)
+                            child.args[1].value
+                        else
+                            nothing
+                        end
+                    end...
+                )
+                union!(symstate, explore_inner_scoped(block, scopestate))
             end
 
             return symstate
@@ -944,31 +934,6 @@ end
 const can_macroexpand_no_bind = Set(Symbol.(["@md_str", "Markdown.@md_str", "@gensym", "Base.@gensym", "@enum", "Base.@enum", "@assert", "Base.@assert", "@cmd"]))
 const can_macroexpand = can_macroexpand_no_bind ∪ Set(Symbol.(["@bind", "PlutoRunner.@bind"]))
 
-macro_kwargs_as_kw(ex::Expr) = Expr(:macrocall, ex.args[1:3]..., assign_to_kw.(ex.args[4:end])...)
-
-function symbolics_mockexpand(s::Any)
-    # goofy implementation of the syntax described in https://symbolics.juliasymbolics.org/dev/manual/variables/
-    if Meta.isexpr(s, :ref, 2)
-        :($(s.args[1]) = $(s.args[2]))
-    elseif Meta.isexpr(s, :call, 2)
-        second = s.args[2] === Symbol("..") ? 123 : s.args[2]
-        :($(symbolics_mockexpand(s.args[1])); $(second) = 123)
-    elseif s isa Symbol
-        :($(s) = 123)
-    else
-        nothing
-    end
-end
-
-is_symbolics_arg(s) = symbolics_mockexpand(s) !== nothing
-
-maybe_untuple(es) =
-    if length(es) == 1 && Meta.isexpr(first(es), :tuple)
-        first(es).args
-    else
-        es
-    end
-
 """
 If the macro is **known to Pluto**, expand or 'mock expand' it, if not, return the expression. Macros from external packages are not expanded, this is done later in the pipeline. See https://github.com/fonsp/Pluto.jl/pull/1032
 """
@@ -977,13 +942,8 @@ function maybe_macroexpand(ex::Expr; recursive::Bool=false, expand_bind::Bool=tr
         funcname = split_funcname(ex.args[1])
         funcname_joined = join_funcname_parts(funcname)
 
-        args = ex.args[3:end]
-
         if funcname_joined ∈ (expand_bind ? can_macroexpand : can_macroexpand_no_bind)
             macroexpand(PlutoRunner, ex; recursive=false)::Expr
-        elseif length(args) ≥ 2 && ex.args[1] != GlobalRef(Core, Symbol("@doc"))
-            # for macros like @test a ≈ b atol=1e-6, read assignment in 2nd & later arg as keywords
-            macro_kwargs_as_kw(ex)
         else
             ex
         end
@@ -991,7 +951,7 @@ function maybe_macroexpand(ex::Expr; recursive::Bool=false, expand_bind::Bool=tr
         ex
     end
 
-    if recursive && (result isa Expr)
+    if recursive
         # Not using broadcasting because that is expensive compilation-wise for `result.args::Any`.
         expanded = Any[]
         for arg in result.args

@@ -42,7 +42,7 @@ const useCellApi = (node_ref, published_object_keys, pluto_actions) => {
  * }} props
  * */
 export const Cell = ({
-    cell_input: { cell_id, code, code_folded, running_disabled },
+    cell_input: { cell_id, code, code_folded, metadata },
     cell_result: { queued, running, runtime, errored, output, logs, published_object_keys, depends_on_disabled_cells },
     cell_dependencies,
     cell_input_local,
@@ -55,6 +55,7 @@ export const Cell = ({
     nbpkg,
     global_definition_locations,
 }) => {
+    const { show_logs, disabled: running_disabled } = metadata
     let pluto_actions = useContext(PlutoContext)
     const on_update_doc_query = pluto_actions.set_doc_query
     const on_focus_neighbor = pluto_actions.focus_on_neighbor
@@ -63,15 +64,12 @@ export const Cell = ({
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
     const [cm_highlighted_line, set_cm_highlighted_line] = useState(null)
-    const [show_logs, set_show_logs] = useState(true)
 
     const any_logs = useMemo(() => !_.isEmpty(logs), [logs])
-
-    useEffect(() => {
-        if (!any_logs) {
-            set_show_logs(true)
-        }
-    }, [any_logs])
+    const set_show_logs = (show_logs) =>
+        pluto_actions.update_notebook((notebook) => {
+            notebook.cell_inputs[cell_id].metadata.show_logs = show_logs
+        })
 
     useEffect(() => {
         const focusListener = (e) => {
@@ -212,7 +210,7 @@ export const Cell = ({
                 nbpkg=${nbpkg}
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
-                running_disabled=${running_disabled}
+                metadata=${metadata}
                 any_logs=${any_logs}
                 show_logs=${show_logs}
                 set_show_logs=${set_show_logs}
