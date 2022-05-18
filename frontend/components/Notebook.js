@@ -112,7 +112,7 @@ const render_cell_outputs_minimum = 20
  *  selected_cells: Array<string>,
  *  is_initializing: boolean,
  *  is_process_ready: boolean,
- *  disable_input: any,
+ *  disable_input: boolean,
  * }} props
  * */
 export const Notebook = ({ notebook, cell_inputs_local, last_created_cell, selected_cells, is_initializing, is_process_ready, disable_input }) => {
