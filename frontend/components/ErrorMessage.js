@@ -139,8 +139,12 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                 const notebook = pluto_actions.get_notebook()
                 const erred_upstreams = get_erred_upstreams(notebook, cell_id)
 
+                // Verify that the UndefVarError is indeed about a variable from an upstream cell.
+                const match = x.match(/UndefVarError: (.*) not defined/)
+                let sym = match[1]
+                const undefvar_is_from_upstream = Object.values(notebook.cell_dependencies).some((map) => Object.keys(map.downstream_cells_map).includes(sym))
 
-                if (!erred_upstreams) {
+                if (!erred_upstreams || !undefvar_is_from_upstream) {
                     return html`<p>${x}</p>`
                 }
 
