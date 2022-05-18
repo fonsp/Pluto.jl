@@ -18,6 +18,8 @@ function update_variables_in_notebook!(session:: ServerSession, notebook:: Noteb
 	end
 end
 
+const _empty_bond_value_pairs = zip(Symbol[],Any[])
+
 """
 Run given cells and all the cells that depend on them, based on the topology information before and after the changes.
 """
@@ -29,7 +31,7 @@ function run_reactive!(
     roots::Vector{Cell};
     deletion_hook::Function = WorkspaceManager.move_vars,
     user_requested_run::Bool = true,
-	externally_updated_variables::Dict{Symbol, Any} = Dict{Symbol, Any}()
+	bond_value_pairs=_empty_bond_value_pairs,
 )::TopologicalOrder
     withtoken(notebook.executetoken) do
         run_reactive_core!(
@@ -40,7 +42,7 @@ function run_reactive!(
             roots;
             deletion_hook,
             user_requested_run,
-			externally_updated_variables
+			bond_value_pairs
         )
     end
 end
@@ -60,7 +62,7 @@ function run_reactive_core!(
     deletion_hook::Function = WorkspaceManager.move_vars,
     user_requested_run::Bool = true,
     already_run::Vector{Cell} = Cell[],
-	externally_updated_variables::Dict{Symbol, Any} = Dict{Symbol, Any}()
+	bond_value_pairs = _empty_bond_value_pairs,
 )::TopologicalOrder
     @assert !isready(notebook.executetoken) "run_reactive_core!() was called with a free notebook.executetoken."
     @assert will_run_code(notebook)
@@ -181,7 +183,7 @@ function run_reactive_core!(
 			bound_variables_defined_by_this_cell = find_bound_variables(notebook.topology.codes[cell].parsedcode)
 
 			# set the redefined bound variables to their original value from the request
-			update_variables_in_notebook!(session, notebook, filter(kv -> kv.first ∈ bound_variables_defined_by_this_cell, externally_updated_variables))
+			update_variables_in_notebook!(session, notebook, filter(kv -> kv.first ∈ bound_variables_defined_by_this_cell, bond_value_pairs))
         end
 
         cell.running = false
