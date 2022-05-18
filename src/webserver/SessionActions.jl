@@ -1,6 +1,6 @@
 module SessionActions
 
-import ..Pluto: ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, cutename, readwrite, update_save_run!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, try_event_call, NewNotebookEvent, OpenNotebookEvent, ShutdownNotebookEvent, @asynclog, ProcessStatus
+import ..Pluto: ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, cutename, readwrite, update_save_run!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, try_event_call, NewNotebookEvent, OpenNotebookEvent, ShutdownNotebookEvent, @asynclog, ProcessStatus, maybe_convert_path_to_wsl
 using FileWatching
 import ..Pluto.DownloadCool: download_cool
 import HTTP
@@ -31,7 +31,7 @@ function open_url(session::ServerSession, url::AbstractString; kwargs...)
         ); suffix=".jl")
     
     path = download_cool(url, random_notebook.path)
-    result = try_event_call(session, NewNotebookEvent(random_notebook))
+    result = try_event_call(session, NewNotebookEvent())
     nb = if result isa UUID
         open(session, path; notebook_id=result, kwargs...)
     else
@@ -42,6 +42,7 @@ end
 
 "Open the notebook at `path` into `session::ServerSession` and run it. Returns the `Notebook`."
 function open(session::ServerSession, path::AbstractString; run_async=true, compiler_options=nothing, as_sample=false, notebook_id::UUID=uuid1())
+    path = maybe_convert_path_to_wsl(path)
     if as_sample
         new_filename = "sample " * without_pluto_file_extension(basename(path))
         new_path = numbered_until_new(joinpath(new_notebooks_directory(), new_filename); suffix=".jl")
@@ -75,7 +76,6 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
     try_event_call(session, OpenNotebookEvent(nb))
     nb
 end
-precompile(open, (ServerSession, String))
 
 function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
     session.notebooks[nb.notebook_id] = nb
@@ -161,7 +161,6 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
     
     nb
 end
-precompile(add, (ServerSession, Notebook))
 
 """
 Generate a non-existing new notebook filename, and write `contents` to that file. Return the generated filename.
@@ -221,7 +220,7 @@ function new(session::ServerSession; run_async=true, notebook_id::UUID=uuid1())
         end
     end
     # Run NewNotebookEvent handler before assigning ID
-    isid = try_event_call(session, NewNotebookEvent(nb))
+    isid = try_event_call(session, NewNotebookEvent())
     nb.notebook_id = isnothing(isid) ? notebook_id : isid
 
     update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
@@ -230,7 +229,6 @@ function new(session::ServerSession; run_async=true, notebook_id::UUID=uuid1())
     try_event_call(session, OpenNotebookEvent(nb))
     nb
 end
-precompile(new, (ServerSession,))
 
 "Shut down `notebook` inside `session`. If `keep_in_session` is `false` (default), you will not be allowed to run a notebook with the same notebook_id again."
 function shutdown(session::ServerSession, notebook::Notebook; keep_in_session::Bool=false, async::Bool=false, verbose::Bool=true)
@@ -252,6 +250,5 @@ function shutdown(session::ServerSession, notebook::Notebook; keep_in_session::B
     WorkspaceManager.unmake_workspace((session, notebook); async, verbose, allow_restart=keep_in_session)
     try_event_call(session, ShutdownNotebookEvent(notebook))
 end
-precompile(shutdown, (ServerSession, Notebook))
 
 end

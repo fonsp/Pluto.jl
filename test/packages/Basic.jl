@@ -185,7 +185,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         end
 
         ## remove `import Dates`
-        setcode(notebook.cells[9], "")
+        setcode!(notebook.cells[9], "")
         update_save_run!(🍭, notebook, notebook.cells[9])
 
         # removing a stdlib does not require a restart
@@ -198,7 +198,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
 
         ## remove `import PlutoPkgTestD`
-        setcode(notebook.cells[7], "")
+        setcode!(notebook.cells[7], "")
         update_save_run!(🍭, notebook, notebook.cells[7])
 
         @test noerror(notebook.cells[7])
@@ -264,9 +264,9 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         # not necessary since there are no packages:
         # @test has_embedded_pkgfiles(notebook)
 
-        setcode(notebook.cells[1], "import Pkg")
+        setcode!(notebook.cells[1], "import Pkg")
         update_save_run!(🍭, notebook, notebook.cells[1])
-        setcode(notebook.cells[2], "Pkg.activate(mktempdir())")
+        setcode!(notebook.cells[2], "Pkg.activate(mktempdir())")
         update_save_run!(🍭, notebook, notebook.cells[2])
 
         @test noerror(notebook.cells[1])
@@ -276,11 +276,11 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test notebook.nbpkg_restart_required_msg === nothing
         @test !has_embedded_pkgfiles(notebook)
 
-        setcode(notebook.cells[3], "Pkg.add(\"JSON\")")
+        setcode!(notebook.cells[3], "Pkg.add(\"JSON\")")
         update_save_run!(🍭, notebook, notebook.cells[3])
-        setcode(notebook.cells[4], "using JSON")
+        setcode!(notebook.cells[4], "using JSON")
         update_save_run!(🍭, notebook, notebook.cells[4])
-        setcode(notebook.cells[5], "using Dates")
+        setcode!(notebook.cells[5], "using Dates")
         update_save_run!(🍭, notebook, notebook.cells[5])
 
         @test noerror(notebook.cells[3])
@@ -289,8 +289,8 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
         @test !has_embedded_pkgfiles(notebook)
 
-        setcode(notebook.cells[2], "2")
-        setcode(notebook.cells[3], "3")
+        setcode!(notebook.cells[2], "2")
+        setcode!(notebook.cells[3], "3")
         update_save_run!(🍭, notebook, notebook.cells[2:3])
         
         @test notebook.nbpkg_ctx !== nothing
@@ -550,12 +550,12 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
             @test notebook.nbpkg_restart_recommended_msg === nothing
             @test notebook.nbpkg_restart_required_msg === nothing
 
-            setcode(notebook.cells[2], "1 + 1")
+            setcode!(notebook.cells[2], "1 + 1")
             update_save_run!(🍭, notebook, notebook.cells[2])
             @test notebook.cells[2].output.body == "2"
 
             
-            setcode(notebook.cells[2], """
+            setcode!(notebook.cells[2], """
             begin
                 import PlutoPkgTestD
                 PlutoPkgTestD.MY_VERSION |> Text
@@ -630,11 +630,11 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         
         for _ in 1:5
             sleep(lag / 2)
-            setcode(notebook.cells[9], "import PlutoPkgTestE")
+            setcode!(notebook.cells[9], "import PlutoPkgTestE")
             update_save_run!(🍭, notebook, notebook.cells[[9]]; run_async=true) |> remember # import E
             
             sleep(lag / 2)
-            setcode(notebook.cells[9], "")
+            setcode!(notebook.cells[9], "")
             update_save_run!(🍭, notebook, notebook.cells[[9]]; run_async=true) |> remember # don't import E
         end
         

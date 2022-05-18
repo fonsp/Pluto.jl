@@ -67,10 +67,21 @@ export const ExportBanner = ({ onClose, notebookfile_url, notebookexport_url, st
                           `
                         : null
                 }
-
-                <button title="Close" class="toggle_export" onClick=${() => onClose()}>
-                    <span></span>
-                </button>
+                <div class="export_small_btns">
+                    <button
+                        title="Edit frontmatter"
+                        class="toggle_frontmatter_edit"
+                        onClick=${() => {
+                            onClose()
+                            window.dispatchEvent(new CustomEvent("open pluto frontmatter"))
+                        }}
+                    >
+                        <span></span>
+                    </button>
+                    <button title="Close" class="toggle_export" onClick=${() => onClose()}>
+                        <span></span>
+                    </button>
+                </div>
             </div>
         </aside>
     `

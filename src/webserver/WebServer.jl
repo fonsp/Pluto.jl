@@ -6,13 +6,6 @@ import .PkgCompat
 
 include("./WebSocketFix.jl")
 
-# from https://github.com/JuliaLang/julia/pull/36425
-function detectwsl()
-    Sys.islinux() &&
-    isfile("/proc/sys/kernel/osrelease") &&
-    occursin(r"Microsoft|WSL"i, read("/proc/sys/kernel/osrelease", String))
-end
-
 function open_in_default_browser(url::AbstractString)::Bool
     try
         if Sys.isapple()
@@ -66,7 +59,6 @@ function run(; kwargs...)
     options = Configuration.from_flat_kwargs(; kwargs...)
     run(options)
 end
-precompile(run, ())
 
 function run(options::Configuration.Options)
     session = ServerSession(; options)
@@ -129,7 +121,7 @@ function port_serversocket(hostIP::Sockets.IPAddr, favourite_port)
         try
             serversocket = Sockets.listen(hostIP, port)
         catch e
-            error("Port with number $port is already in use. Use Pluto.run() to automatically select an available port.")
+            error("Cannot listen on port $port. It may already be in use, or you may not have sufficient permissions. Use Pluto.run() to automatically select an available port.")
         end
     end
     return port, serversocket
@@ -292,8 +284,9 @@ function run(session::ServerSession, pluto_router)
 
     # Start this in the background, so that the first notebook launch (which will trigger registry update) will be faster
     @asynclog withtoken(pkg_token) do
+        will_update = !PkgCompat.check_registry_age()
         PkgCompat.update_registries(; force=false)
-        println("    Updating registry done ✓")
+        will_update && println("    Updating registry done ✓")
     end
 
     shutdown_server[] = () -> @sync begin
@@ -330,7 +323,12 @@ get_favorite_notebook(notebook:: String) = notebook
 get_favorite_notebook(notebook:: AbstractVector) = first(notebook)
 
 function pretty_address(session::ServerSession, hostIP, port)
-    root = if session.options.server.root_url === nothing
+    root = if session.options.server.root_url !== nothing
+        @assert endswith(session.options.server.root_url, "/")
+        session.options.server.root_url
+    elseif haskey(ENV, "JH_APP_URL")
+        "$(ENV["JH_APP_URL"])proxy/$(Int(port))/"
+    else
         host_str = string(hostIP)
         host_pretty = if isa(hostIP, Sockets.IPv6)
             if host_str == "::1"
@@ -345,9 +343,6 @@ function pretty_address(session::ServerSession, hostIP, port)
         end
         port_pretty = Int(port)
         "http://$(host_pretty):$(port_pretty)/"
-    else
-        @assert endswith(session.options.server.root_url, "/")
-        session.options.server.root_url
     end
 
     url_params = Dict{String,String}()
@@ -363,7 +358,7 @@ function pretty_address(session::ServerSession, hostIP, port)
     else
         root
     end
-    merge(HTTP.URIs.URI(new_root), query=url_params) |> string
+    string(HTTP.URI(HTTP.URI(new_root); query=url_params))
 end
 
 "All messages sent over the WebSocket get decoded+deserialized and end up here."

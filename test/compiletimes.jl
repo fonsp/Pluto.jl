@@ -1,12 +1,26 @@
-# Collect Time To Finish Task (TTFT)
-
-# Using `@eval` to avoid missing compile time, see the `@time` docstring for more info.
-@timeit TOUT "Pluto.Cell" cell = @eval Pluto.Cell("1 + 1")
-
-@timeit TOUT "Pluto.Notebook" nb = @eval Pluto.Notebook([cell])
+# Collect Time To First X (TTFX)
+#
+# A few notes about these compile times benchmarks.
+#   1. These benchmarks are meant to show where the biggest problems are and to be able to trace back where some regression was introduced.
+#   2. The benchmarks use `@eval` to avoid missing compile time, see the `@time` docstring for more info.
+#   3. Only add benchmarks for methods which take more than 1 seconds on the first run to reduce noise.
+#   4. Note that some benchmarks depend on disk and network speeds too, so focus on the number of allocations since those are more robust.
 
 module Foo end
-@timeit TOUT "PlutoRunner.run_expression" @eval Pluto.PlutoRunner.run_expression(Foo, :(1 + 1), Pluto.uuid1(), nothing);
+
+using UUIDs
+
+# setup required for run_exporession:
+const test_notebook_id = uuid1()
+let
+    channel = Channel{Any}(10)
+    Pluto.PlutoRunner.setup_plutologger(
+        test_notebook_id, 
+        channel; 
+        make_global=false
+    )
+end
+@timeit TOUT "PlutoRunner.run_expression" @eval Pluto.PlutoRunner.run_expression(Foo, Expr(:toplevel, :(1 + 1)), test_notebook_id, uuid1(), nothing);
 
 function wait_for_ready(notebook::Pluto.Notebook)
     while notebook.process_status != Pluto.ProcessStatus.ready
@@ -20,15 +34,11 @@ end
 
 path = joinpath(pkgdir(Pluto), "sample", "Basic.jl")
 
-@timeit TOUT "SessionActions.open" nb = @eval Pluto.SessionActions.open(🍭, path; run_async=true)
+@timeit TOUT "SessionActions.open" nb = @eval Pluto.SessionActions.open(🍭, path; run_async=false)
 
 wait_for_ready(nb)
 
-@timeit TOUT "SessionActions.shutdown" @eval Pluto.SessionActions.shutdown(🍭, nb; async=true)
-
-# According to SnoopCompile, this is a big part of the time for `Pluto.run()`.
-# However, it's very tricky to measure this via the `Pluto.run` below.
-@timeit TOUT "Configuration.from_flat_kwargs" @eval Pluto.Configuration.from_flat_kwargs()
+Pluto.SessionActions.shutdown(🍭, nb; async=false)
 
 # Compile HTTP get.
 HTTP.get("http://github.com")
