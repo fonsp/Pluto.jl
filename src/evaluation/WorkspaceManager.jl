@@ -159,20 +159,19 @@ function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.R
 
             # We always show the log at the currently running cell, which is given by
             running_cell_id = next_log["cell_id"]::UUID
-            running_cell = notebook.cells_dict[running_cell_id]
 
             # Some logs originate from outside of the running code, through function calls. Some code here to deal with that:
             begin
                 source_cell_id = if match !== nothing
                     # the log originated from within the notebook
                     
-                    UUID(fn[findfirst("#==#", fn)[end]+1:end])
+                    UUID(fn[match[end]+1:end])
                 else
                     # the log originated from a function call defined outside of the notebook
                     
                     # we will show the log at the currently running cell, at "line -1", i.e. without line info.
                     next_log["line"] = -1
-                    UUID(next_log["cell_id"])
+                    running_cell_id
                 end
                 
                 if running_cell_id != source_cell_id
@@ -181,10 +180,21 @@ function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.R
                     next_log["line"] = -1
                 end
             end
+            
+            source_cell = get(notebook.cells_dict, source_cell_id, nothing)
+            running_cell = get(notebook.cells_dict, running_cell_id, nothing)
+            
+            display_cell = if running_cell === nothing || (source_cell !== nothing && source_cell.output.has_pluto_hook_features)
+                source_cell
+            else
+                running_cell
+            end
+            
+            @assert !isnothing(display_cell)
 
             maybe_max_log = findfirst(((key, _),) -> key == "maxlog", next_log["kwargs"])
             if maybe_max_log !== nothing
-                n_logs = count(log -> log["id"] == next_log["id"], running_cell.logs)
+                n_logs = count(log -> log["id"] == next_log["id"], display_cell.logs)
                 try
                     max_log = parse(Int, next_log["kwargs"][maybe_max_log][2] |> first)
 
@@ -200,7 +210,7 @@ function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.R
                 end
             end
 
-            push!(running_cell.logs, next_log)
+            push!(display_cell.logs, next_log)
             Pluto.@asynclog update_throttled()
         catch e
             if !isopen(log_channel)
