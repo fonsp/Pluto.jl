@@ -1052,6 +1052,10 @@ pluto-output > assignee:empty {
     display: none;
 }
 
+.errored pluto-output > assignee {
+    display: none;
+}
+
 pluto-output > div {
     flex-shrink: 0;
     overflow-y: hidden;

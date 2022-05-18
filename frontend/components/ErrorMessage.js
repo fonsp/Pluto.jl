@@ -1,5 +1,5 @@
 import { PlutoContext } from "../common/PlutoContext.js"
-import { html, useContext } from "../imports/Preact.js"
+import { html, useContext, useState } from "../imports/Preact.js"
 
 const StackFrameFilename = ({ frame, cell_id }) => {
     const sep_index = frame.file.indexOf("#==#")
@@ -134,6 +134,35 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                 }),
         },
         {
+            pattern: /^UndefVarError: (.*) not defined\.?$/,
+            display: (/** @type{string} */ x) => {
+                const notebook = pluto_actions.get_notebook()
+                const erred_upstreams = get_erred_upstreams(notebook, cell_id)
+
+                // Verify that the UndefVarError is indeed about a variable from an upstream cell.
+                const match = x.match(/UndefVarError: (.*) not defined/)
+                let sym = match[1]
+                const undefvar_is_from_upstream = Object.values(notebook.cell_dependencies).some((map) => Object.keys(map.downstream_cells_map).includes(sym))
+
+                if (!erred_upstreams || !undefvar_is_from_upstream) {
+                    return html`<p>${x}</p>`
+                }
+
+                const symbol_links = Object.keys(erred_upstreams).map((key) => {
+                    const onclick = (ev) => {
+                        ev.preventDefault()
+                        const where = document.querySelector(`pluto-cell[id='${erred_upstreams[key]}']`)
+                        where.scrollIntoView()
+                    }
+                    return html`<a href="#" onclick=${onclick}>${key}</a>`
+                })
+
+                // const plural = symbol_links.length > 1
+                return html`<p><em>Another cell defining ${insert_commas_and_and(symbol_links)} contains errors.</em></p>`
+            },
+            show_stacktrace: () => get_erred_upstreams(pluto_actions.get_notebook(), cell_id) == null,
+        },
+        {
             pattern: /.?/,
             display: (/** @type{string} */ x) => x.split("\n").map((line) => html`<p>${line}</p>`),
         },
@@ -143,7 +172,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
 
     return html`<jlerror>
         <header>${matched_rewriter.display(msg)}</header>
-        ${stacktrace.length == 0
+        ${stacktrace.length == 0 || !(matched_rewriter.show_stacktrace?.() ?? true)
             ? null
             : html`<section>
                   <ol>
@@ -159,4 +188,21 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                   </ol>
               </section>`}
     </jlerror>`
+}
+
+const get_erred_upstreams = (/** @type {import("./Editor.js").NotebookData} */ notebook, /** @type {string} */ cell_id) => {
+    let erred_upstreams = null
+    notebook.cell_results[cell_id].errored &&
+        Object.keys(notebook.cell_dependencies[cell_id]?.upstream_cells_map).forEach((key) => {
+            notebook.cell_dependencies[cell_id]?.upstream_cells_map[key].forEach((upstream_cell_id) => {
+                let upstream_cells = get_erred_upstreams(notebook, upstream_cell_id)
+                erred_upstreams = { ...erred_upstreams, ...upstream_cells }
+                // if upstream got no errors and current cell is errored
+                // then current cell is responsible for errors
+                if (!upstream_cells && notebook.cell_results[upstream_cell_id].errored) {
+                    erred_upstreams[key] = upstream_cell_id
+                }
+            })
+        })
+    return erred_upstreams == null || Object.keys(erred_upstreams).length === 0 ? null : erred_upstreams
 }
