@@ -1120,27 +1120,31 @@ pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Any) = false
 # in the next functions you see a `context` argument
 # this is really only used for the circular reference tracking
 
-function tree_data_array_elements(@nospecialize(x::AbstractVector{<:Any}), indices::AbstractVector{I}, context::IOContext)::Vector{Tuple{I,Any}} where {I<:Integer}
-    Tuple{I,Any}[
+const Context = IOContext{IOBuffer}
+
+function tree_data_array_elements(@nospecialize(x::AbstractVector{<:Any}), indices::AbstractVector{I}, context::Context) where {I<:Integer}
+    out = Tuple{I,Tuple}[]
+    for i in indices
         if isassigned(x, i)
-            i, format_output_default(x[i], context)
+            push!(out, (i, format_output_default(x[i], context)))
         else
-            i, format_output_default(Text(Base.undef_ref_str), context)
+            push!(out, (i, format_output_default(Text(Base.undef_ref_str), context)))
         end
-        for i in indices
-    ] |> collect
+    end
+    return out
+end
+precompile(tree_data_array_elements, (Vector{Any}, Vector{Int}, Context))
+
+function array_prefix(@nospecialize(x::Vector{<:Any}))
+    string(eltype(x))::String
 end
 
-function array_prefix(@nospecialize(x::Array{<:Any,1}))::String
-    string(eltype(x))
-end
-
-function array_prefix(@nospecialize(x))::String
+function array_prefix(@nospecialize(x))
     original = sprint(Base.showarg, x, false)
-    lstrip(original, ':') * ": "
+    string(lstrip(original, ':'), ": ")::String
 end
 
-function get_my_display_limit(@nospecialize(x), dim::Integer, depth::Integer, context::IOContext, a::Integer, b::Integer)::Int # needs to be system-dependent Int because it is used as array index
+function get_my_display_limit(@nospecialize(x), dim::Integer, depth::Integer, context::Context, a::Integer, b::Integer)::Int # needs to be system-dependent Int because it is used as array index
     let
         if depth < 3
             a ÷ (1 + 2 * depth)
@@ -1157,7 +1161,7 @@ function get_my_display_limit(@nospecialize(x), dim::Integer, depth::Integer, co
     end
 end
 
-function tree_data(@nospecialize(x::AbstractSet{<:Any}), context::IOContext)
+function tree_data(@nospecialize(x::AbstractSet{<:Any}), context::Context)
     if Base.show_circular(context, x)
         Dict{Symbol,Any}(
             :objectid => string(objectid(x), base=16),
@@ -1192,7 +1196,7 @@ function tree_data(@nospecialize(x::AbstractSet{<:Any}), context::IOContext)
     end
 end
 
-function tree_data(@nospecialize(x::AbstractVector{<:Any}), context::IOContext)
+function tree_data(@nospecialize(x::AbstractVector{<:Any}), context::Context)
     if Base.show_circular(context, x)
         Dict{Symbol,Any}(
             :objectid => string(objectid(x), base=16)::String,
@@ -1229,7 +1233,7 @@ function tree_data(@nospecialize(x::AbstractVector{<:Any}), context::IOContext)
     end
 end
 
-function tree_data(@nospecialize(x::Tuple), context::IOContext)
+function tree_data(@nospecialize(x::Tuple), context::Context)
     depth = get(context, :tree_viewer_depth, 0)
     recur_io = IOContext(context, Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
 
@@ -1245,7 +1249,7 @@ function tree_data(@nospecialize(x::Tuple), context::IOContext)
     )
 end
 
-function tree_data(@nospecialize(x::AbstractDict{<:Any,<:Any}), context::IOContext)
+function tree_data(@nospecialize(x::AbstractDict{<:Any,<:Any}), context::Context)
     if Base.show_circular(context, x)
         Dict{Symbol,Any}(
             :objectid => string(objectid(x), base=16),
@@ -1280,14 +1284,14 @@ function tree_data(@nospecialize(x::AbstractDict{<:Any,<:Any}), context::IOConte
     end
 end
 
-function tree_data_nt_row(@nospecialize(pair::Tuple), context::IOContext)
+function tree_data_nt_row(@nospecialize(pair::Tuple), context::Context)
     # this is an entry of a NamedTuple, the first element of the Tuple is a Symbol, which we want to print as `x` instead of `:x`
     k, element = pair
     string(k), format_output_default(element, context)
 end
 
 
-function tree_data(@nospecialize(x::NamedTuple), context::IOContext)
+function tree_data(@nospecialize(x::NamedTuple), context::Context)
     depth = get(context, :tree_viewer_depth, 0)
     recur_io = IOContext(context, Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
 
@@ -1304,7 +1308,7 @@ function tree_data(@nospecialize(x::NamedTuple), context::IOContext)
     )
 end
 
-function tree_data(@nospecialize(x::Pair), context::IOContext)
+function tree_data(@nospecialize(x::Pair), context::Context)
     k, v = x
     Dict{Symbol,Any}(
         :objectid => string(objectid(x), base=16),
@@ -1314,7 +1318,7 @@ function tree_data(@nospecialize(x::Pair), context::IOContext)
 end
 
 # Based on Julia source code but without writing to IO
-function tree_data(@nospecialize(x::Any), context::IOContext)
+function tree_data(@nospecialize(x::Any), context::Context)
     if Base.show_circular(context, x)
         Dict{Symbol,Any}(
             :objectid => string(objectid(x), base=16),
@@ -1423,7 +1427,7 @@ const integrations = Integration[
                 end
             end
 
-            function table_data(x::Any, io::IOContext)
+            function table_data(x::Any, io::Context)
                 rows = Tables.rows(x)
 
                 my_row_limit = get_my_display_limit(x, 1, 0, io, table_row_display_limit, table_row_display_limit_increase)
@@ -2044,7 +2048,7 @@ Base.@kwdef struct DivElement
     class::Union{String,Nothing}=nothing
 end
 
-tree_data(@nospecialize(e::DivElement), context::IOContext) = Dict{Symbol, Any}(
+tree_data(@nospecialize(e::DivElement), context::Context) = Dict{Symbol, Any}(
     :style => e.style, 
     :classname => e.class, 
     :children => Any[
