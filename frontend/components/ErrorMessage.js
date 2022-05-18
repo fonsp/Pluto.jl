@@ -141,9 +141,9 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
 
                 const get_erred_upstreams = (c_id) => {
                     let erred_upstreams = null
-                    notebook.cell_results[c_id].errored
-                        && Object.keys(notebook.cell_dependencies[c_id]?.upstream_cells_map).forEach(key => {
-                            notebook.cell_dependencies[c_id]?.upstream_cells_map[key].forEach(upstream_cell_id => {
+                    notebook.cell_results[c_id].errored &&
+                        Object.keys(notebook.cell_dependencies[c_id]?.upstream_cells_map).forEach((key) => {
+                            notebook.cell_dependencies[c_id]?.upstream_cells_map[key].forEach((upstream_cell_id) => {
                                 let upstream_cells = get_erred_upstreams(upstream_cell_id)
                                 erred_upstreams = { ...erred_upstreams, ...upstream_cells }
                                 // if upstream got no errors and current cell is errored
@@ -151,8 +151,8 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                                 if (!upstream_cells && notebook.cell_results[upstream_cell_id].errored) {
                                     erred_upstreams[key] = upstream_cell_id
                                 }
-                            });
-                        });
+                            })
+                        })
                     return erred_upstreams
                 }
 
