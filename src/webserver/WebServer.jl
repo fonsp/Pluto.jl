@@ -358,7 +358,7 @@ function pretty_address(session::ServerSession, hostIP, port)
     else
         root
     end
-    merge(HTTP.URIs.URI(new_root), query=url_params) |> string
+    string(HTTP.URI(HTTP.URI(new_root); query=url_params))
 end
 
 "All messages sent over the WebSocket get decoded+deserialized and end up here."
