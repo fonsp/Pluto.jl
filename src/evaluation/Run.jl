@@ -7,13 +7,16 @@ import .MoreAnalysis: find_bound_variables
 Base.push!(x::Set{Cell}) = x
 
 """
-Utility function to update variables inside a notebook process
+```julia
+set_bond_value_pairs!(session::ServerSession, notebook::Notebook, bond_value_pairs::Vector{Tuple{Symbol, Any}})
+```
 
-	symbol_value_itr is an iterator returning a tuple of variable names (Symbol) and variable values (Any)
+Given a list of tuples of the form `(bound variable name, (untransformed) value)`, assign each (transformed) value to the corresponding global bound variable in the notebook workspace.
 
+`bond_value_pairs` can also be an iterator.
 """
-function update_variables_in_notebook!(session:: ServerSession, notebook:: Notebook, symbol_value_itr)
-	for (bound_sym, new_value) in symbol_value_itr
+function set_bond_value_pairs!(session::ServerSession, notebook::Notebook, bond_value_pairs)
+	for (bound_sym, new_value) in bond_value_pairs
 		WorkspaceManager.eval_in_workspace((session, notebook), :($(bound_sym) = Main.PlutoRunner.transform_bond_value($(QuoteNode(bound_sym)), $(new_value))))
 	end
 end
@@ -183,7 +186,7 @@ function run_reactive_core!(
 
 			# set the redefined bound variables to their original value from the request
 			defs = notebook.topology.nodes[cell].definitions
-			update_variables_in_notebook!(session, notebook, Iterators.filter(((sym,val),) -> sym ∈ defs, bond_value_pairs))
+			set_bond_value_pairs!(session, notebook, Iterators.filter(((sym,val),) -> sym ∈ defs, bond_value_pairs))
         end
 
         cell.running = false

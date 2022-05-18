@@ -43,7 +43,7 @@ function set_bond_values_reactive(;
     function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Notebook}, old_workspace_name, new_workspace_name, to_delete_vars::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}, invalidated_cell_uuids::Set{UUID}; to_run::AbstractVector{Cell})
         to_delete_vars = Set([to_delete_vars..., syms_to_set...]) # also delete the bound symbols
         WorkspaceManager.move_vars((session, notebook), old_workspace_name, new_workspace_name, to_delete_vars, methods_to_delete, to_reimport, invalidated_cell_uuids)
-        update_variables_in_notebook!(session, notebook, zip(syms_to_set, new_values))
+        set_bond_value_pairs!(session, notebook, zip(syms_to_set, new_values))
     end
     to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}(syms_to_set))
 
