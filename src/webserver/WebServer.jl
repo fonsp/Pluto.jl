@@ -121,7 +121,7 @@ function port_serversocket(hostIP::Sockets.IPAddr, favourite_port)
         try
             serversocket = Sockets.listen(hostIP, port)
         catch e
-            error("Port with number $port is already in use. Use Pluto.run() to automatically select an available port.")
+            error("Cannot listen on port $port. It may already be in use, or you may not have sufficient permissions. Use Pluto.run() to automatically select an available port.")
         end
     end
     return port, serversocket
@@ -323,7 +323,12 @@ get_favorite_notebook(notebook:: String) = notebook
 get_favorite_notebook(notebook:: AbstractVector) = first(notebook)
 
 function pretty_address(session::ServerSession, hostIP, port)
-    root = if session.options.server.root_url === nothing
+    root = if session.options.server.root_url !== nothing
+        @assert endswith(session.options.server.root_url, "/")
+        session.options.server.root_url
+    elseif haskey(ENV, "JH_APP_URL")
+        "$(ENV["JH_APP_URL"])proxy/$(Int(port))/"
+    else
         host_str = string(hostIP)
         host_pretty = if isa(hostIP, Sockets.IPv6)
             if host_str == "::1"
@@ -338,9 +343,6 @@ function pretty_address(session::ServerSession, hostIP, port)
         end
         port_pretty = Int(port)
         "http://$(host_pretty):$(port_pretty)/"
-    else
-        @assert endswith(session.options.server.root_url, "/")
-        session.options.server.root_url
     end
 
     url_params = Dict{String,String}()
@@ -356,7 +358,7 @@ function pretty_address(session::ServerSession, hostIP, port)
     else
         root
     end
-    merge(HTTP.URIs.URI(new_root), query=url_params) |> string
+    string(HTTP.URI(HTTP.URI(new_root); query=url_params))
 end
 
 "All messages sent over the WebSocket get decoded+deserialized and end up here."

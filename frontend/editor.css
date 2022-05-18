@@ -1,3 +1,5 @@
+@import url("https://cdn.jsdelivr.net/npm/dialog-polyfill@0.5.6/dist/dialog-polyfill.css");
+
 /* @import url("https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i,500,700&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext"); */
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/400.css");
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/400-italic.css");
@@ -31,6 +33,8 @@
     --julia-mono-font-stack: JuliaMono, Menlo, "Roboto Mono", "Lucida Sans Typewriter", "Source Code Pro", monospace;
     --sans-serif-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
     --lato-ui-font-stack: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, Helvetica, Arial, "Apple Color Emoji",
+        "Segoe UI Emoji", "Segoe UI Symbol", system-ui, sans-serif;
+    --system-ui-font-stack: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, Helvetica, Arial, "Apple Color Emoji",
         "Segoe UI Emoji", "Segoe UI Symbol", system-ui, sans-serif;
 
     color-scheme: light dark;
@@ -544,9 +548,11 @@ a.export_card section {
     /* font-size: 14px; */
     padding: 3px;
 }
-aside#export button.toggle_export {
+aside#export .export_small_btns {
     margin-left: auto;
     height: 60px;
+    display: flex;
+    flex-direction: row;
 }
 body.static_preview button.toggle_export {
     display: none;
@@ -657,14 +663,16 @@ pluto-filepicker button:disabled {
 }
 
 button.start_stop_recording,
-button.toggle_export {
+button.toggle_export,
+.export_small_btns button {
     border: none;
     background: none;
     cursor: pointer;
     opacity: 0.5;
 }
 button.start_stop_recording span,
-button.toggle_export span {
+button.toggle_export span,
+.export_small_btns button span {
     display: block;
     content: " " !important;
     background-size: 25px 25px;
@@ -684,6 +692,10 @@ nav#at_the_top button.toggle_export span {
 }
 aside#export button.toggle_export span {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-outline.svg");
+    filter: var(--image-filters);
+}
+aside#export button.toggle_frontmatter_edit span {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/newspaper-outline.svg");
     filter: var(--image-filters);
 }
 nav#at_the_top:after {
@@ -1037,6 +1049,10 @@ pluto-output > assignee::after {
 }
 
 pluto-output > assignee:empty {
+    display: none;
+}
+
+.errored pluto-output > assignee {
     display: none;
 }
 
@@ -1427,6 +1443,7 @@ pluto-input > button > span {
         /* to make it feel smooth: */
         transition: opacity 0.25s ease-in-out;
     }
+    .export_small_btns button,
     button.toggle_export,
     button.start_stop_recording,
     pluto-cell:hover > button,
@@ -1436,6 +1453,7 @@ pluto-input > button > span {
         opacity: 0.4;
         transition: opacity 0.25s ease-in-out;
     }
+    .export_small_btns button:hover,
     button.toggle_export:hover,
     button.start_stop_recording:hover,
     .overlay-button button:hover,
@@ -2866,4 +2884,38 @@ pluto-cell.hooked_up pluto-output {
     border-top-right-radius: 4px;
     border-bottom: solid 2px;
     border-color: var(--pluto-cell-force-color);
+}
+
+.fm-table {
+    display: grid;
+    grid-template-columns: auto 1fr min-content;
+    gap: 0.3em 1em;
+}
+
+.pluto-frontmatter {
+    font-family: var(--system-ui-font-stack);
+    width: min(31rem, 90vw);
+    color: var(--black);
+    background: var(--export-bg-color);
+}
+
+.pluto-frontmatter button {
+    cursor: pointer;
+}
+
+.pluto-frontmatter .deletefield {
+    align-self: baseline;
+}
+
+.pluto-frontmatter .addentry {
+    grid-column: 1/3;
+    margin-top: 0.5em;
+    background-color: transparent;
+}
+
+.pluto-frontmatter .final {
+    display: flex;
+    margin-top: 2rem;
+    justify-content: flex-end;
+    gap: 0.5em;
 }

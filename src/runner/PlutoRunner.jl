@@ -465,9 +465,10 @@ This function is memoized: running the same expression a second time will simply
 function run_expression(
         m::Module,
         expr::Any,
+        notebook_id::UUID,
         cell_id::UUID,
-        function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing,
-        forced_expr_id::Union{ObjectID,Nothing}=nothing;
+        @nospecialize(function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing),
+        @nospecialize(forced_expr_id::Union{ObjectID,Nothing}=nothing);
         user_requested_run::Bool=true,
         capture_stdout::Bool=true,
     )
@@ -478,7 +479,10 @@ function run_expression(
         # TODO Could also put explicit `try_macroexpand` here, to make clear that user_requested_run => fresh macro identity
     end
 
+    old_currently_running_cell_id = currently_running_cell_id[]
     currently_running_cell_id[] = cell_id
+    logger = pluto_loggers[notebook_id]
+    logger.currently_running_cell_id[] = cell_id
 
     # reset published objects
     cell_published_objects[cell_id] = Dict{String,Any}()
@@ -532,37 +536,42 @@ function run_expression(
         throw("Expression still contains macro calls!!")
     end
 
-    result, runtime = with_io_to_logs(; enabled=capture_stdout, loglevel=stdout_log_level) do
-        if function_wrapped_info === nothing
-            toplevel_expr = Expr(:toplevel, expr)
-            wrapped = timed_expr(toplevel_expr)
-            ans, runtime = run_inside_trycatch(m, wrapped)
-            (ans, add_runtimes(runtime, expansion_runtime))
-        else
-            expr_id = forced_expr_id !== nothing ? forced_expr_id : expr_hash(expr)
-            local computer = get(computers, cell_id, nothing)
-            if computer === nothing || computer.expr_id !== expr_id
-                try
-                    computer = register_computer(expr, expr_id, cell_id, collect.(function_wrapped_info)...)
-                catch e
-                    # @error "Failed to generate computer function" expr exception=(e,stacktrace(catch_backtrace()))
-                    return run_expression(m, original_expr, cell_id, nothing; user_requested_run=user_requested_run)
-                end
-            end
-
-            # This check solves the problem of a cell like `false && variable_that_does_not_exist`. This should run without error, but will fail in our function-wrapping-magic because we get the value of `variable_that_does_not_exist` before calling the generated function.
-            # The fix is to detect this situation and run the expression in the classical way.
-            ans, runtime = if any(name -> !isdefined(m, name), computer.input_globals)
-                # Do run_expression but with function_wrapped_info=nothing so it doesn't go in a Computer()
-                # @warn "Got variables that don't exist, running outside of computer" not_existing=filter(name -> !isdefined(m, name), computer.input_globals)
-                run_expression(m, original_expr, cell_id; user_requested_run)
+    result, runtime = Logging.with_logger(logger) do # about 200ns overhead
+        with_io_to_logs(; enabled=capture_stdout, loglevel=stdout_log_level) do # about 3ms overhead i think?
+            if function_wrapped_info === nothing
+                toplevel_expr = Expr(:toplevel, expr)
+                wrapped = timed_expr(toplevel_expr)
+                ans, runtime = run_inside_trycatch(m, wrapped)
+                (ans, add_runtimes(runtime, expansion_runtime))
             else
-                run_inside_trycatch(m, () -> compute(m, computer))
-            end
+                expr_id = forced_expr_id !== nothing ? forced_expr_id : expr_hash(expr)
+                local computer = get(computers, cell_id, nothing)
+                if computer === nothing || computer.expr_id !== expr_id
+                    try
+                        computer = register_computer(expr, expr_id, cell_id, collect.(function_wrapped_info)...)
+                    catch e
+                        # @error "Failed to generate computer function" expr exception=(e,stacktrace(catch_backtrace()))
+                        return run_expression(m, original_expr, notebook_id, cell_id, nothing; user_requested_run=user_requested_run)
+                    end
+                end
 
-            ans, add_runtimes(runtime, expansion_runtime)
+                # This check solves the problem of a cell like `false && variable_that_does_not_exist`. This should run without error, but will fail in our function-wrapping-magic because we get the value of `variable_that_does_not_exist` before calling the generated function.
+                # The fix is to detect this situation and run the expression in the classical way.
+                ans, runtime = if any(name -> !isdefined(m, name), computer.input_globals)
+                    # Do run_expression but with function_wrapped_info=nothing so it doesn't go in a Computer()
+                    # @warn "Got variables that don't exist, running outside of computer" not_existing=filter(name -> !isdefined(m, name), computer.input_globals)
+                    run_expression(m, original_expr, notebook_id, cell_id; user_requested_run)
+                else
+                    run_inside_trycatch(m, () -> compute(m, computer))
+                end
+
+                ans, add_runtimes(runtime, expansion_runtime)
+            end
         end
     end
+    
+    currently_running_cell_id[] = old_currently_running_cell_id
+    
 
     if (result isa CapturedException) && (result.ex isa InterruptException)
         throw(result.ex)
@@ -570,6 +579,7 @@ function run_expression(
     
     cell_results[cell_id], cell_runtimes[cell_id] = result, runtime
 end
+precompile(run_expression, (Module, Expr, UUID, UUID, Nothing, Nothing))
 
 # Channel to trigger implicits run
 const run_channel = Channel{UUID}(10)
@@ -816,6 +826,7 @@ const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 const FormattedCellResult = NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
 
 function formatted_result_of(
+    notebook_id::UUID, 
     cell_id::UUID, 
     ends_with_semicolon::Bool, 
     known_published_objects::Vector{String}=String[],
@@ -824,6 +835,8 @@ function formatted_result_of(
 )::FormattedCellResult
     load_integrations_if_needed()
     currently_running_cell_id[] = cell_id
+    logger = pluto_loggers[notebook_id]
+    logger.currently_running_cell_id[] = cell_id
 
     extra_items = if showmore === nothing
         tree_display_extra_items[cell_id] = Dict{ObjectDimPair,Int64}()
@@ -917,12 +930,12 @@ See [`allmimes`](@ref) for the ordered list of supported MIME types.
 """
 function format_output_default(@nospecialize(val), @nospecialize(context=default_iocontext))::MimedOutput
     try
-        io_sprinted, (value, mime) = sprint_withreturned(show_richest, val; context=context)
+        io_sprinted, (value, mime) = show_richest_withreturned(val; context)
         if value === nothing
             if mime ∈ imagemimes
                 (io_sprinted, mime)
             else
-                (String(io_sprinted), mime)
+                (String(io_sprinted)::String, mime)
             end
         else
             (value, mime)
@@ -1006,11 +1019,11 @@ function pretty_stackcall(frame::Base.StackFrame, linfo::Core.MethodInstance)
     end
 end
 
-"Like `Base.sprint`, but return a `(String, Any)` tuple containing function output as the second entry."
-function sprint_withreturned(f::Function, args...; context=nothing, sizehint::Integer=0)
-    buffer = IOBuffer(sizehint=sizehint)
-    val = f(IOContext(buffer, context), args...)
-    resize!(buffer.data, buffer.size), val
+"Return a `(String, Any)` tuple containing function output as the second entry."
+function show_richest_withreturned(@nospecialize(args...); context=nothing, sizehint::Integer=0)
+    buffer = IOBuffer(; sizehint)
+    val = show_richest(IOContext(buffer, context), args...)
+    return (resize!(buffer.data, buffer.size), val)
 end
 
 "Super important thing don't change."
@@ -1107,7 +1120,9 @@ pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Any) = false
 # in the next functions you see a `context` argument
 # this is really only used for the circular reference tracking
 
-function tree_data_array_elements(@nospecialize(x::AbstractVector{<:Any}), indices::AbstractVector{I}, context::IOContext)::Vector{Tuple{I,Any}} where {I<:Integer}
+const Context = IOContext{IOBuffer}
+
+function tree_data_array_elements(@nospecialize(x::AbstractVector{<:Any}), indices::AbstractVector{I}, context::Context) where {I<:Integer}
     Tuple{I,Any}[
         if isassigned(x, i)
             i, format_output_default(x[i], context)
@@ -1117,17 +1132,18 @@ function tree_data_array_elements(@nospecialize(x::AbstractVector{<:Any}), indic
         for i in indices
     ] |> collect
 end
+precompile(tree_data_array_elements, (Vector{Any}, Vector{Int}, Context))
 
-function array_prefix(@nospecialize(x::Array{<:Any,1}))::String
-    string(eltype(x))
+function array_prefix(@nospecialize(x::Vector{<:Any}))
+    string(eltype(x))::String
 end
 
-function array_prefix(@nospecialize(x))::String
+function array_prefix(@nospecialize(x))
     original = sprint(Base.showarg, x, false)
-    lstrip(original, ':') * ": "
+    string(lstrip(original, ':'), ": ")::String
 end
 
-function get_my_display_limit(@nospecialize(x), dim::Integer, depth::Integer, context::IOContext, a::Integer, b::Integer)::Int # needs to be system-dependent Int because it is used as array index
+function get_my_display_limit(@nospecialize(x), dim::Integer, depth::Integer, context::Context, a::Integer, b::Integer)::Int # needs to be system-dependent Int because it is used as array index
     let
         if depth < 3
             a ÷ (1 + 2 * depth)
@@ -1144,7 +1160,7 @@ function get_my_display_limit(@nospecialize(x), dim::Integer, depth::Integer, co
     end
 end
 
-function tree_data(@nospecialize(x::AbstractSet{<:Any}), context::IOContext)
+function tree_data(@nospecialize(x::AbstractSet{<:Any}), context::Context)
     if Base.show_circular(context, x)
         Dict{Symbol,Any}(
             :objectid => string(objectid(x), base=16),
@@ -1179,10 +1195,10 @@ function tree_data(@nospecialize(x::AbstractSet{<:Any}), context::IOContext)
     end
 end
 
-function tree_data(@nospecialize(x::AbstractVector{<:Any}), context::IOContext)
+function tree_data(@nospecialize(x::AbstractVector{<:Any}), context::Context)
     if Base.show_circular(context, x)
         Dict{Symbol,Any}(
-            :objectid => string(objectid(x), base=16),
+            :objectid => string(objectid(x), base=16)::String,
             :type => :circular,
         )
     else
@@ -1216,7 +1232,7 @@ function tree_data(@nospecialize(x::AbstractVector{<:Any}), context::IOContext)
     end
 end
 
-function tree_data(@nospecialize(x::Tuple), context::IOContext)
+function tree_data(@nospecialize(x::Tuple), context::Context)
     depth = get(context, :tree_viewer_depth, 0)
     recur_io = IOContext(context, Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
 
@@ -1232,7 +1248,7 @@ function tree_data(@nospecialize(x::Tuple), context::IOContext)
     )
 end
 
-function tree_data(@nospecialize(x::AbstractDict{<:Any,<:Any}), context::IOContext)
+function tree_data(@nospecialize(x::AbstractDict{<:Any,<:Any}), context::Context)
     if Base.show_circular(context, x)
         Dict{Symbol,Any}(
             :objectid => string(objectid(x), base=16),
@@ -1267,14 +1283,14 @@ function tree_data(@nospecialize(x::AbstractDict{<:Any,<:Any}), context::IOConte
     end
 end
 
-function tree_data_nt_row(@nospecialize(pair::Tuple), context::IOContext)
+function tree_data_nt_row(@nospecialize(pair::Tuple), context::Context)
     # this is an entry of a NamedTuple, the first element of the Tuple is a Symbol, which we want to print as `x` instead of `:x`
     k, element = pair
     string(k), format_output_default(element, context)
 end
 
 
-function tree_data(@nospecialize(x::NamedTuple), context::IOContext)
+function tree_data(@nospecialize(x::NamedTuple), context::Context)
     depth = get(context, :tree_viewer_depth, 0)
     recur_io = IOContext(context, Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
 
@@ -1291,7 +1307,7 @@ function tree_data(@nospecialize(x::NamedTuple), context::IOContext)
     )
 end
 
-function tree_data(@nospecialize(x::Pair), context::IOContext)
+function tree_data(@nospecialize(x::Pair), context::Context)
     k, v = x
     Dict{Symbol,Any}(
         :objectid => string(objectid(x), base=16),
@@ -1301,7 +1317,7 @@ function tree_data(@nospecialize(x::Pair), context::IOContext)
 end
 
 # Based on Julia source code but without writing to IO
-function tree_data(@nospecialize(x::Any), context::IOContext)
+function tree_data(@nospecialize(x::Any), context::Context)
     if Base.show_circular(context, x)
         Dict{Symbol,Any}(
             :objectid => string(objectid(x), base=16),
@@ -1318,7 +1334,7 @@ function tree_data(@nospecialize(x::Any), context::IOContext)
         t = typeof(x)
         nf = nfields(x)
         nb = sizeof(x)
-        
+
         elements = Any[
             let
                 f = fieldname(t, i)
@@ -1333,9 +1349,9 @@ function tree_data(@nospecialize(x::Any), context::IOContext)
         ]
 
         Dict{Symbol,Any}(
-            :prefix => repr(t; context=context),
-            :prefix_short => string(t |> trynameof),
-            :objectid => string(objectid(x), base=16),
+            :prefix => repr(t; context),
+            :prefix_short => string(trynameof(t)),
+            :objectid => string(objectid(x), base=16)::String,
             :type => :struct,
             :elements => elements,
         )
@@ -1410,7 +1426,7 @@ const integrations = Integration[
                 end
             end
 
-            function table_data(x::Any, io::IOContext)
+            function table_data(x::Any, io::Context)
                 rows = Tables.rows(x)
 
                 my_row_limit = get_my_display_limit(x, 1, 0, io, table_row_display_limit, table_row_display_limit_increase)
@@ -1489,7 +1505,13 @@ const integrations = Integration[
             pluto_showable(::MIME"image/svg+xml", p::Plots.Plot{Plots.GRBackend}) = approx_size(p) <= max_plot_size
             pluto_showable(::MIME"text/html", p::Plots.Plot{Plots.GRBackend}) = false
         end,
-    )
+    ),
+    Integration(
+        id = Base.PkgId(UUID("4e3cecfd-b093-5904-9786-8bbb286a6a31"), "ImageShow"),
+        code = quote
+            pluto_showable(::MIME"text/html", ::AbstractMatrix{<:ImageShow.Colorant}) = false
+        end,
+    ),
 ]
 
 function load_integration_if_needed(integration::Integration)
@@ -2025,7 +2047,7 @@ Base.@kwdef struct DivElement
     class::Union{String,Nothing}=nothing
 end
 
-tree_data(@nospecialize(e::DivElement), context::IOContext) = Dict{Symbol, Any}(
+tree_data(@nospecialize(e::DivElement), context::Context) = Dict{Symbol, Any}(
     :style => e.style, 
     :classname => e.class, 
     :children => Any[
@@ -2045,13 +2067,15 @@ end
 const original_stdout = stdout
 const original_stderr = stderr
 
-
-const log_channel = Channel{Any}(10)
 const old_logger = Ref{Union{Logging.AbstractLogger,Nothing}}(nothing)
 
 struct PlutoLogger <: Logging.AbstractLogger
-    stream
+    stream # some packages expect this field to exist...
+    log_channel::Channel{Any}
+    currently_running_cell_id::Ref{UUID}
 end
+
+const pluto_loggers = Dict{UUID,PlutoLogger}()
 
 function Logging.shouldlog(::PlutoLogger, level, _module, _...)
     # Accept logs
@@ -2067,7 +2091,7 @@ end
 
 Logging.min_enabled_level(::PlutoLogger) = min(Logging.Debug, stdout_log_level)
 Logging.catch_exceptions(::PlutoLogger) = false
-function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, file, line; kwargs...)
+function Logging.handle_message(pl::PlutoLogger, level, msg, _module, group, id, file, line; kwargs...)
     # println("receiving msg from ", _module, " ", group, " ", id, " ", msg, " ", level, " ", line, " ", file)
     # println("with types: ", "_module: ", typeof(_module), ", ", "msg: ", typeof(msg), ", ", "group: ", typeof(group), ", ", "id: ", typeof(id), ", ", "file: ", typeof(file), ", ", "line: ", typeof(line), ", ", "kwargs: ", typeof(kwargs)) # thanks Copilot
 
@@ -2075,13 +2099,13 @@ function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, f
         
         yield()
         
-        put!(log_channel, Dict{String,Any}(
+        put!(pl.log_channel, Dict{String,Any}(
             "level" => string(level),
             "msg" => format_output_default(msg isa String ? Text(msg) : msg),
             "group" => string(group),
             "id" => string(id),
             "file" => string(file),
-            "cell_id" => currently_running_cell_id[],
+            "cell_id" => pl.currently_running_cell_id[],
             "line" => line isa Union{Int32,Int64} ? line : nothing,
             "kwargs" => Tuple{String,Any}[(string(k), format_log_value(v)) for (k, v) in kwargs],
             )
@@ -2160,13 +2184,16 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     result
 end
 
-# we put this in __init__ to fix a world age problem
-function __init__()
-    if !isdefined(Main, Symbol("##Pluto_logger_switched")) && Distributed.myid() != 1
+
+function setup_plutologger(notebook_id::UUID, log_channel::Channel{Any}; make_global::Bool=false)
+    logger = pluto_loggers[notebook_id] = 
+        PlutoLogger(nothing, log_channel, Ref{UUID}(uuid4()))
+    
+    if make_global
         old_logger[] = Logging.global_logger()
-        Logging.global_logger(PlutoLogger(nothing))
-        Core.eval(Main, Expr(:(=), Symbol("##Pluto_logger_switched"), true)) # if Pluto is loaded again on the same process, prevent it from also setting the logger
+        Logging.global_logger(logger)
     end
+    logger
 end
 
 end

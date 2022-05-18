@@ -3,7 +3,7 @@ import { html, Component, useRef, useLayoutEffect, useContext, useEffect, useMem
 import { ErrorMessage } from "./ErrorMessage.js"
 import { TreeView, TableView, DivElement } from "./TreeView.js"
 
-import { add_bonds_disabled_message_handler, add_bonds_listener, set_bound_elements_to_their_value } from "../common/Bond.js"
+import { add_bonds_disabled_message_handler, add_bonds_listener, set_bound_elements_to_their_value, get_input_value, set_input_value, eventof } from "../common/Bond.js"
 import { cl } from "../common/ClassTable.js"
 
 import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
@@ -271,7 +271,7 @@ const is_displayable = (result) => result instanceof Element && result.nodeType 
  * @typedef PlutoScript
  * @type {HTMLScriptElement | { pluto_is_loading_me?: boolean }}
  */
-const execute_scripttags = async ({ root_node, script_nodes, previous_results_map, invalidation }) => {
+const execute_scripttags = async ({ root_node, script_nodes, previous_results_map, invalidation, pluto_actions }) => {
     let results_map = new Map()
 
     // Reattach DOM results from old scripts, you might want to skip reading this
@@ -333,6 +333,21 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                                 currentScript: currentScript,
                                 invalidation: invalidation,
                                 getPublishedObject: (id) => cell.getPublishedObject(id),
+
+                                getBoundElementValueLikePluto: get_input_value,
+                                setBoundElementValueLikePluto: set_input_value,
+                                getBoundElementEventNameLikePluto: eventof,
+
+                                getNotebookMetadataExperimental: (key) => pluto_actions.get_notebook()?.metadata[key],
+                                setNotebookMetadataExperimental: (key, value) =>
+                                    pluto_actions.update_notebook((notebook) => {
+                                        notebook.metadata[key] = value
+                                    }),
+                                deleteNotebookMetadataExperimental: (key) =>
+                                    pluto_actions.update_notebook((notebook) => {
+                                        delete notebook.metadata[key]
+                                    }),
+
                                 ...observablehq_for_cells,
                             },
                             code: node.innerText,
@@ -444,8 +459,9 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
                 previous_results_map.current = await execute_scripttags({
                     root_node: container.current,
                     script_nodes: new_scripts,
-                    invalidation: invalidation,
+                    invalidation,
                     previous_results_map: persist_js_state ? previous_results_map.current : new Map(),
+                    pluto_actions,
                 })
 
                 if (pluto_actions != null) {
