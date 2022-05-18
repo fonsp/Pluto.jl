@@ -38,17 +38,16 @@ function set_bond_values_reactive(;
     end
 
     new_values = Any[notebook.bonds[bound_sym].value for bound_sym in syms_to_set]
+    bond_value_pairs = zip(syms_to_set, new_values)
     
     function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Notebook}, old_workspace_name, new_workspace_name, to_delete_vars::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}, invalidated_cell_uuids::Set{UUID}; to_run::AbstractVector{Cell})
         to_delete_vars = Set([to_delete_vars..., syms_to_set...]) # also delete the bound symbols
         WorkspaceManager.move_vars((session, notebook), old_workspace_name, new_workspace_name, to_delete_vars, methods_to_delete, to_reimport, invalidated_cell_uuids)
-        for (bound_sym, new_value) in zip(syms_to_set, new_values)
-            WorkspaceManager.eval_in_workspace((session, notebook), :($(bound_sym) = Main.PlutoRunner.transform_bond_value($(QuoteNode(bound_sym)), $(new_value))))
-        end
+        set_bond_value_pairs!(session, notebook, zip(syms_to_set, new_values))
     end
     to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}(syms_to_set))
 
-    run_reactive_async!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, user_requested_run=false, run_async=false, kwargs...)
+    run_reactive_async!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, user_requested_run=false, run_async=false, bond_value_pairs, kwargs...)
 end
 
 """
