@@ -40,7 +40,6 @@ const insert_commas_and_and = (/** @type {any[]} */ xs) => xs.flatMap((x, i) => 
 
 export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
     let pluto_actions = useContext(PlutoContext)
-    let [hide_stacktrace, setHideStacktrace] = useState(false)
     const rewriters = [
         {
             pattern: /syntax: extra token after end of expression/,
@@ -138,25 +137,9 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
             pattern: /^UndefVarError: (.*) not defined$/,
             display: (/** @type{string} */ x) => {
                 const notebook = pluto_actions.get_notebook()
+                const erred_upstreams = get_erred_upstreams(notebook, cell_id)
 
-                const get_erred_upstreams = (c_id) => {
-                    let erred_upstreams = null
-                    notebook.cell_results[c_id].errored &&
-                        Object.keys(notebook.cell_dependencies[c_id]?.upstream_cells_map).forEach((key) => {
-                            notebook.cell_dependencies[c_id]?.upstream_cells_map[key].forEach((upstream_cell_id) => {
-                                let upstream_cells = get_erred_upstreams(upstream_cell_id)
-                                erred_upstreams = { ...erred_upstreams, ...upstream_cells }
-                                // if upstream got no errors and current cell is errored
-                                // then current cell is responsible for errors
-                                if (!upstream_cells && notebook.cell_results[upstream_cell_id].errored) {
-                                    erred_upstreams[key] = upstream_cell_id
-                                }
-                            })
-                        })
-                    return erred_upstreams
-                }
 
-                const erred_upstreams = get_erred_upstreams(cell_id)
                 if (!erred_upstreams) {
                     return html`<p>${x}</p>`
                 }
@@ -169,11 +152,11 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                     }
                     return html`<a href="#" onclick=${onclick}>${key}</a>`
                 })
-                setHideStacktrace(true)
                 return Object.keys(erred_upstreams).length > 1
                     ? html`<p>Definitions of ${insert_commas_and_and(symbol_links)} contain errors.</p>`
                     : html`<p>Definition of ${insert_commas_and_and(symbol_links)} contains errors.</p>`
             },
+            show_stacktrace: () => get_erred_upstreams(pluto_actions.get_notebook(), cell_id) == null,
         },
         {
             pattern: /.?/,
@@ -185,7 +168,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
 
     return html`<jlerror>
         <header>${matched_rewriter.display(msg)}</header>
-        ${stacktrace.length == 0 || hide_stacktrace
+        ${stacktrace.length == 0 || !(matched_rewriter.show_stacktrace?.() ?? true)
             ? null
             : html`<section>
                   <ol>
@@ -201,4 +184,21 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                   </ol>
               </section>`}
     </jlerror>`
+}
+
+const get_erred_upstreams = (/** @type {import("./Editor.js").NotebookData} */ notebook, /** @type {string} */ cell_id) => {
+    let erred_upstreams = null
+    notebook.cell_results[cell_id].errored &&
+        Object.keys(notebook.cell_dependencies[cell_id]?.upstream_cells_map).forEach((key) => {
+            notebook.cell_dependencies[cell_id]?.upstream_cells_map[key].forEach((upstream_cell_id) => {
+                let upstream_cells = get_erred_upstreams(notebook, upstream_cell_id)
+                erred_upstreams = { ...erred_upstreams, ...upstream_cells }
+                // if upstream got no errors and current cell is errored
+                // then current cell is responsible for errors
+                if (!upstream_cells && notebook.cell_results[upstream_cell_id].errored) {
+                    erred_upstreams[key] = upstream_cell_id
+                }
+            })
+        })
+    return erred_upstreams == null || Object.keys(erred_upstreams).length === 0 ? null : erred_upstreams
 }
