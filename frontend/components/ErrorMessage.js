@@ -134,7 +134,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                 }),
         },
         {
-            pattern: /^UndefVarError: (.*) not defined$/,
+            pattern: /^UndefVarError: (.*) not defined\.?$/,
             display: (/** @type{string} */ x) => {
                 const notebook = pluto_actions.get_notebook()
                 const erred_upstreams = get_erred_upstreams(notebook, cell_id)
@@ -152,9 +152,9 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                     }
                     return html`<a href="#" onclick=${onclick}>${key}</a>`
                 })
-                return Object.keys(erred_upstreams).length > 1
-                    ? html`<p>Definitions of ${insert_commas_and_and(symbol_links)} contain errors.</p>`
-                    : html`<p>Definition of ${insert_commas_and_and(symbol_links)} contains errors.</p>`
+
+                // const plural = symbol_links.length > 1
+                return html`<p><em>Another cell defining ${insert_commas_and_and(symbol_links)} contains errors.</em></p>`
             },
             show_stacktrace: () => get_erred_upstreams(pluto_actions.get_notebook(), cell_id) == null,
         },
