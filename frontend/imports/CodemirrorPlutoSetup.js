@@ -59,7 +59,7 @@ import {
     css,
     cssLanguage,
     // } from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@0.27.0/dist/index.es.min.js"
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@106ade2/dist/index.es.min.js"
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@dba458c/dist/index.es.min.js"
 
 export {
     EditorState,
