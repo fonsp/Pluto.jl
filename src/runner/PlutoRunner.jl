@@ -1123,15 +1123,14 @@ pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Any) = false
 const Context = IOContext{IOBuffer}
 
 function tree_data_array_elements(@nospecialize(x::AbstractVector{<:Any}), indices::AbstractVector{I}, context::Context) where {I<:Integer}
-    out = Tuple{I,Tuple}[]
-    for i in indices
+    Tuple{I,Any}[
         if isassigned(x, i)
-            push!(out, (i, format_output_default(x[i], context)))
+            i, format_output_default(x[i], context)
         else
-            push!(out, (i, format_output_default(Text(Base.undef_ref_str), context)))
+            i, format_output_default(Text(Base.undef_ref_str), context)
         end
-    end
-    return out
+        for i in indices
+    ] |> collect
 end
 precompile(tree_data_array_elements, (Vector{Any}, Vector{Int}, Context))
 
