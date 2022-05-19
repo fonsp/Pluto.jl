@@ -128,7 +128,7 @@ export const RecordingUI = ({ notebook_name, is_recording, recording_waiting_to_
             const audio_blob_url = await audio_recorder?.stop()
             const audio_data_url = audio_blob_url == null ? null : await blob_url_to_data_url(audio_blob_url)
 
-            const magic_tag = "<!-- [automatically generated launch parameters can be inserted here] -->"
+            const magic_tag = `<meta name="pluto-insertion-spot-parameters">`
             const output_html = initial_html.replace(
                 magic_tag,
                 `

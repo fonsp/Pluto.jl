@@ -54,12 +54,12 @@ function generate_html(;
 
     result = replace_at_least_once(
         replace_at_least_once(cdnified, 
-            "<!-- [automatically generated meta tags can be inserted here] -->" => 
+            "<meta name=\"pluto-insertion-spot-meta\">" => 
             """
             $(header_html)
-            <!-- [automatically generated meta tags can be inserted here] -->
+            <meta name=\"pluto-insertion-spot-meta\">
             """),
-        "<!-- [automatically generated launch parameters can be inserted here] -->" => 
+        "<meta name=\"pluto-insertion-spot-parameters\">" => 
         """
         <script data-pluto-file="launch-parameters">
         window.pluto_notebook_id = $(notebook_id_js);
@@ -71,7 +71,7 @@ function generate_html(;
         window.pluto_statefile = $(statefile_js);
         window.pluto_preamble_html = $(preamble_html_js);
         </script>
-        <!-- [automatically generated launch parameters can be inserted here] -->
+        <meta name=\"pluto-insertion-spot-parameters\">
         """
     )
 
