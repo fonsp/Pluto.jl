@@ -66,13 +66,12 @@ const overlayHack = (overlay, input) => {
 
         const result = []
         let last_content_start = from
-        for (let relative_escape_start of text.matchAll(/\\\$/g)) {
+        for (let { index: relative_escape_start } of text.matchAll(/\\\$/g)) {
             let next_escape_start = from + relative_escape_start
-            let next_content_start = next_escape_start + 1
             if (last_content_start !== next_escape_start) {
-                result.push({ from: next_escape_start, to: next_content_start })
+                result.push({ from: last_content_start, to: next_escape_start })
             }
-            last_content_start = next_content_start
+            last_content_start = next_escape_start + 1
         }
         if (last_content_start !== to) {
             result.push({ from: last_content_start, to: to })
