@@ -77,7 +77,7 @@ If enough people do this, we can make it the default parser.
 
 // Added this so we can have people test the mixed parser, because I LIKE IT SO MUCH - DRAL
 // @ts-ignore
-window.PLUTO_ENABLE_CM_MIXED_PARSER = () => {
+window.PLUTO_TOGGLE_CM_MIXED_PARSER = () => {
     window.localStorage.setItem("ENABLE_CM_MIXED_PARSER", String(!ENABLE_CM_MIXED_PARSER))
     window.location.reload()
 }
