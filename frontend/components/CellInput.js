@@ -61,7 +61,7 @@ import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
 import { cl } from "../common/ClassTable.js"
 import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_line.js"
-// import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
+import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
 import { debug_syntax_plugin } from "./CellInput/debug_syntax_plugin.js"
 import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
 
@@ -671,6 +671,7 @@ export const CellInput = ({
                     // I put plutoKeyMaps separately because I want make sure we have
                     // higher priority 😈
                     keymap.of(plutoKeyMaps),
+                    keymap.of(commentKeymap),
                     // Before default keymaps (because we override some of them)
                     // but after the autocomplete plugin, because we don't want to move cell when scrolling through autocomplete
                     cell_movement_plugin({
@@ -684,6 +685,10 @@ export const CellInput = ({
                     awesome_line_wrapping,
 
                     on_change_compartment,
+
+                    // This is my weird-ass extension that checks the AST and shows you where
+                    // there're missing nodes.. I'm not sure if it's a good idea to have it
+                    // show_missing_syntax_plugin(),
 
                     // Enable this plugin if you want to see the lezer tree,
                     // and possible lezer errors and maybe more debug info in the console:
