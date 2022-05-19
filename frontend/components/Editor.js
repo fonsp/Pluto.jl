@@ -1246,8 +1246,8 @@ patch: ${JSON.stringify(
                                 ${this.state.notebook.cell_order.map(
                                     (cell_id, i) => html`
                                         <${IsolatedCell}
-                                            cell_id=${cell_id}
-                                            cell_results=${this.state.notebook.cell_results[cell_id]}
+                                            cell_input=${notebook.cell_inputs[cell_id]}
+                                            cell_result=${this.state.notebook.cell_results[cell_id]}
                                             hidden=${!launch_params.isolated_cell_ids.includes(cell_id)}
                                         />
                                     `

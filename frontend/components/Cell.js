@@ -243,15 +243,23 @@ export const Cell = ({
         </pluto-cell>
     `
 }
-
-export const IsolatedCell = ({ cell_id, cell_results: { output, published_object_keys }, hidden }) => {
+/**
+ * @param {{
+ *  cell_result: import("./Editor.js").CellResultData,
+ *  cell_input: import("./Editor.js").CellInputData,
+ *  [key: string]: any,
+ * }} props
+ * */
+export const IsolatedCell = ({ cell_input: { cell_id, metadata }, cell_result: { logs, output, published_object_keys }, hidden }) => {
     const node_ref = useRef(null)
     let pluto_actions = useContext(PlutoContext)
     const cell_api_ready = useCellApi(node_ref, published_object_keys, pluto_actions)
+    const { show_logs } = metadata
 
     return html`
         <pluto-cell ref=${node_ref} id=${cell_id} class=${hidden ? "hidden-cell" : "isolated-cell"}>
             ${cell_api_ready ? html`<${CellOutput} ...${output} cell_id=${cell_id} />` : html``}
+            ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${[15]} set_cm_highlighted_line=${() => {}} />` : null}
         </pluto-cell>
     `
 }
