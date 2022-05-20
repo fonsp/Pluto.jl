@@ -294,7 +294,7 @@ my_data = [
 
 # ╔═╡ 7d9d6c28-131a-4b2a-84f8-5c085f387e85
 md"""
-## The future is here: Directly embedding julia data into JavaScript!
+## The future is here: Directly embedding Julia data into JavaScript!
 
 You can use `Pluto.publish_to_js` to embed data directly into JavaScript, using Pluto's built-in, optimized data transfer. See [the Pull Request](https://github.com/fonsp/Pluto.jl/pull/1124) for more info.
 
