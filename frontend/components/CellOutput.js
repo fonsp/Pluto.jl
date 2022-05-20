@@ -3,7 +3,14 @@ import { html, Component, useRef, useLayoutEffect, useContext, useEffect, useMem
 import { ErrorMessage } from "./ErrorMessage.js"
 import { TreeView, TableView, DivElement } from "./TreeView.js"
 
-import { add_bonds_disabled_message_handler, add_bonds_listener, set_bound_elements_to_their_value, get_input_value, set_input_value, eventof } from "../common/Bond.js"
+import {
+    add_bonds_disabled_message_handler,
+    add_bonds_listener,
+    set_bound_elements_to_their_value,
+    get_input_value,
+    set_input_value,
+    eventof,
+} from "../common/Bond.js"
 import { cl } from "../common/ClassTable.js"
 
 import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
@@ -22,9 +29,7 @@ import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
 export class CellOutput extends Component {
     constructor() {
         super()
-        this.state = {
-            error: null,
-        }
+        this.state = {}
 
         this.old_height = 0
         // @ts-ignore Is there a way to use the latest DOM spec?
@@ -35,8 +40,8 @@ export class CellOutput extends Component {
             if (document.body.querySelector("pluto-cell:focus-within")) {
                 const cell_outputs_after_focused = document.body.querySelectorAll("pluto-cell:focus-within ~ pluto-cell > pluto-output") // CSS wizardry ✨
                 if (
-                    !(document.activeElement.tagName == "SUMMARY") &&
-                    (cell_outputs_after_focused.length == 0 || !Array.from(cell_outputs_after_focused).includes(this.base))
+                    !(document.activeElement?.tagName === "SUMMARY") &&
+                    (cell_outputs_after_focused.length === 0 || !Array.from(cell_outputs_after_focused).includes(this.base))
                 ) {
                     window.scrollBy(0, new_height - this.old_height)
                 }
@@ -76,7 +81,7 @@ export class CellOutput extends Component {
                 mime=${this.props.mime}
             >
                 <assignee translate=${false}>${this.props.rootassignee}</assignee>
-                ${this.state.error ? html`<div>${this.state.error.message}</div>` : html`<${OutputBody} ...${this.props} />`}
+                <${OutputBody} ...${this.props} />
             </pluto-output>
         `
     }
@@ -179,13 +184,12 @@ let IframeContainer = ({ body }) => {
         iframeref.current.src = url
 
         run(async () => {
-            await new Promise((resolve) => iframeref.current.addEventListener("load", () => resolve()))
+            await new Promise((resolve) => iframeref.current.addEventListener("load", () => resolve(null)))
 
             /** @type {Document} */
             let iframeDocument = iframeref.current.contentWindow.document
-            /** Grab the <script> tag for the iframe content window resizer
-             * @type {HTMLScriptElement} */
-            let original_script_element = document.querySelector("#iframe-resizer-content-window-script")
+            /** Grab the <script> tag for the iframe content window resizer */
+            let original_script_element = /** @type {HTMLScriptElement} */ (document.querySelector("#iframe-resizer-content-window-script"))
 
             // Insert iframe resizer inside the iframe
             let iframe_resizer_content_script = iframeDocument.createElement("script")
@@ -194,7 +198,7 @@ let IframeContainer = ({ body }) => {
             iframeDocument.head.appendChild(iframe_resizer_content_script)
 
             // Apply iframe resizer from the host side
-            new Promise((resolve) => iframe_resizer_content_script.addEventListener("load", () => resolve()))
+            new Promise((resolve) => iframe_resizer_content_script.addEventListener("load", () => resolve(null)))
             // @ts-ignore
             window.iFrameResize({ checkOrigin: false }, iframeref.current)
         })
@@ -256,7 +260,11 @@ let execute_inside_script_tag_that_replaces = async (script_element, fn) => {
     // I use this long variable name to pass the function and result to and from the script we created
     window.____FUNCTION_TO_RUN_INSIDE_SCRIPT = { function_to_run: fn, currentScript: new_script_tag, result: null }
     // Put the script in the DOM, this will run the script
-    script_element.parentNode.replaceChild(new_script_tag, script_element)
+    const parent = script_element.parentNode
+    if (parent == null) {
+        throw "Failed to execute script it has no parent in DOM."
+    }
+    parent.replaceChild(new_script_tag, script_element)
     // @ts-ignore - Get the result back
     let result = await window.____FUNCTION_TO_RUN_INSIDE_SCRIPT.result
     // @ts-ignore - Reset the global variable "just in case"
@@ -268,8 +276,20 @@ let execute_inside_script_tag_that_replaces = async (script_element, fn) => {
 const is_displayable = (result) => result instanceof Element && result.nodeType === Node.ELEMENT_NODE
 
 /**
- * @typedef PlutoScript
- * @type {HTMLScriptElement | { pluto_is_loading_me?: boolean }}
+ * @typedef {HTMLScriptElement} PlutoScript
+ * @property {boolean?} pluto_is_loading_me
+ */
+
+/**
+ *
+ * @param {{
+ * root_node: HTMLElement,
+ * script_nodes: Array<PlutoScript>,
+ * previous_results_map: Map,
+ * invalidation: Promise<void>,
+ * pluto_actions: any,
+ * }} param0
+ * @returns
  */
 const execute_scripttags = async ({ root_node, script_nodes, previous_results_map, invalidation, pluto_actions }) => {
     let results_map = new Map()
@@ -281,7 +301,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
             let script_id = node.id
             let old_result = script_id ? previous_results_map.get(script_id) : null
             if (is_displayable(old_result)) {
-                node.parentElement.insertBefore(old_result, node)
+                node.parentElement?.insertBefore(old_result, node)
             }
         }
     }
@@ -290,25 +310,27 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
     for (let node of script_nodes) {
         if (node.src != null && node.src !== "") {
             // If it has a remote src="", de-dupe and copy the script to head
-            var script_el = Array.from(document.head.querySelectorAll("script")).find((s) => s.src === node.src)
+            let script_el = Array.from(document.head.querySelectorAll("script")).find((s) => s.src === node.src)
 
-            if (script_el == null) {
+            if (script_el == undefined) {
                 script_el = document.createElement("script")
                 script_el.src = node.src
                 script_el.type = node.type === "module" ? "module" : "text/javascript"
                 // @ts-ignore
                 script_el.pluto_is_loading_me = true
             }
+            let script_el_really = script_el // for typescript
+
             // @ts-ignore
-            const need_to_await = script_el.pluto_is_loading_me != null
+            const need_to_await = script_el_really.pluto_is_loading_me != null
             if (need_to_await) {
                 await new Promise((resolve) => {
-                    script_el.addEventListener("load", resolve)
-                    script_el.addEventListener("error", resolve)
-                    document.head.appendChild(script_el)
+                    script_el_really.addEventListener("load", resolve)
+                    script_el_really.addEventListener("error", resolve)
+                    document.head.appendChild(script_el_really)
                 })
                 // @ts-ignore
-                script_el.pluto_is_loading_me = undefined
+                script_el_really.pluto_is_loading_me = undefined
             }
         } else {
             // If there is no src="", we take the content and run it in an observablehq-like environment
@@ -322,7 +344,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
 
                 if (node.type === "" || node.type === "text/javascript" || node.type === "module") {
                     if (is_displayable(old_result)) {
-                        node.parentElement.insertBefore(old_result, node)
+                        node.parentElement?.insertBefore(old_result, node)
                     }
 
                     const cell = root_node.closest("pluto-cell")
@@ -332,6 +354,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                                 this: script_id ? old_result : window,
                                 currentScript: currentScript,
                                 invalidation: invalidation,
+                                // @ts-ignore
                                 getPublishedObject: (id) => cell.getPublishedObject(id),
 
                                 getBoundElementValueLikePluto: get_input_value,
@@ -364,7 +387,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                             old_result.remove()
                         }
                         if (is_displayable(result)) {
-                            new_node.parentElement.insertBefore(result, new_node)
+                            new_node.parentElement?.insertBefore(result, new_node)
                         }
                     }
                 }
@@ -424,17 +447,19 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
 
     let invalidate_scripts = useRef(() => {})
 
-    let container = useRef(/** @type {HTMLElement} */ (null))
+    let container = useRef(/** @type {HTMLElement?} */ (null))
 
     useLayoutEffect(() => {
-        set_bound_elements_to_their_value(container.current.querySelectorAll("bond"), pluto_bonds)
+        if (container.current) set_bound_elements_to_their_value(container.current.querySelectorAll("bond"), pluto_bonds)
     }, [body, persist_js_state, pluto_actions, pluto_bonds])
 
     useLayoutEffect(() => {
+        if (!container.current) return
+
         // Invalidate current scripts and create a new invalidation token immediately
         let invalidation = new Promise((resolve) => {
             invalidate_scripts.current = () => {
-                resolve()
+                resolve(null)
             }
         })
 
@@ -453,11 +478,13 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
         // do this synchronously after loading HTML
         const new_scripts = [...scripts_in_shadowroots, ...Array.from(container.current.querySelectorAll("script"))]
 
+        const current_container = container.current
+
         run(async () => {
             try {
-                js_init_set?.add(container.current)
+                js_init_set?.add(current_container)
                 previous_results_map.current = await execute_scripttags({
-                    root_node: container.current,
+                    root_node: current_container,
                     script_nodes: new_scripts,
                     invalidation,
                     previous_results_map: persist_js_state ? previous_results_map.current : new Map(),
@@ -465,7 +492,7 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
                 })
 
                 if (pluto_actions != null) {
-                    const bond_nodes = container.current.querySelectorAll("bond")
+                    const bond_nodes = current_container.querySelectorAll("bond")
                     set_bound_elements_to_their_value(bond_nodes, pluto_bonds)
                     add_bonds_listener(bond_nodes, pluto_actions.set_bond, pluto_bonds, invalidation)
                     add_bonds_disabled_message_handler(bond_nodes, invalidation)
@@ -476,7 +503,7 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
                 if (window.MathJax?.typeset != undefined) {
                     try {
                         // @ts-ignore
-                        window.MathJax.typeset(container.current.querySelectorAll(".tex"))
+                        window.MathJax.typeset(current_container.querySelectorAll(".tex"))
                     } catch (err) {
                         console.info("Failed to typeset TeX:")
                         console.info(err)
@@ -485,7 +512,7 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
 
                 // Apply syntax highlighting
                 try {
-                    container.current.querySelectorAll("code").forEach((code_element) => {
+                    current_container.querySelectorAll("code").forEach((code_element) => {
                         code_element.classList.forEach((className) => {
                             if (className.startsWith("language-")) {
                                 // Remove "language-"
@@ -498,12 +525,12 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
                     console.warn("Highlighting failed", err)
                 }
             } finally {
-                js_init_set?.delete(container.current)
+                js_init_set?.delete(current_container)
             }
         })
 
         return () => {
-            js_init_set?.delete(container.current)
+            js_init_set?.delete(current_container)
             invalidate_scripts.current?.()
         }
     }, [body, persist_js_state, last_run_timestamp, pluto_actions])
@@ -542,7 +569,7 @@ export let highlight = (code_element, language) => {
                         defaultHighlightStyle.fallback,
                         EditorState.tabSize.of(4),
                         // TODO Other languages possibly?
-                        language === "julia" ? (ENABLE_CM_MIXED_PARSER ? julia_mixed() : julia_andrey()) : null,
+                        ...(language === "julia" ? [ENABLE_CM_MIXED_PARSER ? julia_mixed() : julia_andrey()] : []),
                         EditorView.lineWrapping,
                         EditorView.editable.of(false),
                     ].filter((x) => x != null),

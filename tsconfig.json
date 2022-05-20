@@ -9,7 +9,8 @@
         "strict": false,
         "noImplicitThis": true,
         "alwaysStrict": true,
-        "esModuleInterop": true
+        "esModuleInterop": true,
+        "strictNullChecks": true
     },
     "include": ["frontend/**/*.js", "node_modules/**/*.js"],
     "exclude": []
