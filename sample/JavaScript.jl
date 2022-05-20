@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.3
+# v0.19.4
 
 using Markdown
 using InteractiveUtils
@@ -294,9 +294,34 @@ my_data = [
 
 # ╔═╡ 7d9d6c28-131a-4b2a-84f8-5c085f387e85
 md"""
-#### Future: directly embedding data
+## The future is here: Directly embedding julia data into JavaScript!
 
-In the future, you will be able to embed data directly into JavaScript, using Pluto's built-in, optimized data transfer. See [the Pull Request](https://github.com/fonsp/Pluto.jl/pull/1124) for more info.
+You can use `Pluto.publish_to_js` to embed data directly into JavaScript, using Pluto's built-in, optimized data transfer. See [the Pull Request](https://github.com/fonsp/Pluto.jl/pull/1124) for more info.
+
+Example usage:
+
+```julia
+let
+	x = rand(UInt8, 10_000)
+	
+	d = Dict(
+		"some_raw_data" => x,
+		"wow" => 1000,
+	)
+	
+	HTML(\"\"\"
+	<script>
+		
+	const d = $(PlutoRunner.publish_to_js(d))
+	console.log(d)
+	
+	</script>
+	\"\"\")
+end
+```
+In this example, the `const d` is populated from a hook into Pluto's data transfer. Compare that to interpolating the value in the string, sending the string to the frontend, mounting it to the DOM and parsing from the DOM.
+
+
 """
 
 # ╔═╡ 0866afc2-fd42-42b7-a572-9d824cf8b83b
@@ -1094,6 +1119,10 @@ git-tree-sha1 = "024fe24d83e4a5bf5fc80501a314ce0d1aa35597"
 uuid = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
 version = "0.11.0"
 
+[[CompilerSupportLibraries_jll]]
+deps = ["Artifacts", "Libdl"]
+uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
+
 [[Dates]]
 deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
@@ -1155,7 +1184,7 @@ uuid = "29816b5a-b9ab-546f-933c-edad1886dfa8"
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 
 [[LinearAlgebra]]
-deps = ["Libdl"]
+deps = ["Libdl", "libblastrampoline_jll"]
 uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [[Logging]]
@@ -1177,6 +1206,10 @@ uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
 
 [[NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
+
+[[OpenBLAS_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
+uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
 
 [[Parsers]]
 deps = ["Dates"]
@@ -1203,7 +1236,7 @@ deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
 uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 
 [[Random]]
-deps = ["Serialization"]
+deps = ["SHA", "Serialization"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [[Reexport]]
@@ -1250,6 +1283,10 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 [[Zlib_jll]]
 deps = ["Libdl"]
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
+
+[[libblastrampoline_jll]]
+deps = ["Artifacts", "Libdl", "OpenBLAS_jll"]
+uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
 
 [[nghttp2_jll]]
 deps = ["Artifacts", "Libdl"]
