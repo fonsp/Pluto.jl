@@ -495,6 +495,8 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         else
             return explore!(Expr(:block, ex.args...), scopestate)
         end
+    elseif Meta.isexpr(ex, :parameters)
+        return mapfoldl(a -> explore!(to_kw(a), scopestate), union!, ex.args, init = SymbolsState())
     elseif ex.head == :kw
         return explore!(ex.args[2], scopestate)
     elseif ex.head == :struct
@@ -812,6 +814,14 @@ function explore_interpolations!(ex::Expr, scopestate)
 end
 explore_interpolations!(anything_else, scopestate) = SymbolsState()
 
+function to_kw(ex::Expr)
+    if Meta.isexpr(ex, :(=))
+        Expr(:kw, ex.args...)
+    else
+        ex
+    end
+end
+to_kw(x) = x
 
 "Return the function name and the SymbolsState from argument defaults. Add arguments as hidden globals to the `scopestate`.
 
@@ -903,7 +913,13 @@ function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FunctionName,
         name, symstate = uncurly!(ex, scopestate)
         return Symbol[name], symstate
 
-    elseif ex.head == :parameters || ex.head == :tuple
+    elseif Meta.isexpr(ex, :parameters)
+        return mapfoldl(
+            a -> explore_funcdef!(to_kw(a), scopestate),
+            union!, ex.args, init = (Symbol[], SymbolsState())
+        )
+
+    elseif ex.head == :tuple
         return mapfoldl(a -> explore_funcdef!(a, scopestate), union!, ex.args, init = (Symbol[], SymbolsState()))
 
     elseif ex.head == :(.)
