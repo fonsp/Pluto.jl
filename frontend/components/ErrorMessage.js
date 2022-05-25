@@ -40,6 +40,10 @@ const insert_commas_and_and = (/** @type {any[]} */ xs) => xs.flatMap((x, i) => 
 
 export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
     let pluto_actions = useContext(PlutoContext)
+    const default_rewriter = {
+        pattern: /.?/,
+        display: (/** @type{string} */ x) => x.split("\n").map((line) => html`<p>${line}</p>`),
+    }
     const rewriters = [
         {
             pattern: /syntax: extra token after end of expression/,
@@ -122,7 +126,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                             const onclick = (ev) => {
                                 const where = document.querySelector(`pluto-cell:not([id='${cell_id}']) span[id='${encodeURI(what)}']`)
                                 ev.preventDefault()
-                                where.scrollIntoView()
+                                where?.scrollIntoView()
                             }
                             return html`<a href="#" onclick=${onclick}>${what}</a>`
                         })
@@ -136,13 +140,15 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
         {
             pattern: /^UndefVarError: (.*) not defined\.?$/,
             display: (/** @type{string} */ x) => {
-                const notebook = pluto_actions.get_notebook()
+                const notebook = /** @type{import("./Editor.js").NotebookData?} */ (pluto_actions.get_notebook())
                 const erred_upstreams = get_erred_upstreams(notebook, cell_id)
 
                 // Verify that the UndefVarError is indeed about a variable from an upstream cell.
                 const match = x.match(/UndefVarError: (.*) not defined/)
-                let sym = match[1]
-                const undefvar_is_from_upstream = Object.values(notebook.cell_dependencies).some((map) => Object.keys(map.downstream_cells_map).includes(sym))
+                let sym = match?.[1] ?? ""
+                const undefvar_is_from_upstream = Object.values(notebook?.cell_dependencies ?? {}).some((map) =>
+                    Object.keys(map.downstream_cells_map).includes(sym)
+                )
 
                 if (!erred_upstreams || !undefvar_is_from_upstream) {
                     return html`<p>${x}</p>`
@@ -152,7 +158,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                     const onclick = (ev) => {
                         ev.preventDefault()
                         const where = document.querySelector(`pluto-cell[id='${erred_upstreams[key]}']`)
-                        where.scrollIntoView()
+                        where?.scrollIntoView()
                     }
                     return html`<a href="#" onclick=${onclick}>${key}</a>`
                 })
@@ -162,13 +168,10 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
             },
             show_stacktrace: () => get_erred_upstreams(pluto_actions.get_notebook(), cell_id) == null,
         },
-        {
-            pattern: /.?/,
-            display: (/** @type{string} */ x) => x.split("\n").map((line) => html`<p>${line}</p>`),
-        },
+        default_rewriter,
     ]
 
-    const matched_rewriter = rewriters.find(({ pattern }) => pattern.test(msg))
+    const matched_rewriter = rewriters.find(({ pattern }) => pattern.test(msg)) ?? default_rewriter
 
     return html`<jlerror>
         <header>${matched_rewriter.display(msg)}</header>
@@ -190,12 +193,12 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
     </jlerror>`
 }
 
-const get_erred_upstreams = (/** @type {import("./Editor.js").NotebookData} */ notebook, /** @type {string} */ cell_id) => {
+const get_erred_upstreams = (/** @type {import("./Editor.js").NotebookData?} */ notebook, /** @type {string} */ cell_id) => {
     let erred_upstreams = null
-    notebook.cell_results[cell_id].errored &&
+    if (notebook != null && notebook?.cell_results?.[cell_id]?.errored)
         Object.keys(notebook.cell_dependencies[cell_id]?.upstream_cells_map).forEach((key) => {
             notebook.cell_dependencies[cell_id]?.upstream_cells_map[key].forEach((upstream_cell_id) => {
-                let upstream_cells = get_erred_upstreams(notebook, upstream_cell_id)
+                let upstream_cells = get_erred_upstreams(notebook, upstream_cell_id) ?? {}
                 erred_upstreams = { ...erred_upstreams, ...upstream_cells }
                 // if upstream got no errors and current cell is errored
                 // then current cell is responsible for errors

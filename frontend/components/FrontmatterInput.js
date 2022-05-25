@@ -122,20 +122,23 @@ const field_type = (name) => {
 }
 
 const Input = ({ value, on_value, type, id }) => {
-    const input_ref = useRef(/** @type {HTMLInputElement} */ (null))
+    const input_ref = useRef(/** @type {HTMLInputElement?} */ (null))
 
     useLayoutEffect(() => {
+        if (!input_ref.current) return
         input_ref.current.value = value
     }, [input_ref.current, value])
 
     useLayoutEffect(() => {
+        if (!input_ref.current) return
         const listener = (e) => {
+            if (!input_ref.current) return
             on_value(input_ref.current.value)
         }
 
         input_ref.current.addEventListener("input", listener)
         return () => {
-            input_ref.current.removeEventListener("input", listener)
+            input_ref.current?.removeEventListener("input", listener)
         }
     }, [input_ref.current])
 

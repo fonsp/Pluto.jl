@@ -7,7 +7,7 @@ const detectNotebook = (inputtext) => {
     const text = `${inputtext}\n`.replace("\r\n", "\n")
     const from = text.indexOf("### A Pluto.jl notebook ###")
     const cellsfound = text.match(/# ... ........-....-....-....-............/g)
-    const cellscount = cellsfound?.length
+    const cellscount = cellsfound?.length ?? 0
     const cellsorder = text.indexOf("# ╔═╡ Cell order:") + "# ╔═╡ Cell order:".length + 1
     let to = cellsorder
     for (let i = 1; i <= cellscount; i++) {

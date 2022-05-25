@@ -1,6 +1,7 @@
 // import Generators_input from "https://unpkg.com/@observablehq/stdlib@3.3.1/src/generators/input.js"
 // import Generators_input from "https://unpkg.com/@observablehq/stdlib@3.3.1/src/generators/input.js"
 
+import { open_pluto_popup } from "../components/Popup.js"
 import _ from "../imports/lodash.js"
 import { html } from "../imports/Preact.js"
 import observablehq from "./SetupCellEnvironment.js"
@@ -152,25 +153,21 @@ export const add_bonds_disabled_message_handler = (bond_nodes, invalidation) => 
     bond_nodes.forEach((bond_node) => {
         const listener = (e) => {
             if (e.target.closest(".bonds_disabled.offer_binder")) {
-                window.dispatchEvent(
-                    new CustomEvent("open pluto popup", {
-                        detail: {
-                            type: "info",
-                            source_element: e.target,
-                            body: html`${`You are viewing a static document. `}
-                                <a
-                                    href="#"
-                                    onClick=${(e) => {
-                                        //@ts-ignore
-                                        window.open_edit_or_run_popup()
-                                        e.preventDefault()
-                                    }}
-                                    >Run this notebook</a
-                                >
-                                ${` to enable interactivity.`}`,
-                        },
-                    })
-                )
+                open_pluto_popup({
+                    type: "info",
+                    source_element: e.target,
+                    body: html`${`You are viewing a static document. `}
+                        <a
+                            href="#"
+                            onClick=${(e) => {
+                                //@ts-ignore
+                                window.open_edit_or_run_popup()
+                                e.preventDefault()
+                            }}
+                            >Run this notebook</a
+                        >
+                        ${` to enable interactivity.`}`,
+                })
             }
         }
         bond_node.addEventListener("click", listener)

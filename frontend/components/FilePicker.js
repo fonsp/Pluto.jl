@@ -21,6 +21,14 @@ let start_autocomplete_command = completionKeymap.find((keybinding) => keybindin
 let accept_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Enter")
 let close_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Escape")
 
+const assert_not_null = (x) => {
+    if (x == null) {
+        throw new Error("Unexpected null value")
+    } else {
+        return x
+    }
+}
+
 /**
  * @typedef FilePickerProps
  * @type {{
@@ -40,10 +48,11 @@ export class FilePicker extends Component {
             is_button_disabled: true,
         }
         this.forced_value = ""
-        /** @type {EditorView} */
+        /** @type {EditorView?} */
         this.cm = null
 
         this.suggest_not_tmp = () => {
+            if (!this.cm) return
             const suggest = this.props.suggest_new_file
             if (suggest != null && this.cm.state.doc.length === 0) {
                 // this.cm.focus()
@@ -58,18 +67,21 @@ export class FilePicker extends Component {
 
         let run = async (fn) => await fn()
         this.on_submit = () => {
-            const my_val = this.cm.state.doc.toString()
+            if (!this.cm) return true
+            const cm = this.cm
+
+            const my_val = cm.state.doc.toString()
             if (my_val === this.forced_value) {
                 this.suggest_not_tmp()
                 return true
             }
             run(async () => {
                 try {
-                    await this.props.on_submit(this.cm.state.doc.toString())
-                    this.cm.dom.blur()
+                    await this.props.on_submit(cm.state.doc.toString())
+                    cm.dom.blur()
                 } catch (error) {
-                    this.cm.dispatch({
-                        changes: { from: 0, to: this.cm.state.doc.length, insert: this.props.value },
+                    cm.dispatch({
+                        changes: { from: 0, to: cm.state.doc.length, insert: this.props.value },
                         selection: EditorSelection.cursor(this.props.value.length),
                     })
                 }
@@ -79,17 +91,19 @@ export class FilePicker extends Component {
     }
     componentDidUpdate() {
         if (this.forced_value != this.props.value) {
-            this.cm.dispatch({
-                changes: { from: 0, to: this.cm.state.doc.length, insert: this.props.value },
+            if (!this.cm) return
+            const cm = this.cm
+            cm.dispatch({
+                changes: { from: 0, to: cm.state.doc.length, insert: this.props.value },
                 selection: EditorSelection.cursor(this.props.value.length),
             })
             this.forced_value = this.props.value
 
             // a long path like /Users/fons/Documents/article-test-1/asdfasdfasdfsadf.jl does not fit in the little box, so we scroll it to the left so that you can see the filename easily.
-            this.cm.scrollDOM.scrollLeft = 100000
+            cm.scrollDOM.scrollLeft = 100000
             setTimeout(() => {
                 // TODO: do we need this?
-                this.cm.scrollDOM.scrollLeft = 100000
+                cm.scrollDOM.scrollLeft = 100000
             }, 100)
         }
     }
@@ -121,7 +135,7 @@ export class FilePicker extends Component {
                                     cm.scrollPosIntoView(this.props.value.length)
 
                                     setTimeout(() => {
-                                        this.cm.scrollPosIntoView(this.props.value.length)
+                                        this.cm?.scrollPosIntoView(this.props.value.length)
                                     }, 100)
                                 }
                             }, 200)
@@ -157,7 +171,7 @@ export class FilePicker extends Component {
                         ],
                         defaultKeymap: false, // We add these manually later, so we can override them if necessary
                         maxRenderedOptions: 512, // fons's magic number
-                        optionClass: (c) => c.type,
+                        optionClass: (c) => c.type ?? "",
                     }),
                     // When a completion is picked, immediately start autocompleting again
                     EditorView.updateListener.of((update) => {
@@ -175,7 +189,7 @@ export class FilePicker extends Component {
                             key: "Enter",
                             run: (cm) => {
                                 // If there is autocomplete open, accept that. It will return `true`
-                                return accept_autocomplete_command.run(cm)
+                                return assert_not_null(accept_autocomplete_command).run(cm)
                             },
                         },
                         { key: "Enter", run: this.on_submit },
@@ -184,7 +198,7 @@ export class FilePicker extends Component {
                         {
                             key: "Escape",
                             run: (cm) => {
-                                close_autocomplete_command.run(cm)
+                                assert_not_null(close_autocomplete_command).run(cm)
                                 cm.dispatch({
                                     changes: { from: 0, to: cm.state.doc.length, insert: this.props.value },
                                     selection: EditorSelection.cursor(this.props.value.length),
@@ -199,7 +213,7 @@ export class FilePicker extends Component {
                             key: "Tab",
                             run: (cm) => {
                                 // If there is autocomplete open, accept that
-                                if (accept_autocomplete_command.run(cm)) {
+                                if (assert_not_null(accept_autocomplete_command).run(cm)) {
                                     // and request the next ones
                                     this.request_path_completions()
                                     return true
@@ -232,11 +246,12 @@ export class FilePicker extends Component {
     }
 
     request_path_completions() {
+        if (!this.cm) return
         let selection = this.cm.state.selection.main
         if (selection.from !== selection.to) return
         if (this.cm.state.doc.length !== selection.to) return
 
-        return start_autocomplete_command.run(this.cm)
+        return assert_not_null(start_autocomplete_command).run(this.cm)
     }
 }
 
