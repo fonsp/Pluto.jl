@@ -1,4 +1,4 @@
-import { html, Component, useRef, useLayoutEffect, useContext, useEffect, useMemo } from "../imports/Preact.js"
+import { html, Component, useRef, useLayoutEffect, useContext } from "../imports/Preact.js"
 
 import { ErrorMessage } from "./ErrorMessage.js"
 import { TreeView, TableView, DivElement } from "./TreeView.js"
@@ -20,7 +20,6 @@ import register from "../imports/PreactCustomElement.js"
 import { EditorState, EditorView, defaultHighlightStyle } from "../imports/CodemirrorPlutoSetup.js"
 
 import { pluto_syntax_colors, ENABLE_CM_MIXED_PARSER } from "./CellInput.js"
-import { useState } from "../imports/Preact.js"
 
 import hljs from "../imports/highlightjs.js"
 import { julia_mixed } from "./CellInput/mixedParsers.js"
@@ -447,14 +446,15 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
 
     let invalidate_scripts = useRef(() => {})
 
-    let container = useRef(/** @type {HTMLElement?} */ (null))
+    let container_ref = useRef(/** @type {HTMLElement?} */ (null))
 
     useLayoutEffect(() => {
-        if (container.current) set_bound_elements_to_their_value(container.current.querySelectorAll("bond"), pluto_bonds)
+        if (container_ref.current) set_bound_elements_to_their_value(container_ref.current.querySelectorAll("bond"), pluto_bonds)
     }, [body, persist_js_state, pluto_actions, pluto_bonds])
 
     useLayoutEffect(() => {
-        if (!container.current) return
+        const container = container_ref.current
+        if (container == null) return
 
         // Invalidate current scripts and create a new invalidation token immediately
         let invalidation = new Promise((resolve) => {
@@ -465,26 +465,24 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
 
         const dump = document.createElement("p-dumpster")
         // @ts-ignore
-        dump.append(...container.current.childNodes)
+        dump.append(...container.childNodes)
 
         // Actually "load" the html
-        container.current.innerHTML = body
+        container.innerHTML = body
 
-        let scripts_in_shadowroots = Array.from(container.current.querySelectorAll("template[shadowroot]")).flatMap((template) => {
+        let scripts_in_shadowroots = Array.from(container.querySelectorAll("template[shadowroot]")).flatMap((template) => {
             // @ts-ignore
             return declarative_shadow_dom_polyfill(template)
         })
 
         // do this synchronously after loading HTML
-        const new_scripts = [...scripts_in_shadowroots, ...Array.from(container.current.querySelectorAll("script"))]
-
-        const current_container = container.current
+        const new_scripts = [...scripts_in_shadowroots, ...Array.from(container.querySelectorAll("script"))]
 
         run(async () => {
             try {
-                js_init_set?.add(current_container)
+                js_init_set?.add(container)
                 previous_results_map.current = await execute_scripttags({
-                    root_node: current_container,
+                    root_node: container,
                     script_nodes: new_scripts,
                     invalidation,
                     previous_results_map: persist_js_state ? previous_results_map.current : new Map(),
@@ -492,7 +490,7 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
                 })
 
                 if (pluto_actions != null) {
-                    const bond_nodes = current_container.querySelectorAll("bond")
+                    const bond_nodes = container.querySelectorAll("bond")
                     set_bound_elements_to_their_value(bond_nodes, pluto_bonds)
                     add_bonds_listener(bond_nodes, pluto_actions.set_bond, pluto_bonds, invalidation)
                     add_bonds_disabled_message_handler(bond_nodes, invalidation)
@@ -503,7 +501,7 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
                 if (window.MathJax?.typeset != undefined) {
                     try {
                         // @ts-ignore
-                        window.MathJax.typeset(current_container.querySelectorAll(".tex"))
+                        window.MathJax.typeset(container.querySelectorAll(".tex"))
                     } catch (err) {
                         console.info("Failed to typeset TeX:")
                         console.info(err)
@@ -512,7 +510,7 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
 
                 // Apply syntax highlighting
                 try {
-                    current_container.querySelectorAll("code").forEach((code_element) => {
+                    container.querySelectorAll("code").forEach((code_element) => {
                         code_element.classList.forEach((className) => {
                             if (className.startsWith("language-")) {
                                 // Remove "language-"
@@ -525,17 +523,17 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
                     console.warn("Highlighting failed", err)
                 }
             } finally {
-                js_init_set?.delete(current_container)
+                js_init_set?.delete(container)
             }
         })
 
         return () => {
-            js_init_set?.delete(current_container)
+            js_init_set?.delete(container)
             invalidate_scripts.current?.()
         }
     }, [body, persist_js_state, last_run_timestamp, pluto_actions])
 
-    return html`<div class="raw-html-wrapper ${className}" ref=${container}></div>`
+    return html`<div class="raw-html-wrapper ${className}" ref=${container_ref}></div>`
 }
 
 // https://github.com/fonsp/Pluto.jl/issues/1692
