@@ -118,7 +118,7 @@ let match_function_call_named_argument = make_beautiful_specific_matcher((x) => 
  * @param {TreeCursor | SyntaxNode} cursor
  * @param {any} doc
  * @param {ScopeState} scopestate
- * @param {boolean?} verbose
+ * @param {boolean} [verbose]
  * @returns {ScopeState}
  */
 let explorer_function_definition_argument = (cursor, doc, scopestate, verbose = false) => {
@@ -140,7 +140,7 @@ let explorer_function_definition_argument = (cursor, doc, scopestate, verbose = 
         // `function f(x = 10)` => ["x"]
         let { name, value } = match
         scopestate = explore_pattern(name, doc, scopestate, value.to, verbose)
-        scopestate = explore_variable_usage(value.cursor, doc, scopestate, verbose)
+        scopestate = explore_variable_usage(value.cursor(), doc, scopestate, verbose)
         return scopestate
     } else if (
         (match = match_function_definition_argument(cursor)`${t.as("name")}::${t.as("type")}`) ??
@@ -150,7 +150,7 @@ let explorer_function_definition_argument = (cursor, doc, scopestate, verbose = 
     ) {
         let { name, type } = match
         if (name) scopestate = explore_pattern(name, doc, scopestate, type.to, verbose)
-        if (type) scopestate = explore_variable_usage(type.cursor, doc, scopestate, verbose)
+        if (type) scopestate = explore_variable_usage(type.cursor(), doc, scopestate, verbose)
         return scopestate
     } else {
         verbose && console.warn("UNKNOWN FUNCTION DEFINITION ARGUMENT:", cursor.toString())
@@ -163,64 +163,73 @@ let explorer_function_definition_argument = (cursor, doc, scopestate, verbose = 
  * @param {any} doc
  * @param {ScopeState} scopestate
  * @param {number?} valid_from
- * @param {boolean?} verbose
+ * @param {boolean} [verbose]
  * @returns {ScopeState}
  */
 let explore_pattern = (node, doc, scopestate, valid_from = null, verbose = false) => {
     let match = null
 
-    if ((match = match_assignee(node)`${t.Identifier}`)) {
-        return scopestate_add_definition(scopestate, doc, node, valid_from)
-    } else if ((match = match_assignee(node)`${t.as("object")}::${t.as("type")}`)) {
-        let { object, type } = match
-        scopestate = explore_variable_usage(type.cursor, doc, scopestate, verbose)
-        scopestate = scopestate_add_definition(scopestate, doc, object)
-        return scopestate
-    } else if ((match = match_assignee(node)`${t.as("subject")}...`)) {
-        // `x... = [1,2,3]` => ["x"]
-        return explore_pattern(match.subject, doc, scopestate, valid_from, verbose)
-    } else if ((match = match_function_definition_argument(node)`${t.as("name")} = ${t.as("value")}`)) {
-        let { name, value } = match
-        scopestate = explore_pattern(name, doc, scopestate, value.from, verbose)
-        scopestate = explore_variable_usage(value.cursor, doc, scopestate, verbose)
-        return scopestate
-    } else if ((match = match_assignee(node)`${t.as("first")}, ${t.many("rest")}`) ?? (match = match_assignee(node)`(${t.as("first")}, ${t.many("rest")})`)) {
-        // console.warn("Tuple assignment... but the bad one")
-        for (let { node: name } of [{ node: match.first }, ...(match.rest ?? [])]) {
-            scopestate = explore_pattern(name.cursor, doc, scopestate, valid_from, verbose)
-        }
-        return scopestate
-    } else if ((match = match_julia(node)`${t.as("prefix")}${t.as("string", t.String)}`)) {
-        // This one is also a bit enigmatic, but `t.String` renders in the template as `"..."`,
-        // so the template with match things that look like `prefix"..."`
-        let { prefix, string } = match
-        let prefix_string = doc.sliceString(prefix.from, prefix.to)
-
-        if (prefix_string === "var") {
-            let name = doc.sliceString(string.from + 1, string.to - 1)
-            if (name.length !== 0) {
-                scopestate.definitions.set(name, {
-                    from: node.from,
-                    to: node.to,
-                    valid_from: node.to,
-                })
+    verbose && console.group("Explorering pattern:", node.toString())
+    try {
+        if ((match = match_assignee(node)`${t.Identifier}`)) {
+            verbose && console.log("It's an identifier, adding it to the scope")
+            return scopestate_add_definition(scopestate, doc, node, valid_from)
+        } else if ((match = match_assignee(node)`${t.as("object")}::${t.as("type")}`)) {
+            let { object, type } = match
+            scopestate = explore_variable_usage(type.cursor(), doc, scopestate, verbose)
+            scopestate = scopestate_add_definition(scopestate, doc, object)
+            return scopestate
+        } else if ((match = match_assignee(node)`${t.as("subject")}...`)) {
+            // `x... = [1,2,3]` => ["x"]
+            return explore_pattern(match.subject, doc, scopestate, valid_from, verbose)
+        } else if ((match = match_function_definition_argument(node)`${t.as("name")} = ${t.as("value")}`)) {
+            let { name, value } = match
+            scopestate = explore_pattern(name, doc, scopestate, value.from, verbose)
+            scopestate = explore_variable_usage(value.cursor(), doc, scopestate, verbose)
+            return scopestate
+        } else if (
+            (match = match_assignee(node)`${t.as("first")}, ${t.many("rest")}`) ??
+            (match = match_assignee(node)`(${t.as("first")}, ${t.many("rest")})`)
+        ) {
+            // console.warn("Tuple assignment... but the bad one")
+            for (let { node: name } of [{ node: match.first }, ...(match.rest ?? [])]) {
+                scopestate = explore_pattern(name.cursor(), doc, scopestate, valid_from, verbose)
             }
+            return scopestate
+        } else if ((match = match_julia(node)`${t.as("prefix")}${t.as("string", t.String)}`)) {
+            // This one is also a bit enigmatic, but `t.String` renders in the template as `"..."`,
+            // so the template with match things that look like `prefix"..."`
+            let { prefix, string } = match
+            let prefix_string = doc.sliceString(prefix.from, prefix.to)
+
+            if (prefix_string === "var") {
+                let name = doc.sliceString(string.from + 1, string.to - 1)
+                if (name.length !== 0) {
+                    scopestate.definitions.set(name, {
+                        from: node.from,
+                        to: node.to,
+                        valid_from: node.to,
+                    })
+                }
+            } else {
+                scopestate = explore_variable_usage("cursor" in node ? node.cursor() : node, doc, scopestate, verbose)
+            }
+            return scopestate
+        } else if ((match = match_assignee(node)`${t.as("object")}[${t.as("property")}]`)) {
+            let { object, property } = match
+            scopestate = explore_variable_usage(object.cursor(), doc, scopestate, verbose)
+            if (property) scopestate = explore_variable_usage(property.cursor(), doc, scopestate, verbose)
+            return scopestate
+        } else if ((match = match_assignee(node)`${t.as("object")}.${t.as("property")}`)) {
+            let { object, property } = match
+            scopestate = explore_variable_usage(object.cursor(), doc, scopestate, verbose)
+            return scopestate
         } else {
-            scopestate = explore_variable_usage("cursor" in node ? node.cursor : node, doc, scopestate, verbose)
+            verbose && console.warn("UNKNOWN PATTERN:", node.toString(), doc.sliceString(node.from, node.to))
+            return scopestate
         }
-        return scopestate
-    } else if ((match = match_assignee(node)`${t.as("object")}[${t.as("property")}]`)) {
-        let { object, property } = match
-        scopestate = explore_variable_usage(object.cursor, doc, scopestate, verbose)
-        if (property) scopestate = explore_variable_usage(property.cursor, doc, scopestate, verbose)
-        return scopestate
-    } else if ((match = match_assignee(node)`${t.as("object")}.${t.as("property")}`)) {
-        let { object, property } = match
-        scopestate = explore_variable_usage(object.cursor, doc, scopestate, verbose)
-        return scopestate
-    } else {
-        verbose && console.warn("UNKNOWN PATTERN:", node.toString(), doc.sliceString(node.from, node.to))
-        return scopestate
+    } finally {
+        verbose && console.groupEnd()
     }
 }
 
@@ -260,22 +269,22 @@ let explore_definition = function (cursor, doc, scopestate, verbose = false) {
         let { subject, parameters } = match
         let outer = fresh_scope()
         if (subject) {
-            let subject_explored = explore_definition(subject.cursor, doc, scopestate)
+            let subject_explored = explore_definition(subject.cursor(), doc, scopestate)
             outer = subject_explored.outer
             scopestate = subject_explored.inner
         }
         for (let { node: parameter } of parameters) {
             // Yes, when there is a type parameter in the definition itself (so not after `::`),
             // it implies a new type parameter being implicitly instanciated.
-            let { inner: parameter_inner } = explore_definition(parameter.cursor, doc, scopestate)
+            let { inner: parameter_inner } = explore_definition(parameter.cursor(), doc, scopestate)
             scopestate = parameter_inner
         }
         return { inner: scopestate, outer: outer }
     } else if ((match = match_julia(cursor)`${t.as("subject")} <: ${t.maybe(t.as("type"))}`)) {
         let { subject, type } = match
         let outer = fresh_scope()
-        if (subject) ({ outer, inner: scopestate } = explore_definition(subject.cursor, doc, scopestate))
-        if (type) scopestate = explore_variable_usage(type.cursor, doc, scopestate)
+        if (subject) ({ outer, inner: scopestate } = explore_definition(subject.cursor(), doc, scopestate))
+        if (type) scopestate = explore_variable_usage(type.cursor(), doc, scopestate)
         return { inner: scopestate, outer: outer }
     } else {
         verbose && console.warn(`Unknown thing in definition: "${doc.sliceString(cursor.from, cursor.to)}", "${cursor.toString()}"`)
@@ -302,7 +311,7 @@ let explore_macro_identifier = (cursor, doc, scopestate, verbose = false) => {
         let name = doc.sliceString(macro.from, macro.to)
         scopestate.usages.push({
             usage: macro,
-            definition: scopestate.definitions.get(name),
+            definition: scopestate.definitions.get(name) ?? null,
             name: name,
         })
         return scopestate
@@ -311,7 +320,7 @@ let explore_macro_identifier = (cursor, doc, scopestate, verbose = false) => {
         let name = doc.sliceString(object.from, object.to)
         scopestate.usages.push({
             usage: object,
-            definition: scopestate.definitions.get(name),
+            definition: scopestate.definitions.get(name) ?? null,
             name: name,
         })
         return scopestate
@@ -320,12 +329,13 @@ let explore_macro_identifier = (cursor, doc, scopestate, verbose = false) => {
         let name = doc.sliceString(object.from, object.to)
         scopestate.usages.push({
             usage: object,
-            definition: scopestate.definitions.get(name),
+            definition: scopestate.definitions.get(name) ?? null,
             name: name,
         })
         return scopestate
     } else {
         verbose && console.warn("Mwep mweeeep", cursor.toString())
+        return scopestate
     }
 }
 
@@ -364,10 +374,10 @@ let lower_scope = (scopestate) => {
  *
  * @param {ScopeState} nested_scope
  * @param {ScopeState} scopestate
- * @param {number} nested_scope_validity
+ * @param {number} [nested_scope_validity]
  * @returns {ScopeState}
  */
-let raise_scope = (nested_scope, scopestate, nested_scope_validity = null) => {
+let raise_scope = (nested_scope, scopestate, nested_scope_validity = undefined) => {
     return {
         usages: [...scopestate.usages, ...nested_scope.usages],
         definitions: scopestate.definitions,
@@ -411,6 +421,7 @@ let scopestate_add_definition = (scopestate, doc, node, valid_from = null) => {
  * @param {TreeCursor} cursor
  * @param {any} doc
  * @param {ScopeState} scopestate
+ * @param {boolean} [verbose]
  * @returns {ScopeState}
  */
 export let explore_variable_usage = (
@@ -425,7 +436,7 @@ export let explore_variable_usage = (
 ) => {
     if ("cursor" in cursor) {
         // console.trace("`explore_variable_usage()` called with a SyntaxNode, not a TreeCursor")
-        cursor = cursor["cursor"]
+        cursor = cursor["cursor"]()
     }
 
     let start_node = null
@@ -493,7 +504,7 @@ export let explore_variable_usage = (
                     from: cursor.from,
                     to: cursor.to,
                 },
-                definition: scopestate.definitions.get(name),
+                definition: scopestate.definitions.get(name) ?? null,
             })
             return scopestate
         } else if ((match = match_julia(cursor)`:${t.any}`)) {
@@ -507,12 +518,13 @@ export let explore_variable_usage = (
             return scopestate
         } else if ((match = match_julia(cursor)`${t.as("object")}.${t.as("property")}`)) {
             let { object, property } = match
-            if (object) scopestate = explore_variable_usage(object.cursor, doc, scopestate, verbose)
+            if (object) scopestate = explore_variable_usage(object.cursor(), doc, scopestate, verbose)
             return scopestate
         } else if ((match = match_julia(cursor)`${t.as("assignee")} = ${t.maybe(t.as("value"))}`)) {
             let { assignee, value } = match
-            if (value) scopestate = explore_variable_usage(value.cursor, doc, scopestate, verbose)
-            if (assignee) scopestate = explore_pattern(assignee.cursor, doc, scopestate, value?.to ?? null, verbose)
+            console.log("Assigned!")
+            if (value) scopestate = explore_variable_usage(value.cursor(), doc, scopestate, verbose)
+            if (assignee) scopestate = explore_pattern(assignee.cursor(), doc, scopestate, value?.to ?? null, verbose)
             return scopestate
         } else if (
             (match = match_julia(cursor)`
@@ -522,14 +534,14 @@ export let explore_variable_usage = (
             `)
         ) {
             let { macro, args = [], do_args, do_expressions } = match
-            if (macro) explore_macro_identifier(macro.cursor, doc, scopestate, verbose)
+            if (macro) explore_macro_identifier(macro.cursor(), doc, scopestate, verbose)
 
             for (let { node: arg } of args) {
                 if ((match = match_function_call_argument(arg)`${t.as("name")} = ${t.as("value")}`)) {
                     let { name, value } = match
-                    if (value) scopestate = explore_variable_usage(value.cursor, doc, scopestate, verbose)
+                    if (value) scopestate = explore_variable_usage(value.cursor(), doc, scopestate, verbose)
                 } else {
-                    scopestate = explore_variable_usage(arg.cursor, doc, scopestate, verbose)
+                    scopestate = explore_variable_usage(arg.cursor(), doc, scopestate, verbose)
                 }
             }
 
@@ -556,7 +568,7 @@ export let explore_variable_usage = (
                 }
 
                 for (let { node: expression } of do_expressions) {
-                    inner_scope = explore_variable_usage(expression.cursor, doc, inner_scope, verbose)
+                    inner_scope = explore_variable_usage(expression.cursor(), doc, inner_scope, verbose)
                 }
                 return raise_scope(inner_scope, scopestate, cursor.to)
             }
@@ -564,10 +576,10 @@ export let explore_variable_usage = (
             return scopestate
         } else if ((match = match_julia(cursor)`${t.as("macro", t.anything_that_fits(jl`@macro`))} ${t.many("args")}`)) {
             let { macro, args = [] } = match
-            if (macro) explore_macro_identifier(macro.cursor, doc, scopestate, verbose)
+            if (macro) explore_macro_identifier(macro.cursor(), doc, scopestate, verbose)
 
             for (let { node: arg } of args) {
-                scopestate = explore_variable_usage(arg.cursor, doc, scopestate, verbose)
+                scopestate = explore_variable_usage(arg.cursor(), doc, scopestate, verbose)
             }
             return scopestate
         } else if (
@@ -588,7 +600,7 @@ export let explore_variable_usage = (
             let inner_scope = lower_scope(scopestate)
             let outer_scope = fresh_scope()
 
-            if (defined_as) ({ inner: inner_scope, outer: outer_scope } = explore_definition(defined_as.cursor, doc, inner_scope))
+            if (defined_as) ({ inner: inner_scope, outer: outer_scope } = explore_definition(defined_as.cursor(), doc, inner_scope))
 
             // Struct body
             for (let { node: expression } of expressions) {
@@ -597,16 +609,16 @@ export let explore_variable_usage = (
                 } else if ((match = match_julia(expression)`${t.as("subject")}::${t.as("type")}`)) {
                     // We're in X::Y, and Y is a reference
                     let { subject, type } = match
-                    inner_scope = explore_variable_usage(type.cursor, doc, inner_scope, verbose)
+                    inner_scope = explore_variable_usage(type.cursor(), doc, inner_scope, verbose)
                 } else if ((match = match_julia(expression)`${t.as("assignee")} = ${t.as("value")}`)) {
                     let { assignee, value } = match
 
                     // Yeah... we do the same `a::G` check again
                     if ((match = match_julia(assignee)`${t.as("subject")}::${t.as("type")}`)) {
                         let { subject, type } = match
-                        inner_scope = explore_variable_usage(type.cursor, doc, inner_scope, verbose)
+                        inner_scope = explore_variable_usage(type.cursor(), doc, inner_scope, verbose)
                     }
-                    inner_scope = explore_variable_usage(value.cursor, doc, inner_scope, verbose)
+                    inner_scope = explore_variable_usage(value.cursor(), doc, inner_scope, verbose)
                 }
             }
 
@@ -616,7 +628,7 @@ export let explore_variable_usage = (
         } else if ((match = match_julia(cursor)`abstract type ${t.as("name")} end`)) {
             let { name } = match
             if (name) {
-                let { outer } = explore_definition(name.cursor, doc, scopestate)
+                let { outer } = explore_definition(name.cursor(), doc, scopestate)
                 scopestate = merge_scope_state(scopestate, outer)
             }
             return scopestate
@@ -640,7 +652,7 @@ export let explore_variable_usage = (
 
             let module_scope = fresh_scope()
             for (let { node: expression } of expressions) {
-                module_scope = explore_variable_usage(expression.cursor, doc, module_scope)
+                module_scope = explore_variable_usage(expression.cursor(), doc, module_scope)
             }
             // We still merge the module scopestate with the global scopestate, but only the usages that don't escape.
             // (Later we can have also shadowed definitions for the dimming of unused variables)
@@ -651,7 +663,7 @@ export let explore_variable_usage = (
             })
 
             for (let { node: expression } of expressions) {
-                scopestate = explore_variable_usage(expression.cursor, doc, scopestate)
+                scopestate = explore_variable_usage(expression.cursor(), doc, scopestate)
             }
             return scopestate
         } else if ((match = match_julia(cursor)`${t.as("prefix")}${t.as("string", t.String)}`)) {
@@ -687,7 +699,7 @@ export let explore_variable_usage = (
             return scopestate
         } else if ((match = match_julia(cursor)`${t.Number}${t.as("unit")}`)) {
             // This isn't that useful, just wanted to test (and show off) the template
-            return explore_variable_usage(match.unit.cursor, doc, scopestate, verbose)
+            return explore_variable_usage(match.unit.cursor(), doc, scopestate, verbose)
         } else if (
             (match = match_julia(cursor)`import ${t.any}: ${t.many("specifiers")}`) ??
             (match = match_julia(cursor)`using ${t.any}: ${t.many("specifiers")}`)
@@ -702,8 +714,10 @@ export let explore_variable_usage = (
                 } else if ((match = match_selected_import_specifier(specifier)`${t.as("name", t.Identifier)}`)) {
                     let { name } = match
                     scopestate = scopestate_add_definition(scopestate, doc, name)
+                } else if ((match = match_selected_import_specifier(specifier)`@${t.any}`)) {
+                    scopestate = scopestate_add_definition(scopestate, doc, specifier)
                 } else {
-                    verbose && console.warn("Hmmmm, I don't know what to do with this selected import specifier:", specifier)
+                    verbose && console.warn("Hmmmm, I don't know what to do with this selected import specifier:", specifier.toString())
                 }
             }
             return scopestate
@@ -760,7 +774,7 @@ export let explore_variable_usage = (
                     (match = for_loop_binding_match_julia(binding)`${t.as("name")} = ${t.as("range")}`)
                 ) {
                     let { name, range } = match
-                    if (range) inner_scope = explore_variable_usage(range.cursor, doc, inner_scope, verbose)
+                    if (range) inner_scope = explore_variable_usage(range.cursor(), doc, inner_scope, verbose)
                     if (name) inner_scope = explore_pattern(name, doc, inner_scope, range?.to ?? null, verbose)
                 } else {
                     verbose && console.warn("Unrecognized for loop binding", binding.toString())
@@ -768,7 +782,7 @@ export let explore_variable_usage = (
             }
 
             for (let { node: expression } of expressions) {
-                inner_scope = explore_variable_usage(expression.cursor, doc, inner_scope, verbose)
+                inner_scope = explore_variable_usage(expression.cursor(), doc, inner_scope, verbose)
             }
 
             return raise_scope(inner_scope, scopestate, cursor.to)
@@ -784,7 +798,7 @@ export let explore_variable_usage = (
         ) {
             let { callee, args = [], do_args = [], do_expressions = [] } = match
 
-            scopestate = explore_variable_usage(callee.cursor, doc, scopestate, verbose)
+            scopestate = explore_variable_usage(callee.cursor(), doc, scopestate, verbose)
 
             for (let { node: arg } of args) {
                 let match = null
@@ -795,14 +809,14 @@ export let explore_variable_usage = (
                         let match = null
                         if ((match = match_function_call_named_argument(named_arg)`${t.as("name")} = ${t.as("value")}`)) {
                             let { name, value } = match
-                            scopestate = explore_variable_usage(value.cursor, doc, scopestate, verbose)
+                            scopestate = explore_variable_usage(value.cursor(), doc, scopestate, verbose)
                         } else {
-                            scopestate = explore_variable_usage(named_arg.cursor, doc, scopestate, verbose)
+                            scopestate = explore_variable_usage(named_arg.cursor(), doc, scopestate, verbose)
                         }
                     }
                 } else if ((match = match_function_call_argument(arg)`${t.as("name")} = ${t.as("value")}`)) {
                     let { name, value } = match
-                    if (value) scopestate = explore_variable_usage(value.cursor, doc, scopestate, verbose)
+                    if (value) scopestate = explore_variable_usage(value.cursor(), doc, scopestate, verbose)
                 } else if ((match = match_function_call_argument(arg)`${t.as("result")} ${t.many("clauses", t.anything_that_fits(jl`for x = y`))}`)) {
                     let { result, clauses } = match
                     let nested_scope = lower_scope(scopestate)
@@ -818,21 +832,21 @@ export let explore_variable_usage = (
                         ) {
                             let { variable, value } = match
 
-                            if (value) nested_scope = explore_variable_usage(value.cursor, doc, nested_scope, verbose)
+                            if (value) nested_scope = explore_variable_usage(value.cursor(), doc, nested_scope, verbose)
                             if (variable) nested_scope = explore_pattern(variable, doc, nested_scope)
                         } else if ((match = match_for_binding(for_binding)`if ${t.maybe(t.as("if"))}`)) {
                             let { if: node } = match
-                            if (node) nested_scope = explore_variable_usage(node.cursor, doc, nested_scope, verbose)
+                            if (node) nested_scope = explore_variable_usage(node.cursor(), doc, nested_scope, verbose)
                         } else {
                             verbose && console.log("Hmmm, can't parse for binding", for_binding)
                         }
                     }
 
-                    nested_scope = explore_variable_usage(result.cursor, doc, nested_scope, verbose)
+                    nested_scope = explore_variable_usage(result.cursor(), doc, nested_scope, verbose)
 
                     return raise_scope(nested_scope, scopestate, cursor.to)
                 } else {
-                    scopestate = explore_variable_usage(arg.cursor, doc, scopestate, verbose)
+                    scopestate = explore_variable_usage(arg.cursor(), doc, scopestate, verbose)
                 }
             }
 
@@ -842,7 +856,7 @@ export let explore_variable_usage = (
                 inner_scope = explorer_function_definition_argument(arg, doc, inner_scope)
             }
             for (let { node: expression } of do_expressions) {
-                inner_scope = explore_variable_usage(expression.cursor, doc, inner_scope, verbose)
+                inner_scope = explore_variable_usage(expression.cursor(), doc, inner_scope, verbose)
             }
             return raise_scope(inner_scope, scopestate, cursor.to)
         } else if ((match = match_julia(cursor)`(${t.many("tuple_elements")},)`)) {
@@ -861,9 +875,9 @@ export let explore_variable_usage = (
                     let match = null
                     if ((match = match_tuple_element(cursor)`${t.as("name")} = ${t.as("value")}`)) {
                         let { name, value } = match
-                        if (value) scopestate = explore_variable_usage(value.cursor, doc, scopestate, verbose)
+                        if (value) scopestate = explore_variable_usage(value.cursor(), doc, scopestate, verbose)
                     } else {
-                        scopestate = explore_variable_usage(element.cursor, doc, scopestate, verbose)
+                        scopestate = explore_variable_usage(element.cursor(), doc, scopestate, verbose)
                     }
                 }
             } else {
@@ -873,10 +887,10 @@ export let explore_variable_usage = (
                     if ((match = match_tuple_element(cursor)`${t.as("name")} = ${t.as("value")}`)) {
                         // 🚨 actually an assignment 🚨
                         let { name, value } = match
-                        if (value) scopestate = explore_variable_usage(value.cursor, doc, scopestate, verbose)
+                        if (value) scopestate = explore_variable_usage(value.cursor(), doc, scopestate, verbose)
                         if (name) scopestate = scopestate_add_definition(scopestate, doc, name, value?.to ?? null)
                     } else {
-                        scopestate = explore_variable_usage(element.cursor, doc, scopestate, verbose)
+                        scopestate = explore_variable_usage(element.cursor(), doc, scopestate, verbose)
                     }
                 }
             }
@@ -961,13 +975,13 @@ export let explore_variable_usage = (
             }
 
             if (return_type) {
-                inner_scope = explore_variable_usage(narrow(return_type).cursor, doc, inner_scope, verbose)
+                inner_scope = explore_variable_usage(narrow(return_type).cursor(), doc, inner_scope, verbose)
             }
             for (let { node: arg } of args) {
-                inner_scope = explorer_function_definition_argument(arg.cursor, doc, inner_scope, verbose)
+                inner_scope = explorer_function_definition_argument(arg.cursor(), doc, inner_scope, verbose)
             }
             for (let { node: expression } of body) {
-                inner_scope = explore_variable_usage(expression.cursor, doc, inner_scope, verbose)
+                inner_scope = explore_variable_usage(expression.cursor(), doc, inner_scope, verbose)
             }
             return raise_scope(inner_scope, scopestate, cursor.to)
         } else if (
@@ -985,11 +999,11 @@ export let explore_variable_usage = (
                 // Explorer lefthandside in inner scope
                 if (assignee) innerscope = explore_pattern(assignee, doc, innerscope, value?.to ?? null, verbose)
                 // Explorer righthandside in the outer scope
-                if (value) scopestate = explore_variable_usage(value.cursor, doc, scopestate, verbose)
+                if (value) scopestate = explore_variable_usage(value.cursor(), doc, scopestate, verbose)
             }
             // Explorer body in innerscope
             for (let { node: line } of body) {
-                innerscope = explore_variable_usage(line.cursor, doc, innerscope, verbose)
+                innerscope = explore_variable_usage(line.cursor(), doc, innerscope, verbose)
             }
             return raise_scope(innerscope, scopestate, cursor.to)
         } else if (
@@ -1002,16 +1016,13 @@ export let explore_variable_usage = (
             // Are there syntax differences between Array or Generator expressions?
             // For now I treat them the same...
             // (Also this is one line because lezer doesn't parse multiline generator expressions yet)
-            (match = match_julia(cursor)`(
-                ${t.as("result")}
-                ${t.many("clauses", t.anything_that_fits(jl`for x = y`))}
-            )`)
+            (match = match_julia(cursor)`(${t.as("result")} ${t.many("clauses", t.anything_that_fits(jl`for x = y`))})`)
         ) {
             let { result, clauses } = match
 
             let nested_scope = lower_scope(scopestate)
 
-            // Because of the `t.anything_that_fits`, we can now match different `for x ? y`'s and `if x`s manually.
+            // Because of the `t.anything_that_fits`, we can now match different `for x in/∈/= y`-s and `if x`-s manually.
             // There might be a way to express this in the template, but this keeps templates a lot simpler yet powerful.
             for (let { node: for_binding } of clauses) {
                 let match = null
@@ -1023,17 +1034,17 @@ export let explore_variable_usage = (
                 ) {
                     let { variable, value } = match
 
-                    if (value) nested_scope = explore_variable_usage(value.cursor, doc, nested_scope, verbose)
+                    if (value) nested_scope = explore_variable_usage(value.cursor(), doc, nested_scope, verbose)
                     if (variable) nested_scope = explore_pattern(variable, doc, nested_scope)
                 } else if ((match = match_for_binding(for_binding)`if ${t.maybe(t.as("if"))}`)) {
                     let { if: node } = match
-                    if (node) nested_scope = explore_variable_usage(node.cursor, doc, nested_scope, verbose)
+                    if (node) nested_scope = explore_variable_usage(node.cursor(), doc, nested_scope, verbose)
                 } else {
                     verbose && console.warn("Hmmm, can't parse for binding", for_binding)
                 }
             }
 
-            nested_scope = explore_variable_usage(result.cursor, doc, nested_scope, verbose)
+            nested_scope = explore_variable_usage(result.cursor(), doc, nested_scope, verbose)
 
             return raise_scope(nested_scope, scopestate, cursor.to)
         } else {
@@ -1077,7 +1088,7 @@ export let ScopeStateField = StateField.define({
         try {
             if (syntaxTree(tr.state) != syntaxTree(tr.startState)) {
                 let cursor = syntaxTree(tr.state).cursor()
-                let scopestate = explore_variable_usage(cursor, tr.state.doc, undefined)
+                let scopestate = explore_variable_usage(cursor, tr.state.doc)
                 return scopestate
             } else {
                 return value
