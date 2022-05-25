@@ -177,8 +177,8 @@ export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
     </table>`
 }
 
-export let DivElement = ({ cell_id, style, classname, children }) => {
-    const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${false} />`
+export let DivElement = ({ cell_id, style, classname, children, persist_js_state = false }) => {
+    const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${persist_js_state} />`
 
     return html`<div style=${style} class=${classname}>${children.map(mimepair_output)}</div>`
 }

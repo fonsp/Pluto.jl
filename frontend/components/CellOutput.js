@@ -152,7 +152,7 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
             return html`<div><${ErrorMessage} cell_id=${cell_id} ...${body} /></div>`
             break
         case "application/vnd.pluto.divelement+object":
-            return DivElement({ cell_id, ...body })
+            return DivElement({ cell_id, ...body, persist_js_state })
             break
         case "text/plain":
             if (body) {
