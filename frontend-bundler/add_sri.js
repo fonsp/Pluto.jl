@@ -1,3 +1,8 @@
+// Go through all the CSS/JS imports in an HTML file, and add SRI attributes. More info here:
+// https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity#examples
+
+// I really really tried to do this using a parcel plugin but it's "not possible". So right now this is just a separate script that you run with the html filenames as arguments.
+
 let path = require("path")
 let fs = require("fs/promises")
 let posthtml = require("posthtml")
