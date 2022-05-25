@@ -32,6 +32,7 @@ import { IsolatedCell } from "./Cell.js"
 import { RawHTMLContainer } from "./CellOutput.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
 import { HijackExternalLinksToOpenInNewTab } from "./HackySideStuff/HijackExternalLinksToOpenInNewTab.js"
+import { FrontMatterInput } from "./FrontmatterInput.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -39,8 +40,8 @@ import { HijackExternalLinksToOpenInNewTab } from "./HackySideStuff/HijackExtern
 export const default_path = "..."
 const DEBUG_DIFFING = false
 
-// Be sure to keep this in sync with DEFAULT_METADATA in Cell.jl
-const DEFAULT_METADATA = {
+// Be sure to keep this in sync with DEFAULT_CELL_METADATA in Cell.jl
+const DEFAULT_CELL_METADATA = {
     disabled: false,
     show_logs: true,
 }
@@ -211,11 +212,12 @@ const first_true_key = (obj) => {
  *  published_objects: { [objectid: string]: any},
  *  bonds: { [name: string]: any },
  *  nbpkg: NotebookPkgData?,
+ *  metadata: object,
  * }}
  */
 
-const url_logo_big = document.head.querySelector("link[rel='pluto-logo-big']").getAttribute("href")
-const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']").getAttribute("href")
+const url_logo_big = document.head.querySelector("link[rel='pluto-logo-big']")?.getAttribute("href") ?? ""
+const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']")?.getAttribute("href") ?? ""
 
 /**
  * @typedef EditorProps
@@ -267,7 +269,7 @@ export class Editor extends Component {
             notebook: /** @type {NotebookData} */ initial_notebook_state,
             cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
             desired_doc_query: null,
-            recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
+            recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ ([]),
             last_update_time: 0,
 
             disable_ui: launch_params.disable_ui,
@@ -385,7 +387,7 @@ export class Editor extends Component {
                             // Fill the cell with empty code remotely, so it doesn't run unsafe code
                             code: "",
                             metadata: {
-                                ...DEFAULT_METADATA,
+                                ...DEFAULT_CELL_METADATA,
                             },
                         }
                     }
@@ -425,7 +427,7 @@ export class Editor extends Component {
                         code: code,
                         code_folded: false,
                         metadata: {
-                            ...DEFAULT_METADATA,
+                            ...DEFAULT_CELL_METADATA,
                         },
                     }
                 })
@@ -484,7 +486,7 @@ export class Editor extends Component {
                         cell_id: id,
                         code,
                         code_folded: false,
-                        metadata: { ...DEFAULT_METADATA },
+                        metadata: { ...DEFAULT_CELL_METADATA },
                     }
                     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
                 })
@@ -600,7 +602,7 @@ export class Editor extends Component {
             },
         }
 
-        const apply_notebook_patches = (patches, old_state = undefined, get_reverse_patches = false) =>
+        const apply_notebook_patches = (patches, /** @type {NotebookData?} */ old_state = null, get_reverse_patches = false) =>
             new Promise((resolve) => {
                 if (patches.length !== 0) {
                     let copy_of_patches,
@@ -623,9 +625,9 @@ export class Editor extends Component {
                                 }
                                 new_notebook = applyPatches(old_state ?? state.notebook, patches)
                             } catch (exception) {
-                                const failing_path = String(exception).match(".*'(.*)'.*")[1].replace(/\//gi, ".")
+                                const failing_path = String(exception).match(".*'(.*)'.*")?.[1].replace(/\//gi, ".") ?? exception
                                 const path_value = _.get(this.state.notebook, failing_path, "Not Found")
-                                console.log(String(exception).match(".*'(.*)'.*")[1].replace(/\//gi, "."), failing_path, typeof failing_path)
+                                console.log(String(exception).match(".*'(.*)'.*")?.[1].replace(/\//gi, ".") ?? exception, failing_path, typeof failing_path)
                                 // The alert below is not catastrophic: the editor will try to recover.
                                 // Deactivating to be user-friendly!
                                 // alert(`Ooopsiee.`)
@@ -907,7 +909,7 @@ patch: ${JSON.stringify(
 
                 if (DEBUG_DIFFING) {
                     try {
-                        let previous_function_name = new Error().stack.split("\n")[2].trim().split(" ")[1]
+                        let previous_function_name = new Error().stack?.split("\n")[2].trim().split(" ")[1]
                         console.log(`Changes to send to server from "${previous_function_name}":`, changes)
                     } catch (error) {}
                 }
@@ -1133,11 +1135,13 @@ patch: ${JSON.stringify(
         })
 
         document.addEventListener("paste", async (e) => {
-            const topaste = e.clipboardData.getData("text/plain")
-            const deserializer = detect_deserializer(topaste)
-            if (deserializer != null) {
-                this.actions.add_deserialized_cells(topaste, -1, deserializer)
-                e.preventDefault()
+            const topaste = e.clipboardData?.getData("text/plain")
+            if (topaste) {
+                const deserializer = detect_deserializer(topaste)
+                if (deserializer != null) {
+                    this.actions.add_deserialized_cells(topaste, -1, deserializer)
+                    e.preventDefault()
+                }
             }
         })
 
@@ -1200,7 +1204,7 @@ patch: ${JSON.stringify(
         this.send_queued_bond_changes()
 
         if (old_state.backend_launch_phase !== this.state.backend_launch_phase && this.state.backend_launch_phase != null) {
-            const phase = Object.entries(BackendLaunchPhase).find(([k, v]) => v == this.state.backend_launch_phase)[0]
+            const phase = Object.entries(BackendLaunchPhase).find(([k, v]) => v == this.state.backend_launch_phase)?.[0]
             console.info(`Binder phase: ${phase} at ${new Date().toLocaleTimeString()}`)
         }
 
@@ -1244,9 +1248,9 @@ patch: ${JSON.stringify(
                                 ${this.state.notebook.cell_order.map(
                                     (cell_id, i) => html`
                                         <${IsolatedCell}
-                                            cell_id=${cell_id}
-                                            cell_results=${this.state.notebook.cell_results[cell_id]}
-                                            hidden=${!launch_params.isolated_cell_ids.includes(cell_id)}
+                                            cell_input=${notebook.cell_inputs[cell_id]}
+                                            cell_result=${this.state.notebook.cell_results[cell_id]}
+                                            hidden=${!launch_params.isolated_cell_ids?.includes(cell_id)}
                                         />
                                     `
                                 )}
@@ -1383,6 +1387,13 @@ patch: ${JSON.stringify(
                               />`
                             : null
                     }
+                    <${FrontMatterInput} 
+                        remote_frontmatter=${notebook.metadata?.frontmatter} 
+                        set_remote_frontmatter=${(newval) =>
+                            this.actions.update_notebook((nb) => {
+                                nb.metadata["frontmatter"] = newval
+                            })} 
+                    />
                     ${launch_params.preamble_html ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />` : null}
                     <${Main}>
                         <${Preamble}

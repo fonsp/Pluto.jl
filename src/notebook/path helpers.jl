@@ -27,9 +27,11 @@ but "/mnt/c/Users/pankg/OneDrive/Desktop/pluto/bakery_pnl_ready2.jl" stays the s
 function maybe_convert_path_to_wsl(path)
     try
         if detectwsl()
-            return readchomp(`wslpath -u $(path)`)
+            # wslpath utility prints path to stderr if it fails to convert
+            # (it fails for WSL-valid paths)
+            return readchomp(pipeline(`wslpath -u $(path)`; stderr=devnull))
         end
-    catch
+    catch e
         return path
     end
     return path

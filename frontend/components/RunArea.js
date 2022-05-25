@@ -18,7 +18,8 @@ const hasBarrier = (a_cell_id, notebook) => {
 export const RunArea = ({ runtime, running, queued, code_differs, on_run, on_interrupt, depends_on_disabled_cells, running_disabled, cell_id }) => {
     const on_save = on_run /* because disabled cells save without running */
 
-    const localTimeRunning = 10e5 * useMillisSinceTruthy(running)
+    const local_time_running_ms = useMillisSinceTruthy(running)
+    const local_time_running_ns = local_time_running_ms == null ? null : 1e6 * local_time_running_ms
     const pluto_actions = useContext(PlutoContext)
 
     const on_jump = () => {
@@ -55,7 +56,7 @@ export const RunArea = ({ runtime, running, queued, code_differs, on_run, on_int
             <button onClick=${fmap[`on_${action}`]} class="runcell" title=${titlemap[action]}>
                 <span></span>
             </button>
-            <span class="runtime">${prettytime(running ? localTimeRunning || runtime : runtime)}</span>
+            <span class="runtime">${prettytime(running ? local_time_running_ns ?? runtime : runtime)}</span>
         </pluto-runarea>
     `
 }

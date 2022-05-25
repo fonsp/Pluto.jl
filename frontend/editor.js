@@ -77,6 +77,7 @@ const from_attribute = (element, name) => {
  * @returns {import("./components/Editor.js").NotebookData}
  */
 export const empty_notebook_state = ({ notebook_id }) => ({
+    metadata: {},
     notebook_id: notebook_id,
     path: default_path,
     shortpath: "",

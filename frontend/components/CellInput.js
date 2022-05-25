@@ -320,7 +320,7 @@ const replaceRange6 = (/** @type {EditorView} */ cm, text, from, to) =>
     })
 
 // Compartments: https://codemirror.net/6/examples/config/
-let useCompartment = (/** @type {import("../imports/Preact.js").Ref<EditorView>} */ codemirror_ref, value) => {
+let useCompartment = (/** @type {import("../imports/Preact.js").Ref<EditorView?>} */ codemirror_ref, value) => {
     let compartment = useRef(new Compartment())
     let initial_value = useRef(compartment.current.of(value))
 
@@ -378,11 +378,9 @@ export const CellInput = ({
     let pluto_actions = useContext(PlutoContext)
     const { disabled: running_disabled } = metadata
 
-    const newcm_ref = useRef(/** @type {EditorView} */ (null))
-    const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))
-    const remote_code_ref = useRef(null)
-    const on_change_ref = useRef(null)
-    on_change_ref.current = on_change
+    const newcm_ref = useRef(/** @type {EditorView?} */ (null))
+    const dom_node_ref = useRef(/** @type {HTMLElement?} */ (null))
+    const remote_code_ref = useRef(/** @type {string?} */ (null))
 
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
     let global_definitions_compartment = useCompartment(newcm_ref, GlobalDefinitionsFacet.of(global_definition_locations))
@@ -402,6 +400,8 @@ export const CellInput = ({
     )
 
     useLayoutEffect(() => {
+        if (dom_node_ref.current == null) return
+
         const keyMapSubmit = () => {
             on_submit()
             return true
@@ -423,7 +423,7 @@ export const CellInput = ({
         let select_autocomplete_command = autocomplete.completionKeymap.find((keybinding) => keybinding.key === "Enter")
         let keyMapTab = (/** @type {EditorView} */ cm) => {
             // This will return true if the autocomplete select popup is open
-            if (select_autocomplete_command.run(cm)) {
+            if (select_autocomplete_command?.run(cm)) {
                 return true
             }
 
@@ -440,7 +440,7 @@ export const CellInput = ({
             }
         }
         const keyMapMD = () => {
-            const cm = newcm_ref.current
+            const cm = /** @type{EditorView} */ (newcm_ref.current)
             const value = getValue6(cm)
             const trimmed = value.trim()
             const offset = value.length - value.trimStart().length
@@ -510,11 +510,12 @@ export const CellInput = ({
                 on_delete()
                 return true
             }
+            return false
         }
 
         const keyMapBackspace = (/** @type {EditorView} */ cm) => {
             if (cm.state.facet(EditorState.readOnly)) {
-                return
+                return false
             }
 
             // Previously this was a very elaborate timed implementation......
@@ -526,6 +527,7 @@ export const CellInput = ({
                 on_delete()
                 return true
             }
+            return false
         }
 
         const plutoKeyMaps = [
@@ -708,6 +710,7 @@ export const CellInput = ({
         if (focus_after_creation) {
             setTimeout(() => {
                 let view = newcm_ref.current
+                if (view == null) return
                 view.dom.scrollIntoView({
                     behavior: "smooth",
                     block: "nearest",
@@ -724,17 +727,19 @@ export const CellInput = ({
 
         // @ts-ignore
         const lines_wrapper_dom_node = dom_node_ref.current.querySelector("div.cm-content")
-        const lines_wrapper_resize_observer = new ResizeObserver(() => {
-            const line_nodes = lines_wrapper_dom_node.children
-            const tops = _.map(line_nodes, (c) => c.offsetTop)
-            const diffs = tops.slice(1).map((y, i) => y - tops[i])
-            const heights = [...diffs, 15]
-            on_line_heights(heights)
-        })
+        if (lines_wrapper_dom_node) {
+            const lines_wrapper_resize_observer = new ResizeObserver(() => {
+                const line_nodes = lines_wrapper_dom_node.children
+                const tops = _.map(line_nodes, (c) => c.offsetTop)
+                const diffs = tops.slice(1).map((y, i) => y - tops[i])
+                const heights = [...diffs, 15]
+                on_line_heights(heights)
+            })
 
-        lines_wrapper_resize_observer.observe(lines_wrapper_dom_node)
-        return () => {
-            lines_wrapper_resize_observer.unobserve(lines_wrapper_dom_node)
+            lines_wrapper_resize_observer.observe(lines_wrapper_dom_node)
+            return () => {
+                lines_wrapper_resize_observer.unobserve(lines_wrapper_dom_node)
+            }
         }
     }, [])
 
@@ -758,6 +763,7 @@ export const CellInput = ({
 
     useEffect(() => {
         const cm = newcm_ref.current
+        if (cm == null) return
         if (cm_forced_focus == null) {
             cm.dispatch({
                 selection: {
@@ -790,8 +796,8 @@ export const CellInput = ({
                 // block: "center",
             })
 
-            newcm_ref.current.focus()
-            newcm_ref.current.dispatch({
+            cm.focus()
+            cm.dispatch({
                 scrollIntoView: true,
                 selection: new_selection,
                 effects: [
@@ -823,7 +829,7 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled, any_
     let pluto_actions = useContext(PlutoContext)
     const [open, setOpen] = useState(false)
     const mouseenter = () => {
-        clearTimeout(timeout.current)
+        if (timeout.current) clearTimeout(timeout.current)
     }
     const toggle_running_disabled = async (e) => {
         const new_val = !running_disabled

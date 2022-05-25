@@ -1,6 +1,7 @@
 // import Generators_input from "https://unpkg.com/@observablehq/stdlib@3.3.1/src/generators/input.js"
 // import Generators_input from "https://unpkg.com/@observablehq/stdlib@3.3.1/src/generators/input.js"
 
+import { open_pluto_popup } from "../components/Popup.js"
 import _ from "../imports/lodash.js"
 import { html } from "../imports/Preact.js"
 import observablehq from "./SetupCellEnvironment.js"
@@ -11,7 +12,7 @@ import observablehq from "./SetupCellEnvironment.js"
  * @param {Element} input
  * @returns {any}
  */
-function get_input_value(input) {
+export function get_input_value(input) {
     if (input instanceof HTMLInputElement) {
         switch (input.type) {
             case "range":
@@ -40,7 +41,7 @@ function get_input_value(input) {
  * @param {Element} input
  * @returns {string}
  */
-function eventof(input) {
+export function eventof(input) {
     //@ts-ignore
     switch (input.type) {
         case "button":
@@ -78,7 +79,7 @@ function input_generator(input) {
  * @param {Element} input
  * @param {any} new_value
  */
-const set_input_value = (input, new_value) => {
+export const set_input_value = (input, new_value) => {
     if (input instanceof HTMLInputElement && input.type === "file") {
         return
     }
@@ -152,25 +153,21 @@ export const add_bonds_disabled_message_handler = (bond_nodes, invalidation) => 
     bond_nodes.forEach((bond_node) => {
         const listener = (e) => {
             if (e.target.closest(".bonds_disabled.offer_binder")) {
-                window.dispatchEvent(
-                    new CustomEvent("open pluto popup", {
-                        detail: {
-                            type: "info",
-                            source_element: e.target,
-                            body: html`${`You are viewing a static document. `}
-                                <a
-                                    href="#"
-                                    onClick=${(e) => {
-                                        //@ts-ignore
-                                        window.open_edit_or_run_popup()
-                                        e.preventDefault()
-                                    }}
-                                    >Run this notebook</a
-                                >
-                                ${` to enable interactivity.`}`,
-                        },
-                    })
-                )
+                open_pluto_popup({
+                    type: "info",
+                    source_element: e.target,
+                    body: html`${`You are viewing a static document. `}
+                        <a
+                            href="#"
+                            onClick=${(e) => {
+                                //@ts-ignore
+                                window.open_edit_or_run_popup()
+                                e.preventDefault()
+                            }}
+                            >Run this notebook</a
+                        >
+                        ${` to enable interactivity.`}`,
+                })
             }
         }
         bond_node.addEventListener("click", listener)
