@@ -118,7 +118,7 @@ let match_function_call_named_argument = make_beautiful_specific_matcher((x) => 
  * @param {TreeCursor | SyntaxNode} cursor
  * @param {any} doc
  * @param {ScopeState} scopestate
- * @param {boolean?} verbose
+ * @param {boolean} [verbose]
  * @returns {ScopeState}
  */
 let explorer_function_definition_argument = (cursor, doc, scopestate, verbose = false) => {
@@ -163,7 +163,7 @@ let explorer_function_definition_argument = (cursor, doc, scopestate, verbose = 
  * @param {any} doc
  * @param {ScopeState} scopestate
  * @param {number?} valid_from
- * @param {boolean?} verbose
+ * @param {boolean} [verbose]
  * @returns {ScopeState}
  */
 let explore_pattern = (node, doc, scopestate, valid_from = null, verbose = false) => {
@@ -311,7 +311,7 @@ let explore_macro_identifier = (cursor, doc, scopestate, verbose = false) => {
         let name = doc.sliceString(macro.from, macro.to)
         scopestate.usages.push({
             usage: macro,
-            definition: scopestate.definitions.get(name),
+            definition: scopestate.definitions.get(name) ?? null,
             name: name,
         })
         return scopestate
@@ -320,7 +320,7 @@ let explore_macro_identifier = (cursor, doc, scopestate, verbose = false) => {
         let name = doc.sliceString(object.from, object.to)
         scopestate.usages.push({
             usage: object,
-            definition: scopestate.definitions.get(name),
+            definition: scopestate.definitions.get(name) ?? null,
             name: name,
         })
         return scopestate
@@ -329,12 +329,13 @@ let explore_macro_identifier = (cursor, doc, scopestate, verbose = false) => {
         let name = doc.sliceString(object.from, object.to)
         scopestate.usages.push({
             usage: object,
-            definition: scopestate.definitions.get(name),
+            definition: scopestate.definitions.get(name) ?? null,
             name: name,
         })
         return scopestate
     } else {
         verbose && console.warn("Mwep mweeeep", cursor.toString())
+        return scopestate
     }
 }
 
@@ -373,10 +374,10 @@ let lower_scope = (scopestate) => {
  *
  * @param {ScopeState} nested_scope
  * @param {ScopeState} scopestate
- * @param {number} nested_scope_validity
+ * @param {number} [nested_scope_validity]
  * @returns {ScopeState}
  */
-let raise_scope = (nested_scope, scopestate, nested_scope_validity = null) => {
+let raise_scope = (nested_scope, scopestate, nested_scope_validity = undefined) => {
     return {
         usages: [...scopestate.usages, ...nested_scope.usages],
         definitions: scopestate.definitions,
@@ -420,6 +421,7 @@ let scopestate_add_definition = (scopestate, doc, node, valid_from = null) => {
  * @param {TreeCursor} cursor
  * @param {any} doc
  * @param {ScopeState} scopestate
+ * @param {boolean} [verbose]
  * @returns {ScopeState}
  */
 export let explore_variable_usage = (
@@ -502,7 +504,7 @@ export let explore_variable_usage = (
                     from: cursor.from,
                     to: cursor.to,
                 },
-                definition: scopestate.definitions.get(name),
+                definition: scopestate.definitions.get(name) ?? null,
             })
             return scopestate
         } else if ((match = match_julia(cursor)`:${t.any}`)) {

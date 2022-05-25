@@ -301,7 +301,6 @@ export const pluto_syntax_colors_markdown = HighlightStyle.define(
         { tag: tags.monospace, color: "var(--cm-md-accent-color)" },
     ],
     {
-        // @ts-ignore I (or codemirror) broke the codemirror pluto setup d.ts file generation
         scope: markdownLanguage,
         all: {
             color: "var(--cm-md-color)",
