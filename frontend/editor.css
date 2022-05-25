@@ -692,11 +692,11 @@ nav#at_the_top button.toggle_export span {
 }
 aside#export button.toggle_export span {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-outline.svg");
-    filter: var(--image-filters);
+    filter: invert(1);
 }
 aside#export button.toggle_frontmatter_edit span {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/newspaper-outline.svg");
-    filter: var(--image-filters);
+    filter: invert(1);
 }
 nav#at_the_top:after {
     margin-left: auto;
@@ -2896,7 +2896,7 @@ pluto-cell.hooked_up pluto-output {
     font-family: var(--system-ui-font-stack);
     width: min(31rem, 90vw);
     color: var(--black);
-    background: var(--export-bg-color);
+    background: var(--white);
 }
 
 .pluto-frontmatter button {
