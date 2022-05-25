@@ -131,6 +131,7 @@ export let child_cursors = function* (cursor) {
 /** @param {SyntaxNode} node */
 export let child_nodes = function* (node) {
     if (node.firstChild) {
+        /** @type {SyntaxNode?} */
         let child = node.firstChild
         do {
             yield child
@@ -148,7 +149,7 @@ export let child_nodes = function* (node) {
  *  children: Array<AstTemplate>,
  * } | {
  *  pattern: (
- *      haystack: (TreeCursor | void),
+ *      haystack: (TreeCursor | null),
  *      matches: { [key: string]: any },
  *      verbose?: boolean
  *  ) => boolean,
@@ -156,7 +157,7 @@ export let child_nodes = function* (node) {
  */
 
 /**
- * @param {TreeCursor | void} haystack_cursor
+ * @param {TreeCursor | null} haystack_cursor
  * @param {AstTemplate} template
  * @param {{ [name: string]: any }} matches
  * @param {boolean} verbose
@@ -555,7 +556,7 @@ let memo_first_argument_weakmemo_second = (func) => {
     let fake_weakmap_no_arg = {}
     let per_name_memo = memo((name) => {
         return weak_memo1((arg) => {
-            if (arg === fake_weakmap_no_arg) return func(name)
+            if (arg === fake_weakmap_no_arg) return func(name, undefined)
             return func(name, arg)
         })
     })
@@ -757,8 +758,8 @@ export const t = /** @type {const} */ ({
             template_generator.return()
 
             return {
-                pattern: function something_with_the_same_type_as(cursor, matches, verbose = false) {
-                    return cursor && ast.name === cursor.name
+                pattern: function something_with_the_same_type_as(haystack, matches, verbose = false) {
+                    return haystack != null && ast.name === haystack.name
                 },
             }
         }
@@ -775,12 +776,12 @@ export const t = /** @type {const} */ ({
             let sub_template = yield* to_template(what)
             return {
                 sub_template,
-                pattern: function as(cursor, matches, verbose = false) {
-                    let did_match = match_template(cursor, sub_template, matches, verbose)
+                pattern: function as(haystack, matches, verbose = false) {
+                    let did_match = match_template(haystack, sub_template, matches, verbose)
                     if (did_match === true) {
-                        matches[name] = cursor?.["node"]
+                        matches[name] = haystack?.["node"]
                     }
-                    return cursor && did_match
+                    return haystack != null && did_match
                 },
             }
         }
@@ -790,8 +791,8 @@ export const t = /** @type {const} */ ({
     Identifier: function* Identifier() {
         yield "identifier"
         return {
-            pattern: function Identifier(cursor, matches, verbose = false) {
-                return cursor && narrow_name(cursor) === "Identifier"
+            pattern: function Identifier(haystack, matches, verbose = false) {
+                return haystack != null && narrow_name(haystack) === "Identifier"
             },
         }
     },
@@ -799,8 +800,8 @@ export const t = /** @type {const} */ ({
     Number: function* Number() {
         yield "69"
         return {
-            pattern: function Number(cursor, matches, verbose = false) {
-                return cursor && narrow_name(cursor) === "Number"
+            pattern: function Number(haystack, matches, verbose = false) {
+                return haystack != null && narrow_name(haystack) === "Number"
             },
         }
     },
@@ -808,8 +809,10 @@ export const t = /** @type {const} */ ({
     String: function* String() {
         yield `"A113"`
         return {
-            pattern: function String(cursor, matches, verbose = false) {
-                return cursor && (narrow_name(cursor) === "StringWithoutInterpolation" || narrow_name(cursor) === "TripleStringWithoutInterpolation")
+            pattern: function String(haystack, matches, verbose = false) {
+                return (
+                    haystack != null && (narrow_name(haystack) === "StringWithoutInterpolation" || narrow_name(haystack) === "TripleStringWithoutInterpolation")
+                )
             },
         }
     },
@@ -859,7 +862,7 @@ export let take_little_piece_of_template = weak_memo((template, meta_template) =
         // And for some reason this works?
         // Still feels like it shouldn't... it feels like I conjured some dark magic and I will be swiming in tartarus soon...
 
-        return {
+        return /** @type {Matcher} */ ({
             possible_parents,
             template_description,
             /**
@@ -917,7 +920,7 @@ export let take_little_piece_of_template = weak_memo((template, meta_template) =
                     verbose && console.groupEnd()
                 }
             },
-        }
+        })
     } else {
         console.log(`meta_template:`, meta_template)
         console.log(`template:`, template)
