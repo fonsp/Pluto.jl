@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [14.x]
+        node-version: [18.x]
     steps:
       - uses: actions/checkout@v1
       - name: Use Node.js ${{ matrix.node-version }}
@@ -26,5 +26,8 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: Typecheck
-        uses: andoshin11/typescript-error-reporter-action@v1.0.2
+      - name: Install tsc
+        run: npm install typescript -g
+      
+      - name: Run tsc
+        run: tsc --noEmit
