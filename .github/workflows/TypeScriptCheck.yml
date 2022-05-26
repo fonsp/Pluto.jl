@@ -27,5 +27,8 @@ jobs:
 
       - run: npm install typescript -g
       
+      - run: npm install
+        working-directory: frontend
+      
       - name: Run TypeScript checks on frontend/
         run: tsc --noEmit --strictNullChecks false
