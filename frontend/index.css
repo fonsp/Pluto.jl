@@ -175,6 +175,7 @@ pluto-filepicker button {
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
     /* this is the line height rounded to an integer to prevent jiggle */
     height: 16px;
+    overflow-y: hidden;
     /* font-size: 16px; */
     line-height: 16px;
     border-radius: 3px;
@@ -222,7 +223,7 @@ pluto-filepicker button {
 }
 
 .cm-editor .cm-tooltip-autocomplete .cm-completionLabel {
-    font-family: JuliaMono, monospace !important;
+    font-family: JuliaMono, Menlo, "Roboto Mono", "Lucida Sans Typewriter", "Source Code Pro", monospace !important;
     font-variant-ligatures: none;
     font-size: 0.75rem;
 }
@@ -261,17 +262,17 @@ body.nosessions ul#new ~ * {
 }
 
 #recent li.running button > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle.svg");
     filter: var(--image-filters);
 }
 
 #recent li.recent button > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg");
     filter: var(--image-filters);
 }
 
 #recent li.transitioning button > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ellipsis-horizontal-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ellipsis-horizontal-outline.svg");
     filter: var(--image-filters);
 }
 

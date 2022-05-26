@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.7
+# v0.18.0
 
 using Markdown
 using InteractiveUtils
@@ -766,6 +766,255 @@ details(x, summary="Show more") = @htl("""
 	</details>
 	""")
 
+# ╔═╡ 93abe0dc-f041-475f-9ef7-d8ee4408414b
+details(md"""
+	```htmlmixed
+	
+	<article class="learning">
+		<h4>
+			Learning HTML and CSS
+		</h4>
+		<p>
+			It is easy to learn HTML and CSS because they are not 'programming languages' like Julia and JavaScript, they are <em>markup languages</em>: there are no loops, functions or arrays, you only <em>declare</em> how your document is structured (HTML) and what that structure looks like on a 2D color display (CSS).
+		</p>
+		<p>
+			As an example, this is what this cell looks like, written in HTML and CSS:
+		</p>
+	</article>
+
+
+	<style>
+
+		article.learning {
+			background: #fde6ea4c;
+			padding: 1em;
+			border-radius: 5px;
+		}
+
+		article.learning h4::before {
+			content: "☝️";
+		}
+
+		article.learning p::first-letter {
+			font-size: 1.5em;
+			font-family: cursive;
+		}
+
+	</style>
+	```
+	""", "Show with syntax highlighting")
+
+# ╔═╡ d12b98df-8c3f-4620-ba3c-2f3dadac521b
+details(md"""
+	```htmlmixed
+	<script>
+
+	// interpolate the data 🐸
+	const data = $(simple_data)
+
+	const span = document.createElement("span")
+	span.innerText = data.msg.repeat(data.times)
+	
+	return span
+	</script>
+	```
+	""", "Show with syntax highlighting")
+
+# ╔═╡ 94561cb1-2325-49b6-8b22-943923fdd91b
+details(md"""
+	```htmlmixed
+	<script src="https://cdn.jsdelivr.net/npm/d3@6.2.0/dist/d3.min.js"></script>
+
+	<script>
+
+	// interpolate the data 🐸
+	const data = $(my_data)
+
+	const svg = DOM.svg(600,200)
+	const s = d3.select(svg)
+
+	s.selectAll("text")
+		.data(data)
+		.join("text")
+		.attr("x", d => d.coordinate[0])
+		.attr("y", d => d.coordinate[1])
+		.style("fill", "red")
+		.text(d => d.name)
+
+	return svg
+	</script>
+	```
+	""", "Show with syntax highlighting")
+
+# ╔═╡ b0c246ed-b871-461b-9541-280e49b49136
+details(md"""
+```htmlmixed
+<div>
+<button>$(text)</button>
+
+<script>
+
+	// Select elements relative to `currentScript`
+	const div = currentScript.parentElement
+	const button = div.querySelector("button")
+
+	// we wrapped the button in a `div` to hide its default behaviour from Pluto
+
+	let count = 0
+
+	button.addEventListener("click", (e) => {
+		count += 1
+
+		// we dispatch the input event on the div, not the button, because 
+		// Pluto's `@bind` mechanism listens for events on the **first element** in the
+		// HTML output. In our case, that's the div.
+
+		div.value = count
+		div.dispatchEvent(new CustomEvent("input"))
+		e.preventDefault()
+	})
+
+	// Set the initial value
+	div.value = count
+
+</script>
+</div>
+```
+""", "Show with syntax highlighting")
+
+# ╔═╡ d121e085-c69b-490f-b315-c11a9abd57a6
+details(md"""
+	```htmlmixed
+	<script>
+	
+	let data = $(films)
+	
+	// html`...` is from https://github.com/observablehq/stdlib
+	// note the escaped dollar signs:
+	let Film = ({title, director, year}) => html`
+		<li class="film">
+			<b>\${title}</b> by <em>\${director}</em> (\${year})
+		</li>
+	`
+	
+	// the returned HTML node is rendered
+	return html`
+		<ul>
+			\${data.map(Film)}
+		</ul>
+	`
+	
+	</script>
+	```
+	""", "Show with syntax highlighting")
+
+# ╔═╡ d4bdc4fe-2af8-402f-950f-2afaf77c62de
+details(md"""
+	```htmlmixed
+	<script id="something">
+	
+	console.log("'this' is currently:", this)
+
+	if(this == null) {
+		return html`<blockquote>I am running for the first time!</blockqoute>`
+	} else {
+		return html`<blockquote><b>I was triggered by reactivity!</b></blockqoute>`
+	}
+
+
+	</script>
+	```
+	""", "Show with syntax highlighting")
+
+# ╔═╡ e910982c-8508-4729-a75d-8b5b847918b6
+details(md"""
+```htmlmixed
+<script src="https://cdn.jsdelivr.net/npm/d3@6.2.0/dist/d3.min.js"></script>
+
+<script id="hello">
+
+const positions = $(dot_positions)
+
+const svg = this == null ? DOM.svg(600,200) : this
+const s = this == null ? d3.select(svg) : this.s
+
+s.selectAll("circle")
+	.data(positions)
+	.join("circle")
+	.transition()
+	.duration(300)
+	.attr("cx", d => d)
+	.attr("cy", 100)
+	.attr("r", 10)
+	.attr("fill", "gray")
+
+
+const output = svg
+output.s = s
+return output
+</script>
+```
+""", "Show with syntax highlighting")
+
+# ╔═╡ 05d28aa2-9622-4e62-ab39-ca4c7dde6eb4
+details(md"""
+	```htmlmixed
+	<script type="module" id="asdf">
+		//await new Promise(r => setTimeout(r, 1000))
+
+		const { html, render, Component, useEffect, useLayoutEffect, useState, useRef, useMemo, createContext, useContext, } = await import( "https://cdn.jsdelivr.net/npm/htm@3.0.4/preact/standalone.mjs")
+
+		const node = this ?? document.createElement("div")
+
+		const new_state = $(state)
+
+		if(this == null){
+
+			// PREACT APP STARTS HERE
+
+			const Item = ({value}) => {
+				const [loading, set_loading] = useState(true)
+
+				useEffect(() => {
+					set_loading(true)
+
+					const handle = setTimeout(() => {
+						set_loading(false)
+					}, 1000)
+
+					return () => clearTimeout(handle)
+				}, [value])
+
+				return html`<li>\${loading ? 
+					html`<em>Loading...</em>` : 
+					value
+				}</li>`
+			}
+
+			const App = () => {
+
+				const [state, set_state] = useState(new_state)
+				node.set_app_state = set_state
+
+				return html`<h5>Hello world!</h5>
+					<ul>\${
+					state.x.map((x,i) => html`<\${Item} value=\${x} key=\${i}/>`)
+				}</ul>`;
+			}
+
+			// PREACT APP ENDS HERE
+
+			render(html`<\${App}/>`, node);
+
+		} else {
+
+			node.set_app_state(new_state)
+		}
+		return node
+	</script>
+	```
+	""", "Show with syntax highlighting")
+
 # ╔═╡ cc318a19-316f-4fd9-8436-fb1d42f888a3
 demo_img = let
 	url = "https://user-images.githubusercontent.com/6933510/116753174-fa40ab80-aa06-11eb-94d7-88f4171970b2.jpeg"
@@ -845,6 +1094,10 @@ git-tree-sha1 = "024fe24d83e4a5bf5fc80501a314ce0d1aa35597"
 uuid = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
 version = "0.11.0"
 
+[[CompilerSupportLibraries_jll]]
+deps = ["Artifacts", "Libdl"]
+uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
+
 [[Dates]]
 deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
@@ -906,7 +1159,7 @@ uuid = "29816b5a-b9ab-546f-933c-edad1886dfa8"
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 
 [[LinearAlgebra]]
-deps = ["Libdl"]
+deps = ["Libdl", "libblastrampoline_jll"]
 uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [[Logging]]
@@ -928,6 +1181,10 @@ uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
 
 [[NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
+
+[[OpenBLAS_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
+uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
 
 [[Parsers]]
 deps = ["Dates"]
@@ -954,7 +1211,7 @@ deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
 uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 
 [[Random]]
-deps = ["Serialization"]
+deps = ["SHA", "Serialization"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [[Reexport]]
@@ -1002,6 +1259,10 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 deps = ["Libdl"]
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
 
+[[libblastrampoline_jll]]
+deps = ["Artifacts", "Libdl", "OpenBLAS_jll"]
+uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
+
 [[nghttp2_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850ede-7688-5339-a07c-302acd2aaf8d"
@@ -1016,6 +1277,7 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╠═571613a1-6b4b-496d-9a68-aac3f6a83a4b
 # ╟─168e13f7-2ff2-4207-be56-e57755041d36
 # ╠═28ae1424-67dc-4b76-a172-1185cc76cb59
+# ╟─93abe0dc-f041-475f-9ef7-d8ee4408414b
 # ╟─ea39c63f-7466-4015-a66c-08bd9c716343
 # ╟─8b082f9a-073e-4112-9422-4087850fc89e
 # ╟─d70a3a02-ef3a-450f-bf5a-4a0d7f6262e2
@@ -1041,14 +1303,17 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╟─7afbf8ef-e91c-45b9-bf22-24201cbb4828
 # ╠═b226da72-9512-4d14-8582-2f7787c25028
 # ╠═a6fd1f7b-a8fc-420d-a8bb-9f549842ad3e
+# ╟─d12b98df-8c3f-4620-ba3c-2f3dadac521b
 # ╟─965f3660-6ec4-4a86-a2a2-c167dbe9315f
 # ╠═01ce31a9-6856-4ee7-8bce-7ce635167457
 # ╠═00d97588-d591-4dad-9f7d-223c237deefd
 # ╠═21f57310-9ceb-423c-a9ce-5beb1060a5a3
+# ╟─94561cb1-2325-49b6-8b22-943923fdd91b
 # ╟─7d9d6c28-131a-4b2a-84f8-5c085f387e85
 # ╟─0866afc2-fd42-42b7-a572-9d824cf8b83b
 # ╟─75e1a973-7ef0-4ac5-b3e2-5edb63577927
 # ╠═e8d8a60e-489b-467a-b49c-1fa844807751
+# ╟─b0c246ed-b871-461b-9541-280e49b49136
 # ╠═9346d8e2-9ba0-4475-a21f-11bdd018bc60
 # ╠═7822fdb7-bee6-40cc-a089-56bb32d77fe6
 # ╟─701de4b8-42d3-46a3-a399-d7761dccd83d
@@ -1064,21 +1329,25 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╟─4cf27df3-6a69-402e-a71c-26538b2a52e7
 # ╟─5721ad33-a51a-4a91-adb2-0915ea0efa13
 # ╠═c857bb4b-4cf4-426e-b340-592cf7700434
+# ╟─d121e085-c69b-490f-b315-c11a9abd57a6
 # ╟─fc8984c8-4668-418a-b258-a1718809470c
 # ╠═846354c8-ba3b-4be7-926c-d3c9cc9add5f
 # ╟─a33c7d7a-8071-448e-abd6-4e38b5444a3a
 # ╠═91f3dab8-5521-44a0-9890-8d988a994076
 # ╠═dcaae662-4a4f-4dd3-8763-89ea9eab7d43
+# ╟─d4bdc4fe-2af8-402f-950f-2afaf77c62de
 # ╟─e77cfefc-429d-49db-8135-f4604f6a9f0b
 # ╠═2d5689f5-1d63-4b8b-a103-da35933ad26e
 # ╠═6dd221d1-7fd8-446e-aced-950512ea34bc
 # ╠═0a9d6e2d-3a41-4cd5-9a4e-a9b76ed89fa9
 # ╟─0962d456-1a76-4b0d-85ff-c9e7dc66621d
 # ╠═bf9b36e8-14c5-477b-a54b-35ba8e415c77
+# ╟─e910982c-8508-4729-a75d-8b5b847918b6
 # ╟─781adedc-2da7-4394-b323-e508d614afae
 # ╟─de789ad1-8197-48ae-81b2-a21ec2340ae0
 # ╠═85483b28-341e-4ed6-bb1e-66c33613725e
 # ╠═9e37c18c-3ebb-443a-9663-bb4064391d6e
+# ╟─05d28aa2-9622-4e62-ab39-ca4c7dde6eb4
 # ╠═3266f9e6-42ad-4103-8db3-b87d2c315290
 # ╟─ebec177c-4c33-45a4-bdbd-f16944631aff
 # ╟─da7091f5-8ba2-498b-aa8d-bbf3b4505b81

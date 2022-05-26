@@ -47,6 +47,7 @@ include("./analysis/ReactiveNode.jl")
 include("./packages/PkgCompat.jl")
 
 include("./notebook/Cell.jl")
+include("./analysis/data structures.jl")
 include("./analysis/Topology.jl")
 include("./analysis/Errors.jl")
 include("./analysis/TopologicalOrder.jl")

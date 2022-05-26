@@ -49,7 +49,8 @@ import {
     pythonLanguage,
 } from "../imports/CodemirrorPlutoSetup.js"
 
-import { markdown, html as htmlLang, javascript, sqlLang, python, julia_andrey } from "./CellInput/mixedParsers.js"
+import { markdown, html as htmlLang, javascript, sqlLang, python, julia_mixed } from "./CellInput/mixedParsers.js"
+import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
 import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"
@@ -61,6 +62,8 @@ import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_l
 import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
 import { debug_syntax_plugin } from "./CellInput/debug_syntax_plugin.js"
 import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
+
+export const ENABLE_CM_MIXED_PARSER = false
 
 export const pluto_syntax_colors = HighlightStyle.define(
     [
@@ -322,7 +325,7 @@ let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPluto
  *  scroll_into_view_after_creation: boolean,
  *  cell_dependencies: import("./Editor.js").CellDependencyData,
  *  nbpkg: import("./Editor.js").NotebookPkgData?,
- *  variables_in_all_notebook: { [variable_name: string]: string },
+ *  global_definition_locations: { [variable_name: string]: string },
  *  [key: string]: any,
  * }} props
  */
@@ -350,7 +353,7 @@ export const CellInput = ({
     show_logs,
     set_show_logs,
     cm_highlighted_line,
-    variables_in_all_notebook,
+    global_definition_locations,
 }) => {
     let pluto_actions = useContext(PlutoContext)
 
@@ -361,7 +364,7 @@ export const CellInput = ({
     on_change_ref.current = on_change
 
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
-    let global_definitions_compartment = useCompartment(newcm_ref, GlobalDefinitionsFacet.of(variables_in_all_notebook))
+    let global_definitions_compartment = useCompartment(newcm_ref, GlobalDefinitionsFacet.of(global_definition_locations))
     let highlighted_line_compartment = useCompartment(newcm_ref, HighlightLineFacet.of(cm_highlighted_line))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
 
@@ -618,14 +621,21 @@ export const CellInput = ({
                     }),
                     EditorState.tabSize.of(4),
                     indentUnit.of("\t"),
-                    julia_andrey(),
-                    markdown({
-                        defaultCodeLanguage: julia_andrey(),
-                    }),
-                    htmlLang(), //Provides tag closing!,
-                    javascript(),
-                    python(),
-                    sqlLang,
+                    ...(ENABLE_CM_MIXED_PARSER
+                        ? [
+                              julia_mixed(),
+                              markdown({
+                                  defaultCodeLanguage: julia_mixed(),
+                              }),
+                              htmlLang(), //Provides tag closing!,
+                              javascript(),
+                              python(),
+                              sqlLang,
+                          ]
+                        : [
+                              //
+                              julia_andrey(),
+                          ]),
                     go_to_definition_plugin,
                     pluto_autocomplete({
                         request_autocomplete: async ({ text }) => {

@@ -79,10 +79,10 @@ binder-spinner {
 body.wiggle_binder button#launch_binder,
 body.wiggle_binder #binder_launch_help {
     /* position: fixed; */
-    animation: wiggle 0.3s ease-in-out 0s 1;
+    animation: wiggle-binder-button 0.3s ease-in-out 0s 1;
 }
 
-@keyframes wiggle {
+@keyframes wiggle-binder-button {
     0% {
         transform: rotate(0deg);
     }

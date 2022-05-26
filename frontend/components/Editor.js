@@ -16,7 +16,7 @@ import { UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
 import { Scroller } from "./Scroller.js"
 import { ExportBanner } from "./ExportBanner.js"
-import { PkgPopup } from "./PkgPopup.js"
+import { Popup } from "./Popup.js"
 
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
@@ -25,6 +25,7 @@ import { PlutoContext, PlutoBondsContext, PlutoJSInitializingContext, SetWithEmp
 import { unpack } from "../common/MsgPack.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
 import { start_binder, BinderPhase, count_stat } from "../common/Binder.js"
+import { setup_mathjax } from "../common/SetupMathJax.js"
 import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js"
 import { BinderButton } from "./BinderButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
@@ -32,6 +33,7 @@ import { ProgressBar } from "./ProgressBar.js"
 import { IsolatedCell } from "./Cell.js"
 import { RawHTMLContainer } from "./CellOutput.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
+import { HijackExternalLinksToOpenInNewTab } from "./HackySideStuff/HijackExternalLinksToOpenInNewTab.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -488,12 +490,14 @@ export class Editor extends Component {
                     }
                 }
             },
-            fold_remote_cell: async (cell_id, newFolded) => {
-                if (!newFolded) {
-                    this.setState({ last_created_cell: cell_id })
+            fold_remote_cells: async (cell_ids, newFolded) => {
+                if (!newFolded && cell_ids.length > 0) {
+                    this.setState({ last_created_cell: cell_ids[cell_ids.length - 1] })
                 }
                 await update_notebook((notebook) => {
-                    notebook.cell_inputs[cell_id].code_folded = newFolded
+                    for (let cell_id of cell_ids) {
+                        notebook.cell_inputs[cell_id].code_folded = newFolded
+                    }
                 })
             },
             set_and_run_all_changed_remote_cells: () => {
@@ -555,6 +559,9 @@ export class Editor extends Component {
                     false
                 )
             },
+            /** This actions avoids pushing selected cells all the way down, which is too heavy to handle! */
+            get_selected_cells: (cell_id, /** @type {boolean} */ allow_other_selected_cells) =>
+                allow_other_selected_cells ? this.state.selected_cells : [cell_id],
             get_avaible_versions: async ({ package_name, notebook_id }) => {
                 const { message } = await this.client.send("nbpkg_available_versions", { package_name: package_name }, { notebook_id: notebook_id })
                 return message.versions
@@ -973,18 +980,28 @@ patch: ${JSON.stringify(
             this.patch_listeners.forEach((f) => f(patches))
         }
 
+        let ctrl_down_last_val = { current: false }
+        const set_ctrl_down = (value) => {
+            if (value !== ctrl_down_last_val.current) {
+                ctrl_down_last_val.current = value
+                document.body.querySelectorAll("pluto-variable-link").forEach((el) => {
+                    el.setAttribute("data-ctrl-down", value ? "true" : "false")
+                })
+            }
+        }
+
         document.addEventListener("keyup", (e) => {
-            document.body.classList.toggle("ctrl_down", has_ctrl_or_cmd_pressed(e))
+            set_ctrl_down(has_ctrl_or_cmd_pressed(e))
         })
         document.addEventListener("visibilitychange", (e) => {
-            document.body.classList.toggle("ctrl_down", false)
+            set_ctrl_down(false)
             setTimeout(() => {
-                document.body.classList.toggle("ctrl_down", false)
+                set_ctrl_down(false)
             }, 100)
         })
 
         document.addEventListener("keydown", (e) => {
-            document.body.classList.toggle("ctrl_down", has_ctrl_or_cmd_pressed(e))
+            set_ctrl_down(has_ctrl_or_cmd_pressed(e))
             // if (e.defaultPrevented) {
             //     return
             // }
@@ -1149,6 +1166,10 @@ patch: ${JSON.stringify(
         if (old_state.disable_ui !== this.state.disable_ui) {
             this.on_disable_ui()
         }
+        if (old_state.initializing && !this.state.initializing) {
+            console.info("Initialization done!")
+            setup_mathjax()
+        }
 
         if (old_state.notebook.nbpkg?.restart_recommended_msg !== new_state.notebook.nbpkg?.restart_recommended_msg) {
             console.warn(`New restart recommended message: ${new_state.notebook.nbpkg?.restart_recommended_msg}`)
@@ -1173,6 +1194,7 @@ patch: ${JSON.stringify(
                 <${PlutoContext.Provider} value=${this.actions}>
                     <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                         <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
+                            <${ProgressBar} notebook=${this.state.notebook} binder_phase=${this.state.binder_phase} status=${status}/>
                             <div style="width: 100%">
                                 ${this.state.notebook.cell_order.map(
                                     (cell_id, i) => html`
@@ -1205,6 +1227,8 @@ patch: ${JSON.stringify(
         >`
 
         return html`
+            ${this.state.disable_ui === false && html`<${HijackExternalLinksToOpenInNewTab} />`}
+            
             <${PlutoContext.Provider} value=${this.actions}>
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                     <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
@@ -1312,9 +1336,6 @@ patch: ${JSON.stringify(
                         <${Notebook}
                             notebook=${this.state.notebook}
                             cell_inputs_local=${this.state.cell_inputs_local}
-                            on_update_doc_query=${this.actions.set_doc_query}
-                            on_cell_input=${this.actions.set_local_cell}
-                            on_focus_neighbor=${this.actions.focus_on_neighbor}
                             disable_input=${this.state.disable_ui || !this.state.connected /* && this.state.binder_phase == null*/}
                             show_logs=${this.state.show_logs}
                             set_show_logs=${(enabled) => this.setState({ show_logs: enabled })}
@@ -1341,7 +1362,7 @@ patch: ${JSON.stringify(
                                 on_selection=${(selected_cell_ids) => {
                                     // @ts-ignore
                                     if (
-                                        selected_cell_ids.length !== this.state.selected_cells ||
+                                        selected_cell_ids.length !== this.state.selected_cells.length ||
                                         _.difference(selected_cell_ids, this.state.selected_cells).length !== 0
                                     ) {
                                         this.setState({
@@ -1357,7 +1378,7 @@ patch: ${JSON.stringify(
                         on_update_doc_query=${this.actions.set_doc_query}
                         notebook=${this.state.notebook}
                     />
-                    <${PkgPopup} notebook=${this.state.notebook}/>
+                    <${Popup} notebook=${this.state.notebook}/>
                     <${UndoDelete}
                         recently_deleted=${this.state.recently_deleted}
                         on_click=${() => {

@@ -100,7 +100,11 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
             # notebook file deleted... let's ignore this, changing the notebook will cause it to save again. Fine for now
             sleep(2)
         else
-            watch_file(nb.path)
+            e = watch_file(nb.path, 3)
+            if e.timedout
+                continue
+            end
+            
             # the above call is blocking until the file changes
             
             local modified_time = mtime(nb.path)
@@ -133,6 +137,7 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
     
     nb
 end
+precompile(SessionActions.open, (ServerSession, String))
 
 function save_upload(content::Vector{UInt8})
     save_path = emptynotebook().path

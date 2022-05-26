@@ -8,18 +8,21 @@ import Pluto.PkgUtils
 import Pluto.PkgCompat
 import Distributed
 
+# We have our own registry for these test! Take a look at https://github.com/JuliaPluto/PlutoPkgTestRegistry#readme for more info about the test packages and their dependencies.
+
 const pluto_test_registry_spec = Pkg.RegistrySpec(;
     url="https://github.com/JuliaPluto/PlutoPkgTestRegistry", 
     uuid=Base.UUID("96d04d5f-8721-475f-89c4-5ee455d3eda0"),
     name="PlutoPkgTestRegistry",
 )
 
+
 @testset "Built-in Pkg" begin
     
     # Pkg.Registry.rm("General")
     Pkg.Registry.add(pluto_test_registry_spec)
 
-
+    # We have our own registry for these test! Take a look at https://github.com/JuliaPluto/PlutoPkgTestRegistry#readme for more info about the test packages and their dependencies.
     @testset "Basic" begin
         fakeclient = ClientSession(:fake, nothing)
         🍭 = ServerSession()
@@ -73,7 +76,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
 
         old_A_terminal = deepcopy(terminals["PlutoPkgTestA"])
-        @show old_A_terminal
+        # @show old_A_terminal
 
         update_save_run!(🍭, notebook, notebook.cells[[3, 4]]) # import B
 
@@ -282,7 +285,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
         @test noerror(notebook.cells[3])
         @test noerror(notebook.cells[4])
-        @test notebook.cells[5].errored == false
+        @test notebook.cells[5] |> noerror
 
         @test !has_embedded_pkgfiles(notebook)
 
@@ -369,7 +372,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         ])
         fakeclient.connected_notebook = notebook
 
-        notebook.topology = Pluto.updated_topology(Pluto.NotebookTopology(), notebook, notebook.cells) |> Pluto.static_resolve_topology
+        notebook.topology = Pluto.updated_topology(Pluto.NotebookTopology(cell_order=Pluto.ImmutableVector(notebook.cells)), notebook, notebook.cells) |> Pluto.static_resolve_topology
 
         @test !Pluto.use_plutopkg(notebook.topology)
         order = collect(Pluto.topological_order(notebook))

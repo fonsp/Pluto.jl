@@ -122,7 +122,7 @@ let explorer_function_definition_argument = (cursor, doc, scopestate, verbose = 
 
     if ((match = match_function_call_argument(cursor)`; ${t.many("named_args")}`)) {
         // "Parameters", the `y, z` in `function f(x; y, z) end`
-        let { named_args } = match
+        let { named_args = [] } = match
         for (let { node: named_arg } of named_args) {
             scopestate = explorer_function_definition_argument(named_arg, doc, scopestate, verbose)
         }
@@ -759,7 +759,7 @@ export let explore_variable_usage = (
                 let match = null
                 if ((match = match_function_call_argument(arg)`; ${t.many("named_args")}`)) {
                     // "Parameters", the part in `f(x; y, z)` after the `;`
-                    let { named_args } = match
+                    let { named_args = [] } = match
                     for (let { node: named_arg } of named_args) {
                         let match = null
                         if ((match = match_function_call_named_argument(named_arg)`${t.as("name")} = ${t.as("value")}`)) {

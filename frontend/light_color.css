@@ -93,6 +93,7 @@
         /*saveall container*/
         --overlay-button-bg: #ffffff;
         --overlay-button-border: #f3f2f2;
+        --overlay-button-border-save: #f3f2f2;
 
         /*input_context_menu*/
         --input-context-menu-border-color: rgba(0, 0, 0, 0.1);
@@ -132,7 +133,7 @@
         --helpbox-notfound-header-color: rgb(139, 139, 139);
         --helpbox-text-color: black;
         --code-section-bg-color: whitesmoke;
-        --code-section-bg-color: #dbdbdb;
+        --code-section-bg-color: #f3f3f3;
 
         /*footer*/
         --footer-color: #333333;

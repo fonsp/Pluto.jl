@@ -42,12 +42,12 @@ import Distributed
         @test notebook.cells[2].runtime !== nothing
 
         update_run!(🍭, notebook, notebook.cells[3])
-        @test notebook.cells[3].errored == false
+        @test notebook.cells[3] |> noerror
         @test notebook.cells[3].output.rootassignee === nothing
     
         update_run!(🍭, notebook, notebook.cells[4])
         @test notebook.cells[4].output.body == "16"
-        @test notebook.cells[4].errored == false
+        @test notebook.cells[4] |> noerror
         @test notebook.cells[4].output.rootassignee === nothing
 
         setcode(notebook.cells[1], "x = 912")
@@ -62,7 +62,7 @@ import Distributed
         setcode(notebook.cells[2], "y = 2")
         update_run!(🍭, notebook, notebook.cells[1:2])
         update_run!(🍭, notebook, notebook.cells[5:6])
-        @test notebook.cells[5].errored == false
+        @test notebook.cells[5] |> noerror
         @test notebook.cells[6].output.body == "3"
 
         setcode(notebook.cells[2], "y = 1")
@@ -105,16 +105,16 @@ import Distributed
     
         setcode(notebook.cells[1], "")
         update_run!(🍭, notebook, notebook.cells[1])
-        @test notebook.cells[1].errored == false
-        @test notebook.cells[2].errored == false
+        @test notebook.cells[1] |> noerror
+        @test notebook.cells[2] |> noerror
     
     # https://github.com/fonsp/Pluto.jl/issues/26
         setcode(notebook.cells[1], "x = 1")
         update_run!(🍭, notebook, notebook.cells[1])
         setcode(notebook.cells[2], "x")
         update_run!(🍭, notebook, notebook.cells[2])
-        @test notebook.cells[1].errored == false
-        @test notebook.cells[2].errored == false
+        @test notebook.cells[1] |> noerror
+        @test notebook.cells[2] |> noerror
 
         update_run!(🍭, notebook, notebook.cells[3])
         update_run!(🍭, notebook, notebook.cells[4])
@@ -123,8 +123,8 @@ import Distributed
     
         setcode(notebook.cells[3], "")
         update_run!(🍭, notebook, notebook.cells[3])
-        @test notebook.cells[3].errored == false
-        @test notebook.cells[4].errored == false
+        @test notebook.cells[3] |> noerror
+        @test notebook.cells[4] |> noerror
     
         update_run!(🍭, notebook, notebook.cells[5])
         update_run!(🍭, notebook, notebook.cells[6])
@@ -133,8 +133,8 @@ import Distributed
     
         setcode(notebook.cells[5], "")
         update_run!(🍭, notebook, notebook.cells[5])
-        @test notebook.cells[5].errored == false
-        @test notebook.cells[6].errored == false
+        @test notebook.cells[5] |> noerror
+        @test notebook.cells[6] |> noerror
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
@@ -148,11 +148,11 @@ import Distributed
         ])
         notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
 
-        let topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells[[1]])
+        let topo_order = Pluto.topological_order(notebook.topology, notebook.cells[[1]])
             @test indexin(topo_order.runnable, notebook.cells) == [1,2]
             @test topo_order.errable |> keys == notebook.cells[[3,4]] |> Set
         end
-        let topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells[[1]], allow_multiple_defs=true)
+        let topo_order = Pluto.topological_order(notebook.topology, notebook.cells[[1]], allow_multiple_defs=true)
             @test indexin(topo_order.runnable, notebook.cells) == [1,3,4,2] # x first, y second and third, z last
             # this also tests whether multiple defs run in page order
             @test topo_order.errable == Dict()
@@ -204,14 +204,14 @@ import Distributed
         ])
         notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
 
-        topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells)
+        topo_order = Pluto.topological_order(notebook.topology, notebook.cells)
         @test indexin(topo_order.runnable, notebook.cells) == [6, 5, 4, 7, 3, 1, 2, 8]
         # 6, 5, 4, 3 should run first (this is implemented using `cell_precedence_heuristic`), in that order
         # 1, 2, 7 remain, and should run in notebook order.
 
         # if the cells were placed in reverse order...
         reverse!(notebook.cell_order)
-        topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells)
+        topo_order = Pluto.topological_order(notebook.topology, notebook.cells)
         @test indexin(topo_order.runnable, reverse(notebook.cells)) == [6, 5, 4, 7, 3, 8, 2, 1]
         # 6, 5, 4, 3 should run first (this is implemented using `cell_precedence_heuristic`), in that order
         # 1, 2, 7 remain, and should run in notebook order, which is 7, 2, 1.
@@ -233,7 +233,7 @@ import Distributed
 
         notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
 
-        topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells)
+        topo_order = Pluto.topological_order(notebook.topology, notebook.cells)
 
         comesbefore(A, first, second) = findfirst(isequal(first),A) < findfirst(isequal(second), A)
 
@@ -261,7 +261,7 @@ import Distributed
         ])
 
         notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
-        topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells)
+        topo_order = Pluto.topological_order(notebook.topology, notebook.cells)
         run_order = indexin(topo_order.runnable, notebook.cells)
 
         @test run_order == [3, 1, 2]
@@ -278,12 +278,12 @@ import Distributed
         update_run!(🍭, notebook, notebook.cells[1:1])
 
         @test notebook.cells[1].errored == true # this cell is before the using Dates and will error
-        @test notebook.cells[3].errored == false # using the position in the notebook this cell will not error
+        @test notebook.cells[3] |> noerror # using the position in the notebook this cell will not error
 
         update_run!(🍭, notebook, notebook.cells[2:2])
 
-        @test notebook.cells[1].errored == false
-        @test notebook.cells[3].errored == false
+        @test notebook.cells[1] |> noerror
+        @test notebook.cells[3] |> noerror
     end
 
     @testset "Reactive usings 2" begin
@@ -297,8 +297,8 @@ import Distributed
 
         update_run!(🍭, notebook, notebook.cells)
 
-        @test notebook.cells[1].errored == false
-        @test notebook.cells[3].errored == false
+        @test notebook.cells[1] |> noerror
+        @test notebook.cells[3] |> noerror
 
         setcode(notebook.cells[2], "")
         update_run!(🍭, notebook, notebook.cells[2:2])
@@ -646,8 +646,8 @@ import Distributed
         fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells[1:4])
-        @test notebook.cells[1].errored == false
-        @test notebook.cells[2].errored == false
+        @test notebook.cells[1] |> noerror
+        @test notebook.cells[2] |> noerror
         @test notebook.cells[3].output.body == "1"
         @test notebook.cells[4].output.body == "2"
 
@@ -660,15 +660,15 @@ import Distributed
         
         setcode(notebook.cells[1], "a(x) = 1")
         update_run!(🍭, notebook, notebook.cells[1])
-        @test notebook.cells[1].errored == false
-        @test notebook.cells[2].errored == false
+        @test notebook.cells[1] |> noerror
+        @test notebook.cells[2] |> noerror
         @test notebook.cells[3].output.body == "1"
         @test notebook.cells[4].output.body == "2"
 
         setcode(notebook.cells[1], "")
         update_run!(🍭, notebook, notebook.cells[1])
-        @test notebook.cells[1].errored == false
-        @test notebook.cells[2].errored == false
+        @test notebook.cells[1] |> noerror
+        @test notebook.cells[2] |> noerror
         @test notebook.cells[3].errored == true
         @test notebook.cells[4].output.body == "2"
 
@@ -680,16 +680,16 @@ import Distributed
 
         setcode(notebook.cells[5], "")
         update_run!(🍭, notebook, notebook.cells[5])
-        @test notebook.cells[5].errored == false
-        @test notebook.cells[6].errored == false
+        @test notebook.cells[5] |> noerror
+        @test notebook.cells[6] |> noerror
         @test notebook.cells[7].errored == true
         @test notebook.cells[8].output.body == "6"
 
         setcode(notebook.cells[5], "b = 5")
         setcode(notebook.cells[6], "")
         update_run!(🍭, notebook, notebook.cells[5:6])
-        @test notebook.cells[5].errored == false
-        @test notebook.cells[6].errored == false
+        @test notebook.cells[5] |> noerror
+        @test notebook.cells[6] |> noerror
         @test notebook.cells[7].output.body == "12"
         @test notebook.cells[8].errored == true
 
@@ -697,8 +697,8 @@ import Distributed
         @test notebook.cells[12].output.body == "missing"
 
         update_run!(🍭, notebook, notebook.cells[9:10])
-        @test notebook.cells[9].errored == false
-        @test notebook.cells[10].errored == false
+        @test notebook.cells[9] |> noerror
+        @test notebook.cells[10] |> noerror
         @test notebook.cells[11].output.body == "9"
         @test notebook.cells[12].output.body == "10"
         @test notebook.cells[13].output.body == "10"
@@ -727,20 +727,20 @@ import Distributed
         @test notebook.cells[18].errored == true
 
         update_run!(🍭, notebook, notebook.cells[14])
-        @test notebook.cells[16].errored == false
+        @test notebook.cells[16] |> noerror
         @test notebook.cells[17].errored == true
-        @test notebook.cells[18].errored == false
+        @test notebook.cells[18] |> noerror
 
         update_run!(🍭, notebook, notebook.cells[15])
-        @test notebook.cells[16].errored == false
-        @test notebook.cells[17].errored == false
-        @test notebook.cells[18].errored == false
+        @test notebook.cells[16] |> noerror
+        @test notebook.cells[17] |> noerror
+        @test notebook.cells[18] |> noerror
 
         setcode(notebook.cells[14], "")
         update_run!(🍭, notebook, notebook.cells[14])
         @test notebook.cells[16].errored == true
-        @test notebook.cells[17].errored == false
-        @test notebook.cells[18].errored == false
+        @test notebook.cells[17] |> noerror
+        @test notebook.cells[18] |> noerror
 
         setcode(notebook.cells[15], "")
         update_run!(🍭, notebook, notebook.cells[15])
@@ -755,8 +755,8 @@ import Distributed
         # Cell("e(22)"),
 
         update_run!(🍭, notebook, notebook.cells[19:22])
-        @test notebook.cells[19].errored == false
-        @test notebook.cells[21].errored == false
+        @test notebook.cells[19] |> noerror
+        @test notebook.cells[21] |> noerror
         @test notebook.cells[22].errored == true
 
         setcode(notebook.cells[20], "asdf(x) = asdf(x,x)")
@@ -770,38 +770,38 @@ import Distributed
 
         setcode(notebook.cells[20], "")
         update_run!(🍭, notebook, notebook.cells[20])
-        @test notebook.cells[19].errored == false
-        @test notebook.cells[20].errored == false
-        @test notebook.cells[21].errored == false
+        @test notebook.cells[19] |> noerror
+        @test notebook.cells[20] |> noerror
+        @test notebook.cells[21] |> noerror
         @test notebook.cells[22].errored == true
 
         setcode(notebook.cells[19], "begin struct asdf; x; y; end; asdf(x) = asdf(x,x); end")
         setcode(notebook.cells[20], "")
         update_run!(🍭, notebook, notebook.cells[19:20])
-        @test notebook.cells[19].errored == false
-        @test notebook.cells[20].errored == false
-        @test notebook.cells[21].errored == false
-        @test notebook.cells[22].errored == false
+        @test notebook.cells[19] |> noerror
+        @test notebook.cells[20] |> noerror
+        @test notebook.cells[21] |> noerror
+        @test notebook.cells[22] |> noerror
 
         update_run!(🍭, notebook, notebook.cells[23:27])
-        @test notebook.cells[23].errored == false
-        @test notebook.cells[24].errored == false
-        @test notebook.cells[25].errored == false
-        @test notebook.cells[26].errored == false
-        @test notebook.cells[27].errored == false
+        @test notebook.cells[23] |> noerror
+        @test notebook.cells[24] |> noerror
+        @test notebook.cells[25] |> noerror
+        @test notebook.cells[26] |> noerror
+        @test notebook.cells[27] |> noerror
         update_run!(🍭, notebook, notebook.cells[23:27])
-        @test notebook.cells[23].errored == false
-        @test notebook.cells[24].errored == false
-        @test notebook.cells[25].errored == false
-        @test notebook.cells[26].errored == false
-        @test notebook.cells[27].errored == false
+        @test notebook.cells[23] |> noerror
+        @test notebook.cells[24] |> noerror
+        @test notebook.cells[25] |> noerror
+        @test notebook.cells[26] |> noerror
+        @test notebook.cells[27] |> noerror
 
         setcode.(notebook.cells[23:27], [""])
         update_run!(🍭, notebook, notebook.cells[23:27])
 
         setcode(notebook.cells[23], "@assert !any(isdefined.([@__MODULE__], [Symbol(:e,i) for i in 1:14]))")
         update_run!(🍭, notebook, notebook.cells[23])
-        @test notebook.cells[23].errored == false
+        @test notebook.cells[23] |> noerror
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
 
@@ -970,23 +970,23 @@ import Distributed
         
         setcode(notebook.cells[1], "")
         update_run!(🍭, notebook, notebook.cells[1])
-        @test notebook.cells[1].errored == false
+        @test notebook.cells[1] |> noerror
         @test occursinerror("x not defined", notebook.cells[2])
 
         update_run!(🍭, notebook, notebook.cells[4])
         update_run!(🍭, notebook, notebook.cells[3])
-        @test notebook.cells[3].errored == false
-        @test notebook.cells[4].errored == false
+        @test notebook.cells[3] |> noerror
+        @test notebook.cells[4] |> noerror
         update_run!(🍭, notebook, notebook.cells[3])
-        @test notebook.cells[3].errored == false
-        @test notebook.cells[4].errored == false
+        @test notebook.cells[3] |> noerror
+        @test notebook.cells[4] |> noerror
         setcode(notebook.cells[3], "struct a; x; y end")
         update_run!(🍭, notebook, notebook.cells[3])
-        @test notebook.cells[3].errored == false
-        @test notebook.cells[4].errored == false
+        @test notebook.cells[3] |> noerror
+        @test notebook.cells[4] |> noerror
         setcode(notebook.cells[3], "")
         update_run!(🍭, notebook, notebook.cells[3])
-        @test notebook.cells[3].errored == false
+        @test notebook.cells[3] |> noerror
         @test notebook.cells[4].errored == true
 
 
@@ -1009,13 +1009,13 @@ import Distributed
 
         update_run!(🍭, notebook, notebook.cells[1])
         @test notebook.cells[1].output.body == "f" || startswith(notebook.cells[1].output.body, "f (generic function with ")
-        @test notebook.cells[1].errored == false
+        @test notebook.cells[1] |> noerror
 
         update_run!(🍭, notebook, notebook.cells[2:3])
-        @test notebook.cells[2].errored == false
-        @test notebook.cells[3].errored == false
+        @test notebook.cells[2] |> noerror
+        @test notebook.cells[3] |> noerror
         update_run!(🍭, notebook, notebook.cells[3])
-        @test notebook.cells[3].errored == false
+        @test notebook.cells[3] |> noerror
 
         update_run!(🍭, notebook, notebook.cells[4])
         @test notebook.cells[4].output.body == "2"
@@ -1103,7 +1103,7 @@ import Distributed
     @testset "Changing functions" begin
 
         update_run!(🍭, notebook, notebook.cells[2])
-        @test notebook.cells[2].errored == false
+        @test notebook.cells[2] |> noerror
 
         update_run!(🍭, notebook, notebook.cells[1])
         update_run!(🍭, notebook, notebook.cells[3])
@@ -1112,12 +1112,12 @@ import Distributed
         setcode(notebook.cells[1], "y = 2")
         update_run!(🍭, notebook, notebook.cells[1])
         @test notebook.cells[3].output.body == "5"
-        @test notebook.cells[2].errored == false
+        @test notebook.cells[2] |> noerror
 
         setcode(notebook.cells[1], "y")
         update_run!(🍭, notebook, notebook.cells[1])
         @test occursinerror("UndefVarError", notebook.cells[1])
-        @test notebook.cells[2].errored == false
+        @test notebook.cells[2] |> noerror
         @test occursinerror("UndefVarError", notebook.cells[3])
 
         update_run!(🍭, notebook, notebook.cells[4])
@@ -1126,7 +1126,7 @@ import Distributed
 
         setcode(notebook.cells[4], "g(a) = a+a")
         update_run!(🍭, notebook, notebook.cells[4])
-        @test notebook.cells[4].errored == false
+        @test notebook.cells[4] |> noerror
         @test notebook.cells[5].errored == true
 
         setcode(notebook.cells[5], "g(5)")
@@ -1136,18 +1136,18 @@ import Distributed
         update_run!(🍭, notebook, notebook.cells[6])
         update_run!(🍭, notebook, notebook.cells[7])
         update_run!(🍭, notebook, notebook.cells[8])
-        @test notebook.cells[6].errored == false
-        @test notebook.cells[7].errored == false
+        @test notebook.cells[6] |> noerror
+        @test notebook.cells[7] |> noerror
         @test notebook.cells[8].errored == true
     
         setcode(notebook.cells[6], "h(x::Float64) = 2.0 * x")
         update_run!(🍭, notebook, notebook.cells[6])
-        @test notebook.cells[6].errored == false
+        @test notebook.cells[6] |> noerror
         @test notebook.cells[7].errored == true
-        @test notebook.cells[8].errored == false
+        @test notebook.cells[8] |> noerror
 
         update_run!(🍭, notebook, notebook.cells[9:10])
-        @test notebook.cells[9].errored == false
+        @test notebook.cells[9] |> noerror
         @test notebook.cells[10].output.body == "true"
 
         setcode(notebook.cells[9], "p = p")
@@ -1156,48 +1156,48 @@ import Distributed
 
         setcode(notebook.cells[9], "p = 9")
         update_run!(🍭, notebook, notebook.cells[9])
-        @test notebook.cells[9].errored == false
+        @test notebook.cells[9] |> noerror
         @test notebook.cells[10].output.body == "false"
         
         setcode(notebook.cells[9], "p(x) = 9")
         update_run!(🍭, notebook, notebook.cells[9])
-        @test notebook.cells[9].errored == false
+        @test notebook.cells[9] |> noerror
         @test notebook.cells[10].output.body == "true"
     end
 
     @testset "Extending imported functions" begin
         update_run!(🍭, notebook, notebook.cells[11:15])
-        @test_broken notebook.cells[11].errored == false
-        @test_broken notebook.cells[12].errored == false # multiple definitions for `Something` should be okay? == false
-        @test notebook.cells[13].errored == false
+        @test_broken notebook.cells[11] |> noerror
+        @test_broken notebook.cells[12] |> noerror # multiple definitions for `Something` should be okay? == false
+        @test notebook.cells[13] |> noerror
         @test notebook.cells[14].errored == true # the definition for a was created before `a` was used, so it hides the `a` from `Something`
         @test notebook.cells[15].output.body == "15"
 
         
         @test_nowarn update_run!(🍭, notebook, notebook.cells[13:15])
-        @test notebook.cells[13].errored == false
+        @test notebook.cells[13] |> noerror
         @test notebook.cells[14].errored == true # the definition for a was created before `a` was used, so it hides the `a` from `Something`
         @test notebook.cells[15].output.body == "15"
 
         @test_nowarn update_run!(🍭, notebook, notebook.cells[16:20])
-        @test notebook.cells[16].errored == false
+        @test notebook.cells[16] |> noerror
         @test occursinerror("Multiple", notebook.cells[17])
         @test occursinerror("Multiple", notebook.cells[18])
         @test occursinerror("UndefVarError", notebook.cells[19])
         @test occursinerror("UndefVarError", notebook.cells[20])
 
         @test_nowarn update_run!(🍭, notebook, notebook.cells[21:24])
-        @test notebook.cells[21].errored == false
-        @test notebook.cells[22].errored == false
-        @test notebook.cells[23].errored == false
+        @test notebook.cells[21] |> noerror
+        @test notebook.cells[22] |> noerror
+        @test notebook.cells[23] |> noerror
         @test notebook.cells[23].output.body == "\"🐟\""
         @test notebook.cells[24].output.body == "24"
 
         setcode(notebook.cells[22], "import .Wow: c")
         @test_nowarn update_run!(🍭, notebook, notebook.cells[22])
-        @test notebook.cells[22].errored == false
+        @test notebook.cells[22] |> noerror
         @test notebook.cells[23].output.body == "\"🐟\""
-        @test notebook.cells[23].errored == false
+        @test notebook.cells[23] |> noerror
         @test notebook.cells[24].errored == true # the extension should no longer exist
 
         # https://github.com/fonsp/Pluto.jl/issues/59
@@ -1235,7 +1235,7 @@ import Distributed
 
     @testset "Using external libraries" begin
         update_run!(🍭, notebook, notebook.cells[30:31])
-        @test notebook.cells[30].errored == false
+        @test notebook.cells[30] |> noerror
         @test notebook.cells[31].output.body == "31"
         update_run!(🍭, notebook, notebook.cells[31])
         @test notebook.cells[31].output.body == "31"
@@ -1266,10 +1266,10 @@ import Distributed
         @test notebook.cells[2].output.body == "4"
 
         update_run!(🍭, notebook, notebook.cells[3:6])
-        @test notebook.cells[3].errored == false
-        @test notebook.cells[4].errored == false
-        @test notebook.cells[5].errored == false
-        @test notebook.cells[6].errored == false
+        @test notebook.cells[3] |> noerror
+        @test notebook.cells[4] |> noerror
+        @test notebook.cells[5] |> noerror
+        @test notebook.cells[6] |> noerror
         @test notebook.cells[6].output.body == "9"
 
         setcode(notebook.cells[3], "b = -3")
@@ -1277,7 +1277,7 @@ import Distributed
         @test notebook.cells[6].output.body == "3"
 
         update_run!(🍭, notebook, notebook.cells[7:8])
-        @test notebook.cells[7].errored == false
+        @test notebook.cells[7] |> noerror
         @test notebook.cells[8].output.body == "5"
 
         setcode(notebook.cells[3], "b = 3")
@@ -1347,7 +1347,7 @@ import Distributed
 
         update_run!(🍭, notebook, notebook.cells[9:10])
         @test !occursinerror("UndefVarError", notebook.cells[9])
-        @test notebook.cells[10].errored == false
+        @test notebook.cells[10] |> noerror
 
         update_run!(🍭, notebook, notebook.cells[11])
         @test_broken notebook.cells[9].errored == true
@@ -1359,7 +1359,7 @@ import Distributed
 
         update_run!(🍭, notebook, notebook.cells[13:15])
         @test notebook.cells[13].output.body == "15"
-        @test notebook.cells[14].errored == false
+        @test notebook.cells[14] |> noerror
 
         setcode(notebook.cells[15], "orange = 10005")
         update_run!(🍭, notebook, notebook.cells[15])
@@ -1493,7 +1493,7 @@ import Distributed
         ])
 
         update_run!(🍭, notebook, notebook.cells)
-        @test notebook.cells[1].errored == false
+        @test notebook.cells[1] |> noerror
         @test notebook.cells[1].output.body == "false"
         @test notebook.cells[22].output.body == "Expr"
         @test notebook.cells[25].output.body == ":(:value)"
@@ -1534,7 +1534,7 @@ import Distributed
         update_run!(🍭, notebook, notebook.cells[6])
         @test old != notebook.cells[6].output.body
 
-        @test notebook.cells[7].errored == false
+        @test notebook.cells[7] |> noerror
         @test notebook.cells[7].output.body == "false"
 
         @test occursinerror("UndefVarError", notebook.cells[8])
@@ -1553,13 +1553,13 @@ import Distributed
         @test notebook.cells[19].output.body == ":(1 + 1)"
         @test notebook.cells[20].output.body == ":(1 + 1)"
 
-        @test notebook.cells[27].errored == false
+        @test notebook.cells[27] |> noerror
         @test notebook.topology.codes[notebook.cells[27]].function_wrapped == false
-        @test notebook.cells[28].errored == false
+        @test notebook.cells[28] |> noerror
         
         update_run!(🍭, notebook, notebook.cells[29:30])
-        @test notebook.cells[29].errored == false
-        @test notebook.cells[30].errored == false
+        @test notebook.cells[29] |> noerror
+        @test notebook.cells[30] |> noerror
         
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
@@ -1644,21 +1644,21 @@ import Distributed
         
 
         update_run!(🍭, notebook, notebook.cells[16:18])
-        @test notebook.cells[16].errored == false
+        @test notebook.cells[16] |> noerror
         @test notebook.cells[16].output.body == "34"
-        @test notebook.cells[17].errored == false
-        @test notebook.cells[18].errored == false
+        @test notebook.cells[17] |> noerror
+        @test notebook.cells[18] |> noerror
 
         setcode(notebook.cells[18], "υ = 8")
         update_run!(🍭, notebook, notebook.cells[18])
         @test notebook.cells[16].output.body == "24"
         
         update_run!(🍭, notebook, notebook.cells[19:22])
-        @test notebook.cells[19].errored == false
+        @test notebook.cells[19] |> noerror
         @test notebook.cells[19].output.body == "60"
-        @test notebook.cells[20].errored == false
-        @test notebook.cells[21].errored == false
-        @test notebook.cells[22].errored == false
+        @test notebook.cells[20] |> noerror
+        @test notebook.cells[21] |> noerror
+        @test notebook.cells[22] |> noerror
 
         setcode(notebook.cells[22], "y = 0")
         update_run!(🍭, notebook, notebook.cells[22])

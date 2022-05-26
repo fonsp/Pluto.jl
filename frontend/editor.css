@@ -28,7 +28,10 @@
     /* use the value "contextual" to enable contextual ligatures `document.documentElement.style.setProperty('--pluto-operator-ligatures', 'contextual');`
         for julia mono see here: https://cormullion.github.io/pages/2020-07-26-JuliaMono/#contextual_and_stylistic_alternates_and_ligatures */
     --pluto-operator-ligatures: none;
+    --julia-mono-font-stack: JuliaMono, Menlo, "Roboto Mono", "Lucida Sans Typewriter", "Source Code Pro", monospace;
     --sans-serif-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    --lato-ui-font-stack: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, Helvetica, Arial, "Apple Color Emoji",
+        "Segoe UI Emoji", "Segoe UI Symbol", system-ui, sans-serif;
 
     color-scheme: light dark;
 }
@@ -222,13 +225,13 @@ a:hover {
 }
 
 pluto-output code {
-    font-family: JuliaMono, monospace;
+    font-family: var(--julia-mono-font-stack);
     font-size: 0.75em; /* not rem */
     font-variant-ligatures: none;
 }
 
 pluto-output code .cm-editor .cm-line {
-    font-family: JuliaMono, monospace;
+    font-family: var(--julia-mono-font-stack);
 }
 
 pluto-output pre > code {
@@ -253,7 +256,7 @@ pluto-output pre {
     word-break: break-all;
     tab-size: 4;
     -moz-tab-size: 4; /* https://bugzilla.mozilla.org/show_bug.cgi?id=737785 */
-    font-family: JuliaMono, monospace;
+    font-family: var(--julia-mono-font-stack);
     font-size: 0.75rem;
     font-variant-ligatures: none;
 }
@@ -406,7 +409,7 @@ pluto-output table > thead {
 }
 
 pluto-output table > tbody td {
-    font-family: JuliaMono, monospace;
+    font-family: var(--julia-mono-font-stack);
     font-size: 0.75rem;
     font-variant-ligatures: none;
 }
@@ -720,7 +723,7 @@ body.binder > header > nav#at_the_top > pluto-filepicker > * {
 body.binder > header > nav#at_the_top > pluto-filepicker > a {
     display: block;
     font-size: 16px;
-    font-family: JuliaMono, monospace;
+    font-family: var(--julia-mono-font-stack);
     opacity: 0.8;
     text-decoration: none;
 }
@@ -900,24 +903,9 @@ main > preamble {
     pointer-events: none;
 }
 
-main > preamble #saveall-container {
-    margin-left: auto;
-    pointer-events: all;
-    right: min(0px, 700px + 25px - 100vw);
-    position: relative;
-    background: var(--overlay-button-bg);
-    color: var(--overlay-button-color);
-    padding: 5px 8px;
-    border: 3px solid var(--overlay-button-border);
-    border-radius: 12px;
-    height: 35px;
-    font-family: "Segoe UI Emoji", "Roboto Mono", monospace;
-    font-size: 0.75rem;
-    pointer-events: all;
-}
-
 .overlay-button {
     background: var(--overlay-button-bg);
+    color: var(--overlay-button-color);
     padding: 5px 8px;
     border: 3px solid var(--overlay-button-border);
     border-radius: 12px;
@@ -944,6 +932,9 @@ main > preamble #saveall-container {
     }
 }
 
+main > preamble #saveall-container.ask_to_save {
+    border-color: var(--overlay-button-border-save);
+}
 main > preamble #saveall-container.saving,
 main > preamble #saveall-container.saved {
     border-color: transparent;
@@ -1024,7 +1015,7 @@ pluto-output:not(.rich_output) {
 }
 
 pluto-output > assignee {
-    font-family: JuliaMono, monospace;
+    font-family: var(--julia-mono-font-stack);
     font-size: 0.75rem;
     font-variant-ligatures: none;
 }
@@ -1678,7 +1669,7 @@ pkg-status-mark.disable_pkg > button > span::after {
     filter: var(--image-filters);
 }
 
-pkg-popup {
+pluto-popup {
     display: block;
     position: absolute;
     z-index: 50;
@@ -1686,15 +1677,12 @@ pkg-popup {
     /* top: calc((1.5em - 200px) * 0.5); */
     width: min(90vw, 251px);
     /* min-height: 80px; */
-    margin-left: 1.1rem;
-    margin-top: calc(0.5 * (1rem - 80px));
-    background: var(--pkg-popup-bg);
-    border: 3px solid var(--pkg-popup-border-color);
-    color: var(--black);
-    border-radius: 10px;
-    padding: 8px;
+    margin-left: 0.4rem;
+    margin-top: 0px;
+    margin-top: -1rem;
+    /* margin-top: calc(0.5 * (1rem - 80px)); */
     overflow-wrap: break-word;
-    font-family: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+    font-family: var(--lato-ui-font-stack);
     opacity: 0;
     transform: scale(0.2);
     transform-origin: left;
@@ -1702,11 +1690,26 @@ pkg-popup {
     pointer-events: none;
 }
 
-pkg-popup.visible {
+pluto-popup.visible {
     opacity: 1;
     transform: scale(1);
     transition: transform 0.2s ease-in-out, opacity 0.2s ease-in-out;
     pointer-events: initial;
+}
+
+pluto-popup > * {
+    display: block;
+    background: var(--overlay-button-bg);
+    border: 3px solid var(--overlay-button-border);
+    color: var(--black);
+    border-radius: 10px;
+    padding: 8px;
+    /* Slightly changes the layout of the three pkg buttons... in just the way that we want it! */
+    position: absolute;
+}
+pluto-popup > pkg-popup {
+    background: var(--pkg-popup-bg);
+    border: 3px solid var(--pkg-popup-border-color);
 }
 
 pkg-popup.busy {
@@ -2012,6 +2015,7 @@ pluto-helpbox .cm-line {
     /* from https://docs.julialang.org/en/v1/assets/themes/documenter-light.css */
     font-family: "Roboto Mono", "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", "DejaVu Sans Mono", monospace;
     font-size: 0.95em;
+    line-height: initial;
 }
 pluto-helpbox pre code {
     font-size: 1em;
@@ -2077,7 +2081,7 @@ pluto-helpbox > section hr {
 .pluto-docs-binding > span {
     display: inline-block;
     transform: translate(-19px, -16px);
-    font-family: "JuliaMono", monospace;
+    font-family: var(--julia-mono-font-stack);
     font-size: 0.9rem;
     font-weight: 700;
     margin-top: -1em;
@@ -2488,6 +2492,7 @@ body > nav#slide_controls > button.next > span::after {
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
     /* this is the line height rounded to an integer to prevent jiggle */
     height: 16px;
+    overflow-y: hidden;
     /* font-size: 16px; */
     line-height: 16px;
     border-radius: 3px;
@@ -2517,7 +2522,7 @@ pluto-input .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
 .cm-completionIcon::before {
     /* TODO This loses all color when it's not font-family: JuliaMono, which can happen */
     content: "⚫";
-    font-family: JuliaMono, monospace !important;
+    font-family: var(--julia-mono-font-stack) !important;
     color: transparent;
     font-size: 0.75rem;
     margin-right: 0.5em;
@@ -2552,13 +2557,13 @@ Based on "Paraíso (Light)" by Jan T. Sott:
     }
 }
 
-body.ctrl_down [data-pluto-variable],
-body.ctrl_down [data-cell-variable] {
+[data-ctrl-down="true"][data-pluto-variable],
+[data-ctrl-down="true"][data-cell-variable] {
     text-decoration-color: #d177e6;
     cursor: pointer;
 }
-body.ctrl_down [data-pluto-variable]:hover,
-body.ctrl_down [data-pluto-variable]:hover * {
+[data-ctrl-down="true"][data-pluto-variable]:hover,
+[data-ctrl-down="true"][data-pluto-variable]:hover * {
     /* This basically `color: #af5bc3`, but it works for emoji too!! */
     color: transparent !important;
     text-shadow: 0 0 #af5bc3;
@@ -2569,7 +2574,7 @@ body.ctrl_down [data-pluto-variable]:hover * {
     /* Can give this cool styles later as well, but not for now nahhh */
     text-decoration: none;
 }
-body.ctrl_down [data-cell-variable]:hover * {
+[data-ctrl-down="true"][data-cell-variable]:hover * {
     /* This basically `color: #af5bc3`, but it works for emoji too!! */
     color: transparent !important;
     text-shadow: 0 0 #af5bc3;
@@ -2584,7 +2589,7 @@ body.ctrl_down [data-cell-variable]:hover * {
 pluto-input .cm-editor .cm-content,
 pluto-input .cm-editor .cm-scroller,
 .cm-editor .cm-tooltip-autocomplete .cm-completionLabel {
-    font-family: JuliaMono, monospace !important;
+    font-family: var(--julia-mono-font-stack) !important;
     font-variant-ligatures: none;
     font-size: 0.75rem;
 }

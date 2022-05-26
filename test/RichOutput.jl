@@ -189,10 +189,10 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
 
             update_run!(🍭, notebook, notebook.cells)
 
-            @test notebook.cells[1].errored == false
-            @test notebook.cells[2].errored == false
-            @test notebook.cells[3].errored == false
-            @test notebook.cells[4].errored == false
+            @test notebook.cells[1] |> noerror
+            @test notebook.cells[2] |> noerror
+            @test notebook.cells[3] |> noerror
+            @test notebook.cells[4] |> noerror
         end
     end
 
@@ -259,9 +259,9 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
         @test occursin("String?", string(notebook.cells[13].output.body)) # Issue 1490.
 
         @test notebook.cells[10].output.mime isa MIME"text/plain"
-        @test notebook.cells[10].errored == false
+        @test notebook.cells[10] |> noerror
         
-        @test notebook.cells[17].errored == false  # Issue 1815
+        @test notebook.cells[17] |> noerror  # Issue 1815
 
         # to see if we truncated correctly, we convert the output to string and check how big it is
         # because we don't want to test too specifically
@@ -309,26 +309,26 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             update_run!(🍭, notebook, notebook.cells[3:end])
             @test occursinerror("syntax: extra token after", notebook.cells[3])
 
-            @test notebook.cells[4].errored == false
+            @test notebook.cells[4] |> noerror
             @test notebook.cells[4].output.body == "4"
             @test notebook.cells[4].output.rootassignee == :c
 
-            @test notebook.cells[5].errored == false
+            @test notebook.cells[5] |> noerror
             @test notebook.cells[5].output.body == ""
             @test notebook.cells[5].output.rootassignee === nothing
 
-            @test notebook.cells[6].errored == false
+            @test notebook.cells[6] |> noerror
             @test notebook.cells[6].output.body == "6"
             @test notebook.cells[6].output.rootassignee === nothing
 
-            @test notebook.cells[7].errored == false
+            @test notebook.cells[7] |> noerror
             @test notebook.cells[7].output.body == ""
             @test notebook.cells[7].output.rootassignee === nothing
 
-            @test notebook.cells[8].errored == false
+            @test notebook.cells[8] |> noerror
             @test notebook.cells[8].output.body == ""
 
-            @test notebook.cells[9].errored == false
+            @test notebook.cells[9] |> noerror
             @test notebook.cells[9].output.body == ""
 
             @test occursinerror("syntax: extra token after", notebook.cells[10])

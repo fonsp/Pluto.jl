@@ -6,6 +6,7 @@ import immer from "../imports/immer.js"
 import { base64_arraybuffer, blob_url_to_data_url } from "../common/PlutoHash.js"
 import { pack, unpack } from "../common/MsgPack.js"
 
+const assert_response_ok = (/** @type {Response} */ r) => (r.ok ? r : Promise.reject(r))
 let run = (x) => x()
 
 export const RecordingUI = ({ notebook_name, is_recording, recording_waiting_to_start, set_recording_states, patch_listeners, export_url }) => {
@@ -53,7 +54,7 @@ export const RecordingUI = ({ notebook_name, is_recording, recording_waiting_to_
             }
         }
 
-        let initial_html = await (await fetch(export_url("notebookexport"))).text()
+        let initial_html = await (await fetch(export_url("notebookexport")).then(assert_response_ok)).text()
 
         initial_html = initial_html.replaceAll(
             "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.3/frontend/",
@@ -205,7 +206,7 @@ export const RecordingPlaybackUI = ({ recording_url, audio_src, initializing, ap
         () =>
             Promise.resolve().then(async () => {
                 if (recording_url) {
-                    return unpack(new Uint8Array(await (await fetch(recording_url)).arrayBuffer()))
+                    return unpack(new Uint8Array(await (await fetch(recording_url).then(assert_response_ok)).arrayBuffer()))
                 } else {
                     return null
                 }

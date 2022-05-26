@@ -4,7 +4,7 @@ import .ExpressionExplorer: SymbolsState, FunctionName
 Base.@kwdef struct TopologicalOrder
 	input_topology::NotebookTopology
 	"Cells that form a directed acyclic graph, in topological order."
-	runnable::Array{Cell,1}
+	runnable::Vector{Cell}
 	"Cells that are in a directed cycle, with corresponding `ReactivityError`s."
 	errable::Dict{Cell,ReactivityError}
 end

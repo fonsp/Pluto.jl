@@ -9,25 +9,32 @@ import { package_status, nbpkg_fingerprint_without_terminal } from "./PkgStatusM
 import { PkgTerminalView } from "./PkgTerminalView.js"
 import { useDebouncedTruth } from "./RunArea.js"
 
-export const PkgPopup = ({ notebook }) => {
-    let pluto_actions = useContext(PlutoContext)
+// This funny thing is a way to tell parcel to bundle these files..
+// Eventually I'll write a plugin that is able to parse html`...`, but this is it for now.
+// https://parceljs.org/languages/javascript/#url-dependencies
+export const arrow_up_circle_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-up-circle-outline.svg", import.meta.url)
+export const document_text_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-text-outline.svg", import.meta.url)
+export const help_circle_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/help-circle-outline.svg", import.meta.url)
 
+export const Popup = ({ notebook }) => {
     const [recent_event, set_recent_event] = useState(null)
-    const [pkg_status, set_pkg_status] = useState(null)
+    const recent_source_element_ref = useRef(null)
     const pos_ref = useRef("")
 
     const open = (e) => {
-        const el = e.detail.status_mark_element
+        const el = e.detail.source_element
+        recent_source_element_ref.current = el
 
-        pos_ref.current = `top: ${el.getBoundingClientRect().top - document.body.getBoundingClientRect().top}px; left: min(max(0px,100vw - 251px - 30px), ${
-            el.getBoundingClientRect().left - document.body.getBoundingClientRect().left
-        }px);`
+        const elb = el.getBoundingClientRect()
+        const bodyb = document.body.getBoundingClientRect()
+
+        pos_ref.current = `top: ${0.5 * (elb.top + elb.bottom) - bodyb.top}px; left: min(max(0px,100vw - 251px - 30px), ${elb.right - bodyb.left}px);`
         set_recent_event(e.detail)
     }
 
     useEffect(() => {
         const onpointerdown = (e) => {
-            if (e.target?.closest("pkg-popup") == null && e.target?.closest("pkg-status-mark") == null) {
+            if (e.target?.closest("pluto-popup") == null && (e.target == null || !recent_source_element_ref.current?.contains(e.target))) {
                 set_recent_event(null)
             }
         }
@@ -36,16 +43,39 @@ export const PkgPopup = ({ notebook }) => {
                 set_recent_event(null)
             }
         }
-        window.addEventListener("open nbpkg popup", open)
+        window.addEventListener("open pluto popup", open)
         window.addEventListener("pointerdown", onpointerdown)
         document.addEventListener("keydown", onkeydown)
 
         return () => {
-            window.removeEventListener("open nbpkg popup", open)
+            window.removeEventListener("open pluto popup", open)
             window.removeEventListener("pointerdown", onpointerdown)
             document.removeEventListener("keydown", onkeydown)
         }
     }, [])
+
+    const pkg_popup = PkgPopup({
+        notebook,
+        recent_event,
+        clear_recent_event: () => set_recent_event(null),
+    })
+    const info_popup = html`<div>${recent_event?.body}</div>`
+
+    const type = recent_event?.type
+    return html`<pluto-popup
+        class=${cl({
+            visible: recent_event != null,
+        })}
+        style="${pos_ref.current}"
+    >
+        ${type === "nbpkg" ? pkg_popup : type === "info" ? info_popup : null}
+    </pluto-popup>`
+}
+
+const PkgPopup = ({ notebook, recent_event, clear_recent_event }) => {
+    let pluto_actions = useContext(PlutoContext)
+
+    const [pkg_status, set_pkg_status] = useState(null)
 
     useEffect(() => {
         let still_valid = true
@@ -74,7 +104,7 @@ export const PkgPopup = ({ notebook }) => {
 
     // hide popup when nbpkg is switched on/off
     useEffect(() => {
-        set_recent_event(null)
+        clear_recent_event()
     }, [notebook.nbpkg?.enabled ?? true])
 
     const [showterminal, set_showterminal] = useState(false)
@@ -90,22 +120,13 @@ export const PkgPopup = ({ notebook }) => {
 
     const showupdate = pkg_status?.offer_update ?? false
 
-    // This funny thing is a way to tell parcel to bundle these files..
-    // Eventually I'll write a plugin that is able to parse html`...`, but this is it for now.
-    // https://parceljs.org/languages/javascript/#url-dependencies
-    const circle_outline_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-up-circle-outline.svg", import.meta.url)
-    const document_text_outline_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-text-outline.svg", import.meta.url)
-    const help_circle_outline_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/help-circle-outline.svg", import.meta.url)
-
     // <header>${recent_event?.package_name}</header>
     return html`<pkg-popup
         class=${cl({
-            visible: recent_event != null,
             busy,
-            showterminal: showterminal,
+            showterminal,
             showupdate,
         })}
-        style="${pos_ref.current}"
     >
         ${pkg_status?.hint ?? "Loading..."}
         <div class="pkg-buttons">
@@ -126,7 +147,7 @@ export const PkgPopup = ({ notebook }) => {
                     }
                     e.preventDefault()
                 }}
-                ><img alt="i" src=${circle_outline_icon} width="17"
+                ><img alt="⬆️" src=${arrow_up_circle_icon} width="17"
             /></a>
             <a
                 class="toggle-terminal"
@@ -138,10 +159,10 @@ export const PkgPopup = ({ notebook }) => {
                     set_showterminal(!showterminal)
                     e.preventDefault()
                 }}
-                ><img alt="i" src=${document_text_outline_icon} width="17"
+                ><img alt="📄" src=${document_text_icon} width="17"
             /></a>
             <a class="help" target="_blank" title="Go to help page" href="https://github.com/fonsp/Pluto.jl/wiki/%F0%9F%8E%81-Package-management"
-                ><img alt="i" src=${help_circle_outline_icon} width="17"
+                ><img alt="❔" src=${help_circle_icon} width="17"
             /></a>
         </div>
         <${PkgTerminalView} value=${terminal_value ?? "Loading..."} />

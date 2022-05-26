@@ -6,8 +6,23 @@ import .WorkspaceManager: macroexpand_in_workspace
 Base.push!(x::Set{Cell}) = x
 
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
-function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, roots::Vector{Cell}; deletion_hook::Function=WorkspaceManager.move_vars, user_requested_run::Bool=true, already_in_run::Bool=false, already_run::Vector{Cell}=Cell[], send_notebook_changes::Bool=true, dependency_mod::Union{Vector{Cell}, Nothing}=nothing, workspace_override::Union{WorkspaceManager.Workspace, Nothing}=nothing, old_workspace_name_override=nothing, run_single_fn! = run_single!)::TopologicalOrder
-	if !already_in_run
+function run_reactive!(
+	session::ServerSession, 
+	notebook::Notebook, 
+	old_topology::NotebookTopology, new_topology::NotebookTopology, 
+	roots::Vector{Cell}; 
+	deletion_hook::Function = WorkspaceManager.move_vars, 
+	user_requested_run::Bool = true, 
+	already_in_run::Bool = false, 
+	already_run::Vector{Cell} = Cell[],
+	send_notebook_changes::Bool=true,
+	
+	dependency_mod::Union{Vector{Cell}, Nothing}=nothing,
+	workspace_override::Union{WorkspaceManager.Workspace, Nothing}=nothing,
+	old_workspace_name_override=nothing,
+	run_single_fn! = run_single!
+)::TopologicalOrder
+    if !already_in_run
         # make sure that we're the only `run_reactive!` being executed - like a semaphor
         take!(notebook.executetoken)
     else
@@ -65,23 +80,24 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
             Dict(cell => ExprAnalysisCache() for cell in removed_cells)
         ),
         unresolved_cells = new_topology.unresolved_cells,
+        cell_order = new_topology.cell_order,
     )
 
     # save the old topological order - we'll delete variables assigned from it and re-evalutate its cells unless the cells have already run previously in the reactive run
-    old_order = topological_order(notebook, old_topology, roots)
+    old_order = topological_order(old_topology, roots)
 
     old_runnable = setdiff(old_order.runnable, already_run)
     to_delete_vars = union!(Set{Symbol}(), defined_variables(old_topology, old_runnable)...)
     to_delete_funcs = union!(Set{Tuple{UUID,FunctionName}}(), defined_functions(old_topology, old_runnable)...)
 
     # get the new topological order
-    new_order = topological_order(notebook, new_topology, union(roots, keys(old_order.errable)))
+    new_order = topological_order(new_topology, union(roots, keys(old_order.errable)))
     new_runnable = setdiff(new_order.runnable, already_run)
     to_run_raw = setdiff(union(new_runnable, old_runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
 
     # find (indirectly) deactivated cells and update their status
     deactivated = filter(c -> c.running_disabled, notebook.cells)
-    indirectly_deactivated = collect(topological_order(notebook, new_topology, deactivated))
+    indirectly_deactivated = collect(topological_order(new_topology, deactivated))
     for cell in indirectly_deactivated
         cell.running = false
         cell.queued = false
@@ -229,7 +245,13 @@ function defined_functions(topology::NotebookTopology, cells)
 end
 
 "Run a single cell non-reactively, set its output, return run information."
-function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell, reactive_node::ReactiveNode, expr_cache::ExprAnalysisCache; user_requested_run::Bool=true)
+function run_single!(
+	session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, 
+	cell::Cell, 
+	reactive_node::ReactiveNode, 
+	expr_cache::ExprAnalysisCache; 
+	user_requested_run::Bool=true
+)
 	run = WorkspaceManager.eval_format_fetch_in_workspace(
 		session_notebook, 
 		expr_cache.parsedcode, 
@@ -288,7 +310,12 @@ is_macro_identifier(symbol::Symbol) = startswith(string(symbol), "@")
 function with_new_soft_definitions(topology::NotebookTopology, cell::Cell, soft_definitions)
     old_node = topology.nodes[cell]
     new_node = union!(ReactiveNode(), old_node, ReactiveNode(soft_definitions=soft_definitions))
-    NotebookTopology(codes=topology.codes, nodes=merge(topology.nodes, Dict(cell => new_node)), unresolved_cells=topology.unresolved_cells)
+    NotebookTopology(
+		codes=topology.codes, 
+		nodes=merge(topology.nodes, Dict(cell => new_node)), 
+		unresolved_cells=topology.unresolved_cells,
+		cell_order=topology.cell_order,
+	)
 end
 
 collect_implicit_usings(topology::NotebookTopology, cell::Cell) = ExpressionExplorer.collect_implicit_usings(topology.codes[cell].module_usings_imports)
@@ -412,7 +439,12 @@ function resolve_topology(
 	all_nodes = merge(unresolved_topology.nodes, new_nodes)
 	all_codes = merge(unresolved_topology.codes, new_codes)
 
-	NotebookTopology(nodes=all_nodes, codes=all_codes, unresolved_cells=still_unresolved_nodes)
+	NotebookTopology(
+		nodes=all_nodes, 
+		codes=all_codes, 
+		unresolved_cells=ImmutableSet(still_unresolved_nodes; skip_copy=true),
+		cell_order=unresolved_topology.cell_order,
+	)
 end
 
 """Tries to add information about macro calls without running any code, using knowledge about common macros.
@@ -431,7 +463,12 @@ function static_resolve_topology(topology::NotebookTopology)
 	new_nodes = Dict{Cell,ReactiveNode}(cell => static_macroexpand(topology, cell) for cell in topology.unresolved_cells)
 	all_nodes = merge(topology.nodes, new_nodes)
 
-	NotebookTopology(nodes=all_nodes, codes=topology.codes, unresolved_cells=topology.unresolved_cells)
+	NotebookTopology(
+		nodes=all_nodes, 
+		codes=topology.codes, 
+		unresolved_cells=topology.unresolved_cells,
+		cell_order=topology.cell_order,
+	)
 end
 
 ###
@@ -440,7 +477,15 @@ end
 
 
 "Do all the things!"
-function update_save_run!(session::ServerSession, notebook::Notebook, cells::Array{Cell,1}; save::Bool=true, run_async::Bool=false, prerender_text::Bool=false, kwargs...)
+function update_save_run!(
+	session::ServerSession, 
+	notebook::Notebook, 
+	cells::Vector{Cell}; 
+	save::Bool=true, 
+	run_async::Bool=false, 
+	prerender_text::Bool=false, 
+	kwargs...
+)
 	old = notebook.topology
 	new = notebook.topology = updated_topology(old, notebook, cells) # macros are not yet resolved
 
@@ -482,11 +527,14 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		end
 		
 		# for the remaining cells, clear their topology info so that they won't run as dependencies
-		for cell in setdiff(to_run_online, setup_cells)
-			delete!(notebook.topology.nodes, cell)
-			delete!(notebook.topology.codes, cell)
-			delete!(notebook.topology.unresolved_cells, cell)
-		end
+		old = notebook.topology
+		to_remove = setdiff(to_run_online, setup_cells)
+		notebook.topology = NotebookTopology(
+			nodes=setdiffkeys(old.nodes, to_remove),
+			codes=setdiffkeys(old.codes, to_remove),
+			unresolved_cells=setdiff(old.unresolved_cells, to_remove),
+			cell_order=old.cell_order,
+		)
 		
 		# and don't run them
 		to_run_online = to_run_online ∩ setup_cells

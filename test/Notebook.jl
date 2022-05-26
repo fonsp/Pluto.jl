@@ -137,13 +137,13 @@ end
             save_notebook(nb)
             # @info "File" name Text(read(nb.path,String))
             result = load_notebook_nobackup(nb.path)
-            @test notebook_inputs_equal(nb, result)
+            @test_notebook_inputs_equal(nb, result)
         end
     end
 
     @testset "I/O overloaded" begin
         @testset "$(name)" for (name, nb) in nbs
-            @test let
+            let
                 tasks = []
                 for i in 1:16
                     push!(tasks, @async save_notebook(nb))
@@ -153,7 +153,7 @@ end
                 end
                 wait.(tasks)
                 result = load_notebook_nobackup(nb.path)
-                notebook_inputs_equal(nb, result)
+                @test_notebook_inputs_equal(nb, result)
             end
         end
     end
@@ -251,15 +251,15 @@ end
         @testset "$(name)" for (name, nb) in nbs
             file_contents = sprint(save_notebook, nb)
 
-            @test let
+            let
                 result = sread(load_notebook_nobackup, file_contents, nb.path)
-                notebook_inputs_equal(nb, result)
+                @test_notebook_inputs_equal(nb, result)
             end
 
-            @test let
+            let
                 file_contents_windowsed = replace(file_contents, "\n" => "\r\n")
                 result_windowsed = sread(load_notebook_nobackup, file_contents_windowsed, nb.path)
-                notebook_inputs_equal(nb, result_windowsed)
+                @test_notebook_inputs_equal(nb, result_windowsed)
             end
         end
     end
@@ -343,7 +343,7 @@ end
         write(jl_path, embedded_jl)
         
         result = load_notebook_nobackup(jl_path)
-        @test notebook_inputs_equal(nb, result; check_paths_equality=false)
+        @test_notebook_inputs_equal(nb, result, false)
 
         
         filename = "howdy.jl"

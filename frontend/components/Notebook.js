@@ -1,20 +1,36 @@
 import { PlutoContext } from "../common/PlutoContext.js"
-import { html, useContext, useEffect, useMemo, useState } from "../imports/Preact.js"
+import { html, useContext, useEffect, useMemo, useRef, useState } from "../imports/Preact.js"
 
 import { Cell } from "./Cell.js"
 import { nbpkg_fingerprint } from "./PkgStatusMark.js"
+
+/** Like `useMemo`, but explain to the console what invalidated the memo. */
+const useMemoDebug = (fn, args) => {
+    const last_values = useRef(args)
+    return useMemo(() => {
+        const new_values = args
+        console.group("useMemoDebug: something changed!")
+        if (last_values.current.length !== new_values.length) {
+            console.log("Length changed. ", " old ", last_values.current, " new ", new_values)
+        } else {
+            for (let i = 0; i < last_values.current.length; i++) {
+                if (last_values.current[i] !== new_values[i]) {
+                    console.log("Element changed. Index: ", i, " old ", last_values.current[i], " new ", new_values[i])
+                }
+            }
+        }
+        console.groupEnd()
+        return fn()
+    }, args)
+}
 
 let CellMemo = ({
     cell_result,
     cell_input,
     cell_input_local,
     notebook_id,
-    on_update_doc_query,
-    on_cell_input,
     cell_dependencies,
-    on_focus_neighbor,
     selected,
-    selected_cells,
     focus_after_creation,
     force_hide_input,
     is_process_ready,
@@ -22,8 +38,8 @@ let CellMemo = ({
     show_logs,
     set_show_logs,
     nbpkg,
+    global_definition_locations,
 }) => {
-    const selected_cells_diffable_primitive = (selected_cells || []).join("")
     const { body, last_run_timestamp, mime, persist_js_state, rootassignee } = cell_result?.output || {}
     const { queued, running, runtime, errored, depends_on_disabled_cells, logs } = cell_result || {}
     const { cell_id, code, code_folded, running_disabled } = cell_input || {}
@@ -35,11 +51,7 @@ let CellMemo = ({
                 cell_input=${cell_input}
                 cell_input_local=${cell_input_local}
                 notebook_id=${notebook_id}
-                on_update_doc_query=${on_update_doc_query}
-                on_change=${(val) => on_cell_input(cell_input.cell_id, val)}
-                on_focus_neighbor=${on_focus_neighbor}
                 selected=${selected}
-                selected_cells=${selected_cells}
                 force_hide_input=${force_hide_input}
                 focus_after_creation=${focus_after_creation}
                 is_process_ready=${is_process_ready}
@@ -47,6 +59,7 @@ let CellMemo = ({
                 show_logs=${show_logs}
                 set_show_logs=${set_show_logs}
                 nbpkg=${nbpkg}
+                global_definition_locations=${global_definition_locations}
             />
         `
     }, [
@@ -67,18 +80,15 @@ let CellMemo = ({
         code_folded,
         cell_input_local,
         notebook_id,
-        on_update_doc_query,
-        on_cell_input,
         cell_dependencies,
-        on_focus_neighbor,
         selected,
-        selected_cells_diffable_primitive,
         force_hide_input,
         focus_after_creation,
         is_process_ready,
         disable_input,
         show_logs,
         ...nbpkg_fingerprint(nbpkg),
+        global_definition_locations,
     ])
 }
 
@@ -111,9 +121,6 @@ const render_cell_outputs_minimum = 20
 export const Notebook = ({
     notebook,
     cell_inputs_local,
-    on_update_doc_query,
-    on_cell_input,
-    on_focus_neighbor,
     last_created_cell,
     selected_cells,
     is_initializing,
@@ -143,7 +150,13 @@ export const Notebook = ({
             }, render_cell_outputs_delay(notebook.cell_order.length))
         }
     }, [cell_outputs_delayed, notebook.cell_order.length])
-
+    let global_definition_locations = useMemo(
+        () =>
+            Object.fromEntries(
+                Object.values(notebook?.cell_dependencies ?? {}).flatMap((x) => Object.keys(x.downstream_cells_map).map((variable) => [variable, x.cell_id]))
+            ),
+        [notebook?.cell_dependencies]
+    )
     return html`
         <pluto-notebook id=${notebook.notebook_id}>
             ${notebook.cell_order
@@ -161,14 +174,10 @@ export const Notebook = ({
                             logs: [],
                         }}
                         cell_input=${notebook.cell_inputs[cell_id]}
-                        cell_dependencies=${notebook.cell_dependencies[cell_id] ?? {}}
+                        cell_dependencies=${notebook?.cell_dependencies?.[cell_id] ?? {}}
                         cell_input_local=${cell_inputs_local[cell_id]}
                         notebook_id=${notebook.notebook_id}
-                        on_update_doc_query=${on_update_doc_query}
-                        on_cell_input=${on_cell_input}
-                        on_focus_neighbor=${on_focus_neighbor}
                         selected=${selected_cells.includes(cell_id)}
-                        selected_cells=${selected_cells}
                         focus_after_creation=${last_created_cell === cell_id}
                         force_hide_input=${false}
                         is_process_ready=${is_process_ready}
@@ -176,6 +185,7 @@ export const Notebook = ({
                         show_logs=${show_logs}
                         set_show_logs=${set_show_logs}
                         nbpkg=${notebook.nbpkg}
+                        global_definition_locations=${global_definition_locations}
                     />`
                 )}
         </pluto-notebook>

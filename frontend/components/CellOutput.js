@@ -12,11 +12,12 @@ import register from "../imports/PreactCustomElement.js"
 
 import { EditorState, EditorView, defaultHighlightStyle } from "../imports/CodemirrorPlutoSetup.js"
 
-import { pluto_syntax_colors } from "./CellInput.js"
+import { pluto_syntax_colors, ENABLE_CM_MIXED_PARSER } from "./CellInput.js"
 import { useState } from "../imports/Preact.js"
 
 import hljs from "../imports/highlightjs.js"
-import { julia_andrey } from "./CellInput/mixedParsers.js"
+import { julia_mixed } from "./CellInput/mixedParsers.js"
+import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
 
 export class CellOutput extends Component {
     constructor() {
@@ -466,26 +467,31 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
                     container.current.querySelectorAll("code").forEach((code_element) => {
                         code_element.classList.forEach((className) => {
                             if (className.startsWith("language-")) {
-                                let language = className.substr(9)
-
                                 // Remove "language-"
+                                let language = className.substring(9)
                                 highlight(code_element, language)
                             }
                         })
                     })
-                } catch (err) {}
+                } catch (err) {
+                    console.warn("Highlighting failed", err)
+                }
             } finally {
                 js_init_set?.delete(container.current)
             }
         })
 
         return () => {
+            js_init_set?.delete(container.current)
             invalidate_scripts.current?.()
         }
     }, [body, persist_js_state, last_run_timestamp, pluto_actions])
 
     return html`<div class="raw-html-wrapper ${className}" ref=${container}></div>`
 }
+
+// https://github.com/fonsp/Pluto.jl/issues/1692
+const ENABLE_CM_HIGHLIGHTING = false
 
 /** @param {HTMLElement} code_element */
 export let highlight = (code_element, language) => {
@@ -494,6 +500,7 @@ export let highlight = (code_element, language) => {
 
     if (code_element.children.length === 0) {
         if (
+            ENABLE_CM_HIGHLIGHTING &&
             language === "julia" &&
             // CodeMirror does not want to render inside a `<details>`...
             // I tried to debug this, it does not happen on a clean webpage with the same CM versions:
@@ -514,7 +521,7 @@ export let highlight = (code_element, language) => {
                         defaultHighlightStyle.fallback,
                         EditorState.tabSize.of(4),
                         // TODO Other languages possibly?
-                        language === "julia" ? julia_andrey() : null,
+                        language === "julia" ? (ENABLE_CM_MIXED_PARSER ? julia_mixed() : julia_andrey()) : null,
                         EditorView.lineWrapping,
                         EditorView.editable.of(false),
                     ].filter((x) => x != null),

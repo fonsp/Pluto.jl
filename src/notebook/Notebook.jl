@@ -26,7 +26,7 @@ Base.@kwdef mutable struct Notebook
     
     path::String
     notebook_id::UUID=uuid1()
-    topology::NotebookTopology=NotebookTopology()
+    topology::NotebookTopology
     _cached_topological_order::Union{Nothing,TopologicalOrder}=nothing
 
     # buffer will contain all unfetched updates - must be big enough
@@ -56,26 +56,33 @@ Base.@kwdef mutable struct Notebook
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
 end
 
-Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = Notebook(
+_collect_cells(cells_dict::Dict{UUID,Cell}, cells_order::Vector{UUID}) = 
+    map(i -> cells_dict[i], cells_order)
+_initial_topology(cells_dict::Dict{UUID,Cell}, cells_order::Vector{UUID}) =
+    NotebookTopology(;
+        cell_order=ImmutableVector(_collect_cells(cells_dict, cells_order)),
+    )
+    
+function Notebook(cells::Vector{Cell}, path::AbstractString, notebook_id::UUID)
     cells_dict=Dict(map(cells) do cell
         (cell.cell_id, cell)
-    end),
-    cell_order=map(x -> x.cell_id, cells),
-    path=path,
-    notebook_id=notebook_id,
-)
+    end)
+    cell_order=map(x -> x.cell_id, cells)
+    Notebook(;
+        cells_dict, cell_order,
+        topology=_initial_topology(cells_dict, cell_order),
+        path=path,
+        notebook_id=notebook_id,
+    )
+end
 
-Notebook(cells::Array{Cell,1}, path::AbstractString=numbered_until_new(joinpath(new_notebooks_directory(), cutename()))) = Notebook(cells, path, uuid1())
+Notebook(cells::Vector{Cell}, path::AbstractString=numbered_until_new(joinpath(new_notebooks_directory(), cutename()))) = Notebook(cells, path, uuid1())
 
 function Base.getproperty(notebook::Notebook, property::Symbol)
     if property == :cells
-        cells_dict = getfield(notebook, :cells_dict)
-        cell_order = getfield(notebook, :cell_order)
-        map(cell_order) do id
-            cells_dict[id]
-        end
+        _collect_cells(notebook.cells_dict, notebook.cell_order)
     elseif property == :cell_inputs
-        getfield(notebook, :cells_dict)
+        notebook.cells_dict
     else
         getfield(notebook, property)
     end
@@ -279,7 +286,14 @@ function load_notebook_nobackup(io, path)::Notebook
         k ∈ appeared_order
     end
 
-    Notebook(cells_dict=appeared_cells_dict, cell_order=appeared_order, path=path, nbpkg_ctx=nbpkg_ctx, nbpkg_installed_versions_cache=nbpkg_cache(nbpkg_ctx))
+    Notebook(;
+        cells_dict=appeared_cells_dict, 
+        cell_order=appeared_order,
+        topology=_initial_topology(appeared_cells_dict, appeared_order),
+        path=path, 
+        nbpkg_ctx=nbpkg_ctx, 
+        nbpkg_installed_versions_cache=nbpkg_cache(nbpkg_ctx),
+    )
 end
 
 function load_notebook_nobackup(path::String)::Notebook
@@ -307,7 +321,7 @@ function load_notebook(path::String; disable_writing_notebook_files::Bool=false)
     update_dependency_cache!(loaded)
 
     disable_writing_notebook_files || save_notebook(loaded)
-    loaded.topology = NotebookTopology()
+    loaded.topology = NotebookTopology(; cell_order=ImmutableVector(loaded.cells))
 
     disable_writing_notebook_files || if only_versions_or_lineorder_differ(path, backup_path)
         rm(backup_path)
