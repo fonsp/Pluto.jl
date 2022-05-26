@@ -17,7 +17,7 @@ import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
 import { PlutoBondsContext, PlutoContext, PlutoJSInitializingContext } from "../common/PlutoContext.js"
 import register from "../imports/PreactCustomElement.js"
 
-import { EditorState, EditorView, defaultHighlightStyle } from "../imports/CodemirrorPlutoSetup.js"
+import { EditorState, EditorView, defaultHighlightStyle, syntaxHighlighting } from "../imports/CodemirrorPlutoSetup.js"
 
 import { pluto_syntax_colors, ENABLE_CM_MIXED_PARSER } from "./CellInput.js"
 
@@ -563,8 +563,8 @@ export let highlight = (code_element, language) => {
                         .replace(/Main.workspace#(\d+)/, 'Main.var"workspace#$1"'),
 
                     extensions: [
-                        pluto_syntax_colors,
-                        defaultHighlightStyle.fallback,
+                        syntaxHighlighting(pluto_syntax_colors),
+                        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
                         EditorState.tabSize.of(4),
                         // TODO Other languages possibly?
                         ...(language === "julia" ? [ENABLE_CM_MIXED_PARSER ? julia_mixed() : julia_andrey()] : []),
