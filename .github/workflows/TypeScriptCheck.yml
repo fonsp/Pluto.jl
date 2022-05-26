@@ -1,33 +1,31 @@
-name: TypeScript check
+name: Run TypeScript checks
 
 on:
     push:
-        paths-ignore:
-            - "**.md"
+        paths:
+            - "**.js"
+            - "**.ts"
         branches:
             - main
             - release
     pull_request:
-        paths-ignore:
-            - "**.md"
+        paths:
+            - "**.js"
+            - "**.ts"
         branches-ignore:
             - release
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [18.x]
     steps:
       - uses: actions/checkout@v1
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
-        with:
-          node-version: ${{ matrix.node-version }}
-
-      - name: Install tsc
-        run: npm install typescript -g
       
-      - name: Run tsc
+      - uses: actions/setup-node@v1
+        with:
+          node-version: "18.x"
+
+      - run: npm install typescript -g
+      
+      - name: Run TypeScript checks on frontend/
         run: tsc --noEmit --strictNullChecks false
