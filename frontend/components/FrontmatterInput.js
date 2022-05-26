@@ -27,7 +27,7 @@ export const FrontMatterInput = ({ remote_frontmatter, set_remote_frontmatter })
         set_frontmatter((fm) => ({ ...fm, [key]: value }))
     }
 
-    const dialog_ref = useRef(/** @type {HTMLDialogElement} */ (null))
+    const dialog_ref = useRef(/** @type {HTMLDialogElement?} */ (null))
     useLayoutEffect(() => {
         dialogPolyfill.registerDialog(dialog_ref.current)
     })
@@ -55,7 +55,7 @@ export const FrontMatterInput = ({ remote_frontmatter, set_remote_frontmatter })
 
     useLayoutEffect(() => {
         const listener = (e) => {
-            if (dialog_ref.current.contains(e.target)) if (e.key === "Enter" && has_ctrl_or_cmd_pressed(e)) submit()
+            if (dialog_ref.current != null) if (dialog_ref.current.contains(e.target)) if (e.key === "Enter" && has_ctrl_or_cmd_pressed(e)) submit()
         }
         window.addEventListener("keydown", listener)
         return () => {
@@ -110,7 +110,7 @@ export const FrontMatterInput = ({ remote_frontmatter, set_remote_frontmatter })
     </dialog>`
 }
 
-const special_field_names = ["tags", "date", "license"]
+const special_field_names = ["tags", "date", "license", "url", "color"]
 
 const field_type = (name) => {
     for (const t of special_field_names) {
