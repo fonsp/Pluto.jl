@@ -58,6 +58,7 @@ import {
     Text,
     css,
     cssLanguage,
+    //@ts-ignore
 } from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@0.28.0/dist/index.es.min.js"
 
 export {

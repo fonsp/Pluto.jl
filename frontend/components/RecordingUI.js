@@ -23,7 +23,7 @@ let run = (x) => x()
  * @typedef {RecordingData & {
  *   initial_html: string,
  * scroll_handler: (x: number) => void,
- * audio_recorder: {start: () => void, stop: () => void}?
+ * audio_recorder: {start: () => void, stop: () => Promise<string>}?
  * }} RecordingState
  */
 
