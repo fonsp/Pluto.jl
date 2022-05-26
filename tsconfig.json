@@ -10,8 +10,9 @@
         "noImplicitThis": true,
         "alwaysStrict": true,
         "esModuleInterop": true,
-        "strictNullChecks": true
+        "strictNullChecks": true,
+        "skipDefaultLibCheck": true
     },
     "include": ["frontend/**/*.js", "node_modules/**/*.js"],
-    "exclude": []
+    "exclude": ["frontend/components/CellInput/tests/"]
 }
