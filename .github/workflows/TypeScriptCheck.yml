@@ -30,4 +30,4 @@ jobs:
         run: npm install typescript -g
       
       - name: Run tsc
-        run: tsc --noEmit
+        run: tsc --noEmit --strictNullChecks false
