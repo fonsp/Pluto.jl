@@ -300,19 +300,16 @@ export const RecordingPlaybackUI = ({ launch_params, initializing, apply_noteboo
 
         let new_timestamp = audio.currentTime
         let forward = new_timestamp >= current_state_timestamp_ref.current
-        /**
-         * @param {T} x @template T @return {T}
-         */
-        let directed = (x) => (forward ? x : _.reverse(x))
+        let directed = forward ? _.identity : _.reverse
 
         let lower = Math.min(current_state_timestamp_ref.current, new_timestamp)
         let upper = Math.max(current_state_timestamp_ref.current, new_timestamp)
 
         let scrolls_in_time_window = deserialized.scrolls.filter(([t, s]) => lower < t && t <= upper)
         if (scrolls_in_time_window.length > 0) {
-            let scroll_state = _.last(directed(scrolls_in_time_window))[1]
+            let scroll_state = _.last(directed(scrolls_in_time_window))?.[1]
 
-            on_scroll(scroll_state)
+            if (scroll_state) on_scroll(scroll_state)
         }
 
         let steps_in_current_direction = forward ? deserialized.steps : computed_reverse_patches_ref.current
