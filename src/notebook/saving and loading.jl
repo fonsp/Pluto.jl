@@ -143,13 +143,8 @@ save_notebook(notebook::Notebook) = save_notebook(notebook, notebook.path)
 # LOADING
 ###
 
-
-"Load a notebook without saving it or creating a backup; returns a `Notebook`. REMEMBER TO CHANGE THE NOTEBOOK PATH after loading it to prevent it from autosaving and overwriting the original file."
-function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::AbstractString))::Notebook
-    
-    ## HEADER
-    
-    firstline = String(readline(io))
+function _notebook_metadata!(@nospecialize(io::IO))
+    firstline = String(readline(io))::String
 
     if firstline != _notebook_header
         error("File is not a Pluto.jl notebook")
@@ -159,27 +154,27 @@ function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::Abstr
     if file_VERSION_STR != PLUTO_VERSION_STR
         # @info "Loading a notebook saved with Pluto $(file_VERSION_STR). This is Pluto $(PLUTO_VERSION_STR)."
     end
-    
+
     # Read all remaining file contents before the first cell delimiter.
     header_content = readuntil(io, _cell_id_delimiter)
     header_lines = split(header_content, "\n")
-    
+
     nb_prefix_length = ncodeunits(_notebook_metadata_prefix)
     nb_metadata_toml_lines = String[
         line[begin+nb_prefix_length:end]
         for line in header_lines if startswith(line, _notebook_metadata_prefix)
     ]
-    
+
     notebook_metadata = try
         create_notebook_metadata(TOML.parse(join(nb_metadata_toml_lines, "\n")))
     catch e
         @error "Failed to parse embedded TOML content" exception=(e, catch_backtrace())
         DEFAULT_NOTEBOOK_METADATA
     end
+    return notebook_metadata
+end
 
-    
-    ### CELLS
-    
+function _notebook_collected_cells!(@nospecialize(io::IO))
     collected_cells = Dict{UUID,Cell}()
     while !eof(io)
         cell_id_str = String(readline(io))
@@ -187,7 +182,7 @@ function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::Abstr
             break
         else
             cell_id = UUID(cell_id_str)
-            
+
             metadata_toml_lines = String[]
             initial_code_line = ""
             while !eof(io)
@@ -223,7 +218,10 @@ function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::Abstr
             collected_cells[cell_id] = read_cell
         end
     end
+    return collected_cells
+end
 
+function _notebook_cell_order!(@nospecialize(io::IO), collected_cells)
     cell_order = UUID[]
     while !eof(io)
         cell_id_str = String(readline(io))
@@ -240,11 +238,14 @@ function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::Abstr
             break
         end
     end
+    return cell_order
+end
 
-    read_package = 
-        _ptoml_cell_id ∈ cell_order && 
-        _mtoml_cell_id ∈ cell_order && 
-        haskey(collected_cells, _ptoml_cell_id) && 
+function _notebook_nbpkg_ctx(cell_order::Vector{UUID})
+    read_package =
+        _ptoml_cell_id ∈ cell_order &&
+        _mtoml_cell_id ∈ cell_order &&
+        haskey(collected_cells, _ptoml_cell_id) &&
         haskey(collected_cells, _mtoml_cell_id)
 
     nbpkg_ctx = if read_package
@@ -273,27 +274,40 @@ function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::Abstr
     else
         PkgCompat.create_empty_ctx()
     end
+    return nbpkg_ctx
+end
 
-    appeared_order = setdiff!(
+function _notebook_appeared_order!(cell_order::Vector{UUID}, collected_cells::Dict{Base.UUID, Cell})
+    setdiff!(
         union!(
             # don't include cells that only appear in the order, but no code was given
             intersect!(cell_order, keys(collected_cells)),
             # add cells that appeared in code, but not in the order.
             keys(collected_cells)
-        ), 
+        ),
         # remove Pkg cells
         (_ptoml_cell_id, _mtoml_cell_id)
     )
+end
+
+"Load a notebook without saving it or creating a backup; returns a `Notebook`. REMEMBER TO CHANGE THE NOTEBOOK PATH after loading it to prevent it from autosaving and overwriting the original file."
+function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::AbstractString))::Notebook
+    notebook_metadata = _notebook_metadata!(io)
+
+    collected_cells = _notebook_collected_cells!(io)
+    cell_order = _notebook_cell_order!(io, collected_cells)
+    nbpkg_ctx = _notebook_nbpkg_ctx(cell_order)
+    appeared_order = _notebook_appeared_order!(cell_order, collected_cells)
     appeared_cells_dict = filter(collected_cells) do (k, v)
         k ∈ appeared_order
     end
 
     Notebook(;
-        cells_dict=appeared_cells_dict, 
+        cells_dict=appeared_cells_dict,
         cell_order=appeared_order,
         topology=_initial_topology(appeared_cells_dict, appeared_order),
-        path=path, 
-        nbpkg_ctx=nbpkg_ctx, 
+        path=path,
+        nbpkg_ctx=nbpkg_ctx,
         nbpkg_installed_versions_cache=nbpkg_cache(nbpkg_ctx),
         metadata=notebook_metadata,
     )
