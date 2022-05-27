@@ -241,7 +241,7 @@ function _notebook_cell_order!(@nospecialize(io::IO), collected_cells)
     return cell_order
 end
 
-function _notebook_nbpkg_ctx(cell_order::Vector{UUID})
+function _notebook_nbpkg_ctx(cell_order::Vector{UUID}, collected_cells::Dict{Base.UUID, Cell})
     read_package =
         _ptoml_cell_id ∈ cell_order &&
         _mtoml_cell_id ∈ cell_order &&
@@ -296,7 +296,7 @@ function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::Abstr
 
     collected_cells = _notebook_collected_cells!(io)
     cell_order = _notebook_cell_order!(io, collected_cells)
-    nbpkg_ctx = _notebook_nbpkg_ctx(cell_order)
+    nbpkg_ctx = _notebook_nbpkg_ctx(cell_order, collected_cells)
     appeared_order = _notebook_appeared_order!(cell_order, collected_cells)
     appeared_cells_dict = filter(collected_cells) do (k, v)
         k ∈ appeared_order
