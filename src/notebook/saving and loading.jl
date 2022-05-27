@@ -249,8 +249,8 @@ function _notebook_nbpkg_ctx(cell_order::Vector{UUID})
         haskey(collected_cells, _mtoml_cell_id)
 
     nbpkg_ctx = if read_package
-        ptoml_code = collected_cells[_ptoml_cell_id].code
-        mtoml_code = collected_cells[_mtoml_cell_id].code
+        ptoml_code = string(collected_cells[_ptoml_cell_id].code)::String
+        mtoml_code = string(collected_cells[_mtoml_cell_id].code)::String
 
         ptoml_contents = lstrip(split(ptoml_code, "\"\"\"")[2])
         mtoml_contents = lstrip(split(mtoml_code, "\"\"\"")[2])
