@@ -1105,7 +1105,7 @@ pluto_showable(m::MIME, @nospecialize(x))::Bool = Base.invokelatest(showable, m,
 
 
 # We invent our own MIME _because we can_ but don't use it somewhere else because it might change :)
-pluto_showable(::MIME"application/vnd.pluto.tree+object", x::AbstractArray{<:Any,1}) = eltype(eachindex(x)) === Int
+pluto_showable(::MIME"application/vnd.pluto.tree+object", x::AbstractVector{<:Any}) = eltype(eachindex(x)) === Int
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractSet{<:Any}) = true
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractDict{<:Any,<:Any}) = true
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Tuple) = true
@@ -1454,7 +1454,7 @@ const integrations = Integration[
                 # not enumerate(rows) because of some silliness
                 # not rows[i] because `getindex` is not guaranteed to exist
                 L = truncate_rows ? my_row_limit : length(rows)
-                row_data = Array{Any,1}(undef, L)
+                row_data = Vector{Any}(undef, L)
                 for (i, row) in zip(1:L,rows)
                     row_data[i] = (i, row_data_for(row))
                 end
@@ -1486,7 +1486,7 @@ const integrations = Integration[
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::Type) = false
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:NamedTuple}) = false
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:Dict{Symbol,<:Any}}) = false
-            pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractArray{Union{}, 1}) = false
+            pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{Union{}}) = false
 
         end,
     ),
