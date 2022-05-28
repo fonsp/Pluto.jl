@@ -930,7 +930,7 @@ See [`allmimes`](@ref) for the ordered list of supported MIME types.
 """
 function format_output_default(@nospecialize(val), @nospecialize(context=default_iocontext))::MimedOutput
     try
-        io_sprinted, (value, mime) = show_richest_withreturned(val; context)
+        io_sprinted, (value, mime) = show_richest_withreturned(context, val)
         if value === nothing
             if mime ∈ imagemimes
                 (io_sprinted, mime)
@@ -1020,9 +1020,9 @@ function pretty_stackcall(frame::Base.StackFrame, linfo::Core.MethodInstance)
 end
 
 "Return a `(String, Any)` tuple containing function output as the second entry."
-function show_richest_withreturned(@nospecialize(args...); context=nothing, sizehint::Integer=0)
-    buffer = IOBuffer(; sizehint)
-    val = show_richest(IOContext(buffer, context), args...)
+function show_richest_withreturned(context::IOContext, @nospecialize(args))
+    buffer = IOBuffer(; sizehint=0)
+    val = show_richest(IOContext(buffer, context), args)
     return (resize!(buffer.data, buffer.size), val)
 end
 
@@ -1160,12 +1160,28 @@ function get_my_display_limit(@nospecialize(x), dim::Integer, depth::Integer, co
     end
 end
 
+Base.@kwdef struct Rich
+    objectid::String
+    type::Symbol
+    elements::Any=nothing
+    prefix::String=""
+    prefix_short::String=""
+    key_value::Union{Nothing,Tuple}=nothing
+    schema::Union{Nothing,Dict{Symbol,Any}}=nothing
+end
+
+objectid2str(@nospecialize(x)) = string(objectid(x); base=16)::String
+
+function circular(@nospecialize(x))
+    return Rich(;
+        objectid=objectid2str(x),
+        type=:circular
+    )
+end
+
 function tree_data(@nospecialize(x::AbstractSet{<:Any}), context::Context)
     if Base.show_circular(context, x)
-        Dict{Symbol,Any}(
-            :objectid => string(objectid(x), base=16),
-            :type => :circular,
-        )
+        return circular(x)
     else
         depth = get(context, :tree_viewer_depth, 0)
         recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x), Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
@@ -1185,22 +1201,19 @@ function tree_data(@nospecialize(x::AbstractSet{<:Any}), context::Context)
             index += 1
         end
 
-        Dict{Symbol,Any}(
-            :prefix => string(typeof(x)),
-            :prefix_short => string(typeof(x) |> trynameof),
-            :objectid => string(objectid(x), base=16),
-            :type => :Set,
-            :elements => elements
+        return Rich(;
+            prefix=string(typeof(x))::String,
+            prefix_short=string(trynameof(typeof(x)))::String,
+            objectid=objectid2str(x),
+            type=:Set,
+            elements
         )
     end
 end
 
 function tree_data(@nospecialize(x::AbstractVector{<:Any}), context::Context)
     if Base.show_circular(context, x)
-        Dict{Symbol,Any}(
-            :objectid => string(objectid(x), base=16)::String,
-            :type => :circular,
-        )
+        return circular(x)
     else
         depth = get(context, :tree_viewer_depth, 0)::Int
         recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x), Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
@@ -1222,12 +1235,13 @@ function tree_data(@nospecialize(x::AbstractVector{<:Any}), context::Context)
         end
 
         prefix = array_prefix(x)
-        Dict{Symbol,Any}(
-            :prefix => prefix,
-            :prefix_short => x isa Vector ? "" : prefix, # if not abstract
-            :objectid => string(objectid(x), base=16),
-            :type => :Array,
-            :elements => elements
+        prefix_short = x isa Vector ? "" : prefix # if not abstract
+        return Rich(;
+            prefix,
+            prefix_short,
+            objectid=objectid2str(x),
+            type=:Array,
+            elements
         )
     end
 end
@@ -1241,19 +1255,16 @@ function tree_data(@nospecialize(x::Tuple), context::Context)
         out = format_output_default(val, recur_io)
         push!(elements, out)
     end
-    Dict{Symbol,Any}(
-        :objectid => string(objectid(x), base=16),
-        :type => :Tuple,
-        :elements => collect(enumerate(elements)),
+    return Rich(;
+        objectid=objectid2str(x),
+        type=:Tuple,
+        elements
     )
 end
 
 function tree_data(@nospecialize(x::AbstractDict{<:Any,<:Any}), context::Context)
     if Base.show_circular(context, x)
-        Dict{Symbol,Any}(
-            :objectid => string(objectid(x), base=16),
-            :type => :circular,
-        )
+        return circular(x)
     else
         depth = get(context, :tree_viewer_depth, 0)
         recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x), Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
@@ -1273,12 +1284,12 @@ function tree_data(@nospecialize(x::AbstractDict{<:Any,<:Any}), context::Context
             row_index += 1
         end
 
-        Dict{Symbol,Any}(
-            :prefix => string(typeof(x)),
-            :prefix_short => string(typeof(x) |> trynameof),
-            :objectid => string(objectid(x), base=16),
-            :type => :Dict,
-            :elements => elements
+        return Rich(;
+            prefix=string(typeof(x))::String,
+            prefix_short=string(trynameof(typeof(x)))::String,
+            objectid=objectid2str(x),
+            type=:Dict,
+            elements
         )
     end
 end
@@ -1300,29 +1311,27 @@ function tree_data(@nospecialize(x::NamedTuple), context::Context)
         data = tree_data_nt_row((key, val), recur_io)
         push!(elements, data)
     end
-    Dict{Symbol,Any}(
-        :objectid => string(objectid(x), base=16),
-        :type => :NamedTuple,
-        :elements => elements
+    return Rich(;
+        objectid=objectid2str(x),
+        type=:NamedTuple,
+        elements
     )
 end
 
 function tree_data(@nospecialize(x::Pair), context::Context)
     k, v = x
-    Dict{Symbol,Any}(
-        :objectid => string(objectid(x), base=16),
-        :type => :Pair,
-        :key_value => (format_output_default(k, context), format_output_default(v, context)),
+    key_value = (format_output_default(k, context), format_output_default(v, context))
+    return Rich(;
+        objectid=objectid2str(x),
+        type=:Pair,
+        key_value
     )
 end
 
 # Based on Julia source code but without writing to IO
 function tree_data(@nospecialize(x::Any), context::Context)
     if Base.show_circular(context, x)
-        Dict{Symbol,Any}(
-            :objectid => string(objectid(x), base=16),
-            :type => :circular,
-        )
+        return circular(x)
     else
         depth = get(context, :tree_viewer_depth, 0)
         recur_io = IOContext(context, 
@@ -1348,12 +1357,12 @@ function tree_data(@nospecialize(x::Any), context::Context)
             for i in 1:nf
         ]
 
-        Dict{Symbol,Any}(
-            :prefix => repr(t; context),
-            :prefix_short => string(trynameof(t)),
-            :objectid => string(objectid(x), base=16)::String,
-            :type => :struct,
-            :elements => elements,
+        return Rich(;
+            prefix=repr(t; context),
+            prefix_short=string(trynameof(t))::String,
+            objectid=objectid2str(x),
+            type=:struct,
+            elements
         )
     end
 
@@ -1885,7 +1894,7 @@ function _publish(x, id_start)::String
     return id
 end
 
-_publish(x) = _publish(x, string(objectid(x), base=16))
+_publish(x) = _publish(x, objectid2str(x))
 
 # TODO? Possibly move this to it's own package, with fallback that actually msgpack?
 # ..... Ideally we'd make this require `await` on the javascript side too...
