@@ -9,7 +9,7 @@ import Base: union, union!, ==, push!
 # TWO STATE OBJECTS
 ###
 
-const FunctionName = Array{Symbol,1}
+const FunctionName = Vector{Symbol}
 
 struct FunctionNameSignaturePair
     name::FunctionName
@@ -113,7 +113,7 @@ function will_assign_global(assignee::Symbol, scopestate::ScopeState)::Bool
     (scopestate.inglobalscope || assignee ∈ scopestate.exposedglobals) && (assignee ∉ scopestate.hiddenglobals || assignee ∈ scopestate.definedfuncs)
 end
 
-function will_assign_global(assignee::Array{Symbol,1}, scopestate::ScopeState)::Bool
+function will_assign_global(assignee::Vector{Symbol}, scopestate::ScopeState)::Bool
     if length(assignee) == 0
         false
     elseif length(assignee) > 1
