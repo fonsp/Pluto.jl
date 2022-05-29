@@ -41,7 +41,11 @@ Base.@kwdef struct RichTable <: Rich
     rows::Vector{Any}
 end
 
-MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any},Rich},MIME}
+struct MimedOutput{T<:Union{Nothing,String,Vector{UInt8},Dict{Symbol,Any},Rich}}
+    rich::T
+    mime::MIME
+end
+
 const ObjectID = typeof(objectid("hello computer"))
 const ObjectDimPair = Tuple{ObjectID,Int64}
 
@@ -840,7 +844,7 @@ const table_column_display_limit_increase = 30
 
 const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 
-const FormattedCellResult = NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
+const FormattedCellResult = NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{Union{Tuple,MimedOutput},Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
 
 function formatted_result_of(
     notebook_id::UUID, 
@@ -880,15 +884,15 @@ function formatted_result_of(
             published_objects[k] = nothing
         end
     end
-    
-    return (
-        output_formatted = output_formatted,
-        errored = errored, 
-        interrupted = false, 
-        process_exited = false, 
-        runtime = get(cell_runtimes, cell_id, nothing),
-        published_objects = published_objects,
-        has_pluto_hook_features = has_pluto_hook_features,
+
+    return (;
+        output_formatted,
+        errored,
+        interrupted=false,
+        process_exited=false,
+        runtime=get(cell_runtimes, cell_id, nothing),
+        published_objects,
+        has_pluto_hook_features,
     )
 end
 
@@ -945,17 +949,19 @@ Format `val` using the richest possible output, return formatted string and used
 
 See [`allmimes`](@ref) for the ordered list of supported MIME types.
 """
-function format_output_default(@nospecialize(val), @nospecialize(context=default_iocontext))::MimedOutput
+function format_output_default(@nospecialize(val), @nospecialize(context=default_iocontext))
     try
-        io_sprinted, (value, mime) = show_richest_withreturned(context, val)
+        io_sprinted, mimedoutput = show_richest_withreturned(context, val)
+        value = mimedoutput.rich
+        mime = mimedoutput.mime
         if value === nothing
             if mime ∈ imagemimes
-                (io_sprinted, mime)
+                io_sprinted, mime
             else
-                (String(io_sprinted)::String, mime)
+                String(io_sprinted)::String, mime
             end
         else
-            (value, mime)
+            value, mime
         end
     catch ex
         title = ErrorException("Failed to show value: \n" * sprint(try_showerror, ex))
@@ -966,7 +972,7 @@ end
 
 format_output(@nospecialize(x); context=default_iocontext) = format_output_default(x, context)
 
-format_output(::Nothing; context=default_iocontext) = ("", MIME"text/plain"())
+format_output(::Nothing; context=default_iocontext) = MimedOutput("", MIME"text/plain"())
 
 function format_output(val::CapturedException; context=default_iocontext)
     ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
@@ -1072,9 +1078,9 @@ end
 Like two-argument `Base.show`, except:
 1. the richest MIME type available to Pluto will be used
 2. the used MIME type is returned as second element
-3. if the first returned element is `nothing`, then we wrote our data to `io`. If it is something else (a Dict), then that object will be the cell's output, instead of the buffered io stream. This allows us to output rich objects to the frontend that are not necessarily strings or byte streams
+3. if the first returned element `rich` is `nothing`, then we wrote our data to `io`. If it is something else (a `Rich` object), then that object will be the cell's output, instead of the buffered io stream. This allows us to output rich objects to the frontend that are not necessarily strings or byte streams. These objects are sent to the frontend via MsgPack.
 """
-function show_richest(io::IO, @nospecialize(x))::Tuple{Union{Rich,Nothing},MIME}
+function show_richest(io::IO, @nospecialize(x))::MimedOutput
     # ugly code to fix an ugly performance problem
     local mime = nothing
     for m in allmimes
@@ -1085,27 +1091,27 @@ function show_richest(io::IO, @nospecialize(x))::Tuple{Union{Rich,Nothing},MIME}
     end
 
     if mime isa MIME"text/plain" && use_tree_viewer_for_struct(x)
-        tree_data(x, io), MIME"application/vnd.pluto.tree+object"()
+        MimedOutput(tree_data(x, io), MIME"application/vnd.pluto.tree+object"())
     elseif mime isa MIME"application/vnd.pluto.tree+object"
-        tree_data(x, IOContext(io, :compact => true)), mime
+        MimedOutput(tree_data(x, IOContext(io, :compact => true)), mime)
     elseif mime isa MIME"application/vnd.pluto.table+object"
-        table_data(x, IOContext(io, :compact => true)), mime
+        MimedOutput(table_data(x, IOContext(io, :compact => true)), mime)
     elseif mime isa MIME"application/vnd.pluto.divelement+object"
-        tree_data(x, io), mime
+        MimedOutput(tree_data(x, io), mime)
     elseif mime ∈ imagemimes
         show(io, mime, x)
-        nothing, mime
+        MimedOutput(nothing, mime)
     elseif mime isa MIME"text/latex"
         # Some reprs include $ at the start and end.
         # We strip those, since Markdown.LaTeX should contain the math content.
         # (It will be rendered by MathJax, which is math-first, not text-first.)
         texed = repr(mime, x)
         Markdown.html(io, Markdown.LaTeX(strip(texed, ('$', '\n', ' '))))
-        nothing, MIME"text/html"()
+        MimedOutput(nothing, MIME"text/html"())
     else
         # the classic:
         show(io, mime, x)
-        nothing, mime
+        MimedOutput(nothing, mime)
     end
 end
 

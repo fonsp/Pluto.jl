@@ -4,6 +4,8 @@ import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname, Using
 import .WorkspaceManager: macroexpand_in_workspace
 import .MoreAnalysis: find_bound_variables
 
+using .PlutoRunner: Rich
+
 Base.push!(x::Set{Cell}) = x
 
 """
@@ -292,10 +294,14 @@ function run_single!(
 	return run
 end
 
+_body_mime(x::Tuple) = (x[1], x[2])
+_body_mime(x::Rich) = (x.body, x.rich)
+
 function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache; persist_js_state::Bool=false)
-	cell.output = CellOutput(
-		body=run.output_formatted[1],
-		mime=run.output_formatted[2],
+    body, mime = _body_mime(run.output_formatted)
+	cell.output = CellOutput(;
+        body,
+        mime,
 		rootassignee=if ends_with_semicolon(expr_cache.code)
 			nothing
 		else
@@ -307,7 +313,7 @@ function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache; persist_js_
 			end
 		end,
 		last_run_timestamp=time(),
-		persist_js_state=persist_js_state,
+		persist_js_state,
 		has_pluto_hook_features=run.has_pluto_hook_features,
 	)
 	cell.published_objects = let
