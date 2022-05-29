@@ -379,16 +379,17 @@ end
 
 `expr` has to satisfy `ExpressionExplorer.is_toplevel_expr`."
 function eval_format_fetch_in_workspace(
-    session_notebook::Union{SN,Workspace},
-    expr::Expr,
-    cell_id::UUID;
-    ends_with_semicolon::Bool=false,
-    function_wrapped_info::Union{Nothing,Tuple}=nothing,
-    forced_expr_id::Union{PlutoRunner.ObjectID,Nothing}=nothing,
-    known_published_objects::Vector{String}=String[],
-    user_requested_run::Bool=true,
-    capture_stdout::Bool=true,
-)::PlutoRunner.FormattedCellResult
+        session_notebook::Union{SN,Workspace},
+        expr::Expr,
+        cell_id::UUID;
+        ends_with_semicolon::Bool=false,
+        function_wrapped_info::Union{Nothing,Tuple}=nothing,
+        forced_expr_id::Union{PlutoRunner.ObjectID,Nothing}=nothing,
+        known_published_objects::Vector{String}=String[],
+        user_requested_run::Bool=true,
+        capture_stdout::Bool=true,
+    )
+    # Not asserting PlutoRunner.FormattedCellResult as return type since there exist two.
 
     workspace = get_workspace(session_notebook)
     
@@ -445,7 +446,8 @@ function format_fetch_in_workspace(
     ends_with_semicolon, 
     known_published_objects::Vector{String}=String[],
     showmore_id::Union{PlutoRunner.ObjectDimPair,Nothing}=nothing,
-)::PlutoRunner.FormattedCellResult
+)
+    # Not asserting PlutoRunner.FormattedCellResult as return type since there exist two.
     workspace = get_workspace(session_notebook)
     
     # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.

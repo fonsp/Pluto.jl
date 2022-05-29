@@ -9,7 +9,7 @@ const DEFAULT_CELL_METADATA = Dict{String, Any}(
 )
 
 Base.@kwdef struct CellOutput
-    body::Union{Nothing,String,Vector{UInt8},Dict,Rich}=nothing
+    body::Union{Nothing,String,Vector{UInt8},Dict,<:Rich}=nothing
     mime::MIME=MIME("text/plain")
     rootassignee::Union{Symbol,Nothing}=nothing
 

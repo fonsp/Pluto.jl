@@ -4,7 +4,7 @@ import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname, Using
 import .WorkspaceManager: macroexpand_in_workspace
 import .MoreAnalysis: find_bound_variables
 
-using .PlutoRunner: Rich
+using .PlutoRunner: FormattedCellResult, Rich
 
 Base.push!(x::Set{Cell}) = x
 

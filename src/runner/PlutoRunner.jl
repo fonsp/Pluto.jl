@@ -844,16 +844,17 @@ const table_column_display_limit_increase = 30
 
 const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 
+# When this is changed to a struct, `Main.PlutoRunner.FormattedCellResult != Pluto.PlutoRunner.FormattedCellResult`.
 const FormattedCellResult = NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{Union{Tuple,MimedOutput},Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
 
 function formatted_result_of(
-    notebook_id::UUID, 
-    cell_id::UUID, 
-    ends_with_semicolon::Bool, 
-    known_published_objects::Vector{String}=String[],
-    showmore::Union{ObjectDimPair,Nothing}=nothing, 
-    workspace::Module=Main,
-)::FormattedCellResult
+        notebook_id::UUID,
+        cell_id::UUID,
+        ends_with_semicolon::Bool,
+        known_published_objects::Vector{String}=String[],
+        showmore::Union{ObjectDimPair,Nothing}=nothing,
+        workspace::Module=Main,
+    )::FormattedCellResult
     load_integrations_if_needed()
     currently_running_cell_id[] = cell_id
     logger = pluto_loggers[notebook_id]
@@ -874,11 +875,11 @@ function formatted_result_of(
     output_formatted = if (!ends_with_semicolon || errored)
         format_output(ans; context=IOContext(default_iocontext, :extra_items=>extra_items, :module => workspace))
     else
-        ("", MIME"text/plain"())
+        MimedOutput("", MIME"text/plain"())
     end
-    
+
     published_objects = get(cell_published_objects, cell_id, Dict{String,Any}())
-    
+
     for k in known_published_objects
         if haskey(published_objects, k)
             published_objects[k] = nothing
@@ -949,19 +950,19 @@ Format `val` using the richest possible output, return formatted string and used
 
 See [`allmimes`](@ref) for the ordered list of supported MIME types.
 """
-function format_output_default(@nospecialize(val), @nospecialize(context=default_iocontext))
+function format_output_default(@nospecialize(val), @nospecialize(context=default_iocontext))::MimedOutput
     try
         io_sprinted, mimedoutput = show_richest_withreturned(context, val)
         value = mimedoutput.rich
         mime = mimedoutput.mime
         if value === nothing
             if mime ∈ imagemimes
-                io_sprinted, mime
+                MimedOutput(io_sprinted, mime)
             else
-                String(io_sprinted)::String, mime
+                MimedOutput(String(io_sprinted)::String, mime)
             end
         else
-            value, mime
+            MimedOutput(value, mime)
         end
     catch ex
         title = ErrorException("Failed to show value: \n" * sprint(try_showerror, ex))
