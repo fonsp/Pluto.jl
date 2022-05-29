@@ -1,7 +1,7 @@
 using Test
 import Pluto
 import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell
-
+using Pluto.PlutoRunner: RichObject, RichTable
 
 @testset "Rich output" begin
 
@@ -58,37 +58,37 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             @test notebook.cells[8].output.mime isa MIME"application/vnd.pluto.tree+object"
             @test notebook.cells[9].output.mime isa MIME"application/vnd.pluto.tree+object"
             @test notebook.cells[10].output.mime isa MIME"application/vnd.pluto.tree+object"
-            @test notebook.cells[1].output.body isa Dict
-            @test notebook.cells[2].output.body isa Dict
-            @test notebook.cells[3].output.body isa Dict
-            @test notebook.cells[4].output.body isa Dict
-            @test notebook.cells[5].output.body isa Dict
-            @test notebook.cells[6].output.body isa Dict
-            @test notebook.cells[7].output.body isa Dict
-            @test notebook.cells[8].output.body isa Dict
-            @test notebook.cells[9].output.body isa Dict
-            @test notebook.cells[10].output.body isa Dict
+            @test notebook.cells[1].output.body isa RichObject
+            @test notebook.cells[2].output.body isa RichObject
+            @test notebook.cells[3].output.body isa RichObject
+            @test notebook.cells[4].output.body isa RichObject
+            @test notebook.cells[5].output.body isa RichObject
+            @test notebook.cells[6].output.body isa RichObject
+            @test notebook.cells[7].output.body isa RichObject
+            @test notebook.cells[8].output.body isa RichObject
+            @test notebook.cells[9].output.body isa RichObject
+            @test notebook.cells[10].output.body isa RichObject
 
             @test notebook.cells[12].output.mime isa MIME"application/vnd.pluto.tree+object"
-            @test notebook.cells[12].output.body isa Dict
+            @test notebook.cells[12].output.body isa RichObject
             @test notebook.cells[14].output.mime isa MIME"application/vnd.pluto.tree+object"
-            @test notebook.cells[14].output.body isa Dict
+            @test notebook.cells[14].output.body isa RichObject
 
             @test notebook.cells[15].output.mime isa MIME"text/plain"
             
             @test notebook.cells[16].output.mime isa MIME"application/vnd.pluto.tree+object"
-            @test notebook.cells[16].output.body isa Dict
+            @test notebook.cells[16].output.body isa RichObject
             @test occursin("circular", notebook.cells[16].output.body |> string)
 
-            @test notebook.cells[17].output.body isa Dict
-            @test length(notebook.cells[17].output.body[:elements]) == 2
-            @test notebook.cells[17].output.body[:prefix] == "Set{Any}"
+            @test notebook.cells[17].output.body isa RichObject
+            @test length(notebook.cells[17].output.body.elements) == 2
+            @test notebook.cells[17].output.body.prefix == "Set{Any}"
             @test notebook.cells[17].output.mime isa MIME"application/vnd.pluto.tree+object"
             @test occursin("Set", notebook.cells[17].output.body |> string)
 
-            @test notebook.cells[18].output.body isa Dict
-            @test length(notebook.cells[18].output.body[:elements]) < 180
-            @test notebook.cells[18].output.body[:prefix] == "Set{Float64}"
+            @test notebook.cells[18].output.body isa RichObject
+            @test length(notebook.cells[18].output.body.elements) < 180
+            @test notebook.cells[18].output.body.prefix == "Set{Float64}"
             @test notebook.cells[18].output.mime isa MIME"application/vnd.pluto.tree+object"
 
             sizes = [length(string(notebook.cells[i].output.body)) for i in 19:22]
@@ -242,20 +242,20 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
         @test notebook.cells[15].output.mime isa MIME"application/vnd.pluto.tree+object"
         @test notebook.cells[16].output.mime isa MIME"application/vnd.pluto.tree+object"
         @test notebook.cells[17].output.mime isa MIME"application/vnd.pluto.tree+object"
-        @test notebook.cells[2].output.body isa Dict
-        @test notebook.cells[3].output.body isa Dict
-        @test notebook.cells[4].output.body isa Dict
-        @test notebook.cells[5].output.body isa Dict
-        @test notebook.cells[6].output.body isa Dict
-        @test notebook.cells[7].output.body isa Dict
-        @test notebook.cells[8].output.body isa Dict
-        @test notebook.cells[9].output.body isa Dict
-        @test notebook.cells[11].output.body isa Dict
-        @test notebook.cells[12].output.body isa Dict
-        @test notebook.cells[14].output.body isa Dict
-        @test notebook.cells[15].output.body isa Dict
-        @test notebook.cells[16].output.body isa Dict
-        @test notebook.cells[17].output.body isa Dict
+        @test notebook.cells[2].output.body isa RichTable
+        @test notebook.cells[3].output.body isa RichTable
+        @test notebook.cells[4].output.body isa RichTable
+        @test notebook.cells[5].output.body isa RichTable
+        @test notebook.cells[6].output.body isa RichTable
+        @test notebook.cells[7].output.body isa RichTable
+        @test notebook.cells[8].output.body isa RichTable
+        @test notebook.cells[9].output.body isa RichTable
+        @test notebook.cells[11].output.body isa RichTable
+        @test notebook.cells[12].output.body isa RichTable
+        @test notebook.cells[14].output.body isa RichObject
+        @test notebook.cells[15].output.body isa RichObject
+        @test notebook.cells[16].output.body isa RichObject
+        @test notebook.cells[17].output.body isa RichObject
         @test occursin("String?", string(notebook.cells[13].output.body)) # Issue 1490.
 
         @test notebook.cells[10].output.mime isa MIME"text/plain"

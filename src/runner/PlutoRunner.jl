@@ -24,14 +24,21 @@ import Logging
 
 export @bind
 
-Base.@kwdef struct Rich
+abstract type Rich end
+
+Base.@kwdef struct RichObject <: Rich
     objectid::String
     type::Symbol
     elements::Any=nothing
     prefix::String=""
     prefix_short::String=""
     key_value::Union{Nothing,Tuple}=nothing
+end
+
+Base.@kwdef struct RichTable <: Rich
+    objectid::String
     schema::Union{Nothing,Dict{Symbol,Any}}=nothing
+    rows::Vector{Any}
 end
 
 MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any},Rich},MIME}
@@ -1173,7 +1180,7 @@ end
 objectid2str(@nospecialize(x)) = string(objectid(x); base=16)::String
 
 function circular(@nospecialize(x))
-    return Rich(;
+    return RichObject(;
         objectid=objectid2str(x),
         type=:circular
     )
@@ -1201,7 +1208,7 @@ function tree_data(@nospecialize(x::AbstractSet{<:Any}), context::Context)
             index += 1
         end
 
-        return Rich(;
+        return RichObject(;
             prefix=string(typeof(x))::String,
             prefix_short=string(trynameof(typeof(x)))::String,
             objectid=objectid2str(x),
@@ -1236,7 +1243,7 @@ function tree_data(@nospecialize(x::AbstractVector{<:Any}), context::Context)
 
         prefix = array_prefix(x)
         prefix_short = x isa Vector ? "" : prefix # if not abstract
-        return Rich(;
+        return RichObject(;
             prefix,
             prefix_short,
             objectid=objectid2str(x),
@@ -1255,7 +1262,7 @@ function tree_data(@nospecialize(x::Tuple), context::Context)
         out = format_output_default(val, recur_io)
         push!(elements, out)
     end
-    return Rich(;
+    return RichObject(;
         objectid=objectid2str(x),
         type=:Tuple,
         elements
@@ -1284,7 +1291,7 @@ function tree_data(@nospecialize(x::AbstractDict{<:Any,<:Any}), context::Context
             row_index += 1
         end
 
-        return Rich(;
+        return RichObject(;
             prefix=string(typeof(x))::String,
             prefix_short=string(trynameof(typeof(x)))::String,
             objectid=objectid2str(x),
@@ -1311,7 +1318,7 @@ function tree_data(@nospecialize(x::NamedTuple), context::Context)
         data = tree_data_nt_row((key, val), recur_io)
         push!(elements, data)
     end
-    return Rich(;
+    return RichObject(;
         objectid=objectid2str(x),
         type=:NamedTuple,
         elements
@@ -1321,7 +1328,7 @@ end
 function tree_data(@nospecialize(x::Pair), context::Context)
     k, v = x
     key_value = (format_output_default(k, context), format_output_default(v, context))
-    return Rich(;
+    return RichObject(;
         objectid=objectid2str(x),
         type=:Pair,
         key_value
@@ -1357,7 +1364,7 @@ function tree_data(@nospecialize(x::Any), context::Context)
             for i in 1:nf
         ]
 
-        return Rich(;
+        return RichObject(;
             prefix=repr(t; context),
             prefix_short=string(trynameof(t))::String,
             objectid=objectid2str(x),
@@ -1483,10 +1490,10 @@ const integrations = Integration[
                     :types => String.(maptruncated(trynameof, schema.types, "more", my_column_limit; truncate=truncate_columns)),
                 )
 
-                Dict{Symbol,Any}(
-                    :objectid => string(objectid(x), base=16),
-                    :schema => schema_data,
-                    :rows => row_data,
+                RichTable(;
+                    objectid=objectid2str(x),
+                    schema=schema_data,
+                    rows=row_data
                 )
             end
 
