@@ -7,6 +7,8 @@ import MsgPack
 import .Configuration
 import Pkg
 
+using .PlutoRunner: Rich
+
 # MsgPack.jl doesn't define a serialization method for MIME and UUID objects, so we write these ourselves:
 MsgPack.msgpack_type(::Type{<:MIME}) = MsgPack.StringType()
 MsgPack.msgpack_type(::Type{UUID}) = MsgPack.StringType()
@@ -30,6 +32,7 @@ MsgPack.msgpack_type(::Type{Configuration.EvaluationOptions}) = MsgPack.StructTy
 MsgPack.msgpack_type(::Type{Configuration.CompilerOptions}) = MsgPack.StructType()
 MsgPack.msgpack_type(::Type{Configuration.ServerOptions}) = MsgPack.StructType()
 MsgPack.msgpack_type(::Type{Configuration.SecurityOptions}) = MsgPack.StructType()
+MsgPack.msgpack_type(::Type{Rich}) = MsgPack.StructType()
 
 # Don't try to send callback functions which can't be serialized (see ServerOptions.event_listener)
 MsgPack.msgpack_type(::Type{Function}) = MsgPack.NilType()

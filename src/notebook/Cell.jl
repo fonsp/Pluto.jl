@@ -1,5 +1,6 @@
 import UUIDs: UUID, uuid1
 import .ExpressionExplorer: SymbolsState, UsingsImports
+using .PlutoRunner: Rich
 
 # Make sure to keep this in sync with DEFAULT_CELL_METADATA in ../frontend/components/Editor.js
 const DEFAULT_CELL_METADATA = Dict{String, Any}(
@@ -8,7 +9,7 @@ const DEFAULT_CELL_METADATA = Dict{String, Any}(
 )
 
 Base.@kwdef struct CellOutput
-    body::Union{Nothing,String,Vector{UInt8},Dict}=nothing
+    body::Union{Nothing,String,Vector{UInt8},Dict,Rich}=nothing
     mime::MIME=MIME("text/plain")
     rootassignee::Union{Symbol,Nothing}=nothing
 
@@ -55,13 +56,13 @@ Base.@kwdef mutable struct Cell
     metadata::Dict{String,Any}=copy(DEFAULT_CELL_METADATA)
 end
 
-Cell(cell_id, code) = Cell(cell_id=cell_id, code=code)
+Cell(cell_id, code) = Cell(; cell_id, code)
 Cell(code) = Cell(uuid1(), code)
 
 cell_id(cell::Cell) = cell.cell_id
 
 function Base.convert(::Type{Cell}, cell::Dict)
-	Cell(
+    Cell(
         cell_id=UUID(cell["cell_id"]),
         code=cell["code"],
         code_folded=cell["code_folded"],

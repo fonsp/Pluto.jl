@@ -24,7 +24,17 @@ import Logging
 
 export @bind
 
-MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
+Base.@kwdef struct Rich
+    objectid::String
+    type::Symbol
+    elements::Any=nothing
+    prefix::String=""
+    prefix_short::String=""
+    key_value::Union{Nothing,Tuple}=nothing
+    schema::Union{Nothing,Dict{Symbol,Any}}=nothing
+end
+
+MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any},Rich},MIME}
 const ObjectID = typeof(objectid("hello computer"))
 const ObjectDimPair = Tuple{ObjectID,Int64}
 
@@ -1057,7 +1067,7 @@ Like two-argument `Base.show`, except:
 2. the used MIME type is returned as second element
 3. if the first returned element is `nothing`, then we wrote our data to `io`. If it is something else (a Dict), then that object will be the cell's output, instead of the buffered io stream. This allows us to output rich objects to the frontend that are not necessarily strings or byte streams
 """
-function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
+function show_richest(io::IO, @nospecialize(x))::Tuple{Union{Rich,Nothing},MIME}
     # ugly code to fix an ugly performance problem
     local mime = nothing
     for m in allmimes
@@ -1158,16 +1168,6 @@ function get_my_display_limit(@nospecialize(x), dim::Integer, depth::Integer, co
             b * get(d, (objectid(x), dim), 0)
         end
     end
-end
-
-Base.@kwdef struct Rich
-    objectid::String
-    type::Symbol
-    elements::Any=nothing
-    prefix::String=""
-    prefix_short::String=""
-    key_value::Union{Nothing,Tuple}=nothing
-    schema::Union{Nothing,Dict{Symbol,Any}}=nothing
 end
 
 objectid2str(@nospecialize(x)) = string(objectid(x); base=16)::String
