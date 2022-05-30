@@ -297,7 +297,7 @@ end
 _body_mime(x::Tuple) = (x[1], x[2])
 _body_mime(x::Rich) = (x.body, x.rich)
 
-function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache; persist_js_state::Bool=false)
+function set_output!(cell::Cell, run::FormattedCellResult, expr_cache::ExprAnalysisCache; persist_js_state::Bool=false)
     body, mime = _body_mime(run.output_formatted)
 	cell.output = CellOutput(;
         body,
