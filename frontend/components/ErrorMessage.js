@@ -141,7 +141,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
             pattern: /^UndefVarError: (.*) not defined\.?$/,
             display: (/** @type{string} */ x) => {
                 const notebook = /** @type{import("./Editor.js").NotebookData?} */ (pluto_actions.get_notebook())
-                const erred_upstreams = get_erred_upstreams(notebook, cell_id, [])
+                const erred_upstreams = get_erred_upstreams(notebook, cell_id)
 
                 // Verify that the UndefVarError is indeed about a variable from an upstream cell.
                 const match = x.match(/UndefVarError: (.*) not defined/)
@@ -150,11 +150,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                     Object.keys(map.downstream_cells_map).includes(sym)
                 )
 
-                if (
-                    !erred_upstreams ||
-                    !undefvar_is_from_upstream ||
-                    (Object.keys(erred_upstreams).length === 1 && erred_upstreams[Object.keys(erred_upstreams)[0]] === cell_id)
-                ) {
+                if (Object.keys(erred_upstreams).length === 0 || !undefvar_is_from_upstream) {
                     return html`<p>${x}</p>`
                 }
 
@@ -171,8 +167,8 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                 return html`<p><em>Another cell defining ${insert_commas_and_and(symbol_links)} contains errors.</em></p>`
             },
             show_stacktrace: () => {
-                const erred_upstreams = get_erred_upstreams(pluto_actions.get_notebook(), cell_id, [])
-                return erred_upstreams == null || (Object.keys(erred_upstreams).length === 1 && erred_upstreams[Object.keys(erred_upstreams)[0]] === cell_id)
+                const erred_upstreams = get_erred_upstreams(pluto_actions.get_notebook(), cell_id)
+                return Object.keys(erred_upstreams).length === 0
             },
         },
         default_rewriter,
@@ -203,24 +199,29 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
 const get_erred_upstreams = (
     /** @type {import("./Editor.js").NotebookData?} */ notebook,
     /** @type {string} */ cell_id,
-    /** @type {string[]} */ visitedCells
+    /** @type {string[]} */ visited_edges = []
 ) => {
-    let erred_upstreams = null
-    if (visitedCells.includes(cell_id)) {
-        return erred_upstreams
-    }
-    visitedCells.push(cell_id)
-    if (notebook != null && notebook?.cell_results?.[cell_id]?.errored)
-        Object.keys(notebook.cell_dependencies[cell_id]?.upstream_cells_map).forEach((key) => {
-            notebook.cell_dependencies[cell_id]?.upstream_cells_map[key].forEach((upstream_cell_id) => {
-                let upstream_cells = get_erred_upstreams(notebook, upstream_cell_id, visitedCells) ?? {}
-                erred_upstreams = { ...erred_upstreams, ...upstream_cells }
-                // if upstream got no errors and current cell is errored
-                // then current cell is responsible for errors
-                if ((!upstream_cells || Object.keys(upstream_cells).length === 0) && notebook.cell_results[upstream_cell_id].errored) {
-                    erred_upstreams[key] = upstream_cell_id
-                }
-            })
+    let erred_upstreams = {}
+    if (notebook != null && notebook?.cell_results?.[cell_id]?.errored) {
+        const referenced_variables = Object.keys(notebook.cell_dependencies[cell_id]?.upstream_cells_map)
+
+        referenced_variables.forEach((key) => {
+            if (!visited_edges.includes(key)) {
+                visited_edges.push(key)
+                const cells_that_define_this_variable = notebook.cell_dependencies[cell_id]?.upstream_cells_map[key]
+
+                cells_that_define_this_variable.forEach((upstream_cell_id) => {
+                    let upstream_errored_cells = get_erred_upstreams(notebook, upstream_cell_id, visited_edges) ?? {}
+
+                    erred_upstreams = { ...erred_upstreams, ...upstream_errored_cells }
+                    // if upstream got no errors and current cell is errored
+                    // then current cell is responsible for errors
+                    if (Object.keys(upstream_errored_cells).length === 0 && notebook.cell_results[upstream_cell_id].errored && upstream_cell_id !== cell_id) {
+                        erred_upstreams[key] = upstream_cell_id
+                    }
+                })
+            }
         })
-    return erred_upstreams == null || Object.keys(erred_upstreams).length === 0 ? null : erred_upstreams
+    }
+    return erred_upstreams
 }

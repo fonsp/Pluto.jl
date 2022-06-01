@@ -154,12 +154,10 @@ const first_true_key = (obj) => {
 
 /**
  * @typedef CellDependencyData
- * @type {{
- *  cell_id: string,
- *  downstream_cells_map: { [symbol: string]: Array<string>},
- *  upstream_cells_map: { [symbol: string]: Array<string>},
- *  precedence_heuristic: number,
- * }}
+ * @property {string} cell_id
+ * @property {Map<string, Array<string>>} downstream_cells_map A map where the keys are the variables *defined* by this cell, and a value is the list of cell IDs that reference a variable.
+ * @property {Map<string, Array<string>>} upstream_cells_map A map where the keys are the variables *referenced* by this cell, and a value is the list of cell IDs that define a variable.
+ * @property {number} precedence_heuristic
  */
 
 /**
