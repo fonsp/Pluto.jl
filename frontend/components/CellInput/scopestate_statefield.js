@@ -522,7 +522,6 @@ export let explore_variable_usage = (
             return scopestate
         } else if ((match = match_julia(cursor)`${t.as("assignee")} = ${t.maybe(t.as("value"))}`)) {
             let { assignee, value } = match
-            console.log("Assigned!")
             if (value) scopestate = explore_variable_usage(value.cursor(), doc, scopestate, verbose)
             if (assignee) scopestate = explore_pattern(assignee.cursor(), doc, scopestate, value?.to ?? null, verbose)
             return scopestate
