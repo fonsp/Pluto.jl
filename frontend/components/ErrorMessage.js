@@ -150,8 +150,11 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                     Object.keys(map.downstream_cells_map).includes(sym)
                 )
 
-                if (!erred_upstreams || !undefvar_is_from_upstream || (Object.keys(erred_upstreams).length === 1
-                    && erred_upstreams[Object.keys(erred_upstreams)[0]] === cell_id)) {
+                if (
+                    !erred_upstreams ||
+                    !undefvar_is_from_upstream ||
+                    (Object.keys(erred_upstreams).length === 1 && erred_upstreams[Object.keys(erred_upstreams)[0]] === cell_id)
+                ) {
                     return html`<p>${x}</p>`
                 }
 
@@ -169,8 +172,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
             },
             show_stacktrace: () => {
                 const erred_upstreams = get_erred_upstreams(pluto_actions.get_notebook(), cell_id, [])
-                return erred_upstreams == null || (Object.keys(erred_upstreams).length === 1
-                    && erred_upstreams[Object.keys(erred_upstreams)[0]] === cell_id)
+                return erred_upstreams == null || (Object.keys(erred_upstreams).length === 1 && erred_upstreams[Object.keys(erred_upstreams)[0]] === cell_id)
             },
         },
         default_rewriter,
@@ -198,8 +200,11 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
     </jlerror>`
 }
 
-const get_erred_upstreams = (/** @type {import("./Editor.js").NotebookData?} */ notebook, /** @type {string} */ cell_id,
-    /** @type {string[]} */ visitedCells) => {
+const get_erred_upstreams = (
+    /** @type {import("./Editor.js").NotebookData?} */ notebook,
+    /** @type {string} */ cell_id,
+    /** @type {string[]} */ visitedCells
+) => {
     let erred_upstreams = null
     if (visitedCells.includes(cell_id)) {
         return erred_upstreams
