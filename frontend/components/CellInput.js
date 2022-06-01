@@ -729,7 +729,7 @@ export const CellInput = ({
         if (lines_wrapper_dom_node) {
             const lines_wrapper_resize_observer = new ResizeObserver(() => {
                 const line_nodes = lines_wrapper_dom_node.children
-                const tops = _.map(line_nodes, (c) => c.offsetTop)
+                const tops = _.map(line_nodes, (c) => /** @type{HTMLElement} */ (c).offsetTop)
                 const diffs = tops.slice(1).map((y, i) => y - tops[i])
                 const heights = [...diffs, 15]
                 on_line_heights(heights)
