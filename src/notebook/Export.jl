@@ -1,6 +1,7 @@
 import Pkg
 using Base64
 using HypertextLiteral
+import URIs
 
 const default_binder_url = "https://mybinder.org/v2/gh/fonsp/pluto-on-binder/v$(string(PLUTO_VERSION))"
 
@@ -23,12 +24,13 @@ function cdnified_editor_html(;
                 original = read(project_relative_path("frontend-dist", "editor.html"), String)
     
                 replace_with_cdn(original) do url
+                    # Because parcel creates filenames with a hash in them, we can check if the file exists locally to make sure that everything is in order.
                     @assert isfile(project_relative_path("frontend-dist", url))
                     
-                    "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@$(string(PLUTO_VERSION))/frontend-dist/$(url)"
+                    URIs.resolvereference("https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@$(string(PLUTO_VERSION))/frontend-dist/", url) |> string
                 end
             catch e
-                @warn "Could not use bundled CDN version of editor.html: $e"
+                @warn "Could not use bundled CDN version of editor.html. You should only see this message if you are using a fork of Pluto." exception=(e,catch_backtrace())
                 nothing
             end
         end,
@@ -38,10 +40,9 @@ function cdnified_editor_html(;
             cdn_root = something(pluto_cdn_root, "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@$(something(cdn_version_override, string(something(version, PLUTO_VERSION))))/frontend/")
             @debug "Using CDN for Pluto assets:" cdn_root
     
-            replace(
-                replace(original, 
-                "href=\"./" => "href=\"$(cdn_root)"),
-            "src=\"./" => "src=\"$(cdn_root)")
+            replace_with_cdn(original) do url
+                URIs.resolvereference(cdn_root, url) |> string
+            end
         end
     )
 end

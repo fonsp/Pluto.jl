@@ -5,6 +5,7 @@ using Pluto: ServerSession, ClientSession, SessionActions
 using Pluto.Configuration
 using Pluto.Configuration: notebook_path_suggestion, from_flat_kwargs, _convert_to_flags
 using Pluto.WorkspaceManager: poll
+import URIs
 
 @testset "Configurations" begin
 
@@ -97,10 +98,10 @@ end
     effect_routes = [
         ("new", "GET"),
         ("new", "POST"),
-        ("open?url=$(HTTP.URIs.escapeuri("https://raw.githubusercontent.com/fonsp/Pluto.jl/v0.14.5/sample/Basic.jl"))", "GET"),
-        ("open?url=$(HTTP.URIs.escapeuri("https://raw.githubusercontent.com/fonsp/Pluto.jl/v0.14.5/sample/Basic.jl"))", "POST"),
-        ("open?path=$(HTTP.URIs.escapeuri(Pluto.project_relative_path("sample", "Basic.jl") |> tempcopy))", "GET"),
-        ("open?path=$(HTTP.URIs.escapeuri(Pluto.project_relative_path("sample", "Basic.jl") |> tempcopy))", "POST"),
+        ("open?url=$(URIs.escapeuri("https://raw.githubusercontent.com/fonsp/Pluto.jl/v0.14.5/sample/Basic.jl"))", "GET"),
+        ("open?url=$(URIs.escapeuri("https://raw.githubusercontent.com/fonsp/Pluto.jl/v0.14.5/sample/Basic.jl"))", "POST"),
+        ("open?path=$(URIs.escapeuri(Pluto.project_relative_path("sample", "Basic.jl") |> tempcopy))", "GET"),
+        ("open?path=$(URIs.escapeuri(Pluto.project_relative_path("sample", "Basic.jl") |> tempcopy))", "POST"),
         ("sample/Basic.jl", "GET"),
         ("sample/Basic.jl", "POST"),
         ("notebookupload", "POST"),

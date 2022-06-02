@@ -25,6 +25,7 @@ RelocatableFolders = "05181044-ff0b-4ac5-8273-598c1e38db00"
 Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 Tables = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
+URIs = "5c2747f8-b7ea-4ff2-ba2e-563bfd36b1d4"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 [compat]
@@ -37,6 +38,7 @@ MsgPack = "1.1"
 PrecompileSignatures = "3"
 RelocatableFolders = "0.1, 0.2, 0.3"
 Tables = "1"
+URIs = "1.3"
 julia = "^1.6"
 
 [extras]
