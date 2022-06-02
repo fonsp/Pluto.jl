@@ -825,7 +825,7 @@ const table_column_display_limit_increase = 30
 
 const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 
-# This is not a struct to make it easier to pass these objects between distributed threads.
+# This is not a struct to make it easier to pass these objects between distributed processes.
 const FormattedCellResult = NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
 
 function formatted_result_of(
