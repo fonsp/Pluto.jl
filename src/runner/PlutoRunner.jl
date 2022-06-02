@@ -1125,7 +1125,7 @@ pluto_showable(m::MIME, @nospecialize(x))::Bool = Base.invokelatest(showable, m,
 
 
 # We invent our own MIME _because we can_ but don't use it somewhere else because it might change :)
-pluto_showable(::MIME"application/vnd.pluto.tree+object", x::AbstractVector{<:Any}) = eltype(eachindex(x)) === Int
+pluto_showable(::MIME"application/vnd.pluto.tree+object", x::AbstractVector{<:Any}) = try eltype(eachindex(x)) === Int; catch; false; end
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractSet{<:Any}) = true
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractDict{<:Any,<:Any}) = true
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Tuple) = true
