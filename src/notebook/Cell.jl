@@ -55,7 +55,7 @@ Base.@kwdef mutable struct Cell
     metadata::Dict{String,Any}=copy(DEFAULT_CELL_METADATA)
 end
 
-Cell(cell_id, code) = Cell(cell_id=cell_id, code=code)
+Cell(cell_id, code) = Cell(; cell_id, code)
 Cell(code) = Cell(uuid1(), code)
 
 cell_id(cell::Cell) = cell.cell_id

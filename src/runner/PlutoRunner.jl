@@ -1,7 +1,7 @@
 # Will be evaluated _inside_ the workspace process.
 
 # Pluto does most things on process 1 (the server), and it uses little workspace processes to evaluate notebook code in.
-# These baby processes don't import Pluto, they only import this module. Functions from this module are called by WorkspaceManager.jl, using Distributed
+# These baby processes don't import Pluto, they only import this module. Functions from this module are called by WorkspaceManager.jl via Distributed
 
 # So when reading this file, pretend that you are living in process 2, and you are communicating with Pluto's server, who lives in process 1.
 # The package environment that this file is loaded with is the NotebookProcessProject.toml file in this directory.
@@ -31,7 +31,9 @@ import Logging
 
 export @bind
 
-MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
+# This is not a struct to make it easier to pass these objects between distributed processes.
+const MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
+
 const ObjectID = typeof(objectid("hello computer"))
 const ObjectDimPair = Tuple{ObjectID,Int64}
 
@@ -830,6 +832,7 @@ const table_column_display_limit_increase = 30
 
 const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 
+# This is not a struct to make it easier to pass these objects between distributed processes.
 const FormattedCellResult = NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
 
 function formatted_result_of(
@@ -871,14 +874,14 @@ function formatted_result_of(
         end
     end
     
-    return (
-        output_formatted = output_formatted,
-        errored = errored, 
-        interrupted = false, 
-        process_exited = false, 
+    return (;
+        output_formatted,
+        errored,
+        interrupted = false,
+        process_exited = false,
         runtime = get(cell_runtimes, cell_id, nothing),
-        published_objects = published_objects,
-        has_pluto_hook_features = has_pluto_hook_features,
+        published_objects,
+        has_pluto_hook_features,
     )
 end
 
@@ -937,7 +940,7 @@ See [`allmimes`](@ref) for the ordered list of supported MIME types.
 """
 function format_output_default(@nospecialize(val), @nospecialize(context=default_iocontext))::MimedOutput
     try
-        io_sprinted, (value, mime) = show_richest_withreturned(val; context)
+        io_sprinted, (value, mime) = show_richest_withreturned(context, val)
         if value === nothing
             if mime ∈ imagemimes
                 (io_sprinted, mime)
@@ -1027,9 +1030,9 @@ function pretty_stackcall(frame::Base.StackFrame, linfo::Core.MethodInstance)
 end
 
 "Return a `(String, Any)` tuple containing function output as the second entry."
-function show_richest_withreturned(@nospecialize(args...); context=nothing, sizehint::Integer=0)
-    buffer = IOBuffer(; sizehint)
-    val = show_richest(IOContext(buffer, context), args...)
+function show_richest_withreturned(context::IOContext, @nospecialize(args))
+    buffer = IOBuffer(; sizehint=0)
+    val = show_richest(IOContext(buffer, context), args)
     return (resize!(buffer.data, buffer.size), val)
 end
 
@@ -1167,12 +1170,18 @@ function get_my_display_limit(@nospecialize(x), dim::Integer, depth::Integer, co
     end
 end
 
+objectid2str(@nospecialize(x)) = string(objectid(x); base=16)::String
+
+function circular(@nospecialize(x))
+    return Dict{Symbol,Any}(
+        :objectid => objectid2str(x),
+        :type => :circular
+    )
+end
+
 function tree_data(@nospecialize(x::AbstractSet{<:Any}), context::Context)
     if Base.show_circular(context, x)
-        Dict{Symbol,Any}(
-            :objectid => string(objectid(x), base=16),
-            :type => :circular,
-        )
+        return circular(x)
     else
         depth = get(context, :tree_viewer_depth, 0)
         recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x), Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
@@ -1195,7 +1204,7 @@ function tree_data(@nospecialize(x::AbstractSet{<:Any}), context::Context)
         Dict{Symbol,Any}(
             :prefix => string(typeof(x)),
             :prefix_short => string(typeof(x) |> trynameof),
-            :objectid => string(objectid(x), base=16),
+            :objectid => objectid2str(x),
             :type => :Set,
             :elements => elements
         )
@@ -1204,10 +1213,7 @@ end
 
 function tree_data(@nospecialize(x::AbstractVector{<:Any}), context::Context)
     if Base.show_circular(context, x)
-        Dict{Symbol,Any}(
-            :objectid => string(objectid(x), base=16)::String,
-            :type => :circular,
-        )
+        return circular(x)
     else
         depth = get(context, :tree_viewer_depth, 0)::Int
         recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x), Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
@@ -1232,7 +1238,7 @@ function tree_data(@nospecialize(x::AbstractVector{<:Any}), context::Context)
         Dict{Symbol,Any}(
             :prefix => prefix,
             :prefix_short => x isa Vector ? "" : prefix, # if not abstract
-            :objectid => string(objectid(x), base=16),
+            :objectid => objectid2str(x),
             :type => :Array,
             :elements => elements
         )
@@ -1249,7 +1255,7 @@ function tree_data(@nospecialize(x::Tuple), context::Context)
         push!(elements, out)
     end
     Dict{Symbol,Any}(
-        :objectid => string(objectid(x), base=16),
+        :objectid => objectid2str(x),
         :type => :Tuple,
         :elements => collect(enumerate(elements)),
     )
@@ -1257,10 +1263,7 @@ end
 
 function tree_data(@nospecialize(x::AbstractDict{<:Any,<:Any}), context::Context)
     if Base.show_circular(context, x)
-        Dict{Symbol,Any}(
-            :objectid => string(objectid(x), base=16),
-            :type => :circular,
-        )
+        return circular(x)
     else
         depth = get(context, :tree_viewer_depth, 0)
         recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x), Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
@@ -1283,7 +1286,7 @@ function tree_data(@nospecialize(x::AbstractDict{<:Any,<:Any}), context::Context
         Dict{Symbol,Any}(
             :prefix => string(typeof(x)),
             :prefix_short => string(typeof(x) |> trynameof),
-            :objectid => string(objectid(x), base=16),
+            :objectid => objectid2str(x),
             :type => :Dict,
             :elements => elements
         )
@@ -1308,7 +1311,7 @@ function tree_data(@nospecialize(x::NamedTuple), context::Context)
         push!(elements, data)
     end
     Dict{Symbol,Any}(
-        :objectid => string(objectid(x), base=16),
+        :objectid => objectid2str(x),
         :type => :NamedTuple,
         :elements => elements
     )
@@ -1317,7 +1320,7 @@ end
 function tree_data(@nospecialize(x::Pair), context::Context)
     k, v = x
     Dict{Symbol,Any}(
-        :objectid => string(objectid(x), base=16),
+        :objectid => objectid2str(x),
         :type => :Pair,
         :key_value => (format_output_default(k, context), format_output_default(v, context)),
     )
@@ -1326,10 +1329,7 @@ end
 # Based on Julia source code but without writing to IO
 function tree_data(@nospecialize(x::Any), context::Context)
     if Base.show_circular(context, x)
-        Dict{Symbol,Any}(
-            :objectid => string(objectid(x), base=16),
-            :type => :circular,
-        )
+        return circular(x)
     else
         depth = get(context, :tree_viewer_depth, 0)
         recur_io = IOContext(context, 
@@ -1358,7 +1358,7 @@ function tree_data(@nospecialize(x::Any), context::Context)
         Dict{Symbol,Any}(
             :prefix => repr(t; context),
             :prefix_short => string(trynameof(t)),
-            :objectid => string(objectid(x), base=16)::String,
+            :objectid => objectid2str(x),
             :type => :struct,
             :elements => elements,
         )
@@ -1482,7 +1482,7 @@ const integrations = Integration[
                 )
 
                 Dict{Symbol,Any}(
-                    :objectid => string(objectid(x), base=16),
+                    :objectid => objectid2str(x),
                     :schema => schema_data,
                     :rows => row_data,
                 )
@@ -1892,7 +1892,7 @@ function _publish(x, id_start)::String
     return id
 end
 
-_publish(x) = _publish(x, string(objectid(x), base=16))
+_publish(x) = _publish(x, objectid2str(x))
 
 # TODO? Possibly move this to it's own package, with fallback that actually msgpack?
 # ..... Ideally we'd make this require `await` on the javascript side too...
