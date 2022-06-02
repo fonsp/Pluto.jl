@@ -6,7 +6,7 @@ const TerminalViewAnsiUp = ({ value }) => {
 
     useEffect(() => {
         if (!node_ref.current) return
-        node_ref.current.innerHTML = AnsiUp.ansi_to_html(value)
+        node_ref.current.innerHTML = new AnsiUp().ansi_to_html(value)
         const parent = node_ref.current.parentElement
         if (parent) parent.scrollTop = 1e5
     }, [node_ref.current, value])

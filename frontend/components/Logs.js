@@ -213,7 +213,7 @@ const LogViewAnsiUp = (/** @type {{value: string}} */ { value }) => {
 
     useEffect(() => {
         if (!node_ref.current) return
-        node_ref.current.innerHTML = AnsiUp.ansi_to_html(value)
+        node_ref.current.innerHTML = new AnsiUp().ansi_to_html(value)
     }, [node_ref.current, value])
 
     return html`<pre ref=${node_ref}></pre>`
