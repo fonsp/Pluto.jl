@@ -6,6 +6,13 @@
 # So when reading this file, pretend that you are living in process 2, and you are communicating with Pluto's server, who lives in process 1.
 # The package environment that this file is loaded with is the NotebookProcessProject.toml file in this directory.
 
+# SOME EXTRA NOTES
+
+# 1. The entire PlutoRunner should be a single file.
+# 2. We restrict the communication between this PlutoRunner and the Pluto server to only use *Base Julia types*, like `String`, `Dict`, `NamedTuple`, etc. 
+
+# These restriction are there to allow flexibility in the way that this file is loaded on a runner process, which is something that we might want to change in the future, like when we make the transition to our own Distributed.
+
 module PlutoRunner
 
 # import these two so that they can be imported from Main on the worker process if it launches without the stdlibs in its LOAD_PATH
