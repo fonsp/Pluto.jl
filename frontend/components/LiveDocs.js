@@ -4,7 +4,7 @@ import observablehq from "../common/SetupCellEnvironment.js"
 import { cl } from "../common/ClassTable.js"
 
 import { RawHTMLContainer, highlight } from "./CellOutput.js"
-import { PlutoContext } from "../common/PlutoContext.js"
+import { PlutoActionsContext } from "../common/PlutoContext.js"
 
 const without_workspace_stuff = (str) =>
     str
@@ -13,7 +13,7 @@ const without_workspace_stuff = (str) =>
         .replace(/#&#61;&#61;#[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\:\d+/g, "") // remove UUIDs from filenames
 
 export let LiveDocs = ({ desired_doc_query, on_update_doc_query, notebook }) => {
-    let pluto_actions = useContext(PlutoContext)
+    let pluto_actions = useContext(PlutoActionsContext)
     let container_ref = useRef()
     let live_doc_search_ref = useRef()
     let [state, set_state] = useState({

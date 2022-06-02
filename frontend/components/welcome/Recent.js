@@ -51,15 +51,16 @@ const shortest_path = (path, allpaths) => {
  * }} props
  */
 export const Recent = ({ client, connected, remote_notebooks, CustomRecent }) => {
-    const [combined_notebooks, set_combined_notebooks] = useState(/** @type {Array<CombinedNotebook> | null} */ (null))
+    const [combined_notebooks, set_combined_notebooks] = useState(/** @type {Array<CombinedNotebook>?} */ (null))
     const combined_notebooks_ref = useRef(combined_notebooks)
     combined_notebooks_ref.current = combined_notebooks
 
     const set_notebook_state = (path, new_state_props) => {
-        set_combined_notebooks((prevstate) =>
-            prevstate.map((nb) => {
-                return nb.path == path ? { ...nb, ...new_state_props } : nb
-            })
+        set_combined_notebooks(
+            (prevstate) =>
+                prevstate?.map((nb) => {
+                    return nb.path == path ? { ...nb, ...new_state_props } : nb
+                }) ?? null
         )
     }
 
@@ -127,6 +128,7 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent }) =>
         }
         const running = nb.notebook_id != null
         if (running) {
+            if (client == null) return
             if (confirm("Shut down notebook process?")) {
                 set_notebook_state(nb.path, {
                     running: false,

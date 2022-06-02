@@ -1,7 +1,7 @@
 import { html, useRef, useState, useContext } from "../imports/Preact.js"
 
 import { OutputBody, PlutoImage, RawHTMLContainer } from "./CellOutput.js"
-import { PlutoContext } from "../common/PlutoContext.js"
+import { PlutoActionsContext } from "../common/PlutoContext.js"
 
 // this is different from OutputBody because:
 // it does not wrap in <div>. We want to do that in OutputBody for reasons that I forgot (feel free to try and remove it), but we dont want it here
@@ -51,17 +51,23 @@ const More = ({ on_click_more }) => {
 const prefix = ({ prefix, prefix_short }) =>
     html`<pluto-tree-prefix><span class="long">${prefix}</span><span class="short">${prefix_short}</span></pluto-tree-prefix>`
 
+const actions_show_more = ({ pluto_actions, cell_id, node_ref, objectid, dim }) => {
+    const actions = pluto_actions ?? node_ref.current.closest("pluto-cell")._internal_pluto_actions
+    actions.reshow_cell(cell_id ?? node_ref.current.closest("pluto-cell").id, objectid, dim)
+}
+
 export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
-    let pluto_actions = useContext(PlutoContext)
-    const node_ref = useRef(null)
+    let pluto_actions = useContext(PlutoActionsContext)
+    const node_ref = useRef(/** @type {HTMLElement?} */ (null))
     const onclick = (e) => {
         // TODO: this could be reactified but no rush
         let self = node_ref.current
+        if (!self) return
         let clicked = e.target.closest("pluto-tree-prefix") != null ? e.target.closest("pluto-tree-prefix").parentElement : e.target
         if (clicked !== self && !self.classList.contains("collapsed")) {
             return
         }
-        const parent_tree = self.parentElement.closest("pluto-tree")
+        const parent_tree = self.parentElement?.closest("pluto-tree")
         if (parent_tree != null && parent_tree.classList.contains("collapsed")) {
             return // and bubble upwards
         }
@@ -69,11 +75,16 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
         self.classList.toggle("collapsed")
     }
     const on_click_more = () => {
-        if (node_ref.current.closest("pluto-tree.collapsed") != null) {
+        if (node_ref.current == null || node_ref.current.closest("pluto-tree.collapsed") != null) {
             return false
         }
-        const actions = pluto_actions ?? node_ref.current.closest("pluto-cell")._internal_pluto_actions
-        actions.reshow_cell(cell_id ?? node_ref.current.closest("pluto-cell").id, body.objectid, 1)
+        actions_show_more({
+            pluto_actions,
+            cell_id,
+            node_ref,
+            objectid: body.objectid,
+            dim: 1,
+        })
     }
 
     const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${persist_js_state} />`
@@ -122,14 +133,19 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
 }
 
 export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
-    let pluto_actions = useContext(PlutoContext)
+    let pluto_actions = useContext(PlutoActionsContext)
     const node_ref = useRef(null)
 
     const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${persist_js_state} />`
     const more = (dim) => html`<${More}
         on_click_more=${() => {
-            const actions = pluto_actions ?? node_ref.current.closest("pluto-cell")._internal_pluto_actions
-            actions.reshow_cell(cell_id ?? node_ref.current.closest("pluto-cell").id, body.objectid, dim)
+            actions_show_more({
+                pluto_actions,
+                cell_id,
+                node_ref,
+                objectid: body.objectid,
+                dim,
+            })
         }}
     />`
 
@@ -161,8 +177,8 @@ export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
     </table>`
 }
 
-export let DivElement = ({ cell_id, style, classname, children }) => {
-    const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${false} />`
+export let DivElement = ({ cell_id, style, classname, children, persist_js_state = false }) => {
+    const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${persist_js_state} />`
 
     return html`<div style=${style} class=${classname}>${children.map(mimepair_output)}</div>`
 }

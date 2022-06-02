@@ -2,8 +2,26 @@ import REPL:ends_with_semicolon
 import .Configuration
 import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname, UsingsImports, external_package_names
 import .WorkspaceManager: macroexpand_in_workspace
+import .MoreAnalysis: find_bound_variables
 
 Base.push!(x::Set{Cell}) = x
+
+"""
+```julia
+set_bond_value_pairs!(session::ServerSession, notebook::Notebook, bond_value_pairs::Vector{Tuple{Symbol, Any}})
+```
+
+Given a list of tuples of the form `(bound variable name, (untransformed) value)`, assign each (transformed) value to the corresponding global bound variable in the notebook workspace.
+
+`bond_value_pairs` can also be an iterator.
+"""
+function set_bond_value_pairs!(session::ServerSession, notebook::Notebook, bond_value_pairs)
+	for (bound_sym, new_value) in bond_value_pairs
+		WorkspaceManager.eval_in_workspace((session, notebook), :($(bound_sym) = Main.PlutoRunner.transform_bond_value($(QuoteNode(bound_sym)), $(new_value))))
+	end
+end
+
+const _empty_bond_value_pairs = zip(Symbol[],Any[])
 
 """
 Run given cells and all the cells that depend on them, based on the topology information before and after the changes.
@@ -16,6 +34,7 @@ function run_reactive!(
     roots::Vector{Cell};
     deletion_hook::Function = WorkspaceManager.move_vars,
     user_requested_run::Bool = true,
+	bond_value_pairs=_empty_bond_value_pairs,
 )::TopologicalOrder
     withtoken(notebook.executetoken) do
         run_reactive_core!(
@@ -26,6 +45,7 @@ function run_reactive!(
             roots;
             deletion_hook,
             user_requested_run,
+			bond_value_pairs
         )
     end
 end
@@ -44,7 +64,8 @@ function run_reactive_core!(
     roots::Vector{Cell};
     deletion_hook::Function = WorkspaceManager.move_vars,
     user_requested_run::Bool = true,
-    already_run::Vector{Cell} = Cell[]
+    already_run::Vector{Cell} = Cell[],
+	bond_value_pairs = _empty_bond_value_pairs,
 )::TopologicalOrder
     @assert !isready(notebook.executetoken) "run_reactive_core!() was called with a free notebook.executetoken."
     @assert will_run_code(notebook)
@@ -159,6 +180,13 @@ function run_reactive_core!(
 				capture_stdout = session.options.evaluation.capture_stdout,
             )
             any_interrupted |= run.interrupted
+
+			# Support one bond defining another when setting both simultaneously in PlutoSliderServer
+			# https://github.com/fonsp/Pluto.jl/issues/1695
+
+			# set the redefined bound variables to their original value from the request
+			defs = notebook.topology.nodes[cell].definitions
+			set_bond_value_pairs!(session, notebook, Iterators.filter(((sym,val),) -> sym ∈ defs, bond_value_pairs))
         end
 
         cell.running = false

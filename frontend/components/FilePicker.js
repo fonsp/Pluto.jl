@@ -13,6 +13,7 @@ import {
     autocomplete,
     drawSelection,
     Compartment,
+    StateEffect,
 } from "../imports/CodemirrorPlutoSetup.js"
 
 let { autocompletion, completionKeymap } = autocomplete
@@ -20,6 +21,32 @@ let { autocompletion, completionKeymap } = autocomplete
 let start_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Ctrl-Space")
 let accept_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Enter")
 let close_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Escape")
+
+const assert_not_null = (x) => {
+    if (x == null) {
+        throw new Error("Unexpected null value")
+    } else {
+        return x
+    }
+}
+
+const set_cm_value = (/** @type{EditorView} */ cm, /** @type {string} */ value, scroll = true) => {
+    cm.dispatch({
+        changes: { from: 0, to: cm.state.doc.length, insert: value },
+        selection: EditorSelection.cursor(value.length),
+        // effects: scroll ? EditorView.scrollIntoView(value.length,) : undefined,
+    })
+
+    // a long path like /Users/fons/Documents/article-test-1/asdfasdfasdfsadf.jl does not fit in the little box, so we scroll it to the left so that you can see the filename easily.
+    if (scroll) {
+        // We do a manual `scrollLeft` instead of `EditorView.scrollIntoView(value.length)` because `scrollIntoView` will also scroll the page *vertically* to move the filepicker into view. We only want to scroll the internal overflow box *horizontally* to the left, without affecting the vertical page scroll position.
+        cm.scrollDOM.scrollLeft = 100000
+        setTimeout(() => {
+            // TODO: do we need this?
+            cm.scrollDOM.scrollLeft = 100000
+        }, 100)
+    }
+}
 
 /**
  * @typedef FilePickerProps
@@ -40,17 +67,15 @@ export class FilePicker extends Component {
             is_button_disabled: true,
         }
         this.forced_value = ""
-        /** @type {EditorView} */
+        /** @type {EditorView?} */
         this.cm = null
 
         this.suggest_not_tmp = () => {
+            if (!this.cm) return
             const suggest = this.props.suggest_new_file
             if (suggest != null && this.cm.state.doc.length === 0) {
                 // this.cm.focus()
-                this.cm.dispatch({
-                    changes: { from: 0, to: this.cm.state.doc.length, insert: suggest.base },
-                    selection: EditorSelection.cursor(suggest.base.length),
-                })
+                set_cm_value(this.cm, suggest.base, false)
                 this.request_path_completions()
             }
             window.dispatchEvent(new CustomEvent("collapse_cell_selection", {}))
@@ -58,20 +83,21 @@ export class FilePicker extends Component {
 
         let run = async (fn) => await fn()
         this.on_submit = () => {
-            const my_val = this.cm.state.doc.toString()
+            if (!this.cm) return true
+            const cm = this.cm
+
+            const my_val = cm.state.doc.toString()
             if (my_val === this.forced_value) {
                 this.suggest_not_tmp()
                 return true
             }
             run(async () => {
                 try {
-                    await this.props.on_submit(this.cm.state.doc.toString())
-                    this.cm.dom.blur()
+                    await this.props.on_submit(cm.state.doc.toString())
+                    cm.dom.blur()
                 } catch (error) {
-                    this.cm.dispatch({
-                        changes: { from: 0, to: this.cm.state.doc.length, insert: this.props.value },
-                        selection: EditorSelection.cursor(this.props.value.length),
-                    })
+                    set_cm_value(cm, this.props.value, true)
+                    cm.dom.blur()
                 }
             })
             return true
@@ -79,18 +105,10 @@ export class FilePicker extends Component {
     }
     componentDidUpdate() {
         if (this.forced_value != this.props.value) {
-            this.cm.dispatch({
-                changes: { from: 0, to: this.cm.state.doc.length, insert: this.props.value },
-                selection: EditorSelection.cursor(this.props.value.length),
-            })
+            if (!this.cm) return
+            const cm = this.cm
+            set_cm_value(cm, this.props.value, true)
             this.forced_value = this.props.value
-
-            // a long path like /Users/fons/Documents/article-test-1/asdfasdfasdfsadf.jl does not fit in the little box, so we scroll it to the left so that you can see the filename easily.
-            this.cm.scrollDOM.scrollLeft = 100000
-            setTimeout(() => {
-                // TODO: do we need this?
-                this.cm.scrollDOM.scrollLeft = 100000
-            }, 100)
         }
     }
     componentDidMount() {
@@ -114,15 +132,7 @@ export class FilePicker extends Component {
                         blur: (event, cm) => {
                             setTimeout(() => {
                                 if (!cm.hasFocus) {
-                                    cm.dispatch({
-                                        changes: { from: 0, to: cm.state.doc.length, insert: this.props.value },
-                                        selection: EditorSelection.cursor(this.props.value.length),
-                                    })
-                                    cm.scrollPosIntoView(this.props.value.length)
-
-                                    setTimeout(() => {
-                                        this.cm.scrollPosIntoView(this.props.value.length)
-                                    }, 100)
+                                    set_cm_value(cm, this.props.value, true)
                                 }
                             }, 200)
                         },
@@ -157,14 +167,17 @@ export class FilePicker extends Component {
                         ],
                         defaultKeymap: false, // We add these manually later, so we can override them if necessary
                         maxRenderedOptions: 512, // fons's magic number
-                        optionClass: (c) => c.type,
+                        optionClass: (c) => c.type ?? "",
                     }),
                     // When a completion is picked, immediately start autocompleting again
                     EditorView.updateListener.of((update) => {
                         update.transactions.forEach((transaction) => {
                             const completion = transaction.annotation(autocomplete.pickedCompletion)
                             if (completion != null) {
-                                update.view.scrollPosIntoView(update.state.doc.length)
+                                update.view.dispatch({
+                                    effects: EditorView.scrollIntoView(update.state.doc.length),
+                                    selection: EditorSelection.cursor(update.state.doc.length),
+                                })
 
                                 this.request_path_completions()
                             }
@@ -175,7 +188,7 @@ export class FilePicker extends Component {
                             key: "Enter",
                             run: (cm) => {
                                 // If there is autocomplete open, accept that. It will return `true`
-                                return accept_autocomplete_command.run(cm)
+                                return assert_not_null(accept_autocomplete_command).run(cm)
                             },
                         },
                         { key: "Enter", run: this.on_submit },
@@ -184,10 +197,11 @@ export class FilePicker extends Component {
                         {
                             key: "Escape",
                             run: (cm) => {
-                                close_autocomplete_command.run(cm)
+                                assert_not_null(close_autocomplete_command).run(cm)
                                 cm.dispatch({
                                     changes: { from: 0, to: cm.state.doc.length, insert: this.props.value },
                                     selection: EditorSelection.cursor(this.props.value.length),
+                                    effects: EditorView.scrollIntoView(this.props.value.length),
                                 })
                                 // @ts-ignore
                                 document.activeElement.blur()
@@ -199,7 +213,7 @@ export class FilePicker extends Component {
                             key: "Tab",
                             run: (cm) => {
                                 // If there is autocomplete open, accept that
-                                if (accept_autocomplete_command.run(cm)) {
+                                if (assert_not_null(accept_autocomplete_command).run(cm)) {
                                     // and request the next ones
                                     this.request_path_completions()
                                     return true
@@ -232,11 +246,12 @@ export class FilePicker extends Component {
     }
 
     request_path_completions() {
+        if (!this.cm) return
         let selection = this.cm.state.selection.main
         if (selection.from !== selection.to) return
         if (this.cm.state.doc.length !== selection.to) return
 
-        return start_autocomplete_command.run(this.cm)
+        return assert_not_null(start_autocomplete_command).run(this.cm)
     }
 }
 

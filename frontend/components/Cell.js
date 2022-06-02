@@ -6,7 +6,7 @@ import { CellInput } from "./CellInput.js"
 import { Logs } from "./Logs.js"
 import { RunArea, useDebouncedTruth } from "./RunArea.js"
 import { cl } from "../common/ClassTable.js"
-import { PlutoContext } from "../common/PlutoContext.js"
+import { PlutoActionsContext } from "../common/PlutoContext.js"
 
 const useCellApi = (node_ref, published_object_keys, pluto_actions) => {
     const [cell_api_ready, set_cell_api_ready] = useState(false)
@@ -56,13 +56,13 @@ export const Cell = ({
     global_definition_locations,
 }) => {
     const { show_logs, disabled: running_disabled } = metadata
-    let pluto_actions = useContext(PlutoContext)
+    let pluto_actions = useContext(PlutoActionsContext)
     const on_update_doc_query = pluto_actions.set_doc_query
     const on_focus_neighbor = pluto_actions.focus_on_neighbor
     const on_change = useCallback((val) => pluto_actions.set_local_cell(cell_id, val), [cell_id, pluto_actions])
     const variables = useMemo(() => Object.keys(cell_dependencies?.downstream_cells_map ?? {}), [cell_dependencies])
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
-    const [cm_forced_focus, set_cm_forced_focus] = useState(null)
+    const [cm_forced_focus, set_cm_forced_focus] = useState(/** @type{any} */ (null))
     const [cm_highlighted_line, set_cm_highlighted_line] = useState(null)
 
     const any_logs = useMemo(() => !_.isEmpty(logs), [logs])
@@ -243,15 +243,23 @@ export const Cell = ({
         </pluto-cell>
     `
 }
-
-export const IsolatedCell = ({ cell_id, cell_results: { output, published_object_keys }, hidden }) => {
+/**
+ * @param {{
+ *  cell_result: import("./Editor.js").CellResultData,
+ *  cell_input: import("./Editor.js").CellInputData,
+ *  [key: string]: any,
+ * }} props
+ * */
+export const IsolatedCell = ({ cell_input: { cell_id, metadata }, cell_result: { logs, output, published_object_keys }, hidden }) => {
     const node_ref = useRef(null)
-    let pluto_actions = useContext(PlutoContext)
+    let pluto_actions = useContext(PlutoActionsContext)
     const cell_api_ready = useCellApi(node_ref, published_object_keys, pluto_actions)
+    const { show_logs } = metadata
 
     return html`
         <pluto-cell ref=${node_ref} id=${cell_id} class=${hidden ? "hidden-cell" : "isolated-cell"}>
             ${cell_api_ready ? html`<${CellOutput} ...${output} cell_id=${cell_id} />` : html``}
+            ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${[15]} set_cm_highlighted_line=${() => {}} />` : null}
         </pluto-cell>
     `
 }

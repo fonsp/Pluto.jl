@@ -9,8 +9,26 @@ import { pack, unpack } from "../common/MsgPack.js"
 const assert_response_ok = (/** @type {Response} */ r) => (r.ok ? r : Promise.reject(r))
 let run = (x) => x()
 
+/**
+ * @typedef {[number, Array?]} PatchStep
+ */
+
+/**
+ * @typedef {Object} RecordingData
+ * @property {Array<PatchStep>} steps
+ * @property {Array<[number, {cell_id: string, relative_distance: number}]>} scrolls
+ */
+
+/**
+ * @typedef {RecordingData & {
+ *   initial_html: string,
+ * scroll_handler: (x: number) => void,
+ * audio_recorder: {start: () => void, stop: () => Promise<string>}?
+ * }} RecordingState
+ */
+
 export const RecordingUI = ({ notebook_name, is_recording, recording_waiting_to_start, set_recording_states, patch_listeners, export_url }) => {
-    let current_recording_ref = useRef(null)
+    let current_recording_ref = useRef(/** @type{RecordingState?} */ (null))
     let recording_start_time_ref = useRef(0)
 
     useEffect(() => {
@@ -63,6 +81,8 @@ export const RecordingUI = ({ notebook_name, is_recording, recording_waiting_to_
         // initial_html = initial_html.replaceAll("https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.3/frontend/", "http://localhost:1234/")
 
         const scroll_handler_direct = () => {
+            if (current_recording_ref.current == null) return
+
             let y = window.scrollY + window.innerHeight / 2
 
             /** @type {Array<HTMLElement>} */
@@ -128,7 +148,7 @@ export const RecordingUI = ({ notebook_name, is_recording, recording_waiting_to_
             const audio_blob_url = await audio_recorder?.stop()
             const audio_data_url = audio_blob_url == null ? null : await blob_url_to_data_url(audio_blob_url)
 
-            const magic_tag = "<!-- [automatically generated launch parameters can be inserted here] -->"
+            const magic_tag = `<meta name="pluto-insertion-spot-parameters">`
             const output_html = initial_html.replace(
                 magic_tag,
                 `
@@ -151,7 +171,7 @@ export const RecordingUI = ({ notebook_name, is_recording, recording_waiting_to_
             document.body.removeChild(element)
         }
 
-        recording_start_time_ref.current = null
+        recording_start_time_ref.current = 0
         current_recording_ref.current = null
 
         set_recording_states({ is_recording: false, recording_waiting_to_start: false })
@@ -198,7 +218,7 @@ export const RecordingUI = ({ notebook_name, is_recording, recording_waiting_to_
 
 let get_scroll_top = ({ cell_id, relative_distance }) => {
     let cell = document.getElementById(cell_id)
-    return cell.offsetTop + relative_distance * cell.offsetHeight - window.innerHeight / 2
+    if (cell) return cell.offsetTop + relative_distance * cell.offsetHeight - window.innerHeight / 2
 }
 
 /**
@@ -219,7 +239,9 @@ export const RecordingPlaybackUI = ({ launch_params, initializing, apply_noteboo
                 if (recording_url) {
                     return unpack(
                         new Uint8Array(
-                            await (await fetch(new Request(recording_url, { integrity: recording_url_integrity })).then(assert_response_ok)).arrayBuffer()
+                            await (
+                                await fetch(new Request(recording_url, { integrity: recording_url_integrity ?? undefined })).then(assert_response_ok)
+                            ).arrayBuffer()
                         )
                     )
                 } else {
@@ -228,18 +250,18 @@ export const RecordingPlaybackUI = ({ launch_params, initializing, apply_noteboo
             }),
         [recording_url]
     )
-    let computed_reverse_patches_ref = useRef(null)
+    let computed_reverse_patches_ref = useRef(/** @type{Array<PatchStep>?} */ (null))
 
     useEffect(() => {
         loaded_recording.then(console.log)
     }, [loaded_recording])
 
-    let audio_element_ref = useRef(/** @type {HTMLAudioElement} */ (null))
+    let audio_element_ref = useRef(/** @type {HTMLAudioElement?} */ (null))
 
     let match_state_to_playback_running_ref = useRef(false)
     let current_state_timestamp_ref = useRef(0)
 
-    let [current_scrollY, set_current_scrollY] = useState(null)
+    let [current_scrollY, set_current_scrollY] = useState(/** @type {number?} */ (null))
     let [following_scroll, set_following_scroll] = useState(true)
     let following_scroll_ref = useRef(following_scroll)
     following_scroll_ref.current = following_scroll
@@ -258,7 +280,7 @@ export const RecordingPlaybackUI = ({ launch_params, initializing, apply_noteboo
 
     let on_scroll = ({ cell_id, relative_distance }, smooth = true) => {
         let scrollY = get_scroll_top({ cell_id, relative_distance })
-
+        if (scrollY == null) return
         set_current_scrollY(scrollY)
         if (following_scroll_ref.current) {
             scroll_window(scrollY, smooth)
@@ -269,11 +291,13 @@ export const RecordingPlaybackUI = ({ launch_params, initializing, apply_noteboo
     match_state_to_playback_ref.current = async () => {
         match_state_to_playback_running_ref.current = true
 
-        const deserialized = await loaded_recording
+        const deserialized = /** @type {RecordingData} */ (await loaded_recording)
 
-        computed_reverse_patches_ref.current = computed_reverse_patches_ref.current ?? deserialized.steps.map(([t, s]) => [t, null])
+        computed_reverse_patches_ref.current = computed_reverse_patches_ref.current ?? deserialized.steps.map(([t, s]) => [t, undefined])
 
         const audio = audio_element_ref.current
+        if (audio == null) return
+
         let new_timestamp = audio.currentTime
         let forward = new_timestamp >= current_state_timestamp_ref.current
         let directed = forward ? _.identity : _.reverse
@@ -283,13 +307,13 @@ export const RecordingPlaybackUI = ({ launch_params, initializing, apply_noteboo
 
         let scrolls_in_time_window = deserialized.scrolls.filter(([t, s]) => lower < t && t <= upper)
         if (scrolls_in_time_window.length > 0) {
-            let scroll_state = _.last(directed(scrolls_in_time_window))[1]
+            let scroll_state = _.last(directed(scrolls_in_time_window))?.[1]
 
-            on_scroll(scroll_state)
+            if (scroll_state) on_scroll(scroll_state)
         }
 
         let steps_in_current_direction = forward ? deserialized.steps : computed_reverse_patches_ref.current
-        let steps_and_indices = steps_in_current_direction.map((x, i) => [x, i])
+        let steps_and_indices = steps_in_current_direction.map((x, i) => /** @type{[PatchStep, number]} */ ([x, i]))
         let steps_and_indices_in_time_window = steps_and_indices.filter(([[t, s], i]) => lower < t && t <= upper)
 
         let reverse_patches = []
@@ -324,14 +348,15 @@ export const RecordingPlaybackUI = ({ launch_params, initializing, apply_noteboo
     const event_names = ["seeked", "suspend", "play", "pause", "ended", "waiting"]
 
     useLayoutEffect(() => {
-        if (audio_element_ref.current) {
+        const audio_el = audio_element_ref.current
+        if (audio_el) {
             event_names.forEach((en) => {
-                audio_element_ref.current.addEventListener(en, on_audio_playback_change)
+                audio_el.addEventListener(en, on_audio_playback_change)
             })
 
             return () => {
                 event_names.forEach((en) => {
-                    audio_element_ref.current.removeEventListener(en, on_audio_playback_change)
+                    audio_el.removeEventListener(en, on_audio_playback_change)
                 })
             }
         }
@@ -389,8 +414,10 @@ export const RecordingPlaybackUI = ({ launch_params, initializing, apply_noteboo
                     if (following_scroll_ref.current) {
                         console.warn("Manual scroll detected, no longer following playback scroll", { dt, smooth_dt, e })
 
-                        was_playing_before_scrollout_ref.current = !audio_element_ref.current.paused
-                        audio_element_ref.current.pause()
+                        if (audio_element_ref.current != null) {
+                            was_playing_before_scrollout_ref.current = !audio_element_ref.current.paused
+                            audio_element_ref.current.pause()
+                        }
                         set_following_scroll(false)
                     }
                 }
@@ -423,7 +450,7 @@ export const RecordingPlaybackUI = ({ launch_params, initializing, apply_noteboo
                                     onclick=${() => {
                                         scroll_window(current_scrollY, true)
                                         set_following_scroll(true)
-                                        if (was_playing_before_scrollout_ref.current) audio_element_ref.current.play()
+                                        if (was_playing_before_scrollout_ref.current && audio_element_ref.current) audio_element_ref.current.play()
                                     }}
                                 >
                                     <span>Back to <b>recording</b> <span class="follow-recording-icon pluto-icon"></span></span>
