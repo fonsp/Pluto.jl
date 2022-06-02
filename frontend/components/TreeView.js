@@ -1,7 +1,7 @@
 import { html, useRef, useState, useContext } from "../imports/Preact.js"
 
 import { OutputBody, PlutoImage, RawHTMLContainer } from "./CellOutput.js"
-import { PlutoContext } from "../common/PlutoContext.js"
+import { PlutoActionsContext } from "../common/PlutoContext.js"
 
 // this is different from OutputBody because:
 // it does not wrap in <div>. We want to do that in OutputBody for reasons that I forgot (feel free to try and remove it), but we dont want it here
@@ -57,7 +57,7 @@ const actions_show_more = ({ pluto_actions, cell_id, node_ref, objectid, dim }) 
 }
 
 export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
-    let pluto_actions = useContext(PlutoContext)
+    let pluto_actions = useContext(PlutoActionsContext)
     const node_ref = useRef(/** @type {HTMLElement?} */ (null))
     const onclick = (e) => {
         // TODO: this could be reactified but no rush
@@ -133,7 +133,7 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
 }
 
 export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
-    let pluto_actions = useContext(PlutoContext)
+    let pluto_actions = useContext(PlutoActionsContext)
     const node_ref = useRef(null)
 
     const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${persist_js_state} />`

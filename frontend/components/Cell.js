@@ -6,7 +6,7 @@ import { CellInput } from "./CellInput.js"
 import { Logs } from "./Logs.js"
 import { RunArea, useDebouncedTruth } from "./RunArea.js"
 import { cl } from "../common/ClassTable.js"
-import { PlutoContext } from "../common/PlutoContext.js"
+import { PlutoActionsContext } from "../common/PlutoContext.js"
 
 const useCellApi = (node_ref, published_object_keys, pluto_actions) => {
     const [cell_api_ready, set_cell_api_ready] = useState(false)
@@ -56,7 +56,7 @@ export const Cell = ({
     global_definition_locations,
 }) => {
     const { show_logs, disabled: running_disabled } = metadata
-    let pluto_actions = useContext(PlutoContext)
+    let pluto_actions = useContext(PlutoActionsContext)
     const on_update_doc_query = pluto_actions.set_doc_query
     const on_focus_neighbor = pluto_actions.focus_on_neighbor
     const on_change = useCallback((val) => pluto_actions.set_local_cell(cell_id, val), [cell_id, pluto_actions])
@@ -252,7 +252,7 @@ export const Cell = ({
  * */
 export const IsolatedCell = ({ cell_input: { cell_id, metadata }, cell_result: { logs, output, published_object_keys }, hidden }) => {
     const node_ref = useRef(null)
-    let pluto_actions = useContext(PlutoContext)
+    let pluto_actions = useContext(PlutoActionsContext)
     const cell_api_ready = useCellApi(node_ref, published_object_keys, pluto_actions)
     const { show_logs } = metadata
 

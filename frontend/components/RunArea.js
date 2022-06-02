@@ -2,7 +2,7 @@ import _ from "../imports/lodash.js"
 import { html, useContext, useEffect, useMemo, useState } from "../imports/Preact.js"
 
 import { in_textarea_or_input } from "../common/KeyboardShortcuts.js"
-import { PlutoContext } from "../common/PlutoContext.js"
+import { PlutoActionsContext } from "../common/PlutoContext.js"
 
 const upstream_of = (a_cell_id, notebook) => Object.values(notebook?.cell_dependencies?.[a_cell_id]?.upstream_cells_map || {}).flatMap((x) => x)
 
@@ -20,7 +20,7 @@ export const RunArea = ({ runtime, running, queued, code_differs, on_run, on_int
 
     const local_time_running_ms = useMillisSinceTruthy(running)
     const local_time_running_ns = local_time_running_ms == null ? null : 1e6 * local_time_running_ms
-    const pluto_actions = useContext(PlutoContext)
+    const pluto_actions = useContext(PlutoActionsContext)
 
     const on_jump = () => {
         const notebook = pluto_actions.get_notebook() || {}

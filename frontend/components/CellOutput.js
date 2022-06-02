@@ -14,10 +14,10 @@ import {
 import { cl } from "../common/ClassTable.js"
 
 import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
-import { PlutoBondsContext, PlutoContext, PlutoJSInitializingContext } from "../common/PlutoContext.js"
+import { PlutoBondsContext, PlutoActionsContext, PlutoJSInitializingContext } from "../common/PlutoContext.js"
 import register from "../imports/PreactCustomElement.js"
 
-import { EditorState, EditorView, defaultHighlightStyle } from "../imports/CodemirrorPlutoSetup.js"
+import { EditorState, EditorView, defaultHighlightStyle, syntaxHighlighting } from "../imports/CodemirrorPlutoSetup.js"
 
 import { pluto_syntax_colors, ENABLE_CM_MIXED_PARSER } from "./CellInput.js"
 
@@ -439,7 +439,7 @@ let declarative_shadow_dom_polyfill = (template) => {
 }
 
 export let RawHTMLContainer = ({ body, className = "", persist_js_state = false, last_run_timestamp }) => {
-    let pluto_actions = useContext(PlutoContext)
+    let pluto_actions = useContext(PlutoActionsContext)
     let pluto_bonds = useContext(PlutoBondsContext)
     let js_init_set = useContext(PlutoJSInitializingContext)
     let previous_results_map = useRef(new Map())
@@ -449,7 +449,7 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
     let container_ref = useRef(/** @type {HTMLElement?} */ (null))
 
     useLayoutEffect(() => {
-        if (container_ref.current) set_bound_elements_to_their_value(container_ref.current.querySelectorAll("bond"), pluto_bonds)
+        if (container_ref.current && pluto_bonds) set_bound_elements_to_their_value(container_ref.current.querySelectorAll("bond"), pluto_bonds)
     }, [body, persist_js_state, pluto_actions, pluto_bonds])
 
     useLayoutEffect(() => {
@@ -491,8 +491,8 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
 
                 if (pluto_actions != null) {
                     const bond_nodes = container.querySelectorAll("bond")
-                    set_bound_elements_to_their_value(bond_nodes, pluto_bonds)
-                    add_bonds_listener(bond_nodes, pluto_actions.set_bond, pluto_bonds, invalidation)
+                    set_bound_elements_to_their_value(bond_nodes, pluto_bonds ?? {})
+                    add_bonds_listener(bond_nodes, pluto_actions.set_bond, pluto_bonds ?? {}, invalidation)
                     add_bonds_disabled_message_handler(bond_nodes, invalidation)
                 }
 
@@ -563,8 +563,8 @@ export let highlight = (code_element, language) => {
                         .replace(/Main.workspace#(\d+)/, 'Main.var"workspace#$1"'),
 
                     extensions: [
-                        pluto_syntax_colors,
-                        defaultHighlightStyle.fallback,
+                        syntaxHighlighting(pluto_syntax_colors),
+                        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
                         EditorState.tabSize.of(4),
                         // TODO Other languages possibly?
                         ...(language === "julia" ? [ENABLE_CM_MIXED_PARSER ? julia_mixed() : julia_andrey()] : []),

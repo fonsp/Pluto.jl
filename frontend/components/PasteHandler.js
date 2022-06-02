@@ -36,7 +36,7 @@ const readFile = (file) =>
         fr.onloadstart = () => {}
         fr.onprogress = ({ loaded, total }) => {}
         fr.onload = () => {}
-        fr.onloadend = ({ target: { result } }) => resolve({ file: result, name, type })
+        fr.onloadend = () => resolve({ file: fr.result, name, type })
         fr.readAsText(file)
     })
 
