@@ -920,7 +920,7 @@ Base.IOContext(io::IOContext, ::Nothing) = io
 "The `IOContext` used for converting arbitrary objects to pretty strings."
 const default_iocontext = IOContext(devnull, :color => false, :limit => true, :displaysize => (18, 88), :is_pluto => true, :pluto_supported_integration_features => supported_integration_features)
 
-const default_stdout_iocontext = IOContext(devnull, :color => false, :limit => true, :displaysize => (18, 75), :is_pluto => false)
+const default_stdout_iocontext = IOContext(devnull, :color => true, :limit => true, :displaysize => (18, 75), :is_pluto => false)
 
 const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
 # in descending order of coolness
