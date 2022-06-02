@@ -14,7 +14,7 @@ import {
 import { cl } from "../common/ClassTable.js"
 
 import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
-import { PlutoBondsContext, PlutoContext, PlutoJSInitializingContext } from "../common/PlutoContext.js"
+import { PlutoBondsContext, PlutoActionsContext, PlutoJSInitializingContext } from "../common/PlutoContext.js"
 import register from "../imports/PreactCustomElement.js"
 
 import { EditorState, EditorView, defaultHighlightStyle, syntaxHighlighting } from "../imports/CodemirrorPlutoSetup.js"
@@ -439,7 +439,7 @@ let declarative_shadow_dom_polyfill = (template) => {
 }
 
 export let RawHTMLContainer = ({ body, className = "", persist_js_state = false, last_run_timestamp }) => {
-    let pluto_actions = useContext(PlutoContext)
+    let pluto_actions = useContext(PlutoActionsContext)
     let pluto_bonds = useContext(PlutoBondsContext)
     let js_init_set = useContext(PlutoJSInitializingContext)
     let previous_results_map = useRef(new Map())

@@ -1,4 +1,4 @@
-import { PlutoContext } from "../common/PlutoContext.js"
+import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { html, useContext, useState } from "../imports/Preact.js"
 
 const StackFrameFilename = ({ frame, cell_id }) => {
@@ -39,7 +39,7 @@ const Funccall = ({ frame }) => {
 const insert_commas_and_and = (/** @type {any[]} */ xs) => xs.flatMap((x, i) => (i === xs.length - 1 ? [x] : i === xs.length - 2 ? [x, " and "] : [x, ", "]))
 
 export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
-    let pluto_actions = useContext(PlutoContext)
+    let pluto_actions = useContext(PlutoActionsContext)
     const default_rewriter = {
         pattern: /.?/,
         display: (/** @type{string} */ x) => x.split("\n").map((line) => html`<p>${line}</p>`),

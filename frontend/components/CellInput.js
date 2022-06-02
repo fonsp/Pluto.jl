@@ -3,7 +3,7 @@ import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 import _ from "../imports/lodash.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
-import { PlutoContext } from "../common/PlutoContext.js"
+import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { get_selected_doc_from_state } from "./CellInput/LiveDocsFromCursor.js"
 import { go_to_definition_plugin, GlobalDefinitionsFacet } from "./CellInput/go_to_definition_plugin.js"
 import { detect_deserializer } from "../common/Serialization.js"
@@ -374,7 +374,7 @@ export const CellInput = ({
     metadata,
     global_definition_locations,
 }) => {
-    let pluto_actions = useContext(PlutoContext)
+    let pluto_actions = useContext(PlutoActionsContext)
     const { disabled: running_disabled } = metadata
 
     const newcm_ref = useRef(/** @type {EditorView?} */ (null))
@@ -825,7 +825,7 @@ export const CellInput = ({
 
 const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled, any_logs, show_logs, set_show_logs }) => {
     const timeout = useRef(null)
-    let pluto_actions = useContext(PlutoContext)
+    let pluto_actions = useContext(PlutoActionsContext)
     const [open, setOpen] = useState(false)
     const mouseenter = () => {
         if (timeout.current) clearTimeout(timeout.current)

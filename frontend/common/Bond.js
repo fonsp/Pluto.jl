@@ -129,7 +129,7 @@ export const set_input_value = (input, new_value) => {
 
 /**
  * @param {NodeListOf<Element>} bond_nodes
- * @param {{[name: string]: any}} bond_values
+ * @param {import("../components/Editor.js").BondValuesDict} bond_values
  */
 export const set_bound_elements_to_their_value = (bond_nodes, bond_values) => {
     bond_nodes.forEach((bond_node) => {
@@ -180,7 +180,7 @@ export const add_bonds_disabled_message_handler = (bond_nodes, invalidation) => 
 /**
  * @param {NodeListOf<Element>} bond_nodes
  * @param {(name: string, value: any) => Promise} on_bond_change
- * @param {{[name: string]: any}} known_values Object of variable names that already have a value in the state, which we may not want to send the initial bond value for. When reloading the page, bonds are set to their values from the state, and we don't want to trigger a change event for those.
+ * @param {import("../components/Editor.js").BondValuesDict} known_values Object of variable names that already have a value in the state, which we may not want to send the initial bond value for. When reloading the page, bonds are set to their values from the state, and we don't want to trigger a change event for those.
  * @param {Promise<void>} invalidation
  */
 export const add_bonds_listener = (bond_nodes, on_bond_change, known_values, invalidation) => {

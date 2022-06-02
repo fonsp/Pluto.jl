@@ -1,4 +1,4 @@
-import { PlutoContext } from "../common/PlutoContext.js"
+import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { html, useContext, useEffect, useMemo, useRef, useState } from "../imports/Preact.js"
 
 import { Cell } from "./Cell.js"
@@ -116,7 +116,7 @@ const render_cell_outputs_minimum = 20
  * }} props
  * */
 export const Notebook = ({ notebook, cell_inputs_local, last_created_cell, selected_cells, is_initializing, is_process_ready, disable_input }) => {
-    let pluto_actions = useContext(PlutoContext)
+    let pluto_actions = useContext(PlutoActionsContext)
 
     // Add new cell when the last cell gets deleted
     useEffect(() => {

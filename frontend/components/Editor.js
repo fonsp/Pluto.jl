@@ -22,7 +22,7 @@ import { Popup } from "./Popup.js"
 
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
-import { PlutoContext, PlutoBondsContext, PlutoJSInitializingContext, SetWithEmptyCallback } from "../common/PlutoContext.js"
+import { PlutoActionsContext, PlutoBondsContext, PlutoJSInitializingContext, SetWithEmptyCallback } from "../common/PlutoContext.js"
 import { start_binder, BackendLaunchPhase, count_stat } from "../common/Binder.js"
 import { setup_mathjax } from "../common/SetupMathJax.js"
 import { BinderButton } from "./BinderButton.js"
@@ -193,6 +193,16 @@ const first_true_key = (obj) => {
  */
 
 /**
+ * @typedef BondValueContainer
+ * @type {{ value: any }}
+ */
+
+/**
+ * @typedef BondValuesDict
+ * @type {{ [name: string]: BondValueContainer }}
+ */
+
+/**
  * @typedef NotebookData
  * @type {{
  *  notebook_id: string,
@@ -208,7 +218,7 @@ const first_true_key = (obj) => {
  *  cell_order: Array<string>,
  *  cell_execution_order: Array<string>,
  *  published_objects: { [objectid: string]: any},
- *  bonds: { [name: string]: any },
+ *  bonds: BondValuesDict,
  *  nbpkg: NotebookPkgData?,
  *  metadata: object,
  * }}
@@ -569,8 +579,8 @@ export class Editor extends Component {
             },
             /**
              *
-             * @param {string} name         | bond name
-             * @param {*} value             | bond value
+             * @param {string} name name of bound variable
+             * @param {*} value value (not in wrapper object)
              */
             set_bond: async (name, value) => {
                 await update_notebook((notebook) => {
@@ -1238,7 +1248,7 @@ patch: ${JSON.stringify(
 
         if (status.isolated_cell_view) {
             return html`
-                <${PlutoContext.Provider} value=${this.actions}>
+                <${PlutoActionsContext.Provider} value=${this.actions}>
                     <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                         <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
                             <${ProgressBar} notebook=${this.state.notebook} backend_launch_phase=${this.state.backend_launch_phase} status=${status}/>
@@ -1255,7 +1265,7 @@ patch: ${JSON.stringify(
                             </div>
                         </${PlutoJSInitializingContext.Provider}>
                     </${PlutoBondsContext.Provider}>
-                </${PlutoContext.Provider}>
+                </${PlutoActionsContext.Provider}>
             `
         }
 
@@ -1276,7 +1286,7 @@ patch: ${JSON.stringify(
         return html`
             ${this.state.disable_ui === false && html`<${HijackExternalLinksToOpenInNewTab} />`}
             
-            <${PlutoContext.Provider} value=${this.actions}>
+            <${PlutoActionsContext.Provider} value=${this.actions}>
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                     <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
                     <${Scroller} active=${this.state.scroller} />
@@ -1471,7 +1481,7 @@ patch: ${JSON.stringify(
                     </footer>
                 </${PlutoJSInitializingContext.Provider}>
                 </${PlutoBondsContext.Provider}>
-            </${PlutoContext.Provider}>
+            </${PlutoActionsContext.Provider}>
         `
     }
 }

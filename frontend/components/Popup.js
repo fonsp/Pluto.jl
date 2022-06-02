@@ -4,7 +4,7 @@ import observablehq from "../common/SetupCellEnvironment.js"
 import { cl } from "../common/ClassTable.js"
 
 import { RawHTMLContainer, highlight } from "./CellOutput.js"
-import { PlutoContext } from "../common/PlutoContext.js"
+import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { package_status, nbpkg_fingerprint_without_terminal } from "./PkgStatusMark.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
 import { useDebouncedTruth } from "./RunArea.js"
@@ -103,7 +103,7 @@ export const Popup = ({ notebook }) => {
  * }} props
  */
 const PkgPopup = ({ notebook, recent_event, clear_recent_event }) => {
-    let pluto_actions = useContext(PlutoContext)
+    let pluto_actions = useContext(PlutoActionsContext)
     const [pkg_status, set_pkg_status] = useState(/** @type{import("./PkgStatusMark.js").PackageStatus?} */ (null))
 
     useEffect(() => {
