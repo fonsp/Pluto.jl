@@ -848,7 +848,7 @@ patch: ${JSON.stringify(
                 })
             }
         }
-        /** Whether we just set a bond value which will trigger a cell to run, but we are still waiting for the server to process the bond value (and run the cell). See https://github.com/fonsp/Pluto.jl/issues/1891 for more info. */
+        /** Whether we just set a bond value which will trigger a cell to run, but we are still waiting for the server to process the bond value (and run the cell). During this time, we won't send new bond values. See https://github.com/fonsp/Pluto.jl/issues/1891 for more info. */
         this.waiting_for_bond_to_trigger_execution = false
         /** Number of local updates that have not yet been applied to the server's state. */
         this.pending_local_updates = 0
@@ -871,7 +871,7 @@ patch: ${JSON.stringify(
         this.is_process_ready = () =>
             this.state.notebook.process_status === ProcessStatus.starting || this.state.notebook.process_status === ProcessStatus.ready
 
-        let bond_will_trigger_evaluation = (/** @type {string|PropertyKey} */ sym) =>
+        const bond_will_trigger_evaluation = (/** @type {string|PropertyKey} */ sym) =>
             Object.entries(this.state.notebook.cell_dependencies).some(([cell_id, deps]) => {
                 // if the other cell depends on the variable `sym`...
                 if (deps.upstream_cells_map.hasOwnProperty(sym)) {
@@ -880,6 +880,23 @@ patch: ${JSON.stringify(
                     return !running_disabled
                 }
             })
+
+        /**
+         * We set `waiting_for_bond_to_trigger_execution` to `true` if it is *guaranteed* that this bond change will trigger something to happen (i.e. a cell to run). See https://github.com/fonsp/Pluto.jl/pull/1892 for more info about why.
+         *
+         * This is guaranteed if there is a cell in the notebook that references the bound variable. We use our copy of the notebook's toplogy to check this.
+         *
+         * # Gotchas:
+         * 1. We (the frontend) might have an out-of-date copy of the notebook's topology: this bond might have dependents *right now*, but the backend might already be processing a code change that removes that dependency.
+         *
+         *     However, this change in topology will result in a patch, which will set `waiting_for_bond_to_trigger_execution` back to `false`.
+         *
+         * 2. The backend has a "first value" mechanism: if bond values are being set for the first time *and* this value is already set on the backend, then the value will be skipped. See https://github.com/fonsp/Pluto.jl/issues/275. If all bond values are skipped, then we might get zero patches back (because no cells will run).
+         *
+         *     A bond value is considered a "first value" if it is sent using an `"add"` patch. This is why we require `x.op === "replace"`.
+         */
+        const bond_patch_will_trigger_evaluation = (/** @type {Patch} */ x) =>
+            x.op === "replace" && x.path.length >= 1 && bond_will_trigger_evaluation(x.path[1])
 
         let last_update_notebook_task = Promise.resolve()
         /** @param {(notebook: NotebookData) => void} mutate_fn */
@@ -922,8 +939,7 @@ patch: ${JSON.stringify(
                 }
                 if (is_idle) {
                     this.waiting_for_bond_to_trigger_execution =
-                        this.waiting_for_bond_to_trigger_execution ||
-                        changes_involving_bonds.some((x) => x.op === "replace" && x.path.length >= 1 && bond_will_trigger_evaluation(x.path[1]))
+                        this.waiting_for_bond_to_trigger_execution || changes_involving_bonds.some(bond_patch_will_trigger_evaluation)
                 }
                 this.pending_local_updates++
                 this.on_patches_hook(changes)
