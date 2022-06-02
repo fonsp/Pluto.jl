@@ -263,6 +263,8 @@ export class Editor extends Component {
 
         const { launch_params, initial_notebook_state } = this.props
 
+        console.log("HELLO GUILHERME CAN YOU READ THIS")
+
         this.state = {
             notebook: /** @type {NotebookData} */ initial_notebook_state,
             cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
