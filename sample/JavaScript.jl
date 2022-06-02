@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.4
+# v0.19.5
 
 using Markdown
 using InteractiveUtils
@@ -291,38 +291,6 @@ my_data = [
 	return svg
 	</script>
 """)
-
-# ╔═╡ 7d9d6c28-131a-4b2a-84f8-5c085f387e85
-md"""
-## The future is here: Directly embedding Julia data into JavaScript!
-
-You can use `Pluto.publish_to_js` to embed data directly into JavaScript, using Pluto's built-in, optimized data transfer. See [the Pull Request](https://github.com/fonsp/Pluto.jl/pull/1124) for more info.
-
-Example usage:
-
-```julia
-let
-	x = rand(UInt8, 10_000)
-	
-	d = Dict(
-		"some_raw_data" => x,
-		"wow" => 1000,
-	)
-	
-	HTML(\"\"\"
-	<script>
-		
-	const d = $(PlutoRunner.publish_to_js(d))
-	console.log(d)
-	
-	</script>
-	\"\"\")
-end
-```
-In this example, the `const d` is populated from a hook into Pluto's data transfer. Compare that to interpolating the value in the string, sending the string to the frontend, mounting it to the DOM and parsing from the DOM.
-
-
-"""
 
 # ╔═╡ 0866afc2-fd42-42b7-a572-9d824cf8b83b
 md"""
@@ -778,6 +746,39 @@ state = Dict(
 	
 """)
 
+# ╔═╡ 7d9d6c28-131a-4b2a-84f8-5c085f387e85
+md"""
+## Embedding Julia data directly into JavaScript!
+
+You can use `Main.PlutoRunner.publish_to_js` to embed data directly into JavaScript, using Pluto's built-in, optimized data transfer. See [the Pull Request](https://github.com/fonsp/Pluto.jl/pull/1124) for more info.
+
+Example usage:
+
+```julia
+let
+	x = rand(UInt8, 10_000)
+	
+	d = Dict(
+		"some_raw_data" => x,
+		"wow" => 1000,
+	)
+	
+	@htl(\"\"\"
+	<script>
+		
+	const d = $(Main.PlutoRunner.publish_to_js(d))
+	console.log(d)
+	
+	</script>
+	\"\"\")
+end
+```
+
+In this example, the `const d` is populated from a hook into Pluto's data transfer. For large amounts of typed vector data (e.g. `Vector{UInt8}` or `Vector{Float64}`), this is *much* more efficient than interpolating the data directly with HypertextLiteral using `$(d)`, which would use a JSON-like string serialization.
+
+**Note:** this API is still *experimental*, and might change in the future.
+"""
+
 # ╔═╡ da7091f5-8ba2-498b-aa8d-bbf3b4505b81
 md"""
 # Appendix
@@ -1115,13 +1116,9 @@ uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
 [[ColorTypes]]
 deps = ["FixedPointNumbers", "Random"]
-git-tree-sha1 = "024fe24d83e4a5bf5fc80501a314ce0d1aa35597"
+git-tree-sha1 = "0f4e115f6f34bbe43c19751c90a38b2f380637b9"
 uuid = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
-version = "0.11.0"
-
-[[CompilerSupportLibraries_jll]]
-deps = ["Artifacts", "Libdl"]
-uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
+version = "0.11.3"
 
 [[Dates]]
 deps = ["Printf"]
@@ -1144,9 +1141,10 @@ uuid = "47d2ed2b-36de-50cf-bf87-49c2cf4b8b91"
 version = "0.0.4"
 
 [[HypertextLiteral]]
-git-tree-sha1 = "2b078b5a615c6c0396c77810d92ee8c6f470d238"
+deps = ["Tricks"]
+git-tree-sha1 = "c47c5fa4c5308f27ccaac35504858d8914e102f9"
 uuid = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
-version = "0.9.3"
+version = "0.9.4"
 
 [[IOCapture]]
 deps = ["Logging", "Random"]
@@ -1184,7 +1182,7 @@ uuid = "29816b5a-b9ab-546f-933c-edad1886dfa8"
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 
 [[LinearAlgebra]]
-deps = ["Libdl", "libblastrampoline_jll"]
+deps = ["Libdl"]
 uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [[Logging]]
@@ -1207,10 +1205,6 @@ uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
 [[NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 
-[[OpenBLAS_jll]]
-deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
-uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
-
 [[Parsers]]
 deps = ["Dates"]
 git-tree-sha1 = "1285416549ccfcdf0c50d4997a94331e88d68413"
@@ -1223,9 +1217,9 @@ uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
 [[PlutoUI]]
 deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "UUIDs"]
-git-tree-sha1 = "670e559e5c8e191ded66fa9ea89c97f10376bb4c"
+git-tree-sha1 = "8d1f54886b9037091edf146b517989fc4a09efec"
 uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-version = "0.7.38"
+version = "0.7.39"
 
 [[Printf]]
 deps = ["Unicode"]
@@ -1236,7 +1230,7 @@ deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
 uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 
 [[Random]]
-deps = ["SHA", "Serialization"]
+deps = ["Serialization"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [[Reexport]]
@@ -1273,6 +1267,11 @@ uuid = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
+[[Tricks]]
+git-tree-sha1 = "6bac775f2d42a611cdfcd1fb217ee719630c4175"
+uuid = "410a4b4d-49e4-4fbc-ab6d-cb71b17b3775"
+version = "0.1.6"
+
 [[UUIDs]]
 deps = ["Random", "SHA"]
 uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
@@ -1283,10 +1282,6 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 [[Zlib_jll]]
 deps = ["Libdl"]
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
-
-[[libblastrampoline_jll]]
-deps = ["Artifacts", "Libdl", "OpenBLAS_jll"]
-uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
 
 [[nghttp2_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -1334,7 +1329,6 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╠═00d97588-d591-4dad-9f7d-223c237deefd
 # ╠═21f57310-9ceb-423c-a9ce-5beb1060a5a3
 # ╟─94561cb1-2325-49b6-8b22-943923fdd91b
-# ╟─7d9d6c28-131a-4b2a-84f8-5c085f387e85
 # ╟─0866afc2-fd42-42b7-a572-9d824cf8b83b
 # ╟─75e1a973-7ef0-4ac5-b3e2-5edb63577927
 # ╠═e8d8a60e-489b-467a-b49c-1fa844807751
@@ -1374,6 +1368,7 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╠═9e37c18c-3ebb-443a-9663-bb4064391d6e
 # ╟─05d28aa2-9622-4e62-ab39-ca4c7dde6eb4
 # ╠═3266f9e6-42ad-4103-8db3-b87d2c315290
+# ╟─7d9d6c28-131a-4b2a-84f8-5c085f387e85
 # ╟─ebec177c-4c33-45a4-bdbd-f16944631aff
 # ╟─da7091f5-8ba2-498b-aa8d-bbf3b4505b81
 # ╠═64cbf19c-a4e3-4cdb-b4ec-1fbe24be55ad
