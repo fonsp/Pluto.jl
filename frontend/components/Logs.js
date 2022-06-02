@@ -3,6 +3,7 @@ import { cl } from "../common/ClassTable.js"
 import { html, useState, useEffect, useLayoutEffect, useRef, useMemo } from "../imports/Preact.js"
 import { SimpleOutputBody } from "./TreeView.js"
 import { help_circle_icon, open_pluto_popup } from "./Popup.js"
+import AnsiUp from "../imports/AnsiUp.js"
 
 // Defined in editor.css
 const GRID_WIDTH = 10
@@ -176,7 +177,7 @@ const Dot = ({ set_cm_highlighted_line, show, msg, kwargs, x, y, level }) => {
                                             >${"(It is not the "}<em>return value</em>${" of the cell.)"}</span
                                         >`}
                                 />
-                                <pre>${msg[0]}</pre>`
+                                <${LogViewAnsiUp} value=${msg[0]} />`
                           : html`${mimepair_output(msg)}${kwargs.map(
                                 ([k, v]) =>
                                     html`
@@ -205,4 +206,15 @@ const MoreInfo = (/** @type{{body: import("../imports/Preact.js").ReactElement}}
         }}
         ><img alt="❔" src=${help_circle_icon} width="17"
     /></a>`
+}
+
+const LogViewAnsiUp = (/** @type {{value: string}} */ { value }) => {
+    const node_ref = useRef(/** @type {HTMLElement?} */ (null))
+
+    useEffect(() => {
+        if (!node_ref.current) return
+        node_ref.current.innerHTML = AnsiUp.ansi_to_html(value)
+    }, [node_ref.current, value])
+
+    return html`<pre ref=${node_ref}></pre>`
 }
