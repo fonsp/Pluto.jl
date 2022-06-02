@@ -449,7 +449,7 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
     let container_ref = useRef(/** @type {HTMLElement?} */ (null))
 
     useLayoutEffect(() => {
-        if (container_ref.current) set_bound_elements_to_their_value(container_ref.current.querySelectorAll("bond"), pluto_bonds)
+        if (container_ref.current && pluto_bonds) set_bound_elements_to_their_value(container_ref.current.querySelectorAll("bond"), pluto_bonds)
     }, [body, persist_js_state, pluto_actions, pluto_bonds])
 
     useLayoutEffect(() => {
@@ -491,8 +491,8 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
 
                 if (pluto_actions != null) {
                     const bond_nodes = container.querySelectorAll("bond")
-                    set_bound_elements_to_their_value(bond_nodes, pluto_bonds)
-                    add_bonds_listener(bond_nodes, pluto_actions.set_bond, pluto_bonds, invalidation)
+                    set_bound_elements_to_their_value(bond_nodes, pluto_bonds ?? {})
+                    add_bonds_listener(bond_nodes, pluto_actions.set_bond, pluto_bonds ?? {}, invalidation)
                     add_bonds_disabled_message_handler(bond_nodes, invalidation)
                 }
 

@@ -862,6 +862,10 @@ patch: ${JSON.stringify(
         this.waiting_for_bond_to_trigger_execution = false
         /** Number of local updates that have not yet been applied to the server's state. */
         this.pending_local_updates = 0
+        /**
+         * User scripts that are currently running (possibly async).
+         * @type {SetWithEmptyCallback<HTMLElement>}
+         */
         this.js_init_set = new SetWithEmptyCallback(() => {
             // console.info("All scripts finished!")
             this.send_queued_bond_changes()
