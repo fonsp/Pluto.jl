@@ -277,26 +277,36 @@ function create_workspaceprocess(;compiler_options=CompilerOptions())::Integer
     pid
 end
 
-"Return the `Workspace` of `notebook`; will be created if none exists yet."
-function get_workspace(session_notebook::SN)::Workspace
+"""
+Return the `Workspace` of `notebook`; will be created if none exists yet.
+
+If `allow_creation=false`, then `nothing` is returned if no workspace exists, instead of creating one.
+"""
+function get_workspace(session_notebook::SN; allow_creation::Bool=true)::Union{Nothing,Workspace}
     session, notebook = session_notebook
     if notebook.notebook_id in discarded_workspaces
         @debug "This should not happen" notebook.process_status
         error("Cannot run code in this notebook: it has already shut down.")
     end
     
-    task = get!(workspaces, notebook.notebook_id) do
-        Task(() -> make_workspace(session_notebook))
-    end
+    task = !allow_creation ? 
+        get(workspaces, notebook.notebook_id, nothing) :
+        get!(workspaces, notebook.notebook_id) do
+            Task(() -> make_workspace(session_notebook))
+        end
+    
+    isnothing(task) && return nothing
+    
     istaskstarted(task) || schedule(task)
     fetch(task)
 end
-get_workspace(workspace::Workspace)::Workspace = workspace
+get_workspace(workspace::Workspace; kwargs...)::Workspace = workspace
 
 "Try our best to delete the workspace. `Workspace` will have its worker process terminated."
 function unmake_workspace(session_notebook::SN; async::Bool=false, verbose::Bool=true, allow_restart::Bool=true)
     session, notebook = session_notebook
-    workspace = get_workspace(session_notebook)
+    workspace = get_workspace(session_notebook; allow_creation=false)
+    workspace === nothing && return
     workspace.discarded = true
     allow_restart || push!(discarded_workspaces, notebook.notebook_id)
 
@@ -318,6 +328,7 @@ function unmake_workspace(session_notebook::SN; async::Bool=false, verbose::Bool
             @warn "Cannot unmake a workspace running inside the same process: the notebook might still be running. If you are sure that your code is not running the notebook async, then you can use the `verbose=false` keyword argument to disable this message."
         end
     end
+    nothing
 end
 
 function distributed_exception_result(ex::Base.IOError, workspace::Workspace)
@@ -574,7 +585,12 @@ end
 
 "Force interrupt (SIGINT) a workspace, return whether successful"
 function interrupt_workspace(session_notebook::Union{SN,Workspace}; verbose=true)::Bool
-    workspace = get_workspace(session_notebook)
+    workspace = get_workspace(session_notebook; allow_creation=false)
+    
+    if !(workspace isa Workspace)
+        # verbose && @info "Can't interrupt this notebook: it is not running."
+        return false
+    end
 
     if poll(() -> isready(workspace.dowork_token), 2.0, 5/100)
         verbose && println("Cell finished, other cells cancelled!")
