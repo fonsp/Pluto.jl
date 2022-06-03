@@ -422,7 +422,7 @@ responses[:interrupt_all] = function response_interrupt_all(🙋::ClientRequest)
     require_notebook(🙋)
 
     session_notebook = (🙋.session, 🙋.notebook)
-    workspace = WorkspaceManager.get_workspace(session_notebook)
+    workspace = WorkspaceManager.get_workspace(session_notebook; allow_creation=false)
 
     already_interrupting = 🙋.notebook.wants_to_interrupt
     anything_running = !isready(workspace.dowork_token)
