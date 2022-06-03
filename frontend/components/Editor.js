@@ -44,7 +44,7 @@ const DEBUG_DIFFING = false
 const DEFAULT_CELL_METADATA = {
     disabled: false,
     show_logs: true,
-    skip_as_script: true,
+    skip_as_script: false,
 }
 
 // from our friends at https://stackoverflow.com/a/2117523
