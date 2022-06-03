@@ -7,6 +7,7 @@ let path = require("path")
 let fs = require("fs/promises")
 let posthtml = require("posthtml")
 let posthtmlSri = require("posthtml-sri")
+let posthtmlCrossorigin = require("@plutojl/posthtml-crossorigin")
 
 let f = async () => {
     // Read file given as command line arugment
@@ -18,6 +19,9 @@ let f = async () => {
             posthtmlSri({
                 algorithms: ["sha384"],
                 basePath: path.dirname(file),
+            }),
+            posthtmlCrossorigin({
+                value: () => "anonymous",
             }),
         ]
 
