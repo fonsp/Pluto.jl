@@ -1257,10 +1257,8 @@ pluto-shoulder:hover {
 pluto-shoulder > button {
     flex: 0 0 auto;
     position: sticky;
-    top: 0px;
-    margin-top: 4px;
-    margin-right: 5px;
-    padding: 0px 1px;
+    top: 0;
+    padding: 5px;
 }
 
 pluto-cell:focus-within > pluto-shoulder > button {
