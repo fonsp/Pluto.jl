@@ -41,7 +41,6 @@ function cell_metadata_notebook()
                     "number" => 10000,
                 ),
                 "disabled" => true,
-                "skip_as_script" => true,
             ) |> create_cell_metadata,
         ),
     ]) |> init_packages!
