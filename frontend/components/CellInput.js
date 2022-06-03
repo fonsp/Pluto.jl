@@ -835,9 +835,7 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
         const new_val = !skip_as_script
         e.preventDefault()
         e.stopPropagation()
-        await pluto_actions.update_notebook((notebook) => {
-            notebook.cell_inputs[cell_id].metadata["skip_as_script"] = new_val
-        })
+        await pluto_actions.skip_as_script_remote_cells([cell_id], new_val)
     }
     const toggle_running_disabled = async (e) => {
         const new_val = !running_disabled

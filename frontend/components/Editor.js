@@ -544,6 +544,13 @@ export class Editor extends Component {
                     }
                 })
             },
+            skip_as_script_remote_cells: async (cell_ids, newSkip) => {
+                await update_notebook((notebook) => {
+                    for (let cell_id of cell_ids) {
+                        notebook.cell_inputs[cell_id].metadata["skip_as_script"] = newSkip
+                    }
+                })
+            },
             set_and_run_all_changed_remote_cells: () => {
                 const changed = this.state.notebook.cell_order.filter(
                     (cell_id) =>
