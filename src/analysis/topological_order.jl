@@ -89,8 +89,9 @@ function topological_order(topology::NotebookTopology, roots::AbstractVector{Cel
 	# we use MergeSort because it is a stable sort: leaves cells in order if they are in the same category
 	prelim_order_1 = sort(roots, alg=MergeSort, by=c -> cell_precedence_heuristic(topology, c))
 	# reversing because our search returns reversed order
-	prelim_order_2 = Iterators.reverse(prelim_order_1)
-	bfs.(prelim_order_2)
+    for i in length(prelim_order_1):-1:1
+        bfs(prelim_order_1[i])
+    end
 	ordered = reverse(exits)
 	TopologicalOrder(topology, setdiff(ordered, keys(errable)), errable)
 end

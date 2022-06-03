@@ -47,9 +47,6 @@ export const commentKeymap = [
     { key: "Mod-/", run: toggleComment },
     { key: "Alt-A", run: toggleBlockComment },
 ]
-/**
- * @param {EditorState} state
- */
 function getConfig(state, pos = state.selection.main.head) {
     let data = state.languageDataAt("commentTokens", pos)
     return data.length ? data[0] : {}

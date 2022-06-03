@@ -1,8 +1,10 @@
 import UUIDs: UUID, uuid1
 import .ExpressionExplorer: SymbolsState, UsingsImports
 
-const DEFAULT_METADATA = Dict{String, Any}(
+# Make sure to keep this in sync with DEFAULT_CELL_METADATA in ../frontend/components/Editor.js
+const DEFAULT_CELL_METADATA = Dict{String, Any}(
     "disabled" => false,
+    "show_logs" => true,
     "skip_as_script" => false,
 )
 
@@ -51,10 +53,10 @@ Base.@kwdef mutable struct Cell
 
     depends_on_disabled_cells::Bool=false
 
-    metadata::Dict{String,Any}=copy(DEFAULT_METADATA)
+    metadata::Dict{String,Any}=copy(DEFAULT_CELL_METADATA)
 end
 
-Cell(cell_id, code) = Cell(cell_id=cell_id, code=code)
+Cell(cell_id, code) = Cell(; cell_id, code)
 Cell(code) = Cell(uuid1(), code)
 
 cell_id(cell::Cell) = cell.cell_id
@@ -71,5 +73,7 @@ function Base.convert(::Type{UUID}, string::String)
     UUID(string)
 end
 
-get_cell_metadata(cell::Cell)::Dict{String,Any} = cell.metadata
-get_cell_metadata_no_default(cell::Cell)::Dict{String,Any} = Dict{String,Any}(setdiff(pairs(cell.metadata), pairs(DEFAULT_METADATA)))
+
+"Returns whether or not the cell is **explicitely** disabled."
+is_disabled(c::Cell) = get(c.metadata, "disabled", false)
+can_show_logs(c::Cell) = get(c.metadata, "show_logs", true)

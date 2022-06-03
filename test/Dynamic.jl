@@ -230,7 +230,7 @@ end
         
         @test !isempty(notebook.cells[2].published_objects)
         
-        setcode(notebook.cells[2], "2")
+        setcode!(notebook.cells[2], "2")
         update_save_run!(🍭, notebook, notebook.cells)
         @test isempty(notebook.cells[2].published_objects)
 

@@ -1,4 +1,4 @@
-import { PlutoContext } from "../common/PlutoContext.js"
+import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { html, useContext, useEffect, useMemo, useRef, useState } from "../imports/Preact.js"
 
 import { Cell } from "./Cell.js"
@@ -56,8 +56,6 @@ let CellMemo = ({
                 focus_after_creation=${focus_after_creation}
                 is_process_ready=${is_process_ready}
                 disable_input=${disable_input}
-                show_logs=${show_logs}
-                set_show_logs=${set_show_logs}
                 nbpkg=${nbpkg}
                 global_definition_locations=${global_definition_locations}
             />
@@ -67,6 +65,7 @@ let CellMemo = ({
         cell_id,
         metadata.disabled,
         metadata.skip_as_script,
+        metadata.show_logs,
         depends_on_disabled_cells,
         queued,
         running,
@@ -88,7 +87,6 @@ let CellMemo = ({
         focus_after_creation,
         is_process_ready,
         disable_input,
-        show_logs,
         ...nbpkg_fingerprint(nbpkg),
         global_definition_locations,
     ])
@@ -115,23 +113,11 @@ const render_cell_outputs_minimum = 20
  *  selected_cells: Array<string>,
  *  is_initializing: boolean,
  *  is_process_ready: boolean,
- *  disable_input: any,
- *  show_logs: boolean,
- *  set_show_logs: any,
+ *  disable_input: boolean,
  * }} props
  * */
-export const Notebook = ({
-    notebook,
-    cell_inputs_local,
-    last_created_cell,
-    selected_cells,
-    is_initializing,
-    is_process_ready,
-    disable_input,
-    show_logs,
-    set_show_logs,
-}) => {
-    let pluto_actions = useContext(PlutoContext)
+export const Notebook = ({ notebook, cell_inputs_local, last_created_cell, selected_cells, is_initializing, is_process_ready, disable_input }) => {
+    let pluto_actions = useContext(PlutoActionsContext)
 
     // Add new cell when the last cell gets deleted
     useEffect(() => {
@@ -184,8 +170,6 @@ export const Notebook = ({
                         force_hide_input=${false}
                         is_process_ready=${is_process_ready}
                         disable_input=${disable_input}
-                        show_logs=${show_logs}
-                        set_show_logs=${set_show_logs}
                         nbpkg=${notebook.nbpkg}
                         global_definition_locations=${global_definition_locations}
                     />`

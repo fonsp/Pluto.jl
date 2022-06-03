@@ -323,4 +323,123 @@ import Distributed
         end)
         Distributed.rmprocs(test_proc)
     end
+
+    @testset "Dependent Bound Variables" begin
+        🍭 = ServerSession()
+        🍭.options.evaluation.workspace_use_distributed = false
+        fakeclient = ClientSession(:fake, nothing)
+        🍭.connected_clients[fakeclient.id] = fakeclient
+        🍭.options.evaluation.workspace_use_distributed = true
+        notebook = Notebook([
+            Cell(raw"""@bind x HTML("<input type=range min=1 max=10>")"""),
+            Cell(raw"""@bind y HTML("<input type=range min=1 max=$(x)>")"""),
+            Cell(raw"""x"""), #3
+            Cell(raw"""y"""), #4
+            Cell(raw"""
+            begin
+                struct TransformSlider
+                    range::AbstractRange
+                end
+                
+                Base.show(io::IO, m::MIME"text/html", os::TransformSlider) = write(io, "<input type=range value=$(minimum(os.range)) min=$(minimum(os.range)) max=$(maximum(os.range))>")
+                
+                Bonds.initial_value(os::TransformSlider) = Bonds.transform_value(os, minimum(os.range))
+                Bonds.possible_values(os::TransformSlider) = os.range
+                Bonds.transform_value(os::TransformSlider, from_js) = from_js * 2
+            end
+            """),
+            Cell(raw"""begin
+                hello1 = 123
+                @bind a TransformSlider(1:10)
+            end"""),
+            Cell(raw"""begin
+                hello2 = 234
+                @bind b TransformSlider(1:a)
+            end"""),
+            Cell(raw"""a"""), #8
+            Cell(raw"""b"""), #9
+            Cell(raw"""hello1"""), #10
+            Cell(raw"""hello2"""), #11
+            Cell(raw"""using AbstractPlutoDingetjes"""),
+        ])
+        fakeclient.connected_notebook = notebook
+        update_run!(🍭, notebook, notebook.cells)
+
+        function set_bond_values!(notebook:: Notebook, bonds:: Dict; is_first_value=false)
+            for (name, value) in bonds
+                notebook.bonds[name] = Dict("value" => value)
+            end
+            Pluto.set_bond_values_reactive(; session=🍭, notebook, bound_sym_names=collect(keys(bonds)), run_async=false, is_first_values=fill(is_first_value, length(bonds)))
+        end
+        
+        @test notebook.cells[3].output.body == "missing"
+        @test notebook.cells[4].output.body == "missing" # no initial value defined for simple html slider (in contrast to TransformSlider)
+        @test notebook.cells[8].output.body == "2"
+        @test notebook.cells[9].output.body == "2"
+        @test notebook.cells[10].output.body == "123"
+        @test notebook.cells[11].output.body == "234"
+
+        set_bond_values!(notebook, Dict(:x => 1, :a => 1); is_first_value=true)
+        @test notebook.cells[3].output.body == "1"
+        @test notebook.cells[4].output.body == "missing" # no initial value defined for simple html slider (in contrast to TransformSlider)
+        @test notebook.cells[8].output.body == "2" # TransformSlider scales values *2
+        @test notebook.cells[9].output.body == "2"
+        @test notebook.cells[10].output.body == "123"
+        @test notebook.cells[11].output.body == "234"
+
+        set_bond_values!(notebook, Dict(:y => 1, :b => 1); is_first_value=true)
+        @test notebook.cells[3].output.body == "1"
+        @test notebook.cells[4].output.body == "1"
+        @test notebook.cells[8].output.body == "2"
+        @test notebook.cells[9].output.body == "2"
+        @test notebook.cells[10].output.body == "123"
+        @test notebook.cells[11].output.body == "234"
+
+        set_bond_values!(notebook, Dict(:x => 5))
+        @test notebook.cells[3].output.body == "5"
+        @test notebook.cells[4].output.body == "missing" # the slider object is re-defined, therefore its value is the default one
+
+        set_bond_values!(notebook, Dict(:y => 3))
+        @test notebook.cells[3].output.body == "5"
+        @test notebook.cells[4].output.body == "3"
+
+        set_bond_values!(notebook, Dict(:x => 10, :y => 5))
+        @test notebook.cells[3].output.body == "10"
+        @test notebook.cells[4].output.body == "5" # this would fail without PR #2014 - previously `y` was reset to the default value `missing`
+
+        set_bond_values!(notebook, Dict(:b => 2))
+        @test notebook.cells[8].output.body == "2"
+        @test notebook.cells[9].output.body == "4"
+        @test notebook.cells[10].output.body == "123"
+        @test notebook.cells[11].output.body == "234"
+
+        set_bond_values!(notebook, Dict(:a => 8, :b => 12))
+        @test notebook.cells[8].output.body == "16"
+        @test notebook.cells[9].output.body == "24" # this would fail without PR #2014
+        @test notebook.cells[10].output.body == "123"
+        @test notebook.cells[11].output.body == "234"
+        
+        set_bond_values!(notebook, Dict(:a => 1, :b => 1))
+        setcode!(notebook.cells[10], "a + hello1")
+        setcode!(notebook.cells[11], "b + hello2")
+        update_run!(🍭, notebook, notebook.cells[10:11])
+        
+        @test notebook.cells[10].output.body == "125"
+        @test notebook.cells[11].output.body == "236"
+        
+        set_bond_values!(notebook, Dict(:a => 2, :b => 2))
+        @test notebook.cells[10].output.body == "127"
+        @test notebook.cells[11].output.body == "238"
+        set_bond_values!(notebook, Dict(:b => 3))
+        @test notebook.cells[10].output.body == "127"
+        @test notebook.cells[11].output.body == "240"
+        set_bond_values!(notebook, Dict(:a => 1))
+        @test notebook.cells[10].output.body == "125"
+        @test notebook.cells[11].output.body == "236" # changing a will reset b
+        
+        
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+
+    end
 end

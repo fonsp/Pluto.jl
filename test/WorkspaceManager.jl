@@ -83,7 +83,8 @@ import Distributed
             s = Pluto.ServerSession()
             """),
             Cell("""
-            nb = Pluto.SessionActions.open(s, Pluto.project_relative_path("sample", "Tower of Hanoi.jl"); run_async=false, as_sample=true)"""),
+            nb = Pluto.SessionActions.open(s, Pluto.project_relative_path("sample", "Tower of Hanoi.jl"); run_async=false, as_sample=true)
+            """),
             Cell("length(nb.cells)"),
             Cell(""),
         ])
@@ -97,13 +98,13 @@ import Distributed
         @test notebook.cells[4] |> noerror
         @test notebook.cells[5] |> noerror
 
-        setcode(notebook.cells[5], "length(nb.cells)")
+        setcode!(notebook.cells[5], "length(nb.cells)")
         update_run!(🍭, notebook, notebook.cells[5])
         @test notebook.cells[5] |> noerror
 
 
         desired_nprocs = Distributed.nprocs() - 1
-        setcode(notebook.cells[5], "Pluto.SessionActions.shutdown(s, nb)")
+        setcode!(notebook.cells[5], "Pluto.SessionActions.shutdown(s, nb)")
         update_run!(🍭, notebook, notebook.cells[5])
         @test noerror(notebook.cells[5])
 

@@ -49,7 +49,7 @@ function asset_response(path; cacheable::Bool=false)
     if isfile(path)
         data = read(path)
         response = HTTP.Response(200, data)
-        push!(response.headers, "Content-Type" => MIMEs.contenttype_from_mime(MIMEs.mime_from_path(path)))
+        push!(response.headers, "Content-Type" => MIMEs.contenttype_from_mime(MIMEs.mime_from_path(path, MIME"application/octet-stream"())))
         push!(response.headers, "Content-Length" => string(length(data)))
         push!(response.headers, "Access-Control-Allow-Origin" => "*")
         cacheable && push!(response.headers, "Cache-Control" => "public, max-age=$(30day), immutable")
@@ -65,7 +65,7 @@ function error_response(
 
     body_title = body == "" ? "" : "Error message:"
     filled_in = replace(replace(replace(replace(replace(template, 
-        "\$STYLE" => """<style>$(read(project_relative_path("frontend", "index.css"), String))</style>"""), 
+        "\$STYLE" => """<style>$(read(project_relative_path("frontend", "error.css"), String))</style>"""), 
         "\$TITLE" => title), 
         "\$ADVICE" => advice), 
         "\$BODYTITLE" => body_title), 
@@ -206,7 +206,7 @@ function http_router_for(session::ServerSession)
             query = HTTP.queryparams(uri)
             as_sample = haskey(query, "as_sample")
             if haskey(query, "path")
-                path = tamepath(query["path"])
+                path = tamepath(maybe_convert_path_to_wsl(query["path"]))
                 if isfile(path)
                     return try_launch_notebook_response(
                         SessionActions.open, path; 
@@ -323,7 +323,10 @@ function http_router_for(session::ServerSession)
         required=security.require_secret_for_access || 
         security.require_secret_for_open_links
     ) do request::HTTP.Request
-        save_path = SessionActions.save_upload(request.body)
+        uri = HTTP.URI(request.target)
+        query = HTTP.queryparams(uri)
+        
+        save_path = SessionActions.save_upload(request.body; filename_base=get(query, "name", nothing))
         try_launch_notebook_response(
             SessionActions.open,
             save_path;

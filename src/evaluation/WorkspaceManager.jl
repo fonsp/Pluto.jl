@@ -11,8 +11,9 @@ import Distributed
 "Contains the Julia process (in the sense of `Distributed.addprocs`) to evaluate code in. Each notebook gets at most one `Workspace` at any time, but it can also have no `Workspace` (it cannot `eval` code in this case)."
 Base.@kwdef mutable struct Workspace
     pid::Integer
+    notebook_id::UUID
     discarded::Bool=false
-    log_channel::Distributed.RemoteChannel
+    remote_log_channel::Distributed.RemoteChannel
     module_name::Symbol
     dowork_token::Token=Token()
     nbpkg_was_active::Bool=false
@@ -60,9 +61,21 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
     end
 
     Distributed.remotecall_eval(Main, [pid], :(PlutoRunner.notebook_id[] = $(notebook.notebook_id)))
-    log_channel = Core.eval(Main, quote
-        $(Distributed).RemoteChannel(() -> eval(:(Main.PlutoRunner.log_channel)), $pid)
+    
+    remote_log_channel = Core.eval(Main, quote
+        $(Distributed).RemoteChannel(() -> eval(quote
+        
+            channel = Channel{Any}(10)
+            Main.PlutoRunner.setup_plutologger(
+                $($(notebook.notebook_id)), 
+                channel; 
+                make_global=$($(use_distributed))
+            )
+            
+            channel
+        end), $pid)
     end)
+    
     run_channel = Core.eval(Main, quote
         $(Distributed).RemoteChannel(() -> eval(:(Main.PlutoRunner.run_channel)), $pid)
     end)
@@ -71,15 +84,16 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
     original_LOAD_PATH, original_ACTIVE_PROJECT = Distributed.remotecall_eval(Main, pid, :(Base.LOAD_PATH, Base.ACTIVE_PROJECT[]))
     
     workspace = Workspace(;
-        pid=pid,
-        log_channel=log_channel, 
-        module_name=module_name,
-        original_LOAD_PATH=original_LOAD_PATH,
-        original_ACTIVE_PROJECT=original_ACTIVE_PROJECT,
-        is_offline_renderer=is_offline_renderer,
+        pid,
+        notebook_id=notebook.notebook_id,
+        remote_log_channel, 
+        module_name,
+        original_LOAD_PATH,
+        original_ACTIVE_PROJECT,
+        is_offline_renderer,
     )
 
-    @async start_relaying_logs((session, notebook), log_channel)
+    @async start_relaying_logs((session, notebook), remote_log_channel)
     @async start_relaying_self_updates((session, notebook), run_channel)
     cd_workspace(workspace, notebook.path)
     use_nbpkg_environment((session, notebook), workspace)
@@ -145,20 +159,19 @@ function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.R
 
             # We always show the log at the currently running cell, which is given by
             running_cell_id = next_log["cell_id"]::UUID
-            running_cell = notebook.cells_dict[running_cell_id]
 
             # Some logs originate from outside of the running code, through function calls. Some code here to deal with that:
             begin
                 source_cell_id = if match !== nothing
                     # the log originated from within the notebook
                     
-                    UUID(fn[findfirst("#==#", fn)[end]+1:end])
+                    UUID(fn[match[end]+1:end])
                 else
                     # the log originated from a function call defined outside of the notebook
                     
                     # we will show the log at the currently running cell, at "line -1", i.e. without line info.
                     next_log["line"] = -1
-                    UUID(next_log["cell_id"])
+                    running_cell_id
                 end
                 
                 if running_cell_id != source_cell_id
@@ -167,10 +180,21 @@ function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.R
                     next_log["line"] = -1
                 end
             end
+            
+            source_cell = get(notebook.cells_dict, source_cell_id, nothing)
+            running_cell = get(notebook.cells_dict, running_cell_id, nothing)
+            
+            display_cell = if running_cell === nothing || (source_cell !== nothing && source_cell.output.has_pluto_hook_features)
+                source_cell
+            else
+                running_cell
+            end
+            
+            @assert !isnothing(display_cell)
 
             maybe_max_log = findfirst(((key, _),) -> key == "maxlog", next_log["kwargs"])
             if maybe_max_log !== nothing
-                n_logs = count(log -> log["id"] == next_log["id"], running_cell.logs)
+                n_logs = count(log -> log["id"] == next_log["id"], display_cell.logs)
                 try
                     max_log = parse(Int, next_log["kwargs"][maybe_max_log][2] |> first)
 
@@ -186,7 +210,7 @@ function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.R
                 end
             end
 
-            push!(running_cell.logs, next_log)
+            push!(display_cell.logs, next_log)
             Pluto.@asynclog update_throttled()
         catch e
             if !isopen(log_channel)
@@ -355,15 +379,16 @@ end
 
 `expr` has to satisfy `ExpressionExplorer.is_toplevel_expr`."
 function eval_format_fetch_in_workspace(
-    session_notebook::Union{SN,Workspace},
-    expr::Expr,
-    cell_id::UUID,
-    ends_with_semicolon::Bool=false,
-    function_wrapped_info::Union{Nothing,Tuple}=nothing,
-    forced_expr_id::Union{PlutoRunner.ObjectID,Nothing}=nothing,
-    user_requested_run::Bool=true,
-    known_published_objects::Vector{String}=String[],
-)::PlutoRunner.FormattedCellResult
+        session_notebook::Union{SN,Workspace},
+        expr::Expr,
+        cell_id::UUID;
+        ends_with_semicolon::Bool=false,
+        function_wrapped_info::Union{Nothing,Tuple}=nothing,
+        forced_expr_id::Union{PlutoRunner.ObjectID,Nothing}=nothing,
+        known_published_objects::Vector{String}=String[],
+        user_requested_run::Bool=true,
+        capture_stdout::Bool=true,
+    )::PlutoRunner.FormattedCellResult
 
     workspace = get_workspace(session_notebook)
     
@@ -386,11 +411,12 @@ function eval_format_fetch_in_workspace(
         Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.run_expression(
             getfield(Main, $(QuoteNode(workspace.module_name))), 
             $(QuoteNode(expr)), 
-            $cell_id, 
+            $(workspace.notebook_id),
+            $cell_id,
             $function_wrapped_info,
             $forced_expr_id;
             user_requested_run=$user_requested_run,
-            capture_stdout=$(!is_on_this_process),
+            capture_stdout=$(capture_stdout && !is_on_this_process),
         )))
         put!(workspace.dowork_token)
         nothing
@@ -414,18 +440,19 @@ function eval_in_workspace(session_notebook::Union{SN,Workspace}, expr)
 end
 
 function format_fetch_in_workspace(
-    session_notebook::Union{SN,Workspace}, 
-    cell_id, 
-    ends_with_semicolon, 
-    known_published_objects::Vector{String}=String[],
-    showmore_id::Union{PlutoRunner.ObjectDimPair,Nothing}=nothing,
-)::PlutoRunner.FormattedCellResult
+        session_notebook::Union{SN,Workspace},
+        cell_id,
+        ends_with_semicolon,
+        known_published_objects::Vector{String}=String[],
+        showmore_id::Union{PlutoRunner.ObjectDimPair,Nothing}=nothing,
+    )::PlutoRunner.FormattedCellResult
     workspace = get_workspace(session_notebook)
-    
+
     # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.
     withtoken(workspace.dowork_token) do
         try
             Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.formatted_result_of(
+                $(workspace.notebook_id),
                 $cell_id, 
                 $ends_with_semicolon, 
                 $known_published_objects,
@@ -484,15 +511,15 @@ function do_reimports(session_notebook::Union{SN,Workspace}, module_imports_to_m
 end
 
 "Move variables to a new module. A given set of variables to be 'deleted' will not be moved to the new module, making them unavailable. "
-function move_vars(session_notebook::Union{SN,Workspace}, old_workspace_name::Symbol, new_workspace_name::Union{Nothing,Symbol}, to_delete::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,FunctionName}}, module_imports_to_move::Set{Expr}; kwargs...)
+function move_vars(session_notebook::Union{SN,Workspace}, old_workspace_name::Symbol, new_workspace_name::Union{Nothing,Symbol}, to_delete::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,FunctionName}}, module_imports_to_move::Set{Expr}, invalidated_cell_uuids::Set{UUID}; kwargs...)
     workspace = get_workspace(session_notebook)
     new_workspace_name = something(new_workspace_name, workspace.module_name)
     
-    Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.move_vars($(old_workspace_name |> QuoteNode), $(new_workspace_name |> QuoteNode), $to_delete, $methods_to_delete, $module_imports_to_move)))
+    Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.move_vars($(old_workspace_name |> QuoteNode), $(new_workspace_name |> QuoteNode), $to_delete, $methods_to_delete, $module_imports_to_move, $invalidated_cell_uuids)))
 end
 
-move_vars(session_notebook::Union{SN,Workspace}, to_delete::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,FunctionName}}, module_imports_to_move::Set{Expr}; kwargs...) =
-move_vars(session_notebook, bump_workspace_module(session_notebook)..., to_delete, methods_to_delete, module_imports_to_move; kwargs...)
+move_vars(session_notebook::Union{SN,Workspace}, to_delete::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,FunctionName}}, module_imports_to_move::Set{Expr}, invalidated_cell_uuids::Set{UUID}; kwargs...) =
+move_vars(session_notebook, bump_workspace_module(session_notebook)..., to_delete, methods_to_delete, module_imports_to_move, invalidated_cell_uuids; kwargs...)
 
 # TODO: delete me
 @deprecate(
