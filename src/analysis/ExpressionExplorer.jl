@@ -340,7 +340,7 @@ is_function_assignment(ex::Expr)::Bool = ex.args[1] isa Expr && (ex.args[1].head
 
 anonymous_name() = Symbol("anon", rand(UInt64))
 
-function explore_assignment(ex::Expr, scopestate::ScopeState)
+function explore_assignment!(ex::Expr, scopestate::ScopeState)
     # Does not create scope
 
     if is_function_assignment(ex)
@@ -374,7 +374,7 @@ function explore_assignment(ex::Expr, scopestate::ScopeState)
     return symstate
 end
 
-function explore_modifiers(ex::Expr, scopestate::ScopeState)
+function explore_modifiers!(ex::Expr, scopestate::ScopeState)
     # We change: a[1] += 123
     # to:        a[1] = a[1] + 123
     # We transform the modifier back to its operator
@@ -388,7 +388,7 @@ function explore_modifiers(ex::Expr, scopestate::ScopeState)
     return explore!(expanded_expr, scopestate)
 end
 
-function explore_dotprefixed_modifiers(ex::Expr, scopestate::ScopeState)
+function explore_dotprefixed_modifiers!(ex::Expr, scopestate::ScopeState)
     # We change: a[1] .+= 123
     # to:        a[1] .= a[1] + 123
 
@@ -405,12 +405,12 @@ function explore_inner_scoped(ex::Expr, scopestate::ScopeState)::SymbolsState
     return mapfoldl(a -> explore!(a, innerscopestate), union!, ex.args, init = SymbolsState())
 end
 
-function explore_filter(ex::Expr, scopestate::ScopeState)
+function explore_filter!(ex::Expr, scopestate::ScopeState)
     # In a filter, the assignment is the second expression, the condition the first
     mapfoldr(a -> explore!(a, scopestate), union!, ex.args, init = SymbolsState())
 end
 
-function explore_generator(ex::Expr, scopestate::ScopeState)
+function explore_generator!(ex::Expr, scopestate::ScopeState)
     # Creates local scope
 
     # In a `generator`, a single expression is followed by the iterator assignments.
@@ -420,7 +420,7 @@ function explore_generator(ex::Expr, scopestate::ScopeState)
     return explore!(Expr(:for, Iterators.reverse(ex.args[2:end])..., ex.args[1]), scopestate)
 end
 
-function explore_macrocall(ex::Expr, scopestate::ScopeState)
+function explore_macrocall!(ex::Expr, scopestate::ScopeState)
     # Early stopping, this expression will have to be re-explored once
     # the macro is expanded in the notebook process.
     macro_name = split_funcname(ex.args[1])
@@ -453,7 +453,7 @@ function explore_macrocall(ex::Expr, scopestate::ScopeState)
     return symstate
 end
 
-function explore_call(ex::Expr, scopestate::ScopeState)
+function explore_call!(ex::Expr, scopestate::ScopeState)
     # Does not create scope
 
     if is_just_dots(ex.args[1])
@@ -503,7 +503,7 @@ function explore_call(ex::Expr, scopestate::ScopeState)
     end
 end
 
-function explore_struct(ex::Expr, scopestate::ScopeState)
+function explore_struct!(ex::Expr, scopestate::ScopeState)
     # Creates local scope
 
     structnameexpr = ex.args[2]
@@ -525,7 +525,7 @@ function explore_struct(ex::Expr, scopestate::ScopeState)
     return inner_symstate
 end
 
-function explore_abstract(ex::Expr, scopestate::ScopeState)
+function explore_abstract!(ex::Expr, scopestate::ScopeState)
     equiv_func = Expr(:function, ex.args...)
     inner_symstate = explore!(equiv_func, scopestate)
 
@@ -534,7 +534,7 @@ function explore_abstract(ex::Expr, scopestate::ScopeState)
     return inner_symstate
 end
 
-function explore_function_macro(ex::Expr, scopestate::ScopeState)
+function explore_function_macro!(ex::Expr, scopestate::ScopeState)
     symstate = SymbolsState()
     # Creates local scope
 
@@ -581,7 +581,7 @@ function explore_function_macro(ex::Expr, scopestate::ScopeState)
     return symstate
 end
 
-function explore_try(ex::Expr, scopestate::ScopeState)
+function explore_try!(ex::Expr, scopestate::ScopeState)
     symstate = SymbolsState()
 
     # Handle catch first
@@ -604,7 +604,7 @@ function explore_try(ex::Expr, scopestate::ScopeState)
     return symstate
 end
 
-function explore_anonymous_function(ex::Expr, scopestate::ScopeState)
+function explore_anonymous_function!(ex::Expr, scopestate::ScopeState)
     # Creates local scope
 
     tempname = anonymous_name()
@@ -624,7 +624,7 @@ function explore_anonymous_function(ex::Expr, scopestate::ScopeState)
     return explore!(equiv_func, scopestate)
 end
 
-function explore_global(ex::Expr, scopestate::ScopeState)::SymbolsState
+function explore_global!(ex::Expr, scopestate::ScopeState)::SymbolsState
     # Does not create scope
 
     # global x, y, z
@@ -658,7 +658,7 @@ function explore_global(ex::Expr, scopestate::ScopeState)::SymbolsState
     end
 end
 
-function explore_local(ex::Expr, scopestate::ScopeState)::SymbolsState
+function explore_local!(ex::Expr, scopestate::ScopeState)::SymbolsState
     # Does not create scope
 
     # Turn `local x, y` in `local x; local y
@@ -680,7 +680,7 @@ function explore_local(ex::Expr, scopestate::ScopeState)::SymbolsState
     end
 end
 
-function explore_tuple(ex::Expr, scopestate::ScopeState)
+function explore_tuple!(ex::Expr, scopestate::ScopeState)
     # Does not create scope
 
     # There are three (legal) cases:
@@ -734,14 +734,14 @@ function explore_tuple(ex::Expr, scopestate::ScopeState)
     end
 end
 
-function explore_broadcast(ex::Expr, scopestate::ScopeState)
+function explore_broadcast!(ex::Expr, scopestate::ScopeState)
     # pointwise function call, e.g. sqrt.(nums)
     # we rewrite to a regular call
 
     return explore!(Expr(:call, ex.args[1], ex.args[2].args...), scopestate)
 end
 
-function explore_load(ex::Expr, scopestate::ScopeState)
+function explore_load!(ex::Expr, scopestate::ScopeState)
     imports = if ex.args[1].head == :(:)
         ex.args[1].args[2:end]
     else
@@ -753,7 +753,7 @@ function explore_load(ex::Expr, scopestate::ScopeState)
     return SymbolsState(assignments = Set{Symbol}(packagenames))
 end
 
-function explore_quote(ex::Expr, scopestate::ScopeState)
+function explore_quote!(ex::Expr, scopestate::ScopeState)
     # Look through the quote and only returns explore! deeper into :$'s
     # I thought we need to handle strings in the same way,
     #   but strings do just fine with the catch all at the end
@@ -763,13 +763,13 @@ function explore_quote(ex::Expr, scopestate::ScopeState)
     return explore_interpolations!(ex.args[1], scopestate)
 end
 
-function explore_module(ex::Expr, scopestate::ScopeState)
+function explore_module!(ex::Expr, scopestate::ScopeState)
     # Does create it's own scope, but can import from outer scope, that's what `explore_module_definition!` is for
     symstate = explore_module_definition!(ex, scopestate)
     return union(symstate, SymbolsState(assignments = Set{Symbol}([ex.args[2]])))
 end
 
-function explore_fallback(ex::Expr, scopestate::ScopeState)
+function explore_fallback!(ex::Expr, scopestate::ScopeState)
     # fallback, includes:
     # begin, block, do, toplevel, const
     # (and hopefully much more!)
@@ -783,57 +783,57 @@ end
 # Modifies the `scopestate`.
 function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
     if ex.head == :(=)
-        return explore_assignment(ex, scopestate)
+        return explore_assignment!(ex, scopestate)
     elseif ex.head in modifiers
-        return explore_modifiers(ex, scopestate)
+        return explore_modifiers!(ex, scopestate)
     elseif ex.head in modifiers_dotprefixed
-        return explore_dotprefixed_modifiers(ex, scopestate)
+        return explore_dotprefixed_modifiers!(ex, scopestate)
     elseif ex.head == :let || ex.head == :for || ex.head == :while
         # Creates local scope
         return explore_inner_scoped(ex, scopestate)
     elseif ex.head == :filter
-        return explore_filter(ex, scopestate)
+        return explore_filter!(ex, scopestate)
     elseif ex.head == :generator
-        return explore_generator(ex, scopestate)
+        return explore_generator!(ex, scopestate)
     elseif ex.head == :macrocall
-        return explore_macrocall(ex, scopestate)
+        return explore_macrocall!(ex, scopestate)
     elseif ex.head == :call
-        return explore_call(ex, scopestate)
+        return explore_call!(ex, scopestate)
     elseif Meta.isexpr(ex, :parameters)
         return mapfoldl(a -> explore!(to_kw(a), scopestate), union!, ex.args, init = SymbolsState())
     elseif ex.head == :kw
         return explore!(ex.args[2], scopestate)
     elseif ex.head == :struct
-        return explore_struct(ex, scopestate)
+        return explore_struct!(ex, scopestate)
     elseif ex.head == :abstract
-        return explore_abstract(ex, scopestate)
+        return explore_abstract!(ex, scopestate)
     elseif ex.head == :function || ex.head == :macro
-        return explore_function_macro(ex, scopestate)
+        return explore_function_macro!(ex, scopestate)
     elseif ex.head == :try
-        return explore_try(ex, scopestate)
+        return explore_try!(ex, scopestate)
     elseif ex.head == :(->)
-        return explore_anonymous_function(ex, scopestate)
+        return explore_anonymous_function!(ex, scopestate)
     elseif ex.head == :global
-        return explore_global(ex, scopestate)
+        return explore_global!(ex, scopestate)
     elseif ex.head == :local
-        return explore_local(ex, scopestate)
+        return explore_local!(ex, scopestate)
     elseif ex.head == :tuple
-        return explore_tuple(ex, scopestate)
+        return explore_tuple!(ex, scopestate)
     elseif Meta.isexpr(ex, :(.), 2) && ex.args[2] isa Expr && ex.args[2].head == :tuple
-        return explore_broadcast(ex, scopestate)
+        return explore_broadcast!(ex, scopestate)
     elseif ex.head == :using || ex.head == :import
-        return explore_load(ex, scopestate)
+        return explore_load!(ex, scopestate)
     elseif ex.head == :quote
-        return explore_quote(ex, scopestate)
+        return explore_quote!(ex, scopestate)
     elseif ex.head == :module
-        return explore_module(ex, scopestate)
+        return explore_module!(ex, scopestate)
     elseif Meta.isexpr(ex, Symbol("'"), 1)
         # a' corresponds to adjoint(a)
         return explore!(Expr(:call, :adjoint, ex.args[1]), scopestate)
     elseif ex.head == :meta
         return SymbolsState()
     else
-        return explore_fallback(ex, scopestate)
+        return explore_fallback!(ex, scopestate)
     end
 end
 
