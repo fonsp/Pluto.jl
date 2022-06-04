@@ -50,6 +50,25 @@ function run_reactive!(
     end
 end
 
+function resolve_notebook!(
+        session::ServerSession,
+        notebook::Notebook,
+        new_topology::NotebookTopology,
+        roots::Vector{Cell},
+        already_run::Vector{Cell},
+        old_workspace_name::Symbol
+    )
+    if !is_resolved(new_topology)
+        unresolved_topology = new_topology
+        current_roots = setdiff(roots, already_run)
+        notebook.topology = resolve_topology(session, notebook, unresolved_topology, old_workspace_name; current_roots)
+
+        # update cache and save notebook because the dependencies might have changed after expanding macros
+        update_dependency_cache!(notebook)
+    end
+    return notebook.topology
+end
+
 """
 Run given cells and all the cells that depend on them, based on the topology information before and after the changes.
 
@@ -71,17 +90,10 @@ function run_reactive_core!(
     @assert will_run_code(notebook)
 
     old_workspace_name, _ = WorkspaceManager.bump_workspace_module((session, notebook))
-
-    if !is_resolved(new_topology)
-        unresolved_topology = new_topology
-        new_topology = notebook.topology = resolve_topology(session, notebook, unresolved_topology, old_workspace_name; current_roots = setdiff(roots, already_run))
-
-        # update cache and save notebook because the dependencies might have changed after expanding macros
-        update_dependency_cache!(notebook)
-    end
+    new_topology = resolve_notebook!(session, notebook, new_topology, roots, already_run, old_workspace_name)
 
     removed_cells = setdiff(keys(old_topology.nodes), keys(new_topology.nodes))
-    roots = Cell[roots..., removed_cells...]
+    roots = Cell[roots; removed_cells]
 
     # by setting the reactive node and expression caches of deleted cells to "empty", we are essentially pretending that those cells still exist, but now have empty code. this makes our algorithm simpler.
     new_topology = NotebookTopology(
