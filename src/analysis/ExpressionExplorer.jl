@@ -1117,7 +1117,7 @@ hide_argument_name(x::Any) = x
 ###
 
 "Get the global references, assignment, function calls and function defintions inside an arbitrary expression."
-function compute_symbolreferences(ex::Any)::SymbolsState
+function compute_symbolreferences(ex::Expr)::SymbolsState
     symstate = explore!(ex, ScopeState())
 
     # We do something special to account for recursive functions:
@@ -1132,7 +1132,7 @@ function compute_symbolreferences(ex::Any)::SymbolsState
     symstate
 end
 
-function try_compute_symbolreferences(ex::Any)::SymbolsState
+function try_compute_symbolreferences(ex::Expr)::SymbolsState
     try
         compute_symbolreferences(ex)
     catch e
