@@ -16,7 +16,6 @@ Some of these @test_broken lines are commented out to prevent printing to the te
 
 -fons =#
 
-
 @testset "Explore Expressions" begin
     let
         EE = Pluto.ExpressionExplorer

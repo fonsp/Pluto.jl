@@ -340,7 +340,7 @@ is_function_assignment(ex::Expr)::Bool = ex.args[1] isa Expr && (ex.args[1].head
 
 anonymous_name() = Symbol("anon", rand(UInt64))
 
-function explore_assignment!(ex::Expr, scopestate::ScopeState)
+function explore_assignment!(ex::Expr, scopestate::ScopeState)::SymbolsState
     # Does not create scope
 
     if is_function_assignment(ex)
@@ -407,7 +407,7 @@ end
 
 function explore_filter!(ex::Expr, scopestate::ScopeState)
     # In a filter, the assignment is the second expression, the condition the first
-    mapfoldr(a -> explore!(a, scopestate), union!, ex.args, init = SymbolsState())
+    mapfoldr(a -> explore!(a, scopestate), union!, ex.args, init = SymbolsState())::SymbolsState
 end
 
 function explore_generator!(ex::Expr, scopestate::ScopeState)
@@ -453,7 +453,7 @@ function explore_macrocall!(ex::Expr, scopestate::ScopeState)
     return symstate
 end
 
-function explore_call!(ex::Expr, scopestate::ScopeState)
+function explore_call!(ex::Expr, scopestate::ScopeState)::SymbolsState
     # Does not create scope
 
     if is_just_dots(ex.args[1])
@@ -680,7 +680,7 @@ function explore_local!(ex::Expr, scopestate::ScopeState)::SymbolsState
     end
 end
 
-function explore_tuple!(ex::Expr, scopestate::ScopeState)
+function explore_tuple!(ex::Expr, scopestate::ScopeState)::SymbolsState
     # Does not create scope
 
     # There are three (legal) cases:
@@ -750,7 +750,7 @@ function explore_load!(ex::Expr, scopestate::ScopeState)
 
     packagenames = map(e -> e.args[end], imports)
 
-    return SymbolsState(assignments = Set{Symbol}(packagenames))
+    return SymbolsState(assignments = Set{Symbol}(packagenames))::SymbolsState
 end
 
 function explore_quote!(ex::Expr, scopestate::ScopeState)
@@ -760,13 +760,13 @@ function explore_quote!(ex::Expr, scopestate::ScopeState)
     #   and actually strings don't always have a :$ expression, sometimes just
     #   plain Symbols (which we should then be interpreted as variables,
     #     which is different to how we handle Symbols in quote'd expressions)
-    return explore_interpolations!(ex.args[1], scopestate)
+    return explore_interpolations!(ex.args[1], scopestate)::SymbolsState
 end
 
 function explore_module!(ex::Expr, scopestate::ScopeState)
     # Does create it's own scope, but can import from outer scope, that's what `explore_module_definition!` is for
     symstate = explore_module_definition!(ex, scopestate)
-    return union(symstate, SymbolsState(assignments = Set{Symbol}([ex.args[2]])))
+    return union(symstate, SymbolsState(assignments = Set{Symbol}([ex.args[2]])))::SymbolsState
 end
 
 function explore_fallback!(ex::Expr, scopestate::ScopeState)
@@ -883,7 +883,7 @@ explore_module_definition!(expr, scopestate; module_depth::Number = 1) = Symbols
 "Go through a quoted expression and use explore! for :\$ expressions"
 function explore_interpolations!(ex::Expr, scopestate)
     if ex.head == :$
-        return explore!(ex.args[1], scopestate)
+        return explore!(ex.args[1], scopestate)::SymbolsState
     else
         # We are still in a quote, so we do go deeper, but we keep ignoring everything except :$'s
         return mapfoldl(a -> explore_interpolations!(a, scopestate), union!, ex.args, init = SymbolsState())::SymbolsState
