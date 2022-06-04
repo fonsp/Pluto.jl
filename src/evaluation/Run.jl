@@ -54,7 +54,7 @@ end
 Run given cells and all the cells that depend on them, based on the topology information before and after the changes.
 
 !!! warning
-    You should probably should not call this directly and use `run_reactive!` instead.
+    You should probably not call this directly and use `run_reactive!` instead.
 """
 function run_reactive_core!(
     session::ServerSession,
@@ -81,7 +81,7 @@ function run_reactive_core!(
     end
 
     removed_cells = setdiff(keys(old_topology.nodes), keys(new_topology.nodes))
-    roots = Cell[roots; removed_cells]
+    roots = Cell[roots..., removed_cells...]
 
     # by setting the reactive node and expression caches of deleted cells to "empty", we are essentially pretending that those cells still exist, but now have empty code. this makes our algorithm simpler.
     new_topology = NotebookTopology(
