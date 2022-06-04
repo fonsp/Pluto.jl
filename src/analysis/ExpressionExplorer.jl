@@ -453,24 +453,28 @@ function explore_macrocall!(ex::Expr, scopestate::ScopeState)
     return symstate
 end
 
+function funcname_symstate!(funcname::FunctionName, scopestate::ScopeState)::SymbolsState
+    if length(funcname) == 0
+        explore!(ex.args[1], scopestate)
+    elseif length(funcname) == 1
+        if funcname[1] ∈ scopestate.hiddenglobals
+            SymbolsState()
+        else
+            SymbolsState(funccalls = Set{FunctionName}([funcname]))
+        end
+    elseif funcname[1] ∈ scopestate.hiddenglobals
+        SymbolsState()
+    else
+        SymbolsState(references = Set{Symbol}([funcname[1]]), funccalls = Set{FunctionName}([funcname]))
+    end
+end
+
 function explore_call!(ex::Expr, scopestate::ScopeState)::SymbolsState
     # Does not create scope
 
     if is_just_dots(ex.args[1])
-        funcname = ex.args[1] |> split_funcname
-        symstate = if length(funcname) == 0
-            explore!(ex.args[1], scopestate)
-        elseif length(funcname) == 1
-            if funcname[1] ∈ scopestate.hiddenglobals
-                SymbolsState()
-            else
-                SymbolsState(funccalls = Set{FunctionName}([funcname]))
-            end
-        elseif funcname[1] ∈ scopestate.hiddenglobals
-            SymbolsState()
-        else
-            SymbolsState(references = Set{Symbol}([funcname[1]]), funccalls = Set{FunctionName}([funcname]))
-        end
+        funcname = split_funcname(ex.args[1])::FunctionName
+        symstate = funcname_symstate!(funcname, scopestate)
 
         # Explore code inside function arguments:
         union!(symstate, explore!(Expr(:block, ex.args[2:end]...), scopestate))
