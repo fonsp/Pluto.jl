@@ -1197,10 +1197,7 @@ hide_argument_name(x::Any) = x
 # UTILITY FUNCTIONS
 ###
 
-"Get the global references, assignment, function calls and function defintions inside an arbitrary expression."
-function compute_symbolreferences(ex::Expr)::SymbolsState
-    symstate = explore!(ex, ScopeState())
-
+function handle_recursive_functions!(symstate::SymbolsState)
     # We do something special to account for recursive functions:
     # If a function `f` calls a function `g`, and both are defined inside this cell, the reference to `g` inside the symstate of `f` will be deleted.
     # The motivitation is that normally, an assignment (or function definition) will add that symbol to a list of 'hidden globals' - any future references to that symbol will be ignored. i.e. the _local definition hides a global_.
@@ -1211,7 +1208,14 @@ function compute_symbolreferences(ex::Expr)::SymbolsState
         inner_symstate.references = setdiff(inner_symstate.references, K)
         inner_symstate.funccalls = setdiff(inner_symstate.funccalls, K)
     end
-    symstate
+    return nothing
+end
+
+"Get the global references, assignment, function calls and function defintions inside an arbitrary expression."
+function compute_symbolreferences(ex::Expr)::SymbolsState
+    symstate = explore!(ex, ScopeState())
+    handle_recursive_functions!(symstate)
+    return symstate
 end
 
 function try_compute_symbolreferences(ex::Expr)::SymbolsState
