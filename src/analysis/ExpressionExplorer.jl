@@ -336,42 +336,42 @@ Returns whether or not an assignment Expr(:(=),...) is assigning to a new functi
   * f(x)::V = ...
   * f(::T) where {T} = ...
 """
-is_function_assignment(ex::Expr) = ex.args[1] isa Expr && (ex.args[1].head == :call || ex.args[1].head == :where || (ex.args[1].head == :(::) && ex.args[1].args[1] isa Expr && ex.args[1].args[1].head == :call))
+is_function_assignment(ex::Expr)::Bool = ex.args[1] isa Expr && (ex.args[1].head == :call || ex.args[1].head == :where || (ex.args[1].head == :(::) && ex.args[1].args[1] isa Expr && ex.args[1].args[1].head == :call))
 
 anonymous_name() = Symbol("anon", rand(UInt64))
 
 function explore_assignment(ex::Expr, scopestate::ScopeState)
-        # Does not create scope
+    # Does not create scope
 
-        if is_function_assignment(ex)
-            # f(x, y) = x + y
-            # Rewrite to:
-            # function f(x, y) x + y end
-            return explore!(Expr(:function, ex.args...), scopestate)
-        end
+    if is_function_assignment(ex)
+        # f(x, y) = x + y
+        # Rewrite to:
+        # function f(x, y) x + y end
+        return explore!(Expr(:function, ex.args...), scopestate)
+    end
 
-        val = ex.args[2]
-        # Handle generic types assignments A{B} = C{B, Int}
-        if ex.args[1] isa Expr && ex.args[1].head == :curly
-            assignees, symstate = explore_funcdef!(ex.args[1], scopestate)
-            innersymstate = union!(symstate, explore!(val, scopestate))
-        else
-            assignees = get_assignees(ex.args[1])
-            symstate = innersymstate = explore!(val, scopestate)
-        end
+    val = ex.args[2]
+    # Handle generic types assignments A{B} = C{B, Int}
+    if ex.args[1] isa Expr && ex.args[1].head::Symbol == :curly
+        assignees, symstate = explore_funcdef!(ex.args[1], scopestate)::Tuple{Vector{Symbol}, SymbolsState}
+        innersymstate = union!(symstate, explore!(val, scopestate))
+    else
+        assignees = get_assignees(ex.args[1])
+        symstate = innersymstate = explore!(val, scopestate)
+    end
 
-        global_assignees = get_global_assignees(assignees, scopestate)
+    global_assignees = get_global_assignees(assignees, scopestate)
 
-        # If we are _not_ assigning a global variable, then this symbol hides any global definition with that name
-        push!(scopestate.hiddenglobals, setdiff(assignees, global_assignees)...)
-        assigneesymstate = explore!(ex.args[1], scopestate)
+    # If we are _not_ assigning a global variable, then this symbol hides any global definition with that name
+    push!(scopestate.hiddenglobals, setdiff(assignees, global_assignees)...)
+    assigneesymstate = explore!(ex.args[1], scopestate)
 
-        push!(scopestate.hiddenglobals, global_assignees...)
-        push!(symstate.assignments, global_assignees...)
-        push!(symstate.references, setdiff(assigneesymstate.references, global_assignees)...)
-        filter!(!all_underscores, symstate.references)  # Never record _ as a reference
+    push!(scopestate.hiddenglobals, global_assignees...)
+    push!(symstate.assignments, global_assignees...)
+    push!(symstate.references, setdiff(assigneesymstate.references, global_assignees)...)
+    filter!(!all_underscores, symstate.references)  # Never record _ as a reference
 
-        return symstate
+    return symstate
 end
 
 function explore_modifiers(ex::Expr, scopestate::ScopeState)
@@ -544,7 +544,7 @@ function explore_function_macro(ex::Expr, scopestate::ScopeState)
     innerscopestate = deepcopy(scopestate)
     innerscopestate.inglobalscope = false
 
-    funcname, innersymstate = explore_funcdef!(funcroot, innerscopestate)
+    funcname, innersymstate = explore_funcdef!(funcroot, innerscopestate)::Tuple{FunctionName,SymbolsState}
 
     # Macro are called using @funcname, but defined with funcname. We need to change that in our scopestate
     # (The `!= 0` is for when the function named couldn't be parsed)
@@ -624,7 +624,7 @@ function explore_anonymous_function(ex::Expr, scopestate::ScopeState)
     return explore!(equiv_func, scopestate)
 end
 
-function explore_global(ex::Expr, scopestate::ScopeState)
+function explore_global(ex::Expr, scopestate::ScopeState)::SymbolsState
     # Does not create scope
 
     # global x, y, z
@@ -651,16 +651,14 @@ function explore_global(ex::Expr, scopestate::ScopeState)
         scopestate.inglobalscope = true
         result = explore!(globalisee, scopestate)
         scopestate.inglobalscope = old
-        return result
+        return result::SymbolsState
     else
         @error "unknown global use" ex
-        return explore!(globalisee, scopestate)
+        return explore!(globalisee, scopestate)::SymbolsState
     end
-
-    return symstate
 end
 
-function explore_local(ex::Expr, scopestate::ScopeState)
+function explore_local(ex::Expr, scopestate::ScopeState)::SymbolsState
     # Does not create scope
 
     # Turn `local x, y` in `local x; local y
@@ -675,10 +673,10 @@ function explore_local(ex::Expr, scopestate::ScopeState)
         return SymbolsState()
     elseif isa(localisee, Expr) && (localisee.head == :(=) || localisee.head in modifiers)
         push!(scopestate.hiddenglobals, get_assignees(localisee.args[1])...)
-        return explore!(localisee, scopestate)
+        return explore!(localisee, scopestate)::SymbolsState
     else
         @warn "unknown local use" ex
-        return explore!(localisee, scopestate)
+        return explore!(localisee, scopestate)::SymbolsState
     end
 end
 
@@ -885,10 +883,10 @@ explore_module_definition!(expr, scopestate; module_depth::Number = 1) = Symbols
 "Go through a quoted expression and use explore! for :\$ expressions"
 function explore_interpolations!(ex::Expr, scopestate)
     if ex.head == :$
-        explore!(ex.args[1], scopestate)
+        return explore!(ex.args[1], scopestate)
     else
         # We are still in a quote, so we do go deeper, but we keep ignoring everything except :$'s
-        return mapfoldl(a -> explore_interpolations!(a, scopestate), union!, ex.args, init = SymbolsState())
+        return mapfoldl(a -> explore_interpolations!(a, scopestate), union!, ex.args, init = SymbolsState())::SymbolsState
     end
 end
 explore_interpolations!(anything_else, scopestate) = SymbolsState()
