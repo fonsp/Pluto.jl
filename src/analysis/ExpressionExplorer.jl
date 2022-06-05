@@ -1,4 +1,5 @@
 module ExpressionExplorer
+
 export compute_symbolreferences, try_compute_symbolreferences, compute_usings_imports, SymbolsState, FunctionName, join_funcname_parts
 
 import ..PlutoRunner
@@ -397,17 +398,37 @@ function explore_dotprefixed_modifiers!(ex::Expr, scopestate::ScopeState)
     return explore!(expanded_expr, scopestate)
 end
 
+"Unspecialized mapfoldl."
+function umapfoldl(@nospecialize(f::Function), itr::Vector; init=SymbolsState())
+    if isempty(itr)
+        return init
+    else
+        applied = []
+        # map
+        for e in itr
+            push!(applied, f(e))
+        end
+        # reduce
+        out = init
+        for e in applied
+            union!(out, e)
+        end
+        return out
+    end
+end
+
 function explore_inner_scoped(ex::Expr, scopestate::ScopeState)::SymbolsState
     # Because we are entering a new scope, we create a copy of the current scope state, and run it through the expressions.
     innerscopestate = deepcopy(scopestate)
     innerscopestate.inglobalscope = false
 
-    return mapfoldl(a -> explore!(a, innerscopestate), union!, ex.args, init = SymbolsState())
+    return umapfoldl(a -> explore!(a, innerscopestate), ex.args)
 end
 
 function explore_filter!(ex::Expr, scopestate::ScopeState)
     # In a filter, the assignment is the second expression, the condition the first
-    mapfoldr(a -> explore!(a, scopestate), union!, ex.args, init = SymbolsState())::SymbolsState
+    args = collect(reverse(ex.args))
+    umapfoldl(a -> explore!(a, scopestate), args)::SymbolsState
 end
 
 function explore_generator!(ex::Expr, scopestate::ScopeState)
@@ -633,7 +654,7 @@ function explore_global!(ex::Expr, scopestate::ScopeState)::SymbolsState
 
     # global x, y, z
     if length(ex.args) > 1
-        return mapfoldl(arg -> explore!(Expr(:global, arg), scopestate), union!, ex.args; init = SymbolsState())
+        return umapfoldl(arg -> explore!(Expr(:global, arg), scopestate), ex.args)
     end
 
     # We have one of:
@@ -667,7 +688,7 @@ function explore_local!(ex::Expr, scopestate::ScopeState)::SymbolsState
 
     # Turn `local x, y` in `local x; local y
     if length(ex.args) > 1
-        return mapfoldl(arg -> explore!(Expr(:local, arg), scopestate), union!, ex.args; init = SymbolsState())
+        return umapfoldl(arg -> explore!(Expr(:local, arg), scopestate), ex.args)
     end
 
     localisee = ex.args[1]
@@ -780,7 +801,7 @@ function explore_fallback!(ex::Expr, scopestate::ScopeState)
 
     # Does not create scope (probably)
 
-    return mapfoldl(a -> explore!(a, scopestate), union!, ex.args, init = SymbolsState())
+    return umapfoldl(a -> explore!(a, scopestate), ex.args)
 end
 
 # General recursive method. Is never a leaf.
@@ -804,7 +825,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
     elseif ex.head == :call
         return explore_call!(ex, scopestate)
     elseif Meta.isexpr(ex, :parameters)
-        return mapfoldl(a -> explore!(to_kw(a), scopestate), union!, ex.args, init = SymbolsState())
+        return umapfoldl(a -> explore!(to_kw(a), scopestate), ex.args)
     elseif ex.head == :kw
         return explore!(ex.args[2], scopestate)
     elseif ex.head == :struct
@@ -878,7 +899,7 @@ function explore_module_definition!(ex::Expr, scopestate; module_depth::Number =
         return SymbolsState()
     else
         # Go deeper
-        return mapfoldl(a -> explore_module_definition!(a, scopestate, module_depth = module_depth), union!, ex.args, init = SymbolsState())
+        return umapfoldl(a -> explore_module_definition!(a, scopestate, module_depth = module_depth), ex.args)
     end
 end
 explore_module_definition!(expr, scopestate; module_depth::Number = 1) = SymbolsState()
@@ -890,7 +911,7 @@ function explore_interpolations!(ex::Expr, scopestate)
         return explore!(ex.args[1], scopestate)::SymbolsState
     else
         # We are still in a quote, so we do go deeper, but we keep ignoring everything except :$'s
-        return mapfoldl(a -> explore_interpolations!(a, scopestate), union!, ex.args, init = SymbolsState())::SymbolsState
+        return umapfoldl(a -> explore_interpolations!(a, scopestate), ex.args)
     end
 end
 explore_interpolations!(anything_else, scopestate) = SymbolsState()
@@ -904,9 +925,11 @@ function to_kw(ex::Expr)
 end
 to_kw(x) = x
 
-"Return the function name and the SymbolsState from argument defaults. Add arguments as hidden globals to the `scopestate`.
+"""
+Return the function name and the SymbolsState from argument defaults. Add arguments as hidden globals to the `scopestate`.
 
-Is also used for `struct` and `abstract`."
+Is also used for `struct` and `abstract`.
+"""
 function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FunctionName,SymbolsState}
     if ex.head == :call
         params_to_explore = ex.args[2:end]
@@ -938,7 +961,7 @@ function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FunctionName,
         # get the function name
         name, symstate = explore_funcdef!(funcroot, scopestate)
         # and explore the function arguments
-        return mapfoldl(a -> explore_funcdef!(a, scopestate), union!, params_to_explore, init = (name, symstate))
+        return umapfoldl(a -> explore_funcdef!(a, scopestate), params_to_explore; init=(name, symstate))
     elseif ex.head == :(::) || ex.head == :kw || ex.head == :(=)
         # account for unnamed params, like in f(::Example) = 1
         if ex.head == :(::) && length(ex.args) == 1
@@ -995,13 +1018,12 @@ function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FunctionName,
         return Symbol[name], symstate
 
     elseif Meta.isexpr(ex, :parameters)
-        return mapfoldl(
-            a -> explore_funcdef!(to_kw(a), scopestate),
-            union!, ex.args, init = (Symbol[], SymbolsState())
-        )
+        init = (Symbol[], SymbolsState())
+        return umapfoldl(a -> explore_funcdef!(to_kw(a), scopestate), ex.args; init)
 
     elseif ex.head == :tuple
-        return mapfoldl(a -> explore_funcdef!(a, scopestate), union!, ex.args, init = (Symbol[], SymbolsState()))
+        init = (Symbol[], SymbolsState())
+        return umapfoldl(a -> explore_funcdef!(a, scopestate), ex.args; init)
 
     elseif ex.head == :(.)
         return split_funcname(ex), SymbolsState()
