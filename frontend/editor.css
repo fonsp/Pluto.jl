@@ -1628,6 +1628,10 @@ pluto-input > button.input_context_menu ul {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle-outline.svg");
 }
 
+.ctx_icon.copy_outline {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/copy-outline.svg");
+}
+
 pluto-input > button.input_context_menu {
     /* top: 3px; */
     /* left: -26px; */
