@@ -884,9 +884,7 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled, any_
                                 : html`<span class="show_logs ctx_icon" /><span>Show logs</span>`}
                         </li>`
                       : null}
-                  ${is_copy_output_supported()
-                      ? html`<li title="" onClick=${copy_output}><span class="copy_output ctx_icon" /><em>Copy output</em></li>`
-                      : null}
+                  ${is_copy_output_supported() ? html`<li title="" onClick=${copy_output}><span class="copy_output ctx_icon" />Copy output</li>` : null}
                   <li class="coming_soon" title=""><span class="bandage ctx_icon" /><em>Coming soon…</em></li>
               </ul>`
             : html``}
