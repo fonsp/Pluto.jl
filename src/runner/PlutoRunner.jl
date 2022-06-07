@@ -930,7 +930,7 @@ const default_iocontext = IOContext(devnull,
     :displaysize => (18, 88), 
     :is_pluto => true, 
     :pluto_supported_integration_features => supported_integration_features,
-    :pluto_published_to_js => core_published_to_js,
+    :pluto_published_to_js => (io, x) -> core_published_to_js(io, x),
 )
 
 const default_stdout_iocontext = IOContext(devnull, 
@@ -1953,9 +1953,12 @@ function core_published_to_js(io, x)
     d = get!(Dict{String,Any}, cell_published_objects, _cell_id)
     d[id] = x
     
-    return PublishedToJavascript(id, _cell_id)
+    write(io, "/* See the documentation for published_to_js */ getPublishedObject(\"$(id)\")")
+    
+    return nothing
 end
 
+# TODO: remove me
 Base.@kwdef struct PublishedToJavascript
     published_id
     cell_id
