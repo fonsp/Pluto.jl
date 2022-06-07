@@ -861,7 +861,13 @@ function formatted_result_of(
     errored = ans isa CapturedException
 
     output_formatted = if (!ends_with_semicolon || errored)
-        format_output(ans; context=IOContext(default_iocontext, :extra_items=>extra_items, :module => workspace))
+        format_output(ans; context=IOContext(
+            default_iocontext, 
+            :extra_items=>extra_items, 
+            :module => workspace,
+            :pluto_notebook_id => notebook_id,
+            :pluto_cell_id => cell_id,
+        ))
     else
         ("", MIME"text/plain"())
     end
@@ -924,6 +930,7 @@ const default_iocontext = IOContext(devnull,
     :displaysize => (18, 88), 
     :is_pluto => true, 
     :pluto_supported_integration_features => supported_integration_features,
+    :pluto_published_to_js => core_published_to_js,
 )
 
 const default_stdout_iocontext = IOContext(devnull, 
@@ -1422,17 +1429,30 @@ const integrations = Integration[
         id = Base.PkgId(Base.UUID(reinterpret(UInt128, codeunits("Paul Berg Berlin")) |> first), "AbstractPlutoDingetjes"),
         code = quote
             @assert v"1.0.0" <= AbstractPlutoDingetjes.MY_VERSION < v"2.0.0"
-            initial_value_getter_ref[] = AbstractPlutoDingetjes.Bonds.initial_value
-            transform_value_ref[] = AbstractPlutoDingetjes.Bonds.transform_value
-            possible_bond_values_ref[] = AbstractPlutoDingetjes.Bonds.possible_values
-
-            push!(supported_integration_features,
+            
+            supported!(xs...) = push!(supported_integration_features, xs...)
+            
+            # don't need feature checks for these because they existed in every version of AbstractPlutoDingetjes:
+            supported!(
                 AbstractPlutoDingetjes,
                 AbstractPlutoDingetjes.Bonds,
                 AbstractPlutoDingetjes.Bonds.initial_value,
                 AbstractPlutoDingetjes.Bonds.transform_value,
                 AbstractPlutoDingetjes.Bonds.possible_values,
+                AbstractPlutoDingetjes.Display,
             )
+            initial_value_getter_ref[] = AbstractPlutoDingetjes.Bonds.initial_value
+            transform_value_ref[] = AbstractPlutoDingetjes.Bonds.transform_value
+            possible_bond_values_ref[] = AbstractPlutoDingetjes.Bonds.possible_values
+            
+            # feature checks because these were added in a later release of AbstractPlutoDingetjes
+            if isdefined(AbstractPlutoDingetjes, :Display)
+                supported!(AbstractPlutoDingetjes.Display)
+                if isdefined(AbstractPlutoDingetjes.Display, :published_to_js)
+                    supported!(AbstractPlutoDingetjes.Display.published_to_js)
+                end
+            end
+
         end,
     ),
     Integration(
@@ -1920,15 +1940,31 @@ end
 # TODO: remove me
 _publish(x) = _publish(x, objectid2str(x))
 
+
+function core_published_to_js(io, x)
+    id_start = objectid2str(x)
+    
+    _notebook_id = get(io, :pluto_notebook_id, notebook_id[])::UUID
+    _cell_id = get(io, :pluto_cell_id, currently_running_cell_id[])::UUID
+    
+    # The unique identifier of this object
+    id = string(_notebook_id, "/", id_start)
+    
+    d = get!(Dict{String,Any}, cell_published_objects, _cell_id)
+    d[id] = x
+    
+    return PublishedToJavascript(id, _cell_id)
+end
+
 Base.@kwdef struct PublishedToJavascript
     published_id
     cell_id
 end
 function Base.show(io::IO, ::MIME"text/javascript", published::PublishedToJavascript)
-    if published.cell_id != currently_running_cell_id[]
-        error("Showing result from PlutoRunner.publish_to_js() in a cell different from where it was created, not (yet?) supported.")
+    if published.cell_id !== get(io, :pluto_cell_id, currently_running_cell_id[])
+        error("Showing result from published_to_js() in a cell different from where it was created, not (yet?) supported.")
     end
-    write(io, "/* See the documentation for PlutoRunner.publish_to_js */ getPublishedObject(\"$(published.published_id)\")")
+    write(io, "/* See the documentation for published_to_js */ getPublishedObject(\"$(published.published_id)\")")
 end
 Base.show(io::IO, ::MIME"text/plain", published::PublishedToJavascript) = show(io, MIME("text/javascript"), published)    
 Base.show(io::IO, published::PublishedToJavascript) = show(io, MIME("text/javascript"), published)    
