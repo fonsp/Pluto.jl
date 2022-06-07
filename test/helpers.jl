@@ -64,7 +64,7 @@ julia> @test testee(:(
 true
 ```
 "
-function testee(expr::Expr, expected_references, expected_definitions, expected_funccalls, expected_funcdefs, expected_macrocalls = []; verbose::Bool=true)
+function testee(expr::Any, expected_references, expected_definitions, expected_funccalls, expected_funcdefs, expected_macrocalls = []; verbose::Bool=true)
     expected = easy_symstate(expected_references, expected_definitions, expected_funccalls, expected_funcdefs, expected_macrocalls)
 
     original_hash = Pluto.PlutoRunner.expr_hash(expr)

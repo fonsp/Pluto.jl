@@ -842,6 +842,21 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled, any_
     }
     const toggle_logs = () => set_show_logs(!show_logs)
 
+    const is_copy_output_supported = () => {
+        let notebook = /** @type{import("./Editor.js").NotebookData?} */ (pluto_actions.get_notebook())
+        let cell_result = notebook?.cell_results?.[cell_id]
+        return !!cell_result && !cell_result.errored && !cell_result.queued && cell_result.output.mime === "text/plain" && cell_result.output.body
+    }
+
+    const copy_output = () => {
+        let notebook = /** @type{import("./Editor.js").NotebookData?} */ (pluto_actions.get_notebook())
+        let cell_output = notebook?.cell_results?.[cell_id]?.output.body ?? ""
+        cell_output &&
+            navigator.clipboard.writeText(cell_output).catch((err) => {
+                alert(`Error copying cell output`)
+            })
+    }
+
     return html` <button
         onClick=${() => setOpen(!open)}
         onBlur=${() => setOpen(false)}
@@ -869,6 +884,7 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled, any_
                                 : html`<span class="show_logs ctx_icon" /><span>Show logs</span>`}
                         </li>`
                       : null}
+                  ${is_copy_output_supported() ? html`<li title="" onClick=${copy_output}><span class="copy_output ctx_icon" />Copy output</li>` : null}
                   <li class="coming_soon" title=""><span class="bandage ctx_icon" /><em>Coming soon…</em></li>
               </ul>`
             : html``}

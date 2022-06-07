@@ -1227,14 +1227,19 @@ function handle_recursive_functions!(symstate::SymbolsState)
     return nothing
 end
 
-"Get the global references, assignment, function calls and function defintions inside an arbitrary expression."
-function compute_symbolreferences(ex::Expr)::SymbolsState
+"""
+    compute_symbolreferences(ex::Any)::SymbolsState
+
+Return the global references, assignment, function calls and function definitions inside an arbitrary expression.
+Inside Pluto, `ex` is always an `Expr`. However, we still accept `Any` to allow people outside Pluto to use this to do syntax analysis.
+"""
+function compute_symbolreferences(ex::Any)::SymbolsState
     symstate = explore!(ex, ScopeState())
     handle_recursive_functions!(symstate)
     return symstate
 end
 
-function try_compute_symbolreferences(ex::Expr)::SymbolsState
+function try_compute_symbolreferences(ex::Any)::SymbolsState
     try
         compute_symbolreferences(ex)
     catch e
