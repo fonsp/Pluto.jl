@@ -1116,8 +1116,13 @@ hide_argument_name(x::Any) = x
 # UTILITY FUNCTIONS
 ###
 
-"Get the global references, assignment, function calls and function defintions inside an arbitrary expression."
-function compute_symbolreferences(ex::Expr)::SymbolsState
+"""
+    compute_symbolreferences(ex::Any)::SymbolsState
+
+Return the global references, assignment, function calls and function definitions inside an arbitrary expression.
+Inside Pluto, `ex` is always an `Expr`. However, we still accept `Any` to allow people outside Pluto to use this to do syntax analysis.
+"""
+function compute_symbolreferences(ex::Any)::SymbolsState
     symstate = explore!(ex, ScopeState())
 
     # We do something special to account for recursive functions:
@@ -1132,7 +1137,7 @@ function compute_symbolreferences(ex::Expr)::SymbolsState
     symstate
 end
 
-function try_compute_symbolreferences(ex::Expr)::SymbolsState
+function try_compute_symbolreferences(ex::Any)::SymbolsState
     try
         compute_symbolreferences(ex)
     catch e
