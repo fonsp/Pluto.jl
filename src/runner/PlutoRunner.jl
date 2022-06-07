@@ -1439,7 +1439,6 @@ const integrations = Integration[
                 AbstractPlutoDingetjes.Bonds.initial_value,
                 AbstractPlutoDingetjes.Bonds.transform_value,
                 AbstractPlutoDingetjes.Bonds.possible_values,
-                AbstractPlutoDingetjes.Display,
             )
             initial_value_getter_ref[] = AbstractPlutoDingetjes.Bonds.initial_value
             transform_value_ref[] = AbstractPlutoDingetjes.Bonds.transform_value
