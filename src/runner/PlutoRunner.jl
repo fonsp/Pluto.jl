@@ -1907,6 +1907,7 @@ end"""
 """
 const currently_running_cell_id = Ref{UUID}(uuid4())
 
+# TODO: remove me
 function _publish(x, id_start)::String
     assertpackable(x)
     
@@ -1916,10 +1917,9 @@ function _publish(x, id_start)::String
     return id
 end
 
+# TODO: remove me
 _publish(x) = _publish(x, objectid2str(x))
 
-# TODO? Possibly move this to it's own package, with fallback that actually msgpack?
-# ..... Ideally we'd make this require `await` on the javascript side too...
 Base.@kwdef struct PublishedToJavascript
     published_id
     cell_id
@@ -1933,35 +1933,10 @@ end
 Base.show(io::IO, ::MIME"text/plain", published::PublishedToJavascript) = show(io, MIME("text/javascript"), published)    
 Base.show(io::IO, published::PublishedToJavascript) = show(io, MIME("text/javascript"), published)    
 
-"""
-    publish_to_js(x)
-
-Make the object `x` available to the JS runtime of this cell. The returned string is a JS command that, when executed in this cell's output, gives the object.
-
-!!! warning
-
-    This function is not yet public API, it will become public in the next weeks. Only use for experiments.
-
-# Example
-```julia
-let
-    x = Dict(
-        "data" => rand(Float64, 20),
-        "name" => "juliette",
-    )
-
-    HTML("\""
-    <script>
-    // we interpolate into JavaScript:
-    const x = \$(PlutoRunner.publish_to_js(x))
-
-    console.log(x.name, x.data)
-    </script>
-    "\"")
-end
-```
-"""
+# TODO: remove me
 function publish_to_js(args...)
+    @warn "Deprecated, use `AbstractPlutoDingetjes.Display.published_to_js(x)` instead of `PlutoRunner.publish_to_js(x)`."
+    
     PublishedToJavascript(
         published_id=_publish(args...),
         cell_id=currently_running_cell_id[],
