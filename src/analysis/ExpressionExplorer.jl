@@ -403,15 +403,9 @@ function umapfoldl(@nospecialize(f::Function), itr::Vector; init=SymbolsState())
     if isempty(itr)
         return init
     else
-        applied = []
-        # map
-        for e in itr
-            push!(applied, f(e))
-        end
-        # reduce
         out = init
-        for e in applied
-            union!(out, e)
+        for e in itr
+            union!(out, f(e))
         end
         return out
     end
