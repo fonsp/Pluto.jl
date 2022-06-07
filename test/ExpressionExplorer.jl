@@ -23,6 +23,7 @@ Some of these @test_broken lines are commented out to prevent printing to the te
     @testset "Basics" begin
         # Note that Meta.parse(x) is not always an Expr.
         @test testee(:(a), [:a], [], [], [])
+        @test testee(Expr(:toplevel, :a), [:a], [], [], [])
         @test testee(:(1 + 1), [], [], [:+], [])
         @test testee(:(sqrt(1)), [], [], [:sqrt], [])
         @test testee(:(x = 3), [], [:x], [], [])
