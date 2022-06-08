@@ -54,7 +54,7 @@ end
 Run given cells and all the cells that depend on them, based on the topology information before and after the changes.
 
 !!! warning
-    You should probably should not call this directly and use `run_reactive!` instead.
+    You should probably not call this directly and use `run_reactive!` instead.
 """
 function run_reactive_core!(
     session::ServerSession,
