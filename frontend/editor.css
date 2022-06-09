@@ -2143,6 +2143,20 @@ pluto-helpbox > section hr {
     color: var(--black);
 }
 
+.pluto-docs-binding h1 {
+    font-size: 1.4em;
+}
+
+.pluto-docs-binding h2 {
+    font-size: 1.3em;
+}
+.pluto-docs-binding h3,
+.pluto-docs-binding h4,
+.pluto-docs-binding h5,
+.pluto-docs-binding h6 {
+    font-size: 1.1em;
+}
+
 /* FOOTER */
 
 footer {
