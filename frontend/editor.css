@@ -2131,14 +2131,13 @@ pluto-helpbox > section hr {
 
 .pluto-docs-binding > span {
     display: inline-block;
-    transform: translate(-19px, -16px);
+    transform: translate(-1.2em, -73%);
     font-family: var(--julia-mono-font-stack);
     font-size: 0.9rem;
     font-weight: 700;
     margin-top: -1em;
-    padding: 4px;
-    border-radius: 7px;
-
+    padding: 0.235rem;
+    border-radius: 0.4rem;
     background: var(--pluto-output-bg-color);
     color: var(--black);
 }
