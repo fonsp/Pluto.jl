@@ -159,6 +159,24 @@ import Distributed
         end
     end
 
+    @testset "Simple delete cell" begin
+        notebook = Notebook(Cell.([
+            "x = 42",
+            "x",
+        ]))
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test all(noerror, notebook.cells)
+        cell_to_delete = notebook.cells[begin]
+
+        delete!(notebook.cells_dict, cell_to_delete.cell_id)
+        filter!(!=(cell_to_delete.cell_id), notebook.cell_order)
+        @test length(notebook.cells) == 1
+
+        update_run!(🍭, notebook, Cell[])
+        @test occursinerror("UndefVarError: x", notebook.cells[begin])
+    end
+
     @testset ".. as an identifier" begin
         notebook = Notebook(Cell.([
            ".. = 1",
