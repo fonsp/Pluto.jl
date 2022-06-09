@@ -1,10 +1,13 @@
 import UUIDs: UUID, uuid1
 import .ExpressionExplorer: SymbolsState, UsingsImports
 
+const METADATA_DISABLED_KEY = "disabled"
+const METADATA_SHOW_LOGS_KEY = "show_logs"
+
 # Make sure to keep this in sync with DEFAULT_CELL_METADATA in ../frontend/components/Editor.js
 const DEFAULT_CELL_METADATA = Dict{String, Any}(
-    "disabled" => false,
-    "show_logs" => true,
+    METADATA_DISABLED_KEY => false,
+    METADATA_SHOW_LOGS_KEY => true,
 )
 
 Base.@kwdef struct CellOutput
@@ -74,5 +77,5 @@ end
 
 
 "Returns whether or not the cell is **explicitely** disabled."
-is_disabled(c::Cell) = get(c.metadata, "disabled", false)
-can_show_logs(c::Cell) = get(c.metadata, "show_logs", true)
+is_disabled(c::Cell) = get(c.metadata, METADATA_DISABLED_KEY, DEFAULT_CELL_METADATA[METADATA_DISABLED_KEY])
+can_show_logs(c::Cell) = get(c.metadata, METADATA_SHOW_LOGS_KEY, DEFAULT_CELL_METADATA[METADATA_SHOW_LOGS_KEY])
