@@ -43,7 +43,11 @@ function updated_topology(old_topology::NotebookTopology, notebook::Notebook, ce
 		new_nodes = merge(setdiffkeys(old_topology.nodes, removed_cells), updated_nodes)
 	end
 
-	cell_order = old_cells == notebook.cells ? old_cells : ImmutableVector(notebook.cells)
+	cell_order = if old_cells == notebook.cells
+		old_topology.cell_order
+	else
+		ImmutableVector(notebook.cells)
+	end
 
 	NotebookTopology(;
 		nodes=new_nodes,
