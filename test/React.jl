@@ -159,6 +159,30 @@ import Distributed
         end
     end
 
+    @testset "Simple insert cell" begin
+        notebook = Notebook(Cell[])
+        update_run!(🍭, notebook, notebook.cells)
+
+        insert_cell!(notebook, Cell("a = 1"))
+        update_run!(🍭, notebook, notebook.cells[begin])
+
+        insert_cell!(notebook, Cell("b = 2"))
+        update_run!(🍭, notebook, notebook.cells[begin+1])
+
+        insert_cell!(notebook, Cell("c = 3"))
+        update_run!(🍭, notebook, notebook.cells[begin+2])
+
+        insert_cell!(notebook, Cell("a + b + c"))
+        update_run!(🍭, notebook, notebook.cells[begin+3])
+
+        @test notebook.cells[begin+3].output.body == "6"
+
+        setcode!(notebook.cells[begin+1], "b = 10")
+        update_run!(🍭, notebook, notebook.cells[begin+1])
+
+        @test notebook.cells[begin+3].output.body == "14"
+    end
+
     @testset "Simple delete cell" begin
         notebook = Notebook(Cell.([
             "x = 42",
@@ -167,10 +191,8 @@ import Distributed
         update_run!(🍭, notebook, notebook.cells)
 
         @test all(noerror, notebook.cells)
-        cell_to_delete = notebook.cells[begin]
 
-        delete!(notebook.cells_dict, cell_to_delete.cell_id)
-        filter!(!=(cell_to_delete.cell_id), notebook.cell_order)
+        delete_cell!(notebook, notebook.cells[begin])
         @test length(notebook.cells) == 1
 
         update_run!(🍭, notebook, Cell[])
