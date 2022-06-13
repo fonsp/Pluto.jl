@@ -92,12 +92,18 @@ Some of these @test_broken lines are commented out to prevent printing to the te
     @testset "Types" begin
         @test testee(:(x::Foo = 3), [:Foo], [:x], [], [])
         @test testee(:(x::Foo), [:x, :Foo], [], [], [])
-        @test testee(:(a::Foo, b::String = 1, "2"), [:Foo, :String], [:a, :b], [], [])
+        @test testee(quote
+            a::Foo, b::String = 1, "2"
+        end, [:Foo, :String], [:a, :b], [], [])
         @test testee(:(Foo[]), [:Foo], [], [], [])
         @test testee(:(x isa Foo), [:x, :Foo], [], [:isa], [])
 
-        @test testee(:((x[])::Int = 1), [:Int, :x], [], [], [])
-        @test testee(:((x[])::Int, y = 1, 2), [:Int, :x], [:y], [], [])
+        @test testee(quote
+            (x[])::Int = 1
+        end, [:Int, :x], [], [], [])
+        @test testee(quote
+            (x[])::Int, y = 1, 2
+        end, [:Int, :x], [:y], [], [])
 
         @test testee(:(A{B} = B), [], [:A], [], [])
         @test testee(:(A{T} = Union{T,Int}), [:Int, :Union], [:A], [], [])
@@ -142,22 +148,63 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(_ = a + 1), [:a], [], [:+], [])
         @test testee(:(a = _ + 1), [], [:a], [:+], [])
     end
-    @testset "Tuples" begin
-        @test testee(:((a, b,)), [:a,:b], [], [], [])
-        @test testee(:((a = b, c = 2, d = 123,)), [:b], [], [], [])
-        @test testee(:((a = b,)), [:b], [], [], [])
-        @test testee(:(a, b = 1, 2), [], [:a, :b], [], [])
-        @test testee(:(a, _, c, __ = 1, 2, 3, _d), [:_d], [:a, :c], [], [])
+    @testset "Multiple assignments" begin
+        #   Note that using the shorthand syntax :(a = 1, b = 2) to create an expression
+        # will automatically return a :tuple Expr and not a multiple assignment
+        # we use quotes instead of this syntax to be sure of what is tested.
+        ex = quote
+            a, b = 1, 2
+        end
+        @test Meta.isexpr(ex.args[2], :(=))
+
+        @test testee(quote
+            a, b = 1, 2
+        end, [], [:a, :b], [], [])
+        @test testee(quote
+            a, _, c, __ = 1, 2, 3, _d
+        end, [:_d], [:a, :c], [], [])
+        @test testee(quote
+            (a, b) = 1, 2
+        end, [], [:a, :b], [], [])
+        @test testee(quote
+            a = (b, c)
+        end, [:b, :c], [:a], [], [])
+        @test testee(quote
+            a, (b, c) = [e,[f,g]]
+        end, [:e, :f, :g], [:a, :b, :c], [], [])
+        @test testee(quote
+            a, (b, c) = [e,[f,g]]
+        end, [:e, :f, :g], [:a, :b, :c], [], [])
+        @test testee(quote
+            (x, y), a, (b, c) = z, e, (f, g)
+        end, [:z, :e, :f, :g], [:x, :y, :a, :b, :c], [], [])
+        @test testee(quote
+            (x[i], y.r), a, (b, c) = z, e, (f, g)
+        end, [:x, :i, :y, :z, :e, :f, :g], [:a, :b, :c], [], [])
+        @test testee(quote
+            (a[i], b.r) = (c.d, 2)
+        end, [:a, :b, :i, :c], [], [], [])
+        @test testee(quote (; a, b) = x end, [:x], [:a, :b], [], [])
+        @test testee(quote a = (b, c) end, [:b, :c], [:a], [], [])
+
         @test testee(:(const a, b = 1, 2), [], [:a, :b], [], [])
-        @test testee(:((a, b) = 1, 2), [], [:a, :b], [], [])
-        @test testee(:(a = b, c), [:b, :c], [:a], [], [])
-        @test testee(:(a, b = c), [:c], [:a, :b], [], [])
-        @test testee(:(a = (b, c)), [:b, :c], [:a], [], [])
-        @test testee(:(a, (b, c) = [e,[f,g]]), [:e, :f, :g], [:a, :b, :c], [], [])
-        @test testee(:((x, y), a, (b, c) = z, e, (f, g)), [:z, :e, :f, :g], [:x, :y, :a, :b, :c], [], [])
-        @test testee(:((x[i], y.r), a, (b, c) = z, e, (f, g)), [:x, :i, :y, :z, :e, :f, :g], [:a, :b, :c], [], [])
-        @test testee(:((a[i], b.r) = (c.d, 2)), [:a, :b, :i, :c], [], [], [])
-        @test testee(:((; a, b) = x), [:x], [:a, :b], [], [])
+    end
+    @testset "Tuples" begin
+        ex = :(1, 2, a, b, c)
+        @test Meta.isexpr(ex, :tuple)
+
+        @test testee(:((a, b,)), [:a,:b], [], [], [])
+        @test testee(:((a, b, c, 1, 2, 3, :d, f()..., let y = 3 end)), [:a, :b, :c], [], [:f], [])
+
+        @test testee(:((a = b, c = 2, d = 123,)), [:b], [], [], [])
+        @test testee(:((a = b, c, d, f()..., let x = (;a = e) end...)), [:b, :c, :d, :e], [], [:f], [])
+        @test testee(:((a = b,)), [:b], [], [], [])
+        @test testee(:(a = b, c), [:b, :c], [], [], [])
+        @test testee(:(a, b = c), [:a, :c], [], [], [])
+
+        # Invalid named tuples but still parses just fine
+        @test testee(:((a, b = 1, 2)), [:a], [], [], [])
+        @test testee(:((a, b) = 1, 2), [], [], [], [])
     end
     @testset "Broadcasting" begin
         @test testee(:(a .= b), [:b, :a], [], [], []) # modifies elements, doesn't set `a`
