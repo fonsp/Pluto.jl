@@ -1,6 +1,6 @@
 using Test
 
-#= 
+#=
 `@test_broken` means that the test doesn't pass right now, but we want it to pass. Feel free to try to fix it and open a PR!
 Some of these @test_broken lines are commented out to prevent printing to the terminal, but we still want them fixed.
 
@@ -17,11 +17,44 @@ Some of these @test_broken lines are commented out to prevent printing to the te
 -fons =#
 
 @testset "Explore Expressions" begin
-    @inferred Pluto.ExpressionExplorer.split_funcname(:(Base.Submodule.f))
-    @inferred Pluto.ExpressionExplorer.maybe_macroexpand(:(@time 1))
+    let
+        EE = Pluto.ExpressionExplorer
+        scopestate = EE.ScopeState()
+
+        @inferred EE.explore_assignment!(:(f(x) = x), scopestate)
+        @inferred EE.explore_modifiers!(:(1 + 1), scopestate)
+        @inferred EE.explore_dotprefixed_modifiers!(:([1] .+ [1]), scopestate)
+        @inferred EE.explore_inner_scoped(:(let x = 1 end), scopestate)
+        @inferred EE.explore_filter!(:(filter(true, a)), scopestate)
+        @inferred EE.explore_generator!(:((x for x in a)), scopestate)
+        @inferred EE.explore_macrocall!(:(@time 1), scopestate)
+        @inferred EE.explore_call!(:(f(x)), scopestate)
+        @inferred EE.explore_struct!(:(struct A end), scopestate)
+        @inferred EE.explore_abstract!(:(abstract type A end), scopestate)
+        @inferred EE.explore_function_macro!(:(function f(x); x; end), scopestate)
+        @inferred EE.explore_try!(:(try nothing catch end), scopestate)
+        @inferred EE.explore_anonymous_function!(:(x -> x), scopestate)
+        @inferred EE.explore_global!(:(global x = 1), scopestate)
+        @inferred EE.explore_local!(:(local x = 1), scopestate)
+        @inferred EE.explore_tuple!(:((a, b)), scopestate)
+        @inferred EE.explore_broadcast!(:(func.(a)), scopestate)
+        @inferred EE.explore_load!(:(using Foo), scopestate)
+        let
+            @inferred EE.explore_interpolations!(:(quote 1 end), scopestate)
+            @inferred EE.explore_quote!(:(quote 1 end), scopestate)
+        end
+        @inferred EE.explore_module!(:(module A end), scopestate)
+        @inferred EE.explore_fallback!(:(1 + 1), scopestate)
+        @inferred EE.explore!(:(1 + 1), scopestate)
+
+        @inferred EE.split_funcname(:(Base.Submodule.f))
+        @inferred EE.maybe_macroexpand(:(@time 1))
+    end
 
     @testset "Basics" begin
+        # Note that Meta.parse(x) is not always an Expr.
         @test testee(:(a), [:a], [], [], [])
+        @test testee(Expr(:toplevel, :a), [:a], [], [], [])
         @test testee(:(1 + 1), [], [], [:+], [])
         @test testee(:(sqrt(1)), [], [], [:sqrt], [])
         @test testee(:(x = 3), [], [:x], [], [])

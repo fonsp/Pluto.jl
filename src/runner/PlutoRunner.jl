@@ -918,9 +918,20 @@ end
 Base.IOContext(io::IOContext, ::Nothing) = io
 
 "The `IOContext` used for converting arbitrary objects to pretty strings."
-const default_iocontext = IOContext(devnull, :color => false, :limit => true, :displaysize => (18, 88), :is_pluto => true, :pluto_supported_integration_features => supported_integration_features)
+const default_iocontext = IOContext(devnull, 
+    :color => false, 
+    :limit => true, 
+    :displaysize => (18, 88), 
+    :is_pluto => true, 
+    :pluto_supported_integration_features => supported_integration_features,
+)
 
-const default_stdout_iocontext = IOContext(devnull, :color => true, :limit => true, :displaysize => (18, 75), :is_pluto => false)
+const default_stdout_iocontext = IOContext(devnull, 
+    :color => true, 
+    :limit => true, 
+    :displaysize => (18, 75), 
+    :is_pluto => false,
+)
 
 const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
 # in descending order of coolness
@@ -1061,6 +1072,16 @@ function use_tree_viewer_for_struct(@nospecialize(x::T))::Bool where T
     end
 end
 
+"Return the first mimetype in `allmimes` which can show `x`."
+function mimetype(x)
+    # ugly code to fix an ugly performance problem
+    for m in allmimes
+        if pluto_showable(m, x)
+            return m
+        end
+    end
+end
+
 """
 Like two-argument `Base.show`, except:
 1. the richest MIME type available to Pluto will be used
@@ -1068,14 +1089,7 @@ Like two-argument `Base.show`, except:
 3. if the first returned element is `nothing`, then we wrote our data to `io`. If it is something else (a Dict), then that object will be the cell's output, instead of the buffered io stream. This allows us to output rich objects to the frontend that are not necessarily strings or byte streams
 """
 function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
-    # ugly code to fix an ugly performance problem
-    local mime = nothing
-    for m in allmimes
-        if pluto_showable(m, x)
-            mime = m
-            break
-        end
-    end
+    mime = mimetype(x)
 
     if mime isa MIME"text/plain" && use_tree_viewer_for_struct(x)
         tree_data(x, io), MIME"application/vnd.pluto.tree+object"()
