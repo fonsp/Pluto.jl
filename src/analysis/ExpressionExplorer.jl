@@ -708,6 +708,21 @@ function explore_tuple!(ex::Expr, scopestate::ScopeState)::SymbolsState
     # 2. Creating a named tuple (contains at least one Expr(:(=))):
     #   (a=1, b=2, c=3, d, f()...)
 
+    # !!! Note that :(a, b = 1, 2) is the definition of a named tuple
+    # with fields :a, :b and :2 and not a multiple assignments to a and b which
+    # would always be a :(=) with tuples for the lhs and/or rhs.
+    # Using Meta.parse() (like Pluto does) or using a quote block
+    # returns the assignment version.
+    #
+    # julia> eval(:(a, b = 1, 2)) # Named tuple
+    # ERROR: syntax: invalid named tuple element "2"
+    #
+    # julia> eval(Meta.parse("a, b = 1, 2")) # Assignment to a and b
+    # (1, 2)
+    #
+    # julia> Meta.parse("a, b = 1, 2").head, :(a, b = 1, 2).head
+    # (:(=), :tuple)
+
     return umapfoldl(a -> explore!(to_kw(a), scopestate), ex.args)
 end
 
