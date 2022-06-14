@@ -149,9 +149,10 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(a = _ + 1), [], [:a], [:+], [])
     end
     @testset "Multiple assignments" begin
-        #   Note that using the shorthand syntax :(a = 1, b = 2) to create an expression
+        # Note that using the shorthand syntax :(a = 1, b = 2) to create an expression
         # will automatically return a :tuple Expr and not a multiple assignment
-        # we use quotes instead of this syntax to be sure of what is tested.
+        # we use quotes instead of this syntax to be sure of what is tested since quotes
+        # would behave the same way as Meta.parse() which Pluto uses to evaluate cell code.
         ex = quote
             a, b = 1, 2
         end
