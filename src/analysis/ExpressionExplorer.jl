@@ -702,55 +702,28 @@ end
 function explore_tuple!(ex::Expr, scopestate::ScopeState)::SymbolsState
     # Does not create scope
 
-    # There are three (legal) cases:
+    # There are two (legal) cases:
     # 1. Creating a tuple:
-    #   (a, b, c)
+    #   (a, b, c, 1, f()...)
+    # 2. Creating a named tuple (contains at least one Expr(:(=))):
+    #   (a=1, b=2, c=3, d, f()...)
 
-    # 2. Creating a named tuple:
-    #   (a=1, b=2, c=3)
+    # !!! Note that :(a, b = 1, 2) is the definition of a named tuple
+    # with fields :a, :b and :2 and not a multiple assignments to a and b which
+    # would always be a :(=) with tuples for the lhs and/or rhs.
+    # Using Meta.parse() (like Pluto does) or using a quote block
+    # returns the assignment version.
+    #
+    # julia> eval(:(a, b = 1, 2)) # Named tuple
+    # ERROR: syntax: invalid named tuple element "2"
+    #
+    # julia> eval(Meta.parse("a, b = 1, 2")) # Assignment to a and b
+    # (1, 2)
+    #
+    # julia> Meta.parse("a, b = 1, 2").head, :(a, b = 1, 2).head
+    # (:(=), :tuple)
 
-    # 3. Multiple assignments
-    # a,b,c = 1,2,3
-    # This parses to:
-    # head = :tuple
-    # args = [:a, :b, :(c=1), :2, :3]
-    # 
-    # 🤔
-    # we turn it into two expressions:
-    # 
-    # (a, b) = (2, 3)
-    # (c = 1)
-    # 
-    # and explore those :)
-
-    indexoffirstassignment = findfirst(a -> isa(a, Expr) && a.head == :(=), ex.args)
-    if indexoffirstassignment !== nothing
-        # we have one of two cases, see next `if`
-        indexofsecondassignment = findnext(a -> isa(a, Expr) && a.head == :(=), ex.args, indexoffirstassignment + 1)
-
-        if length(ex.args) == 1 || indexofsecondassignment !== nothing
-            # 2.
-            # we have a named tuple, e.g. (a=1, b=2)
-            new_args = map(ex.args) do a
-                (a isa Expr && a.head == :(=)) ? a.args[2] : a
-            end
-            return explore!(Expr(:block, new_args...), scopestate)
-        else
-            # 3. 
-            # we have a tuple assignment, e.g. `a, (b, c) = [1, [2, 3]]`
-            before = ex.args[1:indexoffirstassignment-1]
-            after = ex.args[indexoffirstassignment+1:end]
-
-            symstate_middle = explore!(ex.args[indexoffirstassignment], scopestate)
-            symstate_outer = explore!(Expr(:(=), Expr(:tuple, before...), Expr(:block, after...)), scopestate)
-
-            return union!(symstate_middle, symstate_outer)
-        end
-    else
-        # 1.
-        # good ol' tuple
-        return explore!(Expr(:block, ex.args...), scopestate)
-    end
+    return umapfoldl(a -> explore!(to_kw(a), scopestate), ex.args)
 end
 
 function explore_broadcast!(ex::Expr, scopestate::ScopeState)
