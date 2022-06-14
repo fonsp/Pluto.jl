@@ -887,8 +887,9 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
                   <li
                       onClick=${toggle_skip_as_script}
                       title=${skip_as_script
-                          ? "Skip this cell when running the notebook as script, making it exclusive to the notebook"
-                          : "Run this cell also when calling the notebook as a script"}
+                          ? "Run this cell also when calling the notebook as a script"
+                          : "Skip this cell when running the notebook as script, making it exclusive to the notebook"}
+                       
                   >
                       ${skip_as_script ? html`<span class="skip_as_script ctx_icon" />` : html`<span class="run_as_script ctx_icon" />`}
                       ${skip_as_script ? html`<b>Run as script</b>` : html`Skip as script`}
