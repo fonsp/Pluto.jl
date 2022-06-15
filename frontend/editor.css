@@ -1545,13 +1545,14 @@ pluto-cell > button.add_cell > span::after {
     filter: var(--image-filters);
 }
 pluto-input > button.input_context_menu ul {
-    --width: 156px;
+    /* --width: 164px; */
     left: 100%;
     top: -8px;
     margin: 0;
     padding: 0px;
     border-radius: 6px;
-    display: block;
+    display: grid;
+    grid-template-columns: max-content;
     position: absolute;
     border: 1px solid var(--input-context-menu-border-color);
     background-color: var(--input-context-menu-bg-color);
@@ -1578,7 +1579,6 @@ pluto-input > button.input_context_menu ul {
     position: relative;
     list-style: none;
     padding: 8px;
-    width: var(--width);
     height: 32px;
     display: flex;
     align-items: center;
