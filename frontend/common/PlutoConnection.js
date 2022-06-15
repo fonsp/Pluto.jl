@@ -243,7 +243,7 @@ const default_ws_address = () => ws_address_from_base(window.location.href)
 /**
  * @typedef PlutoConnection
  * @type {{
- *  session_options: Object,
+ *  session_options: Record<string,any>,
  *  send: import("./PlutoConnectionSendFn").SendFn,
  *  kill: () => void,
  *  version_info: {

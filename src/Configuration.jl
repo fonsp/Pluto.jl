@@ -33,6 +33,7 @@ const PORT_DEFAULT = nothing
 const LAUNCH_BROWSER_DEFAULT = true
 const DISMISS_UPDATE_NOTIFICATION_DEFAULT = false
 const SHOW_FILE_SYSTEM_DEFAULT = true
+const ENABLE_PACKAGE_AUTHOR_FEATURES_DEFAULT = true
 const DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT = false
 const AUTO_RELOAD_FROM_FILE_DEFAULT = false
 const AUTO_RELOAD_FROM_FILE_COOLDOWN_DEFAULT = 0.4
@@ -49,13 +50,12 @@ const ON_EVENT_DEFAULT = function(a) #= @info "$(typeof(a))" =# end
 
 The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 
-# Arguments
+# Keyword arguments
 
-- `root_url::Union{Nothing,String} = $ROOT_URL_DEFAULT`
-- `host::String = "$HOST_DEFAULT"`
-- `port::Union{Nothing,Integer} = $PORT_DEFAULT`
+- `host::String = "$HOST_DEFAULT"` Set to `"127.0.0.1"` (default) to run on *localhost*, which makes the server available to your computer and the local network (LAN). Set to `"0.0.0.0"` to make the server available to the entire network (internet).
+- `port::Union{Nothing,Integer} = $PORT_DEFAULT` When specified, this port will be used for the server.
 - `launch_browser::Bool = $LAUNCH_BROWSER_DEFAULT`
-- `dismiss_update_notification::Bool = $DISMISS_UPDATE_NOTIFICATION_DEFAULT`
+- `dismiss_update_notification::Bool = $DISMISS_UPDATE_NOTIFICATION_DEFAULT` If `false`, the Pluto frontend will check the Pluto.jl github releases for any new recommended updates, and show a notification if there are any. If `true`, this is disabled.
 - `show_file_system::Bool = $SHOW_FILE_SYSTEM_DEFAULT`
 - `notebook_path_suggestion::String = notebook_path_suggestion()`
 - `disable_writing_notebook_files::Bool = $DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT`
@@ -68,6 +68,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 - `simulated_pkg_lag::Real=$SIMULATED_PKG_LAG_DEFAULT` (internal) Extra lag to add to operations done by Pluto's package manager. Will be multiplied by `0.5 + rand()`.
 - `injected_javascript_data_url::String = "$INJECTED_JAVASCRIPT_DATA_URL_DEFAULT"` (internal) Optional javascript injectables to the front-end. Can be used to customize the editor, but this API is not meant for general use yet.
 - `on_event::Function = $ON_EVENT_DEFAULT`
+- `root_url::Union{Nothing,String} = $ROOT_URL_DEFAULT` This setting is used to specify the root URL of the Pluto server, but this setting is *only* used to customize the launch message (*"Go to http://localhost:1234/ in your browser"*). You can probably ignore this.
 """
 @option mutable struct ServerOptions
     root_url::Union{Nothing,String} = ROOT_URL_DEFAULT
@@ -90,7 +91,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 end
 
 const REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT = true
-const REQUIRE_SECRET_FOR_ACESS_DEFAULT = true
+const REQUIRE_SECRET_FOR_ACCESS_DEFAULT = true
 
 """
     SecurityOptions([; kwargs...])
@@ -105,7 +106,7 @@ Security settings for the HTTP server.
 
     Use `true` for almost every setup. Only use `false` if Pluto is running in a safe container (like mybinder.org), where arbitrary code execution is not a problem.
 
-- `require_secret_for_access::Bool = $REQUIRE_SECRET_FOR_ACESS_DEFAULT`
+- `require_secret_for_access::Bool = $REQUIRE_SECRET_FOR_ACCESS_DEFAULT`
 
     If false, you do not need to use a `secret` in the URL to access Pluto: you will be authenticated by visiting `http://localhost:1234/` in your browser. An authentication cookie is still used for access (to prevent XSS and deceptive links or an img src to `http://localhost:1234/open?url=badpeople.org/script.jl`), and is set automatically, but this request to `/` is protected by cross-origin policy.
 
@@ -117,7 +118,7 @@ Note that Pluto is quickly evolving software, maintained by designers, educators
 """
 @option mutable struct SecurityOptions
     require_secret_for_open_links::Bool = REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT
-    require_secret_for_access::Bool = REQUIRE_SECRET_FOR_ACESS_DEFAULT
+    require_secret_for_access::Bool = REQUIRE_SECRET_FOR_ACCESS_DEFAULT
 end
 
 const RUN_NOTEBOOK_ON_LOAD_DEFAULT = true
@@ -231,7 +232,7 @@ function from_flat_kwargs(;
         injected_javascript_data_url::String = INJECTED_JAVASCRIPT_DATA_URL_DEFAULT,
         on_event::Function = ON_EVENT_DEFAULT,
         require_secret_for_open_links::Bool = REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT,
-        require_secret_for_access::Bool = REQUIRE_SECRET_FOR_ACESS_DEFAULT,
+        require_secret_for_access::Bool = REQUIRE_SECRET_FOR_ACCESS_DEFAULT,
         run_notebook_on_load::Bool = RUN_NOTEBOOK_ON_LOAD_DEFAULT,
         workspace_use_distributed::Bool = WORKSPACE_USE_DISTRIBUTED_DEFAULT,
         lazy_workspace_creation::Bool = LAZY_WORKSPACE_CREATION_DEFAULT,
