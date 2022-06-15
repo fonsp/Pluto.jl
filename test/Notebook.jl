@@ -282,7 +282,7 @@ end
         @test !isdefined(m, :skipped_var)
         @test m.non_skipped_var == 15
         
-        nb.cells.metadata["skip_as_script"] = false
+        nb.cells[1].metadata["skip_as_script"] = false
         save_notebook(nb)
 
         m = ingredients(nb.path)
