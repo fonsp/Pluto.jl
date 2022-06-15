@@ -155,7 +155,6 @@ export const Cell = ({
         pluto_actions.set_and_run_multiple(pluto_actions.get_selected_cells(cell_id, selected))
         set_waiting_to_run_smart(true)
     }, [pluto_actions, cell_id, selected, set_waiting_to_run_smart])
-    const skip_as_script_info = `This cell is currently stored in the notebook as a Julia comment. This way, it will not run when the notebook runs as a script outside of Pluto.`
     return html`
         <pluto-cell
             ref=${node_ref}
@@ -246,12 +245,13 @@ export const Cell = ({
             ${skip_as_script
                 ? html`<div
                       class="skip_as_script_marker"
-                      title=${skip_as_script_info}
+                      title=${`This cell is currently stored in the notebook file as a Julia comment, instead of code. This way, it will not run when the notebook runs as a script outside of Pluto.`}
                       onClick=${(e) => {
                           open_pluto_popup({
                               type: "info",
                               source_element: e.target,
-                              body: skip_as_script_info,
+                              body: html`This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />
+                                  This way, it will not run when the notebook runs as a script outside of Pluto.`,
                           })
                       }}
                   ></div>`
