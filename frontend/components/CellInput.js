@@ -901,7 +901,6 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
                       ${skip_as_script ? html`<span class="skip_as_script ctx_icon" />` : html`<span class="run_as_script ctx_icon" />`}
                       ${skip_as_script ? html`<b>Run as script</b>` : html`Skip as script`}
                   </li>
-                  <li class="coming_soon" title=""><span class="bandage ctx_icon" /><em>Coming soon…</em></li>
               </ul>`
             : html``}
     </button>`
