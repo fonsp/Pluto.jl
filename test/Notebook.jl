@@ -282,6 +282,13 @@ end
         @test !isdefined(m, :skipped_var)
         @test m.non_skipped_var == 15
         
+        nb.cells.metadata["skip_as_script"] = false
+        save_notebook(nb)
+
+        m = ingredients(nb.path)
+        @test m.skipped_var == 10
+        @test m.non_skipped_var == 15        
+        
         WorkspaceManager.unmake_workspace((🍭, nb); verbose=false)
     end
     
