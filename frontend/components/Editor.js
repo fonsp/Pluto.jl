@@ -105,16 +105,19 @@ const first_true_key = (obj) => {
 }
 
 /**
+ * @typedef CellMetaData
+ * @type {{
+ *    disabled: boolean,
+ *    show_logs: boolean,
+ *    skip_as_script: boolean
+ *  }}
+ *
  * @typedef CellInputData
  * @type {{
  *  cell_id: string,
  *  code: string,
  *  code_folded: boolean,
- *  metadata: {
- *    disabled: boolean,
- *    show_logs: boolean,
- *    skip_as_script: boolean
- *  },
+ *  metadata: CellMetaData,
  * }}
  */
 
