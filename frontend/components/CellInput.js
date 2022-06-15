@@ -375,7 +375,7 @@ export const CellInput = ({
     global_definition_locations,
 }) => {
     let pluto_actions = useContext(PlutoActionsContext)
-    const { disabled: running_disabled } = metadata
+    const { disabled: running_disabled, skip_as_script } = metadata
 
     const newcm_ref = useRef(/** @type {EditorView?} */ (null))
     const dom_node_ref = useRef(/** @type {HTMLElement?} */ (null))
@@ -814,6 +814,7 @@ export const CellInput = ({
                 on_delete=${on_delete}
                 cell_id=${cell_id}
                 run_cell=${on_submit}
+                skip_as_script=${skip_as_script}
                 running_disabled=${running_disabled}
                 any_logs=${any_logs}
                 show_logs=${show_logs}
@@ -823,12 +824,20 @@ export const CellInput = ({
     `
 }
 
-const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled, any_logs, show_logs, set_show_logs }) => {
+const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, running_disabled, any_logs, show_logs, set_show_logs }) => {
     const timeout = useRef(null)
     let pluto_actions = useContext(PlutoActionsContext)
     const [open, setOpen] = useState(false)
     const mouseenter = () => {
         if (timeout.current) clearTimeout(timeout.current)
+    }
+    const toggle_skip_as_script = async (e) => {
+        const new_val = !skip_as_script
+        e.preventDefault()
+        // e.stopPropagation()
+        await pluto_actions.update_notebook((notebook) => {
+            notebook.cell_inputs[cell_id].metadata["skip_as_script"] = new_val
+        })
     }
     const toggle_running_disabled = async (e) => {
         const new_val = !running_disabled
@@ -889,7 +898,15 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled, any_
                             <span class="copy_output ctx_icon" />Copy output
                         </li>`
                       : null}
-                  <li class="coming_soon" title=""><span class="bandage ctx_icon" /><em>Coming soon…</em></li>
+                  <li
+                      onClick=${toggle_skip_as_script}
+                      title=${skip_as_script
+                          ? "This cell is currently stored in the notebook file as a Julia comment. Click here to disable."
+                          : "Store this code in the notebook file as a Julia comment. This way, it will not run when the notebook runs as a script outside of Pluto."}
+                  >
+                      ${skip_as_script ? html`<span class="skip_as_script ctx_icon" />` : html`<span class="run_as_script ctx_icon" />`}
+                      ${skip_as_script ? html`<b>Enable in file</b>` : html`Disable in file`}
+                  </li>
               </ul>`
             : html``}
     </button>`

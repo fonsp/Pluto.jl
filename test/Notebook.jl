@@ -46,6 +46,34 @@ function cell_metadata_notebook()
     ]) |> init_packages!
 end
 
+function ingredients(path::String)
+	# this is from the Julia source code (evalfile in base/loading.jl)
+	# but with the modification that it returns the module instead of the last object
+	name = Symbol(basename(path))
+	m = Module(name)
+	Core.eval(m,
+        Expr(:toplevel,
+             :(eval(x) = $(Expr(:core, :eval))($name, x)),
+             :(include(x) = $(Expr(:top, :include))($name, x)),
+             :(include(mapexpr::Function, x) = $(Expr(:top, :include))(mapexpr, $name, x)),
+             :(include($path))))
+	m
+end
+
+function skip_as_script_notebook()
+    Notebook([
+        Cell(
+            code="skipped_var = 10",
+            metadata=Dict(
+                "skip_as_script" => true,
+            ) |> create_cell_metadata,
+        ),
+        Cell(
+            code="non_skipped_var = 15",
+        ),
+    ]) |> init_packages!
+end
+
 function notebook_metadata_notebook()
     nb = Notebook([
         Cell(code="n * (n + 1) / 2"),
@@ -235,6 +263,31 @@ end
         save_notebook(nb)
         nb_loaded = load_notebook_nobackup(nb.path)
         @test nb.metadata == nb_loaded.metadata
+        
+        WorkspaceManager.unmake_workspace((🍭, nb); verbose=false)
+    end
+
+    @testset "Skip as script" begin
+        🍭 = ServerSession()
+        🍭.options.evaluation.workspace_use_distributed = false
+        fakeclient = ClientSession(:fake, nothing)
+        🍭.connected_clients[fakeclient.id] = fakeclient
+
+        nb = skip_as_script_notebook()
+        update_run!(🍭, nb, nb.cells)
+
+        save_notebook(nb)
+
+        m = ingredients(nb.path)
+        @test !isdefined(m, :skipped_var)
+        @test m.non_skipped_var == 15
+        
+        nb.cells[1].metadata["skip_as_script"] = false
+        save_notebook(nb)
+
+        m = ingredients(nb.path)
+        @test m.skipped_var == 10
+        @test m.non_skipped_var == 15        
         
         WorkspaceManager.unmake_workspace((🍭, nb); verbose=false)
     end

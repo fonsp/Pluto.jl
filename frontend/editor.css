@@ -1109,6 +1109,19 @@ pluto-cell.running_disabled > pluto-output {
     background-color: var(--disabled-cell-bg-color);
 }
 
+/* SKIP AS SCRIPT CELLS */
+pluto-cell.skip_as_script .skip_as_script_marker {
+    display: block;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    cursor: help;
+    right: -4.85px;
+    border-radius: 5px;
+    border-right: 5px solid var(--skip-as-script-border-color);
+}
+
 /* SELECTION */
 
 pluto-cell.selected {
@@ -1531,13 +1544,13 @@ pluto-cell > button.add_cell > span::after {
     filter: var(--image-filters);
 }
 pluto-input > button.input_context_menu ul {
-    --width: 156px;
     left: 100%;
     top: -8px;
     margin: 0;
     padding: 0px;
     border-radius: 6px;
-    display: block;
+    display: grid;
+    grid-template-columns: max-content;
     position: absolute;
     border: 1px solid var(--input-context-menu-border-color);
     background-color: var(--input-context-menu-bg-color);
@@ -1564,7 +1577,6 @@ pluto-input > button.input_context_menu ul {
     position: relative;
     list-style: none;
     padding: 8px;
-    width: var(--width);
     height: 32px;
     display: flex;
     align-items: center;
@@ -1631,6 +1643,12 @@ pluto-input > button.input_context_menu ul {
 }
 .ctx_icon.delete {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle-outline.svg");
+}
+.ctx_icon.run_as_script {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-lock-outline.svg");
+}
+.ctx_icon.skip_as_script {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-text-outline.svg");
 }
 
 .ctx_icon.copy_output {

@@ -41,9 +41,11 @@ export const default_path = "..."
 const DEBUG_DIFFING = false
 
 // Be sure to keep this in sync with DEFAULT_CELL_METADATA in Cell.jl
+/** @type {CellMetaData} */
 const DEFAULT_CELL_METADATA = {
     disabled: false,
     show_logs: true,
+    skip_as_script: false,
 }
 
 // from our friends at https://stackoverflow.com/a/2117523
@@ -104,15 +106,19 @@ const first_true_key = (obj) => {
 }
 
 /**
+ * @typedef CellMetaData
+ * @type {{
+ *    disabled: boolean,
+ *    show_logs: boolean,
+ *    skip_as_script: boolean
+ *  }}
+ *
  * @typedef CellInputData
  * @type {{
  *  cell_id: string,
  *  code: string,
  *  code_folded: boolean,
- *  metadata: {
- *    disabled: boolean,
- *    show_logs: boolean,
- *  },
+ *  metadata: CellMetaData,
  * }}
  */
 
