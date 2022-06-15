@@ -41,6 +41,7 @@ export const default_path = "..."
 const DEBUG_DIFFING = false
 
 // Be sure to keep this in sync with DEFAULT_CELL_METADATA in Cell.jl
+/** @type {CellMetaData} */
 const DEFAULT_CELL_METADATA = {
     disabled: false,
     show_logs: true,
