@@ -1544,7 +1544,6 @@ pluto-cell > button.add_cell > span::after {
     filter: var(--image-filters);
 }
 pluto-input > button.input_context_menu ul {
-    /* --width: 164px; */
     left: 100%;
     top: -8px;
     margin: 0;
@@ -1646,10 +1645,10 @@ pluto-input > button.input_context_menu ul {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle-outline.svg");
 }
 .ctx_icon.run_as_script {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-lock-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-lock-outline.svg");
 }
 .ctx_icon.skip_as_script {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-text-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-text-outline.svg");
 }
 
 .ctx_icon.copy_output {
