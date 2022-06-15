@@ -895,11 +895,11 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
                   <li
                       onClick=${toggle_skip_as_script}
                       title=${skip_as_script
-                          ? "Run this cell also when calling the notebook as a script"
-                          : "Skip this cell when running the notebook as script, making it exclusive to the notebook"}
+                          ? "This cell is currently stored in the notebook as a Julia comment. Click here to disable."
+                          : "Store this code in the notebook file as a Julia comment. This way, it will not run when the notebook runs as a script outside of Pluto."}
                   >
                       ${skip_as_script ? html`<span class="skip_as_script ctx_icon" />` : html`<span class="run_as_script ctx_icon" />`}
-                      ${skip_as_script ? html`<b>Run as script</b>` : html`Skip as script`}
+                      ${skip_as_script ? html`<b>Enable in file</b>` : html`Disable in file`}
                   </li>
               </ul>`
             : html``}
