@@ -1258,12 +1258,12 @@ pluto-shoulder > button {
     flex: 0 0 auto;
     position: sticky;
     top: 0;
-    padding: 5px;
+    padding: 4px 5px 4px 10px;
 }
 
 pluto-cell:focus-within > pluto-shoulder > button {
     /* we use padding instead of 4px extra margin to move the eye to the left so that the hitbox becomes grows - you want to be able to double click the button */
-    padding-right: 4px;
+    padding-right: 9px;
 }
 
 /* pluto-cell.code_folded.inline-output > pluto-shoulder > button {
@@ -1509,6 +1509,11 @@ pluto-shoulder > button > span::after {
 
 pluto-cell > button.add_cell {
     left: -12px;
+    --hit-box-extend: 20px;
+    margin-left: calc(-1 * var(--hit-box-extend));
+    margin-right: calc(-1 * var(--hit-box-extend));
+    padding-left: var(--hit-box-extend);
+    padding-right: var(--hit-box-extend);
 }
 
 pluto-cell > button.add_cell.before {
@@ -2126,16 +2131,29 @@ pluto-helpbox > section hr {
 
 .pluto-docs-binding > span {
     display: inline-block;
-    transform: translate(-19px, -16px);
+    transform: translate(-1.2em, -73%);
     font-family: var(--julia-mono-font-stack);
     font-size: 0.9rem;
     font-weight: 700;
     margin-top: -1em;
-    padding: 4px;
-    border-radius: 7px;
-
+    padding: 0.235rem;
+    border-radius: 0.4rem;
     background: var(--pluto-output-bg-color);
     color: var(--black);
+}
+
+.pluto-docs-binding h1 {
+    font-size: 1.4em;
+}
+
+.pluto-docs-binding h2 {
+    font-size: 1.3em;
+}
+.pluto-docs-binding h3,
+.pluto-docs-binding h4,
+.pluto-docs-binding h5,
+.pluto-docs-binding h6 {
+    font-size: 1.1em;
 }
 
 /* FOOTER */

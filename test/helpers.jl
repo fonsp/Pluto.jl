@@ -127,6 +127,16 @@ function easy_symstate(expected_references, expected_definitions, expected_funcc
     SymbolsState(Set(expected_references), Set(expected_definitions), new_expected_funccalls, new_expected_funcdefs, new_expected_macrocalls)
 end
 
+function insert_cell!(notebook, cell)
+    notebook.cells_dict[cell.cell_id] = cell
+    push!(notebook.cell_order, cell.cell_id)
+end
+
+function delete_cell!(notebook, cell)
+    deleteat!(notebook.cell_order, findfirst(==(cell.cell_id), notebook.cell_order))
+    delete!(notebook.cells_dict, cell.cell_id)
+end
+
 function setcode!(cell, newcode)
     cell.code = newcode
 end

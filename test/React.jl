@@ -159,6 +159,46 @@ import Distributed
         end
     end
 
+    @testset "Simple insert cell" begin
+        notebook = Notebook(Cell[])
+        update_run!(🍭, notebook, notebook.cells)
+
+        insert_cell!(notebook, Cell("a = 1"))
+        update_run!(🍭, notebook, notebook.cells[begin])
+
+        insert_cell!(notebook, Cell("b = 2"))
+        update_run!(🍭, notebook, notebook.cells[begin+1])
+
+        insert_cell!(notebook, Cell("c = 3"))
+        update_run!(🍭, notebook, notebook.cells[begin+2])
+
+        insert_cell!(notebook, Cell("a + b + c"))
+        update_run!(🍭, notebook, notebook.cells[begin+3])
+
+        @test notebook.cells[begin+3].output.body == "6"
+
+        setcode!(notebook.cells[begin+1], "b = 10")
+        update_run!(🍭, notebook, notebook.cells[begin+1])
+
+        @test notebook.cells[begin+3].output.body == "14"
+    end
+
+    @testset "Simple delete cell" begin
+        notebook = Notebook(Cell.([
+            "x = 42",
+            "x",
+        ]))
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test all(noerror, notebook.cells)
+
+        delete_cell!(notebook, notebook.cells[begin])
+        @test length(notebook.cells) == 1
+
+        update_run!(🍭, notebook, Cell[])
+        @test occursinerror("UndefVarError: x", notebook.cells[begin])
+    end
+
     @testset ".. as an identifier" begin
         notebook = Notebook(Cell.([
            ".. = 1",

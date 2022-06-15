@@ -68,7 +68,7 @@ function save_notebook(io::IO, notebook::Notebook)
             end
         end
         
-        cell_running_disabled = get(c.metadata, "disabled", false)::Bool
+        cell_running_disabled = is_disabled(c)::Bool
         if cell_running_disabled || c.depends_on_disabled_cells
             print(io, _disabled_prefix)
             print(io, replace(c.code, _cell_id_delimiter => "# "))
