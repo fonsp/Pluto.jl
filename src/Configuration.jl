@@ -30,6 +30,7 @@ end
 const ROOT_URL_DEFAULT = nothing
 const HOST_DEFAULT = "127.0.0.1"
 const PORT_DEFAULT = nothing
+const PORT_HINT_DEFAULT = 1234
 const LAUNCH_BROWSER_DEFAULT = true
 const DISMISS_UPDATE_NOTIFICATION_DEFAULT = false
 const SHOW_FILE_SYSTEM_DEFAULT = true
@@ -54,6 +55,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 
 - `host::String = "$HOST_DEFAULT"` Set to `"127.0.0.1"` (default) to run on *localhost*, which makes the server available to your computer and the local network (LAN). Set to `"0.0.0.0"` to make the server available to the entire network (internet).
 - `port::Union{Nothing,Integer} = $PORT_DEFAULT` When specified, this port will be used for the server.
+- `port_hint::Integer = $PORT_HINT_DEFAULT` If the other setting `port` is not specified, then this setting (`port_hint`) will be used as the starting point in finding an available port to run the server on. 
 - `launch_browser::Bool = $LAUNCH_BROWSER_DEFAULT`
 - `dismiss_update_notification::Bool = $DISMISS_UPDATE_NOTIFICATION_DEFAULT` If `false`, the Pluto frontend will check the Pluto.jl github releases for any new recommended updates, and show a notification if there are any. If `true`, this is disabled.
 - `show_file_system::Bool = $SHOW_FILE_SYSTEM_DEFAULT`
@@ -74,6 +76,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
     root_url::Union{Nothing,String} = ROOT_URL_DEFAULT
     host::String = HOST_DEFAULT
     port::Union{Nothing,Integer} = PORT_DEFAULT
+    port_hint::Integer = PORT_HINT_DEFAULT
     launch_browser::Bool = LAUNCH_BROWSER_DEFAULT
     dismiss_update_notification::Bool = DISMISS_UPDATE_NOTIFICATION_DEFAULT
     show_file_system::Bool = SHOW_FILE_SYSTEM_DEFAULT
@@ -217,6 +220,7 @@ function from_flat_kwargs(;
         root_url::Union{Nothing,String} = ROOT_URL_DEFAULT,
         host::String = HOST_DEFAULT,
         port::Union{Nothing,Integer} = PORT_DEFAULT,
+        port_hint::Integer = PORT_HINT_DEFAULT,
         launch_browser::Bool = LAUNCH_BROWSER_DEFAULT,
         dismiss_update_notification::Bool = DISMISS_UPDATE_NOTIFICATION_DEFAULT,
         show_file_system::Bool = SHOW_FILE_SYSTEM_DEFAULT,
@@ -250,6 +254,7 @@ function from_flat_kwargs(;
         root_url,
         host,
         port,
+        port_hint,
         launch_browser,
         dismiss_update_notification,
         show_file_system,

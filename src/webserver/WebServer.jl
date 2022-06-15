@@ -112,10 +112,10 @@ end
 const is_first_run = Ref(true)
 
 "Return a port and serversocket to use while taking into account the `favourite_port`."
-function port_serversocket(hostIP::Sockets.IPAddr, favourite_port)
+function port_serversocket(hostIP::Sockets.IPAddr, favourite_port, port_hint)
     local port, serversocket
     if favourite_port === nothing
-        port, serversocket = Sockets.listenany(hostIP, UInt16(1234))
+        port, serversocket = Sockets.listenany(hostIP, UInt16(port_hint))
     else
         port = UInt16(favourite_port)
         try
@@ -143,8 +143,9 @@ function run(session::ServerSession, pluto_router)
     host = session.options.server.host
     hostIP = parse(Sockets.IPAddr, host)
     favourite_port = session.options.server.port
+    port_hint = session.options.server.port_hint
 
-    local port, serversocket = port_serversocket(hostIP, favourite_port)
+    local port, serversocket = port_serversocket(hostIP, favourite_port, port_hint)
 
     shutdown_server = Ref{Function}(() -> ())
 
