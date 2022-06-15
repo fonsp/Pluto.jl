@@ -7,6 +7,7 @@ import { Logs } from "./Logs.js"
 import { RunArea, useDebouncedTruth } from "./RunArea.js"
 import { cl } from "../common/ClassTable.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
+import { open_pluto_popup } from "./Popup.js"
 
 const useCellApi = (node_ref, published_object_keys, pluto_actions) => {
     const [cell_api_ready, set_cell_api_ready] = useState(false)
@@ -154,6 +155,7 @@ export const Cell = ({
         pluto_actions.set_and_run_multiple(pluto_actions.get_selected_cells(cell_id, selected))
         set_waiting_to_run_smart(true)
     }, [pluto_actions, cell_id, selected, set_waiting_to_run_smart])
+    const skip_as_script_info = `This cell is currently stored in the notebook as a Julia comment. This way, it will not run when the notebook runs as a script outside of Pluto.`
     return html`
         <pluto-cell
             ref=${node_ref}
@@ -241,6 +243,19 @@ export const Cell = ({
             >
                 <span></span>
             </button>
+            ${skip_as_script
+                ? html`<div
+                      class="skip_as_script_marker"
+                      title=${skip_as_script_info}
+                      onClick=${(e) => {
+                          open_pluto_popup({
+                              type: "info",
+                              source_element: e.target,
+                              body: skip_as_script_info,
+                          })
+                      }}
+                  ></div>`
+                : null}
         </pluto-cell>
     `
 }
