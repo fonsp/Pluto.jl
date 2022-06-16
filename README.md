@@ -69,9 +69,9 @@ Lastly, here's _**one more feature**_: Pluto notebooks have a `@bind` macro to c
 
 <br >
 
-You don't need to know HTML to use it! The [PlutoUI package](https://github.com/fonsp/PlutoUI.jl) contains basic inputs like sliders and buttons. Pluto's interactivity is very easy to use, you will learn more from the sample notebooks inside Pluto!
+You don't need to know HTML to use it! The [PlutoUI package](https://github.com/fonsp/PlutoUI.jl) contains basic inputs like sliders and buttons. Pluto's interactivity is very easy to use, you will learn more from the featured notebooks inside Pluto!
 
-But for those who want to dive deeper - you can use HTML, JavaScript and CSS to write your own widgets! Custom update events can be fired by dispatching a `new CustomEvent("input")`, making it compatible with the [`viewof` operator of observablehq](https://observablehq.com/@observablehq/a-brief-introduction-to-viewof). Have a look at the JavaScript sample notebook inside Pluto!
+But for those who want to dive deeper - you can use HTML, JavaScript and CSS to write your own widgets! Custom update events can be fired by dispatching a `new CustomEvent("input")`, making it compatible with the [`viewof` operator of observablehq](https://observablehq.com/@observablehq/a-brief-introduction-to-viewof). Have a look at the JavaScript featured notebook inside Pluto!
 
 <br >
 
