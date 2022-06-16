@@ -26,7 +26,7 @@ export const FeaturedCard = ({ entry, source_url }) => {
         name: title == null ? null : `sample ${title}`,
     })
 
-    const author = author_info(entry.frontmatter.author)
+    const author = author_info(entry.frontmatter)
 
     return html`
         <featured-card style=${`--card-color-hue: ${str_to_degree(entry.id)}deg;`}>
@@ -44,15 +44,36 @@ export const FeaturedCard = ({ entry, source_url }) => {
     `
 }
 
-const author_info = (x) => {
+/**
+ * @typedef AuthorInfo
+ * @type {{
+ * name: string?,
+ * url: string?,
+ * image: string?,
+ * }}
+ */
+
+const author_info = (frontmatter) =>
+    author_info_item(frontmatter.author) ??
+    author_info_item({
+        name: frontmatter.author_name,
+        url: frontmatter.author_url,
+        image: frontmatter.author_image,
+    })
+
+/**
+ * @returns {AuthorInfo?}
+ */
+const author_info_item = (x) => {
     if (x instanceof Array) {
-        return author_info(x[0])
+        return author_info_item(x[0])
     } else if (x == null) {
         return null
-    } else if (x instanceof String) {
+    } else if (typeof x === "string") {
         return {
             name: x,
-            profile_url: null,
+            url: null,
+            image: null,
         }
     } else if (x instanceof Object) {
         let { name, image, url } = x
@@ -66,5 +87,7 @@ const author_info = (x) => {
             url,
             image,
         }
+    } else {
+        return null
     }
 }
