@@ -1,6 +1,25 @@
 import { BackendLaunchPhase } from "../common/Binder.js"
 import { html, useEffect, useState, useRef } from "../imports/Preact.js"
 
+export const RunLocalButton = ({ show, start_local }) => {
+    //@ts-ignore
+    window.open_edit_or_run_popup = () => {
+        start_local()
+    }
+
+    return html`<div class="edit_or_run">
+        <button
+            onClick=${(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+                start_local()
+            }}
+        >
+            <b>Edit</b> or <b>run</b> this notebook
+        </button>
+    </div>`
+}
+
 export const BinderButton = ({ offer_binder, start_binder, notebookfile }) => {
     const [popupOpen, setPopupOpen] = useState(false)
     const [showCopyPopup, setShowCopyPopup] = useState(false)
