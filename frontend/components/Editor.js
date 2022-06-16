@@ -25,19 +25,20 @@ import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea
 import { PlutoActionsContext, PlutoBondsContext, PlutoJSInitializingContext, SetWithEmptyCallback } from "../common/PlutoContext.js"
 import { start_binder, BackendLaunchPhase, count_stat } from "../common/Binder.js"
 import { setup_mathjax } from "../common/SetupMathJax.js"
-import { BinderButton } from "./BinderButton.js"
+import { BinderButton, RunLocalButton } from "./EditOrRunButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
 import { ProgressBar } from "./ProgressBar.js"
 import { IsolatedCell } from "./Cell.js"
 import { RawHTMLContainer } from "./CellOutput.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
 import { HijackExternalLinksToOpenInNewTab } from "./HackySideStuff/HijackExternalLinksToOpenInNewTab.js"
+import { start_local } from "../common/RunLocal.js"
 import { FrontMatterInput } from "./FrontmatterInput.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
 
-export const default_path = "..."
+export const default_path = ""
 const DEBUG_DIFFING = false
 
 // Be sure to keep this in sync with DEFAULT_CELL_METADATA in Cell.jl
@@ -88,6 +89,7 @@ const statusmap = (/** @type {EditorState} */ state, /** @type {LaunchParameters
     static_preview: state.static_preview,
     bonds_disabled: !(state.connected || state.initializing || launch_params.slider_server_url != null),
     offer_binder: state.backend_launch_phase === BackendLaunchPhase.wait_for_user && launch_params.binder_url != null,
+    offer_local: state.backend_launch_phase === BackendLaunchPhase.wait_for_user && launch_params.pluto_server_url != null,
     binder: launch_params.binder_url != null && state.backend_launch_phase != null,
     code_differs: state.notebook.cell_order.some(
         (cell_id) => state.cell_inputs_local[cell_id] != null && state.notebook.cell_inputs[cell_id].code !== state.cell_inputs_local[cell_id].code
@@ -192,6 +194,7 @@ const first_true_key = (obj) => {
  *  preamble_html: string?,
  *  isolated_cell_ids: string[]?,
  *  binder_url: string?,
+ *  pluto_server_url: string?,
  *  slider_server_url: string?,
  *  recording_url: string?,
  *  recording_url_integrity: string?,
@@ -289,7 +292,10 @@ export class Editor extends Component {
 
             disable_ui: launch_params.disable_ui,
             static_preview: launch_params.statefile != null,
-            backend_launch_phase: launch_params.notebookfile != null && launch_params.binder_url != null ? BackendLaunchPhase.wait_for_user : null,
+            backend_launch_phase:
+                launch_params.notebookfile != null && (launch_params.binder_url != null || launch_params.pluto_server_url != null)
+                    ? BackendLaunchPhase.wait_for_user
+                    : null,
             binder_session_url: null,
             binder_session_token: null,
             connected: false,
@@ -1213,7 +1219,11 @@ patch: ${JSON.stringify(
                 initializing: false,
             })
             // view stats on https://stats.plutojl.org/
-            count_stat(`article-view`)
+            if (this.state.pluto_server_url != null) {
+                count_stat(`article-view`)
+            } else {
+                count_stat(`article-view`)
+            }
         } else {
             this.connect()
         }
@@ -1316,6 +1326,9 @@ patch: ${JSON.stringify(
             <${PlutoActionsContext.Provider} value=${this.actions}>
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                     <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
+                    <button title="Go back" onClick=${() => {
+                        history.back()
+                    }} class="floating_back_button"><span></span></button>
                     <${Scroller} active=${this.state.scroller} />
                     <${ProgressBar} notebook=${this.state.notebook} backend_launch_phase=${this.state.backend_launch_phase} status=${status}/>
                     <header id="pluto-nav" className=${export_menu_open ? "show_export" : ""}>
@@ -1409,7 +1422,16 @@ patch: ${JSON.stringify(
                     />
                     
                     ${
-                        status.offer_binder
+                        status.offer_local
+                            ? html`<${RunLocalButton}
+                                  start_local=${() =>
+                                      start_local({
+                                          setStatePromise: this.setStatePromise,
+                                          connect: this.connect,
+                                          launch_params: launch_params,
+                                      })}
+                              />`
+                            : status.offer_binder
                             ? html`<${BinderButton}
                                   offer_binder=${status.offer_binder}
                                   start_binder=${() =>

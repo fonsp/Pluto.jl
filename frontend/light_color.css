@@ -189,6 +189,13 @@
         --index-text-color: hsl(0, 0, 60);
         --index-clickable-text-color: hsl(0, 0, 30);
         --docs-binding-bg: #8383830a;
+        --index-card-bg: white;
+        --welcome-mywork-bg: hsl(35deg 66% 93%);
+        --welcome-newnotebook-bg: whitesmoke;
+        --welcome-recentnotebook-bg: white;
+        --welcome-recentnotebook-border: #dfdfdf;
+        --welcome-open-bg: #fbfbfb;
+        --welcome-card-author-backdrop: #ffffffb0;
 
         /* HTML in codemirror! */
         --cm-html-color: #48b685;

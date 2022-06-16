@@ -6,6 +6,7 @@ import { create_pluto_connection } from "../../common/PlutoConnection.js"
 import { new_update_message } from "../../common/NewUpdateMessage.js"
 import { Open } from "./Open.js"
 import { Recent } from "./Recent.js"
+import { Featured } from "./Featured.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../../common/Environment.js"
@@ -72,8 +73,26 @@ export const Welcome = () => {
     const { show_samples, CustomRecent, CustomPicker } = extended_components
 
     return html`
-        <${Open} client=${client_ref.current} connected=${connected} CustomPicker=${CustomPicker} show_samples=${show_samples} />
-        <br />
-        <${Recent} client=${client_ref.current} connected=${connected} remote_notebooks=${remote_notebooks} CustomRecent=${CustomRecent} />
+        <section id="title">
+            <h1>welcome to <img src="img/logo.svg" /></h1>
+            <!-- <a id="github" href="https://github.com/fonsp/Pluto.jl"
+                ><img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/logo-github.svg"
+            /></a> -->
+        </section>
+        <section id="mywork">
+            <div>
+                <${Recent} client=${client_ref.current} connected=${connected} remote_notebooks=${remote_notebooks} CustomRecent=${CustomRecent} />
+            </div>
+        </section>
+        <section id="open">
+            <div>
+                <${Open} client=${client_ref.current} connected=${connected} CustomPicker=${CustomPicker} show_samples=${show_samples} />
+            </div>
+        </section>
+        <section id="featured">
+            <div>
+                <${Featured} />
+            </div>
+        </section>
     `
 }
