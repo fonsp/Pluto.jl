@@ -7,8 +7,6 @@
 @import url("light_color.css");
 @import url("dark_color.css");
 
-@import url("https://cdn.jsdelivr.net/npm/open-props@1.3.16/open-props.min.css");
-
 * {
     box-sizing: border-box;
 }
@@ -26,7 +24,8 @@ html {
     margin: 0px;
     padding: 4rem 1rem 3rem 1rem;
     /* flex: 1 1 auto; */ /* max-width: 920px; */
-text-align: center;}
+    text-align: center;
+}
 
 #title h1 img {
     height: 1.2em;
@@ -214,10 +213,12 @@ body.nosessions ul#new ~ * {
 }
 
 #recent {
-    scrollbar-gutter: stable;background: var(--welcome-recentnotebook-bg); /* margin-bottom: 8em; */
+    scrollbar-gutter: stable;
+    background: var(--welcome-recentnotebook-bg); /* margin-bottom: 8em; */
     max-height: 16em;
     overflow-y: auto;
-    overflow-x: hidden;border-radius: 0.4rem;
+    overflow-x: hidden;
+    border-radius: 0.4rem;
     box-shadow: -2px 4px 9px 0px #00000012;
     border: 0.2rem solid #d5d5d5;
 }
