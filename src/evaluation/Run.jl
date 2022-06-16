@@ -120,14 +120,7 @@ function run_reactive_core!(
     end
 
     # find (indirectly) skipped cells and update their status
-    skipped_cells = filter(is_skipped_as_script, notebook.cells)
-    indirectly_skipped = collect(topological_order(new_topology, skipped_cells))
-    for cell in indirectly_skipped
-        cell.depends_on_skipped_cells = true
-    end
-	for cell in setdiff(notebook.cells, indirectly_skipped)
-        cell.depends_on_skipped_cells = false
-    end
+	update_skipped_cells_dependency!(notebook, new_topology)
 
     to_run = setdiff(to_run_raw, indirectly_deactivated)
 
@@ -707,4 +700,15 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 	end
 	
 	return true
+end
+
+function update_skipped_cells_dependency!(notebook::Notebook, topology::NotebookTopology=notebook.topology)
+	skipped_cells = filter(is_skipped_as_script, notebook.cells)
+    indirectly_skipped = collect(topological_order(topology, skipped_cells))
+    for cell in indirectly_skipped
+        cell.depends_on_skipped_cells = true
+    end
+	for cell in setdiff(notebook.cells, indirectly_skipped)
+        cell.depends_on_skipped_cells = false
+    end
 end

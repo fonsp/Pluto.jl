@@ -313,10 +313,25 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
             push!(changes, current_changes...)
         end
 
+        # We put a flag to check whether any patch changes the skip_as_script metadata. This is to eventually trigger a notebook updated if no reactive_run is part of this update
+        skip_as_script_changed = any(patches) do patch
+            path = patch.path
+            metadata_idx = findfirst(isequal("metadata"), path)
+            if metadata_idx === nothing
+                false
+            else
+                isequal(path[metadata_idx+1], "skip_as_script")
+            end
+        end
+
         # If CodeChanged ∈ changes, then the client will also send a request like run_multiple_cells, which will trigger a file save _before_ running the cells.
         # In the future, we should get rid of that request, and save the file here. For now, we don't save the file here, to prevent unnecessary file IO.
         # (You can put a log in save_notebook to track how often the file is saved)
         if FileChanged() ∈ changes && CodeChanged() ∉ changes
+            if skip_as_script_changed
+                # If skip_as_script has changed but no cell run is happening we want to update the notebook dependency here before saving the file
+                update_skipped_cells_dependency!(notebook)
+            end  
              save_notebook(🙋.session, notebook)
         end
 
