@@ -1,5 +1,5 @@
 using Test
-import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new, readwrite, without_pluto_file_extension, update_run!, get_metadata_no_default, is_disabled, create_cell_metadata
+import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new, readwrite, without_pluto_file_extension, update_run!, get_metadata_no_default, is_disabled, create_cell_metadata, update_skipped_cells_dependency!
 import Pluto.WorkspaceManager: poll, WorkspaceManager
 import Random
 import Pkg
@@ -70,6 +70,9 @@ function skip_as_script_notebook()
         ),
         Cell(
             code="non_skipped_var = 15",
+        ),
+        Cell(
+            code="dependent_var = skipped_var + 1",
         ),
     ]) |> init_packages!
 end
@@ -280,14 +283,17 @@ end
 
         m = ingredients(nb.path)
         @test !isdefined(m, :skipped_var)
+        @test !isdefined(m, :dependent_var)
         @test m.non_skipped_var == 15
         
         nb.cells[1].metadata["skip_as_script"] = false
+        update_skipped_cells_dependency(nb)
         save_notebook(nb)
 
         m = ingredients(nb.path)
         @test m.skipped_var == 10
         @test m.non_skipped_var == 15        
+        @test m.dependent_var == 11
         
         WorkspaceManager.unmake_workspace((🍭, nb); verbose=false)
     end
