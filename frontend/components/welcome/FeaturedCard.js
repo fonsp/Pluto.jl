@@ -21,31 +21,16 @@ export const FeaturedCard = ({ entry, source_url }) => {
         statefile: u(entry.statefile_path),
         notebookfile: u(entry.notebookfile_path),
         notebookfile_integrity: `sha256-${base64url_to_base64(entry.hash)}`,
-        disable_ui: true,
+        disable_ui: `true`,
         pluto_server_url: `.`,
         name: title == null ? null : `sample ${title}`,
     })
 
     const author = author_info(entry.frontmatter.author)
 
-    const [img_src, set_img_src] = useState(transparent_svg)
-
-    useEffect(() => {
-        if (entry.frontmatter.image != null) {
-            const url = u(entry.frontmatter.image)
-            fetch(url, { mode: "no-cors" })
-                .then((r) => r.blob())
-                .then((blob) => {
-                    console.log(blob)
-                    set_img_src(URL.createObjectURL(blob))
-                })
-            // .catch(() => {})
-        }
-    }, [entry.frontmatter.image])
-
     return html`
         <featured-card style=${`--card-color-hue: ${str_to_degree(entry.id)}deg;`}>
-            <a class="banner" href=${href}><img src=${img_src} /></a>
+            <a class="banner" href=${href}><img src=${u(entry.frontmatter.image) ?? transparent_svg} /></a>
             ${author?.name == null
                 ? null
                 : html`
