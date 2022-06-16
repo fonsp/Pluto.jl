@@ -119,6 +119,7 @@ const first_true_key = (obj) => {
  *  code: string,
  *  code_folded: boolean,
  *  metadata: CellMetaData,
+ *  depends_on_skipped_cells: boolean,
  * }}
  */
 

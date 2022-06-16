@@ -43,7 +43,7 @@ const useCellApi = (node_ref, published_object_keys, pluto_actions) => {
  * }} props
  * */
 export const Cell = ({
-    cell_input: { cell_id, code, code_folded, metadata },
+    cell_input: { cell_id, code, code_folded, metadata, depends_on_skipped_cells },
     cell_result: { queued, running, runtime, errored, output, logs, published_object_keys, depends_on_disabled_cells },
     cell_dependencies,
     cell_input_local,
@@ -169,6 +169,7 @@ export const Cell = ({
                 skip_as_script,
                 running_disabled,
                 depends_on_disabled_cells,
+                depends_on_skipped_cells,
                 show_input,
                 shrunk: Object.values(logs).length > 0,
                 hooked_up: output?.has_pluto_hook_features ?? false,
@@ -242,7 +243,7 @@ export const Cell = ({
             >
                 <span></span>
             </button>
-            ${skip_as_script
+            ${skip_as_script || depends_on_skipped_cells
                 ? html`<div
                       class="skip_as_script_marker"
                       title=${`This cell is currently stored in the notebook file as a Julia comment, instead of code. This way, it will not run when the notebook runs as a script outside of Pluto.`}
