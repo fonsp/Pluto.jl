@@ -121,7 +121,7 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
 
         /// PART 2: Using Pluto's REST API to open the notebook file. We either upload the notebook with a POST request, or we let the server open by giving it the filename/URL.
 
-        let open_response
+        let open_response = new Response()
 
         if (launch_params.notebookfile.startsWith("data:")) {
             open_response = await fetch(
@@ -168,7 +168,7 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
 
         console.log("Connecting WebSocket")
 
-        const connect_promise = connect(with_token(ws_address_from_base(binder_session_url) + "channels"))
+        const connect_promise = connect(with_token(new URL("channels", ws_address_from_base(binder_session_url))))
         await timeout_promise(connect_promise, 20_000).catch((e) => {
             console.error("Failed to establish connection within 20 seconds. Navigating to the edit URL directly.", e)
             const edit_url = with_query_params(new URL("edit", binder_session_url), { id: new_notebook_id })

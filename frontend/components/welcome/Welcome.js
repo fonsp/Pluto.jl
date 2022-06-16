@@ -22,7 +22,7 @@ import { Featured } from "./Featured.js"
  */
 
 export const Welcome = () => {
-    const [remote_notebooks, set_remote_notebooks] = useState(/** @type {Array<NotebookListEntry>} */ (null))
+    const [remote_notebooks, set_remote_notebooks] = useState(/** @type {Array<NotebookListEntry>} */ ([]))
 
     const [connected, set_connected] = useState(false)
     const [extended_components, set_extended_components] = useState({

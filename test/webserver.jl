@@ -10,7 +10,11 @@ using Pluto.WorkspaceManager: WorkspaceManager, poll
 
 
 @testset "Exports" begin
-    @inferred Pluto.port_serversocket(Sockets.ip"0.0.0.0", nothing)
+    port, socket = 
+        @inferred Pluto.port_serversocket(Sockets.ip"0.0.0.0", nothing, 5543) 
+    
+    close(socket)
+    @test 5543 <= port < 5600
 
     port = 13432
     host = "localhost"

@@ -96,7 +96,7 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                 iterations = iterations + 1
 
                 // Collect parents in a list so I can compare them easily
-                let parent_cursor = cursor.node.cursor
+                let parent_cursor = cursor.node.cursor()
                 let parents = []
                 while (parent_cursor.parent()) {
                     parents.push(parent_cursor.name)

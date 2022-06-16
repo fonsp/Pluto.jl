@@ -692,11 +692,11 @@ nav#at_the_top button.toggle_export span {
 }
 aside#export button.toggle_export span {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-outline.svg");
-    filter: var(--image-filters);
+    filter: invert(1);
 }
 aside#export button.toggle_frontmatter_edit span {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/newspaper-outline.svg");
-    filter: var(--image-filters);
+    filter: invert(1);
 }
 nav#at_the_top:after {
     margin-left: auto;
@@ -1052,6 +1052,10 @@ pluto-output > assignee:empty {
     display: none;
 }
 
+.errored pluto-output > assignee {
+    display: none;
+}
+
 pluto-output > div {
     flex-shrink: 0;
     overflow-y: hidden;
@@ -1103,6 +1107,19 @@ pluto-cell.running_disabled > pluto-logs-container {
 pluto-cell.running_disabled > pluto-input .cm-editor,
 pluto-cell.running_disabled > pluto-output {
     background-color: var(--disabled-cell-bg-color);
+}
+
+/* SKIP AS SCRIPT CELLS */
+pluto-cell.skip_as_script .skip_as_script_marker {
+    display: block;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    cursor: help;
+    right: -4.85px;
+    border-radius: 5px;
+    border-right: 5px solid var(--skip-as-script-border-color);
 }
 
 /* SELECTION */
@@ -1253,15 +1270,13 @@ pluto-shoulder:hover {
 pluto-shoulder > button {
     flex: 0 0 auto;
     position: sticky;
-    top: 0px;
-    margin-top: 4px;
-    margin-right: 5px;
-    padding: 0px 1px;
+    top: 0;
+    padding: 4px 5px 4px 10px;
 }
 
 pluto-cell:focus-within > pluto-shoulder > button {
     /* we use padding instead of 4px extra margin to move the eye to the left so that the hitbox becomes grows - you want to be able to double click the button */
-    padding-right: 4px;
+    padding-right: 9px;
 }
 
 /* pluto-cell.code_folded.inline-output > pluto-shoulder > button {
@@ -1507,6 +1522,11 @@ pluto-shoulder > button > span::after {
 
 pluto-cell > button.add_cell {
     left: -12px;
+    --hit-box-extend: 20px;
+    margin-left: calc(-1 * var(--hit-box-extend));
+    margin-right: calc(-1 * var(--hit-box-extend));
+    padding-left: var(--hit-box-extend);
+    padding-right: var(--hit-box-extend);
 }
 
 pluto-cell > button.add_cell.before {
@@ -1524,13 +1544,13 @@ pluto-cell > button.add_cell > span::after {
     filter: var(--image-filters);
 }
 pluto-input > button.input_context_menu ul {
-    --width: 156px;
     left: 100%;
     top: -8px;
     margin: 0;
     padding: 0px;
     border-radius: 6px;
-    display: block;
+    display: grid;
+    grid-template-columns: max-content;
     position: absolute;
     border: 1px solid var(--input-context-menu-border-color);
     background-color: var(--input-context-menu-bg-color);
@@ -1557,7 +1577,6 @@ pluto-input > button.input_context_menu ul {
     position: relative;
     list-style: none;
     padding: 8px;
-    width: var(--width);
     height: 32px;
     display: flex;
     align-items: center;
@@ -1624,6 +1643,16 @@ pluto-input > button.input_context_menu ul {
 }
 .ctx_icon.delete {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle-outline.svg");
+}
+.ctx_icon.run_as_script {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-lock-outline.svg");
+}
+.ctx_icon.skip_as_script {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-text-outline.svg");
+}
+
+.ctx_icon.copy_output {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/copy-outline.svg");
 }
 
 pluto-input > button.input_context_menu {
@@ -2120,16 +2149,29 @@ pluto-helpbox > section hr {
 
 .pluto-docs-binding > span {
     display: inline-block;
-    transform: translate(-19px, -16px);
+    transform: translate(-1.2em, -73%);
     font-family: var(--julia-mono-font-stack);
     font-size: 0.9rem;
     font-weight: 700;
     margin-top: -1em;
-    padding: 4px;
-    border-radius: 7px;
-
+    padding: 0.235rem;
+    border-radius: 0.4rem;
     background: var(--pluto-output-bg-color);
     color: var(--black);
+}
+
+.pluto-docs-binding h1 {
+    font-size: 1.4em;
+}
+
+.pluto-docs-binding h2 {
+    font-size: 1.3em;
+}
+.pluto-docs-binding h3,
+.pluto-docs-binding h4,
+.pluto-docs-binding h5,
+.pluto-docs-binding h6 {
+    font-size: 1.1em;
 }
 
 /* FOOTER */
@@ -2892,7 +2934,7 @@ pluto-cell.hooked_up pluto-output {
     font-family: var(--system-ui-font-stack);
     width: min(31rem, 90vw);
     color: var(--black);
-    background: var(--export-bg-color);
+    background: var(--white);
 }
 
 .pluto-frontmatter button {

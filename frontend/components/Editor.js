@@ -22,7 +22,7 @@ import { Popup } from "./Popup.js"
 
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
-import { PlutoContext, PlutoBondsContext, PlutoJSInitializingContext, SetWithEmptyCallback } from "../common/PlutoContext.js"
+import { PlutoActionsContext, PlutoBondsContext, PlutoJSInitializingContext, SetWithEmptyCallback } from "../common/PlutoContext.js"
 import { start_binder, BackendLaunchPhase, count_stat } from "../common/Binder.js"
 import { setup_mathjax } from "../common/SetupMathJax.js"
 import { BinderButton, RunLocalButton } from "./BinderButton.js"
@@ -42,9 +42,11 @@ export const default_path = ""
 const DEBUG_DIFFING = false
 
 // Be sure to keep this in sync with DEFAULT_CELL_METADATA in Cell.jl
+/** @type {CellMetaData} */
 const DEFAULT_CELL_METADATA = {
     disabled: false,
     show_logs: true,
+    skip_as_script: false,
 }
 
 // from our friends at https://stackoverflow.com/a/2117523
@@ -106,15 +108,19 @@ const first_true_key = (obj) => {
 }
 
 /**
+ * @typedef CellMetaData
+ * @type {{
+ *    disabled: boolean,
+ *    show_logs: boolean,
+ *    skip_as_script: boolean
+ *  }}
+ *
  * @typedef CellInputData
  * @type {{
  *  cell_id: string,
  *  code: string,
  *  code_folded: boolean,
- *  metadata: {
- *    disabled: boolean,
- *    show_logs: boolean,
- *  },
+ *  metadata: CellMetaData,
  * }}
  */
 
@@ -156,12 +162,10 @@ const first_true_key = (obj) => {
 
 /**
  * @typedef CellDependencyData
- * @type {{
- *  cell_id: string,
- *  downstream_cells_map: { [symbol: string]: Array<string>},
- *  upstream_cells_map: { [symbol: string]: Array<string>},
- *  precedence_heuristic: number,
- * }}
+ * @property {string} cell_id
+ * @property {Map<string, Array<string>>} downstream_cells_map A map where the keys are the variables *defined* by this cell, and a value is the list of cell IDs that reference a variable.
+ * @property {Map<string, Array<string>>} upstream_cells_map A map where the keys are the variables *referenced* by this cell, and a value is the list of cell IDs that define a variable.
+ * @property {number} precedence_heuristic
  */
 
 /**
@@ -198,6 +202,16 @@ const first_true_key = (obj) => {
  */
 
 /**
+ * @typedef BondValueContainer
+ * @type {{ value: any }}
+ */
+
+/**
+ * @typedef BondValuesDict
+ * @type {{ [name: string]: BondValueContainer }}
+ */
+
+/**
  * @typedef NotebookData
  * @type {{
  *  notebook_id: string,
@@ -213,14 +227,14 @@ const first_true_key = (obj) => {
  *  cell_order: Array<string>,
  *  cell_execution_order: Array<string>,
  *  published_objects: { [objectid: string]: any},
- *  bonds: { [name: string]: any },
+ *  bonds: BondValuesDict,
  *  nbpkg: NotebookPkgData?,
  *  metadata: object,
  * }}
  */
 
-const url_logo_big = document.head.querySelector("link[rel='pluto-logo-big']").getAttribute("href")
-const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']").getAttribute("href")
+const url_logo_big = document.head.querySelector("link[rel='pluto-logo-big']")?.getAttribute("href") ?? ""
+const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']")?.getAttribute("href") ?? ""
 
 /**
  * @typedef EditorProps
@@ -272,7 +286,7 @@ export class Editor extends Component {
             notebook: /** @type {NotebookData} */ initial_notebook_state,
             cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
             desired_doc_query: null,
-            recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
+            recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ ([]),
             last_update_time: 0,
 
             disable_ui: launch_params.disable_ui,
@@ -577,8 +591,8 @@ export class Editor extends Component {
             },
             /**
              *
-             * @param {string} name         | bond name
-             * @param {*} value             | bond value
+             * @param {string} name name of bound variable
+             * @param {*} value value (not in wrapper object)
              */
             set_bond: async (name, value) => {
                 await update_notebook((notebook) => {
@@ -608,7 +622,7 @@ export class Editor extends Component {
             },
         }
 
-        const apply_notebook_patches = (patches, old_state = undefined, get_reverse_patches = false) =>
+        const apply_notebook_patches = (patches, /** @type {NotebookData?} */ old_state = null, get_reverse_patches = false) =>
             new Promise((resolve) => {
                 if (patches.length !== 0) {
                     let copy_of_patches,
@@ -631,9 +645,9 @@ export class Editor extends Component {
                                 }
                                 new_notebook = applyPatches(old_state ?? state.notebook, patches)
                             } catch (exception) {
-                                const failing_path = String(exception).match(".*'(.*)'.*")[1].replace(/\//gi, ".")
+                                const failing_path = String(exception).match(".*'(.*)'.*")?.[1].replace(/\//gi, ".") ?? exception
                                 const path_value = _.get(this.state.notebook, failing_path, "Not Found")
-                                console.log(String(exception).match(".*'(.*)'.*")[1].replace(/\//gi, "."), failing_path, typeof failing_path)
+                                console.log(String(exception).match(".*'(.*)'.*")?.[1].replace(/\//gi, ".") ?? exception, failing_path, typeof failing_path)
                                 // The alert below is not catastrophic: the editor will try to recover.
                                 // Deactivating to be user-friendly!
                                 // alert(`Ooopsiee.`)
@@ -775,9 +789,9 @@ patch: ${JSON.stringify(
                 backend_launch_phase: this.state.backend_launch_phase == null ? null : BackendLaunchPhase.ready,
             })
 
-            // do one autocomplete to trigger its precompilation
             // TODO Do this from julia itself
             this.client.send("complete", { query: "sq" }, { notebook_id: this.state.notebook.notebook_id })
+            this.client.send("complete", { query: "\\sq" }, { notebook_id: this.state.notebook.notebook_id })
 
             setTimeout(init_feedback, 2 * 1000) // 2 seconds - load feedback a little later for snappier UI
         }
@@ -856,10 +870,14 @@ patch: ${JSON.stringify(
                 })
             }
         }
-        /** Whether we just set a bond value which will trigger a cell to run, but we are still waiting for the server to process the bond value (and run the cell). See https://github.com/fonsp/Pluto.jl/issues/1891 for more info. */
+        /** Whether we just set a bond value which will trigger a cell to run, but we are still waiting for the server to process the bond value (and run the cell). During this time, we won't send new bond values. See https://github.com/fonsp/Pluto.jl/issues/1891 for more info. */
         this.waiting_for_bond_to_trigger_execution = false
         /** Number of local updates that have not yet been applied to the server's state. */
         this.pending_local_updates = 0
+        /**
+         * User scripts that are currently running (possibly async).
+         * @type {SetWithEmptyCallback<HTMLElement>}
+         */
         this.js_init_set = new SetWithEmptyCallback(() => {
             // console.info("All scripts finished!")
             this.send_queued_bond_changes()
@@ -879,7 +897,7 @@ patch: ${JSON.stringify(
         this.is_process_ready = () =>
             this.state.notebook.process_status === ProcessStatus.starting || this.state.notebook.process_status === ProcessStatus.ready
 
-        let bond_will_trigger_evaluation = (/** @type {string|PropertyKey} */ sym) =>
+        const bond_will_trigger_evaluation = (/** @type {string|PropertyKey} */ sym) =>
             Object.entries(this.state.notebook.cell_dependencies).some(([cell_id, deps]) => {
                 // if the other cell depends on the variable `sym`...
                 if (deps.upstream_cells_map.hasOwnProperty(sym)) {
@@ -888,6 +906,23 @@ patch: ${JSON.stringify(
                     return !running_disabled
                 }
             })
+
+        /**
+         * We set `waiting_for_bond_to_trigger_execution` to `true` if it is *guaranteed* that this bond change will trigger something to happen (i.e. a cell to run). See https://github.com/fonsp/Pluto.jl/pull/1892 for more info about why.
+         *
+         * This is guaranteed if there is a cell in the notebook that references the bound variable. We use our copy of the notebook's toplogy to check this.
+         *
+         * # Gotchas:
+         * 1. We (the frontend) might have an out-of-date copy of the notebook's topology: this bond might have dependents *right now*, but the backend might already be processing a code change that removes that dependency.
+         *
+         *     However, this change in topology will result in a patch, which will set `waiting_for_bond_to_trigger_execution` back to `false`.
+         *
+         * 2. The backend has a "first value" mechanism: if bond values are being set for the first time *and* this value is already set on the backend, then the value will be skipped. See https://github.com/fonsp/Pluto.jl/issues/275. If all bond values are skipped, then we might get zero patches back (because no cells will run).
+         *
+         *     A bond value is considered a "first value" if it is sent using an `"add"` patch. This is why we require `x.op === "replace"`.
+         */
+        const bond_patch_will_trigger_evaluation = (/** @type {Patch} */ x) =>
+            x.op === "replace" && x.path.length >= 1 && bond_will_trigger_evaluation(x.path[1])
 
         let last_update_notebook_task = Promise.resolve()
         /** @param {(notebook: NotebookData) => void} mutate_fn */
@@ -915,7 +950,7 @@ patch: ${JSON.stringify(
 
                 if (DEBUG_DIFFING) {
                     try {
-                        let previous_function_name = new Error().stack.split("\n")[2].trim().split(" ")[1]
+                        let previous_function_name = new Error().stack?.split("\n")[2].trim().split(" ")[1]
                         console.log(`Changes to send to server from "${previous_function_name}":`, changes)
                     } catch (error) {}
                 }
@@ -930,8 +965,7 @@ patch: ${JSON.stringify(
                 }
                 if (is_idle) {
                     this.waiting_for_bond_to_trigger_execution =
-                        this.waiting_for_bond_to_trigger_execution ||
-                        changes_involving_bonds.some((x) => x.path.length >= 1 && bond_will_trigger_evaluation(x.path[1]))
+                        this.waiting_for_bond_to_trigger_execution || changes_involving_bonds.some(bond_patch_will_trigger_evaluation)
                 }
                 this.pending_local_updates++
                 this.on_patches_hook(changes)
@@ -1141,11 +1175,13 @@ patch: ${JSON.stringify(
         })
 
         document.addEventListener("paste", async (e) => {
-            const topaste = e.clipboardData.getData("text/plain")
-            const deserializer = detect_deserializer(topaste)
-            if (deserializer != null) {
-                this.actions.add_deserialized_cells(topaste, -1, deserializer)
-                e.preventDefault()
+            const topaste = e.clipboardData?.getData("text/plain")
+            if (topaste) {
+                const deserializer = detect_deserializer(topaste)
+                if (deserializer != null) {
+                    this.actions.add_deserialized_cells(topaste, -1, deserializer)
+                    e.preventDefault()
+                }
             }
         })
 
@@ -1212,7 +1248,7 @@ patch: ${JSON.stringify(
         this.send_queued_bond_changes()
 
         if (old_state.backend_launch_phase !== this.state.backend_launch_phase && this.state.backend_launch_phase != null) {
-            const phase = Object.entries(BackendLaunchPhase).find(([k, v]) => v == this.state.backend_launch_phase)[0]
+            const phase = Object.entries(BackendLaunchPhase).find(([k, v]) => v == this.state.backend_launch_phase)?.[0]
             console.info(`Binder phase: ${phase} at ${new Date().toLocaleTimeString()}`)
         }
 
@@ -1248,7 +1284,7 @@ patch: ${JSON.stringify(
 
         if (status.isolated_cell_view) {
             return html`
-                <${PlutoContext.Provider} value=${this.actions}>
+                <${PlutoActionsContext.Provider} value=${this.actions}>
                     <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                         <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
                             <${ProgressBar} notebook=${this.state.notebook} backend_launch_phase=${this.state.backend_launch_phase} status=${status}/>
@@ -1256,16 +1292,16 @@ patch: ${JSON.stringify(
                                 ${this.state.notebook.cell_order.map(
                                     (cell_id, i) => html`
                                         <${IsolatedCell}
-                                            cell_id=${cell_id}
-                                            cell_results=${this.state.notebook.cell_results[cell_id]}
-                                            hidden=${!launch_params.isolated_cell_ids.includes(cell_id)}
+                                            cell_input=${notebook.cell_inputs[cell_id]}
+                                            cell_result=${this.state.notebook.cell_results[cell_id]}
+                                            hidden=${!launch_params.isolated_cell_ids?.includes(cell_id)}
                                         />
                                     `
                                 )}
                             </div>
                         </${PlutoJSInitializingContext.Provider}>
                     </${PlutoBondsContext.Provider}>
-                </${PlutoContext.Provider}>
+                </${PlutoActionsContext.Provider}>
             `
         }
 
@@ -1286,7 +1322,7 @@ patch: ${JSON.stringify(
         return html`
             ${this.state.disable_ui === false && html`<${HijackExternalLinksToOpenInNewTab} />`}
             
-            <${PlutoContext.Provider} value=${this.actions}>
+            <${PlutoActionsContext.Provider} value=${this.actions}>
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                     <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
                     <${Scroller} active=${this.state.scroller} />
@@ -1490,7 +1526,7 @@ patch: ${JSON.stringify(
                     </footer>
                 </${PlutoJSInitializingContext.Provider}>
                 </${PlutoBondsContext.Provider}>
-            </${PlutoContext.Provider}>
+            </${PlutoActionsContext.Provider}>
         `
     }
 }

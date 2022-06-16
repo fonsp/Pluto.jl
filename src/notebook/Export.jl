@@ -1,6 +1,7 @@
 import Pkg
 using Base64
 using HypertextLiteral
+import URIs
 
 const default_binder_url = "https://mybinder.org/v2/gh/fonsp/pluto-on-binder/v$(string(PLUTO_VERSION))"
 
@@ -9,6 +10,41 @@ const cdn_version_override = nothing
 
 if cdn_version_override !== nothing
     @warn "Reminder to fonsi: Using a development version of Pluto for CDN assets. The binder button might not work. You should not see this on a released version of Pluto." cdn_version_override
+end
+
+function cdnified_editor_html(;
+        version::Union{Nothing,VersionNumber,AbstractString}=nothing, 
+        pluto_cdn_root::Union{Nothing,AbstractString}=nothing,
+    )
+    should_use_bundled_cdn = version ∈ (nothing, PLUTO_VERSION) && pluto_cdn_root === nothing
+    
+    something(
+        if should_use_bundled_cdn
+            try
+                original = read(project_relative_path("frontend-dist", "editor.html"), String)
+    
+                replace_with_cdn(original) do url
+                    # Because parcel creates filenames with a hash in them, we can check if the file exists locally to make sure that everything is in order.
+                    @assert isfile(project_relative_path("frontend-dist", url))
+                    
+                    URIs.resolvereference("https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@$(string(PLUTO_VERSION))/frontend-dist/", url) |> string
+                end
+            catch e
+                @warn "Could not use bundled CDN version of editor.html. You should only see this message if you are using a fork of Pluto." exception=(e,catch_backtrace())
+                nothing
+            end
+        end,
+        let
+            original = read(project_relative_path("frontend", "editor.html"), String)
+
+            cdn_root = something(pluto_cdn_root, "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@$(something(cdn_version_override, string(something(version, PLUTO_VERSION))))/frontend/")
+            @debug "Using CDN for Pluto assets:" cdn_root
+    
+            replace_with_cdn(original) do url
+                URIs.resolvereference(cdn_root, url) |> string
+            end
+        end
+    )
 end
 
 """
@@ -32,34 +68,16 @@ function generate_html(;
         header_html::AbstractString="",
     )::String
 
-    # Here we don't use frontend-dist (bundled code) yet, might want to
-    # use a separate Parcel pipeline to make UBER-BUNDLED html exports (TODO DRAL)
-    original = read(project_relative_path("frontend", "editor.html"), String)
-
-    cdn_root = if pluto_cdn_root === nothing
-        if version === nothing
-            version = PLUTO_VERSION
-        end
-        "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@$(something(cdn_version_override, string(PLUTO_VERSION)))/frontend/"
-    else
-        pluto_cdn_root
-    end
-
-    @debug "Using CDN for Pluto assets:" cdn_root
-
-    cdnified = replace(
-        replace(original, 
-        "href=\"./" => "href=\"$(cdn_root)"),
-        "src=\"./" => "src=\"$(cdn_root)")
+    cdnified = cdnified_editor_html(; version, pluto_cdn_root)
 
     result = replace_at_least_once(
         replace_at_least_once(cdnified, 
-            "<!-- [automatically generated meta tags can be inserted here] -->" => 
+            "<meta name=\"pluto-insertion-spot-meta\">" => 
             """
             $(header_html)
-            <!-- [automatically generated meta tags can be inserted here] -->
+            <meta name=\"pluto-insertion-spot-meta\">
             """),
-        "<!-- [automatically generated launch parameters can be inserted here] -->" => 
+        "<meta name=\"pluto-insertion-spot-parameters\">" => 
         """
         <script data-pluto-file="launch-parameters">
         window.pluto_notebook_id = $(notebook_id_js);
@@ -71,7 +89,7 @@ function generate_html(;
         window.pluto_statefile = $(statefile_js);
         window.pluto_preamble_html = $(preamble_html_js);
         </script>
-        <!-- [automatically generated launch parameters can be inserted here] -->
+        <meta name=\"pluto-insertion-spot-parameters\">
         """
     )
 
@@ -146,4 +164,35 @@ function frontmatter_html(frontmatter::Dict{String,Any}; default_frontmatter::Di
             """)
             for (key, val) in d if key in _og_properties
         ))"""))
+end
+
+
+
+
+
+replace_substring(s::String, sub::SubString, newval::AbstractString) = *(
+	SubString(s, 1, prevind(s, sub.offset + 1, 1)), 
+	newval, 
+	SubString(s, nextind(s, sub.offset + sub.ncodeunits))
+)
+
+const source_pattern = r"\s(?:src|href)=\"(.+?)\""
+
+function replace_with_cdn(cdnify::Function, s::String, idx::Integer=1)
+	next_match = match(source_pattern, s, idx)
+	if next_match === nothing
+		s
+	else
+		url = only(next_match.captures)
+		if occursin("//", url)
+			# skip this one
+			replace_with_cdn(cdnify, s, nextind(s, next_match.offset))
+		else
+			replace_with_cdn(cdnify, replace_substring(
+				s,
+				url,
+				cdnify(url)
+			))
+		end
+	end
 end

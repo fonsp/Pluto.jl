@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.3
+# v0.19.9
 
 using Markdown
 using InteractiveUtils
@@ -291,13 +291,6 @@ my_data = [
 	return svg
 	</script>
 """)
-
-# ╔═╡ 7d9d6c28-131a-4b2a-84f8-5c085f387e85
-md"""
-#### Future: directly embedding data
-
-In the future, you will be able to embed data directly into JavaScript, using Pluto's built-in, optimized data transfer. See [the Pull Request](https://github.com/fonsp/Pluto.jl/pull/1124) for more info.
-"""
 
 # ╔═╡ 0866afc2-fd42-42b7-a572-9d824cf8b83b
 md"""
@@ -753,6 +746,39 @@ state = Dict(
 	
 """)
 
+# ╔═╡ 7d9d6c28-131a-4b2a-84f8-5c085f387e85
+md"""
+## Embedding Julia data directly into JavaScript!
+
+You can use `Main.PlutoRunner.publish_to_js` to embed data directly into JavaScript, using Pluto's built-in, optimized data transfer. See [the Pull Request](https://github.com/fonsp/Pluto.jl/pull/1124) for more info.
+
+Example usage:
+
+```julia
+let
+	x = rand(UInt8, 10_000)
+	
+	d = Dict(
+		"some_raw_data" => x,
+		"wow" => 1000,
+	)
+	
+	@htl(\"\"\"
+	<script>
+		
+	const d = $(Main.PlutoRunner.publish_to_js(d))
+	console.log(d)
+	
+	</script>
+	\"\"\")
+end
+```
+
+In this example, the `const d` is populated from a hook into Pluto's data transfer. For large amounts of typed vector data (e.g. `Vector{UInt8}` or `Vector{Float64}`), this is *much* more efficient than interpolating the data directly with HypertextLiteral using `$(d)`, which would use a JSON-like string serialization.
+
+**Note:** this API is still *experimental*, and might change in the future.
+"""
+
 # ╔═╡ da7091f5-8ba2-498b-aa8d-bbf3b4505b81
 md"""
 # Appendix
@@ -1090,9 +1116,9 @@ uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
 [[ColorTypes]]
 deps = ["FixedPointNumbers", "Random"]
-git-tree-sha1 = "024fe24d83e4a5bf5fc80501a314ce0d1aa35597"
+git-tree-sha1 = "eb7f0f8307f71fac7c606984ea5fb2817275d6e4"
 uuid = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
-version = "0.11.0"
+version = "0.11.4"
 
 [[Dates]]
 deps = ["Printf"]
@@ -1115,9 +1141,10 @@ uuid = "47d2ed2b-36de-50cf-bf87-49c2cf4b8b91"
 version = "0.0.4"
 
 [[HypertextLiteral]]
-git-tree-sha1 = "2b078b5a615c6c0396c77810d92ee8c6f470d238"
+deps = ["Tricks"]
+git-tree-sha1 = "c47c5fa4c5308f27ccaac35504858d8914e102f9"
 uuid = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
-version = "0.9.3"
+version = "0.9.4"
 
 [[IOCapture]]
 deps = ["Logging", "Random"]
@@ -1180,9 +1207,9 @@ uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 
 [[Parsers]]
 deps = ["Dates"]
-git-tree-sha1 = "1285416549ccfcdf0c50d4997a94331e88d68413"
+git-tree-sha1 = "0044b23da09b5608b4ecacb4e5e6c6332f833a7e"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "2.3.1"
+version = "2.3.2"
 
 [[Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
@@ -1190,9 +1217,9 @@ uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
 [[PlutoUI]]
 deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "UUIDs"]
-git-tree-sha1 = "670e559e5c8e191ded66fa9ea89c97f10376bb4c"
+git-tree-sha1 = "8d1f54886b9037091edf146b517989fc4a09efec"
 uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-version = "0.7.38"
+version = "0.7.39"
 
 [[Printf]]
 deps = ["Unicode"]
@@ -1239,6 +1266,11 @@ uuid = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
 [[Test]]
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[[Tricks]]
+git-tree-sha1 = "6bac775f2d42a611cdfcd1fb217ee719630c4175"
+uuid = "410a4b4d-49e4-4fbc-ab6d-cb71b17b3775"
+version = "0.1.6"
 
 [[UUIDs]]
 deps = ["Random", "SHA"]
@@ -1297,7 +1329,6 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╠═00d97588-d591-4dad-9f7d-223c237deefd
 # ╠═21f57310-9ceb-423c-a9ce-5beb1060a5a3
 # ╟─94561cb1-2325-49b6-8b22-943923fdd91b
-# ╟─7d9d6c28-131a-4b2a-84f8-5c085f387e85
 # ╟─0866afc2-fd42-42b7-a572-9d824cf8b83b
 # ╟─75e1a973-7ef0-4ac5-b3e2-5edb63577927
 # ╠═e8d8a60e-489b-467a-b49c-1fa844807751
@@ -1337,6 +1368,7 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╠═9e37c18c-3ebb-443a-9663-bb4064391d6e
 # ╟─05d28aa2-9622-4e62-ab39-ca4c7dde6eb4
 # ╠═3266f9e6-42ad-4103-8db3-b87d2c315290
+# ╟─7d9d6c28-131a-4b2a-84f8-5c085f387e85
 # ╟─ebec177c-4c33-45a4-bdbd-f16944631aff
 # ╟─da7091f5-8ba2-498b-aa8d-bbf3b4505b81
 # ╠═64cbf19c-a4e3-4cdb-b4ec-1fbe24be55ad

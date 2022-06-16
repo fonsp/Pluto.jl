@@ -143,6 +143,35 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             notebook = Notebook([
                 Cell("using OffsetArrays"),
                 Cell("OffsetArray(zeros(3), 20:22)"),
+                
+                Cell("""
+                begin
+                    struct BadImplementation <: AbstractVector{Int64}
+                    end
+                    function Base.show(io::IO, ::MIME"text/plain", b::BadImplementation)
+                        write(io, "fallback")
+                    end
+                end
+                """),
+                
+                Cell("""
+                begin
+                    struct OneTwoThree <: AbstractVector{Int64}
+                    end
+                
+                    
+                    function Base.show(io::IO, ::MIME"text/plain", b::OneTwoThree)
+                        write(io, "fallback")
+                    end
+                
+                    Base.size(::OneTwoThree) = (3,)
+                    Base.getindex(::OneTwoThree, i) = 100 + i
+                end
+                """),
+                
+                Cell("BadImplementation()"),
+                Cell("OneTwoThree()"),
+                
             ])
             fakeclient.connected_notebook = notebook
 
@@ -154,6 +183,16 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             @test occursin("21", s)
             # once in the prefix, once as index
             @test count("22", s) >= 2
+            
+            @test notebook.cells[5].output.mime isa MIME"text/plain"
+            @test notebook.cells[5].output.body == "fallback"
+            
+            @test notebook.cells[6].output.mime isa MIME"application/vnd.pluto.tree+object"
+            s = string(notebook.cells[6].output.body)
+            @test occursin("OneTwoThree", s)
+            @test occursin("101", s)
+            @test occursin("102", s)
+            @test occursin("103", s)
             
             WorkspaceManager.unmake_workspace((🍭, notebook))
             🍭.options.evaluation.workspace_use_distributed = false

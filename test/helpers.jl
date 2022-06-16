@@ -64,7 +64,7 @@ julia> @test testee(:(
 true
 ```
 "
-function testee(expr, expected_references, expected_definitions, expected_funccalls, expected_funcdefs, expected_macrocalls = []; verbose::Bool=true)
+function testee(expr::Any, expected_references, expected_definitions, expected_funccalls, expected_funcdefs, expected_macrocalls = []; verbose::Bool=true)
     expected = easy_symstate(expected_references, expected_definitions, expected_funccalls, expected_funcdefs, expected_macrocalls)
 
     original_hash = Pluto.PlutoRunner.expr_hash(expr)
@@ -125,6 +125,16 @@ function easy_symstate(expected_references, expected_definitions, expected_funcc
     new_expected_macrocalls = array_to_set(expected_macrocalls)
 
     SymbolsState(Set(expected_references), Set(expected_definitions), new_expected_funccalls, new_expected_funcdefs, new_expected_macrocalls)
+end
+
+function insert_cell!(notebook, cell)
+    notebook.cells_dict[cell.cell_id] = cell
+    push!(notebook.cell_order, cell.cell_id)
+end
+
+function delete_cell!(notebook, cell)
+    deleteat!(notebook.cell_order, findfirst(==(cell.cell_id), notebook.cell_order))
+    delete!(notebook.cells_dict, cell.cell_id)
 end
 
 function setcode!(cell, newcode)

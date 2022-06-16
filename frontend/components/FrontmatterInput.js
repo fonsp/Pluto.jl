@@ -1,7 +1,7 @@
 import { html, Component, useRef, useLayoutEffect, useState, useEffect } from "../imports/Preact.js"
 import { has_ctrl_or_cmd_pressed } from "../common/KeyboardShortcuts.js"
 
-import "https://cdn.jsdelivr.net/gh/fonsp/rebel-tag-input@1.0.4/lib/rebel-tag-input.mjs"
+import "https://cdn.jsdelivr.net/gh/fonsp/rebel-tag-input@1.0.6/lib/rebel-tag-input.mjs"
 
 //@ts-ignore
 import dialogPolyfill from "https://cdn.jsdelivr.net/npm/dialog-polyfill@0.5.6/dist/dialog-polyfill.esm.min.js"
@@ -27,7 +27,7 @@ export const FrontMatterInput = ({ remote_frontmatter, set_remote_frontmatter })
         set_frontmatter((fm) => ({ ...fm, [key]: value }))
     }
 
-    const dialog_ref = useRef(/** @type {HTMLDialogElement} */ (null))
+    const dialog_ref = useRef(/** @type {HTMLDialogElement?} */ (null))
     useLayoutEffect(() => {
         dialogPolyfill.registerDialog(dialog_ref.current)
     })
@@ -55,7 +55,7 @@ export const FrontMatterInput = ({ remote_frontmatter, set_remote_frontmatter })
 
     useLayoutEffect(() => {
         const listener = (e) => {
-            if (dialog_ref.current.contains(e.target)) if (e.key === "Enter" && has_ctrl_or_cmd_pressed(e)) submit()
+            if (dialog_ref.current != null) if (dialog_ref.current.contains(e.target)) if (e.key === "Enter" && has_ctrl_or_cmd_pressed(e)) submit()
         }
         window.addEventListener("keydown", listener)
         return () => {
@@ -110,7 +110,7 @@ export const FrontMatterInput = ({ remote_frontmatter, set_remote_frontmatter })
     </dialog>`
 }
 
-const special_field_names = ["tags", "date", "license"]
+const special_field_names = ["tags", "date", "license", "url", "color"]
 
 const field_type = (name) => {
     for (const t of special_field_names) {
@@ -122,20 +122,23 @@ const field_type = (name) => {
 }
 
 const Input = ({ value, on_value, type, id }) => {
-    const input_ref = useRef(/** @type {HTMLInputElement} */ (null))
+    const input_ref = useRef(/** @type {HTMLInputElement?} */ (null))
 
     useLayoutEffect(() => {
+        if (!input_ref.current) return
         input_ref.current.value = value
     }, [input_ref.current, value])
 
     useLayoutEffect(() => {
+        if (!input_ref.current) return
         const listener = (e) => {
+            if (!input_ref.current) return
             on_value(input_ref.current.value)
         }
 
         input_ref.current.addEventListener("input", listener)
         return () => {
-            input_ref.current.removeEventListener("input", listener)
+            input_ref.current?.removeEventListener("input", listener)
         }
     }, [input_ref.current])
 

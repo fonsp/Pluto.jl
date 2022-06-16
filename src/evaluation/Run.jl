@@ -2,8 +2,26 @@ import REPL:ends_with_semicolon
 import .Configuration
 import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname, UsingsImports, external_package_names
 import .WorkspaceManager: macroexpand_in_workspace
+import .MoreAnalysis: find_bound_variables
 
 Base.push!(x::Set{Cell}) = x
+
+"""
+```julia
+set_bond_value_pairs!(session::ServerSession, notebook::Notebook, bond_value_pairs::Vector{Tuple{Symbol, Any}})
+```
+
+Given a list of tuples of the form `(bound variable name, (untransformed) value)`, assign each (transformed) value to the corresponding global bound variable in the notebook workspace.
+
+`bond_value_pairs` can also be an iterator.
+"""
+function set_bond_value_pairs!(session::ServerSession, notebook::Notebook, bond_value_pairs)
+	for (bound_sym, new_value) in bond_value_pairs
+		WorkspaceManager.eval_in_workspace((session, notebook), :($(bound_sym) = Main.PlutoRunner.transform_bond_value($(QuoteNode(bound_sym)), $(new_value))))
+	end
+end
+
+const _empty_bond_value_pairs = zip(Symbol[],Any[])
 
 """
 Run given cells and all the cells that depend on them, based on the topology information before and after the changes.
@@ -16,6 +34,7 @@ function run_reactive!(
     roots::Vector{Cell};
     deletion_hook::Function = WorkspaceManager.move_vars,
     user_requested_run::Bool = true,
+    bond_value_pairs=_empty_bond_value_pairs,
 )::TopologicalOrder
     withtoken(notebook.executetoken) do
         run_reactive_core!(
@@ -26,6 +45,7 @@ function run_reactive!(
             roots;
             deletion_hook,
             user_requested_run,
+            bond_value_pairs
         )
     end
 end
@@ -34,7 +54,7 @@ end
 Run given cells and all the cells that depend on them, based on the topology information before and after the changes.
 
 !!! warning
-    You should probably should not call this directly and use `run_reactive!` instead.
+    You should probably not call this directly and use `run_reactive!` instead.
 """
 function run_reactive_core!(
     session::ServerSession,
@@ -44,7 +64,8 @@ function run_reactive_core!(
     roots::Vector{Cell};
     deletion_hook::Function = WorkspaceManager.move_vars,
     user_requested_run::Bool = true,
-    already_run::Vector{Cell} = Cell[]
+    already_run::Vector{Cell} = Cell[],
+    bond_value_pairs = _empty_bond_value_pairs,
 )::TopologicalOrder
     @assert !isready(notebook.executetoken) "run_reactive_core!() was called with a free notebook.executetoken."
     @assert will_run_code(notebook)
@@ -59,8 +80,8 @@ function run_reactive_core!(
         update_dependency_cache!(notebook)
     end
 
-    removed_cells = setdiff(keys(old_topology.nodes), keys(new_topology.nodes))
-    roots = Cell[roots..., removed_cells...]
+    removed_cells = setdiff(all_cells(old_topology), all_cells(new_topology))
+    roots = vcat(roots, removed_cells)
 
     # by setting the reactive node and expression caches of deleted cells to "empty", we are essentially pretending that those cells still exist, but now have empty code. this makes our algorithm simpler.
     new_topology = NotebookTopology(
@@ -76,7 +97,8 @@ function run_reactive_core!(
         cell_order = new_topology.cell_order,
     )
 
-    # save the old topological order - we'll delete variables assigned from it and re-evalutate its cells unless the cells have already run previously in the reactive run
+    # save the old topological order - we'll delete variables assigned from its
+    # and re-evalutate its cells unless the cells have already run previously in the reactive run
     old_order = topological_order(old_topology, roots)
 
     old_runnable = setdiff(old_order.runnable, already_run)
@@ -89,8 +111,8 @@ function run_reactive_core!(
     to_run_raw = setdiff(union(new_runnable, old_runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
 
     # find (indirectly) deactivated cells and update their status
-	deactivated = filter(c -> c.metadata["disabled"], notebook.cells)
-    indirectly_deactivated = collect(topological_order(new_topology, deactivated))
+    disabled_cells = filter(is_disabled, notebook.cells)
+    indirectly_deactivated = collect(topological_order(new_topology, disabled_cells))
     for cell in indirectly_deactivated
         cell.running = false
         cell.queued = false
@@ -159,6 +181,13 @@ function run_reactive_core!(
 				capture_stdout = session.options.evaluation.capture_stdout,
             )
             any_interrupted |= run.interrupted
+
+			# Support one bond defining another when setting both simultaneously in PlutoSliderServer
+			# https://github.com/fonsp/Pluto.jl/issues/1695
+
+			# set the redefined bound variables to their original value from the request
+			defs = notebook.topology.nodes[cell].definitions
+			set_bond_value_pairs!(session, notebook, Iterators.filter(((sym,val),) -> sym ∈ defs, bond_value_pairs))
         end
 
         cell.running = false

@@ -1,10 +1,17 @@
 # Will be evaluated _inside_ the workspace process.
 
 # Pluto does most things on process 1 (the server), and it uses little workspace processes to evaluate notebook code in.
-# These baby processes don't import Pluto, they only import this module. Functions from this module are called by WorkspaceManager.jl, using Distributed
+# These baby processes don't import Pluto, they only import this module. Functions from this module are called by WorkspaceManager.jl via Distributed
 
 # So when reading this file, pretend that you are living in process 2, and you are communicating with Pluto's server, who lives in process 1.
 # The package environment that this file is loaded with is the NotebookProcessProject.toml file in this directory.
+
+# SOME EXTRA NOTES
+
+# 1. The entire PlutoRunner should be a single file.
+# 2. We restrict the communication between this PlutoRunner and the Pluto server to only use *Base Julia types*, like `String`, `Dict`, `NamedTuple`, etc. 
+
+# These restriction are there to allow flexibility in the way that this file is loaded on a runner process, which is something that we might want to change in the future, like when we make the transition to our own Distributed.
 
 module PlutoRunner
 
@@ -24,7 +31,9 @@ import Logging
 
 export @bind
 
-MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
+# This is not a struct to make it easier to pass these objects between distributed processes.
+const MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
+
 const ObjectID = typeof(objectid("hello computer"))
 const ObjectDimPair = Tuple{ObjectID,Int64}
 
@@ -823,6 +832,7 @@ const table_column_display_limit_increase = 30
 
 const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 
+# This is not a struct to make it easier to pass these objects between distributed processes.
 const FormattedCellResult = NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
 
 function formatted_result_of(
@@ -864,14 +874,14 @@ function formatted_result_of(
         end
     end
     
-    return (
-        output_formatted = output_formatted,
-        errored = errored, 
-        interrupted = false, 
-        process_exited = false, 
+    return (;
+        output_formatted,
+        errored,
+        interrupted = false,
+        process_exited = false,
         runtime = get(cell_runtimes, cell_id, nothing),
-        published_objects = published_objects,
-        has_pluto_hook_features = has_pluto_hook_features,
+        published_objects,
+        has_pluto_hook_features,
     )
 end
 
@@ -908,9 +918,20 @@ end
 Base.IOContext(io::IOContext, ::Nothing) = io
 
 "The `IOContext` used for converting arbitrary objects to pretty strings."
-const default_iocontext = IOContext(devnull, :color => false, :limit => true, :displaysize => (18, 88), :is_pluto => true, :pluto_supported_integration_features => supported_integration_features)
+const default_iocontext = IOContext(devnull, 
+    :color => false, 
+    :limit => true, 
+    :displaysize => (18, 88), 
+    :is_pluto => true, 
+    :pluto_supported_integration_features => supported_integration_features,
+)
 
-const default_stdout_iocontext = IOContext(devnull, :color => false, :limit => true, :displaysize => (18, 75), :is_pluto => false)
+const default_stdout_iocontext = IOContext(devnull, 
+    :color => true, 
+    :limit => true, 
+    :displaysize => (18, 75), 
+    :is_pluto => false,
+)
 
 const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
 # in descending order of coolness
@@ -930,7 +951,7 @@ See [`allmimes`](@ref) for the ordered list of supported MIME types.
 """
 function format_output_default(@nospecialize(val), @nospecialize(context=default_iocontext))::MimedOutput
     try
-        io_sprinted, (value, mime) = show_richest_withreturned(val; context)
+        io_sprinted, (value, mime) = show_richest_withreturned(context, val)
         if value === nothing
             if mime ∈ imagemimes
                 (io_sprinted, mime)
@@ -1020,9 +1041,9 @@ function pretty_stackcall(frame::Base.StackFrame, linfo::Core.MethodInstance)
 end
 
 "Return a `(String, Any)` tuple containing function output as the second entry."
-function show_richest_withreturned(@nospecialize(args...); context=nothing, sizehint::Integer=0)
-    buffer = IOBuffer(; sizehint)
-    val = show_richest(IOContext(buffer, context), args...)
+function show_richest_withreturned(context::IOContext, @nospecialize(args))
+    buffer = IOBuffer(; sizehint=0)
+    val = show_richest(IOContext(buffer, context), args)
     return (resize!(buffer.data, buffer.size), val)
 end
 
@@ -1051,6 +1072,16 @@ function use_tree_viewer_for_struct(@nospecialize(x::T))::Bool where T
     end
 end
 
+"Return the first mimetype in `allmimes` which can show `x`."
+function mimetype(x)
+    # ugly code to fix an ugly performance problem
+    for m in allmimes
+        if pluto_showable(m, x)
+            return m
+        end
+    end
+end
+
 """
 Like two-argument `Base.show`, except:
 1. the richest MIME type available to Pluto will be used
@@ -1058,21 +1089,24 @@ Like two-argument `Base.show`, except:
 3. if the first returned element is `nothing`, then we wrote our data to `io`. If it is something else (a Dict), then that object will be the cell's output, instead of the buffered io stream. This allows us to output rich objects to the frontend that are not necessarily strings or byte streams
 """
 function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
-    # ugly code to fix an ugly performance problem
-    local mime = nothing
-    for m in allmimes
-        if pluto_showable(m, x)
-            mime = m
-            break
-        end
-    end
+    mime = mimetype(x)
 
     if mime isa MIME"text/plain" && use_tree_viewer_for_struct(x)
         tree_data(x, io), MIME"application/vnd.pluto.tree+object"()
     elseif mime isa MIME"application/vnd.pluto.tree+object"
-        tree_data(x, IOContext(io, :compact => true)), mime
+        try
+            tree_data(x, IOContext(io, :compact => true)), mime
+        catch
+            show(io, MIME"text/plain"(), x)
+            nothing, MIME"text/plain"()
+        end
     elseif mime isa MIME"application/vnd.pluto.table+object"
-        table_data(x, IOContext(io, :compact => true)), mime
+        try
+            table_data(x, IOContext(io, :compact => true)), mime
+        catch
+            show(io, MIME"text/plain"(), x)
+            nothing, MIME"text/plain"()
+        end
     elseif mime isa MIME"application/vnd.pluto.divelement+object"
         tree_data(x, io), mime
     elseif mime ∈ imagemimes
@@ -1105,7 +1139,7 @@ pluto_showable(m::MIME, @nospecialize(x))::Bool = Base.invokelatest(showable, m,
 
 
 # We invent our own MIME _because we can_ but don't use it somewhere else because it might change :)
-pluto_showable(::MIME"application/vnd.pluto.tree+object", x::AbstractArray{<:Any,1}) = eltype(eachindex(x)) === Int
+pluto_showable(::MIME"application/vnd.pluto.tree+object", x::AbstractVector{<:Any}) = try eltype(eachindex(x)) === Int; catch; false; end
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractSet{<:Any}) = true
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractDict{<:Any,<:Any}) = true
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Tuple) = true
@@ -1120,7 +1154,9 @@ pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Any) = false
 # in the next functions you see a `context` argument
 # this is really only used for the circular reference tracking
 
-function tree_data_array_elements(@nospecialize(x::AbstractVector{<:Any}), indices::AbstractVector{I}, context::IOContext)::Vector{Tuple{I,Any}} where {I<:Integer}
+const Context = IOContext{IOBuffer}
+
+function tree_data_array_elements(@nospecialize(x::AbstractVector{<:Any}), indices::AbstractVector{I}, context::Context) where {I<:Integer}
     Tuple{I,Any}[
         if isassigned(x, i)
             i, format_output_default(x[i], context)
@@ -1130,17 +1166,18 @@ function tree_data_array_elements(@nospecialize(x::AbstractVector{<:Any}), indic
         for i in indices
     ] |> collect
 end
+precompile(tree_data_array_elements, (Vector{Any}, Vector{Int}, Context))
 
-function array_prefix(@nospecialize(x::Array{<:Any,1}))::String
-    string(eltype(x))
+function array_prefix(@nospecialize(x::Vector{<:Any}))
+    string(eltype(x))::String
 end
 
-function array_prefix(@nospecialize(x))::String
+function array_prefix(@nospecialize(x))
     original = sprint(Base.showarg, x, false)
-    lstrip(original, ':') * ": "
+    string(lstrip(original, ':'), ": ")::String
 end
 
-function get_my_display_limit(@nospecialize(x), dim::Integer, depth::Integer, context::IOContext, a::Integer, b::Integer)::Int # needs to be system-dependent Int because it is used as array index
+function get_my_display_limit(@nospecialize(x), dim::Integer, depth::Integer, context::Context, a::Integer, b::Integer)::Int # needs to be system-dependent Int because it is used as array index
     let
         if depth < 3
             a ÷ (1 + 2 * depth)
@@ -1157,12 +1194,18 @@ function get_my_display_limit(@nospecialize(x), dim::Integer, depth::Integer, co
     end
 end
 
-function tree_data(@nospecialize(x::AbstractSet{<:Any}), context::IOContext)
+objectid2str(@nospecialize(x)) = string(objectid(x); base=16)::String
+
+function circular(@nospecialize(x))
+    return Dict{Symbol,Any}(
+        :objectid => objectid2str(x),
+        :type => :circular
+    )
+end
+
+function tree_data(@nospecialize(x::AbstractSet{<:Any}), context::Context)
     if Base.show_circular(context, x)
-        Dict{Symbol,Any}(
-            :objectid => string(objectid(x), base=16),
-            :type => :circular,
-        )
+        return circular(x)
     else
         depth = get(context, :tree_viewer_depth, 0)
         recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x), Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
@@ -1185,19 +1228,16 @@ function tree_data(@nospecialize(x::AbstractSet{<:Any}), context::IOContext)
         Dict{Symbol,Any}(
             :prefix => string(typeof(x)),
             :prefix_short => string(typeof(x) |> trynameof),
-            :objectid => string(objectid(x), base=16),
+            :objectid => objectid2str(x),
             :type => :Set,
             :elements => elements
         )
     end
 end
 
-function tree_data(@nospecialize(x::AbstractVector{<:Any}), context::IOContext)
+function tree_data(@nospecialize(x::AbstractVector{<:Any}), context::Context)
     if Base.show_circular(context, x)
-        Dict{Symbol,Any}(
-            :objectid => string(objectid(x), base=16)::String,
-            :type => :circular,
-        )
+        return circular(x)
     else
         depth = get(context, :tree_viewer_depth, 0)::Int
         recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x), Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
@@ -1222,14 +1262,14 @@ function tree_data(@nospecialize(x::AbstractVector{<:Any}), context::IOContext)
         Dict{Symbol,Any}(
             :prefix => prefix,
             :prefix_short => x isa Vector ? "" : prefix, # if not abstract
-            :objectid => string(objectid(x), base=16),
+            :objectid => objectid2str(x),
             :type => :Array,
             :elements => elements
         )
     end
 end
 
-function tree_data(@nospecialize(x::Tuple), context::IOContext)
+function tree_data(@nospecialize(x::Tuple), context::Context)
     depth = get(context, :tree_viewer_depth, 0)
     recur_io = IOContext(context, Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
 
@@ -1239,18 +1279,15 @@ function tree_data(@nospecialize(x::Tuple), context::IOContext)
         push!(elements, out)
     end
     Dict{Symbol,Any}(
-        :objectid => string(objectid(x), base=16),
+        :objectid => objectid2str(x),
         :type => :Tuple,
         :elements => collect(enumerate(elements)),
     )
 end
 
-function tree_data(@nospecialize(x::AbstractDict{<:Any,<:Any}), context::IOContext)
+function tree_data(@nospecialize(x::AbstractDict{<:Any,<:Any}), context::Context)
     if Base.show_circular(context, x)
-        Dict{Symbol,Any}(
-            :objectid => string(objectid(x), base=16),
-            :type => :circular,
-        )
+        return circular(x)
     else
         depth = get(context, :tree_viewer_depth, 0)
         recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x), Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
@@ -1273,21 +1310,21 @@ function tree_data(@nospecialize(x::AbstractDict{<:Any,<:Any}), context::IOConte
         Dict{Symbol,Any}(
             :prefix => string(typeof(x)),
             :prefix_short => string(typeof(x) |> trynameof),
-            :objectid => string(objectid(x), base=16),
+            :objectid => objectid2str(x),
             :type => :Dict,
             :elements => elements
         )
     end
 end
 
-function tree_data_nt_row(@nospecialize(pair::Tuple), context::IOContext)
+function tree_data_nt_row(@nospecialize(pair::Tuple), context::Context)
     # this is an entry of a NamedTuple, the first element of the Tuple is a Symbol, which we want to print as `x` instead of `:x`
     k, element = pair
     string(k), format_output_default(element, context)
 end
 
 
-function tree_data(@nospecialize(x::NamedTuple), context::IOContext)
+function tree_data(@nospecialize(x::NamedTuple), context::Context)
     depth = get(context, :tree_viewer_depth, 0)
     recur_io = IOContext(context, Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
 
@@ -1298,28 +1335,25 @@ function tree_data(@nospecialize(x::NamedTuple), context::IOContext)
         push!(elements, data)
     end
     Dict{Symbol,Any}(
-        :objectid => string(objectid(x), base=16),
+        :objectid => objectid2str(x),
         :type => :NamedTuple,
         :elements => elements
     )
 end
 
-function tree_data(@nospecialize(x::Pair), context::IOContext)
+function tree_data(@nospecialize(x::Pair), context::Context)
     k, v = x
     Dict{Symbol,Any}(
-        :objectid => string(objectid(x), base=16),
+        :objectid => objectid2str(x),
         :type => :Pair,
         :key_value => (format_output_default(k, context), format_output_default(v, context)),
     )
 end
 
 # Based on Julia source code but without writing to IO
-function tree_data(@nospecialize(x::Any), context::IOContext)
+function tree_data(@nospecialize(x::Any), context::Context)
     if Base.show_circular(context, x)
-        Dict{Symbol,Any}(
-            :objectid => string(objectid(x), base=16),
-            :type => :circular,
-        )
+        return circular(x)
     else
         depth = get(context, :tree_viewer_depth, 0)
         recur_io = IOContext(context, 
@@ -1348,7 +1382,7 @@ function tree_data(@nospecialize(x::Any), context::IOContext)
         Dict{Symbol,Any}(
             :prefix => repr(t; context),
             :prefix_short => string(trynameof(t)),
-            :objectid => string(objectid(x), base=16)::String,
+            :objectid => objectid2str(x),
             :type => :struct,
             :elements => elements,
         )
@@ -1423,7 +1457,7 @@ const integrations = Integration[
                 end
             end
 
-            function table_data(x::Any, io::IOContext)
+            function table_data(x::Any, io::Context)
                 rows = Tables.rows(x)
 
                 my_row_limit = get_my_display_limit(x, 1, 0, io, table_row_display_limit, table_row_display_limit_increase)
@@ -1451,7 +1485,7 @@ const integrations = Integration[
                 # not enumerate(rows) because of some silliness
                 # not rows[i] because `getindex` is not guaranteed to exist
                 L = truncate_rows ? my_row_limit : length(rows)
-                row_data = Array{Any,1}(undef, L)
+                row_data = Vector{Any}(undef, L)
                 for (i, row) in zip(1:L,rows)
                     row_data[i] = (i, row_data_for(row))
                 end
@@ -1472,7 +1506,7 @@ const integrations = Integration[
                 )
 
                 Dict{Symbol,Any}(
-                    :objectid => string(objectid(x), base=16),
+                    :objectid => objectid2str(x),
                     :schema => schema_data,
                     :rows => row_data,
                 )
@@ -1483,7 +1517,7 @@ const integrations = Integration[
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::Type) = false
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:NamedTuple}) = false
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:Dict{Symbol,<:Any}}) = false
-            pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractArray{Union{}, 1}) = false
+            pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{Union{}}) = false
 
         end,
     ),
@@ -1882,7 +1916,7 @@ function _publish(x, id_start)::String
     return id
 end
 
-_publish(x) = _publish(x, string(objectid(x), base=16))
+_publish(x) = _publish(x, objectid2str(x))
 
 # TODO? Possibly move this to it's own package, with fallback that actually msgpack?
 # ..... Ideally we'd make this require `await` on the javascript side too...
@@ -2044,7 +2078,7 @@ Base.@kwdef struct DivElement
     class::Union{String,Nothing}=nothing
 end
 
-tree_data(@nospecialize(e::DivElement), context::IOContext) = Dict{Symbol, Any}(
+tree_data(@nospecialize(e::DivElement), context::Context) = Dict{Symbol, Any}(
     :style => e.style, 
     :classname => e.class, 
     :children => Any[
