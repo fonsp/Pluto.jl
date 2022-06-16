@@ -410,6 +410,7 @@ export class Editor extends Component {
                             metadata: {
                                 ...DEFAULT_CELL_METADATA,
                             },
+                            depends_on_skipped_cells: false,
                         }
                     }
                     notebook.cell_order = [
@@ -450,6 +451,7 @@ export class Editor extends Component {
                         metadata: {
                             ...DEFAULT_CELL_METADATA,
                         },
+                        depends_on_skipped_cells: false,
                     }
                 })
 
@@ -508,6 +510,7 @@ export class Editor extends Component {
                         code,
                         code_folded: false,
                         metadata: { ...DEFAULT_CELL_METADATA },
+                        depends_on_skipped_cells: false,
                     }
                     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
                 })
