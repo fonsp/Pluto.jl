@@ -99,6 +99,11 @@ pluto-filepicker {
     margin-top: 0.3rem;
 }
 
+.desktop_picker {
+    display: inline-block;
+    margin-left: 5px;
+}
+
 pluto-filepicker .cm-editor {
     height: calc(1rem + 4px + 4px + 4px);
     display: inline-block;
@@ -124,7 +129,8 @@ pluto-filepicker .cm-scroller::-webkit-scrollbar {
     display: none; /* Safari and Chrome */
 }
 
-pluto-filepicker button {
+pluto-filepicker button,
+.desktop_picker button {
     margin: 0px;
     background: var(--footer-filepicker-focus-color);
     border-radius: 3px;
@@ -134,6 +140,10 @@ pluto-filepicker button {
     font-family: "Roboto Mono", monospace;
     font-weight: 600;
     font-size: 0.75rem;
+}
+
+.desktop_picker > button {
+    cursor: pointer;
 }
 
 pluto-filepicker button {

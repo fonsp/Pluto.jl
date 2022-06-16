@@ -61,6 +61,7 @@ const set_cm_value = (/** @type{EditorView} */ cm, /** @type {string} */ value, 
  * @augments Component<FilePickerProps,{}>
  */
 export class FilePicker extends Component {
+    is_desktop = false
     constructor(/** @type {FilePickerProps} */ props) {
         super(props)
         this.state = {
@@ -79,6 +80,18 @@ export class FilePicker extends Component {
                 this.request_path_completions()
             }
             window.dispatchEvent(new CustomEvent("collapse_cell_selection", {}))
+        }
+
+        // @ts-ignore
+        if (!!window.electron) {
+            // @ts-ignore
+            console.log("Running in Electron Environment! Found following properties/methods:", window.electron)
+            this.is_desktop = true
+        }
+
+        this.on_desktop_submit = () => {
+            // @ts-ignore
+            window.electron.fileSystem.openNotebook()
         }
 
         let run = async (fn) => await fn()
@@ -229,7 +242,7 @@ export class FilePicker extends Component {
                 ],
             }),
         })
-        this.base.insertBefore(this.cm.dom, this.base.firstElementChild)
+        if (!this.is_desktop) this.base.insertBefore(this.cm.dom, this.base.firstElementChild)
 
         // window.addEventListener("resize", () => {
         //     if (!this.cm.hasFocus()) {
@@ -238,11 +251,16 @@ export class FilePicker extends Component {
         // })
     }
     render() {
-        return html`
-            <pluto-filepicker>
-                <button onClick=${this.on_submit} disabled=${this.state.is_button_disabled}>${this.props.button_label}</button>
-            </pluto-filepicker>
-        `
+        return this.is_desktop
+            ? html`<div onClick=${this.on_desktop_submit} class="desktop_picker">
+                  <span>${this.props.value}</span>
+                  <button>${this.props.button_label}</button>
+              </div>`
+            : html`
+                  <pluto-filepicker>
+                      <button onClick=${this.on_submit} disabled=${this.state.is_button_disabled}>${this.props.button_label}</button>
+                  </pluto-filepicker>
+              `
     }
 
     request_path_completions() {
