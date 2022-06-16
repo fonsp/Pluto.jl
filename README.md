@@ -160,9 +160,9 @@ Pluto.jl is open source! Specifically, it is [MIT Licensed](https://github.com/f
 
 If you want to reference Pluto.jl in scientific writing, you can use our DOI: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4792401.svg)](https://doi.org/10.5281/zenodo.4792401)
 
-### Sample notebooks
+### Featured notebooks
 
-The included sample notebooks have a more permissive license: the [Unlicense](https://github.com/fonsp/Pluto.jl/blob/main/sample/LICENSE). This means that you can use sample notebook code however you like - you do not need to credit us! 
+Unless otherwise specified, the included featured notebooks have a more permissive license: the [Unlicense](https://github.com/fonsp/Pluto.jl/blob/main/sample/LICENSE). This means that you can use them however you like - you do not need to credit us! 
 
 Your notebook files are _yours_, you also do not need to credit us. Have fun!
 
