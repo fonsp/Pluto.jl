@@ -3,6 +3,8 @@ import { BackendLaunchPhase } from "./Binder.js"
 import { timeout_promise } from "./PlutoConnection.js"
 import { with_query_params } from "./URLTools.js"
 
+// This file is very similar to `start_binder` in Binder.js
+
 /**
  *
  * @param {{
@@ -13,6 +15,8 @@ import { with_query_params } from "./URLTools.js"
  */
 export const start_local = async ({ setStatePromise, connect, launch_params }) => {
     try {
+        if (launch_params.pluto_server_url == null || launch_params.notebookfile == null) throw Error("Invalid launch parameters for starting locally.")
+
         await setStatePromise(
             immer((state) => {
                 state.backend_launch_phase = BackendLaunchPhase.created
@@ -25,6 +29,11 @@ export const start_local = async ({ setStatePromise, connect, launch_params }) =
 
         let open_response
 
+        // We download the notebook file contents, and then upload them to the Pluto server.
+        const notebook_contents = await (
+            await fetch(new Request(launch_params.notebookfile, { integrity: launch_params.notebookfile_integrity ?? undefined }))
+        ).arrayBuffer()
+
         open_response = await fetch(
             with_token(
                 with_query_params(new URL("notebookupload", binder_session_url), {
@@ -33,7 +42,7 @@ export const start_local = async ({ setStatePromise, connect, launch_params }) =
             ),
             {
                 method: "POST",
-                body: await (await fetch(new Request(launch_params.notebookfile, { integrity: launch_params.notebookfile_integrity }))).arrayBuffer(),
+                body: notebook_contents,
             }
         )
 
