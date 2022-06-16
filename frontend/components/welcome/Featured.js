@@ -1,3 +1,4 @@
+import featured_sources from "../../featured_sources.js"
 import _ from "../../imports/lodash.js"
 import { html, useEffect, useState } from "../../imports/Preact.js"
 import { FeaturedCard } from "./FeaturedCard.js"
@@ -77,22 +78,25 @@ const offline_html = html`
 `
 
 export const Featured = () => {
-    const [sources, set_sources] = useState(/** @type{Array<{url: String, integrity: String?}>} */ (null))
+    // Option 1: Dynamically load source list from a json:
+    // const [sources, set_sources] = useState(/** @type{Array<{url: String, integrity: String?}>?} */ (null))
+    // useEffect(() => {
+    //     run(async () => {
+    //         const data = await (await fetch("featured_sources.json")).json()
+
+    //         set_sources(data.sources)
+    //     })
+    // }, [])
+
+    // Option 2: From a JS file. This means that the source list can be bundled together.
+    const sources = featured_sources.sources
 
     const [source_data, set_source_data] = useState(/** @type{Array<SourceManifest>} */ ([]))
 
     useEffect(() => {
-        run(async () => {
-            const data = await (await fetch("featured_sources.json")).json()
-
-            set_sources(data.sources)
-        })
-    }, [])
-
-    useEffect(() => {
         if (sources != null) {
             const promises = sources.map(async ({ url, integrity }) => {
-                const data = await (await fetch(new Request(url, { integrity }))).json()
+                const data = await (await fetch(new Request(url, { integrity: integrity ?? undefined }))).json()
 
                 if (data.format_version !== "1") {
                     throw new Error(`Invalid format version: ${data.format_version}`)
