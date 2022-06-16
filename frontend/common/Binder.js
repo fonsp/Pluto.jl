@@ -153,7 +153,7 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
         }
 
         if (!open_response.ok) {
-            let b = await open_response.text()
+            let b = await open_response.blob()
             window.location.href = URL.createObjectURL(b)
             return
         }
