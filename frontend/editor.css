@@ -1110,19 +1110,8 @@ pluto-cell.running_disabled > pluto-output {
 }
 
 /* SKIP AS SCRIPT CELLS */
-pluto-cell.skip_as_script .skip_as_script_marker {
-    display: block;
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    cursor: help;
-    right: -4.85px;
-    border-radius: 5px;
-    border-right: 5px solid var(--skip-as-script-border-color);
-}
-
-pluto-cell.depends_on_skipped_cells .skip_as_script_marker {
+pluto-cell.skip_as_script .skip_as_script_marker,
+pluto-cell.depends_on_skipped_cells .depends_on_skipped_marker {
     display: block;
     position: absolute;
     top: 0;

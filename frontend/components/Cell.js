@@ -243,7 +243,7 @@ export const Cell = ({
             >
                 <span></span>
             </button>
-            ${skip_as_script || depends_on_skipped_cells
+            ${skip_as_script
                 ? html`<div
                       class="skip_as_script_marker"
                       title=${`This cell is currently stored in the notebook file as a Julia comment, instead of code. This way, it will not run when the notebook runs as a script outside of Pluto.`}
@@ -252,7 +252,22 @@ export const Cell = ({
                               type: "info",
                               source_element: e.target,
                               body: html`This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />
-                                  This way, it will not run when the notebook runs as a script outside of Pluto.`,
+                                  This way, it will not run when the notebook runs as a script outside of Pluto.<br />
+                                  This cell is <b>directly</b> flagged as <em>disabled in file</em>, use the context menu to change its state`,
+                          })
+                      }}
+                  ></div>`
+                : depends_on_skipped_cells
+                ? html`<div
+                      class="depends_on_skipped_marker"
+                      title=${`This cell is currently stored in the notebook file as a Julia comment, instead of code. This way, it will not run when the notebook runs as a script outside of Pluto.`}
+                      onClick=${(e) => {
+                          open_pluto_popup({
+                              type: "info",
+                              source_element: e.target,
+                              body: html`This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />
+                                  This way, it will not run when the notebook runs as a script outside of Pluto.<br />
+                                  This cell is <b>indirectly</b> flagged as <em>disabled in file</em> because it depends on a cell that is flagged directly.`,
                           })
                       }}
                   ></div>`
