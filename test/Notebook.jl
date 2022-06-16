@@ -343,6 +343,14 @@ end
         @test Pluto.frontmatter(nb) == Dict(
             "title" => "cool stuff",
         )
+        
+        Pluto.set_frontmatter!(nb, Dict("a" => "b"))
+        @test Pluto.frontmatter(nb) ==  Dict("a" => "b")
+        
+        Pluto.set_frontmatter!(nb, nothing)
+        @test Pluto.frontmatter(nb) ==  Dict()
+        Pluto.set_frontmatter!(nb, nothing)
+        @test Pluto.frontmatter(nb) ==  Dict()
     end
 
     @testset "I/O overloaded" begin
