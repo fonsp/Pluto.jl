@@ -1,6 +1,6 @@
 module SessionActions
 
-import ..Pluto: ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, cutename, readwrite, update_save_run!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, try_event_call, NewNotebookEvent, OpenNotebookEvent, ShutdownNotebookEvent, @asynclog, ProcessStatus, maybe_convert_path_to_wsl
+import ..Pluto: Pluto, ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, cutename, readwrite, update_save_run!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, try_event_call, NewNotebookEvent, OpenNotebookEvent, ShutdownNotebookEvent, @asynclog, ProcessStatus, maybe_convert_path_to_wsl
 using FileWatching
 import ..Pluto.DownloadCool: download_cool
 import HTTP
@@ -71,7 +71,7 @@ function open(session::ServerSession, path::AbstractString;
         nb.compiler_options = compiler_options
     end
     if clear_frontmatter
-        set_frontmatter!(nb, nothing)
+        Pluto.set_frontmatter!(nb, nothing)
     end
 
     session.notebooks[nb.notebook_id] = nb
