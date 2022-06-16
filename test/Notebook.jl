@@ -287,7 +287,7 @@ end
         @test m.non_skipped_var == 15
         
         nb.cells[1].metadata["skip_as_script"] = false
-        update_skipped_cells_dependency(nb)
+        update_skipped_cells_dependency!(nb)
         save_notebook(nb)
 
         m = ingredients(nb.path)
