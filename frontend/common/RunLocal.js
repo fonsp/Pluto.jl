@@ -38,6 +38,7 @@ export const start_local = async ({ setStatePromise, connect, launch_params }) =
             with_token(
                 with_query_params(new URL("notebookupload", binder_session_url), {
                     name: new URLSearchParams(window.location.search).get("name"),
+                    clear_frontmatter: "yesplease",
                 })
             ),
             {
