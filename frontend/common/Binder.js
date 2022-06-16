@@ -152,6 +152,12 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
             }
         }
 
+        if (!open_response.ok) {
+            let b = await open_response.text()
+            window.location.href = URL.createObjectURL(b)
+            return
+        }
+
         // Opening a notebook gives us the notebook ID, which means that we have a running session! Time to connect.
 
         const new_notebook_id = await open_response.text()

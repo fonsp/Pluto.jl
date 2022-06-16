@@ -47,6 +47,12 @@ export const start_local = async ({ setStatePromise, connect, launch_params }) =
             }
         )
 
+        if (!open_response.ok) {
+            let b = await open_response.blob()
+            window.location.href = URL.createObjectURL(b)
+            return
+        }
+
         const new_notebook_id = await open_response.text()
         const edit_url = with_query_params(new URL("edit", binder_session_url), { id: new_notebook_id })
         console.info("notebook_id:", new_notebook_id)
