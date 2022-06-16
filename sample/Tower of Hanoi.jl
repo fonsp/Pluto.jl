@@ -1,5 +1,13 @@
 ### A Pluto.jl notebook ###
-# v0.10.2
+# v0.19.9
+
+#> [frontmatter]
+#> author_url = "https://github.com/JuliaPluto"
+#> image = "https://upload.wikimedia.org/wikipedia/commons/0/07/Tower_of_Hanoi.jpeg"
+#> tags = ["basic", "classic"]
+#> author_name = "Pluto.jl"
+#> description = "An interactive Julia puzzle about stacking disks."
+#> license = "Unlicense"
 
 using Markdown
 using InteractiveUtils

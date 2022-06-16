@@ -1,6 +1,15 @@
 ### A Pluto.jl notebook ###
 # v0.19.9
 
+#> [frontmatter]
+#> author_url = "https://github.com/JuliaPluto"
+#> image = "https://user-images.githubusercontent.com/6933510/174066114-bc76964d-6ed1-491a-baa0-5063e3b08a17.png"
+#> order = "2"
+#> tags = ["basic", "classic", "asdf"]
+#> author_name = "Pluto.jl"
+#> description = "Learn mathematics in Julia using pizzas! 🍕"
+#> license = "Unlicense"
+
 using Markdown
 using InteractiveUtils
 

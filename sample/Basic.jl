@@ -1,5 +1,11 @@
 ### A Pluto.jl notebook ###
-# v0.14.0
+# v0.19.9
+
+#> [frontmatter]
+#> author_url = "https://github.com/JuliaPluto"
+#> tags = ["debug", "classic"]
+#> author_name = "Pluto.jl"
+#> license = "Unlicense"
 
 using Markdown
 using InteractiveUtils
