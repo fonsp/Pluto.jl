@@ -119,6 +119,16 @@ function run_reactive_core!(
         cell.depends_on_disabled_cells = true
     end
 
+    # find (indirectly) skipped cells and update their status
+    skipped_cells = filter(is_skipped_as_script, notebook.cells)
+    indirectly_skipped = collect(topological_order(new_topology, skipped_cells))
+    for cell in indirectly_skipped
+        cell.depends_on_skipped_cells = true
+    end
+	for cell in setdiff(notebook.cells, indirectly_skipped)
+        cell.depends_on_skipped_cells = false
+    end
+
     to_run = setdiff(to_run_raw, indirectly_deactivated)
 
     # change the bar on the sides of cells to "queued"
