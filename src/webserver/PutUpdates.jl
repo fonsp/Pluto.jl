@@ -16,7 +16,9 @@ function serialize_message_to_stream(io::IO, message::UpdateMessage)
 end
 
 function serialize_message(message::UpdateMessage)
-    sprint(serialize_message_to_stream, message)
+    io = IOBuffer()
+    serialize_message_to_stream(io, message)
+    take!(io)
 end
 
 "Send `messages` to all clients connected to the `notebook`."
@@ -69,14 +71,11 @@ function flushclient(client::ClientSession)
     take!(flushtoken)
     while isready(client.pendingupdates)
         next_to_send = take!(client.pendingupdates)
-        
+
         try
             if client.stream !== nothing
-                if isopen(client.stream)
-                    if client.stream isa HTTP.WebSockets.WebSocket
-                        client.stream.frame_type = HTTP.WebSockets.WS_BINARY
-                    end
-                    write(client.stream, serialize_message(next_to_send))
+                if !HTTP.WebSockets.isclosed(client.stream)
+                    HTTP.send(client.stream, serialize_message(next_to_send))
                 else
                     put!(flushtoken)
                     return false
