@@ -67,6 +67,20 @@ end
 # https://github.com/JuliaWeb/HTTP.jl/issues/382
 const flushtoken = Token()
 
+function send_message(stream::HTTP.WebSocket, msg)
+    HTTP.send(stream, serialize_message(msg))
+end
+function send_message(stream::IO, msg)
+    write(stream, serialize_message(msg))
+end
+
+function is_stream_open(stream::HTTP.WebSocket)
+    !HTTP.WebSockets.isclosed(stream)
+end
+function is_stream_open(io::IO)
+    isopen(io)
+end
+
 function flushclient(client::ClientSession)
     take!(flushtoken)
     while isready(client.pendingupdates)
@@ -74,8 +88,8 @@ function flushclient(client::ClientSession)
 
         try
             if client.stream !== nothing
-                if !HTTP.WebSockets.isclosed(client.stream)
-                    HTTP.send(client.stream, serialize_message(next_to_send))
+                if is_stream_open(client.stream)
+                    send_message(client.stream, next_to_send)
                 else
                     put!(flushtoken)
                     return false

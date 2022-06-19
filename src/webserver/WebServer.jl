@@ -25,12 +25,13 @@ end
 
 isurl(s::String) = startswith(s, "http://") || startswith(s, "https://")
 
-swallow_exception(f, exception_type::Type{T}) where {T} =
+function swallow_exception(f, exception_type::Type{T}) where {T}
     try
         f()
     catch e
         isa(e, T) || rethrow(e)
     end
+end
 
 """
     Pluto.run()
@@ -143,9 +144,20 @@ function run(session::ServerSession)
 
     local port, serversocket = port_serversocket(hostIP, favourite_port, port_hint)
 
-    shutdown_server = Ref{Function}(() -> ())
+    on_shutdown() = @sync begin
+        @info("\n\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈\n\n")
+        # TODO: HTTP has a kill signal?
+        # TODO: put do_work tokens back 
+        for client in values(session.connected_clients)
+            @async swallow_exception(() -> close(client.stream), Base.IOError)
+        end
+        empty!(session.connected_clients)
+        for nb in values(session.notebooks)
+            @asynclog SessionActions.shutdown(session, nb; keep_in_session = false, async = false, verbose = false)
+        end
+    end
 
-    servertask = HTTP.listen!(hostIP, port; stream = true, server = serversocket, on_shutdown = () -> shutdown_server[]()) do http::HTTP.Stream
+    servertask = HTTP.listen!(hostIP, port; stream = true, server = serversocket, on_shutdown) do http::HTTP.Stream
         # messy messy code so that we can use the websocket on the same port as the HTTP server
         if HTTP.WebSockets.isupgrade(http.message)
             secret_required = let
@@ -280,25 +292,12 @@ function run(session::ServerSession)
         will_update && println("    Updating registry done ✓")
     end
 
-    shutdown_server[] = () -> @sync begin
-        @info("\n\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈\n\n")
-        # TODO: HTTP has a kill signal?
-        # TODO: put do_work tokens back 
-        for client in values(session.connected_clients)
-            @async swallow_exception(() -> close(client.stream), Base.IOError)
-        end
-        empty!(session.connected_clients)
-        for nb in values(session.notebooks)
-            @asynclog SessionActions.shutdown(session, nb; keep_in_session = false, async = false, verbose = false)
-        end
-    end
-
     try
         # create blocking call and switch the scheduler back to the server task, so that interrupts land there
         wait(servertask)
     catch e
         if e isa InterruptException
-            shutdown_server[]()
+            close(servertask)
         elseif e isa TaskFailedException
             @debug "Error is " exception = e stacktrace = catch_backtrace()
             # nice!
@@ -353,9 +352,11 @@ function pretty_address(session::ServerSession, hostIP, port)
 end
 
 "All messages sent over the WebSocket get decoded+deserialized and end up here."
-function process_ws_message(session::ServerSession, parentbody::Dict, clientstream::HTTP.WebSocket)
+function process_ws_message(session::ServerSession, parentbody::Dict, clientstream)
     client_id = Symbol(parentbody["client_id"])
-    client = get!(session.connected_clients, client_id, ClientSession(client_id, clientstream))
+    client = get!(session.connected_clients, client_id ) do 
+        ClientSession(client_id, clientstream)
+    end
     client.stream = clientstream # it might change when the same client reconnects
 
     messagetype = Symbol(parentbody["type"])
