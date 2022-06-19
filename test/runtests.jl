@@ -1,3 +1,9 @@
+# TODO: Remove before merging
+import Pkg
+Pkg.add(url = "https://github.com/JuliaWeb/HTTP.jl", rev="fe/listen")
+
+###
+
 include("helpers.jl")
 
 # tests that start new processes:
