@@ -242,6 +242,49 @@ function http_router_for(session::ServerSession)
         end
     end
 
+
+    # normally shutdown is done through Dynamic.jl, with the exception of shutdowns made from the desktop app
+    serve_shutdown = with_authentication(;
+        required=security.require_secret_for_access || 
+        security.require_secret_for_open_links
+    ) do request::HTTP.Request
+        notebook = notebook_from_uri(request)
+        SessionActions.shutdown(session, notebook)
+        return HTTP.Response(200)
+    end
+
+    HTTP.@register(router, "GET", "/shutdown", serve_shutdown)
+    HTTP.@register(router, "POST", "/shutdown", serve_shutdown)
+
+
+    # used in desktop app
+    # looks like `/move?id=<notebook-id>&newpath=<new-notebook-path>``
+    serve_move = with_authentication(;
+        required=security.require_secret_for_access || 
+        security.require_secret_for_open_links
+    ) do request::HTTP.Request
+        uri = HTTP.URI(request.target)        
+        query = HTTP.queryparams(uri)
+
+        notebook = notebook_from_uri(request)
+        newpath = query["newpath"]
+        
+        # taken from Dynamic.jl
+        if isfile(newpath)
+            return error_response(400, "Bad query", "File exists already - you need to delete the old file manually.")
+        else
+            move_notebook!(notebook, newpath; disable_writing_notebook_files=session.options.server.disable_writing_notebook_files)
+            putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
+            WorkspaceManager.cd_workspace((session, notebook), newpath)
+        end
+
+        return HTTP.Response(200)
+    end
+
+    HTTP.@register(router, "GET", "/move", serve_move)
+    HTTP.@register(router, "POST", "/move", serve_move)
+
+
     HTTP.@register(router, "GET", "/open", serve_openfile)
     HTTP.@register(router, "POST", "/open", serve_openfile)
     
