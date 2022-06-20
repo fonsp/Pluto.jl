@@ -1123,8 +1123,11 @@ pluto-cell.depends_on_skipped_cells .depends_on_skipped_marker {
     border-radius: 0px 4px 4px 0px;
     background-color: var(--skip-as-script-border-color);
 }
+pluto-cell.depends_on_skipped_cells .depends_on_skipped_marker {
+    background: repeating-linear-gradient(-45deg, var(--skip-as-script-border-color), var(--skip-as-script-border-color) 4px, transparent 4px, transparent 8px);
+}
 
-pluto-cell.skip_as_script pluto-input .cm-editor, 
+pluto-cell.skip_as_script pluto-input .cm-editor,
 pluto-cell.depends_on_skipped_cells pluto-input .cm-editor {
     border-bottom-right-radius: 0px;
 }
