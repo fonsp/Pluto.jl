@@ -29,6 +29,19 @@ const useCellApi = (node_ref, published_object_keys, pluto_actions) => {
     return cell_api_ready
 }
 
+const upstream_of = (a_cell_id, notebook) => Object.values(notebook?.cell_dependencies?.[a_cell_id]?.upstream_cells_map || {}).flatMap((x) => x)
+
+const all_upstreams_of = (a_cell_id, notebook) => {
+    const upstreams = upstream_of(a_cell_id, notebook)
+    if (upstreams.length === 0) return []
+    return [...upstreams, ...upstreams.flatMap((v) => all_upstreams_of(v, notebook))]
+}
+const hasTargetBarrier = (flag_name) => {
+    return (a_cell_id, notebook) => {
+        return notebook?.cell_inputs?.[a_cell_id].metadata[flag_name]
+    }
+}
+
 /**
  * @param {{
  *  cell_result: import("./Editor.js").CellResultData,
@@ -172,6 +185,7 @@ export const Cell = ({
                 )
         }
     }
+    const on_jump_skipped = on_jump_generic("skip_as_script")
     return html`
         <pluto-cell
             ref=${node_ref}
@@ -264,28 +278,30 @@ export const Cell = ({
             ${skip_as_script
                 ? html`<div
                       class="skip_as_script_marker"
-                      title=${`This cell is currently stored in the notebook file as a Julia comment, instead of code. This way, it will not run when the notebook runs as a script outside of Pluto.`}
+                      title=${`This cell is directly flagged as disabled in file. Click to know more!`}
                       onClick=${(e) => {
                           open_pluto_popup({
                               type: "info",
                               source_element: e.target,
                               body: html`This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />
                                   This way, it will not run when the notebook runs as a script outside of Pluto.<br />
-                                  This cell is <b>directly</b> flagged as <em>disabled in file</em>, use the context menu to change its state`,
+                                  Use the context menu to change enable it again`,
                           })
                       }}
                   ></div>`
                 : depends_on_skipped_cells
                 ? html`<div
                       class="depends_on_skipped_marker"
-                      title=${`This cell is currently stored in the notebook file as a Julia comment, instead of code. This way, it will not run when the notebook runs as a script outside of Pluto.`}
+                      title=${`This cell is indirectly flagged as disabled in file. Click to know more!`}
                       onClick=${(e) => {
                           open_pluto_popup({
                               type: "info",
                               source_element: e.target,
                               body: html`This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />
                                   This way, it will not run when the notebook runs as a script outside of Pluto.<br />
-                                  This cell is <b>indirectly</b> flagged as <em>disabled in file</em> because it depends on a cell that is flagged directly.`,
+                                  An upstream cell is <b> indirectly</b> <em>disabling in file</em> this one; enable
+                                  <span onClick=${on_jump_skipped} style="cursor: pointer; text-decoration: underline"> the upstream one</span> to affect this
+                                  cell.`,
                           })
                       }}
                   ></div>`
