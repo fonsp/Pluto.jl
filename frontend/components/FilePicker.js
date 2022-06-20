@@ -91,7 +91,20 @@ export class FilePicker extends Component {
 
         this.on_desktop_submit = () => {
             // @ts-ignore
-            window.electron.fileSystem.openNotebook()
+            if (this.props.button_label.toLowerCase() === "open") window.electron.fileSystem.openNotebook()
+            else {
+                if (!this.cm) return true
+                const cm = this.cm
+                run(async () => {
+                    try {
+                        await this.props.on_submit("")
+                        cm.dom.blur()
+                    } catch (error) {
+                        set_cm_value(cm, this.props.value, true)
+                        cm.dom.blur()
+                    }
+                })
+            }
         }
 
         let run = async (fn) => await fn()

@@ -999,32 +999,58 @@ patch: ${JSON.stringify(
                 false
             )
         }
-        this.submit_file_change = async (new_path, reset_cm_value) => {
-            const old_path = this.state.notebook.path
-            if (old_path === new_path) {
-                return
-            }
-            if (!this.state.notebook.in_temp_dir) {
-                if (!confirm("Are you sure? Will move from\n\n" + old_path + "\n\nto\n\n" + new_path)) {
-                    throw new Error("Declined by user")
-                }
-            }
 
-            this.setState({ moving_file: true })
+        // @ts-ignore
+        this.submit_file_change = !!window.electron
+            ? async (_) => {
+                  // @ts-ignore
+                  window.electron.ipcRenderer.once("PLUTO-MOVE-NOTEBOOK", async (/** @type {string | undefined} */ loc) => {
+                      this.setState({ moving_file: true })
 
-            try {
-                await update_notebook((notebook) => {
-                    notebook.in_temp_dir = false
-                    notebook.path = new_path
-                })
-                // @ts-ignore
-                document.activeElement?.blur()
-            } catch (error) {
-                alert("Failed to move file:\n\n" + error.message)
-            } finally {
-                this.setState({ moving_file: false })
-            }
-        }
+                      try {
+                          if (loc)
+                              await update_notebook((notebook) => {
+                                  notebook.in_temp_dir = false
+                                  notebook.path = loc
+                              })
+                          // @ts-ignore
+                          document.activeElement?.blur()
+                      } catch (error) {
+                          alert("Failed to move file:\n\n" + error.message)
+                      } finally {
+                          this.setState({ moving_file: false })
+                      }
+                  })
+
+                  // @ts-ignore
+                  window.electron.fileSystem.moveNotebook()
+              }
+            : async (new_path, reset_cm_value) => {
+                  const old_path = this.state.notebook.path
+                  if (old_path === new_path) {
+                      return
+                  }
+                  if (!this.state.notebook.in_temp_dir) {
+                      if (!confirm("Are you sure? Will move from\n\n" + old_path + "\n\nto\n\n" + new_path)) {
+                          throw new Error("Declined by user")
+                      }
+                  }
+
+                  this.setState({ moving_file: true })
+
+                  try {
+                      await update_notebook((notebook) => {
+                          notebook.in_temp_dir = false
+                          notebook.path = new_path
+                      })
+                      // @ts-ignore
+                      document.activeElement?.blur()
+                  } catch (error) {
+                      alert("Failed to move file:\n\n" + error.message)
+                  } finally {
+                      this.setState({ moving_file: false })
+                  }
+              }
 
         this.delete_selected = (verb) => {
             if (this.state.selected_cells.length > 0) {
