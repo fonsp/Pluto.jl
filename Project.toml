@@ -31,7 +31,7 @@ UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 [compat]
 Configurations = "0.15, 0.16, 0.17"
 FuzzyCompletions = "0.3, 0.4, 0.5"
-HTTP = "^0.9.1"
+HTTP = "^0.9.1, 1"
 HypertextLiteral = "0.7, 0.8, 0.9"
 MIMEs = "0.1"
 MsgPack = "1.1"
