@@ -43,8 +43,8 @@ const useCellApi = (node_ref, published_object_keys, pluto_actions) => {
  * }} props
  * */
 export const Cell = ({
-    cell_input: { cell_id, code, code_folded, metadata, depends_on_skipped_cells },
-    cell_result: { queued, running, runtime, errored, output, logs, published_object_keys, depends_on_disabled_cells },
+    cell_input: { cell_id, code, code_folded, metadata },
+    cell_result: { queued, running, runtime, errored, output, logs, published_object_keys, depends_on_disabled_cells, depends_on_skipped_cells },
     cell_dependencies,
     cell_input_local,
     notebook_id,

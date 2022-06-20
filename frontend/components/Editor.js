@@ -121,7 +121,6 @@ const first_true_key = (obj) => {
  *  code: string,
  *  code_folded: boolean,
  *  metadata: CellMetaData,
- *  depends_on_skipped_cells: boolean,
  * }}
  */
 
@@ -148,6 +147,7 @@ const first_true_key = (obj) => {
  *  upstream_cells_map: { string: [string]},
  *  precedence_heuristic: ?number,
  *  depends_on_disabled_cells: boolean,
+ *  depends_on_skipped_cells: boolean,
  *  output: {
  *      body: string,
  *      persist_js_state: boolean,
@@ -410,7 +410,6 @@ export class Editor extends Component {
                             metadata: {
                                 ...DEFAULT_CELL_METADATA,
                             },
-                            depends_on_skipped_cells: false,
                         }
                     }
                     notebook.cell_order = [
@@ -451,7 +450,6 @@ export class Editor extends Component {
                         metadata: {
                             ...DEFAULT_CELL_METADATA,
                         },
-                        depends_on_skipped_cells: false,
                     }
                 })
 
@@ -510,7 +508,6 @@ export class Editor extends Component {
                         code,
                         code_folded: false,
                         metadata: { ...DEFAULT_CELL_METADATA },
-                        depends_on_skipped_cells: false,
                     }
                     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
                 })

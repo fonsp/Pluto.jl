@@ -111,7 +111,6 @@ function notebook_to_js(notebook::Notebook)
                 "code" => cell.code,
                 "code_folded" => cell.code_folded,
                 "metadata" => cell.metadata,
-                "depends_on_skipped_cells" => cell.depends_on_skipped_cells,
             )
         for (id, cell) in notebook.cells_dict),
         "cell_dependencies" => Dict{UUID,Dict{String,Any}}(
@@ -139,6 +138,7 @@ function notebook_to_js(notebook::Notebook)
                 "errored" => cell.errored,
                 "runtime" => cell.runtime,
                 "logs" => FirebaseyUtils.AppendonlyMarker(cell.logs),
+                "depends_on_skipped_cells" => cell.depends_on_skipped_cells,
             )
         for (id, cell) in notebook.cells_dict),
         "cell_order" => notebook.cell_order,
