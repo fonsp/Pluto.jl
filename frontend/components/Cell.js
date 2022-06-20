@@ -155,6 +155,23 @@ export const Cell = ({
         pluto_actions.set_and_run_multiple(pluto_actions.get_selected_cells(cell_id, selected))
         set_waiting_to_run_smart(true)
     }, [pluto_actions, cell_id, selected, set_waiting_to_run_smart])
+
+    const on_jump_generic = (flag_name) => {
+        const hasBarrier = hasTargetBarrier(flag_name)
+        return () => {
+            const notebook = pluto_actions.get_notebook() || {}
+            const barrier_cell_id = all_upstreams_of(cell_id, notebook).find((c) => hasBarrier(c, notebook))
+            barrier_cell_id &&
+                window.dispatchEvent(
+                    new CustomEvent("cell_focus", {
+                        detail: {
+                            cell_id: barrier_cell_id,
+                            line: 0, // 1-based to 0-based index
+                        },
+                    })
+                )
+        }
+    }
     return html`
         <pluto-cell
             ref=${node_ref}
@@ -233,6 +250,7 @@ export const Cell = ({
                 running=${running}
                 code_differs=${class_code_differs}
                 queued=${queued}
+                on_jump=${on_jump_generic("disabled")}
             />
             <button
                 onClick=${() => {
