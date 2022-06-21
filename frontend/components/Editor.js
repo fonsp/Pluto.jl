@@ -965,19 +965,24 @@ patch: ${JSON.stringify(
                 this.on_patches_hook(changes)
                 try {
                     // console.log("Sending changes to server:", changes)
-                    await Promise.all([
-                        this.client.send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false).then((response) => {
-                            if (response.message?.response?.update_went_well === "👎") {
-                                // We only throw an error for functions that are waiting for this
-                                // Notebook state will already have the changes reversed
-                                throw new Error(`Pluto update_notebook error: (from Julia: ${response.message.response.why_not})`)
-                            }
-                        }),
-                        this.setStatePromise({
-                            notebook: new_notebook,
-                            last_update_time: Date.now(),
-                        }),
-                    ])
+
+                    // if it is an electron environment, it is already sending the request and handling errors
+                    // @ts-ignore
+                    if (!window.electron)
+                        await this.client
+                            .send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false)
+                            .then((response) => {
+                                if (response.message?.response?.update_went_well === "👎") {
+                                    // We only throw an error for functions that are waiting for this
+                                    // Notebook state will already have the changes reversed
+
+                                    throw new Error(`Pluto update_notebook error: (from Julia: ${response.message.response.why_not})`)
+                                }
+                            })
+                    await this.setStatePromise({
+                        notebook: new_notebook,
+                        last_update_time: Date.now(),
+                    })
                 } finally {
                     this.pending_local_updates--
                 }
@@ -1008,7 +1013,7 @@ patch: ${JSON.stringify(
                       this.setState({ moving_file: true })
 
                       try {
-                          if (loc)
+                          if (!!loc)
                               await update_notebook((notebook) => {
                                   notebook.in_temp_dir = false
                                   notebook.path = loc
