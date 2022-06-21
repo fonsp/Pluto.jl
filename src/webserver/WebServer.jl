@@ -157,7 +157,7 @@ function run(session::ServerSession)
         end
     end
 
-    servertask = HTTP.listen!(hostIP, port; stream = true, server = serversocket, on_shutdown) do http::HTTP.Stream
+    server = HTTP.listen!(hostIP, port; stream = true, server = serversocket, on_shutdown) do http::HTTP.Stream
         # messy messy code so that we can use the websocket on the same port as the HTTP server
         if HTTP.WebSockets.isupgrade(http.message)
             secret_required = let
@@ -294,10 +294,10 @@ function run(session::ServerSession)
 
     try
         # create blocking call and switch the scheduler back to the server task, so that interrupts land there
-        wait(servertask)
+        wait(server)
     catch e
         if e isa InterruptException
-            close(servertask)
+            close(server)
         elseif e isa TaskFailedException
             @debug "Error is " exception = e stacktrace = catch_backtrace()
             # nice!
