@@ -169,7 +169,7 @@ export const Cell = ({
         set_waiting_to_run_smart(true)
     }, [pluto_actions, cell_id, selected, set_waiting_to_run_smart])
 
-    const on_jump_generic = (flag_name) => {
+    const on_jump = (flag_name) => {
         const hasBarrier = hasTargetBarrier(flag_name)
         return () => {
             const notebook = pluto_actions.get_notebook() || {}
@@ -185,7 +185,6 @@ export const Cell = ({
                 )
         }
     }
-    const on_jump_skipped = on_jump_generic("skip_as_script")
     return html`
         <pluto-cell
             ref=${node_ref}
@@ -264,7 +263,7 @@ export const Cell = ({
                 running=${running}
                 code_differs=${class_code_differs}
                 queued=${queued}
-                on_jump=${on_jump_generic("disabled")}
+                on_jump=${on_jump("disabled")}
             />
             <button
                 onClick=${() => {
@@ -300,8 +299,8 @@ export const Cell = ({
                               body: html`This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />
                                   This way, it will not run when the notebook runs as a script outside of Pluto.<br />
                                   An upstream cell is <b> indirectly</b> <em>disabling in file</em> this one; enable
-                                  <span onClick=${on_jump_skipped} style="cursor: pointer; text-decoration: underline"> the upstream one</span> to affect this
-                                  cell.`,
+                                  <span onClick=${on_jump("skip_as_script")} style="cursor: pointer; text-decoration: underline"> the upstream one</span> to
+                                  affect this cell.`,
                           })
                       }}
                   ></div>`
