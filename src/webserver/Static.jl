@@ -274,6 +274,7 @@ function http_router_for(session::ServerSession)
             return error_response(400, "Bad query", "File exists already - you need to delete the old file manually.")
         else
             move_notebook!(notebook, newpath; disable_writing_notebook_files=session.options.server.disable_writing_notebook_files)
+            send_notebook_changes!(ClientRequest(; session, notebook))
             putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
             WorkspaceManager.cd_workspace((session, notebook), newpath)
         end
