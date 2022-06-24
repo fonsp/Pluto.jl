@@ -6,7 +6,6 @@ import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { get_selected_doc_from_state } from "./CellInput/LiveDocsFromCursor.js"
 import { go_to_definition_plugin, GlobalDefinitionsFacet } from "./CellInput/go_to_definition_plugin.js"
-import { detect_deserializer } from "../common/Serialization.js"
 
 import {
     EditorState,
