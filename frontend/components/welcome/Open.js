@@ -1,5 +1,5 @@
 import _ from "../../imports/lodash.js"
-import { html, Component, useEffect, useState, useMemo } from "../../imports/Preact.js"
+import { html } from "../../imports/Preact.js"
 
 import { FilePicker } from "../FilePicker.js"
 import { PasteHandler } from "../PasteHandler.js"
@@ -28,27 +28,22 @@ export const Open = ({ client, connected, CustomPicker, show_samples }) => {
     }
 
     const picker = CustomPicker ?? {
-        text: "Open from file",
+        text: "Open a notebook",
         placeholder: "Enter path or URL...",
     }
 
-    return html`<p>New session:</p>
-        <${PasteHandler} />
-        <ul id="new">
-            ${show_samples && html`<li>Open a <a href="sample">sample notebook</a></li>`}
-            <li>Create a <a href="new">new notebook</a></li>
-            <li>
-                ${picker.text}:
-                <${FilePicker}
-                    key=${picker.placeholder}
-                    client=${client}
-                    value=""
-                    on_submit=${on_open_path}
-                    button_label="Open"
-                    placeholder=${picker.placeholder}
-                />
-            </li>
-        </ul>`
+    return html`<${PasteHandler} />
+        <h2>${picker.text}</h2>
+        <div id="new">
+            <${FilePicker}
+                key=${picker.placeholder}
+                client=${client}
+                value=""
+                on_submit=${on_open_path}
+                button_label="Open"
+                placeholder=${picker.placeholder}
+            />
+        </div>`
 }
 
 // /open will execute a script from your hard drive, so we include a token in the URL to prevent a mean person from getting a bad file on your computer _using another hypothetical intrusion_, and executing it using Pluto

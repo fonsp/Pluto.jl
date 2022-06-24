@@ -1103,7 +1103,7 @@ pluto-output:not(.rich_output) > div > pre {
     display: flex;
 }
 
-.bonds_disabled.offer_binder bond {
+.bonds_disabled:where(.offer_binder, .offer_local) bond {
     opacity: 0.6;
     filter: grayscale(1);
 }
@@ -1243,6 +1243,7 @@ pluto-cell.code_differs > pluto-input > .cm-editor {
 
 /* UI */
 
+button.floating_back_button,
 .overlay-button button,
 pluto-cell > button,
 pluto-input > button,
@@ -2260,7 +2261,7 @@ footer a {
 footer input {
     margin: 0px;
     border: 2px solid var(--footer-input-border-color);
-    background: transparent;
+    background: var(--white);
     font-family: inherit;
     font-size: inherit;
     border-radius: 3px 0 0 3px;
@@ -2640,6 +2641,7 @@ nav#slide_controls > button {
     padding: 5px;
 }
 
+button.floating_back_button > span::after,
 nav#slide_controls > button > span::after {
     content: " " !important;
     display: block;
@@ -2647,6 +2649,7 @@ nav#slide_controls > button > span::after {
     width: 30px;
     background-size: 30px 30px;
 }
+button.floating_back_button > span::after,
 nav#slide_controls > button.prev > span::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-back-outline.svg");
     filter: var(--image-filters);
@@ -2654,6 +2657,18 @@ nav#slide_controls > button.prev > span::after {
 nav#slide_controls > button.next > span::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-forward-outline.svg");
     filter: var(--image-filters);
+}
+
+button.floating_back_button {
+    display: none;
+}
+
+.static_preview.offer_local button.floating_back_button {
+    display: flex;
+    position: fixed;
+    z-index: 1000;
+    left: 1em;
+    top: 1em;
 }
 
 /* CODEMIRROR HINTS */

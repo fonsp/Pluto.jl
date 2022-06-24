@@ -55,6 +55,10 @@ export const Popup = ({ notebook }) => {
         set_recent_event(e.detail)
     }
 
+    const close = () => {
+        set_recent_event(null)
+    }
+
     useEffect(() => {
         const onpointerdown = (e) => {
             if (e.target == null) return
@@ -62,19 +66,21 @@ export const Popup = ({ notebook }) => {
             if (recent_source_element_ref.current == null) return
             if (recent_source_element_ref.current.contains(e.target)) return
 
-            set_recent_event(null)
+            close()
         }
         const onkeydown = (e) => {
             if (e.key === "Escape") {
-                set_recent_event(null)
+                close()
             }
         }
         window.addEventListener("open pluto popup", open)
+        window.addEventListener("close pluto popup", close)
         window.addEventListener("pointerdown", onpointerdown)
         document.addEventListener("keydown", onkeydown)
 
         return () => {
             window.removeEventListener("open pluto popup", open)
+            window.removeEventListener("close pluto popup", close)
             window.removeEventListener("pointerdown", onpointerdown)
             document.removeEventListener("keydown", onkeydown)
         }

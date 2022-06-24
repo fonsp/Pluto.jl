@@ -28,3 +28,25 @@ function frontmatter(abs_path::String; raise::Bool=false)
 		end
 	end
 end
+
+"""
+```julia
+set_frontmatter!(nb::Notebook, new_value::Dict)
+```
+
+Set the new frontmatter of the [`Notebook`](@ref). Use [`frontmatter(nb)`](@ref) to get the old dictionary.
+
+If you want to save the file, call [`save_notebook(nb)`](@ref) afterwards.
+
+`set_frontmatter!(nb, nothing)` will delete the frontmatter.
+
+"""
+function set_frontmatter!(nb::Notebook, ::Nothing)
+	delete!(nb.metadata, "frontmatter")
+end
+
+function set_frontmatter!(nb::Notebook, new_value::Dict)
+	nb.metadata["frontmatter"] = convert(FrontMatter, new_value)
+end
+
+

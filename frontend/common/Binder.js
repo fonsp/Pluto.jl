@@ -124,10 +124,17 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
         let open_response = new Response()
 
         if (launch_params.notebookfile.startsWith("data:")) {
-            open_response = await fetch(with_token(new URL("notebookupload", binder_session_url)), {
-                method: "POST",
-                body: await (await fetch(new Request(launch_params.notebookfile, { integrity: launch_params.notebookfile_integrity }))).arrayBuffer(),
-            })
+            open_response = await fetch(
+                with_token(
+                    with_query_params(new URL("notebookupload", binder_session_url), {
+                        name: new URLSearchParams(window.location.search).get("name"),
+                    })
+                ),
+                {
+                    method: "POST",
+                    body: await (await fetch(new Request(launch_params.notebookfile, { integrity: launch_params.notebookfile_integrity }))).arrayBuffer(),
+                }
+            )
         } else {
             for (const [p1, p2] of [
                 ["path", launch_params.notebookfile],
@@ -143,6 +150,12 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
                     break
                 }
             }
+        }
+
+        if (!open_response.ok) {
+            let b = await open_response.blob()
+            window.location.href = URL.createObjectURL(b)
+            return
         }
 
         // Opening a notebook gives us the notebook ID, which means that we have a running session! Time to connect.
