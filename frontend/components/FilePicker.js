@@ -82,9 +82,7 @@ export class FilePicker extends Component {
             window.dispatchEvent(new CustomEvent("collapse_cell_selection", {}))
         }
 
-        // @ts-ignore
         if (!!window.electron) {
-            // @ts-ignore
             console.log("Running in Electron Environment! Found following properties/methods:", window.electron)
             this.is_desktop = true
         }

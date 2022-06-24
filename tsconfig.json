@@ -13,6 +13,6 @@
         "strictNullChecks": true,
         "skipDefaultLibCheck": true
     },
-    "include": ["frontend/**/*.js", "node_modules/**/*.js"],
+    "include": ["frontend/**/*.js", "node_modules/**/*.js", "frontend/types.d.ts"],
     "exclude": ["frontend/components/CellInput/tests/"]
 }

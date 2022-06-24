@@ -1011,11 +1011,9 @@ patch: ${JSON.stringify(
             )
         }
 
-        // @ts-ignore
         this.submit_file_change = !!window.electron
             ? async (_) => {
-                  // @ts-ignore
-                  window.electron.ipcRenderer.once("PLUTO-MOVE-NOTEBOOK", async (/** @type {string | undefined} */ loc) => {
+                  window.electron?.ipcRenderer.once("PLUTO-MOVE-NOTEBOOK", async (/** @type {string | undefined} */ loc) => {
                       this.setState({ moving_file: true })
 
                       try {
@@ -1033,8 +1031,7 @@ patch: ${JSON.stringify(
                       }
                   })
 
-                  // @ts-ignore
-                  window.electron.fileSystem.moveNotebook()
+                  window.electron?.fileSystem.moveNotebook()
               }
             : async (new_path, reset_cm_value) => {
                   const old_path = this.state.notebook.path
