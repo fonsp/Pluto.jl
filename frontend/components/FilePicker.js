@@ -56,6 +56,7 @@ const set_cm_value = (/** @type{EditorView} */ cm, /** @type {string} */ value, 
  *  button_label: String,
  *  placeholder: String,
  *  on_submit: (new_path: String) => Promise<void>,
+ *  on_desktop_submit?: () => Promise<void>,
  *  client: import("../common/PlutoConnection.js").PlutoConnection,
  * }}
  * @augments Component<FilePickerProps,{}>
@@ -87,37 +88,23 @@ export class FilePicker extends Component {
             this.is_desktop = true
         }
 
-        this.on_desktop_submit = () => {
-            // @ts-ignore
-            if (this.props.button_label.toLowerCase() === "open") window.electron.fileSystem.openNotebook()
-            else {
-                if (!this.cm) return true
-                const cm = this.cm
-                run(async () => {
-                    try {
-                        await this.props.on_submit("")
-                        cm.dom.blur()
-                    } catch (error) {
-                        set_cm_value(cm, this.props.value, true)
-                        cm.dom.blur()
-                    }
-                })
-            }
-        }
-
         let run = async (fn) => await fn()
         this.on_submit = () => {
             if (!this.cm) return true
             const cm = this.cm
 
-            const my_val = cm.state.doc.toString()
-            if (my_val === this.forced_value) {
-                this.suggest_not_tmp()
-                return true
+            // ingore if running in desktop environment
+            if (!this.is_desktop) {
+                const my_val = cm.state.doc.toString()
+                if (my_val === this.forced_value) {
+                    this.suggest_not_tmp()
+                    return true
+                }
             }
             run(async () => {
                 try {
-                    await this.props.on_submit(cm.state.doc.toString())
+                    if (this.is_desktop && this.props.on_desktop_submit) await this.props.on_desktop_submit()
+                    else await this.props.on_submit(cm.state.doc.toString())
                     cm.dom.blur()
                 } catch (error) {
                     set_cm_value(cm, this.props.value, true)
@@ -263,7 +250,7 @@ export class FilePicker extends Component {
     }
     render() {
         return this.is_desktop
-            ? html`<div onClick=${this.on_desktop_submit} class="desktop_picker">
+            ? html`<div onClick=${this.on_submit} class="desktop_picker">
                   <span>${this.props.value}</span>
                   <button>${this.props.button_label}</button>
               </div>`

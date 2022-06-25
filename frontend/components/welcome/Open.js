@@ -27,6 +27,10 @@ export const Open = ({ client, connected, CustomPicker, show_samples }) => {
         }
     }
 
+    const desktop_on_open_path = async () => {
+        window.electron?.fileSystem.openNotebook()
+    }
+
     const picker = CustomPicker ?? {
         text: "Open a notebook",
         placeholder: "Enter path or URL...",
@@ -34,12 +38,13 @@ export const Open = ({ client, connected, CustomPicker, show_samples }) => {
 
     return html`<${PasteHandler} />
         <h2>${picker.text}</h2>
-        <div id="new">
+        <div id="new" class=${!!window.electron ? "desktop_opener" : ""}>
             <${FilePicker}
                 key=${picker.placeholder}
                 client=${client}
                 value=""
                 on_submit=${on_open_path}
+                on_desktop_submit=${desktop_on_open_path}
                 button_label="Open"
                 placeholder=${picker.placeholder}
             />
