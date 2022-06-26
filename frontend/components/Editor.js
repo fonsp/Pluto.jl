@@ -972,9 +972,8 @@ patch: ${JSON.stringify(
                 try {
                     // console.log("Sending changes to server:", changes)
 
-                    // if it is an electron environment, it is already sending the request and handling errors
-                    // @ts-ignore
-                    if (!window.electron)
+                    // if it is an desktop environment, it is already sending the request and handling errors
+                    if (!window.plutoDesktop)
                         await this.client
                             .send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false)
                             .then((response) => {
