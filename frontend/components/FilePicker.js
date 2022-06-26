@@ -83,8 +83,8 @@ export class FilePicker extends Component {
             window.dispatchEvent(new CustomEvent("collapse_cell_selection", {}))
         }
 
-        if (!!window.electron) {
-            console.log("Running in Electron Environment! Found following properties/methods:", window.electron)
+        if (!!window.plutoDesktop) {
+            console.log("Running in Desktop Environment! Found following properties/methods:", window.plutoDesktop)
             this.is_desktop = true
         }
 

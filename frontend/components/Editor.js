@@ -1039,7 +1039,7 @@ patch: ${JSON.stringify(
         }
 
         this.desktop_submit_file_change = async () => {
-            window.electron?.ipcRenderer.once("PLUTO-MOVE-NOTEBOOK", async (/** @type {string | undefined} */ loc) => {
+            window.plutoDesktop?.ipcRenderer.once("PLUTO-MOVE-NOTEBOOK", async (/** @type {string | undefined} */ loc) => {
                 try {
                     if (!!loc)
                         await update_notebook((notebook) => {
@@ -1056,7 +1056,7 @@ patch: ${JSON.stringify(
             })
 
             this.setState({ moving_file: true })
-            window.electron?.fileSystem.moveNotebook()
+            window.plutoDesktop?.fileSystem.moveNotebook()
         }
 
         this.delete_selected = (verb) => {

@@ -14,7 +14,7 @@ declare global {
          * This type has to be in sync with the interface "Window"
          * defined in PlutoDesktop/{branch}/src/renderer/preload.d.ts
          */
-        type Electron = {
+        type PlutoDesktop = {
             ipcRenderer: {
                 sendMessage(channel: Channels, args: unknown[]): void
                 on(channel: string, func: (...args: unknown[]) => void): (() => void) | undefined
@@ -35,7 +35,7 @@ declare global {
     }
 
     interface Window {
-        electron?: Desktop.Electron
+        plutoDesktop?: Desktop.PlutoDesktop
     }
 }
 

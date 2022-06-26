@@ -28,7 +28,7 @@ export const Open = ({ client, connected, CustomPicker, show_samples }) => {
     }
 
     const desktop_on_open_path = async () => {
-        window.electron?.fileSystem.openNotebook()
+        window.plutoDesktop?.fileSystem.openNotebook()
     }
 
     const picker = CustomPicker ?? {
@@ -38,7 +38,7 @@ export const Open = ({ client, connected, CustomPicker, show_samples }) => {
 
     return html`<${PasteHandler} />
         <h2>${picker.text}</h2>
-        <div id="new" class=${!!window.electron ? "desktop_opener" : ""}>
+        <div id="new" class=${!!window.plutoDesktop ? "desktop_opener" : ""}>
             <${FilePicker}
                 key=${picker.placeholder}
                 client=${client}
