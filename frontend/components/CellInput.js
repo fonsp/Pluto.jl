@@ -65,7 +65,6 @@ import { debug_syntax_plugin } from "./CellInput/debug_syntax_plugin.js"
 import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
-export const ENABLE_SKIP_AS_SCRIPT = window.localStorage.getItem("ENABLE_SKIP_AS_SCRIPT") === "true"
 
 if (ENABLE_CM_MIXED_PARSER) {
     console.log(`YOU ENABLED THE CODEMIRROR MIXED LANGUAGE PARSER
@@ -79,11 +78,6 @@ If enough people do this, we can make it the default parser.
 // @ts-ignore
 window.PLUTO_TOGGLE_CM_MIXED_PARSER = () => {
     window.localStorage.setItem("ENABLE_CM_MIXED_PARSER", String(!ENABLE_CM_MIXED_PARSER))
-    window.location.reload()
-}
-// @ts-ignore
-window.PLUTO_TOGGLE_SKIP_AS_SCRIPT = () => {
-    window.localStorage.setItem("ENABLE_SKIP_AS_SCRIPT", String(!ENABLE_SKIP_AS_SCRIPT))
     window.location.reload()
 }
 
@@ -903,17 +897,15 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
                             <span class="copy_output ctx_icon" />Copy output
                         </li>`
                       : null}
-                  ${ENABLE_SKIP_AS_SCRIPT || skip_as_script
-                      ? html`<li
-                            onClick=${toggle_skip_as_script}
-                            title=${skip_as_script
-                                ? "This cell is currently stored in the notebook file as a Julia comment. Click here to disable."
-                                : "Store this code in the notebook file as a Julia comment. This way, it will not run when the notebook runs as a script outside of Pluto."}
-                        >
-                            ${skip_as_script ? html`<span class="skip_as_script ctx_icon" />` : html`<span class="run_as_script ctx_icon" />`}
-                            ${skip_as_script ? html`<b>Enable in file</b>` : html`Disable in file`}
-                        </li>`
-                      : null}
+                  <li
+                      onClick=${toggle_skip_as_script}
+                      title=${skip_as_script
+                          ? "This cell is currently stored in the notebook file as a Julia comment. Click here to disable."
+                          : "Store this code in the notebook file as a Julia comment. This way, it will not run when the notebook runs as a script outside of Pluto."}
+                  >
+                      ${skip_as_script ? html`<span class="skip_as_script ctx_icon" />` : html`<span class="run_as_script ctx_icon" />`}
+                      ${skip_as_script ? html`<b>Enable in file</b>` : html`Disable in file`}
+                  </li>
               </ul>`
             : html``}
     </button>`

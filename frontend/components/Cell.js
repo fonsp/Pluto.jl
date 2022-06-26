@@ -30,6 +30,63 @@ const useCellApi = (node_ref, published_object_keys, pluto_actions) => {
 }
 
 /**
+ * @param {String} a_cell_id
+ * @param {import("./Editor.js").NotebookData} notebook
+ * @returns {Array<String>}
+ */
+const upstream_of = (a_cell_id, notebook) => Object.values(notebook?.cell_dependencies?.[a_cell_id]?.upstream_cells_map || {}).flatMap((x) => x)
+
+/**
+ * @param {String} a_cell_id
+ * @param {import("./Editor.js").NotebookData} notebook
+ * @param {Function} predicate
+ * @param {Set<String>} explored
+ * @returns {String | null}
+ */
+const find_upstream_of = (a_cell_id, notebook, predicate, explored = new Set([])) => {
+    if (explored.has(a_cell_id)) return null
+    explored.add(a_cell_id)
+
+    if (predicate(a_cell_id)) {
+        return a_cell_id
+    }
+
+    for (let upstream of upstream_of(a_cell_id, notebook)) {
+        const upstream_val = find_upstream_of(upstream, notebook, predicate, explored)
+        if (upstream_val !== null) {
+            return upstream_val
+        }
+    }
+
+    return null
+}
+
+/**
+ * @param {String} flag_name
+ * @returns {Function}
+ */
+const hasTargetBarrier = (flag_name) => {
+    return (a_cell_id, notebook) => {
+        return notebook?.cell_inputs?.[a_cell_id].metadata[flag_name]
+    }
+}
+
+const on_jump = (hasBarrier, pluto_actions, cell_id) => () => {
+    const notebook = pluto_actions.get_notebook() || {}
+    const barrier_cell_id = find_upstream_of(cell_id, notebook, (c) => hasBarrier(c, notebook))
+    if (barrier_cell_id !== null) {
+        window.dispatchEvent(
+            new CustomEvent("cell_focus", {
+                detail: {
+                    cell_id: barrier_cell_id,
+                    line: 0, // 1-based to 0-based index
+                },
+            })
+        )
+    }
+}
+
+/**
  * @param {{
  *  cell_result: import("./Editor.js").CellResultData,
  *  cell_input: import("./Editor.js").CellInputData,
@@ -44,7 +101,7 @@ const useCellApi = (node_ref, published_object_keys, pluto_actions) => {
  * */
 export const Cell = ({
     cell_input: { cell_id, code, code_folded, metadata },
-    cell_result: { queued, running, runtime, errored, output, logs, published_object_keys, depends_on_disabled_cells },
+    cell_result: { queued, running, runtime, errored, output, logs, published_object_keys, depends_on_disabled_cells, depends_on_skipped_cells },
     cell_dependencies,
     cell_input_local,
     notebook_id,
@@ -155,6 +212,16 @@ export const Cell = ({
         pluto_actions.set_and_run_multiple(pluto_actions.get_selected_cells(cell_id, selected))
         set_waiting_to_run_smart(true)
     }, [pluto_actions, cell_id, selected, set_waiting_to_run_smart])
+
+    const skip_as_script_jump = useCallback(
+        on_jump(hasTargetBarrier("skip_as_script"), pluto_actions, cell_id),
+        [pluto_actions, cell_id],
+    )
+    const disabled_jump = useCallback(
+        on_jump(hasTargetBarrier("disabled"), pluto_actions, cell_id),
+        [pluto_actions, cell_id],
+    )
+
     return html`
         <pluto-cell
             ref=${node_ref}
@@ -169,6 +236,7 @@ export const Cell = ({
                 skip_as_script,
                 running_disabled,
                 depends_on_disabled_cells,
+                depends_on_skipped_cells,
                 show_input,
                 shrunk: Object.values(logs).length > 0,
                 hooked_up: output?.has_pluto_hook_features ?? false,
@@ -232,6 +300,7 @@ export const Cell = ({
                 running=${running}
                 code_differs=${class_code_differs}
                 queued=${queued}
+                on_jump=${disabled_jump}
             />
             <button
                 onClick=${() => {
@@ -245,13 +314,30 @@ export const Cell = ({
             ${skip_as_script
                 ? html`<div
                       class="skip_as_script_marker"
-                      title=${`This cell is currently stored in the notebook file as a Julia comment, instead of code. This way, it will not run when the notebook runs as a script outside of Pluto.`}
+                      title=${`This cell is directly flagged as disabled in file. Click to know more!`}
                       onClick=${(e) => {
                           open_pluto_popup({
                               type: "info",
                               source_element: e.target,
                               body: html`This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />
-                                  This way, it will not run when the notebook runs as a script outside of Pluto.`,
+                                  This way, it will not run when the notebook runs as a script outside of Pluto.<br />
+                                  Use the context menu to change enable it again`,
+                          })
+                      }}
+                  ></div>`
+                : depends_on_skipped_cells
+                ? html`<div
+                      class="depends_on_skipped_marker"
+                      title=${`This cell is indirectly flagged as disabled in file. Click to know more!`}
+                      onClick=${(e) => {
+                          open_pluto_popup({
+                              type: "info",
+                              source_element: e.target,
+                              body: html`This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />
+                                  This way, it will not run when the notebook runs as a script outside of Pluto.<br />
+                                  An upstream cell is <b> indirectly</b> <em>disabling in file</em> this one; enable
+                                  <span onClick=${skip_as_script_jump} style="cursor: pointer; text-decoration: underline"> the upstream one</span> to
+                                  affect this cell.`,
                           })
                       }}
                   ></div>`

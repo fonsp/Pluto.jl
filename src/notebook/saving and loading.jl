@@ -68,9 +68,7 @@ function save_notebook(io::IO, notebook::Notebook)
             end
         end
         
-        cell_running_disabled = is_disabled(c)::Bool
-        cell_skip_as_script = is_skipped_as_script(c)::Bool
-        if cell_skip_as_script || cell_running_disabled || c.depends_on_disabled_cells
+        if must_be_commented_in_file(c)
             print(io, _disabled_prefix)
             print(io, replace(c.code, _cell_id_delimiter => "# "))
             print(io, _disabled_suffix)
