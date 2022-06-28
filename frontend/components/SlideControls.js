@@ -2,7 +2,7 @@ import { html } from "../imports/Preact.js"
 
 export const SlideControls = () => {
     const calculate_slide_positions = (/** @type {Event} */ e) => {
-        const notebook_node = /** @type {HTMLElement?} */ (e.target)?.closest("pluto-notebook")
+        const notebook_node = /** @type {HTMLElement?} */ (e.target)?.closest("pluto-editor")?.querySelector("pluto-notebook")
         if (!notebook_node) return []
 
         const height = window.innerHeight
