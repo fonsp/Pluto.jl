@@ -973,21 +973,28 @@ patch: ${JSON.stringify(
                     // console.log("Sending changes to server:", changes)
 
                     // if it is an desktop environment, it is already sending the request and handling errors
-                    if (!window.plutoDesktop)
-                        await this.client
-                            .send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false)
-                            .then((response) => {
-                                if (response.message?.response?.update_went_well === "👎") {
-                                    // We only throw an error for functions that are waiting for this
-                                    // Notebook state will already have the changes reversed
+                    if (!!window.plutoDesktop)
+                        await this.setStatePromise({
+                            notebook: new_notebook,
+                            last_update_time: Date.now(),
+                        })
+                    else
+                        Promise.all([
+                            this.client
+                                .send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false)
+                                .then((response) => {
+                                    if (response.message?.response?.update_went_well === "👎") {
+                                        // We only throw an error for functions that are waiting for this
+                                        // Notebook state will already have the changes reversed
 
-                                    throw new Error(`Pluto update_notebook error: (from Julia: ${response.message.response.why_not})`)
-                                }
-                            })
-                    await this.setStatePromise({
-                        notebook: new_notebook,
-                        last_update_time: Date.now(),
-                    })
+                                        throw new Error(`Pluto update_notebook error: (from Julia: ${response.message.response.why_not})`)
+                                    }
+                                }),
+                            this.setStatePromise({
+                                notebook: new_notebook,
+                                last_update_time: Date.now(),
+                            }),
+                        ])
                 } finally {
                     this.pending_local_updates--
                 }
