@@ -980,7 +980,7 @@ patch: ${JSON.stringify(
                             last_update_time: Date.now(),
                         })
                     else
-                        Promise.all([
+                        await Promise.all([
                             this.client
                                 .send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false)
                                 .then((response) => {
