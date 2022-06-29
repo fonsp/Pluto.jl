@@ -92,7 +92,7 @@ describe("PlutoNewNotebook", () => {
         await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
         await page.click(`.runallchanged`)
         await waitForNoUpdateOngoing(page, { polling: 100 })
-        const content = await waitForContentToBecome(page, `pluto-cell[id="${plutoCellIds[3]}"] pluto-output`)
+        const content = await waitForContentToBecome(page, `pluto-cell[id="${plutoCellIds[3]}"] pluto-output`, "6")
         expect(content).toBe("6")
     })
 
