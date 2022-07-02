@@ -21,7 +21,6 @@ export const NonCellOutput = ({ environment_component, notebook_id }) => {
     const surely_the_latest_updated_set = useRef()
     const [component_set, update_component_set] = useState({})
     useEffect(() => {
-        const event = new Event("experimental_add_node_non_cell_output")
         const hn = (e) => {
             try {
                 const { name, node, order } = e.detail
