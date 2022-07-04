@@ -126,7 +126,7 @@ export const Cell = ({
     const cell_key = useMemo(() => cell_id + key, [cell_id, key])
 
     const [, resetError] = useErrorBoundary((error) => {
-        console.log(`Got an error from below, resetting CellInput\n${error}`)
+        console.log(`An error occured in the CodeMirror code, resetting CellInput component. See error below:\n\n${error}\n\n -------------- `)
         setKey(key + 1)
         resetError()
     })
