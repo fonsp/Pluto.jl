@@ -78,14 +78,15 @@ Besides `:update_notebook`, you will find more functions in [`responses`](@ref) 
 
 """
 module Firebasey include("./Firebasey.jl") end
-module AppendonlyMarkers
+module FirebaseyUtils
     # I put Firebasey here manually THANKS JULIA
     import ..Firebasey
-    include("./AppendonlyMarkers.jl")
+    include("./FirebaseyUtils.jl")
 end
 
 # All of the arrays in the notebook_to_js object are 'immutable' (we write code as if they are), so we can enable this optimization:
 Firebasey.use_triple_equals_for_arrays[] = true
+
 
 # the only possible Arrays are:
 # - cell_order
@@ -109,7 +110,7 @@ function notebook_to_js(notebook::Notebook)
                 "cell_id" => cell.cell_id,
                 "code" => cell.code,
                 "code_folded" => cell.code_folded,
-                "running_disabled" => cell.running_disabled,
+                "metadata" => cell.metadata,
             )
         for (id, cell) in notebook.cells_dict),
         "cell_dependencies" => Dict{UUID,Dict{String,Any}}(
@@ -130,29 +131,24 @@ function notebook_to_js(notebook::Notebook)
             id => Dict{String,Any}(
                 "cell_id" => cell.cell_id,
                 "depends_on_disabled_cells" => cell.depends_on_disabled_cells,
-                "output" => Dict(                
-                    "body" => cell.output.body,
-                    "mime" => cell.output.mime,
-                    "rootassignee" => cell.output.rootassignee,
-                    "last_run_timestamp" => cell.output.last_run_timestamp,
-                    "persist_js_state" => cell.output.persist_js_state,
-                    "has_pluto_hook_features" => cell.output.has_pluto_hook_features,
-                ),
+                "output" => FirebaseyUtils.ImmutableMarker(cell.output),
                 "published_object_keys" => keys(cell.published_objects),
                 "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,
                 "runtime" => cell.runtime,
-                "logs" => AppendonlyMarkers.AppendonlyMarker(cell.logs),
+                "logs" => FirebaseyUtils.AppendonlyMarker(cell.logs),
+                "depends_on_skipped_cells" => cell.depends_on_skipped_cells,
             )
         for (id, cell) in notebook.cells_dict),
         "cell_order" => notebook.cell_order,
         "published_objects" => merge!(Dict{String,Any}(), (c.published_objects for c in values(notebook.cells_dict))...),
         "bonds" => Dict{String,Dict{String,Any}}(
-            String(key) => Dict(
+            String(key) => Dict{String,Any}(
                 "value" => bondvalue.value, 
             )
         for (key, bondvalue) in notebook.bonds),
+        "metadata" => notebook.metadata,
         "nbpkg" => let
             ctx = notebook.nbpkg_ctx
             Dict{String,Any}(
@@ -273,6 +269,12 @@ const effects_of_changed_state = Dict(
             Firebasey.applypatch!(request.notebook, patch)
             [BondChanged(name, patch isa Firebasey.AddPatch)]
         end,
+    ),
+    "metadata" => Dict(
+        Wildcard() => function(property; request::ClientRequest, patch::Firebasey.JSONPatch)
+            Firebasey.applypatch!(request.notebook, patch)
+            [FileChanged()]
+        end
     )
 )
 
@@ -311,10 +313,25 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
             push!(changes, current_changes...)
         end
 
+        # We put a flag to check whether any patch changes the skip_as_script metadata. This is to eventually trigger a notebook updated if no reactive_run is part of this update
+        skip_as_script_changed = any(patches) do patch
+            path = patch.path
+            metadata_idx = findfirst(isequal("metadata"), path)
+            if metadata_idx === nothing
+                false
+            else
+                isequal(path[metadata_idx+1], "skip_as_script")
+            end
+        end
+
         # If CodeChanged ∈ changes, then the client will also send a request like run_multiple_cells, which will trigger a file save _before_ running the cells.
         # In the future, we should get rid of that request, and save the file here. For now, we don't save the file here, to prevent unnecessary file IO.
         # (You can put a log in save_notebook to track how often the file is saved)
         if FileChanged() ∈ changes && CodeChanged() ∉ changes
+            if skip_as_script_changed
+                # If skip_as_script has changed but no cell run is happening we want to update the notebook dependency here before saving the file
+                update_skipped_cells_dependency!(notebook)
+            end  
              save_notebook(🙋.session, notebook)
         end
 
@@ -421,7 +438,7 @@ responses[:interrupt_all] = function response_interrupt_all(🙋::ClientRequest)
     require_notebook(🙋)
 
     session_notebook = (🙋.session, 🙋.notebook)
-    workspace = WorkspaceManager.get_workspace(session_notebook)
+    workspace = WorkspaceManager.get_workspace(session_notebook; allow_creation=false)
 
     already_interrupting = 🙋.notebook.wants_to_interrupt
     anything_running = !isready(workspace.dowork_token)

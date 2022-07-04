@@ -98,7 +98,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             @test sizes[2] < sizes[1] * 1.5
             @test sizes[4] < sizes[3] * 1.5
 
-            WorkspaceManager.unmake_workspace((🍭, notebook))
+            WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
         end
 
         @testset "Overloaded Base.show" begin
@@ -133,7 +133,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             @test notebook.cells[3].output.mime isa MIME"text/plain"
             @test notebook.cells[3].output.body == "3"
             
-            WorkspaceManager.unmake_workspace((🍭, notebook))
+            WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
         end
 
         
@@ -143,6 +143,35 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             notebook = Notebook([
                 Cell("using OffsetArrays"),
                 Cell("OffsetArray(zeros(3), 20:22)"),
+                
+                Cell("""
+                begin
+                    struct BadImplementation <: AbstractVector{Int64}
+                    end
+                    function Base.show(io::IO, ::MIME"text/plain", b::BadImplementation)
+                        write(io, "fallback")
+                    end
+                end
+                """),
+                
+                Cell("""
+                begin
+                    struct OneTwoThree <: AbstractVector{Int64}
+                    end
+                
+                    
+                    function Base.show(io::IO, ::MIME"text/plain", b::OneTwoThree)
+                        write(io, "fallback")
+                    end
+                
+                    Base.size(::OneTwoThree) = (3,)
+                    Base.getindex(::OneTwoThree, i) = 100 + i
+                end
+                """),
+                
+                Cell("BadImplementation()"),
+                Cell("OneTwoThree()"),
+                
             ])
             fakeclient.connected_notebook = notebook
 
@@ -154,6 +183,16 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             @test occursin("21", s)
             # once in the prefix, once as index
             @test count("22", s) >= 2
+            
+            @test notebook.cells[5].output.mime isa MIME"text/plain"
+            @test notebook.cells[5].output.body == "fallback"
+            
+            @test notebook.cells[6].output.mime isa MIME"application/vnd.pluto.tree+object"
+            s = string(notebook.cells[6].output.body)
+            @test occursin("OneTwoThree", s)
+            @test occursin("101", s)
+            @test occursin("102", s)
+            @test occursin("103", s)
             
             WorkspaceManager.unmake_workspace((🍭, notebook))
             🍭.options.evaluation.workspace_use_distributed = false
@@ -189,10 +228,10 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
 
             update_run!(🍭, notebook, notebook.cells)
 
-            @test notebook.cells[1].errored == false
-            @test notebook.cells[2].errored == false
-            @test notebook.cells[3].errored == false
-            @test notebook.cells[4].errored == false
+            @test notebook.cells[1] |> noerror
+            @test notebook.cells[2] |> noerror
+            @test notebook.cells[3] |> noerror
+            @test notebook.cells[4] |> noerror
         end
     end
 
@@ -259,9 +298,9 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
         @test occursin("String?", string(notebook.cells[13].output.body)) # Issue 1490.
 
         @test notebook.cells[10].output.mime isa MIME"text/plain"
-        @test notebook.cells[10].errored == false
+        @test notebook.cells[10] |> noerror
         
-        @test notebook.cells[17].errored == false  # Issue 1815
+        @test notebook.cells[17] |> noerror  # Issue 1815
 
         # to see if we truncated correctly, we convert the output to string and check how big it is
         # because we don't want to test too specifically
@@ -309,26 +348,26 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             update_run!(🍭, notebook, notebook.cells[3:end])
             @test occursinerror("syntax: extra token after", notebook.cells[3])
 
-            @test notebook.cells[4].errored == false
+            @test notebook.cells[4] |> noerror
             @test notebook.cells[4].output.body == "4"
             @test notebook.cells[4].output.rootassignee == :c
 
-            @test notebook.cells[5].errored == false
+            @test notebook.cells[5] |> noerror
             @test notebook.cells[5].output.body == ""
             @test notebook.cells[5].output.rootassignee === nothing
 
-            @test notebook.cells[6].errored == false
+            @test notebook.cells[6] |> noerror
             @test notebook.cells[6].output.body == "6"
             @test notebook.cells[6].output.rootassignee === nothing
 
-            @test notebook.cells[7].errored == false
+            @test notebook.cells[7] |> noerror
             @test notebook.cells[7].output.body == ""
             @test notebook.cells[7].output.rootassignee === nothing
 
-            @test notebook.cells[8].errored == false
+            @test notebook.cells[8] |> noerror
             @test notebook.cells[8].output.body == ""
 
-            @test notebook.cells[9].errored == false
+            @test notebook.cells[9] |> noerror
             @test notebook.cells[9].output.body == ""
 
             @test occursinerror("syntax: extra token after", notebook.cells[10])
@@ -336,7 +375,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             @test occursinerror("syntax: extra token after", notebook.cells[11])
         end
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
     end
 
     @testset "Stack traces" begin
@@ -417,7 +456,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                 @test occursin(escape_me, st[:msg])
             end
 
-            WorkspaceManager.unmake_workspace((🍭, notebook))
+            WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
         end
 
     end

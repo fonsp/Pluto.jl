@@ -161,9 +161,9 @@ let dont_break_before_spaces = StateField.define({
     update(deco, tr) {
         let decorations = []
         let pos = 0
-        for (let line of tr.newDoc) {
-            for (let match of line.matchAll(/[^ \t]+([ \t]|$)+/g)) {
-                if (match.index === 0) continue // Sneaky negative lookbehind
+        for (const line of tr.newDoc) {
+            for (const match of /** @type{string} */ (line).matchAll(/[^ \t]+([ \t]|$)+/g)) {
+                if (match.index == null || match.index === 0) continue // Sneaky negative lookbehind
                 decorations.push(identation_so_dont_break_marker.range(pos + match.index, pos + match.index + match[0].length))
             }
         }

@@ -1,6 +1,6 @@
 import { html, useEffect, useState, useContext, useRef, useMemo } from "../imports/Preact.js"
 import { cl } from "../common/ClassTable.js"
-import { PlutoContext } from "../common/PlutoContext.js"
+import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { is_mac_keyboard } from "../common/KeyboardShortcuts.js"
 
 const await_focus = () =>
@@ -15,7 +15,7 @@ const await_focus = () =>
           })
 
 export const Preamble = ({ any_code_differs, last_update_time, last_hot_reload_time, connected }) => {
-    let pluto_actions = useContext(PlutoContext)
+    let pluto_actions = useContext(PlutoActionsContext)
 
     const [state, set_state] = useState("")
     const [reload_state, set_reload_state] = useState("")

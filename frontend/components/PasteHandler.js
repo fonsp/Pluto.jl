@@ -1,5 +1,5 @@
 import { html, useEffect } from "../imports/Preact.js"
-import { link_edit } from "./Welcome.js"
+import { link_edit } from "./welcome/Open.js"
 
 const detectNotebook = (inputtext) => {
     // Add a newline in the end for the case user didn't copy it
@@ -7,7 +7,7 @@ const detectNotebook = (inputtext) => {
     const text = `${inputtext}\n`.replace("\r\n", "\n")
     const from = text.indexOf("### A Pluto.jl notebook ###")
     const cellsfound = text.match(/# ... ........-....-....-....-............/g)
-    const cellscount = cellsfound?.length
+    const cellscount = cellsfound?.length ?? 0
     const cellsorder = text.indexOf("# ╔═╡ Cell order:") + "# ╔═╡ Cell order:".length + 1
     let to = cellsorder
     for (let i = 1; i <= cellscount; i++) {
@@ -36,7 +36,7 @@ const readFile = (file) =>
         fr.onloadstart = () => {}
         fr.onprogress = ({ loaded, total }) => {}
         fr.onload = () => {}
-        fr.onloadend = ({ target: { result } }) => resolve({ file: result, name, type })
+        fr.onloadend = () => resolve({ file: fr.result, name, type })
         fr.readAsText(file)
     })
 
@@ -72,11 +72,16 @@ const processFile = async (ev) => {
         return
     }
     document.body.classList.add("loading")
-    const reply = await fetch("./notebookupload", {
+    const response = await fetch("./notebookupload", {
         method: "POST",
         body: notebook,
-    }).then((res) => res.text())
-    window.location.href = link_edit(reply)
+    })
+    if (response.ok) {
+        window.location.href = link_edit(await response.text())
+    } else {
+        let b = await response.blob()
+        window.location.href = URL.createObjectURL(b)
+    }
 }
 
 export const PasteHandler = () => {

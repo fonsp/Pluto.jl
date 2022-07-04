@@ -9,12 +9,16 @@ on:
             - "frontend/**"
             - "frontend-bundler/**"
             - "frontend-dist/**"
+            - "test/frontend/**"
             - "**.md"
         branches:
             - main
     pull_request:
         paths-ignore:
             - "frontend/**"
+            - "frontend-bundler/**"
+            - "frontend-dist/**"
+            - "test/frontend/**"
             - "**.md"
         branches-ignore:
             - release
@@ -24,12 +28,13 @@ jobs:
     test:
         runs-on: ${{ matrix.os }}
         timeout-minutes: 40
-        # Uncomment if you want to see all results for all OSses. Otherwise, the first failed test cancels all others
-        # continue-on-error: true
+        
         strategy:
+            # Without setting this, a failing test cancels all others
+            fail-fast: false
             matrix:
                 # We test quite a lot of versions because we do some OS and version specific things unfortunately
-                julia-version: ["1.6", "1.7"] #, "nightly"]
+                julia-version: ["1.6", "1.7", "~1.8.0-0"] #, "nightly"]
                 os: [ubuntu-latest, macOS-latest, windows-latest]
 
         steps:
@@ -40,7 +45,7 @@ jobs:
             - uses: julia-actions/setup-julia@v1
               with:
                   version: ${{ matrix.julia-version }}
+            - uses: julia-actions/cache@v1
 
             # 🚗
             - uses: julia-actions/julia-runtest@v1
-              continue-on-error: ${{ matrix.julia-version == 'nightly' }}

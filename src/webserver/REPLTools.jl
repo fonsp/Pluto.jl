@@ -17,8 +17,12 @@ responses[:completepath] = function response_completepath(🙋::ClientRequest)
     pos = lastindex(path)
 
     results, loc, found = complete_path(path, pos)
+    # too many candiates otherwise. -0.1 instead of 0 to enable autocompletions for paths: `/` or `/asdf/`
     isenough(x) = x ≥ -0.1
-    filter!(isenough ∘ score, results) # too many candiates otherwise. -0.1 instead of 0 to enable autocompletions for paths: `/` or `/asdf/`
+    ishidden(path_completion) = let p = path_completion.path
+        startswith(basename(isdirpath(p) ? dirname(p) : p), ".")
+    end
+    filter!(p -> !ishidden(p) && (isenough ∘ score)(p), results)
 
     start_utf8 = let
         # REPLCompletions takes into account that spaces need to be prefixed with `\` in the shell, so it subtracts the number of spaces in the filename from `start`:
@@ -69,14 +73,14 @@ responses[:complete] = function response_complete(🙋::ClientRequest)
     query = 🙋.body["query"]
     pos = lastindex(query) # the query is cut at the cursor position by the front-end, so the cursor position is just the last legal index
 
-    workspace = WorkspaceManager.get_workspace((🙋.session, 🙋.notebook))
-
     results, loc, found = if package_name_to_complete(query) !== nothing
         p = package_name_to_complete(query)
         cs = package_completions(p) |> sort
         [(c,"package",true) for c in cs], (nextind(query, pos-length(p)):pos), true
     else
-        if will_run_code(🙋.notebook) && isready(workspace.dowork_token)
+        workspace = WorkspaceManager.get_workspace((🙋.session, 🙋.notebook); allow_creation=false)
+        
+        if will_run_code(🙋.notebook) && workspace isa WorkspaceManager.Workspace && isready(workspace.dowork_token)
             # we don't use eval_format_fetch_in_workspace because we don't want the output to be string-formatted.
             # This works in this particular case, because the return object, a `Completion`, exists in this scope too.
             Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.completion_fetcher(
@@ -118,9 +122,9 @@ responses[:docs] = function response_docs(🙋::ClientRequest)
         doc_md = REPL.lookup_doc(Symbol(query))
         (repr(MIME("text/html"), doc_md), :👍)
     else
-        workspace = WorkspaceManager.get_workspace((🙋.session, 🙋.notebook))
+        workspace = WorkspaceManager.get_workspace((🙋.session, 🙋.notebook); allow_creation=false)
 
-        if will_run_code(🙋.notebook) && isready(workspace.dowork_token)
+        if will_run_code(🙋.notebook) && workspace isa WorkspaceManager.Workspace && isready(workspace.dowork_token)
             Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.doc_fetcher(
                 $query,
                 getfield(Main, $(QuoteNode(workspace.module_name))),

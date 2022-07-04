@@ -12,8 +12,8 @@ import { ScopeStateField } from "./scopestate_statefield.js"
  */
 let get_variable_marks = (state, { scopestate, global_definitions }) => {
     return Decoration.set(
-        scopestate.usages
-            .map(({ definition, usage, name }) => {
+        filter_non_null(
+            scopestate.usages.map(({ definition, usage, name }) => {
                 if (definition == null) {
                     // TODO variables_with_origin_cell should be notebook wide, not just in the current cell
                     // .... Because now it will only show variables after it has run once
@@ -55,13 +55,20 @@ let get_variable_marks = (state, { scopestate, global_definitions }) => {
                             "href": `#`,
                         },
                     }).range(usage.from, usage.to)
-                    return null
                 }
             })
-            .filter((x) => x != null),
+        ),
         true
     )
 }
+
+/**
+ *
+ * @argument {Array<T?>} xs
+ * @template T
+ * @return {Array<T>}
+ */
+const filter_non_null = (xs) => /** @type {Array<T>} */ (xs.filter((x) => x != null))
 
 /**
  * @type {Facet<{ [variable_name: string]: string }, { [variable_name: string]: string }>}
@@ -104,10 +111,13 @@ export const go_to_definition_plugin = ViewPlugin.fromClass(
                     let pluto_variable = event.target.closest("[data-pluto-variable]")
                     if (pluto_variable) {
                         let variable = pluto_variable.getAttribute("data-pluto-variable")
+                        if (variable == null) {
+                            return false
+                        }
 
                         event.preventDefault()
                         let scrollto_selector = `[id='${encodeURI(variable)}']`
-                        document.querySelector(scrollto_selector).scrollIntoView({
+                        document.querySelector(scrollto_selector)?.scrollIntoView({
                             behavior: "smooth",
                             block: "center",
                         })

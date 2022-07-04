@@ -61,7 +61,7 @@ import Distributed
         @test notebook.cells[3].output.body == "3"
         @test notebook.cells[4].output.body == "3"
         
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
     end
 
     Sys.iswindows() || @testset "Pluto inside Pluto" begin
@@ -83,7 +83,8 @@ import Distributed
             s = Pluto.ServerSession()
             """),
             Cell("""
-            nb = Pluto.SessionActions.open(s, Pluto.project_relative_path("sample", "Tower of Hanoi.jl"); run_async=false, as_sample=true)"""),
+            nb = Pluto.SessionActions.open(s, Pluto.project_relative_path("sample", "Tower of Hanoi.jl"); run_async=false, as_sample=true)
+            """),
             Cell("length(nb.cells)"),
             Cell(""),
         ])
@@ -91,19 +92,19 @@ import Distributed
 
         update_run!(🍭, notebook, notebook.cells)
 
-        @test notebook.cells[1].errored == false
-        @test notebook.cells[2].errored == false
-        @test notebook.cells[3].errored == false
-        @test notebook.cells[4].errored == false
-        @test notebook.cells[5].errored == false
+        @test notebook.cells[1] |> noerror
+        @test notebook.cells[2] |> noerror
+        @test notebook.cells[3] |> noerror
+        @test notebook.cells[4] |> noerror
+        @test notebook.cells[5] |> noerror
 
-        setcode(notebook.cells[5], "length(nb.cells)")
+        setcode!(notebook.cells[5], "length(nb.cells)")
         update_run!(🍭, notebook, notebook.cells[5])
-        @test notebook.cells[5].errored == false
+        @test notebook.cells[5] |> noerror
 
 
         desired_nprocs = Distributed.nprocs() - 1
-        setcode(notebook.cells[5], "Pluto.SessionActions.shutdown(s, nb)")
+        setcode!(notebook.cells[5], "Pluto.SessionActions.shutdown(s, nb)")
         update_run!(🍭, notebook, notebook.cells[5])
         @test noerror(notebook.cells[5])
 

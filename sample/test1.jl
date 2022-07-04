@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.5
+# v0.19.8
 
 using Markdown
 using InteractiveUtils
@@ -45,6 +45,7 @@ md"## Stopping cells"
 md"# CodeMirror"
 
 # ╔═╡ bc5bf64e-8b47-45ac-baf2-3cbb8e35d916
+# (this code should error)
 """
 Some sample code from https://juliamono.netlify.app/
 """
@@ -451,6 +452,94 @@ Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem
 # ╔═╡ 4e320206-d682-11ea-3dfe-b77f6e96f33a
 Text(s)
 
+# ╔═╡ f16e48a7-f1db-4f15-a013-3d509b2f93ea
+md"""
+# LaTeX math
+"""
+
+# ╔═╡ c3ae2fd1-628b-4876-9253-053805c47295
+md"""
+This should be centered:
+
+$$T^{n+1}_i = \kappa (T^n_{i-1} - 2 T^n_i + T^n_{i+1}).$$
+
+and should look exactly the same as:
+
+```math
+T^{n+1}_i = \kappa (T^n_{i-1} - 2 T^n_i + T^n_{i+1}).
+```
+
+this should be on the left:
+
+ $T^{n+1}_i = \kappa (T^n_{i-1} - 2 T^n_i + T^n_{i+1}).$
+"""
+
+# ╔═╡ ae4ab84b-ed29-4e09-b9c3-049d287e8c60
+md"""
+This z``\alpha``z and z$\alpha$z should look the same.
+"""
+
+# ╔═╡ 4b44cf5b-cac3-4283-b156-7adfce878228
+md"""
+> Calling `T` the current vector, i.e. $\mathbf{T}^n := (T^n_i)_{i=1, \ldots, N_x}$, and `T′` the new vector at the next time step, we have the following basic expression, for the ``i``th element.
+"""
+
+# ╔═╡ a10b9a7c-33d6-447e-99c0-c96a43fb3c6f
+md"""
+$$\begin{aligned}
+\dot{x} &= a + x^2 y - bx - x \\
+\dot{y} &= b x - x^2 y
+\end{aligned}$$
+"""
+
+# ╔═╡ ec741d6c-b148-4929-8805-2cd93ce6fca7
+md"""
+## Extensions
+"""
+
+# ╔═╡ 1d10093f-3256-46a8-b0d4-5186092825e2
+md"""
+### `mchem`
+Here is a chemical reaction: ``\ce{CO2 + C -> 2 CO}``. And another one:
+
+```math
+\ce{Hg^2+ ->[I-]  $\underset{\mathrm{red}}{\ce{HgI2}}$  ->[I-]  $\underset{\mathrm{red}}{\ce{[Hg^{II}I4]^2-}}$}
+```
+"""
+
+# ╔═╡ 7376d9e9-5740-4b67-9e8e-a2447e2c17cf
+html"""
+<p>This should look like a centered, black version of</p>
+<img width="309" alt="image" src="https://user-images.githubusercontent.com/6933510/173889771-d2bd046a-4d18-4c76-9577-36f6dcab9d1c.png">
+
+"""
+
+# ╔═╡ d61ed468-4922-4d7b-b7f1-475e17bcd1e4
+md"""
+### `cases`
+```math
+\begin{numcases} {|x|=}
+x, & for $x \geq 0$\\
+-x, & for $x < 0$
+\end{numcases}
+```
+"""
+
+# ╔═╡ 9d4c1242-cea0-4e76-8554-de0e05938de3
+md"""
+### `physics`
+```math
+\require{physics}
+\principalvalue hysics
+```
+"""
+
+# ╔═╡ fe97e64f-9de6-46aa-bdb4-a1d6e2f61297
+md"""
+### `color`
+``\color{red}{i\ am\ red}``
+"""
+
 # ╔═╡ 1bb05fc0-b15d-11ea-3dae-7734f66a0c56
 md"# Testing machinery"
 
@@ -703,7 +792,7 @@ uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 # ╔═╡ Cell order:
 # ╟─ce7f9d90-b163-11ea-0ff7-cf7378644741
 # ╠═878a4750-b15e-11ea-2584-8feba490699f
-# ╟─fd0763a0-b163-11ea-23b4-a7bae7052e19
+# ╠═fd0763a0-b163-11ea-23b4-a7bae7052e19
 # ╟─11f3ae90-b164-11ea-1027-0d2e6e7048dd
 # ╟─26d2b310-b164-11ea-0029-f7b04ee5ba73
 # ╟─1c6229f0-b165-11ea-0f1d-674022c43971
@@ -815,6 +904,17 @@ uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 # ╟─46fc284a-d682-11ea-34b6-69874efcaf65
 # ╟─4d452956-d682-11ea-3aeb-cd7d1b2f67dc
 # ╠═4e320206-d682-11ea-3dfe-b77f6e96f33a
+# ╟─f16e48a7-f1db-4f15-a013-3d509b2f93ea
+# ╟─c3ae2fd1-628b-4876-9253-053805c47295
+# ╟─ae4ab84b-ed29-4e09-b9c3-049d287e8c60
+# ╟─4b44cf5b-cac3-4283-b156-7adfce878228
+# ╟─a10b9a7c-33d6-447e-99c0-c96a43fb3c6f
+# ╟─ec741d6c-b148-4929-8805-2cd93ce6fca7
+# ╟─1d10093f-3256-46a8-b0d4-5186092825e2
+# ╟─7376d9e9-5740-4b67-9e8e-a2447e2c17cf
+# ╟─d61ed468-4922-4d7b-b7f1-475e17bcd1e4
+# ╟─9d4c1242-cea0-4e76-8554-de0e05938de3
+# ╟─fe97e64f-9de6-46aa-bdb4-a1d6e2f61297
 # ╟─1bb05fc0-b15d-11ea-3dae-7734f66a0c56
 # ╠═9ac925d0-b15d-11ea-2abd-7db360900be0
 # ╠═7e2cc6c0-b15d-11ea-32b0-15394cdebd35

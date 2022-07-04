@@ -1,14 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta name="viewport" content="width=device-width" />
-    <title>⚡ Pluto.jl ⚡</title>
     <meta charset="utf-8" />
-    <script>
-        console.log(
-            "Pluto.jl, by Fons van der Plas (https://github.com/fonsp), Mikołaj Bochenski (https://github.com/malyvsen), Michiel Dral (https://github.com/dralletje) and friends 🌈"
-        )
-    </script>
+    
+    <meta name="pluto-insertion-spot-meta">
+    
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="white">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#2a2928">
     <meta name="color-scheme" content="light dark">
@@ -16,19 +14,19 @@
     <link rel="icon" type="image/png" sizes="16x16" href="./img/favicon-16x16.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="./img/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="96x96" href="./img/favicon-96x96.png" />
-    <meta name="description" content="Pluto.jl notebooks" />
     <link rel="pluto-logo-big" href="./img/logo.svg" />
     <link rel="pluto-logo-small" href="./img/favicon_unsaturated.svg" />
-
-    <link rel="pluto-sw" href="./sw.js" />
-    <script>
-        navigator.serviceWorker?.register(document.head.querySelector("link[rel='pluto-sw']").getAttribute("href"), { scope: "./" }).catch(console.warn)
+    
+    <script defer>
+        console.log(
+            "Pluto.jl, by Fons van der Plas (https://github.com/fonsp), Mikołaj Bochenski (https://github.com/malyvsen), Michiel Dral (https://github.com/dralletje) and friends 🌈"
+        )
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.20/lodash.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/@observablehq/stdlib@3.3.1/dist/stdlib.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/iframe-resizer@4.2.11/js/iframeResizer.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/ansi_up@5.0.1/ansi_up.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/ansi_up@5.1.0/ansi_up.min.js" defer></script>
 
     <!-- This doesn't do anything unless activated, and it makes sure parcel bundles this -->
     <script id="iframe-resizer-content-window-script" src="https://cdn.jsdelivr.net/npm/iframe-resizer@4.2.11/js/iframeResizer.contentWindow.min.js" crossorigin="anonymous" defer></script>
@@ -41,14 +39,18 @@
     <link rel="preload" href="./vollkorn.css" as="style" />
     <link rel="stylesheet" href="./highlightjs.css" type="text/css">
 
-    <!-- [automatically generated launch parameters can be inserted here] -->
+    <meta name="pluto-insertion-spot-parameters">
 
     <script src="./editor.js" type="module" defer></script>
     <script src="./warn_old_browsers.js"></script>
 
-    <script src="./common/SetupMathJax.js"></script>
-    <script type="text/javascript" id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3.1.2/es5/tex-svg-full.js" async></script>
+    <!-- This script will be enabled by JS after the notebook has initialized to prevent taking up bandwidth during the initial load. -->
+    <script type="text/javascript" id="MathJax-script" integrity="sha384-4kE/rQ11E8xT9QgrCBTyvenkuPfQo8rXYQvJZuMgxyPOoUfpatjQPlgdv6V5yhUK" crossorigin="anonymous" not-the-src-yet="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg-full.js" async></script>
 </head>
 
-<body class="loading no-MαθJax"></body>
+<body class="loading no-MαθJax">
+    <div style="display: flex; min-height: 100vh;">
+        <pluto-editor class="fullscreen"></pluto-editor>
+    </div>
+</body>
 </html>

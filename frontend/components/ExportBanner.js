@@ -27,7 +27,7 @@ const Square = ({ fill }) => html`
 `
 
 //@ts-ignore
-window.enable_secret_pluto_recording = false
+window.enable_secret_pluto_recording = true
 
 export const ExportBanner = ({ onClose, notebookfile_url, notebookexport_url, start_recording }) => {
     return html`
@@ -61,16 +61,27 @@ export const ExportBanner = ({ onClose, notebookfile_url, notebookexport_url, st
                                   }}
                                   class="export_card"
                               >
-                                  <header><${Circle} fill="#E86F51" /> Recording</header>
+                                  <header><${Circle} fill="#E86F51" /> Record <em>(preview)</em></header>
                                   <section>Capture the entire notebook, and any changes you make.</section>
                               </a>
                           `
                         : null
                 }
-
-                <button title="Close" class="toggle_export" onClick=${() => onClose()}>
-                    <span></span>
-                </button>
+                <div class="export_small_btns">
+                    <button
+                        title="Edit frontmatter"
+                        class="toggle_frontmatter_edit"
+                        onClick=${() => {
+                            onClose()
+                            window.dispatchEvent(new CustomEvent("open pluto frontmatter"))
+                        }}
+                    >
+                        <span></span>
+                    </button>
+                    <button title="Close" class="toggle_export" onClick=${() => onClose()}>
+                        <span></span>
+                    </button>
+                </div>
             </div>
         </aside>
     `

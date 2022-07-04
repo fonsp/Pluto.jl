@@ -2,11 +2,13 @@
 import Pkg
 using Test
 using Pluto.Configuration: CompilerOptions
-using Pluto.WorkspaceManager: _merge_notebook_compiler_options
+using Pluto.WorkspaceManager: _merge_notebook_compiler_options, poll
 import Pluto: update_save_run!, update_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell, project_relative_path, SessionActions, load_notebook
 import Pluto.PkgUtils
 import Pluto.PkgCompat
 import Distributed
+
+# We have our own registry for these test! Take a look at https://github.com/JuliaPluto/PlutoPkgTestRegistry#readme for more info about the test packages and their dependencies.
 
 const pluto_test_registry_spec = Pkg.RegistrySpec(;
     url="https://github.com/JuliaPluto/PlutoPkgTestRegistry", 
@@ -14,12 +16,13 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
     name="PlutoPkgTestRegistry",
 )
 
+
 @testset "Built-in Pkg" begin
     
     # Pkg.Registry.rm("General")
     Pkg.Registry.add(pluto_test_registry_spec)
 
-
+    # We have our own registry for these test! Take a look at https://github.com/JuliaPluto/PlutoPkgTestRegistry#readme for more info about the test packages and their dependencies.
     @testset "Basic" begin
         fakeclient = ClientSession(:fake, nothing)
         🍭 = ServerSession()
@@ -73,7 +76,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
 
         old_A_terminal = deepcopy(terminals["PlutoPkgTestA"])
-        @show old_A_terminal
+        # @show old_A_terminal
 
         update_save_run!(🍭, notebook, notebook.cells[[3, 4]]) # import B
 
@@ -182,7 +185,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         end
 
         ## remove `import Dates`
-        setcode(notebook.cells[9], "")
+        setcode!(notebook.cells[9], "")
         update_save_run!(🍭, notebook, notebook.cells[9])
 
         # removing a stdlib does not require a restart
@@ -195,7 +198,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
 
         ## remove `import PlutoPkgTestD`
-        setcode(notebook.cells[7], "")
+        setcode!(notebook.cells[7], "")
         update_save_run!(🍭, notebook, notebook.cells[7])
 
         @test noerror(notebook.cells[7])
@@ -261,9 +264,9 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         # not necessary since there are no packages:
         # @test has_embedded_pkgfiles(notebook)
 
-        setcode(notebook.cells[1], "import Pkg")
+        setcode!(notebook.cells[1], "import Pkg")
         update_save_run!(🍭, notebook, notebook.cells[1])
-        setcode(notebook.cells[2], "Pkg.activate(mktempdir())")
+        setcode!(notebook.cells[2], "Pkg.activate(mktempdir())")
         update_save_run!(🍭, notebook, notebook.cells[2])
 
         @test noerror(notebook.cells[1])
@@ -273,21 +276,21 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test notebook.nbpkg_restart_required_msg === nothing
         @test !has_embedded_pkgfiles(notebook)
 
-        setcode(notebook.cells[3], "Pkg.add(\"JSON\")")
+        setcode!(notebook.cells[3], "Pkg.add(\"JSON\")")
         update_save_run!(🍭, notebook, notebook.cells[3])
-        setcode(notebook.cells[4], "using JSON")
+        setcode!(notebook.cells[4], "using JSON")
         update_save_run!(🍭, notebook, notebook.cells[4])
-        setcode(notebook.cells[5], "using Dates")
+        setcode!(notebook.cells[5], "using Dates")
         update_save_run!(🍭, notebook, notebook.cells[5])
 
         @test noerror(notebook.cells[3])
         @test noerror(notebook.cells[4])
-        @test notebook.cells[5].errored == false
+        @test notebook.cells[5] |> noerror
 
         @test !has_embedded_pkgfiles(notebook)
 
-        setcode(notebook.cells[2], "2")
-        setcode(notebook.cells[3], "3")
+        setcode!(notebook.cells[2], "2")
+        setcode!(notebook.cells[3], "3")
         update_save_run!(🍭, notebook, notebook.cells[2:3])
         
         @test notebook.nbpkg_ctx !== nothing
@@ -369,7 +372,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         ])
         fakeclient.connected_notebook = notebook
 
-        notebook.topology = Pluto.updated_topology(Pluto.NotebookTopology(), notebook, notebook.cells) |> Pluto.static_resolve_topology
+        notebook.topology = Pluto.updated_topology(Pluto.NotebookTopology(cell_order=Pluto.ImmutableVector(notebook.cells)), notebook, notebook.cells) |> Pluto.static_resolve_topology
 
         @test !Pluto.use_plutopkg(notebook.topology)
         order = collect(Pluto.topological_order(notebook))
@@ -547,12 +550,12 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
             @test notebook.nbpkg_restart_recommended_msg === nothing
             @test notebook.nbpkg_restart_required_msg === nothing
 
-            setcode(notebook.cells[2], "1 + 1")
+            setcode!(notebook.cells[2], "1 + 1")
             update_save_run!(🍭, notebook, notebook.cells[2])
             @test notebook.cells[2].output.body == "2"
 
             
-            setcode(notebook.cells[2], """
+            setcode!(notebook.cells[2], """
             begin
                 import PlutoPkgTestD
                 PlutoPkgTestD.MY_VERSION |> Text
@@ -593,8 +596,61 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
     #     save_notebook
     # end
-
     
+    @testset "Race conditions" begin
+        fakeclient = ClientSession(:fake, nothing)
+        🍭 = ServerSession()
+        🍭.connected_clients[fakeclient.id] = fakeclient
+        lag = 0.2
+        🍭.options.server.simulated_pkg_lag = lag
+
+        # See https://github.com/JuliaPluto/PlutoPkgTestRegistry
+
+        notebook = Notebook([
+            Cell("import PlutoPkgTestA"), # cell 1
+            Cell("PlutoPkgTestA.MY_VERSION |> Text"),
+            Cell("import PlutoPkgTestB"), # cell 3
+            Cell("PlutoPkgTestB.MY_VERSION |> Text"),
+            Cell("import PlutoPkgTestC"), # cell 5
+            Cell("PlutoPkgTestC.MY_VERSION |> Text"),
+            Cell("import PlutoPkgTestD"), # cell 7
+            Cell("PlutoPkgTestD.MY_VERSION |> Text"),
+            Cell("import PlutoPkgTestE"), # cell 9
+            Cell("PlutoPkgTestE.MY_VERSION |> Text"),
+        ])
+        fakeclient.connected_notebook = notebook
+
+        @test !notebook.nbpkg_ctx_instantiated
+        
+        running_tasks = Task[]
+        remember(t) = push!(running_tasks, t)
+        
+        update_save_run!(🍭, notebook, notebook.cells[[7, 8]]; run_async=false)            # import D (not async)
+        update_save_run!(🍭, notebook, notebook.cells[[1, 2]]; run_async=true) |> remember # import A
+        
+        for _ in 1:5
+            sleep(lag / 2)
+            setcode!(notebook.cells[9], "import PlutoPkgTestE")
+            update_save_run!(🍭, notebook, notebook.cells[[9]]; run_async=true) |> remember # import E
+            
+            sleep(lag / 2)
+            setcode!(notebook.cells[9], "")
+            update_save_run!(🍭, notebook, notebook.cells[[9]]; run_async=true) |> remember # don't import E
+        end
+        
+        while !all(istaskdone, running_tasks)
+            @test all(noerror, notebook.cells)
+            
+            sleep(lag / 3)
+        end
+        
+        @test all(istaskdone, running_tasks)
+        wait.(running_tasks)
+        empty!(running_tasks)
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
+
 
     Pkg.Registry.rm(pluto_test_registry_spec)
     # Pkg.Registry.add("General")

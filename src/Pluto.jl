@@ -10,6 +10,11 @@ https://github.com/fonsp/Pluto.jl/wiki
 """
 module Pluto
 
+if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@max_methods"))
+    @eval Base.Experimental.@max_methods 1
+end
+
+import FuzzyCompletions
 import RelocatableFolders: @path
 const ROOT_DIR = normpath(joinpath(@__DIR__, ".."))
 const FRONTEND_DIR = @path(joinpath(ROOT_DIR, "frontend"))
@@ -34,7 +39,7 @@ const PLUTO_VERSION = VersionNumber(Pkg.TOML.parsefile(joinpath(ROOT_DIR, "Proje
 const PLUTO_VERSION_STR = 'v' * string(PLUTO_VERSION)
 const JULIA_VERSION_STR = 'v' * string(VERSION)
 
-include("./notebook/PathHelpers.jl")
+include("./notebook/path helpers.jl")
 include("./notebook/Export.jl")
 include("./Configuration.jl")
 
@@ -47,10 +52,13 @@ include("./analysis/ReactiveNode.jl")
 include("./packages/PkgCompat.jl")
 
 include("./notebook/Cell.jl")
+include("./analysis/data structures.jl")
 include("./analysis/Topology.jl")
 include("./analysis/Errors.jl")
 include("./analysis/TopologicalOrder.jl")
 include("./notebook/Notebook.jl")
+include("./notebook/saving and loading.jl")
+include("./notebook/frontmatter.jl")
 include("./notebook/Events.jl")
 include("./webserver/Session.jl")
 include("./webserver/PutUpdates.jl")
@@ -94,5 +102,10 @@ if get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") != "0" && get(ENV, "CI", "🍄") != 
     https://github.com/fonsp/Pluto.jl/wiki
 \n"""
 end
+
+# Generate and include `precompile` directives during the precompilation phase.
+# This aims to reduce the time to first X (time to first running notebook in this case).
+using PrecompileSignatures: @precompile_signatures
+@precompile_signatures(Pluto)
 
 end

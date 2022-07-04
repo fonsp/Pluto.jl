@@ -69,9 +69,9 @@ Lastly, here's _**one more feature**_: Pluto notebooks have a `@bind` macro to c
 
 <br >
 
-You don't need to know HTML to use it! The [PlutoUI package](https://github.com/fonsp/PlutoUI.jl) contains basic inputs like sliders and buttons. Pluto's interactivity is very easy to use, you will learn more from the sample notebooks inside Pluto!
+You don't need to know HTML to use it! The [PlutoUI package](https://github.com/fonsp/PlutoUI.jl) contains basic inputs like sliders and buttons. Pluto's interactivity is very easy to use, you will learn more from the featured notebooks inside Pluto!
 
-But for those who want to dive deeper - you can use HTML, JavaScript and CSS to write your own widgets! Custom update events can be fired by dispatching a `new CustomEvent("input")`, making it compatible with the [`viewof` operator of observablehq](https://observablehq.com/@observablehq/a-brief-introduction-to-viewof). Have a look at the JavaScript sample notebook inside Pluto!
+But for those who want to dive deeper - you can use HTML, JavaScript and CSS to write your own widgets! Custom update events can be fired by dispatching a `new CustomEvent("input")`, making it compatible with the [`viewof` operator of observablehq](https://observablehq.com/@observablehq/a-brief-introduction-to-viewof). Have a look at the JavaScript featured notebook inside Pluto!
 
 <br >
 
@@ -112,8 +112,7 @@ julia> ]
 (v1.7) pkg> add Pluto
 ```
 
-_Tip for new Julia users: To return to the `julia>` prompt from the Pkg REPL,
-either press backspace when the input line is empty or press Ctrl+C._
+_Press `Ctrl+C` to return to the `julia>` prompt._
 
 ### Usage
 
@@ -159,11 +158,11 @@ Pluto.jl is open source! Specifically, it is [MIT Licensed](https://github.com/f
 -   `developit/htm` - [license](https://github.com/developit/htm/blob/master/LICENSE)
 -   `MathJax` - [license](https://github.com/mathjax/MathJax-src/blob/master/LICENSE)
 
-If you want to reference Pluto.jl in scientific writing, you can use our DOI: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5889169.svg)](https://doi.org/10.5281/zenodo.5889169)
+If you want to reference Pluto.jl in scientific writing, you can use our DOI: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4792401.svg)](https://doi.org/10.5281/zenodo.4792401)
 
-### Sample notebooks
+### Featured notebooks
 
-The included sample notebooks have a more permissive license: the [Unlicense](https://github.com/fonsp/Pluto.jl/blob/main/sample/LICENSE). This means that you can use sample notebook code however you like - you do not need to credit us! 
+Unless otherwise specified, the included featured notebooks have a more permissive license: the [Unlicense](https://github.com/fonsp/Pluto.jl/blob/main/sample/LICENSE). This means that you can use them however you like - you do not need to credit us! 
 
 Your notebook files are _yours_, you also do not need to credit us. Have fun!
 

@@ -2,6 +2,8 @@ import _ from "../imports/lodash.js"
 import { cl } from "../common/ClassTable.js"
 import { html, useState, useEffect, useLayoutEffect, useRef, useMemo } from "../imports/Preact.js"
 import { SimpleOutputBody } from "./TreeView.js"
+import { help_circle_icon, open_pluto_popup } from "./Popup.js"
+import AnsiUp from "../imports/AnsiUp.js"
 
 // Defined in editor.css
 const GRID_WIDTH = 10
@@ -13,7 +15,7 @@ const is_progress_log = (log) => {
 }
 
 export const Logs = ({ logs, line_heights, set_cm_highlighted_line }) => {
-    const container = useRef(null)
+    const container = useRef(/** @type {HTMLElement?} */ (null))
     const [from, setFrom] = useState(0)
     const [to, setTo] = useState(Math.round(1000 / GRID_WIDTH))
     const progress_logs = logs.filter(is_progress_log)
@@ -38,8 +40,8 @@ export const Logs = ({ logs, line_heights, set_cm_highlighted_line }) => {
     )
 
     useEffect(() => {
-        if (!container.current) return
         const elem = container.current
+        if (!elem) return
         const fn = () => {
             const w = elem.clientWidth
             const scroll_left = elem.scrollLeft
@@ -81,11 +83,12 @@ export const Logs = ({ logs, line_heights, set_cm_highlighted_line }) => {
 }
 
 const Progress = ({ progress }) => {
-    const bar_ref = useRef(null)
+    const bar_ref = useRef(/** @type {HTMLElement?} */ (null))
 
     useLayoutEffect(() => {
-        bar_ref.current.style.backgroundSize = `${progress * 100}%`
-    }, [progress])
+        if (!bar_ref.current) return
+        bar_ref.current.style.backgroundSize = `${progress * 100}% 100%`
+    }, [bar_ref.current, progress])
 
     return html`<pluto-progress-bar ref=${bar_ref}>${Math.ceil(100 * progress)}%</pluto-progress-bar>`
 }
@@ -93,7 +96,7 @@ const Progress = ({ progress }) => {
 const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${"adsf"} mime=${pair[1]} body=${pair[0]} persist_js_state=${false} />`
 
 const Dot = ({ set_cm_highlighted_line, show, msg, kwargs, x, y, level }) => {
-    const node_ref = useRef(null)
+    const node_ref = useRef(/** @type{HTMLElement?} */ (null))
     // const label_ref = useRef(null)
     // useEffect(() => {
     //     label_ref.current.innerHTML = body
@@ -101,6 +104,7 @@ const Dot = ({ set_cm_highlighted_line, show, msg, kwargs, x, y, level }) => {
     const [inspecting, set_inspecting] = useState(false)
 
     const is_progress = is_progress_log({ level, kwargs })
+    const is_stdout = level === "LogLevel(-555)"
     let progress = null
     if (is_progress) {
         progress = kwargs.find((p) => p[0] === "progress")[1][0]
@@ -115,11 +119,15 @@ const Dot = ({ set_cm_highlighted_line, show, msg, kwargs, x, y, level }) => {
         level = "Progress"
         y = 0
     }
+    if (is_stdout) {
+        level = "Stdout"
+    }
 
     useLayoutEffect(() => {
+        if (!node_ref.current) return
         node_ref.current.style.gridColumn = `${x + 1}`
         node_ref.current.style.gridRow = `${y + 1}`
-    }, [x, y])
+    }, [node_ref.current, x, y])
 
     useLayoutEffect(() => {
         if (inspecting && show) {
@@ -140,7 +148,7 @@ const Dot = ({ set_cm_highlighted_line, show, msg, kwargs, x, y, level }) => {
     }, [inspecting])
 
     return show
-        ? html` <pluto-log-dot-positioner
+        ? html`<pluto-log-dot-positioner
               ref=${node_ref}
               class=${cl({ inspecting })}
               onClick=${() => {
@@ -151,17 +159,62 @@ const Dot = ({ set_cm_highlighted_line, show, msg, kwargs, x, y, level }) => {
               onMouseleave=${() => set_cm_highlighted_line(null)}
           >
               <pluto-log-dot-sizer>
+                  ${is_stdout
+                      ? html`<${MoreInfo}
+                            body=${html`This text was written to the ${" "}<a href="https://en.wikipedia.org/wiki/Standard_streams" target="_blank"
+                                    >terminal stream</a
+                                >${" "}while running the cell. It is not the${" "}<em>output value</em>${" "}of this cell.`}
+                        />`
+                      : null}
                   <pluto-log-dot class=${level}
-                      >${!is_progress
-                          ? html`${mimepair_output(msg)}${kwargs.map(
+                      >${is_progress
+                          ? html`<${Progress} progress=${progress} />`
+                          : is_stdout
+                          ? html`<${MoreInfo}
+                                    body=${html`${"This text was written to the "}
+                                        <a href="https://en.wikipedia.org/wiki/Standard_streams" target="_blank">terminal stream</a
+                                        >${" while running the cell. "}<span style="opacity: .5"
+                                            >${"(It is not the "}<em>return value</em>${" of the cell.)"}</span
+                                        >`}
+                                />
+                                <${LogViewAnsiUp} value=${msg[0]} />`
+                          : html`${mimepair_output(msg)}${kwargs.map(
                                 ([k, v]) =>
                                     html`
                                         <pluto-log-dot-kwarg><pluto-key>${k}</pluto-key> <pluto-value>${mimepair_output(v)}</pluto-value></pluto-log-dot-kwarg>
                                     `
-                            )}`
-                          : html`<${Progress} progress=${progress} />`}</pluto-log-dot
+                            )}`}</pluto-log-dot
                   >
               </pluto-log-dot-sizer>
           </pluto-log-dot-positioner>`
         : html`<pluto-log-dot-positioner ref=${node_ref}></pluto-log-dot-positioner>`
+}
+
+const MoreInfo = (/** @type{{body: import("../imports/Preact.js").ReactElement}} */ { body }) => {
+    return html`<a
+        class="stdout-info"
+        target="_blank"
+        title="Click for more info"
+        href="#"
+        onClick=${(/** @type{Event} */ e) => {
+            open_pluto_popup({
+                type: "info",
+                source_element: /** @type {HTMLElement?} */ (e.currentTarget),
+                body,
+            })
+            e.preventDefault()
+        }}
+        ><img alt="❔" src=${help_circle_icon} width="17"
+    /></a>`
+}
+
+const LogViewAnsiUp = (/** @type {{value: string}} */ { value }) => {
+    const node_ref = useRef(/** @type {HTMLElement?} */ (null))
+
+    useEffect(() => {
+        if (!node_ref.current) return
+        node_ref.current.innerHTML = new AnsiUp().ansi_to_html(value)
+    }, [node_ref.current, value])
+
+    return html`<pre ref=${node_ref}></pre>`
 }

@@ -6,7 +6,7 @@ function updated_topology(old_topology::NotebookTopology, notebook::Notebook, ce
 	
 	updated_codes = Dict{Cell,ExprAnalysisCache}()
 	updated_nodes = Dict{Cell,ReactiveNode}()
-	unresolved_cells = copy(old_topology.unresolved_cells)
+	unresolved_cells = copy(old_topology.unresolved_cells.c)
 	for cell in cells
 		old_code = old_topology.codes[cell]
 		if old_code.code !== cell.code
@@ -30,14 +30,29 @@ function updated_topology(old_topology::NotebookTopology, notebook::Notebook, ce
 			pop!(unresolved_cells, cell, nothing)
 		end
 	end
-	new_codes = merge(old_topology.codes, updated_codes)
-	new_nodes = merge(old_topology.nodes, updated_nodes)
 
-	for removed_cell in setdiff(keys(old_topology.nodes), notebook.cells)
-		delete!(new_nodes, removed_cell)
-		delete!(new_codes, removed_cell)
-		delete!(unresolved_cells, removed_cell)
+	old_cells = all_cells(old_topology)
+	removed_cells = setdiff(old_cells, notebook.cells)
+	if isempty(removed_cells)
+		# We can keep identity
+		new_codes = merge(old_topology.codes, updated_codes)
+		new_nodes = merge(old_topology.nodes, updated_nodes)
+	else
+		setdiff!(unresolved_cells, removed_cells)
+		new_codes = merge(setdiffkeys(old_topology.codes, removed_cells), updated_codes)
+		new_nodes = merge(setdiffkeys(old_topology.nodes, removed_cells), updated_nodes)
 	end
 
-	NotebookTopology(nodes=new_nodes, codes=new_codes, unresolved_cells=unresolved_cells)
+	cell_order = if old_cells == notebook.cells
+		old_topology.cell_order
+	else
+		ImmutableVector(notebook.cells)
+	end
+
+	NotebookTopology(;
+		nodes=new_nodes,
+		codes=new_codes,
+		unresolved_cells=ImmutableSet(unresolved_cells; skip_copy=true), 
+		cell_order,
+	)
 end

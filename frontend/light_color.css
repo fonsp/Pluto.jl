@@ -62,6 +62,8 @@
         --selected-cell-bg-color: rgba(40, 78, 189, 0.24);
         --hover-scrollbar-color-1: rgba(0, 0, 0, 0.15);
         --hover-scrollbar-color-2: rgba(0, 0, 0, 0.05);
+        --skip-as-script-background-color: #ccc;
+        --depends-on-skip-as-script-background-color: #eee;
 
         /* Pluto shoulders */
         --shoulder-hover-bg-color: rgba(0, 0, 0, 0.05);
@@ -93,6 +95,7 @@
         /*saveall container*/
         --overlay-button-bg: #ffffff;
         --overlay-button-border: #f3f2f2;
+        --overlay-button-border-save: #f3f2f2;
 
         /*input_context_menu*/
         --input-context-menu-border-color: rgba(0, 0, 0, 0.1);
@@ -132,7 +135,7 @@
         --helpbox-notfound-header-color: rgb(139, 139, 139);
         --helpbox-text-color: black;
         --code-section-bg-color: whitesmoke;
-        --code-section-bg-color: #dbdbdb;
+        --code-section-bg-color: #f3f3f3;
 
         /*footer*/
         --footer-color: #333333;
@@ -187,6 +190,13 @@
         --index-text-color: hsl(0, 0, 60);
         --index-clickable-text-color: hsl(0, 0, 30);
         --docs-binding-bg: #8383830a;
+        --index-card-bg: white;
+        --welcome-mywork-bg: hsl(35deg 66% 93%);
+        --welcome-newnotebook-bg: whitesmoke;
+        --welcome-recentnotebook-bg: white;
+        --welcome-recentnotebook-border: #dfdfdf;
+        --welcome-open-bg: #fbfbfb;
+        --welcome-card-author-backdrop: #ffffffb0;
 
         /* HTML in codemirror! */
         --cm-html-color: #48b685;

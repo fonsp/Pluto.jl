@@ -6,13 +6,6 @@ import .PkgCompat
 
 include("./WebSocketFix.jl")
 
-# from https://github.com/JuliaLang/julia/pull/36425
-function detectwsl()
-    Sys.islinux() &&
-    isfile("/proc/sys/kernel/osrelease") &&
-    occursin(r"Microsoft|WSL"i, read("/proc/sys/kernel/osrelease", String))
-end
-
 function open_in_default_browser(url::AbstractString)::Bool
     try
         if Sys.isapple()
@@ -55,6 +48,7 @@ For the full list, see the [`Pluto.Configuration`](@ref) module. Some **common p
 - `launch_browser`: Optional. Whether to launch the system default browser. Disable this on SSH and such.
 - `host`: Optional. The default `host` is `"127.0.0.1"`. For wild setups like Docker and heroku, you might need to change this to `"0.0.0.0"`.
 - `port`: Optional. The default `port` is `1234`.
+- `auto_reload_from_file`: Reload when the `.jl` file is modified. The default is `false`.
 
 ## Technobabble
 
@@ -67,7 +61,7 @@ function run(; kwargs...)
 end
 
 function run(options::Configuration.Options)
-    session = ServerSession(;options=options)
+    session = ServerSession(; options)
     run(session)
 end
 
@@ -117,6 +111,22 @@ end
 
 const is_first_run = Ref(true)
 
+"Return a port and serversocket to use while taking into account the `favourite_port`."
+function port_serversocket(hostIP::Sockets.IPAddr, favourite_port, port_hint)
+    local port, serversocket
+    if favourite_port === nothing
+        port, serversocket = Sockets.listenany(hostIP, UInt16(port_hint))
+    else
+        port = UInt16(favourite_port)
+        try
+            serversocket = Sockets.listen(hostIP, port)
+        catch e
+            error("Cannot listen on port $port. It may already be in use, or you may not have sufficient permissions. Use Pluto.run() to automatically select an available port.")
+        end
+    end
+    return port, serversocket
+end
+
 function run(session::ServerSession, pluto_router)
     if is_first_run[]
         is_first_run[] = false
@@ -124,7 +134,7 @@ function run(session::ServerSession, pluto_router)
     end
     
     if VERSION < v"1.6.2"
-        @info "Pluto is running on an old version of Julia ($(VERSION)) that is no longer supported. Visit https://julialang.org/downloads/ for more information about upgrading Julia."
+        @warn("\nPluto is running on an old version of Julia ($(VERSION)) that is no longer supported. Visit https://julialang.org/downloads/ for more information about upgrading Julia.")
     end
 
     notebook_at_startup = session.options.server.notebook
@@ -133,23 +143,13 @@ function run(session::ServerSession, pluto_router)
     host = session.options.server.host
     hostIP = parse(Sockets.IPAddr, host)
     favourite_port = session.options.server.port
-    
-    local port, serversocket
-    if favourite_port === nothing
-        port, serversocket = Sockets.listenany(hostIP, UInt16(1234))
-    else
-        port = UInt16(favourite_port)
-        try
-            serversocket = Sockets.listen(hostIP, port)
-        catch e
-            @error "Port with number $port is already in use. Use Pluto.run() to automatically select an available port."
-            return
-        end
-    end
+    port_hint = session.options.server.port_hint
+
+    local port, serversocket = port_serversocket(hostIP, favourite_port, port_hint)
 
     shutdown_server = Ref{Function}(() -> ())
 
-    servertask = @async HTTP.serve(hostIP, port, stream=true, server=serversocket) do http::HTTP.Stream
+    servertask = @async HTTP.serve(hostIP, port; stream=true, server=serversocket) do http::HTTP.Stream
         # messy messy code so that we can use the websocket on the same port as the HTTP server
         if HTTP.WebSockets.is_upgrade(http.message)
             secret_required = let
@@ -224,13 +224,15 @@ function run(session::ServerSession, pluto_router)
                 end
             end
         else
+            # then it's a regular HTTP request, not a WS upgrade
+            
             request::HTTP.Request = http.message
             request.body = read(http)
             HTTP.closeread(http)
 
             # If a "token" url parameter is passed in from binder, then we store it to add to every URL (so that you can share the URL to collaborate).
             params = HTTP.queryparams(HTTP.URI(request.target))
-            if haskey(params, "token") && session.binder_token === nothing 
+            if haskey(params, "token") && params["token"] ∉ ("null", "undefined", "") && session.binder_token === nothing
                 session.binder_token = params["token"]
             end
 
@@ -240,7 +242,11 @@ function run(session::ServerSession, pluto_router)
             request.response::HTTP.Response = response_body
             request.response.request = request
             try
-                HTTP.setheader(http, "Referrer-Policy" => "origin-when-cross-origin")
+                HTTP.setheader(http, "Content-Length" => string(length(request.response.body)))
+                # https://github.com/fonsp/Pluto.jl/pull/722
+                HTTP.setheader(http, "Referrer-Policy" => "same-origin")
+                # https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#:~:text=is%202%20minutes.-,14.38%20Server
+                HTTP.setheader(http, "Server" => "Pluto.jl/$(PLUTO_VERSION_STR[2:end]) Julia/$(JULIA_VERSION_STR[2:end])")
                 HTTP.startwrite(http)
                 write(http, request.response.body)
                 HTTP.closewrite(http)
@@ -263,31 +269,29 @@ function run(session::ServerSession, pluto_router)
     WorkspaceManager.poll(server_running, 5.0, 1.0)
     
     address = pretty_address(session, hostIP, port)
-    println()
     if session.options.server.launch_browser && open_in_default_browser(address)
-        println("Opening $address in your default browser... ~ have fun!")
+        @info("\nOpening $address in your default browser... ~ have fun!")
     else
-        println("Go to $address in your browser to start writing ~ have fun!")
+        @info("\nGo to $address in your browser to start writing ~ have fun!")
     end
-    println()
-    println("Press Ctrl+C in this terminal to stop Pluto")
-    println()
+    @info("\nPress Ctrl+C in this terminal to stop Pluto\n\n")
     
     # Trigger ServerStartEvent with server details
     try_event_call(session, ServerStartEvent(address, port))
 
     if PLUTO_VERSION >= v"0.17.6" && frontend_directory() == "frontend"
-        @info "It looks like you are developing the Pluto package, using the unbundled frontend..."
+        @info("It looks like you are developing the Pluto package, using the unbundled frontend...")
     end
 
     # Start this in the background, so that the first notebook launch (which will trigger registry update) will be faster
     @asynclog withtoken(pkg_token) do
+        will_update = !PkgCompat.check_registry_age()
         PkgCompat.update_registries(; force=false)
-        println("    Updating registry done ✓")
+        will_update && println("    Updating registry done ✓")
     end
 
     shutdown_server[] = () -> @sync begin
-        println("\n\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈")
+        @info("\n\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈\n\n")
         @async swallow_exception(() -> close(serversocket), Base.IOError)
         # TODO: HTTP has a kill signal?
         # TODO: put do_work tokens back 
@@ -295,8 +299,8 @@ function run(session::ServerSession, pluto_router)
             @async swallow_exception(() -> close(client.stream), Base.IOError)
         end
         empty!(session.connected_clients)
-        for (notebook_id, ws) in WorkspaceManager.workspaces
-            @async WorkspaceManager.unmake_workspace(fetch(ws))
+        for nb in values(session.notebooks)
+            @asynclog SessionActions.shutdown(session, nb; keep_in_session=false, async=false, verbose=false)
         end
     end
 
@@ -313,13 +317,19 @@ function run(session::ServerSession, pluto_router)
         end
     end
 end
+precompile(run, (ServerSession, HTTP.Handlers.Router{Symbol("##001")}))
 
 get_favorite_notebook(notebook:: Nothing) = nothing
 get_favorite_notebook(notebook:: String) = notebook
 get_favorite_notebook(notebook:: AbstractVector) = first(notebook)
 
 function pretty_address(session::ServerSession, hostIP, port)
-    root = if session.options.server.root_url === nothing
+    root = if session.options.server.root_url !== nothing
+        @assert endswith(session.options.server.root_url, "/")
+        session.options.server.root_url
+    elseif haskey(ENV, "JH_APP_URL")
+        "$(ENV["JH_APP_URL"])proxy/$(Int(port))/"
+    else
         host_str = string(hostIP)
         host_pretty = if isa(hostIP, Sockets.IPv6)
             if host_str == "::1"
@@ -334,9 +344,6 @@ function pretty_address(session::ServerSession, hostIP, port)
         end
         port_pretty = Int(port)
         "http://$(host_pretty):$(port_pretty)/"
-    else
-        @assert endswith(session.options.server.root_url, "/")
-        session.options.server.root_url
     end
 
     url_params = Dict{String,String}()
@@ -352,7 +359,7 @@ function pretty_address(session::ServerSession, hostIP, port)
     else
         root
     end
-    merge(HTTP.URIs.URI(new_root), query=url_params) |> string
+    string(HTTP.URI(HTTP.URI(new_root); query=url_params))
 end
 
 "All messages sent over the WebSocket get decoded+deserialized and end up here."
