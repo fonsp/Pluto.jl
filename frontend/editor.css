@@ -508,7 +508,9 @@ header aside#export div#container {
 header.show_export aside#export div#container {
     overflow-x: auto;
 }
-a.export_card {
+a.export_card,
+button.export_card {
+    cursor: pointer;
     margin: 20px 5px;
     flex: 0 0 auto;
     width: 169px;
@@ -534,17 +536,19 @@ div.export_title {
     font-weight: 700;
     font-size: 1rem;
 }
-a.export_card header {
+a.export_card header,
+button.export_card header {
     margin-block: 0px;
     font-family: "Vollkorn", sans;
     /* font-family: system-ui; */
     font-feature-settings: "lnum", "pnum";
     font-size: 1rem;
 }
-a.export_card section {
+a.export_card section,
+button.export_card section {
     color: var(--export-card-text-color);
     font-weight: 500;
-    /* font-family: system-ui; */
+    font-family: "Vollkorn", sans;
     /* font-size: 14px; */
     padding: 3px;
 }

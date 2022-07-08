@@ -6,13 +6,31 @@ declare global {
     namespace Desktop {
         /**
          * This type has to be in sync with the type "Channels"
-         * defined in PlutoDesktop/{branch}/src/main/proload.ts
+         * defined in PlutoDesktop/{branch:master}/src/main/proload.ts
          */
         type Channels = "ipc-example"
 
         /**
+         * This enum has to be in sync with the enum "PlutoExport"
+         * defined in PlutoDesktop/{branch:master}/types/enums.ts
+         *
+         * @note Unfortunately enums can't be exported from .d.ts files.
+         * Inorder to use this, just map integers to the enum values
+         * - PlutoExport.FILE -> **0**
+         * - PlutoExport.HTML -> **1**
+         * - PlutoExport.STATE -> **2**
+         * - PlutoExport.PDF -> **3**
+         */
+        enum PlutoExport {
+            FILE,
+            HTML,
+            STATE,
+            PDF,
+        }
+
+        /**
          * This type has to be in sync with the interface "Window"
-         * defined in PlutoDesktop/{branch}/src/renderer/preload.d.ts
+         * defined in PlutoDesktop/{branch:master}/src/renderer/preload.d.ts
          */
         type PlutoDesktop = {
             ipcRenderer: {
@@ -30,10 +48,10 @@ declare global {
                 openNotebook(path?: string, forceNew?: boolean): void
                 shutdownNotebook(id?: string): void
                 moveNotebook(id?: string): void
+                exportNotebook(id: string, type: PlutoExport): void
             }
         }
     }
-
     interface Window {
         plutoDesktop?: Desktop.PlutoDesktop
     }
