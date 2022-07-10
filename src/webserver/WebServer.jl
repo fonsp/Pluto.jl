@@ -145,9 +145,10 @@ function run(session::ServerSession)
     local port, serversocket = port_serversocket(hostIP, favourite_port, port_hint)
 
     on_shutdown() = @sync begin
+        # Triggered by HTTP.jl
         @info("\n\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈\n\n")
-        # TODO: HTTP has a kill signal?
         # TODO: put do_work tokens back 
+        @async swallow_exception(() -> close(serversocket), Base.IOError)
         for client in values(session.connected_clients)
             @async swallow_exception(() -> close(client.stream), Base.IOError)
         end
