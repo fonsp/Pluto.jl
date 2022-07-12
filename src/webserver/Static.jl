@@ -158,11 +158,11 @@ function http_router_for(session::ServerSession)
     #    require_secret_for_access == false
     # Access to all 'risky' endpoints is still restricted to requests that have the secret cookie, but visiting `/` is allowed, and it will set the cookie. From then on the security situation is identical to 
     #    secret_for_access == true
-    HTTP.@register(router, "GET", "/", with_authentication(
+    HTTP.register!(router, "GET", "/", with_authentication(
         create_serve_onefile(project_relative_path(frontend_directory(), "index.html"));
         required=security.require_secret_for_access
         ))
-    HTTP.@register(router, "GET", "/edit", with_authentication(
+    HTTP.register!(router, "GET", "/edit", with_authentication(
         create_serve_onefile(project_relative_path(frontend_directory(), "editor.html"));
         required=security.require_secret_for_access || 
         security.require_secret_for_open_links,
@@ -170,8 +170,8 @@ function http_router_for(session::ServerSession)
     # the /edit page also uses with_authentication, but this is not how access to notebooks is secured: this is done by requiring the WS connection to be authenticated.
     # we still use it for /edit to do the cookie stuff, and show a more helpful error, instead of the WS never connecting.
     
-    HTTP.@register(router, "GET", "/ping", r -> HTTP.Response(200, "OK!"))
-    HTTP.@register(router, "GET", "/possible_binder_token_please", r -> session.binder_token === nothing ? HTTP.Response(200,"") : HTTP.Response(200, session.binder_token))
+    HTTP.register!(router, "GET", "/ping", r -> HTTP.Response(200, "OK!"))
+    HTTP.register!(router, "GET", "/possible_binder_token_please", r -> session.binder_token === nothing ? HTTP.Response(200,"") : HTTP.Response(200, session.binder_token))
     
     function try_launch_notebook_response(action::Function, path_or_url::AbstractString; title="", advice="", home_url="./", as_redirect=true, action_kwargs...)
         try
@@ -192,8 +192,8 @@ function http_router_for(session::ServerSession)
     ) do request::HTTP.Request
         notebook_response(SessionActions.new(session); as_redirect=(request.method == "GET"))
     end
-    HTTP.@register(router, "GET", "/new", serve_newfile)
-    HTTP.@register(router, "POST", "/new", serve_newfile)
+    HTTP.register!(router, "GET", "/new", serve_newfile)
+    HTTP.register!(router, "POST", "/new", serve_newfile)
 
     # This is not in Dynamic.jl because of bookmarks, how HTML works,
     # real loading bars and the rest; Same for CustomLaunchEvent
@@ -242,8 +242,8 @@ function http_router_for(session::ServerSession)
         end
     end
 
-    HTTP.@register(router, "GET", "/open", serve_openfile)
-    HTTP.@register(router, "POST", "/open", serve_openfile)
+    HTTP.register!(router, "GET", "/open", serve_openfile)
+    HTTP.register!(router, "POST", "/open", serve_openfile)
     
     serve_sample = with_authentication(;
         required=security.require_secret_for_access || 
@@ -262,8 +262,8 @@ function http_router_for(session::ServerSession)
             advice="Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!"
         )
     end
-    HTTP.@register(router, "GET", "/sample/*", serve_sample)
-    HTTP.@register(router, "POST", "/sample/*", serve_sample)
+    HTTP.register!(router, "GET", "/sample/*", serve_sample)
+    HTTP.register!(router, "POST", "/sample/*", serve_sample)
 
     notebook_from_uri(request) = let
         uri = HTTP.URI(request.target)        
@@ -285,7 +285,7 @@ function http_router_for(session::ServerSession)
             return error_response(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", sprint(showerror, e, stacktrace(catch_backtrace())))
         end
     end
-    HTTP.@register(router, "GET", "/notebookfile", serve_notebookfile)
+    HTTP.register!(router, "GET", "/notebookfile", serve_notebookfile)
 
     serve_statefile = with_authentication(; 
         required=security.require_secret_for_access || 
@@ -301,7 +301,7 @@ function http_router_for(session::ServerSession)
             return error_response(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", sprint(showerror, e, stacktrace(catch_backtrace())))
         end
     end
-    HTTP.@register(router, "GET", "/statefile", serve_statefile)
+    HTTP.register!(router, "GET", "/statefile", serve_statefile)
 
     serve_notebookexport = with_authentication(; 
         required=security.require_secret_for_access || 
@@ -317,7 +317,7 @@ function http_router_for(session::ServerSession)
             return error_response(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", sprint(showerror, e, stacktrace(catch_backtrace())))
         end
     end
-    HTTP.@register(router, "GET", "/notebookexport", serve_notebookexport)
+    HTTP.register!(router, "GET", "/notebookexport", serve_notebookexport)
     
     serve_notebookupload = with_authentication(; 
         required=security.require_secret_for_access || 
@@ -338,15 +338,15 @@ function http_router_for(session::ServerSession)
             advice="The contents could not be read as a Pluto notebook file. When copying contents from somewhere else, make sure that you copy the entire notebook file.  You can also <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!"
         )
     end
-    HTTP.@register(router, "POST", "/notebookupload", serve_notebookupload)
+    HTTP.register!(router, "POST", "/notebookupload", serve_notebookupload)
     
     function serve_asset(request::HTTP.Request)
         uri = HTTP.URI(request.target)
         filepath = project_relative_path(frontend_directory(), relpath(HTTP.unescapeuri(uri.path), "/"))
         asset_response(filepath; cacheable=should_cache(filepath))
     end
-    HTTP.@register(router, "GET", "/*", serve_asset)
-    HTTP.@register(router, "GET", "/favicon.ico", create_serve_onefile(project_relative_path(frontend_directory(allow_bundled=false), "img", "favicon.ico")))
+    HTTP.register!(router, "GET", "/**", serve_asset)
+    HTTP.register!(router, "GET", "/favicon.ico", create_serve_onefile(project_relative_path(frontend_directory(allow_bundled=false), "img", "favicon.ico")))
 
     return router
 end
