@@ -399,7 +399,10 @@ struct OutputNotDefined end
 function compute(m::Module, computer::Computer)
     # 1. get the referenced global variables
     # this might error if the global does not exist, which is exactly what we want
-    input_global_values = getfield.([m], computer.input_globals)
+    input_global_values = Vector{Any}(undef, length(computer.input_globals))
+    for (i, s) in enumerate(computer.input_globals)
+        input_global_values[i] = getfield(m, s)
+    end
 
     # 2. run the function
     out = Base.invokelatest(computer.f, input_global_values...)
