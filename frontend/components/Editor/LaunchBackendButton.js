@@ -1,14 +1,19 @@
-import { RunLocalButton } from "../EditOrRunButton.js"
-import { BinderButton } from "../EditOrRunButton.js"
 import { html } from "../../imports/Preact.js"
+import * as preact from "../../imports/Preact.js"
+import { RunLocalButton, BinderButton } from "../EditOrRunButton.js"
 import { start_local } from "../../common/RunLocal.js"
 import { start_binder } from "../../common/Binder.js"
 
-const local_provider = window.pluto_injected_environment.provides_backend
-
 export const EditorLaunchBackendButton = ({ editor, launch_params, status }) => {
-    console.log(status.offer_local && local_provider)
-    if (status.offer_local && local_provider) return html`<div>CUSTOM BUTTON YEY</div>`
+    // @ts-ignore
+    if (window?.pluto_injected_environment?.provides_backend) {
+        try {
+            // @ts-ignore
+            const EnvRun = window.pluto_injected_environment.environment({ client: editor.client, editor, imports: { preact } }).custom_run_or_edit
+            return html`<${EnvRun} />`
+            // Don't allow a misconfigured environment to stop offering other backends
+        } catch (e) {}
+    }
     if (status.offer_local)
         return html`<${RunLocalButton}
             start_local=${() =>
