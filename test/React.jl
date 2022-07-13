@@ -1706,4 +1706,20 @@ import Distributed
 
         WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
     end
+
+    @testset "Broadcast bug - Issue #2211" begin
+        notebook = Notebook(Cell.([
+            "abstract type AbstractFoo{T} <: AbstractMatrix{T} end",
+            "struct X{T} <: AbstractFoo{T} end",
+            "convert(::Type{AbstractArray{T}}, S::AbstractFoo) where {T<:Number} = convert(AbstractFoo{T}, S)",
+            "Base.convert(::Type{AbstractArray{T}}, ::AbstractFoo) where {T} = nothing",
+            "Base.size(::AbstractFoo) = (2,2)",
+            "Base.getindex(::AbstractFoo{T}, args...) where {T} = one(T)",
+            "x = X{Float64}()",
+            "y = zeros(2,)",
+            "x, y",
+        ]))
+        update_run!(🍭, notebook, notebook.cells)
+        @test all(noerror, notebook.cells)
+    end
 end
