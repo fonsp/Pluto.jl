@@ -40,7 +40,8 @@ function try_event_call(session, event::PlutoEvent)
     return try
         session.options.server.on_event(event)
     catch e
-        @warn "Couldn't run event listener" event exception=(e, catch_backtrace())
+        # Do not print all the event; it's too big!
+        @warn "Couldn't run event listener" event_type=typeof(event) exception=(e, catch_backtrace())
         nothing
     end
 end
