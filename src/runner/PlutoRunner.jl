@@ -2209,8 +2209,8 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
         # If we do not close the pipe then the cell
         #   run(`julia -e 'sleep(5)'`; wait=false)
         # takes 5 seconds to complete even though it should run asyncronously. This is
-        # because wait(output, pipe) runs until EOF.
-        close(pipe.out)
+        # because write(output, pipe) runs until EOF.
+        close(pipe)
         wait(buffer_redirect_task)
     end
 
