@@ -94,8 +94,9 @@ struct OpenNotebookEvent <: PlutoEvent
 end
 
 # Triggered when Pluto completes an evaluation loop
-struct NotebookReadyEvent <: PlutoEvent
+struct NotebookExecutionDoneEvent <: PlutoEvent
     notebook::Notebook
+    user_requested_run::Bool
 end
 
 # This will be fired ONLY if URL params don't match anything else.

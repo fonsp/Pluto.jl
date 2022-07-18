@@ -48,7 +48,7 @@ function run_reactive!(
             bond_value_pairs
         )
     end
-    try_event_call(session, NotebookReadyEvent(notebook))
+    try_event_call(session, NotebookExecutionDoneEvent(notebook, user_requested_run))
 end
 
 """
@@ -526,12 +526,12 @@ end
 
 "Do all the things!"
 function update_save_run!(
-	session::ServerSession, 
-	notebook::Notebook, 
-	cells::Vector{Cell}; 
-	save::Bool=true, 
-	run_async::Bool=false, 
-	prerender_text::Bool=false, 
+	session::ServerSession,
+	notebook::Notebook,
+	cells::Vector{Cell};
+	save::Bool=true,
+	run_async::Bool=false,
+	prerender_text::Bool=false,
 	kwargs...
 )
 	old = notebook.topology
@@ -597,7 +597,10 @@ function update_save_run!(
                 # run_reactive_async!(session, notebook, old, new, to_run_online; deletion_hook=deletion_hook, run_async=false, kwargs...)
             end
         end
-        try_event_call(session, NotebookReadyEvent(notebook))
+        try_event_call(
+            session,
+            NotebookExecutionDoneEvent(notebook, get(kwargs, :user_requested_run, true))
+        )
     end
 end
 
