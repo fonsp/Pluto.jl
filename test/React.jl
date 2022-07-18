@@ -1722,4 +1722,17 @@ import Distributed
         update_run!(🍭, notebook, notebook.cells)
         @test all(noerror, notebook.cells)
     end
+
+    @testset "Asynchronous commands - Issue #2121 & PR #2216" begin
+        notebook = Notebook(Cell[
+            Cell("@async run(`sleep 5`)"),
+        ])
+        update_run!(🍭, notebook, notebook.cells)
+        @test notebook.cells[begin] |> noerror
+        second = 1e9
+        @test notebook.cells[begin].runtime < .1second
+        @test occursin("runnable", notebook.cells[begin].output.body)
+        @test occursin("Task", notebook.cells[begin].output.body)
+        WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
+    end
 end
