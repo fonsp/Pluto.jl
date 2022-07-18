@@ -84,12 +84,17 @@ FileEditEvent(notebook::Notebook) = begin
     FileEditEvent(notebook, file_contents, notebook.path)
 end
 
-# Triggered when we open a new notebook
+# Triggered when we create a new notebook
 struct NewNotebookEvent <: PlutoEvent
 end
 
-# Triggered when a user opens a notebook
+# Triggered when we open any notebook
 struct OpenNotebookEvent <: PlutoEvent
+    notebook::Notebook
+end
+
+# Triggered when Pluto completes an evaluation loop
+struct NotebookReadyEvent <: PlutoEvent
     notebook::Notebook
 end
 

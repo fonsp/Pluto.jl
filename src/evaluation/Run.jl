@@ -594,6 +594,7 @@ function update_save_run!(
                 # not async because that would be double async
                 run_reactive_core!(session, notebook, old, new, to_run_online; kwargs...)
                 # run_reactive_async!(session, notebook, old, new, to_run_online; deletion_hook=deletion_hook, run_async=false, kwargs...)
+                try_event_call(session, NotebookReadyEvent(notebook))
             end
         end
 	end
