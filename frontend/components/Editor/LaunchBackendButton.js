@@ -12,6 +12,7 @@ export const EditorLaunchBackendButton = ({ editor, launch_params, status }) => 
         [editor.client, editor]
     )
 
+    // @ts-ignore
     if (window?.pluto_injected_environment?.provides_backend) {
         try {
             // @ts-ignore
