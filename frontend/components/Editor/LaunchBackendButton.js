@@ -6,20 +6,19 @@ import { BackendLaunchPhase, start_binder } from "../../common/Binder.js"
 import immer, { applyPatches, produceWithPatches } from "../../imports/immer.js"
 
 export const EditorLaunchBackendButton = ({ editor, launch_params, status }) => {
-    const EnvRun = useMemo(
+    try {
+        const EnvRun = useMemo(
+            // @ts-ignore
+            () => window?.pluto_injected_environment?.environment?.({ client: editor.client, editor, imports: { immer, preact } })?.custom_run_or_edit,
+            [editor.client, editor]
+        )
         // @ts-ignore
-        () => window.pluto_injected_environment.environment({ client: editor.client, editor, imports: { immer, preact } }).custom_run_or_edit,
-        [editor.client, editor]
-    )
-
-    // @ts-ignore
-    if (window?.pluto_injected_environment?.provides_backend) {
-        try {
+        if (window?.pluto_injected_environment?.provides_backend) {
             // @ts-ignore
             return html`<${EnvRun} editor=${editor} backend_phases=${BackendLaunchPhase} launch_params=${launch_params} />`
             // Don't allow a misconfigured environment to stop offering other backends
-        } catch (e) {}
-    }
+        }
+    } catch (e) {}
     if (status.offer_local)
         return html`<${RunLocalButton}
             start_local=${() =>
