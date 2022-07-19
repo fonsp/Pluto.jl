@@ -1,4 +1,4 @@
-import { html, useMemo } from "../../imports/Preact.js"
+import { html, useMemo, useEffect } from "../../imports/Preact.js"
 import * as preact from "../../imports/Preact.js"
 import { RunLocalButton, BinderButton } from "../EditOrRunButton.js"
 import { start_local } from "../../common/RunLocal.js"
