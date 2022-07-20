@@ -29,7 +29,7 @@ function maybe_convert_path_to_wsl(path)
         if detectwsl()
             # wslpath utility prints path to stderr if it fails to convert
             # (it used to fail for WSL-valid paths)
-            startswith(path, "/mnt/c/") && return path
+             !isnothing(match(r"^/mnt/\w+/", path)) && return path
             return readchomp(pipeline(`wslpath -u $(path)`; stderr=devnull))
         end
     catch e
