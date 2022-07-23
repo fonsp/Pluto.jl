@@ -2135,7 +2135,7 @@ function Logging.handle_message(pl::PlutoLogger, level, msg, _module, group, id,
         
         put!(pl.log_channel, Dict{String,Any}(
             "level" => string(level),
-            "msg" => format_output_default(msg isa String ? Text(msg) : msg),
+            "msg" => format_output_default(msg isa AbstractString ? Text(msg) : msg),
             "group" => string(group),
             "id" => string(id),
             "file" => string(file),
