@@ -333,7 +333,8 @@ function pretty_address(session::ServerSession, hostIP, port)
             host_str
         end
         port_pretty = Int(port)
-        "http://$(host_pretty):$(port_pretty)/"
+        base_url = session.options.server.base_url
+        "http://$(host_pretty):$(port_pretty)$(base_url)"
     end
 
     url_params = Dict{String,String}()

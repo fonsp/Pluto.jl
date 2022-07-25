@@ -28,6 +28,7 @@ function __init__()
 end
 
 const ROOT_URL_DEFAULT = nothing
+const BASE_URL_DEFAULT = "/"
 const HOST_DEFAULT = "127.0.0.1"
 const PORT_DEFAULT = nothing
 const PORT_HINT_DEFAULT = 1234
@@ -74,6 +75,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 """
 @option mutable struct ServerOptions
     root_url::Union{Nothing,String} = ROOT_URL_DEFAULT
+    base_url::String = BASE_URL_DEFAULT
     host::String = HOST_DEFAULT
     port::Union{Nothing,Integer} = PORT_DEFAULT
     port_hint::Integer = PORT_HINT_DEFAULT
@@ -218,6 +220,7 @@ end
 
 function from_flat_kwargs(;
         root_url::Union{Nothing,String} = ROOT_URL_DEFAULT,
+        base_url::String = BASE_URL_DEFAULT,
         host::String = HOST_DEFAULT,
         port::Union{Nothing,Integer} = PORT_DEFAULT,
         port_hint::Integer = PORT_HINT_DEFAULT,
@@ -252,6 +255,7 @@ function from_flat_kwargs(;
     )
     server = ServerOptions(;
         root_url,
+        base_url,
         host,
         port,
         port_hint,
