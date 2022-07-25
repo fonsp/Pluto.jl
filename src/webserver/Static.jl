@@ -42,6 +42,10 @@ const day = let
     day = 24hour
 end
 
+function default_404(req = nothing)
+    HTTP.Response(404, "Not found!")
+end
+
 function asset_response(path; cacheable::Bool=false)
     if !isfile(path) && !endswith(path, ".html")
         return asset_response(path * ".html"; cacheable)
@@ -55,7 +59,7 @@ function asset_response(path; cacheable::Bool=false)
         cacheable && push!(response.headers, "Cache-Control" => "public, max-age=$(30day), immutable")
         response
     else
-        HTTP.Response(404, "Not found!")
+        default_404()
     end
 end
 
@@ -122,7 +126,9 @@ Returns a new `HTTP.Router` which delegates all requests to `base_router` but wi
 so that they seem like they arrived at `/**` instead of `/\$base_url/**`.
 """
 function scoped_router(base_url, base_router)
-    @assert startswith(base_url, '/') && endswith(base_url, '/') "Invalid base_url \"$base_url\""
+    @assert startswith(base_url, '/') "base_url \"$base_url\" should start with a '/'"
+    @assert endswith(base_url, '/')  "base_url \"$base_url\" should end with a '/'"
+    @assert !occursin('*', base_url) "'*' not allowed in base_url \"$base_url\" "
 
     function handler(request)
         request.target = request.target[length(base_url):end]
@@ -137,7 +143,7 @@ function scoped_router(base_url, base_router)
 end
 
 function http_router_for(session::ServerSession)
-    router = HTTP.Router()
+    router = HTTP.Router(default_404)
     security = session.options.security
 
     function add_set_secret_cookie!(response::HTTP.Response)
