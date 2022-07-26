@@ -264,7 +264,7 @@ function run(session::ServerSession)
 
     server_running() =
         try
-            HTTP.get("http://$(hostIP):$(port)/ping"; status_exception = false, retry = false, connect_timeout = 10, readtimeout = 10).status == 200
+            HTTP.get("http://$(hostIP):$(port)$(session.options.server.base_url)ping"; status_exception = false, retry = false, connect_timeout = 10, readtimeout = 10).status == 200
         catch
             false
         end
