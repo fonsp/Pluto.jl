@@ -8,6 +8,51 @@ using Pluto.WorkspaceManager: WorkspaceManager, poll
 
 @testset "Web server" begin
 
+@testset "base_url" begin
+    port = 13433
+    host = "localhost"
+
+    n_components = rand(2:6)
+    base_url = "/"
+    for _ in 1:n_components
+        base_url *= String(rand(collect('a':'z') ∪ collect('0':'9'), rand(5:10))) * "/"
+    end
+    local_url(suffix) = "http://$host:$port$base_url$suffix"
+
+    @show local_url("favicon.ico")
+    server_running() = HTTP.get(local_url("favicon.ico")).status == 200 && HTTP.get(local_url("edit")).status == 200
+
+    # without notebook at startup
+    options = Pluto.Configuration.from_flat_kwargs(;
+        port,
+        launch_browser=false,
+        workspace_use_distributed=true,
+        require_secret_for_access=false,
+        require_secret_for_open_links=false,
+        base_url,
+    )
+    🍭 = Pluto.ServerSession(; options)
+    server_task = @async Pluto.run(🍭)
+
+    # FYI, you should normally use a PlutoEvent for things we do in this test instead of polling! Don't use this as an example.
+    @test poll(10) do
+        server_running()
+    end
+
+    sleep(20)
+    @test HTTP.get("http://$host:$port/edit"; status_exception=false).status == 404
+
+    for notebook in values(🍭.notebooks)
+        SessionActions.shutdown(🍭, notebook; keep_in_session=false)
+    end
+
+    schedule(server_task, InterruptException(); error=true)
+
+    # wait for the server task to finish
+    # normally this `wait` would rethrow the above InterruptException, but Pluto.run should catch for InterruptExceptions and not bubble them up.
+    wait(server_task)
+end
+
 @testset "Exports" begin
     port, socket = 
         @inferred Pluto.port_serversocket(Sockets.ip"0.0.0.0", nothing, 5543) 
@@ -68,48 +113,6 @@ using Pluto.WorkspaceManager: WorkspaceManager, poll
     end
     
     schedule(server_task, InterruptException(); error=true)
-    # wait for the server task to finish
-    # normally this `wait` would rethrow the above InterruptException, but Pluto.run should catch for InterruptExceptions and not bubble them up.
-    wait(server_task)
-end
-
-@testset "base_url" begin
-    port = 13433
-    host = "localhost"
-
-    n_components = rand(2:6)
-    base_url = "/"
-    for _ in 1:n_components
-        base_url *= String(rand(collect('a':'z') ∪ collect('0':'9'), rand(5:10))) * "/"
-    end
-    local_url(suffix) = "http://$host:$port$base_url$suffix"
-
-    server_running() = HTTP.get(local_url("favicon.ico")).status == 200 && HTTP.get(local_url("edit")).status == 200
-
-    # without notebook at startup
-    options = Pluto.Configuration.from_flat_kwargs(;
-        port,
-        launch_browser=false,
-        workspace_use_distributed=true,
-        require_secret_for_access=false,
-        require_secret_for_open_links=false,
-        base_url,
-    )
-    🍭 = Pluto.ServerSession(; options)
-    server_task = @async Pluto.run(🍭)
-
-    # FYI, you should normally use a PlutoEvent for things we do in this test instead of polling! Don't use this as an example.
-    @test poll(10) do
-        server_running()
-    end
-    @test HTTP.get("http://$host:$port/"; status_exception=false).status == 404
-
-    for notebook in values(🍭.notebooks)
-        SessionActions.shutdown(🍭, notebook; keep_in_session=false)
-    end
-
-    schedule(server_task, InterruptException(); error=true)
-
     # wait for the server task to finish
     # normally this `wait` would rethrow the above InterruptException, but Pluto.run should catch for InterruptExceptions and not bubble them up.
     wait(server_task)
