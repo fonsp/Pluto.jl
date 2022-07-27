@@ -399,7 +399,10 @@ struct OutputNotDefined end
 function compute(m::Module, computer::Computer)
     # 1. get the referenced global variables
     # this might error if the global does not exist, which is exactly what we want
-    input_global_values = getfield.([m], computer.input_globals)
+    input_global_values = Vector{Any}(undef, length(computer.input_globals))
+    for (i, s) in enumerate(computer.input_globals)
+        input_global_values[i] = getfield(m, s)
+    end
 
     # 2. run the function
     out = Base.invokelatest(computer.f, input_global_values...)
@@ -2132,7 +2135,7 @@ function Logging.handle_message(pl::PlutoLogger, level, msg, _module, group, id,
         
         put!(pl.log_channel, Dict{String,Any}(
             "level" => string(level),
-            "msg" => format_output_default(msg isa String ? Text(msg) : msg),
+            "msg" => format_output_default(msg isa AbstractString ? Text(msg) : msg),
             "group" => string(group),
             "id" => string(id),
             "file" => string(file),
