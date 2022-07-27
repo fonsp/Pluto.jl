@@ -40,12 +40,13 @@ declare global {
             }
             fileSystem: {
                 /**
-                 * @param path path to a notebook, if already selected
-                 * @param forceNew [default = false] If false and valid path is there,
+                 * @param type [default = 'new'] whether you want to open a new notebook
+                 * open a notebook from a path or from a url
+                 * @param pathOrURL location to the file, not needed if opening a new file,
                  * opens that notebook. If false and no path is there, opens the file selector.
                  * If true, opens a new blank notebook.
                  */
-                openNotebook(path?: string, forceNew?: boolean): void
+                openNotebook(type?: "url" | "path" | "new", pathOrURL?: string): void
                 shutdownNotebook(id?: string): void
                 moveNotebook(id?: string): void
                 exportNotebook(id: string, type: PlutoExport): void
