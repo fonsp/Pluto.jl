@@ -40,7 +40,7 @@ wait_for_ready(nb)
 
 Pluto.SessionActions.shutdown(🍭, nb; async=false)
 
-# Compile HTTP get.
+# Compile HTTP get. Use no encoding since there seem to be an issue with Accept-Encoding: gzip
 HTTP.get("http://github.com")
 
 @timeit TOUT "Pluto.run" server_task = @eval let
