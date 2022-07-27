@@ -264,7 +264,7 @@ function run(session::ServerSession)
 
     server_running() =
         try
-            HTTP.get("http://$(hostIP):$(port)/ping"; status_exception = false, retry = false, connect_timeout = 10, readtimeout = 10).status == 200
+            HTTP.get("http://$(hostIP):$(port)$(session.options.server.base_url)ping"; status_exception = false, retry = false, connect_timeout = 10, readtimeout = 10).status == 200
         catch
             false
         end
@@ -333,7 +333,8 @@ function pretty_address(session::ServerSession, hostIP, port)
             host_str
         end
         port_pretty = Int(port)
-        "http://$(host_pretty):$(port_pretty)/"
+        base_url = session.options.server.base_url
+        "http://$(host_pretty):$(port_pretty)$(base_url)"
     end
 
     url_params = Dict{String,String}()

@@ -42,6 +42,10 @@ const day = let
     day = 24hour
 end
 
+function default_404(req = nothing)
+    HTTP.Response(404, "Not found!")
+end
+
 function asset_response(path; cacheable::Bool=false)
     if !isfile(path) && !endswith(path, ".html")
         return asset_response(path * ".html"; cacheable)
@@ -55,7 +59,7 @@ function asset_response(path; cacheable::Bool=false)
         cacheable && push!(response.headers, "Cache-Control" => "public, max-age=$(30day), immutable")
         response
     else
-        HTTP.Response(404, "Not found!")
+        default_404()
     end
 end
 
@@ -115,8 +119,31 @@ function is_authenticated(session::ServerSession, request::HTTP.Request)
     # that ) || ( kind of looks like Krabs from spongebob
 end
 
+"""
+    scoped_router(base_url::String, base_router::HTTP.Router)::HTTP.Router
+
+Returns a new `HTTP.Router` which delegates all requests to `base_router` but with requests trimmed
+so that they seem like they arrived at `/**` instead of `/\$base_url/**`.
+"""
+function scoped_router(base_url, base_router)
+    @assert startswith(base_url, '/') "base_url \"$base_url\" should start with a '/'"
+    @assert endswith(base_url, '/')  "base_url \"$base_url\" should end with a '/'"
+    @assert !occursin('*', base_url) "'*' not allowed in base_url \"$base_url\" "
+
+    function handler(request)
+        request.target = request.target[length(base_url):end]
+        return base_router(request)
+    end
+
+    router = HTTP.Router(base_router._404, base_router._405)
+    HTTP.register!(router, base_url * "**", handler)
+    HTTP.register!(router, base_url, handler)
+
+    return router
+end
+
 function http_router_for(session::ServerSession)
-    router = HTTP.Router()
+    router = HTTP.Router(default_404)
     security = session.options.security
 
     function add_set_secret_cookie!(response::HTTP.Response)
@@ -263,7 +290,7 @@ function http_router_for(session::ServerSession)
         )
     end
     HTTP.register!(router, "GET", "/sample/*", serve_sample)
-    HTTP.register!(router, "POST", "/sample/*", serve_sample)
+    HTTP.register!(router, "POST","/sample/*", serve_sample)
 
     notebook_from_uri(request) = let
         uri = HTTP.URI(request.target)        
@@ -347,6 +374,11 @@ function http_router_for(session::ServerSession)
     end
     HTTP.register!(router, "GET", "/**", serve_asset)
     HTTP.register!(router, "GET", "/favicon.ico", create_serve_onefile(project_relative_path(frontend_directory(allow_bundled=false), "img", "favicon.ico")))
+
+    base_url = session.options.server.base_url
+    if base_url != "/"
+        return scoped_router(base_url, router)
+    end
 
     return router
 end
