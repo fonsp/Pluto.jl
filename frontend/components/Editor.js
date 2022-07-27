@@ -927,7 +927,7 @@ patch: ${JSON.stringify(
 
         let last_update_notebook_task = Promise.resolve()
         /** @param {(notebook: NotebookData) => void} mutate_fn */
-        let update_notebook = (mutate_fn) => {
+        let update_notebook = (mutate_fn, sendRequest = true) => {
             const new_task = last_update_notebook_task.then(async () => {
                 // if (this.state.initializing) {
                 //     console.error("Update notebook done during initializing, strange")
@@ -974,7 +974,7 @@ patch: ${JSON.stringify(
                     // console.log("Sending changes to server:", changes)
 
                     // if it is an desktop environment, it is already sending the request and handling errors
-                    if (!!window.plutoDesktop)
+                    if (!sendRequest)
                         await this.setStatePromise({
                             notebook: new_notebook,
                             last_update_time: Date.now(),
@@ -1052,7 +1052,7 @@ patch: ${JSON.stringify(
                         await update_notebook((notebook) => {
                             notebook.in_temp_dir = false
                             notebook.path = loc
-                        })
+                        }, false)
                     // @ts-ignore
                     document.activeElement?.blur()
                 } catch (error) {
