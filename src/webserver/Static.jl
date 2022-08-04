@@ -269,6 +269,9 @@ function http_router_for(session::ServerSession)
         end
     end
 
+    HTTP.register!(router, "GET", "/open", serve_openfile)
+    HTTP.register!(router, "POST", "/open", serve_openfile)
+
 
     # normally shutdown is done through Dynamic.jl, with the exception of shutdowns made from the desktop app
     serve_shutdown = with_authentication(;
@@ -313,8 +316,15 @@ function http_router_for(session::ServerSession)
     HTTP.register!(router, "POST", "/move", serve_move)
 
 
-    HTTP.register!(router, "GET", "/open", serve_openfile)
-    HTTP.register!(router, "POST", "/open", serve_openfile)
+    serve_notebooklist = with_authentication(;
+        required=security.require_secret_for_access || 
+        security.require_secret_for_open_links
+    ) do request::HTTP.Request
+        return HTTP.Response(200, pack(Dict(k => v.path for (k, v) in session.notebooks)))
+    end
+
+    HTTP.register!(router, "GET", "/notebooklist", serve_notebooklist)
+
     
     serve_sample = with_authentication(;
         required=security.require_secret_for_access || 
