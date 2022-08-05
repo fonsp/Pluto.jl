@@ -712,3 +712,14 @@ function update_skipped_cells_dependency!(notebook::Notebook, topology::Notebook
         cell.depends_on_skipped_cells = false
     end
 end
+
+function update_disabled_cells_dependency!(notebook::Notebook, topology::NotebookTopology=notebook.topology)
+    disabled_cells = filter(is_disabled, notebook.cells)
+    indirectly_disabled = collect(topological_order(topology, disabled_cells))
+    for cell in indirectly_disabled
+        cell.depends_on_disabled_cells = true
+    end
+    for cell in setdiff(notebook.cells, indirectly_disabled)
+        cell.depends_on_disabled_cells = false
+    end
+end
