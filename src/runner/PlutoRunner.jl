@@ -253,6 +253,23 @@ module CantReturnInPluto
     replace_returns_with_error_in_interpolation(ex) = ex
 end
 
+# This is taken basically from fix_linenumbernodes! in Parse.jl
+function append_macrocellid_linenumbernodes!(ex::Expr, cell_id)
+    for (i, a) in enumerate(ex.args)
+        if a isa Expr
+            append_macrocellid_linenumbernodes!(a, cell_id)
+        elseif a isa LineNumberNode
+            file = string(a.file)
+            if endswith(file, cell_id)
+                # We already have the correct cell_id in this LineNumberNode
+                continue
+            end
+            # We append to the LineNumberNode file #@#==# + cell_id
+            ex.args[i] = LineNumberNode(a.line, Symbol(file * "#@#==#$(cell_id)"))
+        end
+    end
+end
+append_macrocellid_linenumbernodes!(::Any, cell_id) = nothing
 
 function try_macroexpand(mod, cell_uuid, expr)
     # Remove the precvious cached expansion, so when we error somewhere before we update,
@@ -271,6 +288,7 @@ function try_macroexpand(mod, cell_uuid, expr)
     expanded_expr = macroexpand(mod, expr_not_toplevel)::Expr
     elapsed_ns = time_ns() - elapsed_ns
 
+    append_macrocellid_linenumbernodes!(expanded_expr, string(cell_uuid))
     # Removes baked in references to the module this was macroexpanded in.
     # Fix for https://github.com/fonsp/Pluto.jl/issues/1112
     expr_without_return = CantReturnInPluto.replace_returns_with_error(expanded_expr)::Expr
