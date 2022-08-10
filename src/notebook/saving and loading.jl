@@ -200,7 +200,9 @@ function _notebook_collected_cells!(@nospecialize(io::IO))
             code_normalised = replace(code_raw, "\r\n" => "\n")
 
             # remove the disabled on startup comments for further processing in Julia
-            code_normalised = replace(replace(code_normalised, _disabled_prefix => ""), _disabled_suffix => "")
+            code_normalised_without_comments = replace(replace(code_normalised, _disabled_prefix => ""), _disabled_suffix => "")
+            depends_on_disabled_cells_or_skipped = code_normalised_without_comments != code_normalised
+            code_normalised = code_normalised_without_comments
 
             # remove the cell suffix
             code = code_normalised[1:prevind(code_normalised, end, length(_cell_suffix))]
@@ -213,7 +215,12 @@ function _notebook_collected_cells!(@nospecialize(io::IO))
                 DEFAULT_CELL_METADATA
             end
 
-            read_cell = Cell(; cell_id, code, metadata)
+            read_cell = Cell(;
+                cell_id,
+                code,
+                metadata,
+                depends_on_disabled_cells=depends_on_disabled_cells_or_skipped
+            )
             collected_cells[cell_id] = read_cell
         end
     end
@@ -297,14 +304,12 @@ function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::Abstr
     cell_order = _notebook_cell_order!(io, collected_cells)
     nbpkg_ctx = _notebook_nbpkg_ctx(cell_order, collected_cells)
     appeared_order = _notebook_appeared_order!(cell_order, collected_cells)
-    appeared_cells_dict = filter(collected_cells) do (k, v)
-        k ∈ appeared_order
-    end
+    filter!(p -> p.first ∈ appeared_order, collected_cells)
 
     Notebook(;
-        cells_dict=appeared_cells_dict,
+        cells_dict=collected_cells,
         cell_order=appeared_order,
-        topology=_initial_topology(appeared_cells_dict, appeared_order),
+        topology=_initial_topology(collected_cells, appeared_order),
         path=path,
         nbpkg_ctx=nbpkg_ctx,
         nbpkg_installed_versions_cache=nbpkg_cache(nbpkg_ctx),
@@ -315,11 +320,9 @@ end
 # UTILS
 
 function load_notebook_nobackup(path::String)::Notebook
-    local loaded
     open(path, "r") do io
-        loaded = load_notebook_nobackup(io, path)
+        load_notebook_nobackup(io, path)
     end
-    loaded
 end
 
 # BACKUPS
