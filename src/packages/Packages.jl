@@ -148,7 +148,7 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                 # TODO: instead of Pkg.PRESERVE_ALL, we actually want:
                 # "Pkg.PRESERVE_DIRECT, but preserve exact verisons of Base.loaded_modules"
 
-                to_add = filter(PkgCompat.package_exists, added)
+                to_add = filter(x -> haskey(notebook.nbpkg_installed_pkgstrs_cache, x) || PkgCompat.package_exists(x), added)
                 
                 if !isempty(to_add)
                     @debug to_add
@@ -158,6 +158,7 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                         withinteractive(false) do
                             # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
                             notebook.nbpkg_ctx = PkgCompat.clear_auto_compat_entries(notebook.nbpkg_ctx)
+                            pkg_operations = group_pkg_operations(notebook, to_add)
 
                             try
                                 for tier in [
@@ -169,10 +170,9 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                                     used_tier = tier
 
                                     try
-                                        Pkg.add(notebook.nbpkg_ctx, [
-                                            Pkg.PackageSpec(name=p)
-                                            for p in to_add
-                                        ]; preserve=used_tier)
+                                        for (func, pkgspec_vec) in pkg_operations
+                                            func(notebook.nbpkg_ctx, pkgspec_vec; preserve = used_tier)
+                                        end
                                         
                                         break
                                     catch e
@@ -451,12 +451,26 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
 	end
 end
 
-nbpkg_cache(ctx::Union{Nothing,PkgContext}) = ctx === nothing ? Dict{String,String}() : Dict{String,String}(
-    x => string(PkgCompat.get_manifest_version(ctx, x)) for x in keys(PkgCompat.project(ctx).dependencies)
-)
+function nbpkg_cache(ctx::Union{Nothing,PkgContext})
+    caches = if ctx === nothing 
+        (Dict{String,String}(), Dict{String,String}()) 
+    else 
+        ks = keys(PkgCompat.project(ctx).dependencies)
+        versions = Dict{String,String}(
+            x => string(PkgCompat.get_manifest_version(ctx, x)) for x in ks
+        )
+        pkgstrs = Dict{String,String}(
+            x => string(PkgCompat.get_manifest_pkgstr(ctx, x)) for x in ks
+        )
+        (versions, pkgstrs)
+    end
+    return caches
+end
 
 function update_nbpkg_cache!(notebook::Notebook)
-    notebook.nbpkg_installed_versions_cache = nbpkg_cache(notebook.nbpkg_ctx)
+    versions, pkgstrs = nbpkg_cache(notebook.nbpkg_ctx)
+    notebook.nbpkg_installed_versions_cache = versions 
+    notebook.nbpkg_installed_pkgstrs_cache = pkgstrs
     notebook
 end
 
@@ -536,4 +550,24 @@ function stoplistening(listener::IOListener)
         listener.running[] = false
         trigger(listener)
     end
+end
+
+function group_pkg_operations(notebook::Notebook, pkg_names)
+    pkgstr_cache = notebook.nbpkg_installed_pkgstrs_cache
+	out = []
+	to_add = Pkg.PackageSpec[]
+	to_develop = Pkg.PackageSpec[]
+	for name in pkg_names
+        pkgspec, func = if haskey(pkgstr_cache, name)
+            PkgCompat.parse_pkgstr(pkgstr_cache[name])
+        else
+            # The package has no custom string, so we create the default one
+            Pkg.PackageSpec(;name), Pkg.add
+        end
+        func === Pkg.add && push!(to_add, pkgspec)
+        func === Pkg.develop && push!(to_develop, pkgspec)
+    end
+    !isempty(to_add) && push!(out, (Pkg.add, to_add))
+    !isempty(to_develop) && push!(out, (Pkg.develop, to_develop))
+    return out
 end

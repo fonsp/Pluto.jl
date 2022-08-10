@@ -301,13 +301,15 @@ function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::Abstr
         k ∈ appeared_order
     end
 
+    versions, pkgstrs = nbpkg_cache(nbpkg_ctx)
     Notebook(;
         cells_dict=appeared_cells_dict,
         cell_order=appeared_order,
         topology=_initial_topology(appeared_cells_dict, appeared_order),
         path=path,
         nbpkg_ctx=nbpkg_ctx,
-        nbpkg_installed_versions_cache=nbpkg_cache(nbpkg_ctx),
+        nbpkg_installed_versions_cache=versions,
+        nbpkg_installed_pkgstrs_cache=pkgstrs,
         metadata=notebook_metadata,
     )
 end

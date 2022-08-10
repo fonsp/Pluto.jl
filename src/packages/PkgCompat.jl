@@ -3,7 +3,7 @@ module PkgCompat
 export package_versions, package_completions
 
 import Pkg
-import Pkg.Types: VersionRange
+import Pkg.Types: VersionRange, PackageEntry
 
 import ..Pluto
 
@@ -413,6 +413,79 @@ function get_manifest_version(ctx::PkgContext, package_name::AbstractString)
         entry = _get_manifest_entry(ctx, package_name)
 		entry === nothing ? nothing : entry.version
     end
+end
+
+"""
+Find a package in the manifest given its name, and return the equivalent string to be used inside the PkgREPL to install the same version of the package. Returns `nothing` if not found.
+"""
+function get_manifest_pkgstr(ctx::PkgContext, package_name::AbstractString)
+    if is_stdlib(package_name)
+		"add $package_name"
+    else
+		# Here we want the PackageEntry rather than the PackageInfo returned by `_get_manifest_entry`. This is because you lose the eventual git subdir information from the PackageInfo
+        entry = select(e -> e.name === package_name, values(ctx.env.manifest.deps))
+		entry === nothing ? nothing : to_pkgstr(entry)
+    end
+end
+
+"""
+Given a `PackageEntry` from the Manifest, returns the string that would install the same package version if used inside the PkgREPL
+"""
+function to_pkgstr(pkg::PackageEntry)
+	func = "add"
+	name = pkg.name
+	if pkg.path !== nothing
+		# This is a developed package
+		func = "develop"
+		name = pkg.path
+	elseif pkg.repo.source !== nothing
+		# This is a package pointing to a github repo, either local or at an url
+		name = pkg.repo.source
+		pkg.repo.subdir !== nothing && (name *= ":$(pkg.repo.subdir)")
+		pkg.repo.rev !== nothing && (name *= "#$(pkg.repo.rev)")
+	else
+		# This is a normal registered package
+		pkg.version !== nothing && (name *= "@v$(pkg.version)")
+	end
+	return "$func $name"
+end
+
+"""
+Given an intended `package_name` and `pkg_str`, verify that `pkg_str` is a valid string to install the intended package using the PkgREPL 
+"""
+function validate_pkgstr(package_name::String, pkg_str::String)
+    pkgspec, func = parse_pkgstr(pkg_str)
+    # We check that the package name is consistent with the provided command
+    pkgspec.name !== nothing && pkgspec.name !== package_name && error("The package name extracted from the command ($(pkgspec.name)) differs from the provided one ($(package_name)). Please correct the command")
+    # For the moment we skip checking the names of packages proided as URLs
+    
+    # We only support add and develop as commands for the moment
+    func ∉ (Pkg.add, Pkg.develop) && error("Only add and develop commands are currently supported, please modify your command")
+    # If nothing else failed, we just return an empty string
+    return pkgspec, func
+end
+
+"""
+Take a string and extract the Pkg.API function `func` and PackageSpec `pkg_spec` that would be executed by pasting `pkg_str` in the PkgREPL
+"""
+function parse_pkgstr(pkg_str::String)
+    statements = try
+        Pkg.REPLMode.parse(pkg_str)
+    catch
+        error("The provided command is not valid, please modify your command")
+    end
+    # We check that no more than 1 statement come out of the parsing
+    length(statements) > 1 && error("The provided command includes multiple statements, please provide a single statement")
+    command = Pkg.REPLMode.Command(statements[1])
+    # We check for single package
+    args = command.arguments
+    length(args) > 1 && error("The provided commands adds multiple packages, please only provide a command for $package_name")
+    # We extract and pre-process the package_spec
+    pkgspec = args[1]
+    Pkg.API.handle_package_input!(pkgspec)
+    # We also extract the extracted function from the command
+    func = command.spec.api
+    return pkgspec, func
 end
 
 ###

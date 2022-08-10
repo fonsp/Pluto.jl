@@ -176,6 +176,7 @@ const first_true_key = (obj) => {
  *  restart_recommended_msg: string?,
  *  restart_required_msg: string?,
  *  installed_versions: { [pkg_name: string]: string },
+ *  installed_pkgstrs: { [pkg_name: string]: string },
  *  terminal_outputs: { [pkg_name: string]: string },
  *  busy_packages: string[],
  *  instantiated: boolean,

@@ -12,6 +12,7 @@ import { useDebouncedTruth } from "./RunArea.js"
 // This funny thing is a way to tell parcel to bundle these files..
 // Eventually I'll write a plugin that is able to parse html`...`, but this is it for now.
 // https://parceljs.org/languages/javascript/#url-dependencies
+export const terminal_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/terminal-outline.svg", import.meta.url)
 export const arrow_up_circle_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-up-circle-outline.svg", import.meta.url)
 export const document_text_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-text-outline.svg", import.meta.url)
 export const help_circle_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/help-circle-outline.svg", import.meta.url)
@@ -146,16 +147,32 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event }) => {
 
     const [showterminal, set_showterminal] = useState(false)
 
-    const busy = recent_event != null && ((notebook.nbpkg?.busy_packages ?? []).includes(recent_event.package_name) || !(notebook.nbpkg?.instantiated ?? true))
+    const package_name = recent_event?.package_name
+    const default_pkg_str = `add ${recent_event.package_name}`
+    const pkg_str = (notebook.nbpkg?.installed_pkgstrs ?? {}).hasOwnProperty(package_name) ? notebook.nbpkg?.installed_pkgstrs[package_name] : default_pkg_str
+
+    const busy = recent_event != null && ((notebook.nbpkg?.busy_packages ?? []).includes(package_name) || !(notebook.nbpkg?.instantiated ?? true))
 
     const debounced_busy = useDebouncedTruth(busy, 2)
     useEffect(() => {
         set_showterminal(debounced_busy)
     }, [debounced_busy])
 
-    const terminal_value = notebook.nbpkg?.terminal_outputs == null ? "Loading..." : notebook.nbpkg?.terminal_outputs[recent_event?.package_name] ?? ""
+    const terminal_value = notebook.nbpkg?.terminal_outputs == null ? "Loading..." : notebook.nbpkg?.terminal_outputs[package_name] ?? ""
 
     const showupdate = pkg_status?.offer_update ?? false
+
+    async function try_update_pkgstr(message, _default) {
+        const new_pkg_str = prompt(message, _default) ?? pkg_str
+        const result = await pluto_actions.send(
+            "pkg_str",
+            { package_name: recent_event.package_name, pkg_str: new_pkg_str },
+            { notebook_id: notebook.notebook_id }
+        )
+        if (result.message.errored) {
+            try_update_pkgstr(result.message.message, new_pkg_str)
+        }
+    }
 
     // <header>${recent_event?.package_name}</header>
     return html`<pkg-popup
@@ -167,6 +184,17 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event }) => {
     >
         ${pkg_status?.hint ?? "Loading..."}
         <div class="pkg-buttons">
+            <a
+                class="pkg-str"
+                target="_blank"
+                title="Use custom PkgREPL string"
+                href="#"
+                onClick=${(e) => {
+                    e.preventDefault()
+                    try_update_pkgstr("Write the custom string to install the package", pkg_str)
+                }}
+                ><img alt="💻" src=${terminal_icon} width="17"
+            /></a>
             <a
                 class="pkg-update"
                 target="_blank"
