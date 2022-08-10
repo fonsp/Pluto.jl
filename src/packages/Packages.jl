@@ -555,8 +555,8 @@ end
 function group_pkg_operations(notebook::Notebook, pkg_names)
     pkgstr_cache = notebook.nbpkg_installed_pkgstrs_cache
 	out = []
-	to_add = Pkg.PackageSpec[]
-	to_develop = Pkg.PackageSpec[]
+	to_add = Pkg.Types.PackageSpec[]
+	to_develop = Pkg.Types.PackageSpec[]
 	for name in pkg_names
         pkgspec, func = if haskey(pkgstr_cache, name)
             PkgCompat.parse_pkgstr(pkgstr_cache[name])

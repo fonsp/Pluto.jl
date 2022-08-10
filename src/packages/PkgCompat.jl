@@ -480,9 +480,8 @@ function parse_pkgstr(pkg_str::String)
     # We check for single package
     args = command.arguments
     length(args) > 1 && error("The provided commands adds multiple packages, please only provide a command for $package_name")
-    # We extract and pre-process the package_spec
+    # We extract and the package_spec
     pkgspec = args[1]
-    Pkg.API.handle_package_input!(pkgspec)
     # We also extract the extracted function from the command
     func = command.spec.api
     return pkgspec, func
