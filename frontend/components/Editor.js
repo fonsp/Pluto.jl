@@ -3,6 +3,8 @@ import * as preact from "../imports/Preact.js"
 import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
+import hljs from "../imports/highlightjs.js"
+
 import { empty_notebook_state, set_disable_ui_css } from "../editor.js"
 import { create_pluto_connection } from "../common/PlutoConnection.js"
 import { init_feedback } from "../common/Feedback.js"
@@ -1213,7 +1215,9 @@ patch: ${JSON.stringify(
         })
     }
 
-    componentDidMount() {
+    componentDidMount() {        
+        //@ts-ignore
+        window.hljs = hljs
         if (this.state.static_preview) {
             this.setState({
                 initializing: false,
