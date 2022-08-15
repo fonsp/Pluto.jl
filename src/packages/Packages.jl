@@ -477,8 +477,8 @@ function update_nbpkg_cache!(cache::Dict{String,PkgData}, custom_pkgstrs::Dict{S
         for name in pkg_names
             manifest_version = PkgCompat.get_manifest_version(ctx, name)
             installed_version = manifest_version === "stdlib" ? nothing : manifest_version
-            pkgstr = get(custom_pkgstrs, name, "add $name")::String # We annotate here as the notebook metadata dicts have Any values
-            entry = get!(cache, name, PkgData(pkgstr))
+            pkg_str = get(custom_pkgstrs, name, "add $name")::String # We annotate here as the notebook metadata dicts have Any values
+            entry = get!(cache, name, PkgData(pkg_str))
             # We update the installed version
             cache[name] = PkgData(entry; installed_version)
         end 

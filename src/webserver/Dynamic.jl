@@ -518,7 +518,7 @@ responses[:pkg_str] = function response_pkg_str(🙋::ClientRequest)
     notebook = 🙋.notebook
     package_name = 🙋.body["package_name"]
     pkg_str = 🙋.body["pkg_str"]
-    # We validate the pkgstr
+    # We validate the pkg_str
     to_send = try
         pkgdata = PkgData(pkg_str)
         # If no error happen, we update the notebook and send the changes

@@ -432,10 +432,10 @@ Base.@kwdef struct PkgData{F <: Function}
 	installed_version::Union{Nothing, VersionNumber} = nothing
 	pkgfunc::F = Pkg.add
 	spec::Pkg.Types.PackageSpec
-	pkgstr::String
+	pkg_str::String
 end
 
-PkgData(v::AbstractString, pkgfunc::Function, spec::Pkg.Types.PackageSpec, pkgstr::String) = PkgData(VersionNumber(v), pkgfunc, spec, pkgstr)
+PkgData(v::AbstractString, pkgfunc::Function, spec::Pkg.Types.PackageSpec, pkg_str::String) = PkgData(VersionNumber(v), pkgfunc, spec, pkg_str)
 
 const _PKGDATA_FIELDS = fieldnames(PkgData) # This is used to avoid fieldnames runtime impact and the need of generated function, see https://discourse.julialang.org/t/slowness-of-fieldnames-and-propertynames/55364
 function PkgData(p::PkgData; kwargs...)
@@ -445,13 +445,13 @@ function PkgData(p::PkgData; kwargs...)
 	PkgData(args...)
 end
 
-function PkgData(pkgstr::AbstractString; kwargs...)
-	spec, pkgfunc = validate_pkgstr(nothing, pkgstr)
-	PkgData(; pkgfunc, spec, pkgstr, kwargs...)
+function PkgData(pkg_str::AbstractString; kwargs...)
+	spec, pkgfunc = validate_pkgstr(nothing, pkg_str)
+	PkgData(; pkgfunc, spec, pkg_str, kwargs...)
 end
 
-has_custom_pkg_str(p::PkgData) = p.spec.name === nothing || p.pkgstr !== "add $(p.spec.name)"
-is_dev(p::PkgData) = startswith(p.pkgstr, "dev")
+has_custom_pkg_str(p::PkgData) = p.spec.name === nothing || p.pkg_str !== "add $(p.spec.name)"
+is_dev(p::PkgData) = startswith(p.pkg_str, "dev")
 function is_installed_correctly(p::PkgData)
 	return p.installed_version !== nothing || (p.spec.name !== nothing && is_stdlib(p.spec.name))
 end
@@ -459,7 +459,7 @@ end
 function to_js_dict(p::PkgData)
 	Dict{String, Any}(
 		"installed_version" => p.installed_version,
-		"pkg_str" => p.pkgstr,
+		"pkg_str" => p.pkg_str,
 		"has_custom_pkg_str" => has_custom_pkg_str(p),
 		"is_dev" => is_dev(p),
 	)
