@@ -2452,7 +2452,7 @@ pluto-log-dot-sizer {
     display: block;
     width: max-content;
     transform: translateZ(10px);
-    max-width: 600px;
+    max-width: 655px;
     z-index: 300;
     pointer-events: none; /* part 1: because the hit box is larger than the action log dot */
 }
@@ -2501,7 +2501,9 @@ pluto-log-dot.Stdout {
     color: #8ed975;
     border: 6px solid #b7b7b7;
     text-shadow: 1px 1px 2px #0000005e;
-    min-width: 18em;
+    max-height: 300px;
+    width: 675px;
+    overflow: auto;
 }
 pluto-log-dot.Stdout::after,
 pluto-log-dot.Stdout::before {
