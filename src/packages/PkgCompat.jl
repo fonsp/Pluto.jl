@@ -452,6 +452,9 @@ end
 
 has_custom_pkg_str(p::PkgData) = p.spec.name === nothing || p.pkgstr !== "add $(p.spec.name)"
 is_dev(p::PkgData) = startswith(p.pkgstr, "dev")
+function is_installed_correctly(p::PkgData)
+	return p.installed_version !== nothing || (p.spec.name !== nothing && is_stdlib(p.spec.name))
+end
 
 function to_js_dict(p::PkgData)
 	Dict{String, Any}(

@@ -268,7 +268,7 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 			end
 			result = sync_nbpkg_core(notebook, old_topology, new_topology; on_terminal_output=iocallback, lag = session.options.server.simulated_pkg_lag)
 			# If nothing happened, we might still have to remove packages that were temporary added to the cache by the front-end but did not end up being installed, either because the cell was cancelled before being run or soemthing else
-			if any(p -> p.installed_version === nothing, values(notebook.nbpkg_installed_pkgdata_cache))
+			if any(!PkgCompat.is_installed_correctly, values(notebook.nbpkg_installed_pkgdata_cache))
 			    update_nbpkg_cache!(notebook) # This is here for the moment to eventually remove 
 				send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 			end
@@ -475,7 +475,8 @@ function update_nbpkg_cache!(cache::Dict{String,PkgData}, custom_pkgstrs::Dict{S
         filter!(filter_func, custom_pkgstrs)
         # We either modify or create the dictionary entry ex-novo
         for name in pkg_names
-            installed_version = PkgCompat.get_manifest_version(ctx, name)
+            manifest_version = PkgCompat.get_manifest_version(ctx, name)
+            installed_version = manifest_version === "stdlib" ? nothing : manifest_version
             pkgstr = get(custom_pkgstrs, name, "add $name")::String # We annotate here as the notebook metadata dicts have Any values
             entry = get!(cache, name, PkgData(pkgstr))
             # We update the installed version
