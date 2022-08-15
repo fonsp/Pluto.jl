@@ -267,12 +267,12 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 				send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 			end
 			result = sync_nbpkg_core(notebook, old_topology, new_topology; on_terminal_output=iocallback, lag = session.options.server.simulated_pkg_lag)
-            # If nothing happened, we might still have to remove packages that were temporary added to the cache by the front-end but did not end up being installed, either because the cell was cancelled before being run or soemthing else
-            if any(p -> p.installed_version === nothing, values(notebook.nbpkg_installed_pkgdata_cache))
-                update_nbpkg_cache!(notebook) # This is here for the moment to eventually remove 
+			# If nothing happened, we might still have to remove packages that were temporary added to the cache by the front-end but did not end up being installed, either because the cell was cancelled before being run or soemthing else
+			if any(p -> p.installed_version === nothing, values(notebook.nbpkg_installed_pkgdata_cache))
+			    update_nbpkg_cache!(notebook) # This is here for the moment to eventually remove 
 				send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
-            end
-            return result
+			end
+			return result
 		end
 
 		if pkg_result.did_something
