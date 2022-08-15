@@ -520,13 +520,13 @@ responses[:pkg_str] = function response_pkg_str(🙋::ClientRequest)
     pkg_str = 🙋.body["pkg_str"]
     # We validate the pkg_str
     to_send = try
-        pkgdata = PkgData(pkg_str)
+        pkgdata = PkgData(pkg_str; package_name)
         # If no error happen, we update the notebook and send the changes
         if PkgCompat.is_custom_pkgstr(package_name, pkg_str)
             custom_pkgstrs = get!(get_metadata(notebook), "custom_pkgstrs", Dict{String, Any}())
             custom_pkgstrs[package_name] = pkg_str
         end
-        # We put the updated package_data into the cache
+        # We put the updated package_data into the cache and send changes back to the front-end
         notebook.nbpkg_installed_pkgdata_cache[package_name] = pkgdata
         send_notebook_changes!(🙋 |> without_initiator)
         Dict()

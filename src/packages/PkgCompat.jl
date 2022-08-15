@@ -445,8 +445,8 @@ function PkgData(p::PkgData; kwargs...)
 	PkgData(args...)
 end
 
-function PkgData(pkg_str::AbstractString; kwargs...)
-	spec, pkgfunc = validate_pkgstr(nothing, pkg_str)
+function PkgData(pkg_str::AbstractString; package_name = nothing, kwargs...)
+	spec, pkgfunc = validate_pkgstr(package_name, pkg_str)
 	PkgData(; pkgfunc, spec, pkg_str, kwargs...)
 end
 

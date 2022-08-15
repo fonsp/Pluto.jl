@@ -164,11 +164,7 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event }) => {
 
     async function try_update_pkgstr(message, _default) {
         const new_pkg_str = prompt(message, _default) ?? pkg_str
-        const result = await pluto_actions.send(
-            "pkg_str",
-            { package_name: recent_event.package_name, pkg_str: new_pkg_str },
-            { notebook_id: notebook.notebook_id }
-        )
+        const result = await pluto_actions.send("pkg_str", { package_name: package_name, pkg_str: new_pkg_str }, { notebook_id: notebook.notebook_id })
         if (result.message.errored) {
             try_update_pkgstr(result.message.message, new_pkg_str)
         }
