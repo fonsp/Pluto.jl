@@ -1,7 +1,7 @@
 import UUIDs: UUID, uuid1
 import .ExpressionExplorer: SymbolsState, FunctionNameSignaturePair, FunctionName
 import .Configuration
-import .PkgCompat: PkgCompat, PkgContext
+import .PkgCompat: PkgCompat, PkgContext, PkgData
 import Pkg
 import TOML
 
@@ -51,8 +51,7 @@ Base.@kwdef mutable struct Notebook
     nbpkg_restart_required_msg::Union{Nothing,String}=nothing
     nbpkg_terminal_outputs::Dict{String,String}=Dict{String,String}()
     nbpkg_busy_packages::Vector{String}=String[]
-    nbpkg_installed_versions_cache::Dict{String,String}=Dict{String,String}()
-    nbpkg_installed_pkgstrs_cache::Dict{String,String}=Dict{String,String}()
+    nbpkg_installed_pkgdata_cache::Dict{String,PkgData}=Dict{String,PkgData}()
 
     process_status::String=ProcessStatus.starting
     wants_to_interrupt::Bool=false

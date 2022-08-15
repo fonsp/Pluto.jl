@@ -149,7 +149,7 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event }) => {
 
     const package_name = recent_event?.package_name
     const default_pkg_str = `add ${recent_event.package_name}`
-    const pkg_str = (notebook.nbpkg?.installed_pkgstrs ?? {}).hasOwnProperty(package_name) ? notebook.nbpkg?.installed_pkgstrs[package_name] : default_pkg_str
+    const pkg_str = notebook.metadata?.custom_pkgstrs?.[package_name] ?? default_pkg_str
 
     const busy = recent_event != null && ((notebook.nbpkg?.busy_packages ?? []).includes(package_name) || !(notebook.nbpkg?.instantiated ?? true))
 

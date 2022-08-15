@@ -25,6 +25,8 @@ const can_update = (installed, available) => {
  * @property {string?} chosen_version
  * @property {boolean} busy
  * @property {boolean} offer_update
+ * @property {boolean} custom_pkg_str
+ * @property {boolean} dev_pkg
  */
 
 /**
@@ -41,8 +43,11 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
     let hint_raw = "error"
     let hint = html`error`
     let offer_update = false
-    const chosen_version = nbpkg?.installed_versions[package_name] ?? null
+    const pkg_data = nbpkg?.installed_packages[package_name]
+    const chosen_version = pkg_data?.installed_version ?? null
     const busy = (nbpkg?.busy_packages ?? []).includes(package_name) || !(nbpkg?.instantiated ?? true)
+    const custom_pkg_str = pkg_data?.has_custom_pkg_str ?? false
+    const dev_pkg = pkg_data?.is_dev ?? false
 
     if (is_disable_pkg) {
         const f_name = package_name
@@ -62,9 +67,14 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
                     is installing...`
             } else {
                 status = "installed"
-                hint_raw = `${package_name} (v${chosen_version}) is installed in the notebook.`
+                let custom_str = dev_pkg
+                    ? "\nThis package has been installed with a custom command and is tracking a path for development."
+                    : custom_pkg_str
+                    ? "\nThis package has been installed using a custom command."
+                    : ""
+                hint_raw = `${package_name} (v${chosen_version}) is installed in the notebook.${custom_str}`
                 hint = html`<header><b>${package_name}</b> <pkg-version>v${chosen_version}</pkg-version></header>
-                    is installed in the notebook.`
+                    is installed in the notebook.${custom_str ? html`<i>${custom_str}</i>` : ""}`
                 offer_update = can_update(chosen_version, available_versions)
             }
         }
@@ -72,9 +82,10 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
         if (available_versions != null && _.isArray(available_versions)) {
             if (available_versions.length === 0) {
                 status = "not_found"
-                hint_raw = `The package "${package_name}" could not be found in the registry. Did you make a typo?`
+                hint_raw = `The package "${package_name}" could not be found in the registry. Did you make a typo?\nIf you want to install an un-registered package, use the specific button in the PkgPopup`
                 hint = html`The package <em>"${package_name}"</em> could not be found in the registry.
-                    <section><em>Did you make a typo?</em></section>`
+                    <section><em>Did you make a typo?</em></section>
+                    <em>If you want to install an un-registered package, use the button with the console icon.</em>`
             } else {
                 status = "will_be_installed"
                 hint_raw = `${package_name} (v${_.last(available_versions)}) will be installed in the notebook when you run this cell.`
@@ -84,7 +95,7 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
         }
     }
 
-    return { status, hint, hint_raw, available_versions, chosen_version, busy, offer_update }
+    return { status, hint, hint_raw, available_versions, chosen_version, busy, offer_update, custom_pkg_str, dev_pkg }
 }
 
 /**
@@ -105,26 +116,27 @@ export const PkgStatusMark = ({ package_name, pluto_actions, notebook_id, nbpkg 
         })
     }, [package_name])
 
-    const { status, hint_raw } = package_status({
+    const { status, hint_raw, custom_pkg_str, dev_pkg } = package_status({
         nbpkg: nbpkg,
         package_name: package_name,
         is_disable_pkg: false,
         available_versions,
     })
+    let class_str =
+        status === "busy"
+            ? "busy"
+            : status === "installed"
+            ? "installed"
+            : status === "not_found"
+            ? "not_found"
+            : status === "will_be_installed"
+            ? "will_be_installed"
+            : ""
+    custom_pkg_str && (class_str += " custom_pkg_str")
+    dev_pkg && (class_str += " dev_pkg")
 
     return html`
-        <pkg-status-mark
-            title=${hint_raw}
-            className=${status === "busy"
-                ? "busy"
-                : status === "installed"
-                ? "installed"
-                : status === "not_found"
-                ? "not_found"
-                : status === "will_be_installed"
-                ? "will_be_installed"
-                : ""}
-        >
+        <pkg-status-mark title=${hint_raw} className=${class_str}>
             <button
                 onClick=${(event) => {
                     open_pluto_popup({

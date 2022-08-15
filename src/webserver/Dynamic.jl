@@ -156,8 +156,7 @@ function notebook_to_js(notebook::Notebook)
                 "restart_recommended_msg" => notebook.nbpkg_restart_recommended_msg,
                 "restart_required_msg" => notebook.nbpkg_restart_required_msg,
                 # TODO: cache this
-                "installed_versions" => ctx === nothing ? Dict{String,String}() : notebook.nbpkg_installed_versions_cache,
-                "installed_pkgstrs" => ctx === nothing ? Dict{String,String}() : notebook.nbpkg_installed_pkgstrs_cache,
+                "installed_packages" => ctx === nothing ? Dict{String,Dict{String,Any}}() : pkgdata_to_js(notebook),
                 "terminal_outputs" => notebook.nbpkg_terminal_outputs,
                 "busy_packages" => notebook.nbpkg_busy_packages,
                 "instantiated" => notebook.nbpkg_ctx_instantiated,
@@ -516,13 +515,19 @@ end
 
 responses[:pkg_str] = function response_pkg_str(🙋::ClientRequest)
     require_notebook(🙋)
+    notebook = 🙋.notebook
     package_name = 🙋.body["package_name"]
     pkg_str = 🙋.body["pkg_str"]
     # We validate the pkgstr
     to_send = try
-        PkgCompat.validate_pkgstr(package_name, pkg_str)
+        pkgdata = PkgData(pkg_str)
         # If no error happen, we update the notebook and send the changes
-        🙋.notebook.nbpkg_installed_pkgstrs_cache[package_name] = pkg_str
+        if PkgCompat.is_custom_pkgstr(package_name, pkg_str)
+            custom_pkgstrs = get!(get_metadata(notebook), "custom_pkgstrs", Dict{String, Any}())
+            custom_pkgstrs[package_name] = pkg_str
+        end
+        # We put the updated package_data into the cache
+        notebook.nbpkg_installed_pkgdata_cache[package_name] = pkgdata
         send_notebook_changes!(🙋 |> without_initiator)
         Dict()
     catch e

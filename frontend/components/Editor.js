@@ -170,13 +170,20 @@ const first_true_key = (obj) => {
  */
 
 /**
+ * @typedef PkgData
+ * @property {string} installed_version
+ * @property {string} pkg_str The equivalent PkgREPL string to be used to install the package
+ * @property {boolean} has_custom_pkg_str True if the package in question has a non-standard pkg_str, where standard is `add $(package_name)`
+ * @property {boolean} is_dev True if the package has en added with Pkg.develop rather than Pkg.add
+ */
+
+/**
  * @typedef NotebookPkgData
  * @type {{
  *  enabled: boolean,
  *  restart_recommended_msg: string?,
  *  restart_required_msg: string?,
- *  installed_versions: { [pkg_name: string]: string },
- *  installed_pkgstrs: { [pkg_name: string]: string },
+ *  installed_packages: { [pkg_name: string]: PkgData },
  *  terminal_outputs: { [pkg_name: string]: string },
  *  busy_packages: string[],
  *  instantiated: boolean,
