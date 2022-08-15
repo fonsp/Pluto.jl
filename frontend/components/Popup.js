@@ -118,7 +118,7 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event }) => {
         if (recent_event == null) {
             set_pkg_status(null)
         } else if (recent_event?.type === "nbpkg") {
-            ;(pluto_actions.get_avaible_versions({ package_name: recent_event.package_name, notebook_id: notebook.notebook_id }) ?? Promise.resolve([])).then(
+            ;(pluto_actions.get_available_versions({ package_name: recent_event.package_name, notebook_id: notebook.notebook_id }) ?? Promise.resolve([])).then(
                 (versions) => {
                     if (still_valid) {
                         set_pkg_status(

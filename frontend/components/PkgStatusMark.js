@@ -110,7 +110,7 @@ export const PkgStatusMark = ({ package_name, pluto_actions, notebook_id, nbpkg 
     const [available_versions, set_available_versions] = useState(/** @type {string[]?} */ (null))
 
     useEffect(() => {
-        let available_version_promise = pluto_actions.get_avaible_versions({ package_name, notebook_id }) ?? Promise.resolve([])
+        let available_version_promise = pluto_actions.get_available_versions({ package_name, notebook_id }) ?? Promise.resolve([])
         available_version_promise.then((available_versions) => {
             set_available_versions(available_versions)
         })
