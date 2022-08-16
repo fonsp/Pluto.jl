@@ -1213,11 +1213,13 @@ patch: ${JSON.stringify(
                 // and don't prevent the unload
             }
         })
-    }
 
-    componentDidMount() {        
+        // Attach the highlighter object to the window to allow custom highlighting from the frontend. See https://github.com/fonsp/Pluto.jl/pull/2244
         //@ts-ignore
         window.hljs = hljs
+    }
+
+    componentDidMount() {
         if (this.state.static_preview) {
             this.setState({
                 initializing: false,
