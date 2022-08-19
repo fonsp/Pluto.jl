@@ -264,10 +264,10 @@ module CantReturnInPluto
     replace_returns_with_error_in_interpolation(ex) = ex
 end
 
-function try_macroexpand(mod, cell_uuid, expr)
+function try_macroexpand(mod, notebook_id, cell_id, expr)
     # Remove the precvious cached expansion, so when we error somewhere before we update,
     # the old one won't linger around and get run accidentally.
-    delete!(cell_expanded_exprs, cell_uuid)
+    delete!(cell_expanded_exprs, cell_id)
 
     # Remove toplevel block, as that screws with the computer and everything
     expr_not_toplevel = if expr.head == :toplevel || expr.head == :block
@@ -277,9 +277,17 @@ function try_macroexpand(mod, cell_uuid, expr)
         Expr(:block, expr)
     end
 
-    elapsed_ns = time_ns()
-    expanded_expr = macroexpand(mod, expr_not_toplevel)::Expr
-    elapsed_ns = time_ns() - elapsed_ns
+    logger = get(() -> set_cell_logger!(notebook_id, cell_id), pluto_cell_loggers, cell_id)
+    if logger.workspace_count < moduleworkspace_count[]
+        logger = set_cell_logger!(notebook_id, cell_id)
+    end
+
+    expanded_expr, elapsed_ns = Logging.with_logger(logger) do
+        elapsed_ns = time_ns()
+        expanded_expr = macroexpand(mod, expr_not_toplevel)::Expr
+        elapsed_ns = time_ns() - elapsed_ns
+        expanded_expr, elapsed_ns
+    end
 
     # Removes baked in references to the module this was macroexpanded in.
     # Fix for https://github.com/fonsp/Pluto.jl/issues/1112
@@ -288,13 +296,13 @@ function try_macroexpand(mod, cell_uuid, expr)
 
     has_pluto_hook_features = has_hook_style_pluto_properties_in_expr(expr_without_globalrefs)
     expr_to_save = replace_pluto_properties_in_expr(expr_without_globalrefs,
-        cell_id=cell_uuid,
-        rerun_cell_function=() -> rerun_cell_from_notebook(cell_uuid),
-        register_cleanup_function=(fn) -> UseEffectCleanups.register_cleanup(fn, cell_uuid),
+        cell_id=cell_id,
+        rerun_cell_function=() -> rerun_cell_from_notebook(cell_id),
+        register_cleanup_function=(fn) -> UseEffectCleanups.register_cleanup(fn, cell_id),
     )
 
     did_mention_expansion_time = false
-    cell_expanded_exprs[cell_uuid] = CachedMacroExpansion(
+    cell_expanded_exprs[cell_id] = CachedMacroExpansion(
         expr_hash(expr),
         expr_to_save,
         elapsed_ns,
@@ -503,9 +511,10 @@ function run_expression(
 
     old_currently_running_cell_id = currently_running_cell_id[]
     currently_running_cell_id[] = cell_id
-    pluto_cell_loggers[cell_id] = logger = let
-        notebook_log_channel = pluto_log_channels[notebook_id]
-        PlutoCellLogger(nothing, notebook_log_channel, cell_id, moduleworkspace_count[])
+
+    logger = get(() -> set_cell_logger!(notebook_id, cell_id), pluto_cell_loggers, cell_id)
+    if logger.workspace_count < moduleworkspace_count[]
+        logger = set_cell_logger!(notebook_id, cell_id)
     end
 
     # reset published objects
@@ -526,7 +535,7 @@ function run_expression(
     # .... But ideally we wouldn't re-macroexpand and store the error the first time (TODO-ish)
     if !haskey(cell_expanded_exprs, cell_id) || cell_expanded_exprs[cell_id].original_expr_hash != expr_hash(expr)
         try
-            try_macroexpand(m, cell_id, expr)
+            try_macroexpand(m, notebook_id, cell_id, expr)
         catch e
             result = CapturedException(e, stacktrace(catch_backtrace()))
             cell_results[cell_id], cell_runtimes[cell_id] = (result, nothing)
@@ -2122,6 +2131,12 @@ end
 
 const pluto_cell_loggers = Dict{UUID,PlutoCellLogger}() # One logger per cell
 const pluto_log_channels = Dict{UUID,Channel{Any}}() # One channel per notebook
+
+function set_cell_logger!(notebook_id, cell_id)
+    notebook_log_channel = pluto_log_channels[notebook_id]
+    pluto_cell_loggers[cell_id] =
+        PlutoCellLogger(nothing, notebook_log_channel, cell_id, moduleworkspace_count[])
+end
 
 function Logging.shouldlog(logger::PlutoCellLogger, level, _module, _...)
     # Accept logs

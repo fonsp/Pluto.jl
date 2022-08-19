@@ -144,11 +144,13 @@ function start_relaying_self_updates((session, notebook)::SN, run_channel::Distr
     end
 end
 
-function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.RemoteChannel)
+function start_relaying_logs(sn::SN, log_channel::Distributed.RemoteChannel)
+    (session, notebook) = sn
     update_throttled, flush_throttled = Pluto.throttled(0.1) do 
         Pluto.send_notebook_changes!(Pluto.ClientRequest(session=session, notebook=notebook))
     end
-    
+    workspace = get_workspace(sn)
+
     while true
         try
             next_log::Dict{String,Any} = take!(log_channel)
@@ -487,13 +489,13 @@ function collect_soft_definitions(session_notebook::SN, modules::Set{Expr})
 end
 
 
-function macroexpand_in_workspace(session_notebook::Union{SN,Workspace}, macrocall, cell_uuid, module_name = nothing)::Tuple{Bool, Any}
+function macroexpand_in_workspace(session_notebook::SN, macrocall, cell_id, module_name = nothing)::Tuple{Bool, Any}
     workspace = get_workspace(session_notebook)
     module_name = module_name === nothing ? workspace.module_name : module_name
 
     Distributed.remotecall_eval(Main, workspace.pid, quote
         try
-            (true, PlutoRunner.try_macroexpand($(module_name), $(cell_uuid), $(macrocall |> QuoteNode)))
+            (true, PlutoRunner.try_macroexpand($(module_name), $(workspace.notebook_id), $(cell_id), $(macrocall |> QuoteNode)))
         catch error
             # We have to be careful here, for example a thrown `MethodError()` will contain the called method and arguments.
             # which normally would be very useful for debugging, but we can't serialize it!
