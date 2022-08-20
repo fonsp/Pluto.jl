@@ -277,9 +277,9 @@ function try_macroexpand(mod, notebook_id, cell_id, expr)
         Expr(:block, expr)
     end
 
-    logger = get(() -> set_cell_logger!(notebook_id, cell_id), pluto_cell_loggers, cell_id)
+    logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
     if logger.workspace_count < moduleworkspace_count[]
-        logger = set_cell_logger!(notebook_id, cell_id)
+        logger = pluto_cell_loggers[cell_id] = PlutoCellLogger(notebook_id, cell_id)
     end
 
     expanded_expr, elapsed_ns = Logging.with_logger(logger) do
@@ -512,9 +512,9 @@ function run_expression(
     old_currently_running_cell_id = currently_running_cell_id[]
     currently_running_cell_id[] = cell_id
 
-    logger = get(() -> set_cell_logger!(notebook_id, cell_id), pluto_cell_loggers, cell_id)
+    logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
     if logger.workspace_count < moduleworkspace_count[]
-        logger = set_cell_logger!(notebook_id, cell_id)
+        logger = pluto_cell_loggers[cell_id] = PlutoCellLogger(notebook_id, cell_id)
     end
 
     # reset published objects
@@ -2128,15 +2128,13 @@ struct PlutoCellLogger <: Logging.AbstractLogger
     cell_id::UUID
     workspace_count::Int # Used to invalidate previous logs
 end
+function PlutoCellLogger(notebook_id, cell_id)
+    notebook_log_channel = pluto_log_channels[notebook_id]
+    PlutoCellLogger(nothing, notebook_log_channel, cell_id, moduleworkspace_count[])
+end
 
 const pluto_cell_loggers = Dict{UUID,PlutoCellLogger}() # One logger per cell
 const pluto_log_channels = Dict{UUID,Channel{Any}}() # One channel per notebook
-
-function set_cell_logger!(notebook_id, cell_id)
-    notebook_log_channel = pluto_log_channels[notebook_id]
-    pluto_cell_loggers[cell_id] =
-        PlutoCellLogger(nothing, notebook_log_channel, cell_id, moduleworkspace_count[])
-end
 
 function Logging.shouldlog(logger::PlutoCellLogger, level, _module, _...)
     # Accept logs
