@@ -70,6 +70,8 @@ const ProcessStatus = {
     waiting_to_restart: "waiting_to_restart",
 }
 
+const compute_isolated_cells = (notebook) => notebook.cell_order.filter((cell_id) => notebook.cell_inputs[cell_id].isolated)
+
 /**
  * Map of status => Bool. In order of decreasing prioirty.
  */
@@ -120,6 +122,7 @@ const first_true_key = (obj) => {
  *  cell_id: string,
  *  code: string,
  *  code_folded: boolean,
+ *  isolated: boolean,
  *  metadata: CellMetaData,
  * }}
  */
@@ -362,6 +365,7 @@ export class Editor extends Component {
                     cell_id: uuidv4(),
                     code: code,
                     code_folded: false,
+                    isolated: false,
                 }))
 
                 let index
@@ -447,6 +451,7 @@ export class Editor extends Component {
                         cell_id: uuidv4(),
                         code: code,
                         code_folded: false,
+                        isolated: false,
                         metadata: {
                             ...DEFAULT_CELL_METADATA,
                         },
@@ -507,6 +512,7 @@ export class Editor extends Component {
                         cell_id: id,
                         code,
                         code_folded: false,
+                        isolated: false,
                         metadata: { ...DEFAULT_CELL_METADATA },
                     }
                     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
@@ -552,6 +558,13 @@ export class Editor extends Component {
                 await update_notebook((notebook) => {
                     for (let cell_id of cell_ids) {
                         notebook.cell_inputs[cell_id].code_folded = newFolded
+                    }
+                })
+            },
+            isolate_remote_cells: async (cell_ids, newIsolated) => {
+                await update_notebook((notebook) => {
+                    for (let cell_id of cell_ids) {
+                        notebook.cell_inputs[cell_id].isolated = newIsolated
                     }
                 })
             },
@@ -1335,6 +1348,7 @@ patch: ${JSON.stringify(
                         <${ExportBanner}
                             notebookfile_url=${this.export_url("notebookfile")}
                             notebookexport_url=${this.export_url("notebookexport")}
+                            isolated_cells=${compute_isolated_cells(this.state.notebook)}
                             open=${export_menu_open}
                             onClose=${() => this.setState({ export_menu_open: false })}
                             start_recording=${() => this.setState({ recording_waiting_to_start: true })}

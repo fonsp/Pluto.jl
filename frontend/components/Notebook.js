@@ -42,7 +42,7 @@ let CellMemo = ({
 }) => {
     const { body, last_run_timestamp, mime, persist_js_state, rootassignee } = cell_result?.output || {}
     const { queued, running, runtime, errored, depends_on_disabled_cells, logs, depends_on_skipped_cells } = cell_result || {}
-    const { cell_id, code, code_folded, metadata } = cell_input || {}
+    const { cell_id, code, code_folded, isolated, metadata } = cell_input || {}
     return useMemo(() => {
         return html`
             <${Cell}
@@ -79,6 +79,7 @@ let CellMemo = ({
         logs,
         code,
         code_folded,
+        isolated,
         cell_input_local,
         notebook_id,
         cell_dependencies,
