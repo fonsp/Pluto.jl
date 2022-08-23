@@ -8,6 +8,8 @@ const _cell_id_delimiter = "# ╔═╡ "
 const _cell_metadata_prefix = "# ╠═╡ "
 const _order_delimiter = "# ╠═"
 const _order_delimiter_folded = "# ╟─"
+const _isolated_suffix = "◎"
+
 const _cell_suffix = "\n\n"
 
 const _disabled_prefix = "#=╠═╡\n"
@@ -110,7 +112,7 @@ function save_notebook(io::IO, notebook::Notebook)
     println(io, _cell_id_delimiter, "Cell order:")
     for c in notebook.cells
         delim = c.code_folded ? _order_delimiter_folded : _order_delimiter
-        println(io, delim, string(c.cell_id))
+        println(io, delim, string(c.cell_id) * (c.isolated ? _isolated_suffix : ""))
     end
     if write_package
         println(io, _order_delimiter_folded, string(_ptoml_cell_id))
@@ -180,7 +182,7 @@ function _notebook_collected_cells!(@nospecialize(io::IO))
         if cell_id_str == "Cell order:"
             break
         else
-            cell_id = UUID(cell_id_str)
+            cell_id = _process_read_cell_uuid(cell_id_str)
 
             metadata_toml_lines = String[]
             initial_code_line = ""
@@ -220,17 +222,23 @@ function _notebook_collected_cells!(@nospecialize(io::IO))
     return collected_cells
 end
 
+function _process_read_cell_uuid(uuid_string::AbstractString) :: UUID
+    filtered_uuid = replace(uuid_string, _isolated_suffix => "")
+    return UUID(filtered_uuid)
+end
+
 function _notebook_cell_order!(@nospecialize(io::IO), collected_cells)
     cell_order = UUID[]
     while !eof(io)
         cell_id_str = String(readline(io))
         if length(cell_id_str) >= 36 && (startswith(cell_id_str, _order_delimiter_folded) || startswith(cell_id_str, _order_delimiter))
             cell_id = let
-                UUID(cell_id_str[end - 35:end])
+                _process_read_cell_uuid(cell_id_str[9:end])
             end
             next_cell = get(collected_cells, cell_id, nothing)
             if next_cell !== nothing
                 next_cell.code_folded = startswith(cell_id_str, _order_delimiter_folded)
+                next_cell.isolated = contains(cell_id_str, _isolated_suffix)
             end
             push!(cell_order, cell_id)
         else
