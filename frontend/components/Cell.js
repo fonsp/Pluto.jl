@@ -253,9 +253,13 @@ export const Cell = ({
                 <button onClick=${on_code_fold} class="foldcode" title="Show/hide code">
                     <span></span>
                 </button>
+                ${
+                output == null || output.body != "" ? html`
                 <button onClick=${on_cell_isolate} class="isolatecell" title="Isolate cell">
                     <span></span>
                 </button>
+                ` : html``
+                }
             </pluto-shoulder>
             <pluto-trafficlight></pluto-trafficlight>
             <button
