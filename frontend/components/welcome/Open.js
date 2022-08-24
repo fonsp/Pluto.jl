@@ -27,13 +27,12 @@ export const Open = ({ client, connected, CustomPicker, show_samples }) => {
         }
     }
 
-    const desktop_on_open_path = async () => {
+    const desktop_on_open_path = async (_p) => {
         window.plutoDesktop?.fileSystem.openNotebook("path")
     }
 
-    const desktop_on_open_url = async () => {
-        const url = window.prompt("Enter URL to a Pluto Notebook.")
-        if (url) window.plutoDesktop?.fileSystem.openNotebook("url", url)
+    const desktop_on_open_url = async (url) => {
+        window.plutoDesktop?.fileSystem.openNotebook("url", url)
     }
 
     const picker = CustomPicker ?? {
@@ -50,7 +49,7 @@ export const Open = ({ client, connected, CustomPicker, show_samples }) => {
                 value=""
                 on_submit=${on_open_path}
                 on_desktop_submit=${desktop_on_open_path}
-                button_label="Open Local File"
+                button_label=${window.plutoDesktop ? "Open Local File" : "Open File"}
                 placeholder=${picker.placeholder}
             />
             ${window.plutoDesktop &&
@@ -61,6 +60,7 @@ export const Open = ({ client, connected, CustomPicker, show_samples }) => {
                 on_desktop_submit=${desktop_on_open_url}
                 button_label="Open from URL"
                 placeholder=${picker.placeholder}
+                requires_text=${true}
             />`}
         </div>`
 }

@@ -15,6 +15,7 @@ import {
     Compartment,
     StateEffect,
 } from "../imports/CodemirrorPlutoSetup.js"
+import { guess_notebook_location } from "../common/NotebookLocationFromURL.js"
 
 let { autocompletion, completionKeymap } = autocomplete
 
@@ -56,7 +57,8 @@ const set_cm_value = (/** @type{EditorView} */ cm, /** @type {string} */ value, 
  *  button_label: String,
  *  placeholder: String,
  *  on_submit: (new_path: String) => Promise<void>,
- *  on_desktop_submit?: () => Promise<void>,
+ *  on_desktop_submit?: (loc?: string) => Promise<void>,
+ *  requires_text?: boolean,
  *  client: import("../common/PlutoConnection.js").PlutoConnection,
  * }}
  * @augments Component<FilePickerProps,{}>
@@ -67,6 +69,7 @@ export class FilePicker extends Component {
         super(props)
         this.state = {
             is_button_disabled: true,
+            url_value: "",
         }
         this.forced_value = ""
         /** @type {EditorView?} */
@@ -103,8 +106,10 @@ export class FilePicker extends Component {
             }
             run(async () => {
                 try {
-                    if (this.is_desktop && this.props.on_desktop_submit) await this.props.on_desktop_submit()
-                    else await this.props.on_submit(cm.state.doc.toString())
+                    if (this.is_desktop && this.props.on_desktop_submit) {
+                        if (this.props.requires_text) await this.props.on_desktop_submit((await guess_notebook_location(this.state.url_value)).path_or_url)
+                        else await this.props.on_desktop_submit()
+                    } else await this.props.on_submit(cm.state.doc.toString())
                     cm.dom.blur()
                 } catch (error) {
                     set_cm_value(cm, this.props.value, true)
@@ -250,9 +255,19 @@ export class FilePicker extends Component {
     }
     render() {
         return this.is_desktop
-            ? html`<div onClick=${this.on_submit} class="desktop_picker">
-                  <span>${this.props.value}</span>
-                  <button>${this.props.button_label}</button>
+            ? html`<div class="desktop_picker_group">
+                  ${this.props.requires_text &&
+                  html`<input
+                      value=${this.state.url_value}
+                      placeholder="Enter URL here"
+                      onChange=${(v) => {
+                          this.setState({ ...this.state, url_value: v.target.value })
+                      }}
+                  />`}
+                  <div onClick=${this.on_submit} class="desktop_picker">
+                      <span>${this.props.value}</span>
+                      <button>${this.props.button_label}</button>
+                  </div>
               </div>`
             : html`
                   <pluto-filepicker>
