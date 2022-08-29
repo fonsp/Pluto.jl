@@ -21,6 +21,9 @@ import { Featured } from "./Featured.js"
  * }}
  */
 
+// We use a link from the head instead of directing linking "img/logo.svg" because parcel does not bundle preact files
+const url_logo_big = document.head.querySelector("link[rel='pluto-logo-big']")?.getAttribute("href") ?? ""
+
 export const Welcome = () => {
     const [remote_notebooks, set_remote_notebooks] = useState(/** @type {Array<NotebookListEntry>} */ ([]))
 
@@ -74,7 +77,7 @@ export const Welcome = () => {
 
     return html`
         <section id="title">
-            <h1>welcome to <img src="img/logo.svg" /></h1>
+            <h1>welcome to <img src=${url_logo_big} /></h1>
             <!-- <a id="github" href="https://github.com/fonsp/Pluto.jl"
                 ><img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/logo-github.svg"
             /></a> -->
