@@ -2,14 +2,13 @@ using Test
 using Pluto.Configuration: CompilerOptions
 using Pluto.WorkspaceManager: _merge_notebook_compiler_options
 import Pluto: update_save_run!, update_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell, project_relative_path
-import Distributed
+import Malt
 
 @testset "Workspace manager" begin
 # basic functionality is already tested by the reactivity tests
 
     @testset "Multiple notebooks" begin
         🍭 = ServerSession()
-        🍭.options.evaluation.workspace_use_distributed = true
 
         notebookA = Notebook([
             Cell("x = 3")
@@ -34,7 +33,6 @@ import Distributed
     end
     @testset "Variables with secret names" begin
         🍭 = ServerSession()
-        🍭.options.evaluation.workspace_use_distributed = false
 
         notebook = Notebook([
             Cell("result = 1"),
@@ -54,7 +52,7 @@ import Distributed
 
     Sys.iswindows() || @testset "Pluto inside Pluto" begin
         🍭 = ServerSession()
-        🍭.options.evaluation.workspace_use_distributed = true
+        🍭.options.evaluation.capture_stdout = false
 
         notebook = Notebook([
             Cell("""begin
@@ -86,16 +84,9 @@ import Distributed
         update_run!(🍭, notebook, notebook.cells[5])
         @test notebook.cells[5] |> noerror
 
-
-        desired_nprocs = Distributed.nprocs() - 1
         setcode!(notebook.cells[5], "Pluto.SessionActions.shutdown(s, nb)")
         update_run!(🍭, notebook, notebook.cells[5])
         @test noerror(notebook.cells[5])
-
-        while Distributed.nprocs() != desired_nprocs
-            sleep(.1)
-        end
-        sleep(.1)
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end

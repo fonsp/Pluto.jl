@@ -6,7 +6,7 @@ using Pluto.WorkspaceManager: _merge_notebook_compiler_options, poll
 import Pluto: update_save_run!, update_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell, project_relative_path, SessionActions, load_notebook
 import Pluto.PkgUtils
 import Pluto.PkgCompat
-import Distributed
+import Malt
 
 
 @testset "Built-in Pkg" begin
@@ -370,8 +370,7 @@ import Distributed
     end
 
     @testset "DrWatson cell" begin
-        🍭 = ServerSession()            
-        🍭.options.evaluation.workspace_use_distributed = false
+        🍭 = ServerSession()
 
         notebook = Notebook([
             Cell("using Plots"),
@@ -421,12 +420,13 @@ import Distributed
     end
 
     @testset "File format -- Forwards compat" begin
-        # Using Distributed, we will create a new Julia process in which we install Pluto 0.14.7 (before PlutoPkg). We run the new notebook file on the old Pluto.
-        p = Distributed.addprocs(1) |> first
+        # Using Malt, create a Julia process in which we install Pluto 0.14.7 (before PlutoPkg).
+        # Run the new notebook file on the old Pluto.
+        test_worker = Malt.Worker()
 
         @test post_pkg_notebook isa String
 
-        Distributed.remotecall_eval(Main, p, quote
+        Malt.remote_eval_wait(Main, test_worker, quote
             path = tempname()
             write(path, $(post_pkg_notebook))
             import Pkg
@@ -435,35 +435,38 @@ import Distributed
                 Pkg.UPDATED_REGISTRY_THIS_SESSION[] = true
             end
 
-            Pkg.activate(mktempdir())
+            Pkg.activate(;temp=true)
             Pkg.add(Pkg.PackageSpec(;name="Pluto",version=v"0.14.7"))
+            # Distributed is required for old Pluto to work!
+            Pkg.add("Distributed") 
+
             import Pluto
+            @info Pluto.PLUTO_VERSION
             @assert Pluto.PLUTO_VERSION == v"0.14.7"
+        end)
 
+        @test Malt.remote_eval_fetch(Main, test_worker, quote
             s = Pluto.ServerSession()
-            s.options.evaluation.workspace_use_distributed = false
-
             nb = Pluto.SessionActions.open(s, path; run_async=false)
-
-            nothing
+            nb.cells[2].errored == false
         end)
 
         # Cells that use Example will error because the package is not installed.
 
-        # @test Distributed.remotecall_eval(Main, p, quote
+        # @test Malt.remote_eval_fetch(Main, test_worker, quote
         #     nb.cells[1].errored == false
         # end)
-        @test Distributed.remotecall_eval(Main, p, quote
-            nb.cells[2].errored == false
-        end)
-        # @test Distributed.remotecall_eval(Main, p, quote
+        # @test Malt.remote_eval_fetch(Main, test_worker, quote
+        #     nb.cells[2].errored == false
+        # end)
+        # @test Malt.remote_eval_fetch(Main, test_worker, quote
         #     nb.cells[3].errored == false
         # end)
-        # @test Distributed.remotecall_eval(Main, p, quote
+        # @test Malt.remote_eval_fetch(Main, test_worker, quote
         #     nb.cells[3].output.body == "25"
         # end)
 
-        Distributed.rmprocs([p])
+        Malt.stop(test_worker)
     end
 
     @testset "PkgUtils -- reset" begin

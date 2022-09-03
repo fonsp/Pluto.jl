@@ -1,5 +1,5 @@
 import FuzzyCompletions: complete_path, completion_text, score
-import Distributed
+import Malt
 import .PkgCompat: package_completions
 using Markdown
 import REPL
@@ -83,10 +83,13 @@ responses[:complete] = function response_complete(🙋::ClientRequest)
         if will_run_code(🙋.notebook) && workspace isa WorkspaceManager.Workspace && isready(workspace.dowork_token)
             # we don't use eval_format_fetch_in_workspace because we don't want the output to be string-formatted.
             # This works in this particular case, because the return object, a `Completion`, exists in this scope too.
-            Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.completion_fetcher(
-                $query, $pos,
-                getfield(Main, $(QuoteNode(workspace.module_name))),
-                )))
+            Malt.remote_eval_fetch(workspace.worker, quote
+                PlutoRunner.completion_fetcher(
+                    $query,
+                    $pos,
+                    getfield(Main, $(QuoteNode(workspace.module_name))),
+                )
+            end)
         else
             # We can at least autocomplete general julia things:
             PlutoRunner.completion_fetcher(query, pos, Main)
@@ -125,10 +128,12 @@ responses[:docs] = function response_docs(🙋::ClientRequest)
         workspace = WorkspaceManager.get_workspace((🙋.session, 🙋.notebook); allow_creation=false)
 
         if will_run_code(🙋.notebook) && workspace isa WorkspaceManager.Workspace && isready(workspace.dowork_token)
-            Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.doc_fetcher(
-                $query,
-                getfield(Main, $(QuoteNode(workspace.module_name))),
-            )))
+            Malt.remote_eval_fetch(workspace.worker, quote
+                PlutoRunner.doc_fetcher(
+                    $query,
+                    getfield(Main, $(QuoteNode(workspace.module_name))),
+                )
+            end)
         else
             (nothing, :⌛)
         end

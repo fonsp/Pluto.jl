@@ -203,7 +203,6 @@ end
 
     @testset "Cell Metadata" begin
         🍭 = ServerSession()
-        🍭.options.evaluation.workspace_use_distributed = false
 
         @testset "Disabling & Metadata" begin
             nb = cell_metadata_notebook()
@@ -238,7 +237,6 @@ end
 
     @testset "Notebook Metadata" begin
         🍭 = ServerSession()
-        🍭.options.evaluation.workspace_use_distributed = false
 
         nb = notebook_metadata_notebook()
         update_run!(🍭, nb, nb.cells)
@@ -263,7 +261,6 @@ end
 
     @testset "Skip as script" begin
         🍭 = ServerSession()
-        🍭.options.evaluation.workspace_use_distributed = false
 
         nb = skip_as_script_notebook()
         update_run!(🍭, nb, nb.cells)

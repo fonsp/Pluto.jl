@@ -26,7 +26,6 @@ using Pluto.WorkspaceManager: WorkspaceManager, poll
     options = Pluto.Configuration.from_flat_kwargs(;
         port,
         launch_browser=false,
-        workspace_use_distributed=true,
         require_secret_for_access=false,
         require_secret_for_open_links=false,
         base_url,
@@ -69,7 +68,7 @@ end
 
 
     # without notebook at startup
-    options = Pluto.Configuration.from_flat_kwargs(; port, launch_browser=false, workspace_use_distributed=true, require_secret_for_access=false, require_secret_for_open_links=false)
+    options = Pluto.Configuration.from_flat_kwargs(; port, launch_browser=false, require_secret_for_access=false, require_secret_for_open_links=false)
     🍭 = Pluto.ServerSession(; options)
     server_task = @async Pluto.run(🍭)
     
@@ -91,7 +90,7 @@ end
     
     # right now, the notebook was only added to the session and assigned an ID. Let's wait for it to get a process:
     @test poll(60) do
-        haskey(WorkspaceManager.workspaces, notebook.notebook_id)
+        haskey(WorkspaceManager.active_workspaces, notebook.notebook_id)
     end
     sleep(1)
     

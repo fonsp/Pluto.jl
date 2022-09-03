@@ -59,7 +59,7 @@ end
 
 @testset "Authentication" begin
     port = 1238
-    options = Pluto.Configuration.from_flat_kwargs(; port, launch_browser=false, workspace_use_distributed=false)
+    options = Pluto.Configuration.from_flat_kwargs(; port, launch_browser=false)
     🍭 = Pluto.ServerSession(; options)
     host = 🍭.options.server.host
     secret = 🍭.secret
@@ -140,21 +140,21 @@ end
     server_running() = HTTP.get(local_url("favicon.ico")).status == 200 && HTTP.get(local_url("edit")).status == 200
 
     # without notebook at startup
-    server_task = @async Pluto.run(port=port, launch_browser=false, workspace_use_distributed=false, require_secret_for_access=false, require_secret_for_open_links=false)
+    server_task = @async Pluto.run(port=port, launch_browser=false, require_secret_for_access=false, require_secret_for_open_links=false)
     @test poll(5) do
         server_running()
     end
     @async schedule(server_task, InterruptException(); error=true)
 
     # with a single notebook at startup
-    server_task = @async Pluto.run(notebook=first(nbnames), port=port, launch_browser=false, workspace_use_distributed=false, require_secret_for_access=false, require_secret_for_open_links=false)
+    server_task = @async Pluto.run(notebook=first(nbnames), port=port, launch_browser=false, require_secret_for_access=false, require_secret_for_open_links=false)
     @test poll(5) do
         server_running()
     end
     @async schedule(server_task, InterruptException(); error=true)
 
     # with multiple notebooks at startup
-    server_task = @async Pluto.run(notebook=nbnames, port=port, launch_browser=false, workspace_use_distributed=false, require_secret_for_access=false, require_secret_for_open_links=false)
+    server_task = @async Pluto.run(notebook=nbnames, port=port, launch_browser=false, require_secret_for_access=false, require_secret_for_open_links=false)
     @test poll(5) do
         server_running()
     end

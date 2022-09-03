@@ -6,8 +6,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
 @testset "Rich output" begin
 
     🍭 = ServerSession()
-    🍭.options.evaluation.workspace_use_distributed = false
-    
+
     @testset "Tree viewer" begin
         @testset "Basics" begin
             notebook = Notebook([
@@ -134,8 +133,6 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
 
         
         @testset "Special arrays" begin
-            🍭.options.evaluation.workspace_use_distributed = true
-
             notebook = Notebook([
                 Cell("using OffsetArrays"),
                 Cell("OffsetArray(zeros(3), 20:22)"),
@@ -190,7 +187,6 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             @test occursin("103", s)
             
             WorkspaceManager.unmake_workspace((🍭, notebook))
-            🍭.options.evaluation.workspace_use_distributed = false
         end
 
         @testset "Circular references" begin
@@ -230,7 +226,6 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
     end
 
     @testset "Table viewer" begin
-        🍭.options.evaluation.workspace_use_distributed = true
         notebook = Notebook([
                 Cell("using DataFrames, Tables"),
                 Cell("DataFrame()"),
@@ -308,7 +303,6 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
         # TODO: test lazy loading more rows/cols
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
-        🍭.options.evaluation.workspace_use_distributed = false
     end
 
     begin

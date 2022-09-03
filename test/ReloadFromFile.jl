@@ -1,7 +1,6 @@
 using Test
 import Pluto: Configuration, Notebook, ServerSession, ClientSession, update_run!, Cell, WorkspaceManager, SessionActions, save_notebook
 import Pluto.Configuration: Options, EvaluationOptions
-import Distributed
 using Pluto.WorkspaceManager: poll
 import Pkg
 
@@ -23,7 +22,6 @@ end
     retry(3) do
     
     🍭 = ServerSession()
-    🍭.options.evaluation.workspace_use_distributed = false
     🍭.options.server.auto_reload_from_file = true
     
     

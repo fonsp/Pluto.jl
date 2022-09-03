@@ -178,7 +178,6 @@ end
 
     @testset "PlutoRunner API" begin
         🍭 = ServerSession()
-        🍭.options.evaluation.workspace_use_distributed = true
 
         notebook = Notebook([
             Cell("PlutoRunner.notebook_id[] |> Text"),

@@ -1,15 +1,12 @@
 using Test
 import Pluto: Configuration, Notebook, ServerSession, ClientSession, update_run!, Cell, WorkspaceManager
 import Pluto.Configuration: Options, EvaluationOptions
-import Distributed
+import Malt
 
 @testset "Reactivity" begin
     🍭 = ServerSession()
-    🍭.options.evaluation.workspace_use_distributed = false
 
-    @testset "Basic $(parallel ? "distributed" : "single-process")" for parallel in [false, true]
-        🍭.options.evaluation.workspace_use_distributed = parallel
-        
+    @testset "Basic" begin
         notebook = Notebook([
             Cell("x = 1"),
             Cell("y = x"),
@@ -26,7 +23,7 @@ import Distributed
             Cell("Distributed.myid()"),
         ])
 
-        @test !haskey(WorkspaceManager.workspaces, notebook.notebook_id)
+        @test !haskey(WorkspaceManager.active_workspaces, notebook.notebook_id)
 
         update_run!(🍭, notebook, notebook.cells[1:2])
         @test notebook.cells[1].output.body == notebook.cells[2].output.body
@@ -70,17 +67,11 @@ import Distributed
         @test notebook.cells[6].output.body == "3"
 
         update_run!(🍭, notebook, notebook.cells[7:8])
-        @test if parallel
-            notebook.cells[8].output.body != string(Distributed.myid())
-        else
-            notebook.cells[8].output.body == string(Distributed.myid())
-        end
+        notebook.cells[8].output.body == "1"
 
         WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
     
     end
-
-    🍭.options.evaluation.workspace_use_distributed = false
 
     @testset "Mutliple assignments" begin
         notebook = Notebook([
@@ -207,8 +198,6 @@ import Distributed
 
     # PlutoTest.jl is only working on Julia version >= 1.6
     @testset "Test Firebasey" begin
-        🍭.options.evaluation.workspace_use_distributed = true
-
         file = tempname()
         write(file, read(normpath(Pluto.project_relative_path("src", "webserver", "Firebasey.jl"))))
 
@@ -222,7 +211,6 @@ import Distributed
         @test all(noerror, notebook.cells)
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
-        🍭.options.evaluation.workspace_use_distributed = false
     end
 
     @testset "Pkg topology workarounds" begin
@@ -371,8 +359,6 @@ import Distributed
     end
 
     @testset "Reactive usings 4" begin
-        🍭.options.evaluation.workspace_use_distributed = true
-
         notebook = Notebook([
             Cell("@sprintf \"double_december = %d\" double_december"),
             Cell("double_december = 2December"),
@@ -397,7 +383,6 @@ import Distributed
         @test notebook.cells[1].output.body == "\"double_december = 24\""
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
-        🍭.options.evaluation.workspace_use_distributed = false
     end
 
     @testset "Reactive usings 5" begin
@@ -429,8 +414,6 @@ import Distributed
     end
 
     @testset "Function dependencies" begin
-        🍭.options.evaluation.workspace_use_distributed = true
-
         notebook = Notebook(Cell.([
             "a'b",
             "import LinearAlgebra",
@@ -446,7 +429,6 @@ import Distributed
         @test notebook.cells[1].output.body == "200"
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
-        🍭.options.evaluation.workspace_use_distributed = false
     end
 
     @testset "Function use inv in its def but also has a method on inv" begin
