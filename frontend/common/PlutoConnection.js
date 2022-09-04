@@ -1,6 +1,7 @@
 import { Promises } from "../common/SetupCellEnvironment.js"
 import { pack, unpack } from "./MsgPack.js"
 import "./Polyfill.js"
+import { with_query_params } from "./URLTools.js"
 
 // https://github.com/denysdovhan/wtfjs/issues/61
 const different_Infinity_because_js_is_yuck = 2147483646
@@ -230,7 +231,11 @@ const batched_updates = (send) => {
 export const ws_address_from_base = (base_url) => {
     const ws_url = new URL("./", base_url)
     ws_url.protocol = ws_url.protocol.replace("http", "ws")
-    return String(ws_url)
+
+    // if the original URL had a secret in the URL, we can also add it here:
+    const ws_url_with_secret = with_query_params(ws_url, { secret: new URL(base_url).searchParams.get("secret") })
+
+    return ws_url_with_secret
 }
 
 const default_ws_address = () => ws_address_from_base(window.location.href)
@@ -238,7 +243,7 @@ const default_ws_address = () => ws_address_from_base(window.location.href)
 /**
  * @typedef PlutoConnection
  * @type {{
- *  session_options: Object,
+ *  session_options: Record<string,any>,
  *  send: import("./PlutoConnectionSendFn").SendFn,
  *  kill: () => void,
  *  version_info: {
@@ -277,6 +282,7 @@ export const create_pluto_connection = async ({
     ws_address = default_ws_address(),
 }) => {
     var ws_connection = null // will be defined later i promise
+    /** @type {PlutoConnection} */
     const client = {
         send: null,
         session_options: null,
@@ -413,18 +419,4 @@ export const create_pluto_connection = async ({
     await connect()
 
     return client
-}
-
-export const fetch_pluto_releases = async () => {
-    let response = await fetch("https://api.github.com/repos/fonsp/Pluto.jl/releases", {
-        method: "GET",
-        mode: "cors",
-        cache: "no-cache",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        redirect: "follow",
-        referrerPolicy: "no-referrer",
-    })
-    return (await response.json()).reverse()
 }

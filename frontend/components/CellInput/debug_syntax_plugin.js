@@ -10,7 +10,7 @@ let find_error_nodes = (doc, tree) => {
         tree: tree,
         enter: (cursor) => {
             if (cursor.type.isError) {
-                console.group(`Found error node in ${cursor.node.parent.name}`)
+                console.group(`Found error node in ${cursor.node.parent?.name}`)
                 try {
                     let text_before_cursor = doc.sliceString(cursor.from - 10, cursor.from)
                     let text = doc.sliceString(cursor.from, cursor.to)

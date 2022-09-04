@@ -65,9 +65,10 @@ describe("JavaScript API", () => {
 
   it("⭐️ If you return an HTML node, it will be displayed.", async () => {
     const expected = "Success";
-    paste(
+    await paste(
       page,
-      `html"""<script>
+      `# ╔═╡ 90cfa9a0-114d-49bf-8dea-e97d58fa2442
+      html"""<script>
     const div = document.createElement("div")
     div.innerHTML = "${expected}"
     return div;
@@ -91,9 +92,10 @@ describe("JavaScript API", () => {
 
   it("⭐️ The observablehq/stdlib library is pre-imported, you can use DOM, html, Promises, etc.", async () => {
     const expected = "Success";
-    paste(
+    await paste(
       page,
-      `html"""<script>
+      `# ╔═╡ 90cfa9a0-114d-49bf-8dea-e97d58fa2442
+      html"""<script>
     return html\`<span>${expected}\</span>\`;
 </script>"""
         `
@@ -112,9 +114,10 @@ describe("JavaScript API", () => {
     );
     expect(initialLastCellContent).toBe(expected);
 
-    paste(
+    await paste(
       page,
-      `html"""<script>
+      `# ╔═╡ 90cfa9a0-114d-49bf-8dea-e97d58fa2442
+      html"""<script>
             const span = DOM.element("span");
             span.innerHTML = "${expected}"
             return span
@@ -137,7 +140,7 @@ describe("JavaScript API", () => {
   });
 
   it("⭐️ When a cell re-runs reactively, this will be set to the previous output", async () => {
-    paste(
+    await paste(
       page,
       `   
                 # ╔═╡ 90cfa9a0-114d-49bf-8dea-e97d58fa2442

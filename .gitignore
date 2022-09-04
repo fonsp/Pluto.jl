@@ -16,3 +16,4 @@ node_modules
 frontend/dist
 .net
 net
+frontend/package-lock.json

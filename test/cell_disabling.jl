@@ -44,14 +44,14 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
     original_z_output = notebook.cells[3].output.body
     original_a_output = notebook.cells[4].output.body
     original_w_output = notebook.cells[5].output.body
-    setcode(notebook.cells[2], "x = 123123")
+    setcode!(notebook.cells[2], "x = 123123")
     update_run!(🍭, notebook, notebook.cells[2])
     @test notebook.cells[1].output.body == original_y_output
     @test notebook.cells[3].output.body == original_z_output
     @test notebook.cells[4].output.body != original_a_output
     @test notebook.cells[5].output.body == original_w_output
 
-    setcode(notebook.cells[2], "x = 2")
+    setcode!(notebook.cells[2], "x = 2")
     update_run!(🍭, notebook, notebook.cells[2])
     @test notebook.cells[1].output.body == original_y_output
     @test notebook.cells[3].output.body == original_z_output
@@ -65,7 +65,7 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
 
 
     original_6_output = notebook.cells[6].output.body
-    setcode(notebook.cells[6], "x + 6")
+    setcode!(notebook.cells[6], "x + 6")
     update_run!(🍭, notebook, notebook.cells[6])
     @test notebook.cells[6].depends_on_disabled_cells
     @test notebook.cells[6].errored === false
@@ -77,7 +77,7 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
     @test get_disabled_cells(notebook) == collect(1:6)
 
     # the x cell is disabled, so changing it should have no effect
-    setcode(notebook.cells[2], "x = 123123")
+    setcode!(notebook.cells[2], "x = 123123")
     update_run!(🍭, notebook, notebook.cells[2])
     @test notebook.cells[1].output.body == original_y_output
     @test notebook.cells[3].output.body == original_z_output

@@ -59,6 +59,8 @@
         --selected-cell-bg-color: rgb(42 115 205 / 78%);
         --hover-scrollbar-color-1: rgba(0, 0, 0, 0.15);
         --hover-scrollbar-color-2: rgba(0, 0, 0, 0.05);
+        --skip-as-script-background-color: #888;
+        --depends-on-skip-as-script-background-color: #666;
 
         /* Pluto shoulders */
         --shoulder-hover-bg-color: rgba(255, 255, 255, 0.05);
@@ -138,7 +140,7 @@
         --footer-atag-color: rgb(114, 161, 223);
         --footer-input-border-color: #6c6c6c;
         --footer-filepicker-button-color: black;
-        --footer-filepicker-focus-color: #9d9d9d;
+        --footer-filepicker-focus-color: #c1c1c1;
         --footnote-border-color: rgba(114, 225, 231, 0.15);
 
         /* undo delete cell*/
@@ -184,6 +186,13 @@
         /* Landing colors */
         --index-text-color: rgb(199, 199, 199);
         --index-clickable-text-color: rgb(235, 235, 235);
+        --index-card-bg: #313131;
+        --welcome-mywork-bg: var(--header-bg-color);
+        --welcome-newnotebook-bg: rgb(68 72 102);
+        --welcome-recentnotebook-bg: #3b3b3b;
+        --welcome-recentnotebook-border: #6e6e6e;
+        --welcome-open-bg: hsl(233deg 20% 33%);
+        --welcome-card-author-backdrop: #0000006b;
 
         /* docs binding */
         --docs-binding-bg: #323431;

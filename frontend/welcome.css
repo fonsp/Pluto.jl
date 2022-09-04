@@ -1,0 +1,262 @@
+@import url("https://cdn.jsdelivr.net/npm/inter-ui@3.19.3/inter-latin.css");
+
+:root {
+    --pluto-cell-spacing: 17px;
+    /* use the value "contextual" to enable contextual ligatures `document.documentElement.style.setProperty('--pluto-operator-ligatures', 'contextual');`
+        for julia mono see here: https://cormullion.github.io/pages/2020-07-26-JuliaMono/#contextual_and_stylistic_alternates_and_ligatures */
+    --pluto-operator-ligatures: none;
+    --julia-mono-font-stack: JuliaMono, Menlo, "Roboto Mono", "Lucida Sans Typewriter", "Source Code Pro", monospace;
+    --sans-serif-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    --lato-ui-font-stack: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, Helvetica, Arial, "Apple Color Emoji",
+        "Segoe UI Emoji", "Segoe UI Symbol", system-ui, sans-serif;
+    --inter-ui-font-stack: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, Helvetica, Arial, "Apple Color Emoji",
+        "Segoe UI Emoji", "Segoe UI Symbol", system-ui, sans-serif;
+
+    color-scheme: light dark;
+}
+
+html {
+    font-family: var(--inter-ui-font-stack);
+    font-size: 17px;
+}
+
+main {
+    display: block;
+    max-width: 1200px;
+    padding: 1rem;
+    margin: 0 auto;
+}
+/* font-size: 1.7em; */
+
+header {
+    background-color: #f5efd2; /* background-image: linear-gradient(to top, white, #fff0), var(--noise-4); */
+    /* filter: var(--noise-filter-1); */
+    display: flex;
+    background-size: cover;
+    justify-content: center;
+    padding: 1.3rem;
+}
+header h1 {
+    font-weight: 500;
+
+    /* font-style: italic; */
+    text-align: center;
+    /* color: white; */
+}
+
+section#mywork,
+section#open {
+    /* --c1: rgb(255 255 255 / 20%); */
+    /* --c2: rgb(255 255 255 / 7%); */
+    /* background-color: #92add9; */
+    /* --grad-stops: transparent 9%, var(--c1) 10%, var(--c1) 12%, transparent 13%, transparent 29%, var(--c2) 30%, var(--c2) 31%, transparent 32%, transparent 49%,
+        var(--c2) 50%, var(--c2) 51%, transparent 52%, transparent 69%, var(--c2) 70%, var(--c2) 71%, transparent 72%, transparent 89%, var(--c2) 90%,
+        var(--c2) 91%, transparent 92%, transparent; */
+    /* background-size: 40px 40px; */
+    /* background-position: 20px 20px; */
+    /* background-image: linear-gradient(360deg, var(--grad-stops)), linear-gradient(90deg, var(--grad-stops)); */
+    /* background: #f5f5f6; */
+    /* position: relative; */
+    /* background: url("https://computationalthinking.mit.edu/Spring21/homepage/bg.svg"); */ /* background-size: cover; */ /* background-position: 0% 70%; */
+    background: var(--welcome-mywork-bg);
+    /* background: var(--header-bg-color); */
+    position: relative;
+}
+
+.pluto-logo {
+    font-style: normal;
+    font-weight: 800;
+    color: inherit;
+    /* padding: 0.3em; */
+    display: flex;
+    flex-direction: row;
+    padding: 0.5em;
+    align-items: center;
+    gap: 0.5ch;
+    font-family: var(--inter-ui-font-stack);
+    transform: translateY(0.23em);
+}
+
+.pluto-logo img {
+    height: 1.2em;
+    width: 1.2em;
+}
+
+#new {
+    background: var(--welcome-open-bg);
+    box-shadow: -2px 4px 9px 0px #00000012;
+    padding: 1.3rem;
+    border-radius: 0.6rem;
+    margin: 1rem;
+    /* border: 0.3rem solid #d6e0d8; */
+    display: flex;
+    flex-direction: column;
+    align-content: stretch;
+}
+
+section {
+    display: flex; /* overflow: hidden; */ /* place-items: center; */ /* margin: 0rem 0rem; */
+
+    flex-direction: row;
+    justify-content: center;
+}
+
+section > div {
+    margin: 1rem 1rem;
+    max-width: 614px; /* margin: auto; */
+    flex: 1 1 auto;
+}
+
+.pluto-logo {
+    background: white;
+    border-radius: 0.4em;
+    display: flex;
+    flex: 0 1 auto;
+    transform: none;
+    font-size: 1.6rem;
+}
+
+section#open {
+    /* background: #f5f5f6; */
+    /* box-shadow: inset 1px 1px 20px red; */
+    position: relative;
+}
+
+section#featured > div {
+    max-width: 900px;
+}
+
+header > div {
+    max-width: 62rem; /* margin: 0 auto; */
+    flex: 1 1 auto;
+    display: flex;
+    z-index: 1;
+}
+
+section#mywork::before,
+section#open::after {
+    --c: hsl(196deg 20% 26% / 6%);
+    content: "";
+    height: 50px;
+    top: 0px;
+    left: 0;
+    right: 0;
+    position: absolute;
+    display: block;
+    background: linear-gradient(0deg, transparent, var(--c));
+    pointer-events: none;
+    z-index: 0;
+}
+
+:where(#mywork, #open) h2 {
+    /* color: black; */
+    --off: 4px;
+    --offm: -4px;
+    --oc: #ffffff;
+    /* text-shadow: var(--off) 0 var(--oc), var(--off) var(--off) var(--oc), 0 var(--off) var(--oc), var(--offm) var(--off) var(--oc), var(--offm) 0 var(--oc),
+        var(--offm) var(--offm) var(--oc), 0 var(--offm) var(--oc), var(--off) var(--offm) var(--oc); */
+    display: inline-block; /* background: #fffffffc; */ /* padding: 0.4em; */
+    border-radius: 0.4em;
+    /* color: white; */ /* text-transform: uppercase; */
+    margin: 2rem 0rem 0rem 0;
+}
+
+section#open::after {
+    top: unset;
+    bottom: 0;
+    background: linear-gradient(0deg, var(--c), transparent);
+}
+
+div#app {
+    /* background: url(https://computationalthinking.mit.edu/Spring21/homepage/bg.svg); */
+    background-size: cover;
+    background-position: 0% 77%;
+}
+
+section#featured {
+    /* background: white; */
+}
+
+.new a {
+    text-decoration: none; /* font-weight: 700; */
+    font-weight: 500;
+    font-style: italic;
+}
+
+li.new {
+    position: sticky;
+    background: var(--welcome-newnotebook-bg);
+    top: 0;
+    z-index: 2;
+}
+
+h1 {
+    font-size: 2.8rem;
+    margin-block-end: 0em;
+}
+
+.collection {
+    margin: 6em 0;
+}
+
+.collection h2 {
+    font-size: 2.5rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+#featured p {
+    max-width: 54ch;
+    color: #757575;
+}
+
+.author {
+    position: absolute;
+    top: 0.3em;
+    right: 0.3em;
+    background: var(--welcome-card-author-backdrop);
+    /* background: hsl(var(--card-color-hue) 34% 46% / 59%); */
+    backdrop-filter: blur(15px);
+    color: black;
+    border-radius: 117px;
+    /* height: 2.5em; */
+    padding: 0.3em;
+    padding-right: 0.8em;
+    display: flex;
+}
+
+.author a {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.4ch;
+}
+
+#github img {
+    aspect-ratio: 1;
+    filter: var(--image-filters);
+    width: 2rem;
+}
+
+a#github {
+    display: block;
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+}
+
+.show-scrollbar::-webkit-scrollbar {
+    width: 10px;
+    opacity: 0.1;
+}
+.show-scrollbar::-webkit-scrollbar-track {
+}
+.show-scrollbar::-webkit-scrollbar-thumb {
+    /* height: 11px; */
+    background-color: var(--black);
+    opacity: 0.6;
+    border-radius: 1000px;
+}
+.show-scrollbar::-webkit-scrollbar-thumb:hover {
+    opacity: 1;
+}

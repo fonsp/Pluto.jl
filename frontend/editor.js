@@ -3,7 +3,6 @@ import "./common/NodejsCompatibilityPolyfill.js"
 
 import { Editor, default_path } from "./components/Editor.js"
 import { FetchProgress, read_Uint8Array_with_progress } from "./components/FetchProgress.js"
-import { BinderPhase } from "./common/Binder.js"
 import { unpack } from "./common/MsgPack.js"
 import { RawHTMLContainer } from "./components/CellOutput.js"
 
@@ -35,7 +34,11 @@ const launch_params = {
     //@ts-ignore
     statefile: url_params.get("statefile") ?? window.pluto_statefile,
     //@ts-ignore
+    statefile_integrity: url_params.get("statefile_integrity") ?? window.pluto_statefile_integrity,
+    //@ts-ignore
     notebookfile: url_params.get("notebookfile") ?? window.pluto_notebookfile,
+    //@ts-ignore
+    notebookfile_integrity: url_params.get("notebookfile_integrity") ?? window.pluto_notebookfile_integrity,
     //@ts-ignore
     disable_ui: !!(url_params.get("disable_ui") ?? window.pluto_disable_ui),
     //@ts-ignore
@@ -45,9 +48,13 @@ const launch_params = {
     //@ts-ignore
     binder_url: url_params.get("binder_url") ?? window.pluto_binder_url,
     //@ts-ignore
+    pluto_server_url: url_params.get("pluto_server_url") ?? window.pluto_pluto_server_url,
+    //@ts-ignore
     slider_server_url: url_params.get("slider_server_url") ?? window.pluto_slider_server_url,
     //@ts-ignore
     recording_url: url_params.get("recording_url") ?? window.pluto_recording_url,
+    //@ts-ignore
+    recording_url_integrity: url_params.get("recording_url_integrity") ?? window.pluto_recording_url_integrity,
     //@ts-ignore
     recording_audio_url: url_params.get("recording_audio_url") ?? window.pluto_recording_audio_url,
 }
@@ -72,6 +79,7 @@ const from_attribute = (element, name) => {
  * @returns {import("./components/Editor.js").NotebookData}
  */
 export const empty_notebook_state = ({ notebook_id }) => ({
+    metadata: {},
     notebook_id: notebook_id,
     path: default_path,
     shortpath: "",
@@ -91,6 +99,13 @@ export const empty_notebook_state = ({ notebook_id }) => ({
 
 /**
  *
+ * @param {import("./components/Editor.js").NotebookData} state
+ * @returns {import("./components/Editor.js").NotebookData}
+ */
+const without_path_entries = (state) => ({ ...state, path: default_path, shortpath: "" })
+
+/**
+ *
  * @param {{
  *  launch_params: import("./components/Editor.js").LaunchParameters,
  * }} props
@@ -106,9 +121,9 @@ const EditorLoader = ({ launch_params }) => {
     useEffect(() => {
         if (!ready_for_editor && static_preview) {
             ;(async () => {
-                const r = await fetch(launch_params.statefile)
+                const r = await fetch(new Request(launch_params.statefile, { integrity: launch_params.statefile_integrity }))
                 const data = await read_Uint8Array_with_progress(r, set_statefile_download_progress)
-                const state = unpack(data)
+                const state = without_path_entries(unpack(data))
                 initial_notebook_state_ref.current = state
                 set_ready_for_editor(true)
             })()
