@@ -310,7 +310,7 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
                 mutator(matches..., rest...; request=🙋, patch)
             end
 
-            push!(changes, current_changes...)
+            union!(changes, current_changes)
         end
 
         # We put a flag to check whether any patch changes the skip_as_script metadata. This is to eventually trigger a notebook updated if no reactive_run is part of this update
@@ -368,19 +368,11 @@ function trigger_resolver(resolvers::Dict, path, values=[])
 		throw(BoundsError("resolver path ends at Dict with keys $(keys(resolver))"))
 	end
 	
-	segment = first(path)
-	rest = path[firstindex(path)+1:end]
-	for (key, resolver) in resolvers
-		if key isa Wildcard
-			continue
-		end
-		if key == segment
-			return trigger_resolver(resolver, rest, values)
-		end
-	end
-	
-	if haskey(resolvers, Wildcard())
-		return trigger_resolver(resolvers[Wildcard()], rest, (values..., segment))
+	segment, rest... = path
+	if haskey(resolvers, segment)
+		trigger_resolver(resolvers[segment], rest, values)
+	elseif haskey(resolvers, Wildcard())
+		trigger_resolver(resolvers[Wildcard()], rest, (values..., segment))
     else
         throw(BoundsError("failed to match path $(path), possible keys $(keys(resolver))"))
 	end
