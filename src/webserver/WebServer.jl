@@ -196,7 +196,7 @@ function run(session::ServerSession)
                                 end
                             end
                         catch ex
-                            if ex isa InterruptException || ex isa HTTP.WebSockets.WebSocketError || ex isa EOFError || (ex isa Base.IOError && occursin("connection reset", ex.msg))
+                            if ex isa TaskFailedException || ex isa InterruptException || ex isa HTTP.WebSockets.WebSocketError || ex isa EOFError || (ex isa Base.IOError && occursin("connection reset", ex.msg))
                                 # that's fine!
                             else
                                 bt = stacktrace(catch_backtrace())
