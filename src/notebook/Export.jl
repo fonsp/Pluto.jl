@@ -65,8 +65,6 @@ function generate_html(;
         notebook_id_js::AbstractString="undefined", 
         isolated_cell_ids_js::AbstractString="undefined",
 
-        static_javascript::AbstractString="",
-        static_css::AbstractString="",
         header_html::AbstractString="",
     )::String
 
@@ -91,8 +89,6 @@ function generate_html(;
         window.pluto_statefile = $(statefile_js);
         window.pluto_preamble_html = $(preamble_html_js);
         </script>
-        $(static_javascript != "" ? "<script src=\"$(static_javascript)\" type=\"module\" defer></script>"   : "")
-        $(static_css        != "" ? "<link rel=\"stylesheet\" href=\"$(static_css)\" type=\"text/css\">" : "")
         <meta name=\"pluto-insertion-spot-parameters\">
         """
     )
