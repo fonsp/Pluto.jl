@@ -322,7 +322,7 @@ export class Editor extends Component {
         this.setStatePromise = (fn) => new Promise((r) => this.setState(fn, r))
 
         // these are things that can be done to the local notebook
-        this.actions = {
+        this.real_actions = {
             get_notebook: () => this?.state?.notebook || {},
             send: (message_type, ...args) => this.client.send(message_type, ...args),
             get_published_object: (objectid) => this.state.notebook.published_objects[objectid],
@@ -622,6 +622,7 @@ export class Editor extends Component {
                 return message.versions
             },
         }
+        this.actions = { ...this.real_actions }
 
         const apply_notebook_patches = (patches, /** @type {NotebookData?} */ old_state = null, get_reverse_patches = false) =>
             new Promise((resolve) => {
@@ -822,26 +823,35 @@ patch: ${JSON.stringify(
                 connect_metadata: { notebook_id: this.state.notebook.notebook_id },
             }).then(on_establish_connection)
 
-        this.real_actions = this.actions
-        this.fake_actions =
-            launch_params.slider_server_url != null
-                ? slider_server_actions({
-                      setStatePromise: this.setStatePromise,
-                      actions: this.actions,
-                      launch_params: launch_params,
-                      apply_notebook_patches,
-                      get_original_state: () => this.props.initial_notebook_state,
-                      get_current_state: () => this.state.notebook,
-                  })
-                : nothing_actions({
-                      actions: this.actions,
-                  })
-
         this.on_disable_ui = () => {
             set_disable_ui_css(this.state.disable_ui)
 
-            //@ts-ignore
-            this.actions = this.state.disable_ui || (launch_params.slider_server_url != null && !this.state.connected) ? this.fake_actions : this.real_actions //heyo
+            // Pluto has three modes of operation:
+            // 1. (normal) Connected to a Pluto notebook.
+            // 2. Static HTML with PlutoSliderServer. All edits are ignored, but bond changes are processes by the PlutoSliderServer.
+            // 3. Static HTML without PlutoSliderServer. All interactions are ignored.
+            //
+            // To easily support all three with minimal changes to the source code, we sneakily swap out the `this.actions` object (`pluto_actions` in other source files) with a different one:
+            Object.assign(
+                this.actions,
+                // if we have no pluto server...
+                this.state.disable_ui || (launch_params.slider_server_url != null && !this.state.connected)
+                    ? // then use a modified set of actions
+                      launch_params.slider_server_url != null
+                        ? slider_server_actions({
+                              setStatePromise: this.setStatePromise,
+                              actions: this.actions,
+                              launch_params: launch_params,
+                              apply_notebook_patches,
+                              get_original_state: () => this.props.initial_notebook_state,
+                              get_current_state: () => this.state.notebook,
+                          })
+                        : nothing_actions({
+                              actions: this.actions,
+                          })
+                    : // otherwise, use the real actions
+                      this.real_actions
+            )
         }
         this.on_disable_ui()
 
