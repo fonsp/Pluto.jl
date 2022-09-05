@@ -100,7 +100,7 @@ const on_jump = (hasBarrier, pluto_actions, cell_id) => () => {
  * }} props
  * */
 export const Cell = ({
-    cell_input: { cell_id, code, code_folded, isolated, metadata },
+    cell_input: { cell_id, code, code_folded, metadata },
     cell_result: { queued, running, runtime, errored, output, logs, published_object_keys, depends_on_disabled_cells, depends_on_skipped_cells },
     cell_dependencies,
     cell_input_local,
@@ -168,7 +168,7 @@ export const Cell = ({
 
     const class_code_differs = code !== (cell_input_local?.code ?? code)
     const class_code_folded = code_folded && cm_forced_focus == null
-    const class_isolated = isolated;
+    const class_isolated = metadata.isolated;
 
     // during the initial page load, force_hide_input === true, so that cell outputs render fast, and codemirrors are loaded after
     let show_input = !force_hide_input && (errored || class_code_differs || !class_code_folded)
@@ -210,8 +210,8 @@ export const Cell = ({
         pluto_actions.fold_remote_cells(pluto_actions.get_selected_cells(cell_id, selected), !code_folded)
     }, [pluto_actions, cell_id, selected, code_folded])
     const on_cell_isolate = useCallback(() => {
-        pluto_actions.isolate_remote_cells(pluto_actions.get_selected_cells(cell_id, selected), !isolated)
-    }, [pluto_actions, cell_id, selected, code_folded, isolated])
+        pluto_actions.isolate_remote_cells(pluto_actions.get_selected_cells(cell_id, selected), !metadata.isolated)
+    }, [pluto_actions, cell_id, selected, code_folded])
     const on_run = useCallback(() => {
         pluto_actions.set_and_run_multiple(pluto_actions.get_selected_cells(cell_id, selected))
         set_waiting_to_run_smart(true)

@@ -40,8 +40,7 @@ Base.@kwdef mutable struct Cell
 
     code::String=""
     code_folded::Bool=false
-    isolated::Bool=false
-    
+
     output::CellOutput=CellOutput()
     queued::Bool=false
     running::Bool=false
@@ -72,7 +71,6 @@ function Base.convert(::Type{Cell}, cell::Dict)
         cell_id=UUID(cell["cell_id"]),
         code=cell["code"],
         code_folded=cell["code_folded"],
-        isolated=cell["isolated"],
         metadata=cell["metadata"],
     )
 end

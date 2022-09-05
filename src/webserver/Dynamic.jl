@@ -110,7 +110,6 @@ function notebook_to_js(notebook::Notebook)
                 "cell_id" => cell.cell_id,
                 "code" => cell.code,
                 "code_folded" => cell.code_folded,
-                "isolated" => cell.isolated,
                 "metadata" => cell.metadata,
             )
         for (id, cell) in notebook.cells_dict),

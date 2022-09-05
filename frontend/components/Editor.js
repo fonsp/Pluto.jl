@@ -70,7 +70,7 @@ const ProcessStatus = {
     waiting_to_restart: "waiting_to_restart",
 }
 
-const compute_isolated_cells = (notebook) => notebook.cell_order.filter((cell_id) => notebook.cell_inputs[cell_id].isolated)
+const compute_isolated_cells = (notebook) => notebook.cell_order.filter((cell_id) => notebook.cell_inputs[cell_id].metadata["isolated"])
 
 /**
  * Map of status => Bool. In order of decreasing prioirty.
@@ -564,7 +564,7 @@ export class Editor extends Component {
             isolate_remote_cells: async (cell_ids, newIsolated) => {
                 await update_notebook((notebook) => {
                     for (let cell_id of cell_ids) {
-                        notebook.cell_inputs[cell_id].isolated = newIsolated
+                        notebook.cell_inputs[cell_id].metadata["isolated"] = newIsolated
                     }
                 })
             },

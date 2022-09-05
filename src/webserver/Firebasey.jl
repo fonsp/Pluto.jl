@@ -638,9 +638,6 @@ function direct_diff(old::Cell, new::Cell)
 	if old.folded ≠ new.folded
 		push!(changes, ReplacePatch([:folded], new.folded))
 	end
-	if old.isolated ≠ new.isolated
-		push!(changes, ReplacePatch([:isolated], new.isolated))
-	end
 	changes
 end
   ╠═╡ =#
