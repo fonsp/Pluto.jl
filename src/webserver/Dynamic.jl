@@ -158,6 +158,7 @@ function notebook_to_js(notebook::Notebook)
                 # TODO: cache this
                 "installed_versions" => ctx === nothing ? Dict{String,String}() : notebook.nbpkg_installed_versions_cache,
                 "terminal_outputs" => notebook.nbpkg_terminal_outputs,
+                "install_time_ns" => notebook.nbpkg_install_time_ns,
                 "busy_packages" => notebook.nbpkg_busy_packages,
                 "instantiated" => notebook.nbpkg_ctx_instantiated,
             )

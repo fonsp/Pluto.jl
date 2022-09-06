@@ -479,6 +479,7 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 		if (notebook.nbpkg_ctx isa Nothing) != (just_loaded.nbpkg_ctx isa Nothing)
 			@info "nbpkg status changed, overriding..."
 			notebook.nbpkg_ctx = just_loaded.nbpkg_ctx
+			notebook.nbpkg_install_time_ns = just_loaded.nbpkg_install_time_ns
 		else
 			@info "Old new project" PkgCompat.read_project_file(notebook) PkgCompat.read_project_file(just_loaded)
 			@info "Old new manifest" PkgCompat.read_manifest_file(notebook) PkgCompat.read_manifest_file(just_loaded)
