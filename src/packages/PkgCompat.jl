@@ -3,7 +3,7 @@ module PkgCompat
 export package_versions, package_completions
 
 import Pkg
-import Pkg.Types: VersionRange
+import Pkg.Types: VersionRange, PackageEntry, VersionSpec, VersionBound
 
 import ..Pluto
 
@@ -43,7 +43,14 @@ I tried to only use public API, except:
 
 
 
-
+# This is needed as the internal API handling package opeartions has changed between 1.6 and 1.8
+function handle_package_input!(pkg::Pkg.Types.PackageSpec) 
+	@static if isdefined(Pkg.API, :handle_package_input!)
+		Pkg.API.handle_package_input!(pkg)
+	else
+		pkg
+	end
+end
 
 ###
 # CONTEXT
@@ -413,6 +420,115 @@ function get_manifest_version(ctx::PkgContext, package_name::AbstractString)
         entry = _get_manifest_entry(ctx, package_name)
 		entry === nothing ? nothing : entry.version
     end
+end
+
+is_custom_pkgstr(package_name, pkg_str) = pkg_str !== "add $package_name"
+
+
+###
+# PkgData
+###
+Base.@kwdef struct PkgData{F <: Function}
+	installed_version::Union{Nothing, VersionNumber} = nothing
+	pkgfunc::F = Pkg.add
+	spec::Pkg.Types.PackageSpec
+	pkg_str::String
+end
+
+PkgData(v::AbstractString, pkgfunc::Function, spec::Pkg.Types.PackageSpec, pkg_str::String) = PkgData(VersionNumber(v), pkgfunc, spec, pkg_str)
+
+const _PKGDATA_FIELDS = fieldnames(PkgData) # This is used to avoid fieldnames runtime impact and the need of generated function, see https://discourse.julialang.org/t/slowness-of-fieldnames-and-propertynames/55364
+function PkgData(p::PkgData; kwargs...)
+	args = map(_PKGDATA_FIELDS) do field
+		get(kwargs, field, getfield(p,field))
+	end
+	PkgData(args...)
+end
+
+function PkgData(pkg_str::AbstractString; package_name = nothing, kwargs...)
+	spec, pkgfunc = validate_pkgstr(package_name, pkg_str)
+	PkgData(; pkgfunc, spec, pkg_str, kwargs...)
+end
+
+has_custom_pkg_str(p::PkgData) = p.spec.name === nothing || p.pkg_str !== "add $(p.spec.name)"
+is_dev(p::PkgData) = startswith(p.pkg_str, "dev")
+function is_installed_correctly(p::PkgData)
+	return p.installed_version !== nothing || (p.spec.name !== nothing && is_stdlib(p.spec.name))
+end
+
+function to_js_dict(p::PkgData)
+	Dict{String, Any}(
+		"installed_version" => p.installed_version,
+		"pkg_str" => p.pkg_str,
+		"has_custom_pkg_str" => has_custom_pkg_str(p),
+		"is_dev" => is_dev(p),
+	)
+end
+
+
+const VERSIONBOUND_WILDCARD = UInt32(888)
+# This is a slightly modified version of `Base.print(io::IO, r::VersionRange)` from Pkg. It is used to generate the compat entries
+# Since we are only supporting Julia ≥ 1.6, we are gonna exploit the compat
+# hyphen ranges for specifically requested package versions. To more easily identify
+# what entries are automatically added by Pluto, we are gonna use special
+# numbers in the compat entries. We always enter the full 3 semver digits for
+# both lower and upper bound, and use 888 as wildcard for the non-provided
+# upper-bound semver digits.
+function compat_entry_string(r::VersionRange, manifest_version::VersionNumber)
+	io = IOBuffer()
+	m, n = r.lower.n, r.upper.n
+    if (m, n) == (0, 0)
+		# This is the case where no version specifier was given
+		print(io, '~')
+		print(io, manifest_version)
+    else
+		lower = r.lower
+		# We modify the upper versionbound to always have all three digits printed, putting `888` to the undefined ones of the upper
+		upper = VersionBound(Tuple(i > n ? VERSIONBOUND_WILDCARD : r.upper.t[i] for i ∈ 1:3))
+        join(io, lower.t, '.')
+		print(io, " - ")
+		join(io, upper.t, '.')
+    end
+	return String(take!(io))
+end
+
+"""
+Given an intended `package_name` and `pkg_str`, verify that `pkg_str` is a valid string to install the intended package using the PkgREPL 
+"""
+function validate_pkgstr(package_name::Union{String,Nothing}, pkg_str::String)
+    pkgspec, func = parse_pkgstr(pkg_str)
+    # We check that the package name is consistent with the provided command, but we skip packagespec without names (ones provided with urls or paths)
+    if pkgspec.name !== nothing && package_name !== nothing && package_name !== pkgspec.name 
+		error("The package name extracted from the command ($(pkgspec.name)) differs from the provided one ($(package_name)). Please correct the command")
+	end
+    
+    # We only support add and develop as commands for the moment
+    func ∉ (Pkg.add, Pkg.develop) && error("Only add and develop commands are currently supported, please modify your command")
+    # If nothing else failed, we just return an empty string
+    return pkgspec, func
+end
+
+"""
+Take a string and extract the Pkg.API function `func` and PackageSpec `pkg_spec` that would be executed by pasting `pkg_str` in the PkgREPL
+"""
+function parse_pkgstr(pkg_str::String)
+    statements = try
+        Pkg.REPLMode.parse(pkg_str)
+    catch
+        error("The provided command is not valid, please modify your command")
+    end
+    # We check that no more than 1 statement come out of the parsing
+    length(statements) > 1 && error("The provided command includes multiple statements, please provide a single statement")
+    command = Pkg.REPLMode.Command(statements[1])
+    # We check for single package
+    args = command.arguments
+    length(args) > 1 && error("The provided commands adds multiple packages, please only provide a command for $package_name")
+    # We extract and pre-process the package_spec
+    pkgspec = args[1]
+	handle_package_input!(pkgspec)
+    # We also extract the extracted function from the command
+    func = command.spec.api
+    return pkgspec, func
 end
 
 ###

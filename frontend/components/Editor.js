@@ -170,12 +170,20 @@ const first_true_key = (obj) => {
  */
 
 /**
+ * @typedef PkgData
+ * @property {string} installed_version
+ * @property {string} pkg_str The equivalent PkgREPL string to be used to install the package
+ * @property {boolean} has_custom_pkg_str True if the package in question has a non-standard pkg_str, where standard is `add $(package_name)`
+ * @property {boolean} is_dev True if the package has en added with Pkg.develop rather than Pkg.add
+ */
+
+/**
  * @typedef NotebookPkgData
  * @type {{
  *  enabled: boolean,
  *  restart_recommended_msg: string?,
  *  restart_required_msg: string?,
- *  installed_versions: { [pkg_name: string]: string },
+ *  installed_packages: { [pkg_name: string]: PkgData },
  *  terminal_outputs: { [pkg_name: string]: string },
  *  busy_packages: string[],
  *  instantiated: boolean,
@@ -617,7 +625,7 @@ export class Editor extends Component {
             /** This actions avoids pushing selected cells all the way down, which is too heavy to handle! */
             get_selected_cells: (cell_id, /** @type {boolean} */ allow_other_selected_cells) =>
                 allow_other_selected_cells ? this.state.selected_cells : [cell_id],
-            get_avaible_versions: async ({ package_name, notebook_id }) => {
+            get_available_versions: async ({ package_name, notebook_id }) => {
                 const { message } = await this.client.send("nbpkg_available_versions", { package_name: package_name }, { notebook_id: notebook_id })
                 return message.versions
             },

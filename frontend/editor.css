@@ -1748,6 +1748,18 @@ pkg-status-mark.disable_pkg > button > span::after {
     filter: var(--image-filters);
 }
 
+pkg-status-mark.custom_pkg_str > button > span::after {
+    opacity: 0.6;
+    /* The filter comes from using https://codepen.io/sosuke/pen/Pjoqqp with a target color of #f5980c*/
+    filter: invert(68%) sepia(24%) saturate(3205%) hue-rotate(353deg) brightness(97%) contrast(99%);
+}
+
+pkg-status-mark.custom_pkg_str.dev_pkg > button > span::after {
+    opacity: 0.6;
+    /* The filter comes from using https://codepen.io/sosuke/pen/Pjoqqp with a target color of #d428eb*/
+    filter: invert(31%) sepia(61%) saturate(4615%) hue-rotate(278deg) brightness(95%) contrast(108%);
+}
+
 pluto-popup {
     display: block;
     position: absolute;

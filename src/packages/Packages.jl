@@ -1,7 +1,7 @@
 
 import .ExpressionExplorer: external_package_names
 import .PkgCompat
-import .PkgCompat: select, is_stdlib
+import .PkgCompat: select, is_stdlib, PkgData
 
 const tiers = [
 	Pkg.PRESERVE_ALL,
@@ -147,8 +147,9 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                 
                 # TODO: instead of Pkg.PRESERVE_ALL, we actually want:
                 # "Pkg.PRESERVE_DIRECT, but preserve exact verisons of Base.loaded_modules"
+                custom_pkgstrs = get(get_metadata(notebook), "custom_pkgstrs", Dict{String, Any}())
 
-                to_add = filter(PkgCompat.package_exists, added)
+                to_add = filter(x -> haskey(custom_pkgstrs, x) || PkgCompat.package_exists(x), added)
                 
                 if !isempty(to_add)
                     @debug to_add
@@ -158,6 +159,7 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                         withinteractive(false) do
                             # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
                             notebook.nbpkg_ctx = PkgCompat.clear_auto_compat_entries(notebook.nbpkg_ctx)
+                            pkg_operations = group_pkg_operations(notebook, to_add)
 
                             try
                                 for tier in [
@@ -169,10 +171,9 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                                     used_tier = tier
 
                                     try
-                                        Pkg.add(notebook.nbpkg_ctx, [
-                                            Pkg.PackageSpec(name=p)
-                                            for p in to_add
-                                        ]; preserve=used_tier)
+                                        for (func, pkgspec_vec) in pkg_operations
+                                            func(notebook.nbpkg_ctx, pkgspec_vec; preserve = used_tier)
+                                        end
                                         
                                         break
                                     catch e
@@ -265,7 +266,13 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
                 update_nbpkg_cache!(notebook)
 				send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 			end
-			 sync_nbpkg_core(notebook, old_topology, new_topology; on_terminal_output=iocallback, lag = session.options.server.simulated_pkg_lag)
+			result = sync_nbpkg_core(notebook, old_topology, new_topology; on_terminal_output=iocallback, lag = session.options.server.simulated_pkg_lag)
+			# If nothing happened, we might still have to remove packages that were temporary added to the cache by the front-end but did not end up being installed, either because the cell was cancelled before being run or soemthing else
+			if any(!PkgCompat.is_installed_correctly, values(notebook.nbpkg_installed_pkgdata_cache))
+			    update_nbpkg_cache!(notebook) # This is here for the moment to eventually remove 
+				send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
+			end
+			return result
 		end
 
 		if pkg_result.did_something
@@ -451,12 +458,41 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
 	end
 end
 
-nbpkg_cache(ctx::Union{Nothing,PkgContext}) = ctx === nothing ? Dict{String,String}() : Dict{String,String}(
-    x => string(PkgCompat.get_manifest_version(ctx, x)) for x in keys(PkgCompat.project(ctx).dependencies)
-)
+function nbpkg_cache(ctx::Union{Nothing,PkgContext}, custom_pkgstrs::Dict{String, Any})
+    cache = Dict{String, PkgData}()
+    update_nbpkg_cache!(cache, custom_pkgstrs, ctx)
+    return cache
+end
+
+function update_nbpkg_cache!(cache::Dict{String,PkgData}, custom_pkgstrs::Dict{String, Any}, ctx::Union{Nothing,PkgContext})
+    if ctx === nothing 
+        empty!(cache)
+    else 
+        pkg_names = keys(PkgCompat.project(ctx).dependencies)
+        # We remove the entries that are not installed anymore
+        filter_func = pair -> pair.first in pkg_names
+        filter!(filter_func, cache)
+        filter!(filter_func, custom_pkgstrs)
+        # We either modify or create the dictionary entry ex-novo
+        for name in pkg_names
+            manifest_version = PkgCompat.get_manifest_version(ctx, name)
+            installed_version = manifest_version === "stdlib" ? nothing : manifest_version
+            pkg_str = get(custom_pkgstrs, name, "add $name")::String # We annotate here as the notebook metadata dicts have Any values
+            entry = get!(cache, name, PkgData(pkg_str))
+            # We update the installed version
+            cache[name] = PkgData(entry; installed_version)
+        end 
+    end
+    return cache
+end
 
 function update_nbpkg_cache!(notebook::Notebook)
-    notebook.nbpkg_installed_versions_cache = nbpkg_cache(notebook.nbpkg_ctx)
+    notebook_metadata = get_metadata(notebook)
+    # The Dict seems to be needed as the returned metadata is Dict{String, Any}
+    custom_pkgstrs = get(notebook_metadata, "custom_pkgstrs", Dict{String, Any}())
+    cache = notebook.nbpkg_installed_pkgdata_cache
+    update_nbpkg_cache!(cache, custom_pkgstrs, notebook.nbpkg_ctx)
+    isempty(custom_pkgstrs) && delete!(notebook_metadata, "custom_pkgstrs")
     notebook
 end
 
@@ -536,4 +572,26 @@ function stoplistening(listener::IOListener)
         listener.running[] = false
         trigger(listener)
     end
+end
+
+function pkgdata_to_js(notebook::Notebook) 
+    Dict(k => PkgCompat.to_js_dict(v) for (k,v) in notebook.nbpkg_installed_pkgdata_cache)
+end
+
+function group_pkg_operations(notebook::Notebook, pkg_names::Vector{String})
+	out = []
+    to_add = Pkg.Types.PackageSpec[]
+    to_develop = Pkg.Types.PackageSpec[]
+    # We add eventual new packages that have not been processed yet
+    for name in pkg_names
+        p = get!(notebook.nbpkg_installed_pkgdata_cache, name, PkgData("add $name"))
+        if p.pkgfunc === Pkg.add
+            push!(to_add, p.spec)
+        elseif p.pkgfunc === Pkg.develop
+            push!(to_develop, p.spec)
+        end
+    end
+    !isempty(to_add) && push!(out, (Pkg.add, to_add))
+    !isempty(to_develop) && push!(out, (Pkg.develop, to_develop))
+    return out
 end
