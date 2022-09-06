@@ -1451,6 +1451,7 @@ patch: ${JSON.stringify(
                                           launch_params: launch_params,
                                       })}
                                   notebookfile=${launch_params.notebookfile == null ? null : new URL(launch_params.notebookfile, window.location.href).href}
+                                  notebook=${notebook}
                               />`
                             : null
                     }
@@ -1466,11 +1467,11 @@ patch: ${JSON.stringify(
                         <${Preamble}
                             last_update_time=${this.state.last_update_time}
                             any_code_differs=${status.code_differs}
-                            last_hot_reload_time=${this.state.notebook.last_hot_reload_time}
+                            last_hot_reload_time=${notebook.last_hot_reload_time}
                             connected=${this.state.connected}
                         />
                         <${Notebook}
-                            notebook=${this.state.notebook}
+                            notebook=${notebook}
                             cell_inputs_local=${this.state.cell_inputs_local}
                             disable_input=${this.state.disable_ui || !this.state.connected /* && this.state.backend_launch_phase == null*/}
                             last_created_cell=${this.state.last_created_cell}

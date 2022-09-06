@@ -51,7 +51,7 @@ export function deserialize_repl(repl_session) {
         .filter((s) => s !== "")
 }
 
-export const detect_deserializer = (topaste) =>
+export const detect_deserializer = (/** @type {string} */ topaste) =>
     topaste.trim().startsWith(JULIA_REPL_PROMPT)
         ? deserialize_repl
         : topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length
