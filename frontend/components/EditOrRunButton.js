@@ -92,7 +92,9 @@ export const BinderButton = ({ offer_binder, start_binder, notebookfile, noteboo
                           ${`To be able to edit code and run cells, you need to run the notebook yourself. `}
                           <b>Where would you like to run the notebook?</b>
                       </p>
-                      ${runtime_str == null ? null : html` <div class="expected_runtime_box">${`Expected runtime: `}<span>${runtime_str}</span></div>`}
+                      ${runtime_str == null
+                          ? null
+                          : html` <div class="expected_runtime_box">${`This notebook takes about `}<span>${runtime_str}</span>${` to run.`}</div>`}
                       <h2 style="margin-top: 3em;">In the cloud <em>(experimental)</em></h2>
                       <div style="padding: 0 2rem;">
                           <button onClick=${start_binder}>
