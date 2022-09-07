@@ -150,6 +150,8 @@ import Distributed
         @test notebook.cells[8] |> noerror
         @test notebook.cells[9] |> noerror
         @test notebook.cells[9].output.body == "8"
+        @test !notebook.cells[8].depends_on_disabled_cells
+        @test !notebook.cells[9].depends_on_disabled_cells
         
         notebook.cells[8].metadata["disabled"] = true
         update_run!(🍭, notebook, notebook.cells[8])
@@ -157,9 +159,11 @@ import Distributed
         
         notebook.cells[7].metadata["disabled"] = false
         update_run!(🍭, notebook, notebook.cells[7])
-        @test notebook.cells[8] |> noerror
+        @test notebook.cells[7] |> noerror
         @test notebook.cells[9] |> noerror
         @test notebook.cells[9].output.body == "7"
+        @test !notebook.cells[7].depends_on_disabled_cells
+        @test !notebook.cells[9].depends_on_disabled_cells
         
         notebook.cells[8].metadata["disabled"] = false
         update_run!(🍭, notebook, notebook.cells[8])

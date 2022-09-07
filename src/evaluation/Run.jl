@@ -32,7 +32,7 @@ function find_indirectly_deactivated_cells(topology::NotebookTopology, deactivat
             #   This is pretty unoptimized since we somehow need to recompute a lot of things from the
             #   topological_order call, maybe could be solved as a tree traversal instead
             parents = where_assigned(topology, topology.nodes[other_other].references)
-            if any(occursin(topology.disabled_cells), parents)
+            if any(∈(topology.disabled_cells), parents)
                 continue # this is disabled down the line
             end
 
