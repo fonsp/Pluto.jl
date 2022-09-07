@@ -4,7 +4,7 @@ import { html, useContext, useState } from "../imports/Preact.js"
 const StackFrameFilename = ({ frame, cell_id }) => {
     const sep_index = frame.file.indexOf("#==#")
     if (sep_index != -1) {
-        const frame_cell_id = frame.file.substr(sep_index + 4)
+        const frame_cell_id = frame.file.substr(sep_index + 4, 36)
         const a = html`<a
             href="#"
             onclick=${(e) => {

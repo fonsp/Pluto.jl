@@ -181,6 +181,17 @@ else
     m
 end
 replace_pluto_properties_in_expr(other; kwargs...) = other
+function replace_pluto_properties_in_expr(ln::LineNumberNode; cell_id, kwargs...) # See https://github.com/fonsp/Pluto.jl/pull/2241
+    file = string(ln.file)
+    out = if endswith(file, string(cell_id))
+        # We already have the correct cell_id in this LineNumberNode
+        ln
+    else
+        # We append to the LineNumberNode file #@#==# + cell_id
+        LineNumberNode(ln.line, Symbol(file * "#@#==#$(cell_id)"))
+    end
+    return out
+end
 
 "Similar to [`replace_pluto_properties_in_expr`](@ref), but just checks for existance and doesn't check for [`GiveMeCellID`](@ref)"
 has_hook_style_pluto_properties_in_expr(::GiveMeRerunCellFunction) = true
@@ -252,7 +263,6 @@ module CantReturnInPluto
     end
     replace_returns_with_error_in_interpolation(ex) = ex
 end
-
 
 function try_macroexpand(mod, cell_uuid, expr)
     # Remove the precvious cached expansion, so when we error somewhere before we update,
@@ -399,7 +409,10 @@ struct OutputNotDefined end
 function compute(m::Module, computer::Computer)
     # 1. get the referenced global variables
     # this might error if the global does not exist, which is exactly what we want
-    input_global_values = getfield.([m], computer.input_globals)
+    input_global_values = Vector{Any}(undef, length(computer.input_globals))
+    for (i, s) in enumerate(computer.input_globals)
+        input_global_values[i] = getfield(m, s)
+    end
 
     # 2. run the function
     out = Base.invokelatest(computer.f, input_global_values...)
@@ -1533,7 +1546,17 @@ const integrations = Integration[
                 0
             end
             const max_plot_size = 8000
-            pluto_showable(::MIME"image/svg+xml", p::Plots.Plot{Plots.GRBackend}) = approx_size(p) <= max_plot_size
+            function pluto_showable(::MIME"image/svg+xml", p::Plots.Plot{Plots.GRBackend})
+                format = try
+                    p.attr[:html_output_format]
+                catch
+                    :auto
+                end
+                
+                format === :svg || (
+                    format === :auto && approx_size(p) <= max_plot_size
+                )
+            end
             pluto_showable(::MIME"text/html", p::Plots.Plot{Plots.GRBackend}) = false
         end,
     ),
@@ -2132,7 +2155,7 @@ function Logging.handle_message(pl::PlutoLogger, level, msg, _module, group, id,
         
         put!(pl.log_channel, Dict{String,Any}(
             "level" => string(level),
-            "msg" => format_output_default(msg isa String ? Text(msg) : msg),
+            "msg" => format_output_default(msg isa AbstractString ? Text(msg) : msg),
             "group" => string(group),
             "id" => string(id),
             "file" => string(file),

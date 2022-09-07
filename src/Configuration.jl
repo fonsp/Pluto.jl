@@ -28,6 +28,7 @@ function __init__()
 end
 
 const ROOT_URL_DEFAULT = nothing
+const BASE_URL_DEFAULT = "/"
 const HOST_DEFAULT = "127.0.0.1"
 const PORT_DEFAULT = nothing
 const PORT_HINT_DEFAULT = 1234
@@ -70,10 +71,12 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 - `simulated_pkg_lag::Real=$SIMULATED_PKG_LAG_DEFAULT` (internal) Extra lag to add to operations done by Pluto's package manager. Will be multiplied by `0.5 + rand()`.
 - `injected_javascript_data_url::String = "$INJECTED_JAVASCRIPT_DATA_URL_DEFAULT"` (internal) Optional javascript injectables to the front-end. Can be used to customize the editor, but this API is not meant for general use yet.
 - `on_event::Function = $ON_EVENT_DEFAULT`
-- `root_url::Union{Nothing,String} = $ROOT_URL_DEFAULT` This setting is used to specify the root URL of the Pluto server, but this setting is *only* used to customize the launch message (*"Go to http://localhost:1234/ in your browser"*). You can probably ignore this.
+- `root_url::Union{Nothing,String} = $ROOT_URL_DEFAULT` This setting is used to specify the root URL of the Pluto server, but this setting is *only* used to customize the launch message (*"Go to http://localhost:1234/ in your browser"*). You can probably ignore this and use `base_url` instead.
+- `base_url::String = "$BASE_URL_DEFAULT"` This setting is used to specify the base URL at which the Pluto server will receive requests, it should start be a valid path starting and ending with a '/'.
 """
 @option mutable struct ServerOptions
     root_url::Union{Nothing,String} = ROOT_URL_DEFAULT
+    base_url::String = BASE_URL_DEFAULT
     host::String = HOST_DEFAULT
     port::Union{Nothing,Integer} = PORT_DEFAULT
     port_hint::Integer = PORT_HINT_DEFAULT
@@ -156,12 +159,20 @@ const HISTORY_FILE_DEFAULT = "no"
 
 function roughly_the_number_of_physical_cpu_cores()
     # https://gist.github.com/fonsp/738fe244719cae820245aa479e7b4a8d
-    if Sys.CPU_THREADS == 1
+    threads = Sys.CPU_THREADS
+    num_threads_is_maybe_doubled_for_marketing = Sys.ARCH === :x86_64
+    
+    if threads == 1
         1
-    elseif Sys.CPU_THREADS == 2 || Sys.CPU_THREADS == 3
+    elseif threads == 2 || threads == 3
         2
+    elseif num_threads_is_maybe_doubled_for_marketing
+        # This includes:
+        # - intel hyperthreading
+        # - Apple ARM efficiency cores included in the count (when running the x86 executable)
+        threads ÷ 2
     else
-        Sys.CPU_THREADS ÷ 2
+        threads
     end
 end
 
@@ -218,6 +229,7 @@ end
 
 function from_flat_kwargs(;
         root_url::Union{Nothing,String} = ROOT_URL_DEFAULT,
+        base_url::String = BASE_URL_DEFAULT,
         host::String = HOST_DEFAULT,
         port::Union{Nothing,Integer} = PORT_DEFAULT,
         port_hint::Integer = PORT_HINT_DEFAULT,
@@ -252,6 +264,7 @@ function from_flat_kwargs(;
     )
     server = ServerOptions(;
         root_url,
+        base_url,
         host,
         port,
         port_hint,
