@@ -46,26 +46,45 @@ function updated_topology(old_topology::NotebookTopology, notebook::Notebook, ce
 				!isempty(new_nodes[c].macrocalls)
 			end,
 		),
-		# ...minus cells that were removed
+		# ...minus cells that were removed.
 		removed_cells,
 	)
-		
+
+	new_disabled_set = setdiff!(
+		union!(
+			Set{Cell}(),
+			# all cells that were disabled before...
+			old_topology.disabled_cells,
+			# ...plus all cells that changed...
+			cells,
+		),
+		# ...minus cells that changed and are not disabled.
+		Iterators.filter(!is_disabled, cells),
+	)
+
 	unresolved_cells = if new_unresolved_set == old_topology.unresolved_cells
 		old_topology.unresolved_cells
 	else
 		ImmutableSet(new_unresolved_set; skip_copy=true)
 	end
 
+	disabled_cells = if new_disabled_set == old_topology.disabled_cells
+		old_topology.disabled_cells
+	else
+		ImmutableSet(new_disabled_set; skip_copy=true)
+	end
+
 	cell_order = if old_cells == notebook.cells
 		old_topology.cell_order
 	else
-		ImmutableVector(notebook.cells)
+		ImmutableVector(notebook.cells) # makes a copy
 	end
 	
 	NotebookTopology(;
 		nodes=new_nodes,
 		codes=new_codes,
 		unresolved_cells, 
+        disabled_cells,
 		cell_order,
 	)
 end

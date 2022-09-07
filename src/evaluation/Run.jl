@@ -78,6 +78,7 @@ function run_reactive_core!(
         ),
         unresolved_cells = new_topology.unresolved_cells,
         cell_order = new_topology.cell_order,
+        disabled_cells=new_topology.disabled_cells,
     )
 
     # save the old topological order - we'll delete variables assigned from its
@@ -94,8 +95,7 @@ function run_reactive_core!(
     to_run_raw = setdiff(union(new_runnable, old_runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
 
     # find (indirectly) deactivated cells and update their status
-    disabled_cells = filter(is_disabled, notebook.cells)
-    indirectly_deactivated = collect(topological_order(new_topology, disabled_cells))
+    indirectly_deactivated = collect(topological_order(new_topology, collect(new_topology.disabled_cells)))
     for cell in indirectly_deactivated
         cell.running = false
         cell.queued = false
@@ -377,6 +377,7 @@ function update_save_run!(
 			codes=setdiffkeys(old.codes, to_remove),
 			unresolved_cells=setdiff(old.unresolved_cells, to_remove),
 			cell_order=old.cell_order,
+			disabled_cells=setdiff(old.disabled_cells, to_remove),
 		)
 		
 		# and don't run them
