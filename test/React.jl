@@ -94,6 +94,9 @@ import Distributed
             Cell("f(x) = 4"),
             Cell("g(x) = 5"),
             Cell("g = 6"),
+            Cell("a = 7"),
+            Cell("a = 8"),
+            Cell("a"),
         ])
         fakeclient.connected_notebook = notebook
     
@@ -135,6 +138,34 @@ import Distributed
         update_run!(🍭, notebook, notebook.cells[5])
         @test notebook.cells[5] |> noerror
         @test notebook.cells[6] |> noerror
+        
+        update_run!(🍭, notebook, notebook.cells[7:9])
+        @test occursinerror("Multiple", notebook.cells[7])
+        @test occursinerror("Multiple", notebook.cells[8])
+        @test notebook.cells[9].errored
+        
+        
+        notebook.cells[7].metadata["disabled"] = true
+        update_run!(🍭, notebook, notebook.cells[7])
+        @test notebook.cells[8] |> noerror
+        @test notebook.cells[9] |> noerror
+        @test notebook.cells[9].output.body == "8"
+        
+        notebook.cells[8].metadata["disabled"] = true
+        update_run!(🍭, notebook, notebook.cells[8])
+        @test notebook.cells[9].depends_on_disabled_cells
+        
+        notebook.cells[7].metadata["disabled"] = false
+        update_run!(🍭, notebook, notebook.cells[7])
+        @test notebook.cells[8] |> noerror
+        @test notebook.cells[9] |> noerror
+        @test notebook.cells[9].output.body == "7"
+        
+        notebook.cells[8].metadata["disabled"] = false
+        update_run!(🍭, notebook, notebook.cells[8])
+        @test occursinerror("Multiple", notebook.cells[7])
+        @test occursinerror("Multiple", notebook.cells[8])
+        @test notebook.cells[9].errored
 
         WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
     end
