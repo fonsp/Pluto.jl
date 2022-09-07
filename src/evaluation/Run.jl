@@ -325,10 +325,51 @@ function update_save_run!(
 	save::Bool=true, 
 	run_async::Bool=false, 
 	prerender_text::Bool=false, 
+	auto_solve_multiple_defs::Bool=false,
 	kwargs...
 )
 	old = notebook.topology
+	old_order = topological_order(notebook)
 	new = notebook.topology = updated_topology(old, notebook, cells) # macros are not yet resolved
+	new_order = topological_order(notebook)
+	
+	if auto_solve_multiple_defs
+		fresh_errorz = filter(cells) do c
+			!(get(old_order.errable, c, nothing) isa MultipleDefinitionsError) &&
+			(get(new_order.errable, c, nothing) isa MultipleDefinitionsError)
+		end
+		
+		if !isempty(fresh_errorz)
+			@debug "Solving multiple defs" fresh_errorz
+			
+			just_disabled = Set{Cell}()
+			
+			for c in fresh_errorz
+				defined_here = new.nodes[c].definitions
+				@debug "Solving multiple defs" c.cell_id defined_here
+				if length(defined_here) == 1
+					# the cell defines only one variable. for more than one, we might confuse the user
+					other_definers = setdiff(
+						where_assigned(new, defined_here), 
+						(c,)
+					)
+					@debug "Solving multiple defs" c.cell_id map(cell_id, other_definers) disjoint(fresh_errorz, other_definers)
+					if disjoint(fresh_errorz, other_definers)
+						# we want c to be the only element of cells that defines this varialbe, i.e. all other definers must have been created previously
+						
+						foreach(c -> set_disabled(c, true), other_definers)
+						union!(just_disabled, other_definers)
+					end
+				end
+			end
+			
+			if !isempty(just_disabled)
+				@debug "Using augmented topology" map(cell_id, just_disabled)
+				cells = union(cells, just_disabled)
+				new = notebook.topology = updated_topology(new, notebook, cells)
+			end
+		end
+	end
 
 	update_dependency_cache!(notebook)
 	save && save_notebook(session, notebook)

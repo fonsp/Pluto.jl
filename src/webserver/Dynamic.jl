@@ -420,7 +420,7 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
     end
     
     # save=true fixes the issue where "Submit all changes" or `Ctrl+S` has no effect.
-    update_save_run!(🙋.session, 🙋.notebook, cells; run_async=true, save=true)
+    update_save_run!(🙋.session, 🙋.notebook, cells; run_async=true, save=true, auto_solve_multiple_defs=true)
 end
 
 responses[:get_all_notebooks] = function response_get_all_notebooks(🙋::ClientRequest)

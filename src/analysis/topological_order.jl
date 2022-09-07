@@ -107,7 +107,7 @@ end
 
 Base.collect(notebook_topo_order::TopologicalOrder) = union(notebook_topo_order.runnable, keys(notebook_topo_order.errable))
 
-function disjoint(a::Set, b::Set)
+function disjoint(a, b)
 	!any(x in a for x in b)
 end
 
