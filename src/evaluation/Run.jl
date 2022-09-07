@@ -375,7 +375,7 @@ function update_save_run!(
 			codes=setdiffkeys(old.codes, to_remove),
 			unresolved_cells=setdiff(old.unresolved_cells, to_remove),
 			cell_order=old.cell_order,
-			disabled_cells=old.disabled_cells,
+			disabled_cells=setdiff(old.disabled_cells, to_remove),
 		)
 		
 		# and don't run them
