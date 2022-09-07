@@ -68,7 +68,7 @@ function updated_topology(old_topology::NotebookTopology, notebook::Notebook, ce
 		ImmutableSet(new_unresolved_set; skip_copy=true)
 	end
 
-	disabled = if new_disabled_set == old_topology.disabled_cells
+	disabled_cells = if new_disabled_set == old_topology.disabled_cells
 		old_topology.disabled_cells
 	else
 		ImmutableSet(new_disabled_set; skip_copy=true)
