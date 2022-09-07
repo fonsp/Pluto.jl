@@ -33,6 +33,7 @@ import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
 import { HijackExternalLinksToOpenInNewTab } from "./HackySideStuff/HijackExternalLinksToOpenInNewTab.js"
 import { FrontMatterInput } from "./FrontmatterInput.js"
 import { EditorLaunchBackendButton } from "./Editor/LaunchBackendButton.js"
+import { get_environment } from "../common/Environment.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -762,7 +763,7 @@ patch: ${JSON.stringify(
             // nasty
             Object.assign(this.client, client)
             try {
-                const { default: environment } = await import(this.client.session_options.server.injected_javascript_data_url)
+                const environment = await get_environment(client)
                 const { custom_editor_header_component } = environment({ client, editor: this, imports: { preact } })
                 this.setState({
                     extended_components: {
