@@ -1433,35 +1433,7 @@ patch: ${JSON.stringify(
                                 })
                             )}
                     />
-<<<<<<< HEAD
                     <${EditorLaunchBackendButton} editor=${this} launch_params=${launch_params} status=${status} />
-=======
-                    
-                    ${
-                        status.offer_local
-                            ? html`<${RunLocalButton}
-                                  start_local=${() =>
-                                      start_local({
-                                          setStatePromise: this.setStatePromise,
-                                          connect: this.connect,
-                                          launch_params: launch_params,
-                                      })}
-                              />`
-                            : status.offer_binder
-                            ? html`<${BinderButton}
-                                  offer_binder=${status.offer_binder}
-                                  start_binder=${() =>
-                                      start_binder({
-                                          setStatePromise: this.setStatePromise,
-                                          connect: this.connect,
-                                          launch_params: launch_params,
-                                      })}
-                                  notebookfile=${launch_params.notebookfile == null ? null : new URL(launch_params.notebookfile, window.location.href).href}
-                                  notebook=${notebook}
-                              />`
-                            : null
-                    }
->>>>>>> origin/main
                     <${FrontMatterInput} 
                         remote_frontmatter=${notebook.metadata?.frontmatter} 
                         set_remote_frontmatter=${(newval) =>
