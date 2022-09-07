@@ -76,6 +76,7 @@ function run_reactive_core!(
         ),
         unresolved_cells = new_topology.unresolved_cells,
         cell_order = new_topology.cell_order,
+        disabled_cells=new_topology.disabled_cells,
     )
 
     # save the old topological order - we'll delete variables assigned from its
@@ -375,6 +376,7 @@ function update_save_run!(
 			codes=setdiffkeys(old.codes, to_remove),
 			unresolved_cells=setdiff(old.unresolved_cells, to_remove),
 			cell_order=old.cell_order,
+			disabled_cells=old.disabled_cells,
 		)
 		
 		# and don't run them
