@@ -33,25 +33,27 @@ function updated_topology(old_topology::NotebookTopology, notebook::Notebook, ce
 		new_codes = merge(setdiffkeys(old_topology.codes, removed_cells), updated_codes)
 		new_nodes = merge(setdiffkeys(old_topology.nodes, removed_cells), updated_nodes)
 	end
-	
-	unresolved_cells = if isempty(updated_nodes) && isempty(removed_cells)
+
+	new_unresolved_set = setdiff!(
+		union!(
+			Set{Cell}(),
+			# all cells that were unresolved before, and did not change code...
+			Iterators.filter(old_topology.unresolved_cells) do c
+				!haskey(updated_nodes, c)
+			end,
+			# ...plus all cells that changed, and now use a macrocall...
+			Iterators.filter(cells) do c
+				!isempty(new_nodes[c].macrocalls)
+			end,
+		),
+		# ...minus cells that were removed
+		removed_cells,
+	)
+		
+	unresolved_cells = if new_unresolved_set == old_topology.unresolved_cells
 		old_topology.unresolved_cells
 	else
-		# The new set of unresolved cells is...
-		new_unresolved_set = setdiff!(
-			union!(
-				Set{Cell}(),
-				# all cells that were unresolved before...
-				old_topology.unresolved_cells,
-				# ...plus all cells that changed...
-				keys(updated_nodes),
-			),
-			# ...minus cells that were removed...
-			removed_cells, 
-			# ...minus cells that changed, which do not use any macros.
-			(c for (c,n) in updated_nodes if isempty(n.macrocalls))
-		)
-		ImmutableSet{Cell}(new_unresolved_set; skip_copy=true)
+		ImmutableSet(new_unresolved_set; skip_copy=true)
 	end
 
 	cell_order = if old_cells == notebook.cells

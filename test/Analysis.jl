@@ -91,32 +91,48 @@ import Pluto: Notebook, Cell, updated_topology, static_resolve_topology, is_just
         ])
         
         empty_top = notebook.topology
-        top = updated_topology(empty_top, notebook, notebook.cells)
+        topo = updated_topology(empty_top, notebook, notebook.cells)
         # updated_topology should preserve the identity of the topology if nothing changed. This means that we can cache the result of other functions in our code!
-        @test top === updated_topology(top, notebook, notebook.cells)
-        @test top === updated_topology(top, notebook, Cell[])
-        @test top === static_resolve_topology(top)
+        @test topo === updated_topology(topo, notebook, notebook.cells)
+        @test topo === updated_topology(topo, notebook, Cell[])
+        @test topo === static_resolve_topology(topo)
         
         # for n in fieldnames(NotebookTopology)
-        #     @test getfield(top, n) === getfield(top2a, n)
+        #     @test getfield(topo, n) === getfield(top2a, n)
         # end
         
         setcode!(notebook.cells[1], "x = 999")
-        top_2 = updated_topology(top, notebook, notebook.cells[1:1])
-        @test top_2 !== top
+        topo_2 = updated_topology(topo, notebook, notebook.cells[1:1])
+        @test topo_2 !== topo
         
         
         setcode!(notebook.cells[4], "@asdf 1 + 2")
-        top_3 = updated_topology(top_2, notebook, notebook.cells[4:4])
-        @test top_3 !== top_2
-        @test top_3 !== top
+        topo_3 = updated_topology(topo_2, notebook, notebook.cells[4:4])
+        @test topo_3 !== topo_2
+        @test topo_3 !== topo
         
-        @test top_3.unresolved_cells |> only === notebook.cells[4]
+        @test topo_3.unresolved_cells |> only === notebook.cells[4]
         
-        @info "aaa"
-        @test top_3 === updated_topology(top_3, notebook, notebook.cells)
-        @info "bbb"
-        @test top_3 === updated_topology(top_3, notebook, Cell[])
-        # @test top_3 === static_resolve_topology(top_3)
+        @test topo_3 === updated_topology(topo_3, notebook, notebook.cells[1:3])
+        @test topo_3 === updated_topology(topo_3, notebook, Cell[])
+        # rerunning the cell with the macro does not change the topology because it was already unresolved
+        @test topo_3 === updated_topology(topo_3, notebook, notebook.cells[1:4])
+        
+        # let's pretend that we resolved the macro in the 4th cell
+        topo_3_resolved = NotebookTopology(;
+            nodes=topo_3.nodes, 
+            codes=topo_3.codes, 
+            unresolved_cells=setdiff(topo_3.unresolved_cells, notebook.cells[4:4]),
+            cell_order=topo_3.cell_order,
+        )
+        
+        @test topo_3_resolved === updated_topology(topo_3_resolved, notebook, notebook.cells[1:3])
+        @test topo_3_resolved === updated_topology(topo_3_resolved, notebook, Cell[])
+        # rerunning the cell with the macro makes it unresolved again
+        @test topo_3_resolved !== updated_topology(topo_3_resolved, notebook, notebook.cells[1:4])
+        
+        notebook.cells[4] ∈ updated_topology(topo_3_resolved, notebook, notebook.cells[1:4]).unresolved_cells
+        
+        # @test topo_3 === static_resolve_topology(topo_3)
     end
 end
