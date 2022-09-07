@@ -23,7 +23,7 @@ export const get_environment = async (client) => {
         environment = env
     } else {
         // @ts-ignore
-        environment = window.pluto_injected_environment
+        environment = window.pluto_injected_environment.environment
     }
     return environment
 }
