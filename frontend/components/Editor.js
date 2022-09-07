@@ -522,7 +522,7 @@ export class Editor extends Component {
             },
             confirm_delete_multiple: async (verb, cell_ids) => {
                 if (cell_ids.length <= 1 || confirm(`${verb} ${cell_ids.length} cells?`)) {
-                    if (cell_ids.some((cell_id) => this.state.notebook.cell_results[cell_id].running || this.state.notebook.cell_results[cell_id].queued)) {
+                    if (cell_ids.some((cell_id) => this.state.notebook.cell_results[cell_id]?.running || this.state.notebook.cell_results[cell_id]?.queued)) {
                         if (confirm("This cell is still running - would you like to interrupt the notebook?")) {
                             this.actions.interrupt_remote(cell_ids[0])
                         }

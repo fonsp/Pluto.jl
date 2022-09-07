@@ -4,6 +4,48 @@ import .ExpressionExplorer: is_joined_funcname
 
 Base.push!(x::Set{Cell}) = x
 
+"Returns the cells that should be indirectly deactivated based on the explicitely deactivated cells"
+function find_indirectly_deactivated_cells(topology::NotebookTopology, deactivated_cells)
+    length(deactivated_cells) == 0 && return Cell[]
+
+    order = topological_order(topology, deactivated_cells)
+    to_delete = Set{Int}()
+
+    for cell in order.runnable
+        if !is_disabled(cell)
+            continue
+        end
+
+        others = where_assigned(topology, cell)
+
+        if length(others) > 1
+            other_other = others[findfirst(c -> c != cell && !is_disabled(c), others)]
+
+            # NOTE(paul):
+            #   This is pretty unoptimized since we somehow need to recompute a lot of things from the
+            #   topological_order call, maybe could be solved as a tree traversal instead
+            parents = where_assigned(topology, topology.nodes[other_other].references)
+            if any(is_disabled, parents)
+                continue # this is disabled down the line
+            end
+
+            # There is a cycle, find its childs
+            childs = topological_order(topology, [other_other]).runnable |> Set{Cell}
+            childs_and_other = findall(
+                c -> c != cell && (c == other_other || c ∈ childs),
+                order.runnable
+            )
+
+            push!(to_delete, childs_and_other...)
+        end
+    end
+
+    deleteat!(order.runnable, sort(collect(to_delete)))
+
+    collect(order)
+end
+
+
 """
 Run given cells and all the cells that depend on them, based on the topology information before and after the changes.
 """
@@ -91,9 +133,8 @@ function run_reactive_core!(
     new_runnable = setdiff(new_order.runnable, already_run)
     to_run_raw = setdiff(union(new_runnable, old_runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
 
-    # find (indirectly) deactivated cells and update their status
     disabled_cells = filter(is_disabled, notebook.cells)
-    indirectly_deactivated = collect(topological_order(new_topology, disabled_cells))
+    indirectly_deactivated = find_indirectly_deactivated_cells(new_topology, disabled_cells)
     for cell in indirectly_deactivated
         cell.running = false
         cell.queued = false
@@ -111,9 +152,10 @@ function run_reactive_core!(
         cell.depends_on_disabled_cells = false
     end
 
-    for (cell, error) in new_order.errable
+    for (cell, error) in setdiff(new_order.errable, indirectly_deactivated)
         cell.running = false
         cell.queued = false
+        cell.depends_on_disabled_cells = false
         relay_reactivity_error!(cell, error)
     end
 
