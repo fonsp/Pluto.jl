@@ -63,6 +63,7 @@ import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_l
 import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
 import { debug_syntax_plugin } from "./CellInput/debug_syntax_plugin.js"
 import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
+import { is_mac_keyboard } from "../common/KeyboardShortcuts.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 
@@ -375,10 +376,17 @@ export const CellInput = ({
 }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     const { disabled: running_disabled, skip_as_script } = metadata
-
-    const newcm_ref = useRef(/** @type {EditorView?} */ (null))
-    const dom_node_ref = useRef(/** @type {HTMLElement?} */ (null))
-    const remote_code_ref = useRef(/** @type {string?} */ (null))
+    let [error, set_error] = useState(null)
+    if (error) {
+        const to_throw = error
+        set_error(null)
+        throw to_throw
+    }
+    const newcm_ref = useRef(/** @type {EditorView} */ (null))
+    const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))
+    const remote_code_ref = useRef(null)
+    const on_change_ref = useRef(null)
+    on_change_ref.current = on_change
 
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
     let global_definitions_compartment = useCompartment(newcm_ref, GlobalDefinitionsFacet.of(global_definition_locations))
@@ -571,7 +579,6 @@ export const CellInput = ({
         const newcm = (newcm_ref.current = new EditorView({
             state: EditorState.create({
                 doc: local_code,
-
                 extensions: [
                     EditorView.theme({}, { dark: usesDarkTheme }),
                     // Compartments coming from react state/props
@@ -693,6 +700,14 @@ export const CellInput = ({
                     // Enable this plugin if you want to see the lezer tree,
                     // and possible lezer errors and maybe more debug info in the console:
                     // debug_syntax_plugin,
+                    // Handle errors hopefully?
+                    EditorView.exceptionSink.of((exception) => {
+                        set_error(exception)
+                        console.error("EditorView exception!", exception)
+                        // alert(
+                        //     `We ran into an issue! We have lost your cursor 😞😓😿\n If this appears again, please press F12, then click the "Console" tab,  eport an issue at https://github.com/fonsp/Pluto.jl/issues`
+                        // )
+                    }),
                 ],
             }),
             parent: dom_node_ref.current,

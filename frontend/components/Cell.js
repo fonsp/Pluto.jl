@@ -1,5 +1,5 @@
 import _ from "../imports/lodash.js"
-import { html, useState, useEffect, useMemo, useRef, useContext, useLayoutEffect, useCallback } from "../imports/Preact.js"
+import { html, useState, useEffect, useMemo, useRef, useContext, useLayoutEffect, useErrorBoundary, useCallback } from "../imports/Preact.js"
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
@@ -119,6 +119,19 @@ export const Cell = ({
     const on_focus_neighbor = pluto_actions.focus_on_neighbor
     const on_change = useCallback((val) => pluto_actions.set_local_cell(cell_id, val), [cell_id, pluto_actions])
     const variables = useMemo(() => Object.keys(cell_dependencies?.downstream_cells_map ?? {}), [cell_dependencies])
+
+    // We need to unmount & remount when a destructive error occurs.
+    // For that reason, we will use a simple react key and increment it on error
+    const [key, setKey] = useState(0)
+    const cell_key = useMemo(() => cell_id + key, [cell_id, key])
+
+    const [, resetError] = useErrorBoundary((error) => {
+        console.log(`An error occured in the CodeMirror code, resetting CellInput component. See error below:\n\n${error}\n\n -------------- `)
+        setKey(key + 1)
+        resetError()
+    })
+
+    const remount = useMemo(() => () => setKey(key + 1))
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(/** @type{any} */ (null))
     const [cm_highlighted_line, set_cm_highlighted_line] = useState(null)
@@ -213,17 +226,12 @@ export const Cell = ({
         set_waiting_to_run_smart(true)
     }, [pluto_actions, cell_id, selected, set_waiting_to_run_smart])
 
-    const skip_as_script_jump = useCallback(
-        on_jump(hasTargetBarrier("skip_as_script"), pluto_actions, cell_id),
-        [pluto_actions, cell_id],
-    )
-    const disabled_jump = useCallback(
-        on_jump(hasTargetBarrier("disabled"), pluto_actions, cell_id),
-        [pluto_actions, cell_id],
-    )
+    const skip_as_script_jump = useCallback(on_jump(hasTargetBarrier("skip_as_script"), pluto_actions, cell_id), [pluto_actions, cell_id])
+    const disabled_jump = useCallback(on_jump(hasTargetBarrier("disabled"), pluto_actions, cell_id), [pluto_actions, cell_id])
 
     return html`
         <pluto-cell
+            key=${cell_key}
             ref=${node_ref}
             class=${cl({
                 queued: queued || (waiting_to_run && is_process_ready),
@@ -286,6 +294,7 @@ export const Cell = ({
                 set_show_logs=${set_show_logs}
                 cm_highlighted_line=${cm_highlighted_line}
                 set_cm_highlighted_line=${set_cm_highlighted_line}
+                onerror=${remount}
             />
             ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${line_heights} set_cm_highlighted_line=${set_cm_highlighted_line} />` : null}
             <${RunArea}
@@ -336,8 +345,8 @@ export const Cell = ({
                               body: html`This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />
                                   This way, it will not run when the notebook runs as a script outside of Pluto.<br />
                                   An upstream cell is <b> indirectly</b> <em>disabling in file</em> this one; enable
-                                  <span onClick=${skip_as_script_jump} style="cursor: pointer; text-decoration: underline"> the upstream one</span> to
-                                  affect this cell.`,
+                                  <span onClick=${skip_as_script_jump} style="cursor: pointer; text-decoration: underline"> the upstream one</span> to affect
+                                  this cell.`,
                           })
                       }}
                   ></div>`

@@ -28,6 +28,7 @@ import { setup_mathjax } from "../common/SetupMathJax.js"
 import { BinderButton, RunLocalButton } from "./EditOrRunButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
 import { ProgressBar } from "./ProgressBar.js"
+import { NonCellOutput } from "./NonCellOutput.js"
 import { IsolatedCell } from "./Cell.js"
 import { RawHTMLContainer } from "./CellOutput.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
@@ -766,11 +767,12 @@ patch: ${JSON.stringify(
             Object.assign(this.client, client)
             try {
                 const { default: environment } = await import(this.client.session_options.server.injected_javascript_data_url)
-                const { custom_editor_header_component } = environment({ client, editor: this, imports: { preact } })
+                const { custom_editor_header_component, custom_non_cell_output } = environment({ client, editor: this, imports: { preact } })
                 this.setState({
                     extended_components: {
                         ...this.state.extended_components,
                         CustomHeader: custom_editor_header_component,
+                        NonCellOutputComponents: custom_non_cell_output,
                     },
                 })
             } catch (e) {}
@@ -1508,6 +1510,9 @@ patch: ${JSON.stringify(
                                 }}
                             />`
                         }
+                        <${NonCellOutput} 
+                            notebook_id=${this.state.notebook.notebook_id} 
+                            environment_component=${this.state.extended_components.NonCellOutputComponents} />
                     </${Main}>
                     <${LiveDocs}
                         desired_doc_query=${this.state.desired_doc_query}
