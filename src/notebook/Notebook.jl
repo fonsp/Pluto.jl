@@ -50,6 +50,7 @@ Base.@kwdef mutable struct Notebook
     nbpkg_restart_recommended_msg::Union{Nothing,String}=nothing
     nbpkg_restart_required_msg::Union{Nothing,String}=nothing
     nbpkg_terminal_outputs::Dict{String,String}=Dict{String,String}()
+    nbpkg_install_time_ns::Union{Nothing,UInt64}=zero(UInt64)
     nbpkg_busy_packages::Vector{String}=String[]
     nbpkg_installed_versions_cache::Dict{String,String}=Dict{String,String}()
 
