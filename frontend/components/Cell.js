@@ -136,12 +136,6 @@ export const Cell = ({
     const [cm_forced_focus, set_cm_forced_focus] = useState(/** @type{any} */ (null))
     const [cm_highlighted_line, set_cm_highlighted_line] = useState(null)
 
-    const any_logs = useMemo(() => !_.isEmpty(logs), [logs])
-    const set_show_logs = (show_logs) =>
-        pluto_actions.update_notebook((notebook) => {
-            notebook.cell_inputs[cell_id].metadata.show_logs = show_logs
-        })
-
     useEffect(() => {
         const focusListener = (e) => {
             if (e.detail.cell_id === cell_id) {
@@ -225,6 +219,25 @@ export const Cell = ({
         pluto_actions.set_and_run_multiple(pluto_actions.get_selected_cells(cell_id, selected))
         set_waiting_to_run_smart(true)
     }, [pluto_actions, cell_id, selected, set_waiting_to_run_smart])
+    const set_show_logs = useCallback(
+        (show_logs) =>
+            pluto_actions.update_notebook((notebook) => {
+                notebook.cell_inputs[cell_id].metadata.show_logs = show_logs
+            }),
+        [pluto_actions, cell_id]
+    )
+    const set_cell_disabled = useCallback(
+        async (new_val) => {
+            await pluto_actions.update_notebook((notebook) => {
+                notebook.cell_inputs[cell_id].metadata["disabled"] = new_val
+            })
+            // we also 'run' the cell if it is disabled, this will make the backend propage the disabled state to dependent cells
+            await on_submit()
+        },
+        [pluto_actions, cell_id, on_submit]
+    )
+
+    const any_logs = useMemo(() => !_.isEmpty(logs), [logs])
 
     const skip_as_script_jump = useCallback(on_jump(hasTargetBarrier("skip_as_script"), pluto_actions, cell_id), [pluto_actions, cell_id])
     const disabled_jump = useCallback(on_jump(hasTargetBarrier("disabled"), pluto_actions, cell_id), [pluto_actions, cell_id])
@@ -292,6 +305,7 @@ export const Cell = ({
                 any_logs=${any_logs}
                 show_logs=${show_logs}
                 set_show_logs=${set_show_logs}
+                set_cell_disabled=${set_cell_disabled}
                 cm_highlighted_line=${cm_highlighted_line}
                 set_cm_highlighted_line=${set_cm_highlighted_line}
                 onerror=${remount}
@@ -305,6 +319,7 @@ export const Cell = ({
                 on_interrupt=${() => {
                     pluto_actions.interrupt_remote(cell_id)
                 }}
+                set_cell_disabled=${set_cell_disabled}
                 runtime=${runtime}
                 running=${running}
                 code_differs=${class_code_differs}
