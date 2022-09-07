@@ -26,6 +26,7 @@ function with_new_soft_definitions(topology::NotebookTopology, cell::Cell, soft_
 		nodes=merge(topology.nodes, Dict(cell => new_node)), 
 		unresolved_cells=topology.unresolved_cells,
 		cell_order=topology.cell_order,
+        disabled_cells=topology.disabled_cells,
 	)
 end
 
@@ -170,11 +171,12 @@ function resolve_topology(
 		ImmutableSet(still_unresolved_nodes; skip_copy=true)
 	end
 
-	NotebookTopology(
+	NotebookTopology(;
 		nodes=all_nodes, 
 		codes=all_codes, 
 		unresolved_cells=new_unresolved_cells,
 		cell_order=unresolved_topology.cell_order,
+        disabled_cells=unresolved_topology.disabled_cells,
 	)
 end
 
@@ -199,5 +201,6 @@ function static_resolve_topology(topology::NotebookTopology)
 		codes=topology.codes, 
 		unresolved_cells=topology.unresolved_cells,
 		cell_order=topology.cell_order,
+        disabled_cells=topology.disabled_cells,
 	)
 end
