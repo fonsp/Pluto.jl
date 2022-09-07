@@ -19,7 +19,14 @@ function find_indirectly_deactivated_cells(topology::NotebookTopology, deactivat
         others = where_assigned(topology, cell)
 
         if length(others) > 1
-            other_other = others[findfirst(c -> c != cell && !is_disabled(c), others)]
+			other_other_idx = findfirst(c -> c != cell && !is_disabled(c), others)
+			
+			# All cells for this variable groups are disabled
+			if isnothing(other_other_idx)
+				continue
+			end
+
+            other_other = others[other_other_idx]
 
             # NOTE(paul):
             #   This is pretty unoptimized since we somehow need to recompute a lot of things from the
