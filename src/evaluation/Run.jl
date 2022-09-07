@@ -93,8 +93,8 @@ function run_reactive_core!(
 
     # find (indirectly) deactivated cells and update their status
     disabled_cells = filter(is_disabled, notebook.cells)
-    indirectly_deactivated = collect(topological_order(new_topology, disabled_cells))
-    for cell in indirectly_deactivated
+    indirectly_disabled = collect(topological_order(new_topology, disabled_cells))
+    for cell in indirectly_disabled
         cell.running = false
         cell.queued = false
         cell.depends_on_disabled_cells = true
@@ -103,7 +103,7 @@ function run_reactive_core!(
     # find (indirectly) skipped cells and update their status
     update_skipped_cells_dependency!(notebook, new_topology)
 
-    to_run = setdiff(to_run_raw, indirectly_deactivated)
+    to_run = setdiff(to_run_raw, indirectly_disabled)
 
     # change the bar on the sides of cells to "queued"
     for cell in to_run

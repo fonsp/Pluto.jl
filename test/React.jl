@@ -1661,7 +1661,7 @@ import Distributed
             update_run!(🍭, notebook, notebook.cells[15])
             @test notebook.cells[15].output.body == "\"4-2-3-5\""
         end
-        
+
         @testset "Errors" begin
             update_run!(🍭, notebook, notebook.cells[6:9])
 
@@ -1681,7 +1681,7 @@ import Distributed
             update_run!(🍭, notebook, notebook.cells[15])
             @test notebook.cells[15].output.body == "\"10-11-12-13-14\""
         end
-        
+
 
         update_run!(🍭, notebook, notebook.cells[16:18])
         @test notebook.cells[16] |> noerror

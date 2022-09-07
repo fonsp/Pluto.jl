@@ -7,4 +7,5 @@ Base.@kwdef struct TopologicalOrder
 	runnable::Vector{Cell}
 	"Cells that are in a directed cycle, with corresponding `ReactivityError`s."
 	errable::Dict{Cell,ReactivityError}
+	disabled::Vector{Cell}
 end

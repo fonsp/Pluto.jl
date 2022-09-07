@@ -34,7 +34,7 @@ function set_bond_values_reactive(;
 
     if isempty(syms_to_set) || !will_run_code(notebook)
         send_notebook_changes!(ClientRequest(; session, notebook, initiator))
-        return TopologicalOrder(notebook.topology, Cell[], Dict{Cell, ReactivityError}())
+        return TopologicalOrder(notebook.topology, Cell[], Dict{Cell, ReactivityError}(), Cell[])
     end
 
     new_values = Any[notebook.bonds[bound_sym].value for bound_sym in syms_to_set]

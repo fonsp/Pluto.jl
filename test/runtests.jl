@@ -34,6 +34,7 @@ verify_no_running_processes()
 verify_no_running_processes()
 
 # tests that don't start new processes:
+@timeit_include("frontmatter.jl")
 @timeit_include("ReloadFromFile.jl")
 @timeit_include("packages/PkgCompat.jl")
 @timeit_include("ExpressionExplorer.jl")
@@ -49,6 +50,21 @@ verify_no_running_processes()
 verify_no_running_processes()
 
 print_timeroutput()
+
+# @timeit_include("frontmatter.jl")
+# @timeit_include("ReloadFromFile.jl")
+# @timeit_include("packages/PkgCompat.jl")
+# @timeit_include("ExpressionExplorer.jl")
+# @timeit_include("MethodSignatures.jl")
+# @timeit_include("MoreAnalysis.jl")
+# @timeit_include("Analysis.jl")
+# @timeit_include("webserver_utils.jl")
+# @timeit_include("data structures.jl")
+# @timeit_include("DependencyCache.jl")
+# @timeit_include("Throttled.jl")
+# @timeit_include("cell_disabling.jl")
+
+verify_no_running_processes()
 
 # TODO: test PlutoRunner functions like:
 # - from_this_notebook
