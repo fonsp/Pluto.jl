@@ -46,8 +46,6 @@ import {
     markdownLanguage,
     javascriptLanguage,
     pythonLanguage,
-    linter,
-    lintGutter,
     syntaxHighlighting,
     cssLanguage,
 } from "../imports/CodemirrorPlutoSetup.js"
@@ -65,7 +63,6 @@ import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_l
 import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
 import { debug_syntax_plugin } from "./CellInput/debug_syntax_plugin.js"
 import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
-import { diagnostic_linter, RunningDisabledFacet } from "./linter.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 
@@ -347,7 +344,7 @@ let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPluto
  *  scroll_into_view_after_creation: boolean,
  *  cell_dependencies: import("./Editor.js").CellDependencyData,
  *  nbpkg: import("./Editor.js").NotebookPkgData?,
- *  global_definition_locations: { [variable_name: string]: string[] },
+ *  global_definition_locations: { [variable_name: string]: string },
  *  [key: string]: any,
  * }} props
  */
@@ -386,7 +383,6 @@ export const CellInput = ({
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
     let global_definitions_compartment = useCompartment(newcm_ref, GlobalDefinitionsFacet.of(global_definition_locations))
     let highlighted_line_compartment = useCompartment(newcm_ref, HighlightLineFacet.of(cm_highlighted_line))
-    let running_disabled_compartment = useCompartment(newcm_ref, RunningDisabledFacet.of(running_disabled))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
 
     let on_change_compartment = useCompartment(
@@ -568,8 +564,6 @@ export const CellInput = ({
             }
         })
 
-        const warn_double_definitions = EditorView.updateListener.of((update) => {})
-
         // TODO remove me
         //@ts-ignore
         window.tags = tags
@@ -584,7 +578,6 @@ export const CellInput = ({
                     nbpkg_compartment,
                     highlighted_line_compartment,
                     global_definitions_compartment,
-                    running_disabled_compartment,
                     editable_compartment,
 
                     // This is waaaay in front of the keys it is supposed to override,
@@ -596,17 +589,13 @@ export const CellInput = ({
 
                     pkgBubblePlugin({ pluto_actions, notebook_id }),
                     ScopeStateField,
-
                     syntaxHighlighting(pluto_syntax_colors),
                     syntaxHighlighting(pluto_syntax_colors_html),
                     syntaxHighlighting(pluto_syntax_colors_markdown),
                     syntaxHighlighting(pluto_syntax_colors_javascript),
                     syntaxHighlighting(pluto_syntax_colors_python),
                     syntaxHighlighting(pluto_syntax_colors_css),
-
-                    lintGutter(),
                     lineNumbers(),
-
                     highlightSpecialChars(),
                     history(),
                     drawSelection(),
@@ -626,8 +615,6 @@ export const CellInput = ({
                     highlightSelectionMatches(),
                     bracketMatching(),
                     docs_updater,
-                    warn_double_definitions,
-                    diagnostic_linter({ cell_id, running_disabled, pluto_actions }),
                     // Remove selection on blur
                     EditorView.domEventHandlers({
                         blur: (event, view) => {

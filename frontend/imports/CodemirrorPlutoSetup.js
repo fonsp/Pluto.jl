@@ -56,16 +56,12 @@ import {
     javascript,
     python,
     Text,
-    linter,
-    lintGutter,
     css,
     cssLanguage,
     //@ts-ignore
-} from "./index.es.js"
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@0.28.0/dist/index.es.min.js"
 
 export {
-    linter,
-    lintGutter,
     EditorState,
     EditorSelection,
     Compartment,

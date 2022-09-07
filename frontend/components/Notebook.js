@@ -140,20 +140,10 @@ export const Notebook = ({ notebook, cell_inputs_local, last_created_cell, selec
     }, [cell_outputs_delayed, notebook.cell_order.length])
     let global_definition_locations = useMemo(
         () =>
-            Object.entries(notebook?.cell_dependencies ?? {}).reduce((all, [cell_id, x]) => {
-                if (notebook.cell_inputs[cell_id].metadata?.disabled) {
-                    return all
-                }
-                Object.keys(x.downstream_cells_map).forEach((variable) => {
-                    if (variable in all) {
-                        all[variable].push(x.cell_id)
-                    } else {
-                        all[variable] = [x.cell_id]
-                    }
-                })
-                return all
-            }, {}),
-        [notebook?.cell_dependencies, notebook?.cell_inputs]
+            Object.fromEntries(
+                Object.values(notebook?.cell_dependencies ?? {}).flatMap((x) => Object.keys(x.downstream_cells_map).map((variable) => [variable, x.cell_id]))
+            ),
+        [notebook?.cell_dependencies]
     )
     return html`
         <pluto-notebook id=${notebook.notebook_id}>

@@ -2,7 +2,6 @@ import _ from "../imports/lodash.js"
 import { html, useState, useEffect, useMemo, useRef, useContext, useLayoutEffect, useCallback } from "../imports/Preact.js"
 
 import { CellOutput } from "./CellOutput.js"
-import { ClippyHints } from "./ClippyHints.js"
 import { CellInput } from "./CellInput.js"
 import { Logs } from "./Logs.js"
 import { RunArea, useDebouncedTruth } from "./RunArea.js"
@@ -29,14 +28,6 @@ const useCellApi = (node_ref, published_object_keys, pluto_actions) => {
 
     return cell_api_ready
 }
-
-/**
- * @typedef ClippyHint
- * @type {{
- *  level: "info" | "warning" | "error",
- *  message: string | import("../imports/Preact.js").ReactElement,
- * }}
- */
 
 /**
  * @param {String} a_cell_id
@@ -133,20 +124,6 @@ export const Cell = ({
     const [cm_highlighted_line, set_cm_highlighted_line] = useState(null)
 
     const any_logs = useMemo(() => !_.isEmpty(logs), [logs])
-
-    /** @type {{key: string, hint: ClippyHint}[]} */
-    const initial_hints = []
-    const [clippy_hints, set_clippy_hints] = useState(initial_hints)
-    const register_clippy_hint = (/** @type {string} */ key, /** @type {ClippyHint} */ hint) =>
-        set_clippy_hints((hints) => [
-            ...hints,
-            {
-                key,
-                hint,
-            },
-        ])
-    const unregister_clippy_hint = (/** @type {string} */ key) => set_clippy_hints((hints) => hints.filter((x) => x.key !== key))
-
     const set_show_logs = (show_logs) =>
         pluto_actions.update_notebook((notebook) => {
             notebook.cell_inputs[cell_id].metadata.show_logs = show_logs
@@ -309,11 +286,8 @@ export const Cell = ({
                 set_show_logs=${set_show_logs}
                 cm_highlighted_line=${cm_highlighted_line}
                 set_cm_highlighted_line=${set_cm_highlighted_line}
-                register_clippy_hint=${register_clippy_hint}
-                unregister_clippy_hint=${unregister_clippy_hint}
             />
             ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${line_heights} set_cm_highlighted_line=${set_cm_highlighted_line} />` : null}
-            <${ClippyHints} clippy_hints=${clippy_hints.map(({ hint }) => hint)} />
             <${RunArea}
                 cell_id=${cell_id}
                 running_disabled=${running_disabled}
