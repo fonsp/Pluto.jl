@@ -177,21 +177,27 @@ function run(session::ServerSession)
                                 # This stream contains data received over the WebSocket.
                                 # It is formatted and MsgPack-encoded by send(...) in PlutoConnection.js
                                 local parentbody = nothing
+                                local did_read = false
                                 try
                                     parentbody = unpack(message)
-
+                                    
                                     let
                                         lag = session.options.server.simulated_lag
                                         (lag > 0) && sleep(lag * (0.5 + rand())) # sleep(0) would yield to the process manager which we dont want
                                     end
-
+                                    
+                                    did_read = true
                                     process_ws_message(session, parentbody, clientstream)
                                 catch ex
                                     if ex isa InterruptException || ex isa HTTP.WebSockets.WebSocketError || ex isa EOFError
                                         # that's fine!
                                     else
-                                        bt = stacktrace(catch_backtrace())
-                                        @warn "Reading WebSocket client stream failed for unknown reason:" parentbody exception = (ex, bt)
+                                        bt = catch_backtrace()
+                                        if did_read
+                                            @warn "Processing message failed for unknown reason:" parentbody exception = (ex, bt)
+                                        else
+                                            @warn "Reading WebSocket client stream failed for unknown reason:" parentbody exception = (ex, bt)
+                                        end
                                     end
                                 end
                             end

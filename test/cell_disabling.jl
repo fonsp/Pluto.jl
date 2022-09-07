@@ -31,7 +31,7 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
 
     # disable first cell
     notebook.cells[1].metadata["disabled"] = true
-    update_run!(🍭, notebook, notebook.cells)
+    update_run!(🍭, notebook, notebook.cells[1])
     should_be_disabled = [1, 3, 5]
     @test get_disabled_cells(notebook) == should_be_disabled
     @test notebook.cells[1].metadata["disabled"] == true

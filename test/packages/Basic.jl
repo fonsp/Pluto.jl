@@ -58,7 +58,9 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test notebook.nbpkg_restart_recommended_msg === nothing
         @test notebook.nbpkg_restart_required_msg === nothing
         @test notebook.nbpkg_ctx_instantiated
+        @test notebook.nbpkg_install_time_ns > 0
         @test notebook.nbpkg_busy_packages |> isempty
+        last_install_time = notebook.nbpkg_install_time_ns
 
         terminals = notebook.nbpkg_terminal_outputs
 
@@ -86,6 +88,10 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test notebook.nbpkg_ctx !== nothing
         @test notebook.nbpkg_restart_recommended_msg === nothing
         @test notebook.nbpkg_restart_required_msg === nothing
+        @test notebook.nbpkg_ctx_instantiated
+        @test notebook.nbpkg_install_time_ns > last_install_time
+        @test notebook.nbpkg_busy_packages |> isempty
+        last_install_time = notebook.nbpkg_install_time_ns
 
         @test haskey(terminals, "PlutoPkgTestB")
         @test terminals["PlutoPkgTestA"] == terminals["PlutoPkgTestD"] == old_A_terminal
@@ -106,6 +112,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
             notebook.nbpkg_restart_recommended_msg !==  nothing || notebook.nbpkg_restart_required_msg !== nothing
         )
         @test notebook.nbpkg_restart_required_msg !== nothing
+        @test notebook.nbpkg_install_time_ns > last_install_time
 
         # running cells again should persist the restart message
 
@@ -205,6 +212,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test notebook.nbpkg_ctx !== nothing
         @test notebook.nbpkg_restart_recommended_msg !== nothing # recommend restart
         @test notebook.nbpkg_restart_required_msg === nothing
+        @test notebook.nbpkg_install_time_ns === nothing # removing a package means that we lose our estimate
 
         @test count("PlutoPkgTestD", ptoml_contents()) == 0
 

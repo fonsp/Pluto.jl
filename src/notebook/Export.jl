@@ -30,7 +30,7 @@ function cdnified_editor_html(;
                     URIs.resolvereference("https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@$(string(PLUTO_VERSION))/frontend-dist/", url) |> string
                 end
             catch e
-                @warn "Could not use bundled CDN version of editor.html. You should only see this message if you are using a fork of Pluto." exception=(e,catch_backtrace())
+                @warn "Could not use bundled CDN version of editor.html. You should only see this message if you are using a fork of Pluto." exception=(e,catch_backtrace()) maxlog=1
                 nothing
             end
         end,
