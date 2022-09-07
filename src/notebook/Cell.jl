@@ -79,7 +79,11 @@ function Base.convert(::Type{UUID}, string::String)
 end
 
 
-"Returns whether or not the cell is **explicitely** disabled."
+"""
+Returns whether or not the cell is **explicitely** disabled.
+
+⚠️ Do not use this in reactivity algorithms, use `cell ∈ notebook.topology.disabled_cells` instead, to avoid race conditions.
+"""
 is_disabled(c::Cell) = get(c.metadata, METADATA_DISABLED_KEY, DEFAULT_CELL_METADATA[METADATA_DISABLED_KEY])
 can_show_logs(c::Cell) = get(c.metadata, METADATA_SHOW_LOGS_KEY, DEFAULT_CELL_METADATA[METADATA_SHOW_LOGS_KEY])
 is_skipped_as_script(c::Cell) = get(c.metadata, METADATA_SKIP_AS_SCRIPT_KEY, DEFAULT_CELL_METADATA[METADATA_SKIP_AS_SCRIPT_KEY])

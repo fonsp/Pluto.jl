@@ -12,14 +12,14 @@ function find_indirectly_deactivated_cells(topology::NotebookTopology, deactivat
     to_delete = Set{Int}()
 
     for cell in order.runnable
-        if !is_disabled(cell)
+        if cell ∉ topology.disabled_cells
             continue
         end
 
         others = where_assigned(topology, cell)
 
         if length(others) > 1
-			other_other_idx = findfirst(c -> c != cell && !is_disabled(c), others)
+			other_other_idx = findfirst(c -> c != cell && c ∉ topology.disabled_cells, others)
 			
 			# All cells for this variable groups are disabled
 			if isnothing(other_other_idx)
@@ -32,7 +32,7 @@ function find_indirectly_deactivated_cells(topology::NotebookTopology, deactivat
             #   This is pretty unoptimized since we somehow need to recompute a lot of things from the
             #   topological_order call, maybe could be solved as a tree traversal instead
             parents = where_assigned(topology, topology.nodes[other_other].references)
-            if any(is_disabled, parents)
+            if any(occursin(topology.disabled_cells), parents)
                 continue # this is disabled down the line
             end
 

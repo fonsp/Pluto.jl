@@ -42,7 +42,7 @@ function topological_order(topology::NotebookTopology, roots::AbstractVector{Cel
 		push!(entries, cell)
 
 		assigners = where_assigned(topology, cell)
-		n_not_disabled_assigners = count(!is_disabled, assigners) # we can have multiple defs if all others are disabled
+		n_not_disabled_assigners = count(!occursin(topology.disabled_cells), assigners) # we can have multiple defs if all others are disabled
 
 		if !allow_multiple_defs && length(assigners) > 1 &&
 				n_not_disabled_assigners > 1
