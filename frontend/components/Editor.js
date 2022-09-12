@@ -1126,6 +1126,8 @@ patch: ${JSON.stringify(
 
     PageUp or fn+Up:   select cell above
     PageDown or fn+Down:   select cell below
+    Alt+A:   add cell above
+    Alt+B:   add cell below
 
     ${ctrl_or_cmd_name}+Q:   interrupt notebook
     ${ctrl_or_cmd_name}+S:   submit all changes
