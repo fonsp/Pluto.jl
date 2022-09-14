@@ -8,7 +8,9 @@ import { PlutoActionsContext } from "../common/PlutoContext.js"
 
 const without_workspace_stuff = (str) =>
     str
+        .replace(/Main\.var&quot;workspace\#\d+&quot;\./g, "") // remove workspace modules from variable names
         .replace(/Main\.workspace\#\d+\./g, "") // remove workspace modules from variable names
+        .replace(/ in Main\.var&quot;workspace\#\d+&quot;/g, "") // remove workspace modules from method lists
         .replace(/ in Main\.workspace\#\d+/g, "") // remove workspace modules from method lists
         .replace(/#&#61;&#61;#[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\:\d+/g, "") // remove UUIDs from filenames
 
