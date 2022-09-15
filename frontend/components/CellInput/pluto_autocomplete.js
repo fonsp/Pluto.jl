@@ -149,9 +149,6 @@ let match_expanduser_complete = (ctx) => ctx.matchBefore(/~\//)
 
 /** Use the completion results from the Julia server to create CM completion objects, but only for path completions (TODO: broken) and latex completions. */
 let julia_special_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (ctx) => {
-    let unicode_match = match_latex_complete(ctx) || match_expanduser_complete(ctx)
-    if (unicode_match == null) return null
-
     let to_complete = ctx.state.sliceDoc(0, ctx.pos)
     let { start, stop, results } = await request_autocomplete({ text: to_complete })
 
@@ -161,11 +158,11 @@ let julia_special_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ r
         // This is an important one when you not only complete, but also replace something.
         // @codemirror/autocomplete automatically filters out results otherwise >:(
         filter: false,
-        // TODO Add "detail" that shows the unicode character
-        // TODO Add "apply" with the unicode character so it autocompletes that immediately
-        options: results.map(([text], i) => {
+        options: results.map(([text, _, __, ___, ____, detail]) => {
             return {
                 label: text,
+                apply: detail ? detail : text,
+                detail,
             }
         }),
         // TODO Do something docs_prefix ish when we also have the apply text
@@ -273,8 +270,24 @@ const julia_code_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ re
     }
 }
 
+const pluto_completion_fetcher = (request_autocomplete) => {
+    const unicode_completions = julia_special_completions_to_cm(request_autocomplete)
+    const code_completions = julia_code_completions_to_cm(request_autocomplete)
+
+    return (ctx) => {
+        let unicode_match = match_latex_complete(ctx) || match_expanduser_complete(ctx)
+        if (unicode_match === null) {
+            return code_completions(ctx)
+        } else {
+            return unicode_completions(ctx)
+        }
+    }
+}
+
 const complete_anyword = async (ctx) => {
     const results_from_cm = await autocomplete.completeAnyWord(ctx)
+    if (results_from_cm === null) return null
+
     return {
         from: results_from_cm.from,
         options: results_from_cm.options.map(({ label }, i) => ({
@@ -315,7 +328,7 @@ const local_variables_completion = (ctx) => {
 
 /**
  * @typedef PlutoAutocompleteResults
- * @type {{ start: number, stop: number, results: Array<[string, (string | null), boolean, boolean, (string | null)]> }}
+ * @type {{ start: number, stop: number, results: Array<[string, (string | null), boolean, boolean, (string | null), (string | null)]> }}
  *
  * @typedef PlutoRequestAutocomplete
  * @type {(options: { text: string }) => Promise<PlutoAutocompleteResults>}
@@ -351,8 +364,9 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
         autocompletion({
             activateOnTyping: false,
             override: [
-                julia_special_completions_to_cm(memoize_last_request_autocomplete),
-                julia_code_completions_to_cm(memoize_last_request_autocomplete),
+                pluto_completion_fetcher(memoize_last_request_autocomplete),
+                // julia_special_completions_to_cm(memoize_last_request_autocomplete),
+                // julia_code_completions_to_cm(memoize_last_request_autocomplete),
                 complete_anyword,
                 // TODO: Disabled because of performance problems, see https://github.com/fonsp/Pluto.jl/pull/1925. Remove `complete_anyword` once fixed. See https://github.com/fonsp/Pluto.jl/pull/2013
                 // local_variables_completion,
