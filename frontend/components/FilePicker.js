@@ -265,7 +265,6 @@ export class FilePicker extends Component {
                       }}
                   />`}
                   <div onClick=${this.on_submit} class="desktop_picker">
-                      <span>${this.props.value}</span>
                       <button>${this.props.button_label}</button>
                   </div>
               </div>`
