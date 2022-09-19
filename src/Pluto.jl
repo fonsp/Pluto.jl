@@ -51,6 +51,7 @@ include("./analysis/FunctionDependencies.jl")
 include("./analysis/ReactiveNode.jl")
 include("./packages/PkgCompat.jl")
 
+include("./notebook/OperationalTransform.jl")
 include("./notebook/Cell.jl")
 include("./analysis/data structures.jl")
 include("./analysis/Topology.jl")

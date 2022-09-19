@@ -100,7 +100,7 @@ const on_jump = (hasBarrier, pluto_actions, cell_id) => () => {
  * }} props
  * */
 export const Cell = ({
-    cell_input: { cell_id, code, code_folded, metadata },
+    cell_input: { cell_id, code, code_folded, metadata, cm_updates },
     cell_result: { queued, running, runtime, errored, output, logs, published_object_keys, depends_on_disabled_cells, depends_on_skipped_cells },
     cell_dependencies,
     cell_input_local,
@@ -241,6 +241,8 @@ export const Cell = ({
 
     const skip_as_script_jump = useCallback(on_jump(hasTargetBarrier("skip_as_script"), pluto_actions, cell_id), [pluto_actions, cell_id])
     const disabled_jump = useCallback(on_jump(hasTargetBarrier("disabled"), pluto_actions, cell_id), [pluto_actions, cell_id])
+
+    console.log(cm_updates)
 
     return html`
         <pluto-cell

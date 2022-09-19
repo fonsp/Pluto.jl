@@ -1,0 +1,96 @@
+"""
+This module implements the tools needed to be the central authority described in
+the code-mirror collab demonstration (https://codemirror.net/examples/collab/).
+"""
+module OperationalTransform
+
+abstract type ChangeSpec end
+
+struct Insertion <: ChangeSpec
+    from::Int
+    insert::String
+end
+
+struct Replacement <: ChangeSpec
+    from::Int
+    to::Int
+    insert::String
+end
+
+struct Deletion <: ChangeSpec
+    from::Int
+    to::Int
+end
+
+struct Update
+    specs::Vector{ChangeSpec}
+    document_length::Int
+    client_id::String
+end
+
+struct Text
+    content::String
+end
+Base.length(t::Text) = Base.length(t.content)
+Base.String(t::Text) = t.content
+
+function apply(text::Text, update::Update)
+    @assert Base.length(text) == update.document_length "Invalid update document length $(update.document_length), document is $(length(text))"
+    for change in update.specs
+        text = apply(text, change)
+    end
+    return text
+end
+
+# TODO: test and use unicode code units
+function apply(text::Text, insertion::Insertion)
+    content = text.content
+    new_content = @view(content[begin:insertion.from]) * insertion.insert * @view(content[insertion.from+1:end])
+    return Text(new_content)
+end
+
+function apply(text::Text, replacement::Replacement)
+    content = text.content
+    new_content = @view(content[begin:replacement.from]) * replacement.insert * @view(content[replacement.to+1:end])
+    return Text(new_content)
+end
+
+function apply(text::Text, deletion::Deletion)
+    content = text.content
+    new_content = @view(content[begin:deletion.from]) * @view(content[deletion.to+1:end])
+    return Text(new_content)
+end
+
+#=
+module TestOperationalTransform
+import ..OperationalTransform: Replacement, Deletion, Text, Update, apply
+
+import Test: @test
+import JSON3
+
+update_data = JSON3.read(
+    """
+    {"specs": [{"from":1,"to":4,"insert":"pizzapo"}], "document_length": 10,"client_id": "random"}
+    """)
+specs = map(update_data["specs"]) do data
+    from = data["from"]
+    if haskey(data, "insert")
+        Replacement(from, get(data, "to", from), data["insert"])
+    else
+        Deletion(from, data["to"])
+    end
+end
+
+update = Update(
+    specs,
+    update_data["document_length"],
+    update_data["client_id"]
+)
+text = Text("iiiiiiiiii")
+new_text = apply(text, update)
+
+@test String(new_text) == "ipizzapoiiiiii"
+end
+=#
+
+end # module OperationalTransform
