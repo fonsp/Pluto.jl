@@ -4,7 +4,7 @@ export package_versions, package_completions
 
 import Pkg
 import Pkg.Types: VersionRange
-
+import RegistryInstances
 import ..Pluto
 
 # Should be in Base
@@ -147,7 +147,7 @@ end
 _get_registry_paths() = @static if isdefined(Pkg, :Types) && isdefined(Pkg.Types, :registries)
 	Pkg.Types.registries()
 elseif isdefined(Pkg, :Registry) && isdefined(Pkg.Registry, :reachable_registries)
-	registry_specs = Pkg.Registry.reachable_registries()
+	registry_specs = RegistryInstances.reachable_registries()
 	[s.path for s in registry_specs]
 elseif isdefined(Pkg, :Types) && isdefined(Pkg.Types, :collect_registries)
 	registry_specs = Pkg.Types.collect_registries()
@@ -159,7 +159,7 @@ end
 # (⛔️ Internal API)
 _get_registries() = map(_get_registry_paths()) do r
 	@static if isdefined(Pkg, :Registry) && isdefined(Pkg.Registry, :RegistryInstance)
-		Pkg.Registry.RegistryInstance(r)
+		RegistryInstances.RegistryInstance(r)
 	else
 		r => Pkg.Types.read_registry(joinpath(r, "Registry.toml"))
 	end
@@ -335,11 +335,11 @@ function package_versions(package_name::AbstractString)::Vector
 		try
 			@static(if isdefined(Pkg, :Registry) && isdefined(Pkg.Registry, :uuids_from_name)
 				flatmap(_parsed_registries[]) do reg
-					uuids_with_name = Pkg.Registry.uuids_from_name(reg, package_name)
+					uuids_with_name = RegistryInstances.uuids_from_name(reg, package_name)
 					flatmap(uuids_with_name) do u
 						pkg = get(reg, u, nothing)
 						if pkg !== nothing
-							info = Pkg.Registry.registry_info(pkg)
+							info = RegistryInstances.registry_info(pkg)
 							collect(keys(info.version_info))
 						else
 							[]
