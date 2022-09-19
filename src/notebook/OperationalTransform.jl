@@ -61,6 +61,19 @@ function apply(text::Text, deletion::Deletion)
     return Text(new_content)
 end
 
+function Base.convert(::Type{Update}, data::Dict)
+    specs = data["specs"]
+    specs = map(specs) do spec
+        from = spec["from"]
+        if haskey(spec, "insert")
+            Replacement(from, get(spec, "to", from), spec["insert"])
+        else
+            Deletion(from, spec["to"])
+        end
+    end
+    Update(specs, data["document_length"], data["client_id"])
+end
+
 #=
 module TestOperationalTransform
 import ..OperationalTransform: Replacement, Deletion, Text, Update, apply

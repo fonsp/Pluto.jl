@@ -31,6 +31,11 @@ MsgPack.msgpack_type(::Type{Configuration.CompilerOptions}) = MsgPack.StructType
 MsgPack.msgpack_type(::Type{Configuration.ServerOptions}) = MsgPack.StructType()
 MsgPack.msgpack_type(::Type{Configuration.SecurityOptions}) = MsgPack.StructType()
 
+MsgPack.msgpack_type(::Type{OperationalTransform.Update}) = MsgPack.StructType()
+MsgPack.msgpack_type(::Type{OperationalTransform.Insertion}) = MsgPack.StructType()
+MsgPack.msgpack_type(::Type{OperationalTransform.Deletion}) = MsgPack.StructType()
+MsgPack.msgpack_type(::Type{OperationalTransform.Replacement}) = MsgPack.StructType()
+
 # Don't try to send callback functions which can't be serialized (see ServerOptions.event_listener)
 MsgPack.msgpack_type(::Type{Function}) = MsgPack.NilType()
 MsgPack.to_msgpack(::MsgPack.NilType, ::Function) = nothing

@@ -111,7 +111,9 @@ function notebook_to_js(notebook::Notebook)
                 "code" => cell.code,
                 "code_folded" => cell.code_folded,
                 "metadata" => cell.metadata,
-                "updates" => cell.cm_updates,
+                "cm_updates" => FirebaseyUtils.AppendonlyMarker(cell.cm_updates),
+                "code_text" => String(cell.code_text),
+                "start_version" => length(cell.cm_updates),
             )
         for (id, cell) in notebook.cells_dict),
         "cell_dependencies" => Dict{UUID,Dict{String,Any}}(
@@ -280,7 +282,6 @@ const effects_of_changed_state = Dict(
     )
 )
 
-
 responses[:update_notebook] = function response_update_notebook(🙋::ClientRequest)
     require_notebook(🙋)
     try
@@ -408,6 +409,39 @@ responses[:reset_shared_state] = function response_reset_shared_state(🙋::Clie
     send_notebook_changes!(🙋; commentary=Dict(:from_reset =>  true))
 end
 
+responses[:push_updates] = function response_push_updates(🙋::ClientRequest)
+    require_notebook(🙋)
+    cell = let
+        cell_id = UUID(🙋.body["cell_id"])
+        🙋.notebook.cells_dict[cell_id]
+    end
+
+    updates = [
+        Base.convert(OperationalTransform.Update, update)
+        for update in 🙋.body["updates"]
+    ]
+    version = 🙋.body["version"]
+
+    current_version = length(cell.cm_updates)
+
+    # Refuse client changes if it is not up to date.
+    if current_version != version
+        @warn "Wrong version" current_version version
+        return
+    end
+
+    append!(cell.cm_updates, updates)
+    text = cell.code_text
+    for update in updates
+        text = OperationalTransform.apply(cell.code_text, update)
+    end
+    cell.code_text = text
+
+    @info "Cell updates" n=length(cell.cm_updates) code=String(text)
+
+    send_notebook_changes!(🙋)
+end
+
 responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::ClientRequest)
     require_notebook(🙋)
     uuids = UUID.(🙋.body["cells"])
@@ -453,7 +487,6 @@ without_initiator(🙋::ClientRequest) = ClientRequest(session=🙋.session, not
 responses[:restart_process] = function response_restart_process(🙋::ClientRequest; run_async::Bool=true)
     require_notebook(🙋)
 
-    
     if 🙋.notebook.process_status != ProcessStatus.waiting_to_restart
         🙋.notebook.process_status = ProcessStatus.waiting_to_restart
         send_notebook_changes!(🙋 |> without_initiator)

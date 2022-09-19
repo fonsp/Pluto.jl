@@ -61,6 +61,8 @@ import {
     collab,
     sendableUpdates,
     receiveUpdates,
+    getSyncedVersion,
+    ChangeSet,
     //@ts-ignore
 } from "./index.es.js"
 
@@ -68,6 +70,8 @@ export {
     collab,
     sendableUpdates,
     receiveUpdates,
+    getSyncedVersion,
+    ChangeSet,
 
     EditorState,
     EditorSelection,

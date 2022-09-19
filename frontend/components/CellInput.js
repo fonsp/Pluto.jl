@@ -351,6 +351,9 @@ let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPluto
  * }} props
  */
 export const CellInput = ({
+    cm_updates,
+    code_text,
+    start_version,
     local_code,
     remote_code,
     disable_input,
@@ -407,6 +410,8 @@ export const CellInput = ({
 
     useLayoutEffect(() => {
         if (dom_node_ref.current == null) return
+
+        console.log("new cm render")
 
         const keyMapSubmit = () => {
             on_submit()
@@ -578,7 +583,7 @@ export const CellInput = ({
         const usesDarkTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         const newcm = (newcm_ref.current = new EditorView({
             state: EditorState.create({
-                doc: local_code,
+                doc: code_text,
                 extensions: [
                     EditorView.theme({}, { dark: usesDarkTheme }),
                     // Compartments coming from react state/props
@@ -692,6 +697,25 @@ export const CellInput = ({
                     awesome_line_wrapping,
 
                     on_change_compartment,
+
+                    pluto_collab(
+                        start_version,
+                        {
+                            send: async (msg, data) =>  {
+                                console.log("pushing updates", data)
+                                const res = await pluto_actions.send(msg, {...data, cell_id: cell_id}, { notebook_id }, false)
+                                console.log("res", res)
+                                return res
+                            },
+                            request: async ({ version }) => {
+                                let notebook = pluto_actions.get_notebook()
+                                let updates = notebook.cell_inputs[cell_id].cm_updates.slice(version)
+                                // console.log(notebook.cell_inputs[cell_id].cm_updates, updates, version, start_version)
+                                await new Promise((resolve) => setTimeout(resolve, 200))
+                                return updates
+                            }
+                        }
+                    ),
 
                     // This is my weird-ass extension that checks the AST and shows you where
                     // there're missing nodes.. I'm not sure if it's a good idea to have it

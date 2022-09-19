@@ -100,7 +100,7 @@ const on_jump = (hasBarrier, pluto_actions, cell_id) => () => {
  * }} props
  * */
 export const Cell = ({
-    cell_input: { cell_id, code, code_folded, metadata, cm_updates },
+    cell_input: { cell_id, code, code_folded, metadata, cm_updates, code_text, start_version },
     cell_result: { queued, running, runtime, errored, output, logs, published_object_keys, depends_on_disabled_cells, depends_on_skipped_cells },
     cell_dependencies,
     cell_input_local,
@@ -117,7 +117,7 @@ export const Cell = ({
     let pluto_actions = useContext(PlutoActionsContext)
     const on_update_doc_query = pluto_actions.set_doc_query
     const on_focus_neighbor = pluto_actions.focus_on_neighbor
-    const on_change = useCallback((val) => pluto_actions.set_local_cell(cell_id, val), [cell_id, pluto_actions])
+    const on_change = useCallback((val) => undefined /*pluto_actions.set_local_cell(cell_id, val)*/, [cell_id, pluto_actions])
     const variables = useMemo(() => Object.keys(cell_dependencies?.downstream_cells_map ?? {}), [cell_dependencies])
 
     // We need to unmount & remount when a destructive error occurs.
@@ -284,6 +284,10 @@ export const Cell = ({
             </button>
             ${cell_api_ready ? html`<${CellOutput} errored=${errored} ...${output} cell_id=${cell_id} />` : html``}
             <${CellInput}
+                cm_updates=${cm_updates}
+                code_text=${code_text}
+                start_version=${start_version}
+
                 local_code=${cell_input_local?.code ?? code}
                 remote_code=${code}
                 cell_dependencies=${cell_dependencies}
