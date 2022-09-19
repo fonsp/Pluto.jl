@@ -369,7 +369,7 @@ function http_router_for(session::ServerSession)
     
     function serve_asset(request::HTTP.Request)
         uri = HTTP.URI(request.target)
-        filepath = project_relative_path(frontend_directory(), relpath(uri.path, "/"))
+        filepath = project_relative_path(frontend_directory(), relpath(HTTP.unescapeuri(uri.path), "/"))
         asset_response(filepath; cacheable=should_cache(filepath))
     end
     HTTP.register!(router, "GET", "/**", serve_asset)
