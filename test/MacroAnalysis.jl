@@ -826,6 +826,15 @@ import Memoize: @memoize
 
         trigger, bool, int = notebook.cells
 
+        workspace = WorkspaceManager.get_workspace((🍭, notebook))
+        workspace_module = getproperty(Main, workspace.module_name)
+
+        # Propose suggestions when no binding is found
+        doc_content, status = PlutoRunner.doc_fetcher("filer", workspace_module)
+        @test status == :👍
+        @test occursin("Similar results:", doc_content)
+        @test occursin("<b>f</b><b>i</b><b>l</b>t<b>e</b><b>r</b>", doc_content)
+
         update_run!(🍭, notebook, notebook.cells)
         @test all(noerror, notebook.cells)
         @test occursin("::Bool", bool.output.body)
