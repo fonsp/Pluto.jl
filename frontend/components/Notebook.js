@@ -35,14 +35,12 @@ let CellMemo = ({
     force_hide_input,
     is_process_ready,
     disable_input,
-    show_logs,
-    set_show_logs,
     nbpkg,
     global_definition_locations,
 }) => {
     const { body, last_run_timestamp, mime, persist_js_state, rootassignee } = cell_result?.output || {}
     const { queued, running, runtime, errored, depends_on_disabled_cells, logs, depends_on_skipped_cells } = cell_result || {}
-    const { cell_id, code, code_folded, metadata } = cell_input || {}
+    const { cell_id, code, code_folded, metadata, cm_updates, last_run_version } = cell_input || {}
     return useMemo(() => {
         return html`
             <${Cell}
@@ -67,6 +65,8 @@ let CellMemo = ({
         ...Object.values(metadata),
         depends_on_disabled_cells,
         depends_on_skipped_cells,
+        cm_updates.length,
+        last_run_version,
         queued,
         running,
         runtime,

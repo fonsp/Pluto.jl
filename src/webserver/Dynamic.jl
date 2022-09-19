@@ -112,7 +112,11 @@ function notebook_to_js(notebook::Notebook)
                 "code_folded" => cell.code_folded,
                 "metadata" => cell.metadata,
                 "cm_updates" => FirebaseyUtils.AppendonlyMarker(cell.cm_updates),
-                "code_text" => String(cell.code_text),
+
+                "last_run_version" => cell.last_run_version,
+
+                # TODO: never update those.
+                "code_text" => String(cell.code_text), # Current draft version
                 "start_version" => length(cell.cm_updates),
             )
         for (id, cell) in notebook.cells_dict),
@@ -422,24 +426,43 @@ responses[:push_updates] = function response_push_updates(🙋::ClientRequest)
     ]
     version = 🙋.body["version"]
 
-    current_version = length(cell.cm_updates)
-
-    # Refuse client changes if it is not up to date.
-    if current_version != version
-        @warn "Wrong version" current_version version
+    if !isready(cell.cm_token)
+        @warn "Cell is buzy, bailing out..."
+        send_notebook_changes!(🙋; commentary=:👎)
         return
     end
 
-    append!(cell.cm_updates, updates)
-    text = cell.code_text
-    for update in updates
-        text = OperationalTransform.apply(cell.code_text, update)
+    withtoken(cell.cm_token) do
+        current_version = length(cell.cm_updates)
+
+        # Refuse client changes if it is not up to date.
+        if current_version != version
+            @warn "Wrong version" current_version version
+            send_notebook_changes!(🙋; commentary=:👎)
+            return
+        end
+
+        text = cell.code_text
+        try
+            for update in updates
+                text = OperationalTransform.apply(cell.code_text, update)
+            end
+        catch ex
+            if ex isa OperationalTransform.InvalidDocumentLengthError
+                @warn "Invalid document length" exception=(ex,catch_backtrace())
+                send_notebook_changes!(🙋; commentary=:👎)
+                return
+            else
+                rethrow()
+            end
+        end
+        append!(cell.cm_updates, updates)
+        cell.code_text = text
+
+        @info "Cell updates" n=length(cell.cm_updates) code=String(text)
+
+        send_notebook_changes!(🙋)
     end
-    cell.code_text = text
-
-    @info "Cell updates" n=length(cell.cm_updates) code=String(text)
-
-    send_notebook_changes!(🙋)
 end
 
 responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::ClientRequest)
@@ -450,10 +473,24 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
     end
 
     if will_run_code(🙋.notebook)
-        foreach(c -> c.queued = true, cells)
+        for cell in cells
+            cell.queued = true
+
+            # NOTE: The client version may not be up to date, is this a problem?
+            # FIXME: this may need to be token protected inside the run update
+            cell.code = let
+                current = OperationalTransform.Text(cell.code)
+                updates_to_apply = @view(cell.cm_updates[min(cell.last_run_version+1,end):end])
+                for update in updates_to_apply
+                    current = OperationalTransform.apply(current, update)
+                end
+                String(current)
+            end
+            cell.last_run_version = length(cell.cm_updates)
+        end
         send_notebook_changes!(🙋)
     end
-    
+
     # save=true fixes the issue where "Submit all changes" or `Ctrl+S` has no effect.
     update_save_run!(🙋.session, 🙋.notebook, cells; run_async=true, save=true)
 end

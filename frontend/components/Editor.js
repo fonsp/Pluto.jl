@@ -589,7 +589,7 @@ export class Editor extends Component {
                             }
                         })
                     )
-                    await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.state.notebook.notebook_id })
+                    await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.state.notebook.notebook_id }, false)
                 }
             },
             /**

@@ -6,7 +6,7 @@ pluto_filename(notebook::Notebook, cell::Cell)::String = notebook.path * "#==#" 
 "Is Julia new enough to support filenames in parsing?"
 const can_insert_filename = (Base.parse_input_line("1;2") != Base.parse_input_line("1\n2"))
 
-"Parse the code from `cell.code` into a Julia expression (`Expr`). Equivalent to `Meta.parse_input_line` in Julia v1.3, no matter the actual Julia version.
+"Parse the code from `cell.last_run_code` into a Julia expression (`Expr`). Equivalent to `Meta.parse_input_line` in Julia v1.3, no matter the actual Julia version.
 
 1. Turn multiple expressions into an error expression.
 2. Fix some `LineNumberNode` idiosyncrasies to be more like modern Julia.

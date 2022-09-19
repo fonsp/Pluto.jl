@@ -34,8 +34,15 @@ end
 Base.length(t::Text) = Base.length(t.content)
 Base.String(t::Text) = t.content
 
+struct InvalidDocumentLengthError
+    msg
+end
+
 function apply(text::Text, update::Update)
-    @assert Base.length(text) == update.document_length "Invalid update document length $(update.document_length), document is $(length(text))"
+    if Base.length(text) != update.document_length
+        throw(InvalidDocumentLengthError("Invalid update document length $(update.document_length), document is $(length(text))"))
+    end
+
     for change in update.specs
         text = apply(text, change)
     end

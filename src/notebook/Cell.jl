@@ -42,8 +42,11 @@ Base.@kwdef mutable struct Cell
     code::String=""
     code_folded::Bool=false
 
+    last_run_version::Int=0
+
     code_text::OperationalTransform.Text=OperationalTransform.Text(code)
     cm_updates::Vector{Update}=Vector{Update}()
+    cm_token::Token=Token()
 
     output::CellOutput=CellOutput()
     queued::Bool=false
