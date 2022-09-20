@@ -430,8 +430,10 @@ export const CellInput = ({
 
     const updater = useMemo(eventEmitter, [])
     useEffect(() => {
-        updater.emit("updates", cm_updates)
-    }, [cm_updates.length])
+        if (cm_updates) {
+            updater.emit("updates", cm_updates)
+        }
+    }, [cm_updates?.length])
 
     useLayoutEffect(() => {
         if (dom_node_ref.current == null) return
@@ -725,14 +727,9 @@ export const CellInput = ({
                     pluto_collab(
                         start_version,
                         {
-                            send: (msg, data) =>  pluto_actions.send(msg, {...data, cell_id: cell_id}, { notebook_id }, false),
+                            push_updates: (data) =>  pluto_actions.send("push_updates", {...data, cell_id: cell_id}, { notebook_id }, false),
                             set_code_differs: set_class_code_differs,
-                            subscribe: updater.subscribe,
-                            request: async ({ version }) => {
-                                let notebook = pluto_actions.get_notebook()
-                                let updates = notebook?.cell_inputs[cell_id]?.cm_updates?.slice(version)
-                                return updates
-                            }
+                            subscribe_to_updates: (cb) => updater.subscribe("updates", cb),
                         }
                     ),
 
@@ -798,24 +795,6 @@ export const CellInput = ({
             }
         }
     }, [])
-
-    // Effect to apply "remote_code" to the cell when it changes...
-    // ideally this won't be necessary as we'll have actual multiplayer,
-    // or something to tell the user that the cell is out of sync.
-    useEffect(() => {
-        if (newcm_ref.current == null) return // Not sure when and why this gave an error, but now it doesn't
-
-        const current_value = getValue6(newcm_ref.current) ?? ""
-        if (remote_code_ref.current == null && remote_code === "" && current_value !== "") {
-            // this cell is being initialized with empty code, but it already has local code set.
-            // this happens when pasting or dropping cells
-            return
-        }
-        remote_code_ref.current = remote_code
-        if (current_value !== remote_code) {
-            setValue6(newcm_ref.current, remote_code)
-        }
-    }, [remote_code])
 
     useEffect(() => {
         const cm = newcm_ref.current

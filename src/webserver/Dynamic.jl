@@ -108,16 +108,15 @@ function notebook_to_js(notebook::Notebook)
         "cell_inputs" => Dict{UUID,Dict{String,Any}}(
             id => Dict{String,Any}(
                 "cell_id" => cell.cell_id,
-                "code" => cell.code,
+                # "code" => cell.code,
                 "code_folded" => cell.code_folded,
                 "metadata" => cell.metadata,
-                "cm_updates" => FirebaseyUtils.AppendonlyMarker(cell.cm_updates),
 
+                "cm_updates" => FirebaseyUtils.AppendonlyMarker(cell.cm_updates),
                 "last_run_version" => cell.last_run_version,
 
-                # TODO: never update those.
-                "code_text" => String(cell.code_text), # Current draft version
-                "start_version" => length(cell.cm_updates),
+                "code_text" => FirebaseyUtils.SendOnlyOnceMarker(String(cell.code_text)),
+                "start_version" => FirebaseyUtils.SendOnlyOnceMarker(length(cell.cm_updates)),
             )
         for (id, cell) in notebook.cells_dict),
         "cell_dependencies" => Dict{UUID,Dict{String,Any}}(
@@ -481,16 +480,19 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
         for cell in cells
             cell.queued = true
 
-            # NOTE: The client version may not be up to date, is this a problem?
-            # FIXME: this may need to be token protected inside the run update
-            cell.code = let
-                current = OT.Text(cell.code)
-                updates_to_apply = @view(cell.cm_updates[min(cell.last_run_version+1,end):end])
-                for update in updates_to_apply
-                    current = OT.apply(current, update)
-                end
-                String(current)
-            end
+            # # FIXME: this may need to be token protected inside the run update
+            # # NOTE: The client version may not be up to date, is this a problem?
+            # #       we are currently using the latest available version which may
+            # #       have been submitted by someone else.
+            # cell.code = let
+            #     current = OT.Text(cell.code)
+            #     updates_to_apply = @view(cell.cm_updates[cell.last_run_version+1:end])
+            #     for update in updates_to_apply
+            #         current = OT.apply(current, update)
+            #     end
+            #     String(current)
+            # end
+
             cell.last_run_version = length(cell.cm_updates)
         end
         send_notebook_changes!(🙋)

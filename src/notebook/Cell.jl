@@ -1,5 +1,4 @@
 import UUIDs: UUID, uuid1
-import .OperationalTransform: Update
 import .OperationalTransform as OT
 import .ExpressionExplorer: SymbolsState, UsingsImports
 
@@ -40,13 +39,13 @@ Base.@kwdef mutable struct Cell
     "Because Cells can be reordered, they get a UUID. The JavaScript frontend indexes cells using the UUID."
     cell_id::UUID=uuid1()
 
-    code::String=""
+    code::String="" # TODO: Remove
     code_folded::Bool=false
 
     last_run_version::Int=0
 
     code_text::OT.Text=OT.Text(code)
-    cm_updates::Vector{Update}=Vector{Update}()
+    cm_updates::Vector{OT.Update}=Vector{OT.Update}()
     cm_token::Token=Token()
 
     output::CellOutput=CellOutput()
@@ -67,6 +66,15 @@ Base.@kwdef mutable struct Cell
     depends_on_skipped_cells::Bool=false
 
     metadata::Dict{String,Any}=copy(DEFAULT_CELL_METADATA)
+end
+
+function Base.getproperty(c::Cell, field::Symbol)
+    if field == :code
+        @debug "Use of cell.code"
+        return String(c.code_text)
+    end
+
+    return getfield(c, field)
 end
 
 Cell(cell_id, code) = Cell(; cell_id, code)

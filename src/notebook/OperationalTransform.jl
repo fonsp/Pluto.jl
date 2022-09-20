@@ -4,6 +4,11 @@ the code-mirror collab demonstration (https://codemirror.net/examples/collab/).
 """
 module OperationalTransform
 
+# List things to do to make multiplayer
+# TODO: pasting cells
+# TODO: play with effects as part of the updates to model multiplayer cursors ?
+# TODO: investigate if compaction is needed
+
 abstract type ChangeSpec end
 
 struct Insertion <: ChangeSpec
@@ -35,7 +40,7 @@ Base.length(t::Text) = Base.length(t.content)
 Base.String(t::Text) = t.content
 
 struct InvalidDocumentLengthError <: Exception
-    msg
+    msg::String
 end
 
 function apply(text::Text, update::Update)
