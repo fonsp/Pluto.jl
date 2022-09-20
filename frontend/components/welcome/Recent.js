@@ -48,9 +48,10 @@ const shortest_path = (path, allpaths) => {
  *  connected: Boolean,
  *  remote_notebooks: Array<import("./Welcome.js").NotebookListEntry>,
  *  CustomRecent: preact.ReactElement?,
+ *  on_start_navigation: (string) => void,
  * }} props
  */
-export const Recent = ({ client, connected, remote_notebooks, CustomRecent }) => {
+export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_start_navigation }) => {
     const [combined_notebooks, set_combined_notebooks] = useState(/** @type {Array<CombinedNotebook>?} */ (null))
     const combined_notebooks_ref = useRef(combined_notebooks)
     combined_notebooks_ref.current = combined_notebooks
@@ -188,7 +189,7 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent }) =>
                           title=${nb.path}
                           onClick=${(e) => {
                               if (!running) {
-                                  document.body.classList.add("loading")
+                                  on_start_navigation(shortest_path(nb.path, all_paths))
                                   set_notebook_state(nb.path, {
                                       transitioning: true,
                                   })
@@ -204,7 +205,11 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent }) =>
             <h2>My work</h2>
             <ul id="recent" class="show-scrollbar">
                 <li class="new">
-                    <a href="new"
+                    <a
+                        href="new"
+                        onClick=${(e) => {
+                            on_start_navigation("new notebook")
+                        }}
                         ><button><span class="ionicon"></span></button>Create a <strong>new notebook</strong></a
                     >
                 </li>
