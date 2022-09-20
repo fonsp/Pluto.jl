@@ -417,17 +417,22 @@ responses[:push_updates] = function response_push_updates(🙋::ClientRequest)
     require_notebook(🙋)
     cell = let
         cell_id = UUID(🙋.body["cell_id"])
+        if !haskey(🙋.notebook.cells_dict, cell_id)
+            # Cell has prob been deleted but client is not yet aware of it?
+            send_notebook_changes!(🙋; commentary=:👎)
+            return
+        end
         🙋.notebook.cells_dict[cell_id]
     end
 
     updates = [
-        Base.convert(OperationalTransform.Update, update)
+        Base.convert(OT.Update, update)
         for update in 🙋.body["updates"]
     ]
     version = 🙋.body["version"]
 
     if !isready(cell.cm_token)
-        @warn "Cell is buzy, bailing out..."
+        @debug "Cell is buzy, bailing out..."
         send_notebook_changes!(🙋; commentary=:👎)
         return
     end
@@ -443,23 +448,23 @@ responses[:push_updates] = function response_push_updates(🙋::ClientRequest)
         end
 
         text = cell.code_text
-        try
-            for update in updates
-                text = OperationalTransform.apply(cell.code_text, update)
-            end
-        catch ex
-            if ex isa OperationalTransform.InvalidDocumentLengthError
-                @error "Invalid document length" exception=(ex,catch_backtrace())
-                send_notebook_changes!(🙋; commentary=:👎)
-                return
-            else
-                rethrow()
+        for update in updates
+            try
+                text = OT.apply(text, update)
+            catch ex
+                if ex isa OT.InvalidDocumentLengthError
+                    @error "Invalid document length" updates update exception=(ex,catch_backtrace())
+                    send_notebook_changes!(🙋; commentary=:👎)
+                    return
+                else
+                    rethrow()
+                end
             end
         end
         append!(cell.cm_updates, updates)
         cell.code_text = text
 
-        @info "Cell updates" n=length(cell.cm_updates) code=String(text)
+        @info "Cell updates" updates n=length(cell.cm_updates) code=String(text)
 
         send_notebook_changes!(🙋)
     end
@@ -479,10 +484,10 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
             # NOTE: The client version may not be up to date, is this a problem?
             # FIXME: this may need to be token protected inside the run update
             cell.code = let
-                current = OperationalTransform.Text(cell.code)
+                current = OT.Text(cell.code)
                 updates_to_apply = @view(cell.cm_updates[min(cell.last_run_version+1,end):end])
                 for update in updates_to_apply
-                    current = OperationalTransform.apply(current, update)
+                    current = OT.apply(current, update)
                 end
                 String(current)
             end

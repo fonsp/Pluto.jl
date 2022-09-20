@@ -34,7 +34,7 @@ end
 Base.length(t::Text) = Base.length(t.content)
 Base.String(t::Text) = t.content
 
-struct InvalidDocumentLengthError
+struct InvalidDocumentLengthError <: Exception
     msg
 end
 
@@ -45,11 +45,40 @@ function apply(text::Text, update::Update)
 
     offset = 0
     for change in update.specs
-        display(change)
         text = apply(text, shift_diff(change, offset))
         offset += diff_offset(change)
     end
     return text
+end
+
+function apply(text::Text, insertion::Insertion)
+    content = text.content
+
+    from = nextind(content, 0, insertion.from)
+    to = nextind(content, 0, insertion.from + 1)
+
+    new_content = @view(content[begin:from]) * insertion.insert * @view(content[to:end])
+    return Text(new_content)
+end
+
+function apply(text::Text, replacement::Replacement)
+    content = text.content
+
+    from = nextind(content, 0, replacement.from)
+    to = nextind(content, 0, replacement.to + 1)
+
+    new_content = @view(content[begin:from]) * replacement.insert * @view(content[to:end])
+    return Text(new_content)
+end
+
+function apply(text::Text, deletion::Deletion)
+    content = text.content
+
+    from = nextind(content, 0, deletion.from)
+    to = nextind(content, 0, deletion.to + 1)
+
+    new_content = @view(content[begin:from]) * @view(content[to:end])
+    return Text(new_content)
 end
 
 """
@@ -74,24 +103,7 @@ function diff_offset(insertion::Insertion)
     length(insertion.insert)
 end
 
-# TODO: test and use unicode code units
-function apply(text::Text, insertion::Insertion)
-    content = text.content
-    new_content = @view(content[begin:insertion.from]) * insertion.insert * @view(content[insertion.from+1:end])
-    return Text(new_content)
-end
-
-function apply(text::Text, replacement::Replacement)
-    content = text.content
-    new_content = @view(content[begin:replacement.from]) * replacement.insert * @view(content[replacement.to+1:end])
-    return Text(new_content)
-end
-
-function apply(text::Text, deletion::Deletion)
-    content = text.content
-    new_content = @view(content[begin:deletion.from]) * @view(content[deletion.to+1:end])
-    return Text(new_content)
-end
+## Utils
 
 function Base.convert(::Type{Update}, data::Dict)
     specs = data["specs"]
@@ -111,7 +123,7 @@ function Base.show(io::IO, insertion::Insertion)
     printstyled(io, "+[", insertion.from, "]", "\"", insertion.insert, "\"", color=:green)
 end
 function Base.show(io::IO, replacement::Replacement)
-    printstyled(io, "~[", replacement.from, ":", replacement.to, "]", "\"", replacement.insert, "\"", color=:orange)
+    printstyled(io, "~[", replacement.from, ":", replacement.to, "]", "\"", replacement.insert, "\"", color=:yellow)
 end
 function Base.show(io::IO, deletion::Deletion)
     printstyled(io, "~[", deletion.from, ":", deletion.to, "]"; color=:red)

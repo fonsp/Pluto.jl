@@ -65,7 +65,7 @@ let CellMemo = ({
         ...Object.values(metadata),
         depends_on_disabled_cells,
         depends_on_skipped_cells,
-        cm_updates.length,
+        cm_updates?.length,
         last_run_version,
         queued,
         running,

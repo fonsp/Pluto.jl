@@ -1,5 +1,6 @@
 import UUIDs: UUID, uuid1
 import .OperationalTransform: Update
+import .OperationalTransform as OT
 import .ExpressionExplorer: SymbolsState, UsingsImports
 
 const METADATA_DISABLED_KEY = "disabled"
@@ -44,7 +45,7 @@ Base.@kwdef mutable struct Cell
 
     last_run_version::Int=0
 
-    code_text::OperationalTransform.Text=OperationalTransform.Text(code)
+    code_text::OT.Text=OT.Text(code)
     cm_updates::Vector{Update}=Vector{Update}()
     cm_token::Token=Token()
 

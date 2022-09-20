@@ -53,7 +53,7 @@ import {
 import { markdown, html as htmlLang, javascript, sqlLang, python, julia_mixed } from "./CellInput/mixedParsers.js"
 import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
-import { CollabUpdatesFacet, LastRunVersionFacet, pluto_collab } from "./CellInput/pluto_collab.js"
+import { LastRunVersionFacet, pluto_collab } from "./CellInput/pluto_collab.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
 import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"
 import { cell_movement_plugin, prevent_holding_a_key_from_doing_things_across_cells } from "./CellInput/cell_movement_plugin.js"
@@ -339,6 +339,23 @@ let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPluto
     return line_object.from + ch_clamped
 }
 
+function eventEmitter() {
+  let events = {};
+  return {
+    subscribe: (name, cb) => {
+      (events[name] || (events[name] = [])).push(cb);
+      return {
+        unsubscribe: () => {
+          events[name] && events[name].splice(events[name].indexOf(cb), 1);
+        }
+      };
+    },
+    emit: (name, data) => {
+      (events[name] || []).forEach(fn => fn(data));
+    }
+  };
+}
+
 /**
  * @param {{
  *  local_code: string,
@@ -397,7 +414,6 @@ export const CellInput = ({
     let global_definitions_compartment = useCompartment(newcm_ref, GlobalDefinitionsFacet.of(global_definition_locations))
     let highlighted_line_compartment = useCompartment(newcm_ref, HighlightLineFacet.of(cm_highlighted_line))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
-    let updates_compartment = useCompartment(newcm_ref, CollabUpdatesFacet.of(cm_updates))
     let last_run_version_compartment = useCompartment(newcm_ref, LastRunVersionFacet.of(last_run_version))
 
     let on_change_compartment = useCompartment(
@@ -411,6 +427,11 @@ export const CellInput = ({
             })
         }, [on_change])
     )
+
+    const updater = useMemo(eventEmitter, [])
+    useEffect(() => {
+        updater.emit("updates", cm_updates)
+    }, [cm_updates.length])
 
     useLayoutEffect(() => {
         if (dom_node_ref.current == null) return
@@ -700,13 +721,13 @@ export const CellInput = ({
 
                     on_change_compartment,
 
-                    updates_compartment,
                     last_run_version_compartment,
                     pluto_collab(
                         start_version,
                         {
                             send: (msg, data) =>  pluto_actions.send(msg, {...data, cell_id: cell_id}, { notebook_id }, false),
                             set_code_differs: set_class_code_differs,
+                            subscribe: updater.subscribe,
                             request: async ({ version }) => {
                                 let notebook = pluto_actions.get_notebook()
                                 let updates = notebook?.cell_inputs[cell_id]?.cm_updates?.slice(version)

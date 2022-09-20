@@ -59,12 +59,8 @@ function showSpec({ from, to, insert }) {
     }
 }
 
-const DEBUG_COLLAB = false
+const DEBUG_COLLAB = true
 
-export const CollabUpdatesFacet = Facet.define({
-    combine: (values) => values[0],
-    compare: (a, b) => a.length == b.length,
-})
 export const LastRunVersionFacet = Facet.define({
     combine: (values) => values[0],
 })
@@ -76,14 +72,14 @@ export const pluto_collab = (startVersion, connection) => {
 
         constructor(view) {
             this.view = view
-            this.pull()
+
+            this.handler = connection.subscribe("updates", (updates) => this.sync(updates))
         }
 
         update(update) {
             let version = getSyncedVersion(update.state)
             connection.set_code_differs(version != update.state.facet(LastRunVersionFacet))
 
-            if (update.state.facet(CollabUpdatesFacet) !== update.startState.facet(CollabUpdatesFacet)) this.sync()
             if (update.docChanged) this.push()
         }
 
@@ -111,9 +107,19 @@ export const pluto_collab = (startVersion, connection) => {
             }
         }
 
-        async sync() {
+        sync(updates) {
             let version = getSyncedVersion(this.view.state)
-            let updates = await pullUpdates(connection, version)
+            // console.log("awaiting udpates")
+            // let p = connection.pullUpdates()
+            // console.log("promise to wait", p)
+            // let updates = await p
+            // console.log("done awaiting udpates", updates)
+            updates = updates.slice(version).map(u => ({
+                changes: ChangeSet.of(u.specs, u.document_length, "\n"),
+                clientID: u.client_id,
+            }))
+
+            console.log("Updates: ", updates)
 
             if (DEBUG_COLLAB && updates.length) {
                 console.log(`Syncing with ${updates.length} updates`)
@@ -129,13 +135,13 @@ export const pluto_collab = (startVersion, connection) => {
 
         async pull() { }
 
-        // async pull() {
-        //   while (!this.done) {
-        //       await this.sync()
-        //   }
-        // }
+        async pull() {
+          while (!this.done) {
+              await this.sync()
+          }
+        }
 
-        destroy() { this.done = true }
+        destroy() { this.done = true; this.handler.unsubscribe() }
     })
 
     return [collab({ startVersion }), plugin]
