@@ -81,7 +81,7 @@ end
 
 "Returns whether or not the cell is **explicitely** disabled."
 is_disabled(c::Cell) = get(c.metadata, METADATA_DISABLED_KEY, DEFAULT_CELL_METADATA[METADATA_DISABLED_KEY])
-set_disabled(c::Cell, value::Boolean) = if value == DEFAULT_CELL_METADATA[METADATA_DISABLED_KEY]
+set_disabled(c::Cell, value::Bool) = if value == DEFAULT_CELL_METADATA[METADATA_DISABLED_KEY]
     delete!(c.metadata, METADATA_DISABLED_KEY)
 else
     c.metadata[METADATA_DISABLED_KEY] = value
