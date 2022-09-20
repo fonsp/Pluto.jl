@@ -122,6 +122,10 @@ const first_true_key = (obj) => {
  *  code: string,
  *  code_folded: boolean,
  *  metadata: CellMetaData,
+ *  cm_updates: Array<import("./CellInput.js").TextUpdate>
+ *  last_run_version: Number,
+ *  code_text: String,
+ *  start_version: Number,
  * }}
  */
 
@@ -363,6 +367,10 @@ export class Editor extends Component {
                 let new_cells = new_codes.map((code) => ({
                     cell_id: uuidv4(),
                     code: code,
+                    code_text: code,
+                    cm_updates: [],
+                    start_version: 0,
+                    last_run_version: 0,
                     code_folded: false,
                 }))
 
@@ -383,22 +391,6 @@ export class Editor extends Component {
                     index = this.state.notebook.cell_order.length
                 }
 
-                /** Update local_code. Local code doesn't force CM to update it's state
-                 * (the usual flow is keyboard event -> cm -> local_code and not the opposite )
-                 * See ** 1 **
-                 */
-                this.setState(
-                    immer((state) => {
-                        // Deselect everything first, to clean things up
-                        state.selected_cells = []
-
-                        for (let cell of new_cells) {
-                            state.cell_inputs_local[cell.cell_id] = cell
-                        }
-                        state.last_created_cell = new_cells[0]?.cell_id
-                    })
-                )
-
                 /**
                  * Create an empty cell in the julia-side.
                  * Code will differ, until the user clicks 'run' on the new code
@@ -408,7 +400,9 @@ export class Editor extends Component {
                         notebook.cell_inputs[cell.cell_id] = {
                             ...cell,
                             // Fill the cell with empty code remotely, so it doesn't run unsafe code
-                            code: "",
+                            start_version: 1,
+                            last_run_version: 0,
+                            cm_updates: [{ specs: [{ from: 0, insert: cell.code }], document_length: 0, client_id: "slkqjdsql" }],
                             metadata: {
                                 ...DEFAULT_CELL_METADATA,
                             },
@@ -448,6 +442,10 @@ export class Editor extends Component {
                     return {
                         cell_id: uuidv4(),
                         code: code,
+                        code_text: code,
+                        last_run_version: 0,
+                        start_version: 0,
+                        cm_updates: [],
                         code_folded: false,
                         metadata: {
                             ...DEFAULT_CELL_METADATA,
@@ -508,6 +506,10 @@ export class Editor extends Component {
                     notebook.cell_inputs[id] = {
                         cell_id: id,
                         code,
+                        code_text: code,
+                        last_run_version: 0,
+                        start_version: 0,
+                        cm_updates: [],
                         code_folded: false,
                         metadata: { ...DEFAULT_CELL_METADATA },
                     }

@@ -340,24 +340,43 @@ let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPluto
 }
 
 function eventEmitter() {
-  let events = {};
-  return {
-    subscribe: (name, cb) => {
-      (events[name] || (events[name] = [])).push(cb);
-      return {
-        unsubscribe: () => {
-          events[name] && events[name].splice(events[name].indexOf(cb), 1);
-        }
-      };
-    },
-    emit: (name, data) => {
-      (events[name] || []).forEach(fn => fn(data));
+    let events = {}
+    return {
+        subscribe: (/** @type {string} */ name, cb) => {
+            ;(events[name] || (events[name] = [])).push(cb)
+            return {
+                unsubscribe: () => {
+                    events[name] && events[name].splice(events[name].indexOf(cb), 1)
+                },
+            }
+        },
+        emit: (/** @type {string} */ name, data) => {
+            ;(events[name] || []).forEach((fn) => fn(data))
+        },
     }
-  };
 }
 
 /**
+ * @typedef UpdateSpec
+ * @type {{
+ *   from: Number,
+ *   to?: Number,
+ *   insert?: String,
+ * }}
+ *
+ * @typedef TextUpdate
+ * @type {{
+ *   client_id: string,
+ *   document_length: Number,
+ *   specs: Array<UpdateSpec>,
+ * }}
+ */
+
+/**
  * @param {{
+ *  code_text: string,
+ *  cm_updates: Array<TextUpdate>,
+ *  last_run_version: Number,
  *  local_code: string,
  *  remote_code: string,
  *  scroll_into_view_after_creation: boolean,
@@ -374,12 +393,10 @@ export const CellInput = ({
     last_run_version,
     set_class_code_differs,
 
-    remote_code,
     disable_input,
     focus_after_creation,
     cm_forced_focus,
     set_cm_forced_focus,
-    show_input,
     on_submit,
     on_delete,
     on_add_after,
@@ -724,14 +741,11 @@ export const CellInput = ({
                     on_change_compartment,
 
                     last_run_version_compartment,
-                    pluto_collab(
-                        start_version,
-                        {
-                            push_updates: (data) =>  pluto_actions.send("push_updates", {...data, cell_id: cell_id}, { notebook_id }, false),
-                            set_code_differs: set_class_code_differs,
-                            subscribe_to_updates: (cb) => updater.subscribe("updates", cb),
-                        }
-                    ),
+                    pluto_collab(start_version, {
+                        push_updates: (data) => pluto_actions.send("push_updates", { ...data, cell_id: cell_id }, { notebook_id }, false),
+                        set_code_differs: set_class_code_differs,
+                        subscribe_to_updates: (cb) => updater.subscribe("updates", cb),
+                    }),
 
                     // This is my weird-ass extension that checks the AST and shows you where
                     // there're missing nodes.. I'm not sure if it's a good idea to have it
