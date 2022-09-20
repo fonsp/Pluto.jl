@@ -398,8 +398,8 @@ update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs.
 update_run!(args...; kwargs...) = update_save_run!(args...; save=false, kwargs...)
 
 function notebook_differences(from::Notebook, to::Notebook)
-	from_cells = from_cells_dict
-	to_cells = to_cells_dict
+	from_cells = from.cells_dict
+	to_cells = to.cells_dict
 
 	(
 		# it's like D3 joins: https://observablehq.com/@d3/learn-d3-joins#cell-528
