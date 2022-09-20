@@ -449,7 +449,7 @@ responses[:push_updates] = function response_push_updates(🙋::ClientRequest)
             end
         catch ex
             if ex isa OperationalTransform.InvalidDocumentLengthError
-                @warn "Invalid document length" exception=(ex,catch_backtrace())
+                @error "Invalid document length" exception=(ex,catch_backtrace())
                 send_notebook_changes!(🙋; commentary=:👎)
                 return
             else

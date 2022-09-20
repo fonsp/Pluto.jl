@@ -43,10 +43,35 @@ function apply(text::Text, update::Update)
         throw(InvalidDocumentLengthError("Invalid update document length $(update.document_length), document is $(length(text))"))
     end
 
+    offset = 0
     for change in update.specs
-        text = apply(text, change)
+        display(change)
+        text = apply(text, shift_diff(change, offset))
+        offset += diff_offset(change)
     end
     return text
+end
+
+"""
+Apply an offset for the edit.
+"""
+shift_diff(deletion::Deletion, offset) = Deletion(deletion.from + offset, deletion.to + offset)
+shift_diff(replacement::Replacement, offset) = Replacement(replacement.from + offset, replacement.to + offset, replacement.insert)
+shift_diff(deletion::Insertion, offset) = Insertion(deletion.from + offset, deletion.insert)
+
+"""
+Computes the offset created by this change spec
+so that the next change spec can be applied as a
+new change.
+"""
+function diff_offset(deletion::Deletion)
+    deletion.from - deletion.to
+end
+function diff_offset(replacement::Replacement)
+    length(replacement.insert) - (replacement.to - replacement.from)
+end
+function diff_offset(insertion::Insertion)
+    length(insertion.insert)
 end
 
 # TODO: test and use unicode code units
@@ -79,6 +104,17 @@ function Base.convert(::Type{Update}, data::Dict)
         end
     end
     Update(specs, data["document_length"], data["client_id"])
+end
+
+# Eye candy
+function Base.show(io::IO, insertion::Insertion)
+    printstyled(io, "+[", insertion.from, "]", "\"", insertion.insert, "\"", color=:green)
+end
+function Base.show(io::IO, replacement::Replacement)
+    printstyled(io, "~[", replacement.from, ":", replacement.to, "]", "\"", replacement.insert, "\"", color=:orange)
+end
+function Base.show(io::IO, deletion::Deletion)
+    printstyled(io, "~[", deletion.from, ":", deletion.to, "]"; color=:red)
 end
 
 #=

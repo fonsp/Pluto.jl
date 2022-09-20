@@ -13,7 +13,7 @@ function pushUpdates(
             const insertText = insert.sliceString(0, insert.length, '\n')
             if (fromB == toB) {
                 specs.push({ from: fromA, to: toA }) // delete
-            } else if (insertText.length > 0) {
+            } else {
                 specs.push({ from: fromA, to: toA, insert: insertText }) // replace/insert
             }
         }, false)

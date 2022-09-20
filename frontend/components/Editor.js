@@ -569,13 +569,14 @@ export class Editor extends Component {
             set_and_run_multiple: async (cell_ids) => {
                 // TODO: this function is called with an empty list sometimes, where?
                 if (cell_ids.length > 0) {
-                    await update_notebook((notebook) => {
-                        for (let cell_id of cell_ids) {
-                            if (this.state.cell_inputs_local[cell_id]) {
-                                notebook.cell_inputs[cell_id].code = this.state.cell_inputs_local[cell_id].code
-                            }
-                        }
-                    })
+                    // await update_notebook((notebook) => {
+                    //     for (let cell_id of cell_ids) {
+                    //         if (this.state.cell_inputs_local[cell_id]) {
+                    //             notebook.cell_inputs[cell_id].code = this.state.cell_inputs_local[cell_id].code
+                    //         }
+                    //     }
+                    // })
+
                     // This is a "dirty" trick, as this should actually be stored in some shared request_status => status state
                     // But for now... this is fine 😼
                     await this.setStatePromise(
