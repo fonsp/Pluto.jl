@@ -11,17 +11,18 @@ import { guess_notebook_location } from "../../common/NotebookLocationFromURL.js
  *  connected: Boolean,
  *  show_samples: Boolean,
  *  CustomPicker: {text: String, placeholder: String}?,
+ *  on_start_navigation: (string) => void,
  * }} props
  */
-export const Open = ({ client, connected, CustomPicker, show_samples }) => {
+export const Open = ({ client, connected, CustomPicker, show_samples, on_start_navigation }) => {
     const on_open_path = async (new_path) => {
         const processed = await guess_notebook_location(new_path)
         if (processed.type === "path") {
-            document.body.classList.add("loading")
+            on_start_navigation(processed.path_or_url)
             window.location.href = link_open_path(processed.path_or_url)
         } else {
             if (confirm("Are you sure? This will download and run the file at\n\n" + processed.path_or_url)) {
-                document.body.classList.add("loading")
+                on_start_navigation(processed.path_or_url)
                 window.location.href = link_open_url(processed.path_or_url)
             }
         }
