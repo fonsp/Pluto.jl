@@ -398,22 +398,18 @@ update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs.
 update_run!(args...; kwargs...) = update_save_run!(args...; save=false, kwargs...)
 
 function notebook_differences(from::Notebook, to::Notebook)
-	old_codes = Dict(
-		id => c.code
-		for (id,c) in from.cells_dict
-	)
-	new_codes = Dict(
-		id => c.code
-		for (id,c) in to.cells_dict
-	)
+	from_cells = from_cells_dict
+	to_cells = to_cells_dict
 
 	(
 		# it's like D3 joins: https://observablehq.com/@d3/learn-d3-joins#cell-528
-		added = setdiff(keys(new_codes), keys(old_codes)),
-		removed = setdiff(keys(old_codes), keys(new_codes)),
+		added = setdiff(keys(to_cells), keys(from_cells)),
+		removed = setdiff(keys(from_cells), keys(to_cells)),
 		changed = let
-			remained = keys(old_codes) ∩ keys(new_codes)
-			filter(id -> old_codes[id] != new_codes[id], remained)
+			remained = keys(from_cells) ∩ keys(to_cells)
+			filter(remained) do id
+				from_cells[id].code != to_cells[id].code || from_cells[id].metadata != to_cells[id].metadata
+			end
 		end,
 		
 		order_changed = from.cell_order != to.cell_order,
@@ -438,11 +434,6 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 		return false
 	end::Notebook
 	
-	new_codes = Dict(
-		id => c.code
-		for (id,c) in just_loaded.cells_dict
-	)
-
 	d = notebook_differences(notebook, just_loaded)
 	
 	added = d.added
@@ -469,10 +460,15 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 		delete!(notebook.cells_dict, c)
 	end
 	for c in changed
-		notebook.cells_dict[c].code = new_codes[c]
+		notebook.cells_dict[c].code = just_loaded.cells_dict[c].code
 	end
 
+	for c in keys(notebook.cells_dict) ∩ keys(just_loaded.cells_dict)
+		notebook.cells_dict[c].code_folded = just_loaded.cells_dict[c].code_folded
+	end
+	
 	notebook.cell_order = just_loaded.cell_order
+	notebook.metadata = just_loaded.metadata
 	
 	if include_nbpg && nbpkg_changed
 		@info "nbpkgs not equal" (notebook.nbpkg_ctx isa Nothing) (just_loaded.nbpkg_ctx isa Nothing)

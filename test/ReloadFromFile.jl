@@ -1,5 +1,5 @@
 using Test
-import Pluto: Configuration, Notebook, ServerSession, ClientSession, update_run!, Cell, WorkspaceManager, SessionActions
+import Pluto: Configuration, Notebook, ServerSession, ClientSession, update_run!, Cell, WorkspaceManager, SessionActions, save_notebook
 import Pluto.Configuration: Options, EvaluationOptions
 import Distributed
 using Pluto.WorkspaceManager: poll
@@ -85,12 +85,58 @@ import Pkg
     # notebook order reversed again, but cell should not re-run
     @test original_rand_output == notebook.cells[3].output.body
 
+    
+        
+    ###
+    sleep(timeout_between_tests)
+    
+    
+    file4 = read(notebook.path, String)
+    notebook.cells[3].code_folded = true
+    save_notebook(notebook)
+    file5 = read(notebook.path, String)
+    @test file4 != file5
+    
+    @test notebook.cells[3].code_folded
+    write(notebook.path, file4)
+    
+    
+    @test poll(10) do
+        notebook.cells[3].code_folded == false
+    end
+    
+    # cell folded, but cell should not re-run
+    @test original_rand_output == notebook.cells[3].output.body
+
+    
+        
+    ###
+    sleep(timeout_between_tests)
+    
+    
+    file6 = read(notebook.path, String)
+    Pluto.set_disabled(notebook.cells[3], true)
+    save_notebook(notebook)
+    
+    file7 = read(notebook.path, String)
+    @test file6 != file7
+    @test Pluto.is_disabled(notebook.cells[3])
+    
+    write(notebook.path, file6)
+    @test poll(10) do
+        @test !Pluto.is_disabled(notebook.cells[3])
+    end
+    
+    # cell disabled and re-enabled, so it should re-run
+    @test original_rand_output != notebook.cells[3].output.body
+
+    
 
     ###
     sleep(timeout_between_tests)
     
-    file4 = read(joinpath(@__DIR__, "packages", "simple_stdlib_import.jl"), String)
-    write(notebook.path, file4)
+    file8 = read(joinpath(@__DIR__, "packages", "simple_stdlib_import.jl"), String)
+    write(notebook.path, file8)
     
     
     @test poll(10) do
