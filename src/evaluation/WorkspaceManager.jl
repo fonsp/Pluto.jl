@@ -145,7 +145,7 @@ function start_relaying_self_updates((session, notebook)::SN, run_channel::Distr
 end
 
 function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.RemoteChannel)
-    update_throttled, flush_throttled = Pluto.throttled(0.1) do 
+    update_throttled, flush_throttled = Pluto.throttled(0.1) do
         Pluto.send_notebook_changes!(Pluto.ClientRequest(session=session, notebook=notebook))
     end
 
@@ -487,7 +487,7 @@ function collect_soft_definitions(session_notebook::SN, modules::Set{Expr})
 end
 
 
-function macroexpand_in_workspace(session_notebook::SN, macrocall, cell_id, module_name = nothing)::Tuple{Bool, Any}
+function macroexpand_in_workspace(session_notebook::SN, macrocall, cell_id, module_name=nothing)::Tuple{Bool,Any}
     workspace = get_workspace(session_notebook)
     module_name = module_name === nothing ? workspace.module_name : module_name
 
