@@ -463,6 +463,19 @@ end
 
 # ✅ Public API
 """
+Remove all [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries from the `Project.toml`.
+"""
+function clear_compat_entries(ctx::PkgContext)::PkgContext
+	if isfile(project_file(ctx))
+		_modify_compat(empty!, ctx)
+	else
+		ctx
+	end
+end
+
+
+# ✅ Public API
+"""
 Remove any automatically-generated [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries from the `Project.toml`. This will undo the effects of [`write_auto_compat_entries`](@ref) but leave other (e.g. manual) compat entries intact. Return the new `PkgContext`.
 """
 function clear_auto_compat_entries(ctx::PkgContext)::PkgContext
