@@ -146,11 +146,22 @@ let match_latex_complete = (ctx) => ctx.matchBefore(/\\[^\s"'.`]*/)
 let match_symbol_complete = (ctx) => ctx.matchBefore(/\.\:[^\s"'`()\[\].]*/)
 /** Are we matching exactly `~/`? */
 let match_expanduser_complete = (ctx) => ctx.matchBefore(/~\//)
+/** Are we matching inside a string */
+function match_string_complete(ctx) {
+    const tree = syntaxTree(ctx.state)
+    const node = tree.resolve(ctx.pos)
+    if (node == null || (node.name !== "TripleString" && node.name !== "String")) {
+        return false
+    }
+    return true
+}
 
 /** Use the completion results from the Julia server to create CM completion objects, but only for path completions (TODO: broken) and latex completions. */
 let julia_special_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (ctx) => {
     let to_complete = ctx.state.sliceDoc(0, ctx.pos)
     let { start, stop, results } = await request_autocomplete({ text: to_complete })
+
+    let should_apply_unicode_completion = !match_string_complete(ctx)
 
     return {
         from: start,
@@ -161,7 +172,7 @@ let julia_special_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ r
         options: results.map(([text, _, __, ___, ____, detail]) => {
             return {
                 label: text,
-                apply: detail ? detail : text,
+                apply: detail && should_apply_unicode_completion ? detail : text,
                 detail,
             }
         }),
