@@ -112,10 +112,16 @@ end
 
 function Base.convert(::Type{Update}, data::Dict)
     specs = data["specs"]
+
+    # NOTE: we could also replace inserts/deletes with replacements
     specs = map(specs) do spec
         from = spec["from"]
         if haskey(spec, "insert")
-            Replacement(from, get(spec, "to", from), spec["insert"])
+            if haskey(spec, "to")
+                Replacement(from, spec["to"], spec["insert"])
+            else
+                Insertion(from, spec["insert"])
+            end
         else
             Deletion(from, spec["to"])
         end
