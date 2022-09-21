@@ -103,12 +103,11 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
             
             @info "Updating from file..."
             
-            
             sleep(0.1) ## There seems to be a synchronization issue if your OS is VERYFAST
             wait_until_file_unchanged(nb.path, .3)
             
             # call update_from_file. If it returns false, that means that the notebook file was corrupt, so we try again, a maximum of 10 times.
-            for i in 1:10
+            for _ in 1:10
                 if update_from_file(session, nb)
                     break
                 end
@@ -122,6 +121,7 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
     end
 
     in_session() = get(session.notebooks, nb.notebook_id, nothing) === nb
+    
     session.options.server.auto_reload_from_file && @asynclog try
         while in_session()
             if !isfile(nb.path)

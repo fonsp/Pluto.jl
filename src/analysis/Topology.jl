@@ -32,6 +32,7 @@ Base.@kwdef struct NotebookTopology
     cell_order::ImmutableVector{Cell}=ImmutableVector{Cell}()
 
     unresolved_cells::ImmutableSet{Cell} = ImmutableSet{Cell}()
+    disabled_cells::ImmutableSet{Cell} = ImmutableSet{Cell}()
 end
 
 # BIG TODO HERE: CELL ORDER
@@ -48,6 +49,7 @@ function set_unresolved(topology::NotebookTopology, unresolved_cells::Vector{Cel
         nodes=topology.nodes, 
         codes=merge(topology.codes, codes), 
         unresolved_cells=union(topology.unresolved_cells, unresolved_cells),
-        cell_order = topology.cell_order,
+        cell_order=topology.cell_order,
+        disabled_cells=topology.disabled_cells,
     )
 end

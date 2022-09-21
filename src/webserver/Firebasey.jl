@@ -95,7 +95,7 @@ md"""
 abstract type JSONPatch end
 
 # ╔═╡ bd0d46bb-3e58-4522-bae0-83eb799196c4
-PatchPath = Vector
+const PatchPath = Vector
 
 # ╔═╡ db2d8a3e-2de1-11eb-02b8-9ffbfaeff61c
 struct AddPatch <: JSONPatch
@@ -679,8 +679,7 @@ function getpath(value, path)
 		return value
 	end
 	
-	current = path[firstindex(path)]
-	rest = path[firstindex(path) + 1:end]
+	current, rest... = path
 	if value isa AbstractDict
 		key = force_convert_key(value, current)
 		getpath(getindex(value, key), rest)
@@ -709,7 +708,7 @@ function applypatch!(value, patch::AddPatch)
 		throw("Impossible")
 	else
 		last = patch.path[end]
-		rest = patch.path[firstindex(patch.path):end - 1]
+		rest = patch.path[begin:end - 1]
 		subvalue = getpath(value, rest)
 		if subvalue isa AbstractDict
 			key = force_convert_key(subvalue, last)
@@ -746,7 +745,7 @@ function applypatch!(value, patch::ReplacePatch)
 		throw("Impossible")
 	else
 		last = patch.path[end]
-		rest = patch.path[firstindex(patch.path):end - 1]
+		rest = patch.path[begin:end - 1]
 		subvalue = getpath(value, rest)
 		if subvalue isa AbstractDict
 			key = force_convert_key(subvalue, last)
@@ -783,7 +782,7 @@ function applypatch!(value, patch::RemovePatch)
 		throw("Impossible")
 	else
 		last = patch.path[end]
-		rest = patch.path[firstindex(patch.path):end - 1]
+		rest = patch.path[begin:end - 1]
 		subvalue = getpath(value, rest)
 		if subvalue isa AbstractDict
 			key = force_convert_key(subvalue, last)

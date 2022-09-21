@@ -63,6 +63,7 @@ import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_l
 import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
 import { debug_syntax_plugin } from "./CellInput/debug_syntax_plugin.js"
 import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
+import { is_mac_keyboard } from "../common/KeyboardShortcuts.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 
@@ -369,13 +370,19 @@ export const CellInput = ({
     any_logs,
     show_logs,
     set_show_logs,
+    set_cell_disabled,
     cm_highlighted_line,
     metadata,
     global_definition_locations,
 }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     const { disabled: running_disabled, skip_as_script } = metadata
-
+    let [error, set_error] = useState(null)
+    if (error) {
+        const to_throw = error
+        set_error(null)
+        throw to_throw
+    }
     const newcm_ref = useRef(/** @type {EditorView?} */ (null))
     const dom_node_ref = useRef(/** @type {HTMLElement?} */ (null))
     const remote_code_ref = useRef(/** @type {string?} */ (null))
@@ -571,7 +578,6 @@ export const CellInput = ({
         const newcm = (newcm_ref.current = new EditorView({
             state: EditorState.create({
                 doc: local_code,
-
                 extensions: [
                     EditorView.theme({}, { dark: usesDarkTheme }),
                     // Compartments coming from react state/props
@@ -693,6 +699,14 @@ export const CellInput = ({
                     // Enable this plugin if you want to see the lezer tree,
                     // and possible lezer errors and maybe more debug info in the console:
                     // debug_syntax_plugin,
+                    // Handle errors hopefully?
+                    EditorView.exceptionSink.of((exception) => {
+                        set_error(exception)
+                        console.error("EditorView exception!", exception)
+                        // alert(
+                        //     `We ran into an issue! We have lost your cursor 😞😓😿\n If this appears again, please press F12, then click the "Console" tab,  eport an issue at https://github.com/fonsp/Pluto.jl/issues`
+                        // )
+                    }),
                 ],
             }),
             parent: dom_node_ref.current,
@@ -818,12 +832,13 @@ export const CellInput = ({
                 any_logs=${any_logs}
                 show_logs=${show_logs}
                 set_show_logs=${set_show_logs}
+                set_cell_disabled=${set_cell_disabled}
             />
         </pluto-input>
     `
 }
 
-const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, running_disabled, any_logs, show_logs, set_show_logs }) => {
+const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, running_disabled, any_logs, show_logs, set_show_logs, set_cell_disabled }) => {
     const timeout = useRef(null)
     let pluto_actions = useContext(PlutoActionsContext)
     const [open, setOpen] = useState(false)
@@ -842,11 +857,7 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
         const new_val = !running_disabled
         e.preventDefault()
         e.stopPropagation()
-        await pluto_actions.update_notebook((notebook) => {
-            notebook.cell_inputs[cell_id].metadata["disabled"] = new_val
-        })
-        // we also 'run' the cell if it is disabled, this will make the backend propage the disabled state to dependent cells
-        await run_cell()
+        await set_cell_disabled(new_val)
     }
     const toggle_logs = () => set_show_logs(!show_logs)
 
