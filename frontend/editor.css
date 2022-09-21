@@ -1577,7 +1577,8 @@ pluto-input > button.input_context_menu ul {
         z-index: 31;
     }
     pluto-input > button.input_context_menu ul {
-        left: calc(100% - var(--width) - 36px);
+        right: 0px;
+        left: unset;
     }
 }
 .input_context_menu li {
