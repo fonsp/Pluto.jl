@@ -243,6 +243,31 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
+    
+    future_notebook = read(joinpath(@__DIR__, "future_nonexisting_version.jl"), String)
+    @testset "Recovery from unavailable versions" begin
+        🍭 = ServerSession()
+
+        dir = mktempdir()
+        path = joinpath(dir, "hello.jl")
+        write(path, future_notebook)
+
+        notebook = SessionActions.open(🍭, path; run_async=false)
+        
+        @test num_backups_in(dir) == 0
+
+
+        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_restart_recommended_msg === nothing
+        @test notebook.nbpkg_restart_required_msg === nothing
+
+        @test noerror(notebook.cells[1])
+        @test noerror(notebook.cells[2])
+
+        @test notebook.cells[2].output.body == "0.3.1"
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
 
 
     @testset "Pkg cell -- dynamically added" begin
