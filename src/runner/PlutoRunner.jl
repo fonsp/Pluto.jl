@@ -265,10 +265,10 @@ module CantReturnInPluto
     replace_returns_with_error_in_interpolation(ex) = ex
 end
 
-function try_macroexpand(mod, cell_uuid, expr)
+function try_macroexpand(mod::Module, notebook_id::UUID, cell_id::UUID, expr)
     # Remove the precvious cached expansion, so when we error somewhere before we update,
     # the old one won't linger around and get run accidentally.
-    delete!(cell_expanded_exprs, cell_uuid)
+    delete!(cell_expanded_exprs, cell_id)
 
     # Remove toplevel block, as that screws with the computer and everything
     expr_not_toplevel = if expr.head == :toplevel || expr.head == :block
@@ -288,14 +288,14 @@ function try_macroexpand(mod, cell_uuid, expr)
     expr_without_globalrefs = globalref_to_workspaceref(expr_without_return)
 
     has_pluto_hook_features = has_hook_style_pluto_properties_in_expr(expr_without_globalrefs)
-    expr_to_save = replace_pluto_properties_in_expr(expr_without_globalrefs,
-        cell_id=cell_uuid,
-        rerun_cell_function=() -> rerun_cell_from_notebook(cell_uuid),
-        register_cleanup_function=(fn) -> UseEffectCleanups.register_cleanup(fn, cell_uuid),
+    expr_to_save = replace_pluto_properties_in_expr(expr_without_globalrefs;
+        cell_id,
+        rerun_cell_function=() -> rerun_cell_from_notebook(cell_id),
+        register_cleanup_function=(fn) -> UseEffectCleanups.register_cleanup(fn, cell_id),
     )
 
     did_mention_expansion_time = false
-    cell_expanded_exprs[cell_uuid] = CachedMacroExpansion(
+    cell_expanded_exprs[cell_id] = CachedMacroExpansion(
         expr_hash(expr),
         expr_to_save,
         elapsed_ns,
@@ -525,7 +525,7 @@ function run_expression(
     # .... But ideally we wouldn't re-macroexpand and store the error the first time (TODO-ish)
     if !haskey(cell_expanded_exprs, cell_id) || cell_expanded_exprs[cell_id].original_expr_hash != expr_hash(expr)
         try
-            try_macroexpand(m, cell_id, expr)
+            try_macroexpand(m, notebook_id, cell_id, expr)
         catch e
             result = CapturedException(e, stacktrace(catch_backtrace()))
             cell_results[cell_id], cell_runtimes[cell_id] = (result, nothing)
