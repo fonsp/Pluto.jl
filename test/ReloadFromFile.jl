@@ -90,10 +90,11 @@ import Pkg
     ###
     sleep(timeout_between_tests)
     
-    
     file4 = read(notebook.path, String)
     notebook.cells[3].code_folded = true
     save_notebook(notebook)
+    sleep(timeout_between_tests)
+    
     file5 = read(notebook.path, String)
     @test file4 != file5
     
@@ -117,6 +118,7 @@ import Pkg
     file6 = read(notebook.path, String)
     Pluto.set_disabled(notebook.cells[3], true)
     save_notebook(notebook)
+    sleep(timeout_between_tests)
     
     file7 = read(notebook.path, String)
     @test file6 != file7
@@ -124,7 +126,7 @@ import Pkg
     
     write(notebook.path, file6)
     @test poll(10) do
-        @test !Pluto.is_disabled(notebook.cells[3])
+        !Pluto.is_disabled(notebook.cells[3])
     end
     
     # cell disabled and re-enabled, so it should re-run

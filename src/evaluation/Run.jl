@@ -461,6 +461,7 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 	end
 	for c in changed
 		notebook.cells_dict[c].code = just_loaded.cells_dict[c].code
+		notebook.cells_dict[c].metadata = just_loaded.cells_dict[c].metadata
 	end
 
 	for c in keys(notebook.cells_dict) ∩ keys(just_loaded.cells_dict)
