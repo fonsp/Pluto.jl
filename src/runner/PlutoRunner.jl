@@ -28,6 +28,7 @@ import Base: show, istextmime
 import UUIDs: UUID, uuid4
 import Dates: DateTime
 import Logging
+import REPL
 
 export @bind
 
@@ -1737,10 +1738,33 @@ binding_from(s::Symbol, workspace::Module) = Docs.Binding(workspace, s)
 binding_from(r::GlobalRef, workspace::Module) = Docs.Binding(r.mod, r.name)
 binding_from(other, workspace::Module) = error("Invalid @var syntax `$other`.")
 
+const DOC_SUGGESTION_LIMIT = 10
+
+struct Suggestion
+    match::String
+    query::String
+end
+
+# inspired from REPL.printmatch()
+function Base.show(io::IO, ::MIME"text/html", suggestion::Suggestion)
+    print(io, "<a href=\"@ref\"><code>")
+    is, _ = REPL.bestmatch(suggestion.query, suggestion.match)
+    for (i, char) in enumerate(suggestion.match)
+        esc_c = get(Markdown._htmlescape_chars, char, char)
+        if i in is
+            print(io, "<b>", esc_c, "</b>")
+        else
+            print(io, esc_c)
+        end
+    end
+    print(io, "</code></a>")
+end
+
 "You say doc_fetcher, I say You say doc_fetcher, I say You say doc_fetcher, I say You say doc_fetcher, I say ...!!!!"
 function doc_fetcher(query, workspace::Module)
     try
-        value = binding_from(Meta.parse(query), workspace)
+        parsed_query = Meta.parse(query)
+        value = binding_from(parsed_query, workspace)
         doc_md = Docs.doc(value)
 
         if !showable(MIME("text/html"), doc_md)
@@ -1748,7 +1772,32 @@ function doc_fetcher(query, workspace::Module)
             # which is a bit silly, but turns out it actuall is markdown if you look hard enough.
             doc_md = Markdown.parse(repr(doc_md))
         end
-        
+
+        # Add suggestions results if no docstring was found
+        if parsed_query isa Symbol &&
+            !Docs.defined(value) &&
+            doc_md isa Markdown.MD &&
+            haskey(doc_md.meta, :results) &&
+            isempty(doc_md.meta[:results])
+
+            suggestions = REPL.accessible(workspace)
+            suggestions_scores = map(s -> REPL.fuzzyscore(query, s), suggestions)
+            removed_indices = [i for (i, s) in enumerate(suggestions_scores) if s < 0]
+            deleteat!(suggestions_scores, removed_indices)
+            deleteat!(suggestions, removed_indices)
+
+            perm = sortperm(suggestions_scores; lt=Base.:>)
+            permute!(suggestions, perm)
+            links = map(s -> Suggestion(s, query), @view(suggestions[begin:min(end,DOC_SUGGESTION_LIMIT)]))
+
+            if length(links) > 0
+                push!(doc_md.content,
+                      Markdown.HorizontalRule(),
+                      Markdown.Paragraph(["Similar result$(length(links) > 1 ? "s" : ""):"]),
+                      Markdown.List(links))
+            end
+        end
+
         (repr(MIME("text/html"), doc_md), :👍)
     catch ex
         (nothing, :👎)
