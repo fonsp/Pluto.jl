@@ -8,21 +8,12 @@ import Pluto.PkgUtils
 import Pluto.PkgCompat
 import Distributed
 
-# We have our own registry for these test! Take a look at https://github.com/JuliaPluto/PlutoPkgTestRegistry#readme for more info about the test packages and their dependencies.
-
-const pluto_test_registry_spec = Pkg.RegistrySpec(;
-    url="https://github.com/JuliaPluto/PlutoPkgTestRegistry", 
-    uuid=Base.UUID("96d04d5f-8721-475f-89c4-5ee455d3eda0"),
-    name="PlutoPkgTestRegistry",
-)
-
 
 @testset "Built-in Pkg" begin
     
-    # Pkg.Registry.rm("General")
+    # We have our own registry for these test! Take a look at https://github.com/JuliaPluto/PlutoPkgTestRegistry#readme for more info about the test packages and their dependencies.
     Pkg.Registry.add(pluto_test_registry_spec)
 
-    # We have our own registry for these test! Take a look at https://github.com/JuliaPluto/PlutoPkgTestRegistry#readme for more info about the test packages and their dependencies.
     @testset "Basic" begin
         fakeclient = ClientSession(:fake, nothing)
         🍭 = ServerSession()
