@@ -143,16 +143,11 @@ end
 ###
 
 # (✅ "Public" API using RegistryInstances)
-"Return paths to all installed registries."
-_get_registry_paths() = [s.path for s in RegistryInstances.reachable_registries()]
-
-# (✅ "Public" API using RegistryInstances)
-_get_registries() = map(_get_registry_paths()) do r
-	RegistryInstances.RegistryInstance(r)
-end
+"Return all installed registries as `RegistryInstances.RegistryInstance` structs."
+_get_registries() = RegistryInstances.reachable_registries()
 
 # (✅ "Public" API)
-"Contains all registries as `Pkg.Types.Registry` structs."
+"The cached output value of `_get_registries`."
 const _parsed_registries = Ref(_get_registries())
 
 # (✅ "Public" API)
@@ -187,7 +182,7 @@ Check when the registries were last updated. If it is recent (max 7 days), `Pkg.
 Returns the new value of `Pkg.UPDATED_REGISTRY_THIS_SESSION`.
 """
 function check_registry_age(max_age_ms = 1000.0 * 60 * 60 * 24 * 7)::Bool
-	paths = _get_registry_paths()
+	paths = [s.path for s in _get_registries()]
 	isempty(paths) && return _updated_registries_compat[]
 	
 	ages = map(paths) do p
