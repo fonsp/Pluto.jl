@@ -58,6 +58,7 @@ export declare function useRef<T = any>(initialValue?: T): Ref<T>
 
 export declare function useMemo<T = any>(calculate: () => T, deps?: Array<any>): T
 export declare function useCallback<T = any>(callback: T, deps?: Array<any>): T
+export declare function useErrorBoundary(callback?: (error: any) => Promise<void> | void): [any, () => void];
 
 type UnsubscribeFn = () => void
 type EffectFn = () => void | UnsubscribeFn

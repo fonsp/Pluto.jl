@@ -514,7 +514,7 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
                 try {
                     container.querySelectorAll("code").forEach((code_element) => {
                         code_element.classList.forEach((className) => {
-                            if (className.startsWith("language-")) {
+                            if (className.startsWith("language-") && !className.endsWith("undefined")) {
                                 // Remove "language-"
                                 let language = className.substring(9)
                                 highlight(code_element, language)
@@ -561,6 +561,7 @@ export let highlight = (code_element, language) => {
                     // its shows up as a comment and can be confusing
                     doc: code_element.innerText
                         .trim()
+                        .replace(/Main.var\"workspace#\d+\"\./, "")
                         .replace(/Main.workspace#\d+\./, "")
                         .replace(/Main.workspace#(\d+)/, 'Main.var"workspace#$1"'),
 

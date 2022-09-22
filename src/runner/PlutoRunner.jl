@@ -28,6 +28,7 @@ import Base: show, istextmime
 import UUIDs: UUID, uuid4
 import Dates: DateTime
 import Logging
+import REPL
 
 export @bind
 
@@ -181,6 +182,17 @@ else
     m
 end
 replace_pluto_properties_in_expr(other; kwargs...) = other
+function replace_pluto_properties_in_expr(ln::LineNumberNode; cell_id, kwargs...) # See https://github.com/fonsp/Pluto.jl/pull/2241
+    file = string(ln.file)
+    out = if endswith(file, string(cell_id))
+        # We already have the correct cell_id in this LineNumberNode
+        ln
+    else
+        # We append to the LineNumberNode file #@#==# + cell_id
+        LineNumberNode(ln.line, Symbol(file * "#@#==#$(cell_id)"))
+    end
+    return out
+end
 
 "Similar to [`replace_pluto_properties_in_expr`](@ref), but just checks for existance and doesn't check for [`GiveMeCellID`](@ref)"
 has_hook_style_pluto_properties_in_expr(::GiveMeRerunCellFunction) = true
@@ -253,11 +265,10 @@ module CantReturnInPluto
     replace_returns_with_error_in_interpolation(ex) = ex
 end
 
-
-function try_macroexpand(mod, cell_uuid, expr)
+function try_macroexpand(mod::Module, notebook_id::UUID, cell_id::UUID, expr)
     # Remove the precvious cached expansion, so when we error somewhere before we update,
     # the old one won't linger around and get run accidentally.
-    delete!(cell_expanded_exprs, cell_uuid)
+    delete!(cell_expanded_exprs, cell_id)
 
     # Remove toplevel block, as that screws with the computer and everything
     expr_not_toplevel = if expr.head == :toplevel || expr.head == :block
@@ -277,14 +288,14 @@ function try_macroexpand(mod, cell_uuid, expr)
     expr_without_globalrefs = globalref_to_workspaceref(expr_without_return)
 
     has_pluto_hook_features = has_hook_style_pluto_properties_in_expr(expr_without_globalrefs)
-    expr_to_save = replace_pluto_properties_in_expr(expr_without_globalrefs,
-        cell_id=cell_uuid,
-        rerun_cell_function=() -> rerun_cell_from_notebook(cell_uuid),
-        register_cleanup_function=(fn) -> UseEffectCleanups.register_cleanup(fn, cell_uuid),
+    expr_to_save = replace_pluto_properties_in_expr(expr_without_globalrefs;
+        cell_id,
+        rerun_cell_function=() -> rerun_cell_from_notebook(cell_id),
+        register_cleanup_function=(fn) -> UseEffectCleanups.register_cleanup(fn, cell_id),
     )
 
     did_mention_expansion_time = false
-    cell_expanded_exprs[cell_uuid] = CachedMacroExpansion(
+    cell_expanded_exprs[cell_id] = CachedMacroExpansion(
         expr_hash(expr),
         expr_to_save,
         elapsed_ns,
@@ -514,7 +525,7 @@ function run_expression(
     # .... But ideally we wouldn't re-macroexpand and store the error the first time (TODO-ish)
     if !haskey(cell_expanded_exprs, cell_id) || cell_expanded_exprs[cell_id].original_expr_hash != expr_hash(expr)
         try
-            try_macroexpand(m, cell_id, expr)
+            try_macroexpand(m, notebook_id, cell_id, expr)
         catch e
             result = CapturedException(e, stacktrace(catch_backtrace()))
             cell_results[cell_id], cell_runtimes[cell_id] = (result, nothing)
@@ -1536,7 +1547,17 @@ const integrations = Integration[
                 0
             end
             const max_plot_size = 8000
-            pluto_showable(::MIME"image/svg+xml", p::Plots.Plot{Plots.GRBackend}) = approx_size(p) <= max_plot_size
+            function pluto_showable(::MIME"image/svg+xml", p::Plots.Plot{Plots.GRBackend})
+                format = try
+                    p.attr[:html_output_format]
+                catch
+                    :auto
+                end
+                
+                format === :svg || (
+                    format === :auto && approx_size(p) <= max_plot_size
+                )
+            end
             pluto_showable(::MIME"text/html", p::Plots.Plot{Plots.GRBackend}) = false
         end,
     ),
@@ -1717,10 +1738,33 @@ binding_from(s::Symbol, workspace::Module) = Docs.Binding(workspace, s)
 binding_from(r::GlobalRef, workspace::Module) = Docs.Binding(r.mod, r.name)
 binding_from(other, workspace::Module) = error("Invalid @var syntax `$other`.")
 
+const DOC_SUGGESTION_LIMIT = 10
+
+struct Suggestion
+    match::String
+    query::String
+end
+
+# inspired from REPL.printmatch()
+function Base.show(io::IO, ::MIME"text/html", suggestion::Suggestion)
+    print(io, "<a href=\"@ref\"><code>")
+    is, _ = REPL.bestmatch(suggestion.query, suggestion.match)
+    for (i, char) in enumerate(suggestion.match)
+        esc_c = get(Markdown._htmlescape_chars, char, char)
+        if i in is
+            print(io, "<b>", esc_c, "</b>")
+        else
+            print(io, esc_c)
+        end
+    end
+    print(io, "</code></a>")
+end
+
 "You say doc_fetcher, I say You say doc_fetcher, I say You say doc_fetcher, I say You say doc_fetcher, I say ...!!!!"
 function doc_fetcher(query, workspace::Module)
     try
-        value = binding_from(Meta.parse(query), workspace)
+        parsed_query = Meta.parse(query)
+        value = binding_from(parsed_query, workspace)
         doc_md = Docs.doc(value)
 
         if !showable(MIME("text/html"), doc_md)
@@ -1728,7 +1772,32 @@ function doc_fetcher(query, workspace::Module)
             # which is a bit silly, but turns out it actuall is markdown if you look hard enough.
             doc_md = Markdown.parse(repr(doc_md))
         end
-        
+
+        # Add suggestions results if no docstring was found
+        if parsed_query isa Symbol &&
+            !Docs.defined(value) &&
+            doc_md isa Markdown.MD &&
+            haskey(doc_md.meta, :results) &&
+            isempty(doc_md.meta[:results])
+
+            suggestions = REPL.accessible(workspace)
+            suggestions_scores = map(s -> REPL.fuzzyscore(query, s), suggestions)
+            removed_indices = [i for (i, s) in enumerate(suggestions_scores) if s < 0]
+            deleteat!(suggestions_scores, removed_indices)
+            deleteat!(suggestions, removed_indices)
+
+            perm = sortperm(suggestions_scores; lt=Base.:>)
+            permute!(suggestions, perm)
+            links = map(s -> Suggestion(s, query), @view(suggestions[begin:min(end,DOC_SUGGESTION_LIMIT)]))
+
+            if length(links) > 0
+                push!(doc_md.content,
+                      Markdown.HorizontalRule(),
+                      Markdown.Paragraph(["Similar result$(length(links) > 1 ? "s" : ""):"]),
+                      Markdown.List(links))
+            end
+        end
+
         (repr(MIME("text/html"), doc_md), :👍)
     catch ex
         (nothing, :👎)

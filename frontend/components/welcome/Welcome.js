@@ -1,5 +1,5 @@
 import _ from "../../imports/lodash.js"
-import { html, useEffect, useState, useRef } from "../../imports/Preact.js"
+import { html, useEffect, useState, useRef, useLayoutEffect } from "../../imports/Preact.js"
 import * as preact from "../../imports/Preact.js"
 
 import { create_pluto_connection } from "../../common/PlutoConnection.js"
@@ -75,27 +75,47 @@ export const Welcome = () => {
 
     const { show_samples, CustomRecent, CustomPicker } = extended_components
 
-    return html`
-        <section id="title">
-            <h1>welcome to <img src=${url_logo_big} /></h1>
-            <!-- <a id="github" href="https://github.com/fonsp/Pluto.jl"
+    const [navigating_away, set_navigation_away] = useState(/** @type {string?} */ (null))
+
+    useLayoutEffect(() => {
+        if (navigating_away != null) document.body.classList.add("loading")
+    }, [navigating_away])
+
+    return navigating_away != null
+        ? html`<div class="navigating-away-banner"><h2>Loading ${navigating_away}...</h2></div>`
+        : html`
+              <section id="title">
+                  <h1>welcome to <img src=${url_logo_big} /></h1>
+                  <!-- <a id="github" href="https://github.com/fonsp/Pluto.jl"
                 ><img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/logo-github.svg"
             /></a> -->
-        </section>
-        <section id="mywork">
-            <div>
-                <${Recent} client=${client_ref.current} connected=${connected} remote_notebooks=${remote_notebooks} CustomRecent=${CustomRecent} />
-            </div>
-        </section>
-        <section id="open">
-            <div>
-                <${Open} client=${client_ref.current} connected=${connected} CustomPicker=${CustomPicker} show_samples=${show_samples} />
-            </div>
-        </section>
-        <section id="featured">
-            <div>
-                <${Featured} />
-            </div>
-        </section>
-    `
+              </section>
+              <section id="mywork">
+                  <div>
+                      <${Recent}
+                          client=${client_ref.current}
+                          connected=${connected}
+                          remote_notebooks=${remote_notebooks}
+                          CustomRecent=${CustomRecent}
+                          on_start_navigation=${set_navigation_away}
+                      />
+                  </div>
+              </section>
+              <section id="open">
+                  <div>
+                      <${Open}
+                          client=${client_ref.current}
+                          connected=${connected}
+                          CustomPicker=${CustomPicker}
+                          show_samples=${show_samples}
+                          on_start_navigation=${set_navigation_away}
+                      />
+                  </div>
+              </section>
+              <section id="featured">
+                  <div>
+                      <${Featured} />
+                  </div>
+              </section>
+          `
 }

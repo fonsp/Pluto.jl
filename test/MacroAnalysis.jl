@@ -1,6 +1,7 @@
 using Test
 import UUIDs
 import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, ClientSession, update_run!
+import Memoize: @memoize
 
 @testset "Macro analysis" begin
     🍭 = ServerSession()
@@ -825,6 +826,15 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
 
         trigger, bool, int = notebook.cells
 
+        workspace = WorkspaceManager.get_workspace((🍭, notebook))
+        workspace_module = getproperty(Main, workspace.module_name)
+
+        # Propose suggestions when no binding is found
+        doc_content, status = PlutoRunner.doc_fetcher("filer", workspace_module)
+        @test status == :👍
+        @test occursin("Similar results:", doc_content)
+        @test occursin("<b>f</b><b>i</b><b>l</b>t<b>e</b><b>r</b>", doc_content)
+
         update_run!(🍭, notebook, notebook.cells)
         @test all(noerror, notebook.cells)
         @test occursin("::Bool", bool.output.body)
@@ -871,5 +881,52 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         update_run!(🍭, notebook, bool)
         @test !occursin("An empty conjugate", bool.output.body)
         @test occursin("complex conjugate", bool.output.body)
+    end
+
+    @testset "Delete methods from macros" begin
+        🍭 = ServerSession()
+        🍭.options.evaluation.workspace_use_distributed = false
+
+        fakeclient = ClientSession(:fake, nothing)
+        🍭.connected_clients[fakeclient.id] = fakeclient
+
+        notebook = Notebook([
+            Cell("using Memoize"),
+            Cell("""
+                macro user_defined()
+                    quote
+                        struct ASD end
+                        custom_func(::ASD) = "ASD"
+                    end |> esc
+                end
+            """),
+            Cell("@user_defined"),
+            Cell("methods(custom_func)"),
+            Cell("""
+                @memoize function memoized_func(a)
+                    println("Running")
+                    2a
+                end
+            """),
+            Cell("methods(memoized_func)"),
+        ])
+        cell(idx) = notebook.cells[idx]
+
+        update_run!(🍭, notebook, notebook.cells)
+        
+        @test :custom_func ∈ notebook.topology.nodes[cell(3)].funcdefs_without_signatures
+        @test cell(4) |> noerror
+        @test :memoized_func ∈ notebook.topology.nodes[cell(5)].funcdefs_without_signatures
+        @test cell(6) |> noerror
+
+        cell(3).code = "#=$(cell(3).code)=#"
+        cell(5).code = "#=$(cell(5).code)=#"
+        
+        update_run!(🍭, notebook, notebook.cells)
+        
+        @test :custom_func ∉ notebook.topology.nodes[cell(3)].funcdefs_without_signatures
+        @test occursinerror("UndefVarError: custom_func", cell(4))
+        @test :memoized_func ∉ notebook.topology.nodes[cell(5)].funcdefs_without_signatures
+        @test occursinerror("UndefVarError: memoized_func", cell(6))
     end
 end

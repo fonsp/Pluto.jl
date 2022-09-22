@@ -53,10 +53,10 @@ function asset_response(path; cacheable::Bool=false)
     if isfile(path)
         data = read(path)
         response = HTTP.Response(200, data)
-        push!(response.headers, "Content-Type" => MIMEs.contenttype_from_mime(MIMEs.mime_from_path(path, MIME"application/octet-stream"())))
-        push!(response.headers, "Content-Length" => string(length(data)))
-        push!(response.headers, "Access-Control-Allow-Origin" => "*")
-        cacheable && push!(response.headers, "Cache-Control" => "public, max-age=$(30day), immutable")
+        HTTP.setheader(response, "Content-Type" => MIMEs.contenttype_from_mime(MIMEs.mime_from_path(path, MIME"application/octet-stream"())))
+        HTTP.setheader(response, "Content-Length" => string(length(data)))
+        HTTP.setheader(response, "Access-Control-Allow-Origin" => "*")
+        cacheable && HTTP.setheader(response, "Cache-Control" => "public, max-age=$(30day), immutable")
         response
     else
         default_404()
@@ -76,14 +76,14 @@ function error_response(
         "\$BODY" => htmlesc(body))
 
     response = HTTP.Response(status_code, filled_in)
-    push!(response.headers, "Content-Type" => MIMEs.contenttype_from_mime(MIME"text/html"()))
+    HTTP.setheader(response, "Content-Type" => MIMEs.contenttype_from_mime(MIME"text/html"()))
     response
 end
 
 function notebook_response(notebook; home_url="./", as_redirect=true)
     if as_redirect
         response = HTTP.Response(302, "")
-        push!(response.headers, "Location" => home_url * "edit?id=" * string(notebook.notebook_id))
+        HTTP.setheader(response, "Location" => home_url * "edit?id=" * string(notebook.notebook_id))
         return response
     else
         HTTP.Response(200, string(notebook.notebook_id))
@@ -147,7 +147,7 @@ function http_router_for(session::ServerSession)
     security = session.options.security
 
     function add_set_secret_cookie!(response::HTTP.Response)
-        push!(response.headers, "Set-Cookie" => "secret=$(session.secret); SameSite=Strict; HttpOnly")
+        HTTP.setheader(response, "Set-Cookie" => "secret=$(session.secret); SameSite=Strict; HttpOnly")
         response
     end
 
@@ -166,7 +166,7 @@ function http_router_for(session::ServerSession)
                 add_set_secret_cookie!(response)
                 if !required
                     filter!(p -> p[1] != "Access-Control-Allow-Origin", response.headers)
-                    push!(response.headers, "Access-Control-Allow-Origin" => "*")
+                    HTTP.setheader(response, "Access-Control-Allow-Origin" => "*")
                 end
                 response
             else
@@ -359,8 +359,8 @@ function http_router_for(session::ServerSession)
         try
             notebook = notebook_from_uri(request)
             response = HTTP.Response(200, sprint(save_notebook, notebook))
-            push!(response.headers, "Content-Type" => "text/julia; charset=utf-8")
-            push!(response.headers, "Content-Disposition" => "inline; filename=\"$(basename(notebook.path))\"")
+            HTTP.setheader(response, "Content-Type" => "text/julia; charset=utf-8")
+            HTTP.setheader(response, "Content-Disposition" => "inline; filename=\"$(basename(notebook.path))\"")
             response
         catch e
             return error_response(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", sprint(showerror, e, stacktrace(catch_backtrace())))
@@ -375,8 +375,8 @@ function http_router_for(session::ServerSession)
         try
             notebook = notebook_from_uri(request)
             response = HTTP.Response(200, Pluto.pack(Pluto.notebook_to_js(notebook)))
-            push!(response.headers, "Content-Type" => "application/octet-stream")
-            push!(response.headers, "Content-Disposition" => "inline; filename=\"$(without_pluto_file_extension(basename(notebook.path))).plutostate\"")
+            HTTP.setheader(response, "Content-Type" => "application/octet-stream")
+            HTTP.setheader(response, "Content-Disposition" => "inline; filename=\"$(without_pluto_file_extension(basename(notebook.path))).plutostate\"")
             response
         catch e
             return error_response(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", sprint(showerror, e, stacktrace(catch_backtrace())))
@@ -391,8 +391,8 @@ function http_router_for(session::ServerSession)
         try
             notebook = notebook_from_uri(request)
             response = HTTP.Response(200, generate_html(notebook))
-            push!(response.headers, "Content-Type" => "text/html; charset=utf-8")
-            push!(response.headers, "Content-Disposition" => "inline; filename=\"$(basename(notebook.path)).html\"")
+            HTTP.setheader(response, "Content-Type" => "text/html; charset=utf-8")
+            HTTP.setheader(response, "Content-Disposition" => "inline; filename=\"$(basename(notebook.path)).html\"")
             response
         catch e
             return error_response(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", sprint(showerror, e, stacktrace(catch_backtrace())))
@@ -423,7 +423,7 @@ function http_router_for(session::ServerSession)
     
     function serve_asset(request::HTTP.Request)
         uri = HTTP.URI(request.target)
-        filepath = project_relative_path(frontend_directory(), relpath(uri.path, "/"))
+        filepath = project_relative_path(frontend_directory(), relpath(HTTP.unescapeuri(uri.path), "/"))
         asset_response(filepath; cacheable=should_cache(filepath))
     end
     HTTP.register!(router, "GET", "/**", serve_asset)
