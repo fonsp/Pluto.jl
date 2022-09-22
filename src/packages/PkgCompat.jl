@@ -283,12 +283,12 @@ julia> Pluto.PkgCompat._registry_entries("Pluto")
 ```
 """
 function _registry_entries(package_name::AbstractString, registries::Vector=_parsed_registries[])::Vector{String}
-	flatmap(registries) do (rpath, r)
-		packages = values(r["packages"])
+	flatmap(registries) do reg
+		packages = values(reg.pkgs)
 		String[
-			joinpath(rpath, d["path"])
+			joinpath(reg.path, d.path)
 			for d in packages
-			if d["name"] == package_name
+			if d.name == package_name
 		]
 	end
 end
