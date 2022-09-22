@@ -142,34 +142,20 @@ end
 # REGISTRIES
 ###
 
-# (⛔️ Internal API)
+# (✅ "Public" API using RegistryInstances)
 "Return paths to all installed registries."
-_get_registry_paths() = @static if isdefined(Pkg, :Types) && isdefined(Pkg.Types, :registries)
-	Pkg.Types.registries()
-elseif isdefined(Pkg, :Registry) && isdefined(Pkg.Registry, :reachable_registries)
-	registry_specs = RegistryInstances.reachable_registries()
-	[s.path for s in registry_specs]
-elseif isdefined(Pkg, :Types) && isdefined(Pkg.Types, :collect_registries)
-	registry_specs = Pkg.Types.collect_registries()
-	[s.path for s in registry_specs]
-else
-	String[]
-end
+_get_registry_paths() = [s.path for s in RegistryInstances.reachable_registries()]
 
-# (⛔️ Internal API)
+# (✅ "Public" API using RegistryInstances)
 _get_registries() = map(_get_registry_paths()) do r
-	@static if isdefined(Pkg, :Registry) && isdefined(Pkg.Registry, :RegistryInstance)
-		RegistryInstances.RegistryInstance(r)
-	else
-		r => Pkg.Types.read_registry(joinpath(r, "Registry.toml"))
-	end
+	RegistryInstances.RegistryInstance(r)
 end
 
-# (⛔️ Internal API)
+# (✅ "Public" API)
 "Contains all registries as `Pkg.Types.Registry` structs."
 const _parsed_registries = Ref(_get_registries())
 
-# (⛔️ Internal API)
+# (✅ "Public" API)
 "Re-parse the installed registries from disk."
 function refresh_registry_cache()
 	_parsed_registries[] = _get_registries()
@@ -290,7 +276,7 @@ end
 # Package versions
 ###
 
-# (⛔️ Internal API)
+# (✅ "Public" API)
 """
 Return paths to all found registry entries of a given package name.
 
@@ -312,7 +298,7 @@ function _registry_entries(package_name::AbstractString, registries::Vector=_par
 	end
 end
 
-# (⛔️ Internal API)
+# (🐸 "Public API", but using PkgContext)
 function _package_versions_from_path(registry_entry_fullpath::AbstractString)::Vector{VersionNumber}
 	# compat
     vd = @static if isdefined(Pkg, :Operations) && isdefined(Pkg.Operations, :load_versions) && hasmethod(Pkg.Operations.load_versions, (String,))
@@ -323,8 +309,7 @@ function _package_versions_from_path(registry_entry_fullpath::AbstractString)::V
 	vd |> keys |> collect
 end
 
-# ⚠️ Internal API with fallback
-# See https://github.com/JuliaLang/Pkg.jl/issues/2607
+# 🐸 "Public" API, but using PkgContext 
 """
 Return all registered versions of the given package. Returns `["stdlib"]` for standard libraries, and a `Vector{VersionNumber}` for registered packages.
 """
