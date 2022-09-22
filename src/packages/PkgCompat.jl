@@ -313,23 +313,18 @@ function package_versions(package_name::AbstractString)::Vector
         ["stdlib"]
     else
 		try
-			@static(if isdefined(Pkg, :Registry) && isdefined(Pkg.Registry, :uuids_from_name)
-				flatmap(_parsed_registries[]) do reg
-					uuids_with_name = RegistryInstances.uuids_from_name(reg, package_name)
-					flatmap(uuids_with_name) do u
-						pkg = get(reg, u, nothing)
-						if pkg !== nothing
-							info = RegistryInstances.registry_info(pkg)
-							collect(keys(info.version_info))
-						else
-							[]
-						end
+			flatmap(_parsed_registries[]) do reg
+				uuids_with_name = RegistryInstances.uuids_from_name(reg, package_name)
+				flatmap(uuids_with_name) do u
+					pkg = get(reg, u, nothing)
+					if pkg !== nothing
+						info = RegistryInstances.registry_info(pkg)
+						collect(keys(info.version_info))
+					else
+						[]
 					end
 				end
-			else
-				ps = _registry_entries(package_name)
-				flatmap(_package_versions_from_path, ps)
-			end) |> sort
+			end
 		catch e
 			@warn "Pkg compat: failed to get installable versions." exception=(e,catch_backtrace())
 			["latest"]
