@@ -146,11 +146,11 @@ end
 "Return all installed registries as `RegistryInstances.RegistryInstance` structs."
 _get_registries() = RegistryInstances.reachable_registries()
 
-# (✅ "Public" API)
+# (✅ "Public" API using RegistryInstances)
 "The cached output value of `_get_registries`."
 const _parsed_registries = Ref(_get_registries())
 
-# (✅ "Public" API)
+# (✅ "Public" API using RegistryInstances)
 "Re-parse the installed registries from disk."
 function refresh_registry_cache()
 	_parsed_registries[] = _get_registries()
@@ -304,7 +304,7 @@ function _package_versions_from_path(registry_entry_fullpath::AbstractString)::V
 	vd |> keys |> collect
 end
 
-# 🐸 "Public" API, but using PkgContext 
+# ✅ "Public" API using RegistryInstances
 """
 Return all registered versions of the given package. Returns `["stdlib"]` for standard libraries, and a `Vector{VersionNumber}` for registered packages.
 """
