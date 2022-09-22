@@ -119,12 +119,6 @@ const Dot = ({ set_cm_highlighted_line, show, msg, kwargs, x, y, level }) => {
     }
 
     useLayoutEffect(() => {
-        if (!node_ref.current) return
-        node_ref.current.style.gridColumn = `${x + 1}`
-        node_ref.current.style.gridRow = `${y + 1}`
-    }, [node_ref.current, x, y])
-
-    useLayoutEffect(() => {
         if (inspecting && show) {
             const f = (e) => {
                 if (!e.target.closest || e.target.closest("pluto-log-dot-positioner") !== node_ref.current) {
@@ -145,7 +139,7 @@ const Dot = ({ set_cm_highlighted_line, show, msg, kwargs, x, y, level }) => {
     return show
         ? html`<pluto-log-dot-positioner
               ref=${node_ref}
-              class=${cl({ inspecting })}
+              class=${cl({ inspecting, [level]: true })}
               onClick=${() => {
                   set_inspecting(true)
                   is_progress || set_cm_highlighted_line(y + 1)
@@ -153,6 +147,7 @@ const Dot = ({ set_cm_highlighted_line, show, msg, kwargs, x, y, level }) => {
               onMouseenter=${() => is_progress || set_cm_highlighted_line(y + 1)}
               onMouseleave=${() => set_cm_highlighted_line(null)}
           >
+              <pluto-log-icon></pluto-log-icon>
               ${is_stdout
                   ? html`<${MoreInfo}
                         body=${html`This text was written to the ${" "}<a href="https://en.wikipedia.org/wiki/Standard_streams" target="_blank"
