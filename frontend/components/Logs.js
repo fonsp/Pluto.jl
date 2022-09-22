@@ -34,11 +34,6 @@ export const Logs = ({ logs, line_heights, set_cm_highlighted_line }) => {
     )
     const logsWidth = grouped_progress_and_logs.length * GRID_WIDTH
 
-    const logsStyle = useMemo(
-        () => `grid-template-rows: ${line_heights.map((y) => y + "px").join(" ")} repeat(auto-fill, 15px); width: ${logsWidth}px;`,
-        [logsWidth, line_heights]
-    )
-
     useEffect(() => {
         const elem = container.current
         if (!elem) return
@@ -63,7 +58,7 @@ export const Logs = ({ logs, line_heights, set_cm_highlighted_line }) => {
 
     return html`
         <pluto-logs-container ref=${container}>
-            <pluto-logs style="${logsStyle}">
+            <pluto-logs>
                 ${grouped_progress_and_logs.map((log, i) => {
                     return html`<${Dot}
                         set_cm_highlighted_line=${set_cm_highlighted_line}
@@ -158,34 +153,30 @@ const Dot = ({ set_cm_highlighted_line, show, msg, kwargs, x, y, level }) => {
               onMouseenter=${() => is_progress || set_cm_highlighted_line(y + 1)}
               onMouseleave=${() => set_cm_highlighted_line(null)}
           >
-              <pluto-log-dot-sizer>
-                  ${is_stdout
+              ${is_stdout
+                  ? html`<${MoreInfo}
+                        body=${html`This text was written to the ${" "}<a href="https://en.wikipedia.org/wiki/Standard_streams" target="_blank"
+                                >terminal stream</a
+                            >${" "}while running the cell. It is not the${" "}<em>output value</em>${" "}of this cell.`}
+                    />`
+                  : null}
+              <pluto-log-dot class=${level}
+                  >${is_progress
+                      ? html`<${Progress} progress=${progress} />`
+                      : is_stdout
                       ? html`<${MoreInfo}
-                            body=${html`This text was written to the ${" "}<a href="https://en.wikipedia.org/wiki/Standard_streams" target="_blank"
-                                    >terminal stream</a
-                                >${" "}while running the cell. It is not the${" "}<em>output value</em>${" "}of this cell.`}
-                        />`
-                      : null}
-                  <pluto-log-dot class=${level}
-                      >${is_progress
-                          ? html`<${Progress} progress=${progress} />`
-                          : is_stdout
-                          ? html`<${MoreInfo}
-                                    body=${html`${"This text was written to the "}
-                                        <a href="https://en.wikipedia.org/wiki/Standard_streams" target="_blank">terminal stream</a
-                                        >${" while running the cell. "}<span style="opacity: .5"
-                                            >${"(It is not the "}<em>return value</em>${" of the cell.)"}</span
-                                        >`}
-                                />
-                                <${LogViewAnsiUp} value=${msg[0]} />`
-                          : html`${mimepair_output(msg)}${kwargs.map(
-                                ([k, v]) =>
-                                    html`
-                                        <pluto-log-dot-kwarg><pluto-key>${k}</pluto-key> <pluto-value>${mimepair_output(v)}</pluto-value></pluto-log-dot-kwarg>
-                                    `
-                            )}`}</pluto-log-dot
-                  >
-              </pluto-log-dot-sizer>
+                                body=${html`${"This text was written to the "}
+                                    <a href="https://en.wikipedia.org/wiki/Standard_streams" target="_blank">terminal stream</a
+                                    >${" while running the cell. "}<span style="opacity: .5"
+                                        >${"(It is not the "}<em>return value</em>${" of the cell.)"}</span
+                                    >`}
+                            />
+                            <${LogViewAnsiUp} value=${msg[0]} />`
+                      : html`${mimepair_output(msg)}${kwargs.map(
+                            ([k, v]) =>
+                                html` <pluto-log-dot-kwarg><pluto-key>${k}</pluto-key> <pluto-value>${mimepair_output(v)}</pluto-value></pluto-log-dot-kwarg> `
+                        )}`}</pluto-log-dot
+              >
           </pluto-log-dot-positioner>`
         : html`<pluto-log-dot-positioner ref=${node_ref}></pluto-log-dot-positioner>`
 }

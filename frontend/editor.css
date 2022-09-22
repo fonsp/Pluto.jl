@@ -2339,11 +2339,6 @@ pluto-logs-container {
     background: hsl(0deg 0% 100% / 81%);
 }
 
-/* @media screen and (max-width: calc(700px + 25px + 6px + 150px)) { */
-pluto-logs {
-    display: flex !important;
-}
-
 pluto-logs-container {
     position: static;
     /* right: min(-6px, 700px + 25px - 100vw); */
@@ -2357,41 +2352,6 @@ pluto-logs-container:not(:empty) {
     background: var(--pluto-logs-bg-color);
     padding: 10px;
 }
-
-pluto-logs-container:focus-within,
-pluto-logs-container:hover {
-    /* width: 30vw; */
-}
-
-pluto-logs-container pluto-logs {
-    /* grid-template-columns: repeat(auto-fill, 0px); */
-}
-pluto-logs-container:focus-within pluto-logs,
-pluto-logs-container:hover pluto-logs {
-    /* grid-template-columns: repeat(auto-fill, 10px); */
-}
-/* 
-    pluto-log-dot-positioner {
-        flex: 0 0 auto;
-        width: auto;
-    }
-    pluto-log-dot-sizer {
-        width: auto;
-    } */
-/* } */
-/* 
-@media screen and (min-width: calc(700px + 25px + 6px + 500px)) and (max-width: calc(700px + 25px + 6px + 500px + 500px)) {
-    pluto-logs-container {
-        right: calc(-500px - 6px);
-        width: calc(500px + 6px);
-    }
-}
-@media screen and (min-width: calc(700px + 25px + 6px + 500px + 500px)) {
-    pluto-logs-container {
-        width: calc(0.5 * (6px + 100vw - (700px + 25px)));
-        right: calc(-0.5 * (6px + 100vw - (700px + 25px)));
-    }
-} */
 
 pluto-logs-container pluto-progress-bars pluto-progress:not(:first-child) {
     margin-top: 10px;
@@ -2412,22 +2372,12 @@ pluto-logs-container pluto-progress-bar.collapsed {
 }
 
 pluto-logs {
-    display: grid;
-    grid-auto-rows: 15px;
-    flex-direction: row;
-    grid-template-rows: repeat(auto-fill, 15px);
-    grid-template-columns: repeat(auto-fill, 10px);
-    grid-auto-flow: column;
+    display: flex;
+    flex-direction: column;
 }
 
 pluto-logs:not(:first-child):not(:empty) {
     margin-top: 10px;
-}
-
-pluto-log-dot-positioner {
-    display: block;
-    width: 10px;
-    transition: transform 100ms ease-in-out;
 }
 
 pluto-log-dot-positioner:hover,
@@ -2436,34 +2386,12 @@ pluto-log-dot-positioner.inspecting {
     /* transform: translate(0px, -5px); */
 }
 
-/* pluto-log-dot-positioner {
-    transform: translateX(0px);
-} */
-pluto-log-dot-positioner.inspecting {
-    transform: translateX(5px);
-}
-pluto-log-dot-positioner.inspecting pluto-log-dot {
-    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
-}
-pluto-log-dot-positioner.inspecting ~ pluto-log-dot-positioner {
-    transform: translateX(10px);
-}
-
-pluto-log-dot-sizer {
-    display: block;
-    width: max-content;
-    transform: translateZ(10px);
-    max-width: 600px;
-    z-index: 300;
-    pointer-events: none; /* part 1: because the hit box is larger than the action log dot */
-}
 pluto-log-dot {
-    pointer-events: auto; /* part 2 */
-    box-shadow: -2px 0px 1px #00000014;
+    /* part 2 */
+    /* box-shadow: -2px 0px 1px #00000014; */
     font-family: "Roboto Mono", monospace;
     font-size: 0.6rem;
-
-    /* position: absolute; */
+    position: relative;
     display: inline-flex;
     flex-direction: column;
     padding: 1px 3px;
@@ -2507,10 +2435,10 @@ pluto-log-dot.Stdout {
 pluto-log-dot.Stdout::after,
 pluto-log-dot.Stdout::before {
     content: " ";
-    left: 6px;
-    right: 6px;
-    top: 6px;
-    bottom: 6px;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
     position: absolute;
     display: block;
     pointer-events: none;
