@@ -31,6 +31,7 @@ struct Update
     specs::Vector{ChangeSpec}
     document_length::Int
     client_id::String
+    effects::Vector{Int}
 end
 
 struct Text
@@ -112,6 +113,7 @@ end
 
 function Base.convert(::Type{Update}, data::Dict)
     specs = data["specs"]
+    effects = data["effects"]
 
     # NOTE: we could also replace inserts/deletes with replacements
     specs = map(specs) do spec
@@ -126,7 +128,7 @@ function Base.convert(::Type{Update}, data::Dict)
             Deletion(from, spec["to"])
         end
     end
-    Update(specs, data["document_length"], data["client_id"])
+    Update(specs, data["document_length"], data["client_id"], effects)
 end
 
 # Eye candy

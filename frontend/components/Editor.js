@@ -296,6 +296,8 @@ export class Editor extends Component {
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ ([]),
             last_update_time: 0,
 
+            my_author_name: uuidv4(),
+
             disable_ui: launch_params.disable_ui,
             static_preview: launch_params.statefile != null,
             backend_launch_phase:
@@ -1478,6 +1480,7 @@ patch: ${JSON.stringify(
                         />
                         <${Notebook}
                             notebook=${notebook}
+                            my_author_name=${this.state.my_author_name}
                             cell_inputs_local=${this.state.cell_inputs_local}
                             disable_input=${this.state.disable_ui || !this.state.connected /* && this.state.backend_launch_phase == null*/}
                             last_created_cell=${this.state.last_created_cell}

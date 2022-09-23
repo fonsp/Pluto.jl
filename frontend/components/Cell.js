@@ -102,6 +102,7 @@ const on_jump = (hasBarrier, pluto_actions, cell_id) => () => {
 export const Cell = ({
     cell_input: { cell_id, code, code_folded, metadata, cm_updates, code_text, start_version, last_run_version },
     cell_result: { queued, running, runtime, errored, output, logs, published_object_keys, depends_on_disabled_cells, depends_on_skipped_cells },
+    my_author_name,
     cell_dependencies,
     cell_input_local,
     notebook_id,
@@ -125,11 +126,11 @@ export const Cell = ({
     const [key, setKey] = useState(0)
     const cell_key = useMemo(() => cell_id + key, [cell_id, key])
 
-    const [, resetError] = useErrorBoundary((error) => {
-        console.log(`An error occured in the CodeMirror code, resetting CellInput component. See error below:\n\n${error}\n\n -------------- `)
-        setKey(key + 1)
-        resetError()
-    })
+    // const [, resetError] = useErrorBoundary((error) => {
+    //     console.log(`An error occured in the CodeMirror code, resetting CellInput component. See error below:\n\n${error}\n\n -------------- `)
+    //     setKey(key + 1)
+    //     resetError()
+    // })
 
     const remount = useMemo(() => () => setKey(key + 1))
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
@@ -242,6 +243,8 @@ export const Cell = ({
     const skip_as_script_jump = useCallback(on_jump(hasTargetBarrier("skip_as_script"), pluto_actions, cell_id), [pluto_actions, cell_id])
     const disabled_jump = useCallback(on_jump(hasTargetBarrier("disabled"), pluto_actions, cell_id), [pluto_actions, cell_id])
 
+    console.log({ my_author_name })
+
     return html`
         <pluto-cell
             key=${cell_key}
@@ -283,6 +286,7 @@ export const Cell = ({
             ${cell_api_ready ? html`<${CellOutput} errored=${errored} ...${output} cell_id=${cell_id} />` : html``}
             <${CellInput}
                 cm_updates=${cm_updates}
+                my_author_name=${my_author_name}
                 code_text=${code_text}
                 start_version=${start_version}
                 set_class_code_differs=${set_class_code_differs}

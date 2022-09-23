@@ -383,11 +383,13 @@ function eventEmitter() {
  *  cell_dependencies: import("./Editor.js").CellDependencyData,
  *  nbpkg: import("./Editor.js").NotebookPkgData?,
  *  global_definition_locations: { [variable_name: string]: string },
+ *  my_author_name: string,
  *  [key: string]: any,
  * }} props
  */
 export const CellInput = ({
     cm_updates,
+    my_author_name,
     code_text,
     start_version,
     last_run_version,
@@ -741,7 +743,7 @@ export const CellInput = ({
                     on_change_compartment,
 
                     last_run_version_compartment,
-                    pluto_collab(start_version, {
+                    pluto_collab({ startVersion: start_version, authorName: my_author_name }, {
                         push_updates: (data) => pluto_actions.send("push_updates", { ...data, cell_id: cell_id }, { notebook_id }, false),
                         set_code_differs: set_class_code_differs,
                         subscribe_to_updates: (cb) => updater.subscribe("updates", cb),

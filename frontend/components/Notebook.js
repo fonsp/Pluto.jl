@@ -37,6 +37,7 @@ let CellMemo = ({
     disable_input,
     nbpkg,
     global_definition_locations,
+    my_author_name,
 }) => {
     const { body, last_run_timestamp, mime, persist_js_state, rootassignee } = cell_result?.output || {}
     const { queued, running, runtime, errored, depends_on_disabled_cells, logs, depends_on_skipped_cells } = cell_result || {}
@@ -56,6 +57,7 @@ let CellMemo = ({
                 disable_input=${disable_input}
                 nbpkg=${nbpkg}
                 global_definition_locations=${global_definition_locations}
+                my_author_name=${my_author_name}
             />
         `
     }, [
@@ -116,7 +118,7 @@ const render_cell_outputs_minimum = 20
  *  disable_input: boolean,
  * }} props
  * */
-export const Notebook = ({ notebook, cell_inputs_local, last_created_cell, selected_cells, is_initializing, is_process_ready, disable_input }) => {
+export const Notebook = ({ notebook, my_author_name, cell_inputs_local, last_created_cell, selected_cells, is_initializing, is_process_ready, disable_input }) => {
     let pluto_actions = useContext(PlutoActionsContext)
 
     // Add new cell when the last cell gets deleted
@@ -162,6 +164,7 @@ export const Notebook = ({ notebook, cell_inputs_local, last_created_cell, selec
                             logs: [],
                         }}
                         cell_input=${notebook.cell_inputs[cell_id]}
+                        my_author_name=${my_author_name}
                         cell_dependencies=${notebook?.cell_dependencies?.[cell_id] ?? {}}
                         cell_input_local=${cell_inputs_local[cell_id]}
                         notebook_id=${notebook.notebook_id}
