@@ -53,6 +53,7 @@ import {
 import { markdown, html as htmlLang, javascript, sqlLang, python, julia_mixed } from "./CellInput/mixedParsers.js"
 import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
+import { LastRunVersionFacet, pluto_collab } from "./CellInput/pluto_collab.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
 import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"
 import { cell_movement_plugin, prevent_holding_a_key_from_doing_things_across_cells } from "./CellInput/cell_movement_plugin.js"
@@ -338,8 +339,44 @@ let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPluto
     return line_object.from + ch_clamped
 }
 
+function eventEmitter() {
+    let events = {}
+    return {
+        subscribe: (/** @type {string} */ name, cb) => {
+            ;(events[name] || (events[name] = [])).push(cb)
+            return {
+                unsubscribe: () => {
+                    events[name] && events[name].splice(events[name].indexOf(cb), 1)
+                },
+            }
+        },
+        emit: (/** @type {string} */ name, data) => {
+            ;(events[name] || []).forEach((fn) => fn(data))
+        },
+    }
+}
+
+/**
+ * @typedef UpdateSpec
+ * @type {{
+ *   from: Number,
+ *   to?: Number,
+ *   insert?: String,
+ * }}
+ *
+ * @typedef TextUpdate
+ * @type {{
+ *   client_id: string,
+ *   document_length: Number,
+ *   specs: Array<UpdateSpec>,
+ * }}
+ */
+
 /**
  * @param {{
+ *  code_text: string,
+ *  cm_updates: Array<TextUpdate>,
+ *  last_run_version: Number,
  *  local_code: string,
  *  remote_code: string,
  *  scroll_into_view_after_creation: boolean,
@@ -350,13 +387,15 @@ let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPluto
  * }} props
  */
 export const CellInput = ({
-    local_code,
-    remote_code,
+    cm_updates,
+    code_text,
+    start_version,
+    last_run_version,
+
     disable_input,
     focus_after_creation,
     cm_forced_focus,
     set_cm_forced_focus,
-    show_input,
     on_submit,
     on_delete,
     on_add_after,
@@ -391,6 +430,7 @@ export const CellInput = ({
     let global_definitions_compartment = useCompartment(newcm_ref, GlobalDefinitionsFacet.of(global_definition_locations))
     let highlighted_line_compartment = useCompartment(newcm_ref, HighlightLineFacet.of(cm_highlighted_line))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
+    let last_run_version_compartment = useCompartment(newcm_ref, LastRunVersionFacet.of(last_run_version))
 
     let on_change_compartment = useCompartment(
         newcm_ref,
@@ -403,6 +443,13 @@ export const CellInput = ({
             })
         }, [on_change])
     )
+
+    const updater = useMemo(eventEmitter, [])
+    useEffect(() => {
+        if (cm_updates) {
+            updater.emit("updates", cm_updates)
+        }
+    }, [cm_updates?.length])
 
     useLayoutEffect(() => {
         if (dom_node_ref.current == null) return
@@ -577,7 +624,7 @@ export const CellInput = ({
         const usesDarkTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         const newcm = (newcm_ref.current = new EditorView({
             state: EditorState.create({
-                doc: local_code,
+                doc: code_text,
                 extensions: [
                     EditorView.theme({}, { dark: usesDarkTheme }),
                     // Compartments coming from react state/props
@@ -692,6 +739,12 @@ export const CellInput = ({
 
                     on_change_compartment,
 
+                    last_run_version_compartment,
+                    pluto_collab(start_version, {
+                        push_updates: (data) => pluto_actions.send("push_updates", { ...data, cell_id: cell_id }, { notebook_id }, false),
+                        subscribe_to_updates: (cb) => updater.subscribe("updates", cb),
+                    }),
+
                     // This is my weird-ass extension that checks the AST and shows you where
                     // there're missing nodes.. I'm not sure if it's a good idea to have it
                     // show_missing_syntax_plugin(),
@@ -754,24 +807,6 @@ export const CellInput = ({
             }
         }
     }, [])
-
-    // Effect to apply "remote_code" to the cell when it changes...
-    // ideally this won't be necessary as we'll have actual multiplayer,
-    // or something to tell the user that the cell is out of sync.
-    useEffect(() => {
-        if (newcm_ref.current == null) return // Not sure when and why this gave an error, but now it doesn't
-
-        const current_value = getValue6(newcm_ref.current) ?? ""
-        if (remote_code_ref.current == null && remote_code === "" && current_value !== "") {
-            // this cell is being initialized with empty code, but it already has local code set.
-            // this happens when pasting or dropping cells
-            return
-        }
-        remote_code_ref.current = remote_code
-        if (current_value !== remote_code) {
-            setValue6(newcm_ref.current, remote_code)
-        }
-    }, [remote_code])
 
     useEffect(() => {
         const cm = newcm_ref.current

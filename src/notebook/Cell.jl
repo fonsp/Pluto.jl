@@ -1,4 +1,5 @@
 import UUIDs: UUID, uuid1
+import .OperationalTransform as OT
 import .ExpressionExplorer: SymbolsState, UsingsImports
 
 const METADATA_DISABLED_KEY = "disabled"
@@ -40,15 +41,21 @@ Base.@kwdef mutable struct Cell
 
     code::String=""
     code_folded::Bool=false
-    
+
+    last_run_version::Int=0
+
+    code_text::OT.Text=OT.Text(code)
+    cm_updates::Vector{OT.Update}=Vector{OT.Update}()
+    cm_token::Token=Token()
+
     output::CellOutput=CellOutput()
     queued::Bool=false
     running::Bool=false
 
     published_objects::Dict{String,Any}=Dict{String,Any}()
-    
+
     logs::Vector{Dict{String,Any}}=Vector{Dict{String,Any}}()
-    
+
     errored::Bool=false
     runtime::Union{Nothing,UInt64}=nothing
 

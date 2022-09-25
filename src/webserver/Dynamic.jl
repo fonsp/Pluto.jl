@@ -108,9 +108,15 @@ function notebook_to_js(notebook::Notebook)
         "cell_inputs" => Dict{UUID,Dict{String,Any}}(
             id => Dict{String,Any}(
                 "cell_id" => cell.cell_id,
-                "code" => cell.code,
                 "code_folded" => cell.code_folded,
                 "metadata" => cell.metadata,
+
+                "cm_updates" => FirebaseyUtils.AppendonlyMarker(cell.cm_updates),
+                "code" => cell.code,
+                "last_run_version" => cell.last_run_version,
+
+                "code_text" => FirebaseyUtils.SendOnlyOnceMarker(String(cell.code_text)),
+                "start_version" => FirebaseyUtils.SendOnlyOnceMarker(length(cell.cm_updates)),
             )
         for (id, cell) in notebook.cells_dict),
         "cell_dependencies" => Dict{UUID,Dict{String,Any}}(
@@ -279,7 +285,6 @@ const effects_of_changed_state = Dict(
     )
 )
 
-
 responses[:update_notebook] = function response_update_notebook(🙋::ClientRequest)
     require_notebook(🙋)
     try
@@ -407,6 +412,63 @@ responses[:reset_shared_state] = function response_reset_shared_state(🙋::Clie
     send_notebook_changes!(🙋; commentary=Dict(:from_reset =>  true))
 end
 
+responses[:push_updates] = function response_push_updates(🙋::ClientRequest)
+    require_notebook(🙋)
+    cell = let
+        cell_id = UUID(🙋.body["cell_id"])
+        if !haskey(🙋.notebook.cells_dict, cell_id)
+            # Cell has prob been deleted but client is not yet aware of it?
+            send_notebook_changes!(🙋; commentary=:👎)
+            return
+        end
+        🙋.notebook.cells_dict[cell_id]
+    end
+
+    updates = [
+        Base.convert(OT.Update, update)
+        for update in 🙋.body["updates"]
+    ]
+    version = 🙋.body["version"]
+
+    if !isready(cell.cm_token)
+        @debug "Cell is buzy, bailing out..."
+        send_notebook_changes!(🙋; commentary=:👎)
+        return
+    end
+
+    withtoken(cell.cm_token) do
+        current_version = length(cell.cm_updates)
+
+        # Refuse client changes if it is not up to date.
+        if current_version != version
+            @warn "Wrong version" current_version version
+            send_notebook_changes!(🙋; commentary=:👎)
+            return
+        end
+
+        text = cell.code_text
+        for update in updates
+            try
+                text = OT.apply(text, update)
+            catch ex
+                if ex isa OT.InvalidDocumentLengthError
+                    @error "Invalid document length" updates update exception=(ex,catch_backtrace())
+                    send_notebook_changes!(🙋; commentary=:👎)
+                    return
+                else
+                    rethrow()
+                end
+            end
+        end
+        append!(cell.cm_updates, updates)
+        cell.code_text = text
+
+        @info "Cell updates" updates n=length(cell.cm_updates) code=String(text)
+
+        send_notebook_changes!(🙋)
+    end
+end
+
 responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::ClientRequest)
     require_notebook(🙋)
     uuids = UUID.(🙋.body["cells"])
@@ -415,10 +477,28 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
     end
 
     if will_run_code(🙋.notebook)
-        foreach(c -> c.queued = true, cells)
+        for cell in cells
+            cell.queued = true
+
+            # # FIXME: this may need to be token protected inside the run update
+            # # NOTE: The client version may not be up to date, is this a problem?
+            # #       we are currently using the latest available version which may
+            # #       have been submitted by someone else.
+            # cell.code = let
+            #     current = OT.Text(cell.code)
+            #     updates_to_apply = @view(cell.cm_updates[cell.last_run_version+1:end])
+            #     for update in updates_to_apply
+            #         current = OT.apply(current, update)
+            #     end
+            #     String(current)
+            # end
+            cell.code = String(cell.code_text)
+
+            cell.last_run_version = length(cell.cm_updates)
+        end
         send_notebook_changes!(🙋)
     end
-    
+
     # save=true fixes the issue where "Submit all changes" or `Ctrl+S` has no effect.
     update_save_run!(🙋.session, 🙋.notebook, cells; run_async=true, save=true)
 end
@@ -452,7 +532,6 @@ without_initiator(🙋::ClientRequest) = ClientRequest(session=🙋.session, not
 responses[:restart_process] = function response_restart_process(🙋::ClientRequest; run_async::Bool=true)
     require_notebook(🙋)
 
-    
     if 🙋.notebook.process_status != ProcessStatus.waiting_to_restart
         🙋.notebook.process_status = ProcessStatus.waiting_to_restart
         send_notebook_changes!(🙋 |> without_initiator)

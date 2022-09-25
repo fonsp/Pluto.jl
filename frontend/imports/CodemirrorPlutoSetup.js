@@ -58,10 +58,21 @@ import {
     Text,
     css,
     cssLanguage,
+    collab,
+    sendableUpdates,
+    receiveUpdates,
+    getSyncedVersion,
+    ChangeSet,
     //@ts-ignore
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@0.28.0/dist/index.es.min.js"
+} from "./index.es.js"
 
 export {
+    collab,
+    sendableUpdates,
+    receiveUpdates,
+    getSyncedVersion,
+    ChangeSet,
+
     EditorState,
     EditorSelection,
     Compartment,

@@ -51,6 +51,10 @@ include("./analysis/FunctionDependencies.jl")
 include("./analysis/ReactiveNode.jl")
 include("./packages/PkgCompat.jl")
 
+module OperationalTransform
+include("./notebook/OperationalTransform.jl")
+end
+
 include("./notebook/Cell.jl")
 include("./analysis/data structures.jl")
 include("./analysis/Topology.jl")
@@ -78,10 +82,10 @@ include("./evaluation/Run.jl")
 include("./evaluation/RunBonds.jl")
 
 module DownloadCool include("./webserver/data_url.jl") end
-include("./webserver/MsgPack.jl")
 include("./webserver/SessionActions.jl")
 include("./webserver/Static.jl")
 include("./webserver/Dynamic.jl")
+include("./webserver/MsgPack.jl")
 include("./webserver/REPLTools.jl")
 include("./webserver/WebServer.jl")
 

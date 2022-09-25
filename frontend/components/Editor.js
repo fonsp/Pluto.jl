@@ -93,7 +93,9 @@ const statusmap = (/** @type {EditorState} */ state, /** @type {LaunchParameters
     offer_local: state.backend_launch_phase === BackendLaunchPhase.wait_for_user && launch_params.pluto_server_url != null,
     binder: launch_params.binder_url != null && state.backend_launch_phase != null,
     code_differs: state.notebook.cell_order.some(
-        (cell_id) => state.cell_inputs_local[cell_id] != null && state.notebook.cell_inputs[cell_id].code !== state.cell_inputs_local[cell_id].code
+        (cell_id) => state.cell_inputs_local[cell_id] ?
+            state.notebook.cell_inputs[cell_id].code !== state.cell_inputs_local[cell_id].code :
+            state.notebook.cell_inputs[cell_id].code !== state.notebook.cell_inputs[cell_id].code_text,
     ),
     recording_waiting_to_start: state.recording_waiting_to_start,
     is_recording: state.is_recording,
@@ -122,6 +124,10 @@ const first_true_key = (obj) => {
  *  code: string,
  *  code_folded: boolean,
  *  metadata: CellMetaData,
+ *  cm_updates: Array<import("./CellInput.js").TextUpdate>
+ *  last_run_version: Number,
+ *  code_text: String,
+ *  start_version: Number,
  * }}
  */
 
@@ -363,6 +369,10 @@ export class Editor extends Component {
                 let new_cells = new_codes.map((code) => ({
                     cell_id: uuidv4(),
                     code: code,
+                    code_text: code,
+                    cm_updates: [],
+                    start_version: 0,
+                    last_run_version: 0,
                     code_folded: false,
                 }))
 
@@ -383,22 +393,6 @@ export class Editor extends Component {
                     index = this.state.notebook.cell_order.length
                 }
 
-                /** Update local_code. Local code doesn't force CM to update it's state
-                 * (the usual flow is keyboard event -> cm -> local_code and not the opposite )
-                 * See ** 1 **
-                 */
-                this.setState(
-                    immer((state) => {
-                        // Deselect everything first, to clean things up
-                        state.selected_cells = []
-
-                        for (let cell of new_cells) {
-                            state.cell_inputs_local[cell.cell_id] = cell
-                        }
-                        state.last_created_cell = new_cells[0]?.cell_id
-                    })
-                )
-
                 /**
                  * Create an empty cell in the julia-side.
                  * Code will differ, until the user clicks 'run' on the new code
@@ -408,7 +402,9 @@ export class Editor extends Component {
                         notebook.cell_inputs[cell.cell_id] = {
                             ...cell,
                             // Fill the cell with empty code remotely, so it doesn't run unsafe code
-                            code: "",
+                            start_version: 1,
+                            last_run_version: 0,
+                            cm_updates: [{ specs: [{ from: 0, insert: cell.code }], document_length: 0, client_id: "slkqjdsql" }],
                             metadata: {
                                 ...DEFAULT_CELL_METADATA,
                             },
@@ -448,6 +444,10 @@ export class Editor extends Component {
                     return {
                         cell_id: uuidv4(),
                         code: code,
+                        code_text: code,
+                        last_run_version: 0,
+                        start_version: 0,
+                        cm_updates: [],
                         code_folded: false,
                         metadata: {
                             ...DEFAULT_CELL_METADATA,
@@ -508,6 +508,10 @@ export class Editor extends Component {
                     notebook.cell_inputs[id] = {
                         cell_id: id,
                         code,
+                        code_text: code,
+                        last_run_version: 0,
+                        start_version: 0,
+                        cm_updates: [],
                         code_folded: false,
                         metadata: { ...DEFAULT_CELL_METADATA },
                     }
@@ -569,13 +573,14 @@ export class Editor extends Component {
             set_and_run_multiple: async (cell_ids) => {
                 // TODO: this function is called with an empty list sometimes, where?
                 if (cell_ids.length > 0) {
-                    await update_notebook((notebook) => {
-                        for (let cell_id of cell_ids) {
-                            if (this.state.cell_inputs_local[cell_id]) {
-                                notebook.cell_inputs[cell_id].code = this.state.cell_inputs_local[cell_id].code
-                            }
-                        }
-                    })
+                    // await update_notebook((notebook) => {
+                    //     for (let cell_id of cell_ids) {
+                    //         if (this.state.cell_inputs_local[cell_id]) {
+                    //             notebook.cell_inputs[cell_id].code = this.state.cell_inputs_local[cell_id].code
+                    //         }
+                    //     }
+                    // })
+
                     // This is a "dirty" trick, as this should actually be stored in some shared request_status => status state
                     // But for now... this is fine 😼
                     await this.setStatePromise(
@@ -589,7 +594,7 @@ export class Editor extends Component {
                             }
                         })
                     )
-                    await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.state.notebook.notebook_id })
+                    await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.state.notebook.notebook_id }, false)
                 }
             },
             /**
