@@ -3,8 +3,6 @@ import * as preact from "../imports/Preact.js"
 import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
-import hljs from "../imports/highlightjs.js"
-
 import { empty_notebook_state, set_disable_ui_css } from "../editor.js"
 import { create_pluto_connection } from "../common/PlutoConnection.js"
 import { init_feedback } from "../common/Feedback.js"
@@ -1213,10 +1211,6 @@ patch: ${JSON.stringify(
                 // and don't prevent the unload
             }
         })
-
-        // Attach the highlighter object to the window to allow custom highlighting from the frontend. See https://github.com/fonsp/Pluto.jl/pull/2244
-        //@ts-ignore
-        window.hljs = hljs
     }
 
     componentDidMount() {
