@@ -30,15 +30,11 @@
     /* use the value "contextual" to enable contextual ligatures `document.documentElement.style.setProperty('--pluto-operator-ligatures', 'contextual');`
         for julia mono see here: https://cormullion.github.io/pages/2020-07-26-JuliaMono/#contextual_and_stylistic_alternates_and_ligatures */
     --pluto-operator-ligatures: none;
-    --julia-mono-font-stack: JuliaMono, Menlo,
-    "Roboto Mono", "Lucida Sans Typewriter", "Source Code Pro", monospace;
-    --sans-serif-font-stack:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
-    --lato-ui-font-stack:
-    "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, Helvetica, Arial, "Apple Color Emoji",
+    --julia-mono-font-stack: JuliaMono, Menlo, "Roboto Mono", "Lucida Sans Typewriter", "Source Code Pro", monospace;
+    --sans-serif-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+    --lato-ui-font-stack: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, Helvetica, Arial, "Apple Color Emoji",
         "Segoe UI Emoji", "Segoe UI Symbol", system-ui, sans-serif;
-    --system-ui-font-stack:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, Helvetica, Arial, "Apple Color Emoji",
+    --system-ui-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, Helvetica, Arial, "Apple Color Emoji",
         "Segoe UI Emoji", "Segoe UI Symbol", system-ui, sans-serif;
     color-scheme: light dark;
 }
@@ -2350,12 +2346,13 @@ pluto-logs-container pluto-progress-bars pluto-progress:not(:first-child) {
 
 pluto-logs-container pluto-progress-bar {
     --c: var(--pluto-logs-progress-fill);
-    padding: 1px 3px;
+    padding: 0.3em 0.6em;
     background: linear-gradient(90deg, var(--c), var(--c));
     background-repeat: no-repeat;
     width: 100%;
     transition: background-size cubic-bezier(0.14, 0.71, 0, 0.99) 2s, opacity linear 0.2s;
-    /* background-color: salmon; */
+    display: grid;
+    align-items: center;
 }
 
 pluto-logs-container pluto-progress-bar.collapsed {
@@ -2391,18 +2388,18 @@ pluto-log-dot-positioner {
     /* border-bottom: 1px solid #71717140; */
     display: flex;
     flex-direction: row;
-    --bg-color:
-    var(--jl-info-color);
-    --accent-color:
-    var(--jl-info-accent-color);
+    --bg-color: var(--jl-info-color);
+    --accent-color: var(--jl-info-accent-color);
     --icon-image: unset;
     background: var(--bg-color);
     color: var(--accent-color);
     margin: 2px;
     border-radius: 6px;
-    border: 2px solid var(--accent-color);
-    border: 2px solid #0000001c;
-    /* box-shadow: 0px 0px 6px #00000021; */
+    /* border: 2px solid var(--accent-color); */
+    /* border: 2px solid #0000001c; */
+    /* box-shadow: 0px 0px 6px #00000036; */
+    background: linear-gradient(148deg, var(--bg-color), transparent);
+    background-size: 200% 100%;
 }
 
 pluto-log-dot-positioner:last-child {
@@ -2441,23 +2438,41 @@ pluto-log-dot-positioner.Debug {
     --accent-color: var(--jl-debug-accent-color);
     --icon-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/information-circle-outline.svg");
 }
+pluto-log-dot-positioner.Stdout {
+    --icon-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/terminal-outline.svg");
+}
+pluto-log-dot-positioner.Stdout pluto-log-icon::before {
+    opacity: 0.4;
+}
 
 pluto-log-dot.Progress {
-    width: 100px;
-    background-color: #94949466;
-    border: var(--pluto-logs-progress-border);
+    /* width: 100px; */
     overflow: hidden;
     padding: 0px;
+    flex: 0 1 200px;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    /* padding: 5px; */
+    align-self: center;
+    outline: 3px solid var(--pluto-logs-progress-border);
+    outline-offset: -2px;
+    border-radius: 6px;
+    background: var(--pluto-logs-progress-bg);
+    font-size: 0.7rem;
 }
 pluto-log-dot.Stdout {
     /* filter: sepia(0.3); */
-    --inner: hsl(36deg 20% 37%);
-    --outer: hsl(31deg 12% 28%);
+    --inner:
+    hsl(36deg 20% 37%);
+    --outer:
+    hsl(31deg 12% 28%);
     background: radial-gradient(var(--inner), var(--inner) 20%, var(--outer));
     color: #8ed975;
     border: 6px solid #b7b7b7;
     text-shadow: 1px 1px 2px #0000005e;
     min-width: 18em;
+    border-radius: 8px;
 }
 pluto-log-dot.Stdout::after,
 pluto-log-dot.Stdout::before {
@@ -2646,7 +2661,7 @@ pluto-input .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
     float: right;
     margin-right: 0.5em;
     font-size: 0.8em;
-    font-family: 'JuliaMono';
+    font-family: "JuliaMono";
     font-style: normal;
 }
 
@@ -2946,7 +2961,6 @@ pluto-cell.hooked_up pluto-output {
     justify-content: flex-end;
     gap: 0.5em;
 }
-
 
 pluto-logs-container > header {
     font-family: "Roboto Mono", monospace;

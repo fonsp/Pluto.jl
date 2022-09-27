@@ -48,7 +48,7 @@
 
         /*Pluto output styling */
         --pluto-schema-types-color:
-        rgba(0, 0, 0, 0.4);
+        rgb(0 0 0 / 51%);
         --pluto-schema-types-border-color:
         rgba(0, 0, 0, 0.2);
         --pluto-output-color:
@@ -104,8 +104,9 @@
 
         /* Logs */
         --pluto-logs-bg-color:
-        hsl(0deg 0% 97%);
+        hsl(0deg 0% 98%);
         --pluto-logs-progress-fill: #ffffff;
+        --pluto-logs-progress-bg: #e7e7e7;
         --pluto-logs-progress-border:
         hsl(210deg 16% 74%);
 

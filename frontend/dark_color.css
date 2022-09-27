@@ -66,7 +66,7 @@
         rgb(38 90 32);
         --jl-message-accent-color:
         rgb(131 191 138);
-        --jl-info-color: transparent;
+        --jl-info-color: #484848;
         --jl-info-accent-color: inherit;
         --jl-warn-color:
         rgb(80 76 38);
@@ -107,6 +107,7 @@
         --pluto-logs-bg-color:
         hsl(0deg 0% 17%);
         --pluto-logs-progress-fill: #5f7f5b;
+        --pluto-logs-progress-bg: #3d3d3d;
         --pluto-logs-progress-border:
         hsl(210deg 35% 72%);
 
