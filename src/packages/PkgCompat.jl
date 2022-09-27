@@ -196,11 +196,15 @@ end
 
 # ✅ Public API
 """
-Check when the registries were last updated. If it is recent (max 7 days), `Pkg.UPDATED_REGISTRY_THIS_SESSION` is set to `true`, which will prevent Pkg from doing an automatic registry update.
+Check when the registries were last updated. If it is recent (max 7 days), then `Pkg.UPDATED_REGISTRY_THIS_SESSION[]` is set to `true`, which will prevent Pkg from doing an automatic registry update.
 
 Returns the new value of `Pkg.UPDATED_REGISTRY_THIS_SESSION`.
 """
 function check_registry_age(max_age_ms = 1000.0 * 60 * 60 * 24 * 7)::Bool
+	if get(ENV, "GITHUB_ACTIONS", "false") == "true"
+		# don't do this optimization in CI
+		return false
+	end
 	paths = _get_registry_paths()
 	isempty(paths) && return _updated_registries_compat[]
 	
