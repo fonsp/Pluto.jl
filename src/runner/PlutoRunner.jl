@@ -23,7 +23,7 @@ using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
 import Distributed
 import Base64
-import FuzzyCompletions: Completion, ModuleCompletion, PropertyCompletion, FieldCompletion, PathCompletion, DictCompletion, completions, completion_text, score
+import FuzzyCompletions: Completion, BslashCompletion, ModuleCompletion, PropertyCompletion, FieldCompletion, PathCompletion, DictCompletion, completions, completion_text, score
 import Base: show, istextmime
 import UUIDs: UUID, uuid4
 import Dates: DateTime
@@ -1621,6 +1621,14 @@ catch
 end
 completion_description(::Completion) = nothing
 
+completion_detail(::Completion) = nothing
+completion_detail(completion::BslashCompletion) =
+    haskey(REPL.REPLCompletions.latex_symbols, completion.bslash) ?
+        REPL.REPLCompletions.latex_symbols[completion.bslash] :
+    haskey(REPL.REPLCompletions.emoji_symbols, completion.bslash) ?
+        REPL.REPLCompletions.emoji_symbols[completion.bslash] :
+        nothing
+
 function is_pluto_workspace(m::Module)
     mod_name = nameof(m) |> string
     startswith(mod_name, "workspace#")
@@ -1639,12 +1647,16 @@ function completions_exported(cs::Vector{<:Completion})
     end
 end
 
-completion_from_notebook(c::ModuleCompletion) = is_pluto_workspace(c.parent) && c.mod != "include" && c.mod != "eval"
+completion_from_notebook(c::ModuleCompletion) =
+    is_pluto_workspace(c.parent) &&
+    c.mod != "include" &&
+    c.mod != "eval" &&
+    !startswith(c.mod, "#")
 completion_from_notebook(c::Completion) = false
 
-only_special_completion_types(c::PathCompletion) = :path
-only_special_completion_types(c::DictCompletion) = :dict
-only_special_completion_types(c::Completion) = nothing
+only_special_completion_types(::PathCompletion) = :path
+only_special_completion_types(::DictCompletion) = :dict
+only_special_completion_types(::Completion) = nothing
 
 "You say Linear, I say Algebra!"
 function completion_fetcher(query, pos, workspace::Module)
@@ -1664,13 +1676,16 @@ function completion_fetcher(query, pos, workspace::Module)
         filter!(isenough ∘ score, results) # too many candiates otherwise
     end
 
-    texts = completion_text.(results)
-    descriptions = completion_description.(results)
     exported = completions_exported(results)
-    from_notebook = completion_from_notebook.(results)
-    completion_type = only_special_completion_types.(results)
-
-    smooshed_together = collect(zip(texts, descriptions, exported, from_notebook, completion_type))
+    smooshed_together = [
+        (completion_text(result),
+         completion_description(result),
+         rexported,
+         completion_from_notebook(result),
+         only_special_completion_types(result),
+         completion_detail(result))
+        for (result, rexported) in zip(results, exported)
+    ]
 
     p = if endswith(query, '.')
         sortperm(smooshed_together; alg=MergeSort, by=basic_completion_priority)
@@ -1680,8 +1695,8 @@ function completion_fetcher(query, pos, workspace::Module)
         sortperm(scores .+ 3.0 * exported; alg=MergeSort, rev=true)
     end
 
-    final = smooshed_together[p]
-    (final, loc, found)
+    permute!(smooshed_together, p)
+    (smooshed_together, loc, found)
 end
 
 is_dot_completion(::Union{ModuleCompletion,PropertyCompletion,FieldCompletion}) = true
