@@ -2341,7 +2341,7 @@ pluto-logs-container {
 
 pluto-logs-container:not(:empty) {
     background: var(--pluto-logs-bg-color);
-    /* padding: 10px; */
+    padding: 6px;
 }
 
 pluto-logs-container pluto-progress-bars pluto-progress:not(:first-child) {
@@ -2388,18 +2388,25 @@ pluto-log-dot {
 }
 
 pluto-log-dot-positioner {
-    border-bottom: 1px solid #71717140;
+    /* border-bottom: 1px solid #71717140; */
     display: flex;
     flex-direction: row;
-    --bg-color: var(--jl-info-color);
-    --accent-color: var(--jl-info-accent-color);
+    --bg-color:
+    var(--jl-info-color);
+    --accent-color:
+    var(--jl-info-accent-color);
     --icon-image: unset;
     background: var(--bg-color);
     color: var(--accent-color);
+    margin: 2px;
+    border-radius: 6px;
+    border: 2px solid var(--accent-color);
+    border: 2px solid #0000001c;
+    /* box-shadow: 0px 0px 6px #00000021; */
 }
 
 pluto-log-dot-positioner:last-child {
-    border-bottom: none;
+    /* border-bottom: none; */
 }
 
 pluto-log-icon::before {

@@ -64,12 +64,11 @@
         rgb(219 233 212);
         --jl-message-accent-color:
         rgb(158, 200, 137);
-        --jl-info-color: transparent;
+        --jl-info-color: white;
         --jl-info-accent-color: inherit;
         --jl-warn-color:
         rgb(236 234 213);
-        --jl-warn-accent-color:
-        rgb(102 95 38);
+        --jl-warn-accent-color: #665f26;
         --jl-danger-color:
         rgb(245 218 215);
         --jl-danger-accent-color:
@@ -104,7 +103,8 @@
         rgba(0, 0, 0, 0.05);
 
         /* Logs */
-        --pluto-logs-bg-color: #f9f9f9;
+        --pluto-logs-bg-color:
+        hsl(0deg 0% 97%);
         --pluto-logs-progress-fill: #ffffff;
         --pluto-logs-progress-border:
         hsl(210deg 16% 74%);
