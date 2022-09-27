@@ -5,9 +5,9 @@ import { SimpleOutputBody } from "./TreeView.js"
 import { help_circle_icon, open_pluto_popup } from "./Popup.js"
 import AnsiUp from "../imports/AnsiUp.js"
 
-// Defined in editor.css
-const GRID_WIDTH = 10
-const RESIZE_THROTTLE = 60
+// const GRID_WIDTH = 10
+const LOGS_VISIBLE_START = 60
+const LOGS_VISIBLE_END = 20
 const PROGRESS_LOG_LEVEL = "LogLevel(-1)"
 
 const is_progress_log = (log) => {
@@ -16,8 +16,8 @@ const is_progress_log = (log) => {
 
 export const Logs = ({ logs, line_heights, set_cm_highlighted_line }) => {
     const container = useRef(/** @type {HTMLElement?} */ (null))
-    const [from, setFrom] = useState(0)
-    const [to, setTo] = useState(Math.round(1000 / GRID_WIDTH))
+    // const [from, setFrom] = useState(0)
+    // const [to, setTo] = useState(Math.round(1000 / GRID_WIDTH))
     const progress_logs = logs.filter(is_progress_log)
     const latest_progress_logs = progress_logs.reduce((progress_logs, log) => ({ ...progress_logs, [log.id]: log }), {})
     const [_, grouped_progress_and_logs] = logs.reduce(
@@ -32,46 +32,36 @@ export const Logs = ({ logs, line_heights, set_cm_highlighted_line }) => {
         },
         [{}, []]
     )
-    const logsWidth = grouped_progress_and_logs.length * GRID_WIDTH
 
-    useEffect(() => {
-        const elem = container.current
-        if (!elem) return
-        const fn = () => {
-            const w = elem.clientWidth
-            const scroll_left = elem.scrollLeft
-            setFrom(Math.min(logs.length - 1, Math.round((scroll_left - w) / GRID_WIDTH)))
-            setTo(Math.round((scroll_left + 2 * w) / GRID_WIDTH))
-        }
-        const l = fn // _.throttle(fn, RESIZE_THROTTLE)
-        document.addEventListener("resize", l)
-        elem.addEventListener("scroll", l)
-        return () => {
-            elem.removeEventListener("scroll", l)
-            document.removeEventListener("resize", l)
-        }
-    }, [container.current, logsWidth])
     const is_hidden_input = line_heights[0] === 0
     if (logs.length === 0) {
         return null
     }
 
+    const dot = (log, i) => html`<${Dot}
+        set_cm_highlighted_line=${set_cm_highlighted_line}
+        level=${log.level}
+        msg=${log.msg}
+        kwargs=${log.kwargs}
+        mykey=${`log${i}`}
+        key=${i}
+        y=${is_hidden_input ? 0 : log.line - 1}
+    /> `
+
     return html`
         <pluto-logs-container ref=${container}>
             <pluto-logs>
-                ${grouped_progress_and_logs.map((log, i) => {
-                    return html`<${Dot}
-                        set_cm_highlighted_line=${set_cm_highlighted_line}
-                        show=${logs.length < 50 || (from <= i && i < to)}
-                        level=${log.level}
-                        msg=${log.msg}
-                        kwargs=${log.kwargs}
-                        mykey=${`log${i}`}
-                        key=${i}
-                        x=${i}
-                        y=${is_hidden_input ? 0 : log.line - 1}
-                    /> `
-                })}
+                ${grouped_progress_and_logs.length <= LOGS_VISIBLE_END + LOGS_VISIBLE_START
+                    ? grouped_progress_and_logs.map(dot)
+                    : [
+                          ...grouped_progress_and_logs.slice(0, LOGS_VISIBLE_START).map(dot),
+                          html`<pluto-log-truncated>
+                              ${grouped_progress_and_logs.length - LOGS_VISIBLE_START - LOGS_VISIBLE_END} logs not shown...
+                          </pluto-log-truncated>`,
+                          ...grouped_progress_and_logs
+                              .slice(-LOGS_VISIBLE_END)
+                              .map((log, i) => dot(log, i + grouped_progress_and_logs.length - LOGS_VISIBLE_END)),
+                      ]}
             </pluto-logs>
         </pluto-logs-container>
     `
@@ -90,7 +80,7 @@ const Progress = ({ progress }) => {
 
 const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${"adsf"} mime=${pair[1]} body=${pair[0]} persist_js_state=${false} />`
 
-const Dot = ({ set_cm_highlighted_line, show, msg, kwargs, x, y, level }) => {
+const Dot = ({ set_cm_highlighted_line, msg, kwargs, y, level, mykey }) => {
     const node_ref = useRef(/** @type{HTMLElement?} */ (null))
     // const label_ref = useRef(null)
     // useEffect(() => {
@@ -112,68 +102,64 @@ const Dot = ({ set_cm_highlighted_line, show, msg, kwargs, x, y, level }) => {
         }
 
         level = "Progress"
-        y = 0
     }
     if (is_stdout) {
         level = "Stdout"
     }
 
     useLayoutEffect(() => {
-        if (inspecting && show) {
+        if (inspecting) {
             const f = (e) => {
                 if (!e.target.closest || e.target.closest("pluto-log-dot-positioner") !== node_ref.current) {
                     set_inspecting(false)
                     set_cm_highlighted_line(null)
                 }
             }
-            window.addEventListener("click", f)
             window.addEventListener("blur", f)
 
             return () => {
-                window.removeEventListener("click", f)
                 window.removeEventListener("blur", f)
             }
         }
     }, [inspecting])
 
-    return show
-        ? html`<pluto-log-dot-positioner
-              ref=${node_ref}
-              class=${cl({ inspecting, [level]: true })}
-              onClick=${() => {
-                  set_inspecting(true)
-                  is_progress || set_cm_highlighted_line(y + 1)
-              }}
-              onMouseenter=${() => is_progress || set_cm_highlighted_line(y + 1)}
-              onMouseleave=${() => set_cm_highlighted_line(null)}
-          >
-              <pluto-log-icon></pluto-log-icon>
-              ${is_stdout
-                  ? html`<${MoreInfo}
-                        body=${html`This text was written to the ${" "}<a href="https://en.wikipedia.org/wiki/Standard_streams" target="_blank"
-                                >terminal stream</a
-                            >${" "}while running the cell. It is not the${" "}<em>output value</em>${" "}of this cell.`}
-                    />`
-                  : null}
-              <pluto-log-dot class=${level}
-                  >${is_progress
-                      ? html`<${Progress} progress=${progress} />`
-                      : is_stdout
-                      ? html`<${MoreInfo}
-                                body=${html`${"This text was written to the "}
-                                    <a href="https://en.wikipedia.org/wiki/Standard_streams" target="_blank">terminal stream</a
-                                    >${" while running the cell. "}<span style="opacity: .5"
-                                        >${"(It is not the "}<em>return value</em>${" of the cell.)"}</span
-                                    >`}
-                            />
-                            <${LogViewAnsiUp} value=${msg[0]} />`
-                      : html`${mimepair_output(msg)}${kwargs.map(
-                            ([k, v]) =>
-                                html` <pluto-log-dot-kwarg><pluto-key>${k}</pluto-key> <pluto-value>${mimepair_output(v)}</pluto-value></pluto-log-dot-kwarg> `
-                        )}`}</pluto-log-dot
-              >
-          </pluto-log-dot-positioner>`
-        : html`<pluto-log-dot-positioner ref=${node_ref}></pluto-log-dot-positioner>`
+    return html`<pluto-log-dot-positioner
+        data-line=${y + 1}
+        ref=${node_ref}
+        class=${cl({ inspecting, [level]: true })}
+        onClick=${() => {
+            set_inspecting(true)
+            console.log("highlighting line", y)
+            is_progress || set_cm_highlighted_line(y + 1)
+        }}
+        onMouseenter=${() => is_progress || set_cm_highlighted_line(y + 1)}
+        onMouseleave=${() => set_cm_highlighted_line(null)}
+    >
+        <pluto-log-icon></pluto-log-icon>
+        ${is_stdout
+            ? html`<${MoreInfo}
+                  body=${html`This text was written to the ${" "}<a href="https://en.wikipedia.org/wiki/Standard_streams" target="_blank">terminal stream</a
+                      >${" "}while running the cell. It is not the${" "}<em>output value</em>${" "}of this cell.`}
+              />`
+            : null}
+        <pluto-log-dot class=${level}
+            >${is_progress
+                ? html`<${Progress} progress=${progress} />`
+                : is_stdout
+                ? html`<${MoreInfo}
+                          body=${html`${"This text was written to the "}
+                              <a href="https://en.wikipedia.org/wiki/Standard_streams" target="_blank">terminal stream</a>${" while running the cell. "}<span
+                                  style="opacity: .5"
+                                  >${"(It is not the "}<em>return value</em>${" of the cell.)"}</span
+                              >`}
+                      />
+                      <${LogViewAnsiUp} value=${msg[0]} />`
+                : html`${mimepair_output(msg)}${kwargs.map(
+                      ([k, v]) =>
+                          html` <pluto-log-dot-kwarg><pluto-key>${k}</pluto-key> <pluto-value>${mimepair_output(v)}</pluto-value></pluto-log-dot-kwarg> `
+                  )}`}</pluto-log-dot
+        >
+    </pluto-log-dot-positioner>`
 }
 
 const MoreInfo = (/** @type{{body: import("../imports/Preact.js").ReactElement}} */ { body }) => {
