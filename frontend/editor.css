@@ -2406,6 +2406,15 @@ pluto-log-dot-positioner:last-child {
     /* border-bottom: none; */
 }
 
+pluto-log-truncated {
+    display: grid;
+    place-items: center;
+    font-family: var(--system-ui-font-stack);
+    opacity: 0.7;
+    padding: 0.7em;
+    font-style: italic;
+}
+
 pluto-log-icon::before {
     content: "";
     width: 1em;
@@ -2463,10 +2472,8 @@ pluto-log-dot.Progress {
 }
 pluto-log-dot.Stdout {
     /* filter: sepia(0.3); */
-    --inner:
-    hsl(36deg 20% 37%);
-    --outer:
-    hsl(31deg 12% 28%);
+    --inner: hsl(36deg 20% 37%);
+    --outer: hsl(31deg 12% 28%);
     background: radial-gradient(var(--inner), var(--inner) 20%, var(--outer));
     color: #8ed975;
     border: 6px solid #b7b7b7;
