@@ -5,12 +5,10 @@
 
         /* Color scheme */
         --main-bg-color: white;
-        --rule-color:
-        rgba(0, 0, 0, 0.15);
+        --rule-color: rgba(0, 0, 0, 0.15);
         --kbd-border-color: #dfdfdf;
         --header-bg-color: white;
-        --header-border-color:
-        rgba(0, 0, 0, 0.1);
+        --header-border-color: rgba(0, 0, 0, 0.1);
         --ui-button-color: #2a2a2b;
         --cursor-color: black;
         --normal-cell: 0, 0, 0;
@@ -18,119 +16,78 @@
         --error-color: 240, 168, 168;
 
         /*Cells*/
-        --normal-cell-color:
-        rgba(var(--normal-cell), 0.1);
-        --dark-normal-cell-color:
-        rgba(var(--normal-cell), 0.2);
-        --selected-cell-color:
-        rgba(40, 78, 189, 0.4);
-        --code-differs-cell-color:
-        rgba(var(--code-differs), 0.68);
-        --error-cell-color:
-        rgba(var(--error-color), 0.7);
-        --bright-error-cell-color:
-        rgb(var(--error-color));
-        --light-error-cell-color:
-        rgba(var(--error-color), 0.05);
+        --normal-cell-color: rgba(var(--normal-cell), 0.1);
+        --dark-normal-cell-color: rgba(var(--normal-cell), 0.2);
+        --selected-cell-color: rgba(40, 78, 189, 0.4);
+        --code-differs-cell-color: rgba(var(--code-differs), 0.68);
+        --error-cell-color: rgba(var(--error-color), 0.7);
+        --bright-error-cell-color: rgb(var(--error-color));
+        --light-error-cell-color: rgba(var(--error-color), 0.05);
 
         /*Export styling*/
-        --export-bg-color:
-        rgb(60, 67, 101);
-        --export-color:
-        rgba(255, 255, 255, 0.7);
-        --export-card-bg-color:
-        rgba(255, 255, 255, 0.8);
-        --export-card-title-color:
-        rgba(0, 0, 0, 0.7);
-        --export-card-text-color:
-        rgba(0, 0, 0, 0.5);
+        --export-bg-color: rgb(60, 67, 101);
+        --export-color: rgba(255, 255, 255, 0.7);
+        --export-card-bg-color: rgba(255, 255, 255, 0.8);
+        --export-card-title-color: rgba(0, 0, 0, 0.7);
+        --export-card-text-color: rgba(0, 0, 0, 0.5);
         --export-card-shadow-color: #00000029;
 
         /*Pluto output styling */
-        --pluto-schema-types-color:
-        rgb(0 0 0 / 51%);
-        --pluto-schema-types-border-color:
-        rgba(0, 0, 0, 0.2);
-        --pluto-output-color:
-        hsl(0, 0%, 25%);
-        --pluto-output-h-color:
-        hsl(0, 0%, 12%);
+        --pluto-schema-types-color: rgb(0 0 0 / 51%);
+        --pluto-schema-types-border-color: rgba(0, 0, 0, 0.2);
+        --pluto-output-color: hsl(0, 0%, 25%);
+        --pluto-output-h-color: hsl(0, 0%, 12%);
         --pluto-output-bg-color: white;
         --a-underline: #00000059;
         --blockquote-color: #555;
         --blockquote-bg: #f2f2f2;
         --admonition-title-color: white;
-        --jl-message-color:
-        rgb(219 233 212);
-        --jl-message-accent-color:
-        rgb(158, 200, 137);
+        --jl-message-color: rgb(219 233 212);
+        --jl-message-accent-color: rgb(158, 200, 137);
         --jl-info-color: white;
         --jl-info-accent-color: inherit;
-        --jl-warn-color:
-        rgb(236 234 213);
+        --jl-warn-color: rgb(236 234 213);
         --jl-warn-accent-color: #665f26;
-        --jl-danger-color:
-        rgb(245 218 215);
-        --jl-danger-accent-color:
-        rgb(172 66 52);
-        --jl-debug-color:
-        rgb(236 223 247);
-        --jl-debug-accent-color:
-        rgb(100 50 179);
-        --footnote-border-color:
-        rgba(23, 115, 119, 0.15);
-        --table-border-color:
-        rgba(0, 0, 0, 0.2);
-        --table-bg-hover-color:
-        rgba(159, 158, 224, 0.15);
-        --pluto-tree-color:
-        rgb(0 0 0 / 38%);
+        --jl-danger-color: rgb(245 218 215);
+        --jl-danger-accent-color: rgb(172 66 52);
+        --jl-debug-color: rgb(236 223 247);
+        --jl-debug-accent-color: rgb(100 50 179);
+        --footnote-border-color: rgba(23, 115, 119, 0.15);
+        --table-border-color: rgba(0, 0, 0, 0.2);
+        --table-bg-hover-color: rgba(159, 158, 224, 0.15);
+        --pluto-tree-color: rgb(0 0 0 / 38%);
 
         /*pluto cell styling*/
-        --disabled-cell-bg-color:
-        rgba(139, 139, 139, 0.25);
-        --selected-cell-bg-color:
-        rgba(40, 78, 189, 0.24);
-        --hover-scrollbar-color-1:
-        rgba(0, 0, 0, 0.15);
-        --hover-scrollbar-color-2:
-        rgba(0, 0, 0, 0.05);
+        --disabled-cell-bg-color: rgba(139, 139, 139, 0.25);
+        --selected-cell-bg-color: rgba(40, 78, 189, 0.24);
+        --hover-scrollbar-color-1: rgba(0, 0, 0, 0.15);
+        --hover-scrollbar-color-2: rgba(0, 0, 0, 0.05);
         --skip-as-script-background-color: #ccc;
         --depends-on-skip-as-script-background-color: #eee;
 
         /* Pluto shoulders */
-        --shoulder-hover-bg-color:
-        rgba(0, 0, 0, 0.05);
+        --shoulder-hover-bg-color: rgba(0, 0, 0, 0.05);
 
         /* Logs */
-        --pluto-logs-bg-color:
-        hsl(0deg 0% 98%);
+        --pluto-logs-bg-color: hsl(0deg 0% 98%);
         --pluto-logs-progress-fill: #ffffff;
         --pluto-logs-progress-bg: #e7e7e7;
-        --pluto-logs-progress-border:
-        hsl(210deg 16% 74%);
+        --pluto-logs-progress-border: hsl(210deg 16% 74%);
 
         /*Top navbar styling*/
         --nav-h1-text-color: black;
         --nav-filepicker-color: #6f6f6f;
         --nav-filepicker-border-color: #b2b2b2;
         --nav-process-status-bg-color: white;
-        --nav-process-status-color:
-        var(--pluto-output-h-color);
+        --nav-process-status-color: var(--pluto-output-h-color);
 
         /*header*/
-        --restart-recc-header-color:
-        rgba(114, 192, 255, 0.56);
-        --restart-req-header-color:
-        rgba(170, 41, 32, 0.56);
-        --dead-process-header-color:
-        rgb(230 88 46 / 38%);
-        --loading-header-color:
-        hsla(290, 10%, 80%, 0.5);
-        --disconnected-header-color:
-        rgba(255, 169, 114, 0.56);
-        --binder-loading-header-color:
-        hsl(51deg 64% 90% / 50%);
+        --restart-recc-header-color: rgba(114, 192, 255, 0.56);
+        --restart-req-header-color: rgba(170, 41, 32, 0.56);
+        --dead-process-header-color: rgb(230 88 46 / 38%);
+        --loading-header-color: hsla(290, 10%, 80%, 0.5);
+        --disconnected-header-color: rgba(255, 169, 114, 0.56);
+        --binder-loading-header-color: hsl(51deg 64% 90% / 50%);
 
         /*loading bar*/
         --loading-grad-color-1: #f1dba9;
@@ -142,12 +99,10 @@
         --overlay-button-border-save: #f3f2f2;
 
         /*input_context_menu*/
-        --input-context-menu-border-color:
-        rgba(0, 0, 0, 0.1);
+        --input-context-menu-border-color: rgba(0, 0, 0, 0.1);
         --input-context-menu-bg-color: white;
         --input-context-menu-soon-color: #55555544;
-        --input-context-menu-hover-bg-color:
-        rgba(0, 0, 0, 0.1);
+        --input-context-menu-hover-bg-color: rgba(0, 0, 0, 0.1);
         --input-context-menu-li-color: #6b6a6a;
 
         /*Pkg status*/
@@ -160,19 +115,15 @@
         --pkg-terminal-border-color: #c3c3c3;
 
         /* run area*/
-        --pluto-runarea-bg-color:
-        hsl(0, 0, 97%);
-        --pluto-runarea-span-color:
-        hsl(353, 5%, 64%);
+        --pluto-runarea-bg-color: hsl(0, 0, 97%);
+        --pluto-runarea-span-color: hsl(353, 5%, 64%);
 
         /*drop ruler*/
-        --dropruler-bg-color:
-        rgba(0, 0, 0, 0.5);
+        --dropruler-bg-color: rgba(0, 0, 0, 0.5);
 
         /* jlerror */
         --jlerror-header-color: #4f1616;
-        --jlerror-mark-bg-color:
-        rgb(243 243 243);
+        --jlerror-mark-bg-color: rgb(243 243 243);
         --jlerror-a-bg-color: #f5efd9;
         --jlerror-a-border-left-color: #704141;
         --jlerror-mark-color: black;
@@ -181,10 +132,8 @@
         --helpbox-bg-color: white;
         --helpbox-box-shadow-color: #00000010;
         --helpbox-header-bg-color: #eef1f7;
-        --helpbox-header-color:
-        hsl(230, 14%, 11%);
-        --helpbox-notfound-header-color:
-        rgb(139, 139, 139);
+        --helpbox-header-color: hsl(230, 14%, 11%);
+        --helpbox-notfound-header-color: rgb(139, 139, 139);
         --helpbox-text-color: black;
         --code-section-bg-color: whitesmoke;
         --code-section-bg-color: #f3f3f3;
@@ -196,28 +145,21 @@
         --footer-input-border-color: #818181;
         --footer-filepicker-button-color: white;
         --footer-filepicker-focus-color: #896c6c;
-        --footnote-border-color:
-        rgba(23, 115, 119, 0.15);
+        --footnote-border-color: rgba(23, 115, 119, 0.15);
 
         /* undo delete cell*/
         --undo-delete-box-shadow-color: #0083;
 
         /*codemirror hints*/
-        --cm-editor-tooltip-border-color:
-        rgba(0, 0, 0, 0.2);
+        --cm-editor-tooltip-border-color: rgba(0, 0, 0, 0.2);
         --cm-editor-li-aria-selected-bg-color: #16659d;
         --cm-editor-li-aria-selected-color: white;
-        --cm-editor-li-notexported-color:
-        rgba(0, 0, 0, 0.5);
-        --code-background:
-        hsla(46, 90%, 98%, 1);
-        --cm-code-differs-gutters-color:
-        rgba(214, 172, 35, 0.2);
+        --cm-editor-li-notexported-color: rgba(0, 0, 0, 0.5);
+        --code-background: hsla(46, 90%, 98%, 1);
+        --cm-code-differs-gutters-color: rgba(214, 172, 35, 0.2);
         --cm-line-numbers-color: #8d86875e;
-        --cm-selection-background:
-        hsl(214deg 100% 73% / 48%);
-        --cm-selection-background-blurred:
-        hsl(214deg 0% 73% / 48%);
+        --cm-selection-background: hsl(214deg 100% 73% / 48%);
+        --cm-selection-background-blurred: hsl(214deg 0% 73% / 48%);
 
         /* code highlighting */
         --cm-editor-text-color: #41323f;
@@ -232,8 +174,7 @@
         --cm-var2-color: #37768a;
         --cm-builtin-color: #5e7ad3;
         --cm-function-color: #cc80ac;
-        --cm-type-color:
-        hsl(170deg 7% 56%);
+        --cm-type-color: hsl(170deg 7% 56%);
         --cm-bracket-color: #41323f;
         --cm-tag-color: #ef6155;
         --cm-link-color: #815ba4;
@@ -241,21 +182,17 @@
         --cm-error-color: #f7f7f7;
         --cm-matchingBracket-color: black;
         --cm-matchingBracket-bg-color: #1b4bbb21;
-        --cm-placeholder-text-color:
-        rgba(0, 0, 0, 0.2);
+        --cm-placeholder-text-color: rgba(0, 0, 0, 0.2);
 
         /*autocomplete menu*/
         --autocomplete-menu-bg-color: white;
 
         /* Landing colors */
-        --index-text-color:
-        hsl(0, 0, 60);
-        --index-clickable-text-color:
-        hsl(0, 0, 30);
+        --index-text-color: hsl(0, 0, 60);
+        --index-clickable-text-color: hsl(0, 0, 30);
         --docs-binding-bg: #8383830a;
         --index-card-bg: white;
-        --welcome-mywork-bg:
-        hsl(35deg 66% 93%);
+        --welcome-mywork-bg: hsl(35deg 66% 93%);
         --welcome-newnotebook-bg: whitesmoke;
         --welcome-recentnotebook-bg: white;
         --welcome-recentnotebook-border: #dfdfdf;
