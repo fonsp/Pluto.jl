@@ -36,6 +36,7 @@ export const highlightLinePlugin = () =>
              * @param {EditorView} view
              */
             constructor(view) {
+                this.decorations = Decoration.set([])
                 this.updateDecos(view)
             }
 
