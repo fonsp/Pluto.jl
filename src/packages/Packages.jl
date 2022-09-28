@@ -113,26 +113,7 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                 PkgCompat.refresh_registry_cache()
 
                 if !notebook.nbpkg_ctx_instantiated
-                    notebook.nbpkg_ctx = PkgCompat.clear_stdlib_compat_entries(notebook.nbpkg_ctx)
-                    PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
-                        withinteractive(false) do
-                            try
-                                Pkg.resolve(notebook.nbpkg_ctx)
-                            catch e
-                                @warn "Failed to resolve Pkg environment. Removing Manifest and trying again..." exception=e
-                                reset_nbpkg(notebook; keep_project=true, save=false, backup=false)
-                                try
-                                    Pkg.resolve(notebook.nbpkg_ctx)
-                                catch e
-                                    @warn "Failed to resolve Pkg environment. Removing Project compat entires and Manifest and trying again..." exception=e
-                                    reset_nbpkg(notebook; keep_project=true, save=false, backup=false)
-                                    notebook.nbpkg_ctx = PkgCompat.clear_compat_entries(notebook.nbpkg_ctx)
-                                    
-                                    Pkg.resolve(notebook.nbpkg_ctx)
-                                end
-                            end
-                        end
-                    end
+                    resolve_with_auto_fixes(notebook, iolistener)
                 end
                 
                 to_add = filter(PkgCompat.package_exists, added)
@@ -338,6 +319,43 @@ function writebackup(notebook::Notebook)
 end
 
 """
+Run `Pkg.resolve` on the notebook's package environment. Keep trying more and more invasive strategies to fix problems until the operation succeeds.
+"""
+function resolve_with_auto_fixes(notebook::Notebook, iolistener::IOListener)
+    
+    notebook.nbpkg_ctx = PkgCompat.clear_stdlib_compat_entries(notebook.nbpkg_ctx)
+    
+    PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
+        withinteractive(false) do
+            try
+                Pkg.resolve(notebook.nbpkg_ctx)
+            catch e
+                @warn "Failed to resolve Pkg environment. Updating registries and trying again..." exception=e
+                
+                PkgCompat.update_registries(; force=true)
+                try
+                    Pkg.resolve(notebook.nbpkg_ctx)
+                catch e
+                    @warn "Failed to resolve Pkg environment. Removing Manifest and trying again..." exception=e
+                    
+                    reset_nbpkg(notebook; keep_project=true, save=false, backup=false)
+                    try
+                        Pkg.resolve(notebook.nbpkg_ctx)
+                    catch e
+                        @warn "Failed to resolve Pkg environment. Removing Project compat entries and Manifest and trying again..." exception=e
+                        
+                        reset_nbpkg(notebook; keep_project=true, save=false, backup=false)
+                        notebook.nbpkg_ctx = PkgCompat.clear_compat_entries(notebook.nbpkg_ctx)
+                        
+                        Pkg.resolve(notebook.nbpkg_ctx)
+                    end
+                end
+            end
+        end
+    end
+end
+
+"""
 Reset the package environment of a notebook. This will remove the `Project.toml` and `Manifest.toml` files from the notebook's secret package environment folder, and if `save` is `true`, it will then save the notebook without embedded Project and Manifest.
 
 If `keep_project` is `true` (default `false`), the `Project.toml` file will be kept, but the `Manifest.toml` file will be removed.
@@ -384,19 +402,7 @@ function update_nbpkg_core(notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEV
             PkgCompat.refresh_registry_cache()
 
             if !notebook.nbpkg_ctx_instantiated
-                notebook.nbpkg_ctx = PkgCompat.clear_stdlib_compat_entries(notebook.nbpkg_ctx)
-                PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
-                    withinteractive(false) do
-                        PkgCompat.update_registries(;force=false)
-                        try
-                            Pkg.resolve(notebook.nbpkg_ctx)
-                        catch e
-                            @warn "Failed to resolve Pkg environment. Removing Manifest and trying again..." exception=e
-                            reset_nbpkg(notebook; keep_project=true, save=false, backup=false)
-                            Pkg.resolve(notebook.nbpkg_ctx)
-                        end
-                    end
-                end
+                resolve_with_auto_fixes(notebook, iolistener)
             end
 
             startlistening(iolistener)
