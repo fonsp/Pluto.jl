@@ -245,13 +245,11 @@ function _apply(text::Text, insertion::Insertion)
     from = nextind(content, 0, insertion.from)
     to = nextind(content, 0, insertion.from + 1)
 
-    @show insertion from to
-
-	new_content = (
-		content[begin:from] *
-		insertion.insert * 
-		content[to:end]
-	)
+    new_content = (
+        content[begin:from] *
+        insertion.insert * 
+        content[to:end]
+    )
     return Text(new_content)
 end
 
@@ -338,7 +336,6 @@ function apply(text::Text, update::Update)
         # This means we can map it to UTF-8 indices and shift the next
         # changes by the edited amount.
         change = mapchange(codepoints_mapping, change)
-        @show codepoints_mapping change
         text = _apply(text, shift_diff(change, offset))
         offset += diff_offset(change)
     end
