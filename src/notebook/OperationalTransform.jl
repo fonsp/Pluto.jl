@@ -1,23 +1,32 @@
 ### A Pluto.jl notebook ###
-# v0.19.11
+# v0.19.12
 
 using Markdown
 using InteractiveUtils
 
 # ╔═╡ 610394d2-ff6f-4736-87ce-217735399222
+# ╠═╡ skip_as_script = true
+#=╠═╡
 md"""
 # Operational Transform
 
 This notebook contains Julia code to implement a central Operational Transform authority as described in the [CodeMirror Collaborative Example](https://codemirror.net/examples/collab/).
 """
+  ╠═╡ =#
 
 # ╔═╡ 8e36f6d4-665c-45f7-aa29-d00a442a5694
+# ╠═╡ skip_as_script = true
+#=╠═╡
 md"""
 ## Change Specs
 
 At the most basic level of text editing lies the change specs which describe how a text document can change. In our simple plain text example, they can be of three sorts:
 
+> From the CodeMirror docs: Line numbers start at 1. Character positions are counted from zero, and count each line break and UTF-16 code unit as one unit.
+
+Those UTF-16 code unit as one unit are then converted using `mapchange()` to what I call UTF-8 "plain" characters count (understand `'🍕'` counts as 1 instead of 2 in UTF-16 codeunits and 4 in UTF-8 codeunits).
 """
+  ╠═╡ =#
 
 # ╔═╡ 5eb433c4-5a8d-4340-97d3-9f9fc933dbd2
 abstract type ChangeSpec end
@@ -29,22 +38,28 @@ struct Deletion <: ChangeSpec
 end
 
 # ╔═╡ aecf8cd4-98bf-4e32-aeb3-29c270e76430
+# ╠═╡ skip_as_script = true
+#=╠═╡
 md"""
 ## Updates
 
 When the client choose to synchronize its changes with the server it bundles these changes into updates which can only be applied to a document of a provided length, this provides a simple check to make sure the contained changes are valid to apply to this document. An update can contain many changes and is always identified by a client id. This allows other clients to identify an update as being remote or not.
 """
+  ╠═╡ =#
 
 # ╔═╡ a80dfab8-8464-4c4c-9f63-b6e7daa606d5
+# ╠═╡ skip_as_script = true
+#=╠═╡
 md"""
 ## Text document
 
 The code of the text can be represented in many ways. CodeMirror for example uses a sort of tree based structure (similar to [ropes](https://en.wikipedia.org/wiki/Rope_(data_structure))?). This current Julia implementation is pretty naïve in that it only represent the text as a single immutable string. Each change would require allocating a new string to produce the new document. However, in our case things should be fine since Pluto cells tend to be at most a few dozens of line.
 """
+  ╠═╡ =#
 
 # ╔═╡ ae275932-9764-4579-9111-4c1fa27f9d39
 struct Text
-    content::String
+	content::String
 end
 
 # ╔═╡ a6cdb6fb-0931-4ed5-bfa2-abbf90994877
@@ -73,6 +88,104 @@ struct Update
     client_id::String
 end
 
+# ╔═╡ 57ab53eb-eb84-49d3-88b4-938842c669c7
+"""
+    utf16_codepoints(s::String)
+
+Taken from `Base.transcode(::Type{UInt16}, src::Vector{UInt8})`
+but without line constraints. It also does not support invalid
+UTF-8 encoding which `String` should never be anyway.
+
+This returns an array where each index i of an UTF-16 codepoint map
+to an UTF-8 character (understand 1/2/3/4 byte UTF-8 character like `'👋'`).
+
+This allows us to think only in terms of valid characters when performing 
+edits and use `nextind(s, 0, i)` when actually slicing the content. I don't
+think people will be editing half codeunits from Codemirror anyway.
+
+> The length of `utf16_codepoints(s::String)` also tells us about the length of `s` encoded in UTF-16.
+
+Examples:
+```julia
+                         123
+julia> utf16_codepoints("abc")
+                         |||
+                        / | \\
+               out =  [1, 2, 3]
+
+                         1 2
+julia> utf16_codepoints("🍕🍕")
+                        /|  |\\
+                       / |  | \\
+               out = [1, 1, 2, 2]
+
+                         1 23
+julia> utf16_codepoints("🍕c🍕")
+                        /| | |\\
+                       / | | | \\
+              out =  [1, 1,2,3, 3]
+```
+"""
+function utf16_codepoints(s::String)
+    invalid_utf8() = error("invalid UTF-8 string")
+
+    i, n = 1, ncodeunits(s)
+    idx = Int[]
+
+    if n == 0
+        return idx
+    end
+
+    sizehint!(idx, 2n)
+
+    u = 1
+    a = codeunit(s, 1)
+    while true
+        if i < n && -64 <= a % Int8 <= -12 # multi-byte character
+            i += 1
+            b = codeunit(s, i)
+            if -64 <= (b % Int8) || a == 0xf4 && 0x8f < b
+                # invalid UTF-8 (non-continuation of too-high code point)
+                invalid_utf8()
+            elseif a < 0xe0 # 2-byte UTF-8
+                push!(idx, u)
+            elseif i < n # 3/4-byte character
+                i += 1
+                c = codeunit(s, i)
+                if -64 <= (c % Int8) # invalid UTF-8 (non-continuation)
+                    invalid_utf8()
+                elseif a < 0xf0 # 3-byte UTF-8
+                    # TODO: test that 3/4 bytes UTF-8 encode to 1/2 UTF-16s.
+                    push!(idx, u)
+                elseif i < n
+                    i += 1
+                    d = codeunit(s, i)
+                    if -64 <= (d % Int8) # invalid UTF-8 (non-continuation)
+                        invalid_utf8()
+                    elseif a == 0xf0 && b < 0x90 # overlong encoding
+                        invalid_utf8()
+                    else # 4-byte UTF-8
+                        push!(idx, u, u)
+                    end
+                else # too short
+                    invalid_utf8()
+                end
+            else # too short
+                invalid_utf8()
+            end
+        else # ASCII or invalid UTF-8 (continuation byte or too-high code point)
+            push!(idx, u)
+        end
+        if i >= n
+            break
+        end
+        i += 1
+        a = codeunit(s, i)
+        u += 1
+    end
+    return idx
+end
+
 # ╔═╡ 28c82fae-b792-4a09-a12d-09e873069763
 md"""
 # Applying updates
@@ -83,54 +196,102 @@ struct InvalidDocumentLengthError <: Exception
     msg::String
 end
 
+# ╔═╡ dff75580-6d1a-4279-acc7-cc5a24659184
+function mapindex(mapping, index)
+	if index == 0
+		return 0
+	end
+
+	if index > length(mapping)
+		return length(mapping) + 1
+	end
+
+	mapping[index]
+end
+
+# ╔═╡ 8cbd4dfd-3833-465e-bc6a-696e59c635e0
+mapchange(mapping, insertion::Insertion) =
+	Insertion(mapindex(mapping, insertion.from), insertion.insert)
+
+# ╔═╡ 0b8c2590-3c86-4f91-a492-ccabaa9f70c8
+mapchange(mapping, replacement::Replacement) =
+	Replacement(
+		mapindex(mapping, replacement.from),
+		mapindex(mapping, replacement.to),
+		replacement.insert,
+	)
+
+# ╔═╡ a6a54ab7-18c8-4155-9afb-a545e95caef6
+mapchange(mapping, deletion::Deletion) =
+	Deletion(mapindex(mapping, deletion.from), mapindex(mapping, deletion.to))
+
+# ╔═╡ 6b281237-01a4-49b3-927b-e9be0146daa5
+# ╠═╡ skip_as_script = true
+#=╠═╡
+md"""
+## `_apply(t::Text, ::ChangeSpec)`
+
+This family of function take change specs where the indices are in plain UTF-8 (one `'🍕'` counts for 1). Therefore, one should probably map CodeMirror changes using `mapchange()` prior to using these functions.
+
+!!! warning
+    You should not call this function directly but rather use `apply(text::Text, update::Update)` which is easier to reason about/has CodeMirror semantics.
+"""
+  ╠═╡ =#
+
 # ╔═╡ 3e4b66b4-342f-44fb-9971-513737077756
-function apply(text::Text, insertion::Insertion)
+function _apply(text::Text, insertion::Insertion)
     content = text.content
 
     from = nextind(content, 0, insertion.from)
     to = nextind(content, 0, insertion.from + 1)
 
-    new_content = @view(content[begin:from]) * insertion.insert * @view(content[to:end])
+    @show insertion from to
+
+	new_content = (
+		content[begin:from] *
+		insertion.insert * 
+		content[to:end]
+	)
     return Text(new_content)
 end
 
 # ╔═╡ b56ea4a6-f341-4390-804c-d589d6a55f5e
-function apply(text::Text, replacement::Replacement)
+function _apply(text::Text, replacement::Replacement)
     content = text.content
 
     from = nextind(content, 0, replacement.from)
     to = nextind(content, 0, replacement.to + 1)
 
-    new_content = @view(content[begin:from]) * replacement.insert * @view(content[to:end])
+	new_content = (
+		content[begin:from] *
+		replacement.insert * 
+		content[to:end]
+	)
     return Text(new_content)
 end
 
-# ╔═╡ 83474cb1-48c8-4979-b8bb-7c230b1f768c
-let
-	# text = Text("🎼")
-    # text2 = apply(text, Insertion(0, "ipsum "))
-	# @test String(text2) == "ipsum🎼"
-end
-
 # ╔═╡ 695c324c-1e56-4d5b-a1ae-a83825e8eb84
-function apply(text::Text, deletion::Deletion)
+function _apply(text::Text, deletion::Deletion)
     content = text.content
 
     from = nextind(content, 0, deletion.from)
     to = nextind(content, 0, deletion.to + 1)
 
-    new_content = @view(content[begin:from]) * @view(content[to:end])
+    new_content = content[begin:from] * content[to:end]
     return Text(new_content)
 end
 
 # ╔═╡ 4eb67cf4-8da2-45c1-9f2f-e32e6e9d8e54
+# ╠═╡ skip_as_script = true
+#=╠═╡
 md"""
 # Utils
 """
+  ╠═╡ =#
 
 # ╔═╡ 63f61188-8f6d-431d-b28e-bcb3bb913dc3
 """
-Apply an offset for the edit.
+Apply an offset for the edit. The returned offset is in "plain" UTF-8 characters count (`'🍕'` counts for 1).
 """
 shift_diff(deletion::Deletion, offset) = Deletion(deletion.from + offset, deletion.to + offset)
 
@@ -144,7 +305,8 @@ shift_diff(deletion::Insertion, offset) = Insertion(deletion.from + offset, dele
 """
 Computes the offset created by this change spec
 so that the next change spec can be applied as a
-new change.
+new change. The returned offset is in plain UTF-8 characters count
+(`'🍕'` counts for 1).
 """
 function diff_offset(deletion::Deletion)
     deletion.from - deletion.to
@@ -158,6 +320,29 @@ end
 # ╔═╡ da569a44-ba0b-4254-9771-c847c73b0f5f
 function diff_offset(insertion::Insertion)
     length(insertion.insert)
+end
+
+# ╔═╡ 0495815a-56bd-4f46-a46a-4e0926050508
+function apply(text::Text, update::Update)
+    codepoints_mapping = utf16_codepoints(String(text))
+
+    if length(codepoints_mapping) != update.document_length
+        throw(
+            InvalidDocumentLengthError("Invalid update document length $(update.document_length), document is $(length(codepoints_mapping))")
+        )
+    end
+
+    offset = 0
+    for change in update.specs
+        # 1. Each change is independant of the others in an update
+        # This means we can map it to UTF-8 indices and shift the next
+        # changes by the edited amount.
+        change = mapchange(codepoints_mapping, change)
+        @show codepoints_mapping change
+        text = _apply(text, shift_diff(change, offset))
+        offset += diff_offset(change)
+    end
+    return text
 end
 
 # ╔═╡ 5222e4f1-6353-47dd-b671-a906fe5dc4b9
@@ -180,43 +365,13 @@ function Base.convert(::Type{Update}, data::Dict)
     Update(specs, data["document_length"], data["client_id"])
 end
 
-# ╔═╡ a7891cdd-fd81-4d8a-8fb6-41f6332527f4
-"""
-	javascript_length(s::String)
-
-`str.length` in JavaScript represents UTF-16 code points whereas `length(str)` in
-Julia is the number of individual valid characters.
-"""
-function javascript_length(text::Text)
-    str = String(text)
-	complete_length = length(str)
-	code_units = ncodeunits(str)
-
-    # I expect each weird chars like '🎼' to take 4 UTF8 codepoints and thus 2 UTF16 codepoints.
-	weird_chars = (code_units - complete_length) ÷ 3
-	complete_length + weird_chars
-end
-
-# ╔═╡ 0495815a-56bd-4f46-a46a-4e0926050508
-function apply(text::Text, update::Update)
-    # TODO: JavaScript has another definition of str.length
-    #       which we need to account for.
-    if length(text) != update.document_length
-        throw(InvalidDocumentLengthError("Invalid update document length $(update.document_length), document is $(length(text))"))
-    end
-
-    offset = 0
-    for change in update.specs
-        text = apply(text, shift_diff(change, offset))
-        offset += diff_offset(change)
-    end
-    return text
-end
-
 # ╔═╡ 96c2cecc-b1bb-40f6-aa6e-a15a3cdb9cfc
+# ╠═╡ skip_as_script = true
+#=╠═╡
 md"""
 # Eye candy ✨
 """
+  ╠═╡ =#
 
 # ╔═╡ ed0f1503-2403-4b98-bce4-76af313d6c58
 function Base.show(io::IO, insertion::Insertion)
@@ -302,7 +457,7 @@ end
 #=╠═╡
 let
 	text = Text("Et pariatur sunt eligendi.")
-	text2 = apply(text, Insertion(3, "ipsum "))
+	text2 = _apply(text, Insertion(3, "ipsum "))
 	@test String(text2) == "Et ipsum pariatur sunt eligendi."
 end
   ╠═╡ =#
@@ -311,7 +466,7 @@ end
 #=╠═╡
 let
 	text = Text("Et pariatur sunt eligendi.")
-	text2 = apply(text, Replacement(3, 3 + length("pariatur"), "ipsum"))
+	text2 = _apply(text, Replacement(3, 3 + length("pariatur"), "ipsum"))
 	@test String(text2) == "Et ipsum sunt eligendi."
 end
   ╠═╡ =#
@@ -320,7 +475,7 @@ end
 #=╠═╡
 let
 	text = Text("Et pariatur sunt eligendi.")
-	text2 = apply(text, Deletion(2, 3 + length("pariatur")))
+	text2 = _apply(text, Deletion(2, 3 + length("pariatur")))
 	@test String(text2) == "Et sunt eligendi."
 end
   ╠═╡ =#
@@ -589,18 +744,23 @@ version = "17.4.0+0"
 # ╠═ae275932-9764-4579-9111-4c1fa27f9d39
 # ╠═a6cdb6fb-0931-4ed5-bfa2-abbf90994877
 # ╠═0a14bc4f-992b-4148-ae1f-d163811b7c6e
+# ╟─57ab53eb-eb84-49d3-88b4-938842c669c7
 # ╟─28c82fae-b792-4a09-a12d-09e873069763
 # ╠═551fabec-1e0c-45fc-ae5c-4c7e81b63b6d
+# ╠═dff75580-6d1a-4279-acc7-cc5a24659184
+# ╠═8cbd4dfd-3833-465e-bc6a-696e59c635e0
+# ╠═0b8c2590-3c86-4f91-a492-ccabaa9f70c8
+# ╠═a6a54ab7-18c8-4155-9afb-a545e95caef6
 # ╠═0495815a-56bd-4f46-a46a-4e0926050508
-# ╠═130f77a5-8baf-467e-aa0d-d5b6a92d10e8
+# ╟─130f77a5-8baf-467e-aa0d-d5b6a92d10e8
 # ╟─a2282321-60fc-41e5-9a72-b2cffd094053
+# ╟─6b281237-01a4-49b3-927b-e9be0146daa5
 # ╠═3e4b66b4-342f-44fb-9971-513737077756
 # ╟─05a34e9f-2975-4f94-8f55-e84177aa36e7
 # ╠═b56ea4a6-f341-4390-804c-d589d6a55f5e
-# ╠═0e487a6a-d472-4dfa-bf2e-550284d9a570
-# ╠═83474cb1-48c8-4979-b8bb-7c230b1f768c
+# ╟─0e487a6a-d472-4dfa-bf2e-550284d9a570
 # ╠═695c324c-1e56-4d5b-a1ae-a83825e8eb84
-# ╠═94479ebd-d280-4b47-ac4d-8df1596e5b69
+# ╟─94479ebd-d280-4b47-ac4d-8df1596e5b69
 # ╟─4eb67cf4-8da2-45c1-9f2f-e32e6e9d8e54
 # ╠═63f61188-8f6d-431d-b28e-bcb3bb913dc3
 # ╠═8ee82c3d-3fc7-4bdb-bbfd-36ed4e1628d5
@@ -609,7 +769,6 @@ version = "17.4.0+0"
 # ╠═84343a6e-0916-4a5f-a274-0be6365b9b4e
 # ╠═da569a44-ba0b-4254-9771-c847c73b0f5f
 # ╠═5222e4f1-6353-47dd-b671-a906fe5dc4b9
-# ╠═a7891cdd-fd81-4d8a-8fb6-41f6332527f4
 # ╟─96c2cecc-b1bb-40f6-aa6e-a15a3cdb9cfc
 # ╠═ed0f1503-2403-4b98-bce4-76af313d6c58
 # ╠═b6194eab-2214-4150-9d3f-3cdd21bb0d57

@@ -210,6 +210,32 @@ import Distributed
         @test notebook.cells[end].output.body == "1"
     end
 
+    @testset "OperationalTransform.jl" begin
+        🍭.options.evaluation.workspace_use_distributed = true
+
+        file = tempname()
+        write(file, read(normpath(Pluto.project_relative_path("src", "notebook", "OperationalTransform.jl"))))
+
+        notebook = Pluto.load_notebook_nobackup(file)
+        fakeclient.connected_notebook = notebook
+
+        # Make sure that all tests run as well.
+        for cell in notebook.cells
+            cell.metadata["skip_as_script"] = false
+        end
+        update_run!(🍭, notebook, notebook.cells)
+
+        # Test that the resulting file is runnable
+        @test jl_is_runnable(file)
+
+        # and also that Pluto can figure out the execution order on its own
+        # and tests contained in the file have not failed.
+        @test all(noerror, notebook.cells)
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+        🍭.options.evaluation.workspace_use_distributed = false
+    end
+
     # PlutoTest.jl is only working on Julia version >= 1.6
     @testset "Test Firebasey" begin
         🍭.options.evaluation.workspace_use_distributed = true
