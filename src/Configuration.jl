@@ -256,7 +256,7 @@ function from_flat_kwargs(;
         workspace_use_distributed::Bool = WORKSPACE_USE_DISTRIBUTED_DEFAULT,
         lazy_workspace_creation::Bool = LAZY_WORKSPACE_CREATION_DEFAULT,
         capture_stdout::Bool = CAPTURE_STDOUT_DEFAULT,
-        extra_preamble::Expr = EXTRA_PREAMBLE_DEFAULT,
+        extra_preamble::Union{Nothing,Expr} = EXTRA_PREAMBLE_DEFAULT,
         compile::Union{Nothing,String} = COMPILE_DEFAULT,
         sysimage::Union{Nothing,String} = SYSIMAGE_DEFAULT,
         banner::Union{Nothing,String} = BANNER_DEFAULT,
