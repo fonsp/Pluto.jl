@@ -131,11 +131,13 @@ const RUN_NOTEBOOK_ON_LOAD_DEFAULT = true
 const WORKSPACE_USE_DISTRIBUTED_DEFAULT = true
 const LAZY_WORKSPACE_CREATION_DEFAULT = false
 const CAPTURE_STDOUT_DEFAULT = true
+const EXTRA_PREAMBLE_DEFAULT = nothing
 
 """
     EvaluationOptions([; kwargs...])
 
-Options to change Pluto's evaluation behaviour during internal testing. These options are not intended to be changed during normal use.
+Options to change Pluto's evaluation behaviour during internal testing and by downstream packages.
+These options are not intended to be changed during normal use.
 
 - `run_notebook_on_load::Bool = $RUN_NOTEBOOK_ON_LOAD_DEFAULT` Whether to evaluate a notebook on load.
 - `workspace_use_distributed::Bool = $WORKSPACE_USE_DISTRIBUTED_DEFAULT` Whether to start notebooks in a separate process.
@@ -147,6 +149,7 @@ Options to change Pluto's evaluation behaviour during internal testing. These op
     workspace_use_distributed::Bool = WORKSPACE_USE_DISTRIBUTED_DEFAULT
     lazy_workspace_creation::Bool = LAZY_WORKSPACE_CREATION_DEFAULT
     capture_stdout::Bool = CAPTURE_STDOUT_DEFAULT
+    extra_preamble::Union{Nothing,Expr} = EXTRA_PREAMBLE_DEFAULT
 end
 
 const COMPILE_DEFAULT = nothing
@@ -253,6 +256,7 @@ function from_flat_kwargs(;
         workspace_use_distributed::Bool = WORKSPACE_USE_DISTRIBUTED_DEFAULT,
         lazy_workspace_creation::Bool = LAZY_WORKSPACE_CREATION_DEFAULT,
         capture_stdout::Bool = CAPTURE_STDOUT_DEFAULT,
+        extra_preamble::Expr = EXTRA_PREAMBLE_DEFAULT,
         compile::Union{Nothing,String} = COMPILE_DEFAULT,
         sysimage::Union{Nothing,String} = SYSIMAGE_DEFAULT,
         banner::Union{Nothing,String} = BANNER_DEFAULT,
@@ -292,6 +296,7 @@ function from_flat_kwargs(;
         workspace_use_distributed,
         lazy_workspace_creation,
         capture_stdout,
+        extra_preamble,
     )
     compiler = CompilerOptions(;
         compile,
