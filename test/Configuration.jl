@@ -164,6 +164,26 @@ end
 
 end
 
+@testset "extra_preamble" begin
+    client = ClientSession(:fake, nothing)
+    🍭 = ServerSession()
+    🍭.options.evaluation.workspace_use_distributed = true
+    🍭.options.evaluation.extra_preamble = quote
+        PlutoRunner.is_mime_enabled(::MIME"foobar") = false
+    end
+    🍭.connected_clients[client.id] = client
+
+    nb = Pluto.Notebook([
+        Pluto.Cell("""@assert !PlutoRunner.is_mime_enabled(MIME"foobar"())""")
+    ])
+    client.connected_notebook = nb
+
+    Pluto.update_run!(🍭, nb, nb.cells)
+    @test nb.cells[1] |> noerror
+
+    Pluto.WorkspaceManager.unmake_workspace((🍭, nb))
+end
+
 # TODO are the processes closed properly?
 # TODO we reuse the same port without awaiting the shutdown of the previous server
 
