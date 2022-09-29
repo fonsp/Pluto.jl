@@ -1577,7 +1577,8 @@ pluto-input > button.input_context_menu ul {
         z-index: 31;
     }
     pluto-input > button.input_context_menu ul {
-        left: calc(100% - var(--width) - 36px);
+        right: 0px;
+        left: unset;
     }
 }
 .input_context_menu li {
@@ -2685,6 +2686,13 @@ pluto-input .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
 }
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionLabel {
     border-color: transparent;
+}
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li .cm-completionDetail {
+    float: right;
+    margin-right: 0.5em;
+    font-size: 0.8em;
+    font-family: var(--julia-mono-font-stack);
+    font-style: normal;
 }
 
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete li.c_notexported {

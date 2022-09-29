@@ -120,8 +120,16 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                                 Pkg.resolve(notebook.nbpkg_ctx)
                             catch e
                                 @warn "Failed to resolve Pkg environment. Removing Manifest and trying again..." exception=e
-                                reset_nbpkg(notebook, new_topology; keep_project=true, save=false, backup=false)
-                                Pkg.resolve(notebook.nbpkg_ctx)
+                                reset_nbpkg(notebook; keep_project=true, save=false, backup=false)
+                                try
+                                    Pkg.resolve(notebook.nbpkg_ctx)
+                                catch e
+                                    @warn "Failed to resolve Pkg environment. Removing Project compat entires and Manifest and trying again..." exception=e
+                                    reset_nbpkg(notebook; keep_project=true, save=false, backup=false)
+                                    notebook.nbpkg_ctx = PkgCompat.clear_compat_entries(notebook.nbpkg_ctx)
+                                    
+                                    Pkg.resolve(notebook.nbpkg_ctx)
+                                end
                             end
                         end
                     end

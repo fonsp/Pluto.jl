@@ -196,11 +196,15 @@ end
 
 # ✅ Public API
 """
-Check when the registries were last updated. If it is recent (max 7 days), `Pkg.UPDATED_REGISTRY_THIS_SESSION` is set to `true`, which will prevent Pkg from doing an automatic registry update.
+Check when the registries were last updated. If it is recent (max 7 days), then `Pkg.UPDATED_REGISTRY_THIS_SESSION[]` is set to `true`, which will prevent Pkg from doing an automatic registry update.
 
 Returns the new value of `Pkg.UPDATED_REGISTRY_THIS_SESSION`.
 """
 function check_registry_age(max_age_ms = 1000.0 * 60 * 60 * 24 * 7)::Bool
+	if get(ENV, "GITHUB_ACTIONS", "false") == "true"
+		# don't do this optimization in CI
+		return false
+	end
 	paths = _get_registry_paths()
 	isempty(paths) && return _updated_registries_compat[]
 	
@@ -457,6 +461,19 @@ function write_auto_compat_entries(ctx::PkgContext)::PkgContext
 				end
 			end
 		end
+	end
+end
+
+
+# ✅ Public API
+"""
+Remove all [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries from the `Project.toml`.
+"""
+function clear_compat_entries(ctx::PkgContext)::PkgContext
+	if isfile(project_file(ctx))
+		_modify_compat(empty!, ctx)
+	else
+		ctx
 	end
 end
 

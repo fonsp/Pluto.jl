@@ -24,9 +24,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
     # We have our own registry for these test! Take a look at https://github.com/JuliaPluto/PlutoPkgTestRegistry#readme for more info about the test packages and their dependencies.
     @testset "Basic" begin
-        fakeclient = ClientSession(:fake, nothing)
         🍭 = ServerSession()
-        🍭.connected_clients[fakeclient.id] = fakeclient
 
         # See https://github.com/JuliaPluto/PlutoPkgTestRegistry
 
@@ -44,7 +42,6 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
             Cell("eval(:(import DataFrames))"),
             Cell("import HelloWorldC_jll"),
         ])
-        fakeclient.connected_notebook = notebook
 
         @test !notebook.nbpkg_ctx_instantiated
         
@@ -224,16 +221,13 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
     simple_import_notebook = read(simple_import_path, String)
 
     @testset "Manifest loading" begin
-        fakeclient = ClientSession(:fake, nothing)
         🍭 = ServerSession()
-        🍭.connected_clients[fakeclient.id] = fakeclient
 
         dir = mktempdir()
         path = joinpath(dir, "hello.jl")
         write(path, simple_import_notebook)
 
         notebook = SessionActions.open(🍭, path; run_async=false)
-        fakeclient.connected_notebook = notebook
         
         @test num_backups_in(dir) == 0
 
@@ -249,13 +243,35 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
+    
+    future_notebook = read(joinpath(@__DIR__, "future_nonexisting_version.jl"), String)
+    @testset "Recovery from unavailable versions" begin
+        🍭 = ServerSession()
+
+        dir = mktempdir()
+        path = joinpath(dir, "hello.jl")
+        write(path, future_notebook)
+
+        notebook = SessionActions.open(🍭, path; run_async=false)
+        
+        @test num_backups_in(dir) == 0
+
+
+        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_restart_recommended_msg === nothing
+        @test notebook.nbpkg_restart_required_msg === nothing
+
+        @test noerror(notebook.cells[1])
+        @test noerror(notebook.cells[2])
+
+        @test notebook.cells[2].output.body == "0.3.1"
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
 
 
     @testset "Pkg cell -- dynamically added" begin
-        fakeclient = ClientSession(:fake, nothing)
         🍭 = ServerSession()
-        🍭.connected_clients[fakeclient.id] = fakeclient
-
         
         notebook = Notebook([
             Cell("1"),
@@ -265,7 +281,6 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
             Cell("5"),
             Cell("6"),
         ])
-        fakeclient.connected_notebook = notebook
 
         update_save_run!(🍭, notebook, notebook.cells)
 
@@ -309,11 +324,8 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
     end
     
     pkg_cell_notebook = read(joinpath(@__DIR__, "pkg_cell.jl"), String)
-    
     @testset "Pkg cell -- loaded from file" begin
-        fakeclient = ClientSession(:fake, nothing)
         🍭 = ServerSession()
-        🍭.connected_clients[fakeclient.id] = fakeclient
 
         dir = mktempdir()
         for n in ["Project.toml", "Manifest.toml"]
@@ -326,7 +338,6 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test num_backups_in(dir) == 0
 
         notebook = SessionActions.open(🍭, path; run_async=false)
-        fakeclient.connected_notebook = notebook
         nb_contents() = read(notebook.path, String)
         
         @test num_backups_in(dir) == 0
@@ -368,17 +379,14 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
     end
 
     @testset "DrWatson cell" begin
-        fakeclient = ClientSession(:fake, nothing)
         🍭 = ServerSession()            
         🍭.options.evaluation.workspace_use_distributed = false
-        🍭.connected_clients[fakeclient.id] = fakeclient
 
         notebook = Notebook([
             Cell("using Plots"),
             Cell("@quickactivate"),
             Cell("using DrWatson"),
         ])
-        fakeclient.connected_notebook = notebook
 
         notebook.topology = Pluto.updated_topology(Pluto.NotebookTopology(cell_order=Pluto.ImmutableVector(notebook.cells)), notebook, notebook.cells) |> Pluto.static_resolve_topology
 
@@ -392,13 +400,9 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
     end
 
     pre_pkg_notebook = read(joinpath(@__DIR__, "old_import.jl"), String)
-
     local post_pkg_notebook = nothing
-
     @testset "File format -- Backwards compat" begin
-        fakeclient = ClientSession(:fake, nothing)
         🍭 = ServerSession()
-        🍭.connected_clients[fakeclient.id] = fakeclient
 
         dir = mktempdir()
         path = joinpath(dir, "hello.jl")
@@ -407,7 +411,6 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test num_backups_in(dir) == 0
 
         notebook = SessionActions.open(🍭, path; run_async=false)
-        fakeclient.connected_notebook = notebook
         nb_contents() = read(notebook.path, String)
         
         @test num_backups_in(dir) == 0
@@ -510,9 +513,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
             original_path = joinpath(@__DIR__, "$(name).jl")
             original_contents = read(original_path, String)
 
-            fakeclient = ClientSession(:fake, nothing)
             🍭 = ServerSession()
-            🍭.connected_clients[fakeclient.id] = fakeclient
     
             dir = mktempdir()
             path = joinpath(dir, "hello.jl")
@@ -521,7 +522,6 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
             @test num_backups_in(dir) == 0
     
             notebook = SessionActions.open(🍭, path; run_async=false)
-            fakeclient.connected_notebook = notebook
             nb_contents() = read(notebook.path, String)
 
             should_restart = (
@@ -606,9 +606,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
     # end
     
     @testset "Race conditions" begin
-        fakeclient = ClientSession(:fake, nothing)
         🍭 = ServerSession()
-        🍭.connected_clients[fakeclient.id] = fakeclient
         lag = 0.2
         🍭.options.server.simulated_pkg_lag = lag
 
@@ -626,7 +624,6 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
             Cell("import PlutoPkgTestE"), # cell 9
             Cell("PlutoPkgTestE.MY_VERSION |> Text"),
         ])
-        fakeclient.connected_notebook = notebook
 
         @test !notebook.nbpkg_ctx_instantiated
         
