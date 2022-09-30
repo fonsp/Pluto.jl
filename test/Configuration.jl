@@ -164,22 +164,22 @@ end
 
 end
 
-@testset "extra_preamble" begin
+@testset "disable mimetype via extra_preamble" begin
     client = ClientSession(:fake, nothing)
     🍭 = ServerSession()
     🍭.options.evaluation.workspace_use_distributed = true
     🍭.options.evaluation.extra_preamble = quote
-        PlutoRunner.is_mime_enabled(::MIME"foobar") = false
+        PlutoRunner.is_mime_enabled(m::MIME"application/vnd.pluto.tree+object") = false
     end
     🍭.connected_clients[client.id] = client
 
     nb = Pluto.Notebook([
-        Pluto.Cell("""@assert !PlutoRunner.is_mime_enabled(MIME"foobar"())""")
+        Pluto.Cell("x = [1, 2]")
     ])
     client.connected_notebook = nb
 
     Pluto.update_run!(🍭, nb, nb.cells)
-    @test nb.cells[1] |> noerror
+    @test nb.cells[1].output.body == "2-element Vector{Int64}:\n 1\n 2"
 
     Pluto.WorkspaceManager.unmake_workspace((🍭, nb))
 end

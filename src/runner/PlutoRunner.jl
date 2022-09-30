@@ -947,7 +947,7 @@ const default_stdout_iocontext = IOContext(devnull,
     :is_pluto => false,
 )
 
-const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
+const imagemimes = MIME[MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
 # in descending order of coolness
 # text/plain always matches - almost always
 """
