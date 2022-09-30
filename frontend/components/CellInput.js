@@ -53,7 +53,7 @@ import {
 import { markdown, html as htmlLang, javascript, sqlLang, python, julia_mixed } from "./CellInput/mixedParsers.js"
 import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
-import { LastRunVersionFacet, pluto_collab } from "./CellInput/pluto_collab.js"
+import { pluto_collab } from "./CellInput/pluto_collab.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
 import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"
 import { cell_movement_plugin, prevent_holding_a_key_from_doing_things_across_cells } from "./CellInput/cell_movement_plugin.js"
@@ -430,7 +430,6 @@ export const CellInput = ({
     let global_definitions_compartment = useCompartment(newcm_ref, GlobalDefinitionsFacet.of(global_definition_locations))
     let highlighted_line_compartment = useCompartment(newcm_ref, HighlightLineFacet.of(cm_highlighted_line))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
-    let last_run_version_compartment = useCompartment(newcm_ref, LastRunVersionFacet.of(last_run_version))
 
     let on_change_compartment = useCompartment(
         newcm_ref,
@@ -739,7 +738,6 @@ export const CellInput = ({
 
                     on_change_compartment,
 
-                    last_run_version_compartment,
                     pluto_collab(start_version, {
                         push_updates: (data) => pluto_actions.send("push_updates", { ...data, cell_id: cell_id }, { notebook_id }, false),
                         subscribe_to_updates: (cb) => updater.subscribe("updates", cb),

@@ -50,14 +50,7 @@ function pushUpdates(push_updates, version, fullUpdates) {
     return push_updates({ version, updates })
 }
 
-const DEBUG_COLLAB = true
-
-/**
- * @type {Facet<Number>}
- */
-export const LastRunVersionFacet = Facet.define({
-    combine: (values) => values[0],
-})
+const DEBUG_COLLAB = false
 
 /**
  * @typedef CarretEffectValue
