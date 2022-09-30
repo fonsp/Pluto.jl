@@ -31,6 +31,8 @@ MsgPack.msgpack_type(::Type{Configuration.CompilerOptions}) = MsgPack.StructType
 MsgPack.msgpack_type(::Type{Configuration.ServerOptions}) = MsgPack.StructType()
 MsgPack.msgpack_type(::Type{Configuration.SecurityOptions}) = MsgPack.StructType()
 
+MsgPack.msgpack_type(::Type{OperationalTransform.SelectionRange}) = MsgPack.StructType()
+MsgPack.msgpack_type(::Type{OperationalTransform.EditorSelection}) = MsgPack.StructType()
 MsgPack.msgpack_type(::Type{OperationalTransform.Update}) = MsgPack.StructType()
 MsgPack.msgpack_type(::Type{OperationalTransform.Insertion}) = MsgPack.StructType()
 MsgPack.msgpack_type(::Type{OperationalTransform.Deletion}) = MsgPack.StructType()

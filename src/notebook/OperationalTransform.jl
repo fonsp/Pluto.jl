@@ -37,6 +37,25 @@ struct Deletion <: ChangeSpec
     to::Int
 end
 
+# ╔═╡ b943301b-b8e0-4b56-a5cc-456b90b38829
+md"""
+## Editor Selection
+
+Along with text edits, we are also syncing the cursor position through the update mechanism. This allows us to update the selection of other user in our cell based on our local edits. We don't use this on the Julia side and only transfer it between clients so we just copy the CodeMirror structure here.
+"""
+
+# ╔═╡ a345cbf6-d954-44ee-8d09-0fc3b781564a
+struct SelectionRange
+	head::Int
+	anchor::Int
+end
+
+# ╔═╡ 0ddba365-eae0-42ae-a4aa-78e8f26dfadd
+struct EditorSelection
+	main::Int
+	ranges::Vector{SelectionRange}
+end
+
 # ╔═╡ aecf8cd4-98bf-4e32-aeb3-29c270e76430
 # ╠═╡ skip_as_script = true
 #=╠═╡
@@ -86,6 +105,7 @@ struct Update
     specs::Vector{ChangeSpec}
     document_length::Int
     client_id::String
+	effects::Vector{EditorSelection}
 end
 
 # ╔═╡ 57ab53eb-eb84-49d3-88b4-938842c669c7
@@ -346,6 +366,17 @@ end
 function Base.convert(::Type{Update}, data::Dict)
     specs = data["specs"]
 
+    effects = map(data["effects"]) do effect
+        EditorSelection(
+            effect["main"],
+            map(
+                range ->
+                    SelectionRange(range["head"], range["anchor"]),
+                effect["ranges"]
+            )
+        )
+    end
+
     # NOTE: we could also replace inserts/deletes with replacements
     specs = map(specs) do spec
         from = spec["from"]
@@ -359,7 +390,8 @@ function Base.convert(::Type{Update}, data::Dict)
             Deletion(from, spec["to"])
         end
     end
-    Update(specs, data["document_length"], data["client_id"])
+
+    return Update(specs, data["document_length"], data["client_id"], effects)
 end
 
 # ╔═╡ 96c2cecc-b1bb-40f6-aa6e-a15a3cdb9cfc
@@ -735,6 +767,9 @@ version = "17.4.0+0"
 # ╠═7d28674a-5614-442c-9a25-85f162476140
 # ╠═020d74df-92ec-410f-9e6c-3a0485a3dc6a
 # ╠═5eb433c4-5a8d-4340-97d3-9f9fc933dbd2
+# ╟─b943301b-b8e0-4b56-a5cc-456b90b38829
+# ╠═a345cbf6-d954-44ee-8d09-0fc3b781564a
+# ╠═0ddba365-eae0-42ae-a4aa-78e8f26dfadd
 # ╟─aecf8cd4-98bf-4e32-aeb3-29c270e76430
 # ╠═2ed4dc39-0f7b-48e9-a40b-5297a6ee3a08
 # ╟─a80dfab8-8464-4c4c-9f63-b6e7daa606d5
