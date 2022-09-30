@@ -441,7 +441,7 @@ md"""
 if startswith(string(nameof(@__MODULE__)), "workspace#")
 	import PlutoTest: @test
 else
-	import Test
+	import Test: @test
 end
   ╠═╡ =#
 
