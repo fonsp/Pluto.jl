@@ -227,9 +227,6 @@ function Base.convert(::Type{Dict}, patch::RemovePatch)
 	Dict{String,Any}("op" => "remove", "path" => patch.path)
 end
 
-# ╔═╡ fafcb8b8-cde9-4f99-9bab-8128025953a4
-nothing
-
 # ╔═╡ 921a130e-b028-4f91-b077-3bd79dcb6c6d
 function Base.convert(::Type{JSONPatch}, patch_dict::Dict)
 	op = patch_dict["op"]
@@ -254,12 +251,6 @@ Base.convert(Dict, AddPatch([:x, :y], 10))
 # ╠═╡ skip_as_script = true
 #=╠═╡
 Base.convert(Dict, RemovePatch([:x, :y]))
-  ╠═╡ =#
-
-# ╔═╡ 7feeee3a-3aec-47ce-b8d7-74a0d9b0b381
-# ╠═╡ skip_as_script = true
-#=╠═╡
-Base.convert(Dict, ReplacePatch([:x, :y], 10))
   ╠═╡ =#
 
 # ╔═╡ 6d67f8a5-0e0c-4b6e-a267-96b34d580946
@@ -716,6 +707,12 @@ begin
     end
 end
 
+# ╔═╡ 7feeee3a-3aec-47ce-b8d7-74a0d9b0b381
+# ╠═╡ skip_as_script = true
+#=╠═╡
+_convert(Dict, ReplacePatch([:x, :y], 10))
+  ╠═╡ =#
+
 # ╔═╡ dd87ca7e-2de1-11eb-2ec3-d5721c32f192
 function applypatch!(value, patch::AddPatch)
 	if length(patch.path) == 0
@@ -1051,7 +1048,7 @@ end
 
 # ╔═╡ 34d86e02-dd34-4691-bb78-3023568a5d16
 #=╠═╡
-@track Base.convert(JSONPatch, convert(Dict, replace_patch)) == replace_patch
+@track Base.convert(JSONPatch, _convert(Dict, replace_patch)) == replace_patch
   ╠═╡ =#
 
 # ╔═╡ 95ff676d-73c8-44cb-ac35-af94418737e9
@@ -1161,7 +1158,6 @@ end
 # ╟─07eeb122-6706-4544-a007-1c8d6581eec8
 # ╠═b48e2c08-a94a-4247-877d-949d92dde626
 # ╟─c59b30b9-f702-41f1-bb2e-1736c8cd5ede
-# ╠═fafcb8b8-cde9-4f99-9bab-8128025953a4
 # ╟─7feeee3a-3aec-47ce-b8d7-74a0d9b0b381
 # ╠═921a130e-b028-4f91-b077-3bd79dcb6c6d
 # ╟─6d67f8a5-0e0c-4b6e-a267-96b34d580946
