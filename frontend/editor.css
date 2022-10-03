@@ -92,7 +92,7 @@ body:not(.disable_ui) {
 /* CAN WE HAVE CONTAINER QUERIES PLESSSSS */
 @media screen and (min-width: calc(700px + 25px + 6px)) and (max-width: calc(700px + 25px + 6px + 500px)) {
     body:not(.disable_ui) pluto-editor.fullscreen main {
-        margin-left: 0px;
+        margin-left: 25px;
         align-self: flex-start;
     }
 }
@@ -1261,15 +1261,22 @@ pluto-shoulder {
     border-radius: var(--border-radius) 0px 0px var(--border-radius);
     cursor: move;
     display: flex;
-    flex-direction: row;
-    justify-content: flex-end;
-    align-items: flex-start;
     /* Add an invisible border around the shoulder, to make it easier to click on. (The area between two cells is divided in two, each half belongs to the closest pluto-cell.) */
     top: calc(0px - var(--invisible-border));
     bottom: calc(0px - var(--invisible-border));
     border: var(--invisible-border) solid rgba(0, 0, 0, 0);
     border-right: none;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-end;
 }
+
+/* TODO: Make this variable to output being of a given size */
+pluto-cell.code_folded > pluto-shoulder {
+    flex-direction: row-reverse;
+    column-gap: 0px;
+}
+
 pluto-editor.fullscreen pluto-shoulder {
     --shoulder-width: 2000px;
 }
@@ -1283,7 +1290,7 @@ pluto-shoulder > button {
     flex: 0 0 auto;
     position: sticky;
     top: 0;
-    padding: 4px 5px 4px 10px;
+    padding: 4px 5px 4px 0px;
 }
 
 pluto-cell:focus-within > pluto-shoulder > button {
@@ -1291,17 +1298,31 @@ pluto-cell:focus-within > pluto-shoulder > button {
     padding-right: 9px;
 }
 
+pluto-cell.code_folded:focus-within > pluto-shoulder > button.isolatecell {
+    padding-right: 4px;
+}
+
 /* pluto-cell.code_folded.inline-output > pluto-shoulder > button {
     margin-top: 3px;
 } */
 
-pluto-shoulder > button > span::after {
+pluto-shoulder > button.foldcode > span::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/eye-outline.svg");
     filter: var(--image-filters);
 }
 
-pluto-cell.code_folded > pluto-shoulder > button > span::after {
+pluto-cell.code_folded > pluto-shoulder > button.foldcode > span::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/eye-off-outline.svg");
+    filter: var(--image-filters);
+}
+
+pluto-shoulder > button.isolatecell > span::after {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ellipse-outline.svg");
+    filter: var(--image-filters);
+}
+
+pluto-cell.isolated > pluto-shoulder > button.isolatecell > span::after {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/checkmark-circle-outline.svg");
     filter: var(--image-filters);
 }
 

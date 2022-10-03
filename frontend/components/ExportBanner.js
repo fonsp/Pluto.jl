@@ -26,10 +26,19 @@ const Square = ({ fill }) => html`
     </svg>
 `
 
+// TODO
+const SquigglyAnimation = ({ fill }) => html``
+
 //@ts-ignore
 window.enable_secret_pluto_recording = true
 
-export const ExportBanner = ({ onClose, notebookfile_url, notebookexport_url, start_recording }) => {
+const append_isolated_cells_to_url = (isolated_cells) => {
+  let url = new URL(window.location.href);
+  isolated_cells.forEach(cell_id => url.searchParams.append('isolated_cell_id', cell_id))
+  window.location.href = url
+}
+
+export const ExportBanner = ({ onClose, notebookfile_url, isolated_cells, notebookexport_url, start_recording }) => {
     return html`
         <aside id="export">
             <div id="container">
@@ -46,6 +55,10 @@ export const ExportBanner = ({ onClose, notebookfile_url, notebookexport_url, st
                 <a href="#" class="export_card" onClick=${() => window.print()}>
                     <header><${Square} fill="#619b3d" /> Static PDF</header>
                     <section>A static <b>.pdf</b> file for print or email.</section>
+                </a>
+                <a href="#" class="export_card" onClick=${() => append_isolated_cells_to_url(isolated_cells)}>
+                    <header><${Square} fill="gold" /> Isolated Cells</header>
+                    <section>Open Isolated Cells Layout</section>
                 </a>
                 ${
                     //@ts-ignore
