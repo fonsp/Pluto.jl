@@ -7,8 +7,30 @@ end
 
 @deprecate topological_order(::Notebook, topology::NotebookTopology, args...; kwargs...) topological_order(topology, args...; kwargs...)
 
-"Return a `TopologicalOrder` that lists the cells to be evaluated in a single reactive run, in topological order. Includes the given roots."
-function topological_order(topology::NotebookTopology, roots::AbstractVector{Cell}; allow_multiple_defs=false)::TopologicalOrder
+"""
+Return a `TopologicalOrder` that lists the cells to be evaluated in a single reactive run, in topological order. Includes the given roots.
+
+# Keyword arguments
+
+- `allow_multiple_defs::Bool = false` \
+  If `false` (default), multiple definitions are not allowed. When a cell is found that defines a variable that is also defined by another cell (this other cell is called a *fellow assigner*), then both cells are marked as `errable` and not `runnable. \
+  If `true`, then multiple definitions are allowed, in the sense that we ignore the existance of other cells that define the same variable.
+
+
+- `skip_at_partial_multiple_defs::Bool = false` \
+  If `true` (not default), and `allow_multiple_defs = true` (not default), then the search stops going downward when finding a cell that has fellow assigners, *unless all fellow assigners can be reached by the `roots`*, in which case we continue searching downward.
+
+  In other words, if there is a set of fellow assigners that can only be reached **partially** by the roots, then this set blocks the search, and cells that depend on the set are not found.
+"""
+function topological_order(topology::NotebookTopology, roots::AbstractVector{Cell}; 
+	allow_multiple_defs::Bool=false,
+	skip_at_partial_multiple_defs::Bool=false,
+)::TopologicalOrder
+
+	if skip_at_partial_multiple_defs
+		@assert allow_multiple_defs
+	end
+
 	entries = Cell[]
 	exits = Cell[]
 	errable = Dict{Cell,ReactivityError}()
@@ -42,13 +64,28 @@ function topological_order(topology::NotebookTopology, roots::AbstractVector{Cel
 		push!(entries, cell)
 
 		assigners = where_assigned(topology, cell)
+		referencers = where_referenced(topology, cell) |> Iterators.reverse
+		
 		if !allow_multiple_defs && length(assigners) > 1
 			for c in assigners
 				errable[c] = MultipleDefinitionsError(topology, c, assigners)
 			end
 		end
-		referencers = where_referenced(topology, cell) |> Iterators.reverse
-		for c in (allow_multiple_defs ? referencers : union(assigners, referencers))
+		
+		should_continue_search_down = !skip_at_partial_multiple_defs || all(c -> c === cell || c ∈ exits, assigners)
+		should_search_fellow_assigners_if_any = !allow_multiple_defs
+		
+		to_search_next = if should_continue_search_down
+			if should_search_fellow_assigners_if_any
+				union(assigners, referencers)
+			else
+				referencers
+			end
+		else
+			Cell[]
+		end
+		
+		for c in to_search_next
 			if c !== cell
 				child_result = bfs(c)
 
