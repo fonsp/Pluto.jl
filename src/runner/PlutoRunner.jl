@@ -986,33 +986,41 @@ format_output(@nospecialize(x); context=default_iocontext) = format_output_defau
 
 format_output(::Nothing; context=default_iocontext) = ("", MIME"text/plain"())
 
+"Downstream packages can set this to false to obtain unprettified stack traces."
+const PRETTY_STACKTRACES = Ref(true)
+
 function format_output(val::CapturedException; context=default_iocontext)
-    ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
-    stack = [s for (s, _) in val.processed_bt]
+    stacktrace = if PRETTY_STACKTRACES[]
+        ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
+        stack = [s for (s, _) in val.processed_bt]
 
-    # function_wrap_index = findfirst(f -> occursin("function_wrapped_cell", String(f.func)), stack)
+        # function_wrap_index = findfirst(f -> occursin("function_wrapped_cell", String(f.func)), stack)
 
-    function_wrap_index = findlast(f -> occursin("#==#", String(f.file)), stack)
+        function_wrap_index = findlast(f -> occursin("#==#", String(f.file)), stack)
 
-    if function_wrap_index === nothing
-        for _ in 1:2
-            until = findfirst(b -> b.func == :eval, reverse(stack))
-            stack = until === nothing ? stack : stack[1:end - until]
+        if function_wrap_index === nothing
+            for _ in 1:2
+                until = findfirst(b -> b.func == :eval, reverse(stack))
+                stack = until === nothing ? stack : stack[1:end - until]
+            end
+        else
+            stack = stack[1:function_wrap_index]
+        end
+
+        pretty = map(stack) do s
+            Dict(
+                :call => pretty_stackcall(s, s.linfo),
+                :inlined => s.inlined,
+                :file => basename(String(s.file)),
+                :path => String(s.file),
+                :line => s.line,
+            )
         end
     else
-        stack = stack[1:function_wrap_index]
+        val
     end
 
-    pretty = map(stack) do s
-        Dict(
-            :call => pretty_stackcall(s, s.linfo),
-            :inlined => s.inlined,
-            :file => basename(String(s.file)),
-            :path => String(s.file),
-            :line => s.line,
-        )
-    end
-    Dict{Symbol,Any}(:msg => sprint(try_showerror, val.ex), :stacktrace => pretty), MIME"application/vnd.pluto.stacktrace+object"()
+    Dict{Symbol,Any}(:msg => sprint(try_showerror, val.ex), :stacktrace => stacktrace), MIME"application/vnd.pluto.stacktrace+object"()
 end
 
 function format_output(binding::Base.Docs.Binding; context=default_iocontext)
