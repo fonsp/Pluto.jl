@@ -987,10 +987,10 @@ format_output(@nospecialize(x); context=default_iocontext) = format_output_defau
 format_output(::Nothing; context=default_iocontext) = ("", MIME"text/plain"())
 
 "Downstream packages can set this to false to obtain unprettified stack traces."
-const PRETTY_STACKTRACE = Ref(true)
+const PRETTY_STACKTRACES = Ref(true)
 
 function format_output(val::CapturedException; context=default_iocontext)
-    stacktrace = if PRETTY_STACKTRACE
+    stacktrace = if PRETTY_STACKTRACES[]
         ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
         stack = [s for (s, _) in val.processed_bt]
 
