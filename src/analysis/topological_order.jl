@@ -13,7 +13,7 @@ Return a `TopologicalOrder` that lists the cells to be evaluated in a single rea
 # Keyword arguments
 
 - `allow_multiple_defs::Bool = false` \
-  If `false` (default), multiple definitions are not allowed. When a cell is found that defines a variable that is also defined by another cell (this other cell is called a *fellow assigner*), then both cells are marked as `errable` and not `runnable. \
+  If `false` (default), multiple definitions are not allowed. When a cell is found that defines a variable that is also defined by another cell (this other cell is called a *fellow assigner*), then both cells are marked as `errable` and not `runnable`. \
   If `true`, then multiple definitions are allowed, in the sense that we ignore the existance of other cells that define the same variable.
 
 
