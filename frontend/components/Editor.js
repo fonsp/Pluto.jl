@@ -1059,6 +1059,16 @@ patch: ${JSON.stringify(
         }
 
         this.desktop_submit_file_change = async () => {
+            /**
+             * `window.plutoDesktop?.ipcRenderer` is basically what allows the
+             * frontend to communicate with the electron side. It is an IPC
+             * bridge between render process and main process. More info
+             * [here](https://www.electronjs.org/docs/latest/api/ipc-renderer).
+             *
+             * "PLUTO-MOVE-NOTEBOOK" is an event triggered in the main process
+             * once the move is complete, we listen to it using `once`.
+             * More info [here](https://www.electronjs.org/docs/latest/api/ipc-renderer#ipcrendereroncechannel-listener)
+             */
             window.plutoDesktop?.ipcRenderer.once("PLUTO-MOVE-NOTEBOOK", async (/** @type {string | undefined} */ loc) => {
                 try {
                     if (!!loc)
@@ -1379,6 +1389,7 @@ patch: ${JSON.stringify(
                     <${ProgressBar} notebook=${this.state.notebook} backend_launch_phase=${this.state.backend_launch_phase} status=${status}/>
                     <header id="pluto-nav" className=${export_menu_open ? "show_export" : ""}>
                         <${ExportBanner}
+                            notebook_id=${this.state.notebook.notebook_id}
                             notebookfile_url=${this.export_url("notebookfile")}
                             notebookexport_url=${this.export_url("notebookexport")}
                             open=${export_menu_open}

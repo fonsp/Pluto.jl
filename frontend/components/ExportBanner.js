@@ -1,5 +1,4 @@
 // import { PlutoExport } from "../enums.js"
-import usePlutoDesktop from "../hooks/usePlutoDesktop.js"
 import { html, useMemo, useState } from "../imports/Preact.js"
 
 const Circle = ({ fill }) => html`
@@ -31,21 +30,14 @@ const Square = ({ fill }) => html`
 //@ts-ignore
 window.enable_secret_pluto_recording = true
 
-const getId = (/** @type {string} */ url) => {
-    const id = url.split("id=")[1]
-    return id
-}
-
-export const ExportBanner = ({ onClose, notebookfile_url, notebookexport_url, start_recording }) => {
-    const { isDesktop, conditionalCallback } = usePlutoDesktop(undefined)
-
-    const id = getId(notebookfile_url)
+export const ExportBanner = ({ notebook_id, onClose, notebookfile_url, notebookexport_url, start_recording }) => {
+    const isDesktop = !!window.plutoDesktop
 
     const exportNotebook = (/** @type {{ preventDefault: () => void; }} */ e, /** @type {0 | 1 | 2 | 3} @note see *types.d.ts* for more info.*/ type) => {
-        e.preventDefault()
-        conditionalCallback(() => {
-            window.plutoDesktop?.fileSystem.exportNotebook(id, type)
-        })
+        if (isDesktop) {
+            e.preventDefault()
+            window.plutoDesktop?.fileSystem.exportNotebook(notebook_id, type)
+        }
     }
 
     const elType = isDesktop ? "button" : "a"
