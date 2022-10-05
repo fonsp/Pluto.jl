@@ -2666,7 +2666,7 @@ pluto-input .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
     float: right;
     margin-right: 0.5em;
     font-size: 0.8em;
-    font-family: "JuliaMono";
+    font-family: var(--julia-mono-font-stack);
     font-style: normal;
 }
 
