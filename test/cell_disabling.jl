@@ -11,20 +11,20 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook, set_disa
     🍭.options.evaluation.workspace_use_distributed = false
 
     notebook = Notebook([
-                Cell("a = 1")
-                Cell("b = 2")
-                Cell("c = 3")
-                Cell("d = 4")
+                Cell("const a = 1")
+                Cell("const b = 2")
+                Cell("const c = 3")
+                Cell("const d = 4")
                 
-                Cell("x = a")    # 5
+                Cell("const x = a")    # 5
                 # these cells will be uncommented later
-                Cell("# x = b")  # 6
-                Cell("# x = c")  # 7
+                Cell("# const x = b")  # 6
+                Cell("# const x = c")  # 7
                 
-                Cell("z = x")    # 8
-                Cell("# z = d")  # 9
+                Cell("const z = x")    # 8
+                Cell("# const z = d")  # 9
                 
-                Cell("y = z")    # 10
+                Cell("const y = z")    # 10
             ])
     update_run!(🍭, notebook, notebook.cells)
 
@@ -40,7 +40,7 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook, set_disa
     @test all(noerror, notebook.cells)
     
     ###
-    setcode!(c(6), "x = b")
+    setcode!(c(6), "const x = b")
     update_run!(🍭, notebook, c(6))
     
     @test c(5).errored
@@ -100,7 +100,7 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook, set_disa
     
     ###
     set_disabled(c(5), false)
-    setcode!(c(7), "x = c")
+    setcode!(c(7), "const x = c")
     update_run!(🍭, notebook, c([5,7]))
     
     @test c(5).errored

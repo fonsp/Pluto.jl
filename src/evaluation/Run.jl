@@ -81,14 +81,7 @@ function run_reactive_core!(
         cell_order = new_topology.cell_order,
         disabled_cells=new_topology.disabled_cells,
     )
-
-    # save the old topological order - we'll delete variables assigned from its
-    # and re-evalutate its cells unless the cells have already run previously in the reactive run
-    old_order = topological_order(old_topology, roots)
-
-    old_runnable = setdiff(old_order.runnable, already_run)
-    to_delete_vars = union!(Set{Symbol}(), defined_variables(old_topology, old_runnable)...)
-    to_delete_funcs = union!(Set{Tuple{UUID,FunctionName}}(), defined_functions(old_topology, old_runnable)...)
+	
 	
     # find (indirectly) deactivated cells and update their status
     indirectly_deactivated = collect(topological_order(new_topology, collect(new_topology.disabled_cells); allow_multiple_defs=true, skip_at_partial_multiple_defs=true))
@@ -98,6 +91,15 @@ function run_reactive_core!(
         cell.queued = false
         cell.depends_on_disabled_cells = true
     end
+
+    # save the old topological order - we'll delete variables assigned from its
+    # and re-evalutate its cells unless the cells have already run previously in the reactive run
+    old_order = topological_order(old_topology, roots)
+
+    old_runnable = setdiff(old_order.runnable, already_run, indirectly_deactivated)
+    to_delete_vars = union!(Set{Symbol}(), defined_variables(old_topology, old_runnable)...)
+    to_delete_funcs = union!(Set{Tuple{UUID,FunctionName}}(), defined_functions(old_topology, old_runnable)...)
+	
 	
 	new_topology_without_indirectly_disabled = setdiff(new_topology, indirectly_deactivated)
 	new_roots = setdiff(union(roots, keys(old_order.errable)), indirectly_deactivated)
