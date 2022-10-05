@@ -38,12 +38,12 @@ import Pkg
         
         es = PkgCompat._registry_entries("PlutoPkgTestA")
         @test length(es) == 1
-        @test occursin(joinpath("P", "PlutoPkgTestA"), only(es))
+        @test occursin("P/PlutoPkgTestA", only(es))
         @test occursin("PlutoPkgTestRegistry", only(es))
         
         es = PkgCompat._registry_entries("Pluto")
         @test length(es) == 1
-        @test occursin(joinpath("P", "Pluto"), only(es))
+        @test occursin("P/Pluto", only(es))
         @test occursin("General", only(es))
         
         es = PkgCompat._registry_entries("HelloWorldC_jll")
