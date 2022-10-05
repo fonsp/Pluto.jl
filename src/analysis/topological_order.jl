@@ -12,12 +12,15 @@ Return a `TopologicalOrder` that lists the cells to be evaluated in a single rea
 
 # Keyword arguments
 
-- `allow_multiple_defs::Bool = false` \
-  If `false` (default), multiple definitions are not allowed. When a cell is found that defines a variable that is also defined by another cell (this other cell is called a *fellow assigner*), then both cells are marked as `errable` and not `runnable`. \
+- `allow_multiple_defs::Bool = false`
+  
+  If `false` (default), multiple definitions are not allowed. When a cell is found that defines a variable that is also defined by another cell (this other cell is called a *fellow assigner*), then both cells are marked as `errable` and not `runnable`.
+  
   If `true`, then multiple definitions are allowed, in the sense that we ignore the existance of other cells that define the same variable.
 
 
-- `skip_at_partial_multiple_defs::Bool = false` \
+- `skip_at_partial_multiple_defs::Bool = false`
+  
   If `true` (not default), and `allow_multiple_defs = true` (not default), then the search stops going downward when finding a cell that has fellow assigners, *unless all fellow assigners can be reached by the `roots`*, in which case we continue searching downward.
 
   In other words, if there is a set of fellow assigners that can only be reached **partially** by the roots, then this set blocks the search, and cells that depend on the set are not found.
