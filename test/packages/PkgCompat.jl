@@ -48,7 +48,7 @@ import Pkg
         
         es = PkgCompat._registry_entries("HelloWorldC_jll")
         @test length(es) == 1
-        @test occursin(joinpath("H", "HelloWorldC_jll"), only(es))
+        @test occursin("H/HelloWorldC_jll", only(es))
         @test occursin("General", only(es))
         
         Pkg.Registry.rm(pluto_test_registry_spec)
