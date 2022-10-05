@@ -13,6 +13,7 @@ function run_reactive!(
     old_topology::NotebookTopology,
     new_topology::NotebookTopology,
     roots::Vector{Cell};
+	save::Bool=true,
     deletion_hook::Function = WorkspaceManager.move_vars,
     user_requested_run::Bool = true,
     bond_value_pairs=zip(Symbol[],Any[]),
@@ -24,6 +25,7 @@ function run_reactive!(
             old_topology,
             new_topology,
             roots;
+			save,
             deletion_hook,
             user_requested_run,
             bond_value_pairs,
@@ -43,6 +45,7 @@ function run_reactive_core!(
     old_topology::NotebookTopology,
     new_topology::NotebookTopology,
     roots::Vector{Cell};
+	save::Bool=true,
     deletion_hook::Function = WorkspaceManager.move_vars,
     user_requested_run::Bool = true,
     already_run::Vector{Cell} = Cell[],
@@ -118,7 +121,7 @@ function run_reactive_core!(
     end
 
 	# Save the notebook. This is the only time that we save the notebook, so any state changes that influence the file contents (like `depends_on_disabled_cells`) should be behind this point.
-	save_notebook(session, notebook)
+	save && save_notebook(session, notebook)
 
     # Send intermediate updates to the clients at most 20 times / second during a reactive run. (The effective speed of a slider is still unbounded, because the last update is not throttled.)
     # flush_send_notebook_changes_throttled, 
@@ -196,7 +199,7 @@ function run_reactive_core!(
             update_dependency_cache!(notebook)
             save_notebook(session, notebook)
 
-            return run_reactive_core!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook, user_requested_run, already_run = to_run[1:i])
+            return run_reactive_core!(session, notebook, new_topology, new_new_topology, to_run; save, deletion_hook, user_requested_run, already_run = to_run[1:i])
         elseif !isempty(implicit_usings)
             new_soft_definitions = WorkspaceManager.collect_soft_definitions((session, notebook), implicit_usings)
             notebook.topology = new_new_topology = with_new_soft_definitions(new_topology, cell, new_soft_definitions)
@@ -205,7 +208,7 @@ function run_reactive_core!(
             update_dependency_cache!(notebook)
             save_notebook(session, notebook)
 
-            return run_reactive_core!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook, user_requested_run, already_run = to_run[1:i])
+            return run_reactive_core!(session, notebook, new_topology, new_new_topology, to_run; save, deletion_hook, user_requested_run, already_run = to_run[1:i])
         end
     end
 
@@ -387,7 +390,7 @@ function update_save_run!(
             sync_nbpkg(session, notebook, old, new; save=(save && !session.options.server.disable_writing_notebook_files), take_token=false)
             if !(isempty(to_run_online) && session.options.evaluation.lazy_workspace_creation) && will_run_code(notebook)
                 # not async because that would be double async
-                run_reactive_core!(session, notebook, old, new, to_run_online; kwargs...)
+                run_reactive_core!(session, notebook, old, new, to_run_online; save, kwargs...)
                 # run_reactive_async!(session, notebook, old, new, to_run_online; deletion_hook=deletion_hook, run_async=false, kwargs...)
             end
         end
