@@ -61,8 +61,6 @@ end
     port = 1238
     options = Pluto.Configuration.from_flat_kwargs(; port, launch_browser=false, workspace_use_distributed=false)
     🍭 = Pluto.ServerSession(; options)
-    fakeclient = ClientSession(:fake, nothing)
-    🍭.connected_clients[fakeclient.id] = fakeclient
     host = 🍭.options.server.host
     secret = 🍭.secret
     println("Launching test server...")
@@ -164,22 +162,20 @@ end
 
 end
 
-@testset "disable mimetype via extra_preamble" begin
-    client = ClientSession(:fake, nothing)
+@testset "disable mimetype via workspace_custom_startup_expr" begin
     🍭 = ServerSession()
     🍭.options.evaluation.workspace_use_distributed = true
-    🍭.options.evaluation.extra_preamble = quote
+    🍭.options.evaluation.workspace_custom_startup_expr = quote
         PlutoRunner.is_mime_enabled(m::MIME"application/vnd.pluto.tree+object") = false
     end
-    🍭.connected_clients[client.id] = client
 
     nb = Pluto.Notebook([
         Pluto.Cell("x = [1, 2]")
     ])
-    client.connected_notebook = nb
 
     Pluto.update_run!(🍭, nb, nb.cells)
-    @test nb.cells[1].output.body == "2-element Vector{Int64}:\n 1\n 2"
+    @test nb.cells[1].output.body == repr(MIME"text/plain"(), [1,2])
+    @test nb.cells[1].output.mime isa MIME"text/plain"
 
     Pluto.WorkspaceManager.unmake_workspace((🍭, nb))
 end
