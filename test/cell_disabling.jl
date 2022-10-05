@@ -1,13 +1,138 @@
 using Test
 using Pluto
-using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
+using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook, set_disabled, is_disabled
+
+
+
+
 
 @testset "Cell Disabling" begin
     🍭 = ServerSession()
     🍭.options.evaluation.workspace_use_distributed = false
 
-    fakeclient = ClientSession(:fake, nothing)
-    🍭.connected_clients[fakeclient.id] = fakeclient
+    notebook = Notebook([
+                Cell("a = 1")
+                Cell("b = 2")
+                Cell("c = 3")
+                Cell("d = 4")
+                
+                Cell("x = a")    # 5
+                # these cells will be uncommented later
+                Cell("# x = b")  # 6
+                Cell("# x = c")  # 7
+                
+                Cell("z = x")    # 8
+                Cell("# z = d")  # 9
+                
+                Cell("y = z")    # 10
+            ])
+    update_run!(🍭, notebook, notebook.cells)
+
+    # helper functions
+    id(i) = notebook.cells[i].cell_id
+    c(i) = notebook.cells[i]
+    get_indirectly_disabled_cells(notebook) = [i for (i, c) in pairs(notebook.cells) if c.depends_on_disabled_cells]
+
+    
+    
+    @test !any(is_disabled, notebook.cells)
+    @test get_indirectly_disabled_cells(notebook) == []
+    @test all(noerror, notebook.cells)
+    
+    ###
+    setcode!(c(6), "x = b")
+    update_run!(🍭, notebook, c(6))
+    
+    @test c(5).errored
+    @test c(6).errored
+    @test c(8).errored
+    @test c(10).errored
+    @test get_indirectly_disabled_cells(notebook) == []
+    
+    ###
+    set_disabled(c(1), true)
+    update_run!(🍭, notebook, c(1))
+    
+    @test noerror(c(1))
+    @test noerror(c(6))
+    @test noerror(c(8))
+    @test noerror(c(10))
+    @test get_indirectly_disabled_cells(notebook) == [1, 5]
+    
+    update_run!(🍭, notebook, c(5:6))
+    @test noerror(c(1))
+    @test noerror(c(6))
+    @test noerror(c(8))
+    @test noerror(c(10))    
+    @test get_indirectly_disabled_cells(notebook) == [1, 5]
+    
+    ###
+    set_disabled(c(1), false)
+    update_run!(🍭, notebook, c(1))
+    
+    @test noerror(c(1))
+    @test c(5).errored
+    @test c(6).errored
+    @test c(8).errored
+    @test c(10).errored
+    @test get_indirectly_disabled_cells(notebook) == []
+    
+    ###
+    set_disabled(c(5), true)
+    update_run!(🍭, notebook, c(5))
+    
+    @test noerror(c(1))
+    @test noerror(c(6))
+    @test noerror(c(8))
+    @test noerror(c(10))
+    @test get_indirectly_disabled_cells(notebook) == [5]
+    
+    ###
+    set_disabled(c(1), true)
+    update_run!(🍭, notebook, c(1))
+    
+    @test noerror(c(1))
+    @test noerror(c(6))
+    @test noerror(c(8))
+    @test noerror(c(10))
+    @test get_indirectly_disabled_cells(notebook) == [1, 5]
+    
+    
+    ###
+    set_disabled(c(5), false)
+    setcode!(c(7), "x = c")
+    update_run!(🍭, notebook, c([5,7]))
+    
+    @test c(5).errored
+    @test c(6).errored
+    @test c(7).errored
+    @test c(8).errored
+    @test c(10).errored
+    @test get_indirectly_disabled_cells(notebook) == [1, 5]
+    
+    ###
+    set_disabled(c(2), true)
+    update_run!(🍭, notebook, c(2))
+    
+    @test noerror(c(1))
+    @test noerror(c(2))
+    @test noerror(c(3))
+    @test noerror(c(7))
+    @test noerror(c(8))
+    @test noerror(c(10))
+    @test get_indirectly_disabled_cells(notebook) == [1, 2, 5, 6]
+    
+    
+    
+end
+
+
+
+
+
+@testset "Cell Disabling 1" begin
+    🍭 = ServerSession()
+    🍭.options.evaluation.workspace_use_distributed = false
 
     notebook = Notebook([
                 Cell("""y = begin
@@ -19,7 +144,6 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
                 Cell("w = z^5"),
                 Cell(""),
             ])
-    fakeclient.connected_notebook = notebook
     update_run!(🍭, notebook, notebook.cells)
 
     # helper functions
