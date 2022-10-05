@@ -171,11 +171,14 @@ end
 
     nb = Pluto.Notebook([
         Pluto.Cell("x = [1, 2]")
+        Pluto.Cell("struct Foo; x; end")
+        Pluto.Cell("Foo(x)")
     ])
 
     Pluto.update_run!(🍭, nb, nb.cells)
     @test nb.cells[1].output.body == repr(MIME"text/plain"(), [1,2])
     @test nb.cells[1].output.mime isa MIME"text/plain"
+    @test nb.cells[3].output.mime isa MIME"text/plain"
 
     Pluto.WorkspaceManager.unmake_workspace((🍭, nb))
 end
