@@ -6,6 +6,7 @@ import Pkg
 
 
 @testset "PkgCompat" begin
+    PkgCompat.refresh_registry_cache()
 
     @testset "Available versions" begin
         vs = PkgCompat.package_versions("HTTP")
@@ -28,6 +29,29 @@ import Pkg
 
         @test isempty(vs)
         @test !PkgCompat.package_exists("Dateskjashdfkjahsdfkjh")
+        
+    end
+    
+    @testset "Registry queries" begin
+        Pkg.Registry.add(pluto_test_registry_spec)
+        PkgCompat.refresh_registry_cache()
+        
+        es = PkgCompat._registry_entries("PlutoPkgTestA")
+        @test length(es) == 1
+        @test occursin("P/PlutoPkgTestA", only(es))
+        @test occursin("PlutoPkgTestRegistry", only(es))
+        
+        es = PkgCompat._registry_entries("Pluto")
+        @test length(es) == 1
+        @test occursin("P/Pluto", only(es))
+        @test occursin("General", only(es))
+        
+        es = PkgCompat._registry_entries("HelloWorldC_jll")
+        @test length(es) == 1
+        @test occursin(joinpath("H", "HelloWorldC_jll"), only(es))
+        @test occursin("General", only(es))
+        
+        Pkg.Registry.rm(pluto_test_registry_spec)
     end
 
     @testset "Installed versions" begin
