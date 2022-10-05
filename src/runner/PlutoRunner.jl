@@ -1094,14 +1094,6 @@ This defaults to `true`, but additional dispatches can be set to `false` by down
 """
 is_mime_enabled(::MIME) = true
 
-"""
-    is_tree_viewer_enabled(::MIME) -> Bool
-
-Return whether Pluto's tree viewer should be used for the argument's mimetype.
-This defaults to `true`, but additional dispatches can be set to `false` by downstream packages.
-"""
-is_tree_viewer_enabled(::MIME) = true
-
 "Return the first mimetype in `allmimes` which can show `x`."
 function mimetype(x)
     # ugly code to fix an ugly performance problem
@@ -1121,7 +1113,7 @@ Like two-argument `Base.show`, except:
 function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
     mime = mimetype(x)
 
-    if mime isa MIME"text/plain" && is_tree_viewer_enabled(mime) && use_tree_viewer_for_struct(x)
+    if mime isa MIME"text/plain" && is_mime_enabled(MIME"application/vnd.pluto.tree+object"()) && use_tree_viewer_for_struct(x)
         tree_data(x, io), MIME"application/vnd.pluto.tree+object"()
     elseif mime isa MIME"application/vnd.pluto.tree+object"
         try
