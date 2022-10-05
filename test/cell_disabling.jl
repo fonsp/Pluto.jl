@@ -6,9 +6,6 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
     🍭 = ServerSession()
     🍭.options.evaluation.workspace_use_distributed = false
 
-    fakeclient = ClientSession(:fake, nothing)
-    🍭.connected_clients[fakeclient.id] = fakeclient
-
     notebook = Notebook([
                 Cell("""y = begin
                     1 + x
@@ -19,7 +16,6 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
                 Cell("w = z^5"),
                 Cell(""),
             ])
-    fakeclient.connected_notebook = notebook
     update_run!(🍭, notebook, notebook.cells)
 
     # helper functions
