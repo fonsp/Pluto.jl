@@ -19,7 +19,7 @@ function topological_order(topology::NotebookTopology, roots::AbstractVector{Cel
 			return Ok()
 		elseif haskey(errable, cell)
 			return Ok()
-		elseif length(entries) > 0 && entries[end] == cell
+		elseif length(entries) > 0 && entries[end] === cell
 			return Ok() # a cell referencing itself is legal
 		elseif cell in entries
 			currently_in = setdiff(entries, exits)
@@ -49,7 +49,7 @@ function topological_order(topology::NotebookTopology, roots::AbstractVector{Cel
 		end
 		referencers = where_referenced(topology, cell) |> Iterators.reverse
 		for c in (allow_multiple_defs ? referencers : union(assigners, referencers))
-			if c != cell
+			if c !== cell
 				child_result = bfs(c)
 
 				# No cycle for this child or the cycle has no soft edges
@@ -74,7 +74,7 @@ function topological_order(topology::NotebookTopology, roots::AbstractVector{Cel
 					delete!(errable, cycled_cell)
 				end
 				# 2. Remove the current child (c) from the entries if it was just added
-				if entries[end] == c
+				if entries[end] === c
 					pop!(entries)
 				end
 
