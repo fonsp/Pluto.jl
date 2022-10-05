@@ -34,9 +34,8 @@
     --sans-serif-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
     --lato-ui-font-stack: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, Helvetica, Arial, "Apple Color Emoji",
         "Segoe UI Emoji", "Segoe UI Symbol", system-ui, sans-serif;
-    --system-ui-font-stack: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, Helvetica, Arial, "Apple Color Emoji",
+    --system-ui-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, Helvetica, Arial, "Apple Color Emoji",
         "Segoe UI Emoji", "Segoe UI Symbol", system-ui, sans-serif;
-
     color-scheme: light dark;
 }
 
@@ -2327,71 +2326,19 @@ nav#undo_delete.hidden {
 
 pluto-logs-container {
     display: block;
-    width: max(100px, 100vw - (700px + 25px));
+
     /* Show logs up to the RunArea */
-    max-height: calc(100% + 14px);
-    position: absolute;
     z-index: 25;
-    right: min(-100px, -100vw + (700px + 25px));
-    top: 1px;
-    overflow-x: auto;
-    /* overflow-y: hidden; */
-    background: hsl(0deg 0% 100% / 81%);
-}
-
-/* @media screen and (max-width: calc(700px + 25px + 6px + 150px)) { */
-pluto-logs {
-    display: flex !important;
-}
-
-pluto-logs-container {
-    position: static;
-    /* right: min(-6px, 700px + 25px - 100vw); */
-    /* width: 20px; */
-    /* transition: width ease-in-out 100ms; */
-    /* padding-left: 80px; */
-    width: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    max-height: 50vh;
+    margin-right: 1.3rem;
 }
 
 pluto-logs-container:not(:empty) {
     background: var(--pluto-logs-bg-color);
-    padding: 10px;
+    padding: 6px;
 }
-
-pluto-logs-container:focus-within,
-pluto-logs-container:hover {
-    /* width: 30vw; */
-}
-
-pluto-logs-container pluto-logs {
-    /* grid-template-columns: repeat(auto-fill, 0px); */
-}
-pluto-logs-container:focus-within pluto-logs,
-pluto-logs-container:hover pluto-logs {
-    /* grid-template-columns: repeat(auto-fill, 10px); */
-}
-/* 
-    pluto-log-dot-positioner {
-        flex: 0 0 auto;
-        width: auto;
-    }
-    pluto-log-dot-sizer {
-        width: auto;
-    } */
-/* } */
-/* 
-@media screen and (min-width: calc(700px + 25px + 6px + 500px)) and (max-width: calc(700px + 25px + 6px + 500px + 500px)) {
-    pluto-logs-container {
-        right: calc(-500px - 6px);
-        width: calc(500px + 6px);
-    }
-}
-@media screen and (min-width: calc(700px + 25px + 6px + 500px + 500px)) {
-    pluto-logs-container {
-        width: calc(0.5 * (6px + 100vw - (700px + 25px)));
-        right: calc(-0.5 * (6px + 100vw - (700px + 25px)));
-    }
-} */
 
 pluto-logs-container pluto-progress-bars pluto-progress:not(:first-child) {
     margin-top: 10px;
@@ -2399,12 +2346,13 @@ pluto-logs-container pluto-progress-bars pluto-progress:not(:first-child) {
 
 pluto-logs-container pluto-progress-bar {
     --c: var(--pluto-logs-progress-fill);
-    padding: 1px 3px;
+    padding: 0.3em 0.6em;
     background: linear-gradient(90deg, var(--c), var(--c));
     background-repeat: no-repeat;
     width: 100%;
     transition: background-size cubic-bezier(0.14, 0.71, 0, 0.99) 2s, opacity linear 0.2s;
-    /* background-color: salmon; */
+    display: grid;
+    align-items: center;
 }
 
 pluto-logs-container pluto-progress-bar.collapsed {
@@ -2412,90 +2360,115 @@ pluto-logs-container pluto-progress-bar.collapsed {
 }
 
 pluto-logs {
-    display: grid;
-    grid-auto-rows: 15px;
-    flex-direction: row;
-    grid-template-rows: repeat(auto-fill, 15px);
-    grid-template-columns: repeat(auto-fill, 10px);
-    grid-auto-flow: column;
+    display: flex;
+    flex-direction: column;
 }
 
 pluto-logs:not(:first-child):not(:empty) {
     margin-top: 10px;
 }
 
-pluto-log-dot-positioner {
-    display: block;
-    width: 10px;
-    transition: transform 100ms ease-in-out;
-}
-
-pluto-log-dot-positioner:hover,
-pluto-log-dot-positioner.inspecting {
-    z-index: 5;
-    /* transform: translate(0px, -5px); */
-}
-
-/* pluto-log-dot-positioner {
-    transform: translateX(0px);
-} */
-pluto-log-dot-positioner.inspecting {
-    transform: translateX(5px);
-}
-pluto-log-dot-positioner.inspecting pluto-log-dot {
-    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
-}
-pluto-log-dot-positioner.inspecting ~ pluto-log-dot-positioner {
-    transform: translateX(10px);
-}
-
-pluto-log-dot-sizer {
-    display: block;
-    width: max-content;
-    transform: translateZ(10px);
-    max-width: 600px;
-    z-index: 300;
-    pointer-events: none; /* part 1: because the hit box is larger than the action log dot */
-}
 pluto-log-dot {
-    pointer-events: auto; /* part 2 */
-    box-shadow: -2px 0px 1px #00000014;
+    /* part 2 */
+    /* box-shadow: -2px 0px 1px #00000014; */
     font-family: "Roboto Mono", monospace;
     font-size: 0.6rem;
-
-    /* position: absolute; */
-    display: inline-flex;
+    position: relative;
+    display: flex;
+    flex-grow: 1;
     flex-direction: column;
     padding: 1px 3px;
     min-width: 18px;
     min-height: 18px;
-    border-radius: 7px;
+    /* border-radius: 7px; */
+    padding: 0.6em 0.9em 0.6em 0.3em;
 }
-pluto-log-dot {
-    background: var(--jl-info-color);
-    border: 3px solid var(--jl-info-accent-color);
+
+pluto-log-dot-positioner {
+    /* border-bottom: 1px solid #71717140; */
+    display: flex;
+    flex-direction: row;
+    --bg-color: var(--pluto-logs-info-color);
+    --accent-color: var(--pluto-logs-info-accent-color);
+    --icon-image: unset;
+    background: var(--bg-color);
+    color: var(--accent-color);
+    margin: 2px;
+    border-radius: 6px;
+    /* border: 2px solid var(--accent-color); */
+    /* border: 2px solid #0000001c; */
+    /* box-shadow: 0px 0px 6px #00000036; */
+    background: linear-gradient(148deg, var(--bg-color), transparent);
+    background-size: 200% 100%;
 }
-pluto-log-dot.Warn {
-    background: var(--jl-warn-color);
-    border: 3px solid var(--jl-warn-accent-color);
+
+pluto-log-dot-positioner:last-child {
+    /* border-bottom: none; */
 }
-pluto-log-dot.Error {
-    background: var(--jl-danger-color);
-    border: 3px solid var(--jl-danger-accent-color);
+
+pluto-log-truncated {
+    display: grid;
+    place-items: center;
+    font-family: var(--system-ui-font-stack);
+    opacity: 0.7;
+    padding: 0.7em;
+    font-style: italic;
 }
-pluto-log-dot.Debug {
-    background: var(--jl-debug-color);
-    border: 3px solid var(--jl-debug-accent-color);
+
+pluto-log-icon::before {
+    content: "";
+    width: 1em;
+    height: 1em;
+    background-image: var(--icon-image);
+    background-size: 1em;
+    filter: var(--image-filters);
+    display: inline-flex;
+    margin: 0.3em;
 }
+
+pluto-log-dot-positioner.Info {
+    --icon-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/information-circle-outline.svg");
+}
+pluto-log-dot-positioner.Info pluto-log-icon::before {
+    opacity: 0.4;
+}
+pluto-log-dot-positioner.Warn {
+    --bg-color: var(--pluto-logs-warn-color);
+    --accent-color: var(--pluto-logs-warn-accent-color);
+    --icon-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/warning-outline.svg");
+}
+pluto-log-dot-positioner.Error {
+    --bg-color: var(--pluto-logs-danger-color);
+    --accent-color: var(--pluto-logs-danger-accent-color);
+    --icon-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle-outline.svg");
+}
+pluto-log-dot-positioner.Debug {
+    --bg-color: var(--pluto-logs-debug-color);
+    --accent-color: var(--pluto-logs-debug-accent-color);
+    --icon-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/information-circle-outline.svg");
+}
+pluto-log-dot-positioner.Stdout {
+    --icon-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/terminal-outline.svg");
+}
+pluto-log-dot-positioner.Stdout pluto-log-icon::before {
+    opacity: 0.4;
+}
+
 pluto-log-dot.Progress {
-    width: 100px;
-    background: #94949466;
-    border: 3px solid var(--pluto-logs-progress-border);
     overflow: hidden;
     padding: 0px;
+    flex: 0 1 200px;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    align-self: center;
+    outline: 3px solid var(--pluto-logs-progress-border);
+    outline-offset: -2px;
+    border-radius: 6px;
+    background: var(--pluto-logs-progress-bg);
+    font-size: 0.7rem;
 }
 pluto-log-dot.Stdout {
-    /* filter: sepia(0.3); */
     --inner: hsl(36deg 20% 37%);
     --outer: hsl(31deg 12% 28%);
     background: radial-gradient(var(--inner), var(--inner) 20%, var(--outer));
@@ -2503,14 +2476,15 @@ pluto-log-dot.Stdout {
     border: 6px solid #b7b7b7;
     text-shadow: 1px 1px 2px #0000005e;
     min-width: 18em;
+    border-radius: 8px;
 }
 pluto-log-dot.Stdout::after,
 pluto-log-dot.Stdout::before {
     content: " ";
-    left: 6px;
-    right: 6px;
-    top: 6px;
-    bottom: 6px;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
     position: absolute;
     display: block;
     pointer-events: none;
@@ -2581,7 +2555,7 @@ pluto-log-dot-kwarg > * {
     flex: 0 1 auto;
 }
 pluto-log-dot-kwarg > pluto-key {
-    color: var(--pluto-schema-types-color);
+    color: var(--pluto-logs-key-color);
     margin-right: calc(1em - 30px);
 }
 pluto-log-dot-kwarg > pluto-key::after {
@@ -2589,6 +2563,7 @@ pluto-log-dot-kwarg > pluto-key::after {
 }
 pluto-log-dot-kwarg > pluto-value {
     margin-left: 30px;
+    overflow-x: auto;
 }
 /* PRESENTATION MODE */
 
@@ -2990,4 +2965,14 @@ pluto-cell.hooked_up pluto-output {
     margin-top: 2rem;
     justify-content: flex-end;
     gap: 0.5em;
+}
+
+pluto-logs-container > header {
+    font-family: "Roboto Mono", monospace;
+    font-size: 1.3rem;
+    padding: 0.2em;
+    padding-bottom: 0;
+    opacity: 0.6;
+    font-weight: 700;
+    /* background: #494949; */
 }
