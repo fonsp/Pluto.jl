@@ -33,7 +33,7 @@
         --export-card-shadow-color: #00000029;
 
         /*Pluto output styling */
-        --pluto-schema-types-color: rgb(0 0 0 / 51%);
+        --pluto-schema-types-color: rgba(0, 0, 0, 0.4);
         --pluto-schema-types-border-color: rgba(0, 0, 0, 0.2);
         --pluto-output-color: hsl(0, 0%, 25%);
         --pluto-output-h-color: hsl(0, 0%, 12%);
@@ -44,14 +44,14 @@
         --admonition-title-color: white;
         --jl-message-color: rgb(219 233 212);
         --jl-message-accent-color: rgb(158, 200, 137);
-        --jl-info-color: white;
-        --jl-info-accent-color: inherit;
+        --jl-info-color: rgb(214 227 244);
+        --jl-info-accent-color: rgb(148, 182, 226);
         --jl-warn-color: rgb(236 234 213);
-        --jl-warn-accent-color: #665f26;
+        --jl-warn-accent-color: rgb(207, 199, 138);
         --jl-danger-color: rgb(245 218 215);
-        --jl-danger-accent-color: rgb(172 66 52);
-        --jl-debug-color: rgb(236 223 247);
-        --jl-debug-accent-color: rgb(100 50 179);
+        --jl-danger-accent-color: rgb(226, 157, 148);
+        --jl-debug-color: rgb(245 218 215);
+        --jl-debug-accent-color: rgb(226, 157, 148);
         --footnote-border-color: rgba(23, 115, 119, 0.15);
         --table-border-color: rgba(0, 0, 0, 0.2);
         --table-bg-hover-color: rgba(159, 158, 224, 0.15);
@@ -70,9 +70,19 @@
 
         /* Logs */
         --pluto-logs-bg-color: hsl(0deg 0% 98%);
+        --pluto-logs-key-color: rgb(0 0 0 / 51%);
         --pluto-logs-progress-fill: #ffffff;
         --pluto-logs-progress-bg: #e7e7e7;
         --pluto-logs-progress-border: hsl(210deg 16% 74%);
+
+        --pluto-logs-info-color: white;
+        --pluto-logs-info-accent-color: inherit;
+        --pluto-logs-warn-color: rgb(236 234 213);
+        --pluto-logs-warn-accent-color: #665f26;
+        --pluto-logs-danger-color: rgb(245 218 215);
+        --pluto-logs-danger-accent-color: rgb(172 66 52);
+        --pluto-logs-debug-color: rgb(236 223 247);
+        --pluto-logs-debug-accent-color: rgb(100 50 179);
 
         /*Top navbar styling*/
         --nav-h1-text-color: black;

@@ -42,14 +42,14 @@
         --admonition-title-color: black;
         --jl-message-color: rgb(38 90 32);
         --jl-message-accent-color: rgb(131 191 138);
-        --jl-info-color: #484848;
-        --jl-info-accent-color: inherit;
-        --jl-warn-color: rgb(80 76 38);
-        --jl-warn-accent-color: rgb(239 231 135);
+        --jl-info-color: rgb(42 73 115);
+        --jl-info-accent-color: rgb(92 140 205);
+        --jl-warn-color: rgb(96 90 34);
+        --jl-warn-accent-color: rgb(221 212 100);
         --jl-danger-color: rgb(100 47 39);
-        --jl-danger-accent-color: rgb(255 147 132);
-        --jl-debug-color: hsl(288deg 19% 25%);
-        --jl-debug-accent-color: hsl(283deg 56% 79%);
+        --jl-danger-accent-color: rgb(255, 117, 98);
+        --jl-debug-color: hsl(288deg 33% 27%);
+        --jl-debug-accent-color: hsl(283deg 59% 69%);
         --table-border-color: rgba(255, 255, 255, 0.2);
         --table-bg-hover-color: rgba(193, 192, 235, 0.15);
         --pluto-tree-color: rgb(209 207 207 / 61%);
@@ -67,9 +67,19 @@
 
         /* Logs */
         --pluto-logs-bg-color: hsl(0deg 0% 17%);
+        --pluto-logs-key-color: rgba(255, 255, 255, 0.6);
         --pluto-logs-progress-fill: #5f7f5b;
         --pluto-logs-progress-bg: #3d3d3d;
         --pluto-logs-progress-border: hsl(210deg 35% 72%);
+
+        --pluto-logs-info-color: #484848;
+        --pluto-logs-info-accent-color: inherit;
+        --pluto-logs-warn-color: rgb(80 76 38);
+        --pluto-logs-warn-accent-color: rgb(239 231 135);
+        --pluto-logs-danger-color: rgb(100 47 39);
+        --pluto-logs-danger-accent-color: rgb(255 147 132);
+        --pluto-logs-debug-color: hsl(288deg 19% 25%);
+        --pluto-logs-debug-accent-color: hsl(283deg 56% 79%);
 
         /*Top navbar styling*/
         --nav-h1-text-color: white;

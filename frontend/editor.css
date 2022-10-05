@@ -2388,8 +2388,8 @@ pluto-log-dot-positioner {
     /* border-bottom: 1px solid #71717140; */
     display: flex;
     flex-direction: row;
-    --bg-color: var(--jl-info-color);
-    --accent-color: var(--jl-info-accent-color);
+    --bg-color: var(--pluto-logs-info-color);
+    --accent-color: var(--pluto-logs-info-accent-color);
     --icon-image: unset;
     background: var(--bg-color);
     color: var(--accent-color);
@@ -2433,18 +2433,18 @@ pluto-log-dot-positioner.Info pluto-log-icon::before {
     opacity: 0.4;
 }
 pluto-log-dot-positioner.Warn {
-    --bg-color: var(--jl-warn-color);
-    --accent-color: var(--jl-warn-accent-color);
+    --bg-color: var(--pluto-logs-warn-color);
+    --accent-color: var(--pluto-logs-warn-accent-color);
     --icon-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/warning-outline.svg");
 }
 pluto-log-dot-positioner.Error {
-    --bg-color: var(--jl-danger-color);
-    --accent-color: var(--jl-danger-accent-color);
+    --bg-color: var(--pluto-logs-danger-color);
+    --accent-color: var(--pluto-logs-danger-accent-color);
     --icon-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle-outline.svg");
 }
 pluto-log-dot-positioner.Debug {
-    --bg-color: var(--jl-debug-color);
-    --accent-color: var(--jl-debug-accent-color);
+    --bg-color: var(--pluto-logs-debug-color);
+    --accent-color: var(--pluto-logs-debug-accent-color);
     --icon-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/information-circle-outline.svg");
 }
 pluto-log-dot-positioner.Stdout {
@@ -2455,14 +2455,12 @@ pluto-log-dot-positioner.Stdout pluto-log-icon::before {
 }
 
 pluto-log-dot.Progress {
-    /* width: 100px; */
     overflow: hidden;
     padding: 0px;
     flex: 0 1 200px;
     display: flex;
     flex-direction: row;
     align-items: stretch;
-    /* padding: 5px; */
     align-self: center;
     outline: 3px solid var(--pluto-logs-progress-border);
     outline-offset: -2px;
@@ -2471,7 +2469,6 @@ pluto-log-dot.Progress {
     font-size: 0.7rem;
 }
 pluto-log-dot.Stdout {
-    /* filter: sepia(0.3); */
     --inner: hsl(36deg 20% 37%);
     --outer: hsl(31deg 12% 28%);
     background: radial-gradient(var(--inner), var(--inner) 20%, var(--outer));
@@ -2558,7 +2555,7 @@ pluto-log-dot-kwarg > * {
     flex: 0 1 auto;
 }
 pluto-log-dot-kwarg > pluto-key {
-    color: var(--pluto-schema-types-color);
+    color: var(--pluto-logs-key-color);
     margin-right: calc(1em - 30px);
 }
 pluto-log-dot-kwarg > pluto-key::after {
