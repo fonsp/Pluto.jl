@@ -2563,6 +2563,7 @@ pluto-log-dot-kwarg > pluto-key::after {
 }
 pluto-log-dot-kwarg > pluto-value {
     margin-left: 30px;
+    overflow-x: auto;
 }
 /* PRESENTATION MODE */
 
