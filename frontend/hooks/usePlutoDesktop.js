@@ -1,4 +1,4 @@
-import { useEffect, useState } from "../imports/Preact.js"
+import { useEffect } from "../imports/Preact.js"
 
 /**
  * @typedef {(window: Window) => void} DesktopHookCallback
@@ -12,21 +12,18 @@ import { useEffect, useState } from "../imports/Preact.js"
  * @returns A boolean denoting whether pluto is running inside Desktop or not and a condtional callback utility function.
  */
 const usePlutoDesktop = (/** @type {DesktopHookCallback | undefined} */ callback) => {
-    const [isDesktop, setIsDesktop] = useState(false)
-
     useEffect(() => {
         if (window.plutoDesktop) {
             // console.log(
             //   'Running in Desktop Environment! Found following properties/methods:',
             //   window.plutoDesktop
             // );
-            setIsDesktop(true)
             if (callback) callback(window)
         }
-        return () => {
-            setIsDesktop(false)
-        }
+        return () => {}
     }, [callback])
+
+    const isDesktop = !!window.plutoDesktop
 
     /**
      * A simple utility function that calls a function if inside desktop
