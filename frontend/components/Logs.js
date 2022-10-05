@@ -5,7 +5,6 @@ import { SimpleOutputBody } from "./TreeView.js"
 import { help_circle_icon, open_pluto_popup } from "./Popup.js"
 import AnsiUp from "../imports/AnsiUp.js"
 
-// const GRID_WIDTH = 10
 const LOGS_VISIBLE_START = 60
 const LOGS_VISIBLE_END = 20
 const PROGRESS_LOG_LEVEL = "LogLevel(-1)"
@@ -15,9 +14,6 @@ const is_progress_log = (log) => {
 }
 
 export const Logs = ({ logs, line_heights, set_cm_highlighted_line }) => {
-    const container = useRef(/** @type {HTMLElement?} */ (null))
-    // const [from, setFrom] = useState(0)
-    // const [to, setTo] = useState(Math.round(1000 / GRID_WIDTH))
     const progress_logs = logs.filter(is_progress_log)
     const latest_progress_logs = progress_logs.reduce((progress_logs, log) => ({ ...progress_logs, [log.id]: log }), {})
     const [_, grouped_progress_and_logs] = logs.reduce(
@@ -43,13 +39,12 @@ export const Logs = ({ logs, line_heights, set_cm_highlighted_line }) => {
         level=${log.level}
         msg=${log.msg}
         kwargs=${log.kwargs}
-        mykey=${`log${i}`}
         key=${i}
         y=${is_hidden_input ? 0 : log.line - 1}
     /> `
 
     return html`
-        <pluto-logs-container ref=${container}>
+        <pluto-logs-container>
             <pluto-logs>
                 ${grouped_progress_and_logs.length <= LOGS_VISIBLE_END + LOGS_VISIBLE_START
                     ? grouped_progress_and_logs.map(dot)
@@ -80,7 +75,7 @@ const Progress = ({ progress }) => {
 
 const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${"adsf"} mime=${pair[1]} body=${pair[0]} persist_js_state=${false} />`
 
-const Dot = ({ set_cm_highlighted_line, msg, kwargs, y, level, mykey }) => {
+const Dot = ({ set_cm_highlighted_line, msg, kwargs, y, level }) => {
     const is_progress = is_progress_log({ level, kwargs })
     const is_stdout = level === "LogLevel(-555)"
     let progress = null
@@ -101,7 +96,6 @@ const Dot = ({ set_cm_highlighted_line, msg, kwargs, y, level, mykey }) => {
     }
 
     return html`<pluto-log-dot-positioner
-        data-line=${y + 1}
         class=${cl({ [level]: true })}
         onMouseenter=${() => is_progress || set_cm_highlighted_line(y + 1)}
         onMouseleave=${() => {
