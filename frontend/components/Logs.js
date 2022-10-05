@@ -81,13 +81,6 @@ const Progress = ({ progress }) => {
 const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${"adsf"} mime=${pair[1]} body=${pair[0]} persist_js_state=${false} />`
 
 const Dot = ({ set_cm_highlighted_line, msg, kwargs, y, level, mykey }) => {
-    const node_ref = useRef(/** @type{HTMLElement?} */ (null))
-    // const label_ref = useRef(null)
-    // useEffect(() => {
-    //     label_ref.current.innerHTML = body
-    // }, [body])
-    const [inspecting, set_inspecting] = useState(false)
-
     const is_progress = is_progress_log({ level, kwargs })
     const is_stdout = level === "LogLevel(-555)"
     let progress = null
@@ -107,33 +100,14 @@ const Dot = ({ set_cm_highlighted_line, msg, kwargs, y, level, mykey }) => {
         level = "Stdout"
     }
 
-    useLayoutEffect(() => {
-        if (inspecting) {
-            const f = (e) => {
-                if (!e.target.closest || e.target.closest("pluto-log-dot-positioner") !== node_ref.current) {
-                    set_inspecting(false)
-                    set_cm_highlighted_line(null)
-                }
-            }
-            window.addEventListener("blur", f)
-
-            return () => {
-                window.removeEventListener("blur", f)
-            }
-        }
-    }, [inspecting])
-
     return html`<pluto-log-dot-positioner
         data-line=${y + 1}
-        ref=${node_ref}
-        class=${cl({ inspecting, [level]: true })}
-        onClick=${() => {
-            set_inspecting(true)
-            console.log("highlighting line", y)
-            is_progress || set_cm_highlighted_line(y + 1)
-        }}
+        class=${cl({ [level]: true })}
         onMouseenter=${() => is_progress || set_cm_highlighted_line(y + 1)}
-        onMouseleave=${() => set_cm_highlighted_line(null)}
+        onMouseleave=${() => {
+            console.log("leaving!")
+            set_cm_highlighted_line(null)
+        }}
     >
         <pluto-log-icon></pluto-log-icon>
         ${is_stdout
