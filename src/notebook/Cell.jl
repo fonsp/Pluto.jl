@@ -74,10 +74,6 @@ function Base.convert(::Type{Cell}, cell::Dict)
         metadata=cell["metadata"],
     )
 end
-function Base.convert(::Type{UUID}, string::String)
-    UUID(string)
-end
-
 
 "Returns whether or not the cell is **explicitely** disabled."
 is_disabled(c::Cell) = get(c.metadata, METADATA_DISABLED_KEY, DEFAULT_CELL_METADATA[METADATA_DISABLED_KEY])
