@@ -940,7 +940,7 @@ patch: ${JSON.stringify(
 
         let last_update_notebook_task = Promise.resolve()
         /** @param {(notebook: NotebookData) => void} mutate_fn */
-        let update_notebook = (mutate_fn, sendRequest = true) => {
+        let update_notebook = (mutate_fn) => {
             const new_task = last_update_notebook_task.then(async () => {
                 // if (this.state.initializing) {
                 //     console.error("Update notebook done during initializing, strange")
@@ -986,29 +986,20 @@ patch: ${JSON.stringify(
                 try {
                     // console.log("Sending changes to server:", changes)
 
-                    // if it is an desktop environment, it is already sending the request and handling errors
-                    if (sendRequest)
-                        await Promise.all([
-                            this.client
-                                .send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false)
-                                .then((response) => {
-                                    if (response.message?.response?.update_went_well === "👎") {
-                                        // We only throw an error for functions that are waiting for this
-                                        // Notebook state will already have the changes reversed
+                    await Promise.all([
+                        this.client.send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false).then((response) => {
+                            if (response.message?.response?.update_went_well === "👎") {
+                                // We only throw an error for functions that are waiting for this
+                                // Notebook state will already have the changes reversed
 
-                                        throw new Error(`Pluto update_notebook error: (from Julia: ${response.message.response.why_not})`)
-                                    }
-                                }),
-                            this.setStatePromise({
-                                notebook: new_notebook,
-                                last_update_time: Date.now(),
-                            }),
-                        ])
-                    else
-                        await this.setStatePromise({
+                                throw new Error(`Pluto update_notebook error: (from Julia: ${response.message.response.why_not})`)
+                            }
+                        }),
+                        this.setStatePromise({
                             notebook: new_notebook,
                             last_update_time: Date.now(),
-                        })
+                        }),
+                    ])
                 } finally {
                     this.pending_local_updates--
                 }
@@ -1072,10 +1063,12 @@ patch: ${JSON.stringify(
             window.plutoDesktop?.ipcRenderer.once("PLUTO-MOVE-NOTEBOOK", async (/** @type {string | undefined} */ loc) => {
                 try {
                     if (!!loc)
-                        await update_notebook((notebook) => {
-                            notebook.in_temp_dir = false
-                            notebook.path = loc
-                        }, false)
+                        await this.setStatePromise(
+                            immer((state) => {
+                                state.notebook.in_temp_dir = false
+                                state.notebook.path = loc
+                            })
+                        )
                     // @ts-ignore
                     document.activeElement?.blur()
                 } catch (error) {
