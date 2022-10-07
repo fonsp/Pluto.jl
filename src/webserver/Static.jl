@@ -299,17 +299,12 @@ function http_router_for(session::ServerSession)
         notebook = notebook_from_uri(request)
         newpath = query["newpath"]
         
-        # taken from Dynamic.jl
-        if isfile(newpath)
-            return error_response(400, "Bad query", "File exists already - you need to delete the old file manually.")
-        else
-            move_notebook!(notebook, newpath; disable_writing_notebook_files=session.options.server.disable_writing_notebook_files)
-            send_notebook_changes!(ClientRequest(; session, notebook))
-            putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
-            WorkspaceManager.cd_workspace((session, notebook), newpath)
+        try
+            SessionActions.move(session, notebook, newpath)
+            HTTP.Response(200, notebook.path)
+        catch e
+            error_response(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", sprint(showerror, e, stacktrace(catch_backtrace())))
         end
-
-        return HTTP.Response(200)
     end
 
     HTTP.register!(router, "GET", "/move", serve_move)

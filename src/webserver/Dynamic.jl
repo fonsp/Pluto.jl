@@ -229,16 +229,7 @@ const no_changes = Changed[]
 
 const effects_of_changed_state = Dict(
     "path" => function(; request::ClientRequest, patch::Firebasey.ReplacePatch)
-        newpath = tamepath(patch.value)
-        # SessionActions.move(request.session, request.notebook, newpath)
-
-        if isfile(newpath)
-            error("File exists already - you need to delete the old file manually.")
-        else
-            move_notebook!(request.notebook, newpath; disable_writing_notebook_files=request.session.options.server.disable_writing_notebook_files)
-            putplutoupdates!(request.session, clientupdate_notebook_list(request.session.notebooks))
-            WorkspaceManager.cd_workspace((request.session, request.notebook), newpath)
-        end
+        SessionActions.move(request.session, request.notebook, patch.value)
         return no_changes
     end,
     "process_status" => function(; request::ClientRequest, patch::Firebasey.ReplacePatch)
