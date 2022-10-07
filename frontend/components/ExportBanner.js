@@ -1,4 +1,4 @@
-import { html, useMemo, useState } from "../imports/Preact.js"
+import { html } from "../imports/Preact.js"
 
 const Circle = ({ fill }) => html`
     <svg

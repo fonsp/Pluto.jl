@@ -49,6 +49,12 @@ const set_cm_value = (/** @type{EditorView} */ cm, /** @type {string} */ value, 
     }
 }
 
+const is_desktop = !!window.plutoDesktop
+
+if (is_desktop) {
+    console.log("Running in Desktop Environment! Found following properties/methods:", window.plutoDesktop)
+}
+
 /**
  * @typedef FilePickerProps
  * @type {{
@@ -58,13 +64,11 @@ const set_cm_value = (/** @type{EditorView} */ cm, /** @type {string} */ value, 
  *  placeholder: String,
  *  on_submit: (new_path: String) => Promise<void>,
  *  on_desktop_submit?: (loc?: string) => Promise<void>,
- *  requires_text?: boolean,
  *  client: import("../common/PlutoConnection.js").PlutoConnection,
  * }}
  * @augments Component<FilePickerProps,{}>
  */
 export class FilePicker extends Component {
-    is_desktop = false
     constructor(/** @type {FilePickerProps} */ props) {
         super(props)
         this.state = {
@@ -86,18 +90,13 @@ export class FilePicker extends Component {
             window.dispatchEvent(new CustomEvent("collapse_cell_selection", {}))
         }
 
-        if (!!window.plutoDesktop) {
-            console.log("Running in Desktop Environment! Found following properties/methods:", window.plutoDesktop)
-            this.is_desktop = true
-        }
-
         let run = async (fn) => await fn()
         this.on_submit = () => {
             if (!this.cm) return true
             const cm = this.cm
 
             // ingore if running in desktop environment
-            if (!this.is_desktop) {
+            if (!is_desktop) {
                 const my_val = cm.state.doc.toString()
                 if (my_val === this.forced_value) {
                     this.suggest_not_tmp()
@@ -106,9 +105,8 @@ export class FilePicker extends Component {
             }
             run(async () => {
                 try {
-                    if (this.is_desktop && this.props.on_desktop_submit) {
-                        if (this.props.requires_text) await this.props.on_desktop_submit((await guess_notebook_location(this.state.url_value)).path_or_url)
-                        else await this.props.on_desktop_submit()
+                    if (is_desktop && this.props.on_desktop_submit) {
+                        await this.props.on_desktop_submit((await guess_notebook_location(this.state.url_value)).path_or_url)
                     } else await this.props.on_submit(cm.state.doc.toString())
                     cm.dom.blur()
                 } catch (error) {
@@ -245,7 +243,7 @@ export class FilePicker extends Component {
                 ],
             }),
         })
-        if (!this.is_desktop) this.base.insertBefore(this.cm.dom, this.base.firstElementChild)
+        if (!is_desktop) this.base.insertBefore(this.cm.dom, this.base.firstElementChild)
 
         // window.addEventListener("resize", () => {
         //     if (!this.cm.hasFocus()) {
@@ -254,16 +252,15 @@ export class FilePicker extends Component {
         // })
     }
     render() {
-        return this.is_desktop
+        return is_desktop
             ? html`<div class="desktop_picker_group">
-                  ${this.props.requires_text &&
-                  html`<input
+                  <input
                       value=${this.state.url_value}
-                      placeholder="Enter URL here"
+                      placeholder="Enter notebook URL..."
                       onChange=${(v) => {
-                          this.setState({ ...this.state, url_value: v.target.value })
+                          this.setState({ url_value: v.target.value })
                       }}
-                  />`}
+                  />
                   <div onClick=${this.on_submit} class="desktop_picker">
                       <button>${this.props.button_label}</button>
                   </div>

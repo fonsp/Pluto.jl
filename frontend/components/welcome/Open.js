@@ -61,7 +61,6 @@ export const Open = ({ client, connected, CustomPicker, show_samples, on_start_n
                 on_desktop_submit=${desktop_on_open_url}
                 button_label="Open from URL"
                 placeholder=${picker.placeholder}
-                requires_text=${true}
             />`}
         </div>`
 }
