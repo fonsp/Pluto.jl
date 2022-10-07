@@ -5,12 +5,6 @@ declare global {
      */
     namespace Desktop {
         /**
-         * This type has to be in sync with the type "Channels"
-         * defined in PlutoDesktop/{branch:master}/src/main/proload.ts
-         */
-        type Channels = "ipc-example"
-
-        /**
          * This enum has to be in sync with the enum "PlutoExport"
          * defined in PlutoDesktop/{branch:master}/types/enums.ts
          *
@@ -34,7 +28,7 @@ declare global {
          */
         type PlutoDesktop = {
             ipcRenderer: {
-                sendMessage(channel: Channels, args: unknown[]): void
+                sendMessage(channel: String, args: unknown[]): void
                 on(channel: string, func: (...args: unknown[]) => void): (() => void) | undefined
                 once(channel: string, func: (...args: unknown[]) => void): void
             }
