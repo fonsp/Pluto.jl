@@ -647,16 +647,6 @@ nav#at_the_top > div.desktop_picker span {
     border-bottom-right-radius: 0;
 }
 
-/* nav#at_the_top > div.desktop_picker span {
-    border: 2px solid transparent;
-    transition: all .3s;
-}
-
-nav#at_the_top > div.desktop_picker:hover span {
-    
-    border: 2px solid var(--footer-input-border-color);
-} */
-
 pluto-filepicker .cm-scroller {
     scrollbar-width: none; /* Firefox */
 }
