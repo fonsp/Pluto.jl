@@ -321,10 +321,6 @@ end
 
 will_run_code(notebook::Notebook) = notebook.process_status != ProcessStatus.no_process && notebook.process_status != ProcessStatus.waiting_to_restart
 
-###
-# CONVENIENCE FUNCTIONS
-###
-
 
 "Do all the things!"
 function update_save_run!(
@@ -338,45 +334,20 @@ function update_save_run!(
 	kwargs...
 )
 	old = notebook.topology
-	old_order = topological_order(notebook)
 	new = notebook.topology = updated_topology(old, notebook, cells) # macros are not yet resolved
-	new_order = topological_order(notebook)
 	
+	# _assume `auto_solve_multiple_defs == false` if you want to skip some details_
 	if auto_solve_multiple_defs
-		fresh_errorz = filter(cells) do c
-			!(get(old_order.errable, c, nothing) isa MultipleDefinitionsError) &&
-			(get(new_order.errable, c, nothing) isa MultipleDefinitionsError)
-		end
+		to_disable = cells_to_disable_to_resolve_multiple_defs(old, new, cells)
 		
-		if !isempty(fresh_errorz)
-			@debug "Solving multiple defs" fresh_errorz
+		if !isempty(to_disable)
+			@debug "Using augmented topology" cell_id.(to_disable)
 			
-			just_disabled = Set{Cell}()
+			foreach(c -> set_disabled(c, true), to_disable)
 			
-			for c in fresh_errorz
-				defined_here = new.nodes[c].definitions
-				@debug "Solving multiple defs" c.cell_id defined_here
-				if length(defined_here) == 1
-					# the cell defines only one variable. for more than one, we might confuse the user
-					other_definers = setdiff(
-						where_assigned(new, defined_here), 
-						(c,)
-					)
-					@debug "Solving multiple defs" c.cell_id map(cell_id, other_definers) disjoint(fresh_errorz, other_definers)
-					if disjoint(fresh_errorz, other_definers)
-						# we want c to be the only element of cells that defines this varialbe, i.e. all other definers must have been created previously
-						
-						foreach(c -> set_disabled(c, true), other_definers)
-						union!(just_disabled, other_definers)
-					end
-				end
-			end
-			
-			if !isempty(just_disabled)
-				@debug "Using augmented topology" map(cell_id, just_disabled)
-				cells = union(cells, just_disabled)
-				new = notebook.topology = updated_topology(new, notebook, cells)
-			end
+			cells = union(cells, to_disable)
+			# need to update the topology because the topology also keeps track of disabled cells
+			new = notebook.topology = updated_topology(new, notebook, to_disable)
 		end
 	end
 
@@ -446,6 +417,50 @@ end
 
 update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs...) = update_save_run!(session, notebook, [cell]; kwargs...)
 update_run!(args...; kwargs...) = update_save_run!(args...; save=false, kwargs...)
+
+
+function cells_to_disable_to_resolve_multiple_defs(old::NotebookTopology, new::NotebookTopology, cells::Vector{Cell})::Set{Cell}
+	to_disable = Set{Cell}()
+	
+	for cell in cells
+		new_node = new.nodes[cell]
+		
+		fellow_assigners_old = where_assigned(old, new_node)
+		fellow_assigners_new = where_assigned(new, new_node)
+		
+		if length(fellow_assigners_new) > length(fellow_assigners_old)
+			
+			defined_here = new_node.definitions
+			other_definers = setdiff(fellow_assigners_new, (cell,))
+			
+			@debug "Solving multiple defs" cell.cell_id map(cell_id, other_definers) disjoint(cells, other_definers)
+			if (
+				# we want cell to be the only element of cells that defines this varialbe, i.e. all other definers must have been created previously
+				disjoint(cells, other_definers) &&
+				
+				# all fellow cells (including the current cell) should meet the following criteria:
+				all(fellow_assigners_new) do c
+					# the cell defines only one variable. for more than one, we might confuse the user, or disable more things than we want to.
+					length(defined_here) == 1 &&
+					# avoid something like `x = x + 1`
+					disjoint(new_node.references, new_node.definitions) &&
+					# no function definitions
+					isempty(new_node.funcdefs_without_signatures)
+				end
+			)
+				
+				for c in other_definers
+					# if the cell is already disabled (indirectly), then we don't need to disable it. probably.
+					c.depends_on_disabled_cells || push!(to_disable, c)
+				end
+			end
+		end
+	end
+	
+	to_disable
+end
+
+
 
 function notebook_differences(from::Notebook, to::Notebook)
 	from_cells = from.cells_dict
@@ -548,10 +563,10 @@ end
 function update_skipped_cells_dependency!(notebook::Notebook, topology::NotebookTopology=notebook.topology)
     skipped_cells = filter(is_skipped_as_script, notebook.cells)
     indirectly_skipped = collect(topological_order(topology, skipped_cells))
-    for cell in indirectly_skipped
-        cell.depends_on_skipped_cells = true
-    end
-	for cell in setdiff(notebook.cells, indirectly_skipped)
+    for cell in notebook.cells
         cell.depends_on_skipped_cells = false
+    end
+	for cell in indirectly_skipped
+        cell.depends_on_skipped_cells = true
     end
 end
