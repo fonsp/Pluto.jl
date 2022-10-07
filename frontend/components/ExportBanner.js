@@ -1,4 +1,3 @@
-// import { PlutoExport } from "../enums.js"
 import { html, useMemo, useState } from "../imports/Preact.js"
 
 const Circle = ({ fill }) => html`
@@ -31,9 +30,10 @@ const Square = ({ fill }) => html`
 window.enable_secret_pluto_recording = true
 
 export const ExportBanner = ({ notebook_id, onClose, notebookfile_url, notebookexport_url, start_recording }) => {
+    // @ts-ignore
     const isDesktop = !!window.plutoDesktop
 
-    const exportNotebook = (/** @type {{ preventDefault: () => void; }} */ e, /** @type {Desktop.PlutoExport} @note see *types.d.ts* for more info.*/ type) => {
+    const exportNotebook = (/** @type {{ preventDefault: () => void; }} */ e, /** @type {Desktop.PlutoExport} */ type) => {
         if (isDesktop) {
             e.preventDefault()
             window.plutoDesktop?.fileSystem.exportNotebook(notebook_id, type)
