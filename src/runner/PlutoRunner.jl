@@ -947,7 +947,7 @@ const default_stdout_iocontext = IOContext(devnull,
     :is_pluto => false,
 )
 
-const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
+const imagemimes = MIME[MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
 # in descending order of coolness
 # text/plain always matches - almost always
 """
@@ -955,7 +955,7 @@ The MIMEs that Pluto supports, in order of how much I like them.
 
 `text/plain` should always match - the difference between `show(::IO, ::MIME"text/plain", x)` and `show(::IO, x)` is an unsolved mystery.
 """
-const allmimes = [MIME"application/vnd.pluto.table+object"(); MIME"application/vnd.pluto.divelement+object"(); MIME"text/html"(); imagemimes; MIME"application/vnd.pluto.tree+object"(); MIME"text/latex"(); MIME"text/plain"()]
+const allmimes = MIME[MIME"application/vnd.pluto.table+object"(); MIME"application/vnd.pluto.divelement+object"(); MIME"text/html"(); imagemimes; MIME"application/vnd.pluto.tree+object"(); MIME"text/latex"(); MIME"text/plain"()]
 
 
 """
@@ -986,33 +986,41 @@ format_output(@nospecialize(x); context=default_iocontext) = format_output_defau
 
 format_output(::Nothing; context=default_iocontext) = ("", MIME"text/plain"())
 
+"Downstream packages can set this to false to obtain unprettified stack traces."
+const PRETTY_STACKTRACES = Ref(true)
+
 function format_output(val::CapturedException; context=default_iocontext)
-    ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
-    stack = [s for (s, _) in val.processed_bt]
+    stacktrace = if PRETTY_STACKTRACES[]
+        ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
+        stack = [s for (s, _) in val.processed_bt]
 
-    # function_wrap_index = findfirst(f -> occursin("function_wrapped_cell", String(f.func)), stack)
+        # function_wrap_index = findfirst(f -> occursin("function_wrapped_cell", String(f.func)), stack)
 
-    function_wrap_index = findlast(f -> occursin("#==#", String(f.file)), stack)
+        function_wrap_index = findlast(f -> occursin("#==#", String(f.file)), stack)
 
-    if function_wrap_index === nothing
-        for _ in 1:2
-            until = findfirst(b -> b.func == :eval, reverse(stack))
-            stack = until === nothing ? stack : stack[1:end - until]
+        if function_wrap_index === nothing
+            for _ in 1:2
+                until = findfirst(b -> b.func == :eval, reverse(stack))
+                stack = until === nothing ? stack : stack[1:end - until]
+            end
+        else
+            stack = stack[1:function_wrap_index]
+        end
+
+        pretty = map(stack) do s
+            Dict(
+                :call => pretty_stackcall(s, s.linfo),
+                :inlined => s.inlined,
+                :file => basename(String(s.file)),
+                :path => String(s.file),
+                :line => s.line,
+            )
         end
     else
-        stack = stack[1:function_wrap_index]
+        val
     end
 
-    pretty = map(stack) do s
-        Dict(
-            :call => pretty_stackcall(s, s.linfo),
-            :inlined => s.inlined,
-            :file => basename(String(s.file)),
-            :path => String(s.file),
-            :line => s.line,
-        )
-    end
-    Dict{Symbol,Any}(:msg => sprint(try_showerror, val.ex), :stacktrace => pretty), MIME"application/vnd.pluto.stacktrace+object"()
+    Dict{Symbol,Any}(:msg => sprint(try_showerror, val.ex), :stacktrace => stacktrace), MIME"application/vnd.pluto.stacktrace+object"()
 end
 
 function format_output(binding::Base.Docs.Binding; context=default_iocontext)
@@ -1086,11 +1094,19 @@ function use_tree_viewer_for_struct(@nospecialize(x::T))::Bool where T
     end
 end
 
+"""
+    is_mime_enabled(::MIME) -> Bool
+
+Return whether the argument's mimetype is enabled.
+This defaults to `true`, but additional dispatches can be set to `false` by downstream packages.
+"""
+is_mime_enabled(::MIME) = true
+
 "Return the first mimetype in `allmimes` which can show `x`."
 function mimetype(x)
     # ugly code to fix an ugly performance problem
     for m in allmimes
-        if pluto_showable(m, x)
+        if pluto_showable(m, x) && is_mime_enabled(m)
             return m
         end
     end
@@ -1105,7 +1121,7 @@ Like two-argument `Base.show`, except:
 function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
     mime = mimetype(x)
 
-    if mime isa MIME"text/plain" && use_tree_viewer_for_struct(x)
+    if mime isa MIME"text/plain" && is_mime_enabled(MIME"application/vnd.pluto.tree+object"()) && use_tree_viewer_for_struct(x)
         tree_data(x, io), MIME"application/vnd.pluto.tree+object"()
     elseif mime isa MIME"application/vnd.pluto.tree+object"
         try
