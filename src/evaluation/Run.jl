@@ -63,6 +63,9 @@ function run_reactive_core!(
         # update cache and save notebook because the dependencies might have changed after expanding macros
         update_dependency_cache!(notebook)
     end
+	
+    # find (indirectly) skipped-as-script cells and update their status
+    update_skipped_cells_dependency!(notebook, new_topology)
 
     removed_cells = setdiff(all_cells(old_topology), all_cells(new_topology))
     roots = vcat(roots, removed_cells)
@@ -81,42 +84,45 @@ function run_reactive_core!(
         cell_order = new_topology.cell_order,
         disabled_cells=new_topology.disabled_cells,
     )
-
-    # save the old topological order - we'll delete variables assigned from its
-    # and re-evalutate its cells unless the cells have already run previously in the reactive run
-    old_order = topological_order(old_topology, roots)
-
-    old_runnable = setdiff(old_order.runnable, already_run)
-    to_delete_vars = union!(Set{Symbol}(), defined_variables(old_topology, old_runnable)...)
-    to_delete_funcs = union!(Set{Tuple{UUID,FunctionName}}(), defined_functions(old_topology, old_runnable)...)
-
-    # get the new topological order
-    new_order = topological_order(new_topology, union(roots, keys(old_order.errable)))
-    new_runnable = setdiff(new_order.runnable, already_run)
-    to_run_raw = setdiff(union(new_runnable, old_runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
-
+	
+	
     # find (indirectly) deactivated cells and update their status
-    indirectly_deactivated = collect(topological_order(new_topology, collect(new_topology.disabled_cells)))
+    indirectly_deactivated = collect(topological_order(new_topology, collect(new_topology.disabled_cells); allow_multiple_defs=true, skip_at_partial_multiple_defs=true))
+	
     for cell in indirectly_deactivated
         cell.running = false
         cell.queued = false
         cell.depends_on_disabled_cells = true
     end
+	
+	new_topology = setdiff(new_topology, indirectly_deactivated)
 
-    # find (indirectly) skipped cells and update their status
-    update_skipped_cells_dependency!(notebook, new_topology)
+    # save the old topological order - we'll delete variables assigned from its
+    # and re-evalutate its cells unless the cells have already run previously in the reactive run
+    old_order = topological_order(old_topology, roots)
 
-    to_run = setdiff(to_run_raw, indirectly_deactivated)
+    old_runnable = setdiff(old_order.runnable, already_run, indirectly_deactivated)
+    to_delete_vars = union!(Set{Symbol}(), defined_variables(old_topology, old_runnable)...)
+    to_delete_funcs = union!(Set{Tuple{UUID,FunctionName}}(), defined_functions(old_topology, old_runnable)...)
+	
+	
+	new_roots = setdiff(union(roots, keys(old_order.errable)), indirectly_deactivated)
+    # get the new topological order
+    new_order = topological_order(new_topology, new_roots)
+    new_runnable = setdiff(new_order.runnable, already_run)
+    to_run = setdiff(union(new_runnable, old_runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
+
 
     # change the bar on the sides of cells to "queued"
     for cell in to_run
         cell.queued = true
         cell.depends_on_disabled_cells = false
     end
-
+	
     for (cell, error) in new_order.errable
         cell.running = false
         cell.queued = false
+		cell.depends_on_disabled_cells = false
         relay_reactivity_error!(cell, error)
     end
 
@@ -504,7 +510,7 @@ function update_skipped_cells_dependency!(notebook::Notebook, topology::Notebook
     for cell in indirectly_skipped
         cell.depends_on_skipped_cells = true
     end
-    for cell in setdiff(notebook.cells, indirectly_skipped)
+	for cell in setdiff(notebook.cells, indirectly_skipped)
         cell.depends_on_skipped_cells = false
     end
 end
