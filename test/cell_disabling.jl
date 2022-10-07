@@ -155,6 +155,62 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook, set_disa
     @test get_indirectly_disabled_cells(notebook) == [1, 2, 4, 5, 6, 9]
     
     
+    ###
+    set_disabled(c(1), true)
+    set_disabled(c(2), false)
+    set_disabled(c(3), true)
+    set_disabled(c(4), false)
+    
+    set_disabled(c(5), true)
+    set_disabled(c(6), true)
+    set_disabled(c(7), false)
+    
+    set_disabled(c(8), false)
+    set_disabled(c(9), true)
+    
+    setcode!(c(10), "const x = 123123")
+    set_disabled(c(10), false)
+    
+    update_run!(🍭, notebook, c(1:10))
+    
+    
+    @test noerror(c(1))
+    @test noerror(c(2))
+    @test noerror(c(3))
+    @test noerror(c(4))
+    
+    @test noerror(c(8))
+    @test noerror(c(10))
+    
+    @test get_indirectly_disabled_cells(notebook) == [1, 3, 5, 6, 7, 9]
+    
+    ###
+    set_disabled(c(3), false)
+    update_run!(🍭, notebook, c(3))
+    
+    @test get_indirectly_disabled_cells(notebook) == [1, 5, 6, 9]
+    @test c(7).errored
+    @test c(8).errored
+    @test c(10).errored
+    
+    ###
+    set_disabled(c(10), true)
+    update_run!(🍭, notebook, c(10))
+    
+    @test get_indirectly_disabled_cells(notebook) == [1, 5, 6, 9, 10]
+    @test noerror(c(7))
+    @test noerror(c(8))
+    
+    ###
+    set_disabled(c(7), true)
+    set_disabled(c(10), false)
+    update_run!(🍭, notebook, c([7,10]))
+    
+    @test get_indirectly_disabled_cells(notebook) == [1, 5, 6, 7, 9]
+    @test noerror(c(7))
+    @test noerror(c(8))
+    @test noerror(c(10))
+    
     
     ### check that they really don't run when disabled
     @test c(14).output.body == "1"
