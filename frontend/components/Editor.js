@@ -985,13 +985,11 @@ patch: ${JSON.stringify(
                 this.on_patches_hook(changes)
                 try {
                     // console.log("Sending changes to server:", changes)
-
                     await Promise.all([
                         this.client.send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false).then((response) => {
                             if (response.message?.response?.update_went_well === "👎") {
                                 // We only throw an error for functions that are waiting for this
                                 // Notebook state will already have the changes reversed
-
                                 throw new Error(`Pluto update_notebook error: (from Julia: ${response.message.response.why_not})`)
                             }
                         }),
@@ -1021,7 +1019,6 @@ patch: ${JSON.stringify(
                 false
             )
         }
-
         this.submit_file_change = async (new_path, reset_cm_value) => {
             const old_path = this.state.notebook.path
             if (old_path === new_path) {
@@ -1050,6 +1047,7 @@ patch: ${JSON.stringify(
         }
 
         this.desktop_submit_file_change = async () => {
+            this.setState({ moving_file: true })
             /**
              * `window.plutoDesktop?.ipcRenderer` is basically what allows the
              * frontend to communicate with the electron side. It is an IPC
@@ -1060,25 +1058,20 @@ patch: ${JSON.stringify(
              * once the move is complete, we listen to it using `once`.
              * More info [here](https://www.electronjs.org/docs/latest/api/ipc-renderer#ipcrendereroncechannel-listener)
              */
-            window.plutoDesktop?.ipcRenderer.once("PLUTO-MOVE-NOTEBOOK", async (/** @type {string | undefined} */ loc) => {
-                try {
-                    if (!!loc)
-                        await this.setStatePromise(
-                            immer((state) => {
-                                state.notebook.in_temp_dir = false
-                                state.notebook.path = loc
-                            })
-                        )
-                    // @ts-ignore
-                    document.activeElement?.blur()
-                } catch (error) {
-                    alert("Failed to move file:\n\n" + error.message)
-                } finally {
-                    this.setState({ moving_file: false })
-                }
+            window.plutoDesktop?.ipcRenderer.once("PLUTO-MOVE-NOTEBOOK", async (/** @type {string?} */ loc) => {
+                if (!!loc)
+                    await this.setStatePromise(
+                        immer((state) => {
+                            state.notebook.in_temp_dir = false
+                            state.notebook.path = loc
+                        })
+                    )
+                this.setState({ moving_file: false })
+                // @ts-ignore
+                document.activeElement?.blur()
             })
 
-            this.setState({ moving_file: true })
+            // ask the electron backend to start moving the notebook. The event above will be fired once it is done.
             window.plutoDesktop?.fileSystem.moveNotebook()
         }
 
