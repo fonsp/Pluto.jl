@@ -28,6 +28,14 @@ export const Open = ({ client, connected, CustomPicker, show_samples, on_start_n
         }
     }
 
+    const desktop_on_open_path = async (_p) => {
+        window.plutoDesktop?.fileSystem.openNotebook("path")
+    }
+
+    const desktop_on_open_url = async (url) => {
+        window.plutoDesktop?.fileSystem.openNotebook("url", url)
+    }
+
     const picker = CustomPicker ?? {
         text: "Open a notebook",
         placeholder: "Enter path or URL...",
@@ -35,15 +43,25 @@ export const Open = ({ client, connected, CustomPicker, show_samples, on_start_n
 
     return html`<${PasteHandler} />
         <h2>${picker.text}</h2>
-        <div id="new">
+        <div id="new" class=${!!window.plutoDesktop ? "desktop_opener" : ""}>
             <${FilePicker}
                 key=${picker.placeholder}
                 client=${client}
                 value=""
                 on_submit=${on_open_path}
-                button_label="Open"
+                on_desktop_submit=${desktop_on_open_path}
+                button_label=${window.plutoDesktop ? "Open Local File" : "Open File"}
                 placeholder=${picker.placeholder}
             />
+            ${window.plutoDesktop &&
+            html`<${FilePicker}
+                key=${picker.placeholder}
+                client=${client}
+                value=""
+                on_desktop_submit=${desktop_on_open_url}
+                button_label="Open from URL"
+                placeholder=${picker.placeholder}
+            />`}
         </div>`
 }
 
