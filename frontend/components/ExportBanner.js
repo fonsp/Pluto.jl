@@ -33,34 +33,26 @@ window.enable_secret_pluto_recording = true
 export const ExportBanner = ({ notebook_id, onClose, notebookfile_url, notebookexport_url, start_recording }) => {
     const isDesktop = !!window.plutoDesktop
 
-    const exportNotebook = (/** @type {{ preventDefault: () => void; }} */ e, /** @type {0 | 1 | 2 | 3} @note see *types.d.ts* for more info.*/ type) => {
+    const exportNotebook = (/** @type {{ preventDefault: () => void; }} */ e, /** @type {Desktop.PlutoExport} @note see *types.d.ts* for more info.*/ type) => {
         if (isDesktop) {
             e.preventDefault()
             window.plutoDesktop?.fileSystem.exportNotebook(notebook_id, type)
         }
     }
 
-    const elType = isDesktop ? "button" : "a"
-
     return html`
         <aside id="export">
             <div id="container">
                 <div class="export_title">export</div>
                 <!-- no "download" attribute here: we want the jl contents to be shown in a new tab -->
-                <${elType} href=${notebookfile_url} target="_blank" class="export_card" onclick=${(e) => exportNotebook(e, 0)}>
+                <a href=${notebookfile_url} target="_blank" class="export_card" onClick=${(e) => exportNotebook(e, 0)}>
                     <header><${Triangle} fill="#a270ba" /> Notebook file</header>
                     <section>Download a copy of the <b>.jl</b> script.</section>
-                </${elType}>
-                <${elType}
-                    href=${notebookexport_url}
-                    target="_blank"
-                    class="export_card"
-                    download=""
-                    onclick=${(e) => exportNotebook(e, 1)}
-                >
+                </a>
+                <a href=${notebookexport_url} target="_blank" class="export_card" download="" onClick=${(e) => exportNotebook(e, 1)}>
                     <header><${Square} fill="#E86F51" /> Static HTML</header>
                     <section>An <b>.html</b> file for your web page, or to share online.</section>
-                </${elType}>
+                </a>
                 <a href="#" class="export_card" onClick=${() => window.print()}>
                     <header><${Square} fill="#619b3d" /> Static PDF</header>
                     <section>A static <b>.pdf</b> file for print or email.</section>
