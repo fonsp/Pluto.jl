@@ -190,11 +190,6 @@ end
     🍭 = ServerSession()
     for (name, nb) in nbs
         nb.path = tempname() * "é🧡💛.jl"
-
-        client = ClientSession(Symbol("client", rand(UInt16)), nothing)
-        client.connected_notebook = nb
-
-        🍭.connected_clients[client.id] = client
     end
 
     @testset "I/O basic" begin
@@ -209,8 +204,6 @@ end
     @testset "Cell Metadata" begin
         🍭 = ServerSession()
         🍭.options.evaluation.workspace_use_distributed = false
-        fakeclient = ClientSession(:fake, nothing)
-        🍭.connected_clients[fakeclient.id] = fakeclient
 
         @testset "Disabling & Metadata" begin
             nb = cell_metadata_notebook()
@@ -246,8 +239,6 @@ end
     @testset "Notebook Metadata" begin
         🍭 = ServerSession()
         🍭.options.evaluation.workspace_use_distributed = false
-        fakeclient = ClientSession(:fake, nothing)
-        🍭.connected_clients[fakeclient.id] = fakeclient
 
         nb = notebook_metadata_notebook()
         update_run!(🍭, nb, nb.cells)
@@ -273,8 +264,6 @@ end
     @testset "Skip as script" begin
         🍭 = ServerSession()
         🍭.options.evaluation.workspace_use_distributed = false
-        fakeclient = ClientSession(:fake, nothing)
-        🍭.connected_clients[fakeclient.id] = fakeclient
 
         nb = skip_as_script_notebook()
         update_run!(🍭, nb, nb.cells)

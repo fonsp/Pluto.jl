@@ -422,3 +422,17 @@ featured-card.special::before {
     /* border: 2px solid #ffca62; */
     pointer-events: none;
 }
+
+.navigating-away-banner {
+    width: 100vw;
+    min-height: 70vh;
+    place-content: center;
+    display: grid;
+    padding: 3em;
+}
+
+.navigating-away-banner h2 {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}

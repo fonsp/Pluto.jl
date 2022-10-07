@@ -124,6 +124,7 @@ import Pluto: Notebook, Cell, updated_topology, static_resolve_topology, is_just
             codes=topo_3.codes, 
             unresolved_cells=setdiff(topo_3.unresolved_cells, notebook.cells[4:4]),
             cell_order=topo_3.cell_order,
+			disabled_cells=topo_3.disabled_cells,
         )
         
         @test topo_3_resolved === updated_topology(topo_3_resolved, notebook, notebook.cells[1:3])

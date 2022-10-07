@@ -117,9 +117,9 @@ responses[:docs] = function response_docs(🙋::ClientRequest)
         query = "@$(query[begin:end-1])_str"
     end
 
-    doc_html, status = if REPL.lookup_doc(Symbol(query)) isa Markdown.MD
+    doc_html, status = if (doc_md = Docs.doc(Docs.Binding(Base, Symbol(query)))) isa Markdown.MD &&
+            haskey(doc_md.meta, :results) && !isempty(doc_md.meta[:results])
         # available in Base, no need to ask worker
-        doc_md = REPL.lookup_doc(Symbol(query))
         (repr(MIME("text/html"), doc_md), :👍)
     else
         workspace = WorkspaceManager.get_workspace((🙋.session, 🙋.notebook); allow_creation=false)
