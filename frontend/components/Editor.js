@@ -862,7 +862,7 @@ patch: ${JSON.stringify(
             if (!this.state.static_preview && document.visibilityState === "visible") {
                 // view stats on https://stats.plutojl.org/
                 //@ts-ignore
-                count_stat(`editing/${window?.version_info?.pluto ?? "unknown"}`)
+                count_stat(`editing/${window?.version_info?.pluto ?? "unknown"}${window.plutoDesktop ? "-desktop" : ""}`)
             }
         }, 1000 * 15 * 60)
         setInterval(() => {
