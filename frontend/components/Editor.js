@@ -862,7 +862,7 @@ patch: ${JSON.stringify(
             if (!this.state.static_preview && document.visibilityState === "visible") {
                 // view stats on https://stats.plutojl.org/
                 //@ts-ignore
-                count_stat(`editing/${window?.version_info?.pluto ?? "unknown"}`)
+                count_stat(`editing/${window?.version_info?.pluto ?? "unknown"}${window.plutoDesktop ? "-desktop" : ""}`)
             }
         }, 1000 * 15 * 60)
         setInterval(() => {
@@ -1044,6 +1044,35 @@ patch: ${JSON.stringify(
             } finally {
                 this.setState({ moving_file: false })
             }
+        }
+
+        this.desktop_submit_file_change = async () => {
+            this.setState({ moving_file: true })
+            /**
+             * `window.plutoDesktop?.ipcRenderer` is basically what allows the
+             * frontend to communicate with the electron side. It is an IPC
+             * bridge between render process and main process. More info
+             * [here](https://www.electronjs.org/docs/latest/api/ipc-renderer).
+             *
+             * "PLUTO-MOVE-NOTEBOOK" is an event triggered in the main process
+             * once the move is complete, we listen to it using `once`.
+             * More info [here](https://www.electronjs.org/docs/latest/api/ipc-renderer#ipcrendereroncechannel-listener)
+             */
+            window.plutoDesktop?.ipcRenderer.once("PLUTO-MOVE-NOTEBOOK", async (/** @type {string?} */ loc) => {
+                if (!!loc)
+                    await this.setStatePromise(
+                        immer((state) => {
+                            state.notebook.in_temp_dir = false
+                            state.notebook.path = loc
+                        })
+                    )
+                this.setState({ moving_file: false })
+                // @ts-ignore
+                document.activeElement?.blur()
+            })
+
+            // ask the electron backend to start moving the notebook. The event above will be fired once it is done.
+            window.plutoDesktop?.fileSystem.moveNotebook()
         }
 
         this.delete_selected = (verb) => {
@@ -1348,6 +1377,7 @@ patch: ${JSON.stringify(
                     <${ProgressBar} notebook=${this.state.notebook} backend_launch_phase=${this.state.backend_launch_phase} status=${status}/>
                     <header id="pluto-nav" className=${export_menu_open ? "show_export" : ""}>
                         <${ExportBanner}
+                            notebook_id=${this.state.notebook.notebook_id}
                             notebookfile_url=${this.export_url("notebookfile")}
                             notebookexport_url=${this.export_url("notebookexport")}
                             open=${export_menu_open}
@@ -1384,6 +1414,7 @@ patch: ${JSON.stringify(
                                           client=${this.client}
                                           value=${notebook.in_temp_dir ? "" : notebook.path}
                                           on_submit=${this.submit_file_change}
+                                          on_desktop_submit=${this.desktop_submit_file_change}
                                           suggest_new_file=${{
                                               base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
                                               name: notebook.shortpath,

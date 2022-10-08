@@ -13,6 +13,7 @@ function run_reactive!(
     old_topology::NotebookTopology,
     new_topology::NotebookTopology,
     roots::Vector{Cell};
+	save::Bool=true,
     deletion_hook::Function = WorkspaceManager.move_vars,
     user_requested_run::Bool = true,
     bond_value_pairs=zip(Symbol[],Any[]),
@@ -24,6 +25,7 @@ function run_reactive!(
             old_topology,
             new_topology,
             roots;
+			save,
             deletion_hook,
             user_requested_run,
             bond_value_pairs,
@@ -43,6 +45,7 @@ function run_reactive_core!(
     old_topology::NotebookTopology,
     new_topology::NotebookTopology,
     roots::Vector{Cell};
+	save::Bool=true,
     deletion_hook::Function = WorkspaceManager.move_vars,
     user_requested_run::Bool = true,
     already_run::Vector{Cell} = Cell[],
@@ -60,6 +63,9 @@ function run_reactive_core!(
         # update cache and save notebook because the dependencies might have changed after expanding macros
         update_dependency_cache!(notebook)
     end
+	
+    # find (indirectly) skipped-as-script cells and update their status
+    update_skipped_cells_dependency!(notebook, new_topology)
 
     removed_cells = setdiff(all_cells(old_topology), all_cells(new_topology))
     roots = vcat(roots, removed_cells)
@@ -78,47 +84,50 @@ function run_reactive_core!(
         cell_order = new_topology.cell_order,
         disabled_cells=new_topology.disabled_cells,
     )
-
-    # save the old topological order - we'll delete variables assigned from its
-    # and re-evalutate its cells unless the cells have already run previously in the reactive run
-    old_order = topological_order(old_topology, roots)
-
-    old_runnable = setdiff(old_order.runnable, already_run)
-    to_delete_vars = union!(Set{Symbol}(), defined_variables(old_topology, old_runnable)...)
-    to_delete_funcs = union!(Set{Tuple{UUID,FunctionName}}(), defined_functions(old_topology, old_runnable)...)
-
-    # get the new topological order
-    new_order = topological_order(new_topology, union(roots, keys(old_order.errable)))
-    new_runnable = setdiff(new_order.runnable, already_run)
-    to_run_raw = setdiff(union(new_runnable, old_runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
-
+	
+	
     # find (indirectly) deactivated cells and update their status
-    indirectly_deactivated = collect(topological_order(new_topology, collect(new_topology.disabled_cells)))
+    indirectly_deactivated = collect(topological_order(new_topology, collect(new_topology.disabled_cells); allow_multiple_defs=true, skip_at_partial_multiple_defs=true))
+	
     for cell in indirectly_deactivated
         cell.running = false
         cell.queued = false
         cell.depends_on_disabled_cells = true
     end
+	
+	new_topology = setdiff(new_topology, indirectly_deactivated)
 
-    # find (indirectly) skipped cells and update their status
-    update_skipped_cells_dependency!(notebook, new_topology)
+    # save the old topological order - we'll delete variables assigned from its
+    # and re-evalutate its cells unless the cells have already run previously in the reactive run
+    old_order = topological_order(old_topology, roots)
 
-    to_run = setdiff(to_run_raw, indirectly_deactivated)
+    old_runnable = setdiff(old_order.runnable, already_run, indirectly_deactivated)
+    to_delete_vars = union!(Set{Symbol}(), defined_variables(old_topology, old_runnable)...)
+    to_delete_funcs = union!(Set{Tuple{UUID,FunctionName}}(), defined_functions(old_topology, old_runnable)...)
+	
+	
+	new_roots = setdiff(union(roots, keys(old_order.errable)), indirectly_deactivated)
+    # get the new topological order
+    new_order = topological_order(new_topology, new_roots)
+    new_runnable = setdiff(new_order.runnable, already_run)
+    to_run = setdiff(union(new_runnable, old_runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
+
 
     # change the bar on the sides of cells to "queued"
     for cell in to_run
         cell.queued = true
         cell.depends_on_disabled_cells = false
     end
-
+	
     for (cell, error) in new_order.errable
         cell.running = false
         cell.queued = false
+		cell.depends_on_disabled_cells = false
         relay_reactivity_error!(cell, error)
     end
 
 	# Save the notebook. This is the only time that we save the notebook, so any state changes that influence the file contents (like `depends_on_disabled_cells`) should be behind this point.
-	save_notebook(session, notebook)
+	save && save_notebook(session, notebook)
 
     # Send intermediate updates to the clients at most 20 times / second during a reactive run. (The effective speed of a slider is still unbounded, because the last update is not throttled.)
     # flush_send_notebook_changes_throttled, 
@@ -196,7 +205,7 @@ function run_reactive_core!(
             update_dependency_cache!(notebook)
             save_notebook(session, notebook)
 
-            return run_reactive_core!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook, user_requested_run, already_run = to_run[1:i])
+            return run_reactive_core!(session, notebook, new_topology, new_new_topology, to_run; save, deletion_hook, user_requested_run, already_run = to_run[1:i])
         elseif !isempty(implicit_usings)
             new_soft_definitions = WorkspaceManager.collect_soft_definitions((session, notebook), implicit_usings)
             notebook.topology = new_new_topology = with_new_soft_definitions(new_topology, cell, new_soft_definitions)
@@ -205,7 +214,7 @@ function run_reactive_core!(
             update_dependency_cache!(notebook)
             save_notebook(session, notebook)
 
-            return run_reactive_core!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook, user_requested_run, already_run = to_run[1:i])
+            return run_reactive_core!(session, notebook, new_topology, new_new_topology, to_run; save, deletion_hook, user_requested_run, already_run = to_run[1:i])
         end
     end
 
@@ -387,7 +396,7 @@ function update_save_run!(
             sync_nbpkg(session, notebook, old, new; save=(save && !session.options.server.disable_writing_notebook_files), take_token=false)
             if !(isempty(to_run_online) && session.options.evaluation.lazy_workspace_creation) && will_run_code(notebook)
                 # not async because that would be double async
-                run_reactive_core!(session, notebook, old, new, to_run_online; kwargs...)
+                run_reactive_core!(session, notebook, old, new, to_run_online; save, kwargs...)
                 # run_reactive_async!(session, notebook, old, new, to_run_online; deletion_hook=deletion_hook, run_async=false, kwargs...)
             end
         end
@@ -501,7 +510,7 @@ function update_skipped_cells_dependency!(notebook::Notebook, topology::Notebook
     for cell in indirectly_skipped
         cell.depends_on_skipped_cells = true
     end
-    for cell in setdiff(notebook.cells, indirectly_skipped)
+	for cell in setdiff(notebook.cells, indirectly_skipped)
         cell.depends_on_skipped_cells = false
     end
 end

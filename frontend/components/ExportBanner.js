@@ -29,17 +29,27 @@ const Square = ({ fill }) => html`
 //@ts-ignore
 window.enable_secret_pluto_recording = true
 
-export const ExportBanner = ({ onClose, notebookfile_url, notebookexport_url, start_recording }) => {
+export const ExportBanner = ({ notebook_id, onClose, notebookfile_url, notebookexport_url, start_recording }) => {
+    // @ts-ignore
+    const isDesktop = !!window.plutoDesktop
+
+    const exportNotebook = (/** @type {{ preventDefault: () => void; }} */ e, /** @type {Desktop.PlutoExport} */ type) => {
+        if (isDesktop) {
+            e.preventDefault()
+            window.plutoDesktop?.fileSystem.exportNotebook(notebook_id, type)
+        }
+    }
+
     return html`
         <aside id="export">
             <div id="container">
                 <div class="export_title">export</div>
                 <!-- no "download" attribute here: we want the jl contents to be shown in a new tab -->
-                <a href=${notebookfile_url} target="_blank" class="export_card">
+                <a href=${notebookfile_url} target="_blank" class="export_card" onClick=${(e) => exportNotebook(e, 0)}>
                     <header><${Triangle} fill="#a270ba" /> Notebook file</header>
                     <section>Download a copy of the <b>.jl</b> script.</section>
                 </a>
-                <a href=${notebookexport_url} target="_blank" class="export_card" download="">
+                <a href=${notebookexport_url} target="_blank" class="export_card" download="" onClick=${(e) => exportNotebook(e, 1)}>
                     <header><${Square} fill="#E86F51" /> Static HTML</header>
                     <section>An <b>.html</b> file for your web page, or to share online.</section>
                 </a>

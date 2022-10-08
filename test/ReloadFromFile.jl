@@ -27,14 +27,9 @@ end
     🍭.options.server.auto_reload_from_file = true
     
     
-    
     timeout_between_tests = 🍭.options.server.auto_reload_from_file_cooldown * 1.5
 
-    fakeclient = ClientSession(:fake, nothing)
-    🍭.connected_clients[fakeclient.id] = fakeclient
-    
     notebook = SessionActions.new(🍭; run_async=false)
-    fakeclient.connected_notebook = notebook
     
     ### 
     sleep(timeout_between_tests)

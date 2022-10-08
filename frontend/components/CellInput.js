@@ -598,6 +598,7 @@ export const CellInput = ({
                     highlighted_line_compartment,
                     global_definitions_compartment,
                     editable_compartment,
+                    highlightLinePlugin(),
 
                     // This is waaaay in front of the keys it is supposed to override,
                     // Which is necessary because it needs to run before *any* keymap,
