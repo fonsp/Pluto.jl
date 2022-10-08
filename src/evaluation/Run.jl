@@ -425,27 +425,27 @@ function cells_to_disable_to_resolve_multiple_defs(old::NotebookTopology, new::N
 	for cell in cells
 		new_node = new.nodes[cell]
 		
-		fellow_assigners_old = where_assigned(old, new_node)
-		fellow_assigners_new = where_assigned(new, new_node)
+		fellow_assigners_old = filter!(c -> !is_disabled(old, c), where_assigned(old, new_node))
+		fellow_assigners_new = filter!(c -> !is_disabled(new, c), where_assigned(new, new_node))
 		
 		if length(fellow_assigners_new) > length(fellow_assigners_old)
-			
-			defined_here = new_node.definitions
 			other_definers = setdiff(fellow_assigners_new, (cell,))
 			
-			@debug "Solving multiple defs" cell.cell_id map(cell_id, other_definers) disjoint(cells, other_definers)
+			@debug "Solving multiple defs" cell.cell_id cell_id.(other_definers) disjoint(cells, other_definers)
 			if (
 				# we want cell to be the only element of cells that defines this varialbe, i.e. all other definers must have been created previously
 				disjoint(cells, other_definers) &&
 				
 				# all fellow cells (including the current cell) should meet the following criteria:
 				all(fellow_assigners_new) do c
+					node = new.nodes[c]
+					
 					# the cell defines only one variable. for more than one, we might confuse the user, or disable more things than we want to.
-					length(defined_here) == 1 &&
+					length(node.definitions) == 1 &&
 					# avoid something like `x = x + 1`
-					disjoint(new_node.references, new_node.definitions) &&
+					disjoint(node.references, node.definitions) &&
 					# no function definitions
-					isempty(new_node.funcdefs_without_signatures)
+					isempty(node.funcdefs_without_signatures)
 				end
 			)
 				

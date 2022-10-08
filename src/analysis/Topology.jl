@@ -39,6 +39,9 @@ end
 all_cells(topology::NotebookTopology) = topology.cell_order.c
 
 is_resolved(topology::NotebookTopology) = isempty(topology.unresolved_cells)
+is_resolved(topology::NotebookTopology, c::Cell) = c in topology.unresolved_cells
+
+is_disabled(topology::NotebookTopology, c::Cell) = c in topology.disabled_cells
 
 function set_unresolved(topology::NotebookTopology, unresolved_cells::Vector{Cell})
     codes = Dict{Cell,ExprAnalysisCache}(
