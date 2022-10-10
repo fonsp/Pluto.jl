@@ -69,9 +69,20 @@
         --shoulder-hover-bg-color: rgba(0, 0, 0, 0.05);
 
         /* Logs */
-        --pluto-logs-bg-color: #efeff3;
+        --pluto-logs-bg-color: hsl(0deg 0% 98%);
+        --pluto-logs-key-color: rgb(0 0 0 / 51%);
         --pluto-logs-progress-fill: #ffffff;
+        --pluto-logs-progress-bg: #e7e7e7;
         --pluto-logs-progress-border: hsl(210deg 16% 74%);
+
+        --pluto-logs-info-color: white;
+        --pluto-logs-info-accent-color: inherit;
+        --pluto-logs-warn-color: rgb(236 234 213);
+        --pluto-logs-warn-accent-color: #665f26;
+        --pluto-logs-danger-color: rgb(245 218 215);
+        --pluto-logs-danger-accent-color: rgb(172 66 52);
+        --pluto-logs-debug-color: rgb(236 223 247);
+        --pluto-logs-debug-accent-color: rgb(100 50 179);
 
         /*Top navbar styling*/
         --nav-h1-text-color: black;

@@ -7,9 +7,6 @@ import Distributed
     🍭 = ServerSession()
     🍭.options.evaluation.workspace_use_distributed = false
 
-    fakeclient = ClientSession(:fake, nothing)
-    🍭.connected_clients[fakeclient.id] = fakeclient
-
     @testset "Basic $(parallel ? "distributed" : "single-process")" for parallel in [false, true]
         🍭.options.evaluation.workspace_use_distributed = parallel
         
@@ -28,7 +25,6 @@ import Distributed
             Cell("import Distributed"),
             Cell("Distributed.myid()"),
         ])
-        fakeclient.connected_notebook = notebook
 
         @test !haskey(WorkspaceManager.workspaces, notebook.notebook_id)
 
@@ -95,7 +91,6 @@ import Distributed
             Cell("g(x) = 5"),
             Cell("g = 6"),
         ])
-        fakeclient.connected_notebook = notebook
     
 
         update_run!(🍭, notebook, notebook.cells[1])
@@ -218,7 +213,6 @@ import Distributed
         write(file, read(normpath(Pluto.project_relative_path("src", "webserver", "Firebasey.jl"))))
 
         notebook = Pluto.load_notebook_nobackup(file)
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells)
 
@@ -313,7 +307,6 @@ import Distributed
             Cell("using Dates"),
             Cell("July"),
         ])
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells[1:1])
 
@@ -333,7 +326,6 @@ import Distributed
             Cell("December"),
             Cell(""),
         ])
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells)
 
@@ -365,7 +357,6 @@ import Distributed
             Cell("archive_artifact"),
             Cell("using Unknown.Package"),
         ])
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells)
 
@@ -389,7 +380,6 @@ import Distributed
             Cell(""),
         ])
 
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells)
 
@@ -417,7 +407,6 @@ import Distributed
             "December = 3",
         ]))
 
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells)
 
@@ -450,7 +439,6 @@ import Distributed
             "b = 10",
         ]))
 
-        fakeclient.connected_notebook = notebook
         update_run!(🍭, notebook, notebook.cells)
 
         @test :conj ∈ notebook.topology.nodes[notebook.cells[3]].soft_definitions
@@ -476,7 +464,6 @@ import Distributed
             "MyStruct(1.) |> inv"
         ]))
         cell(idx) = notebook.cells[idx]
-        fakeclient.connected_notebook = notebook
         update_run!(🍭, notebook, notebook.cells)
 
         @test cell(1) |> noerror
@@ -505,7 +492,6 @@ import Distributed
             "inv(a)",
         ]))
         cell(idx) = notebook.cells[idx]
-        fakeclient.connected_notebook = notebook
         update_run!(🍭, notebook, notebook.cells)
 
         @test all(noerror, notebook.cells)
@@ -537,7 +523,6 @@ import Distributed
             "Base.inv(x::Float64) = a",
             "d = Float64(c)",
         ]))
-        fakeclient.connected_notebook = notebook
         update_run!(🍭, notebook, notebook.cells)
 
         @test all(noerror, notebook.cells)
@@ -552,7 +537,6 @@ import Distributed
             "Base.inv(::Float64) = y",
             "inv(1.0)",
         ]))
-        fakeclient.connected_notebook = notebook
         update_run!(🍭, notebook, notebook.cells)
 
         @test notebook.cells[end].errored == true
@@ -575,7 +559,6 @@ import Distributed
             "",
         ]))
         cell(idx) = notebook.cells[idx]
-        fakeclient.connected_notebook = notebook
         update_run!(🍭, notebook, notebook.cells)
 
         output_21 = cell(2).output.body
@@ -683,7 +666,6 @@ import Distributed
                     e14
                 end"""),
         ])
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells[1:4])
         @test notebook.cells[1] |> noerror
@@ -902,7 +884,6 @@ import Distributed
             Cell("j(x) = (x > 0) ? f(x-1) : :done")
             Cell("f(8)")
         ])
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells[1:3])
         @test occursinerror("Cyclic reference", notebook.cells[1])
@@ -1003,7 +984,6 @@ import Distributed
             Cell("struct a; x end"),
             Cell("a")
         ])
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells[1:2])
         @test notebook.cells[1].output.body == notebook.cells[2].output.body
@@ -1045,7 +1025,6 @@ import Distributed
 
             Cell("h(4)"),
         ])
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells[1])
         @test notebook.cells[1].output.body == "f" || startswith(notebook.cells[1].output.body, "f (generic function with ")
@@ -1071,7 +1050,6 @@ import Distributed
         notebook = Notebook([
         Cell("x = 3")
     ])
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells[1])
         setcode!(notebook.cells[1], "x = x + 1")
@@ -1138,7 +1116,6 @@ import Distributed
         Cell("using Dates"),
         Cell("year(DateTime(31))"),
     ])
-    fakeclient.connected_notebook = notebook
 
     @testset "Changing functions" begin
 
@@ -1299,7 +1276,6 @@ import Distributed
             Cell("h = [x -> x + b][1]"),
             Cell("h(8)"),
         ])
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells[1:2])
         @test notebook.cells[1].output.body == "1"
@@ -1355,7 +1331,6 @@ import Distributed
             Cell("map(14:14) do i; global apple = orange; end"),
             Cell("orange = 15"),
         ])
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells[1])
         update_run!(🍭, notebook, notebook.cells[2])
@@ -1651,7 +1626,6 @@ import Distributed
             Cell("g(x) = x + y"),
             Cell("y = 22"),
         ])
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells[1])
 

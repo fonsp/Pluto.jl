@@ -370,6 +370,7 @@ export const CellInput = ({
     any_logs,
     show_logs,
     set_show_logs,
+    set_cell_disabled,
     cm_highlighted_line,
     metadata,
     global_definition_locations,
@@ -382,11 +383,9 @@ export const CellInput = ({
         set_error(null)
         throw to_throw
     }
-    const newcm_ref = useRef(/** @type {EditorView} */ (null))
-    const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))
-    const remote_code_ref = useRef(null)
-    const on_change_ref = useRef(null)
-    on_change_ref.current = on_change
+    const newcm_ref = useRef(/** @type {EditorView?} */ (null))
+    const dom_node_ref = useRef(/** @type {HTMLElement?} */ (null))
+    const remote_code_ref = useRef(/** @type {string?} */ (null))
 
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
     let global_definitions_compartment = useCompartment(newcm_ref, GlobalDefinitionsFacet.of(global_definition_locations))
@@ -586,6 +585,7 @@ export const CellInput = ({
                     highlighted_line_compartment,
                     global_definitions_compartment,
                     editable_compartment,
+                    highlightLinePlugin(),
 
                     // This is waaaay in front of the keys it is supposed to override,
                     // Which is necessary because it needs to run before *any* keymap,
@@ -833,12 +833,13 @@ export const CellInput = ({
                 any_logs=${any_logs}
                 show_logs=${show_logs}
                 set_show_logs=${set_show_logs}
+                set_cell_disabled=${set_cell_disabled}
             />
         </pluto-input>
     `
 }
 
-const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, running_disabled, any_logs, show_logs, set_show_logs }) => {
+const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, running_disabled, any_logs, show_logs, set_show_logs, set_cell_disabled }) => {
     const timeout = useRef(null)
     let pluto_actions = useContext(PlutoActionsContext)
     const [open, setOpen] = useState(false)
@@ -857,11 +858,7 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
         const new_val = !running_disabled
         e.preventDefault()
         e.stopPropagation()
-        await pluto_actions.update_notebook((notebook) => {
-            notebook.cell_inputs[cell_id].metadata["disabled"] = new_val
-        })
-        // we also 'run' the cell if it is disabled, this will make the backend propage the disabled state to dependent cells
-        await run_cell()
+        await set_cell_disabled(new_val)
     }
     const toggle_logs = () => set_show_logs(!show_logs)
 

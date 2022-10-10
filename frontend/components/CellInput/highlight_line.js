@@ -9,7 +9,7 @@ const highlighted_line = Decoration.line({
  */
 function create_line_decorations(view) {
     let line_number = view.state.facet(HighlightLineFacet)
-    if (line_number == null || line_number == undefined || line_number > view.state.doc.lines) {
+    if (line_number == null || line_number == undefined || line_number < 0 || line_number > view.state.doc.lines) {
         return Decoration.set([])
     }
 
@@ -36,6 +36,7 @@ export const highlightLinePlugin = () =>
              * @param {EditorView} view
              */
             constructor(view) {
+                this.decorations = Decoration.set([])
                 this.updateDecos(view)
             }
 

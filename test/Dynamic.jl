@@ -35,8 +35,6 @@ end
         client = ClientSession(:buffery, buffer)
 
         🍭 = ServerSession()
-        # 🍭.connected_clients[client.id] = client
-
 
         notebook = Notebook([
             Cell(
@@ -179,10 +177,8 @@ end
     end
 
     @testset "PlutoRunner API" begin
-        fakeclient = ClientSession(:fake, nothing)
         🍭 = ServerSession()
         🍭.options.evaluation.workspace_use_distributed = true
-        🍭.connected_clients[fakeclient.id] = fakeclient
 
         notebook = Notebook([
             Cell("PlutoRunner.notebook_id[] |> Text"),
@@ -203,7 +199,6 @@ end
             Cell("x = Dict(:a => 6)"),
             Cell("PlutoRunner.publish_to_js(x)"),
         ])
-        fakeclient.connected_notebook = notebook
 
         update_save_run!(🍭, notebook, notebook.cells)
         @test notebook.cells[1].output.body == notebook.notebook_id |> string
