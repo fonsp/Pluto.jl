@@ -44,7 +44,7 @@ const DEBUG_DIFFING = false
 
 // Be sure to keep this in sync with DEFAULT_CELL_METADATA in Cell.jl
 /** @type {CellMetaData} */
-const DEFAULT_CELL_METADATA = {
+export const DEFAULT_CELL_METADATA = {
     disabled: false,
     show_logs: true,
     skip_as_script: false,
@@ -52,7 +52,7 @@ const DEFAULT_CELL_METADATA = {
 
 // from our friends at https://stackoverflow.com/a/2117523
 // i checked it and it generates Julia-legal UUIDs and that's all we need -SNOF
-const uuidv4 = () =>
+export const uuidv4 = () =>
     //@ts-ignore
     "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16))
 
@@ -64,7 +64,7 @@ const Main = ({ children }) => {
     return html`<main>${children}</main>`
 }
 
-const ProcessStatus = {
+export const ProcessStatus = {
     ready: "ready",
     starting: "starting",
     no_process: "no_process",
