@@ -8,7 +8,7 @@ import {
     createContext,
     createRef,
     hydrate,
-} from "https://esm.sh/v66/preact@10.6.6?target=es2020"
+} from "https://esm.sh/v66/preact@10.11.1?target=es2020"
 import {
     //
     useEffect,
@@ -19,11 +19,13 @@ import {
     useCallback,
     useContext,
     useErrorBoundary,
-} from "https://esm.sh/v66/preact@10.6.6/hooks?target=es2020"
+} from "https://esm.sh/v66/preact@10.11.1/hooks?target=es2020"
 
 import htm from "https://esm.sh/v66/htm@3.1.0?target=es2020"
 
 const html = htm.bind(h)
+
+import { signal, effect, useComputed, useSignal, useSignalEffect } from "https://esm.sh/v66/@preact/signals@1.1.1/es2020/signals.js"
 
 export {
     //
@@ -43,4 +45,9 @@ export {
     h,
     cloneElement,
     hydrate,
+    signal,
+    effect,
+    useComputed,
+    useSignal,
+    useSignalEffect,
 }
