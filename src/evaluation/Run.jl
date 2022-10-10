@@ -445,7 +445,9 @@ function cells_to_disable_to_resolve_multiple_defs(old::NotebookTopology, new::N
 					# avoid something like `x = x + 1`
 					disjoint(node.references, node.definitions) &&
 					# no function definitions
-					isempty(node.funcdefs_without_signatures)
+					isempty(node.funcdefs_without_signatures) &&
+					# no macro calls					
+					isempty(node.macrocalls)
 				end
 			)
 				
