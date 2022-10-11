@@ -25,7 +25,7 @@ import htm from "https://esm.sh/v66/htm@3.1.0?target=es2020"
 
 const html = htm.bind(h)
 
-import { signal, effect, useComputed, useSignal, useSignalEffect, batch } from "https://esm.sh/v66/@preact/signals@1.1.1/es2020/signals.js"
+import { signal, effect, computed, useComputed, useSignal, useSignalEffect, batch } from "https://esm.sh/v66/@preact/signals@1.1.1/es2020/signals.js"
 
 export {
     //
