@@ -15,6 +15,7 @@ import {
     Compartment,
     StateEffect,
 } from "../imports/CodemirrorPlutoSetup.js"
+import { guess_notebook_location } from "../common/NotebookLocationFromURL.js"
 
 let { autocompletion, completionKeymap } = autocomplete
 
@@ -48,6 +49,12 @@ const set_cm_value = (/** @type{EditorView} */ cm, /** @type {string} */ value, 
     }
 }
 
+const is_desktop = !!window.plutoDesktop
+
+if (is_desktop) {
+    console.log("Running in Desktop Environment! Found following properties/methods:", window.plutoDesktop)
+}
+
 /**
  * @typedef FilePickerProps
  * @type {{
@@ -56,6 +63,7 @@ const set_cm_value = (/** @type{EditorView} */ cm, /** @type {string} */ value, 
  *  button_label: String,
  *  placeholder: String,
  *  on_submit: (new_path: String) => Promise<void>,
+ *  on_desktop_submit?: (loc?: string) => Promise<void>,
  *  client: import("../common/PlutoConnection.js").PlutoConnection,
  * }}
  * @augments Component<FilePickerProps,{}>
@@ -65,6 +73,7 @@ export class FilePicker extends Component {
         super(props)
         this.state = {
             is_button_disabled: true,
+            url_value: "",
         }
         this.forced_value = ""
         /** @type {EditorView?} */
@@ -86,14 +95,19 @@ export class FilePicker extends Component {
             if (!this.cm) return true
             const cm = this.cm
 
-            const my_val = cm.state.doc.toString()
-            if (my_val === this.forced_value) {
-                this.suggest_not_tmp()
-                return true
+            // ingore if running in desktop environment
+            if (!is_desktop) {
+                const my_val = cm.state.doc.toString()
+                if (my_val === this.forced_value) {
+                    this.suggest_not_tmp()
+                    return true
+                }
             }
             run(async () => {
                 try {
-                    await this.props.on_submit(cm.state.doc.toString())
+                    if (is_desktop && this.props.on_desktop_submit) {
+                        await this.props.on_desktop_submit((await guess_notebook_location(this.state.url_value)).path_or_url)
+                    } else await this.props.on_submit(cm.state.doc.toString())
                     cm.dom.blur()
                 } catch (error) {
                     set_cm_value(cm, this.props.value, true)
@@ -229,7 +243,7 @@ export class FilePicker extends Component {
                 ],
             }),
         })
-        this.base.insertBefore(this.cm.dom, this.base.firstElementChild)
+        if (!is_desktop) this.base.insertBefore(this.cm.dom, this.base.firstElementChild)
 
         // window.addEventListener("resize", () => {
         //     if (!this.cm.hasFocus()) {
@@ -238,11 +252,24 @@ export class FilePicker extends Component {
         // })
     }
     render() {
-        return html`
-            <pluto-filepicker>
-                <button onClick=${this.on_submit} disabled=${this.state.is_button_disabled}>${this.props.button_label}</button>
-            </pluto-filepicker>
-        `
+        return is_desktop
+            ? html`<div class="desktop_picker_group">
+                  <input
+                      value=${this.state.url_value}
+                      placeholder="Enter notebook URL..."
+                      onChange=${(v) => {
+                          this.setState({ url_value: v.target.value })
+                      }}
+                  />
+                  <div onClick=${this.on_submit} class="desktop_picker">
+                      <button>${this.props.button_label}</button>
+                  </div>
+              </div>`
+            : html`
+                  <pluto-filepicker>
+                      <button onClick=${this.on_submit} disabled=${this.state.is_button_disabled}>${this.props.button_label}</button>
+                  </pluto-filepicker>
+              `
     }
 
     request_path_completions() {

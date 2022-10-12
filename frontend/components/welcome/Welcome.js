@@ -75,14 +75,20 @@ export const Welcome = () => {
 
     const { show_samples, CustomRecent, CustomPicker } = extended_components
 
-    const [navigating_away, set_navigation_away] = useState(/** @type {string?} */ (null))
+    // When block_screen_with_this_text is null (default), all is fine. When it is a string, we show a big banner with that text, and disable all other UI. https://github.com/fonsp/Pluto.jl/pull/2292
+    const [block_screen_with_this_text, set_block_screen_with_this_text] = useState(/** @type {string?} */ (null))
 
-    useLayoutEffect(() => {
-        if (navigating_away != null) document.body.classList.add("loading")
-    }, [navigating_away])
+    const on_start_navigation = (value) => {
+        // Instead of calling set_block_screen_with_this_text(value) directly, we wait for the beforeunload to happen, and then we do it. If this event does not happen within 1 second, then that means that the user right-clicked, or Ctrl+Clicked (to open in a new tab), and we don't want to clear the main menu. https://github.com/fonsp/Pluto.jl/issues/2301
+        const handler = (e) => {
+            set_block_screen_with_this_text(value)
+        }
+        window.addEventListener("beforeunload", handler)
+        setTimeout(() => window.removeEventListener("beforeunload", handler), 1000)
+    }
 
-    return navigating_away != null
-        ? html`<div class="navigating-away-banner"><h2>Loading ${navigating_away}...</h2></div>`
+    return block_screen_with_this_text != null
+        ? html`<div class="navigating-away-banner"><h2>Loading ${block_screen_with_this_text}...</h2></div>`
         : html`
               <section id="title">
                   <h1>welcome to <img src=${url_logo_big} /></h1>
@@ -97,7 +103,7 @@ export const Welcome = () => {
                           connected=${connected}
                           remote_notebooks=${remote_notebooks}
                           CustomRecent=${CustomRecent}
-                          on_start_navigation=${set_navigation_away}
+                          on_start_navigation=${on_start_navigation}
                       />
                   </div>
               </section>
@@ -108,7 +114,7 @@ export const Welcome = () => {
                           connected=${connected}
                           CustomPicker=${CustomPicker}
                           show_samples=${show_samples}
-                          on_start_navigation=${set_navigation_away}
+                          on_start_navigation=${on_start_navigation}
                       />
                   </div>
               </section>

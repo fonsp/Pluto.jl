@@ -23,7 +23,7 @@ using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
 import Distributed
 import Base64
-import FuzzyCompletions: Completion, ModuleCompletion, PropertyCompletion, FieldCompletion, PathCompletion, DictCompletion, completions, completion_text, score
+import FuzzyCompletions: Completion, BslashCompletion, ModuleCompletion, PropertyCompletion, FieldCompletion, PathCompletion, DictCompletion, completions, completion_text, score
 import Base: show, istextmime
 import UUIDs: UUID, uuid4
 import Dates: DateTime
@@ -956,7 +956,7 @@ const default_stdout_iocontext = IOContext(devnull,
     :is_pluto => false,
 )
 
-const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
+const imagemimes = MIME[MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
 # in descending order of coolness
 # text/plain always matches - almost always
 """
@@ -964,7 +964,7 @@ The MIMEs that Pluto supports, in order of how much I like them.
 
 `text/plain` should always match - the difference between `show(::IO, ::MIME"text/plain", x)` and `show(::IO, x)` is an unsolved mystery.
 """
-const allmimes = [MIME"application/vnd.pluto.table+object"(); MIME"application/vnd.pluto.divelement+object"(); MIME"text/html"(); imagemimes; MIME"application/vnd.pluto.tree+object"(); MIME"text/latex"(); MIME"text/plain"()]
+const allmimes = MIME[MIME"application/vnd.pluto.table+object"(); MIME"application/vnd.pluto.divelement+object"(); MIME"text/html"(); imagemimes; MIME"application/vnd.pluto.tree+object"(); MIME"text/latex"(); MIME"text/plain"()]
 
 
 """
@@ -995,33 +995,41 @@ format_output(@nospecialize(x); context=default_iocontext) = format_output_defau
 
 format_output(::Nothing; context=default_iocontext) = ("", MIME"text/plain"())
 
+"Downstream packages can set this to false to obtain unprettified stack traces."
+const PRETTY_STACKTRACES = Ref(true)
+
 function format_output(val::CapturedException; context=default_iocontext)
-    ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
-    stack = [s for (s, _) in val.processed_bt]
+    stacktrace = if PRETTY_STACKTRACES[]
+        ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
+        stack = [s for (s, _) in val.processed_bt]
 
-    # function_wrap_index = findfirst(f -> occursin("function_wrapped_cell", String(f.func)), stack)
+        # function_wrap_index = findfirst(f -> occursin("function_wrapped_cell", String(f.func)), stack)
 
-    function_wrap_index = findlast(f -> occursin("#==#", String(f.file)), stack)
+        function_wrap_index = findlast(f -> occursin("#==#", String(f.file)), stack)
 
-    if function_wrap_index === nothing
-        for _ in 1:2
-            until = findfirst(b -> b.func == :eval, reverse(stack))
-            stack = until === nothing ? stack : stack[1:end - until]
+        if function_wrap_index === nothing
+            for _ in 1:2
+                until = findfirst(b -> b.func == :eval, reverse(stack))
+                stack = until === nothing ? stack : stack[1:end - until]
+            end
+        else
+            stack = stack[1:function_wrap_index]
+        end
+
+        pretty = map(stack) do s
+            Dict(
+                :call => pretty_stackcall(s, s.linfo),
+                :inlined => s.inlined,
+                :file => basename(String(s.file)),
+                :path => String(s.file),
+                :line => s.line,
+            )
         end
     else
-        stack = stack[1:function_wrap_index]
+        val
     end
 
-    pretty = map(stack) do s
-        Dict(
-            :call => pretty_stackcall(s, s.linfo),
-            :inlined => s.inlined,
-            :file => basename(String(s.file)),
-            :path => String(s.file),
-            :line => s.line,
-        )
-    end
-    Dict{Symbol,Any}(:msg => sprint(try_showerror, val.ex), :stacktrace => pretty), MIME"application/vnd.pluto.stacktrace+object"()
+    Dict{Symbol,Any}(:msg => sprint(try_showerror, val.ex), :stacktrace => stacktrace), MIME"application/vnd.pluto.stacktrace+object"()
 end
 
 function format_output(binding::Base.Docs.Binding; context=default_iocontext)
@@ -1095,11 +1103,19 @@ function use_tree_viewer_for_struct(@nospecialize(x::T))::Bool where T
     end
 end
 
+"""
+    is_mime_enabled(::MIME) -> Bool
+
+Return whether the argument's mimetype is enabled.
+This defaults to `true`, but additional dispatches can be set to `false` by downstream packages.
+"""
+is_mime_enabled(::MIME) = true
+
 "Return the first mimetype in `allmimes` which can show `x`."
 function mimetype(x)
     # ugly code to fix an ugly performance problem
     for m in allmimes
-        if pluto_showable(m, x)
+        if pluto_showable(m, x) && is_mime_enabled(m)
             return m
         end
     end
@@ -1114,7 +1130,7 @@ Like two-argument `Base.show`, except:
 function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
     mime = mimetype(x)
 
-    if mime isa MIME"text/plain" && use_tree_viewer_for_struct(x)
+    if mime isa MIME"text/plain" && is_mime_enabled(MIME"application/vnd.pluto.tree+object"()) && use_tree_viewer_for_struct(x)
         tree_data(x, io), MIME"application/vnd.pluto.tree+object"()
     elseif mime isa MIME"application/vnd.pluto.tree+object"
         try
@@ -1630,6 +1646,14 @@ catch
 end
 completion_description(::Completion) = nothing
 
+completion_detail(::Completion) = nothing
+completion_detail(completion::BslashCompletion) =
+    haskey(REPL.REPLCompletions.latex_symbols, completion.bslash) ?
+        REPL.REPLCompletions.latex_symbols[completion.bslash] :
+    haskey(REPL.REPLCompletions.emoji_symbols, completion.bslash) ?
+        REPL.REPLCompletions.emoji_symbols[completion.bslash] :
+        nothing
+
 function is_pluto_workspace(m::Module)
     mod_name = nameof(m) |> string
     startswith(mod_name, "workspace#")
@@ -1648,12 +1672,16 @@ function completions_exported(cs::Vector{<:Completion})
     end
 end
 
-completion_from_notebook(c::ModuleCompletion) = is_pluto_workspace(c.parent) && c.mod != "include" && c.mod != "eval"
+completion_from_notebook(c::ModuleCompletion) =
+    is_pluto_workspace(c.parent) &&
+    c.mod != "include" &&
+    c.mod != "eval" &&
+    !startswith(c.mod, "#")
 completion_from_notebook(c::Completion) = false
 
-only_special_completion_types(c::PathCompletion) = :path
-only_special_completion_types(c::DictCompletion) = :dict
-only_special_completion_types(c::Completion) = nothing
+only_special_completion_types(::PathCompletion) = :path
+only_special_completion_types(::DictCompletion) = :dict
+only_special_completion_types(::Completion) = nothing
 
 "You say Linear, I say Algebra!"
 function completion_fetcher(query, pos, workspace::Module)
@@ -1673,13 +1701,16 @@ function completion_fetcher(query, pos, workspace::Module)
         filter!(isenough ∘ score, results) # too many candiates otherwise
     end
 
-    texts = completion_text.(results)
-    descriptions = completion_description.(results)
     exported = completions_exported(results)
-    from_notebook = completion_from_notebook.(results)
-    completion_type = only_special_completion_types.(results)
-
-    smooshed_together = collect(zip(texts, descriptions, exported, from_notebook, completion_type))
+    smooshed_together = [
+        (completion_text(result),
+         completion_description(result),
+         rexported,
+         completion_from_notebook(result),
+         only_special_completion_types(result),
+         completion_detail(result))
+        for (result, rexported) in zip(results, exported)
+    ]
 
     p = if endswith(query, '.')
         sortperm(smooshed_together; alg=MergeSort, by=basic_completion_priority)
@@ -1689,8 +1720,8 @@ function completion_fetcher(query, pos, workspace::Module)
         sortperm(scores .+ 3.0 * exported; alg=MergeSort, rev=true)
     end
 
-    final = smooshed_together[p]
-    (final, loc, found)
+    permute!(smooshed_together, p)
+    (smooshed_together, loc, found)
 end
 
 is_dot_completion(::Union{ModuleCompletion,PropertyCompletion,FieldCompletion}) = true

@@ -2,7 +2,7 @@ name = "Pluto"
 uuid = "c3e4b0f8-55cb-11ea-2926-15256bba5781"
 license = "MIT"
 authors = ["Fons van der Plas <fons@plutojl.org>"]
-version = "0.19.12"
+version = "0.19.13"
 
 [deps]
 Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
@@ -21,6 +21,7 @@ MsgPack = "99f44e22-a591-53d1-9472-aa23ef4bd671"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 PrecompileSignatures = "91cefc8d-f054-46dc-8f8c-26e11d7c5411"
 REPL = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
+RegistryInstances = "2792f1a3-b283-48e8-9a74-f99dce5104f3"
 RelocatableFolders = "05181044-ff0b-4ac5-8273-598c1e38db00"
 Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
@@ -36,6 +37,7 @@ HypertextLiteral = "0.7, 0.8, 0.9"
 MIMEs = "0.1"
 MsgPack = "1.1"
 PrecompileSignatures = "3"
+RegistryInstances = "0.1"
 RelocatableFolders = "0.1, 0.2, 0.3"
 Tables = "1"
 URIs = "1.3"
@@ -43,12 +45,12 @@ julia = "^1.6"
 
 [extras]
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Memoize = "c03570c3-d221-55d1-a50c-7939bbd78826"
 OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
-Memoize = "c03570c3-d221-55d1-a50c-7939bbd78826"
 
 [targets]
 test = ["DataFrames", "OffsetArrays", "Random", "Sockets", "Test", "TimerOutputs", "Memoize"]

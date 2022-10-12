@@ -53,3 +53,14 @@ function set_unresolved(topology::NotebookTopology, unresolved_cells::Vector{Cel
         disabled_cells=topology.disabled_cells,
     )
 end
+
+
+function Base.setdiff(topology::NotebookTopology, cells::Vector{Cell})
+    NotebookTopology(
+        nodes=setdiffkeys(topology.nodes, cells),
+        codes=setdiffkeys(topology.codes, cells),
+        unresolved_cells=ImmutableSet{Cell}(setdiff(topology.unresolved_cells.c, cells); skip_copy=true),
+        cell_order=ImmutableVector{Cell}(setdiff(topology.cell_order.c, cells); skip_copy=true),
+        disabled_cells=ImmutableSet{Cell}(setdiff(topology.disabled_cells.c, cells); skip_copy=true),
+    )
+end

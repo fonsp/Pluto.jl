@@ -7,9 +7,6 @@ using Pluto.WorkspaceManager: poll
     🍭 = ServerSession()
     🍭.options.evaluation.workspace_use_distributed = true
 
-    fakeclient = ClientSession(:fake, nothing)
-    🍭.connected_clients[fakeclient.id] = fakeclient
-    
     notebook = Notebook(Cell.([
         "println(123)",
         "println(stdout, 123)",

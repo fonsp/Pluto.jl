@@ -7,9 +7,6 @@ import Memoize: @memoize
     🍭 = ServerSession()
     🍭.options.evaluation.workspace_use_distributed = false
 
-    fakeclient = ClientSession(:fake, nothing)
-    🍭.connected_clients[fakeclient.id] = fakeclient
-
     @testset "Base macro call" begin
         notebook = Notebook([
             Cell("@enum Fruit 🍎 🍐"),
@@ -886,9 +883,6 @@ import Memoize: @memoize
     @testset "Delete methods from macros" begin
         🍭 = ServerSession()
         🍭.options.evaluation.workspace_use_distributed = false
-
-        fakeclient = ClientSession(:fake, nothing)
-        🍭.connected_clients[fakeclient.id] = fakeclient
 
         notebook = Notebook([
             Cell("using Memoize"),

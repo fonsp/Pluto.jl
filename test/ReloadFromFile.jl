@@ -5,21 +5,31 @@ import Distributed
 using Pluto.WorkspaceManager: poll
 import Pkg
 
+
+function retry(f::Function, n)
+    try
+        f()
+    catch e
+        if n > 0
+            retry(f, n - 1)
+        else
+            rethrow(e)
+        end
+    end
+end
+
 @testset "Reload from file" begin
+    
+    retry(3) do
     
     🍭 = ServerSession()
     🍭.options.evaluation.workspace_use_distributed = false
     🍭.options.server.auto_reload_from_file = true
     
     
-    
     timeout_between_tests = 🍭.options.server.auto_reload_from_file_cooldown * 1.5
 
-    fakeclient = ClientSession(:fake, nothing)
-    🍭.connected_clients[fakeclient.id] = fakeclient
-    
     notebook = SessionActions.new(🍭; run_async=false)
-    fakeclient.connected_notebook = notebook
     
     ### 
     sleep(timeout_between_tests)
@@ -34,18 +44,18 @@ import Pkg
     
     write(notebook.path, file1)
     
-    @test poll(30) do
+    @assert poll(30) do
         length(notebook.cells) == 3
     end
-    @test poll(5) do
+    @assert poll(5) do
         notebook.cells[1].output.body == "123"
     end
-    @test poll(5) do
+    @assert poll(5) do
         all(c -> !c.running, notebook.cells)
     end
     
-    @test notebook.cells[2].output.body == "246"
-    @test notebook.cells[3] |> noerror
+    @assert notebook.cells[2].output.body == "246"
+    @assert notebook.cells[3] |> noerror
     
     original_rand_output = notebook.cells[3].output.body
     
@@ -58,12 +68,12 @@ import Pkg
     file2 = sprint(Pluto.save_notebook, nb2)
     write(notebook.path, file2)
     
-    @test poll(10) do
+    @assert poll(10) do
         notebook.cells[3].output.body == "123"
     end
     
     # notebook order reversed, but cell should not re-run
-    @test original_rand_output == notebook.cells[1].output.body
+    @assert original_rand_output == notebook.cells[1].output.body
     
     
     ###
@@ -74,16 +84,16 @@ import Pkg
     write(notebook.path, file3)
     
     
-    @test poll(10) do
+    @assert poll(10) do
         notebook.cells[1].output.body == "6"
     end
-    @test poll(5) do
+    @assert poll(5) do
         all(c -> !c.running, notebook.cells)
     end
-    @test notebook.cells[2].output.body == "12"
+    @assert notebook.cells[2].output.body == "12"
     
     # notebook order reversed again, but cell should not re-run
-    @test original_rand_output == notebook.cells[3].output.body
+    @assert original_rand_output == notebook.cells[3].output.body
 
     
         
@@ -96,18 +106,18 @@ import Pkg
     sleep(timeout_between_tests)
     
     file5 = read(notebook.path, String)
-    @test file4 != file5
+    @assert file4 != file5
     
-    @test notebook.cells[3].code_folded
+    @assert notebook.cells[3].code_folded
     write(notebook.path, file4)
     
     
-    @test poll(10) do
+    @assert poll(10) do
         notebook.cells[3].code_folded == false
     end
     
     # cell folded, but cell should not re-run
-    @test original_rand_output == notebook.cells[3].output.body
+    @assert original_rand_output == notebook.cells[3].output.body
 
     
         
@@ -121,18 +131,19 @@ import Pkg
     sleep(timeout_between_tests)
     
     file7 = read(notebook.path, String)
-    @test file6 != file7
-    @test Pluto.is_disabled(notebook.cells[3])
+    @assert file6 != file7
+    @assert Pluto.is_disabled(notebook.cells[3])
     
     write(notebook.path, file6)
-    @test poll(10) do
+    @assert poll(10) do
         !Pluto.is_disabled(notebook.cells[3])
     end
     
     # cell disabled and re-enabled, so it should re-run
-    @test original_rand_output != notebook.cells[3].output.body
+    @assert poll(10) do
+        original_rand_output != notebook.cells[3].output.body
+    end
 
-    
 
     ###
     sleep(timeout_between_tests)
@@ -141,9 +152,12 @@ import Pkg
     write(notebook.path, file8)
     
     
-    @test poll(10) do
+    @assert poll(10) do
         notebook.cells[2].output.body == "false"
     end
-    @test length(notebook.cells) == 2
-    @test notebook.nbpkg_restart_required_msg !== nothing
+    
+    @assert length(notebook.cells) == 2
+    @assert notebook.nbpkg_restart_required_msg !== nothing
+end
+@test true
 end

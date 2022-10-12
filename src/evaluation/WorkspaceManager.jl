@@ -60,6 +60,8 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
         pid
     end
 
+    Distributed.remotecall_eval(Main, [pid], session.options.evaluation.workspace_custom_startup_expr)
+
     Distributed.remotecall_eval(Main, [pid], :(PlutoRunner.notebook_id[] = $(notebook.notebook_id)))
 
     remote_log_channel = Core.eval(Main, quote

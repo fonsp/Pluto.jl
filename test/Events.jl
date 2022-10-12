@@ -16,14 +16,10 @@ import UUIDs: UUID
     🍭.options.server.on_event = test_listener
     🍭.options.evaluation.workspace_use_distributed = false
 
-    fakeclient = ClientSession(:fake, nothing)
-    🍭.connected_clients[fakeclient.id] = fakeclient
     notebook = Notebook([
         Cell("[1,1,[1]]"),
         Cell("Dict(:a => [:b, :c])"),
     ])
-
-    fakeclient.connected_notebook = notebook
 
     update_run!(🍭, notebook, notebook.cells)
     WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
