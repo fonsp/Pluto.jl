@@ -104,12 +104,6 @@ const Dot = ({ set_cm_highlighted_line, msg, kwargs, y, level }) => {
         }}
     >
         <pluto-log-icon></pluto-log-icon>
-        ${is_stdout
-            ? html`<${MoreInfo}
-                  body=${html`This text was written to the ${" "}<a href="https://en.wikipedia.org/wiki/Standard_streams" target="_blank">terminal stream</a
-                      >${" "}while running the cell. It is not the${" "}<em>output value</em>${" "}of this cell.`}
-              />`
-            : null}
         <pluto-log-dot class=${level}
             >${is_progress
                 ? html`<${Progress} progress=${progress} />`
@@ -123,8 +117,7 @@ const Dot = ({ set_cm_highlighted_line, msg, kwargs, y, level }) => {
                       />
                       <${LogViewAnsiUp} value=${msg[0]} />`
                 : html`${mimepair_output(msg)}${kwargs.map(
-                      ([k, v]) =>
-                          html` <pluto-log-dot-kwarg><pluto-key>${k}</pluto-key> <pluto-value>${mimepair_output(v)}</pluto-value></pluto-log-dot-kwarg> `
+                      ([k, v]) => html`<pluto-log-dot-kwarg><pluto-key>${k}</pluto-key><pluto-value>${mimepair_output(v)}</pluto-value></pluto-log-dot-kwarg>`
                   )}`}</pluto-log-dot
         >
     </pluto-log-dot-positioner>`
