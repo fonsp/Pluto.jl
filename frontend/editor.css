@@ -1786,6 +1786,13 @@ pluto-popup > * {
     /* Slightly changes the layout of the three pkg buttons... in just the way that we want it! */
     position: absolute;
 }
+
+pluto-popup code.auto_disabled_variable {
+    font-family: var(--julia-mono-font-stack);
+    font-size: 0.8rem;
+    font-variant-ligatures: none;
+}
+
 pluto-popup > pkg-popup {
     background: var(--pkg-popup-bg);
     border: 3px solid var(--pkg-popup-border-color);
@@ -2823,7 +2830,8 @@ pluto-cell.code_differs .cm-editor .cm-gutters {
 }
 
 .cm-completionIcon-c_Any::before,
-pluto-output > assignee {
+pluto-output > assignee,
+pluto-popup code.auto_disabled_variable {
     color: var(--cm-var-color) !important;
     font-weight: 700;
 }
