@@ -1,5 +1,6 @@
 import { html, useState, useEffect } from "../imports/Preact.js"
 import { cl } from "../common/ClassTable.js"
+import { open_pluto_popup } from "./Popup.js"
 
 export const UndoDelete = ({ recently_deleted, on_click }) => {
     const [hidden, set_hidden] = useState(true)
@@ -38,4 +39,24 @@ export const UndoDelete = ({ recently_deleted, on_click }) => {
             >)
         </nav>
     `
+}
+
+/**
+ * @param {{
+ *  notebook: import("./Editor.js").NotebookData,
+ *  recently_auto_disabled_cells: [number, Array<string>],
+ * }} props
+ * */
+export const RecentlyDisabledInfo = ({ notebook, recently_auto_disabled_cells }) => {
+    useEffect(() => {
+        recently_auto_disabled_cells[1].forEach((cell_id) => {
+            open_pluto_popup({
+                type: "info",
+                source_element: document.getElementById(cell_id),
+                body: html`Another cell has been disabled automatically.`,
+            })
+        })
+    }, [recently_auto_disabled_cells])
+
+    return null
 }

@@ -14,7 +14,7 @@ import { NotebookMemo as Notebook } from "./Notebook.js"
 import { LiveDocs } from "./LiveDocs.js"
 import { DropRuler } from "./DropRuler.js"
 import { SelectionArea } from "./SelectionArea.js"
-import { UndoDelete } from "./UndoDelete.js"
+import { RecentlyDisabledInfo, UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
 import { Scroller } from "./Scroller.js"
 import { ExportBanner } from "./ExportBanner.js"
@@ -290,6 +290,7 @@ export class Editor extends Component {
             cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ ([]),
+            recently_auto_disabled_cells: /** @type {[number, Array<string>]} */ ([Date.now(), []]),
             last_update_time: 0,
 
             disable_ui: launch_params.disable_ui,
@@ -589,7 +590,14 @@ export class Editor extends Component {
                             }
                         })
                     )
-                    await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.state.notebook.notebook_id })
+                    const result = await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.state.notebook.notebook_id })
+                    console.log(result)
+                    const { disabled_cells } = result.message
+                    if (disabled_cells.length > 0) {
+                        await this.setStatePromise({
+                            recently_auto_disabled_cells: [Date.now(), disabled_cells],
+                        })
+                    }
                 }
             },
             /**
@@ -1522,6 +1530,10 @@ patch: ${JSON.stringify(
                     <${Popup} 
                         notebook=${this.state.notebook}
                         disable_input=${this.state.disable_ui || !this.state.connected /* && this.state.backend_launch_phase == null*/}
+                    />
+                    <${RecentlyDisabledInfo} 
+                        recently_auto_disabled_cells=${this.state.recently_auto_disabled_cells}
+                        notebook=${this.state.notebook}
                     />
                     <${UndoDelete}
                         recently_deleted=${this.state.recently_deleted}
