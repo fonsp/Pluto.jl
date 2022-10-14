@@ -9,7 +9,7 @@ assignees: ''
 
 Thank you for reporting an issue about Pluto! Let's get it fixed!
 
-# To report an issue, you need two things:
+# To report an issue, you need three things:
 1. 📹 A video recording demonstrating the problem. (You can drag a video file into this box)
 2. 📝 A short Pluto notebook file. (Upload the notebook file to https://gist.github.com/ and include the link.)
 3. 🤕 Try to clearly explain what the problem is, it might not be obvious to others! Instead of saying: "This does not work.", try to say: "I expected ..., but instead I am seeing ..."

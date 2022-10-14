@@ -271,6 +271,55 @@ function http_router_for(session::ServerSession)
 
     HTTP.register!(router, "GET", "/open", serve_openfile)
     HTTP.register!(router, "POST", "/open", serve_openfile)
+
+
+    # normally shutdown is done through Dynamic.jl, with the exception of shutdowns made from the desktop app
+    serve_shutdown = with_authentication(;
+        required=security.require_secret_for_access || 
+        security.require_secret_for_open_links
+    ) do request::HTTP.Request
+        notebook = notebook_from_uri(request)
+        SessionActions.shutdown(session, notebook)
+        return HTTP.Response(200)
+    end
+
+    HTTP.register!(router, "GET", "/shutdown", serve_shutdown)
+    HTTP.register!(router, "POST", "/shutdown", serve_shutdown)
+
+
+    # used in desktop app
+    # looks like `/move?id=<notebook-id>&newpath=<new-notebook-path>``
+    serve_move = with_authentication(;
+        required=security.require_secret_for_access || 
+        security.require_secret_for_open_links
+    ) do request::HTTP.Request
+        uri = HTTP.URI(request.target)        
+        query = HTTP.queryparams(uri)
+
+        notebook = notebook_from_uri(request)
+        newpath = query["newpath"]
+        
+        try
+            SessionActions.move(session, notebook, newpath)
+            HTTP.Response(200, notebook.path)
+        catch e
+            error_response(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", sprint(showerror, e, stacktrace(catch_backtrace())))
+        end
+    end
+
+    HTTP.register!(router, "GET", "/move", serve_move)
+    HTTP.register!(router, "POST", "/move", serve_move)
+
+
+    serve_notebooklist = with_authentication(;
+        required=security.require_secret_for_access || 
+        security.require_secret_for_open_links
+    ) do request::HTTP.Request
+        return HTTP.Response(200, pack(Dict(k => v.path for (k, v) in session.notebooks)))
+    end
+
+    HTTP.register!(router, "GET", "/notebooklist", serve_notebooklist)
+
     
     serve_sample = with_authentication(;
         required=security.require_secret_for_access || 

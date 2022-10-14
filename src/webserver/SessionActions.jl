@@ -1,6 +1,6 @@
 module SessionActions
 
-import ..Pluto: Pluto, ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, cutename, readwrite, update_save_run!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, try_event_call, NewNotebookEvent, OpenNotebookEvent, ShutdownNotebookEvent, @asynclog, ProcessStatus, maybe_convert_path_to_wsl
+import ..Pluto: Pluto, ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, cutename, readwrite, update_save_run!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, try_event_call, NewNotebookEvent, OpenNotebookEvent, ShutdownNotebookEvent, @asynclog, ProcessStatus, maybe_convert_path_to_wsl, move_notebook!
 using FileWatching
 import ..Pluto.DownloadCool: download_cool
 import HTTP
@@ -258,6 +258,18 @@ function shutdown(session::ServerSession, notebook::Notebook; keep_in_session::B
     end
     WorkspaceManager.unmake_workspace((session, notebook); async, verbose, allow_restart=keep_in_session)
     try_event_call(session, ShutdownNotebookEvent(notebook))
+end
+
+function move(session::ServerSession, notebook::Notebook, newpath::String)
+    newpath = tamepath(newpath)
+
+    if isfile(newpath)
+        error("File exists already - you need to delete the old file manually.")
+    else
+        move_notebook!(notebook, newpath; disable_writing_notebook_files=session.options.server.disable_writing_notebook_files)
+        putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
+        WorkspaceManager.cd_workspace((session, notebook), newpath)
+    end 
 end
 
 end

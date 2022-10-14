@@ -545,12 +545,7 @@ function explore_struct!(ex::Expr, scopestate::ScopeState)
 end
 
 function explore_abstract!(ex::Expr, scopestate::ScopeState)
-    equiv_func = Expr(:function, ex.args...)
-    inner_symstate = explore!(equiv_func, scopestate)
-
-    abstracttypename = first(keys(inner_symstate.funcdefs)).name |> join_funcname_parts
-    push!(inner_symstate.assignments, abstracttypename)
-    return inner_symstate
+    explore_struct!(Expr(:struct, false, ex.args[1], Expr(:block, nothing)), scopestate)
 end
 
 function explore_function_macro!(ex::Expr, scopestate::ScopeState)
