@@ -331,6 +331,7 @@ function update_save_run!(
 	run_async::Bool=false, 
 	prerender_text::Bool=false, 
 	auto_solve_multiple_defs::Bool=false,
+	on_auto_solve_multiple_defs::Union{Nothing,Function}=nothing,
 	kwargs...
 )
 	old = notebook.topology
@@ -349,6 +350,8 @@ function update_save_run!(
 			# need to update the topology because the topology also keeps track of disabled cells
 			new = notebook.topology = updated_topology(new, notebook, to_disable)
 		end
+		
+		isnothing(on_auto_solve_multiple_defs) || on_auto_solve_multiple_defs(to_disable)
 	end
 
 	update_dependency_cache!(notebook)

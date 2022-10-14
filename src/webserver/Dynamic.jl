@@ -175,7 +175,7 @@ const current_state_for_clients = WeakKeyDict{ClientSession,Any}()
 """
 Update the local state of all clients connected to this notebook.
 """
-function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing)
+function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, skip_send::Bool=false)
     notebook_dict = notebook_to_js(🙋.notebook)
     for (_, client) in 🙋.session.connected_clients
         if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == 🙋.notebook.notebook_id
@@ -187,7 +187,7 @@ function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing)
             # Make sure we do send a confirmation to the client who made the request, even without changes
             is_response = 🙋.initiator !== nothing && client == 🙋.initiator.client
 
-            if !isempty(patches) || is_response
+            if !skip_send && (!isempty(patches) || is_response)
                 response = Dict(
                     :patches => patches_as_dicts,
                     :response => is_response ? commentary : nothing
@@ -416,11 +416,24 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
 
     if will_run_code(🙋.notebook)
         foreach(c -> c.queued = true, cells)
-        send_notebook_changes!(🙋)
+        # run send_notebook_changes! without actually sending it, to update current_state_for_clients for our client with c.queued = true.
+        # later, during update_save_run!, the cell will actually run, eventually setting c.queued = false again, which will be sent to the client through a patch update. 
+        # We *need* to send *something* to the client, because of https://github.com/fonsp/Pluto.jl/pull/1892, but we also don't want to send unnecessary updates. We can skip sending this update, because update_save_run! will trigger a send_notebook_changes! very very soon.
+        send_notebook_changes!(🙋; skip_send=true)
+    end
+    
+    function on_auto_solve_multiple_defs(disabled_cells)
+        response = Dict{Symbol,Any}(
+            :disabled_cells => cell_id.(disabled_cells),
+        )
+        putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:run_feedback, response, 🙋.notebook, nothing, 🙋.initiator))
     end
     
     # save=true fixes the issue where "Submit all changes" or `Ctrl+S` has no effect.
-    update_save_run!(🙋.session, 🙋.notebook, cells; run_async=true, save=true, auto_solve_multiple_defs=true)
+    update_save_run!(🙋.session, 🙋.notebook, cells; 
+        run_async=true, save=true, 
+        auto_solve_multiple_defs=true, on_auto_solve_multiple_defs
+    )
 end
 
 responses[:get_all_notebooks] = function response_get_all_notebooks(🙋::ClientRequest)
