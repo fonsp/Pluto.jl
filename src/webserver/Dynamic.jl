@@ -422,9 +422,9 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
         send_notebook_changes!(🙋; skip_send=true)
     end
     
-    function on_auto_solve_multiple_defs(disabled_cells)
+    function on_auto_solve_multiple_defs(disabled_cells_dict)
         response = Dict{Symbol,Any}(
-            :disabled_cells => cell_id.(disabled_cells),
+            :disabled_cells => Dict{UUID,Any}(cell_id(k) => v for (k,v) in disabled_cells_dict),
         )
         putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:run_feedback, response, 🙋.notebook, nothing, 🙋.initiator))
     end

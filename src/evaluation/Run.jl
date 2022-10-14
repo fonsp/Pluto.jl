@@ -339,9 +339,10 @@ function update_save_run!(
 	
 	# _assume `auto_solve_multiple_defs == false` if you want to skip some details_
 	if auto_solve_multiple_defs
-		to_disable = cells_to_disable_to_resolve_multiple_defs(old, new, cells)
+		to_disable_dict = cells_to_disable_to_resolve_multiple_defs(old, new, cells)
 		
-		if !isempty(to_disable)
+		if !isempty(to_disable_dict)
+			to_disable = keys(to_disable_dict)
 			@debug "Using augmented topology" cell_id.(to_disable)
 			
 			foreach(c -> set_disabled(c, true), to_disable)
@@ -351,7 +352,7 @@ function update_save_run!(
 			new = notebook.topology = updated_topology(new, notebook, to_disable)
 		end
 		
-		isnothing(on_auto_solve_multiple_defs) || on_auto_solve_multiple_defs(to_disable)
+		isnothing(on_auto_solve_multiple_defs) || on_auto_solve_multiple_defs(to_disable_dict)
 	end
 
 	update_dependency_cache!(notebook)
@@ -422,8 +423,8 @@ update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs.
 update_run!(args...; kwargs...) = update_save_run!(args...; save=false, kwargs...)
 
 
-function cells_to_disable_to_resolve_multiple_defs(old::NotebookTopology, new::NotebookTopology, cells::Vector{Cell})::Set{Cell}
-	to_disable = Set{Cell}()
+function cells_to_disable_to_resolve_multiple_defs(old::NotebookTopology, new::NotebookTopology, cells::Vector{Cell})::Dict{Cell,Any}
+	to_disable = Dict{Cell,Any}()
 	
 	for cell in cells
 		new_node = new.nodes[cell]
@@ -456,7 +457,9 @@ function cells_to_disable_to_resolve_multiple_defs(old::NotebookTopology, new::N
 				
 				for c in other_definers
 					# if the cell is already disabled (indirectly), then we don't need to disable it. probably.
-					c.depends_on_disabled_cells || push!(to_disable, c)
+					if !c.depends_on_disabled_cells
+						to_disable[c] = (cell_id(cell), only(new.nodes[c].definitions))
+					end
 				end
 			end
 		end

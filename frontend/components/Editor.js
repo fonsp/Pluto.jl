@@ -290,7 +290,7 @@ export class Editor extends Component {
             cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ ([]),
-            recently_auto_disabled_cells: /** @type {[number, Array<string>]} */ ([Date.now(), []]),
+            recently_auto_disabled_cells: /** @type {Map<string,[string,string]>} */ ({}),
             last_update_time: 0,
 
             disable_ui: launch_params.disable_ui,
@@ -593,9 +593,9 @@ export class Editor extends Component {
                     const result = await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.state.notebook.notebook_id })
                     console.log(result)
                     const { disabled_cells } = result.message
-                    if (disabled_cells.length > 0) {
+                    if (Object.entries(disabled_cells).length > 0) {
                         await this.setStatePromise({
-                            recently_auto_disabled_cells: [Date.now(), disabled_cells],
+                            recently_auto_disabled_cells: disabled_cells,
                         })
                     }
                 }
