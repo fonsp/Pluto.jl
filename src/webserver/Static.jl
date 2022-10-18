@@ -170,7 +170,7 @@ function http_router_for(session::ServerSession)
                 end
                 response
             else
-                println("A request to the Pluto server was made without providing a secret, here is the secret: $(session.secret)")
+                @info("A request to the Pluto server was made without providing a secret, here is the secret: $(session.secret)")
                 error_response(403, "Not yet authenticated", "<b>Open the link that was printed in the terminal where you launched Pluto.</b> It includes a <em>secret</em>, which is needed to access this server.<br><br>If you are running the server yourself and want to change this configuration, have a look at the keyword arguments to <em>Pluto.run</em>. <br><br>Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a> if you did not expect it!")
             end
         end
