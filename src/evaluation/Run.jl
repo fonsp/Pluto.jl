@@ -574,7 +574,7 @@ function update_skipped_cells_dependency!(notebook::Notebook, topology::Notebook
     for cell in notebook.cells
         cell.depends_on_skipped_cells = false
     end
-	for cell in indirectly_skipped
+    for cell in indirectly_skipped
         cell.depends_on_skipped_cells = true
     end
 end
