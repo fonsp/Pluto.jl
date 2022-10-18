@@ -424,7 +424,9 @@ update_run!(args...; kwargs...) = update_save_run!(args...; save=false, kwargs..
 
 
 function cells_to_disable_to_resolve_multiple_defs(old::NotebookTopology, new::NotebookTopology, cells::Vector{Cell})::Dict{Cell,Any}
-	to_disable = Dict{Cell,Any}()
+	# keys are cells to disable
+	# values are the reason why
+	to_disable_and_why = Dict{Cell,Any}()
 	
 	for cell in cells
 		new_node = new.nodes[cell]
@@ -436,36 +438,35 @@ function cells_to_disable_to_resolve_multiple_defs(old::NotebookTopology, new::N
 			other_definers = setdiff(fellow_assigners_new, (cell,))
 			
 			@debug "Solving multiple defs" cell.cell_id cell_id.(other_definers) disjoint(cells, other_definers)
-			if (
-				# we want cell to be the only element of cells that defines this varialbe, i.e. all other definers must have been created previously
-				disjoint(cells, other_definers) &&
-				
-				# all fellow cells (including the current cell) should meet the following criteria:
-				all(fellow_assigners_new) do c
+
+			# we want cell to be the only element of cells that defines this varialbe, i.e. all other definers must have been created previously
+			if disjoint(cells, other_definers)
+				# all fellow cells (including the current cell) should meet some criteria:
+				all_fellows_are_simple_enough = all(fellow_assigners_new) do c
 					node = new.nodes[c]
 					
-					# the cell defines only one variable. for more than one, we might confuse the user, or disable more things than we want to.
-					length(node.definitions) == 1 &&
-					# avoid something like `x = x + 1`
-					disjoint(node.references, node.definitions) &&
-					# no function definitions
-					isempty(node.funcdefs_without_signatures) &&
-					# no macro calls					
-					isempty(node.macrocalls)
+					# all must be true:
+					return (
+						length(node.definitions) == 1 && # for more than one defined variable, we might confuse the user, or disable more things than we want to.
+						disjoint(node.references, node.definitions) && # avoid self-reference like `x = x + 1`
+						isempty(node.funcdefs_without_signatures) &&
+						isempty(node.macrocalls)
+					)
 				end
-			)
 				
-				for c in other_definers
-					# if the cell is already disabled (indirectly), then we don't need to disable it. probably.
-					if !c.depends_on_disabled_cells
-						to_disable[c] = (cell_id(cell), only(new.nodes[c].definitions))
+				if all_fellows_are_simple_enough 
+					for c in other_definers
+						# if the cell is already disabled (indirectly), then we don't need to disable it. probably.
+						if !c.depends_on_disabled_cells
+							to_disable_and_why[c] = (cell_id(cell), only(new.nodes[c].definitions))
+						end
 					end
 				end
 			end
 		end
 	end
 	
-	to_disable
+	to_disable_and_why
 end
 
 
