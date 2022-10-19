@@ -591,7 +591,6 @@ export class Editor extends Component {
                         })
                     )
                     const result = await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.state.notebook.notebook_id })
-                    console.log(result)
                     const { disabled_cells } = result.message
                     if (Object.entries(disabled_cells).length > 0) {
                         await this.setStatePromise({
