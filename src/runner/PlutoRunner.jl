@@ -632,8 +632,8 @@ end
 # DELETING GLOBALS
 ###
 
-# This function checks whether the symbol provided to it represents a name of a memoized_cache variable from Memoize.jl 
-is_memoized_cache(s::Symbol) = startswith(string(s), "##") && endswidth(string(s), "_memoized_cache")
+# This function checks whether the symbol provided to it represents a name of a memoized_cache variable from Memoize.jl, see https://github.com/fonsp/Pluto.jl/issues/2305 for more details
+is_memoized_cache(s::Symbol) = startswith(string(s), "##") && endswith(string(s), "_memoized_cache")
 
 function do_reimports(workspace_name, module_imports_to_move::Set{Expr})
     for expr in module_imports_to_move
