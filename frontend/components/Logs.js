@@ -99,7 +99,6 @@ const Dot = ({ set_cm_highlighted_line, msg, kwargs, y, level }) => {
         class=${cl({ [level]: true })}
         onMouseenter=${() => is_progress || set_cm_highlighted_line(y + 1)}
         onMouseleave=${() => {
-            console.log("leaving!")
             set_cm_highlighted_line(null)
         }}
     >

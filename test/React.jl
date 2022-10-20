@@ -26,7 +26,7 @@ import Distributed
             Cell("Distributed.myid()"),
         ])
 
-        @test !haskey(WorkspaceManager.workspaces, notebook.notebook_id)
+        @test !haskey(WorkspaceManager.active_workspaces, notebook.notebook_id)
 
         update_run!(🍭, notebook, notebook.cells[1:2])
         @test notebook.cells[1].output.body == notebook.cells[2].output.body

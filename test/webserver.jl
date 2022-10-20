@@ -91,7 +91,7 @@ end
     
     # right now, the notebook was only added to the session and assigned an ID. Let's wait for it to get a process:
     @test poll(60) do
-        haskey(WorkspaceManager.workspaces, notebook.notebook_id)
+        haskey(WorkspaceManager.active_workspaces, notebook.notebook_id)
     end
     sleep(1)
     
