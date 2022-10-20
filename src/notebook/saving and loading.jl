@@ -48,7 +48,7 @@ function save_notebook(io::IO, notebook::Notebook)
     println(io, "using Markdown")
     println(io, "using InteractiveUtils")
     # Super Advanced Code Analysis™ to add the @bind macro to the saved file if it's used somewhere.
-    if any(occursin("@bind", c.code) for c in notebook.cells)
+    if any(!must_be_commented_in_file(c) && occursin("@bind", c.code) for c in notebook.cells)
         println(io, "")
         println(io, "# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).")
         println(io, PlutoRunner.fake_bind)

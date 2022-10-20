@@ -82,13 +82,18 @@ pluto-filepicker {
     background: var(--white);
 }
 
+.desktop_picker {
+    display: flex;
+    flex-direction: row;
+    margin-left: 5px;
+}
+
 pluto-filepicker .cm-editor {
     height: calc(1rem + 4px + 4px + 4px);
     display: inline-block;
     width: 100%;
     font-style: normal;
     font-weight: 500;
-
     font-family: var(--inter-ui-font-stack);
     font-size: 0.75rem;
     letter-spacing: 1px;
@@ -99,8 +104,9 @@ pluto-filepicker .cm-editor {
     border-right: none;
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
-    flex: 1 1 100%;
-    width: 0px; /* min-width: 0px; */
+    flex: 1 1 auto;
+    width: 0px;
+    /* min-width: 0px; */
 }
 
 pluto-filepicker .cm-scroller {
@@ -110,7 +116,8 @@ pluto-filepicker .cm-scroller::-webkit-scrollbar {
     display: none; /* Safari and Chrome */
 }
 
-pluto-filepicker button {
+pluto-filepicker button,
+.desktop_picker button {
     margin: 0px;
     background: var(--footer-filepicker-focus-color);
     border-radius: 3px;
@@ -122,10 +129,27 @@ pluto-filepicker button {
     font-size: 0.75rem;
 }
 
+.desktop_picker_group {
+    display: inline-flex;
+}
+
+.desktop_picker_group > input {
+    margin-left: 1em;
+}
+
+.desktop_picker > button {
+    cursor: pointer;
+}
+
+.desktop_picker > button.full_width {
+    width: 100%;
+}
+
 pluto-filepicker button {
     cursor: pointer;
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
+    flex: 0 1 auto;
 }
 
 pluto-filepicker button:disabled {
@@ -421,4 +445,18 @@ featured-card.special::before {
     /* right: 51px; */
     /* border: 2px solid #ffca62; */
     pointer-events: none;
+}
+
+.navigating-away-banner {
+    width: 100vw;
+    min-height: 70vh;
+    place-content: center;
+    display: grid;
+    padding: 3em;
+}
+
+.navigating-away-banner h2 {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
 }

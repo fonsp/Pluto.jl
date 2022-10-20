@@ -158,6 +158,7 @@ function notebook_to_js(notebook::Notebook)
                 # TODO: cache this
                 "installed_versions" => ctx === nothing ? Dict{String,String}() : notebook.nbpkg_installed_versions_cache,
                 "terminal_outputs" => notebook.nbpkg_terminal_outputs,
+                "install_time_ns" => notebook.nbpkg_install_time_ns,
                 "busy_packages" => notebook.nbpkg_busy_packages,
                 "instantiated" => notebook.nbpkg_ctx_instantiated,
             )
@@ -174,19 +175,19 @@ const current_state_for_clients = WeakKeyDict{ClientSession,Any}()
 """
 Update the local state of all clients connected to this notebook.
 """
-function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing)
+function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, skip_send::Bool=false)
     notebook_dict = notebook_to_js(🙋.notebook)
     for (_, client) in 🙋.session.connected_clients
         if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == 🙋.notebook.notebook_id
             current_dict = get(current_state_for_clients, client, :empty)
             patches = Firebasey.diff(current_dict, notebook_dict)
-            patches_as_dicts::Array{Dict} = patches
+            patches_as_dicts::Array{Dict} = Firebasey._convert(Array{Dict}, patches)
             current_state_for_clients[client] = deep_enough_copy(notebook_dict)
 
             # Make sure we do send a confirmation to the client who made the request, even without changes
             is_response = 🙋.initiator !== nothing && client == 🙋.initiator.client
 
-            if !isempty(patches) || is_response
+            if !skip_send && (!isempty(patches) || is_response)
                 response = Dict(
                     :patches => patches_as_dicts,
                     :response => is_response ? commentary : nothing
@@ -228,16 +229,7 @@ const no_changes = Changed[]
 
 const effects_of_changed_state = Dict(
     "path" => function(; request::ClientRequest, patch::Firebasey.ReplacePatch)
-        newpath = tamepath(patch.value)
-        # SessionActions.move(request.session, request.notebook, newpath)
-
-        if isfile(newpath)
-            error("File exists already - you need to delete the old file manually.")
-        else
-            move_notebook!(request.notebook, newpath; disable_writing_notebook_files=request.session.options.server.disable_writing_notebook_files)
-            putplutoupdates!(request.session, clientupdate_notebook_list(request.session.notebooks))
-            WorkspaceManager.cd_workspace((request.session, request.notebook), newpath)
-        end
+        SessionActions.move(request.session, request.notebook, patch.value)
         return no_changes
     end,
     "process_status" => function(; request::ClientRequest, patch::Firebasey.ReplacePatch)
@@ -310,7 +302,7 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
                 mutator(matches..., rest...; request=🙋, patch)
             end
 
-            push!(changes, current_changes...)
+            union!(changes, current_changes)
         end
 
         # We put a flag to check whether any patch changes the skip_as_script metadata. This is to eventually trigger a notebook updated if no reactive_run is part of this update
@@ -368,19 +360,11 @@ function trigger_resolver(resolvers::Dict, path, values=[])
 		throw(BoundsError("resolver path ends at Dict with keys $(keys(resolver))"))
 	end
 	
-	segment = first(path)
-	rest = path[firstindex(path)+1:end]
-	for (key, resolver) in resolvers
-		if key isa Wildcard
-			continue
-		end
-		if key == segment
-			return trigger_resolver(resolver, rest, values)
-		end
-	end
-	
-	if haskey(resolvers, Wildcard())
-		return trigger_resolver(resolvers[Wildcard()], rest, (values..., segment))
+	segment, rest... = path
+	if haskey(resolvers, segment)
+		trigger_resolver(resolvers[segment], rest, values)
+	elseif haskey(resolvers, Wildcard())
+		trigger_resolver(resolvers[Wildcard()], rest, (values..., segment))
     else
         throw(BoundsError("failed to match path $(path), possible keys $(keys(resolver))"))
 	end
@@ -423,11 +407,24 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
 
     if will_run_code(🙋.notebook)
         foreach(c -> c.queued = true, cells)
-        send_notebook_changes!(🙋)
+        # run send_notebook_changes! without actually sending it, to update current_state_for_clients for our client with c.queued = true.
+        # later, during update_save_run!, the cell will actually run, eventually setting c.queued = false again, which will be sent to the client through a patch update. 
+        # We *need* to send *something* to the client, because of https://github.com/fonsp/Pluto.jl/pull/1892, but we also don't want to send unnecessary updates. We can skip sending this update, because update_save_run! will trigger a send_notebook_changes! very very soon.
+        send_notebook_changes!(🙋; skip_send=true)
+    end
+    
+    function on_auto_solve_multiple_defs(disabled_cells_dict)
+        response = Dict{Symbol,Any}(
+            :disabled_cells => Dict{UUID,Any}(cell_id(k) => v for (k,v) in disabled_cells_dict),
+        )
+        putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:run_feedback, response, 🙋.notebook, nothing, 🙋.initiator))
     end
     
     # save=true fixes the issue where "Submit all changes" or `Ctrl+S` has no effect.
-    update_save_run!(🙋.session, 🙋.notebook, cells; run_async=true, save=true)
+    update_save_run!(🙋.session, 🙋.notebook, cells; 
+        run_async=true, save=true, 
+        auto_solve_multiple_defs=true, on_auto_solve_multiple_defs
+    )
 end
 
 responses[:get_all_notebooks] = function response_get_all_notebooks(🙋::ClientRequest)

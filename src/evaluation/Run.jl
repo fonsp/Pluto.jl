@@ -1,27 +1,8 @@
-import REPL:ends_with_semicolon
+import REPL: ends_with_semicolon
 import .Configuration
-import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname, UsingsImports, external_package_names
-import .WorkspaceManager: macroexpand_in_workspace
-import .MoreAnalysis: find_bound_variables
+import .ExpressionExplorer: is_joined_funcname
 
 Base.push!(x::Set{Cell}) = x
-
-"""
-```julia
-set_bond_value_pairs!(session::ServerSession, notebook::Notebook, bond_value_pairs::Vector{Tuple{Symbol, Any}})
-```
-
-Given a list of tuples of the form `(bound variable name, (untransformed) value)`, assign each (transformed) value to the corresponding global bound variable in the notebook workspace.
-
-`bond_value_pairs` can also be an iterator.
-"""
-function set_bond_value_pairs!(session::ServerSession, notebook::Notebook, bond_value_pairs)
-	for (bound_sym, new_value) in bond_value_pairs
-		WorkspaceManager.eval_in_workspace((session, notebook), :($(bound_sym) = Main.PlutoRunner.transform_bond_value($(QuoteNode(bound_sym)), $(new_value))))
-	end
-end
-
-const _empty_bond_value_pairs = zip(Symbol[],Any[])
 
 """
 Run given cells and all the cells that depend on them, based on the topology information before and after the changes.
@@ -32,9 +13,10 @@ function run_reactive!(
     old_topology::NotebookTopology,
     new_topology::NotebookTopology,
     roots::Vector{Cell};
+	save::Bool=true,
     deletion_hook::Function = WorkspaceManager.move_vars,
     user_requested_run::Bool = true,
-    bond_value_pairs=_empty_bond_value_pairs,
+    bond_value_pairs=zip(Symbol[],Any[]),
 )::TopologicalOrder
     withtoken(notebook.executetoken) do
         run_reactive_core!(
@@ -43,9 +25,10 @@ function run_reactive!(
             old_topology,
             new_topology,
             roots;
+			save,
             deletion_hook,
             user_requested_run,
-            bond_value_pairs
+            bond_value_pairs,
         )
     end
 end
@@ -62,10 +45,11 @@ function run_reactive_core!(
     old_topology::NotebookTopology,
     new_topology::NotebookTopology,
     roots::Vector{Cell};
+	save::Bool=true,
     deletion_hook::Function = WorkspaceManager.move_vars,
     user_requested_run::Bool = true,
     already_run::Vector{Cell} = Cell[],
-    bond_value_pairs = _empty_bond_value_pairs,
+    bond_value_pairs=zip(Symbol[],Any[]),
 )::TopologicalOrder
     @assert !isready(notebook.executetoken) "run_reactive_core!() was called with a free notebook.executetoken."
     @assert will_run_code(notebook)
@@ -79,6 +63,9 @@ function run_reactive_core!(
         # update cache and save notebook because the dependencies might have changed after expanding macros
         update_dependency_cache!(notebook)
     end
+	
+    # find (indirectly) skipped-as-script cells and update their status
+    update_skipped_cells_dependency!(notebook, new_topology)
 
     removed_cells = setdiff(all_cells(old_topology), all_cells(new_topology))
     roots = vcat(roots, removed_cells)
@@ -95,49 +82,52 @@ function run_reactive_core!(
         ),
         unresolved_cells = new_topology.unresolved_cells,
         cell_order = new_topology.cell_order,
+        disabled_cells=new_topology.disabled_cells,
     )
-
-    # save the old topological order - we'll delete variables assigned from its
-    # and re-evalutate its cells unless the cells have already run previously in the reactive run
-    old_order = topological_order(old_topology, roots)
-
-    old_runnable = setdiff(old_order.runnable, already_run)
-    to_delete_vars = union!(Set{Symbol}(), defined_variables(old_topology, old_runnable)...)
-    to_delete_funcs = union!(Set{Tuple{UUID,FunctionName}}(), defined_functions(old_topology, old_runnable)...)
-
-    # get the new topological order
-    new_order = topological_order(new_topology, union(roots, keys(old_order.errable)))
-    new_runnable = setdiff(new_order.runnable, already_run)
-    to_run_raw = setdiff(union(new_runnable, old_runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
-
+	
+	
     # find (indirectly) deactivated cells and update their status
-    disabled_cells = filter(is_disabled, notebook.cells)
-    indirectly_deactivated = collect(topological_order(new_topology, disabled_cells))
+    indirectly_deactivated = collect(topological_order(new_topology, collect(new_topology.disabled_cells); allow_multiple_defs=true, skip_at_partial_multiple_defs=true))
+	
     for cell in indirectly_deactivated
         cell.running = false
         cell.queued = false
         cell.depends_on_disabled_cells = true
     end
+	
+	new_topology = setdiff(new_topology, indirectly_deactivated)
 
-    # find (indirectly) skipped cells and update their status
-    update_skipped_cells_dependency!(notebook, new_topology)
+    # save the old topological order - we'll delete variables assigned from its
+    # and re-evalutate its cells unless the cells have already run previously in the reactive run
+    old_order = topological_order(old_topology, roots)
 
-    to_run = setdiff(to_run_raw, indirectly_deactivated)
+    old_runnable = setdiff(old_order.runnable, already_run, indirectly_deactivated)
+    to_delete_vars = union!(Set{Symbol}(), defined_variables(old_topology, old_runnable)...)
+    to_delete_funcs = union!(Set{Tuple{UUID,FunctionName}}(), defined_functions(old_topology, old_runnable)...)
+	
+	
+	new_roots = setdiff(union(roots, keys(old_order.errable)), indirectly_deactivated)
+    # get the new topological order
+    new_order = topological_order(new_topology, new_roots)
+    new_runnable = setdiff(new_order.runnable, already_run)
+    to_run = setdiff(union(new_runnable, old_runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
+
 
     # change the bar on the sides of cells to "queued"
     for cell in to_run
         cell.queued = true
         cell.depends_on_disabled_cells = false
     end
-
+	
     for (cell, error) in new_order.errable
         cell.running = false
         cell.queued = false
+		cell.depends_on_disabled_cells = false
         relay_reactivity_error!(cell, error)
     end
 
 	# Save the notebook. This is the only time that we save the notebook, so any state changes that influence the file contents (like `depends_on_disabled_cells`) should be behind this point.
-	save_notebook(session, notebook)
+	save && save_notebook(session, notebook)
 
     # Send intermediate updates to the clients at most 20 times / second during a reactive run. (The effective speed of a slider is still unbounded, because the last update is not throttled.)
     # flush_send_notebook_changes_throttled, 
@@ -181,16 +171,16 @@ function run_reactive_core!(
                 (session, notebook), cell,
                 new_topology.nodes[cell], new_topology.codes[cell];
                 user_requested_run = (user_requested_run && cell ∈ roots),
-				capture_stdout = session.options.evaluation.capture_stdout,
+                capture_stdout = session.options.evaluation.capture_stdout,
             )
             any_interrupted |= run.interrupted
 
-			# Support one bond defining another when setting both simultaneously in PlutoSliderServer
-			# https://github.com/fonsp/Pluto.jl/issues/1695
+            # Support one bond defining another when setting both simultaneously in PlutoSliderServer
+            # https://github.com/fonsp/Pluto.jl/issues/1695
 
-			# set the redefined bound variables to their original value from the request
-			defs = notebook.topology.nodes[cell].definitions
-			set_bond_value_pairs!(session, notebook, Iterators.filter(((sym,val),) -> sym ∈ defs, bond_value_pairs))
+            # set the redefined bound variables to their original value from the request
+            defs = notebook.topology.nodes[cell].definitions
+            set_bond_value_pairs!(session, notebook, Iterators.filter(((sym,val),) -> sym ∈ defs, bond_value_pairs))
         end
 
         cell.running = false
@@ -215,7 +205,7 @@ function run_reactive_core!(
             update_dependency_cache!(notebook)
             save_notebook(session, notebook)
 
-            return run_reactive_core!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook, user_requested_run, already_run = to_run[1:i])
+            return run_reactive_core!(session, notebook, new_topology, new_new_topology, to_run; save, deletion_hook, user_requested_run, already_run = to_run[1:i])
         elseif !isempty(implicit_usings)
             new_soft_definitions = WorkspaceManager.collect_soft_definitions((session, notebook), implicit_usings)
             notebook.topology = new_new_topology = with_new_soft_definitions(new_topology, cell, new_soft_definitions)
@@ -224,13 +214,26 @@ function run_reactive_core!(
             update_dependency_cache!(notebook)
             save_notebook(session, notebook)
 
-            return run_reactive_core!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook, user_requested_run, already_run = to_run[1:i])
+            return run_reactive_core!(session, notebook, new_topology, new_new_topology, to_run; save, deletion_hook, user_requested_run, already_run = to_run[1:i])
         end
     end
 
     notebook.wants_to_interrupt = false
     flush_notebook_changes()
     return new_order
+end
+
+"""
+```julia
+set_bond_value_pairs!(session::ServerSession, notebook::Notebook, bond_value_pairs::Vector{Tuple{Symbol, Any}})
+```
+Given a list of tuples of the form `(bound variable name, (untransformed) value)`, assign each (transformed) value to the corresponding global bound variable in the notebook workspace.
+`bond_value_pairs` can also be an iterator.
+"""
+function set_bond_value_pairs!(session::ServerSession, notebook::Notebook, bond_value_pairs)
+	for (bound_sym, new_value) in bond_value_pairs
+		WorkspaceManager.eval_in_workspace((session, notebook), :($(bound_sym) = Main.PlutoRunner.transform_bond_value($(QuoteNode(bound_sym)), $(new_value))))
+	end
 end
 
 run_reactive_async!(session::ServerSession, notebook::Notebook, to_run::Vector{Cell}; kwargs...) = run_reactive_async!(session, notebook, notebook.topology, notebook.topology, to_run; kwargs...)
@@ -247,20 +250,6 @@ function maybe_async(f::Function, async::Bool)
 		run_task
 	else
 		fetch(run_task)
-	end
-end
-
-const lazymap = Base.Generator
-
-function defined_variables(topology::NotebookTopology, cells)
-	lazymap(cells) do cell
-		topology.nodes[cell].definitions
-	end
-end
-
-function defined_functions(topology::NotebookTopology, cells)
-	lazymap(cells) do cell
-		((cell.cell_id, namesig.name) for namesig in topology.nodes[cell].funcdefs_with_signatures)
 	end
 end
 
@@ -332,196 +321,6 @@ end
 
 will_run_code(notebook::Notebook) = notebook.process_status != ProcessStatus.no_process && notebook.process_status != ProcessStatus.waiting_to_restart
 
-is_macro_identifier(symbol::Symbol) = startswith(string(symbol), "@")
-
-function with_new_soft_definitions(topology::NotebookTopology, cell::Cell, soft_definitions)
-    old_node = topology.nodes[cell]
-    new_node = union!(ReactiveNode(), old_node, ReactiveNode(soft_definitions=soft_definitions))
-    NotebookTopology(
-		codes=topology.codes, 
-		nodes=merge(topology.nodes, Dict(cell => new_node)), 
-		unresolved_cells=topology.unresolved_cells,
-		cell_order=topology.cell_order,
-	)
-end
-
-collect_implicit_usings(topology::NotebookTopology, cell::Cell) = ExpressionExplorer.collect_implicit_usings(topology.codes[cell].module_usings_imports)
-
-function cells_with_deleted_macros(old_topology::NotebookTopology, new_topology::NotebookTopology)
-    old_macros = mapreduce(c -> defined_macros(old_topology, c), union!, all_cells(old_topology); init=Set{Symbol}())
-    new_macros = mapreduce(c -> defined_macros(new_topology, c), union!, all_cells(new_topology); init=Set{Symbol}())
-    removed_macros = setdiff(old_macros, new_macros)
-
-    where_referenced(old_topology, removed_macros)
-end
-
-"Returns the set of macros names defined by this cell"
-defined_macros(topology::NotebookTopology, cell::Cell) = defined_macros(topology.nodes[cell])
-defined_macros(node::ReactiveNode) = union!(filter(is_macro_identifier, node.funcdefs_without_signatures), filter(is_macro_identifier, node.definitions)) # macro definitions can come from imports
-
-"Tells whether or not a cell can 'unlock' the resolution of other cells"
-function can_help_resolve_cells(topology::NotebookTopology, cell::Cell)
-    cell_code = topology.codes[cell]
-    cell_node = topology.nodes[cell]
-    macros = defined_macros(cell_node)
-
-	!isempty(cell_code.module_usings_imports.usings) ||
-		(!isempty(macros) && any(calls -> !disjoint(calls, macros), topology.nodes[c].macrocalls for c in topology.unresolved_cells))
-end
-
-# Sorry couldn't help myself - DRAL
-abstract type Result end
-struct Success <: Result
-	result
-end
-struct Failure <: Result
-	error
-end
-struct Skipped <: Result end
-
-"""We still have 'unresolved' macrocalls, use the current and maybe previous workspace to do macro-expansions.
-
-You can optionally specify the roots for the current reactive run. If a cell macro contains only macros that will
-be re-defined during this reactive run, we don't expand yet and expect the `can_help_resolve_cells` function above
-to be true for the cell defining the macro, triggering a new topology resolution without needing to fallback to the
-previous workspace.
-"""
-function resolve_topology(
-	session::ServerSession,
-	notebook::Notebook,
-	unresolved_topology::NotebookTopology,
-	old_workspace_name::Symbol;
-	current_roots::Vector{Cell}=Cell[],
-)::NotebookTopology
-
-
-	sn = (session, notebook)
-
-	function macroexpand_cell(cell)
-		try_macroexpand(module_name::Union{Nothing,Symbol}=nothing) = begin
-			success, result = macroexpand_in_workspace(sn, unresolved_topology.codes[cell].parsedcode, cell.cell_id, module_name)
-			if success
-				Success(result)
-			else
-				Failure(result)
-			end
-		end
-
-		result = try_macroexpand()
-		if result isa Success
-			result
-		else
-			if (result.error isa LoadError && result.error.error isa UndefVarError) || result.error isa UndefVarError
-				try_macroexpand(old_workspace_name)
-			else
-				result
-			end
-		end
-	end
-
-	function analyze_macrocell(cell::Cell)
-		if unresolved_topology.nodes[cell].macrocalls ⊆ ExpressionExplorer.can_macroexpand
-			return Skipped()
-		end
-
-		result = macroexpand_cell(cell)
-		if result isa Success
-			(expr, computer_id) = result.result
-			expanded_node = ExpressionExplorer.try_compute_symbolreferences(expr) |> ReactiveNode
-			function_wrapped = ExpressionExplorer.can_be_function_wrapped(expr)
-			Success((expanded_node, function_wrapped, computer_id))
-		else
-			result
-		end
-	end
-
-	run_defined_macros = mapreduce(c -> defined_macros(unresolved_topology, c), union!, current_roots; init=Set{Symbol}())
-
-	# create new node & new codes for macrocalled cells
-	new_nodes = Dict{Cell,ReactiveNode}()
-	new_codes = Dict{Cell,ExprAnalysisCache}()
-	still_unresolved_nodes = Set{Cell}()
-
-	for cell in unresolved_topology.unresolved_cells
-		if unresolved_topology.nodes[cell].macrocalls ⊆ run_defined_macros
-			# Do not try to expand if a newer version of the macro is also scheduled to run in the
-			# current run. The recursive reactive runs will take care of it.
-			push!(still_unresolved_nodes, cell)
-			continue
-		end
-
-		result = try
-			if will_run_code(notebook)
-				analyze_macrocell(cell)
-			else
-				Failure(ErrorException("shutdown"))
-			end
-		catch error
-			@error "Macro call expansion failed with a non-macroexpand error" error
-			Failure(error)
-		end
-		if result isa Success
-			(new_node, function_wrapped, forced_expr_id) = result.result
-			union!(new_node.macrocalls, unresolved_topology.nodes[cell].macrocalls)
-			union!(new_node.references, new_node.macrocalls)
-			new_nodes[cell] = new_node
-
-			# set function_wrapped to the function wrapped analysis of the expanded expression.
-			new_codes[cell] = ExprAnalysisCache(unresolved_topology.codes[cell]; forced_expr_id, function_wrapped)
-		elseif result isa Skipped
-			# Skipped because it has already been resolved during ExpressionExplorer.
-		else
-			@debug "Could not resolve" result cell.code
-			push!(still_unresolved_nodes, cell)
-		end
-	end
-
-	all_nodes = merge(unresolved_topology.nodes, new_nodes)
-	all_codes = merge(unresolved_topology.codes, new_codes)
-	
-	new_unresolved_cells = if length(still_unresolved_nodes) == length(unresolved_topology.unresolved_cells)
-		# then they must equal, and we can skip creating a new one to preserve identity:
-		unresolved_topology.unresolved_cells
-	else
-		ImmutableSet(still_unresolved_nodes; skip_copy=true)
-	end
-
-	NotebookTopology(
-		nodes=all_nodes, 
-		codes=all_codes, 
-		unresolved_cells=new_unresolved_cells,
-		cell_order=unresolved_topology.cell_order,
-	)
-end
-
-"""Tries to add information about macro calls without running any code, using knowledge about common macros.
-So, the resulting reactive nodes may not be absolutely accurate. If you can run code in a session, use `resolve_topology` instead.
-"""
-function static_macroexpand(topology::NotebookTopology, cell::Cell)
-	new_node = ExpressionExplorer.maybe_macroexpand(topology.codes[cell].parsedcode; recursive=true) |>
-		ExpressionExplorer.try_compute_symbolreferences |> ReactiveNode
-	union!(new_node.macrocalls, topology.nodes[cell].macrocalls)
-
-	new_node
-end
-
-"The same as `resolve_topology` but does not require custom code execution, only works with a few `Base` & `PlutoRunner` macros"
-function static_resolve_topology(topology::NotebookTopology)
-	new_nodes = Dict{Cell,ReactiveNode}(cell => static_macroexpand(topology, cell) for cell in topology.unresolved_cells)
-	all_nodes = merge(topology.nodes, new_nodes)
-
-	NotebookTopology(
-		nodes=all_nodes, 
-		codes=topology.codes, 
-		unresolved_cells=topology.unresolved_cells,
-		cell_order=topology.cell_order,
-	)
-end
-
-###
-# CONVENIENCE FUNCTIONS
-###
-
 
 "Do all the things!"
 function update_save_run!(
@@ -531,10 +330,30 @@ function update_save_run!(
 	save::Bool=true, 
 	run_async::Bool=false, 
 	prerender_text::Bool=false, 
+	auto_solve_multiple_defs::Bool=false,
+	on_auto_solve_multiple_defs::Union{Nothing,Function}=nothing,
 	kwargs...
 )
 	old = notebook.topology
 	new = notebook.topology = updated_topology(old, notebook, cells) # macros are not yet resolved
+	
+	# _assume `auto_solve_multiple_defs == false` if you want to skip some details_
+	if auto_solve_multiple_defs
+		to_disable_dict = cells_to_disable_to_resolve_multiple_defs(old, new, cells)
+		
+		if !isempty(to_disable_dict)
+			to_disable = keys(to_disable_dict)
+			@debug "Using augmented topology" cell_id.(to_disable)
+			
+			foreach(c -> set_disabled(c, true), to_disable)
+			
+			cells = union(cells, to_disable)
+			# need to update the topology because the topology also keeps track of disabled cells
+			new = notebook.topology = updated_topology(new, notebook, to_disable)
+		end
+		
+		isnothing(on_auto_solve_multiple_defs) || on_auto_solve_multiple_defs(to_disable_dict)
+	end
 
 	update_dependency_cache!(notebook)
 	save && save_notebook(session, notebook)
@@ -581,6 +400,7 @@ function update_save_run!(
 			codes=setdiffkeys(old.codes, to_remove),
 			unresolved_cells=setdiff(old.unresolved_cells, to_remove),
 			cell_order=old.cell_order,
+			disabled_cells=setdiff(old.disabled_cells, to_remove),
 		)
 		
 		# and don't run them
@@ -592,7 +412,7 @@ function update_save_run!(
             sync_nbpkg(session, notebook, old, new; save=(save && !session.options.server.disable_writing_notebook_files), take_token=false)
             if !(isempty(to_run_online) && session.options.evaluation.lazy_workspace_creation) && will_run_code(notebook)
                 # not async because that would be double async
-                run_reactive_core!(session, notebook, old, new, to_run_online; kwargs...)
+                run_reactive_core!(session, notebook, old, new, to_run_online; save, kwargs...)
                 # run_reactive_async!(session, notebook, old, new, to_run_online; deletion_hook=deletion_hook, run_async=false, kwargs...)
             end
         end
@@ -602,23 +422,68 @@ end
 update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs...) = update_save_run!(session, notebook, [cell]; kwargs...)
 update_run!(args...; kwargs...) = update_save_run!(args...; save=false, kwargs...)
 
+
+function cells_to_disable_to_resolve_multiple_defs(old::NotebookTopology, new::NotebookTopology, cells::Vector{Cell})::Dict{Cell,Any}
+	# keys are cells to disable
+	# values are the reason why
+	to_disable_and_why = Dict{Cell,Any}()
+	
+	for cell in cells
+		new_node = new.nodes[cell]
+		
+		fellow_assigners_old = filter!(c -> !is_disabled(old, c), where_assigned(old, new_node))
+		fellow_assigners_new = filter!(c -> !is_disabled(new, c), where_assigned(new, new_node))
+		
+		if length(fellow_assigners_new) > length(fellow_assigners_old)
+			other_definers = setdiff(fellow_assigners_new, (cell,))
+			
+			@debug "Solving multiple defs" cell.cell_id cell_id.(other_definers) disjoint(cells, other_definers)
+
+			# we want cell to be the only element of cells that defines this varialbe, i.e. all other definers must have been created previously
+			if disjoint(cells, other_definers)
+				# all fellow cells (including the current cell) should meet some criteria:
+				all_fellows_are_simple_enough = all(fellow_assigners_new) do c
+					node = new.nodes[c]
+					
+					# all must be true:
+					return (
+						length(node.definitions) == 1 && # for more than one defined variable, we might confuse the user, or disable more things than we want to.
+						disjoint(node.references, node.definitions) && # avoid self-reference like `x = x + 1`
+						isempty(node.funcdefs_without_signatures) &&
+						isempty(node.macrocalls)
+					)
+				end
+				
+				if all_fellows_are_simple_enough 
+					for c in other_definers
+						# if the cell is already disabled (indirectly), then we don't need to disable it. probably.
+						if !c.depends_on_disabled_cells
+							to_disable_and_why[c] = (cell_id(cell), only(new.nodes[c].definitions))
+						end
+					end
+				end
+			end
+		end
+	end
+	
+	to_disable_and_why
+end
+
+
+
 function notebook_differences(from::Notebook, to::Notebook)
-	old_codes = Dict(
-		id => c.code
-		for (id,c) in from.cells_dict
-	)
-	new_codes = Dict(
-		id => c.code
-		for (id,c) in to.cells_dict
-	)
+	from_cells = from.cells_dict
+	to_cells = to.cells_dict
 
 	(
 		# it's like D3 joins: https://observablehq.com/@d3/learn-d3-joins#cell-528
-		added = setdiff(keys(new_codes), keys(old_codes)),
-		removed = setdiff(keys(old_codes), keys(new_codes)),
+		added = setdiff(keys(to_cells), keys(from_cells)),
+		removed = setdiff(keys(from_cells), keys(to_cells)),
 		changed = let
-			remained = keys(old_codes) ∩ keys(new_codes)
-			filter(id -> old_codes[id] != new_codes[id], remained)
+			remained = keys(from_cells) ∩ keys(to_cells)
+			filter(remained) do id
+				from_cells[id].code != to_cells[id].code || from_cells[id].metadata != to_cells[id].metadata
+			end
 		end,
 		
 		order_changed = from.cell_order != to.cell_order,
@@ -643,11 +508,6 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 		return false
 	end::Notebook
 	
-	new_codes = Dict(
-		id => c.code
-		for (id,c) in just_loaded.cells_dict
-	)
-
 	d = notebook_differences(notebook, just_loaded)
 	
 	added = d.added
@@ -674,10 +534,16 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 		delete!(notebook.cells_dict, c)
 	end
 	for c in changed
-		notebook.cells_dict[c].code = new_codes[c]
+		notebook.cells_dict[c].code = just_loaded.cells_dict[c].code
+		notebook.cells_dict[c].metadata = just_loaded.cells_dict[c].metadata
 	end
 
+	for c in keys(notebook.cells_dict) ∩ keys(just_loaded.cells_dict)
+		notebook.cells_dict[c].code_folded = just_loaded.cells_dict[c].code_folded
+	end
+	
 	notebook.cell_order = just_loaded.cell_order
+	notebook.metadata = just_loaded.metadata
 	
 	if include_nbpg && nbpkg_changed
 		@info "nbpkgs not equal" (notebook.nbpkg_ctx isa Nothing) (just_loaded.nbpkg_ctx isa Nothing)
@@ -685,6 +551,7 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 		if (notebook.nbpkg_ctx isa Nothing) != (just_loaded.nbpkg_ctx isa Nothing)
 			@info "nbpkg status changed, overriding..."
 			notebook.nbpkg_ctx = just_loaded.nbpkg_ctx
+			notebook.nbpkg_install_time_ns = just_loaded.nbpkg_install_time_ns
 		else
 			@info "Old new project" PkgCompat.read_project_file(notebook) PkgCompat.read_project_file(just_loaded)
 			@info "Old new manifest" PkgCompat.read_manifest_file(notebook) PkgCompat.read_manifest_file(just_loaded)
@@ -705,10 +572,10 @@ end
 function update_skipped_cells_dependency!(notebook::Notebook, topology::NotebookTopology=notebook.topology)
     skipped_cells = filter(is_skipped_as_script, notebook.cells)
     indirectly_skipped = collect(topological_order(topology, skipped_cells))
+    for cell in notebook.cells
+        cell.depends_on_skipped_cells = false
+    end
     for cell in indirectly_skipped
         cell.depends_on_skipped_cells = true
-    end
-    for cell in setdiff(notebook.cells, indirectly_skipped)
-        cell.depends_on_skipped_cells = false
     end
 end

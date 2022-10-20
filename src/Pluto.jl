@@ -71,6 +71,8 @@ include("./analysis/DependencyCache.jl")
 include("./analysis/MoreAnalysis.jl")
 
 include("./evaluation/WorkspaceManager.jl")
+include("./evaluation/MacroAnalysis.jl")
+include("./packages/IOListener.jl")
 include("./packages/Packages.jl")
 include("./packages/PkgUtils.jl")
 include("./evaluation/Run.jl")

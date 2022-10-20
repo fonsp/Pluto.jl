@@ -32,12 +32,16 @@ Base.@kwdef struct NotebookTopology
     cell_order::ImmutableVector{Cell}=ImmutableVector{Cell}()
 
     unresolved_cells::ImmutableSet{Cell} = ImmutableSet{Cell}()
+    disabled_cells::ImmutableSet{Cell} = ImmutableSet{Cell}()
 end
 
 # BIG TODO HERE: CELL ORDER
 all_cells(topology::NotebookTopology) = topology.cell_order.c
 
 is_resolved(topology::NotebookTopology) = isempty(topology.unresolved_cells)
+is_resolved(topology::NotebookTopology, c::Cell) = c in topology.unresolved_cells
+
+is_disabled(topology::NotebookTopology, c::Cell) = c in topology.disabled_cells
 
 function set_unresolved(topology::NotebookTopology, unresolved_cells::Vector{Cell})
     codes = Dict{Cell,ExprAnalysisCache}(
@@ -48,6 +52,18 @@ function set_unresolved(topology::NotebookTopology, unresolved_cells::Vector{Cel
         nodes=topology.nodes, 
         codes=merge(topology.codes, codes), 
         unresolved_cells=union(topology.unresolved_cells, unresolved_cells),
-        cell_order = topology.cell_order,
+        cell_order=topology.cell_order,
+        disabled_cells=topology.disabled_cells,
+    )
+end
+
+
+function Base.setdiff(topology::NotebookTopology, cells::Vector{Cell})
+    NotebookTopology(
+        nodes=setdiffkeys(topology.nodes, cells),
+        codes=setdiffkeys(topology.codes, cells),
+        unresolved_cells=ImmutableSet{Cell}(setdiff(topology.unresolved_cells.c, cells); skip_copy=true),
+        cell_order=ImmutableVector{Cell}(setdiff(topology.cell_order.c, cells); skip_copy=true),
+        disabled_cells=ImmutableSet{Cell}(setdiff(topology.disabled_cells.c, cells); skip_copy=true),
     )
 end

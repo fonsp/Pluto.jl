@@ -131,22 +131,26 @@ const RUN_NOTEBOOK_ON_LOAD_DEFAULT = true
 const WORKSPACE_USE_DISTRIBUTED_DEFAULT = true
 const LAZY_WORKSPACE_CREATION_DEFAULT = false
 const CAPTURE_STDOUT_DEFAULT = true
+const WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT = nothing
 
 """
     EvaluationOptions([; kwargs...])
 
-Options to change Pluto's evaluation behaviour during internal testing. These options are not intended to be changed during normal use.
+Options to change Pluto's evaluation behaviour during internal testing and by downstream packages.
+These options are not intended to be changed during normal use.
 
 - `run_notebook_on_load::Bool = $RUN_NOTEBOOK_ON_LOAD_DEFAULT` Whether to evaluate a notebook on load.
 - `workspace_use_distributed::Bool = $WORKSPACE_USE_DISTRIBUTED_DEFAULT` Whether to start notebooks in a separate process.
 - `lazy_workspace_creation::Bool = $LAZY_WORKSPACE_CREATION_DEFAULT`
 - `capture_stdout::Bool = $CAPTURE_STDOUT_DEFAULT`
+- `workspace_custom_startup_expr::Union{Nothing,Expr} = $WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT` An expression to be evaluated in the workspace process before running notebook code.
 """
 @option mutable struct EvaluationOptions
     run_notebook_on_load::Bool = RUN_NOTEBOOK_ON_LOAD_DEFAULT
     workspace_use_distributed::Bool = WORKSPACE_USE_DISTRIBUTED_DEFAULT
     lazy_workspace_creation::Bool = LAZY_WORKSPACE_CREATION_DEFAULT
     capture_stdout::Bool = CAPTURE_STDOUT_DEFAULT
+    workspace_custom_startup_expr::Union{Nothing,Expr} = WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT
 end
 
 const COMPILE_DEFAULT = nothing
@@ -159,12 +163,20 @@ const HISTORY_FILE_DEFAULT = "no"
 
 function roughly_the_number_of_physical_cpu_cores()
     # https://gist.github.com/fonsp/738fe244719cae820245aa479e7b4a8d
-    if Sys.CPU_THREADS == 1
+    threads = Sys.CPU_THREADS
+    num_threads_is_maybe_doubled_for_marketing = Sys.ARCH === :x86_64
+    
+    if threads == 1
         1
-    elseif Sys.CPU_THREADS == 2 || Sys.CPU_THREADS == 3
+    elseif threads == 2 || threads == 3
         2
+    elseif num_threads_is_maybe_doubled_for_marketing
+        # This includes:
+        # - intel hyperthreading
+        # - Apple ARM efficiency cores included in the count (when running the x86 executable)
+        threads ÷ 2
     else
-        Sys.CPU_THREADS ÷ 2
+        threads
     end
 end
 
@@ -245,6 +257,7 @@ function from_flat_kwargs(;
         workspace_use_distributed::Bool = WORKSPACE_USE_DISTRIBUTED_DEFAULT,
         lazy_workspace_creation::Bool = LAZY_WORKSPACE_CREATION_DEFAULT,
         capture_stdout::Bool = CAPTURE_STDOUT_DEFAULT,
+        workspace_custom_startup_expr::Union{Nothing,Expr} = WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT,
         compile::Union{Nothing,String} = COMPILE_DEFAULT,
         sysimage::Union{Nothing,String} = SYSIMAGE_DEFAULT,
         banner::Union{Nothing,String} = BANNER_DEFAULT,
@@ -284,6 +297,7 @@ function from_flat_kwargs(;
         workspace_use_distributed,
         lazy_workspace_creation,
         capture_stdout,
+        workspace_custom_startup_expr,
     )
     compiler = CompilerOptions(;
         compile,

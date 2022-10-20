@@ -57,13 +57,14 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
     use_plutopkg_new = use_plutopkg(new_topology)
     
     if !use_plutopkg_old && use_plutopkg_new
-        @debug "Started using PlutoPkg!! HELLO reproducibility!"
+        @debug "PlutoPkg: Started using PlutoPkg!! HELLO reproducibility!" notebook.path
 
         👺 = true
         notebook.nbpkg_ctx = PkgCompat.create_empty_ctx()
+        notebook.nbpkg_install_time_ns = 0
     end
     if use_plutopkg_old && !use_plutopkg_new
-        @debug "Stopped using PlutoPkg 💔😟😢"
+        @debug "PlutoPkg: Stopped using PlutoPkg 💔😟😢" notebook.path
 
         no_packages_loaded_yet = (
             notebook.nbpkg_restart_required_msg === nothing &&
@@ -72,8 +73,10 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
         )
         👺 = !no_packages_loaded_yet
         notebook.nbpkg_ctx = nothing
+        notebook.nbpkg_install_time_ns = nothing
     end
     if !use_plutopkg_new
+        notebook.nbpkg_install_time_ns = nothing
         notebook.nbpkg_ctx_instantiated = true
     end
     
@@ -110,25 +113,16 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                 PkgCompat.refresh_registry_cache()
 
                 if !notebook.nbpkg_ctx_instantiated
-                    notebook.nbpkg_ctx = PkgCompat.clear_stdlib_compat_entries(notebook.nbpkg_ctx)
-                    PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
-                        withinteractive(false) do
-                            try
-                                Pkg.resolve(notebook.nbpkg_ctx)
-                            catch e
-                                @warn "Failed to resolve Pkg environment. Removing Manifest and trying again..." exception=e
-                                reset_nbpkg(notebook, new_topology; keep_project=true, save=false, backup=false)
-                                Pkg.resolve(notebook.nbpkg_ctx)
-                            end
-                        end
-                    end
+                    resolve_with_auto_fixes(notebook, iolistener)
                 end
-
+                
+                to_add = filter(PkgCompat.package_exists, added)
                 to_remove = filter(removed) do p
                     haskey(PkgCompat.project(notebook.nbpkg_ctx).dependencies, p)
                 end
+                @debug "PlutoPkg:" notebook.path to_add to_remove
+                
                 if !isempty(to_remove)
-                    @debug to_remove
                     # See later comment
                     mkeys() = Set(filter(!is_stdlib, [m.name for m in values(PkgCompat.dependencies(notebook.nbpkg_ctx))]))
                     old_manifest_keys = mkeys()
@@ -138,6 +132,7 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                         for p in to_remove
                     ])
 
+                    notebook.nbpkg_install_time_ns = nothing # we lose our estimate of install time
                     # We record the manifest before and after, to prevent recommending a reboot when nothing got removed from the manifest (e.g. when removing GR, but leaving Plots), or when only stdlibs got removed.
                     new_manifest_keys = mkeys()
                     
@@ -147,13 +142,10 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                 
                 # TODO: instead of Pkg.PRESERVE_ALL, we actually want:
                 # "Pkg.PRESERVE_DIRECT, but preserve exact verisons of Base.loaded_modules"
-
-                to_add = filter(PkgCompat.package_exists, added)
                 
                 if !isempty(to_add)
-                    @debug to_add
+                    start_time = time_ns()
                     startlistening(iolistener)
-
                     PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
                         withinteractive(false) do
                             # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
@@ -190,15 +182,16 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                             println(iolistener.buffer, "\e[32m\e[1mLoading\e[22m\e[39m packages...")
                         end
                     end
-
-                    @debug "PlutoPkg done"
+                    notebook.nbpkg_install_time_ns = notebook.nbpkg_install_time_ns === nothing ? nothing : (notebook.nbpkg_install_time_ns + (time_ns() - start_time))
+                    @debug "PlutoPkg: done" notebook.path 
                 end
 
                 should_instantiate = !notebook.nbpkg_ctx_instantiated || !isempty(to_add) || !isempty(to_remove)
                 if should_instantiate
+                    start_time = time_ns()
                     startlistening(iolistener)
                     PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
-                        @debug "Instantiating"
+                        @debug "PlutoPkg: Instantiating" notebook.path 
                         
                         # Pkg.instantiate assumes that the environment to be instantiated is active, so we will have to modify the LOAD_PATH of this Pluto server
                         # We could also run the Pkg calls on the notebook process, but somehow I think that doing it on the server is more charming, though it requires this workaround.
@@ -213,6 +206,7 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                         @assert LOAD_PATH[1] == env_dir
                         popfirst!(LOAD_PATH)
                     end
+                    notebook.nbpkg_install_time_ns = notebook.nbpkg_install_time_ns === nothing ? nothing : (notebook.nbpkg_install_time_ns + (time_ns() - start_time))
                     notebook.nbpkg_ctx_instantiated = true
                 end
 
@@ -269,15 +263,15 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 		end
 
 		if pkg_result.did_something
-			@debug "PlutoPkg: success!" pkg_result
+			@debug "PlutoPkg: success!" notebook.path pkg_result 
 
 			if pkg_result.restart_recommended
 				notebook.nbpkg_restart_recommended_msg = "Yes, something changed during regular sync."
-				@debug "PlutoPkg: Notebook restart recommended" notebook.nbpkg_restart_recommended_msg
+				@debug "PlutoPkg: Notebook restart recommended" notebook.path notebook.nbpkg_restart_recommended_msg
 			end
 			if pkg_result.restart_required
 				notebook.nbpkg_restart_required_msg = "Yes, something changed during regular sync."
-				@debug "PlutoPkg: Notebook restart REQUIRED" notebook.nbpkg_restart_required_msg
+				@debug "PlutoPkg: Notebook restart REQUIRED" notebook.path notebook.nbpkg_restart_required_msg
 			end
 
 			notebook.nbpkg_busy_packages = String[]
@@ -306,6 +300,7 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 		# Clear the embedded Project and Manifest and require a restart from the user.
 		reset_nbpkg(notebook, new_topology; keep_project=false, save=save)
 		notebook.nbpkg_restart_required_msg = "Yes, because sync_nbpkg_core failed. \n\n$(error_text)"
+        notebook.nbpkg_install_time_ns = nothing
         notebook.nbpkg_ctx_instantiated = false
         update_nbpkg_cache!(notebook)
 		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
@@ -323,6 +318,50 @@ function writebackup(notebook::Notebook)
     backup_path
 end
 
+"""
+Run `Pkg.resolve` on the notebook's package environment. Keep trying more and more invasive strategies to fix problems until the operation succeeds.
+"""
+function resolve_with_auto_fixes(notebook::Notebook, iolistener::IOListener)
+    
+    notebook.nbpkg_ctx = PkgCompat.clear_stdlib_compat_entries(notebook.nbpkg_ctx)
+    
+    PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
+        withinteractive(false) do
+            try
+                Pkg.resolve(notebook.nbpkg_ctx)
+            catch e
+                @warn "Failed to resolve Pkg environment. Updating registries and trying again..." exception=e
+                
+                PkgCompat.update_registries(; force=true)
+                try
+                    Pkg.resolve(notebook.nbpkg_ctx)
+                catch e
+                    @warn "Failed to resolve Pkg environment. Removing Manifest and trying again..." exception=e
+                    
+                    reset_nbpkg(notebook; keep_project=true, save=false, backup=false)
+                    try
+                        Pkg.resolve(notebook.nbpkg_ctx)
+                    catch e
+                        @warn "Failed to resolve Pkg environment. Removing Project compat entries and Manifest and trying again..." exception=e
+                        
+                        reset_nbpkg(notebook; keep_project=true, save=false, backup=false)
+                        notebook.nbpkg_ctx = PkgCompat.clear_compat_entries(notebook.nbpkg_ctx)
+                        
+                        Pkg.resolve(notebook.nbpkg_ctx)
+                    end
+                end
+            end
+        end
+    end
+end
+
+"""
+Reset the package environment of a notebook. This will remove the `Project.toml` and `Manifest.toml` files from the notebook's secret package environment folder, and if `save` is `true`, it will then save the notebook without embedded Project and Manifest.
+
+If `keep_project` is `true` (default `false`), the `Project.toml` file will be kept, but the `Manifest.toml` file will be removed.
+
+This function is useful when we are not able to resolve/activate/instantiate a notebook's environment after loading, which happens when e.g. the environment was created on a different OS or Julia version.
+"""
 function reset_nbpkg(notebook::Notebook, topology::Union{NotebookTopology,Nothing}=nothing; keep_project::Bool=false, backup::Bool=true, save::Bool=true)
     backup && save && writebackup(notebook)
 
@@ -363,19 +402,7 @@ function update_nbpkg_core(notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEV
             PkgCompat.refresh_registry_cache()
 
             if !notebook.nbpkg_ctx_instantiated
-                notebook.nbpkg_ctx = PkgCompat.clear_stdlib_compat_entries(notebook.nbpkg_ctx)
-                PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
-                    withinteractive(false) do
-                        PkgCompat.update_registries(;force=false)
-                        try
-                            Pkg.resolve(notebook.nbpkg_ctx)
-                        catch e
-                            @warn "Failed to resolve Pkg environment. Removing Manifest and trying again..." exception=e
-                            reset_nbpkg(notebook; keep_project=true, save=false, backup=false)
-                            Pkg.resolve(notebook.nbpkg_ctx)
-                        end
-                    end
-                end
+                resolve_with_auto_fixes(notebook, iolistener)
             end
 
             startlistening(iolistener)
@@ -434,11 +461,11 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
 		if pkg_result.did_something
 			if pkg_result.restart_recommended
 				notebook.nbpkg_restart_recommended_msg = "Yes, something changed during regular update_nbpkg."
-				@debug "PlutoPkg: Notebook restart recommended" notebook.nbpkg_restart_recommended_msg
+				@debug "PlutoPkg: Notebook restart recommended" notebook.path notebook.nbpkg_restart_recommended_msg
 			end
 			if pkg_result.restart_required
 				notebook.nbpkg_restart_required_msg = "Yes, something changed during regular update_nbpkg."
-				@debug "PlutoPkg: Notebook restart REQUIRED" notebook.nbpkg_restart_required_msg
+				@debug "PlutoPkg: Notebook restart REQUIRED" notebook.path notebook.nbpkg_restart_required_msg
 			end
 		else
             isfile(bp) && rm(bp)
@@ -503,37 +530,5 @@ function withinteractive(f::Function, value::Bool)
         @static if is_interactive_defined
             Core.eval(Base, :(is_interactive = $old_value))
         end
-    end
-end
-
-"A polling system to watch for writes to an IOBuffer. Up-to-date content will be passed as string to the `callback` function."
-Base.@kwdef struct IOListener
-    callback::Function
-    buffer::IOBuffer=IOBuffer()
-    interval::Real=1.0/60
-    running::Ref{Bool}=Ref(false)
-    last_size::Ref{Int}=Ref(-1)
-end
-function trigger(listener::IOListener)
-    new_size = listener.buffer.size
-    if new_size > listener.last_size[]
-        listener.last_size[] = new_size
-        new_contents = String(listener.buffer.data[1:new_size])
-        listener.callback(new_contents)
-    end
-end
-function startlistening(listener::IOListener)
-    if !listener.running[]
-        listener.running[] = true
-        @async while listener.running[]
-            trigger(listener)
-            sleep(listener.interval)
-        end
-    end
-end
-function stoplistening(listener::IOListener)
-    if listener.running[]
-        listener.running[] = false
-        trigger(listener)
     end
 end

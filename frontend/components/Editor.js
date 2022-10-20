@@ -14,7 +14,7 @@ import { NotebookMemo as Notebook } from "./Notebook.js"
 import { LiveDocs } from "./LiveDocs.js"
 import { DropRuler } from "./DropRuler.js"
 import { SelectionArea } from "./SelectionArea.js"
-import { UndoDelete } from "./UndoDelete.js"
+import { RecentlyDisabledInfo, UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
 import { Scroller } from "./Scroller.js"
 import { ExportBanner } from "./ExportBanner.js"
@@ -28,6 +28,7 @@ import { setup_mathjax } from "../common/SetupMathJax.js"
 import { BinderButton, RunLocalButton } from "./EditOrRunButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
 import { ProgressBar } from "./ProgressBar.js"
+import { NonCellOutput } from "./NonCellOutput.js"
 import { IsolatedCell } from "./Cell.js"
 import { RawHTMLContainer } from "./CellOutput.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
@@ -142,10 +143,10 @@ const first_true_key = (obj) => {
  *  queued: boolean,
  *  running: boolean,
  *  errored: boolean,
- *  runtime: ?number,
+ *  runtime: number?,
  *  downstream_cells_map: { string: [string]},
  *  upstream_cells_map: { string: [string]},
- *  precedence_heuristic: ?number,
+ *  precedence_heuristic: number?,
  *  depends_on_disabled_cells: boolean,
  *  depends_on_skipped_cells: boolean,
  *  output: {
@@ -153,7 +154,7 @@ const first_true_key = (obj) => {
  *      persist_js_state: boolean,
  *      last_run_timestamp: number,
  *      mime: string,
- *      rootassignee: ?string,
+ *      rootassignee: string?,
  *      has_pluto_hook_features: boolean,
  *  },
  *  logs: Array<LogEntryData>,
@@ -177,6 +178,7 @@ const first_true_key = (obj) => {
  *  restart_required_msg: string?,
  *  installed_versions: { [pkg_name: string]: string },
  *  terminal_outputs: { [pkg_name: string]: string },
+ *  install_time_ns: number?,
  *  busy_packages: string[],
  *  instantiated: boolean,
  * }}
@@ -288,6 +290,7 @@ export class Editor extends Component {
             cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ ([]),
+            recently_auto_disabled_cells: /** @type {Map<string,[string,string]>} */ ({}),
             last_update_time: 0,
 
             disable_ui: launch_params.disable_ui,
@@ -322,7 +325,7 @@ export class Editor extends Component {
         this.setStatePromise = (fn) => new Promise((r) => this.setState(fn, r))
 
         // these are things that can be done to the local notebook
-        this.actions = {
+        this.real_actions = {
             get_notebook: () => this?.state?.notebook || {},
             send: (message_type, ...args) => this.client.send(message_type, ...args),
             get_published_object: (objectid) => this.state.notebook.published_objects[objectid],
@@ -587,7 +590,13 @@ export class Editor extends Component {
                             }
                         })
                     )
-                    await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.state.notebook.notebook_id })
+                    const result = await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.state.notebook.notebook_id })
+                    const { disabled_cells } = result.message
+                    if (Object.entries(disabled_cells).length > 0) {
+                        await this.setStatePromise({
+                            recently_auto_disabled_cells: disabled_cells,
+                        })
+                    }
                 }
             },
             /**
@@ -622,6 +631,7 @@ export class Editor extends Component {
                 return message.versions
             },
         }
+        this.actions = { ...this.real_actions }
 
         const apply_notebook_patches = (patches, /** @type {NotebookData?} */ old_state = null, get_reverse_patches = false) =>
             new Promise((resolve) => {
@@ -764,11 +774,12 @@ patch: ${JSON.stringify(
             Object.assign(this.client, client)
             try {
                 const { default: environment } = await import(this.client.session_options.server.injected_javascript_data_url)
-                const { custom_editor_header_component } = environment({ client, editor: this, imports: { preact } })
+                const { custom_editor_header_component, custom_non_cell_output } = environment({ client, editor: this, imports: { preact } })
                 this.setState({
                     extended_components: {
                         ...this.state.extended_components,
                         CustomHeader: custom_editor_header_component,
+                        NonCellOutputComponents: custom_non_cell_output,
                     },
                 })
             } catch (e) {}
@@ -822,26 +833,35 @@ patch: ${JSON.stringify(
                 connect_metadata: { notebook_id: this.state.notebook.notebook_id },
             }).then(on_establish_connection)
 
-        this.real_actions = this.actions
-        this.fake_actions =
-            launch_params.slider_server_url != null
-                ? slider_server_actions({
-                      setStatePromise: this.setStatePromise,
-                      actions: this.actions,
-                      launch_params: launch_params,
-                      apply_notebook_patches,
-                      get_original_state: () => this.props.initial_notebook_state,
-                      get_current_state: () => this.state.notebook,
-                  })
-                : nothing_actions({
-                      actions: this.actions,
-                  })
-
         this.on_disable_ui = () => {
             set_disable_ui_css(this.state.disable_ui)
 
-            //@ts-ignore
-            this.actions = this.state.disable_ui || (launch_params.slider_server_url != null && !this.state.connected) ? this.fake_actions : this.real_actions //heyo
+            // Pluto has three modes of operation:
+            // 1. (normal) Connected to a Pluto notebook.
+            // 2. Static HTML with PlutoSliderServer. All edits are ignored, but bond changes are processes by the PlutoSliderServer.
+            // 3. Static HTML without PlutoSliderServer. All interactions are ignored.
+            //
+            // To easily support all three with minimal changes to the source code, we sneakily swap out the `this.actions` object (`pluto_actions` in other source files) with a different one:
+            Object.assign(
+                this.actions,
+                // if we have no pluto server...
+                this.state.disable_ui || (launch_params.slider_server_url != null && !this.state.connected)
+                    ? // then use a modified set of actions
+                      launch_params.slider_server_url != null
+                        ? slider_server_actions({
+                              setStatePromise: this.setStatePromise,
+                              actions: this.actions,
+                              launch_params: launch_params,
+                              apply_notebook_patches,
+                              get_original_state: () => this.props.initial_notebook_state,
+                              get_current_state: () => this.state.notebook,
+                          })
+                        : nothing_actions({
+                              actions: this.actions,
+                          })
+                    : // otherwise, use the real actions
+                      this.real_actions
+            )
         }
         this.on_disable_ui()
 
@@ -849,7 +869,7 @@ patch: ${JSON.stringify(
             if (!this.state.static_preview && document.visibilityState === "visible") {
                 // view stats on https://stats.plutojl.org/
                 //@ts-ignore
-                count_stat(`editing/${window?.version_info?.pluto ?? "unknown"}`)
+                count_stat(`editing/${window?.version_info?.pluto ?? "unknown"}${window.plutoDesktop ? "-desktop" : ""}`)
             }
         }, 1000 * 15 * 60)
         setInterval(() => {
@@ -1031,6 +1051,35 @@ patch: ${JSON.stringify(
             } finally {
                 this.setState({ moving_file: false })
             }
+        }
+
+        this.desktop_submit_file_change = async () => {
+            this.setState({ moving_file: true })
+            /**
+             * `window.plutoDesktop?.ipcRenderer` is basically what allows the
+             * frontend to communicate with the electron side. It is an IPC
+             * bridge between render process and main process. More info
+             * [here](https://www.electronjs.org/docs/latest/api/ipc-renderer).
+             *
+             * "PLUTO-MOVE-NOTEBOOK" is an event triggered in the main process
+             * once the move is complete, we listen to it using `once`.
+             * More info [here](https://www.electronjs.org/docs/latest/api/ipc-renderer#ipcrendereroncechannel-listener)
+             */
+            window.plutoDesktop?.ipcRenderer.once("PLUTO-MOVE-NOTEBOOK", async (/** @type {string?} */ loc) => {
+                if (!!loc)
+                    await this.setStatePromise(
+                        immer((state) => {
+                            state.notebook.in_temp_dir = false
+                            state.notebook.path = loc
+                        })
+                    )
+                this.setState({ moving_file: false })
+                // @ts-ignore
+                document.activeElement?.blur()
+            })
+
+            // ask the electron backend to start moving the notebook. The event above will be fired once it is done.
+            window.plutoDesktop?.fileSystem.moveNotebook()
         }
 
         this.delete_selected = (verb) => {
@@ -1333,6 +1382,7 @@ patch: ${JSON.stringify(
                     <${ProgressBar} notebook=${this.state.notebook} backend_launch_phase=${this.state.backend_launch_phase} status=${status}/>
                     <header id="pluto-nav" className=${export_menu_open ? "show_export" : ""}>
                         <${ExportBanner}
+                            notebook_id=${this.state.notebook.notebook_id}
                             notebookfile_url=${this.export_url("notebookfile")}
                             notebookexport_url=${this.export_url("notebookexport")}
                             open=${export_menu_open}
@@ -1369,6 +1419,7 @@ patch: ${JSON.stringify(
                                           client=${this.client}
                                           value=${notebook.in_temp_dir ? "" : notebook.path}
                                           on_submit=${this.submit_file_change}
+                                          on_desktop_submit=${this.desktop_submit_file_change}
                                           suggest_new_file=${{
                                               base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
                                               name: notebook.shortpath,
@@ -1441,6 +1492,7 @@ patch: ${JSON.stringify(
                                           launch_params: launch_params,
                                       })}
                                   notebookfile=${launch_params.notebookfile == null ? null : new URL(launch_params.notebookfile, window.location.href).href}
+                                  notebook=${notebook}
                               />`
                             : null
                     }
@@ -1456,11 +1508,11 @@ patch: ${JSON.stringify(
                         <${Preamble}
                             last_update_time=${this.state.last_update_time}
                             any_code_differs=${status.code_differs}
-                            last_hot_reload_time=${this.state.notebook.last_hot_reload_time}
+                            last_hot_reload_time=${notebook.last_hot_reload_time}
                             connected=${this.state.connected}
                         />
                         <${Notebook}
-                            notebook=${this.state.notebook}
+                            notebook=${notebook}
                             cell_inputs_local=${this.state.cell_inputs_local}
                             disable_input=${this.state.disable_ui || !this.state.connected /* && this.state.backend_launch_phase == null*/}
                             last_created_cell=${this.state.last_created_cell}
@@ -1496,13 +1548,23 @@ patch: ${JSON.stringify(
                                 }}
                             />`
                         }
+                        <${NonCellOutput} 
+                            notebook_id=${this.state.notebook.notebook_id} 
+                            environment_component=${this.state.extended_components.NonCellOutputComponents} />
                     </${Main}>
                     <${LiveDocs}
                         desired_doc_query=${this.state.desired_doc_query}
                         on_update_doc_query=${this.actions.set_doc_query}
                         notebook=${this.state.notebook}
                     />
-                    <${Popup} notebook=${this.state.notebook}/>
+                    <${Popup} 
+                        notebook=${this.state.notebook}
+                        disable_input=${this.state.disable_ui || !this.state.connected /* && this.state.backend_launch_phase == null*/}
+                    />
+                    <${RecentlyDisabledInfo} 
+                        recently_auto_disabled_cells=${this.state.recently_auto_disabled_cells}
+                        notebook=${this.state.notebook}
+                    />
                     <${UndoDelete}
                         recently_deleted=${this.state.recently_deleted}
                         on_click=${() => {

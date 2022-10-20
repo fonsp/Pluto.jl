@@ -4,7 +4,7 @@ export package_versions, package_completions
 
 import Pkg
 import Pkg.Types: VersionRange
-
+import RegistryInstances
 import ..Pluto
 
 # Should be in Base
@@ -142,34 +142,15 @@ end
 # REGISTRIES
 ###
 
-# (⛔️ Internal API)
-"Return paths to all installed registries."
-_get_registry_paths() = @static if isdefined(Pkg, :Types) && isdefined(Pkg.Types, :registries)
-	Pkg.Types.registries()
-elseif isdefined(Pkg, :Registry) && isdefined(Pkg.Registry, :reachable_registries)
-	registry_specs = Pkg.Registry.reachable_registries()
-	[s.path for s in registry_specs]
-elseif isdefined(Pkg, :Types) && isdefined(Pkg.Types, :collect_registries)
-	registry_specs = Pkg.Types.collect_registries()
-	[s.path for s in registry_specs]
-else
-	String[]
-end
+# (✅ "Public" API using RegistryInstances)
+"Return all installed registries as `RegistryInstances.RegistryInstance` structs."
+_get_registries() = RegistryInstances.reachable_registries()
 
-# (⛔️ Internal API)
-_get_registries() = map(_get_registry_paths()) do r
-	@static if isdefined(Pkg, :Registry) && isdefined(Pkg.Registry, :RegistryInstance)
-		Pkg.Registry.RegistryInstance(r)
-	else
-		r => Pkg.Types.read_registry(joinpath(r, "Registry.toml"))
-	end
-end
-
-# (⛔️ Internal API)
-"Contains all registries as `Pkg.Types.Registry` structs."
+# (✅ "Public" API using RegistryInstances)
+"The cached output value of `_get_registries`."
 const _parsed_registries = Ref(_get_registries())
 
-# (⛔️ Internal API)
+# (✅ "Public" API using RegistryInstances)
 "Re-parse the installed registries from disk."
 function refresh_registry_cache()
 	_parsed_registries[] = _get_registries()
@@ -196,15 +177,19 @@ end
 
 # ✅ Public API
 """
-Check when the registries were last updated. If it is recent (max 7 days), `Pkg.UPDATED_REGISTRY_THIS_SESSION` is set to `true`, which will prevent Pkg from doing an automatic registry update.
+Check when the registries were last updated. If it is recent (max 7 days), then `Pkg.UPDATED_REGISTRY_THIS_SESSION[]` is set to `true`, which will prevent Pkg from doing an automatic registry update.
 
-Returns the new value of `Pkg.UPDATED_REGISTRY_THIS_SESSION`.
+Returns the new value of `Pkg.UPDATED_REGISTRY_THIS_SESSION[]`.
 """
 function check_registry_age(max_age_ms = 1000.0 * 60 * 60 * 24 * 7)::Bool
-	paths = _get_registry_paths()
+	if get(ENV, "GITHUB_ACTIONS", "false") == "true"
+		# don't do this optimization in CI
+		return false
+	end
+	paths = [s.path for s in _get_registries()]
 	isempty(paths) && return _updated_registries_compat[]
 	
-	ages = map(paths) do p
+	mtimes = map(paths) do p
 		try
 			mtime(p)
 		catch
@@ -212,7 +197,7 @@ function check_registry_age(max_age_ms = 1000.0 * 60 * 60 * 24 * 7)::Bool
 		end
 	end
 	
-	if all(ages .> time() - max_age_ms)
+	if all(mtimes .> time() - max_age_ms)
 		_updated_registries_compat[] = true
 	end
 	_updated_registries_compat[]
@@ -290,7 +275,7 @@ end
 # Package versions
 ###
 
-# (⛔️ Internal API)
+# (✅ "Public" API)
 """
 Return paths to all found registry entries of a given package name.
 
@@ -302,17 +287,17 @@ julia> Pluto.PkgCompat._registry_entries("Pluto")
 ```
 """
 function _registry_entries(package_name::AbstractString, registries::Vector=_parsed_registries[])::Vector{String}
-	flatmap(registries) do (rpath, r)
-		packages = values(r["packages"])
+	flatmap(registries) do reg
+		packages = values(reg.pkgs)
 		String[
-			joinpath(rpath, d["path"])
+			joinpath(reg.path, d.path)
 			for d in packages
-			if d["name"] == package_name
+			if d.name == package_name
 		]
 	end
 end
 
-# (⛔️ Internal API)
+# (🐸 "Public API", but using PkgContext)
 function _package_versions_from_path(registry_entry_fullpath::AbstractString)::Vector{VersionNumber}
 	# compat
     vd = @static if isdefined(Pkg, :Operations) && isdefined(Pkg.Operations, :load_versions) && hasmethod(Pkg.Operations.load_versions, (String,))
@@ -323,8 +308,7 @@ function _package_versions_from_path(registry_entry_fullpath::AbstractString)::V
 	vd |> keys |> collect
 end
 
-# ⚠️ Internal API with fallback
-# See https://github.com/JuliaLang/Pkg.jl/issues/2607
+# ✅ "Public" API using RegistryInstances
 """
 Return all registered versions of the given package. Returns `["stdlib"]` for standard libraries, and a `Vector{VersionNumber}` for registered packages.
 """
@@ -333,23 +317,18 @@ function package_versions(package_name::AbstractString)::Vector
         ["stdlib"]
     else
 		try
-			@static(if isdefined(Pkg, :Registry) && isdefined(Pkg.Registry, :uuids_from_name)
-				flatmap(_parsed_registries[]) do reg
-					uuids_with_name = Pkg.Registry.uuids_from_name(reg, package_name)
-					flatmap(uuids_with_name) do u
-						pkg = get(reg, u, nothing)
-						if pkg !== nothing
-							info = Pkg.Registry.registry_info(pkg)
-							collect(keys(info.version_info))
-						else
-							[]
-						end
+			flatmap(_parsed_registries[]) do reg
+				uuids_with_name = RegistryInstances.uuids_from_name(reg, package_name)
+				flatmap(uuids_with_name) do u
+					pkg = get(reg, u, nothing)
+					if pkg !== nothing
+						info = RegistryInstances.registry_info(pkg)
+						collect(keys(info.version_info))
+					else
+						[]
 					end
 				end
-			else
-				ps = _registry_entries(package_name)
-				flatmap(_package_versions_from_path, ps)
-			end) |> sort
+			end
 		catch e
 			@warn "Pkg compat: failed to get installable versions." exception=(e,catch_backtrace())
 			["latest"]
@@ -426,14 +405,20 @@ project_key_order(key::String) =
 
 # ✅ Public API
 function _modify_compat(f!::Function, ctx::PkgContext)::PkgContext
-	toml = Pkg.TOML.parsefile(project_file(ctx))
-	compat = get!(Dict, toml, "compat")
-
+	project_path = project_file(ctx)
+	
+	toml = if isfile(project_path)
+		Pkg.TOML.parsefile(project_path)
+	else
+		Dict{String,Any}()
+	end
+	compat = get!(Dict{String,Any}, toml, "compat")
+	
 	f!(compat)
 
 	isempty(compat) && delete!(toml, "compat")
 
-	write(project_file(ctx), sprint() do io
+	write(project_path, sprint() do io
 		Pkg.TOML.print(io, toml; sorted=true, by=(key -> (project_key_order(key), key)))
 	end)
 	
@@ -457,6 +442,19 @@ function write_auto_compat_entries(ctx::PkgContext)::PkgContext
 				end
 			end
 		end
+	end
+end
+
+
+# ✅ Public API
+"""
+Remove all [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries from the `Project.toml`.
+"""
+function clear_compat_entries(ctx::PkgContext)::PkgContext
+	if isfile(project_file(ctx))
+		_modify_compat(empty!, ctx)
+	else
+		ctx
 	end
 end
 
