@@ -61,9 +61,7 @@ import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
 import { cl } from "../common/ClassTable.js"
 import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_line.js"
 import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
-import { debug_syntax_plugin } from "./CellInput/debug_syntax_plugin.js"
 import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
-import { is_mac_keyboard } from "../common/KeyboardShortcuts.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 
@@ -856,8 +854,6 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
     }
     const toggle_running_disabled = async (e) => {
         const new_val = !running_disabled
-        e.preventDefault()
-        e.stopPropagation()
         await set_cell_disabled(new_val)
     }
     const toggle_logs = () => set_show_logs(!show_logs)

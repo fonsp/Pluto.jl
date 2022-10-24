@@ -94,7 +94,6 @@ pluto-filepicker .cm-editor {
     width: 100%;
     font-style: normal;
     font-weight: 500;
-
     font-family: var(--inter-ui-font-stack);
     font-size: 0.75rem;
     letter-spacing: 1px;
@@ -105,8 +104,9 @@ pluto-filepicker .cm-editor {
     border-right: none;
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
-    flex: 1 1 100%;
-    width: 0px; /* min-width: 0px; */
+    flex: 1 1 auto;
+    width: 0px;
+    /* min-width: 0px; */
 }
 
 pluto-filepicker .cm-scroller {
@@ -149,6 +149,7 @@ pluto-filepicker button {
     cursor: pointer;
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
+    flex: 0 1 auto;
 }
 
 pluto-filepicker button:disabled {

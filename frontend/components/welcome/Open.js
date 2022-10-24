@@ -41,7 +41,7 @@ export const Open = ({ client, connected, CustomPicker, show_samples, on_start_n
         placeholder: "Enter path or URL...",
     }
 
-    return html`<${PasteHandler} />
+    return html`<${PasteHandler} on_start_navigation=${on_start_navigation} />
         <h2>${picker.text}</h2>
         <div id="new" class=${!!window.plutoDesktop ? "desktop_opener" : ""}>
             <${FilePicker}
@@ -50,7 +50,7 @@ export const Open = ({ client, connected, CustomPicker, show_samples, on_start_n
                 value=""
                 on_submit=${on_open_path}
                 on_desktop_submit=${desktop_on_open_path}
-                button_label=${window.plutoDesktop ? "Open Local File" : "Open File"}
+                button_label=${window.plutoDesktop ? "Open File" : "Open"}
                 placeholder=${picker.placeholder}
             />
             ${window.plutoDesktop &&
