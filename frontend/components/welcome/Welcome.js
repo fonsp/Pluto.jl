@@ -7,7 +7,7 @@ import { new_update_message } from "../../common/NewUpdateMessage.js"
 import { Open } from "./Open.js"
 import { Recent } from "./Recent.js"
 import { Featured } from "./Featured.js"
-import { get_environment } from "../../common/Environment"
+import { get_environment } from "../../common/Environment.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../../common/Environment.js"
