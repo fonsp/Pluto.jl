@@ -410,7 +410,7 @@ function update_save_run!(
 	end
 
 	maybe_async(run_async) do
-        topo_order = withtoken(notebook.executetoken) do
+        topological_order = withtoken(notebook.executetoken) do
             sync_nbpkg(session, notebook, old, new; save=(save && !session.options.server.disable_writing_notebook_files), take_token=false)
             if !(isempty(to_run_online) && session.options.evaluation.lazy_workspace_creation) && will_run_code(notebook)
                 # not async because that would be double async
@@ -422,7 +422,7 @@ function update_save_run!(
             session,
             NotebookExecutionDoneEvent(notebook, get(kwargs, :user_requested_run, true))
         )
-		topo_order
+		topological_order
     end
 end
 
