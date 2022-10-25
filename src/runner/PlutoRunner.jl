@@ -254,9 +254,9 @@ module CantReturnInPluto
     replace_returns_with_error(other) = other
 
     "Go through a quoted expression and remove returns"
-    function replace_returns_with_error_in_interpolation(ex::Expr)
-        if ex.head == :$
-            Expr(:$, replace_returns_with_error_in_interpolation(ex.args[1]))
+    function replace_returns_with_error_in_interpolation(expr::Expr)
+        if expr.head == :$
+            Expr(:$, replace_returns_with_error_in_interpolation(expr.args[1]))
         else
             # We are still in a quote, so we do go deeper, but we keep ignoring everything except :$'s
             Expr(expr.head, map(arg -> replace_returns_with_error_in_interpolation(arg), expr.args)...)

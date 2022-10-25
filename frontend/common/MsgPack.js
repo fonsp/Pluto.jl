@@ -3,7 +3,7 @@ import msgpack from "../imports/msgpack-lite.js"
 
 // based on https://github.com/kawanet/msgpack-lite/blob/5b71d82cad4b96289a466a6403d2faaa3e254167/lib/ext-packer.js
 const codec = msgpack.createCodec()
-const packTypedArray = (x) => new Uint8Array(x.buffer)
+const packTypedArray = (x) => new Uint8Array(x.buffer, x.byteOffset, x.byteLength)
 codec.addExtPacker(0x11, Int8Array, packTypedArray)
 codec.addExtPacker(0x12, Uint8Array, packTypedArray)
 codec.addExtPacker(0x13, Int16Array, packTypedArray)

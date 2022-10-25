@@ -405,14 +405,20 @@ project_key_order(key::String) =
 
 # ✅ Public API
 function _modify_compat(f!::Function, ctx::PkgContext)::PkgContext
-	toml = Pkg.TOML.parsefile(project_file(ctx))
-	compat = get!(Dict, toml, "compat")
-
+	project_path = project_file(ctx)
+	
+	toml = if isfile(project_path)
+		Pkg.TOML.parsefile(project_path)
+	else
+		Dict{String,Any}()
+	end
+	compat = get!(Dict{String,Any}, toml, "compat")
+	
 	f!(compat)
 
 	isempty(compat) && delete!(toml, "compat")
 
-	write(project_file(ctx), sprint() do io
+	write(project_path, sprint() do io
 		Pkg.TOML.print(io, toml; sorted=true, by=(key -> (project_key_order(key), key)))
 	end)
 	

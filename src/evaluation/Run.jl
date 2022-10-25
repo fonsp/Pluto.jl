@@ -323,23 +323,39 @@ end
 
 will_run_code(notebook::Notebook) = notebook.process_status != ProcessStatus.no_process && notebook.process_status != ProcessStatus.waiting_to_restart
 
-###
-# CONVENIENCE FUNCTIONS
-###
-
 
 "Do all the things!"
 function update_save_run!(
-	session::ServerSession,
-	notebook::Notebook,
-	cells::Vector{Cell};
-	save::Bool=true,
-	run_async::Bool=false,
-	prerender_text::Bool=false,
+	session::ServerSession, 
+	notebook::Notebook, 
+	cells::Vector{Cell}; 
+	save::Bool=true, 
+	run_async::Bool=false, 
+	prerender_text::Bool=false, 
+	auto_solve_multiple_defs::Bool=false,
+	on_auto_solve_multiple_defs::Union{Nothing,Function}=nothing,
 	kwargs...
 )
 	old = notebook.topology
 	new = notebook.topology = updated_topology(old, notebook, cells) # macros are not yet resolved
+	
+	# _assume `auto_solve_multiple_defs == false` if you want to skip some details_
+	if auto_solve_multiple_defs
+		to_disable_dict = cells_to_disable_to_resolve_multiple_defs(old, new, cells)
+		
+		if !isempty(to_disable_dict)
+			to_disable = keys(to_disable_dict)
+			@debug "Using augmented topology" cell_id.(to_disable)
+			
+			foreach(c -> set_disabled(c, true), to_disable)
+			
+			cells = union(cells, to_disable)
+			# need to update the topology because the topology also keeps track of disabled cells
+			new = notebook.topology = updated_topology(new, notebook, to_disable)
+		end
+		
+		isnothing(on_auto_solve_multiple_defs) || on_auto_solve_multiple_defs(to_disable_dict)
+	end
 
 	update_dependency_cache!(notebook)
 	save && save_notebook(session, notebook)
@@ -412,6 +428,55 @@ end
 
 update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs...) = update_save_run!(session, notebook, [cell]; kwargs...)
 update_run!(args...; kwargs...) = update_save_run!(args...; save=false, kwargs...)
+
+
+function cells_to_disable_to_resolve_multiple_defs(old::NotebookTopology, new::NotebookTopology, cells::Vector{Cell})::Dict{Cell,Any}
+	# keys are cells to disable
+	# values are the reason why
+	to_disable_and_why = Dict{Cell,Any}()
+	
+	for cell in cells
+		new_node = new.nodes[cell]
+		
+		fellow_assigners_old = filter!(c -> !is_disabled(old, c), where_assigned(old, new_node))
+		fellow_assigners_new = filter!(c -> !is_disabled(new, c), where_assigned(new, new_node))
+		
+		if length(fellow_assigners_new) > length(fellow_assigners_old)
+			other_definers = setdiff(fellow_assigners_new, (cell,))
+			
+			@debug "Solving multiple defs" cell.cell_id cell_id.(other_definers) disjoint(cells, other_definers)
+
+			# we want cell to be the only element of cells that defines this varialbe, i.e. all other definers must have been created previously
+			if disjoint(cells, other_definers)
+				# all fellow cells (including the current cell) should meet some criteria:
+				all_fellows_are_simple_enough = all(fellow_assigners_new) do c
+					node = new.nodes[c]
+					
+					# all must be true:
+					return (
+						length(node.definitions) == 1 && # for more than one defined variable, we might confuse the user, or disable more things than we want to.
+						disjoint(node.references, node.definitions) && # avoid self-reference like `x = x + 1`
+						isempty(node.funcdefs_without_signatures) &&
+						isempty(node.macrocalls)
+					)
+				end
+				
+				if all_fellows_are_simple_enough 
+					for c in other_definers
+						# if the cell is already disabled (indirectly), then we don't need to disable it. probably.
+						if !c.depends_on_disabled_cells
+							to_disable_and_why[c] = (cell_id(cell), only(new.nodes[c].definitions))
+						end
+					end
+				end
+			end
+		end
+	end
+	
+	to_disable_and_why
+end
+
+
 
 function notebook_differences(from::Notebook, to::Notebook)
 	from_cells = from.cells_dict
@@ -514,10 +579,10 @@ end
 function update_skipped_cells_dependency!(notebook::Notebook, topology::NotebookTopology=notebook.topology)
     skipped_cells = filter(is_skipped_as_script, notebook.cells)
     indirectly_skipped = collect(topological_order(topology, skipped_cells))
+    for cell in notebook.cells
+        cell.depends_on_skipped_cells = false
+    end
     for cell in indirectly_skipped
         cell.depends_on_skipped_cells = true
-    end
-	for cell in setdiff(notebook.cells, indirectly_skipped)
-        cell.depends_on_skipped_cells = false
     end
 end
