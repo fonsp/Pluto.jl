@@ -1522,16 +1522,10 @@ const integrations = Integration[
 
                 if truncate_rows
                     push!(row_data, "more")
-                    if applicable(lastindex, rows)
-                        last_row = try
-                            last(rows)
-                        catch e
-                            if e isa MethodError && e.f == lastindex
-                                first(reverse([row for row in rows]))
-                            else
-                                rethrow(e)
-                            end
-                        end
+
+                    # In some environments this fails. Not sure why.
+                    last_row = applicable(lastindex, rows) ? try last(rows) catch e nothing end : nothing
+                    if !isnothing(last_row)
                         push!(row_data, (length(rows), row_data_for(last_row)))
                     end
                 end
