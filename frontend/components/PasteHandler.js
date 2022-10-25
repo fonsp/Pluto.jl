@@ -1,4 +1,4 @@
-import { html, useEffect } from "../imports/Preact.js"
+import { html, useEffect, useRef } from "../imports/Preact.js"
 import { link_edit } from "./welcome/Open.js"
 
 const detectNotebook = (inputtext) => {
@@ -40,51 +40,52 @@ const readFile = (file) =>
         fr.readAsText(file)
     })
 
-const processFile = async (ev) => {
-    let notebook
-    console.log(ev)
-    // Don't do anything if paste on CodeMirror
-    if ((ev?.path ?? ev?.composedPath()).filter((node) => node?.classList?.contains(".cm-editor"))?.length > 0) {
-        return
-    }
-    switch (ev.type) {
-        case "paste":
-            notebook = detectNotebook(ev.clipboardData.getData("text/plain"))
-            break
-        case "dragstart": {
-            ev.dataTransfer.dropEffect = "move"
+export const PasteHandler = ({ on_start_navigation }) => {
+    const processFile = async (ev) => {
+        let notebook
+        console.log(ev)
+        // Don't do anything if paste on CodeMirror
+        if ((ev?.path ?? ev?.composedPath()).filter((node) => node?.classList?.contains(".cm-editor"))?.length > 0) {
             return
         }
-        case "dragover": {
-            ev.preventDefault()
+        switch (ev.type) {
+            case "paste":
+                notebook = detectNotebook(ev.clipboardData.getData("text/plain"))
+                break
+            case "dragstart": {
+                ev.dataTransfer.dropEffect = "move"
+                return
+            }
+            case "dragover": {
+                ev.preventDefault()
+                return
+            }
+            case "drop": {
+                ev.preventDefault()
+                notebook = ev.dataTransfer.types.includes("Files")
+                    ? await readFile(ev.dataTransfer.files[0]).then(({ file }) => file)
+                    : detectNotebook(await readMovedText(ev.dataTransfer.items[0]))
+                break
+            }
+        }
+        if (!notebook) {
+            // Notebook not found! Doing nothing :)
             return
         }
-        case "drop": {
-            ev.preventDefault()
-            notebook = ev.dataTransfer.types.includes("Files")
-                ? await readFile(ev.dataTransfer.files[0]).then(({ file }) => file)
-                : detectNotebook(await readMovedText(ev.dataTransfer.items[0]))
-            break
+        on_start_navigation("notebook from clipboard", false)
+        document.body.classList.add("loading")
+        const response = await fetch("./notebookupload", {
+            method: "POST",
+            body: notebook,
+        })
+        if (response.ok) {
+            window.location.href = link_edit(await response.text())
+        } else {
+            let b = await response.blob()
+            window.location.href = URL.createObjectURL(b)
         }
     }
-    if (!notebook) {
-        // Notebook not found! Doing nothing :)
-        return
-    }
-    document.body.classList.add("loading")
-    const response = await fetch("./notebookupload", {
-        method: "POST",
-        body: notebook,
-    })
-    if (response.ok) {
-        window.location.href = link_edit(await response.text())
-    } else {
-        let b = await response.blob()
-        window.location.href = URL.createObjectURL(b)
-    }
-}
 
-export const PasteHandler = () => {
     useEffect(() => {
         document.addEventListener("paste", processFile)
         document.addEventListener("drop", processFile)

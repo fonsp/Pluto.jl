@@ -376,13 +376,11 @@ function update_save_run!(
 			is_offline_renderer=true,
 		)
 
-		new = notebook.topology = static_resolve_topology(new)
-
 		to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)
 		for cell in to_run_offline
 			run_single!(offline_workspace, cell, new.nodes[cell], new.codes[cell])
 		end
-		
+
 		cd(original_pwd)
 		setdiff(cells, to_run_offline)
 	end
