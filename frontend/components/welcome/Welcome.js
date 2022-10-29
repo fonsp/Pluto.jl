@@ -78,13 +78,17 @@ export const Welcome = () => {
     // When block_screen_with_this_text is null (default), all is fine. When it is a string, we show a big banner with that text, and disable all other UI. https://github.com/fonsp/Pluto.jl/pull/2292
     const [block_screen_with_this_text, set_block_screen_with_this_text] = useState(/** @type {string?} */ (null))
 
-    const on_start_navigation = (value) => {
-        // Instead of calling set_block_screen_with_this_text(value) directly, we wait for the beforeunload to happen, and then we do it. If this event does not happen within 1 second, then that means that the user right-clicked, or Ctrl+Clicked (to open in a new tab), and we don't want to clear the main menu. https://github.com/fonsp/Pluto.jl/issues/2301
-        const handler = (e) => {
+    const on_start_navigation = (value, expect_navigation = true) => {
+        if (expect_navigation) {
+            // Instead of calling set_block_screen_with_this_text(value) directly, we wait for the beforeunload to happen, and then we do it. If this event does not happen within 1 second, then that means that the user right-clicked, or Ctrl+Clicked (to open in a new tab), and we don't want to clear the main menu. https://github.com/fonsp/Pluto.jl/issues/2301
+            const handler = (e) => {
+                set_block_screen_with_this_text(value)
+            }
+            window.addEventListener("beforeunload", handler)
+            setTimeout(() => window.removeEventListener("beforeunload", handler), 1000)
+        } else {
             set_block_screen_with_this_text(value)
         }
-        window.addEventListener("beforeunload", handler)
-        setTimeout(() => window.removeEventListener("beforeunload", handler), 1000)
     }
 
     return block_screen_with_this_text != null

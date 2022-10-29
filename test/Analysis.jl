@@ -44,7 +44,7 @@ import Pluto: Notebook, Cell, updated_topology, static_resolve_topology, is_just
         ])
 
         old = notebook.topology
-        new = notebook.topology = updated_topology(old, notebook, notebook.cells) |> static_resolve_topology
+        new = notebook.topology = updated_topology(old, notebook, notebook.cells)
 
         @testset "Only-text detection" begin
             @test is_just_text(new, notebook.cells[1])
