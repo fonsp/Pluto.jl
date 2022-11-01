@@ -345,7 +345,7 @@ export const Cell = ({
                               source_element: e.target,
                               body: html`This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />
                                   This way, it will not run when the notebook runs as a script outside of Pluto.<br />
-                                  Use the context menu to change enable it again`,
+                                  Use the context menu to enable it again`,
                           })
                       }}
                   ></div>`
