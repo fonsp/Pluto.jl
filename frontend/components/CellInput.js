@@ -425,6 +425,9 @@ export const CellInput = ({
 
         let select_autocomplete_command = autocomplete.completionKeymap.find((keybinding) => keybinding.key === "Enter")
         let keyMapTab = (/** @type {EditorView} */ cm) => {
+            if (cm.state.readOnly) {
+                return false
+            }
             // This will return true if the autocomplete select popup is open
             if (select_autocomplete_command?.run(cm)) {
                 return true
