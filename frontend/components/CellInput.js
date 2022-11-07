@@ -62,6 +62,7 @@ import { cl } from "../common/ClassTable.js"
 import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_line.js"
 import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
 import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
+import { mod_d_command } from "./CellInput/mod_d_command.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 
@@ -550,6 +551,8 @@ export const CellInput = ({
             { key: "Ctrl-Delete", run: keyMapDelete },
             { key: "Backspace", run: keyMapBackspace },
             { key: "Ctrl-Backspace", run: keyMapBackspace },
+
+            mod_d_command,
         ]
 
         let DOCS_UPDATER_VERBOSE = false
