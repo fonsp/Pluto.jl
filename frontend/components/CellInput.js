@@ -358,6 +358,7 @@ export const CellInput = ({
     on_submit,
     on_delete,
     on_add_after,
+    on_add_before,
     on_change,
     on_update_doc_query,
     on_focus_neighbor,
@@ -407,6 +408,14 @@ export const CellInput = ({
 
         const keyMapSubmit = () => {
             on_submit()
+            return true
+        }
+        const keyMapAddAfter = () => {
+            on_add_after()
+            return true
+        }
+        const keyMapAddBefore = () => {
+            on_add_before()
             return true
         }
         let run = async (fn) => await fn()
@@ -550,6 +559,10 @@ export const CellInput = ({
             { key: "Ctrl-Delete", run: keyMapDelete },
             { key: "Backspace", run: keyMapBackspace },
             { key: "Ctrl-Backspace", run: keyMapBackspace },
+            { key: "Alt-B", run: keyMapAddAfter }, // B for Below
+            { key: "Alt-b", run: keyMapAddAfter },
+            { key: "Alt-A", run: keyMapAddBefore }, // A for Above
+            { key: "Alt-a", run: keyMapAddBefore },
         ]
 
         let DOCS_UPDATER_VERBOSE = false
