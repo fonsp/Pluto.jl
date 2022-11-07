@@ -44,6 +44,7 @@ struct CachedMacroExpansion
     expansion_duration::UInt64
     has_pluto_hook_features::Bool
     did_mention_expansion_time::Bool
+    expansion_logs::Vector{Any}
 end
 const cell_expanded_exprs = Dict{UUID,CachedMacroExpansion}()
 
@@ -265,10 +266,10 @@ module CantReturnInPluto
     replace_returns_with_error_in_interpolation(ex) = ex
 end
 
-function try_macroexpand(mod::Module, notebook_id::UUID, cell_id::UUID, expr)
+function try_macroexpand(mod::Module, notebook_id::UUID, cell_id::UUID, expr; capture_stdout::Bool=true)
     # Remove the precvious cached expansion, so when we error somewhere before we update,
     # the old one won't linger around and get run accidentally.
-    delete!(cell_expanded_exprs, cell_id)
+    pop!(cell_expanded_exprs, cell_id, nothing)
 
     # Remove toplevel block, as that screws with the computer and everything
     expr_not_toplevel = if expr.head == :toplevel || expr.head == :block
@@ -283,12 +284,18 @@ function try_macroexpand(mod::Module, notebook_id::UUID, cell_id::UUID, expr)
         logger = pluto_cell_loggers[cell_id] = PlutoCellLogger(notebook_id, cell_id)
     end
 
-    expanded_expr, elapsed_ns = Logging.with_logger(logger) do
-        elapsed_ns = time_ns()
-        expanded_expr = macroexpand(mod, expr_not_toplevel)::Expr
-        elapsed_ns = time_ns() - elapsed_ns
-        expanded_expr, elapsed_ns
+    capture_logger = CaptureLogger(nothing, logger, Dict[])
+
+    expanded_expr, elapsed_ns = Logging.with_logger(capture_logger) do
+        with_io_to_logs(; enabled=capture_stdout, loglevel=stdout_log_level) do
+            elapsed_ns = time_ns()
+            expanded_expr = macroexpand(mod, expr_not_toplevel)::Expr
+            elapsed_ns = time_ns() - elapsed_ns
+            expanded_expr, elapsed_ns
+        end
     end
+
+    logs = capture_logger.logs
 
     # Removes baked in references to the module this was macroexpanded in.
     # Fix for https://github.com/fonsp/Pluto.jl/issues/1112
@@ -308,7 +315,8 @@ function try_macroexpand(mod::Module, notebook_id::UUID, cell_id::UUID, expr)
         expr_to_save,
         elapsed_ns,
         has_pluto_hook_features,
-        did_mention_expansion_time
+        did_mention_expansion_time,
+        logs,
     )
 
     return (sanitize_expr(expr_to_save), expr_hash(expr_to_save))
@@ -536,7 +544,7 @@ function run_expression(
     # .... But ideally we wouldn't re-macroexpand and store the error the first time (TODO-ish)
     if !haskey(cell_expanded_exprs, cell_id) || cell_expanded_exprs[cell_id].original_expr_hash != expr_hash(expr)
         try
-            try_macroexpand(m, notebook_id, cell_id, expr)
+            try_macroexpand(m, notebook_id, cell_id, expr; capture_stdout)
         catch e
             result = CapturedException(e, stacktrace(catch_backtrace()))
             cell_results[cell_id], cell_runtimes[cell_id] = (result, nothing)
@@ -549,6 +557,13 @@ function run_expression(
     original_expr = expr
     expr = expanded_cache.expanded_expr
 
+    # Re-play logs from expansion cache
+    for log in expanded_cache.expansion_logs
+        (level, msg, _module, group, id, file, line, kwargs) = log
+        Logging.handle_message(logger, level, msg, _module, group, id, file, line; kwargs...)
+    end
+    empty!(expanded_cache.expansion_logs)
+
     # We add the time it took to macroexpand to the time for the first call,
     # but we make sure we don't mention it on subsequent calls
     expansion_runtime = if expanded_cache.did_mention_expansion_time === false
@@ -558,7 +573,8 @@ function run_expression(
             expanded_cache.expanded_expr,
             expanded_cache.expansion_duration,
             expanded_cache.has_pluto_hook_features,
-            did_mention_expansion_time
+            did_mention_expansion_time,
+            expanded_cache.expansion_logs,
         )
         expanded_cache.expansion_duration
     else
@@ -2223,6 +2239,21 @@ function PlutoCellLogger(notebook_id, cell_id)
     PlutoCellLogger(nothing, notebook_log_channel, cell_id, moduleworkspace_count[])
 end
 
+struct CaptureLogger <: Logging.AbstractLogger
+    stream
+    logger::PlutoCellLogger
+    logs::Vector{Any}
+end
+
+Logging.shouldlog(cl::CaptureLogger, args...) = Logging.shouldlog(cl.logger, args...)
+Logging.min_enabled_level(::CaptureLogger) = min(Logging.Debug, stdout_log_level)
+Logging.catch_exceptions(::CaptureLogger) = Logging.catch_exceptions(cl.logger)
+function Logging.handle_message(pl::CaptureLogger, level, msg, _module, group, id, file, line; kwargs...)
+    Logging.handle_message(pl.logger, level, msg, _module, group, id, file, line; kwargs...)
+    push!(pl.logs, (level, msg, _module, group, id, file, line, kwargs))
+end
+
+
 const pluto_cell_loggers = Dict{UUID,PlutoCellLogger}() # One logger per cell
 const pluto_log_channels = Dict{UUID,Channel{Any}}() # One channel per notebook
 
@@ -2263,16 +2294,15 @@ function Logging.handle_message(pl::PlutoCellLogger, level, msg, _module, group,
             "cell_id" => pl.cell_id,
             "line" => line isa Union{Int32,Int64} ? line : nothing,
             "kwargs" => Tuple{String,Any}[(string(k), format_log_value(v)) for (k, v) in kwargs],
-            )
-        )
+        ))
 
         yield()
 
-        # Also print to console (disabled)
-        # Logging.handle_message(old_logger[], level, msg, _module, group, id, file, line; kwargs...)
     catch e
         println(original_stderr, "Failed to relay log from PlutoRunner")
         showerror(original_stderr, e, stacktrace(catch_backtrace()))
+
+        nothing
     end
 end
 

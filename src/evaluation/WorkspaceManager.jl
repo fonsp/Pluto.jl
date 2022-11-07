@@ -496,13 +496,13 @@ function collect_soft_definitions(session_notebook::SN, modules::Set{Expr})
     end)
 end
 
-function macroexpand_in_workspace(session_notebook::SN, macrocall, cell_id, module_name=nothing)::Tuple{Bool,Any}
+function macroexpand_in_workspace(session_notebook::SN, macrocall, cell_id, module_name = nothing; capture_stdout::Bool=true)::Tuple{Bool, Any}
     workspace = get_workspace(session_notebook)
     module_name = module_name === nothing ? workspace.module_name : module_name
 
     Distributed.remotecall_eval(Main, workspace.pid, quote
         try
-            (true, PlutoRunner.try_macroexpand($module_name, $(workspace.notebook_id), $cell_id, $(QuoteNode(macrocall))))
+            (true, PlutoRunner.try_macroexpand($(module_name), $(workspace.notebook_id), $(cell_id), $(macrocall |> QuoteNode); capture_stdout=$(capture_stdout)))
         catch error
             # We have to be careful here, for example a thrown `MethodError()` will contain the called method and arguments.
             # which normally would be very useful for debugging, but we can't serialize it!
