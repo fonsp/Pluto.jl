@@ -1,0 +1,69 @@
+name: Test dependent packages
+
+# based on https://github.com/SciML/SciMLBase.jl/blob/master/.github/workflows/Downstream.yml, thanks!
+
+# this is the same as Test.yml
+on:
+    workflow_dispatch:
+    push:
+        paths-ignore:
+            - 'frontend/**'
+            - 'frontend-bundler/**'
+            - 'frontend-dist/**'
+            - 'test/frontend/**'
+            - '**.md'
+        branches:
+            - main
+    pull_request:
+        paths-ignore:
+            - 'frontend/**'
+            - 'frontend-bundler/**'
+            - 'frontend-dist/**'
+            - 'test/frontend/**'
+            - '**.md'
+        branches-ignore:
+            - release
+
+
+jobs:
+    test:
+        name: ${{ matrix.package.repo }}
+        runs-on: ${{ matrix.os }}
+        strategy:
+            fail-fast: false
+            matrix:
+                julia-version: [1]
+                os: [ubuntu-latest]
+                package:
+                    - { user: JuliaPluto, repo: PlutoSliderServer.jl }
+
+        steps:
+            - uses: actions/checkout@v2
+            - uses: julia-actions/setup-julia@v1
+              with:
+                  version: ${{ matrix.julia-version }}
+                  arch: x64
+            - uses: julia-actions/julia-buildpkg@v1
+            - name: Clone Downstream
+              uses: actions/checkout@v2
+              with:
+                  repository: ${{ matrix.package.user }}/${{ matrix.package.repo }}
+                  path: downstream
+            - name: Load this and run the downstream tests
+              shell: julia --project=downstream {0}
+              run: |
+                  using Pkg
+                  try
+                    # force it to use this PR's version of the package
+                    Pkg.develop(PackageSpec(path="."))  # resolver may fail with main deps
+                    Pkg.update()
+                    Pkg.test()  # resolver may fail with test time deps 
+                  catch err
+                    err isa Pkg.Resolve.ResolverError || rethrow()
+                    # If we can't resolve that means this is incompatible by SemVer and this is fine
+                    # It means we marked this as a breaking change, so we don't need to worry about
+                    # Mistakenly introducing a breaking change, as we have intentionally made one
+
+                    @info "Not compatible with this release. No problem." exception=err
+                    exit(0)  # Exit immediately, as a success
+                  end

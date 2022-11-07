@@ -58,7 +58,6 @@ const launch_params = {
     //@ts-ignore
     recording_audio_url: url_params.get("recording_audio_url") ?? window.pluto_recording_audio_url,
 }
-console.log("Launch parameters: ", launch_params)
 
 const truthy = (x) => x === "" || x === "true"
 const falsey = (x) => x === "false"
@@ -111,7 +110,8 @@ const without_path_entries = (state) => ({ ...state, path: default_path, shortpa
  * }} props
  */
 const EditorLoader = ({ launch_params }) => {
-    const static_preview = launch_params.statefile != null
+    const { statefile, statefile_integrity } = launch_params
+    const static_preview = statefile != null
 
     const [statefile_download_progress, set_statefile_download_progress] = useState(null)
 
@@ -121,14 +121,15 @@ const EditorLoader = ({ launch_params }) => {
     useEffect(() => {
         if (!ready_for_editor && static_preview) {
             ;(async () => {
-                const r = await fetch(new Request(launch_params.statefile, { integrity: launch_params.statefile_integrity }))
+                const r = await fetch(new Request(statefile, { integrity: statefile_integrity ?? undefined }))
                 const data = await read_Uint8Array_with_progress(r, set_statefile_download_progress)
                 const state = without_path_entries(unpack(data))
+                console.log({ state })
                 initial_notebook_state_ref.current = state
                 set_ready_for_editor(true)
             })()
         }
-    }, [ready_for_editor, static_preview, launch_params.statefile])
+    }, [ready_for_editor, static_preview, statefile])
 
     useEffect(() => {
         set_disable_ui_css(launch_params.disable_ui)
@@ -170,6 +171,7 @@ class PlutoEditorComponent extends HTMLElement {
 
     connectedCallback() {
         const new_launch_params = Object.fromEntries(Object.entries(launch_params).map(([k, v]) => [k, from_attribute(this, k) ?? v]))
+        console.log("Launch parameters: ", new_launch_params)
 
         render(html`<${EditorLoader} launch_params=${new_launch_params} />`, this)
     }
