@@ -62,7 +62,6 @@ import { cl } from "../common/ClassTable.js"
 import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_line.js"
 import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
 import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
-import { debug_syntax_plugin } from "./CellInput/debug_syntax_plugin.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 
@@ -701,7 +700,7 @@ export const CellInput = ({
 
                     // Enable this plugin if you want to see the lezer tree,
                     // and possible lezer errors and maybe more debug info in the console:
-                    debug_syntax_plugin,
+                    // debug_syntax_plugin,
                     // Handle errors hopefully?
                     EditorView.exceptionSink.of((exception) => {
                         set_error(exception)
