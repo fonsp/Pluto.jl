@@ -15,7 +15,17 @@ import { Decoration } from "../../imports/CodemirrorPlutoSetup.js"
 
 function match_block(node) {
     if (node.name === "end") {
-        node = node.parent.firstChild
+        if (node.parent.name === "IfStatement") {
+            // Try moving to the "if" part because
+            // the rest of the code is looking for that
+            node = node.parent?.firstChild?.firstChild
+        } else {
+            node = node.parent.firstChild
+        }
+    }
+
+    if (node == null) {
+        return []
     }
 
     // if (node.name === "StructDefinition") node = node.firstChild
@@ -165,7 +175,9 @@ function match_block(node) {
     }
 
     if (node.name === "if" || node.name === "else" || node.name === "elseif") {
+        if (node.name === "if") node = node.parent
         if (node.name === "else") node = node.parent
+        if (node.name === "elseif") node = node.parent.parent
 
         let try_node = node.parent.firstChild
         let possibly_end = node.parent.lastChild
@@ -174,12 +186,13 @@ function match_block(node) {
 
         let decorations = []
         decorations.push({ from: try_node.from, to: try_node.to })
+        for (let elseif_clause_node of node.parent.getChildren("ElseifClause")) {
+            let elseif_node = elseif_clause_node.firstChild
+            decorations.push({ from: elseif_node.from, to: elseif_node.to })
+        }
         for (let else_clause_node of node.parent.getChildren("ElseClause")) {
             let else_node = else_clause_node.firstChild
             decorations.push({ from: else_node.from, to: else_node.to })
-        }
-        for (let elseif_node of node.parent.getChildren("elseif")) {
-            decorations.push({ from: elseif_node.from, to: elseif_node.to })
         }
         decorations.push({ from: possibly_end.from, to: possibly_end.to })
 
