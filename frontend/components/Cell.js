@@ -112,6 +112,7 @@ export const Cell = ({
     disable_input,
     nbpkg,
     global_definition_locations,
+    hide,
 }) => {
     const { show_logs, disabled: running_disabled, skip_as_script } = metadata
     let pluto_actions = useContext(PlutoActionsContext)
@@ -262,6 +263,9 @@ export const Cell = ({
                 shrunk: Object.values(logs).length > 0,
                 hooked_up: output?.has_pluto_hook_features ?? false,
             })}
+            style=${{
+                display: hide ? "none" : undefined,
+            }}
             id=${cell_id}
         >
             ${variables.map((name) => html`<span id=${encodeURI(name)} />`)}

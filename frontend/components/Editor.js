@@ -276,6 +276,94 @@ const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']
  * }}
  */
 
+let table_of_contents_stuff = ({ notebook }) => {
+    console.log(`notebook:`, notebook)
+
+    let markdown_cells = notebook.cell_order.map((cell_id) => notebook.cell_inputs[cell_id]).filter((x) => MARKDOWN_WITH_HEADER_REGEX.test(x.code))
+    let headers = markdown_cells.map((x) => {
+        let [_, hashes, title] = x.code.match(MARKDOWN_WITH_HEADER_REGEX)
+        return {
+            cell_id: x.cell_id,
+            n_of_hashes: hashes.length,
+            title: title,
+        }
+    })
+
+    let cells_per_heading = [{ heading_cell: null, heading_stuff: null, cells: [] }]
+    for (let cell_id of notebook.cell_order) {
+        let cell = notebook.cell_inputs[cell_id]
+
+        for (let x of headers) {
+            if (x.cell_id === cell_id) {
+                cells_per_heading.push({ heading_cell: cell, heading_stuff: x, cells: [] })
+            }
+        }
+
+        let current_heading = cells_per_heading.at(-1)
+
+        let custom_made_cell_for_this = {
+            cell: cell,
+            cell_id: cell.cell_id,
+            exported: Object.keys(notebook.cell_dependencies[cell.cell_id]?.downstream_cells_map ?? {}),
+        }
+        current_heading.cells.push(custom_made_cell_for_this)
+    }
+
+    return cells_per_heading
+}
+
+let MARKDOWN_WITH_HEADER_REGEX = /^\n*md(?:"|""")\n*(#+) ([^\n"]+)(?:\n|"|$)/
+let TableOfContents = ({ table_of_contents, only_show_some, on_only_show_some }) => {
+    console.log("cells_per_heading:", table_of_contents)
+
+    return html`
+        <div id="table-of-contents">
+            <div id="actual-table-of-contents">
+                ${table_of_contents
+                    .filter((x) => x.heading_cell != null)
+                    .map(
+                        ({ heading_stuff: { cell_id, title, n_of_hashes }, cells }) => html`
+                            <div class="heading heading-${n_of_hashes}">
+                                <span>${title}</span>
+                                <input
+                                    type="checkbox"
+                                    checked=${only_show_some.includes(cell_id)}
+                                    onChange=${(event) => {
+                                        let subcells = [cell_id, ...cells.map((x) => x.cell_id)]
+                                        console.log("subcells:", subcells)
+                                        if (event.target.checked) {
+                                            on_only_show_some([...only_show_some, ...subcells])
+                                        } else {
+                                            on_only_show_some(only_show_some.filter((x) => !subcells.includes(x)))
+                                        }
+                                    }}
+                                />
+                            </div>
+                            ${cells
+                                .filter((cell) => cell.exported.length !== 0)
+                                .map((cell) => {
+                                    return html` <div class="heading heading-just-simple-cell-laaaammeeee">
+                                        <span>${cell.exported.join(", ")}</span>
+                                        <input
+                                            type="checkbox"
+                                            checked=${only_show_some.includes(cell.cell_id)}
+                                            onChange=${(event) => {
+                                                if (event.target.checked) {
+                                                    on_only_show_some([...only_show_some, cell.cell_id])
+                                                } else {
+                                                    on_only_show_some(only_show_some.filter((x) => x !== cell.cell_id))
+                                                }
+                                            }}
+                                        />
+                                    </div>`
+                                })}
+                        `
+                    )}
+            </div>
+        </div>
+    `
+}
+
 /**
  * @augments Component<EditorProps,EditorState>
  */
@@ -1369,6 +1457,11 @@ patch: ${JSON.stringify(
             >${text}</a
         >`
 
+        let [only_show_some, set_only_show_some] = preact.useState([])
+        let on_only_show_some = set_only_show_some
+
+        let table_of_contents = table_of_contents_stuff({ notebook })
+
         return html`
             ${this.state.disable_ui === false && html`<${HijackExternalLinksToOpenInNewTab} />`}
             
@@ -1504,54 +1597,60 @@ patch: ${JSON.stringify(
                             })} 
                     />
                     ${launch_params.preamble_html ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />` : null}
-                    <${Main}>
-                        <${Preamble}
-                            last_update_time=${this.state.last_update_time}
-                            any_code_differs=${status.code_differs}
-                            last_hot_reload_time=${notebook.last_hot_reload_time}
-                            connected=${this.state.connected}
-                        />
-                        <${Notebook}
-                            notebook=${notebook}
-                            cell_inputs_local=${this.state.cell_inputs_local}
-                            disable_input=${this.state.disable_ui || !this.state.connected /* && this.state.backend_launch_phase == null*/}
-                            last_created_cell=${this.state.last_created_cell}
-                            selected_cells=${this.state.selected_cells}
-                            is_initializing=${this.state.initializing}
-                            is_process_ready=${this.is_process_ready()}
-                        />
-                        <${DropRuler} 
-                            actions=${this.actions}
-                            selected_cells=${this.state.selected_cells}
-                            set_scroller=${(enabled) => this.setState({ scroller: enabled })}
-                            serialize_selected=${this.serialize_selected}
-                        />
-                        ${
-                            this.state.disable_ui ||
-                            html`<${SelectionArea}
+                   
+                    <div class="horizontal-row-thing">
+                        <${TableOfContents} table_of_contents=${table_of_contents} only_show_some=${only_show_some} on_only_show_some=${on_only_show_some} />
+                        
+                        <${Main}>
+                            <${Preamble}
+                                last_update_time=${this.state.last_update_time}
+                                any_code_differs=${status.code_differs}
+                                last_hot_reload_time=${notebook.last_hot_reload_time}
+                                connected=${this.state.connected}
+                            />
+                            <${Notebook}
+                                only_show_some=${only_show_some}
+                                notebook=${notebook}
+                                cell_inputs_local=${this.state.cell_inputs_local}
+                                disable_input=${this.state.disable_ui || !this.state.connected /* && this.state.backend_launch_phase == null*/}
+                                last_created_cell=${this.state.last_created_cell}
+                                selected_cells=${this.state.selected_cells}
+                                is_initializing=${this.state.initializing}
+                                is_process_ready=${this.is_process_ready()}
+                            />
+                            <${DropRuler} 
                                 actions=${this.actions}
-                                cell_order=${this.state.notebook.cell_order}
-                                selected_cell_ids=${this.state.selected_cell_ids}
-                                set_scroller=${(enabled) => {
-                                    this.setState({ scroller: enabled })
-                                }}
-                                on_selection=${(selected_cell_ids) => {
-                                    // @ts-ignore
-                                    if (
-                                        selected_cell_ids.length !== this.state.selected_cells.length ||
-                                        _.difference(selected_cell_ids, this.state.selected_cells).length !== 0
-                                    ) {
-                                        this.setState({
-                                            selected_cells: selected_cell_ids,
-                                        })
-                                    }
-                                }}
-                            />`
-                        }
-                        <${NonCellOutput} 
-                            notebook_id=${this.state.notebook.notebook_id} 
-                            environment_component=${this.state.extended_components.NonCellOutputComponents} />
-                    </${Main}>
+                                selected_cells=${this.state.selected_cells}
+                                set_scroller=${(enabled) => this.setState({ scroller: enabled })}
+                                serialize_selected=${this.serialize_selected}
+                            />
+                            ${
+                                this.state.disable_ui ||
+                                html`<${SelectionArea}
+                                    actions=${this.actions}
+                                    cell_order=${this.state.notebook.cell_order}
+                                    selected_cell_ids=${this.state.selected_cell_ids}
+                                    set_scroller=${(enabled) => {
+                                        this.setState({ scroller: enabled })
+                                    }}
+                                    on_selection=${(selected_cell_ids) => {
+                                        // @ts-ignore
+                                        if (
+                                            selected_cell_ids.length !== this.state.selected_cells.length ||
+                                            _.difference(selected_cell_ids, this.state.selected_cells).length !== 0
+                                        ) {
+                                            this.setState({
+                                                selected_cells: selected_cell_ids,
+                                            })
+                                        }
+                                    }}
+                                />`
+                            }
+                            <${NonCellOutput} 
+                                notebook_id=${this.state.notebook.notebook_id} 
+                                environment_component=${this.state.extended_components.NonCellOutputComponents} />
+                        </${Main}>
+                    </div>
                     <${LiveDocs}
                         desired_doc_query=${this.state.desired_doc_query}
                         on_update_doc_query=${this.actions.set_doc_query}

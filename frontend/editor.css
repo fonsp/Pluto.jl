@@ -3008,3 +3008,61 @@ pluto-logs-container > header {
     font-weight: 700;
     /* background: #494949; */
 }
+
+.horizontal-row-thing {
+    display: flex;
+    width: 100%;
+}
+#table-of-contents {
+    background-color: #171717;
+    z-index: 1000;
+}
+#actual-table-of-contents {
+    overflow: auto;
+    background-color: #171717;
+    padding-top: 0px;
+    position: sticky;
+    top: 60px;
+    height: calc(100vh - 60px - 60px);
+    overscroll-behavior: none;
+}
+.heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+
+    font-family: "Alegreya Sans", sans-serif;
+}
+.heading span {
+    width: 200px;
+    overflow: hidden;
+    white-space: pre;
+    text-overflow: ellipsis;
+}
+.heading:hover {
+    background-color: rgba(255, 255, 255, 0.5);
+}
+
+.heading-1 {
+    margin-top: 16px;
+    font-size: 24px;
+}
+.heading-2 {
+    margin-top: 16px;
+    font-size: 22px;
+}
+.heading-3 {
+    font-size: 16px;
+}
+.heading-just-simple-cell-laaaammeeee {
+    font-family: var(--julia-mono-font-stack) !important;
+    font-size: 0.75em;
+    color: #83f4ff;
+}
+main {
+    flex: 1;
+}

@@ -39,6 +39,7 @@ let CellMemo = ({
     set_show_logs,
     nbpkg,
     global_definition_locations,
+    hide,
 }) => {
     const { body, last_run_timestamp, mime, persist_js_state, rootassignee } = cell_result?.output || {}
     const { queued, running, runtime, errored, depends_on_disabled_cells, logs, depends_on_skipped_cells } = cell_result || {}
@@ -58,6 +59,7 @@ let CellMemo = ({
                 disable_input=${disable_input}
                 nbpkg=${nbpkg}
                 global_definition_locations=${global_definition_locations}
+                hide=${hide}
             />
         `
     }, [
@@ -89,6 +91,7 @@ let CellMemo = ({
         disable_input,
         ...nbpkg_fingerprint(nbpkg),
         global_definition_locations,
+        hide,
     ])
 }
 
@@ -116,7 +119,16 @@ const render_cell_outputs_minimum = 20
  *  disable_input: boolean,
  * }} props
  * */
-export const Notebook = ({ notebook, cell_inputs_local, last_created_cell, selected_cells, is_initializing, is_process_ready, disable_input }) => {
+export const Notebook = ({
+    only_show_some,
+    notebook,
+    cell_inputs_local,
+    last_created_cell,
+    selected_cells,
+    is_initializing,
+    is_process_ready,
+    disable_input,
+}) => {
     let pluto_actions = useContext(PlutoActionsContext)
 
     // Add new cell when the last cell gets deleted
@@ -145,6 +157,7 @@ export const Notebook = ({ notebook, cell_inputs_local, last_created_cell, selec
             ),
         [notebook?.cell_dependencies]
     )
+
     return html`
         <pluto-notebook id=${notebook.notebook_id}>
             ${notebook.cell_order
@@ -152,6 +165,7 @@ export const Notebook = ({ notebook, cell_inputs_local, last_created_cell, selec
                 .map(
                     (cell_id, i) => html`<${CellMemo}
                         key=${cell_id}
+                        hide=${only_show_some.length !== 0 && !only_show_some.includes(cell_id)}
                         cell_result=${notebook.cell_results[cell_id] ?? {
                             cell_id: cell_id,
                             queued: true,
@@ -191,6 +205,7 @@ export const NotebookMemo = ({
     disable_input,
     last_created_cell,
     selected_cells,
+    only_show_some,
 }) => {
     return useMemo(() => {
         return html`
@@ -204,9 +219,11 @@ export const NotebookMemo = ({
                 disable_input=${disable_input}
                 last_created_cell=${last_created_cell}
                 selected_cells=${selected_cells}
+                only_show_some=${only_show_some}
             />
         `
     }, [
+        only_show_some,
         is_initializing,
         notebook,
         cell_inputs_local,
