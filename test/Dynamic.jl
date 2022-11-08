@@ -150,7 +150,7 @@ end
     @testset "Docs" begin
         @test occursin("square root", Pluto.PlutoRunner.doc_fetcher("sqrt", Main)[1])
         @test occursin("square root", Pluto.PlutoRunner.doc_fetcher("Base.sqrt", Main)[1])
-        @test occursin("anonymous function mapping", Pluto.PlutoRunner.doc_fetcher("->", Main)[1])
+        @test occursin("Functions are defined", Pluto.PlutoRunner.doc_fetcher("function", Main)[1])
         @test occursin("Within a module", Pluto.PlutoRunner.doc_fetcher("module", Main)[1])
         @test occursin("No documentation found", Pluto.PlutoRunner.doc_fetcher("Base.findmeta", Main)[1])
         let
