@@ -439,8 +439,8 @@ end
 
 
 function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEVEL_MAJOR, backup::Bool=true, save::Bool=true)
-    if backup && save
-        bp = writebackup(notebook)
+    bp = if backup && save
+        writebackup(notebook)
     end
 
     try
@@ -468,7 +468,7 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
 				@debug "PlutoPkg: Notebook restart REQUIRED" notebook.path notebook.nbpkg_restart_required_msg
 			end
 		else
-            isfile(bp) && rm(bp)
+            !isnothing(bp) && isfile(bp) && rm(bp)
         end
 	finally
 		notebook.nbpkg_busy_packages = String[]

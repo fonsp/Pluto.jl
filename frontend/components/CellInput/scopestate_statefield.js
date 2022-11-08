@@ -153,6 +153,10 @@ let explorer_function_definition_argument = (cursor, doc, scopestate, verbose = 
         if (type) scopestate = explore_variable_usage(type.cursor(), doc, scopestate, verbose)
         return scopestate
     } else {
+        // Fall back to "just explore pattern"...
+        // There is more overlap between function arguments and patterns than I use now, I think
+        scopestate = explore_pattern(cursor, doc, scopestate)
+
         verbose && console.warn("UNKNOWN FUNCTION DEFINITION ARGUMENT:", cursor.toString())
         return scopestate
     }
@@ -186,6 +190,13 @@ let explore_pattern = (node, doc, scopestate, valid_from = null, verbose = false
             let { name, value } = match
             scopestate = explore_pattern(name, doc, scopestate, value.from, verbose)
             scopestate = explore_variable_usage(value.cursor(), doc, scopestate, verbose)
+            return scopestate
+        } else if ((match = match_assignee(node, true)`(; ${t.many("named_tuples")})`)) {
+            // `(; x, y) = z` => ["x", "y"]
+            let { named_tuples } = match
+            for (let name of named_tuples) {
+                scopestate = explore_pattern(name.node.cursor(), doc, scopestate, valid_from, verbose)
+            }
             return scopestate
         } else if (
             (match = match_assignee(node)`${t.as("first")}, ${t.many("rest")}`) ??

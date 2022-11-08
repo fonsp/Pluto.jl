@@ -2381,7 +2381,7 @@ pluto-logs-container pluto-progress-bar {
     background: linear-gradient(90deg, var(--c), var(--c));
     background-repeat: no-repeat;
     width: 100%;
-    transition: background-size cubic-bezier(0.14, 0.71, 0, 0.99) 2s, opacity linear 0.2s;
+    transition: background-size cubic-bezier(0.14, 0.71, 0, 0.99) 0.5s, opacity linear 0.2s;
     display: grid;
     align-items: center;
 }
