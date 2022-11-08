@@ -27,7 +27,21 @@ let VALID_DOCS_TYPES = [
     "Definition",
     "ParameterizedIdentifier",
 ]
-let keywords_that_have_docs_and_are_cool = ["import", "export", "try", "catch", "finally", "quote", "do", "struct", "mutable"]
+let keywords_that_have_docs_and_are_cool = [
+    "import",
+    "export",
+    "try",
+    "catch",
+    "finally",
+    "quote",
+    "do",
+    "struct",
+    "mutable",
+    "module",
+    "baremodule",
+    "if",
+    "let",
+]
 
 let is_docs_searchable = (/** @type {import("../../imports/CodemirrorPlutoSetup.js").TreeCursor} */ cursor) => {
     if (keywords_that_have_docs_and_are_cool.includes(cursor.name)) {
