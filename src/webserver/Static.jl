@@ -146,9 +146,8 @@ end
 print_secret_throttled = simple_leading_throttle(5) do session::ServerSession, request::HTTP.Request
     host = HTTP.header(request, "Host")
     target = request.target
-    url = "http://$host$target"
-    full_url = occursin('?', url) ? "$url&secret=$(session.secret)" : "$url?secret=$(session.secret)"
-    @info("The Pluto server received a request that did not contain the secret, here is the requested url with the added secret:", url=full_url)
+    url = Text(string(HTTP.URI(HTTP.URI("http://$host/"); query=Dict("secret" => session.secret))))
+    @info("No longer authenticated? Visit this URL to continue:", url)
 end
 
 function http_router_for(session::ServerSession)
