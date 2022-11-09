@@ -704,7 +704,7 @@ function move_vars(
                     :include,                      # builtin
                     Symbol("#eval"),               # builtin
                     Symbol("#include"),            # builtin
-                    Symbol("#___this_module_name"), # from https://github.com/fonsp/Pluto.jl/pull/1966
+                    Symbol("#__this_module_name"), # from https://github.com/fonsp/Pluto.jl/pull/1966
                 ) || startswith(string(symbol), "workspace#")
             )
                 try
