@@ -632,6 +632,8 @@ end
 # DELETING GLOBALS
 ###
 
+# This function checks whether the symbol provided to it represents a name of a memoized_cache variable from Memoize.jl, see https://github.com/fonsp/Pluto.jl/issues/2305 for more details
+is_memoized_cache(s::Symbol) = startswith(string(s), "##") && endswith(string(s), "_memoized_cache")
 
 function do_reimports(workspace_name, module_imports_to_move::Set{Expr})
     for expr in module_imports_to_move
@@ -698,15 +700,7 @@ function move_vars(
             end
         else
             # var will not be redefined in the new workspace, move it over
-            if !(
-                symbol ∈ (
-                    :eval,                         # builtin
-                    :include,                      # builtin
-                    Symbol("#eval"),               # builtin
-                    Symbol("#include"),            # builtin
-                    Symbol("#__this_module_name"), # from https://github.com/fonsp/Pluto.jl/pull/1966
-                ) || startswith(string(symbol), "workspace#")
-            )
+            if !(symbol == :eval || symbol == :include || (string(symbol)[1] == '#' && !is_memoized_cache(symbol)) || startswith(string(symbol), "workspace#"))
                 try
                     getfield(old_workspace, symbol)
 
