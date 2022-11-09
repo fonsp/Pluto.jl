@@ -44,6 +44,7 @@ struct CachedMacroExpansion
     expansion_duration::UInt64
     has_pluto_hook_features::Bool
     did_mention_expansion_time::Bool
+    expansion_logs::Vector{Any}
 end
 const cell_expanded_exprs = Dict{UUID,CachedMacroExpansion}()
 
@@ -265,10 +266,10 @@ module CantReturnInPluto
     replace_returns_with_error_in_interpolation(ex) = ex
 end
 
-function try_macroexpand(mod::Module, notebook_id::UUID, cell_id::UUID, expr)
+function try_macroexpand(mod::Module, notebook_id::UUID, cell_id::UUID, expr; capture_stdout::Bool=true)
     # Remove the precvious cached expansion, so when we error somewhere before we update,
     # the old one won't linger around and get run accidentally.
-    delete!(cell_expanded_exprs, cell_id)
+    pop!(cell_expanded_exprs, cell_id, nothing)
 
     # Remove toplevel block, as that screws with the computer and everything
     expr_not_toplevel = if expr.head == :toplevel || expr.head == :block
@@ -278,9 +279,23 @@ function try_macroexpand(mod::Module, notebook_id::UUID, cell_id::UUID, expr)
         Expr(:block, expr)
     end
 
-    elapsed_ns = time_ns()
-    expanded_expr = macroexpand(mod, expr_not_toplevel)::Expr
-    elapsed_ns = time_ns() - elapsed_ns
+    logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
+    if logger.workspace_count < moduleworkspace_count[]
+        logger = pluto_cell_loggers[cell_id] = PlutoCellLogger(notebook_id, cell_id)
+    end
+
+    capture_logger = CaptureLogger(nothing, logger, Dict[])
+
+    expanded_expr, elapsed_ns = Logging.with_logger(capture_logger) do
+        with_io_to_logs(; enabled=capture_stdout, loglevel=stdout_log_level) do
+            elapsed_ns = time_ns()
+            expanded_expr = macroexpand(mod, expr_not_toplevel)::Expr
+            elapsed_ns = time_ns() - elapsed_ns
+            expanded_expr, elapsed_ns
+        end
+    end
+
+    logs = capture_logger.logs
 
     # Removes baked in references to the module this was macroexpanded in.
     # Fix for https://github.com/fonsp/Pluto.jl/issues/1112
@@ -300,7 +315,8 @@ function try_macroexpand(mod::Module, notebook_id::UUID, cell_id::UUID, expr)
         expr_to_save,
         elapsed_ns,
         has_pluto_hook_features,
-        did_mention_expansion_time
+        did_mention_expansion_time,
+        logs,
     )
 
     return (sanitize_expr(expr_to_save), expr_hash(expr_to_save))
@@ -504,8 +520,11 @@ function run_expression(
 
     old_currently_running_cell_id = currently_running_cell_id[]
     currently_running_cell_id[] = cell_id
-    logger = pluto_loggers[notebook_id]
-    logger.currently_running_cell_id[] = cell_id
+
+    logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
+    if logger.workspace_count < moduleworkspace_count[]
+        logger = pluto_cell_loggers[cell_id] = PlutoCellLogger(notebook_id, cell_id)
+    end
 
     # reset published objects
     cell_published_objects[cell_id] = Dict{String,Any}()
@@ -525,7 +544,7 @@ function run_expression(
     # .... But ideally we wouldn't re-macroexpand and store the error the first time (TODO-ish)
     if !haskey(cell_expanded_exprs, cell_id) || cell_expanded_exprs[cell_id].original_expr_hash != expr_hash(expr)
         try
-            try_macroexpand(m, notebook_id, cell_id, expr)
+            try_macroexpand(m, notebook_id, cell_id, expr; capture_stdout)
         catch e
             result = CapturedException(e, stacktrace(catch_backtrace()))
             cell_results[cell_id], cell_runtimes[cell_id] = (result, nothing)
@@ -538,6 +557,13 @@ function run_expression(
     original_expr = expr
     expr = expanded_cache.expanded_expr
 
+    # Re-play logs from expansion cache
+    for log in expanded_cache.expansion_logs
+        (level, msg, _module, group, id, file, line, kwargs) = log
+        Logging.handle_message(logger, level, msg, _module, group, id, file, line; kwargs...)
+    end
+    empty!(expanded_cache.expansion_logs)
+
     # We add the time it took to macroexpand to the time for the first call,
     # but we make sure we don't mention it on subsequent calls
     expansion_runtime = if expanded_cache.did_mention_expansion_time === false
@@ -547,7 +573,8 @@ function run_expression(
             expanded_cache.expanded_expr,
             expanded_cache.expansion_duration,
             expanded_cache.has_pluto_hook_features,
-            did_mention_expansion_time
+            did_mention_expansion_time,
+            expanded_cache.expansion_logs,
         )
         expanded_cache.expansion_duration
     else
@@ -859,8 +886,6 @@ function formatted_result_of(
 )::FormattedCellResult
     load_integrations_if_needed()
     currently_running_cell_id[] = cell_id
-    logger = pluto_loggers[notebook_id]
-    logger.currently_running_cell_id[] = cell_id
 
     extra_items = if showmore === nothing
         tree_display_extra_items[cell_id] = Dict{ObjectDimPair,Int64}()
@@ -879,15 +904,15 @@ function formatted_result_of(
     else
         ("", MIME"text/plain"())
     end
-    
+
     published_objects = get(cell_published_objects, cell_id, Dict{String,Any}())
-    
+
     for k in known_published_objects
         if haskey(published_objects, k)
             published_objects[k] = nothing
         end
     end
-    
+
     return (;
         output_formatted,
         errored,
@@ -2213,19 +2238,45 @@ const original_stderr = stderr
 
 const old_logger = Ref{Union{Logging.AbstractLogger,Nothing}}(nothing)
 
-struct PlutoLogger <: Logging.AbstractLogger
+struct PlutoCellLogger <: Logging.AbstractLogger
     stream # some packages expect this field to exist...
     log_channel::Channel{Any}
-    currently_running_cell_id::Ref{UUID}
+    cell_id::UUID
+    workspace_count::Int # Used to invalidate previous logs
+end
+function PlutoCellLogger(notebook_id, cell_id)
+    notebook_log_channel = pluto_log_channels[notebook_id]
+    PlutoCellLogger(nothing, notebook_log_channel, cell_id, moduleworkspace_count[])
 end
 
-const pluto_loggers = Dict{UUID,PlutoLogger}()
+struct CaptureLogger <: Logging.AbstractLogger
+    stream
+    logger::PlutoCellLogger
+    logs::Vector{Any}
+end
 
-function Logging.shouldlog(::PlutoLogger, level, _module, _...)
+Logging.shouldlog(cl::CaptureLogger, args...) = Logging.shouldlog(cl.logger, args...)
+Logging.min_enabled_level(::CaptureLogger) = min(Logging.Debug, stdout_log_level)
+Logging.catch_exceptions(::CaptureLogger) = Logging.catch_exceptions(cl.logger)
+function Logging.handle_message(pl::CaptureLogger, level, msg, _module, group, id, file, line; kwargs...)
+    push!(pl.logs, (level, msg, _module, group, id, file, line, kwargs))
+end
+
+
+const pluto_cell_loggers = Dict{UUID,PlutoCellLogger}() # One logger per cell
+const pluto_log_channels = Dict{UUID,Channel{Any}}() # One channel per notebook
+
+function Logging.shouldlog(logger::PlutoCellLogger, level, _module, _...)
     # Accept logs
+    # - Only if the logger is the latest for this cell using the increasing workspace_count tied to each logger
     # - From the user's workspace module
     # - Info level and above for other modules
     # - LogLevel(-1) because that's what ProgressLogging.jl uses for its messages
+    current_logger = pluto_cell_loggers[logger.cell_id]
+    if current_logger.workspace_count > logger.workspace_count
+        return false
+    end
+
     level = convert(Logging.LogLevel, level)
     (_module isa Module && is_pluto_workspace(_module)) ||
         level >= Logging.Info ||
@@ -2233,35 +2284,34 @@ function Logging.shouldlog(::PlutoLogger, level, _module, _...)
         level == stdout_log_level
 end
 
-Logging.min_enabled_level(::PlutoLogger) = min(Logging.Debug, stdout_log_level)
-Logging.catch_exceptions(::PlutoLogger) = false
-function Logging.handle_message(pl::PlutoLogger, level, msg, _module, group, id, file, line; kwargs...)
+Logging.min_enabled_level(::PlutoCellLogger) = min(Logging.Debug, stdout_log_level)
+Logging.catch_exceptions(::PlutoCellLogger) = false
+function Logging.handle_message(pl::PlutoCellLogger, level, msg, _module, group, id, file, line; kwargs...)
     # println("receiving msg from ", _module, " ", group, " ", id, " ", msg, " ", level, " ", line, " ", file)
     # println("with types: ", "_module: ", typeof(_module), ", ", "msg: ", typeof(msg), ", ", "group: ", typeof(group), ", ", "id: ", typeof(id), ", ", "file: ", typeof(file), ", ", "line: ", typeof(line), ", ", "kwargs: ", typeof(kwargs)) # thanks Copilot
 
     try
-        
+
         yield()
-        
+
         put!(pl.log_channel, Dict{String,Any}(
             "level" => string(level),
             "msg" => format_output_default(msg isa AbstractString ? Text(msg) : msg),
             "group" => string(group),
             "id" => string(id),
             "file" => string(file),
-            "cell_id" => pl.currently_running_cell_id[],
+            "cell_id" => pl.cell_id,
             "line" => line isa Union{Int32,Int64} ? line : nothing,
             "kwargs" => Tuple{String,Any}[(string(k), format_log_value(v)) for (k, v) in kwargs],
-            )
-        )
-        
+        ))
+
         yield()
-        
-        # Also print to console (disabled)
-        # Logging.handle_message(old_logger[], level, msg, _module, group, id, file, line; kwargs...)
+
     catch e
         println(original_stderr, "Failed to relay log from PlutoRunner")
         showerror(original_stderr, e, stacktrace(catch_backtrace()))
+
+        nothing
     end
 end
 
@@ -2274,7 +2324,7 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
         return f()
     end
     # Taken from https://github.com/JuliaDocs/IOCapture.jl/blob/master/src/IOCapture.jl with some modifications to make it log.
-    
+
     # Original implementation from Documenter.jl (MIT license)
     # Save the default output streams.
     default_stdout = stdout
@@ -2292,8 +2342,32 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     # `String`. We need to use an asynchronous task to continously tranfer bytes from the
     # pipe to `output` in order to avoid the buffer filling up and stalling write() calls in
     # user code.
+    execution_done = Ref(false)
     output = IOBuffer()
-    buffer_redirect_task = @async write(output, pipe)
+    function send_output()
+        output_str = String(take!(output))
+        if !isempty(output_str)
+            Logging.@logmsg loglevel output_str
+        end
+    end
+
+    @async begin
+        pipe_reader = Base.pipe_reader(pipe)
+        try
+            while !eof(pipe_reader)
+                write(output, readavailable(pipe_reader))
+
+                # NOTE: we don't really have to wait for the end of execution to stream output logs
+                #       so maybe we should just enable it?
+                if execution_done[]
+                    send_output()
+                end
+            end
+            send_output()
+        catch err
+            @error "Failed to redirect stdout/stderr to logs"  exception=(err,catch_backtrace())
+        end
+    end
 
     # To make the `display` function work.
     redirect_display = TextDisplay(pe_stdout)
@@ -2311,33 +2385,22 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
             # This happens when the user calls `popdisplay()`, fine.
             # @warn "Pluto's display was already removed?" e
         end
+
+        execution_done[] = true
+
         # Restore the original output streams.
         redirect_stdout(default_stdout)
         redirect_stderr(default_stderr)
         close(pe_stdout)
         close(pe_stderr)
-        wait(buffer_redirect_task)
-    end
-
-
-    output = String(take!(output))
-    if !isempty(output)
-        Logging.@logmsg loglevel output
     end
 
     result
 end
 
 
-function setup_plutologger(notebook_id::UUID, log_channel::Channel{Any}; make_global::Bool=false)
-    logger = pluto_loggers[notebook_id] = 
-        PlutoLogger(nothing, log_channel, Ref{UUID}(uuid4()))
-    
-    if make_global
-        old_logger[] = Logging.global_logger()
-        Logging.global_logger(logger)
-    end
-    logger
+function setup_plutologger(notebook_id::UUID, log_channel::Channel{Any})
+    pluto_log_channels[notebook_id] = log_channel
 end
 
 end

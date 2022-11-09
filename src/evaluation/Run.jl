@@ -157,12 +157,12 @@ function run_reactive_core!(
     local any_interrupted = false
     for (i, cell) in enumerate(to_run)
 
-		cell.queued = false
-		cell.running = true
-		# Important to not use empty! here because AppendonlyMarker requires a new array identity.
-		# Eventually we could even make AppendonlyArray to enforce this but idk if it's worth it. yadiyadi.
-		cell.logs = []
-		send_notebook_changes_throttled()
+        cell.queued = false
+        cell.running = true
+        # Important to not use empty! here because AppendonlyMarker requires a new array identity.
+        # Eventually we could even make AppendonlyArray to enforce this but idk if it's worth it. yadiyadi.
+        cell.logs = []
+        send_notebook_changes_throttled()
 
         if any_interrupted || notebook.wants_to_interrupt || !will_run_code(notebook)
             relay_reactivity_error!(cell, InterruptException())

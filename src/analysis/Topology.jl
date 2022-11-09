@@ -49,8 +49,8 @@ function set_unresolved(topology::NotebookTopology, unresolved_cells::Vector{Cel
         for cell in unresolved_cells
     )
     NotebookTopology(
-        nodes=topology.nodes, 
-        codes=merge(topology.codes, codes), 
+        nodes=topology.nodes,
+        codes=merge(topology.codes, codes),
         unresolved_cells=union(topology.unresolved_cells, unresolved_cells),
         cell_order=topology.cell_order,
         disabled_cells=topology.disabled_cells,
