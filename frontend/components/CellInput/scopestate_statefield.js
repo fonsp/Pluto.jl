@@ -191,7 +191,7 @@ let explore_pattern = (node, doc, scopestate, valid_from = null, verbose = false
             scopestate = explore_pattern(name, doc, scopestate, value.from, verbose)
             scopestate = explore_variable_usage(value.cursor(), doc, scopestate, verbose)
             return scopestate
-        } else if ((match = match_assignee(node, true)`(; ${t.many("named_tuples")})`)) {
+        } else if ((match = match_assignee(node)`(; ${t.many("named_tuples")})`)) {
             // `(; x, y) = z` => ["x", "y"]
             let { named_tuples } = match
             for (let name of named_tuples) {
