@@ -66,7 +66,7 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
 
             let unpacked = null
             try {
-                const force_post = get_current_state().metadata["sliderserver_use_post"] ?? false
+                const force_post = get_current_state().metadata["sliderserver_force_post"] ?? false
                 const use_get = !force_post && url.length + (packed.length * 4) / 3 + 20 < 8000
 
                 const response = use_get
