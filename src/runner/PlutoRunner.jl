@@ -2259,7 +2259,6 @@ Logging.shouldlog(cl::CaptureLogger, args...) = Logging.shouldlog(cl.logger, arg
 Logging.min_enabled_level(::CaptureLogger) = min(Logging.Debug, stdout_log_level)
 Logging.catch_exceptions(::CaptureLogger) = Logging.catch_exceptions(cl.logger)
 function Logging.handle_message(pl::CaptureLogger, level, msg, _module, group, id, file, line; kwargs...)
-    Logging.handle_message(pl.logger, level, msg, _module, group, id, file, line; kwargs...)
     push!(pl.logs, (level, msg, _module, group, id, file, line, kwargs))
 end
 
