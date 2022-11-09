@@ -1547,8 +1547,11 @@ const integrations = Integration[
 
                 if truncate_rows
                     push!(row_data, "more")
-                    if applicable(lastindex, rows)
-                        push!(row_data, (length(rows), row_data_for(last(rows))))
+
+                    # In some environments this fails. Not sure why.
+                    last_row = applicable(lastindex, rows) ? try last(rows) catch e nothing end : nothing
+                    if !isnothing(last_row)
+                        push!(row_data, (length(rows), row_data_for(last_row)))
                     end
                 end
                 
@@ -1568,7 +1571,7 @@ const integrations = Integration[
             end
 
 
-            pluto_showable(::MIME"application/vnd.pluto.table+object", x::Any) = try Tables.rowaccess(x)::Bool catch; false end
+            pluto_showable(::MIME"application/vnd.pluto.table+object", x::Any) = try Tables.rowaccess(x)::Bool && !isempty(x) catch; false end
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::Type) = false
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:NamedTuple}) = false
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:Dict{Symbol,<:Any}}) = false
@@ -1819,39 +1822,46 @@ end
 "You say doc_fetcher, I say You say doc_fetcher, I say You say doc_fetcher, I say You say doc_fetcher, I say ...!!!!"
 function doc_fetcher(query, workspace::Module)
     try
-        parsed_query = Meta.parse(query)
-        value = binding_from(parsed_query, workspace)
-        doc_md = Docs.doc(value)
+        parsed_query = Meta.parse(query; raise=false, depwarn=false)
 
-        if !showable(MIME("text/html"), doc_md)
-            # PyPlot returns `Text{String}` objects from their docs...
-            # which is a bit silly, but turns out it actuall is markdown if you look hard enough.
-            doc_md = Markdown.parse(repr(doc_md))
-        end
+        doc_md = if Meta.isexpr(parsed_query, [:incomplete, :error]) && haskey(Docs.keywords, Symbol(query))
+            Docs.parsedoc(Docs.keywords[Symbol(query)])
+        else
+            binding = binding_from(parsed_query, workspace)
+            doc_md = Docs.doc(binding)
 
-        # Add suggestions results if no docstring was found
-        if parsed_query isa Symbol &&
-            !Docs.defined(value) &&
-            doc_md isa Markdown.MD &&
-            haskey(doc_md.meta, :results) &&
-            isempty(doc_md.meta[:results])
-
-            suggestions = REPL.accessible(workspace)
-            suggestions_scores = map(s -> REPL.fuzzyscore(query, s), suggestions)
-            removed_indices = [i for (i, s) in enumerate(suggestions_scores) if s < 0]
-            deleteat!(suggestions_scores, removed_indices)
-            deleteat!(suggestions, removed_indices)
-
-            perm = sortperm(suggestions_scores; lt=Base.:>)
-            permute!(suggestions, perm)
-            links = map(s -> Suggestion(s, query), @view(suggestions[begin:min(end,DOC_SUGGESTION_LIMIT)]))
-
-            if length(links) > 0
-                push!(doc_md.content,
-                      Markdown.HorizontalRule(),
-                      Markdown.Paragraph(["Similar result$(length(links) > 1 ? "s" : ""):"]),
-                      Markdown.List(links))
+            if !showable(MIME("text/html"), doc_md)
+                # PyPlot returns `Text{String}` objects from their docs...
+                # which is a bit silly, but turns out it actuall is markdown if you look hard enough.
+                doc_md = Markdown.parse(repr(doc_md))
             end
+
+            # Add suggestions results if no docstring was found
+            if parsed_query isa Symbol &&
+                !Docs.defined(binding) &&
+                doc_md isa Markdown.MD &&
+                haskey(doc_md.meta, :results) &&
+                isempty(doc_md.meta[:results])
+
+                suggestions = REPL.accessible(workspace)
+                suggestions_scores = map(s -> REPL.fuzzyscore(query, s), suggestions)
+                removed_indices = [i for (i, s) in enumerate(suggestions_scores) if s < 0]
+                deleteat!(suggestions_scores, removed_indices)
+                deleteat!(suggestions, removed_indices)
+
+                perm = sortperm(suggestions_scores; lt=Base.:>)
+                permute!(suggestions, perm)
+                links = map(s -> Suggestion(s, query), @view(suggestions[begin:min(end,DOC_SUGGESTION_LIMIT)]))
+
+                if length(links) > 0
+                    push!(doc_md.content,
+                          Markdown.HorizontalRule(),
+                          Markdown.Paragraph(["Similar result$(length(links) > 1 ? "s" : ""):"]),
+                          Markdown.List(links))
+                end
+            end
+
+            doc_md
         end
 
         (repr(MIME("text/html"), doc_md), :👍)
