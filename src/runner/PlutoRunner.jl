@@ -2350,6 +2350,7 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
             Logging.@logmsg loglevel output_str
         end
     end
+
     @async begin
         pipe_reader = Base.pipe_reader(pipe)
         try
