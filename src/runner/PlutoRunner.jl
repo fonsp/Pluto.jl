@@ -1522,8 +1522,11 @@ const integrations = Integration[
 
                 if truncate_rows
                     push!(row_data, "more")
-                    if applicable(lastindex, rows)
-                        push!(row_data, (length(rows), row_data_for(last(rows))))
+
+                    # In some environments this fails. Not sure why.
+                    last_row = applicable(lastindex, rows) ? try last(rows) catch e nothing end : nothing
+                    if !isnothing(last_row)
+                        push!(row_data, (length(rows), row_data_for(last_row)))
                     end
                 end
                 
