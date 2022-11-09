@@ -459,7 +459,7 @@ header#pluto-nav {
     top: 0px; */
     width: 100%;
     min-height: 60px;
-    z-index: 50;
+    z-index: 60;
     background-color: var(--header-bg-color);
     transform: translateY(0px);
     transition: background-color 0.5s ease-in-out, transform 0.25s cubic-bezier(0.18, 0.89, 0.49, 1.13);
@@ -1775,7 +1775,7 @@ pkg-status-mark.disable_pkg > button > span::after {
 pluto-popup {
     display: block;
     position: absolute;
-    z-index: 50;
+    z-index: 70;
     /* left: 1.5em; */
     /* top: calc((1.5em - 200px) * 0.5); */
     width: min(90vw, 251px);
@@ -2545,7 +2545,7 @@ a.stdout-info {
     position: absolute;
     right: 2px;
     top: 2px;
-    z-index: 50;
+    z-index: unset;
     pointer-events: initial;
 }
 
