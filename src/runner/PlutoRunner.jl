@@ -2355,7 +2355,7 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
             end
             send_output()
         catch err
-            @warn "error: during logger task"  exception=(err,catch_backtrace())
+            @error "Failed to redirect stdout/stderr to logs"  exception=(err,catch_backtrace())
         end
     end
 
