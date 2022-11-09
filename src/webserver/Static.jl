@@ -142,6 +142,14 @@ function scoped_router(base_url, base_router)
     return router
 end
 
+# Function to print the url with secret on the Julia CLI when a request comes to the server without the secret. Executes at most once every 5 seconds
+print_secret_throttled = simple_leading_throttle(5) do session::ServerSession, request::HTTP.Request
+    host = HTTP.header(request, "Host")
+    target = request.target
+    url = Text(string(HTTP.URI(HTTP.URI("http://$host/"); query=Dict("secret" => session.secret))))
+    @info("No longer authenticated? Visit this URL to continue:", url)
+end
+
 function http_router_for(session::ServerSession)
     router = HTTP.Router(default_404)
     security = session.options.security
@@ -170,6 +178,7 @@ function http_router_for(session::ServerSession)
                 end
                 response
             else
+                print_secret_throttled(session, request)
                 error_response(403, "Not yet authenticated", "<b>Open the link that was printed in the terminal where you launched Pluto.</b> It includes a <em>secret</em>, which is needed to access this server.<br><br>If you are running the server yourself and want to change this configuration, have a look at the keyword arguments to <em>Pluto.run</em>. <br><br>Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a> if you did not expect it!")
             end
         end
