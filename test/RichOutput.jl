@@ -260,8 +260,8 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
 
         update_run!(🍭, notebook, notebook.cells)
 
-        @test notebook.cells[2].output.mime isa MIME"application/vnd.pluto.table+object"
-        @test notebook.cells[3].output.mime isa MIME"application/vnd.pluto.table+object"
+        # @test notebook.cells[2].output.mime isa MIME"application/vnd.pluto.table+object"
+        # @test notebook.cells[3].output.mime isa MIME"application/vnd.pluto.table+object"
         @test notebook.cells[4].output.mime isa MIME"application/vnd.pluto.table+object"
         @test notebook.cells[5].output.mime isa MIME"application/vnd.pluto.table+object"
         @test notebook.cells[6].output.mime isa MIME"application/vnd.pluto.table+object"
@@ -274,8 +274,8 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
         @test notebook.cells[15].output.mime isa MIME"application/vnd.pluto.tree+object"
         @test notebook.cells[16].output.mime isa MIME"application/vnd.pluto.tree+object"
         @test notebook.cells[17].output.mime isa MIME"application/vnd.pluto.tree+object"
-        @test notebook.cells[2].output.body isa Dict
-        @test notebook.cells[3].output.body isa Dict
+        # @test notebook.cells[2].output.body isa Dict
+        # @test notebook.cells[3].output.body isa Dict
         @test notebook.cells[4].output.body isa Dict
         @test notebook.cells[5].output.body isa Dict
         @test notebook.cells[6].output.body isa Dict
