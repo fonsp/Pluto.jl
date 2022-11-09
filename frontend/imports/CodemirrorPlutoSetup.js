@@ -58,8 +58,9 @@ import {
     Text,
     css,
     cssLanguage,
+    selectNextOccurrence,
     //@ts-ignore
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@0.28.0/dist/index.es.min.js"
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@0.28.1/dist/index.es.min.js"
 
 export {
     EditorState,
@@ -120,4 +121,5 @@ export {
     Text,
     css,
     cssLanguage,
+    selectNextOccurrence,
 }
