@@ -39,6 +39,7 @@ export const EditorLaunchBackendButton = ({ editor, launch_params, status }) => 
                     launch_params: launch_params,
                 })}
             notebookfile=${launch_params.notebookfile == null ? null : new URL(launch_params.notebookfile, window.location.href).href}
+            notebook=${editor.state.notebook}
         />`
 
     return null
