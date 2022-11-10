@@ -115,8 +115,9 @@ export const Cell = ({
 }) => {
     const { show_logs, disabled: running_disabled, skip_as_script } = metadata
     let pluto_actions = useContext(PlutoActionsContext)
-    const on_update_doc_query = pluto_actions.set_doc_query
-    const on_focus_neighbor = pluto_actions.focus_on_neighbor
+    // useCallback because pluto_actions.set_doc_query can change value when you go from viewing a static document to connecting (to binder)
+    const on_update_doc_query = useCallback((...args) => pluto_actions.set_doc_query(...args), [pluto_actions])
+    const on_focus_neighbor = useCallback((...args) => pluto_actions.focus_on_neighbor(...args), [pluto_actions])
     const on_change = useCallback((val) => pluto_actions.set_local_cell(cell_id, val), [cell_id, pluto_actions])
     const variables = useMemo(() => Object.keys(cell_dependencies?.downstream_cells_map ?? {}), [cell_dependencies])
 
