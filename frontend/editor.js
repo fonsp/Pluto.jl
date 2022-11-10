@@ -104,6 +104,26 @@ export const empty_notebook_state = ({ notebook_id }) => ({
 const without_path_entries = (state) => ({ ...state, path: default_path, shortpath: "" })
 
 /**
+ * Fetches the statefile (usually a async resource) in launch_params.statefile
+ * and makes it available for consuming by `pluto-editor`
+ * To add custom logic instead, see use Environment.js
+ *
+ * @param {import("./components/Editor.js").LaunchParameters} launch_params
+ * @param {{current: import("./components/Editor.js").EditorState}} initial_notebook_state_ref
+ * @param {Function} set_ready_for_editor
+ * @param {Function} set_statefile_download_progress
+ */
+
+const get_statefile =
+    // @ts-ignore
+    window?.pluto_injected_environment?.custom_get_statefile?.(read_Uint8Array_with_progress, without_path_entries, unpack) ??
+    (async (launch_params, set_statefile_download_progress) => {
+        const r = await fetch(new Request(launch_params.statefile, { integrity: launch_params.statefile_integrity ?? undefined }))
+        const data = await read_Uint8Array_with_progress(r, set_statefile_download_progress)
+        const state = without_path_entries(unpack(data))
+        return state
+    })
+/**
  *
  * @param {{
  *  launch_params: import("./components/Editor.js").LaunchParameters,
@@ -120,14 +140,11 @@ const EditorLoader = ({ launch_params }) => {
 
     useEffect(() => {
         if (!ready_for_editor && static_preview) {
-            ;(async () => {
-                const r = await fetch(new Request(statefile, { integrity: statefile_integrity ?? undefined }))
-                const data = await read_Uint8Array_with_progress(r, set_statefile_download_progress)
-                const state = without_path_entries(unpack(data))
+            get_statefile(launch_params, set_statefile_download_progress).then((state) => {
                 console.log({ state })
                 initial_notebook_state_ref.current = state
                 set_ready_for_editor(true)
-            })()
+            })
         }
     }, [ready_for_editor, static_preview, statefile])
 
@@ -162,6 +179,8 @@ const EditorLoader = ({ launch_params }) => {
 <pluto-editor notebook_id="fcc1b498-a141-11ec-342a-593db1016648"></pluto-editor>
 
 <pluto-editor notebook_id="21ebc942-a1ed-11ec-2505-7b242b18daf3"></pluto-editor>
+
+TODO: Make this self-contained (currently depends on various stuff being on window.*, e.g. observablehq library, lodash etc)
 */
 
 class PlutoEditorComponent extends HTMLElement {
@@ -170,6 +189,7 @@ class PlutoEditorComponent extends HTMLElement {
     }
 
     connectedCallback() {
+        /** Web components only support text attributes. We deserialize into js here */
         const new_launch_params = Object.fromEntries(Object.entries(launch_params).map(([k, v]) => [k, from_attribute(this, k) ?? v]))
         console.log("Launch parameters: ", new_launch_params)
 

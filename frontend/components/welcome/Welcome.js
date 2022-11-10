@@ -7,6 +7,7 @@ import { new_update_message } from "../../common/NewUpdateMessage.js"
 import { Open } from "./Open.js"
 import { Recent } from "./Recent.js"
 import { Featured } from "./Featured.js"
+import { get_environment } from "../../common/Environment.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../../common/Environment.js"
@@ -56,7 +57,7 @@ export const Welcome = () => {
             set_connected(true)
 
             try {
-                const { default: environment } = await import(client.session_options.server.injected_javascript_data_url)
+                const environment = await get_environment(client)
                 const { custom_recent, custom_filepicker, show_samples = true } = environment({ client, editor: this, imports: { preact } })
                 set_extended_components((old) => ({
                     ...old,

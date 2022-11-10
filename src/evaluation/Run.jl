@@ -18,7 +18,7 @@ function run_reactive!(
     user_requested_run::Bool = true,
     bond_value_pairs=zip(Symbol[],Any[]),
 )::TopologicalOrder
-    withtoken(notebook.executetoken) do
+    topological_order = withtoken(notebook.executetoken) do
         run_reactive_core!(
             session,
             notebook,
@@ -31,6 +31,8 @@ function run_reactive!(
             bond_value_pairs,
         )
     end
+    try_event_call(session, NotebookExecutionDoneEvent(notebook, user_requested_run))
+	return topological_order
 end
 
 """
@@ -406,7 +408,7 @@ function update_save_run!(
 	end
 
 	maybe_async(run_async) do
-        withtoken(notebook.executetoken) do
+        topological_order = withtoken(notebook.executetoken) do
             sync_nbpkg(session, notebook, old, new; save=(save && !session.options.server.disable_writing_notebook_files), take_token=false)
             if !(isempty(to_run_online) && session.options.evaluation.lazy_workspace_creation) && will_run_code(notebook)
                 # not async because that would be double async
@@ -414,7 +416,12 @@ function update_save_run!(
                 # run_reactive_async!(session, notebook, old, new, to_run_online; deletion_hook=deletion_hook, run_async=false, kwargs...)
             end
         end
-	end
+        try_event_call(
+            session,
+            NotebookExecutionDoneEvent(notebook, get(kwargs, :user_requested_run, true))
+        )
+		topological_order
+    end
 end
 
 update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs...) = update_save_run!(session, notebook, [cell]; kwargs...)

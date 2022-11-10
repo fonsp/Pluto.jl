@@ -64,7 +64,7 @@ function generate_html(;
         preamble_html_js::AbstractString="undefined",
         notebook_id_js::AbstractString="undefined", 
         isolated_cell_ids_js::AbstractString="undefined",
-        
+
         header_html::AbstractString="",
     )::String
 

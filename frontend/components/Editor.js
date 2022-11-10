@@ -23,9 +23,8 @@ import { Popup } from "./Popup.js"
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { PlutoActionsContext, PlutoBondsContext, PlutoJSInitializingContext, SetWithEmptyCallback } from "../common/PlutoContext.js"
-import { start_binder, BackendLaunchPhase, count_stat } from "../common/Binder.js"
+import { BackendLaunchPhase, count_stat } from "../common/Binder.js"
 import { setup_mathjax } from "../common/SetupMathJax.js"
-import { BinderButton, RunLocalButton } from "./EditOrRunButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
 import { ProgressBar } from "./ProgressBar.js"
 import { NonCellOutput } from "./NonCellOutput.js"
@@ -33,8 +32,9 @@ import { IsolatedCell } from "./Cell.js"
 import { RawHTMLContainer } from "./CellOutput.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
 import { HijackExternalLinksToOpenInNewTab } from "./HackySideStuff/HijackExternalLinksToOpenInNewTab.js"
-import { start_local } from "../common/RunLocal.js"
 import { FrontMatterInput } from "./FrontmatterInput.js"
+import { EditorLaunchBackendButton } from "./Editor/LaunchBackendButton.js"
+import { get_environment } from "../common/Environment.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -72,7 +72,7 @@ const ProcessStatus = {
 }
 
 /**
- * Map of status => Bool. In order of decreasing prioirty.
+ * Map of status => Bool. In order of decreasing priority.
  */
 const statusmap = (/** @type {EditorState} */ state, /** @type {LaunchParameters} */ launch_params) => ({
     disconnected: !(state.connected || state.initializing || state.static_preview),
@@ -773,7 +773,7 @@ patch: ${JSON.stringify(
             // nasty
             Object.assign(this.client, client)
             try {
-                const { default: environment } = await import(this.client.session_options.server.injected_javascript_data_url)
+                const environment = await get_environment(client)
                 const { custom_editor_header_component, custom_non_cell_output } = environment({ client, editor: this, imports: { preact } })
                 this.setState({
                     extended_components: {
@@ -1471,31 +1471,7 @@ patch: ${JSON.stringify(
                                 })
                             )}
                     />
-                    
-                    ${
-                        status.offer_local
-                            ? html`<${RunLocalButton}
-                                  start_local=${() =>
-                                      start_local({
-                                          setStatePromise: this.setStatePromise,
-                                          connect: this.connect,
-                                          launch_params: launch_params,
-                                      })}
-                              />`
-                            : status.offer_binder
-                            ? html`<${BinderButton}
-                                  offer_binder=${status.offer_binder}
-                                  start_binder=${() =>
-                                      start_binder({
-                                          setStatePromise: this.setStatePromise,
-                                          connect: this.connect,
-                                          launch_params: launch_params,
-                                      })}
-                                  notebookfile=${launch_params.notebookfile == null ? null : new URL(launch_params.notebookfile, window.location.href).href}
-                                  notebook=${notebook}
-                              />`
-                            : null
-                    }
+                    <${EditorLaunchBackendButton} editor=${this} launch_params=${launch_params} status=${status} />
                     <${FrontMatterInput} 
                         remote_frontmatter=${notebook.metadata?.frontmatter} 
                         set_remote_frontmatter=${(newval) =>
