@@ -113,18 +113,16 @@ const without_path_entries = (state) => ({ ...state, path: default_path, shortpa
  * @param {Function} set_ready_for_editor
  * @param {Function} set_statefile_download_progress
  */
+
 const get_statefile =
     // @ts-ignore
     window?.pluto_injected_environment?.custom_get_statefile?.(read_Uint8Array_with_progress, without_path_entries, unpack) ??
-    (async (launch_params, initial_notebook_state_ref, set_ready_for_editor, set_statefile_download_progress) => {
+    (async (launch_params, set_statefile_download_progress) => {
         const r = await fetch(new Request(launch_params.statefile, { integrity: launch_params.statefile_integrity ?? undefined }))
         const data = await read_Uint8Array_with_progress(r, set_statefile_download_progress)
         const state = without_path_entries(unpack(data))
-        console.log({ state })
-        initial_notebook_state_ref.current = state
-        set_ready_for_editor(true)
+        return state
     })
-
 /**
  *
  * @param {{
@@ -142,7 +140,11 @@ const EditorLoader = ({ launch_params }) => {
 
     useEffect(() => {
         if (!ready_for_editor && static_preview) {
-            get_statefile(launch_params, initial_notebook_state_ref, set_ready_for_editor, set_statefile_download_progress)
+            get_statefile(launch_params, set_statefile_download_progress).then((state) => {
+                console.log({ state })
+                initial_notebook_state_ref.current = state
+                set_ready_for_editor(true)
+            })
         }
     }, [ready_for_editor, static_preview, statefile])
 
