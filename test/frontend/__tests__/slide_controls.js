@@ -29,8 +29,8 @@ describe("slideControls", () => {
         page = null
     })
     afterAll(async () => {
-        await page.close()
         await browser.close()
+        browser = null
     })
 
     it("should create titles", async () => {
