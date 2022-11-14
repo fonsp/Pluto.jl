@@ -316,6 +316,9 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(f(x, y...) = y),[],[],[],[
             :f => ([], [], [], [])
         ])
+        @test testee(:(f((x, y...), z) = y),[],[],[],[
+            :f => ([], [], [], [])
+        ])
         @test testee(:(begin f() = 1; f end), [], [], [], [
             :f => ([], [], [], [])
         ])
