@@ -408,7 +408,6 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                     }
 
                     const cell = root_node.closest("pluto-cell")
-                    console.log("Running", { code })
                     let { node: new_node, result } = await execute_inside_script_tag_that_replaces(node, code, async (currentScript) => {
                         return await execute_dynamic_function({
                             environment: {
@@ -437,7 +436,6 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                             code,
                         })
                     })
-                    console.log("Finished", { code })
 
                     // Save result for next run
                     if (script_id != null) {
