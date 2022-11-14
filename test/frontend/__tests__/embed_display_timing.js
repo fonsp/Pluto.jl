@@ -2,7 +2,7 @@ import puppeteer from "puppeteer"
 import { lastElement, saveScreenshot, getTestScreenshotPath, setupPage } from "../helpers/common"
 import { getCellIds, importNotebook, waitForCellOutput, getPlutoUrl, prewarmPluto, writeSingleLineInPlutoInput, waitForNoUpdateOngoing } from "../helpers/pluto"
 
-describe("PlutoAutocomplete", () => {
+describe("embed_display timing", () => {
     /**
      * Launch a shared browser instance for all tests.
      * I don't use jest-puppeteer because it takes away a lot of control and works buggy for me,
