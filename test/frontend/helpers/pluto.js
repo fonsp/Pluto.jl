@@ -1,6 +1,7 @@
-import fs from "fs"
+import puppeteer from "puppeteer"
+import fs, { existsSync } from "fs"
 import { platform } from "process"
-import { Page } from "puppeteer"
+import { Browser, Page } from "puppeteer"
 import {
     clickAndWaitForNavigation,
     getFixtureNotebookPath,
@@ -9,17 +10,31 @@ import {
     waitForContentToChange,
     getTextContent,
     lastElement,
+    createPage,
+    getArtifactsDir,
 } from "./common"
+import path from "path"
+import { readFile, writeFile } from "fs/promises"
 
 // if (!process.env.PLUTO_PORT) {
 //     throw new Error("You didn't set the PLUTO_PORT environment variable")
 // }
 export const getPlutoUrl = () => `http://localhost:${process.env.PLUTO_PORT}`
 
+// we use a file to keep track of whether we already prewarmed pluto or not
+const pluto_is_warm_path = path.join(getArtifactsDir(), `pluto_is_warm.txt`)
+
 /**
- * @param {Page} page
+ * @param {Browser} browser
  */
-export const prewarmPluto = async (browser, page) => {
+export const prewarmPluto = async (browser) => {
+    if (existsSync(pluto_is_warm_path)) {
+        return
+    }
+    await writeFile(pluto_is_warm_path, "yes")
+
+    let page = await createPage(browser)
+
     await browser.defaultBrowserContext().overridePermissions(getPlutoUrl(), ["clipboard-read", "clipboard-write"])
     await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
     await createNewNotebook(page)
@@ -31,10 +46,31 @@ export const prewarmPluto = async (browser, page) => {
     await page.waitForSelector(runSelector, { visible: true })
     await page.click(runSelector)
     await waitForContent(page, "pluto-output")
-    await page.evaluate(() => {
-        // @ts-ignore
-        shutdownNotebook()
+    await shutdownCurrentNotebook(page)
+
+    await page.close()
+}
+
+/**
+ * @param {Page} page
+ */
+export const shutdownCurrentNotebook = async (page) => {
+    await page.evaluate(
+        //@ts-ignore
+        () => window.shutdownNotebook?.()
+    )
+}
+
+export const setupPlutoBrowser = async () => {
+    const browser = await puppeteer.launch({
+        headless: process.env.HEADLESS !== "false",
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        devtools: false,
     })
+
+    await prewarmPluto(browser)
+
+    return browser
 }
 
 /**
@@ -45,6 +81,7 @@ export const createNewNotebook = async (page) => {
     await page.waitForSelector(newNotebookSelector)
     await clickAndWaitForNavigation(page, newNotebookSelector)
     await waitForPlutoToCalmDown(page)
+    await page.waitForSelector("pluto-input", { visible: true })
 }
 
 /**
@@ -75,9 +112,8 @@ export const getCellIds = (page) => page.evaluate(() => Array.from(document.quer
  */
 export const waitForPlutoToCalmDown = async (page) => {
     await page.waitForTimeout(1000)
-    await page.waitForFunction(
-        () => document?.querySelector("body")?._update_is_ongoing === false && document?.querySelector(`pluto-cell.running, pluto-cell.queued`) === null
-    )
+    //@ts-ignore
+    await page.waitForFunction(() => document?.body?._update_is_ongoing === false && document?.querySelector(`pluto-cell.running, pluto-cell.queued`) === null)
 }
 
 /**
@@ -101,7 +137,12 @@ export const waitForCellOutputToChange = (page, cellId, currentOutput) => {
 
 export const waitForNoUpdateOngoing = async (page, options = {}) => {
     await page.waitForTimeout(1000)
-    return await page.waitForFunction(() => document.querySelector("body")?._update_is_ongoing === false, options)
+    return await page.waitForFunction(
+        () =>
+            //@ts-ignore
+            document.body?._update_is_ongoing === false,
+        options
+    )
 }
 
 /**
