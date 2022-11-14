@@ -1,6 +1,6 @@
 import puppeteer from "puppeteer"
-import { lastElement, saveScreenshot, getTestScreenshotPath, setupPage } from "../helpers/common"
-import { getCellIds, importNotebook, waitForCellOutput, getPlutoUrl, prewarmPluto, writeSingleLineInPlutoInput, waitForNoUpdateOngoing } from "../helpers/pluto"
+import { saveScreenshot, createPage } from "../helpers/common"
+import { importNotebook, getPlutoUrl, prewarmPluto, waitForNoUpdateOngoing, shutdownCurrentNotebook, setupPlutoBrowser } from "../helpers/pluto"
 
 describe("embed_display timing", () => {
     /**
@@ -13,26 +13,15 @@ describe("embed_display timing", () => {
     /** @type {puppeteer.Page} */
     let page = null
     beforeAll(async () => {
-        browser = await puppeteer.launch({
-            headless: process.env.HEADLESS !== "false",
-            args: ["--no-sandbox", "--disable-setuid-sandbox"],
-            devtools: false,
-        })
-
-        let page = await browser.newPage()
-        setupPage(page)
-        await prewarmPluto(browser, page)
-        await page.close()
+        browser = await setupPlutoBrowser()
     })
     beforeEach(async () => {
-        page = await browser.newPage()
-        setupPage(page)
+        page = await createPage(browser)
         await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
     })
     afterEach(async () => {
-        await saveScreenshot(page, getTestScreenshotPath())
-        // @ts-ignore
-        await page.evaluate(() => window.shutdownNotebook?.())
+        await saveScreenshot(page)
+        await shutdownCurrentNotebook(page)
         await page.close()
         page = null
     })
