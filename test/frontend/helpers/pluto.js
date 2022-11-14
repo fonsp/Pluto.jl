@@ -1,5 +1,5 @@
 import puppeteer from "puppeteer"
-import fs, { existsSync } from "fs"
+import fs, { existsSync, writeFile, writeFileSync } from "fs"
 import { platform } from "process"
 import { Browser, Page } from "puppeteer"
 import {
@@ -14,7 +14,6 @@ import {
     getArtifactsDir,
 } from "./common"
 import path from "path"
-import { readFile, writeFile } from "fs/promises"
 
 // if (!process.env.PLUTO_PORT) {
 //     throw new Error("You didn't set the PLUTO_PORT environment variable")
@@ -31,7 +30,7 @@ export const prewarmPluto = async (browser) => {
     if (existsSync(pluto_is_warm_path)) {
         return
     }
-    await writeFile(pluto_is_warm_path, "yes")
+    writeFileSync(pluto_is_warm_path, "yes")
 
     let page = await createPage(browser)
 
