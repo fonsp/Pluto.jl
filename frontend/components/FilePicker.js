@@ -67,10 +67,11 @@ if (is_desktop) {
  * }} props
  */
 export const FilePicker = ({ value, suggest_new_file, button_label, placeholder, on_submit, on_desktop_submit, client }) => {
-    const [is_button_disabled, setIs_button_disabled] = useState(true)
-    const [url_value, setUrl_value] = useState("")
+    const [is_button_disabled, set_is_button_disabled] = useState(true)
+    const [url_value, set_url_value] = useState("")
     const forced_value = useRef("")
-    const base = useRef(null)
+    /** @type {import("../imports/Preact.js").Ref<HTMLElement>} */
+    const base = useRef(/** @type {any} */ (null))
     const cm = useRef(/** @type {EditorView?} */ (null))
 
     const suggest_not_tmp = () => {
@@ -151,7 +152,7 @@ export const FilePicker = ({ value, suggest_new_file, button_label, placeholder,
                     }),
                     EditorView.updateListener.of((update) => {
                         if (update.docChanged) {
-                            setIs_button_disabled(update.state.doc.length === 0)
+                            set_is_button_disabled(update.state.doc.length === 0)
                         }
                     }),
                     EditorView.theme(
@@ -276,7 +277,7 @@ export const FilePicker = ({ value, suggest_new_file, button_label, placeholder,
                   value=${url_value}
                   placeholder="Enter notebook URL..."
                   onChange=${(v) => {
-                      setUrl_value(v.target.value)
+                      set_url_value(v.target.value)
                   }}
               />
               <div onClick=${onSubmit} class="desktop_picker">
