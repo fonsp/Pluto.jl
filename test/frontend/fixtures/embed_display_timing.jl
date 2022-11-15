@@ -17,6 +17,9 @@ end
 # ╔═╡ 0e39aa1c-642b-11ed-2499-d99202c91254
 using HypertextLiteral
 
+# ╔═╡ 1241fb5d-7bc6-4c2c-8412-0a4d6d0bc2c5
+PlutoRunner._EmbeddableDisplay_enable_html_shortcut[] = false
+
 # ╔═╡ f89045ea-0336-433e-9f39-7904457afa5e
 @bind zzz @htl("""
 <div>
@@ -24,7 +27,7 @@ using HypertextLiteral
 	<find-me>
 	<script>
 		await new Promise((r) => {
-			setTimeout(r, 500)
+			setTimeout(r, 2000)
 		})
 		return html`<input value="the secret">`
 	</script>
@@ -35,8 +38,8 @@ using HypertextLiteral
 		const findme = div.querySelector("find-me")
 		const input = findme.firstElementChild
 
-		console.log(input)
-		div.value = `you found \${input.value}`
+		console.log(input, findme.innerHTML)
+		div.value = `you found \${input.value ?? `❌☎️🔴`}`
 		
 	</script>
 </div>
@@ -44,6 +47,16 @@ using HypertextLiteral
 
 # ╔═╡ ff94081d-7bbc-4034-b27b-506d786d4269
 zzz
+
+# ╔═╡ d9fde035-d1f0-4acc-b8e8-d5d9ac0c5511
+# @htl("""
+# <div>
+# $([
+# 	embed_display(@htl("x"))
+# 	for i in 1:100
+# ])
+# </div>
+# """)
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -60,7 +73,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.8.0"
 manifest_format = "2.0"
-project_hash = "312e4b9e605df01eeae246a2087d05a62416059a"
+project_hash = "fc304fba520d81fb78ea25b98f5762b4591b1182"
 
 [[deps.HypertextLiteral]]
 deps = ["Tricks"]
@@ -76,7 +89,9 @@ version = "0.1.6"
 
 # ╔═╡ Cell order:
 # ╠═0e39aa1c-642b-11ed-2499-d99202c91254
+# ╠═1241fb5d-7bc6-4c2c-8412-0a4d6d0bc2c5
 # ╠═ff94081d-7bbc-4034-b27b-506d786d4269
 # ╠═f89045ea-0336-433e-9f39-7904457afa5e
+# ╠═d9fde035-d1f0-4acc-b8e8-d5d9ac0c5511
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
