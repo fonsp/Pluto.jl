@@ -148,6 +148,10 @@ function get_assignees(ex::Expr)::FunctionName
         get_assignees(ex.args[1])
     elseif ex.head == :ref || ex.head == :(.)
         Symbol[]
+    elseif ex.head == :...
+        # Handles splat assignments. e.g. _, y... = 1:5
+        args = ex.args
+        union!(Symbol[], get_assignees.(args)...)
     else
         @warn "unknown use of `=`. Assignee is unrecognised." ex
         Symbol[]

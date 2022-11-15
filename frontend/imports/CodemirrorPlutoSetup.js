@@ -60,7 +60,7 @@ import {
     cssLanguage,
     selectNextOccurrence,
     //@ts-ignore
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@0.28.1/dist/index.es.min.js"
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@0.28.2/dist/index.es.min.js"
 
 export {
     EditorState,

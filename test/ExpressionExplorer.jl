@@ -154,7 +154,7 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(a[b,c,:] = d), [:a, :b, :c, :d, :(:)], [], [], [])
         @test testee(:(a.b = c), [:a, :c], [], [], [])
         @test testee(:(f(a, b=c, d=e; f=g)), [:a, :c, :e, :g], [], [:f], [])
-        
+
         @test testee(:(a += 1), [:a], [:a], [:+], [])
         @test testee(:(a >>>= 1), [:a], [:a], [:>>>], [])
         @test testee(:(a ⊻= 1), [:a], [:a], [:⊻], [])
@@ -200,6 +200,9 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(quote
             (a[i], b.r) = (c.d, 2)
         end, [:a, :b, :i, :c], [], [], [])
+        @test testee(quote
+            a, b... = 0:5
+        end, [],[:a, :b], [[:(:)]], [])
         @test testee(quote (; a, b) = x end, [:x], [:a, :b], [], [])
         @test testee(quote a = (b, c) end, [:b, :c], [:a], [], [])
 
@@ -310,6 +313,12 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(f(x, y=a + 1) = x * y * z), [], [], [], [
             :f => ([:z, :a], [], [:*, :+], [])
         ])
+        @test testee(:(f(x, y...) = y),[],[],[],[
+            :f => ([], [], [], [])
+        ])
+        @test testee(:(f((x, y...), z) = y),[],[],[],[
+            :f => ([], [], [], [])
+        ])
         @test testee(:(begin f() = 1; f end), [], [], [], [
             :f => ([], [], [], [])
         ])
@@ -372,6 +381,8 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(funcs[i](b)), [:funcs, :i, :b], [], [], [])
         @test testee(:(f(a)(b)), [:a, :b], [], [:f], [])
         @test testee(:(f(a).b()), [:a], [], [:f], [])
+        @test testee(:(f(a...)),[:a],[],[:f],[])
+        @test testee(:(f(a, b...)),[:a, :b],[],[:f],[])
 
         @test testee(:(a.b(c)), [:a, :c], [], [[:a,:b]], [])
         @test testee(:(a.b.c(d)), [:a, :d], [], [[:a,:b,:c]], [])
