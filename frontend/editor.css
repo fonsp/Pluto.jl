@@ -2034,7 +2034,7 @@ pluto-helpbox {
     flex-direction: column;
     width: calc(100vw - 50px - (700px + 25px + 6px)); /* compat */
     width: clamp(300px, calc(100vw - 50px - (700px + 25px + 6px)), 450px);
-    height: 70vh; /* compat */
+    height: 95vh; /* compat */
     height: min(70vh, 900px);
     /* overflow: hidden; */
     background-color: var(--helpbox-bg-color);
@@ -2048,44 +2048,64 @@ pluto-helpbox {
 }
 pluto-helpbox > header {
     display: flex;
-    padding: 15px;
+    padding: 0.6em;
     background-color: var(--helpbox-header-bg-color);
     color: var(--helpbox-header-color);
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--system-ui-font-stack);
     font-size: 0.9rem;
+    --border-radius: 0.4em;
     font-weight: 700;
-    border-top-left-radius: 6px;
-    border-top-right-radius: 6px;
+    border-top-left-radius: var(--border-radius);
+    border-top-right-radius: var(--border-radius);
     /* border-top: 4px solid #8a8a8a; */
+    gap: 0.5em;
 }
-pluto-helpbox > header::before {
-    content: "📖 ";
+
+pluto-helpbox > header > button.helpbox-tab-key::before {
     margin-right: 10px;
 }
-/* pluto-helpbox.loading>header::before{
-    content: "⌛ ";
-    margin-right: 10px;
-} */
-pluto-helpbox.hidden > header::before {
+pluto-helpbox > header > button.helpbox-docs::before {
     content: "📚 ";
-    margin-right: 10px;
 }
-pluto-helpbox > header > input {
+pluto-helpbox > header > button.helpbox-docs.active::before {
+    content: "📖 ";
+}
+pluto-helpbox > header > button.helpbox-process::before {
+    content: "💻 ";
+}
+
+pluto-helpbox .live-docs-searchbox input {
     flex-grow: 1;
     background-color: inherit;
     color: inherit;
-    font-family: inherit;
-    font-weight: inherit;
-    font-size: inherit;
     border: none;
+    padding: 0.5em;
+    margin: auto;
+    border: 3px solid #757575;
+    border-radius: .3em;
+    background: #2c2c2c;
+    font-family: var(--julia-mono-font-stack);
+    font-size: 0.9rem;
 }
-pluto-helpbox.notfound > header > input {
+pluto-helpbox .live-docs-searchbox.notfound input {
     color: var(--helpbox-notfound-header-color);
 }
-pluto-helpbox > header > input:focus {
+pluto-helpbox .live-docs-searchbox input:focus {
     outline: none;
 }
-pluto-helpbox > header > button {
+
+button.helpbox-tab-key {
+    padding: 0.5em 0.8em;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: inherit;
+    font-style: inherit;
+    border-radius: var(--border-radius);
+    border: none;
+    background: var(--helpbox-header-tab-bg-color);
+}
+
+pluto-helpbox > header > button.helpbox-close {
     border: none;
     background: none;
     cursor: pointer;
@@ -2093,8 +2113,10 @@ pluto-helpbox > header > button {
     /* for bigger hitbox */
     margin: -15px;
     border: 15px solid transparent;
+    margin-left: auto;
 }
-pluto-helpbox > header > button > span {
+
+pluto-helpbox > header > button.helpbox-close > span {
     display: block;
     content: " " !important;
     background-size: 1em 1em;
@@ -2106,6 +2128,7 @@ pluto-helpbox > header > button > span {
 pluto-helpbox.hidden {
     height: initial;
     cursor: pointer;
+    width: auto;
 }
 pluto-helpbox.hidden > section {
     display: none;
@@ -3007,4 +3030,14 @@ pluto-logs-container > header {
     opacity: 0.6;
     font-weight: 700;
     /* background: #494949; */
+}
+
+button.active.helpbox-tab-key {
+    outline: 3px solid #99afb9;
+}
+
+
+.live-docs-searchbox {
+    display: flex;
+    margin: 1em;
 }

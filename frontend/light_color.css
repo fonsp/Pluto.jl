@@ -141,7 +141,8 @@
         /* helpbox */
         --helpbox-bg-color: white;
         --helpbox-box-shadow-color: #00000010;
-        --helpbox-header-bg-color: #eef1f7;
+        --helpbox-header-bg-color: hsl(0deg 0% 92%);
+        --helpbox-header-tab-bg-color: white;
         --helpbox-header-color: hsl(230, 14%, 11%);
         --helpbox-notfound-header-color: rgb(139, 139, 139);
         --helpbox-text-color: black;
