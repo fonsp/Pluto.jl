@@ -128,7 +128,11 @@ export const OutputBody = ({
     const [token, local_currently_loading_scripts_set] = useMemo(() => {
         const token = {}
 
-        const local_currently_loading_scripts_set = new SetWithEmptyCallback(on_scripts_completed)
+        let local_currently_loading_scripts_set = new SetWithEmptyCallback(on_scripts_completed)
+        setInterval(() => {
+            console.log(...local_currently_loading_scripts_set)
+        }, 100)
+
         // We create a "fake script", `token`, and add it at the start. We will remove it later in a `useLayoutEffect` hook. This will:
         // 1. Make sure that the EmptyCallback gets called, because we are removing at least one item, our token.
         // 2. Make sure that the callback does not get fired multiple times, if this OutputBody contains multiple small scripts that finish instantly. At least, that's the plan.
@@ -137,9 +141,13 @@ export const OutputBody = ({
     }, deps)
     useEffect(() => {
         // this will trigger the callback if it is empty (i.e. if nothing was added in the meantime)
-        requestIdleCallback(() => {
+        // requestIdleCallback(() => {
+        //     local_currently_loading_scripts_set.delete(token)
+        // })
+        setTimeout(() => {
             local_currently_loading_scripts_set.delete(token)
-        })
+        }, 1000)
+        // local_currently_loading_scripts_set.delete(token)
     }, deps)
 
     const my_currently_loading_scripts_sets = useMemo(
@@ -366,6 +374,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
 
     // Run scripts sequentially
     for (let node of script_nodes) {
+        console.log("Executubg", node, node.text)
         nested_script_execution_level += 1
         if (node.src != null && node.src !== "") {
             // If it has a remote src="", de-dupe and copy the script to head
@@ -447,6 +456,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                             old_result.remove()
                         }
                         if (is_displayable(result)) {
+                            console.log("Inserting element", result)
                             new_node.parentElement?.insertBefore(result, new_node)
                         }
                     }
@@ -458,6 +468,8 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                 // TODO: relay to user
             }
         }
+        console.log("Finished", node, node.text)
+
         nested_script_execution_level -= 1
     }
     return results_map
@@ -555,6 +567,7 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
 
         run(async () => {
             try {
+                console.log("Starting exzecution", new_scripts, currently_loading_scripts_sets)
                 currently_loading_scripts_sets.forEach((s) => s?.add(container))
                 previous_results_map.current = await execute_scripttags({
                     root_node: container,
@@ -600,6 +613,7 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
                     console.warn("Highlighting failed", err)
                 }
             } finally {
+                console.log("Finishing exzecution", new_scripts, currently_loading_scripts_sets)
                 currently_loading_scripts_sets.forEach((s) => s?.delete(container))
             }
         })

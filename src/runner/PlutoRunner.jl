@@ -2157,7 +2157,9 @@ function Base.show(io::IO, m::MIME"text/html", e::EmbeddableDisplay)
             // add it also as unwatched property to prevent interference from Preact
             display._mime = mime;
         }
+        console.log("Starting await", currentScript);
         await inner_scripts_finished_promse;
+        console.log("Stopping await", currentScript);
         return display;
 
         </script>"""
