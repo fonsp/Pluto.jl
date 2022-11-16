@@ -14,6 +14,7 @@ on:
             - "**.ts"
         branches-ignore:
             - release
+    workflow_dispatch:
 
 jobs:
   test:
