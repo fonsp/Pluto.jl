@@ -429,7 +429,7 @@ let scopestate_add_definition = (scopestate, doc, node, valid_from = null) => {
 }
 
 /**
- * @param {TreeCursor} cursor
+ * @param {TreeCursor | SyntaxNode} cursor
  * @param {any} doc
  * @param {ScopeState} scopestate
  * @param {boolean} [verbose]
@@ -447,7 +447,7 @@ export let explore_variable_usage = (
 ) => {
     if ("cursor" in cursor) {
         // console.trace("`explore_variable_usage()` called with a SyntaxNode, not a TreeCursor")
-        cursor = cursor["cursor"]()
+        cursor = cursor.cursor()
     }
 
     let start_node = null
