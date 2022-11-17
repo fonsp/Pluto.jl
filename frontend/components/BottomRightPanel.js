@@ -76,7 +76,16 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
                           notebook=${notebook}
                       />`
                     : open_tab === "process"
-                    ? html`<section>Process TODO</section>`
+                    ? html`<section>
+                          <p>Congratulations, you found the secret!</p>
+                          <p>
+                              Have you considered becoming a Pluto.jl open source contributor? We are always looking for creative people with JavaScript
+                              experience! Take a look at our${" "}
+                              <a href="https://github.com/fonsp/Pluto.jl/issues?q=is%3Aopen+label%3A%22good+first+issue%22+sort%3Aupdated-desc"
+                                  >good first issues</a
+                              >, and our ${" "}<a href="https://juliapluto.github.io/weekly-call-notes/">weekly community call</a>.
+                          </p>
+                      </section>`
                     : null}
             </pluto-helpbox>
         </aside>
