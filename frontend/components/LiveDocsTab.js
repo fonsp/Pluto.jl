@@ -6,9 +6,19 @@ import { RawHTMLContainer, highlight } from "./CellOutput.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { cl } from "../common/ClassTable.js"
 
-export let LiveDocsTab = ({ desired_doc_query, on_update_doc_query, notebook }) => {
+/**
+ * @param {{
+ * focus_on_open: boolean,
+ * desired_doc_query: string?,
+ * on_update_doc_query: (query: string) => void,
+ * notebook: import("./Editor.js").NotebookData,
+ * }} props
+ */
+export let LiveDocsTab = ({ focus_on_open, desired_doc_query, on_update_doc_query, notebook }) => {
     let pluto_actions = useContext(PlutoActionsContext)
-    let live_doc_search_ref = useRef()
+    let live_doc_search_ref = useRef(/** @type {HTMLInputElement?} */ (null))
+
+    // This is all in a single state object so that we can update multiple field simultaneously
     let [state, set_state] = useState({
         shown_query: null,
         searched_query: null,
@@ -21,7 +31,7 @@ export let LiveDocsTab = ({ desired_doc_query, on_update_doc_query, notebook }) 
         if (state.loading) {
             return
         }
-        if (!/[^\s]/.test(desired_doc_query)) {
+        if (desired_doc_query != null && !/[^\s]/.test(desired_doc_query)) {
             // only whitespace
             return
         }
@@ -30,6 +40,13 @@ export let LiveDocsTab = ({ desired_doc_query, on_update_doc_query, notebook }) 
             fetch_docs(desired_doc_query)
         }
     }, [desired_doc_query, state.loading, state.searched_query])
+
+    useLayoutEffect(() => {
+        if (focus_on_open && live_doc_search_ref.current) {
+            live_doc_search_ref.current.focus()
+            live_doc_search_ref.current.select()
+        }
+    }, [focus_on_open, live_doc_search_ref.current])
 
     let fetch_docs = (new_query) => {
         update_state((state) => {
@@ -76,7 +93,7 @@ export let LiveDocsTab = ({ desired_doc_query, on_update_doc_query, notebook }) 
                 ref=${live_doc_search_ref}
                 onInput=${(e) => on_update_doc_query(e.target.value)}
                 value=${desired_doc_query}
-                type="text"
+                type="search"
             ></input>
             
         </div>

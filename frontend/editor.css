@@ -2081,14 +2081,14 @@ pluto-helpbox .live-docs-searchbox input {
     border: none;
     padding: 0.5em;
     margin: auto;
-    border: 3px solid #757575;
-    border-radius: .3em;
-    background: #2c2c2c;
+    border: 3px solid var(--helpbox-search-border-color);
+    border-radius: 0.3em;
+    background: var(--helpbox-search-bg-color);
     font-family: var(--julia-mono-font-stack);
     font-size: 0.9rem;
 }
 pluto-helpbox .live-docs-searchbox.notfound input {
-    color: var(--helpbox-notfound-header-color);
+    color: var(--helpbox-notfound-search-color);
 }
 pluto-helpbox .live-docs-searchbox input:focus {
     outline: none;
@@ -2127,7 +2127,6 @@ pluto-helpbox > header > button.helpbox-close > span {
 }
 pluto-helpbox.hidden {
     height: initial;
-    cursor: pointer;
     width: auto;
 }
 pluto-helpbox.hidden > section {
@@ -3036,8 +3035,11 @@ button.active.helpbox-tab-key {
     outline: 3px solid #99afb9;
 }
 
-
 .live-docs-searchbox {
     display: flex;
     margin: 1em;
+}
+
+button.helpbox-process.helpbox-tab-key {
+    display: none;
 }

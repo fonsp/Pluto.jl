@@ -141,7 +141,9 @@
         --helpbox-header-bg-color: #2c3e36;
         --helpbox-header-tab-bg-color: #554e4e;
         --helpbox-header-color: rgb(255 248 235);
-        --helpbox-notfound-header-color: rgb(139, 139, 139);
+        --helpbox-search-bg-color: #2c2c2c;
+        --helpbox-search-border-color: #757575;
+        --helpbox-notfound-search-color: rgb(139, 139, 139);
         --helpbox-text-color: rgb(230, 230, 230);
         --code-section-bg-color: rgb(44, 44, 44);
         --code-section-border-color: #555a64;

@@ -6,6 +6,7 @@ import { LiveDocsTab } from "./LiveDocsTab.js"
 export let LiveDocs = ({ desired_doc_query, on_update_doc_query, notebook }) => {
     let container_ref = useRef()
 
+    const focus_docs_on_open_ref = useRef(false)
     const [open_tab, set_open_tab] = useState(/** @type { "docs" | "process" | null} */ (null))
     const hidden = open_tab == null
 
@@ -13,6 +14,7 @@ export let LiveDocs = ({ desired_doc_query, on_update_doc_query, notebook }) => 
     useEffect(() => {
         let handler = () => {
             // https://github.com/fonsp/Pluto.jl/issues/321
+            focus_docs_on_open_ref.current = false
             set_open_tab("docs")
             if (window.getComputedStyle(container_ref.current).display === "none") {
                 alert("This browser window is too small to show docs.\n\nMake the window bigger, or try zooming out.")
@@ -33,6 +35,7 @@ export let LiveDocs = ({ desired_doc_query, on_update_doc_query, notebook }) => 
                             "active": open_tab === "docs",
                         })}
                         onClick=${() => {
+                            focus_docs_on_open_ref.current = true
                             set_open_tab(open_tab === "docs" ? null : "docs")
                             // TODO: focus the docs input
                         }}
@@ -63,7 +66,12 @@ export let LiveDocs = ({ desired_doc_query, on_update_doc_query, notebook }) => 
                           </button>`}
                 </header>
                 ${open_tab === "docs"
-                    ? html`<${LiveDocsTab} desired_doc_query=${desired_doc_query} on_update_doc_query=${on_update_doc_query} notebook=${notebook} />`
+                    ? html`<${LiveDocsTab}
+                          focus_on_open=${focus_docs_on_open_ref.current}
+                          desired_doc_query=${desired_doc_query}
+                          on_update_doc_query=${on_update_doc_query}
+                          notebook=${notebook}
+                      />`
                     : open_tab === "process"
                     ? html`<section>Process TODO</section>`
                     : null}
