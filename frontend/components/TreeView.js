@@ -90,7 +90,7 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
     const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${persist_js_state} />`
     const more = html`<p-r><${More} on_click_more=${on_click_more} /></p-r>`
 
-    var inner = null
+    let inner = null
     switch (body.type) {
         case "Pair":
             const r = body.key_value

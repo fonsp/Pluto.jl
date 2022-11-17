@@ -786,6 +786,8 @@ patch: ${JSON.stringify(
 
             // @ts-ignore
             window.version_info = this.client.version_info // for debugging
+            // @ts-ignore
+            window.kill_socket = this.client.kill // for debugging
 
             if (!client.notebook_exists) {
                 console.error("Notebook does not exist. Not connecting.")

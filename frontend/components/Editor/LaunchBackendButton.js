@@ -19,6 +19,7 @@ export const EditorLaunchBackendButton = ({ editor, launch_params, status }) => 
             // Don't allow a misconfigured environment to stop offering other backends
         }
     } catch (e) {}
+    if (status == null) return null
     if (status.offer_local)
         return html`<${RunLocalButton}
             start_local=${() =>
