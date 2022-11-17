@@ -2082,7 +2082,13 @@ pluto-helpbox > header > button.helpbox-docs.active::before {
 }
 pluto-helpbox > header > button.helpbox-process::before {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/terminal.svg");
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/pulse.svg");
     /* content: "💻 "; */
+}
+
+pluto-helpbox > header > button.helpbox-tab-key:disabled::before {
+    /* display: none; */
+    opacity: 0.5;
 }
 
 pluto-helpbox .live-docs-searchbox input {
@@ -2115,6 +2121,9 @@ button.helpbox-tab-key {
     border-radius: var(--border-radius);
     border: none;
     background: var(--helpbox-header-tab-bg-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 pluto-helpbox > header > button.helpbox-close {
@@ -3050,8 +3059,4 @@ button.active.helpbox-tab-key {
 .live-docs-searchbox {
     display: flex;
     margin: 1em;
-}
-
-button.helpbox-process.helpbox-tab-key {
-    /* display: none; */
 }

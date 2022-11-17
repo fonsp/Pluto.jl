@@ -3,7 +3,7 @@ import { cl } from "../common/ClassTable.js"
 
 import { LiveDocsTab } from "./LiveDocsTab.js"
 
-export let LiveDocs = ({ desired_doc_query, on_update_doc_query, notebook }) => {
+export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, notebook }) => {
     let container_ref = useRef()
 
     const focus_docs_on_open_ref = useRef(false)
@@ -29,6 +29,7 @@ export let LiveDocs = ({ desired_doc_query, on_update_doc_query, notebook }) => 
             <pluto-helpbox class=${cl({ hidden, [`helpbox-${open_tab ?? hidden}`]: true })}>
                 <header translate=${false}>
                     <button
+                        title="Live Docs: Search for Julia documentation, and get live documentation of everything you type."
                         class=${cl({
                             "helpbox-tab-key": true,
                             "helpbox-docs": true,
@@ -43,6 +44,8 @@ export let LiveDocs = ({ desired_doc_query, on_update_doc_query, notebook }) => 
                         <span>Live Docs</span>
                     </button>
                     <button
+                        disabled
+                        title="We are still working on this feature. Check back soon!"
                         class=${cl({
                             "helpbox-tab-key": true,
                             "helpbox-process": true,
@@ -52,7 +55,7 @@ export let LiveDocs = ({ desired_doc_query, on_update_doc_query, notebook }) => 
                             set_open_tab(open_tab === "process" ? null : "process")
                         }}
                     >
-                        <span>Process</span>
+                        <span>Coming soon</span>
                     </button>
                     ${hidden
                         ? null
