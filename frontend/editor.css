@@ -649,6 +649,7 @@ nav#at_the_top > div.desktop_picker span {
 
 pluto-filepicker .cm-scroller {
     scrollbar-width: none; /* Firefox */
+    overflow-x: hidden;
 }
 pluto-filepicker .cm-scroller::-webkit-scrollbar {
     display: none; /* Safari and Chrome */
