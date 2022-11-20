@@ -649,7 +649,6 @@ nav#at_the_top > div.desktop_picker span {
 
 pluto-filepicker .cm-scroller {
     scrollbar-width: none; /* Firefox */
-    overflow-x: hidden;
 }
 pluto-filepicker .cm-scroller::-webkit-scrollbar {
     display: none; /* Safari and Chrome */
@@ -2777,6 +2776,10 @@ Based on "Paraíso (Light)" by Jan T. Sott:
     padding: 0;
     margin-left: -1.5em;
     background: var(--autocomplete-menu-bg-color);
+}
+
+pluto-input .cm-editor .cm-scroller {
+    overflow-x: hidden;
 }
 
 pluto-input .cm-editor .cm-content,
