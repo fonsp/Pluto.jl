@@ -53,7 +53,12 @@ end
 """
 Returns the names of all defined bonds
 """
-get_bond_names(session::ServerSession, notebook::Notebook) = WorkspaceManager.get_bond_names((session,notebook))
+function get_bond_names(session::ServerSession, notebook::Notebook)
+    cells_bond_names = map(notebook.cell_order) do cell_id
+        WorkspaceManager.get_bond_names((session,notebook), cell_id)
+    end
+    return reduce(union, cells_bond_names)
+end
 
 """
 Returns the set of all possible values for the binded variable `n` as returned by the widget implementation using `AbstractPlutoDingetjes.possible_bond_values(element)`. This API is meant to be used by PlutoSliderServer.
