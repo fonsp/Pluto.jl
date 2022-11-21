@@ -2779,7 +2779,7 @@ Based on "Paraíso (Light)" by Jan T. Sott:
 }
 
 pluto-input .cm-editor .cm-scroller {
-    overflow-x: hidden;
+    overflow-y: hidden;
 }
 
 pluto-input .cm-editor .cm-content,
