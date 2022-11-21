@@ -455,7 +455,7 @@ function cells_to_disable_to_resolve_multiple_defs(old::NotebookTopology, new::N
 						length(node.definitions) == 1 && # for more than one defined variable, we might confuse the user, or disable more things than we want to.
 						disjoint(node.references, node.definitions) && # avoid self-reference like `x = x + 1`
 						isempty(node.funcdefs_without_signatures) &&
-						isempty(node.macrocalls)
+						node.macrocalls ⊆ (Symbol("@bind"),) # allow no macros (except for `@bind`)
 					)
 				end
 				
