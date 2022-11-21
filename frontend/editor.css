@@ -2778,6 +2778,10 @@ Based on "Paraíso (Light)" by Jan T. Sott:
     background: var(--autocomplete-menu-bg-color);
 }
 
+pluto-input .cm-editor .cm-scroller {
+    overflow-y: hidden;
+}
+
 pluto-input .cm-editor .cm-content,
 pluto-input .cm-editor .cm-scroller,
 .cm-editor .cm-tooltip-autocomplete .cm-completionLabel {
