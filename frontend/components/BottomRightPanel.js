@@ -3,6 +3,23 @@ import { cl } from "../common/ClassTable.js"
 
 import { LiveDocsTab } from "./LiveDocsTab.js"
 
+export const ENABLE_PROCESS_TAB = window.localStorage.getItem("ENABLE_PROCESS_TAB") === "true"
+
+if (ENABLE_PROCESS_TAB) {
+    console.log(`YOU ENABLED THE PROCESS TAB
+Thanks! Awesome!
+Please let us know if you find any bugs...
+If enough people do this, we turn it on by default. 💛
+`)
+}
+
+// Added this so we can have people test the mixed parser, because I LIKE IT SO MUCH - DRAL
+// @ts-ignore
+window.PLUTO_TOGGLE_PROCESS_TAB = () => {
+    window.localStorage.setItem("ENABLE_PROCESS_TAB", String(!ENABLE_PROCESS_TAB))
+    window.location.reload()
+}
+
 export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, notebook }) => {
     let container_ref = useRef()
 
@@ -44,8 +61,8 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
                         <span>Live Docs</span>
                     </button>
                     <button
-                        disabled
-                        title="We are still working on this feature. Check back soon!"
+                        disabled=${!ENABLE_PROCESS_TAB}
+                        title=${ENABLE_PROCESS_TAB ? "Process status" : "We are still working on this feature. Check back soon!"}
                         class=${cl({
                             "helpbox-tab-key": true,
                             "helpbox-process": true,
@@ -55,7 +72,7 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
                             set_open_tab(open_tab === "process" ? null : "process")
                         }}
                     >
-                        <span>Coming soon</span>
+                        <span>${ENABLE_PROCESS_TAB ? "Status" : "Coming soon"}</span>
                     </button>
                     ${hidden
                         ? null
