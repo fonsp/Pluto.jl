@@ -1905,6 +1905,10 @@ function transform_bond_value(s::Symbol, value_from_js)
     end
 end
 
+function get_bond_names(cell_id)
+    get(cell_registered_bond_names, cell_id, Set{Symbol}())
+end
+
 function possible_bond_values(s::Symbol; get_length::Bool=false)
     element = registered_bond_elements[s]
     possible_values = possible_bond_values_ref[](element)

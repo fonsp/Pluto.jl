@@ -240,6 +240,14 @@ function bump_workspace_module(session_notebook::SN)
     old_name, new_name
 end
 
+function get_bond_names(session_notebook::SN, cell_id)
+    workspace = get_workspace(session_notebook)
+
+    Distributed.remotecall_eval(Main, workspace.pid, quote
+        PlutoRunner.get_bond_names($cell_id)
+    end)
+end
+
 function possible_bond_values(session_notebook::SN, n::Symbol; get_length::Bool=false)
     workspace = get_workspace(session_notebook)
 

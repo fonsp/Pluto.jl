@@ -358,6 +358,9 @@ import Distributed
         ])
         update_run!(🍭, notebook, notebook.cells)
 
+        # Test the get_bond_names function
+        @test Pluto.get_bond_names(🍭, notebook) == Set([:a, :b, :x, :y])
+
         function set_bond_values!(notebook:: Notebook, bonds:: Dict; is_first_value=false)
             for (name, value) in bonds
                 notebook.bonds[name] = Dict("value" => value)
