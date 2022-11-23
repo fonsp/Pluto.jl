@@ -283,7 +283,6 @@ const julia_code_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ re
     }
 }
 
-/** @returns {import("../../imports/CodemirrorPlutoSetup.js").CompletionSource} */
 const pluto_completion_fetcher = (request_autocomplete) => {
     const unicode_completions = julia_special_completions_to_cm(request_autocomplete)
     const code_completions = julia_code_completions_to_cm(request_autocomplete)
