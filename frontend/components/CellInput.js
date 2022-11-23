@@ -430,7 +430,7 @@ export const CellInput = ({
                 return false
             }
             // This will return true if the autocomplete select popup is open
-            if (select_autocomplete_command?.run(cm)) {
+            if (select_autocomplete_command?.run?.(cm)) {
                 return true
             }
 

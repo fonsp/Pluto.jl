@@ -40,6 +40,7 @@ export let mod_d_command = {
         } else {
             selectNextOccurrence({ state, dispatch })
         }
+        return false
     },
     /** @param {EditorView} view */
     shift: ({ state, dispatch }) => {
