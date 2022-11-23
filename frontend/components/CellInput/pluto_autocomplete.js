@@ -93,6 +93,7 @@ let open_docs_if_autocomplete_is_open_command = (cm) => {
         window.dispatchEvent(new CustomEvent("open_live_docs"))
         return true
     }
+    return false
 }
 
 /** @param {EditorView} cm */
@@ -173,7 +174,7 @@ let julia_special_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ r
             return {
                 label: text,
                 apply: detail && should_apply_unicode_completion ? detail : text,
-                detail,
+                detail: detail ?? undefined,
             }
         }),
         // TODO Do something docs_prefix ish when we also have the apply text
@@ -247,12 +248,13 @@ const julia_code_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ re
                 return {
                     label: text,
                     apply: text_to_apply,
-                    type: cl({
-                        c_notexported: !is_exported,
-                        [`c_${type_description}`]: type_description != null,
-                        [`completion_${completion_type}`]: completion_type != null,
-                        c_from_notebook: is_from_notebook,
-                    }),
+                    type:
+                        cl({
+                            c_notexported: !is_exported,
+                            [`c_${type_description}`]: type_description != null,
+                            [`completion_${completion_type}`]: completion_type != null,
+                            c_from_notebook: is_from_notebook,
+                        }) ?? undefined,
                     boost: 50 - i / results.length,
                 }
             }),
@@ -264,7 +266,7 @@ const julia_code_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ re
             ...results
                 .filter(([text]) => is_field_expression && override_text_to_apply_in_field_expression(text) != null)
                 .map(([text, type_description, is_exported], i) => {
-                    let text_to_apply = override_text_to_apply_in_field_expression(text)
+                    let text_to_apply = override_text_to_apply_in_field_expression(text) ?? ""
 
                     return {
                         label: text_to_apply,
@@ -281,6 +283,7 @@ const julia_code_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ re
     }
 }
 
+/** @returns {import("../../imports/CodemirrorPlutoSetup.js").CompletionSource} */
 const pluto_completion_fetcher = (request_autocomplete) => {
     const unicode_completions = julia_special_completions_to_cm(request_autocomplete)
     const code_completions = julia_code_completions_to_cm(request_autocomplete)
@@ -305,7 +308,7 @@ const complete_anyword = async (ctx) => {
             // See https://github.com/codemirror/codemirror.next/issues/788 about `type: null`
             label,
             apply: label,
-            type: null,
+            type: undefined,
             boost: 0 - i,
         })),
     }
@@ -331,7 +334,7 @@ const local_variables_completion = (ctx) => {
                 // See https://github.com/codemirror/codemirror.next/issues/788 about `type: null`
                 label: name,
                 apply: name,
-                type: null,
+                type: undefined,
                 boost: 99 - i,
             })),
     }
@@ -384,7 +387,7 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
             ],
             defaultKeymap: false, // We add these manually later, so we can override them if necessary
             maxRenderedOptions: 512, // fons's magic number
-            optionClass: (c) => c.type,
+            optionClass: (c) => c.type ?? "",
         }),
 
         // If there is just one autocomplete result, apply it directly
