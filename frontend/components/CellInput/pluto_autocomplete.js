@@ -376,7 +376,7 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
     return [
         tabCompletionState,
         autocompletion({
-            activateOnTyping: false,
+            activateOnTyping: true,
             override: [
                 pluto_completion_fetcher(memoize_last_request_autocomplete),
                 // julia_special_completions_to_cm(memoize_last_request_autocomplete),
