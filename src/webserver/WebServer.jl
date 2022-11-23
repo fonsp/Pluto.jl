@@ -167,48 +167,8 @@ function run(session::ServerSession)
             end
             if !secret_required || is_authenticated(session, http.message)
                 try
-
                     HTTP.WebSockets.upgrade(http) do clientstream
-                        if HTTP.WebSockets.isclosed(clientstream)
-                            return
-                        end
-                        try
-                            for message in clientstream
-                                # This stream contains data received over the WebSocket.
-                                # It is formatted and MsgPack-encoded by send(...) in PlutoConnection.js
-                                local parentbody = nothing
-                                local did_read = false
-                                try
-                                    parentbody = unpack(message)
-                                    
-                                    let
-                                        lag = session.options.server.simulated_lag
-                                        (lag > 0) && sleep(lag * (0.5 + rand())) # sleep(0) would yield to the process manager which we dont want
-                                    end
-                                    
-                                    did_read = true
-                                    process_ws_message(session, parentbody, clientstream)
-                                catch ex
-                                    if ex isa InterruptException || ex isa HTTP.WebSockets.WebSocketError || ex isa EOFError
-                                        # that's fine!
-                                    else
-                                        bt = catch_backtrace()
-                                        if did_read
-                                            @warn "Processing message failed for unknown reason:" parentbody exception = (ex, bt)
-                                        else
-                                            @warn "Reading WebSocket client stream failed for unknown reason:" parentbody exception = (ex, bt)
-                                        end
-                                    end
-                                end
-                            end
-                        catch ex
-                            if ex isa InterruptException || ex isa HTTP.WebSockets.WebSocketError || ex isa EOFError || (ex isa Base.IOError && occursin("connection reset", ex.msg))
-                                # that's fine!
-                            else
-                                bt = stacktrace(catch_backtrace())
-                                @warn "Reading WebSocket client stream failed for unknown reason:" exception = (ex, bt)
-                            end
-                        end
+                        handle_client(session, clientstream)
                     end
                 catch ex
                     if ex isa InterruptException
@@ -268,6 +228,39 @@ function run(session::ServerSession)
         end
     end
 
+    websocket_control_task = @async begin
+        @info "Connecting..."
+        try
+            HTTP.WebSockets.open("ws://localhost:3000/ws/") do ws
+                @info "Connected to remote"
+                for msg in ws
+                    @info "received message from ctrl plane" msg
+                    if msg == "hello" # respond
+                        HTTP.WebSockets.send(ws, "hello")
+                    elseif startswith(msg, "connect:")
+                        @info "Creating connection to host..." msg
+                        @async begin
+                            try
+                                HTTP.WebSockets.open("ws://localhost:3000/ws/" * msg[begin+length("connect:"):end]) do clientstream
+                                    @info "Beginning to handle client stream" msg
+                                    handle_client(session, clientstream)
+                                end
+                            catch err
+                                @error "error when creating server connection" exception=(err, catch_backtrace())
+                            end
+                        end
+                    else
+                        @warn "Unhandled msg" msg
+                    end
+                end
+
+                @warn "ws stopping" open=!HTTP.WebSockets.isclosed(ws)
+            end
+        catch err
+            @error "Something went wrong" exception=(err,catch_backtrace())
+        end
+    end
+
     server_running() =
         try
             HTTP.get("http://$(hostIP):$(port)$(session.options.server.base_url)ping"; status_exception = false, retry = false, connect_timeout = 10, readtimeout = 10).status == 200
@@ -310,12 +303,56 @@ function run(session::ServerSession)
         close(server)
         wait(server)
         wait(initial_registry_update_task)
+        wait(websocket_control_task)
         (e isa InterruptException) || rethrow(e)
     end
-    
+
     nothing
 end
 precompile(run, (ServerSession, HTTP.Handlers.Router{Symbol("##001")}))
+
+function handle_client(session, clientstream)
+    if HTTP.WebSockets.isclosed(clientstream)
+        return
+    end
+    try
+        for message in clientstream
+        # This stream contains data received over the WebSocket.
+        # It is formatted and MsgPack-encoded by send(...) in PlutoConnection.js
+        local parentbody = nothing
+        local did_read = false
+        try
+            parentbody = unpack(message)
+
+            let
+                lag = session.options.server.simulated_lag
+                (lag > 0) && sleep(lag * (0.5 + rand())) # sleep(0) would yield to the process manager which we dont want
+            end
+
+            did_read = true
+            process_ws_message(session, parentbody, clientstream)
+        catch ex
+            if ex isa InterruptException || ex isa HTTP.WebSockets.WebSocketError || ex isa EOFError
+                # that's fine!
+            else
+                bt = catch_backtrace()
+                if did_read
+                    @warn "Processing message failed for unknown reason:" parentbody exception = (ex, bt)
+                else
+                    @warn "Reading WebSocket client stream failed for unknown reason:" parentbody exception = (ex, bt)
+                    end
+                end
+            end
+        end
+    catch ex
+        if ex isa InterruptException || ex isa HTTP.WebSockets.WebSocketError || ex isa EOFError || (ex isa Base.IOError && occursin("connection reset", ex.msg))
+            # that's fine!
+        else
+            bt = stacktrace(catch_backtrace())
+            @warn "Reading WebSocket client stream failed for unknown reason:" exception = (ex, bt)
+        end
+    end
+end
 
 get_favorite_notebook(notebook::Nothing) = nothing
 get_favorite_notebook(notebook::String) = notebook
