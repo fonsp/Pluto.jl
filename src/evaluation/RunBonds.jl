@@ -57,7 +57,7 @@ function get_bond_names(session::ServerSession, notebook::Notebook)
     cells_bond_names = map(notebook.cell_order) do cell_id
         WorkspaceManager.get_bond_names((session,notebook), cell_id)
     end
-    return reduce(union, cells_bond_names)
+    union!(Set{Symbol}(), cells_bond_names...)
 end
 
 """
