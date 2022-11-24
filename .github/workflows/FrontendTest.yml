@@ -27,15 +27,15 @@ jobs:
             # Makes thes `julia` command available
             - uses: julia-actions/setup-julia@v1
               with:
-                  version: "1.6"
+                  version: "1.6" # our lowest supported version
 
             - name: Install Pluto.jl packages
               run: |
                   julia --project=$GITHUB_WORKSPACE -e "using Pkg; Pkg.instantiate()"
 
-            - uses: actions/setup-node@v1
+            - uses: actions/setup-node@v3
               with:
-                  node-version: "12.x"
+                  node-version: "18.x"
 
             - name: Install Chrome dependencies
               run: |
