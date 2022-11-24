@@ -22,7 +22,7 @@ jobs:
 
         steps:
             # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-            - uses: actions/checkout@v2
+            - uses: actions/checkout@v3
 
             # Makes thes `julia` command available
             - uses: julia-actions/setup-julia@v1
@@ -79,7 +79,7 @@ jobs:
                   PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
                   PUPPETEER_EXECUTABLE_PATH: "/usr/bin/google-chrome-stable"
 
-            - uses: actions/upload-artifact@v2
+            - uses: actions/upload-artifact@v3
               if: failure()
               with:
                   name: test-screenshot-artifacts
