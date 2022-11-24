@@ -1,6 +1,6 @@
 module IntegrationsWithOtherPackages
 
-import ..workspace_info
+import ..notebook_id
 include("./Requires.jl/src/Requires.jl")
 
 "Attempts to find the MIME pair corresponding to the extension of a filename. Defaults to `text/plain`."
@@ -89,19 +89,19 @@ end
 
 "Still a bit unsure about this, but it will for now give you the (relative) path for your module requests"
 function get_base_url(module_name::Union{AbstractString, Symbol})
-    "/integrations/$(workspace_info.notebook_id)/$(string(module_name))"
+    "/integrations/$(notebook_id[])/$(string(module_name))"
 end
 
 module AssetRegistryIntegrations
     import ..Requires
     import ..mime_fromfilename
-    import ..workspace_info
+    import ..notebook_id
     import ..get_base_url
     import ..on_http_request
 
     function __init__()
         Requires.@require AssetRegistry="bf4720bc-e11a-5d0c-854e-bdca1663c893" begin
-            if workspace_info.notebook_id === nothing
+            if notebook_id[] === nothing
                 error("Couldn't load AssetRegistry integrations, notebook_id not set inside PlutoRunner")
             end
 
