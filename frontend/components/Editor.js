@@ -662,21 +662,6 @@ patch: ${JSON.stringify(
             pluto_api_event_target: pluto_api_event_target,
         }
 
-        // TODO Load this lazily when WebIO is imported in the notebook
-        // @ts-ignore
-        let WebIO = window.webio.default
-        const webIO = new WebIO()
-        // @ts-ignore
-        window.WebIO = webIO
-        webIO.setSendCallback((message) => {
-            // @ts-ignore
-            window.Pluto.sendIntegrationsMessage("WebIO", message)
-        })
-        // @ts-ignore
-        window.Pluto.onIntegrationsMessage("WebIO", (message) => {
-            webIO.dispatch(message)
-        })
-
         // these are update message that are _not_ a response to a `send(*, *, {create_promise: true})`
         const on_update = (update, by_me) => {
             if (this.state.notebook.notebook_id === update.notebook_id) {

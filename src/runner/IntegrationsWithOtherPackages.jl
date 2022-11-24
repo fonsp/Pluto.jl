@@ -36,7 +36,7 @@ A [`Channel`](@ref) to send messages on demand to JS running in cell outputs. Th
 # Example
 ```julia
 put!(message_channel, Dict(
-    :module_name => "WebIO",
+    :module_name => "MyPackage",
     :body => mydata,
 ))
 ```
@@ -124,34 +124,6 @@ module AssetRegistryIntegrations
                 else
                     Dict(:status => 404)
                 end
-            end
-        end
-    end
-end
-
-
-module WebIOIntegrations
-    import ..Requires
-    import ..on_websocket_message
-    import ..message_channel
-
-    function __init__()
-        Requires.@require WebIO="0f1e0344-ec1d-5b48-a673-e5cf874b6c29" begin
-            import Sockets
-            import .WebIO
-                    
-            struct WebIOConnection <: WebIO.AbstractConnection end
-            Sockets.send(::WebIOConnection, data) = begin
-                put!(message_channel, Dict(
-                    :module_name => "WebIO",
-                    :message => data,
-                ))
-            end
-            Base.isopen(::WebIOConnection) = Base.isopen(message_channel)
-            
-            function on_websocket_message(::Val{:WebIO}, message)
-                WebIO.dispatch(WebIOConnection(), message)
-                nothing
             end
         end
     end
