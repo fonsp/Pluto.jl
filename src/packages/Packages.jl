@@ -149,7 +149,7 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                     PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
                         withinteractive(false) do
                             # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
-                            notebook.nbpkg_ctx = PkgCompat.clear_auto_compat_entries(notebook.nbpkg_ctx)
+                            PkgCompat.clear_auto_compat_entries!(notebook.nbpkg_ctx)
 
                             try
                                 for tier in [
@@ -165,7 +165,7 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                                             Pkg.PackageSpec(name=p)
                                             for p in to_add
                                         ]; preserve=used_tier)
-                                        
+
                                         break
                                     catch e
                                         if used_tier == Pkg.PRESERVE_NONE
@@ -175,7 +175,7 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                                     end
                                 end
                             finally
-                                notebook.nbpkg_ctx = PkgCompat.write_auto_compat_entries(notebook.nbpkg_ctx)
+                                PkgCompat.write_auto_compat_entries!(notebook.nbpkg_ctx)
                             end
 
                             # Now that Pkg is set up, the notebook process will call `using Package`, which can take some time. We write this message to the io, to notify the user.
@@ -298,7 +298,7 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 
 		# Clear the embedded Project and Manifest and require a restart from the user.
-		reset_nbpkg(notebook, new_topology; keep_project=false, save=save)
+		reset_nbpkg!(notebook, new_topology; keep_project=false, save=save)
 		notebook.nbpkg_restart_required_msg = "Yes, because sync_nbpkg_core failed. \n\n$(error_text)"
         notebook.nbpkg_install_time_ns = nothing
         notebook.nbpkg_ctx_instantiated = false
@@ -322,9 +322,8 @@ end
 Run `Pkg.resolve` on the notebook's package environment. Keep trying more and more invasive strategies to fix problems until the operation succeeds.
 """
 function resolve_with_auto_fixes(notebook::Notebook, iolistener::IOListener)
-    
-    notebook.nbpkg_ctx = PkgCompat.clear_stdlib_compat_entries(notebook.nbpkg_ctx)
-    
+    PkgCompat.clear_stdlib_compat_entries!(notebook.nbpkg_ctx)
+
     PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
         withinteractive(false) do
             try
@@ -338,14 +337,14 @@ function resolve_with_auto_fixes(notebook::Notebook, iolistener::IOListener)
                 catch e
                     @warn "Failed to resolve Pkg environment. Removing Manifest and trying again..." exception=e
                     
-                    reset_nbpkg(notebook; keep_project=true, save=false, backup=false)
+                    reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
                     try
                         Pkg.resolve(notebook.nbpkg_ctx)
                     catch e
                         @warn "Failed to resolve Pkg environment. Removing Project compat entries and Manifest and trying again..." exception=e
                         
-                        reset_nbpkg(notebook; keep_project=true, save=false, backup=false)
-                        notebook.nbpkg_ctx = PkgCompat.clear_compat_entries(notebook.nbpkg_ctx)
+                        reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
+                        PkgCompat.clear_compat_entries!(notebook.nbpkg_ctx)
                         
                         Pkg.resolve(notebook.nbpkg_ctx)
                     end
@@ -362,7 +361,7 @@ If `keep_project` is `true` (default `false`), the `Project.toml` file will be k
 
 This function is useful when we are not able to resolve/activate/instantiate a notebook's environment after loading, which happens when e.g. the environment was created on a different OS or Julia version.
 """
-function reset_nbpkg(notebook::Notebook, topology::Union{NotebookTopology,Nothing}=nothing; keep_project::Bool=false, backup::Bool=true, save::Bool=true)
+function reset_nbpkg!(notebook::Notebook, topology::Union{NotebookTopology,Nothing}=nothing; keep_project::Bool=false, backup::Bool=true, save::Bool=true)
     backup && save && writebackup(notebook)
 
     if notebook.nbpkg_ctx !== nothing
@@ -371,9 +370,13 @@ function reset_nbpkg(notebook::Notebook, topology::Union{NotebookTopology,Nothin
         keep_project || (isfile(p) && rm(p))
         isfile(m) && rm(m)
 
-        notebook.nbpkg_ctx = PkgCompat.load_ctx(PkgCompat.env_dir(notebook.nbpkg_ctx))
+        PkgCompat.load_ctx!(notebook.nbpkg_ctx, PkgCompat.env_dir(notebook.nbpkg_ctx))
     else
-        notebook.nbpkg_ctx = use_plutopkg(something(topology, notebook.topology)) ? PkgCompat.create_empty_ctx() : nothing
+        notebook.nbpkg_ctx = if use_plutopkg(something(topology, notebook.topology))
+            PkgCompat.load_empty_ctx!(notebook.nbpkg_ctx)
+        else
+            nothing
+        end
     end
 
     save && save_notebook(notebook)
@@ -409,14 +412,14 @@ function update_nbpkg_core(notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEV
 
             PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
                 # We temporarily clear the "semver-compatible" [deps] entries, because it is difficult to update them after the update 🙈. TODO
-                notebook.nbpkg_ctx = PkgCompat.clear_auto_compat_entries(notebook.nbpkg_ctx)
+                PkgCompat.clear_auto_compat_entries!(notebook.nbpkg_ctx)
 
                 try
                     ###
                     Pkg.update(notebook.nbpkg_ctx; level=level)
                     ###
                 finally
-                    notebook.nbpkg_ctx = PkgCompat.write_auto_compat_entries(notebook.nbpkg_ctx)
+                    PkgCompat.write_auto_compat_entries!(notebook.nbpkg_ctx)
                 end
             end
 

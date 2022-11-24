@@ -103,7 +103,7 @@ import Pkg
         @test haskey(ptoml["compat"], "PlutoPkgTestA")
         @test haskey(ptoml["compat"], "Artifacts")
         
-        notebook.nbpkg_ctx = PkgCompat.clear_stdlib_compat_entries(notebook.nbpkg_ctx)
+        PkgCompat.clear_stdlib_compat_entries!(notebook.nbpkg_ctx)
         
         ptoml = Pkg.TOML.parse(ptoml_contents())
         @test haskey(ptoml["deps"], "PlutoPkgTestA")
@@ -114,7 +114,7 @@ import Pkg
         end
         
         old_a_compat_entry = ptoml["compat"]["PlutoPkgTestA"]
-        notebook.nbpkg_ctx = PkgCompat.clear_auto_compat_entries(notebook.nbpkg_ctx)
+        PkgCompat.clear_auto_compat_entries!(notebook.nbpkg_ctx)
         
         ptoml = Pkg.TOML.parse(ptoml_contents())
         @test haskey(ptoml["deps"], "PlutoPkgTestA")
@@ -124,7 +124,7 @@ import Pkg
         @test !haskey(compat, "PlutoPkgTestA")
         @test !haskey(compat, "Artifacts")
         
-        notebook.nbpkg_ctx = PkgCompat.write_auto_compat_entries(notebook.nbpkg_ctx)
+        PkgCompat.write_auto_compat_entries!(notebook.nbpkg_ctx)
         
         ptoml = Pkg.TOML.parse(ptoml_contents())
         @test haskey(ptoml["deps"], "PlutoPkgTestA")

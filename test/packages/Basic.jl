@@ -56,7 +56,8 @@ import Distributed
         @test haskey(terminals, "PlutoPkgTestD")
         # they were installed in one batch, so their terminal outputs should be the same
         @test terminals["PlutoPkgTestA"] == terminals["PlutoPkgTestD"]
-
+        # " [9e88b42a] PackageName" should be present in terminal output
+        @test !isnothing(match(r" \[........\] ", terminals["PlutoPkgTestA"]))
 
         @test notebook.cells[2].output.body == "0.3.1" # A
         @test notebook.cells[8].output.body == "0.1.0" # D
@@ -485,7 +486,7 @@ import Distributed
 
         write(f, simple_import_notebook)
         @test !occursin("0.3.1", read(f, String))
-        
+
         @test num_backups_in(dir) == 0
         Pluto.update_notebook_environment(f)
 

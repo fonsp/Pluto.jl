@@ -84,7 +84,7 @@ reset_notebook_environment(notebook_path::String; keep_project::Bool=false, back
 Remove the embedded `Project.toml` and `Manifest.toml` from a notebook file, modifying the file. If `keep_project` is true, only `Manifest.toml` will be deleted. A backup of the notebook file is created by default.
 """
 function reset_notebook_environment(path::String; kwargs...)
-    Pluto.reset_nbpkg(
+    Pluto.reset_nbpkg!(
         load_notebook_nobackup(path);
         kwargs...
     )
