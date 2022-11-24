@@ -1,7 +1,8 @@
 import immer from "../imports/immer.js"
-import { ws_address_from_base } from "./PlutoConnection.js"
+import { timeout_promise, ws_address_from_base } from "./PlutoConnection.js"
+import { with_query_params } from "./URLTools.js"
 
-export const BinderPhase = {
+export const BackendLaunchPhase = {
     wait_for_user: 0,
     requesting: 0.4,
     created: 0.6,
@@ -78,22 +79,28 @@ export const request_binder = (build_url) =>
         }
     })
 
+// view stats on https://stats.plutojl.org/
+export const count_stat = (page) =>
+    fetch(`https://stats.plutojl.org/count?p=/${page}&s=${screen.width},${screen.height},${devicePixelRatio}#skip_sw`, { cache: "no-cache" }).catch(() => {})
+
+/**
+ * Start a 'headless' binder session, open our notebook in it, and connect to it.
+ */
 export const start_binder = async ({ setStatePromise, connect, launch_params }) => {
     try {
-        fetch(`https://cdn.jsdelivr.net/gh/fonsp/pluto-usage-counter@1/binder-start.txt?skip_sw`).catch(() => {})
+        // view stats on https://stats.plutojl.org/
+        count_stat(`binder-start`)
         await setStatePromise(
             immer((state) => {
-                state.binder_phase = BinderPhase.requesting
-                state.loading = true
+                state.backend_launch_phase = BackendLaunchPhase.requesting
                 state.disable_ui = false
             })
         )
+
+        /// PART 1: Creating a binder session..
         const { binder_session_url, binder_session_token } = await request_binder(launch_params.binder_url.replace("mybinder.org/v2/", "mybinder.org/build/"))
-        const with_token = (u) => {
-            const new_url = new URL(u)
-            new_url.searchParams.set("token", binder_session_token)
-            return String(new_url)
-        }
+        const with_token = (u) => with_query_params(u, { token: binder_session_token })
+
         console.log("Binder URL:", with_token(binder_session_url))
 
         //@ts-ignore
@@ -103,7 +110,7 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
 
         await setStatePromise(
             immer((state) => {
-                state.binder_phase = BinderPhase.created
+                state.backend_launch_phase = BackendLaunchPhase.created
                 state.binder_session_url = binder_session_url
                 state.binder_session_token = binder_session_token
             })
@@ -112,23 +119,46 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
         // fetch index to say hello
         await fetch(with_token(binder_session_url))
 
-        let open_response
+        /// PART 2: Using Pluto's REST API to open the notebook file. We either upload the notebook with a POST request, or we let the server open by giving it the filename/URL.
 
-        for (const [p1, p2] of [
-            ["path", launch_params.notebookfile],
-            ["url", new URL(launch_params.notebookfile, window.location.href).href],
-        ]) {
-            const open_url = new URL("open", binder_session_url)
-            open_url.searchParams.set(p1, p2)
+        let open_response = new Response()
 
-            console.log(`open ${p1}:`, String(open_url))
-            open_response = await fetch(with_token(open_url), {
-                method: "POST",
-            })
-            if (open_response.ok) {
-                break
+        if (launch_params.notebookfile.startsWith("data:")) {
+            open_response = await fetch(
+                with_token(
+                    with_query_params(new URL("notebookupload", binder_session_url), {
+                        name: new URLSearchParams(window.location.search).get("name"),
+                    })
+                ),
+                {
+                    method: "POST",
+                    body: await (await fetch(new Request(launch_params.notebookfile, { integrity: launch_params.notebookfile_integrity }))).arrayBuffer(),
+                }
+            )
+        } else {
+            for (const [p1, p2] of [
+                ["path", launch_params.notebookfile],
+                ["url", new URL(launch_params.notebookfile, window.location.href).href],
+            ]) {
+                const open_url = with_query_params(new URL("open", binder_session_url), { [p1]: p2 })
+
+                console.log(`open ${p1}:`, open_url)
+                open_response = await fetch(with_token(open_url), {
+                    method: "POST",
+                })
+                if (open_response.ok) {
+                    break
+                }
             }
         }
+
+        if (!open_response.ok) {
+            let b = await open_response.blob()
+            window.location.href = URL.createObjectURL(b)
+            return
+        }
+
+        // Opening a notebook gives us the notebook ID, which means that we have a running session! Time to connect.
 
         const new_notebook_id = await open_response.text()
         console.info("notebook_id:", new_notebook_id)
@@ -136,12 +166,20 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
         await setStatePromise(
             immer((state) => {
                 state.notebook.notebook_id = new_notebook_id
-                state.binder_phase = BinderPhase.notebook_running
+                state.backend_launch_phase = BackendLaunchPhase.notebook_running
             })
         )
-        console.log("Connecting ws")
 
-        connect(with_token(ws_address_from_base(binder_session_url) + "channels"))
+        /// PART 3: We open the WebSocket connection to the Pluto server, connecting to the notebook ID that was created for us. If this fails, or after a 20 second timeout, we give up on hot-swapping a live backend into this static view, and instead we just redirect to the binder URL.
+
+        console.log("Connecting WebSocket")
+
+        const connect_promise = connect(with_token(new URL("channels", ws_address_from_base(binder_session_url))))
+        await timeout_promise(connect_promise, 20_000).catch((e) => {
+            console.error("Failed to establish connection within 20 seconds. Navigating to the edit URL directly.", e)
+            const edit_url = with_query_params(new URL("edit", binder_session_url), { id: new_notebook_id })
+            window.parent.location.href = with_token(edit_url)
+        })
     } catch (err) {
         console.error("Failed to initialize binder!", err)
         alert("Something went wrong! 😮\n\nWe failed to initialize the binder connection. Please try again with a different browser, or come back later.")

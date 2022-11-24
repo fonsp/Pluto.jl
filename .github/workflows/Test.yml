@@ -7,35 +7,35 @@ on:
     push:
         paths-ignore:
             - "frontend/**"
+            - "frontend-bundler/**"
+            - "frontend-dist/**"
+            - "test/frontend/**"
             - "**.md"
         branches:
             - main
     pull_request:
         paths-ignore:
             - "frontend/**"
+            - "frontend-bundler/**"
+            - "frontend-dist/**"
+            - "test/frontend/**"
             - "**.md"
+        branches-ignore:
+            - release
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
     test:
         runs-on: ${{ matrix.os }}
-        # Uncomment if you want to see all results for all OSses. Otherwise, the first failed test cancels all others
-        # continue-on-error: true
+        timeout-minutes: 40
+        
         strategy:
+            # Without setting this, a failing test cancels all others
+            fail-fast: false
             matrix:
                 # We test quite a lot of versions because we do some OS and version specific things unfortunately
-                julia-version: ["1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6"]
-                os: [ubuntu-latest]
-                include:
-                    # macOS and windows - only the extremes, linux covers pretty much everything already i think
-                    - julia-version: "1.0"
-                      os: macOS-latest
-                    - julia-version: "^1.6.0-0"
-                      os: macOS-latest
-                    - julia-version: "1.0"
-                      os: windows-latest
-                    - julia-version: "^1.6.0-0"
-                      os: windows-latest
+                julia-version: ["1.6", "1.7", "1.8"] #, "~1.9.0-0"] #, "nightly"]
+                os: [ubuntu-latest, macOS-latest, windows-latest]
 
         steps:
             # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -45,6 +45,7 @@ jobs:
             - uses: julia-actions/setup-julia@v1
               with:
                   version: ${{ matrix.julia-version }}
+            - uses: julia-actions/cache@v1
 
             # 🚗
             - uses: julia-actions/julia-runtest@v1

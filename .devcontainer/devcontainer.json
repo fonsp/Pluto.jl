@@ -1,0 +1,11 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
+// https://github.com/microsoft/vscode-dev-containers/tree/v0.166.1/containers/julia
+// See https://github.com/julia-vscode/julia-devcontainer/blob/master/Dockerfile for image contents
+{
+    "name": "Julia (Community)",
+    "image": "ghcr.io/julia-vscode/julia-devcontainer:1.7",
+    "extensions": ["esbenp.prettier-vscode", "bierner.lit-html", "julialang.language-julia"],
+    "postCreateCommand": "/julia-devcontainer-scripts/postcreate.jl",
+    "remoteUser": "vscode",
+    "forwardPorts": [1234]
+}

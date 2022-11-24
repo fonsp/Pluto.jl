@@ -1,7 +1,23 @@
-import Pluto
+# Collect timing and allocations information; this is printed later.
+using TimerOutputs: TimerOutput, @timeit
+const TOUT = TimerOutput()
+macro timeit_include(path::AbstractString) :(@timeit TOUT $path include($path)) end
+function print_timeroutput()
+    # Sleep to avoid old logs getting tangled up in the output.
+    sleep(6)
+    println()
+    show(TOUT; compact=true, sortby=:firstexec)
+    println()
+end
+
+@timeit TOUT "import Pluto" import Pluto
 import Pluto.ExpressionExplorer
-import Pluto.ExpressionExplorer: SymbolsState, compute_symbolreferences, FunctionNameSignaturePair
+import Pluto.ExpressionExplorer: SymbolsState, compute_symbolreferences, FunctionNameSignaturePair, UsingsImports, compute_usings_imports
+using Sockets
 using Test
+using HTTP
+import Distributed
+import Pkg
 
 function Base.show(io::IO, s::SymbolsState)
     print(io, "SymbolsState([")
@@ -21,7 +37,13 @@ function Base.show(io::IO, s::SymbolsState)
         end
         print(io, "]")
     end
-    print(io, ")")
+    if !isempty(s.macrocalls)
+        print(io, "], [")
+        print(io, s.macrocalls)
+        print(io, "])")
+    else
+        print(io, ")")
+    end
 end
 
 "Calls `ExpressionExplorer.compute_symbolreferences` on the given `expr` and test the found SymbolsState against a given one, with convient syntax.
@@ -43,8 +65,8 @@ julia> @test testee(:(
 true
 ```
 "
-function testee(expr, expected_references, expected_definitions, expected_funccalls, expected_funcdefs; verbose::Bool=true)
-    expected = easy_symstate(expected_references, expected_definitions, expected_funccalls, expected_funcdefs)
+function testee(expr::Any, expected_references, expected_definitions, expected_funccalls, expected_funcdefs, expected_macrocalls = []; verbose::Bool=true)
+    expected = easy_symstate(expected_references, expected_definitions, expected_funccalls, expected_funcdefs, expected_macrocalls)
 
     original_hash = Pluto.PlutoRunner.expr_hash(expr)
     result = compute_symbolreferences(expr)
@@ -81,11 +103,19 @@ function testee(expr, expected_references, expected_definitions, expected_funcca
     return expected == result
 end
 
-function easy_symstate(expected_references, expected_definitions, expected_funccalls, expected_funcdefs)
-    new_expected_funccalls = map(expected_funccalls) do k
+"""
+Like `testee` but actually a convenient syntax
+"""
+function test_expression_explorer(; expr, references=[], definitions=[], funccalls=[], funcdefs=[], macrocalls=[])
+    testee(expr, references, definitions, funccalls, funcdefs, macrocalls)
+end
+
+function easy_symstate(expected_references, expected_definitions, expected_funccalls, expected_funcdefs, expected_macrocalls = [])
+    array_to_set(array) = map(array) do k
         new_k = k isa Symbol ? [k] : k
         return new_k
     end |> Set
+    new_expected_funccalls = array_to_set(expected_funccalls)
     
     new_expected_funcdefs = map(expected_funcdefs) do (k, v)
         new_k = k isa Symbol ? [k] : k
@@ -93,11 +123,30 @@ function easy_symstate(expected_references, expected_definitions, expected_funcc
         return FunctionNameSignaturePair(new_k, "hello") => new_v
     end |> Dict
 
-    SymbolsState(Set(expected_references), Set(expected_definitions), new_expected_funccalls, new_expected_funcdefs)
+    new_expected_macrocalls = array_to_set(expected_macrocalls)
+
+    SymbolsState(Set(expected_references), Set(expected_definitions), new_expected_funccalls, new_expected_funcdefs, new_expected_macrocalls)
 end
 
-function setcode(cell, newcode)
+function insert_cell!(notebook, cell)
+    notebook.cells_dict[cell.cell_id] = cell
+    push!(notebook.cell_order, cell.cell_id)
+end
+
+function delete_cell!(notebook, cell)
+    deleteat!(notebook.cell_order, findfirst(==(cell.cell_id), notebook.cell_order))
+    delete!(notebook.cells_dict, cell.cell_id)
+end
+
+function setcode!(cell, newcode)
     cell.code = newcode
+end
+
+function noerror(cell; verbose=true)
+    if cell.errored && verbose
+        @show cell.output.body
+    end
+    !cell.errored
 end
 
 function occursinerror(needle, haystack::Pluto.Cell)
@@ -105,13 +154,21 @@ function occursinerror(needle, haystack::Pluto.Cell)
 end
 
 "Test notebook equality, ignoring cell UUIDs and such."
-function notebook_inputs_equal(nbA, nbB)
-    x = normpath(nbA.path) == normpath(nbB.path)
-
-    to_compare(cell) = (cell.cell_id, cell.code)
-    y = to_compare.(nbA.cells) == to_compare.(nbB.cells)
-    
-    x && y
+macro test_notebook_inputs_equal(nbA, nbB, check_paths_equality::Bool=true)
+    quote
+        nbA = $(esc(nbA))
+        nbB = $(esc(nbB))
+        if $(check_paths_equality)
+            @test normpath(nbA.path) == normpath(nbB.path)
+        end
+        
+        @test length(nbA.cells) == length(nbB.cells)
+        @test getproperty.(nbA.cells, :cell_id) == getproperty.(nbB.cells, :cell_id)
+        @test getproperty.(nbA.cells, :code_folded) == getproperty.(nbB.cells, :code_folded)
+        @test getproperty.(nbA.cells, :code) == getproperty.(nbB.cells, :code)
+        @test get_metadata_no_default.(nbA.cells) ==  get_metadata_no_default.(nbB.cells)
+        
+    end |> Base.remove_linenums!
 end
 
 "Whether the given .jl file can be run without any errors. While notebooks cells can be in arbitrary order, their order in the save file must be topological.
@@ -163,3 +220,27 @@ function num_backups_in(dir::AbstractString)
         occursin("backup", fn)
     end
 end
+
+has_embedded_pkgfiles(contents::AbstractString) = 
+    occursin("PROJECT", contents) && occursin("MANIFEST", contents)
+
+has_embedded_pkgfiles(nb::Pluto.Notebook) = 
+    read(nb.path, String) |> has_embedded_pkgfiles
+
+"""
+Log an error message if there are any running processes created by Distrubted, that were not shut down.
+"""
+function verify_no_running_processes()
+    if length(Distributed.procs()) != 1
+        @error "Not all notebook processes were closed during tests!" Distributed.procs()
+    end
+end
+
+# We have our own registry for these test! Take a look at https://github.com/JuliaPluto/PlutoPkgTestRegistry#readme for more info about the test packages and their dependencies.
+
+const pluto_test_registry_spec = Pkg.RegistrySpec(;
+    url="https://github.com/JuliaPluto/PlutoPkgTestRegistry", 
+    uuid=Base.UUID("96d04d5f-8721-475f-89c4-5ee455d3eda0"),
+    name="PlutoPkgTestRegistry",
+)
+

@@ -1,20 +1,38 @@
 import { trailingslash } from "./Binder.js"
-import { hash_arraybuffer, debounced_promises, base64_arraybuffer } from "./PlutoHash.js"
+import { plutohash_arraybuffer, debounced_promises, base64url_arraybuffer } from "./PlutoHash.js"
 import { pack, unpack } from "./MsgPack.js"
 import immer from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
-export const nothing_actions = ({ actions }) => Object.fromEntries(Object.keys(actions).map((k) => [k, () => {}]))
+const assert_response_ok = (/** @type {Response} */ r) => (r.ok ? r : Promise.reject(r))
+
+const actions_to_keep = ["get_published_object"]
+
+export const nothing_actions = ({ actions }) =>
+    Object.fromEntries(
+        Object.entries(actions).map(([k, v]) => [
+            k,
+            actions_to_keep.includes(k)
+                ? // the original action
+                  v
+                : // a no-op action
+                  (...args) => {
+                      console.info("Ignoring action", k, { args })
+                  },
+        ])
+    )
 
 export const slider_server_actions = ({ setStatePromise, launch_params, actions, get_original_state, get_current_state, apply_notebook_patches }) => {
-    const notebookfile_hash = fetch(launch_params.notebookfile)
+    const notebookfile_hash = fetch(new Request(launch_params.notebookfile, { integrity: launch_params.notebookfile_integrity }))
+        .then(assert_response_ok)
         .then((r) => r.arrayBuffer())
-        .then(hash_arraybuffer)
+        .then(plutohash_arraybuffer)
 
     notebookfile_hash.then((x) => console.log("Notebook file hash:", x))
 
     const bond_connections = notebookfile_hash
-        .then((hash) => fetch(trailingslash(launch_params.slider_server_url) + "bondconnections/" + encodeURIComponent(hash) + "/"))
+        .then((hash) => fetch(trailingslash(launch_params.slider_server_url) + "bondconnections/" + hash))
+        .then(assert_response_ok)
         .then((r) => r.arrayBuffer())
         .then((b) => unpack(new Uint8Array(b)))
 
@@ -35,25 +53,33 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
             console.debug("Requesting bonds", bonds_to_set.current, to_send)
             bonds_to_set.current = new Set()
 
-            const mybonds_filtered = Object.fromEntries(Object.entries(mybonds).filter(([k, v]) => to_send.has(k)))
+            const mybonds_filtered = Object.fromEntries(
+                _.sortBy(
+                    Object.entries(mybonds).filter(([k, v]) => to_send.has(k)),
+                    ([k, v]) => k
+                )
+            )
 
             const packed = pack(mybonds_filtered)
 
-            const url = base + "staterequest/" + encodeURIComponent(hash) + "/"
+            const url = base + "staterequest/" + hash + "/"
 
+            let unpacked = null
             try {
-                const use_get = url.length + (packed.length * 4) / 3 + 20 < 8000
+                const force_post = get_current_state().metadata["sliderserver_force_post"] ?? false
+                const use_get = !force_post && url.length + (packed.length * 4) / 3 + 20 < 8000
 
                 const response = use_get
-                    ? await fetch(url + encodeURIComponent(await base64_arraybuffer(packed)), {
+                    ? await fetch(url + (await base64url_arraybuffer(packed)), {
                           method: "GET",
-                      })
+                      }).then(assert_response_ok)
                     : await fetch(url, {
                           method: "POST",
                           body: packed,
-                      })
+                      }).then(assert_response_ok)
 
-                const { patches, ids_of_cells_that_ran } = unpack(new Uint8Array(await response.arrayBuffer()))
+                unpacked = unpack(new Uint8Array(await response.arrayBuffer()))
+                const { patches, ids_of_cells_that_ran } = unpacked
 
                 await apply_notebook_patches(
                     patches,
@@ -65,21 +91,21 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
                     })(get_current_state())
                 )
             } catch (e) {
-                console.error(e)
+                console.error(unpacked, e)
             }
         }
     })
 
     return {
         ...nothing_actions({ actions }),
-        set_bond: async (symbol, value, is_first_value) => {
+        set_bond: async (symbol, value) => {
             setStatePromise(
                 immer((state) => {
                     state.notebook.bonds[symbol] = { value: value }
                 })
             )
             if (mybonds[symbol] == null || !_.isEqual(mybonds[symbol].value, value)) {
-                mybonds[symbol] = { value: value }
+                mybonds[symbol] = { value: _.cloneDeep(value) }
                 bonds_to_set.current.add(symbol)
                 await request_bond_response()
             }

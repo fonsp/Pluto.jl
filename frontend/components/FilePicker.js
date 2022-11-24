@@ -1,194 +1,356 @@
-import { html, Component } from "../imports/Preact.js"
+import { html, Component, useState, useRef, useEffect, useLayoutEffect } from "../imports/Preact.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 
-const deselect = (cm) => {
-    cm.setSelection({ line: 0, ch: Infinity }, { line: 0, ch: Infinity }, { scroll: false })
+import {
+    EditorState,
+    EditorSelection,
+    EditorView,
+    placeholder as Placeholder,
+    keymap,
+    history,
+    autocomplete,
+    drawSelection,
+    Compartment,
+    StateEffect,
+} from "../imports/CodemirrorPlutoSetup.js"
+import { guess_notebook_location } from "../common/NotebookLocationFromURL.js"
+
+let { autocompletion, completionKeymap } = autocomplete
+
+let start_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Ctrl-Space")
+let accept_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Enter")
+let close_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Escape")
+
+const assert_not_null = (x) => {
+    if (x == null) {
+        throw new Error("Unexpected null value")
+    } else {
+        return x
+    }
 }
 
-export class FilePicker extends Component {
-    constructor() {
-        super()
-        this.forced_value = ""
-        this.cm = null
+const set_cm_value = (/** @type{EditorView} */ cm, /** @type {string} */ value, scroll = true) => {
+    cm.dispatch({
+        changes: { from: 0, to: cm.state.doc.length, insert: value },
+        selection: EditorSelection.cursor(value.length),
+        // effects: scroll ? EditorView.scrollIntoView(value.length,) : undefined,
+    })
 
-        this.suggest_not_tmp = () => {
-            const suggest = this.props.suggest_new_file
-            if (suggest != null && this.cm.getValue() === "") {
-                this.cm.setValue(suggest.base)
-                this.cm.setSelection({ line: 0, ch: Infinity }, { line: 0, ch: Infinity })
-                this.cm.focus()
-                this.request_path_completions.bind(this)()
+    // a long path like /Users/fons/Documents/article-test-1/asdfasdfasdfsadf.jl does not fit in the little box, so we scroll it to the left so that you can see the filename easily.
+    if (scroll) {
+        // We do a manual `scrollLeft` instead of `EditorView.scrollIntoView(value.length)` because `scrollIntoView` will also scroll the page *vertically* to move the filepicker into view. We only want to scroll the internal overflow box *horizontally* to the left, without affecting the vertical page scroll position.
+        cm.scrollDOM.scrollLeft = 100000
+        setTimeout(() => {
+            // TODO: do we need this?
+            cm.scrollDOM.scrollLeft = 100000
+        }, 100)
+    }
+}
 
-                // this.cm.setValue(suggest.base + suggest.name)
-                // this.cm.setSelection({ line: 0, ch: suggest.base.length }, { line: 0, ch: Infinity })
-                // this.cm.focus()
-            }
-            window.dispatchEvent(new CustomEvent("collapse_cell_selection", {}))
+const is_desktop = !!window.plutoDesktop
+
+if (is_desktop) {
+    console.log("Running in Desktop Environment! Found following properties/methods:", window.plutoDesktop)
+}
+
+/**
+ * @param {{
+ *  value: String,
+ *  suggest_new_file: {base: String},
+ *  button_label: String,
+ *  placeholder: String,
+ *  on_submit: (new_path: String) => Promise<void>,
+ *  on_desktop_submit?: (loc?: string) => Promise<void>,
+ *  client: import("../common/PlutoConnection.js").PlutoConnection,
+ * }} props
+ */
+export const FilePicker = ({ value, suggest_new_file, button_label, placeholder, on_submit, on_desktop_submit, client }) => {
+    const [is_button_disabled, set_is_button_disabled] = useState(true)
+    const [url_value, set_url_value] = useState("")
+    const forced_value = useRef("")
+    /** @type {import("../imports/Preact.js").Ref<HTMLElement>} */
+    const base = useRef(/** @type {any} */ (null))
+    const cm = useRef(/** @type {EditorView?} */ (null))
+
+    const suggest_not_tmp = () => {
+        const current_cm = cm.current
+        if (current_cm == null) return
+        if (suggest_new_file != null && current_cm.state.doc.length === 0) {
+            // current_cm.focus()
+            set_cm_value(current_cm, suggest_new_file.base, false)
+            request_path_completions()
         }
+        window.dispatchEvent(new CustomEvent("collapse_cell_selection", {}))
+    }
 
-        this.on_submit = async () => {
-            const my_val = this.cm.getValue()
-            if (my_val === this.forced_value) {
-                this.suggest_not_tmp()
-                return
+    let run = async (fn) => await fn()
+
+    const onSubmit = () => {
+        const current_cm = cm.current
+        if (current_cm == null) return
+        if (!is_desktop) {
+            const my_val = current_cm.state.doc.toString()
+            if (my_val === forced_value.current) {
+                suggest_not_tmp()
+                return true
             }
+        }
+        run(async () => {
             try {
-                await this.props.on_submit(this.cm.getValue())
-                this.cm.blur()
+                if (is_desktop && on_desktop_submit) {
+                    await on_desktop_submit((await guess_notebook_location(url_value)).path_or_url)
+                } else await on_submit(current_cm.state.doc.toString())
+                current_cm.dom.blur()
             } catch (error) {
-                this.cm.setValue(this.props.value)
-                deselect(this.cm)
+                set_cm_value(current_cm, value, true)
+                current_cm.dom.blur()
             }
+        })
+        return true
+    }
+
+    const request_path_completions = () => {
+        const current_cm = cm.current
+        if (current_cm == null) return
+        let selection = current_cm.state.selection.main
+        if (selection.from !== selection.to) return
+        if (current_cm.state.doc.length !== selection.to) return
+        return assert_not_null(start_autocomplete_command).run(current_cm)
+    }
+
+    useLayoutEffect(() => {
+        const usesDarkTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
+        const keyMapSubmit = () => {
+            onSubmit()
+            return true
         }
-    }
-    componentDidUpdate() {
-        if (this.forced_value != this.props.value) {
-            this.cm.setValue(this.props.value)
-            deselect(this.cm)
-            this.forced_value = this.props.value
+        cm.current = new EditorView({
+            state: EditorState.create({
+                doc: "",
+                extensions: [
+                    drawSelection(),
+                    EditorView.domEventHandlers({
+                        focus: (event, cm) => {
+                            setTimeout(() => {
+                                if (suggest_new_file) {
+                                    suggest_not_tmp()
+                                } else if (cm.state.doc.length === 0) {
+                                    request_path_completions()
+                                }
+                            }, 0)
+                            return true
+                        },
+                        blur: (event, cm) => {
+                            setTimeout(() => {
+                                if (!cm.hasFocus) {
+                                    set_cm_value(cm, value, true)
+                                }
+                            }, 200)
+                        },
+                    }),
+                    EditorView.updateListener.of((update) => {
+                        if (update.docChanged) {
+                            set_is_button_disabled(update.state.doc.length === 0)
+                        }
+                    }),
+                    EditorView.theme(
+                        {
+                            "&": {
+                                fontSize: "inherit",
+                            },
+                            ".cm-scroller": {
+                                fontFamily: "inherit",
+                                overflowY: "hidden",
+                                overflowX: "auto",
+                            },
+                        },
+                        { dark: usesDarkTheme }
+                    ),
+                    // EditorView.updateListener.of(onCM6Update),
+                    history(),
+                    autocompletion({
+                        activateOnTyping: true,
+                        override: [
+                            pathhints({
+                                suggest_new_file: suggest_new_file,
+                                client: client,
+                            }),
+                        ],
+                        defaultKeymap: false, // We add these manually later, so we can override them if necessary
+                        maxRenderedOptions: 512, // fons's magic number
+                        optionClass: (c) => c.type ?? "",
+                    }),
+                    // When a completion is picked, immediately start autocompleting again
+                    EditorView.updateListener.of((update) => {
+                        update.transactions.forEach((transaction) => {
+                            const completion = transaction.annotation(autocomplete.pickedCompletion)
+                            if (completion != null) {
+                                update.view.dispatch({
+                                    effects: EditorView.scrollIntoView(update.state.doc.length),
+                                    selection: EditorSelection.cursor(update.state.doc.length),
+                                })
+
+                                request_path_completions()
+                            }
+                        })
+                    }),
+                    keymap.of([
+                        {
+                            key: "Enter",
+                            run: (cm) => {
+                                // If there is autocomplete open, accept that. It will return `true`
+                                return assert_not_null(accept_autocomplete_command).run(cm)
+                            },
+                        },
+                        {
+                            key: "Enter",
+                            run: keyMapSubmit,
+                        },
+                        {
+                            key: "Ctrl-Enter",
+                            mac: "Cmd-Enter",
+                            run: keyMapSubmit,
+                        },
+                        {
+                            key: "Ctrl-Shift-Enter",
+                            mac: "Cmd-Shift-Enter",
+                            run: keyMapSubmit,
+                        },
+                        {
+                            key: "Escape",
+                            run: (cm) => {
+                                assert_not_null(close_autocomplete_command).run(cm)
+                                cm.dispatch({
+                                    changes: { from: 0, to: cm.state.doc.length, insert: value },
+                                    selection: EditorSelection.cursor(value.length),
+                                    effects: EditorView.scrollIntoView(value.length),
+                                })
+                                // @ts-ignore
+                                document.activeElement.blur()
+                                return true
+                            },
+                            preventDefault: true,
+                        },
+                        {
+                            key: "Tab",
+                            run: (cm) => {
+                                // If there is autocomplete open, accept that
+                                if (assert_not_null(accept_autocomplete_command).run(cm)) {
+                                    // and request the next ones
+                                    request_path_completions()
+                                    return true
+                                }
+                                // Else, activate it (possibly)
+                                return request_path_completions()
+                            },
+                        },
+                    ]),
+                    keymap.of(completionKeymap),
+
+                    Placeholder(placeholder),
+                ],
+            }),
+        })
+        const current_cm = cm.current
+
+        if (!is_desktop) base.current.insertBefore(current_cm.dom, base.current.firstElementChild)
+        // window.addEventListener("resize", () => {
+        //     if (!cm.current.hasFocus()) {
+        //         deselect(cm.current)
+        //     }
+        // })
+    }, [])
+
+    useLayoutEffect(() => {
+        if (forced_value.current != value) {
+            if (cm.current == null) return
+            set_cm_value(cm.current, value, true)
+            forced_value.current = value
         }
-    }
-    componentDidMount() {
-        this.cm = window.CodeMirror(
-            (el) => {
-                this.base.insertBefore(el, this.base.firstElementChild)
-            },
-            {
-                value: "",
-                lineNumbers: false,
-                lineWrapping: false,
-                theme: "nothing",
-                viewportMargin: Infinity,
-                placeholder: this.props.placeholder,
-                indentWithTabs: true,
-                indentUnit: 4,
-                hintOptions: {
-                    hint: pathhints,
-                    completeSingle: false,
-                    suggest_new_file: this.props.suggest_new_file,
-                    client: this.props.client,
-                },
-                scrollbarStyle: "null",
-            }
-        )
+    })
 
-        this.cm.setOption(
-            "extraKeys",
-            map_cmd_to_ctrl_on_mac({
-                "Ctrl-Enter": this.on_submit,
-                "Ctrl-Shift-Enter": this.on_submit,
-                "Enter": this.on_submit,
-                "Esc": (cm) => {
-                    cm.closeHint()
-                    cm.setValue(this.props.value)
-                    deselect(cm)
-                    document.activeElement.blur()
-                },
-                "Tab": this.request_path_completions.bind(this),
-            })
-        )
-
-        this.cm.on("change", (cm, e) => {
-            if (e.origin !== "setValue") {
-                this.request_path_completions.bind(this)()
-            }
-        })
-
-        this.cm.on("blur", (cm, e) => {
-            // if the user clicks on an autocomplete option, this event is called, even though focus was not actually lost.
-            // NOT a debounce:
-            setTimeout(() => {
-                if (!cm.hasFocus()) {
-                    cm.setValue(this.props.value)
-                    deselect(cm)
-                }
-            }, 250)
-        })
-        this.cm.on("focus", (cm, e) => {
-            this.suggest_not_tmp()
-        })
-
-        window.addEventListener("resize", () => {
-            if (!this.cm.hasFocus()) {
-                deselect(this.cm)
-            }
-        })
-    }
-    render() {
-        return html`
-            <pluto-filepicker>
-                <button onClick=${this.on_submit}>${this.props.button_label}</button>
-            </pluto-filepicker>
-        `
-    }
-
-    request_path_completions() {
-        const cursor = this.cm.getCursor()
-        const oldLine = this.cm.getLine(cursor.line)
-
-        if (!this.cm.somethingSelected()) {
-            if (cursor.ch == oldLine.length) {
-                this.cm.showHint()
-            }
-        }
-    }
+    return is_desktop
+        ? html`<div class="desktop_picker_group" ref=${base}>
+              <input
+                  value=${url_value}
+                  placeholder="Enter notebook URL..."
+                  onChange=${(v) => {
+                      set_url_value(v.target.value)
+                  }}
+              />
+              <div onClick=${onSubmit} class="desktop_picker">
+                  <button>${button_label}</button>
+              </div>
+          </div>`
+        : html`
+              <pluto-filepicker ref=${base}>
+                  <button onClick=${onSubmit} disabled=${is_button_disabled}>${button_label}</button>
+              </pluto-filepicker>
+          `
 }
 
-const pathhints = (cm, options) => {
-    const cursor = cm.getCursor()
-    const oldLine = cm.getLine(cursor.line)
+const pathhints =
+    ({ client, suggest_new_file }) =>
+    (ctx) => {
+        const cursor = ctx.state.selection.main.to
+        const oldLine = ctx.state.doc.toString()
 
-    return options.client
-        .send("completepath", {
-            query: oldLine,
-        })
-        .then((update) => {
-            const queryFileName = oldLine.split("/").pop().split("\\").pop()
+        return client
+            .send("completepath", {
+                query: oldLine,
+            })
+            .then((update) => {
+                const queryFileName = oldLine.split("/").pop().split("\\").pop()
 
-            const results = update.message.results
-            const from = utf8index_to_ut16index(oldLine, update.message.start)
-            const to = utf8index_to_ut16index(oldLine, update.message.stop)
+                const results = update.message.results
+                const from = utf8index_to_ut16index(oldLine, update.message.start)
+                const to = utf8index_to_ut16index(oldLine, update.message.stop)
 
-            if (results.length >= 1 && results[0] == queryFileName) {
-                return null
-            }
+                if (results.length >= 1 && results[0] == queryFileName) {
+                    return null
+                }
 
-            var styledResults = results.map((r) => ({
-                text: r,
-                className: r.endsWith("/") || r.endsWith("\\") ? "dir" : "file",
-            }))
+                let styledResults = results.map((r) => {
+                    let dir = r.endsWith("/") || r.endsWith("\\")
+                    return {
+                        label: r,
+                        type: dir ? "dir" : "file",
+                        boost: dir ? 1 : 0,
+                    }
+                })
 
-            if (options.suggest_new_file != null) {
-                for (var initLength = 3; initLength >= 0; initLength--) {
-                    const init = ".jl".substring(0, initLength)
-                    if (queryFileName.endsWith(init)) {
-                        var suggestedFileName = queryFileName + ".jl".substring(initLength)
+                if (suggest_new_file != null) {
+                    for (let initLength = 3; initLength >= 0; initLength--) {
+                        const init = ".jl".substring(0, initLength)
+                        if (queryFileName.endsWith(init)) {
+                            let suggestedFileName = queryFileName + ".jl".substring(initLength)
 
-                        if (suggestedFileName == ".jl") {
-                            suggestedFileName = "notebook.jl"
+                            if (suggestedFileName == ".jl") {
+                                suggestedFileName = "notebook.jl"
+                            }
+
+                            if (initLength == 3) {
+                                return null
+                            }
+                            if (!results.includes(suggestedFileName)) {
+                                styledResults.push({
+                                    label: suggestedFileName + " (new)",
+                                    apply: suggestedFileName,
+                                    type: "file new",
+                                    boost: -99,
+                                })
+                            }
+                            break
                         }
-
-                        if (initLength == 3) {
-                            return null
-                        }
-                        if (!results.includes(suggestedFileName)) {
-                            styledResults.push({
-                                text: suggestedFileName,
-                                displayText: suggestedFileName + " (new)",
-                                className: "file new",
-                            })
-                        }
-                        break
                     }
                 }
-            }
 
-            return {
-                list: styledResults,
-                from: CodeMirror.Pos(cursor.line, from),
-                to: CodeMirror.Pos(cursor.line, to),
-            }
-        })
-}
+                return {
+                    options: styledResults,
+                    from: from,
+                    to: to,
+                }
+            })
+    }

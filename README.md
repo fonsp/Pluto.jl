@@ -1,17 +1,11 @@
 
-
-<blockquote>
-<a href="https://plutojl.org/plutocon2021"><img align="right" src=https://user-images.githubusercontent.com/6933510/111311607-b49a7000-865e-11eb-9c67-dd411b832096.png height="130px"></a>
-  <h2><a href="https://plutojl.org/plutocon2021">PlutoCon 2021</a> — April 8th-9th</h2>
-  <p>To celebrate Pluto's 1 year anniversary, we are hosting a <b>two day mini conference</b> about.... Pluto! It will be a place to share your fun notebooks and to <b>learn techniques from other Pluto users</b> and from Pluto's designers. <em>You can give a talk!</em></p>
-</blockquote>
+<p align="center"><a href="https://www.youtube.com/watch?v=IAF8DjrQSSk">🎈 Pluto – introduction (20 min) at <b>Juliacon 2020</b> 🎈</a></p>
 
 <br>
-<br>
-<p align="center"><a href="https://www.youtube.com/watch?v=IAF8DjrQSSk">🎈 Pluto presentation (20 min) at <b>Juliacon 2020</b> 🎈</a></p>
+<p align="center"><a href="https://www.youtube.com/watch?v=HiI4jgDyDhY">🌐 Pluto – one year later (25 min) at <b>Juliacon 2021</b> 🌐</a></p>
 
 <br>
-<br>
+
 
 <h1><img alt="Pluto.jl" src="https://raw.githubusercontent.com/fonsp/Pluto.jl/dd0ead4caa2d29a3a2cfa1196d31e3114782d363/frontend/img/logo_white_contour.svg" width=300 height=74 ></h1>
 
@@ -19,12 +13,12 @@ _Writing a notebook is not just about writing the final document — Pluto empow
 
 **Explore models and share results** in a notebook that is
 
--   **_reactive_** - when changing a function or variable, Pluto automatically updates all affected cells.
--   **_lightweight_** - Pluto is written in pure Julia and is easy to install.
--   **_simple_** - no hidden workspace state; friendly UI.
+- **_reactive_** - when changing a function or variable, Pluto automatically updates all affected cells.
+- **_lightweight_** - Pluto is written in pure Julia and is easy to install.
+- **_simple_** - no hidden workspace state; friendly UI.
 
 <img alt="reactivity screencap" src="https://raw.githubusercontent.com/fonsp/Pluto.jl/580ab811f13d565cc81ebfa70ed36c84b125f55d/demo/plutodemo.gif" >
-<p align="center"><a href="https://mybinder.org/v2/gh/fonsp/pluto-on-binder/master?urlpath=pluto">🎈 <b>Pluto demo</b> inside your browser 🎈</a></p>
+<p align="center"><a href="https://binder.plutojl.org/">🎈 <b>Pluto demo</b> inside your browser 🎈</a></p>
 
 ### Input
 
@@ -57,19 +51,40 @@ In the example below, changing the parameter `A` and running the first cell will
 
 <br >
 
+### Built-in package manager
+
+Pluto uses syntax analysis to understand which packages are being used in a notebook, and it **automatically manages a package environment** for your notebook. You no longer need to install packages, you can directly import any registered package like `Plots` or `DataFrames` and use it.
+
+To ensure reproducibility, the information to exactly reproduce the package environment is **stored in your notebook file**. When someone else opens your notebook with Pluto, the exact same package environment will be used, and packages will work on their computer, automatically! _[more info](https://github.com/fonsp/Pluto.jl/wiki/%F0%9F%8E%81-Package-management)_
+
+<img alt="package manager screencap" src="https://user-images.githubusercontent.com/6933510/134823403-fbb79d7f-dd3e-4712-b5d5-b48ad0770f13.gif" width="50%">
+
+<br >
+
 ### HTML interaction
 
 Lastly, here's _**one more feature**_: Pluto notebooks have a `@bind` macro to create a **live bond between an HTML object and a Julia variable**. Combined with reactivity, this is a very powerful tool!
 
-<img alt="@bind macro screencap" src="https://user-images.githubusercontent.com/6933510/80617037-e2c09280-8a41-11ea-9fb3-18bb2921dd9e.gif" width="70%">
-
-_notebook from [vdplasthijs/julia_sir](https://github.com/vdplasthijs/julia_sir)_
+<img alt="@bind macro screencap" src="https://user-images.githubusercontent.com/6933510/134825003-bd72ef08-677b-42fa-a655-e842868b10f6.gif" width="50%">
 
 <br >
 
-You don't need to know HTML to use it! The [PlutoUI package](https://github.com/fonsp/PlutoUI.jl) contains basic inputs like sliders and buttons.
+You don't need to know HTML to use it! The [PlutoUI package](https://github.com/fonsp/PlutoUI.jl) contains basic inputs like sliders and buttons. Pluto's interactivity is very easy to use, you will learn more from the featured notebooks inside Pluto!
 
-But for those who want to dive deeper - you can use HTML, JavaScript and CSS to write your own widgets! Custom update events can be fired by dispatching a `new CustomEvent("input")`, making it compatible with the [`viewof` operator of observablehq](https://observablehq.com/@observablehq/a-brief-introduction-to-viewof). Have a look at the sample notebooks inside Pluto to learn more!
+But for those who want to dive deeper - you can use HTML, JavaScript and CSS to write your own widgets! Custom update events can be fired by dispatching a `new CustomEvent("input")`, making it compatible with the [`viewof` operator of observablehq](https://observablehq.com/@observablehq/a-brief-introduction-to-viewof). Have a look at the JavaScript featured notebook inside Pluto!
+
+<br >
+
+## Pluto for teaching
+
+Pluto was developed alongside the free online course [Introduction to Computational Thinking](https://computationalthinking.mit.edu/) at MIT, with the goal of creating a programming environment that is powerful, helpful and interactive, without being too intimidating for students and teachers. 
+
+Are you interested in using Pluto for your class? Here are some presentations by people who are using it already: [the MIT team](https://www.youtube.com/watch?v=LFRI3s0DE-o), [Gerhard Dorn](https://www.youtube.com/watch?v=6Qs5EXDpZBI), [Daniel Molina](https://www.youtube.com/watch?v=NrIxgnFXslg), [Henki W. Ashadi](https://youtu.be/GnEKgW23PvY?t=586) and [Max Köhler](https://www.youtube.com/watch?v=8H5KgSIWsWQ).
+
+
+https://user-images.githubusercontent.com/6933510/134824521-7cefa38a-7102-4767-bee4-777caf30ba47.mp4
+
+_([video](https://www.youtube.com/watch?v=rpB6zQNsbQU)) Grant Sanderson ([3Blue1Brown](https://www.youtube.com/channel/UCYO_jab_esuFRV4b17AJtAw)) using Pluto's interactivity to teach [Computational Thinking at MIT](https://computationalthinking.mit.edu/)!_
 
 <br >
 <hr >
@@ -81,24 +96,27 @@ But for those who want to dive deeper - you can use HTML, JavaScript and CSS to 
 
 For one tasty notebook 🥞 you will need:
 
--   **Julia** v1.0 or above, _v1.5 is fastest_
--   **Linux**, **macOS** or **Windows**, _Linux and macOS will work best_
--   Mozilla **Firefox** or Google **Chrome**, be sure to get the latest version
+- [**Julia** v1.6 or above](https://julialang.org/downloads/#current_stable_release)
+- **Linux**, **MacOS** or **Windows**, _Linux and MacOS will work best_
+- Mozilla **Firefox** or Google **Chrome**
 
 ### Installation
 
 <p align="center"><a href="https://www.youtube.com/watch?v=OOjKEgbt8AI">🎈 How to install <b>Julia & Pluto</b> (6 min) 🎈</a></p>
 
-Run Julia and add the package:
+Run Julia, enter `]` to bring up Julia's [package manager](https://docs.julialang.org/en/v1/stdlib/Pkg/),
+and add the Pluto package:
 
 ```julia
 julia> ]
-(v1.5) pkg> add Pluto
+(v1.7) pkg> add Pluto
 ```
 
-_Using the package manager for the first time after installing Julia can take up to 15 minutes - hang in there!_
+_Press `Ctrl+C` to return to the `julia>` prompt._
 
-To run the notebook server:
+### Usage
+
+To run Pluto, run the following commands in your Julia REPL:
 
 ```julia
 julia> import Pluto
@@ -106,6 +124,8 @@ julia> Pluto.run()
 ```
 
 Pluto will open in your browser, and you can get started!
+
+## Questions and Help
 
 Questions? Have a look at the [FAQ](https://github.com/fonsp/Pluto.jl/wiki).
 <br>
@@ -118,7 +138,7 @@ Questions? Have a look at the [FAQ](https://github.com/fonsp/Pluto.jl/wiki).
 </blockquote>
 <br>
 
-### To developers
+## Contribute to Pluto
 
 Follow [these instructions](https://github.com/fonsp/Pluto.jl/blob/main/CONTRIBUTING.md) to start working on the package.
 
@@ -126,12 +146,10 @@ Follow [these instructions](https://github.com/fonsp/Pluto.jl/blob/main/CONTRIBU
 
 ## License
 
-Pluto.jl is open source! Specifically, it is [MIT Licensed](https://github.com/fonsp/Pluto.jl/blob/main/LICENSE). The included sample notebooks have a more permissive license: the [Unlicense](https://github.com/fonsp/Pluto.jl/blob/main/sample/LICENSE). This means that you can use sample notebook code however you like - you do not need to credit us!
-
-Pluto.jl is built by gluing together open source software:
+Pluto.jl is open source! Specifically, it is [MIT Licensed](https://github.com/fonsp/Pluto.jl/blob/main/LICENSE). Pluto.jl is built by gluing together open source software:
 
 -   `Julia` - [license](https://github.com/JuliaLang/julia/blob/master/LICENSE.md)
--   `CodeMirror` - [license](https://github.com/codemirror/CodeMirror/blob/master/LICENSE)
+-   `CodeMirror` - [license](https://github.com/codemirror/codemirror.next/blob/master/LICENSE-MIT)
 -   `HTTP.jl` - [license](https://github.com/JuliaWeb/HTTP.jl/blob/master/LICENSE.md)
 -   `MsgPack.jl` - [license](https://github.com/JuliaIO/MsgPack.jl)
 -   `msgpack-lite` - [license](https://github.com/kawanet/msgpack-lite/blob/master/LICENSE)
@@ -140,7 +158,13 @@ Pluto.jl is built by gluing together open source software:
 -   `developit/htm` - [license](https://github.com/developit/htm/blob/master/LICENSE)
 -   `MathJax` - [license](https://github.com/mathjax/MathJax-src/blob/master/LICENSE)
 
-Your notebook files are _yours_, you do not need to credit us. Have fun!
+If you want to reference Pluto.jl in scientific writing, you can use our DOI: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4792401.svg)](https://doi.org/10.5281/zenodo.4792401)
+
+### Featured notebooks
+
+Unless otherwise specified, the included featured notebooks have a more permissive license: the [Unlicense](https://github.com/fonsp/Pluto.jl/blob/main/sample/LICENSE). This means that you can use them however you like - you do not need to credit us! 
+
+Your notebook files are _yours_, you also do not need to credit us. Have fun!
 
 ## From the authors
 

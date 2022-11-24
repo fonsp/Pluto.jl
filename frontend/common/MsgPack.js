@@ -3,7 +3,7 @@ import msgpack from "../imports/msgpack-lite.js"
 
 // based on https://github.com/kawanet/msgpack-lite/blob/5b71d82cad4b96289a466a6403d2faaa3e254167/lib/ext-packer.js
 const codec = msgpack.createCodec()
-const packTypedArray = (x) => new Uint8Array(x.buffer)
+const packTypedArray = (x) => new Uint8Array(x.buffer, x.byteOffset, x.byteLength)
 codec.addExtPacker(0x11, Int8Array, packTypedArray)
 codec.addExtPacker(0x12, Uint8Array, packTypedArray)
 codec.addExtPacker(0x13, Int16Array, packTypedArray)
@@ -22,7 +22,7 @@ codec.addExtPacker(0x12, DataView, packTypedArray)
 // But it does throw when I create a custom @bind that has a Date value...
 // For decoding I now also use a "Invalid Date", but the code in https://stackoverflow.com/a/55338384/2681964 did work in Safari.
 // Also there is no way now to send an "Invalid Date", so it just does nothing
-codec.addExtPacker(0x0d, Date, (d) => new BigInt64Array([BigInt(d)]))
+codec.addExtPacker(0x0d, Date, (d) => new BigInt64Array([BigInt(+d)]))
 codec.addExtUnpacker(0x0d, (uintarray) => {
     if ("getBigInt64" in DataView.prototype) {
         let dataview = new DataView(uintarray.buffer, uintarray.byteOffset, uintarray.byteLength)
@@ -36,14 +36,14 @@ codec.addExtUnpacker(0x0d, (uintarray) => {
     }
 })
 
-codec.addExtUnpacker(0x11, (buffer) => new Int8Array(buffer))
-codec.addExtUnpacker(0x12, (buffer) => new Uint8Array(buffer))
-codec.addExtUnpacker(0x13, (buffer) => new Int16Array(buffer))
-codec.addExtUnpacker(0x14, (buffer) => new Uint16Array(buffer))
-codec.addExtUnpacker(0x15, (buffer) => new Int32Array(buffer))
-codec.addExtUnpacker(0x16, (buffer) => new Uint32Array(buffer))
-codec.addExtUnpacker(0x17, (buffer) => new Float32Array(buffer))
-codec.addExtUnpacker(0x18, (buffer) => new Float64Array(buffer))
+codec.addExtUnpacker(0x11, (x) => new Int8Array(x.buffer))
+codec.addExtUnpacker(0x12, (x) => new Uint8Array(x.buffer))
+codec.addExtUnpacker(0x13, (x) => new Int16Array(x.buffer))
+codec.addExtUnpacker(0x14, (x) => new Uint16Array(x.buffer))
+codec.addExtUnpacker(0x15, (x) => new Int32Array(x.buffer))
+codec.addExtUnpacker(0x16, (x) => new Uint32Array(x.buffer))
+codec.addExtUnpacker(0x17, (x) => new Float32Array(x.buffer))
+codec.addExtUnpacker(0x18, (x) => new Float64Array(x.buffer))
 
 /** @param {any} x */
 export const pack = (x) => {

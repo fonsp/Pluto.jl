@@ -1,30 +1,45 @@
-/* @import url("https://cdn.jsdelivr.net/npm/fontsource-space-mono@4.0.0/400.css");
-@import url("https://cdn.jsdelivr.net/npm/fontsource-space-mono@4.0.0/400-italic.css");
-@import url("https://cdn.jsdelivr.net/npm/fontsource-space-mono@4.0.0/700.css"); */
-@import url("https://cdn.jsdelivr.net/npm/fontsource-roboto-mono@3.0.3/400.css");
-@import url("https://cdn.jsdelivr.net/npm/fontsource-roboto-mono@3.0.3/400-italic.css");
-@import url("https://cdn.jsdelivr.net/npm/fontsource-roboto-mono@3.0.3/700.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/400.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/400-italic.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/700.css");
 
 @import url("juliamono.css");
 
 /*  */
 
-jltree,
-jlpair {
-    font-family: JuliaMono, monospace;
+pluto-tree,
+pluto-tree-pair {
+    font-family: var(--julia-mono-font-stack);
     font-size: 0.75rem;
 }
-jltree {
-    color: hsl(0, 0%, 25%, 0.7);
+pluto-tree {
+    color: var(--pluto-tree-color);
     white-space: pre;
     cursor: pointer;
 }
 
-jltree * {
+pluto-tree,
+pluto-tree-items {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: baseline;
+}
+pluto-tree.collapsed,
+pluto-tree.collapsed pluto-tree,
+pluto-tree.collapsed pluto-tree-items {
+    flex-direction: row;
+}
+
+pluto-tree-items {
     cursor: auto;
 }
 
-jltree::before {
+pluto-tree-prefix {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: baseline;
+}
+
+pluto-tree > pluto-tree-prefix::before {
     display: inline-block;
     position: relative;
     content: "";
@@ -34,46 +49,59 @@ jltree::before {
     bottom: -2px;
     opacity: 0.5;
     cursor: pointer;
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/caret-down-outline.svg);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-down-outline.svg");
+    filter: var(--image-filters);
 }
 
-jltree.collapsed jltree::before {
+pluto-tree.collapsed pluto-tree > pluto-tree-prefix::before {
     display: none;
 }
 
-jltree.collapsed::before {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/caret-forward-outline.svg);
+pluto-tree.collapsed > pluto-tree-prefix::before {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-outline.svg");
 }
 
-jltree r {
+pluto-tree p-r > p-v {
+    display: inline-flex;
+    color: var(--pluto-output-color);
+}
+
+pluto-tree.collapsed pluto-tree-items.Array > p-r > p-k,
+pluto-tree.collapsed pluto-tree-items.Set > p-r > p-k,
+pluto-tree.collapsed pluto-tree-items.Tuple > p-r > p-k,
+pluto-tree.collapsed pluto-tree-items.struct > p-r > p-k {
+    display: none;
+}
+
+pluto-tree > pluto-tree-prefix > .long {
     display: block;
 }
-
-jltree.collapsed r {
-    display: inline-block;
-}
-
-jltree r > v {
-    display: inline-flex;
-    color: hsl(0, 0%, 25%, 1);
-}
-
-jltree.collapsed jlarray > r > k,
-jltree.collapsed jlstruct > r > k {
+pluto-tree > pluto-tree-prefix > .short {
     display: none;
+}
+pluto-tree.collapsed > pluto-tree-prefix > .long {
+    display: none;
+}
+pluto-tree.collapsed > pluto-tree-prefix > .short {
+    display: block;
 }
 
 /*  */
 
-jltree r {
-    margin-left: 1em;
+pluto-tree p-r {
+    margin-left: 3em;
+}
+pluto-tree.collapsed p-r {
+    margin-left: 0.5em;
 }
 
-jltree.collapsed r:first-child {
+pluto-tree.collapsed p-r:first-child {
     margin-left: 0;
 }
 
-jltree jlarray > r > k {
+pluto-tree pluto-tree-items.Array > p-r > p-k,
+pluto-tree pluto-tree-items.Set > p-r > p-k,
+pluto-tree pluto-tree-items.Tuple > p-r > p-k {
     margin-right: 1em;
     opacity: 0.5;
     user-select: none;
@@ -81,68 +109,72 @@ jltree jlarray > r > k {
 
 /*  */
 
-jltree jlarray::before {
+pluto-tree.Array > pluto-tree-prefix::after {
     content: "[";
 }
 
-jltree jlarray::after {
+pluto-tree pluto-tree-items.Array::after {
     content: "]";
 }
 
-jltree jlarray.Set::before {
+pluto-tree.Set > pluto-tree-prefix::after {
     content: "([";
 }
 
-jltree jlarray.Set::after {
+pluto-tree pluto-tree-items.Set::after {
     content: "])";
 }
 
-jltree jlarray.Tuple::before,
-jltree jldict::before,
-jltree jlstruct::before {
+pluto-tree.Tuple > pluto-tree-prefix::after,
+pluto-tree.Dict > pluto-tree-prefix::after,
+pluto-tree.NamedTuple > pluto-tree-prefix::after,
+pluto-tree.struct > pluto-tree-prefix::after {
     content: "(";
 }
 
-jltree jlarray.Tuple::after,
-jltree jldict::after,
-jltree jlstruct::after {
+pluto-tree pluto-tree-items.Tuple::after,
+pluto-tree pluto-tree-items.Dict::after,
+pluto-tree pluto-tree-items.NamedTuple::after,
+pluto-tree pluto-tree-items.struct::after {
     content: ")";
 }
 
 /*  */
 
-jltree jlarray > r > k::after {
+pluto-tree pluto-tree-items.Array > p-r > p-k::after,
+pluto-tree pluto-tree-items.Set > p-r > p-k::after,
+pluto-tree pluto-tree-items.Tuple > p-r > p-k::after {
     content: ":";
 }
 
-jlpair > r > k::after,
-jltree jldict > r > k::after {
+pluto-tree-pair > p-r > p-k::after,
+pluto-tree pluto-tree-items.Dict > p-r > p-k::after {
     content: " => ";
 }
 
-jltree jldict.NamedTuple > r > k::after,
-jltree jlstruct > r > k::after {
+pluto-tree pluto-tree-items.NamedTuple > p-r > p-k::after,
+pluto-tree pluto-tree-items.struct > p-r > p-k::after {
     content: " = ";
 }
 
-jltree.collapsed r::after {
+pluto-tree.collapsed p-r::after {
     content: ",";
 }
 
-jltree.collapsed r:last-child::after {
+pluto-tree.collapsed p-r:last-child::after {
     content: "";
 }
 
-jlmore {
+pluto-tree-more {
     display: inline-block;
     padding: 0.6em 0em;
     cursor: pointer;
-    /* this only affects jlmore inside a table */
+    /* this only affects pluto-tree-more inside a table */
     width: 100%;
     white-space: nowrap;
 }
 
-jlmore::before {
+pluto-tree-more::before {
     margin-left: 0.2em;
     margin-right: 0.5em;
     bottom: -0.1em;
@@ -153,11 +185,12 @@ jlmore::before {
     height: 1em;
     width: 1em;
     opacity: 0.5;
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/ellipsis-vertical.svg);
+    filter: var(--image-filters);
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ellipsis-vertical.svg");
 }
 
-jlmore.loading::before {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/sync-outline.svg);
+pluto-tree-more.loading::before {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sync-outline.svg");
     animation: loadspin 3s ease-in-out infinite;
 }
 
@@ -179,25 +212,28 @@ jlmore.loading::before {
     }
 }
 
-jltree.collapsed jlmore {
+pluto-tree.collapsed pluto-tree-more {
     margin: 0em;
 }
-jltree.collapsed jlmore::before {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/ellipsis-horizontal.svg);
+pluto-tree.collapsed pluto-tree-more::before {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ellipsis-horizontal.svg");
 }
 
 /*  */
 
-jltree.collapsed img,
-jltree.collapsed svg {
+pluto-tree.collapsed img {
     max-width: 4rem;
     max-height: 4rem;
 }
 
-jltree img,
-jltree svg {
+pluto-tree img {
     max-width: 12rem;
     max-height: 8rem;
+}
+
+pluto-tree p-r pre {
+    white-space: pre;
+    word-break: normal;
 }
 
 /*  */
@@ -208,7 +244,7 @@ jlerror {
 }
 
 jlerror > header {
-    color: #330000;
+    color: var(--jlerror-header-color);
 }
 jlerror > header > p {
     margin-block-end: 0.2em;
@@ -217,17 +253,18 @@ jlerror > header > p:first-child {
     font-weight: bold;
 }
 jlerror > section > ol > li > mark {
-    background: #f3f2f1;
+    background: var(--jlerror-mark-bg-color);
     border-radius: 6px;
-    font-family: JuliaMono, monospace;
+    color: var(--jlerror-mark-color);
+    font-family: var(--julia-mono-font-stack);
     font-variant-ligatures: none;
 }
 jlerror > section > ol > li > em > a {
-    background: #f5efd9;
+    background: var(--jlerror-a-bg-color);
     border-radius: 4px;
     padding: 1px 7px;
     text-decoration: none;
-    border-left: 3px solid #9a7575;
+    border-left: 3px solid var(--jlerror-a-border-left-color);
 }
 jlerror > section > ol > li > span {
     opacity: 0.8;
@@ -244,15 +281,15 @@ table.pluto-table td {
 }
 
 table.pluto-table .schema-types {
-    color: rgba(0, 0, 0, 0.4);
-    font-family: "JuliaMono", monospace;
+    color: var(--pluto-schema-types-color);
+    font-family: var(--julia-mono-font-stack);
     font-size: 0.75rem;
     opacity: 0;
 }
 
 table.pluto-table .schema-types th {
-    border-bottom: 1px solid rgba(0, 0, 0, 0.2);
-    background-color: white;
+    border-bottom: 1px solid var(--pluto-schema-types-border-color);
+    background-color: var(--main-bg-color);
     height: 2rem;
 }
 
@@ -272,7 +309,7 @@ table.pluto-table .schema-types th:first-child {
 
 table.pluto-table .schema-names th,
 table.pluto-table .schema-types th:first-child {
-    background-color: white;
+    background-color: var(--main-bg-color);
     position: sticky;
     top: calc(0.25rem - var(--pluto-cell-spacing));
     height: 2rem;
@@ -284,17 +321,17 @@ table.pluto-table thead:hover .schema-names th {
 }
 
 table.pluto-table tbody th:first-child {
-    background-color: white;
+    background-color: var(--main-bg-color);
     position: sticky;
     left: -10px; /* padding-left of pluto-output*/
 }
 
-table.pluto-table .jlmore-td {
+table.pluto-table .pluto-tree-more-td {
     text-align: left;
     overflow: unset;
 }
 
-table.pluto-table .jlmore-td jlmore {
+table.pluto-table .pluto-tree-more-td pluto-tree-more {
     overflow: unset;
     position: sticky;
     left: 0;

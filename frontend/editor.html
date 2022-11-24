@@ -3,63 +3,53 @@
 
 <head>
     <meta name="viewport" content="width=device-width" />
-    <title>⚡ Pluto.jl ⚡</title>
     <meta charset="utf-8" />
-    <script>
-        console.log("Pluto.jl, by Fons van der Plas (https://github.com/fonsp) and Mikołaj Bochenski (https://github.com/malyvsen) 🌈")
-    </script>
-    <meta name="author" content="Fons van der Plas; Mikołaj Bochenski" />
-    <link rel="license" href="https://github.com/fonsp/Pluto.jl/blob/main/LICENSE" />
-    <meta name="theme-color" content="#ffffff" />
+    
+    <meta name="pluto-insertion-spot-meta">
+    
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="white">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#2a2928">
+    <meta name="color-scheme" content="light dark">
+
     <link rel="icon" type="image/png" sizes="16x16" href="./img/favicon-16x16.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="./img/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="96x96" href="./img/favicon-96x96.png" />
-    <meta name="description" content="Pluto.jl notebooks" />
     <link rel="pluto-logo-big" href="./img/logo.svg" />
     <link rel="pluto-logo-small" href="./img/favicon_unsaturated.svg" />
-
-    <link rel="pluto-sw" href="./sw.js" />
-    <script>
-        navigator.serviceWorker?.register(document.head.querySelector("link[rel='pluto-sw']").getAttribute("href"), { scope: "./" }).catch(console.warn)
+    
+    <script defer>
+        console.log(
+            "Pluto.jl, by Fons van der Plas (https://github.com/fonsp), Mikołaj Bochenski (https://github.com/malyvsen), Michiel Dral (https://github.com/dralletje) and friends 🌈"
+        )
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.20/lodash.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/@observablehq/stdlib@3.3.1/dist/stdlib.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/iframe-resizer@4.2.11/js/iframeResizer.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.58.1/lib/codemirror.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.58.1/mode/julia/julia.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.58.1/addon/mode/loadmode.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.58.1/addon/hint/show-hint.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.58.1/addon/display/placeholder.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.58.1/addon/edit/matchbrackets.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.58.1/addon/runmode/runmode.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.58.1/addon/comment/comment.min.js" defer></script>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/codemirror@5.58.1/addon/edit/closebrackets.min.js" defer></script> -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/codemirror@5.58.1/addon/search/searchcursor.min.js" defer></script> -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.58.1/lib/codemirror.min.css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.58.1/addon/hint/show-hint.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/ansi_up@5.1.0/ansi_up.min.js" defer></script>
+
+    <!-- This doesn't do anything unless activated, and it makes sure parcel bundles this -->
+    <script id="iframe-resizer-content-window-script" src="https://cdn.jsdelivr.net/npm/iframe-resizer@4.2.11/js/iframeResizer.contentWindow.min.js" crossorigin="anonymous" defer></script>
 
     <link rel="stylesheet" href="./editor.css" type="text/css" />
-    <link rel="stylesheet" href="./hide-ui.css" type="text/css" media="all" data-pluto-file="hide-ui">
+    <link rel="stylesheet" href="./hide-ui.css" type="text/css" media="all" data-pluto-file="hide-ui" />
     <link rel="stylesheet" href="./binder.css" type="text/css" />
     <link rel="stylesheet" href="./treeview.css" type="text/css" />
-    <link rel="preload" href="./juliamono.css" as="style">
-    <link rel="preload" href="./vollkorn.css" as="style">
+    <link rel="preload" href="./juliamono.css" as="style" />
+    <link rel="preload" href="./vollkorn.css" as="style" />
+    <link rel="stylesheet" href="./highlightjs.css" type="text/css">
 
-    <!-- The instant feedback form at the bottom of the page uses Google Firestore to save feedback. -->
-    <script src="https://cdn.jsdelivr.net/npm/firebase@7.13.1/firebase-app.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/firebase@7.13.1/firebase-firestore.js" defer></script>
-
-    <!-- [automatically generated launch parameters can be inserted here] -->
-
+    <meta name="pluto-insertion-spot-parameters">
     <script src="./editor.js" type="module" defer></script>
     <script src="./warn_old_browsers.js"></script>
 
-    <script src="./common/SetupMathJax.js"></script>
-    <script type="text/javascript" id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3.1.2/es5/tex-svg-full.js" async></script>
-
+    <!-- This script will be enabled by JS after the notebook has initialized to prevent taking up bandwidth during the initial load. -->
+    <script type="text/javascript" id="MathJax-script" integrity="sha384-4kE/rQ11E8xT9QgrCBTyvenkuPfQo8rXYQvJZuMgxyPOoUfpatjQPlgdv6V5yhUK" crossorigin="anonymous" not-the-src-yet="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg-full.js" async></script>
 </head>
 
-<body class="loading no-MαθJax"></body>
-
+<body class="loading no-MαθJax">
+    <div style="display: flex; min-height: 100vh;">
+        <pluto-editor class="fullscreen"></pluto-editor>
+    </div>
+</body>
 </html>

@@ -1,0 +1,30 @@
+name: "Automatic PR comment: Try this PR!"
+
+on:
+  pull_request_target:
+    types: [opened]
+
+jobs:
+  write-comment:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/github-script@v5
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `
+              ## Try this Pull Request!
+              Open Julia and type:
+              \`\`\`jl
+              julia> import Pkg
+              julia> Pkg.activate(temp=true)
+              julia> Pkg.add(url="${context.payload.pull_request.head.repo.html_url}", rev="${context.payload.pull_request.head.ref}")
+              julia> using ${context.payload.repository.name.replace(/\.jl$/,"")}
+              \`\`\`
+              `
+            })

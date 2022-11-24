@@ -1,38 +1,125 @@
+"""
+The full list of keyword arguments that can be passed to [`Pluto.run`](@ref) (or [`Pluto.Configuration.from_flat_kwargs`](@ref)) is divided into four categories. Take a look at the documentation for:
+
+- [`Pluto.Configuration.CompilerOptions`](@ref) defines the command line arguments for notebook `julia` processes.
+- [`Pluto.Configuration.ServerOptions`](@ref) configures the HTTP server.
+- [`Pluto.Configuration.SecurityOptions`](@ref) configures the authentication options for Pluto's HTTP server. Change with caution.
+- [`Pluto.Configuration.EvaluationOptions`](@ref) is used internally during Pluto's testing.
+
+Note that Pluto is designed to be _zero-configuration_, and most users should not (have to) change these settings. Most 'customization' can be achieved using Julia's wide range of packages! That being said, the available settings are useful if you are using Pluto in a special environment, such as docker, mybinder, etc.
+"""
 module Configuration
+
+using Configurations # https://github.com/Roger-luo/Configurations.jl
 
 import ..Pluto: tamepath
 
-function notebook_path_suggestion()
-    preferred_dir = startswith(Sys.BINDIR, pwd()) ? homedir() : pwd()
-    return joinpath(preferred_dir, "") # so that it ends with / or \
+safepwd() = try
+    pwd()
+catch e
+    @warn "pwd() failure" exception=(e, catch_backtrace())
+    homedir()
 end
 
-"""
-The HTTP server options. See `SecurityOptions` for additional settings.
-"""
-Base.@kwdef mutable struct ServerOptions
-    root_url::Union{Nothing,String} = nothing
-    host::String = "127.0.0.1"
-    port::Union{Nothing,Integer} = nothing
-    launch_browser::Bool = true
-    show_file_system::Bool = true
-    notebook_path_suggestion::String = notebook_path_suggestion()
-    notebook::Union{Nothing,String} = nothing
-    simulated_lag::Real=0.0
+# Using a ref to avoid fixing the pwd() output during the compilation phase. We don't want this value to be baked into the sysimage, because it depends on the `pwd()`. We do want to cache it, because the pwd might change while Pluto is running.
+const pwd_ref = Ref{Union{Nothing,String}}()
+function notebook_path_suggestion()
+    pwd_val = something(pwd_ref[], safepwd())
+    preferred_dir = startswith(Sys.BINDIR, pwd_val) ? homedir() : pwd_val
+    # so that it ends with / or \
+    string(joinpath(preferred_dir, ""))
 end
+
+function __init__()
+    pwd_ref[] = safepwd()
+end
+
+const ROOT_URL_DEFAULT = nothing
+const BASE_URL_DEFAULT = "/"
+const HOST_DEFAULT = "127.0.0.1"
+const PORT_DEFAULT = nothing
+const PORT_HINT_DEFAULT = 1234
+const LAUNCH_BROWSER_DEFAULT = true
+const DISMISS_UPDATE_NOTIFICATION_DEFAULT = false
+const SHOW_FILE_SYSTEM_DEFAULT = true
+const ENABLE_PACKAGE_AUTHOR_FEATURES_DEFAULT = true
+const DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT = false
+const AUTO_RELOAD_FROM_FILE_DEFAULT = false
+const AUTO_RELOAD_FROM_FILE_COOLDOWN_DEFAULT = 0.4
+const AUTO_RELOAD_FROM_FILE_IGNORE_PKG_DEFAULT = false
+const NOTEBOOK_DEFAULT = nothing
+const INIT_WITH_FILE_VIEWER_DEFAULT = false
+const SIMULATED_LAG_DEFAULT = 0.0
+const SIMULATED_PKG_LAG_DEFAULT = 0.0
+const INJECTED_JAVASCRIPT_DATA_URL_DEFAULT = "data:text/javascript;base64,"
+const ON_EVENT_DEFAULT = function(a) #= @info "$(typeof(a))" =# end
+
+"""
+    ServerOptions([; kwargs...])
+
+The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
+
+# Keyword arguments
+
+- `host::String = "$HOST_DEFAULT"` Set to `"127.0.0.1"` (default) to run on *localhost*, which makes the server available to your computer and the local network (LAN). Set to `"0.0.0.0"` to make the server available to the entire network (internet).
+- `port::Union{Nothing,Integer} = $PORT_DEFAULT` When specified, this port will be used for the server.
+- `port_hint::Integer = $PORT_HINT_DEFAULT` If the other setting `port` is not specified, then this setting (`port_hint`) will be used as the starting point in finding an available port to run the server on. 
+- `launch_browser::Bool = $LAUNCH_BROWSER_DEFAULT`
+- `dismiss_update_notification::Bool = $DISMISS_UPDATE_NOTIFICATION_DEFAULT` If `false`, the Pluto frontend will check the Pluto.jl github releases for any new recommended updates, and show a notification if there are any. If `true`, this is disabled.
+- `show_file_system::Bool = $SHOW_FILE_SYSTEM_DEFAULT`
+- `notebook_path_suggestion::String = notebook_path_suggestion()`
+- `disable_writing_notebook_files::Bool = $DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT`
+- `auto_reload_from_file::Bool = $AUTO_RELOAD_FROM_FILE_DEFAULT` Watch notebook files for outside changes and update running notebook state automatically
+- `auto_reload_from_file_cooldown::Real = $AUTO_RELOAD_FROM_FILE_COOLDOWN_DEFAULT` Experimental, will be removed
+- `auto_reload_from_file_ignore_pkg::Bool = $AUTO_RELOAD_FROM_FILE_IGNORE_PKG_DEFAULT` Experimental flag, will be removed
+- `notebook::Union{Nothing,String} = $NOTEBOOK_DEFAULT` Optional path of notebook to launch at start
+- `init_with_file_viewer::Bool = $INIT_WITH_FILE_VIEWER_DEFAULT`
+- `simulated_lag::Real=$SIMULATED_LAG_DEFAULT` (internal) Extra lag to add to our server responses. Will be multiplied by `0.5 + rand()`.
+- `simulated_pkg_lag::Real=$SIMULATED_PKG_LAG_DEFAULT` (internal) Extra lag to add to operations done by Pluto's package manager. Will be multiplied by `0.5 + rand()`.
+- `injected_javascript_data_url::String = "$INJECTED_JAVASCRIPT_DATA_URL_DEFAULT"` (internal) Optional javascript injectables to the front-end. Can be used to customize the editor, but this API is not meant for general use yet.
+- `on_event::Function = $ON_EVENT_DEFAULT`
+- `root_url::Union{Nothing,String} = $ROOT_URL_DEFAULT` This setting is used to specify the root URL of the Pluto server, but this setting is *only* used to customize the launch message (*"Go to http://localhost:1234/ in your browser"*). You can probably ignore this and use `base_url` instead.
+- `base_url::String = "$BASE_URL_DEFAULT"` This setting is used to specify the base URL at which the Pluto server will receive requests, it should start be a valid path starting and ending with a '/'.
+"""
+@option mutable struct ServerOptions
+    root_url::Union{Nothing,String} = ROOT_URL_DEFAULT
+    base_url::String = BASE_URL_DEFAULT
+    host::String = HOST_DEFAULT
+    port::Union{Nothing,Integer} = PORT_DEFAULT
+    port_hint::Integer = PORT_HINT_DEFAULT
+    launch_browser::Bool = LAUNCH_BROWSER_DEFAULT
+    dismiss_update_notification::Bool = DISMISS_UPDATE_NOTIFICATION_DEFAULT
+    show_file_system::Bool = SHOW_FILE_SYSTEM_DEFAULT
+    notebook_path_suggestion::String = notebook_path_suggestion()
+    disable_writing_notebook_files::Bool = DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT
+    auto_reload_from_file::Bool = AUTO_RELOAD_FROM_FILE_DEFAULT
+    auto_reload_from_file_cooldown::Real = AUTO_RELOAD_FROM_FILE_COOLDOWN_DEFAULT
+    auto_reload_from_file_ignore_pkg::Bool = AUTO_RELOAD_FROM_FILE_IGNORE_PKG_DEFAULT
+    notebook::Union{Nothing,String,Vector{<:String}} = NOTEBOOK_DEFAULT
+    init_with_file_viewer::Bool = INIT_WITH_FILE_VIEWER_DEFAULT
+    simulated_lag::Real = SIMULATED_LAG_DEFAULT
+    simulated_pkg_lag::Real = SIMULATED_PKG_LAG_DEFAULT
+    injected_javascript_data_url::String = INJECTED_JAVASCRIPT_DATA_URL_DEFAULT
+    on_event::Function = ON_EVENT_DEFAULT
+end
+
+const REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT = true
+const REQUIRE_SECRET_FOR_ACCESS_DEFAULT = true
 
 """
     SecurityOptions([; kwargs...])
 
-Security settings for the HTTP server. Options are:
+Security settings for the HTTP server. 
 
-- `require_secret_for_open_links::Bool = true`
+# Arguments
 
-    Whether the links `http://localhost:1234/open?path=/a/b/c.jl`  and `http://localhost:1234/open?path=http://www.a.b/c.jl` should be protected. 
+- `require_secret_for_open_links::Bool = $REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT`
+
+    Whether the links `http://localhost:1234/open?path=/a/b/c.jl`  and `http://localhost:1234/open?url=http://www.a.b/c.jl` should be protected. 
 
     Use `true` for almost every setup. Only use `false` if Pluto is running in a safe container (like mybinder.org), where arbitrary code execution is not a problem.
 
-- `require_secret_for_access::Bool = true`
+- `require_secret_for_access::Bool = $REQUIRE_SECRET_FOR_ACCESS_DEFAULT`
 
     If false, you do not need to use a `secret` in the URL to access Pluto: you will be authenticated by visiting `http://localhost:1234/` in your browser. An authentication cookie is still used for access (to prevent XSS and deceptive links or an img src to `http://localhost:1234/open?url=badpeople.org/script.jl`), and is set automatically, but this request to `/` is protected by cross-origin policy.
 
@@ -42,61 +129,101 @@ Security settings for the HTTP server. Options are:
 
 Note that Pluto is quickly evolving software, maintained by designers, educators and enthusiasts — not security experts. If security is a serious concern for your application, then we recommend running Pluto inside a container and verifying the relevant security aspects of Pluto yourself.
 """
-Base.@kwdef mutable struct SecurityOptions
-    require_secret_for_open_links::Bool = true
-    require_secret_for_access::Bool = true
+@option mutable struct SecurityOptions
+    require_secret_for_open_links::Bool = REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT
+    require_secret_for_access::Bool = REQUIRE_SECRET_FOR_ACCESS_DEFAULT
 end
 
+const RUN_NOTEBOOK_ON_LOAD_DEFAULT = true
+const WORKSPACE_USE_DISTRIBUTED_DEFAULT = true
+const LAZY_WORKSPACE_CREATION_DEFAULT = false
+const CAPTURE_STDOUT_DEFAULT = true
+const WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT = nothing
+
 """
-For internal use only.
+    EvaluationOptions([; kwargs...])
+
+Options to change Pluto's evaluation behaviour during internal testing and by downstream packages.
+These options are not intended to be changed during normal use.
+
+- `run_notebook_on_load::Bool = $RUN_NOTEBOOK_ON_LOAD_DEFAULT` Whether to evaluate a notebook on load.
+- `workspace_use_distributed::Bool = $WORKSPACE_USE_DISTRIBUTED_DEFAULT` Whether to start notebooks in a separate process.
+- `lazy_workspace_creation::Bool = $LAZY_WORKSPACE_CREATION_DEFAULT`
+- `capture_stdout::Bool = $CAPTURE_STDOUT_DEFAULT`
+- `workspace_custom_startup_expr::Union{Nothing,Expr} = $WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT` An expression to be evaluated in the workspace process before running notebook code.
 """
-Base.@kwdef mutable struct EvaluationOptions
-    run_notebook_on_load::Bool = true
-    workspace_use_distributed::Bool = true
+@option mutable struct EvaluationOptions
+    run_notebook_on_load::Bool = RUN_NOTEBOOK_ON_LOAD_DEFAULT
+    workspace_use_distributed::Bool = WORKSPACE_USE_DISTRIBUTED_DEFAULT
+    lazy_workspace_creation::Bool = LAZY_WORKSPACE_CREATION_DEFAULT
+    capture_stdout::Bool = CAPTURE_STDOUT_DEFAULT
+    workspace_custom_startup_expr::Union{Nothing,Expr} = WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT
 end
 
-"""
-These options will be passed as command line argument to newly launched processes.
+const COMPILE_DEFAULT = nothing
+const SYSIMAGE_DEFAULT = nothing
+const BANNER_DEFAULT = nothing
+const OPTIMIZE_DEFAULT = nothing
+const MATH_MODE_DEFAULT = nothing
+const STARTUP_FILE_DEFAULT = "no"
+const HISTORY_FILE_DEFAULT = "no"
 
-The ServerSession contains a global version of this configuration, and each notebook can also have its own version.
-"""
-Base.@kwdef mutable struct CompilerOptions
-    compile::Union{Nothing,String} = nothing
-    sysimage::Union{Nothing,String} = nothing
-    banner::Union{Nothing,String} = nothing
-    optimize::Union{Nothing,Int} = nothing
-    math_mode::Union{Nothing,String} = nothing
-
-    # notebook specified options
-    # the followings are different from
-    # the default julia compiler options
-
-    # we use nothing to represent "@v#.#"
-    project::Union{Nothing,String} = "@."
-    # we don't load startup file in notebook
-    startup_file::Union{Nothing,String} = "no"
-    # we don't load history file in notebook
-    history_file::Union{Nothing,String} = "no"
-
-    @static if VERSION > v"1.5.0-"
-        threads::Union{Nothing,String} = default_number_of_threads()
+function roughly_the_number_of_physical_cpu_cores()
+    # https://gist.github.com/fonsp/738fe244719cae820245aa479e7b4a8d
+    threads = Sys.CPU_THREADS
+    num_threads_is_maybe_doubled_for_marketing = Sys.ARCH === :x86_64
+    
+    if threads == 1
+        1
+    elseif threads == 2 || threads == 3
+        2
+    elseif num_threads_is_maybe_doubled_for_marketing
+        # This includes:
+        # - intel hyperthreading
+        # - Apple ARM efficiency cores included in the count (when running the x86 executable)
+        threads ÷ 2
+    else
+        threads
     end
 end
 
 function default_number_of_threads()
     env_value = get(ENV, "JULIA_NUM_THREADS", "")
-    all(isspace, env_value) ? string(roughly_the_number_of_physical_cpu_cores()) : env_value
+
+    all(isspace, env_value) ?
+        roughly_the_number_of_physical_cpu_cores() :
+        env_value
 end
 
-function roughly_the_number_of_physical_cpu_cores()
-    # https://gist.github.com/fonsp/738fe244719cae820245aa479e7b4a8d
-    if Sys.CPU_THREADS == 1
-        1
-    elseif Sys.CPU_THREADS == 2 || Sys.CPU_THREADS == 3
-        2
-    else
-        Sys.CPU_THREADS ÷ 2
-    end
+"""
+    CompilerOptions([; kwargs...])
+
+These options will be passed as command line argument to newly launched processes. See [the Julia documentation on command-line options](https://docs.julialang.org/en/v1/manual/command-line-options/).
+
+# Arguments
+- `compile::Union{Nothing,String} = $COMPILE_DEFAULT`
+- `sysimage::Union{Nothing,String} = $SYSIMAGE_DEFAULT`
+- `banner::Union{Nothing,String} = $BANNER_DEFAULT`
+- `optimize::Union{Nothing,Int} = $OPTIMIZE_DEFAULT`
+- `math_mode::Union{Nothing,String} = $MATH_MODE_DEFAULT`
+- `startup_file::Union{Nothing,String} = "$STARTUP_FILE_DEFAULT"` By default, the startup file isn't loaded in notebooks.
+- `history_file::Union{Nothing,String} = "$HISTORY_FILE_DEFAULT"` By default, the history isn't loaded in notebooks.
+- `threads::Union{Nothing,String,Int} = default_number_of_threads()`
+"""
+@option mutable struct CompilerOptions
+    compile::Union{Nothing,String} = COMPILE_DEFAULT
+    sysimage::Union{Nothing,String} = SYSIMAGE_DEFAULT
+    banner::Union{Nothing,String} = BANNER_DEFAULT
+    optimize::Union{Nothing,Int} = OPTIMIZE_DEFAULT
+    math_mode::Union{Nothing,String} = MATH_MODE_DEFAULT
+
+    # notebook specified options
+    # the followings are different from
+    # the default julia compiler options
+    startup_file::Union{Nothing,String} = STARTUP_FILE_DEFAULT
+    history_file::Union{Nothing,String} = HISTORY_FILE_DEFAULT
+
+    threads::Union{Nothing,String,Int} = default_number_of_threads()
 end
 
 """
@@ -104,82 +231,93 @@ Collection of all settings that configure a Pluto session.
 
 `ServerSession` contains a `Configuration`.
 """
-Base.@kwdef struct Options
+@option struct Options
     server::ServerOptions = ServerOptions()
     security::SecurityOptions = SecurityOptions()
     evaluation::EvaluationOptions = EvaluationOptions()
     compiler::CompilerOptions = CompilerOptions()
 end
 
-# We don't us an abstract type because Base.@kwdef does not support subtyping in Julia 1.0, only in ≥1.1
-AbstractOptions = Union{EvaluationOptions,CompilerOptions,ServerOptions,SecurityOptions,Options}
-
-function overlayed(original::AbstractOptions; changes...)
-    new_kwargs = Dict()
-    for name in fieldnames(typeof(original))
-        new_kwargs[name] = get(changes, name, getfield(original, name))
-    end
-    return typeof(original)(;new_kwargs...)
-end
-
-# NOTE: printings are copy-pastable
-function Base.show(io::IO, x::AbstractOptions)
-    indent = get(io, :indent, 0)
-
-    summary(io, x)
-    println(io, "(")
-    fnames = fieldnames(typeof(x))
-    for each in fieldnames(typeof(x))
-        print(IOContext(io, :indent => 2), " "^indent, " "^2, each, " = ", repr(getfield(x, each)))
-        println(io, ", ")
-    end
-    print(io, " "^indent, ")")
-    return
-end
-
-function from_flat_kwargs(; kwargs...)::Options
-    server_options = Dict()
-    security_options = Dict()
-    evaluation_options = Dict()
-    compiler_options = Dict()
-
-    for (k, v) in kwargs
-        if k in fieldnames(EvaluationOptions)
-            evaluation_options[k] = v
-        elseif k in fieldnames(CompilerOptions)
-            compiler_options[k] = v
-        elseif k in fieldnames(ServerOptions)
-            server_options[k] = v
-        elseif k in fieldnames(SecurityOptions)
-            security_options[k] = v
-        else
-            throw(ArgumentError("""Key $k not recognised. Options are:\n$(join(
-            [
-                "Server Options:",
-                map(x -> " "^2 * string(x), fieldnames(ServerOptions))...,
-                "",
-                "Security Options:",
-                map(x -> " "^2 * string(x), fieldnames(SecurityOptions))...,
-                "",
-                "Evaluation Options:",
-                map(x -> " "^2 * string(x), fieldnames(EvaluationOptions))...,
-                "",
-                "Compiler Options:",
-                map(x -> " "^2 * string(x), fieldnames(CompilerOptions))...,
-            ], '\n'))
-            
-            These can be used as keywords arguments to Pluto.run, or to Pluto.from_flat_kwargs to create a Pluto.Options object."""))
-        end
-    end
-
-    return Options(
-        server=ServerOptions(; server_options...),
-        security=SecurityOptions(; security_options...),
-        evaluation=EvaluationOptions(; evaluation_options...),
-        compiler=CompilerOptions(; compiler_options...),
+function from_flat_kwargs(;
+        root_url::Union{Nothing,String} = ROOT_URL_DEFAULT,
+        base_url::String = BASE_URL_DEFAULT,
+        host::String = HOST_DEFAULT,
+        port::Union{Nothing,Integer} = PORT_DEFAULT,
+        port_hint::Integer = PORT_HINT_DEFAULT,
+        launch_browser::Bool = LAUNCH_BROWSER_DEFAULT,
+        dismiss_update_notification::Bool = DISMISS_UPDATE_NOTIFICATION_DEFAULT,
+        show_file_system::Bool = SHOW_FILE_SYSTEM_DEFAULT,
+        notebook_path_suggestion::String = notebook_path_suggestion(),
+        disable_writing_notebook_files::Bool = DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT,
+        auto_reload_from_file::Bool = AUTO_RELOAD_FROM_FILE_DEFAULT,
+        auto_reload_from_file_cooldown::Real = AUTO_RELOAD_FROM_FILE_COOLDOWN_DEFAULT,
+        auto_reload_from_file_ignore_pkg::Bool = AUTO_RELOAD_FROM_FILE_IGNORE_PKG_DEFAULT,
+        notebook::Union{Nothing,String,Vector{<:String}} = NOTEBOOK_DEFAULT,
+        init_with_file_viewer::Bool = INIT_WITH_FILE_VIEWER_DEFAULT,
+        simulated_lag::Real = SIMULATED_LAG_DEFAULT,
+        simulated_pkg_lag::Real = SIMULATED_PKG_LAG_DEFAULT,
+        injected_javascript_data_url::String = INJECTED_JAVASCRIPT_DATA_URL_DEFAULT,
+        on_event::Function = ON_EVENT_DEFAULT,
+        require_secret_for_open_links::Bool = REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT,
+        require_secret_for_access::Bool = REQUIRE_SECRET_FOR_ACCESS_DEFAULT,
+        run_notebook_on_load::Bool = RUN_NOTEBOOK_ON_LOAD_DEFAULT,
+        workspace_use_distributed::Bool = WORKSPACE_USE_DISTRIBUTED_DEFAULT,
+        lazy_workspace_creation::Bool = LAZY_WORKSPACE_CREATION_DEFAULT,
+        capture_stdout::Bool = CAPTURE_STDOUT_DEFAULT,
+        workspace_custom_startup_expr::Union{Nothing,Expr} = WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT,
+        compile::Union{Nothing,String} = COMPILE_DEFAULT,
+        sysimage::Union{Nothing,String} = SYSIMAGE_DEFAULT,
+        banner::Union{Nothing,String} = BANNER_DEFAULT,
+        optimize::Union{Nothing,Int} = OPTIMIZE_DEFAULT,
+        math_mode::Union{Nothing,String} = MATH_MODE_DEFAULT,
+        startup_file::Union{Nothing,String} = STARTUP_FILE_DEFAULT,
+        history_file::Union{Nothing,String} = HISTORY_FILE_DEFAULT,
+        threads::Union{Nothing,String,Int} = default_number_of_threads(),
     )
+    server = ServerOptions(;
+        root_url,
+        base_url,
+        host,
+        port,
+        port_hint,
+        launch_browser,
+        dismiss_update_notification,
+        show_file_system,
+        notebook_path_suggestion,
+        disable_writing_notebook_files,
+        auto_reload_from_file,
+        auto_reload_from_file_cooldown,
+        auto_reload_from_file_ignore_pkg,
+        notebook,
+        init_with_file_viewer,
+        simulated_lag,
+        simulated_pkg_lag,
+        injected_javascript_data_url,
+        on_event,
+    )
+    security = SecurityOptions(;
+        require_secret_for_open_links,
+        require_secret_for_access,
+    )
+    evaluation = EvaluationOptions(;
+        run_notebook_on_load,
+        workspace_use_distributed,
+        lazy_workspace_creation,
+        capture_stdout,
+        workspace_custom_startup_expr,
+    )
+    compiler = CompilerOptions(;
+        compile,
+        sysimage,
+        banner,
+        optimize,
+        math_mode,
+        startup_file,
+        history_file,
+        threads,
+    )
+    return Options(; server, security, evaluation, compiler)
 end
-
 
 function _merge_notebook_compiler_options(notebook, options::CompilerOptions)::CompilerOptions
     if notebook.compiler_options === nothing
@@ -189,46 +327,21 @@ function _merge_notebook_compiler_options(notebook, options::CompilerOptions)::C
     kwargs = Dict{Symbol,Any}()
     for each in fieldnames(CompilerOptions)
         # 1. not specified by notebook options
-        # 2. notebook specified project options
-        # 3. general notebook specified options
+        # 2. general notebook specified options
         if getfield(notebook.compiler_options, each) === nothing
             kwargs[each] = getfield(options, each)
-        elseif each === :project
-            # some specified processing for notebook project
-            # paths
-            kwargs[:project] = _resolve_notebook_project_path(notebook.path, notebook.compiler_options.project)
         else
             kwargs[each] = getfield(notebook.compiler_options, each)
         end
     end
-    return CompilerOptions(;kwargs...)
-end
-
-function _resolve_notebook_project_path(notebook_path::String, path::String)::String
-    # 1. notebook project specified as abspath, return
-    # 2. notebook project specified startswith "@", expand via `Base.load_path_expand`
-    # 3. notebook project specified as relative path, always assume it's relative to
-    #    the notebook.
-    if isabspath(path)
-        return tamepath(path)
-    elseif startswith(path, "@")
-        return Base.load_path_expand(path)
-    else
-        return tamepath(joinpath(dirname(notebook_path), path))
-    end
+    return CompilerOptions(; kwargs...)
 end
 
 function _convert_to_flags(options::CompilerOptions)::Vector{String}
     option_list = String[]
 
     for name in fieldnames(CompilerOptions)
-        flagname = if name == :startup_file
-            "--startup-file"
-        elseif name == :history_file
-            "--history-file"
-        else
-            string("--", name)
-        end
+        flagname = string("--", replace(String(name), "_" => "-"))
         value = getfield(options, name)
         if value !== nothing
             push!(option_list, string(flagname, "=", value))

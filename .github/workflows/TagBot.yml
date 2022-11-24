@@ -18,4 +18,49 @@ jobs:
         steps:
             - uses: JuliaRegistries/TagBot@v1
               with:
-                  token: ${{ secrets.GITHUB_TOKEN }}
+                  # We use that PAT token instead of GITHUB_TOKEN because we are triggering another github action on the 'release' event.
+                  # Triggering a workflow from a workflow is only allowed if the relaying event is signed with a PAT.
+                  # See https://docs.github.com/en/actions/reference/events-that-trigger-workflows#triggering-new-workflows-using-a-personal-access-token
+                  token: ${{ secrets.PAT_TOKEN }}
+                  changelog: |
+                    ## {{ package }} {{ version }}
+                    
+                    > Try this release in your browser! _(Available 30 minutes after the release)_
+                    > 
+                    > <a href="https://binder.plutojl.org/{{ version }}/"><img alt="Binder logo" src="https://mybinder.org/badge_logo.svg"></a>
+
+                    **Generate your own binder links using [pluto-on-binder.glitch.me](https://pluto-on-binder.glitch.me/)!**
+
+                    {% if previous_release %}
+                    [Diff since {{ previous_release }}]({{ compare_url }})
+                    {% endif %}
+
+                    {% if custom %}
+                    {{ custom }}
+                    {% endif %}
+
+                    {% if pulls %}
+                    **Merged pull requests:**
+                    {% for pull in pulls %}
+                    - {{ pull.title }} (#{{ pull.number }}) (@{{ pull.author.username }})
+                    {% endfor %}
+                    {% endif %}
+
+                    {% if issues %}
+                    **Closed issues:**
+                    {% for issue in issues %}
+                    - {{ issue.title }} (#{{ issue.number }})
+                    {% endfor %}
+                    {% endif %}
+                    
+                    # New features
+                    *(TODO)*
+
+                    # Performance improvements
+                    *(TODO)*
+
+                    # Fixes
+                    *(TODO)*
+
+                    # Internal changes
+                    *(TODO)*

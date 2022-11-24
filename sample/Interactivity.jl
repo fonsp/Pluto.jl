@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.14.0
+# v0.17.0
 
 using Markdown
 using InteractiveUtils
@@ -7,8 +7,9 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
-        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
     end
 end
@@ -16,7 +17,7 @@ end
 # ╔═╡ db24490e-7eac-11ea-094e-9d3fc8f22784
 md"# Introducing _bound_ variables
 
-With the new `@bind` macro, Pluto.jl can listen to real-time events from HTML objects!"
+With the `@bind` macro, Pluto.jl can synchronize a Julia variable with an HTML object!"
 
 # ╔═╡ bd24d02c-7eac-11ea-14ab-95021678e71e
 @bind x html"<input type=range>"
@@ -24,7 +25,7 @@ With the new `@bind` macro, Pluto.jl can listen to real-time events from HTML ob
 # ╔═╡ cf72c8a2-7ead-11ea-32b7-d31d5b2dacc2
 md"This syntax displays the HTML object as the cell's output, and uses its latest value as the definition of `x`. Of course, the variable `x` is _reactive_, and all references to `x` come to life ✨
 
-_Try it out!_ 👆" 
+_Try moving the slider!_ 👆" 
 
 # ╔═╡ cb1fd532-7eac-11ea-307c-ab16b1977819
 x
@@ -39,18 +40,22 @@ The `@bind` macro returns a `Bond` object, which can be used inside Markdown and
 
 # ╔═╡ fc99521c-7eae-11ea-269b-0d124b8cbe48
 begin
-	🐶slider = @bind 🐶 html"<input type=range>"
-	🐱slider = @bind 🐱 html"<input type=range>"
+	dog_slider = @bind 🐶 html"<input type=range>"
+	cat_slider = @bind 🐱 html"<input type=range>"
 	
-	md"""**How many pets do you have?**
+	md"""
+	**How many pets do you have?**
 	
-	Dogs: $(🐶slider)
-
-	Cats: $(🐱slider)"""
+	Dogs: $(dog_slider)
+	
+	Cats: $(cat_slider)
+	"""
 end
 
 # ╔═╡ 1cf27d7c-7eaf-11ea-3ee3-456ed1e930ea
-md"You have $(🐶) dogs and $(🐱) cats!"
+md"""
+You have $(🐶) dogs and $(🐱) cats!
+"""
 
 # ╔═╡ e3204b38-7eae-11ea-32be-39db6cc9faba
 md""
@@ -90,11 +95,13 @@ Try drawing a rectangle in the canvas below 👇 and notice that the `area` vari
 
 # ╔═╡ 7f4b0e1e-7f16-11ea-02d3-7955921a70bd
 @bind dims html"""
+<span>
 <canvas width="200" height="200" style="position: relative"></canvas>
 
 <script>
 // 🐸 `currentScript` is the current script tag - we use it to select elements 🐸 //
-const canvas = currentScript.parentElement.querySelector("canvas")
+const span = currentScript.parentElement
+const canvas = span.querySelector("canvas")
 const ctx = canvas.getContext("2d")
 
 var startX = 80
@@ -102,29 +109,30 @@ var startY = 40
 
 function onmove(e){
 	// 🐸 We send the value back to Julia 🐸 //
-	canvas.value = [e.layerX - startX, e.layerY - startY]
-	canvas.dispatchEvent(new CustomEvent("input"))
+	span.value = [e.layerX - startX, e.layerY - startY]
+	span.dispatchEvent(new CustomEvent("input"))
 
 	ctx.fillStyle = '#ffecec'
 	ctx.fillRect(0, 0, 200, 200)
 	ctx.fillStyle = '#3f3d6d'
-	ctx.fillRect(startX, startY, ...canvas.value)
+	ctx.fillRect(startX, startY, ...span.value)
 }
 
-canvas.onmousedown = e => {
+canvas.onpointerdown = e => {
 	startX = e.layerX
 	startY = e.layerY
-	canvas.onmousemove = onmove
+	canvas.onpointermove = onmove
 }
 
-canvas.onmouseup = e => {
-	canvas.onmousemove = null
+canvas.onpointerup = e => {
+	canvas.onpointermove = null
 }
 
-// Fire a fake mousemoveevent to show something
+// Fire a fake pointermoveevent to show something
 onmove({layerX: 130, layerY: 160})
 
 </script>
+</span>
 """
 
 # ╔═╡ 5876b98e-7f32-11ea-1748-0bb47823cde1
@@ -141,7 +149,7 @@ md"""## Can I use it?
 
 The `@bind` macro is **built into Pluto.jl** — it works without having to install a package. 
 
-You can use the (tiny) package [`PlutoUI`](https://github.com/fonsp/PlutoUI.jl) for some predefined `<input>` HTML codes. For example, you use `PlutoUI` to write
+You can use the (tiny) package [PlutoUI.jl](https://github.com/JuliaPluto/PlutoUI.jl) for some predefined input elements. For example, you use `PlutoUI` to write
 
 ```julia
 @bind x Slider(5:15)
@@ -159,11 +167,11 @@ _The `@bind` syntax in not limited to `html"..."` objects, but **can be used for
 """
 
 # ╔═╡ d5b3be4a-7f52-11ea-2fc7-a5835808207d
-md"""#### More packages
+md"""
+#### More packages
 
-In fact, **_any package_ can add bindable values to their objects**. For example, a geoplotting package could add a JS `input` event to their plot that contains the cursor coordinates when it is clicked. You can then use those coordinates inside Julia.
-
-A package _does not need to add `Pluto.jl` as a dependency to do so_: only the `Base.show(io, MIME("text/html"), obj)` function needs to be extended to contain a `<script>` that triggers the `input` event with a value. (It's up to the package creator _when_ and _what_.) This _does not affect_ how the object is displayed outside of Pluto.jl: uncaught events are ignored by your browser."""
+In fact, **_any package_ can add bindable values to their objects**. For example, a geoplotting package could add a JS `input` event to their plot that contains the cursor coordinates when it is clicked. You can then use those coordinates inside Julia. Take a look at the [JavaScript sample notebook](./sample/JavaScript.jl) to learn more about these techniques!
+"""
 
 # ╔═╡ aa8f6a0e-303a-11eb-02b7-5597c167596d
 
@@ -195,7 +203,7 @@ md"## Behind the scenes
 
 It's an **`Int64`**! Not an Observable, not a callback function, but simply _the latest value of the input element_.
 
-The update mechanism is _lossy_ and _lazy_, which means that it will skip values if your code is still running - and **only send the latest value when your code is ready again**. This is important when changing a slider from `0` to `100`, for example. If it would send all intermediate values, it might take a while for your code to process everything, causing a noticable lag."
+The update mechanism is _lossy_ and _lazy_, which means that it will skip values if your code is still running - and **only send the latest value when your code is ready again**. This is important when changing a slider from `0` to `100`, for example. If it would send all intermediate values, it might take a while for your code to process everything, causing a noticeable lag."
 
 # ╔═╡ 8f829274-7eb1-11ea-3888-13c00b3ba70f
 md"""#### What does the macro do?
@@ -208,22 +216,20 @@ For example, _expanding_ the `@bind` macro turns this expression:
 @bind x Slider(5:15)
 ```
 
-into:
+into (simplified):
 ```julia
 begin
-	local el = Slider(5:15)
-	global x = if applicable(Base.get, el)
-		Base.get(el)
-	else
-		missing
-	end
-	PlutoRunner.Bond(el, :x)
+    local el = Slider(5:15)
+    global x = AbstractPlutoDingetjes.intial_value(el)
+    PlutoRunner.create_bond(el, :x)
 end
 ```
 
-The `if` block in the middle assigns an initial value to `x`, which will be `missing`, unless an extension of `Base.get` has been declared for the element. Most objects (like `html"<input>"` or `md"quelque chose"`) don't have a `Base.get` method defined. In fact, `Base.get` has _no_ single-argument methods by default, but you can write one for your special types!
+We see that the macro creates a variable `x`, which is given the value `AbstractPlutoDingetjes.intial_value(el)`. This function returns `missing` by default, unless a method was implemented for your widget type. For example, `PlutoUI` has a `Slider` type, and it defines a method for `intial_value(slider::Slider)` that returns the default number.
 
-Declaring a default value using `Base.get` is **not necessary**, as shown by the examples above, but the default value will be used for `x` if the `notebook.jl` file is _run as a plain julia file_, without Pluto's interactivity. The package [`PlutoUI`](https://github.com/fonsp/PlutoUI.jl) defines default values.
+Declaring a default value using `AbstractPlutoDingetjes` is **not necessary**, as shown by the earlier examples in this notebook, but the default value will be used for `x` if the `notebook.jl` file is _run as a plain julia file_, without Pluto's interactivity.
+
+You don't need to worry about this if you are just getting started with Pluto and interactive elements, but more advanced users should take a look at [`AbstractPlutoDingetjes.jl`](https://github.com/JuliaPluto/AbstractPlutoDingetjes.jl).
 
 """
 
@@ -232,9 +238,9 @@ md"#### JavaScript?
 
 Yes! We are using `Generator.input` from [`observablehq/stdlib`](https://github.com/observablehq/stdlib#Generators_input) to create a JS _Generator_ (kind of like an Observable) that listens to `onchange`, `onclick` or `oninput` events, [depending on the element type](https://github.com/observablehq/stdlib#Generators_input).
 
-This makes it super easy to create nice HTML/JS-based interaction elements - a package creator simply has to write a `show` method for MIME type `text/html` that creates a DOM object that triggers the `input` event. In other words, _Pluto's `@bind` will behave exactly like `viewof` in observablehq_.
+This makes it super easy to create nice HTML/JS-based interaction elements - a package creator simply has to write a `show` method for MIME type `text/html` that creates a DOM object that triggers the `input` event. In other words, _Pluto's `@bind` will behave exactly like [`viewof` in observablehq](https://observablehq.com/@observablehq/introduction-to-views)_.
 
-_If you want to make a cool new UI, go to [observablehq.com/@observablehq/introduction-to-views](https://observablehq.com/@observablehq/introduction-to-views) to learn how._"
+_If you want to make a cool new UI for Pluto, go to the [JavaScript sample notebook](./sample/JavaScript.jl) to learn how!_"
 
 # ╔═╡ dddb9f34-7f37-11ea-0abb-272ef1123d6f
 md""
@@ -243,7 +249,7 @@ md""
 md""
 
 # ╔═╡ f7555734-7f34-11ea-069a-6bb67e201bdc
-md"That's it for now! Let us know what you think using the feedback button below! 👇"
+md"That's it for now! Let us know what you think using the feedback box below! 👇"
 
 # ╔═╡ Cell order:
 # ╟─db24490e-7eac-11ea-094e-9d3fc8f22784

@@ -4,17 +4,24 @@ import observablehq from "../common/SetupCellEnvironment.js"
 import { cl } from "../common/ClassTable.js"
 
 import { RawHTMLContainer, highlight } from "./CellOutput.js"
-import { PlutoContext } from "../common/PlutoContext.js"
+import { PlutoActionsContext } from "../common/PlutoContext.js"
+
+const without_workspace_stuff = (str) =>
+    str
+        .replace(/Main\.var&quot;workspace\#\d+&quot;\./g, "") // remove workspace modules from variable names
+        .replace(/Main\.workspace\#\d+\./g, "") // remove workspace modules from variable names
+        .replace(/ in Main\.var&quot;workspace\#\d+&quot;/g, "") // remove workspace modules from method lists
+        .replace(/ in Main\.workspace\#\d+/g, "") // remove workspace modules from method lists
+        .replace(/#&#61;&#61;#[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\:\d+/g, "") // remove UUIDs from filenames
 
 export let LiveDocs = ({ desired_doc_query, on_update_doc_query, notebook }) => {
-    let pluto_actions = useContext(PlutoContext)
+    let pluto_actions = useContext(PlutoActionsContext)
     let container_ref = useRef()
     let live_doc_search_ref = useRef()
     let [state, set_state] = useState({
         shown_query: null,
         searched_query: null,
-        body:
-            "<p>Welcome to the <b>Live docs</b>! Keep this little window open while you work on the notebook, and you will get documentation of everything you type!</p><p>You can also type a query above.</p><hr><p><em>Still stuck? Here are <a href='https://julialang.org/about/help/'>some tips</a>.</em></p>",
+        body: "<p>Welcome to the <b>Live docs</b>! Keep this little window open while you work on the notebook, and you will get documentation of everything you type!</p><p>You can also type a query above.</p><hr><p><em>Still stuck? Here are <a href='https://julialang.org/about/help/' target='_blank'>some tips</a>.</em></p>",
         hidden: true,
         loading: false,
     })
@@ -88,18 +95,26 @@ export let LiveDocs = ({ desired_doc_query, on_update_doc_query, notebook }) => 
         })
     }
 
-    let docs_element = useMemo(() => html` <${RawHTMLContainer} body=${state.body} /> `, [state.body])
+    let docs_element = useMemo(() => html` <${RawHTMLContainer} body=${without_workspace_stuff(state.body)} /> `, [state.body])
     let no_docs_found = state.loading === false && state.searched_query !== "" && state.searched_query !== state.shown_query
 
     return html`
         <aside id="helpbox-wrapper" ref=${container_ref}>
             <pluto-helpbox class=${cl({ hidden: state.hidden, loading: state.loading, notfound: no_docs_found })}>
                 <header
+                    translate=${false}
                     onClick=${() => {
                         if (state.hidden) {
                             set_state((state) => ({ ...state, hidden: false }))
                             // wait for next event loop
-                            setTimeout(() => live_doc_search_ref.current && live_doc_search_ref.current.focus(), 0)
+                            setTimeout(
+                                () =>
+                                    live_doc_search_ref.current &&
+                                    live_doc_search_ref.current.focus({
+                                        preventScroll: true,
+                                    }),
+                                0
+                            )
                         }
                     }}
                 >

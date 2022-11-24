@@ -1,6 +1,6 @@
 export type Patch = {
     path: Array<string | number>
-    op: "add" | "replace"
+    op: "add" | "replace" | "remove"
     value: any
 }
 

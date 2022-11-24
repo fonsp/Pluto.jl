@@ -5,12 +5,17 @@ import Dates
 import UUIDs: UUID
 import MsgPack
 import .Configuration
+import Pkg
 
 # MsgPack.jl doesn't define a serialization method for MIME and UUID objects, so we write these ourselves:
 MsgPack.msgpack_type(::Type{<:MIME}) = MsgPack.StringType()
 MsgPack.msgpack_type(::Type{UUID}) = MsgPack.StringType()
+MsgPack.msgpack_type(::Type{VersionNumber}) = MsgPack.StringType()
+MsgPack.msgpack_type(::Type{Pkg.Types.VersionRange}) = MsgPack.StringType()
 MsgPack.to_msgpack(::MsgPack.StringType, m::MIME) = string(m)
 MsgPack.to_msgpack(::MsgPack.StringType, u::UUID) = string(u)
+MsgPack.to_msgpack(::MsgPack.StringType, v::VersionNumber) = string(v)
+MsgPack.to_msgpack(::MsgPack.StringType, v::Pkg.Types.VersionRange) = string(v)
 
 # Support for sending Dates
 MsgPack.msgpack_type(::Type{Dates.DateTime}) = MsgPack.ExtensionType()
@@ -25,6 +30,10 @@ MsgPack.msgpack_type(::Type{Configuration.EvaluationOptions}) = MsgPack.StructTy
 MsgPack.msgpack_type(::Type{Configuration.CompilerOptions}) = MsgPack.StructType()
 MsgPack.msgpack_type(::Type{Configuration.ServerOptions}) = MsgPack.StructType()
 MsgPack.msgpack_type(::Type{Configuration.SecurityOptions}) = MsgPack.StructType()
+
+# Don't try to send callback functions which can't be serialized (see ServerOptions.event_listener)
+MsgPack.msgpack_type(::Type{Function}) = MsgPack.NilType()
+MsgPack.to_msgpack(::MsgPack.NilType, ::Function) = nothing
 
 # We want typed integer arrays to arrive as JS typed integer arrays:
 const JSTypedIntSupport = [Int8, UInt8, Int16, UInt16, Int32, UInt32, Float32, Float64]
@@ -77,3 +86,4 @@ end
 function unpack(args...)
     MsgPack.unpack(args...) |> decode_extension_and_addbits
 end
+precompile(unpack, (Vector{UInt8},))

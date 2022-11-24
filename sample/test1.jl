@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.11.3
+# v0.19.8
 
 using Markdown
 using InteractiveUtils
@@ -7,11 +7,15 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
-        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
     end
 end
+
+# ╔═╡ 878a4750-b15e-11ea-2584-8feba490699f
+using Test
 
 # ╔═╡ fd0763a0-b163-11ea-23b4-a7bae7052e19
 md"# File picker"
@@ -22,6 +26,15 @@ md"# Notebook interaction"
 # ╔═╡ 6dde0352-b15e-11ea-2fa8-7327cc366c1a
 md"## Running multiple cells"
 
+# ╔═╡ 7370dcc0-b15e-11ea-234b-23584c864b61
+ma = 1
+
+# ╔═╡ 75b21a30-b15e-11ea-3046-2170ec097e63
+mb = 2
+
+# ╔═╡ 7b74dd40-b15e-11ea-291a-d7e10a185718
+@test ma + mb == 3
+
 # ╔═╡ f0b821b0-b15f-11ea-1f64-dd33aa85b54e
 md"## Moving cells"
 
@@ -30,6 +43,67 @@ md"## Stopping cells"
 
 # ╔═╡ d2c1d090-b162-11ea-0c17-2b234c098cf9
 md"# CodeMirror"
+
+# ╔═╡ bc5bf64e-8b47-45ac-baf2-3cbb8e35d916
+# (this code should error)
+"""
+Some sample code from https://juliamono.netlify.app/
+"""
+function T(𝛉::AbstractArray,
+           𝒞::Tuple{AbstractArray,
+           Vararg{AbstractArray}},
+           𝒟::Tuple{AbstractArray, Vararg{AbstractArray}})
+    ⊗ = kron
+    l = length(𝛉)
+    𝐈ₗ = SMatrix{l,l}(1.0I)
+    𝐈ₘ = SMatrix{1,1}(1.0I)
+    𝐓 = @SMatrix zeros(l,l)
+    N = length(𝒟[1])
+    ℳ, ℳʹ = 𝒟
+    Λ₁, Λ₂ = 𝒞
+    𝚲ₙ = @MMatrix zeros(4,4)
+    𝐞₁ = @SMatrix [1.0; 0.0; 0.0]
+    𝐞₂ = @SMatrix [0.0; 1.0; 0.0]
+    for n = 1:N
+        index = SVector(1,2)
+        𝚲ₙ[1:2,1:2] .=  Λ₁[n][index,index]
+        𝚲ₙ[3:4,3:4] .=  Λ₂[n][index,index]
+        𝐦    = hom(ℳ[n])
+        𝐦ʹ   = hom(ℳʹ[n])
+        𝐔ₙ   = (𝐦 ⊗ 𝐦ʹ)
+        ∂ₓ𝐮ₙ = [(𝐞₁ ⊗ 𝐦ʹ) (𝐞₂ ⊗ 𝐦ʹ) (𝐦 ⊗ 𝐞₁) (𝐦 ⊗ 𝐞₂)]
+        𝐁ₙ   = ∂ₓ𝐮ₙ * 𝚲ₙ * ∂ₓ𝐮ₙ'
+        𝚺ₙ   = 𝛉' * 𝐁ₙ * 𝛉
+        𝚺ₙ⁻¹ = inv(𝚺ₙ)
+        𝐓₁   = @SMatrix zeros(Float64,l,l)
+        for k = 1:l
+            𝐞ₖ = 𝐈ₗ[:,k]
+            ∂𝐞ₖ𝚺ₙ = (𝐈ₘ ⊗ 𝐞ₖ') * 𝐁ₙ * (𝐈ₘ ⊗ 𝛉) + (𝐈ₘ ⊗ 𝛉') * 𝐁ₙ * (𝐈ₘ ⊗ 𝐞ₖ)
+            # Accumulating the result in 𝐓₁ allocates memory,
+            # even though the two terms in the
+            # summation are both SArrays.
+            𝐓₁ = 𝐓₁ + 𝐔ₙ * 𝚺ₙ⁻¹ * (∂𝐞ₖ𝚺ₙ) * 𝚺ₙ⁻¹ * 𝐔ₙ' * 𝛉 * 𝐞ₖ'
+        end
+        𝐓 = 𝐓 + 𝐓₁
+    end
+    𝐓
+end
+
+# ╔═╡ a28395ed-4004-4731-a0bd-be3398505a0e
+# Some sample code from https://juliamono.netlify.app/
+quote
+	using Zygote: @adjoint
+	function ignore(f)
+		try return f()
+		catch e; return 0; end
+	end
+	@adjoint function ignore(f)
+		try Zygote._pullback(__context__, f)
+		catch e
+			0, ȳ -> nothing
+		end
+	end
+end;
 
 # ╔═╡ d890a190-b162-11ea-31dd-8d603787e5c5
 md"## Autocomplete"
@@ -62,6 +136,26 @@ md"## Stack traces"
 # ╔═╡ 84888e20-b160-11ea-1d61-c5934251d6dd
 html"<div style='height: 100vh'></div>"
 
+# ╔═╡ 9dc4a0a0-b15f-11ea-361c-87742cf3f2a2
+function ef(x)
+	
+	
+	sqrt(-x)
+end
+
+# ╔═╡ aab109c0-b15f-11ea-275d-31e21fcda8c4
+ef(1)
+
+# ╔═╡ 976bc2a0-b160-11ea-3e7a-9f033b0f2daf
+function eg(x)
+	
+	
+	sqrt(-x)
+end
+
+# ╔═╡ 9c74f9b2-b160-11ea-35fb-917cb1120f5b
+eg(1)
+
 # ╔═╡ ea3f77f0-b166-11ea-046e-ef39bfc57d0f
 md"## Bad errors"
 
@@ -74,6 +168,21 @@ md"# Bonds"
 # ╔═╡ 3a14b3f0-b165-11ea-153d-796416ee5ccc
 md"## Lossy"
 
+# ╔═╡ 41a75500-b165-11ea-2519-bbd0feaef6cf
+@bind bl1 html"<input type='range' max='100000'>"
+
+# ╔═╡ 4ccbf670-b165-11ea-1951-c17ffb8a58cf
+sleep(.5); bl1
+
+# ╔═╡ 8bb26902-b165-11ea-048c-d7f7a72006ee
+@assert bl1 isa Int64
+
+# ╔═╡ e559eaf0-b165-11ea-0d81-ffc480afe8f3
+@bind bl2 html"<input type='range' max='100000'>"
+
+# ╔═╡ e63be680-b165-11ea-0fd3-bd4e0bf92eb8
+bl2
+
 # ╔═╡ 59966a90-b163-11ea-1786-e56e45f06dd0
 md"## Recursive"
 
@@ -83,19 +192,72 @@ md"## Scrolling"
 # ╔═╡ 431d17c0-cfff-11ea-39b5-394b34438544
 md"### `text/html`"
 
+# ╔═╡ f2c0bb90-b162-11ea-24a1-3f864a09e5ee
+@bind bw1 html"<input type='range' value='0'>"
+
+# ╔═╡ a4d4ac28-cfff-11ea-3f14-15d2928d2c88
+zeros((bw1, bw1))
+
+# ╔═╡ 56e6f440-b15e-11ea-1327-09932af5b5bd
+HTML("<div style='height: $(bw1)vh'></div>")
+
+# ╔═╡ 2296ac80-b163-11ea-3d00-ed366fa9ce3e
+@bind bw2 html"<input type='range' value='0'>"
+
+# ╔═╡ 20d72230-b163-11ea-39c2-69bf2c422d50
+HTML("<div style='height: $(bw2)vh'></div>")
+
+# ╔═╡ 55d116d6-cfff-11ea-25fc-056ce62c8bcd
+zeros((bw2, bw2))
+
+# ╔═╡ 76c98394-cfff-11ea-0b6c-25260a8a3bb9
+zeros((10,10));
+
 # ╔═╡ 32b5edc0-b15d-11ea-09d6-3b889f6d397a
 md"# Rich display
 
 ## `image/svg+xml` and `image/jpeg`"
 
+# ╔═╡ 52cb1264-d824-11ea-332a-55964f3d8b90
+begin
+	struct A end
+	struct B end
+	
+	function Base.show(io::IO, ::MIME"image/svg+xml", x::A)
+		write(io, read(download("https://raw.githubusercontent.com/fonsp/Pluto.jl/main/frontend/img/logo.svg")))
+	end
+	function Base.show(io::IO, ::MIME"image/jpg", x::B)
+		write(io, read(download("https://fonsp.com/img/doggoSmall.jpg?raw=true")))
+	end
+	nothing
+end
+
+# ╔═╡ 5d59acfe-d824-11ea-1d7b-07551a2b11d4
+A()
+
+# ╔═╡ 64d929aa-d824-11ea-2cc1-835fbe38be11
+B()
+
+# ╔═╡ 661c112e-d824-11ea-3612-4104449c409e
+[A(), B()]
+
 # ╔═╡ 3be84600-b166-11ea-1d24-59212363543f
 md"## `text/plain`"
+
+# ╔═╡ 42f0a872-b166-11ea-0c71-355d62f67fca
+ra = 1:100
+
+# ╔═╡ 794bc212-b166-11ea-0840-fddb29190841
+1:13
 
 # ╔═╡ 95898660-b166-11ea-1db1-df7f3c4f1353
 "<b>I am not bold</b>"
 
 # ╔═╡ 2859a890-b161-11ea-14e9-b7ddaf08195a
 md"## Tree view"
+
+# ╔═╡ 23f41dd2-b15c-11ea-17d2-45b3e83093ba
+Ref(Dict(:a => [1,md"![](https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/PDS_70.jpg/567px-PDS_70.jpg)", md"# Hello"], [3,4] => (:b, (x=3, y=2))))
 
 # ╔═╡ 88bd7aae-b15f-11ea-270e-ab00e6a01203
 ["asdf", "<b>I am not bold</b>"]
@@ -278,6 +440,106 @@ asdfdasd
 # ╔═╡ 46fc284a-d682-11ea-34b6-69874efcaf65
 md"### Text wrapping"
 
+# ╔═╡ 4d452956-d682-11ea-3aeb-cd7d1b2f67dc
+s="12345678012345678012345678012345678012345678012345678012345678012345678012345678012345678012345678012345678056780123456780123456780123456780123456780123456780123456780123456780123456780120123456780\n\n\"\"\n\n5678012345678012
+
+7801234567801234567801234567 7801234567801234567801234567 7801234567801234567801234567 7801234567801234567801234567 7801234567801234567801234567
+
+👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧👩‍👩‍👧👩‍👩‍👧👩‍👩‍👧👩‍👩‍👧👩‍👩‍👧👩‍👩‍👧👩‍👩‍👧👩‍👩‍👧👩‍👩‍👧👩‍👩‍👧❤❤❤✔
+
+Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum."
+
+# ╔═╡ 4e320206-d682-11ea-3dfe-b77f6e96f33a
+Text(s)
+
+# ╔═╡ f16e48a7-f1db-4f15-a013-3d509b2f93ea
+md"""
+# LaTeX math
+"""
+
+# ╔═╡ c3ae2fd1-628b-4876-9253-053805c47295
+md"""
+This should be centered:
+
+$$T^{n+1}_i = \kappa (T^n_{i-1} - 2 T^n_i + T^n_{i+1}).$$
+
+and should look exactly the same as:
+
+```math
+T^{n+1}_i = \kappa (T^n_{i-1} - 2 T^n_i + T^n_{i+1}).
+```
+
+this should be on the left:
+
+ $T^{n+1}_i = \kappa (T^n_{i-1} - 2 T^n_i + T^n_{i+1}).$
+"""
+
+# ╔═╡ ae4ab84b-ed29-4e09-b9c3-049d287e8c60
+md"""
+This z``\alpha``z and z$\alpha$z should look the same.
+"""
+
+# ╔═╡ 4b44cf5b-cac3-4283-b156-7adfce878228
+md"""
+> Calling `T` the current vector, i.e. $\mathbf{T}^n := (T^n_i)_{i=1, \ldots, N_x}$, and `T′` the new vector at the next time step, we have the following basic expression, for the ``i``th element.
+"""
+
+# ╔═╡ a10b9a7c-33d6-447e-99c0-c96a43fb3c6f
+md"""
+$$\begin{aligned}
+\dot{x} &= a + x^2 y - bx - x \\
+\dot{y} &= b x - x^2 y
+\end{aligned}$$
+"""
+
+# ╔═╡ ec741d6c-b148-4929-8805-2cd93ce6fca7
+md"""
+## Extensions
+"""
+
+# ╔═╡ 1d10093f-3256-46a8-b0d4-5186092825e2
+md"""
+### `mchem`
+Here is a chemical reaction: ``\ce{CO2 + C -> 2 CO}``. And another one:
+
+```math
+\ce{Hg^2+ ->[I-]  $\underset{\mathrm{red}}{\ce{HgI2}}$  ->[I-]  $\underset{\mathrm{red}}{\ce{[Hg^{II}I4]^2-}}$}
+```
+"""
+
+# ╔═╡ 7376d9e9-5740-4b67-9e8e-a2447e2c17cf
+html"""
+<p>This should look like a centered, black version of</p>
+<img width="309" alt="image" src="https://user-images.githubusercontent.com/6933510/173889771-d2bd046a-4d18-4c76-9577-36f6dcab9d1c.png">
+
+"""
+
+# ╔═╡ d61ed468-4922-4d7b-b7f1-475e17bcd1e4
+md"""
+### `cases`
+```math
+\begin{numcases} {|x|=}
+x, & for $x \geq 0$\\
+-x, & for $x < 0$
+\end{numcases}
+```
+"""
+
+# ╔═╡ 9d4c1242-cea0-4e76-8554-de0e05938de3
+md"""
+### `physics`
+```math
+\require{physics}
+\principalvalue hysics
+```
+"""
+
+# ╔═╡ fe97e64f-9de6-46aa-bdb4-a1d6e2f61297
+md"""
+### `color`
+``\color{red}{i\ am\ red}``
+"""
+
 # ╔═╡ 1bb05fc0-b15d-11ea-3dae-7734f66a0c56
 md"# Testing machinery"
 
@@ -313,118 +575,6 @@ html"""
 </style>
 
 """
-
-# ╔═╡ 878a4750-b15e-11ea-2584-8feba490699f
-using Test
-
-# ╔═╡ 7370dcc0-b15e-11ea-234b-23584c864b61
-ma = 1
-
-# ╔═╡ 75b21a30-b15e-11ea-3046-2170ec097e63
-mb = 2
-
-# ╔═╡ 7b74dd40-b15e-11ea-291a-d7e10a185718
-@test ma + mb == 3
-
-# ╔═╡ 9dc4a0a0-b15f-11ea-361c-87742cf3f2a2
-function ef(x)
-	
-	
-	sqrt(-x)
-end
-
-# ╔═╡ aab109c0-b15f-11ea-275d-31e21fcda8c4
-ef(1)
-
-# ╔═╡ 976bc2a0-b160-11ea-3e7a-9f033b0f2daf
-function eg(x)
-	
-	
-	sqrt(-x)
-end
-
-# ╔═╡ 9c74f9b2-b160-11ea-35fb-917cb1120f5b
-eg(1)
-
-# ╔═╡ 41a75500-b165-11ea-2519-bbd0feaef6cf
-@bind bl1 html"<input type='range' max='100000'>"
-
-# ╔═╡ 4ccbf670-b165-11ea-1951-c17ffb8a58cf
-sleep(.5); bl1
-
-# ╔═╡ 8bb26902-b165-11ea-048c-d7f7a72006ee
-@assert bl1 isa Int64
-
-# ╔═╡ e559eaf0-b165-11ea-0d81-ffc480afe8f3
-@bind bl2 html"<input type='range' max='100000'>"
-
-# ╔═╡ e63be680-b165-11ea-0fd3-bd4e0bf92eb8
-bl2
-
-# ╔═╡ f2c0bb90-b162-11ea-24a1-3f864a09e5ee
-@bind bw1 html"<input type='range' value='0'>"
-
-# ╔═╡ a4d4ac28-cfff-11ea-3f14-15d2928d2c88
-zeros((bw1, bw1))
-
-# ╔═╡ 56e6f440-b15e-11ea-1327-09932af5b5bd
-HTML("<div style='height: $(bw1)vh'></div>")
-
-# ╔═╡ 2296ac80-b163-11ea-3d00-ed366fa9ce3e
-@bind bw2 html"<input type='range' value='0'>"
-
-# ╔═╡ 20d72230-b163-11ea-39c2-69bf2c422d50
-HTML("<div style='height: $(bw2)vh'></div>")
-
-# ╔═╡ 55d116d6-cfff-11ea-25fc-056ce62c8bcd
-zeros((bw2, bw2))
-
-# ╔═╡ 76c98394-cfff-11ea-0b6c-25260a8a3bb9
-zeros((10,10));
-
-# ╔═╡ 52cb1264-d824-11ea-332a-55964f3d8b90
-begin
-	struct A end
-	struct B end
-	
-	function Base.show(io::IO, ::MIME"image/svg+xml", x::A)
-		write(io, read(download("https://raw.githubusercontent.com/fonsp/Pluto.jl/main/frontend/img/logo.svg")))
-	end
-	function Base.show(io::IO, ::MIME"image/jpg", x::B)
-		write(io, read(download("https://fonsp.com/img/doggoSmall.jpg?raw=true")))
-	end
-	nothing
-end
-
-# ╔═╡ 5d59acfe-d824-11ea-1d7b-07551a2b11d4
-A()
-
-# ╔═╡ 64d929aa-d824-11ea-2cc1-835fbe38be11
-B()
-
-# ╔═╡ 661c112e-d824-11ea-3612-4104449c409e
-[A(), B()]
-
-# ╔═╡ 42f0a872-b166-11ea-0c71-355d62f67fca
-ra = 1:100
-
-# ╔═╡ 794bc212-b166-11ea-0840-fddb29190841
-1:13
-
-# ╔═╡ 23f41dd2-b15c-11ea-17d2-45b3e83093ba
-Ref(Dict(:a => [1,md"![](https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/PDS_70.jpg/567px-PDS_70.jpg)", md"# Hello"], [3,4] => :b))
-
-# ╔═╡ 4d452956-d682-11ea-3aeb-cd7d1b2f67dc
-s="12345678012345678012345678012345678012345678012345678012345678012345678012345678012345678012345678012345678056780123456780123456780123456780123456780123456780123456780123456780123456780120123456780\n\n\"\"\n\n5678012345678012
-
-7801234567801234567801234567 7801234567801234567801234567 7801234567801234567801234567 7801234567801234567801234567 7801234567801234567801234567
-
-👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧👩‍👩‍👧👩‍👩‍👧👩‍👩‍👧👩‍👩‍👧👩‍👩‍👧👩‍👩‍👧👩‍👩‍👧👩‍👩‍👧👩‍👩‍👧👩‍👩‍👧❤❤❤✔
-
-Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum."
-
-# ╔═╡ 4e320206-d682-11ea-3dfe-b77f6e96f33a
-Text(s)
 
 # ╔═╡ 7e2cc6c0-b15d-11ea-32b0-15394cdebd35
 function ask(kind, str::Markdown.MD)
@@ -597,10 +747,52 @@ ask("visual", md"Assignment to `低调又牛逼的类型系统` must be visible"
 # ╔═╡ 21bd9950-b15d-11ea-2632-41b1c66563bd
 ask("visual", md"These three paragraphs must have equal spacing between them")
 
+# ╔═╡ 00000000-0000-0000-0000-000000000001
+PLUTO_PROJECT_TOML_CONTENTS = """
+[deps]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+"""
+
+# ╔═╡ 00000000-0000-0000-0000-000000000002
+PLUTO_MANIFEST_TOML_CONTENTS = """
+# This file is machine-generated - editing it directly is not advised
+
+julia_version = "1.7.0"
+manifest_format = "2.0"
+
+[[deps.Base64]]
+uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
+
+[[deps.InteractiveUtils]]
+deps = ["Markdown"]
+uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+
+[[deps.Logging]]
+uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
+
+[[deps.Markdown]]
+deps = ["Base64"]
+uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
+
+[[deps.Random]]
+deps = ["SHA", "Serialization"]
+uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+
+[[deps.SHA]]
+uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
+
+[[deps.Serialization]]
+uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
+
+[[deps.Test]]
+deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
+uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+"""
+
 # ╔═╡ Cell order:
 # ╟─ce7f9d90-b163-11ea-0ff7-cf7378644741
 # ╠═878a4750-b15e-11ea-2584-8feba490699f
-# ╟─fd0763a0-b163-11ea-23b4-a7bae7052e19
+# ╠═fd0763a0-b163-11ea-23b4-a7bae7052e19
 # ╟─11f3ae90-b164-11ea-1027-0d2e6e7048dd
 # ╟─26d2b310-b164-11ea-0029-f7b04ee5ba73
 # ╟─1c6229f0-b165-11ea-0f1d-674022c43971
@@ -617,6 +809,8 @@ ask("visual", md"These three paragraphs must have equal spacing between them")
 # ╟─f4015940-b15f-11ea-0f3a-1714c79023c3
 # ╟─4980fc10-b163-11ea-081b-c1335699a8f6
 # ╟─d2c1d090-b162-11ea-0c17-2b234c098cf9
+# ╠═bc5bf64e-8b47-45ac-baf2-3cbb8e35d916
+# ╠═a28395ed-4004-4731-a0bd-be3398505a0e
 # ╟─d890a190-b162-11ea-31dd-8d603787e5c5
 # ╟─1b569b72-b167-11ea-1462-63674f7e13db
 # ╠═e141f910-b162-11ea-039b-3ba1414cbd07
@@ -710,6 +904,19 @@ ask("visual", md"These three paragraphs must have equal spacing between them")
 # ╟─46fc284a-d682-11ea-34b6-69874efcaf65
 # ╟─4d452956-d682-11ea-3aeb-cd7d1b2f67dc
 # ╠═4e320206-d682-11ea-3dfe-b77f6e96f33a
+# ╟─f16e48a7-f1db-4f15-a013-3d509b2f93ea
+# ╟─c3ae2fd1-628b-4876-9253-053805c47295
+# ╟─ae4ab84b-ed29-4e09-b9c3-049d287e8c60
+# ╟─4b44cf5b-cac3-4283-b156-7adfce878228
+# ╟─a10b9a7c-33d6-447e-99c0-c96a43fb3c6f
+# ╟─ec741d6c-b148-4929-8805-2cd93ce6fca7
+# ╟─1d10093f-3256-46a8-b0d4-5186092825e2
+# ╟─7376d9e9-5740-4b67-9e8e-a2447e2c17cf
+# ╟─d61ed468-4922-4d7b-b7f1-475e17bcd1e4
+# ╟─9d4c1242-cea0-4e76-8554-de0e05938de3
+# ╟─fe97e64f-9de6-46aa-bdb4-a1d6e2f61297
 # ╟─1bb05fc0-b15d-11ea-3dae-7734f66a0c56
 # ╠═9ac925d0-b15d-11ea-2abd-7db360900be0
 # ╠═7e2cc6c0-b15d-11ea-32b0-15394cdebd35
+# ╟─00000000-0000-0000-0000-000000000001
+# ╟─00000000-0000-0000-0000-000000000002

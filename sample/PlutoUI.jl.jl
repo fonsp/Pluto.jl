@@ -1,5 +1,14 @@
 ### A Pluto.jl notebook ###
-# v0.12.3
+# v0.19.9
+
+#> [frontmatter]
+#> author_url = "https://github.com/JuliaPluto"
+#> image = "https://user-images.githubusercontent.com/6933510/174067690-50c8128d-748b-4f50-8a76-2ce18166642b.png"
+#> order = "3"
+#> tags = ["basic", "interactivity", "classic"]
+#> author_name = "Pluto.jl"
+#> description = "Slider, buttons, dropdowns and more from PlutoUI.jl!"
+#> license = "Unlicense"
 
 using Markdown
 using InteractiveUtils
@@ -7,23 +16,15 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
-        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
     end
 end
 
-# ╔═╡ ae0936ee-c767-11ea-0cbc-3f58779113da
-begin
-	let
-		env = mktempdir()
-		import Pkg
-		Pkg.activate(env)
-		Pkg.Registry.update()
-		Pkg.add(Pkg.PackageSpec(;name="PlutoUI", version="0.6.7-0.6"))
-	end
-	using PlutoUI
-end
+# ╔═╡ 071d9ca5-9b42-4583-ad96-a48f93453a0e
+using PlutoUI
 
 # ╔═╡ bc532cd2-c75b-11ea-313f-8b5e771c9227
 md"""# PlutoUI.jl
@@ -37,7 +38,7 @@ However, code like
 ```
 is hard to memorize, so `PlutoUI` makes it more _Julian_:
 ```julia
-@bind x Slider(1:15)
+@bind x Slider(5:15)
 ```
 """
 
@@ -47,22 +48,13 @@ is hard to memorize, so `PlutoUI` makes it more _Julian_:
 # ╔═╡ 051f31fc-cc63-11ea-1e2c-0704285ea6a9
 md"""
 #### To use it in other notebooks
-First, add the `PlutoUI` package. The easiest way is to open a new Julia terminal, and type:
-```
-julia> ]
-(@v1.5) pkg> add PlutoUI
-```
-Next, add this cell to your notebook:
-```julia
-using PlutoUI
-```
+Simply import the `PlutoUI` package, and Pluto's built-in package manager takes care of the rest!
 """
 
 # ╔═╡ fddb794c-c75c-11ea-1f55-eb9c178424cd
-md"# Basics"
-
-# ╔═╡ 1e10d82a-c766-11ea-0c4b-3bd77f62759d
-md"`PlutoUI` includes the basic HTML5 `<input>` types."
+md"""
+# Basics
+"""
 
 # ╔═╡ b819e9a8-c760-11ea-11ee-dd01da663b5c
 md"## Slider"
@@ -77,7 +69,7 @@ x
 
 
 # ╔═╡ a709fd2e-c760-11ea-05c5-7bf673990de1
-md"The first argument is an `AbstractRange` object. You can set the _default value_ using a keyword argument:"
+md"The first argument is a `Vector` or range. You can set the _default value_ using a keyword argument:"
 
 # ╔═╡ d3811ac2-c760-11ea-0811-131d9f1d3910
 @bind y Slider(20:0.1:30, default=25)
@@ -86,6 +78,34 @@ md"The first argument is an `AbstractRange` object. You can set the _default val
 y
 
 # ╔═╡ 06962cde-cc4f-11ea-0d96-69a8cb7eeda2
+
+
+# ╔═╡ 6605d010-d0d1-4cc8-a34d-3158b8572b5d
+md"""
+## Scrubbable
+
+`Scrubbable` makes a number interactive, you can **click and drag** its value left or right. 
+
+Try it in the text below:
+"""
+
+# ╔═╡ 756e2c82-6e2f-4d7b-a1ed-5de97be04269
+md"""
+_If Alice has $(@bind a Scrubbable(20)) apples, 
+and she gives $(@bind b Scrubbable(3)) apples to Bob..._
+"""
+
+# ╔═╡ c07c5a9e-61f9-4247-86e7-7c3f9956d0ff
+md"""
+_...then Alice has **$(a - b)** apples left._
+"""
+
+# ╔═╡ c3fea1b2-fc11-4c19-9c01-a8e03fda2817
+md"""
+Use the Live Docs to learn more about `Scrubbable`!
+"""
+
+# ╔═╡ 221c308e-3cbe-4689-aa67-8970957f8cb0
 
 
 # ╔═╡ e49623ac-c760-11ea-3689-c15f2e2f6081
@@ -154,11 +174,12 @@ sentence
 
 
 # ╔═╡ 0136af80-c762-11ea-2f1a-9dccff334a11
-md"You can also create a **mutli-line** text box!"
+md"You can also create a **multi-line** text box!"
 
 # ╔═╡ 0e6f0508-c762-11ea-0352-09bd694a9b35
-# gedicht van: Sanne de Kroon
 @bind poem TextField((30, 3), "Je opent en sluit je armen,\nMaar houdt niets vast.\nHet is net zwemmen")
+
+# (poem by: Sanne de Kroon)
 
 # ╔═╡ 3dcd7002-c765-11ea-323d-a1fb49409011
 split(poem, "\n")
@@ -175,11 +196,17 @@ md"## Select"
 # ╔═╡ 705662e2-c763-11ea-2f6d-cdaffc1fc73a
 vegetable
 
+# ╔═╡ 1feebd8f-667a-42fd-965d-5e3167ff7c7a
+@bind favourite_function Select([sin, cos, tan, sqrt])
+
+# ╔═╡ 9128d2c1-364c-4446-baaa-6d0593edda47
+favourite_function(2)
+
 # ╔═╡ 3930f0d8-cc50-11ea-3de6-d91ac5c6cd9f
 
 
 # ╔═╡ 787a2c88-c763-11ea-0a32-bb91ca60113d
-md"Instead of an array of `String`s, you can also give an array of **pairs**, where the first item is the bound value, and the second item is displayed. "
+md"Instead of an array of values, you can also give an array of **pairs**, where the first item is the bound value, and the second item is displayed. "
 
 # ╔═╡ ac8c4dee-c763-11ea-1b2d-c590a2d50d7e
 @bind fruit Select(["apple" => "🍎", "melon" => "🍉"])
@@ -191,7 +218,11 @@ fruit
 
 
 # ╔═╡ 62c6f866-f0fe-11ea-0961-319f28d040d4
-md"## MultiSelect"
+md"""
+## MultiSelect
+
+This widget allows the user to select multiple element by holding `Ctrl` / `Cmd` while clicking a more items.
+"""
 
 # ╔═╡ a01c8096-f0fe-11ea-3e78-ad8551e84fa1
 @bind vegetable_basket MultiSelect(["potato", "carrot", "boerenkool"])
@@ -201,6 +232,33 @@ vegetable_basket
 
 # ╔═╡ c819ef3e-f0fe-11ea-1213-9df7597e4e89
 md"Just like `Select`, you can also give an array of pairs."
+
+# ╔═╡ b104ba6d-0293-4378-9652-f628f1d08d97
+md"""
+## MultiCheckBox
+
+This widget allows the user to select multiple elements using checkboxes.
+"""
+
+# ╔═╡ 16f2218d-f1bc-4b34-a355-53acfa77fbf5
+@bind fruit_basket MultiCheckBox(["apple", "blueberry", "mango"])
+
+# ╔═╡ 2c7811cb-d9ea-470c-8cb7-2b3803489f3f
+fruit_basket
+
+# ╔═╡ 78be41d1-7dda-4bec-b75f-fbcf8b7594a7
+md"""
+You can use `MultiSelect` and `MultiCheckBox` with any vector of objects, not just strings:
+"""
+
+# ╔═╡ 90d84f1b-042c-444e-8bac-fe358b6d68a1
+@bind my_functions MultiCheckBox([sin, cos, tan])
+
+# ╔═╡ b97cfb04-0c39-4709-9419-9294e677a872
+[f(π) for f in my_functions]
+
+# ╔═╡ 283d1177-c605-4652-905b-9a70354cf878
+md"Just like `Select`, you can also give an array of pairs. See the Live Docs for `MultiCheckBox` for all the customization options!"
 
 # ╔═╡ 0b1ce22e-c764-11ea-3d60-e799d58aee30
 md"## Button"
@@ -215,9 +273,11 @@ clicked
 
 
 # ╔═╡ 7e10fb52-c765-11ea-2a71-0fc347d09885
-md"Well... that seems useless, it's the same value every time you click! Right?
+md"""
+### Button as reactive trigger
 
-The value does not change, but _any cell that references `clicked` will re-evaluate_ when you click the button:"
+In the example above, _any cell that references `clicked` will re-evaluate_ when you click the button. This means that you can a button as a **reactive trigger**, by referencing its value in another cell.
+"""
 
 # ╔═╡ b91764e8-c765-11ea-27a2-4ba5777fbd89
 @bind go Button("Recompute")
@@ -225,6 +285,7 @@ The value does not change, but _any cell that references `clicked` will re-evalu
 # ╔═╡ bb356b12-c765-11ea-2c36-697f4314bb93
 let
 	go
+	
 	md"I am $(rand(1:15)) years old!"
 end
 
@@ -282,7 +343,9 @@ md"You can use a `Clock` to drive an animation! Or use it to repeat the same com
 md"## DownloadButton"
 
 # ╔═╡ ea00721c-cc4b-11ea-1e82-0b3dbe6a7f1e
-md"The download button is not an **input** element that you can `@bind` to, it's an **output** that you can use to get processed data from your notebook easily."
+md"""
+The download button is not an **input** element that you can `@bind` to, it's an **output** that you can use to get processed data from your notebook easily. The second argument is the _output filename_.
+"""
 
 # ╔═╡ fc12280c-c768-11ea-3ebc-ebcd6b3459c1
 DownloadButton(poem, "poem.txt")
@@ -290,10 +353,89 @@ DownloadButton(poem, "poem.txt")
 # ╔═╡ 067cbcde-cc4c-11ea-3eed-972dc6d7bb3b
 DownloadButton([0x01, 0x02, 0x03], "secret_data.bin")
 
+# ╔═╡ 7da30d97-b28a-4eb9-a2ef-fad599b549d1
+md"""
+# High-level inputs
+"""
+
+# ╔═╡ 170089cd-f366-4c0a-b58d-fe6e36049db7
+md"""
+## Confirm
+
+Normally, when you move a [`Slider`](@ref) or type in a [`TextField`](@ref), all intermediate values are sent back to `@bind`. By wrapping an input element in `confirm`, you get a button to manually **control when the value is sent**, intermediate updates are hidden from Pluto.
+
+"""
+
+# ╔═╡ b29215cb-8e7e-4382-822c-cdaa4c473ba1
+@bind distance confirm(Slider(1:100))
+
+# ╔═╡ 00f9f608-85bd-4932-b585-39f74dcf53b4
+distance
+
+# ╔═╡ 48a9ffbd-cac7-4c4e-85e5-c3d0693e5550
+md"""
+`confirm` can be wrapper around any input element to create a new one, including inputs from other packages, or inputs that you have made yourself!
+"""
+
+# ╔═╡ 5c85ee41-da68-4f5f-b45e-e1de7996747d
+
+
+# ╔═╡ 8c51343f-cb35-4ff9-9fd8-642ffab57e22
+md"""
+## Combine
+
+This next high-level component is a bit tricky, but very powerful!
+
+Using `combine`, you can create a single input out of multiple existing ones! In the example below, we create a new input, `wind_speed_input`. Notice that the list of wind directions is *dynamic*: if you add a new direction, a 5th slider will appear!
+
+"""
+
+# ╔═╡ 621f2e82-5ab4-4ab9-a0ff-fb1cc1b41295
+import PlutoUI: combine
+
+# ╔═╡ a4837897-caae-447a-8db9-7775e7a4d0c8
+
+
+# ╔═╡ d278189e-6a5b-428a-8c81-ce3d206b042c
+function wind_speed_input(directions::Vector)
+	
+	return combine() do Child
+		
+		inputs = [
+			md""" $(name): $(
+				Child(name, Slider(1:100))
+			)"""
+			
+			for name in directions
+		]
+		
+		md"""
+		#### Wind speeds
+		$(inputs)
+		"""
+	end
+end
+
+# ╔═╡ f5c421cc-dbdb-459a-9bb4-d648507a87d2
+@bind speeds wind_speed_input(["North", "East", "South", "West"])
+
+# ╔═╡ a4eac824-ba87-473a-b39a-783c4de3f933
+speeds
+
+# ╔═╡ f9052ed8-84cc-4cca-abb2-9363aafc6040
+speeds.North
+
+# ╔═╡ 4ca9c749-08ee-467f-af2c-9b2f13199d72
+md"""
+Use the Live Docs to learn more about `combine` and to see additional examples. 
+
+> 🙋 `combine` is very useful in combination with [HypertextLiteral.jl](https://github.com/MechanicalRabbit/HypertextLiteral.jl), which you can learn using our JavaScript sample notebook. 
+"""
+
 # ╔═╡ ad8e9b30-c75d-11ea-1fd0-0b53592135bf
 md"""# Loading resources
 
-Notebooks use data from different places. For example, you use `Base.read` to access local data (files) inside your Julia code, and `HTTP.jl` for remote data (interwebs). 
+Notebooks use data from different places. For example, you use [`Base.read`](https://docs.julialang.org/en/v1/base/io-network/#:~:text=read(filename%3A%3AAbstractString%2C%20String)) to access local data (files) inside your Julia code, and [`Downloads.jl`](https://github.com/JuliaLang/Downloads.jl) for remote data (interwebs). 
 
 `PlutoUI` helps you communicate with the person reading the notebook!
 - To get **remote media** (URL) inside your **Markdown text**, use `PlutoUI.Resource`.
@@ -437,7 +579,7 @@ md"# PlutoUI without Pluto
 Huh?
 
 Did you know that you can run Pluto notebooks _without Pluto_? If your notebook is called `wow.jl`, then 
-```
+```sh
 $ julia wow.jl
 ```
 will run the notebook just fine. 
@@ -445,7 +587,7 @@ will run the notebook just fine.
 When you use `@bind`, your notebook can still run without Pluto! Sort of. Normally, all bound variables are assigned the value `missing` when you run it elsewhere. However, the `PlutoUI` types have all been configured to assign a more sensible default value.
 
 For example, if your notebook contains
-```
+```julia
 @bind x Slider(10:20)
 ```
 and you run it without Pluto, then this statement simply assigns `x = 10`.
@@ -472,29 +614,243 @@ space
 # ╔═╡ f69a5d5e-c765-11ea-3fa0-230c6c619730
 space
 
+# ╔═╡ 0b66c781-ecf2-445e-b2aa-82cb13371e46
+space
+
 # ╔═╡ 35523932-cc4f-11ea-0908-2d51c57176b7
 space
 
 # ╔═╡ d163f434-cc5a-11ea-19e9-9319ba994efa
 space
 
-# ╔═╡ 7242e236-cc4c-11ea-06d9-c1825cfe1fea
-md"#### Footnote about package environments
+# ╔═╡ 00000000-0000-0000-0000-000000000001
+PLUTO_PROJECT_TOML_CONTENTS = """
+[deps]
+PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 
-`PlutoUI` needs to be installed for this sample notebook, but we don't want to add it to your global package environment. (Although you should install PlutoUI if you find it useful! It's a tiny package.) 
+[compat]
+PlutoUI = "~0.7.39"
+"""
 
-The solution is to add it into a _temporary environment_, which only exists inside this notebook. If you already had PlutoUI installed, Julia will re-use that installation from the global package cache."
+# ╔═╡ 00000000-0000-0000-0000-000000000002
+PLUTO_MANIFEST_TOML_CONTENTS = """
+# This file is machine-generated - editing it directly is not advised
 
-# ╔═╡ 7aabca4a-cc4d-11ea-1f7d-e9e2fd901b81
-md"In the future, Pluto might do this automatically for all packages. The goal is for **each notebook to contain its own package information**, but we are still thinking about the best approach. If you are interested, have a look at the [GitHub issue](https://github.com/fonsp/Pluto.jl/issues/142), our [design doc](https://www.notion.so/Self-contained-reproducibility-995ffa5174894c26b897827bd2ce4990), or contact us using the suggestion box below!"
+[[AbstractPlutoDingetjes]]
+deps = ["Pkg"]
+git-tree-sha1 = "8eaf9f1b4921132a4cff3f36a1d9ba923b14a481"
+uuid = "6e696c72-6542-2067-7265-42206c756150"
+version = "1.1.4"
+
+[[ArgTools]]
+uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
+
+[[Artifacts]]
+uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
+
+[[Base64]]
+uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
+
+[[ColorTypes]]
+deps = ["FixedPointNumbers", "Random"]
+git-tree-sha1 = "eb7f0f8307f71fac7c606984ea5fb2817275d6e4"
+uuid = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
+version = "0.11.4"
+
+[[CompilerSupportLibraries_jll]]
+deps = ["Artifacts", "Libdl"]
+uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
+
+[[Dates]]
+deps = ["Printf"]
+uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
+
+[[Downloads]]
+deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
+uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
+
+[[FileWatching]]
+uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
+
+[[FixedPointNumbers]]
+deps = ["Statistics"]
+git-tree-sha1 = "335bfdceacc84c5cdf16aadc768aa5ddfc5383cc"
+uuid = "53c48c17-4a7d-5ca2-90c5-79b7896eea93"
+version = "0.8.4"
+
+[[Hyperscript]]
+deps = ["Test"]
+git-tree-sha1 = "8d511d5b81240fc8e6802386302675bdf47737b9"
+uuid = "47d2ed2b-36de-50cf-bf87-49c2cf4b8b91"
+version = "0.0.4"
+
+[[HypertextLiteral]]
+deps = ["Tricks"]
+git-tree-sha1 = "c47c5fa4c5308f27ccaac35504858d8914e102f9"
+uuid = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
+version = "0.9.4"
+
+[[IOCapture]]
+deps = ["Logging", "Random"]
+git-tree-sha1 = "f7be53659ab06ddc986428d3a9dcc95f6fa6705a"
+uuid = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
+version = "0.2.2"
+
+[[InteractiveUtils]]
+deps = ["Markdown"]
+uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+
+[[JSON]]
+deps = ["Dates", "Mmap", "Parsers", "Unicode"]
+git-tree-sha1 = "3c837543ddb02250ef42f4738347454f95079d4e"
+uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+version = "0.21.3"
+
+[[LibCURL]]
+deps = ["LibCURL_jll", "MozillaCACerts_jll"]
+uuid = "b27032c2-a3e7-50c8-80cd-2d36dbcbfd21"
+
+[[LibCURL_jll]]
+deps = ["Artifacts", "LibSSH2_jll", "Libdl", "MbedTLS_jll", "Zlib_jll", "nghttp2_jll"]
+uuid = "deac9b47-8bc7-5906-a0fe-35ac56dc84c0"
+
+[[LibGit2]]
+deps = ["Base64", "NetworkOptions", "Printf", "SHA"]
+uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
+
+[[LibSSH2_jll]]
+deps = ["Artifacts", "Libdl", "MbedTLS_jll"]
+uuid = "29816b5a-b9ab-546f-933c-edad1886dfa8"
+
+[[Libdl]]
+uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+
+[[LinearAlgebra]]
+deps = ["Libdl", "libblastrampoline_jll"]
+uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+
+[[Logging]]
+uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
+
+[[Markdown]]
+deps = ["Base64"]
+uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
+
+[[MbedTLS_jll]]
+deps = ["Artifacts", "Libdl"]
+uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
+
+[[Mmap]]
+uuid = "a63ad114-7e13-5084-954f-fe012c677804"
+
+[[MozillaCACerts_jll]]
+uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
+
+[[NetworkOptions]]
+uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
+
+[[OpenBLAS_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
+uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
+
+[[Parsers]]
+deps = ["Dates"]
+git-tree-sha1 = "0044b23da09b5608b4ecacb4e5e6c6332f833a7e"
+uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
+version = "2.3.2"
+
+[[Pkg]]
+deps = ["Artifacts", "Dates", "Downloads", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
+uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+
+[[PlutoUI]]
+deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "UUIDs"]
+git-tree-sha1 = "8d1f54886b9037091edf146b517989fc4a09efec"
+uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+version = "0.7.39"
+
+[[Printf]]
+deps = ["Unicode"]
+uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+
+[[REPL]]
+deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
+uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
+
+[[Random]]
+deps = ["SHA", "Serialization"]
+uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+
+[[Reexport]]
+git-tree-sha1 = "45e428421666073eab6f2da5c9d310d99bb12f9b"
+uuid = "189a3867-3050-52da-a836-e630ba90ab69"
+version = "1.2.2"
+
+[[SHA]]
+uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
+
+[[Serialization]]
+uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
+
+[[Sockets]]
+uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
+
+[[SparseArrays]]
+deps = ["LinearAlgebra", "Random"]
+uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+
+[[Statistics]]
+deps = ["LinearAlgebra", "SparseArrays"]
+uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+
+[[TOML]]
+deps = ["Dates"]
+uuid = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
+
+[[Tar]]
+deps = ["ArgTools", "SHA"]
+uuid = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
+
+[[Test]]
+deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
+uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[[Tricks]]
+git-tree-sha1 = "6bac775f2d42a611cdfcd1fb217ee719630c4175"
+uuid = "410a4b4d-49e4-4fbc-ab6d-cb71b17b3775"
+version = "0.1.6"
+
+[[UUIDs]]
+deps = ["Random", "SHA"]
+uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
+
+[[Unicode]]
+uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
+
+[[Zlib_jll]]
+deps = ["Libdl"]
+uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
+
+[[libblastrampoline_jll]]
+deps = ["Artifacts", "Libdl", "OpenBLAS_jll"]
+uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
+
+[[nghttp2_jll]]
+deps = ["Artifacts", "Libdl"]
+uuid = "8e850ede-7688-5339-a07c-302acd2aaf8d"
+
+[[p7zip_jll]]
+deps = ["Artifacts", "Libdl"]
+uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
+"""
 
 # ╔═╡ Cell order:
 # ╟─bc532cd2-c75b-11ea-313f-8b5e771c9227
 # ╟─3eff9592-cc63-11ea-2b61-4170d1a7656a
 # ╟─051f31fc-cc63-11ea-1e2c-0704285ea6a9
+# ╠═071d9ca5-9b42-4583-ad96-a48f93453a0e
 # ╟─fb6142f6-c765-11ea-29fd-7ff4e823c02b
 # ╟─fddb794c-c75c-11ea-1f55-eb9c178424cd
-# ╟─1e10d82a-c766-11ea-0c4b-3bd77f62759d
 # ╟─b819e9a8-c760-11ea-11ee-dd01da663b5c
 # ╠═34ebf81e-c760-11ea-05bb-376173e7ed10
 # ╠═a4488984-c760-11ea-2930-871f6b400ef5
@@ -503,6 +859,11 @@ md"In the future, Pluto might do this automatically for all packages. The goal i
 # ╠═d3811ac2-c760-11ea-0811-131d9f1d3910
 # ╠═dfe10b6c-c760-11ea-2f77-79cc4cfa8dc4
 # ╟─06962cde-cc4f-11ea-0d96-69a8cb7eeda2
+# ╟─6605d010-d0d1-4cc8-a34d-3158b8572b5d
+# ╠═756e2c82-6e2f-4d7b-a1ed-5de97be04269
+# ╠═c07c5a9e-61f9-4247-86e7-7c3f9956d0ff
+# ╟─c3fea1b2-fc11-4c19-9c01-a8e03fda2817
+# ╟─221c308e-3cbe-4689-aa67-8970957f8cb0
 # ╟─e49623ac-c760-11ea-3689-c15f2e2f6081
 # ╠═314cb85a-c761-11ea-1cba-b73f84a52be8
 # ╟─3c68b25c-c761-11ea-226a-4f46579a6732
@@ -532,6 +893,8 @@ md"In the future, Pluto might do this automatically for all packages. The goal i
 # ╟─5833f7f4-c763-11ea-0b95-9b21a40192a9
 # ╠═690cf3ac-c763-11ea-10f0-b3e28c380be9
 # ╠═705662e2-c763-11ea-2f6d-cdaffc1fc73a
+# ╠═1feebd8f-667a-42fd-965d-5e3167ff7c7a
+# ╠═9128d2c1-364c-4446-baaa-6d0593edda47
 # ╟─3930f0d8-cc50-11ea-3de6-d91ac5c6cd9f
 # ╟─787a2c88-c763-11ea-0a32-bb91ca60113d
 # ╠═ac8c4dee-c763-11ea-1b2d-c590a2d50d7e
@@ -541,6 +904,13 @@ md"In the future, Pluto might do this automatically for all packages. The goal i
 # ╠═a01c8096-f0fe-11ea-3e78-ad8551e84fa1
 # ╠═a20e30f2-f0fe-11ea-0ca7-c5195c9eb24a
 # ╟─c819ef3e-f0fe-11ea-1213-9df7597e4e89
+# ╟─b104ba6d-0293-4378-9652-f628f1d08d97
+# ╠═16f2218d-f1bc-4b34-a355-53acfa77fbf5
+# ╠═2c7811cb-d9ea-470c-8cb7-2b3803489f3f
+# ╟─78be41d1-7dda-4bec-b75f-fbcf8b7594a7
+# ╠═90d84f1b-042c-444e-8bac-fe358b6d68a1
+# ╠═b97cfb04-0c39-4709-9419-9294e677a872
+# ╟─283d1177-c605-4652-905b-9a70354cf878
 # ╟─0b1ce22e-c764-11ea-3d60-e799d58aee30
 # ╠═6d9108a8-c765-11ea-0a38-09a1364998b1
 # ╠═7a14e496-c765-11ea-20a1-6fb960009251
@@ -570,6 +940,21 @@ md"In the future, Pluto might do this automatically for all packages. The goal i
 # ╠═fc12280c-c768-11ea-3ebc-ebcd6b3459c1
 # ╠═067cbcde-cc4c-11ea-3eed-972dc6d7bb3b
 # ╟─f69a5d5e-c765-11ea-3fa0-230c6c619730
+# ╟─7da30d97-b28a-4eb9-a2ef-fad599b549d1
+# ╟─170089cd-f366-4c0a-b58d-fe6e36049db7
+# ╠═b29215cb-8e7e-4382-822c-cdaa4c473ba1
+# ╠═00f9f608-85bd-4932-b585-39f74dcf53b4
+# ╟─48a9ffbd-cac7-4c4e-85e5-c3d0693e5550
+# ╟─5c85ee41-da68-4f5f-b45e-e1de7996747d
+# ╟─8c51343f-cb35-4ff9-9fd8-642ffab57e22
+# ╠═621f2e82-5ab4-4ab9-a0ff-fb1cc1b41295
+# ╟─a4837897-caae-447a-8db9-7775e7a4d0c8
+# ╠═f5c421cc-dbdb-459a-9bb4-d648507a87d2
+# ╠═a4eac824-ba87-473a-b39a-783c4de3f933
+# ╠═f9052ed8-84cc-4cca-abb2-9363aafc6040
+# ╠═d278189e-6a5b-428a-8c81-ce3d206b042c
+# ╟─4ca9c749-08ee-467f-af2c-9b2f13199d72
+# ╟─0b66c781-ecf2-445e-b2aa-82cb13371e46
 # ╟─ad8e9b30-c75d-11ea-1fd0-0b53592135bf
 # ╟─87d088d0-cc54-11ea-02c6-bd673b95b9d3
 # ╟─6a7e7e54-c75e-11ea-2ea7-ed3da37e9e96
@@ -598,6 +983,5 @@ md"In the future, Pluto might do this automatically for all packages. The goal i
 # ╟─d163f434-cc5a-11ea-19e9-9319ba994efa
 # ╟─512fe760-cc4c-11ea-1c5b-2b32da035aad
 # ╠═55bcdbf8-cc4c-11ea-1549-87c076a59ff4
-# ╟─7242e236-cc4c-11ea-06d9-c1825cfe1fea
-# ╠═ae0936ee-c767-11ea-0cbc-3f58779113da
-# ╟─7aabca4a-cc4d-11ea-1f7d-e9e2fd901b81
+# ╟─00000000-0000-0000-0000-000000000001
+# ╟─00000000-0000-0000-0000-000000000002

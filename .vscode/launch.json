@@ -1,35 +1,35 @@
 {
-	// Use IntelliSense to learn about possible attributes.
-	// Hover to view descriptions of existing attributes.
-	// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-	"version": "0.2.0",
-	"configurations": [
-		{
-			// yes! use it!!!
-			// this one is for when you are only working on the front-end. Have Pluto running in a separate terminal, and then run this debug config. It should launch Firefox. Reload Firefox after making changes.
-			"type": "firefox",
-			"name": "Front-end Firefox",
-			"request": "launch",
-			"url": "http://localhost:1234/",
-			"webRoot": "${workspaceFolder}/frontend"
-		},
-		{
-			// untested
-			"type": "pwa-chrome",
-			"name": "Front-end Chrome",
-			"request": "launch",
-			"url": "http://localhost:1234/",
-			"webRoot": "${workspaceFolder}/frontend"
-		},
-		{
-			// this one doesn't work well yet
-			"type": "julia",
-			"request": "launch",
-			"name": "Back-end",
-			"program": "${workspaceFolder}/.vscode/run.jl",
-			"stopOnEntry": false,
-			"cwd": "${workspaceFolder}",
-			"juliaEnv": "${command:activeJuliaEnvironment}"
-		}
-	]
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            // yes! use it!!!
+            // this one is for when you are only working on the front-end. Have Pluto running in a separate terminal, and then run this debug config. It should launch Firefox. Reload Firefox after making changes.
+            "type": "firefox",
+            "name": "Front-end Firefox",
+            "request": "launch",
+            "url": "http://localhost:1234/",
+            "webRoot": "${workspaceFolder}/frontend"
+        },
+        {
+            // also works!!!
+            "type": "pwa-chrome",
+            "name": "Front-end Chrome",
+            "request": "launch",
+            "url": "http://localhost:1234/",
+            "webRoot": "${workspaceFolder}/frontend"
+        },
+        {
+            // this one doesn't work well yet
+            "type": "julia",
+            "request": "launch",
+            "name": "Back-end",
+            "program": "${workspaceFolder}/.vscode/run.jl",
+            "stopOnEntry": false,
+            "cwd": "${workspaceFolder}",
+            "juliaEnv": "${command:activeJuliaEnvironment}"
+        }
+    ]
 }
