@@ -902,7 +902,10 @@ function formatted_result_of(
     errored = ans isa CapturedException
 
     output_formatted = if (!ends_with_semicolon || errored)
-        format_output(ans; context=IOContext(default_iocontext, :extra_items=>extra_items, :module => workspace))
+        logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
+        Logging.with_logger(logger) do
+            format_output(ans; context=IOContext(default_iocontext, :extra_items=>extra_items, :module => workspace))
+        end
     else
         ("", MIME"text/plain"())
     end

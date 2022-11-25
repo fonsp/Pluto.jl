@@ -49,9 +49,17 @@ using Pluto.WorkspaceManager: poll
         
         "123", # 18
         
+
+        "struct StructWithCustomShowThatLogs end", # 19
+        """ # 20
+        function Base.show(io::IO, ::StructWithCustomShowThatLogs)
+            @info "showing StructWithCustomShowThatLogs"
+            show(io, "hello")
+        end
+        """,
+        "StructWithCustomShowThatLogs()", # 21
     ]))
-    
-    
+
     @testset "Stdout" begin
         
         idx_123 = [1,2,3,4,5,7,9]
@@ -103,7 +111,12 @@ using Pluto.WorkspaceManager: poll
         @test isempty(notebook.cells[16].logs)
         @test length(notebook.cells[17].logs) == 1
         @test isempty(notebook.cells[18].logs)
-        
+
+        update_run!(🍭, notebook, notebook.cells[19:21])
+
+        @test isempty(notebook.cells[19].logs)
+        @test isempty(notebook.cells[20].logs)
+        @test length(notebook.cells[21].logs) == 1
     end
 
     @testset "Logging respects maxlog" begin
