@@ -60,23 +60,42 @@ else
 	Pkg.Types.Context
 end
 
-# 🐸 "Public API", but using PkgContext
-load_ctx(env_dir)::PkgContext = PkgContext(env=Pkg.Types.EnvCache(joinpath(env_dir, "Project.toml")))
+function PkgContext!(ctx::PkgContext; kwargs...)
+    for (k, v) in kwargs
+        setfield!(ctx, k, v)
+    end
+    ctx
+end
 
 # 🐸 "Public API", but using PkgContext
-create_empty_ctx()::PkgContext = load_ctx(mktempdir())
+load_ctx(env_dir)::PkgContext = PkgContext(;env=Pkg.Types.EnvCache(joinpath(env_dir, "Project.toml")))
+
+# 🐸 "Public API", but using PkgContext
+load_ctx!(ctx::PkgContext, env_dir)::PkgContext = PkgContext!(ctx; env=Pkg.Types.EnvCache(joinpath(env_dir, "Project.toml")))
+
+# 🐸 "Public API", but using PkgContext
+load_empty_ctx!(ctx) = @static if :io ∈ fieldnames(PkgContext)
+    PkgContext!(create_empty_ctx(); io=ctx.io)
+else
+    create_empty_ctx()
+end
+
+# 🐸 "Public API", but using PkgContext
+create_empty_ctx()::PkgContext = load_ctx!(PkgContext(), mktempdir())
 
 # ⚠️ Internal API with fallback
-function load_ctx(original::PkgContext)
-	new = load_ctx(env_dir(original))
-	
+function load_ctx!(original::PkgContext)
+	original_project = deepcopy(original.env.original_project)
+	original_manifest = deepcopy(original.env.original_manifest)
+	new = load_ctx!(original, env_dir(original))
+
 	try
-		new.env.original_project = original.env.original_project
-		new.env.original_manifest = original.env.original_manifest
+		new.env.original_project = original_project
+		new.env.original_manifest = original_manifest
 	catch e
 		@warn "Pkg compat: failed to set original_project" exception=(e,catch_backtrace())
 	end
-	
+
 	new
 end
 
@@ -404,7 +423,7 @@ project_key_order(key::String) =
     something(findfirst(x -> x == key, _project_key_order), length(_project_key_order) + 1)
 
 # ✅ Public API
-function _modify_compat(f!::Function, ctx::PkgContext)::PkgContext
+function _modify_compat!(f!::Function, ctx::PkgContext)::PkgContext
 	project_path = project_file(ctx)
 	
 	toml = if isfile(project_path)
@@ -422,7 +441,7 @@ function _modify_compat(f!::Function, ctx::PkgContext)::PkgContext
 		Pkg.TOML.print(io, toml; sorted=true, by=(key -> (project_key_order(key), key)))
 	end)
 	
-	return load_ctx(ctx)
+	return load_ctx!(ctx)
 end
 
 
@@ -432,8 +451,8 @@ Add any missing [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entr
 
 The automatic compat entry is: `"~" * string(installed_version)`.
 """
-function write_auto_compat_entries(ctx::PkgContext)::PkgContext
-	_modify_compat(ctx) do compat
+function write_auto_compat_entries!(ctx::PkgContext)::PkgContext
+	_modify_compat!(ctx) do compat
 		for p in keys(project(ctx).dependencies)
 			if !haskey(compat, p)
 				m_version = get_manifest_version(ctx, p)
@@ -450,9 +469,9 @@ end
 """
 Remove all [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries from the `Project.toml`.
 """
-function clear_compat_entries(ctx::PkgContext)::PkgContext
+function clear_compat_entries!(ctx::PkgContext)::PkgContext
 	if isfile(project_file(ctx))
-		_modify_compat(empty!, ctx)
+		_modify_compat!(empty!, ctx)
 	else
 		ctx
 	end
@@ -461,11 +480,11 @@ end
 
 # ✅ Public API
 """
-Remove any automatically-generated [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries from the `Project.toml`. This will undo the effects of [`write_auto_compat_entries`](@ref) but leave other (e.g. manual) compat entries intact. Return the new `PkgContext`.
+Remove any automatically-generated [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries from the `Project.toml`. This will undo the effects of [`write_auto_compat_entries!`](@ref) but leave other (e.g. manual) compat entries intact. Return the new `PkgContext`.
 """
-function clear_auto_compat_entries(ctx::PkgContext)::PkgContext
+function clear_auto_compat_entries!(ctx::PkgContext)::PkgContext
 	if isfile(project_file(ctx))
-		_modify_compat(ctx) do compat
+		_modify_compat!(ctx) do compat
 			for p in keys(compat)
 				m_version = get_manifest_version(ctx, p)
 				if m_version !== nothing && !is_stdlib(p)
@@ -484,9 +503,9 @@ end
 """
 Remove any [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries from the `Project.toml` for standard libraries. These entries are created when an old version of Julia uses a package that later became a standard library, like https://github.com/JuliaPackaging/Artifacts.jl. Return the new `PkgContext`.
 """
-function clear_stdlib_compat_entries(ctx::PkgContext)::PkgContext
+function clear_stdlib_compat_entries!(ctx::PkgContext)::PkgContext
 	if isfile(project_file(ctx))
-		_modify_compat(ctx) do compat
+		_modify_compat!(ctx) do compat
 			for p in keys(compat)
 				if is_stdlib(p)
 					@info "Removing compat entry for stdlib" p
