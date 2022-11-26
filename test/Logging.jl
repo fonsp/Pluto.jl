@@ -53,6 +53,7 @@ using Pluto.WorkspaceManager: poll
         "struct StructWithCustomShowThatLogs end", # 19
         """ # 20
         function Base.show(io::IO, ::StructWithCustomShowThatLogs)
+            println("stdio log")
             @info "showing StructWithCustomShowThatLogs"
             show(io, "hello")
         end
@@ -116,7 +117,10 @@ using Pluto.WorkspaceManager: poll
 
         @test isempty(notebook.cells[19].logs)
         @test isempty(notebook.cells[20].logs)
-        @test length(notebook.cells[21].logs) == 1
+
+        @test poll(5, 1/60) do
+            length(notebook.cells[21].logs) == 2
+        end
     end
 
     @testset "Logging respects maxlog" begin

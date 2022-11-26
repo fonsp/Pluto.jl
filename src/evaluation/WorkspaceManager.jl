@@ -450,7 +450,7 @@ function eval_format_fetch_in_workspace(
     end
 
     if early_result === nothing
-        format_fetch_in_workspace(workspace, cell_id, ends_with_semicolon, known_published_objects)
+        format_fetch_in_workspace(workspace, cell_id, ends_with_semicolon, known_published_objects; capture_stdout)
     else
         early_result
     end
@@ -471,7 +471,8 @@ function format_fetch_in_workspace(
     cell_id,
     ends_with_semicolon,
     known_published_objects::Vector{String}=String[],
-    showmore_id::Union{PlutoRunner.ObjectDimPair,Nothing}=nothing,
+    showmore_id::Union{PlutoRunner.ObjectDimPair,Nothing}=nothing;
+    capture_stdout::Bool=true,
 )::PlutoRunner.FormattedCellResult
     workspace = get_workspace(session_notebook)
 
@@ -487,7 +488,8 @@ function format_fetch_in_workspace(
                     $ends_with_semicolon,
                     $known_published_objects,
                     $showmore_id,
-                    getfield(Main, $(QuoteNode(workspace.module_name))),
+                    getfield(Main, $(QuoteNode(workspace.module_name)));
+                    capture_stdout=$capture_stdout,
                 )
             end)
         catch e
