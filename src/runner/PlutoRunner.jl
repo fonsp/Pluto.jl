@@ -2324,6 +2324,13 @@ end
 format_log_value(v) = format_output_default(v)
 format_log_value(v::Tuple{<:Exception,Vector{<:Any}}) = format_output(CapturedException(v...))
 
+function _send_stdio_output!(output, loglevel)
+    output_str = String(take!(output))
+    if !isempty(output_str)
+        Logging.@logmsg loglevel output_str
+    end
+end
+
 const stdout_log_level = Logging.LogLevel(-555) # https://en.wikipedia.org/wiki/555_timer_IC
 function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogLevel=Logging.LogLevel(1))
     if !enabled
@@ -2350,12 +2357,6 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     # user code.
     execution_done = Ref(false)
     output = IOBuffer()
-    function send_output()
-        output_str = String(take!(output))
-        if !isempty(output_str)
-            Logging.@logmsg loglevel output_str
-        end
-    end
 
     @async begin
         pipe_reader = Base.pipe_reader(pipe)
@@ -2366,10 +2367,10 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
                 # NOTE: we don't really have to wait for the end of execution to stream output logs
                 #       so maybe we should just enable it?
                 if execution_done[]
-                    send_output()
+                    _send_stdio_output!(output, loglevel)
                 end
             end
-            send_output()
+            _send_stdio_output!(output, loglevel)
         catch err
             @error "Failed to redirect stdout/stderr to logs"  exception=(err,catch_backtrace())
         end
