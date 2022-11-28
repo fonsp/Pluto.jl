@@ -56,8 +56,8 @@ Base.@kwdef mutable struct Notebook
 
     process_status::String=ProcessStatus.starting
     wants_to_interrupt::Bool=false
-    last_save_time::typeof(time())=time()
-    last_hot_reload_time::typeof(time())=zero(time())
+    last_save_time::Float64=time()
+    last_hot_reload_time::Float64=zero(time())
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
 

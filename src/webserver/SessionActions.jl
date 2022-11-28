@@ -80,7 +80,6 @@ function open(session::ServerSession, path::AbstractString;
     end
 
     update_save_run!(session, nb, nb.cells; run_async, prerender_text=true)
-    
     add(session, nb; run_async)
     try_event_call(session, OpenNotebookEvent(nb))
     nb
@@ -96,27 +95,29 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
     end
     
     
-    running = Ref(false)
-    function update_from_file_throttled()
-        if !running[]
-            running[] = true
-            
-            @info "Updating from file..."
-            
-            sleep(0.1) ## There seems to be a synchronization issue if your OS is VERYFAST
-            wait_until_file_unchanged(nb.path, .3)
-            
-            # call update_from_file. If it returns false, that means that the notebook file was corrupt, so we try again, a maximum of 10 times.
-            for _ in 1:10
-                if update_from_file(session, nb)
-                    break
+    update_from_file_throttled = let
+        running = Ref(false)
+        function()
+            if !running[]
+                running[] = true
+                
+                @info "Updating from file..."
+                
+                sleep(0.1) ## There seems to be a synchronization issue if your OS is VERYFAST
+                wait_until_file_unchanged(nb.path, .3)
+                
+                # call update_from_file. If it returns false, that means that the notebook file was corrupt, so we try again, a maximum of 10 times.
+                for _ in 1:10
+                    if update_from_file(session, nb)
+                        break
+                    end
                 end
+                
+                
+                @info "Updating from file done!"
+                
+                running[] = false
             end
-            
-            
-            @info "Updating from file done!"
-            
-            running[] = false
         end
     end
 
@@ -191,50 +192,22 @@ end
 
 "Create a new empty notebook inside `session::ServerSession`. Returns the `Notebook`."
 function new(session::ServerSession; run_async=true, notebook_id::UUID=uuid1())
-    nb = if session.options.server.init_with_file_viewer
-        
-        @warn "DEPRECATED: init_with_file_viewer will be removed soon."
-        
-        file_viewer_code = """html\"\"\"
-
-        <script>
-
-        const nbfile_url = window.location.href.replace("edit", "notebookfile")
-
-
-        const pre = html`<pre style="font-size: .6rem;">Loading...</pre>`
-
-        const handle = setInterval(async () => {
-
-        pre.innerText = await (await fetch(nbfile_url)).text()
-        }, 500)
-
-        invalidation.then(() => {
-        clearInterval(handle)
-        })
-
-        return pre
-
-        </script>
-
-        \"\"\"
-        """
-        Notebook([Cell(), Cell(code=file_viewer_code, code_folded=true)])
-
-    else
-        if session.options.compiler.sysimage === nothing
-            emptynotebook()
-        else
-            Notebook([Cell("import Pkg"), Cell("# This cell disables Pluto's package manager and activates the global environment. Click on ? inside the bubble next to Pkg.activate to learn more.\n# (added automatically because a sysimage is used)\nPkg.activate()"), Cell()])
-        end
+    if session.options.server.init_with_file_viewer
+        @error "DEPRECATED: init_with_file_viewer has been removed."
     end
+    
+    nb = if session.options.compiler.sysimage === nothing
+        emptynotebook()
+    else
+        Notebook([Cell("import Pkg"), Cell("# This cell disables Pluto's package manager and activates the global environment. Click on ? inside the bubble next to Pkg.activate to learn more.\n# (added automatically because a sysimage is used)\nPkg.activate()"), Cell()])
+    end
+
     # Run NewNotebookEvent handler before assigning ID
     isid = try_event_call(session, NewNotebookEvent())
     nb.notebook_id = isnothing(isid) ? notebook_id : isid
 
-    update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
-    add(session, nb; run_async=run_async)
-
+    update_save_run!(session, nb, nb.cells; run_async, prerender_text=true)
+    add(session, nb; run_async)
     try_event_call(session, OpenNotebookEvent(nb))
     nb
 end
