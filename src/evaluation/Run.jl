@@ -134,7 +134,7 @@ function run_reactive_core!(
     # Send intermediate updates to the clients at most 20 times / second during a reactive run. (The effective speed of a slider is still unbounded, because the last update is not throttled.)
     # flush_send_notebook_changes_throttled, 
     send_notebook_changes_throttled, flush_notebook_changes = throttled(1.0 / 20) do
-        send_notebook_changes!(ClientRequest(session = session, notebook = notebook))
+        send_notebook_changes!(ClientRequest(; session, notebook))
     end
     send_notebook_changes_throttled()
 

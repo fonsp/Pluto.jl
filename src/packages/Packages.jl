@@ -257,7 +257,7 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 					notebook.nbpkg_terminal_outputs[p] = s
 				end
                 update_nbpkg_cache!(notebook)
-				send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
+				send_notebook_changes!(ClientRequest(; session, notebook))
 			end
 			 sync_nbpkg_core(notebook, old_topology, new_topology; on_terminal_output=iocallback, lag = session.options.server.simulated_pkg_lag)
 		end
@@ -276,7 +276,7 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 
 			notebook.nbpkg_busy_packages = String[]
             update_nbpkg_cache!(notebook)
-			send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
+			send_notebook_changes!(ClientRequest(; session, notebook))
 			save && save_notebook(session, notebook)
 		end
 	catch e
@@ -295,7 +295,7 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 		end
 		notebook.nbpkg_busy_packages = String[]
         update_nbpkg_cache!(notebook)
-		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
+		send_notebook_changes!(ClientRequest(; session, notebook))
 
 		# Clear the embedded Project and Manifest and require a restart from the user.
 		reset_nbpkg!(notebook, new_topology; keep_project=false, save=save)
@@ -303,7 +303,7 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
         notebook.nbpkg_install_time_ns = nothing
         notebook.nbpkg_ctx_instantiated = false
         update_nbpkg_cache!(notebook)
-		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
+		send_notebook_changes!(ClientRequest(; session, notebook))
 
 		save && save_notebook(session, notebook)
 	end
@@ -456,7 +456,7 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
 					notebook.nbpkg_terminal_outputs[p] = original * "\n\n" * s
 				end
                 update_nbpkg_cache!(notebook)
-				send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
+				send_notebook_changes!(ClientRequest(; session, notebook))
 			end
 			update_nbpkg_core(notebook; level=level, on_terminal_output=iocallback)
 		end
@@ -476,7 +476,7 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
 	finally
 		notebook.nbpkg_busy_packages = String[]
         update_nbpkg_cache!(notebook)
-		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
+		send_notebook_changes!(ClientRequest(; session, notebook))
 		save && save_notebook(session, notebook)
 	end
 end

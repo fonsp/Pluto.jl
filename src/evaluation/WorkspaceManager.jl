@@ -152,7 +152,7 @@ end
 
 function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.RemoteChannel)
     update_throttled, flush_throttled = Pluto.throttled(0.1) do
-        Pluto.send_notebook_changes!(Pluto.ClientRequest(session=session, notebook=notebook))
+        Pluto.send_notebook_changes!(Pluto.ClientRequest(; session, notebook))
     end
 
     while true
