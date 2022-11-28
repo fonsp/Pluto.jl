@@ -65,16 +65,16 @@ get_child(parent::Business, name::Symbol) = lock(parent.lock) do
     get!(create_for_child(parent, name), parent.subtasks, name)
 end
 
-report_business_finished!(parent::Business; name::Symbol) = get_child(parent, name) |> report_business_finished!
-report_business_started!(parent::Business; name::Symbol) = get_child(parent, name) |> report_business_started!
-report_business_planned!(parent::Business; name::Symbol) = get_child(parent, name)
+report_business_finished!(parent::Business, name::Symbol) = get_child(parent, name) |> report_business_finished!
+report_business_started!(parent::Business, name::Symbol) = get_child(parent, name) |> report_business_started!
+report_business_planned!(parent::Business, name::Symbol) = get_child(parent, name)
 
 
-report_business!(f::Function, parent::Business; kwargs...) = try
-    report_business_started!(parent; kwargs...)
+report_business!(f::Function, parent::Business, args...) = try
+    report_business_started!(parent, args...)
     f()
 finally
-    report_business_finished!(parent; kwargs...)
+    report_business_finished!(parent, args...)
 end
 
 
