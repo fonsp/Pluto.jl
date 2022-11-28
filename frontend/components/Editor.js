@@ -11,7 +11,7 @@ import { serialize_cells, deserialize_cells, detect_deserializer } from "../comm
 import { FilePicker } from "./FilePicker.js"
 import { Preamble } from "./Preamble.js"
 import { NotebookMemo as Notebook } from "./Notebook.js"
-import { LiveDocs } from "./LiveDocs.js"
+import { BottomRightPanel } from "./BottomRightPanel.js"
 import { DropRuler } from "./DropRuler.js"
 import { SelectionArea } from "./SelectionArea.js"
 import { RecentlyDisabledInfo, UndoDelete } from "./UndoDelete.js"
@@ -1530,7 +1530,7 @@ patch: ${JSON.stringify(
                             notebook_id=${this.state.notebook.notebook_id} 
                             environment_component=${this.state.extended_components.NonCellOutputComponents} />
                     </${Main}>
-                    <${LiveDocs}
+                    <${BottomRightPanel}
                         desired_doc_query=${this.state.desired_doc_query}
                         on_update_doc_query=${this.actions.set_doc_query}
                         notebook=${this.state.notebook}
