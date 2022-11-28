@@ -1,7 +1,8 @@
 module WorkspaceManager
-import UUIDs: UUID
+import UUIDs: UUID, uuid1
 import ..Pluto
 import ..Pluto: Configuration, Notebook, Cell, ProcessStatus, ServerSession, ExpressionExplorer, pluto_filename, Token, withtoken, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
+import ..Pluto.Status
 import ..Pluto.PkgCompat
 import ..Configuration: CompilerOptions, _merge_notebook_compiler_options, _convert_to_flags
 import ..Pluto.ExpressionExplorer: FunctionName
@@ -49,6 +50,13 @@ end
 
 "Create a workspace for the notebook, optionally in the main process."
 function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false)::Workspace
+    workspace_business = is_offline_renderer ? Status.Business(:gobble) : Status.report_business_started!(notebook.status; name=:workspace)
+    Status.report_business_started!(workspace_business; name=:create_process)
+    Status.report_business_planned!(workspace_business; name=:init_process_1)
+    Status.report_business_planned!(workspace_business; name=:init_process_2)
+    Status.report_business_planned!(workspace_business; name=:init_process_3)
+    Status.report_business_planned!(workspace_business; name=:init_process_4)
+    
     is_offline_renderer || (notebook.process_status = ProcessStatus.starting)
 
     use_distributed = !is_offline_renderer && session.options.evaluation.workspace_use_distributed
@@ -66,6 +74,13 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
         end
         pid
     end
+    
+    Status.report_business_finished!(workspace_business; name=:create_process)
+    init_status = Status.report_business_started!(workspace_business; name=:init_process)
+    Status.report_business_started!(init_status; name=Symbol(1))
+    Status.report_business_planned!(init_status; name=Symbol(2))
+    Status.report_business_planned!(init_status; name=Symbol(3))
+    Status.report_business_planned!(init_status; name=Symbol(4))
 
     Distributed.remotecall_eval(Main, [pid], session.options.evaluation.workspace_custom_startup_expr)
 
@@ -101,11 +116,30 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
         original_ACTIVE_PROJECT,
         is_offline_renderer,
     )
+    
+    
+    Status.report_business_finished!(init_status; name=Symbol(1))
+    Status.report_business_started!(init_status; name=Symbol(2))
 
     @async start_relaying_logs((session, notebook), remote_log_channel)
     @async start_relaying_self_updates((session, notebook), run_channel)
     cd_workspace(workspace, notebook.path)
+    
+    Status.report_business_finished!(init_status; name=Symbol(2))
+    Status.report_business_started!(init_status; name=Symbol(3))
+    
     use_nbpkg_environment((session, notebook), workspace)
+    
+    Status.report_business_finished!(init_status; name=Symbol(3))
+    Status.report_business_started!(init_status; name=Symbol(4))
+    
+    # TODO: precompile 1+1 with display
+    # sleep(3)
+    eval_format_fetch_in_workspace(workspace, Expr(:toplevel, LineNumberNode(-1), :(1+1)), uuid1())
+    
+    Status.report_business_finished!(init_status; name=Symbol(4))
+    Status.report_business_finished!(workspace_business; name=:init_process)
+    Status.report_business_finished!(workspace_business)
 
     is_offline_renderer || if notebook.process_status == ProcessStatus.starting
         notebook.process_status = ProcessStatus.ready

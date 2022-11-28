@@ -4,7 +4,7 @@ import .Configuration
 import .PkgCompat: PkgCompat, PkgContext
 import Pkg
 import TOML
-
+import .Status
 
 const DEFAULT_NOTEBOOK_METADATA = Dict{String, Any}()
 
@@ -55,6 +55,7 @@ Base.@kwdef mutable struct Notebook
     nbpkg_installed_versions_cache::Dict{String,String}=Dict{String,String}()
 
     process_status::String=ProcessStatus.starting
+    status::Status.Business=_initial_nb_status()
     wants_to_interrupt::Bool=false
     last_save_time::Float64=time()
     last_hot_reload_time::Float64=zero(time())
@@ -62,6 +63,14 @@ Base.@kwdef mutable struct Notebook
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
 
     metadata::Dict{String, Any}=copy(DEFAULT_NOTEBOOK_METADATA)
+end
+
+function _initial_nb_status()
+    b = Status.Business(name=:notebook, started_at=time())
+    Status.report_business_planned!(b; name=:workspace)
+    Status.report_business_planned!(b; name=:pkg)
+    Status.report_business_planned!(b; name=:run)
+    return b
 end
 
 _collect_cells(cells_dict::Dict{UUID,Cell}, cells_order::Vector{UUID}) = 

@@ -1,6 +1,7 @@
 import UUIDs: uuid1
 
 import .PkgCompat
+import .Status
 
 "Will hold all 'response handlers': functions that respond to a WebSocket request from the client."
 const responses = Dict{Symbol,Function}()
@@ -163,6 +164,8 @@ function notebook_to_js(notebook::Notebook)
                 "instantiated" => notebook.nbpkg_ctx_instantiated,
             )
         end,
+        "status" => Status.tojs(notebook.status),
+        "current_time" => time(),
         "cell_execution_order" => cell_id.(collect(topological_order(notebook))),
     )
 end
