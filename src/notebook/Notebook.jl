@@ -67,9 +67,9 @@ end
 
 function _initial_nb_status()
     b = Status.Business(name=:notebook, started_at=time())
-    Status.report_business_planned!(b; name=:workspace)
-    Status.report_business_planned!(b; name=:pkg)
-    Status.report_business_planned!(b; name=:run)
+    Status.report_business_planned!(b, :workspace)
+    Status.report_business_planned!(b, :pkg)
+    Status.report_business_planned!(b, :run)
     return b
 end
 

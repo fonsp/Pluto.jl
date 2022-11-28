@@ -50,7 +50,7 @@ Update the notebook package environment to match the notebook's code. This will:
 - Detect the use of `Pkg.activate` and enable/disabled nbpkg accordingly.
 """
 function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology; on_terminal_output::Function=((args...) -> nothing), lag::Real=0)
-    pkg_status = Status.report_business_started!(notebook.status; name=:pkg)
+    pkg_status = Status.report_business_started!(notebook.status, :pkg)
     Status.report_business_started!(pkg_status, :analysis)
     
     👺 = false
@@ -119,9 +119,9 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                 Status.report_business_finished!(pkg_status, :waiting_for_others)
                 
                 notebook.nbpkg_ctx_instantiated || Status.report_business_planned!(pkg_status, :resolve)
-                isempty(to_remove) || Status.report_business_planned!(pkg_status, :remove)
-                isempty(to_add) || Status.report_business_planned!(pkg_status, :add)
-                if !notebook.nbpkg_ctx_instantiated || !isempty(to_add) || !isempty(to_remove)
+                isempty(removed) || Status.report_business_planned!(pkg_status, :remove)
+                isempty(added) || Status.report_business_planned!(pkg_status, :add)
+                if !notebook.nbpkg_ctx_instantiated || !isempty(added) || !isempty(removed)
                     Status.report_business_planned!(pkg_status, :instantiate)
                 end
                 
@@ -140,22 +140,22 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                 @debug "PlutoPkg:" notebook.path to_add to_remove
                 
                 if !isempty(to_remove)
-                    Status.report_business!(pkg_status, :remove) do
-                        # See later comment
-                        mkeys() = Set(filter(!is_stdlib, [m.name for m in values(PkgCompat.dependencies(notebook.nbpkg_ctx))]))
-                        old_manifest_keys = mkeys()
+                    Status.report_business_started!(pkg_status, :remove)
+                    # See later comment
+                    mkeys() = Set(filter(!is_stdlib, [m.name for m in values(PkgCompat.dependencies(notebook.nbpkg_ctx))]))
+                    old_manifest_keys = mkeys()
 
-                        Pkg.rm(notebook.nbpkg_ctx, [
-                            Pkg.PackageSpec(name=p)
-                            for p in to_remove
-                        ])
+                    Pkg.rm(notebook.nbpkg_ctx, [
+                        Pkg.PackageSpec(name=p)
+                        for p in to_remove
+                    ])
 
-                        notebook.nbpkg_install_time_ns = nothing # we lose our estimate of install time
-                        # We record the manifest before and after, to prevent recommending a reboot when nothing got removed from the manifest (e.g. when removing GR, but leaving Plots), or when only stdlibs got removed.
-                        new_manifest_keys = mkeys()
-                        
-                        # TODO: we might want to upgrade other packages now that constraints have loosened? Does this happen automatically?
-                    end
+                    notebook.nbpkg_install_time_ns = nothing # we lose our estimate of install time
+                    # We record the manifest before and after, to prevent recommending a reboot when nothing got removed from the manifest (e.g. when removing GR, but leaving Plots), or when only stdlibs got removed.
+                    new_manifest_keys = mkeys()
+                    
+                    # TODO: we might want to upgrade other packages now that constraints have loosened? Does this happen automatically?
+                    Status.report_business_finished(pkg_status, :remove)
                 end
 
                 
@@ -163,75 +163,75 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                 # "Pkg.PRESERVE_DIRECT, but preserve exact verisons of Base.loaded_modules"
                 
                 if !isempty(to_add)
-                    Status.report_business!(pkg_status, :add) do
-                        start_time = time_ns()
-                        startlistening(iolistener)
-                        PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
-                            withinteractive(false) do
-                                # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
-                                PkgCompat.clear_auto_compat_entries!(notebook.nbpkg_ctx)
+                    Status.report_business_started!(pkg_status, :add)
+                    start_time = time_ns()
+                    startlistening(iolistener)
+                    PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
+                        withinteractive(false) do
+                            # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
+                            PkgCompat.clear_auto_compat_entries!(notebook.nbpkg_ctx)
 
-                                try
-                                    for tier in [
-                                        Pkg.PRESERVE_ALL,
-                                        Pkg.PRESERVE_DIRECT,
-                                        Pkg.PRESERVE_SEMVER,
-                                        Pkg.PRESERVE_NONE,
-                                    ]
-                                        used_tier = tier
+                            try
+                                for tier in [
+                                    Pkg.PRESERVE_ALL,
+                                    Pkg.PRESERVE_DIRECT,
+                                    Pkg.PRESERVE_SEMVER,
+                                    Pkg.PRESERVE_NONE,
+                                ]
+                                    used_tier = tier
 
-                                        try
-                                            Pkg.add(notebook.nbpkg_ctx, [
-                                                Pkg.PackageSpec(name=p)
-                                                for p in to_add
-                                            ]; preserve=used_tier)
+                                    try
+                                        Pkg.add(notebook.nbpkg_ctx, [
+                                            Pkg.PackageSpec(name=p)
+                                            for p in to_add
+                                        ]; preserve=used_tier)
 
-                                            break
-                                        catch e
-                                            if used_tier == Pkg.PRESERVE_NONE
-                                                # give up
-                                                rethrow(e)
-                                            end
+                                        break
+                                    catch e
+                                        if used_tier == Pkg.PRESERVE_NONE
+                                            # give up
+                                            rethrow(e)
                                         end
                                     end
-                                finally
-                                    PkgCompat.write_auto_compat_entries!(notebook.nbpkg_ctx)
                                 end
-
-                                # Now that Pkg is set up, the notebook process will call `using Package`, which can take some time. We write this message to the io, to notify the user.
-                                println(iolistener.buffer, "\e[32m\e[1mLoading\e[22m\e[39m packages...")
+                            finally
+                                PkgCompat.write_auto_compat_entries!(notebook.nbpkg_ctx)
                             end
+
+                            # Now that Pkg is set up, the notebook process will call `using Package`, which can take some time. We write this message to the io, to notify the user.
+                            println(iolistener.buffer, "\e[32m\e[1mLoading\e[22m\e[39m packages...")
                         end
-                        notebook.nbpkg_install_time_ns = notebook.nbpkg_install_time_ns === nothing ? nothing : (notebook.nbpkg_install_time_ns + (time_ns() - start_time))
-                        @debug "PlutoPkg: done" notebook.path 
                     end
+                    notebook.nbpkg_install_time_ns = notebook.nbpkg_install_time_ns === nothing ? nothing : (notebook.nbpkg_install_time_ns + (time_ns() - start_time))
+                    Status.report_business_finished!(pkg_status, :add)
+                    @debug "PlutoPkg: done" notebook.path 
                 end
 
                 should_instantiate = !notebook.nbpkg_ctx_instantiated || !isempty(to_add) || !isempty(to_remove)
                 
                 if should_instantiate
-                    Status.report_business!(pkg_status, :instantiate) do
-                        start_time = time_ns()
-                        startlistening(iolistener)
-                        PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
-                            @debug "PlutoPkg: Instantiating" notebook.path 
-                            
-                            # Pkg.instantiate assumes that the environment to be instantiated is active, so we will have to modify the LOAD_PATH of this Pluto server
-                            # We could also run the Pkg calls on the notebook process, but somehow I think that doing it on the server is more charming, though it requires this workaround.
-                            env_dir = PkgCompat.env_dir(notebook.nbpkg_ctx)
-                            pushfirst!(LOAD_PATH, env_dir)
+                    Status.report_business_started!(pkg_status, :instantiate)
+                    start_time = time_ns()
+                    startlistening(iolistener)
+                    PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
+                        @debug "PlutoPkg: Instantiating" notebook.path 
+                        
+                        # Pkg.instantiate assumes that the environment to be instantiated is active, so we will have to modify the LOAD_PATH of this Pluto server
+                        # We could also run the Pkg calls on the notebook process, but somehow I think that doing it on the server is more charming, though it requires this workaround.
+                        env_dir = PkgCompat.env_dir(notebook.nbpkg_ctx)
+                        pushfirst!(LOAD_PATH, env_dir)
 
-                            # update registries if this is the first time
-                            PkgCompat.update_registries(; force=false)
-                            # instantiate without forcing registry update
-                            PkgCompat.instantiate(notebook.nbpkg_ctx; update_registry=false)
-                            
-                            @assert LOAD_PATH[1] == env_dir
-                            popfirst!(LOAD_PATH)
-                        end
-                        notebook.nbpkg_install_time_ns = notebook.nbpkg_install_time_ns === nothing ? nothing : (notebook.nbpkg_install_time_ns + (time_ns() - start_time))
-                        notebook.nbpkg_ctx_instantiated = true
+                        # update registries if this is the first time
+                        PkgCompat.update_registries(; force=false)
+                        # instantiate without forcing registry update
+                        PkgCompat.instantiate(notebook.nbpkg_ctx; update_registry=false)
+                        
+                        @assert LOAD_PATH[1] == env_dir
+                        popfirst!(LOAD_PATH)
                     end
+                    notebook.nbpkg_install_time_ns = notebook.nbpkg_install_time_ns === nothing ? nothing : (notebook.nbpkg_install_time_ns + (time_ns() - start_time))
+                    Status.report_business_finished!(pkg_status, :instantiate)
+                    notebook.nbpkg_ctx_instantiated = true
                 end
 
                 stoplistening(iolistener)
@@ -278,7 +278,7 @@ In addition to the steps performed by [`sync_nbpkg_core`](@ref):
 """
 function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topology::NotebookTopology; save::Bool=true, take_token::Bool=true)
 	try
-        Status.report_business_started!(notebook.status; name=:pkg)
+        Status.report_business_started!(notebook.status, :pkg)
         
         pkg_result = (take_token ? withtoken : (f, _) -> f())(notebook.executetoken) do
 			function iocallback(pkgs, s)
@@ -337,7 +337,7 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 
 		save && save_notebook(session, notebook)
 	finally
-        Status.report_business_finished!(notebook.status; name=:pkg)
+        Status.report_business_finished!(notebook.status, :pkg)
     end
 end
 

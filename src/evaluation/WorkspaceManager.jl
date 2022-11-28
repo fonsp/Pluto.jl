@@ -52,10 +52,6 @@ end
 function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false)::Workspace
     workspace_business = is_offline_renderer ? Status.Business(name=:gobble) : Status.report_business_started!(notebook.status, :workspace)
     Status.report_business_started!(workspace_business, :create_process)
-    Status.report_business_planned!(workspace_business, :init_process_1)
-    Status.report_business_planned!(workspace_business, :init_process_2)
-    Status.report_business_planned!(workspace_business, :init_process_3)
-    Status.report_business_planned!(workspace_business, :init_process_4)
     
     is_offline_renderer || (notebook.process_status = ProcessStatus.starting)
 
