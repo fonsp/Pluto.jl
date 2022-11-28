@@ -165,7 +165,6 @@ function notebook_to_js(notebook::Notebook)
             )
         end,
         "status" => Status.tojs(notebook.status),
-        "current_time" => time(),
         "cell_execution_order" => cell_id.(collect(topological_order(notebook))),
     )
 end

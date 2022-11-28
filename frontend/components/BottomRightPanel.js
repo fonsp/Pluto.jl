@@ -42,10 +42,6 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
         return () => window.removeEventListener("open_live_docs", handler)
     }, [])
 
-    const my_clock_is_ahead_by = useMemo(() => {
-        return Date.now() / 1000 - notebook.current_time
-    }, [notebook.current_time])
-
     return html`
         <aside id="helpbox-wrapper" ref=${container_ref}>
             <pluto-helpbox class=${cl({ hidden, [`helpbox-${open_tab ?? hidden}`]: true })}>
@@ -98,7 +94,7 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
                           notebook=${notebook}
                       />`
                     : open_tab === "process"
-                    ? html`<${ProcessTab} notebook=${notebook} my_clock_is_ahead_by=${my_clock_is_ahead_by} />`
+                    ? html`<${ProcessTab} notebook=${notebook} />`
                     : null}
             </pluto-helpbox>
         </aside>

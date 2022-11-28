@@ -7,17 +7,12 @@ import { prettytime, useMillisSinceTruthy } from "./RunArea.js"
 /**
  * @param {{
  * notebook: import("./Editor.js").NotebookData,
- * my_clock_is_ahead_by: number,
  * }} props
  */
-export let ProcessTab = ({ notebook, my_clock_is_ahead_by }) => {
-    let pluto_actions = useContext(PlutoActionsContext)
-
-    console.log({ t: notebook.current_time, my_clock_is_ahead_by })
-
+export let ProcessTab = ({ notebook }) => {
     return html`
         <section>
-            <${StatusItem} status=${notebook.status} path=${[]} my_clock_is_ahead_by=${my_clock_is_ahead_by} />
+            <${StatusItem} status=${notebook.status} path=${[]} />
         </section>
     `
 }
@@ -68,7 +63,7 @@ const to_ns = (x) => x * 1e9
  * my_clock_is_ahead_by: number,
  * }} props
  */
-const StatusItem = ({ status, path, my_clock_is_ahead_by }) => {
+const StatusItem = ({ status, path }) => {
     const mystatus = path.reduce((entry, key) => entry.subtasks[key], status)
 
     const [is_open, set_is_open] = useState(path.length < 1)
@@ -84,8 +79,8 @@ const StatusItem = ({ status, path, my_clock_is_ahead_by }) => {
     const start = mystatus.started_at ?? 0
     const end = mystatus.finished_at ?? 0
 
-    // We don't actually use this value, but it's a great way to trigger a re-render on a timer!
-    useMillisSinceTruthy(busy)
+    const local_busy_time = (useMillisSinceTruthy(busy) ?? 0) / 1000
+    const busy_time = Math.max(local_busy_time, Date.now() / 1000 - start)
 
     const descr = descriptions[mystatus.name]
 

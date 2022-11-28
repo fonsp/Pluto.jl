@@ -244,7 +244,6 @@ const first_true_key = (obj) => {
  *  nbpkg: NotebookPkgData?,
  *  metadata: object,
  *  status: StatusEntryData,
- *  current_time: number,
  * }}
  */
 
