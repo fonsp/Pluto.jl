@@ -2263,10 +2263,54 @@ pluto-helpbox > section hr {
 /* PROCESS TAB */
 
 pl-status {
+    --status-color: rgb(151, 151, 151);
     font-family: var(--system-ui-font-stack);
-    margin-left: 1em;
     display: flex;
     flex-direction: column;
+    /* border-radius: 0.7em; */
+    /* margin: 0.3em; */
+    margin-left: 0.7em;
+    border-left: 3px solid transparent;
+    margin-top: 0.4em;
+}
+
+pl-status::before {
+    flex: 1 2 auto;
+    /* content: ""; */
+    display: inline-block;
+    left: 0;
+    right: 0px;
+    width: 3px;
+    height: 10px;
+    bottom: 3px;
+    top: 3px;
+    background: pink;
+}
+
+pl-status.busy {
+    --status-color: #ffcd70;
+}
+pl-status.finished {
+    --status-color: hsl(126deg 30% 60%);
+}
+
+pl-status.can_open {
+    cursor: auto;
+    border-color: #98989854;
+}
+pl-status.can_open > div {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+pl-status.can_open.is_open {
+    border-color: var(--status-color);
+}
+
+pl-status.can_open {
+    cursor: pointer;
+}
+pl-status:not(.can_open) {
+    cursor: auto;
 }
 
 pl-status[data-depth="0"] {
@@ -2277,11 +2321,10 @@ pl-status > div {
     display: flex;
     flex-direction: row;
     align-items: center;
-    box-shadow: 0px 0px 6px #0000001a;
-    border: 3px solid #cbcbcb;
-    border-radius: 0.7em;
-    margin: 0.3em;
-    padding: 0.4em 0.6em;
+    /* margin: 0em 0em 0.4em 0; */
+    padding: 0.2em;
+    background: var(--process-item-bg);
+    border-radius: 0.4em;
 }
 
 pl-status > div > .status-icon {
@@ -2290,21 +2333,17 @@ pl-status > div > .status-icon {
     width: 1em;
     height: 1em;
     border-radius: 50%;
-    background-color: grey;
+    background-color: var(--status-color);
     margin: 0em 0.5em;
-    opacity: 0.7;
-}
-
-pl-status.busy > div > .status-icon {
-    background-color: orange;
-}
-pl-status.finished > div > .status-icon {
-    background-color: green;
 }
 
 pl-status .status-time {
     margin-left: auto;
     /* align-self: end; */
+    padding-right: 0.5em;
+    /* font-family: "Roboto Mono", monospace; */
+    opacity: 0.6;
+    font-size: 0.7rem;
 }
 
 /* FOOTER */

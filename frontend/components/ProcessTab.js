@@ -1,4 +1,4 @@
-import { html, useContext, useEffect, useMemo } from "../imports/Preact.js"
+import { html, useContext, useEffect, useMemo, useState } from "../imports/Preact.js"
 
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { cl } from "../common/ClassTable.js"
@@ -31,6 +31,10 @@ workspace
 create_process
 init_process
 
+
+saving
+save
+
 pkg
 
 waiting_for_others
@@ -40,14 +44,20 @@ add
 update
 instantiate
 
-saving
-save
 
 run
 `
     .split("\n")
     .map((x) => x.trim())
     .filter((x) => x.length > 0)
+
+const descriptions = {
+    workspace: "Workspace setup",
+    create_process: "Start Julia",
+    init_process: "Initialize",
+    pkg: "Packages",
+    run: "Evaluating cells",
+}
 
 const to_ns = (x) => x * 1e9
 
@@ -60,6 +70,8 @@ const to_ns = (x) => x * 1e9
  */
 const StatusItem = ({ status, path, my_clock_is_ahead_by }) => {
     const mystatus = path.reduce((entry, key) => entry.subtasks[key], status)
+
+    const [is_open, set_is_open] = useState(path.length < 1)
 
     if (!mystatus) {
         return null
@@ -75,23 +87,41 @@ const StatusItem = ({ status, path, my_clock_is_ahead_by }) => {
     // We don't actually use this value, but it's a great way to trigger a re-render on a timer!
     useMillisSinceTruthy(busy)
 
+    const descr = descriptions[mystatus.name]
+
     return html`<pl-status
         data-depth=${path.length}
         class=${cl({
             started,
             finished,
             busy,
+            is_open,
+            can_open: Object.values(mystatus.subtasks).length > 0,
         })}
     >
-        <div>
+        <div
+            onClick=${(e) => {
+                set_is_open(!is_open)
+            }}
+        >
             <span class="status-icon"></span>
-            <span class="status-name">${mystatus.name}</span>
+            <span class="status-name"
+                >${
+                    descr != null ? descr : mystatus.name
+                    // html`<code>${mystatus.name}</code>`
+                }</span
+            >
             <span class="status-time"
                 >${finished ? prettytime(to_ns(end - start)) : busy ? prettytime(to_ns(Date.now() / 1000 - my_clock_is_ahead_by - start)) : null}</span
             >
         </div>
-        ${Object.entries(mystatus.subtasks)
-            .sort((a, b) => global_order.indexOf(a[0]) - global_order.indexOf(b[0]))
-            .map(([key, subtask]) => html`<${StatusItem} status=${status} path=${[...path, key]} my_clock_is_ahead_by=${my_clock_is_ahead_by} />`)}
+        ${is_open
+            ? Object.entries(mystatus.subtasks)
+                  .sort((a, b) => global_order.indexOf(a[0]) - global_order.indexOf(b[0]))
+                  .map(
+                      ([key, subtask]) =>
+                          html`<${StatusItem} key=${key} status=${status} path=${[...path, key]} my_clock_is_ahead_by=${my_clock_is_ahead_by} />`
+                  )
+            : null}
     </pl-status>`
 }
