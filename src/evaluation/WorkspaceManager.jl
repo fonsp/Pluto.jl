@@ -51,7 +51,7 @@ end
 "Create a workspace for the notebook, optionally in the main process."
 function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false)::Workspace
     workspace_business = is_offline_renderer ? Status.Business(name=:gobble) : Status.report_business_started!(notebook.status, :workspace)
-    Status.report_business_started!(workspace_business, :create_process)
+    create_status = Status.report_business_started!(workspace_business, :create_process)
     Status.report_business_planned!(workspace_business, :init_process)
     
     is_offline_renderer || (notebook.process_status = ProcessStatus.starting)
@@ -60,7 +60,10 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
 
     pid = if use_distributed
         @debug "Creating workspace process" notebook.path length(notebook.cells)
-        create_workspaceprocess(; compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler))
+        create_workspaceprocess(; 
+            compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler),
+            status=create_status,
+        )
     else
         pid = Distributed.myid()
         if !(isdefined(Main, :PlutoRunner) && Main.PlutoRunner isa Module)
@@ -296,12 +299,18 @@ end
 # NOTE: this function only start a worker process using given
 # compiler options, it does not resolve paths for notebooks
 # compiler configurations passed to it should be resolved before this
-function create_workspaceprocess(; compiler_options=CompilerOptions())::Integer
+function create_workspaceprocess(; compiler_options=CompilerOptions(), status::Status.Business=Business())::Integer
+    
+    Status.report_business_started!(status, Symbol(1))
+    Status.report_business_planned!(status, Symbol(2))
     # run on proc 1 in case Pluto is being used inside a notebook process
     # Workaround for "only process 1 can add/remove workers"
     pid = Distributed.remotecall_eval(Main, 1, quote
         $(Distributed_expr).addprocs(1; exeflags=$(_convert_to_flags(compiler_options))) |> first
     end)
+    
+    Status.report_business_finished!(status, Symbol(1))
+    Status.report_business_started!(status, Symbol(2))
 
     Distributed.remotecall_eval(Main, [pid], process_preamble())
 
@@ -313,6 +322,8 @@ function create_workspaceprocess(; compiler_options=CompilerOptions())::Integer
             catch end
         end
     end)
+    
+    Status.report_business_finished!(status)
 
     pid
 end

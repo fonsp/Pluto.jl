@@ -2,7 +2,7 @@ module Status
 
 
 Base.@kwdef mutable struct Business
-    name::Symbol
+    name::Symbol=:ignored
     started_at::Union{Nothing,Float64}=nothing
     finished_at::Union{Nothing,Float64}=nothing
     subtasks::Dict{Symbol,Business}=Dict{Symbol,Business}()

@@ -2263,15 +2263,17 @@ pluto-helpbox > section hr {
 /* PROCESS TAB */
 
 pl-status {
-    --status-color: rgb(151, 151, 151);
+    --status-color:
+    rgb(151, 151, 151);
     font-family: var(--system-ui-font-stack);
     display: flex;
     flex-direction: column;
-    /* border-radius: 0.7em; */
+    border-radius: 0.2em;
     /* margin: 0.3em; */
     margin-left: 0.7em;
     border-left: 3px solid transparent;
     margin-top: 0.4em;
+    /* background: var(--status-color); */
 }
 
 pl-status::before {
@@ -2334,7 +2336,25 @@ pl-status > div > .status-icon {
     height: 1em;
     border-radius: 50%;
     background-color: var(--status-color);
+    /* border: 3px solid green; */
     margin: 0em 0.5em;
+}
+
+pl-status.busy > div > .status-icon {
+    border: 3px solid transparent;
+    border-right-color: hsl(126deg 30% 60%);
+    border-bottom-color: hsl(126deg 30% 60%);
+    /* border-left-color: hsl(126deg 30% 60%); */
+    animation: identifier-spin 1.7s linear infinite;
+}
+
+@keyframes identifier-spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 pl-status .status-time {
