@@ -32,12 +32,12 @@ function open_url(session::ServerSession, url::AbstractString; kwargs...)
     
     path = download_cool(url, random_notebook.path)
     result = try_event_call(session, NewNotebookEvent())
-    nb = if result isa UUID
+    notebook = if result isa UUID
         open(session, path; notebook_id=result, kwargs...)
     else
         open(session, path; kwargs...)
     end
-    return nb
+    return notebook
 end
 
 "Open the notebook at `path` into `session::ServerSession` and run it. Returns the `Notebook`."
@@ -57,36 +57,36 @@ function open(session::ServerSession, path::AbstractString;
         path = new_path
     end
 
-    for nb in values(session.notebooks)
-        if isfile(nb.path) && realpath(nb.path) == realpath(tamepath(path))
-            throw(NotebookIsRunningException(nb))
+    for notebook in values(session.notebooks)
+        if isfile(notebook.path) && realpath(notebook.path) == realpath(tamepath(path))
+            throw(NotebookIsRunningException(notebook))
         end
     end
     
-    nb = load_notebook(tamepath(path); disable_writing_notebook_files=session.options.server.disable_writing_notebook_files)
-    nb.notebook_id = notebook_id
+    notebook = load_notebook(tamepath(path); disable_writing_notebook_files=session.options.server.disable_writing_notebook_files)
+    notebook.notebook_id = notebook_id
 
     # overwrites the notebook environment if specified
     if compiler_options !== nothing
-        nb.compiler_options = compiler_options
+        notebook.compiler_options = compiler_options
     end
     if clear_frontmatter
-        Pluto.set_frontmatter!(nb, nothing)
+        Pluto.set_frontmatter!(notebook, nothing)
     end
 
-    session.notebooks[nb.notebook_id] = nb
-    for c in nb.cells
+    session.notebooks[notebook.notebook_id] = notebook
+    for c in notebook.cells
         c.queued = session.options.evaluation.run_notebook_on_load
     end
 
-    update_save_run!(session, nb, nb.cells; run_async, prerender_text=true)
-    add(session, nb; run_async)
-    try_event_call(session, OpenNotebookEvent(nb))
-    nb
+    update_save_run!(session, notebook, notebook.cells; run_async, prerender_text=true)
+    add(session, notebook; run_async)
+    try_event_call(session, OpenNotebookEvent(notebook))
+    return notebook
 end
 
-function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
-    session.notebooks[nb.notebook_id] = nb
+function add(session::ServerSession, notebook::Notebook; run_async::Bool=true)
+    session.notebooks[notebook.notebook_id] = notebook
     
     if run_async
         @asynclog putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
@@ -104,11 +104,11 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
                 @info "Updating from file..."
                 
                 sleep(0.1) ## There seems to be a synchronization issue if your OS is VERYFAST
-                wait_until_file_unchanged(nb.path, .3)
+                wait_until_file_unchanged(notebook.path, .3)
                 
                 # call update_from_file. If it returns false, that means that the notebook file was corrupt, so we try again, a maximum of 10 times.
                 for _ in 1:10
-                    if update_from_file(session, nb)
+                    if update_from_file(session, notebook)
                         break
                     end
                 end
@@ -121,42 +121,42 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
         end
     end
 
-    in_session() = get(session.notebooks, nb.notebook_id, nothing) === nb
+    in_session() = get(session.notebooks, notebook.notebook_id, nothing) === notebook
     
     session.options.server.auto_reload_from_file && @asynclog try
         while in_session()
-            if !isfile(nb.path)
+            if !isfile(notebook.path)
                 # notebook file deleted... let's ignore this, changing the notebook will cause it to save again. Fine for now
                 sleep(2)
             else
-                e = watch_file(nb.path, 3)
+                e = watch_file(notebook.path, 3)
                 if e.timedout
                     continue
                 end
                 
                 # the above call is blocking until the file changes
                 
-                local modified_time = mtime(nb.path)
+                local modified_time = mtime(notebook.path)
                 local _tries = 0
                 
                 # mtime might return zero if the file is temporarily removed
                 while modified_time == 0.0 && _tries < 10
-                    modified_time = mtime(nb.path)
+                    modified_time = mtime(notebook.path)
                     _tries += 1
                     sleep(.05)
                 end
                 
                 # current_time = time()
-                # @info "File changed" (current_time - nb.last_save_time) (modified_time - nb.last_save_time) (current_time - modified_time)
+                # @info "File changed" (current_time - notebook.last_save_time) (modified_time - notebook.last_save_time) (current_time - modified_time)
                 if !in_session()
                     break
                 end
                 
-                # if current_time - nb.last_save_time < 2.0
+                # if current_time - notebook.last_save_time < 2.0
                     # @info "Notebook was saved by me very recently, not reloading from file."
                 if modified_time == 0.0
                     # @warn "Failed to hot reload: file no longer exists."
-                elseif modified_time - nb.last_save_time < session.options.server.auto_reload_from_file_cooldown
+                elseif modified_time - notebook.last_save_time < session.options.server.auto_reload_from_file_cooldown
                     # @info "Modified time is very close to my last save time, not reloading from file."
                 else
                     update_from_file_throttled()
@@ -169,7 +169,7 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
         end
     end
     
-    nb
+    return notebook
 end
 
 """
@@ -196,7 +196,7 @@ function new(session::ServerSession; run_async=true, notebook_id::UUID=uuid1())
         @error "DEPRECATED: init_with_file_viewer has been removed."
     end
     
-    nb = if session.options.compiler.sysimage === nothing
+    notebook = if session.options.compiler.sysimage === nothing
         emptynotebook()
     else
         Notebook([Cell("import Pkg"), Cell("# This cell disables Pluto's package manager and activates the global environment. Click on ? inside the bubble next to Pkg.activate to learn more.\n# (added automatically because a sysimage is used)\nPkg.activate()"), Cell()])
@@ -204,12 +204,12 @@ function new(session::ServerSession; run_async=true, notebook_id::UUID=uuid1())
 
     # Run NewNotebookEvent handler before assigning ID
     isid = try_event_call(session, NewNotebookEvent())
-    nb.notebook_id = isnothing(isid) ? notebook_id : isid
+    notebook.notebook_id = isnothing(isid) ? notebook_id : isid
 
-    update_save_run!(session, nb, nb.cells; run_async, prerender_text=true)
-    add(session, nb; run_async)
-    try_event_call(session, OpenNotebookEvent(nb))
-    nb
+    update_save_run!(session, notebook, notebook.cells; run_async, prerender_text=true)
+    add(session, notebook; run_async)
+    try_event_call(session, OpenNotebookEvent(notebook))
+    return notebook
 end
 
 "Shut down `notebook` inside `session`. If `keep_in_session` is `false` (default), you will not be allowed to run a notebook with the same notebook_id again."
