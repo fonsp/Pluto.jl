@@ -6,7 +6,7 @@ Base.@kwdef mutable struct Business
     started_at::Union{Nothing,Float64}=nothing
     finished_at::Union{Nothing,Float64}=nothing
     subtasks::Dict{Symbol,Business}=Dict{Symbol,Business}()
-    update_listener::Union{Nothing,Function}=nothing
+    update_listener_ref::Ref{Union{Nothing,Function}}=Ref{Union{Nothing,Function}}(nothing)
     lock::Threads.SpinLock=Threads.SpinLock()
 end
 
@@ -31,7 +31,7 @@ function report_business_started!(business::Business)
         empty!(business.subtasks)
     end
     
-    isnothing(business.update_listener) || business.update_listener()
+    isnothing(business.update_listener_ref[]) || business.update_listener_ref[]()
     return business
 end
 
@@ -50,7 +50,7 @@ function report_business_finished!(business::Business)
         report_business_finished!(v)
     end
     
-    isnothing(business.update_listener) || business.update_listener()
+    isnothing(business.update_listener_ref[]) || business.update_listener_ref[]()
     
     return business
 end
@@ -58,7 +58,7 @@ end
 
 
 create_for_child(parent::Business, name::Symbol) = function()
-    Business(; name, update_listener=parent.update_listener, lock=parent.lock)
+    Business(; name, update_listener_ref=parent.update_listener_ref, lock=parent.lock)
 end
 
 get_child(parent::Business, name::Symbol) = lock(parent.lock) do
