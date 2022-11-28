@@ -77,8 +77,8 @@ const StatusItem = ({ status, path, my_clock_is_ahead_by }) => {
         return null
     }
 
-    const started = mystatus.started_at != null
-    const finished = mystatus.finished_at != null
+    const started = path.length > 0 && mystatus.started_at != null
+    const finished = started && mystatus.finished_at != null
     const busy = started && !finished
 
     const start = mystatus.started_at ?? 0

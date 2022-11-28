@@ -155,7 +155,7 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                     new_manifest_keys = mkeys()
                     
                     # TODO: we might want to upgrade other packages now that constraints have loosened? Does this happen automatically?
-                    Status.report_business_finished(pkg_status, :remove)
+                    Status.report_business_finished!(pkg_status, :remove)
                 end
 
                 
