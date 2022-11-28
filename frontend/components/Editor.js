@@ -137,6 +137,16 @@ const first_true_key = (obj) => {
  */
 
 /**
+ * @typedef StatusEntryData
+ * @type {{
+ *   name: string,
+ *   started_at: number?,
+ *   finished_at: number?,
+ *   subtasks: Record<string,StatusEntryData>,
+ * }}
+ */
+
+/**
  * @typedef CellResultData
  * @type {{
  *  cell_id: string,
@@ -233,6 +243,8 @@ const first_true_key = (obj) => {
  *  bonds: BondValuesDict,
  *  nbpkg: NotebookPkgData?,
  *  metadata: object,
+ *  status: StatusEntryData,
+ *  current_time: number,
  * }}
  */
 
