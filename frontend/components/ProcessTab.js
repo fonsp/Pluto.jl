@@ -1,6 +1,5 @@
-import { html, useContext, useEffect, useMemo, useState } from "../imports/Preact.js"
+import { html, useState } from "../imports/Preact.js"
 
-import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { cl } from "../common/ClassTable.js"
 import { prettytime, useMillisSinceTruthy } from "./RunArea.js"
 
@@ -27,9 +26,6 @@ create_process
 init_process
 
 
-saving
-save
-
 pkg
 
 waiting_for_others
@@ -41,6 +37,11 @@ instantiate
 
 
 run
+
+
+saving
+save
+
 `
     .split("\n")
     .map((x) => x.trim())
@@ -50,7 +51,7 @@ const descriptions = {
     workspace: "Workspace setup",
     create_process: "Start Julia",
     init_process: "Initialize",
-    pkg: "Packages",
+    pkg: "Package management",
     run: "Evaluating cells",
 }
 
@@ -60,7 +61,6 @@ const to_ns = (x) => x * 1e9
  * @param {{
  * status: import("./Editor.js").StatusEntryData,
  * path: string[],
- * my_clock_is_ahead_by: number,
  * }} props
  */
 const StatusItem = ({ status, path }) => {
@@ -84,39 +84,80 @@ const StatusItem = ({ status, path }) => {
 
     const descr = descriptions[mystatus.name]
 
-    return html`<pl-status
-        data-depth=${path.length}
-        class=${cl({
-            started,
-            finished,
-            busy,
-            is_open,
-            can_open: Object.values(mystatus.subtasks).length > 0,
-        })}
-    >
-        <div
-            onClick=${(e) => {
-                set_is_open(!is_open)
-            }}
-        >
-            <span class="status-icon"></span>
-            <span class="status-name"
-                >${
-                    descr != null ? descr : mystatus.name
-                    // html`<code>${mystatus.name}</code>`
-                }</span
-            >
-            <span class="status-time"
-                >${finished ? prettytime(to_ns(end - start)) : busy ? prettytime(to_ns(Date.now() / 1000 - my_clock_is_ahead_by - start)) : null}</span
-            >
-        </div>
-        ${is_open
-            ? Object.entries(mystatus.subtasks)
-                  .sort((a, b) => global_order.indexOf(a[0]) - global_order.indexOf(b[0]))
-                  .map(
-                      ([key, subtask]) =>
-                          html`<${StatusItem} key=${key} status=${status} path=${[...path, key]} my_clock_is_ahead_by=${my_clock_is_ahead_by} />`
-                  )
-            : null}
-    </pl-status>`
+    const inner = is_open
+        ? Object.entries(mystatus.subtasks)
+              .sort((a, b) => sort_on(a[1], b[1]))
+              .map(([key, _subtask]) => html`<${StatusItem} key=${key} status=${status} path=${[...path, key]} />`)
+        : null
+
+    let inner_progress = null
+    if (busy) {
+        let t = total_tasks(mystatus)
+        let d = total_done(mystatus)
+
+        if (t > 1) {
+            inner_progress = html`<span class="subprogress-counter">${" "}(${d}/${t})</span>`
+        }
+    }
+
+    return path.length === 0
+        ? inner
+        : html`<pl-status
+              data-depth=${path.length}
+              class=${cl({
+                  started,
+                  finished,
+                  busy,
+                  is_open,
+                  can_open: Object.values(mystatus.subtasks).length > 0,
+              })}
+          >
+              <div
+                  onClick=${(e) => {
+                      set_is_open(!is_open)
+                  }}
+              >
+                  <span class="status-icon"></span>
+                  <span class="status-name"
+                      >${
+                          descr != null ? descr : isnumber(mystatus.name) ? `Step ${mystatus.name}` : mystatus.name
+                          // html`<code>${mystatus.name}</code>`
+                      }${inner_progress}</span
+                  >
+                  <span class="status-time">${finished ? prettytime(to_ns(end - start)) : busy ? prettytime(to_ns(busy_time)) : null}</span>
+              </div>
+              ${inner}
+          </pl-status>`
 }
+
+const isnumber = (str) => !isNaN(str)
+
+/**
+ * @param {import("./Editor.js").StatusEntryData} a
+ * @param {import("./Editor.js").StatusEntryData} b
+ */
+const sort_on = (a, b) => {
+    const a_order = global_order.indexOf(a.name)
+    const b_order = global_order.indexOf(b.name)
+    if (a_order === -1 && b_order === -1) {
+        if (a.started_at != null || b.started_at != null) {
+            return (a.started_at ?? Infinity) - (b.started_at ?? Infinity)
+        } else if (isnumber(a.name) && isnumber(b.name)) {
+            return parseInt(a.name) - parseInt(b.name)
+        } else {
+            return a.name.localeCompare(b.name)
+        }
+    } else {
+        return a_order - b_order
+    }
+}
+
+/**
+ * @param {import("./Editor.js").StatusEntryData} status
+ */
+const total_done = (status) => Object.values(status.subtasks).reduce((total, status) => total + total_done(status), status.finished_at != null ? 1 : 0)
+
+/**
+ * @param {import("./Editor.js").StatusEntryData} status
+ */
+const total_tasks = (status) => Object.values(status.subtasks).reduce((total, status) => total + total_tasks(status), 1)
