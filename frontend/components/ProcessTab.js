@@ -1,4 +1,4 @@
-import { html, useState } from "../imports/Preact.js"
+import { html, useEffect, useRef, useState } from "../imports/Preact.js"
 
 import { cl } from "../common/ClassTable.js"
 import { prettytime, useMillisSinceTruthy } from "./RunArea.js"
@@ -82,6 +82,31 @@ const StatusItem = ({ status, path }) => {
     const local_busy_time = (useMillisSinceTruthy(busy) ?? 0) / 1000
     const busy_time = Math.max(local_busy_time, Date.now() / 1000 - start)
 
+    useEffect(() => {
+        if (busy) {
+            let handle = setTimeout(() => {
+                set_is_open(true)
+            }, 500)
+
+            return () => clearTimeout(handle)
+        }
+    }, [busy])
+    useEffectWithPrevious(
+        ([old_finished]) => {
+            if (!old_finished && finished) {
+                // let audio = new Audio("https://proxy.notificationsounds.com/message-tones/succeeded-message-tone/download/file-sounds-1210-succeeded.mp3")
+                // audio.play()
+
+                let handle = setTimeout(() => {
+                    set_is_open(false)
+                }, 1500)
+
+                return () => clearTimeout(handle)
+            }
+        },
+        [finished]
+    )
+
     const descr = descriptions[mystatus.name]
 
     const inner = is_open
@@ -95,7 +120,7 @@ const StatusItem = ({ status, path }) => {
         let t = total_tasks(mystatus)
         let d = total_done(mystatus)
 
-        if (t > 1) {
+        if (t > 1 && t > d) {
             inner_progress = html`<span class="subprogress-counter">${" "}(${d}/${t})</span>`
         }
     }
@@ -161,3 +186,12 @@ const total_done = (status) => Object.values(status.subtasks).reduce((total, sta
  * @param {import("./Editor.js").StatusEntryData} status
  */
 const total_tasks = (status) => Object.values(status.subtasks).reduce((total, status) => total + total_tasks(status), 1)
+
+const useEffectWithPrevious = (fn, deps) => {
+    const ref = useRef(deps)
+    useEffect(() => {
+        let result = fn(ref.current)
+        ref.current = deps
+        return result
+    }, deps)
+}

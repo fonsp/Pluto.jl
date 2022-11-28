@@ -2272,7 +2272,11 @@ pl-status {
     margin-left: 0.7em;
     border-left: 3px solid transparent;
     margin-top: 0.4em;
+    overflow: hidden;
     /* background: var(--status-color); */
+    /* transition: max-height 1s linear; */
+    /* max-height: 30px; */
+    flex: 1 0 auto;
 }
 
 pl-status::before {
@@ -2321,6 +2325,7 @@ pl-status > div {
     padding: 0.2em;
     background: var(--process-item-bg);
     border-radius: 0.4em;
+    /* flex: 1 0 auto; */
 }
 
 pl-status > div > .status-icon {
