@@ -62,6 +62,11 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
         [notebook.status_tree]
     )
 
+    const busy = status_done < status_total
+
+    const show_business_outline = useDelayedTruth(busy, 700)
+    const show_business_counter = useDelayedTruth(busy, 3000)
+
     return html`
         <aside id="helpbox-wrapper" ref=${container_ref}>
             <pluto-helpbox class=${cl({ hidden, [`helpbox-${open_tab ?? hidden}`]: true })}>
@@ -89,14 +94,20 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
                             "helpbox-tab-key": true,
                             "helpbox-process": true,
                             "active": open_tab === "process",
-                            "busy": status_done < status_total,
+                            "busy": ENABLE_PROCESS_TAB && show_business_outline,
                         })}
                         onClick=${() => {
                             set_open_tab(open_tab === "process" ? null : "process")
                         }}
                     >
                         <span class="tabicon"></span>
-                        <span class="tabname">${ENABLE_PROCESS_TAB ? "Status" : "Coming soon"}</span>
+                        <span class="tabname"
+                            >${ENABLE_PROCESS_TAB
+                                ? open_tab === "process" || !show_business_counter
+                                    ? "Status"
+                                    : html`Status${" "}<span class="subprogress-counter">(${status_done}/${status_total})</span>`
+                                : "Coming soon"}</span
+                        >
                     </button>
                     ${hidden
                         ? null
@@ -122,4 +133,21 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
             </pluto-helpbox>
         </aside>
     `
+}
+
+const useDelayedTruth = (/** @type {boolean} */ x, /** @type {number} */ timeout) => {
+    const [output, set_output] = useState(false)
+
+    useEffect(() => {
+        if (x) {
+            let handle = setTimeout(() => {
+                set_output(true)
+            }, timeout)
+            return () => clearTimeout(handle)
+        } else {
+            set_output(false)
+        }
+    }, [x])
+
+    return output
 }

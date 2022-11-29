@@ -2218,14 +2218,32 @@ button.helpbox-tab-key {
     /* flex: 1 1 auto; */
     /* z-index: 1; */
     /* overflow: hidden; */
-button.helpbox-process.busy {
-    outline: 3px solid var(--process-busy);
 }
 
+button.helpbox-process.busy {
+    outline: 6px solid var(--process-busy);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    button.helpbox-process.busy {
+        animation: outline-heartbeat 0.8s ease-in infinite;
+        animation-direction: alternate;
+    }
+}
+@keyframes outline-heartbeat {
+    0% {
+        outline-offset: -1px;
+        outline-width: 3px;
+    }
+    100% {
+        outline-offset: 0px;
+        outline-width: 6px;
+    }
 }
 
 button.active.helpbox-tab-key {
     outline: 3px solid #99afb9;
+    animation: none;
 }
 
 pluto-helpbox > header > button.helpbox-close {
@@ -2458,8 +2476,10 @@ pl-status.busy > div > .status-icon {
     }
 }
 
-pl-status .subprogress-counter {
+.subprogress-counter {
     opacity: 0.5;
+    /* font-variant-numeric: tabular-nums; */
+    font-size: 0.8em;
 }
 
 pl-status .status-time {
@@ -2469,6 +2489,7 @@ pl-status .status-time {
     /* font-family: "Roboto Mono", monospace; */
     opacity: 0.6;
     font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
 }
 
 /* FOOTER */
