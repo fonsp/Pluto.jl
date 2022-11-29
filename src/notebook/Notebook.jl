@@ -55,7 +55,7 @@ Base.@kwdef mutable struct Notebook
     nbpkg_installed_versions_cache::Dict{String,String}=Dict{String,String}()
 
     process_status::String=ProcessStatus.starting
-    status::Status.Business=_initial_nb_status()
+    status_tree::Status.Business=_initial_nb_status()
     wants_to_interrupt::Bool=false
     last_save_time::Float64=time()
     last_hot_reload_time::Float64=zero(time())
