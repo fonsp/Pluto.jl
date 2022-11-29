@@ -9,6 +9,7 @@ import { prettytime, useMillisSinceTruthy } from "./RunArea.js"
  * }} props
  */
 export let ProcessTab = ({ notebook }) => {
+    // <p>${path_to_first_busy_business(notebook.status_tree).map(friendly_name).join(" – ")}</p>
     return html`
         <section>
             <${StatusItem} status_tree=${notebook.status_tree} path=${[]} />
@@ -47,12 +48,19 @@ save
     .map((x) => x.trim())
     .filter((x) => x.length > 0)
 
+/** @type {Record<string,string>} */
 const descriptions = {
     workspace: "Workspace setup",
     create_process: "Start Julia",
     init_process: "Initialize",
     pkg: "Package management",
     run: "Evaluating cells",
+}
+
+export const friendly_name = (/** @type {string} */ task_name) => {
+    const descr = descriptions[task_name]
+
+    return descr != null ? descr : isnumber(task_name) ? `Step ${task_name}` : task_name
 }
 
 const to_ns = (x) => x * 1e9
@@ -107,8 +115,6 @@ const StatusItem = ({ status_tree, path }) => {
         [finished]
     )
 
-    const descr = descriptions[mystatus.name]
-
     const inner = is_open
         ? Object.entries(mystatus.subtasks)
               .sort((a, b) => sort_on(a[1], b[1]))
@@ -116,11 +122,11 @@ const StatusItem = ({ status_tree, path }) => {
         : null
 
     let inner_progress = null
-    if (busy) {
+    if (started) {
         let t = total_tasks(mystatus)
         let d = total_done(mystatus)
 
-        if (t > 1 && t > d) {
+        if (t > 1) {
             inner_progress = html`<span class="subprogress-counter">${" "}(${d}/${t})</span>`
         }
     }
@@ -143,12 +149,7 @@ const StatusItem = ({ status_tree, path }) => {
                   }}
               >
                   <span class="status-icon"></span>
-                  <span class="status-name"
-                      >${
-                          descr != null ? descr : isnumber(mystatus.name) ? `Step ${mystatus.name}` : mystatus.name
-                          // html`<code>${mystatus.name}</code>`
-                      }${inner_progress}</span
-                  >
+                  <span class="status-name">${friendly_name(mystatus.name)}${inner_progress}</span>
                   <span class="status-time">${finished ? prettytime(to_ns(end - start)) : busy ? prettytime(to_ns(busy_time)) : null}</span>
               </div>
               ${inner}
@@ -203,6 +204,19 @@ export const total_done = (status) => Object.values(status.subtasks).reduce((tot
  * @returns {number}
  */
 export const total_tasks = (status) => Object.values(status.subtasks).reduce((total, status) => total + total_tasks(status), 1)
+
+/**
+ * @param {import("./Editor.js").StatusEntryData} status
+ * @returns {string[]}
+ */
+export const path_to_first_busy_business = (status) => {
+    for (let [name, child_status] of Object.entries(status.subtasks).sort((a, b) => sort_on(a[1], b[1]))) {
+        if (is_busy(child_status)) {
+            return [name, ...path_to_first_busy_business(child_status)]
+        }
+    }
+    return []
+}
 
 /** Like `useEffect`, but the handler function gets the previous deps value as argument. */
 const useEffectWithPrevious = (fn, deps) => {

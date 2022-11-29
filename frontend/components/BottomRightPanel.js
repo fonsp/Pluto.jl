@@ -22,6 +22,13 @@ window.PLUTO_TOGGLE_PROCESS_TAB = () => {
 }
 
 /**
+ * @typedef PanelTabName
+ * @type {"docs" | "process" | null}
+ */
+
+export const open_bottom_right_panel = (/** @type {PanelTabName} */ tab) => window.dispatchEvent(new CustomEvent("open_bottom_right_panel", { detail: tab }))
+
+/**
  * @param {{
  * notebook: import("./Editor.js").NotebookData,
  * desired_doc_query: string?,
@@ -32,21 +39,22 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
     let container_ref = useRef()
 
     const focus_docs_on_open_ref = useRef(false)
-    const [open_tab, set_open_tab] = useState(/** @type { "docs" | "process" | null} */ (null))
+    const [open_tab, set_open_tab] = useState(/** @type { PanelTabName} */ (null))
     const hidden = open_tab == null
 
-    // Open docs when "open_live_docs" event is triggered
+    // Open panel when "open_bottom_right_panel" event is triggered
     useEffect(() => {
-        let handler = () => {
+        let handler = (/** @type {CustomEvent} */ e) => {
+            console.log(e.detail)
             // https://github.com/fonsp/Pluto.jl/issues/321
             focus_docs_on_open_ref.current = false
-            set_open_tab("docs")
+            set_open_tab(e.detail)
             if (window.getComputedStyle(container_ref.current).display === "none") {
                 alert("This browser window is too small to show docs.\n\nMake the window bigger, or try zooming out.")
             }
         }
-        window.addEventListener("open_live_docs", handler)
-        return () => window.removeEventListener("open_live_docs", handler)
+        window.addEventListener("open_bottom_right_panel", handler)
+        return () => window.removeEventListener("open_bottom_right_panel", handler)
     }, [])
 
     const [status_total, status_done] = useMemo(
