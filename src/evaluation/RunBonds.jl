@@ -47,7 +47,7 @@ function set_bond_values_reactive(;
     end
     to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}(syms_to_set))
 
-    run_reactive_async!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, user_requested_run=false, run_async=false, bond_value_pairs, kwargs...)
+    run_reactive_async!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, save=false, user_requested_run=false, run_async=false, bond_value_pairs, kwargs...)
 end
 
 """
