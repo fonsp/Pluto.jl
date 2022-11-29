@@ -147,7 +147,11 @@
         --helpbox-text-color: rgb(230, 230, 230);
         --code-section-bg-color: rgb(44, 44, 44);
         --code-section-border-color: #555a64;
+
         --process-item-bg: #443d44;
+        --process-busy: #ffcd70;
+        --process-finished: hsl(126deg 30% 60%);
+        --process-undefined: rgb(151, 151, 151);
 
         /*footer*/
         --footer-color: #cacaca;

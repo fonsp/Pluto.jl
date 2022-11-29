@@ -152,6 +152,9 @@
         --code-section-bg-color: #f3f3f3;
 
         --process-item-bg: #f2f2f2;
+        --process-busy: #ffcd70;
+        --process-finished: hsl(126deg 30% 60%);
+        --process-undefined: rgb(151, 151, 151);
 
         /*footer*/
         --footer-color: #333333;

@@ -243,7 +243,7 @@ const first_true_key = (obj) => {
  *  bonds: BondValuesDict,
  *  nbpkg: NotebookPkgData?,
  *  metadata: object,
- *  status: StatusEntryData,
+ *  status_tree: StatusEntryData,
  * }}
  */
 

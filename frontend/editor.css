@@ -2061,8 +2061,7 @@ pluto-helpbox > header {
     gap: 0.5em;
 }
 
-pluto-helpbox > header > button.helpbox-tab-key::before {
-    content: "";
+pluto-helpbox > header > button.helpbox-tab-key > .tabicon {
     /* font-size: 1em; */
     --size: 1.1em;
     width: var(--size);
@@ -2073,23 +2072,109 @@ pluto-helpbox > header > button.helpbox-tab-key::before {
     margin-right: 0.6em;
     display: inline-block;
 }
-pluto-helpbox > header > button.helpbox-docs::before {
+pluto-helpbox > header > button.helpbox-docs > .tabicon {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/search.svg");
     /* content: "📚 "; */
 }
-pluto-helpbox > header > button.helpbox-docs.active::before {
+
+pluto-helpbox > header > button.helpbox-docs.active > .tabicon {
     /* content: "📖 "; */
 }
-pluto-helpbox > header > button.helpbox-process::before {
+pluto-helpbox > header > button.helpbox-process > .tabicon {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/terminal.svg");
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/pulse.svg");
     /* content: "💻 "; */
 }
 
-pluto-helpbox > header > button.helpbox-tab-key:disabled::before {
+pluto-helpbox > header > button.helpbox-tab-key:disabled > .tabicon {
     /* display: none; */
     opacity: 0.5;
 }
+/* 
+button.helpbox-process.helpbox-tab-key::before {
+    content: "";
+    display: block;
+    position: absolute;
+    --offset: -5px;
+    top: var(--offset);
+    right: var(--offset);
+    left: var(--offset);
+    bottom: var(--offset);
+    background: var(--process-busy);
+    border-radius: var(--border-radius);
+    background: linear-gradient(447deg, var(--process-finished), var(--process-finished) 50%, var(--process-busy) 50%, var(--process-busy));
+    background: linear-gradient(
+        447deg,
+        var(--process-busy) 0%,
+        var(--process-busy) 25%,
+        var(--process-finished) 25%,
+        var(--process-finished) 50%,
+        var(--process-busy) 50%,
+        var(--process-busy) 75%,
+        var(--process-finished) 75%,
+        var(--process-finished) 100%
+    );
+    animation: move-bg 5s linear infinite;
+    background-size: 100px auto;
+    z-index: -1;
+    opacity: 0.6;
+} */
+
+/* @keyframes rotate-bg {
+    0% {
+        background: linear-gradient(
+            0deg,
+            var(--process-busy) 0%,
+            var(--process-busy) 20%,
+            var(--process-finished) 20%,
+            var(--process-finished) 40%,
+            var(--process-busy) 40%,
+            var(--process-busy) 60%,
+            var(--process-finished) 60%,
+            var(--process-finished) 80%,
+            var(--process-busy) 80%,
+            var(--process-busy)
+        );
+    }
+    100% {
+        background: linear-gradient(
+            70deg,
+            var(--process-busy) 0%,
+            var(--process-busy) 20%,
+            var(--process-finished) 20%,
+            var(--process-finished) 40%,
+            var(--process-busy) 40%,
+            var(--process-busy) 60%,
+            var(--process-finished) 60%,
+            var(--process-finished) 80%,
+            var(--process-busy) 80%,
+            var(--process-busy)
+        );
+    }
+} */
+/* 
+@keyframes move-bg {
+    0% {
+        background-position-x: 0;
+    }
+    100% {
+        background-position-x: 100px;
+    }
+}
+
+button.helpbox-process.helpbox-tab-key::after {
+    content: "";
+    display: block;
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    bottom: 0;
+    border-radius: var(--border-radius);
+    border: none;
+    background: var(--helpbox-header-tab-bg-color);
+    z-index: -1;
+} */
 
 pluto-helpbox .live-docs-searchbox input {
     flex-grow: 1;
@@ -2124,6 +2209,14 @@ button.helpbox-tab-key {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    /* position: relative; */
+    /* flex: 1 1 auto; */
+    /* z-index: 1; */
+    /* overflow: hidden; */
+button.helpbox-process.busy {
+    outline: 3px solid var(--process-busy);
+}
+
 }
 
 pluto-helpbox > header > button.helpbox-close {
@@ -2263,7 +2356,7 @@ pluto-helpbox > section hr {
 /* PROCESS TAB */
 
 pl-status {
-    --status-color: rgb(151, 151, 151);
+    --status-color: var(--process-undefined);
     font-family: var(--system-ui-font-stack);
     display: flex;
     flex-direction: column;
@@ -2293,10 +2386,10 @@ pl-status::before {
 }
 
 pl-status.busy {
-    --status-color: #ffcd70;
+    --status-color: var(--process-busy);
 }
 pl-status.finished {
-    --status-color: hsl(126deg 30% 60%);
+    --status-color: var(--process-finished);
 }
 
 pl-status.can_open {
@@ -2521,6 +2614,16 @@ pluto-logs-container {
 pluto-logs-container:not(:empty) {
     background: var(--pluto-logs-bg-color);
     padding: 6px;
+}
+
+pluto-logs-container > header {
+    font-family: "Roboto Mono", monospace;
+    font-size: 1.3rem;
+    padding: 0.2em;
+    padding-bottom: 0;
+    opacity: 0.6;
+    font-weight: 700;
+    /* background: #494949; */
 }
 
 pluto-logs-container pluto-progress-bars pluto-progress:not(:first-child) {

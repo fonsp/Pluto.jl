@@ -130,7 +130,7 @@ end
 function save_notebook(notebook::Notebook, path::String)
     # @warn "Saving to file!!" exception=(ErrorException(""), backtrace())
     notebook.last_save_time = time()
-    Status.report_business!(notebook.status, :saving) do
+    Status.report_business!(notebook.status_tree, :saving) do
         write_buffered(path) do io
             save_notebook(io, notebook)
         end

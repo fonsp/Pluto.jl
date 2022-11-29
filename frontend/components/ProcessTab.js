@@ -11,7 +11,7 @@ import { prettytime, useMillisSinceTruthy } from "./RunArea.js"
 export let ProcessTab = ({ notebook }) => {
     return html`
         <section>
-            <${StatusItem} status=${notebook.status} path=${[]} />
+            <${StatusItem} status_tree=${notebook.status_tree} path=${[]} />
         </section>
     `
 }
@@ -59,12 +59,12 @@ const to_ns = (x) => x * 1e9
 
 /**
  * @param {{
- * status: import("./Editor.js").StatusEntryData,
+ * status_tree: import("./Editor.js").StatusEntryData,
  * path: string[],
  * }} props
  */
-const StatusItem = ({ status, path }) => {
-    const mystatus = path.reduce((entry, key) => entry.subtasks[key], status)
+const StatusItem = ({ status_tree, path }) => {
+    const mystatus = path.reduce((entry, key) => entry.subtasks[key], status_tree)
 
     const [is_open, set_is_open] = useState(path.length < 1)
 
@@ -72,8 +72,8 @@ const StatusItem = ({ status, path }) => {
         return null
     }
 
-    const started = path.length > 0 && mystatus.started_at != null
-    const finished = started && mystatus.finished_at != null
+    const started = path.length > 0 && is_started(mystatus)
+    const finished = started && is_finished(mystatus)
     const busy = started && !finished
 
     const start = mystatus.started_at ?? 0
@@ -112,7 +112,7 @@ const StatusItem = ({ status, path }) => {
     const inner = is_open
         ? Object.entries(mystatus.subtasks)
               .sort((a, b) => sort_on(a[1], b[1]))
-              .map(([key, _subtask]) => html`<${StatusItem} key=${key} status=${status} path=${[...path, key]} />`)
+              .map(([key, _subtask]) => html`<${StatusItem} key=${key} status_tree=${status_tree} path=${[...path, key]} />`)
         : null
 
     let inner_progress = null
@@ -180,13 +180,31 @@ const sort_on = (a, b) => {
 /**
  * @param {import("./Editor.js").StatusEntryData} status
  */
-const total_done = (status) => Object.values(status.subtasks).reduce((total, status) => total + total_done(status), status.finished_at != null ? 1 : 0)
+export const is_finished = (status) => status.finished_at != null
 
 /**
  * @param {import("./Editor.js").StatusEntryData} status
  */
-const total_tasks = (status) => Object.values(status.subtasks).reduce((total, status) => total + total_tasks(status), 1)
+export const is_started = (status) => status.started_at != null
 
+/**
+ * @param {import("./Editor.js").StatusEntryData} status
+ */
+export const is_busy = (status) => is_started(status) && !is_finished(status)
+
+/**
+ * @param {import("./Editor.js").StatusEntryData} status
+ * @returns {number}
+ */
+export const total_done = (status) => Object.values(status.subtasks).reduce((total, status) => total + total_done(status), is_finished(status) ? 1 : 0)
+
+/**
+ * @param {import("./Editor.js").StatusEntryData} status
+ * @returns {number}
+ */
+export const total_tasks = (status) => Object.values(status.subtasks).reduce((total, status) => total + total_tasks(status), 1)
+
+/** Like `useEffect`, but the handler function gets the previous deps value as argument. */
 const useEffectWithPrevious = (fn, deps) => {
     const ref = useRef(deps)
     useEffect(() => {

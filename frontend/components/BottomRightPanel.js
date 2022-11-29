@@ -2,7 +2,7 @@ import { html, useState, useRef, useEffect, useMemo } from "../imports/Preact.js
 import { cl } from "../common/ClassTable.js"
 
 import { LiveDocsTab } from "./LiveDocsTab.js"
-import { ProcessTab } from "./ProcessTab.js"
+import { is_finished, ProcessTab, total_done, total_tasks } from "./ProcessTab.js"
 
 export const ENABLE_PROCESS_TAB = window.localStorage.getItem("ENABLE_PROCESS_TAB") === "true"
 
@@ -21,6 +21,13 @@ window.PLUTO_TOGGLE_PROCESS_TAB = () => {
     window.location.reload()
 }
 
+/**
+ * @param {{
+ * notebook: import("./Editor.js").NotebookData,
+ * desired_doc_query: string?,
+ * on_update_doc_query: (query: string?) => void,
+ * }} props
+ */
 export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, notebook }) => {
     let container_ref = useRef()
 
@@ -42,6 +49,19 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
         return () => window.removeEventListener("open_live_docs", handler)
     }, [])
 
+    const [status_total, status_done] = useMemo(
+        () =>
+            !ENABLE_PROCESS_TAB || notebook.status_tree == null
+                ? [0, 0]
+                : [
+                      // total_tasks minus 1, to exclude the notebook task itself
+                      total_tasks(notebook.status_tree) - 1,
+                      // the notebook task should never be done, but lets be sure and subtract 1 if it is:
+                      total_done(notebook.status_tree) - (is_finished(notebook.status_tree) ? 1 : 0),
+                  ],
+        [notebook.status_tree]
+    )
+
     return html`
         <aside id="helpbox-wrapper" ref=${container_ref}>
             <pluto-helpbox class=${cl({ hidden, [`helpbox-${open_tab ?? hidden}`]: true })}>
@@ -59,7 +79,8 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
                             // TODO: focus the docs input
                         }}
                     >
-                        <span>Live Docs</span>
+                        <span class="tabicon"></span>
+                        <span class="tabname">Live Docs</span>
                     </button>
                     <button
                         disabled=${!ENABLE_PROCESS_TAB}
@@ -68,12 +89,14 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
                             "helpbox-tab-key": true,
                             "helpbox-process": true,
                             "active": open_tab === "process",
+                            "busy": status_done < status_total,
                         })}
                         onClick=${() => {
                             set_open_tab(open_tab === "process" ? null : "process")
                         }}
                     >
-                        <span>${ENABLE_PROCESS_TAB ? "Status" : "Coming soon"}</span>
+                        <span class="tabicon"></span>
+                        <span class="tabname">${ENABLE_PROCESS_TAB ? "Status" : "Coming soon"}</span>
                     </button>
                     ${hidden
                         ? null

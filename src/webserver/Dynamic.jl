@@ -164,7 +164,7 @@ function notebook_to_js(notebook::Notebook)
                 "instantiated" => notebook.nbpkg_ctx_instantiated,
             )
         end,
-        "status" => Status.tojs(notebook.status),
+        "status_tree" => Status.tojs(notebook.status_tree),
         "cell_execution_order" => cell_id.(collect(topological_order(notebook))),
     )
 end

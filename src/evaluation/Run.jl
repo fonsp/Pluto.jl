@@ -58,7 +58,7 @@ function run_reactive_core!(
 	
     old_workspace_name, _ = WorkspaceManager.bump_workspace_module((session, notebook))
 	
-	run_status = Status.report_business_started!(notebook.status, :run)
+	run_status = Status.report_business_started!(notebook.status_tree, :run)
 	Status.report_business_started!(run_status, :resolve_topology)
 	
     if !is_resolved(new_topology)

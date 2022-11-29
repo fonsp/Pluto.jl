@@ -50,7 +50,7 @@ Update the notebook package environment to match the notebook's code. This will:
 - Detect the use of `Pkg.activate` and enable/disabled nbpkg accordingly.
 """
 function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology; on_terminal_output::Function=((args...) -> nothing), lag::Real=0)
-    pkg_status = Status.report_business_started!(notebook.status, :pkg)
+    pkg_status = Status.report_business_started!(notebook.status_tree, :pkg)
     Status.report_business_started!(pkg_status, :analysis)
     
     👺 = false
@@ -278,7 +278,7 @@ In addition to the steps performed by [`sync_nbpkg_core`](@ref):
 """
 function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topology::NotebookTopology; save::Bool=true, take_token::Bool=true)
 	try
-        Status.report_business_started!(notebook.status, :pkg)
+        Status.report_business_started!(notebook.status_tree, :pkg)
         
         pkg_result = (take_token ? withtoken : (f, _) -> f())(notebook.executetoken) do
 			function iocallback(pkgs, s)
@@ -337,7 +337,7 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 
 		save && save_notebook(session, notebook)
 	finally
-        Status.report_business_finished!(notebook.status, :pkg)
+        Status.report_business_finished!(notebook.status_tree, :pkg)
     end
 end
 

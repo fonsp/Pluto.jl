@@ -50,7 +50,7 @@ end
 
 "Create a workspace for the notebook, optionally in the main process."
 function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false)::Workspace
-    workspace_business = is_offline_renderer ? Status.Business(name=:gobble) : Status.report_business_started!(notebook.status, :workspace)
+    workspace_business = is_offline_renderer ? Status.Business(name=:gobble) : Status.report_business_started!(notebook.status_tree, :workspace)
     create_status = Status.report_business_started!(workspace_business, :create_process)
     Status.report_business_planned!(workspace_business, :init_process)
     

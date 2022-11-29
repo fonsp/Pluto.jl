@@ -94,7 +94,7 @@ export const empty_notebook_state = ({ notebook_id }) => ({
     published_objects: {},
     bonds: {},
     nbpkg: null,
-    status: { name: "notebook", started_at: null, finished_at: null, subtasks: {} },
+    status_tree: { name: "notebook", started_at: null, finished_at: null, subtasks: {} },
 })
 
 /**
