@@ -2091,6 +2091,11 @@ pluto-helpbox > header > button.helpbox-tab-key:disabled::before {
     opacity: 0.5;
 }
 
+pluto-helpbox .live-docs-searchbox {
+    display: flex;
+    margin: 1em;
+}
+
 pluto-helpbox .live-docs-searchbox input {
     flex-grow: 1;
     background-color: inherit;
@@ -2124,6 +2129,10 @@ button.helpbox-tab-key {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+button.active.helpbox-tab-key {
+    outline: 3px solid #99afb9;
 }
 
 pluto-helpbox > header > button.helpbox-close {
@@ -2412,6 +2421,16 @@ pluto-logs-container {
 pluto-logs-container:not(:empty) {
     background: var(--pluto-logs-bg-color);
     padding: 6px;
+}
+
+pluto-logs-container > header {
+    font-family: "Roboto Mono", monospace;
+    font-size: 1.3rem;
+    padding: 0.2em;
+    padding-bottom: 0;
+    opacity: 0.6;
+    font-weight: 700;
+    /* background: #494949; */
 }
 
 pluto-logs-container pluto-progress-bars pluto-progress:not(:first-child) {
@@ -3044,23 +3063,4 @@ pluto-cell.hooked_up pluto-output {
     margin-top: 2rem;
     justify-content: flex-end;
     gap: 0.5em;
-}
-
-pluto-logs-container > header {
-    font-family: "Roboto Mono", monospace;
-    font-size: 1.3rem;
-    padding: 0.2em;
-    padding-bottom: 0;
-    opacity: 0.6;
-    font-weight: 700;
-    /* background: #494949; */
-}
-
-button.active.helpbox-tab-key {
-    outline: 3px solid #99afb9;
-}
-
-.live-docs-searchbox {
-    display: flex;
-    margin: 1em;
 }
