@@ -30,13 +30,12 @@ init_process
 
 pkg
 
-waiting_for_others
 analysis
+waiting_for_others
+resolve
 remove
 add
-update
 instantiate
-
 
 run
 
@@ -183,6 +182,7 @@ const sort_on = (a, b) => {
     const b_order = global_order.indexOf(b.name)
     if (a_order === -1 && b_order === -1) {
         if (a.started_at != null || b.started_at != null) {
+            console.log({ a, b }, (a.started_at ?? Infinity) - (b.started_at ?? Infinity))
             return (a.started_at ?? Infinity) - (b.started_at ?? Infinity)
         } else if (isnumber(a.name) && isnumber(b.name)) {
             return parseInt(a.name) - parseInt(b.name)
@@ -190,7 +190,8 @@ const sort_on = (a, b) => {
             return a.name.localeCompare(b.name)
         }
     } else {
-        return a_order - b_order
+        let m = (x) => (x === -1 ? Infinity : x)
+        return m(a_order) - m(b_order)
     }
 }
 
