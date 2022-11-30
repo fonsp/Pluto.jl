@@ -60,6 +60,7 @@ function run_reactive_core!(
 	
 	run_status = Status.report_business_started!(notebook.status_tree, :run)
 	Status.report_business_started!(run_status, :resolve_topology)
+	cell_status = Status.report_business_planned!(run_status, :evaluate)
 	
     if !is_resolved(new_topology)
         unresolved_topology = new_topology
@@ -142,8 +143,9 @@ function run_reactive_core!(
     send_notebook_changes_throttled()
 	
 	Status.report_business_finished!(run_status, :resolve_topology)
+	Status.report_business_started!(cell_status)
 	for i in eachindex(to_run)
-		Status.report_business_planned!(run_status, Symbol(i))
+		Status.report_business_planned!(cell_status, Symbol(i))
 	end
 
     # delete new variables that will be defined by a cell unless this cell has already run in the current reactive run
@@ -166,7 +168,7 @@ function run_reactive_core!(
 
     local any_interrupted = false
     for (i, cell) in enumerate(to_run)
-		Status.report_business_started!(run_status, Symbol(i))
+		Status.report_business_started!(cell_status, Symbol(i))
 
         cell.queued = false
         cell.running = true
@@ -195,7 +197,7 @@ function run_reactive_core!(
         end
 
         cell.running = false
-		Status.report_business_finished!(run_status, Symbol(i))
+		Status.report_business_finished!(cell_status, Symbol(i))
 
         defined_macros_in_cell = defined_macros(new_topology, cell) |> Set{Symbol}
 

@@ -2492,6 +2492,40 @@ pl-status .status-time {
     font-variant-numeric: tabular-nums;
 }
 
+.discrete-progress-bar {
+    display: flex;
+    flex-direction: row;
+    background: var(--process-item-bg);
+    padding: 3px;
+    border-radius: 4px;
+    gap: 2px;
+    contain: strict;
+    height: 1em;
+    align-items: stretch;
+}
+
+.discrete-progress-bar > div {
+    background: var(--process-undefined);
+    flex: 1 1 auto;
+    border-radius: 2px;
+    /* margin: 0.4px; */
+}
+
+.discrete-progress-bar > div.done {
+    background: var(--process-finished);
+}
+.discrete-progress-bar > div.busy {
+    background: var(--process-busy);
+}
+
+.discrete-progress-bar.mid {
+    gap: 1px;
+}
+
+.discrete-progress-bar.big {
+    gap: 0.5px;
+}
+
 /* FOOTER */
 
 footer {

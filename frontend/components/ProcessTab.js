@@ -2,6 +2,7 @@ import { html, useEffect, useRef, useState } from "../imports/Preact.js"
 
 import { cl } from "../common/ClassTable.js"
 import { prettytime, useMillisSinceTruthy } from "./RunArea.js"
+import { DiscreteProgressBar } from "./DiscreteProgressBar.js"
 
 /**
  * @param {{
@@ -55,6 +56,7 @@ const descriptions = {
     init_process: "Initialize",
     pkg: "Package management",
     run: "Evaluating cells",
+    evaluate: "Running code",
 }
 
 export const friendly_name = (/** @type {string} */ task_name) => {
@@ -67,18 +69,16 @@ const to_ns = (x) => x * 1e9
 
 /**
  * @param {{
- * status_tree: import("./Editor.js").StatusEntryData,
+ * status_tree: import("./Editor.js").StatusEntryData?,
  * path: string[],
  * }} props
  */
 const StatusItem = ({ status_tree, path }) => {
+    if (status_tree == null) return null
     const mystatus = path.reduce((entry, key) => entry.subtasks[key], status_tree)
+    if (!mystatus) return null
 
     const [is_open, set_is_open] = useState(path.length < 1)
-
-    if (!mystatus) {
-        return null
-    }
 
     const started = path.length > 0 && is_started(mystatus)
     const finished = started && is_finished(mystatus)
@@ -94,11 +94,12 @@ const StatusItem = ({ status_tree, path }) => {
         if (busy) {
             let handle = setTimeout(() => {
                 set_is_open(true)
-            }, 500)
+            }, Math.max(100, 500 - path.length * 200))
 
             return () => clearTimeout(handle)
         }
     }, [busy])
+
     useEffectWithPrevious(
         ([old_finished]) => {
             if (!old_finished && finished) {
@@ -107,7 +108,7 @@ const StatusItem = ({ status_tree, path }) => {
 
                 let handle = setTimeout(() => {
                     set_is_open(false)
-                }, 1500)
+                }, 1800 - path.length * 200)
 
                 return () => clearTimeout(handle)
             }
@@ -115,10 +116,25 @@ const StatusItem = ({ status_tree, path }) => {
         [finished]
     )
 
+    const render_child_tasks = () =>
+        Object.entries(mystatus.subtasks)
+            .sort((a, b) => sort_on(a[1], b[1]))
+            .map(([key, _subtask]) => html`<${StatusItem} key=${key} status_tree=${status_tree} path=${[...path, key]} />`)
+
+    const render_child_progress = () => {
+        let kids = Object.values(mystatus.subtasks)
+        let done = kids.reduce((acc, x) => acc + (is_finished(x) ? 1 : 0), 0)
+        let busy = kids.reduce((acc, x) => acc + (is_busy(x) ? 1 : 0), 0)
+        let total = kids.length
+
+        return html`<${DiscreteProgressBar} busy=${busy} done=${done} total=${total} />`
+    }
+
     const inner = is_open
-        ? Object.entries(mystatus.subtasks)
-              .sort((a, b) => sort_on(a[1], b[1]))
-              .map(([key, _subtask]) => html`<${StatusItem} key=${key} status_tree=${status_tree} path=${[...path, key]} />`)
+        ? // are all kids a numbered task?
+          Object.values(mystatus.subtasks).every((x) => isnumber(x.name)) && Object.values(mystatus.subtasks).length > 0
+            ? render_child_progress()
+            : render_child_tasks()
         : null
 
     let inner_progress = null
@@ -156,7 +172,7 @@ const StatusItem = ({ status_tree, path }) => {
           </pl-status>`
 }
 
-const isnumber = (str) => !isNaN(str)
+const isnumber = (str) => /^\d+$/.test(str)
 
 /**
  * @param {import("./Editor.js").StatusEntryData} a
