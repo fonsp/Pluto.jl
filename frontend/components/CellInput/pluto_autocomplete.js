@@ -17,7 +17,7 @@ import { get_selected_doc_from_state } from "./LiveDocsFromCursor.js"
 import { cl } from "../../common/ClassTable.js"
 import { ScopeStateField } from "./scopestate_statefield.js"
 
-let { autocompletion, completionKeymap, completionStatus, acceptCompletion } = autocomplete
+let { autocompletion, completionKeymap, completionStatus, acceptCompletion, selectedCompletion } = autocomplete
 
 // These should be imported from  @codemirror/autocomplete, but they are not exported.
 let completionState = autocompletion()[0]
@@ -47,13 +47,19 @@ const tabCompletionState = StateField.define({
         for (let effect of tr.effects) {
             if (effect.is(TabCompletionEffect)) return true
         }
+
+        // Used to use `tr.startState.field(completionState, false)?.open` instead of `selectedCompletion`,
+        // but as `selectedCompletion` is actual public API (and does a little more checks), I prefer that now.
+        let previous_selected = selectedCompletion(tr.startState)
+        let current_selected = selectedCompletion(tr.state)
+
         // Autocomplete window was closed
-        if (tr.startState.field(completionState, false)?.open != null && tr.state.field(completionState, false)?.open == null) {
+        if (previous_selected != null && current_selected == null) {
             return false
         }
         if (
-            tr.startState.field(completionState, false).open != null &&
-            tr.startState.field(completionState, false) !== tr.state.field(completionState, false)
+            previous_selected != null &&
+            previous_selected !== current_selected
         ) {
             return false
         }
@@ -115,8 +121,11 @@ const pluto_autocomplete_keymap = [
  */
 let update_docs_from_autocomplete_selection = (on_update_doc_query) => {
     return EditorView.updateListener.of((update) => {
-        // Can't use this yet as it has not enough info to apply the change (source.from and source.to)
-        // let selected_completion = autocomplete.selectedCompletion(update.state)
+        // But we can use `selectedCompletion` to better check if the autocomplete is open
+        // (for some reason `autocompletion_state?.open != null` isn't enough anymore?)
+        // Sadly we still need `update.state.field(completionState, false)` as well because we can't
+        //   apply the result from `selectedCompletion()` yet (has no .from and .to, for example)
+        if (selectedCompletion(update.state) == null) return
 
         let autocompletion_state = update.state.field(completionState, false)
         let open_autocomplete = autocompletion_state?.open
@@ -129,6 +138,10 @@ let update_docs_from_autocomplete_selection = (on_update_doc_query) => {
         // Apply completion to state, which will yield us a `Transaction`.
         // The nice thing about this is that we can use the resulting state from the transaction,
         // without updating the actual state of the editor.
+        // NOTE This could bite someone who isn't familiar with this, but there isn't an easy way to fix it without a lot of console spam:
+        // .... THIS UPDATE WILL DO CONSOLE.LOG'S LIKE ANY UPDATE WOULD DO
+        // .... Which means you sometimes get double logs from codemirror extensions...
+        // .... Very disorienting 😵‍💫
         let result_transaction = update.state.update({
             changes: { from: selected_option.source.from, to: selected_option.source.to, insert: text_to_apply },
         })
@@ -207,6 +220,21 @@ const generate_scopestate_completions = function* (definitions, proposed, contex
 /** Use the completion results from the Julia server to create CM completion objects. */
 const julia_code_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (ctx) => {
     let to_complete = ctx.state.sliceDoc(0, ctx.pos)
+
+    // This block is to check if we have enough reason to show the automatic completions e.g. we are in an identifier, or after a `.`.
+    // Else it will show the completions always, which is just frustrating.
+    if (!ctx.explicit) {
+        let is_in_identifier = ctx.tokenBefore(["Identifier", "FieldName", "MacroIdentifier"]) != null
+        let is_dot_just_before = ctx.matchBefore(/\./) != null;
+        if (is_in_identifier || is_dot_just_before) {
+            // Go do the actual completion!
+            // I could have inverted the above condition but I find that very hard to read, so here is an `else`!
+        } else {
+            // Turns out `return null` pretends like the autocomplete didn't change... when we want to actively hide it when it was visible
+            // return null
+            return { from: ctx.pos, to: ctx.pos, options: [] }
+        }
+    }
 
     // Another rough hack... If it detects a `.:`, we want to cut out the `:` so we get all results from julia,
     // but then codemirror will put the `:` back in filtering
