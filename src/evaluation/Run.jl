@@ -409,8 +409,25 @@ function update_save_run!(
 
 	maybe_async(run_async) do
         topological_order = withtoken(notebook.executetoken) do
-            sync_nbpkg(session, notebook, old, new; save=(save && !session.options.server.disable_writing_notebook_files), take_token=false)
-            if !(isempty(to_run_online) && session.options.evaluation.lazy_workspace_creation) && will_run_code(notebook)
+			run_code = !(
+				isempty(to_run_online) && 
+				session.options.evaluation.lazy_workspace_creation
+			) && will_run_code(notebook)
+			
+			if run_code
+				# this will trigger the notebook process to start. @async makes it run in the background, so that sync_nbpkg (below) can start running in parallel.
+				# Some notes:
+				# - @async is enough, we don't need multithreading because the notebook runs in a separate process.
+				# - sync_nbpkg manages the notebook package environment using Pkg on this server process. This means that sync_nbpkg does not need the notebook process at all, and it can run in parallel, before it has even started.
+				@async WorkspaceManager.get_workspace((session, notebook))
+			end
+			
+            sync_nbpkg(session, notebook, old, new; 
+				save=(save && !session.options.server.disable_writing_notebook_files), 
+				take_token=false
+			)
+			
+            if run_code
                 # not async because that would be double async
                 run_reactive_core!(session, notebook, old, new, to_run_online; save, kwargs...)
                 # run_reactive_async!(session, notebook, old, new, to_run_online; deletion_hook=deletion_hook, run_async=false, kwargs...)
