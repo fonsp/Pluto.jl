@@ -49,7 +49,27 @@ function cdnified_html(filename::AbstractString;
     )
 end
 
-const _insertion_meta = """<meta name="pluto-insertion-spot-parameters">"""
+const _insertion_meta = """<meta name="pluto-insertion-spot-meta">"""
+const _insertion_parameters = """<meta name="pluto-insertion-spot-parameters">"""
+
+
+inserted_html(original_contents::AbstractString; 
+    meta::AbstractString="",
+    parameters::AbstractString="",
+) = replace_at_least_once(
+    replace_at_least_once(original_contents, 
+        _insertion_meta => 
+        """
+        $(meta)
+        $(_insertion_meta)
+        """
+    ),
+    _insertion_meta => 
+    """
+    $(parameters)
+    $(_insertion_parameters)
+    """
+)
 
 """
 See [PlutoSliderServer.jl](https://github.com/JuliaPluto/PlutoSliderServer.jl) if you are interested in exporting notebooks programatically.
@@ -73,32 +93,21 @@ function generate_html(;
     )::String
 
     cdnified = cdnified_editor_html(; version, pluto_cdn_root)
-
-    result = replace_at_least_once(
-        replace_at_least_once(cdnified, 
-            _insertion_meta => 
-            """
-            $(header_html)
-            $(_insertion_meta)
-            """
-        ),
-        _insertion_meta => 
-        """
-        <script data-pluto-file="launch-parameters">
-        window.pluto_notebook_id = $(notebook_id_js);
-        window.pluto_isolated_cell_ids = $(isolated_cell_ids_js);
-        window.pluto_notebookfile = $(notebookfile_js);
-        window.pluto_disable_ui = $(disable_ui ? "true" : "false");
-        window.pluto_slider_server_url = $(slider_server_url_js);
-        window.pluto_binder_url = $(binder_url_js);
-        window.pluto_statefile = $(statefile_js);
-        window.pluto_preamble_html = $(preamble_html_js);
-        </script>
-        $(_insertion_meta)
-        """
-    )
-
-    return result
+    
+    parameters = """
+    <script data-pluto-file="launch-parameters">
+    window.pluto_notebook_id = $(notebook_id_js);
+    window.pluto_isolated_cell_ids = $(isolated_cell_ids_js);
+    window.pluto_notebookfile = $(notebookfile_js);
+    window.pluto_disable_ui = $(disable_ui ? "true" : "false");
+    window.pluto_slider_server_url = $(slider_server_url_js);
+    window.pluto_binder_url = $(binder_url_js);
+    window.pluto_statefile = $(statefile_js);
+    window.pluto_preamble_html = $(preamble_html_js);
+    </script>
+    """
+    
+    inserted_html(cdnified; meta=header_html, parameters)
 end
 
 function replace_at_least_once(s, pair)
