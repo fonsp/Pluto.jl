@@ -64,7 +64,7 @@ inserted_html(original_contents::AbstractString;
         $(_insertion_meta)
         """
     ),
-    _insertion_meta => 
+    _insertion_parameters => 
     """
     $(parameters)
     $(_insertion_parameters)
