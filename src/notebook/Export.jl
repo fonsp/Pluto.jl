@@ -215,7 +215,6 @@ function generate_index_html(;
     version::Union{Nothing,VersionNumber,AbstractString}=nothing, 
     pluto_cdn_root::Union{Nothing,AbstractString}=nothing,
 
-    featured_static::Bool=false,
     featured_direct_html_links::Bool=false,
     featured_sources_js::AbstractString="undefined",
 )
@@ -233,7 +232,6 @@ function generate_index_html(;
     
     parameters = """
     <script data-pluto-file="launch-parameters">
-    window.pluto_featured_static = $(featured_static ? "true" : "false");
     window.pluto_featured_direct_html_links = $(featured_direct_html_links ? "true" : "false");
     window.pluto_featured_sources = $(featured_sources_js);
     </script>

@@ -11,8 +11,6 @@ const url_params = new URLSearchParams(window.location.search)
  */
 const launch_params = {
     //@ts-ignore
-    featured_static: !!(url_params.get("featured_static") ?? window.pluto_featured_static),
-    //@ts-ignore
     featured_direct_html_links: !!(url_params.get("featured_direct_html_links") ?? window.pluto_featured_direct_html_links),
 
     //@ts-ignore

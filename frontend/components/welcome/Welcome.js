@@ -26,7 +26,6 @@ import default_featured_sources from "../../featured_sources.js"
 /**
  * @typedef LaunchParameters
  * @type {{
- * featured_static: boolean,
  * featured_direct_html_links: boolean,
  * featured_sources: import("./Featured.js").FeaturedSource[]?,
  * featured_source_url?: string,
@@ -55,8 +54,6 @@ export const Welcome = ({ launch_params }) => {
     const client_ref = useRef(/** @type {import('../../common/PlutoConnection').PlutoConnection} */ ({}))
 
     useEffect(() => {
-        if (launch_params.featured_static) return
-
         const on_update = ({ message, type }) => {
             if (type === "notebook_list") {
                 // a notebook list updates happened while the welcome screen is open, because a notebook started running for example

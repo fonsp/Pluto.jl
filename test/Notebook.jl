@@ -577,7 +577,7 @@ end
         @test occursin("</html>", export_html)
         @test !occursin("<pluto-editor", export_html)
         
-        export_html = Pluto.generate_index_html(; featured_static=true, featured_direct_html_links=true, featured_sources_js="[{url:`./zozozo.json`}]")
+        export_html = Pluto.generate_index_html(; featured_direct_html_links=true, featured_sources_js="[{url:`./zozozo.json`}]")
         
         @test occursin("zozozo", export_html)
     end
