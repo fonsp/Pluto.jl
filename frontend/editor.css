@@ -2061,8 +2061,7 @@ pluto-helpbox > header {
     gap: 0.5em;
 }
 
-pluto-helpbox > header > button.helpbox-tab-key::before {
-    content: "";
+pluto-helpbox > header > button.helpbox-tab-key > .tabicon {
     /* font-size: 1em; */
     --size: 1.1em;
     width: var(--size);
@@ -2073,23 +2072,109 @@ pluto-helpbox > header > button.helpbox-tab-key::before {
     margin-right: 0.6em;
     display: inline-block;
 }
-pluto-helpbox > header > button.helpbox-docs::before {
+pluto-helpbox > header > button.helpbox-docs > .tabicon {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/search.svg");
     /* content: "📚 "; */
 }
-pluto-helpbox > header > button.helpbox-docs.active::before {
+
+pluto-helpbox > header > button.helpbox-docs.active > .tabicon {
     /* content: "📖 "; */
 }
-pluto-helpbox > header > button.helpbox-process::before {
+pluto-helpbox > header > button.helpbox-process > .tabicon {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/terminal.svg");
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/pulse.svg");
     /* content: "💻 "; */
 }
 
-pluto-helpbox > header > button.helpbox-tab-key:disabled::before {
+pluto-helpbox > header > button.helpbox-tab-key:disabled > .tabicon {
     /* display: none; */
     opacity: 0.5;
 }
+/* 
+button.helpbox-process.helpbox-tab-key::before {
+    content: "";
+    display: block;
+    position: absolute;
+    --offset: -5px;
+    top: var(--offset);
+    right: var(--offset);
+    left: var(--offset);
+    bottom: var(--offset);
+    background: var(--process-busy);
+    border-radius: var(--border-radius);
+    background: linear-gradient(447deg, var(--process-finished), var(--process-finished) 50%, var(--process-busy) 50%, var(--process-busy));
+    background: linear-gradient(
+        447deg,
+        var(--process-busy) 0%,
+        var(--process-busy) 25%,
+        var(--process-finished) 25%,
+        var(--process-finished) 50%,
+        var(--process-busy) 50%,
+        var(--process-busy) 75%,
+        var(--process-finished) 75%,
+        var(--process-finished) 100%
+    );
+    animation: move-bg 5s linear infinite;
+    background-size: 100px auto;
+    z-index: -1;
+    opacity: 0.6;
+} */
+
+/* @keyframes rotate-bg {
+    0% {
+        background: linear-gradient(
+            0deg,
+            var(--process-busy) 0%,
+            var(--process-busy) 20%,
+            var(--process-finished) 20%,
+            var(--process-finished) 40%,
+            var(--process-busy) 40%,
+            var(--process-busy) 60%,
+            var(--process-finished) 60%,
+            var(--process-finished) 80%,
+            var(--process-busy) 80%,
+            var(--process-busy)
+        );
+    }
+    100% {
+        background: linear-gradient(
+            70deg,
+            var(--process-busy) 0%,
+            var(--process-busy) 20%,
+            var(--process-finished) 20%,
+            var(--process-finished) 40%,
+            var(--process-busy) 40%,
+            var(--process-busy) 60%,
+            var(--process-finished) 60%,
+            var(--process-finished) 80%,
+            var(--process-busy) 80%,
+            var(--process-busy)
+        );
+    }
+} */
+/* 
+@keyframes move-bg {
+    0% {
+        background-position-x: 0;
+    }
+    100% {
+        background-position-x: 100px;
+    }
+}
+
+button.helpbox-process.helpbox-tab-key::after {
+    content: "";
+    display: block;
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    bottom: 0;
+    border-radius: var(--border-radius);
+    border: none;
+    background: var(--helpbox-header-tab-bg-color);
+    z-index: -1;
+} */
 
 pluto-helpbox .live-docs-searchbox {
     display: flex;
@@ -2129,10 +2214,36 @@ button.helpbox-tab-key {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    /* position: relative; */
+    /* flex: 1 1 auto; */
+    /* z-index: 1; */
+    /* overflow: hidden; */
+}
+
+button.helpbox-process.busy {
+    outline: 6px solid var(--process-busy);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    button.helpbox-process.busy {
+        animation: outline-heartbeat 0.8s ease-in infinite;
+        animation-direction: alternate;
+    }
+}
+@keyframes outline-heartbeat {
+    0% {
+        outline-offset: -1px;
+        outline-width: 3px;
+    }
+    100% {
+        outline-offset: 0px;
+        outline-width: 6px;
+    }
 }
 
 button.active.helpbox-tab-key {
     outline: 3px solid #99afb9;
+    animation: none;
 }
 
 pluto-helpbox > header > button.helpbox-close {
@@ -2267,6 +2378,154 @@ pluto-helpbox > section hr {
 .pluto-docs-binding h5,
 .pluto-docs-binding h6 {
     font-size: 1.1em;
+}
+
+/* PROCESS TAB */
+
+pl-status {
+    --status-color: var(--process-undefined);
+    font-family: var(--system-ui-font-stack);
+    display: flex;
+    flex-direction: column;
+    border-radius: 0.2em;
+    /* margin: 0.3em; */
+    margin-left: 0.7em;
+    border-left: 3px solid transparent;
+    margin-top: 0.4em;
+    overflow: hidden;
+    /* background: var(--status-color); */
+    /* transition: max-height 1s linear; */
+    /* max-height: 30px; */
+    flex: 1 0 auto;
+}
+
+pl-status::before {
+    flex: 1 2 auto;
+    /* content: ""; */
+    display: inline-block;
+    left: 0;
+    right: 0px;
+    width: 3px;
+    height: 10px;
+    bottom: 3px;
+    top: 3px;
+    background: pink;
+}
+
+pl-status.busy {
+    --status-color: var(--process-busy);
+}
+pl-status.finished {
+    --status-color: var(--process-finished);
+}
+
+pl-status.can_open {
+    cursor: auto;
+    border-color: #98989854;
+}
+pl-status.can_open > div {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    cursor: pointer;
+}
+pl-status.can_open.is_open {
+    border-color: var(--status-color);
+}
+
+pl-status[data-depth="0"],
+pl-status[data-depth="1"] {
+    margin-left: 0;
+}
+
+pl-status > div {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    /* margin: 0em 0em 0.4em 0; */
+    padding: 0.2em;
+    background: var(--process-item-bg);
+    border-radius: 0.4em;
+    /* flex: 1 0 auto; */
+}
+
+pl-status > div > .status-icon {
+    content: "";
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    border-radius: 50%;
+    background-color: var(--status-color);
+    /* border: 3px solid green; */
+    margin: 0em 0.5em;
+    flex: 0 0 auto;
+}
+
+pl-status.busy > div > .status-icon {
+    border: 3px solid transparent;
+    border-right-color: hsl(126deg 30% 60%);
+    border-bottom-color: hsl(126deg 30% 60%);
+    /* border-left-color: hsl(126deg 30% 60%); */
+    animation: identifier-spin 1.7s linear infinite;
+}
+
+@keyframes identifier-spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.subprogress-counter {
+    opacity: 0.5;
+    /* font-variant-numeric: tabular-nums; */
+    font-size: 0.8em;
+}
+
+pl-status .status-time {
+    margin-left: auto;
+    /* align-self: end; */
+    padding-right: 0.5em;
+    padding-left: 0.5em;
+    /* font-family: "Roboto Mono", monospace; */
+    opacity: 0.6;
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.discrete-progress-bar {
+    display: flex;
+    flex-direction: row;
+    background: var(--process-item-bg);
+    padding: 3px;
+    border-radius: 4px;
+    gap: 2px;
+    contain: strict;
+    height: 1em;
+    align-items: stretch;
+}
+
+.discrete-progress-bar > div {
+    background: var(--process-undefined);
+    flex: 1 1 auto;
+    border-radius: 2px;
+    /* margin: 0.4px; */
+}
+
+.discrete-progress-bar > div.done {
+    background: var(--process-finished);
+}
+.discrete-progress-bar > div.busy {
+    background: var(--process-busy);
+}
+
+.discrete-progress-bar.mid {
+    gap: 1px;
+}
+
+.discrete-progress-bar.big {
+    gap: 0.5px;
 }
 
 /* FOOTER */

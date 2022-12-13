@@ -63,6 +63,7 @@ import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_l
 import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
 import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
 import { mod_d_command } from "./CellInput/mod_d_command.js"
+import { open_bottom_right_panel } from "./BottomRightPanel.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 
@@ -647,7 +648,7 @@ export const CellInput = ({
                     EditorView.updateListener.of((update) => {
                         if (!update.docChanged) return
                         if (update.state.doc.length > 0 && update.state.sliceDoc(0, 1) === "?") {
-                            window.dispatchEvent(new CustomEvent("open_live_docs"))
+                            open_bottom_right_panel("docs")
                         }
                     }),
                     EditorState.tabSize.of(4),

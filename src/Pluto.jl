@@ -50,6 +50,7 @@ include("./analysis/ExpressionExplorer.jl")
 include("./analysis/FunctionDependencies.jl")
 include("./analysis/ReactiveNode.jl")
 include("./packages/PkgCompat.jl")
+include("./webserver/Status.jl")
 
 include("./notebook/Cell.jl")
 include("./analysis/data structures.jl")

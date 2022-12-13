@@ -1,6 +1,7 @@
 import UUIDs: uuid1
 
 import .PkgCompat
+import .Status
 
 "Will hold all 'response handlers': functions that respond to a WebSocket request from the client."
 const responses = Dict{Symbol,Function}()
@@ -163,6 +164,7 @@ function notebook_to_js(notebook::Notebook)
                 "instantiated" => notebook.nbpkg_ctx_instantiated,
             )
         end,
+        "status_tree" => Status.tojs(notebook.status_tree),
         "cell_execution_order" => cell_id.(collect(topological_order(notebook))),
     )
 end
@@ -376,6 +378,10 @@ end
 ###
 # MISC RESPONSES
 ###
+
+responses[:current_time] = function response_current_time(🙋::ClientRequest)
+    putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:current_time, Dict(:time => time()), nothing, nothing, 🙋.initiator))
+end
 
 responses[:connect] = function response_connect(🙋::ClientRequest)
     putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:👋, Dict(

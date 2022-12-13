@@ -16,6 +16,7 @@ import {
 import { get_selected_doc_from_state } from "./LiveDocsFromCursor.js"
 import { cl } from "../../common/ClassTable.js"
 import { ScopeStateField } from "./scopestate_statefield.js"
+import { open_bottom_right_panel } from "../BottomRightPanel.js"
 
 let { autocompletion, completionKeymap, completionStatus, acceptCompletion } = autocomplete
 
@@ -90,7 +91,7 @@ const tab_completion_command = (cm) => {
 let open_docs_if_autocomplete_is_open_command = (cm) => {
     let autocompletion_open = cm.state.field(completionState, false)?.open ?? false
     if (autocompletion_open) {
-        window.dispatchEvent(new CustomEvent("open_live_docs"))
+        open_bottom_right_panel("docs")
         return true
     }
     return false

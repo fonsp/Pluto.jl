@@ -1,7 +1,9 @@
-import { html, useState, useRef, useEffect } from "../imports/Preact.js"
+import { html, useState, useRef, useEffect, useMemo } from "../imports/Preact.js"
 import { cl } from "../common/ClassTable.js"
 
 import { LiveDocsTab } from "./LiveDocsTab.js"
+import { is_finished, ProcessTab, total_done, total_tasks } from "./ProcessTab.js"
+import { useMyClockIsAheadBy } from "../common/clock sync.js"
 
 export const ENABLE_PROCESS_TAB = window.localStorage.getItem("ENABLE_PROCESS_TAB") === "true"
 
@@ -20,26 +22,62 @@ window.PLUTO_TOGGLE_PROCESS_TAB = () => {
     window.location.reload()
 }
 
-export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, notebook }) => {
+/**
+ * @typedef PanelTabName
+ * @type {"docs" | "process" | null}
+ */
+
+export const open_bottom_right_panel = (/** @type {PanelTabName} */ tab) => window.dispatchEvent(new CustomEvent("open_bottom_right_panel", { detail: tab }))
+
+/**
+ * @param {{
+ * notebook: import("./Editor.js").NotebookData,
+ * desired_doc_query: string?,
+ * on_update_doc_query: (query: string?) => void,
+ * connected: boolean,
+ * }} props
+ */
+export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, notebook, connected }) => {
     let container_ref = useRef()
 
     const focus_docs_on_open_ref = useRef(false)
-    const [open_tab, set_open_tab] = useState(/** @type { "docs" | "process" | null} */ (null))
+    const [open_tab, set_open_tab] = useState(/** @type { PanelTabName} */ (null))
     const hidden = open_tab == null
 
-    // Open docs when "open_live_docs" event is triggered
+    // Open panel when "open_bottom_right_panel" event is triggered
     useEffect(() => {
-        let handler = () => {
+        let handler = (/** @type {CustomEvent} */ e) => {
+            console.log(e.detail)
             // https://github.com/fonsp/Pluto.jl/issues/321
             focus_docs_on_open_ref.current = false
-            set_open_tab("docs")
+            set_open_tab(e.detail)
             if (window.getComputedStyle(container_ref.current).display === "none") {
                 alert("This browser window is too small to show docs.\n\nMake the window bigger, or try zooming out.")
             }
         }
-        window.addEventListener("open_live_docs", handler)
-        return () => window.removeEventListener("open_live_docs", handler)
+        window.addEventListener("open_bottom_right_panel", handler)
+        return () => window.removeEventListener("open_bottom_right_panel", handler)
     }, [])
+
+    const [status_total, status_done] = useMemo(
+        () =>
+            !ENABLE_PROCESS_TAB || notebook.status_tree == null
+                ? [0, 0]
+                : [
+                      // total_tasks minus 1, to exclude the notebook task itself
+                      total_tasks(notebook.status_tree) - 1,
+                      // the notebook task should never be done, but lets be sure and subtract 1 if it is:
+                      total_done(notebook.status_tree) - (is_finished(notebook.status_tree) ? 1 : 0),
+                  ],
+        [notebook.status_tree]
+    )
+
+    const busy = status_done < status_total
+
+    const show_business_outline = useDelayedTruth(busy, 700)
+    const show_business_counter = useDelayedTruth(busy, 3000)
+
+    const my_clock_is_ahead_by = useMyClockIsAheadBy({ connected })
 
     return html`
         <aside id="helpbox-wrapper" ref=${container_ref}>
@@ -58,7 +96,8 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
                             // TODO: focus the docs input
                         }}
                     >
-                        <span>Live Docs</span>
+                        <span class="tabicon"></span>
+                        <span class="tabname">Live Docs</span>
                     </button>
                     <button
                         disabled=${!ENABLE_PROCESS_TAB}
@@ -67,12 +106,20 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
                             "helpbox-tab-key": true,
                             "helpbox-process": true,
                             "active": open_tab === "process",
+                            "busy": ENABLE_PROCESS_TAB && show_business_outline,
                         })}
                         onClick=${() => {
                             set_open_tab(open_tab === "process" ? null : "process")
                         }}
                     >
-                        <span>${ENABLE_PROCESS_TAB ? "Status" : "Coming soon"}</span>
+                        <span class="tabicon"></span>
+                        <span class="tabname"
+                            >${ENABLE_PROCESS_TAB
+                                ? open_tab === "process" || !show_business_counter
+                                    ? "Status"
+                                    : html`Status${" "}<span class="subprogress-counter">(${status_done}/${status_total})</span>`
+                                : "Coming soon"}</span
+                        >
                     </button>
                     ${hidden
                         ? null
@@ -93,18 +140,26 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
                           notebook=${notebook}
                       />`
                     : open_tab === "process"
-                    ? html`<section>
-                          <p>Congratulations, you found the secret!</p>
-                          <p>
-                              Have you considered becoming a Pluto.jl open source contributor? We are always looking for creative people with JavaScript
-                              experience! Take a look at our${" "}
-                              <a href="https://github.com/fonsp/Pluto.jl/issues?q=is%3Aopen+label%3A%22good+first+issue%22+sort%3Aupdated-desc"
-                                  >good first issues</a
-                              >, and our ${" "}<a href="https://juliapluto.github.io/weekly-call-notes/">weekly community call</a>.
-                          </p>
-                      </section>`
+                    ? html`<${ProcessTab} notebook=${notebook} my_clock_is_ahead_by=${my_clock_is_ahead_by} />`
                     : null}
             </pluto-helpbox>
         </aside>
     `
+}
+
+const useDelayedTruth = (/** @type {boolean} */ x, /** @type {number} */ timeout) => {
+    const [output, set_output] = useState(false)
+
+    useEffect(() => {
+        if (x) {
+            let handle = setTimeout(() => {
+                set_output(true)
+            }, timeout)
+            return () => clearTimeout(handle)
+        } else {
+            set_output(false)
+        }
+    }, [x])
+
+    return output
 }

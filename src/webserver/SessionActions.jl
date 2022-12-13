@@ -1,6 +1,6 @@
 module SessionActions
 
-import ..Pluto: Pluto, ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, cutename, readwrite, update_save_run!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, try_event_call, NewNotebookEvent, OpenNotebookEvent, ShutdownNotebookEvent, @asynclog, ProcessStatus, maybe_convert_path_to_wsl, move_notebook!
+import ..Pluto: Pluto, Status, ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, cutename, readwrite, update_save_run!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, try_event_call, NewNotebookEvent, OpenNotebookEvent, ShutdownNotebookEvent, @asynclog, ProcessStatus, maybe_convert_path_to_wsl, move_notebook!, throttled
 using FileWatching
 import ..Pluto.DownloadCool: download_cool
 import HTTP
@@ -75,8 +75,14 @@ function open(session::ServerSession, path::AbstractString;
     end
 
     session.notebooks[notebook.notebook_id] = notebook
-    for c in notebook.cells
-        c.queued = session.options.evaluation.run_notebook_on_load
+    
+    run_status = Status.report_business_planned!(notebook.status_tree, :run)
+    if session.options.evaluation.run_notebook_on_load
+        Status.report_business_planned!(run_status, :resolve_topology)
+        for (i,c) in enumerate(notebook.cells)
+            c.queued = true
+            Status.report_business_planned!(run_status, Symbol(i))
+        end
     end
 
     update_save_run!(session, notebook, notebook.cells; run_async, prerender_text=true)
@@ -169,6 +175,11 @@ function add(session::ServerSession, notebook::Notebook; run_async::Bool=true)
         end
     end
     
+    notebook.status_tree.update_listener_ref[] = first(throttled(1.0 / 20) do
+        # TODO: this throttle should be trailing
+        Pluto.send_notebook_changes!(Pluto.ClientRequest(; session, notebook))
+    end)
+
     return notebook
 end
 
