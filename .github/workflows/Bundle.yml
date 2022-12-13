@@ -26,16 +26,24 @@ jobs:
               # See https://docs.github.com/en/actions/reference/events-that-trigger-workflows#triggering-new-workflows-using-a-personal-access-token
               with:
                 token: ${{ secrets.PAT_TOKEN }}
+              if: github.event_name != 'pull_request'
+              
             - uses: fregante/setup-git-user@v1
-
+              if: github.event_name != 'pull_request'
+              
             # Ignore the build changes from previous run.
             # This "just" hard resets to the latest commit on main.
             # The previous bundle commit will still exist, but will be "dangling", unless we made a tag for it.
             # Github will eventually clean dangling commits, which is fine because again, the ones with a tag will stay around.
             - name: Make Sure Release Is Reset To Main
+              if: github.event_name != 'pull_request'
               run: |
                   git checkout -b release
                   git reset --hard $GITHUB_SHA
+
+            # if this is a PR. then just checkout without fanciness
+            - uses: actions/checkout@v3
+              if: github.event_name == 'pull_request'
 
             # Do the actual bundling
             - uses: actions/setup-node@v3
