@@ -181,9 +181,6 @@ function frontmatter_html(frontmatter::Dict{String,Any}; default_frontmatter::Di
 end
 
 
-
-
-
 replace_substring(s::String, sub::SubString, newval::AbstractString) = *(
 	SubString(s, 1, prevind(s, sub.offset + 1, 1)), 
 	newval, 
@@ -209,4 +206,36 @@ function replace_with_cdn(cdnify::Function, s::String, idx::Integer=1)
 			))
 		end
 	end
+end
+
+"""
+Generate a custom index.html that is designed to display a custom set of featured notebooks, without the file UI or Pluto logo. This is to be used by [PlutoSliderServer.jl](https://github.com/JuliaPluto/PlutoSliderServer.jl) to show a fancy index page.
+"""
+function generate_index_html(;
+    version::Union{Nothing,VersionNumber,AbstractString}=nothing, 
+    pluto_cdn_root::Union{Nothing,AbstractString}=nothing,
+
+    featured_direct_html_links::Bool=false,
+    featured_sources_js::AbstractString="undefined",
+)
+    cdnified = cdnified_html("index.html"; version, pluto_cdn_root)
+    
+    meta = """
+    <style>
+    section#open,
+    section#mywork,
+    section#title {
+        display: none !important;
+    }
+    </style>
+    """
+    
+    parameters = """
+    <script data-pluto-file="launch-parameters">
+    window.pluto_featured_direct_html_links = $(featured_direct_html_links ? "true" : "false");
+    window.pluto_featured_sources = $(featured_sources_js);
+    </script>
+    """
+    
+    inserted_html(cdnified; meta, parameters)
 end
