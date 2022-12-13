@@ -70,6 +70,7 @@ export const Welcome = () => {
             new_update_message(client)
 
             // to start JIT'ting
+            client.send("current_time")
             client.send("completepath", { query: "" }, {})
         })
     }, [])

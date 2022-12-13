@@ -3,6 +3,7 @@ import { cl } from "../common/ClassTable.js"
 
 import { LiveDocsTab } from "./LiveDocsTab.js"
 import { is_finished, ProcessTab, total_done, total_tasks } from "./ProcessTab.js"
+import { useMyClockIsAheadBy } from "../common/clock sync.js"
 
 export const ENABLE_PROCESS_TAB = window.localStorage.getItem("ENABLE_PROCESS_TAB") === "true"
 
@@ -33,9 +34,10 @@ export const open_bottom_right_panel = (/** @type {PanelTabName} */ tab) => wind
  * notebook: import("./Editor.js").NotebookData,
  * desired_doc_query: string?,
  * on_update_doc_query: (query: string?) => void,
+ * connected: boolean,
  * }} props
  */
-export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, notebook }) => {
+export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, notebook, connected }) => {
     let container_ref = useRef()
 
     const focus_docs_on_open_ref = useRef(false)
@@ -74,6 +76,8 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
 
     const show_business_outline = useDelayedTruth(busy, 700)
     const show_business_counter = useDelayedTruth(busy, 3000)
+
+    const my_clock_is_ahead_by = useMyClockIsAheadBy({ connected })
 
     return html`
         <aside id="helpbox-wrapper" ref=${container_ref}>
@@ -136,7 +140,7 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
                           notebook=${notebook}
                       />`
                     : open_tab === "process"
-                    ? html`<${ProcessTab} notebook=${notebook} />`
+                    ? html`<${ProcessTab} notebook=${notebook} my_clock_is_ahead_by=${my_clock_is_ahead_by} />`
                     : null}
             </pluto-helpbox>
         </aside>

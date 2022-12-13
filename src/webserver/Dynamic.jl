@@ -379,6 +379,10 @@ end
 # MISC RESPONSES
 ###
 
+responses[:current_time] = function response_current_time(🙋::ClientRequest)
+    putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:current_time, Dict(:time => time()), nothing, nothing, 🙋.initiator))
+end
+
 responses[:connect] = function response_connect(🙋::ClientRequest)
     putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:👋, Dict(
         :notebook_exists => (🙋.notebook !== nothing),

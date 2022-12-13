@@ -1544,6 +1544,7 @@ patch: ${JSON.stringify(
                     <${BottomRightPanel}
                         desired_doc_query=${this.state.desired_doc_query}
                         on_update_doc_query=${this.actions.set_doc_query}
+                        connected=${this.state.connected}
                         notebook=${this.state.notebook}
                     />
                     <${Popup} 

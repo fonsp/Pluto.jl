@@ -7,13 +7,13 @@ import { DiscreteProgressBar } from "./DiscreteProgressBar.js"
 /**
  * @param {{
  * notebook: import("./Editor.js").NotebookData,
+ * my_clock_is_ahead_by: number,
  * }} props
  */
-export let ProcessTab = ({ notebook }) => {
-    // <p>${path_to_first_busy_business(notebook.status_tree).map(friendly_name).join(" – ")}</p>
+export let ProcessTab = ({ notebook, my_clock_is_ahead_by }) => {
     return html`
         <section>
-            <${StatusItem} status_tree=${notebook.status_tree} path=${[]} />
+            <${StatusItem} status_tree=${notebook.status_tree} my_clock_is_ahead_by=${my_clock_is_ahead_by} path=${[]} />
         </section>
     `
 }
@@ -70,9 +70,10 @@ const to_ns = (x) => x * 1e9
  * @param {{
  * status_tree: import("./Editor.js").StatusEntryData?,
  * path: string[],
+ * my_clock_is_ahead_by: number,
  * }} props
  */
-const StatusItem = ({ status_tree, path }) => {
+const StatusItem = ({ status_tree, path, my_clock_is_ahead_by }) => {
     if (status_tree == null) return null
     const mystatus = path.reduce((entry, key) => entry.subtasks[key], status_tree)
     if (!mystatus) return null
@@ -87,7 +88,9 @@ const StatusItem = ({ status_tree, path }) => {
     const end = mystatus.finished_at ?? 0
 
     const local_busy_time = (useMillisSinceTruthy(busy) ?? 0) / 1000
-    const busy_time = Math.max(local_busy_time, Date.now() / 1000 - start)
+    const mytime = Date.now() / 1000
+
+    const busy_time = Math.max(local_busy_time, mytime - my_clock_is_ahead_by - start)
 
     useEffect(() => {
         if (busy) {
@@ -118,7 +121,10 @@ const StatusItem = ({ status_tree, path }) => {
     const render_child_tasks = () =>
         Object.entries(mystatus.subtasks)
             .sort((a, b) => sort_on(a[1], b[1]))
-            .map(([key, _subtask]) => html`<${StatusItem} key=${key} status_tree=${status_tree} path=${[...path, key]} />`)
+            .map(
+                ([key, _subtask]) =>
+                    html`<${StatusItem} key=${key} status_tree=${status_tree} my_clock_is_ahead_by=${my_clock_is_ahead_by} path=${[...path, key]} />`
+            )
 
     const render_child_progress = () => {
         let kids = Object.values(mystatus.subtasks)
@@ -182,7 +188,6 @@ const sort_on = (a, b) => {
     const b_order = global_order.indexOf(b.name)
     if (a_order === -1 && b_order === -1) {
         if (a.started_at != null || b.started_at != null) {
-            console.log({ a, b }, (a.started_at ?? Infinity) - (b.started_at ?? Infinity))
             return (a.started_at ?? Infinity) - (b.started_at ?? Infinity)
         } else if (isnumber(a.name) && isnumber(b.name)) {
             return parseInt(a.name) - parseInt(b.name)
