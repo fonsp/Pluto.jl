@@ -131,44 +131,38 @@ export const Welcome = ({ launch_params }) => {
         `
     }
 
-    const featured_html = html`
+    return html`
+        <section id="title">
+            <h1>welcome to <img src=${url_logo_big} /></h1>
+        </section>
+        <section id="mywork">
+            <div>
+                <${Recent}
+                    client=${client_ref.current}
+                    connected=${connected}
+                    remote_notebooks=${remote_notebooks}
+                    CustomRecent=${CustomRecent}
+                    on_start_navigation=${on_start_navigation}
+                />
+            </div>
+        </section>
+        <section id="open">
+            <div>
+                <${Open}
+                    client=${client_ref.current}
+                    connected=${connected}
+                    CustomPicker=${CustomPicker}
+                    show_samples=${show_samples}
+                    on_start_navigation=${on_start_navigation}
+                />
+            </div>
+        </section>
         <section id="featured">
             <div>
                 <${Featured} sources=${featured_sources} direct_html_links=${launch_params.featured_direct_html_links} />
             </div>
         </section>
     `
-
-    return launch_params.featured_static
-        ? featured_html
-        : html`
-              <section id="title">
-                  <h1>welcome to <img src=${url_logo_big} /></h1>
-              </section>
-              <section id="mywork">
-                  <div>
-                      <${Recent}
-                          client=${client_ref.current}
-                          connected=${connected}
-                          remote_notebooks=${remote_notebooks}
-                          CustomRecent=${CustomRecent}
-                          on_start_navigation=${on_start_navigation}
-                      />
-                  </div>
-              </section>
-              <section id="open">
-                  <div>
-                      <${Open}
-                          client=${client_ref.current}
-                          connected=${connected}
-                          CustomPicker=${CustomPicker}
-                          show_samples=${show_samples}
-                          on_start_navigation=${on_start_navigation}
-                      />
-                  </div>
-              </section>
-              ${featured_html}
-          `
 }
 
 // Option 1: Dynamically load source list from a json:
