@@ -5,6 +5,13 @@ on:
         branches:
             - main
     workflow_dispatch:
+    pull_request:
+        paths-ignore:
+            - "**.md"
+            - "**.jl"
+        branches-ignore:
+            - release
+
 concurrency:
     group: bundle
     cancel-in-progress: false
@@ -19,16 +26,24 @@ jobs:
               # See https://docs.github.com/en/actions/reference/events-that-trigger-workflows#triggering-new-workflows-using-a-personal-access-token
               with:
                 token: ${{ secrets.PAT_TOKEN }}
+              if: github.event_name != 'pull_request'
+              
             - uses: fregante/setup-git-user@v1
-
+              if: github.event_name != 'pull_request'
+              
             # Ignore the build changes from previous run.
             # This "just" hard resets to the latest commit on main.
             # The previous bundle commit will still exist, but will be "dangling", unless we made a tag for it.
             # Github will eventually clean dangling commits, which is fine because again, the ones with a tag will stay around.
             - name: Make Sure Release Is Reset To Main
+              if: github.event_name != 'pull_request'
               run: |
                   git checkout -b release
                   git reset --hard $GITHUB_SHA
+
+            # if this is a PR. then just checkout without fanciness
+            - uses: actions/checkout@v3
+              if: github.event_name == 'pull_request'
 
             # Do the actual bundling
             - uses: actions/setup-node@v3
@@ -56,6 +71,7 @@ jobs:
             # Needs to be `add --force` because frontend-dist is normally gitignored.
             # Also needs `push --force` because we reset to main (which doesn't contain the previous frontend-dist)
             - name: Force push frontend-dist changes
+              if: github.event_name != 'pull_request'
               run: |
                   git add frontend-dist --force
                   git commit -m "$GITHUB_WORKFLOW" -m "Built from hash $GITHUB_SHA"

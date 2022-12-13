@@ -12,7 +12,9 @@ if cdn_version_override !== nothing
     @warn "Reminder to fonsi: Using a development version of Pluto for CDN assets. The binder button might not work. You should not see this on a released version of Pluto." cdn_version_override
 end
 
-function cdnified_editor_html(;
+cdnified_editor_html(; kwargs...) = cdnified_html("editor.html"; kwargs...)
+
+function cdnified_html(filename::AbstractString;
         version::Union{Nothing,VersionNumber,AbstractString}=nothing, 
         pluto_cdn_root::Union{Nothing,AbstractString}=nothing,
     )
@@ -21,7 +23,7 @@ function cdnified_editor_html(;
     something(
         if should_use_bundled_cdn
             try
-                original = read(project_relative_path("frontend-dist", "editor.html"), String)
+                original = read(project_relative_path("frontend-dist", filename), String)
     
                 replace_with_cdn(original) do url
                     # Because parcel creates filenames with a hash in them, we can check if the file exists locally to make sure that everything is in order.
@@ -30,12 +32,12 @@ function cdnified_editor_html(;
                     URIs.resolvereference("https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@$(string(PLUTO_VERSION))/frontend-dist/", url) |> string
                 end
             catch e
-                @warn "Could not use bundled CDN version of editor.html. You should only see this message if you are using a fork of Pluto." exception=(e,catch_backtrace()) maxlog=1
+                @warn "Could not use bundled CDN version of $(filename). You should only see this message if you are using a fork of Pluto." exception=(e,catch_backtrace()) maxlog=1
                 nothing
             end
         end,
         let
-            original = read(project_relative_path("frontend", "editor.html"), String)
+            original = read(project_relative_path("frontend", filename), String)
 
             cdn_root = something(pluto_cdn_root, "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@$(something(cdn_version_override, string(something(version, PLUTO_VERSION))))/frontend/")
             @debug "Using CDN for Pluto assets:" cdn_root
@@ -46,6 +48,28 @@ function cdnified_editor_html(;
         end
     )
 end
+
+const _insertion_meta = """<meta name="pluto-insertion-spot-meta">"""
+const _insertion_parameters = """<meta name="pluto-insertion-spot-parameters">"""
+
+
+inserted_html(original_contents::AbstractString; 
+    meta::AbstractString="",
+    parameters::AbstractString="",
+) = replace_at_least_once(
+    replace_at_least_once(original_contents, 
+        _insertion_meta => 
+        """
+        $(meta)
+        $(_insertion_meta)
+        """
+    ),
+    _insertion_parameters => 
+    """
+    $(parameters)
+    $(_insertion_parameters)
+    """
+)
 
 """
 See [PlutoSliderServer.jl](https://github.com/JuliaPluto/PlutoSliderServer.jl) if you are interested in exporting notebooks programatically.
@@ -69,31 +93,21 @@ function generate_html(;
     )::String
 
     cdnified = cdnified_editor_html(; version, pluto_cdn_root)
-
-    result = replace_at_least_once(
-        replace_at_least_once(cdnified, 
-            "<meta name=\"pluto-insertion-spot-meta\">" => 
-            """
-            $(header_html)
-            <meta name=\"pluto-insertion-spot-meta\">
-            """),
-        "<meta name=\"pluto-insertion-spot-parameters\">" => 
-        """
-        <script data-pluto-file="launch-parameters">
-        window.pluto_notebook_id = $(notebook_id_js);
-        window.pluto_isolated_cell_ids = $(isolated_cell_ids_js);
-        window.pluto_notebookfile = $(notebookfile_js);
-        window.pluto_disable_ui = $(disable_ui ? "true" : "false");
-        window.pluto_slider_server_url = $(slider_server_url_js);
-        window.pluto_binder_url = $(binder_url_js);
-        window.pluto_statefile = $(statefile_js);
-        window.pluto_preamble_html = $(preamble_html_js);
-        </script>
-        <meta name=\"pluto-insertion-spot-parameters\">
-        """
-    )
-
-    return result
+    
+    parameters = """
+    <script data-pluto-file="launch-parameters">
+    window.pluto_notebook_id = $(notebook_id_js);
+    window.pluto_isolated_cell_ids = $(isolated_cell_ids_js);
+    window.pluto_notebookfile = $(notebookfile_js);
+    window.pluto_disable_ui = $(disable_ui ? "true" : "false");
+    window.pluto_slider_server_url = $(slider_server_url_js);
+    window.pluto_binder_url = $(binder_url_js);
+    window.pluto_statefile = $(statefile_js);
+    window.pluto_preamble_html = $(preamble_html_js);
+    </script>
+    """
+    
+    inserted_html(cdnified; meta=header_html, parameters)
 end
 
 function replace_at_least_once(s, pair)

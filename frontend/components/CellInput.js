@@ -576,9 +576,6 @@ export const CellInput = ({
             }
         })
 
-        // TODO remove me
-        //@ts-ignore
-        window.tags = tags
         const usesDarkTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         const newcm = (newcm_ref.current = new EditorView({
             state: EditorState.create({
@@ -630,12 +627,16 @@ export const CellInput = ({
                     // Remove selection on blur
                     EditorView.domEventHandlers({
                         blur: (event, view) => {
+                            // collapse the selection into a single point
                             view.dispatch({
                                 selection: {
                                     anchor: view.state.selection.main.head,
-                                    head: view.state.selection.main.head,
                                 },
+                                scrollIntoView: false,
                             })
+                            // and blur the DOM again (because the previous transaction might have re-focused it)
+                            view.contentDOM.blur()
+
                             set_cm_forced_focus(null)
                         },
                     }),
