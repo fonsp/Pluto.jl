@@ -108,15 +108,18 @@ export const Welcome = ({ launch_params }) => {
         }
     }
 
-    /** @type {import("./Featured.js").FeaturedSource[]} */
+    /**
+     * These are the sources from which we will download the featured notebook titles and metadata.
+     * @type {import("./Featured.js").FeaturedSource[]}
+     */
     const featured_sources = preact.useMemo(
         () =>
-            // 1
+            // Option 1: configured directly
             launch_params.featured_sources ??
-            // 2
+            // Option 2: configured through url and integrity strings
             (launch_params.featured_source_url
                 ? [{ url: launch_params.featured_source_url, integrity: launch_params.featured_source_integrity }]
-                : // 3
+                : // Option 3: default
                   default_featured_sources.sources),
         [launch_params]
     )
@@ -162,16 +165,3 @@ export const Welcome = ({ launch_params }) => {
         </section>
     `
 }
-
-// Option 1: Dynamically load source list from a json:
-// const [sources, set_sources] = useState(/** @type{Array<{url: String, integrity: String?}>?} */ (null))
-// useEffect(() => {
-//     run(async () => {
-//         const data = await (await fetch("featured_sources.json")).json()
-
-//         set_sources(data.sources)
-//     })
-// }, [])
-
-// Option 2: From a JS file. This means that the source list can be bundled together.
-// const sources = featured_sources.sources
