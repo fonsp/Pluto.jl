@@ -50,6 +50,8 @@ Update the notebook package environment to match the notebook's code. This will:
 - Detect the use of `Pkg.activate` and enable/disabled nbpkg accordingly.
 """
 function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology; on_terminal_output::Function=((args...) -> nothing), lag::Real=0)
+    pkg_status = Status.report_business_started!(notebook.status_tree, :pkg)
+    Status.report_business_started!(pkg_status, :analysis)
     
     👺 = false
 
@@ -108,12 +110,33 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
 
         can_skip = isempty(removed) && isempty(added) && notebook.nbpkg_ctx_instantiated
 
+        Status.report_business_finished!(pkg_status, :analysis)
+        
         if !can_skip
+            wait_business = if !isready(pkg_token)
+                Status.report_business_started!(pkg_status, 
+                    !PkgCompat._updated_registries_compat[] ? 
+                        :registry_update : 
+                        :waiting_for_others
+                )
+            end
+            
             return withtoken(pkg_token) do
+                isnothing(wait_business) || Status.report_business_finished!(wait_business)
+                
+                notebook.nbpkg_ctx_instantiated || Status.report_business_planned!(pkg_status, :resolve)
+                isempty(removed) || Status.report_business_planned!(pkg_status, :remove)
+                isempty(added) || Status.report_business_planned!(pkg_status, :add)
+                if !notebook.nbpkg_ctx_instantiated || !isempty(added) || !isempty(removed)
+                    Status.report_business_planned!(pkg_status, :instantiate)
+                end
+                
                 PkgCompat.refresh_registry_cache()
 
                 if !notebook.nbpkg_ctx_instantiated
-                    resolve_with_auto_fixes(notebook, iolistener)
+                    Status.report_business!(pkg_status, :resolve) do
+                        resolve_with_auto_fixes(notebook, iolistener)
+                    end
                 end
                 
                 to_add = filter(PkgCompat.package_exists, added)
@@ -123,6 +146,7 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                 @debug "PlutoPkg:" notebook.path to_add to_remove
                 
                 if !isempty(to_remove)
+                    Status.report_business_started!(pkg_status, :remove)
                     # See later comment
                     mkeys() = Set(filter(!is_stdlib, [m.name for m in values(PkgCompat.dependencies(notebook.nbpkg_ctx))]))
                     old_manifest_keys = mkeys()
@@ -137,6 +161,7 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                     new_manifest_keys = mkeys()
                     
                     # TODO: we might want to upgrade other packages now that constraints have loosened? Does this happen automatically?
+                    Status.report_business_finished!(pkg_status, :remove)
                 end
 
                 
@@ -144,6 +169,7 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                 # "Pkg.PRESERVE_DIRECT, but preserve exact verisons of Base.loaded_modules"
                 
                 if !isempty(to_add)
+                    Status.report_business_started!(pkg_status, :add)
                     start_time = time_ns()
                     startlistening(iolistener)
                     PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
@@ -183,11 +209,14 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                         end
                     end
                     notebook.nbpkg_install_time_ns = notebook.nbpkg_install_time_ns === nothing ? nothing : (notebook.nbpkg_install_time_ns + (time_ns() - start_time))
+                    Status.report_business_finished!(pkg_status, :add)
                     @debug "PlutoPkg: done" notebook.path 
                 end
 
                 should_instantiate = !notebook.nbpkg_ctx_instantiated || !isempty(to_add) || !isempty(to_remove)
+                
                 if should_instantiate
+                    Status.report_business_started!(pkg_status, :instantiate)
                     start_time = time_ns()
                     startlistening(iolistener)
                     PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
@@ -207,10 +236,13 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                         popfirst!(LOAD_PATH)
                     end
                     notebook.nbpkg_install_time_ns = notebook.nbpkg_install_time_ns === nothing ? nothing : (notebook.nbpkg_install_time_ns + (time_ns() - start_time))
+                    Status.report_business_finished!(pkg_status, :instantiate)
                     notebook.nbpkg_ctx_instantiated = true
                 end
 
                 stoplistening(iolistener)
+                
+                Status.report_business_finished!(pkg_status)
 
                 return (
                     did_something=👺 || (
@@ -229,6 +261,8 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
             end
         end
     end
+    Status.report_business_finished!(pkg_status)
+
     return (
         did_something=👺 || (use_plutopkg_old != use_plutopkg_new),
         used_tier=Pkg.PRESERVE_ALL,
@@ -250,6 +284,8 @@ In addition to the steps performed by [`sync_nbpkg_core`](@ref):
 """
 function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topology::NotebookTopology; save::Bool=true, take_token::Bool=true)
 	try
+        Status.report_business_started!(notebook.status_tree, :pkg)
+        
         pkg_result = (take_token ? withtoken : (f, _) -> f())(notebook.executetoken) do
 			function iocallback(pkgs, s)
 				notebook.nbpkg_busy_packages = pkgs
@@ -306,7 +342,9 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 		send_notebook_changes!(ClientRequest(; session, notebook))
 
 		save && save_notebook(session, notebook)
-	end
+	finally
+        Status.report_business_finished!(notebook.status_tree, :pkg)
+    end
 end
 
 function writebackup(notebook::Notebook)

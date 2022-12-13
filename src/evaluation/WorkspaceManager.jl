@@ -1,7 +1,8 @@
 module WorkspaceManager
-import UUIDs: UUID
+import UUIDs: UUID, uuid1
 import ..Pluto
 import ..Pluto: Configuration, Notebook, Cell, ProcessStatus, ServerSession, ExpressionExplorer, pluto_filename, Token, withtoken, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
+import ..Pluto.Status
 import ..Pluto.PkgCompat
 import ..Configuration: CompilerOptions, _merge_notebook_compiler_options, _convert_to_flags
 import ..Pluto.ExpressionExplorer: FunctionName
@@ -49,13 +50,20 @@ end
 
 "Create a workspace for the notebook, optionally in the main process."
 function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false)::Workspace
+    workspace_business = is_offline_renderer ? Status.Business(name=:gobble) : Status.report_business_started!(notebook.status_tree, :workspace)
+    create_status = Status.report_business_started!(workspace_business, :create_process)
+    Status.report_business_planned!(workspace_business, :init_process)
+    
     is_offline_renderer || (notebook.process_status = ProcessStatus.starting)
 
     use_distributed = !is_offline_renderer && session.options.evaluation.workspace_use_distributed
 
     pid = if use_distributed
         @debug "Creating workspace process" notebook.path length(notebook.cells)
-        create_workspaceprocess(; compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler))
+        create_workspaceprocess(; 
+            compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler),
+            status=create_status,
+        )
     else
         pid = Distributed.myid()
         if !(isdefined(Main, :PlutoRunner) && Main.PlutoRunner isa Module)
@@ -66,6 +74,13 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
         end
         pid
     end
+    
+    Status.report_business_finished!(workspace_business, :create_process)
+    init_status = Status.report_business_started!(workspace_business, :init_process)
+    Status.report_business_started!(init_status, Symbol(1))
+    Status.report_business_planned!(init_status, Symbol(2))
+    Status.report_business_planned!(init_status, Symbol(3))
+    Status.report_business_planned!(init_status, Symbol(4))
 
     Distributed.remotecall_eval(Main, [pid], session.options.evaluation.workspace_custom_startup_expr)
 
@@ -101,11 +116,30 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
         original_ACTIVE_PROJECT,
         is_offline_renderer,
     )
+    
+    
+    Status.report_business_finished!(init_status, Symbol(1))
+    Status.report_business_started!(init_status, Symbol(2))
 
     @async start_relaying_logs((session, notebook), remote_log_channel)
     @async start_relaying_self_updates((session, notebook), run_channel)
     cd_workspace(workspace, notebook.path)
+    
+    Status.report_business_finished!(init_status, Symbol(2))
+    Status.report_business_started!(init_status, Symbol(3))
+    
     use_nbpkg_environment((session, notebook), workspace)
+    
+    Status.report_business_finished!(init_status, Symbol(3))
+    Status.report_business_started!(init_status, Symbol(4))
+    
+    # TODO: precompile 1+1 with display
+    # sleep(3)
+    eval_format_fetch_in_workspace(workspace, Expr(:toplevel, LineNumberNode(-1), :(1+1)), uuid1())
+    
+    Status.report_business_finished!(init_status, Symbol(4))
+    Status.report_business_finished!(workspace_business, :init_process)
+    Status.report_business_finished!(workspace_business)
 
     is_offline_renderer || if notebook.process_status == ProcessStatus.starting
         notebook.process_status = ProcessStatus.ready
@@ -265,12 +299,18 @@ end
 # NOTE: this function only start a worker process using given
 # compiler options, it does not resolve paths for notebooks
 # compiler configurations passed to it should be resolved before this
-function create_workspaceprocess(; compiler_options=CompilerOptions())::Integer
+function create_workspaceprocess(; compiler_options=CompilerOptions(), status::Status.Business=Business())::Integer
+    
+    Status.report_business_started!(status, Symbol(1))
+    Status.report_business_planned!(status, Symbol(2))
     # run on proc 1 in case Pluto is being used inside a notebook process
     # Workaround for "only process 1 can add/remove workers"
     pid = Distributed.remotecall_eval(Main, 1, quote
         $(Distributed_expr).addprocs(1; exeflags=$(_convert_to_flags(compiler_options))) |> first
     end)
+    
+    Status.report_business_finished!(status, Symbol(1))
+    Status.report_business_started!(status, Symbol(2))
 
     Distributed.remotecall_eval(Main, [pid], process_preamble())
 
@@ -282,6 +322,8 @@ function create_workspaceprocess(; compiler_options=CompilerOptions())::Integer
             catch end
         end
     end)
+    
+    Status.report_business_finished!(status)
 
     pid
 end

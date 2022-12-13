@@ -55,9 +55,13 @@ function run_reactive_core!(
 )::TopologicalOrder
     @assert !isready(notebook.executetoken) "run_reactive_core!() was called with a free notebook.executetoken."
     @assert will_run_code(notebook)
-
+	
     old_workspace_name, _ = WorkspaceManager.bump_workspace_module((session, notebook))
-
+	
+	run_status = Status.report_business_started!(notebook.status_tree, :run)
+	Status.report_business_started!(run_status, :resolve_topology)
+	cell_status = Status.report_business_planned!(run_status, :evaluate)
+	
     if !is_resolved(new_topology)
         unresolved_topology = new_topology
         new_topology = notebook.topology = resolve_topology(session, notebook, unresolved_topology, old_workspace_name; current_roots = setdiff(roots, already_run))
@@ -137,6 +141,12 @@ function run_reactive_core!(
         send_notebook_changes!(ClientRequest(; session, notebook))
     end
     send_notebook_changes_throttled()
+	
+	Status.report_business_finished!(run_status, :resolve_topology)
+	Status.report_business_started!(cell_status)
+	for i in eachindex(to_run)
+		Status.report_business_planned!(cell_status, Symbol(i))
+	end
 
     # delete new variables that will be defined by a cell unless this cell has already run in the current reactive run
     to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_runnable)...)
@@ -158,6 +168,7 @@ function run_reactive_core!(
 
     local any_interrupted = false
     for (i, cell) in enumerate(to_run)
+		Status.report_business_started!(cell_status, Symbol(i))
 
         cell.queued = false
         cell.running = true
@@ -186,6 +197,7 @@ function run_reactive_core!(
         end
 
         cell.running = false
+		Status.report_business_finished!(cell_status, Symbol(i))
 
         defined_macros_in_cell = defined_macros(new_topology, cell) |> Set{Symbol}
 
@@ -222,6 +234,7 @@ function run_reactive_core!(
 
     notebook.wants_to_interrupt = false
     flush_notebook_changes()
+	Status.report_business_finished!(run_status)
     return new_order
 end
 

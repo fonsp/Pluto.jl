@@ -137,6 +137,16 @@ const first_true_key = (obj) => {
  */
 
 /**
+ * @typedef StatusEntryData
+ * @type {{
+ *   name: string,
+ *   started_at: number?,
+ *   finished_at: number?,
+ *   subtasks: Record<string,StatusEntryData>,
+ * }}
+ */
+
+/**
  * @typedef CellResultData
  * @type {{
  *  cell_id: string,
@@ -233,6 +243,7 @@ const first_true_key = (obj) => {
  *  bonds: BondValuesDict,
  *  nbpkg: NotebookPkgData?,
  *  metadata: object,
+ *  status_tree: StatusEntryData?,
  * }}
  */
 
@@ -1533,6 +1544,7 @@ patch: ${JSON.stringify(
                     <${BottomRightPanel}
                         desired_doc_query=${this.state.desired_doc_query}
                         on_update_doc_query=${this.actions.set_doc_query}
+                        connected=${this.state.connected}
                         notebook=${this.state.notebook}
                     />
                     <${Popup} 
