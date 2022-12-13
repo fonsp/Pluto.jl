@@ -41,12 +41,13 @@ run
 
 
 saving
-save
 
 `
     .split("\n")
     .map((x) => x.trim())
     .filter((x) => x.length > 0)
+
+const blocklist = ["saving"]
 
 /** @type {Record<string,string>} */
 const descriptions = {
@@ -56,6 +57,8 @@ const descriptions = {
     pkg: "Package management",
     run: "Evaluating cells",
     evaluate: "Running code",
+    registry_update: "Updating package registry",
+    waiting_for_others: "Waiting for other notebooks to finish package operations",
 }
 
 export const friendly_name = (/** @type {string} */ task_name) => {
@@ -121,9 +124,10 @@ const StatusItem = ({ status_tree, path, my_clock_is_ahead_by }) => {
     const render_child_tasks = () =>
         Object.entries(mystatus.subtasks)
             .sort((a, b) => sort_on(a[1], b[1]))
-            .map(
-                ([key, _subtask]) =>
-                    html`<${StatusItem} key=${key} status_tree=${status_tree} my_clock_is_ahead_by=${my_clock_is_ahead_by} path=${[...path, key]} />`
+            .map(([key, _subtask]) =>
+                blocklist.includes(key)
+                    ? null
+                    : html`<${StatusItem} key=${key} status_tree=${status_tree} my_clock_is_ahead_by=${my_clock_is_ahead_by} path=${[...path, key]} />`
             )
 
     const render_child_progress = () => {
