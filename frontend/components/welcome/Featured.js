@@ -1,28 +1,26 @@
-import featured_sources from "../../featured_sources.js"
 import _ from "../../imports/lodash.js"
 import { html, useEffect, useState } from "../../imports/Preact.js"
+import register from "../../imports/PreactCustomElement.js"
 import { FeaturedCard } from "./FeaturedCard.js"
-
-const run = (f) => f()
 
 /**
  * @typedef SourceManifestNotebookEntry
  * @type {{
  *   id: String,
  *   hash: String,
- *   html_path: String,
- *   statefile_path: String,
- *   notebookfile_path: String,
- *   frontmatter: Record<string,any>,
+ *   html_path?: String,
+ *   statefile_path?: String,
+ *   notebookfile_path?: String,
+ *   frontmatter?: Record<string,any>,
  * }}
  */
 
 /**
  * @typedef SourceManifestCollectionEntry
  * @type {{
- *   title: String?,
- *   description: String?,
- *   tags: Array<String>?,
+ *   title?: String,
+ *   description?: String,
+ *   tags?: Array<String> | "everything",
  * }}
  */
 
@@ -30,16 +28,17 @@ const run = (f) => f()
  * @typedef SourceManifest
  * @type {{
  *   notebooks: Record<string,SourceManifestNotebookEntry>,
- *   collections: Array<SourceManifestCollectionEntry>?,
- *   pluto_version: String,
- *   julia_version: String,
- *   format_version: String,
- *   source_url: String,
- *   title: String?,
- *   description: String?,
+ *   collections?: Array<SourceManifestCollectionEntry>,
+ *   pluto_version?: String,
+ *   julia_version?: String,
+ *   format_version?: String,
+ *   source_url?: String,
+ *   title?: String,
+ *   description?: String,
  * }}
  */
 
+/** @type {SourceManifest[]} */
 const placeholder_data = [
     {
         title: "Featured Notebooks",
@@ -50,7 +49,7 @@ const placeholder_data = [
                 tags: [],
             },
         ],
-        notebooks: [],
+        notebooks: {},
     },
 ]
 
@@ -77,21 +76,18 @@ const offline_html = html`
     </div>
 `
 
-export const Featured = () => {
-    // Option 1: Dynamically load source list from a json:
-    // const [sources, set_sources] = useState(/** @type{Array<{url: String, integrity: String?}>?} */ (null))
-    // useEffect(() => {
-    //     run(async () => {
-    //         const data = await (await fetch("featured_sources.json")).json()
+/**
+ * @typedef FeaturedSource
+ * @type {{url: String, integrity?: String}}
+ */
 
-    //         set_sources(data.sources)
-    //     })
-    // }, [])
-
-    // Option 2: From a JS file. This means that the source list can be bundled together.
-    const sources = featured_sources.sources
-
-    const [source_data, set_source_data] = useState(/** @type{Array<SourceManifest>} */ ([]))
+/**
+ * @param {{
+ * sources: FeaturedSource[]?
+ * }} props
+ */
+export const Featured = ({ sources }) => {
+    const [source_data, set_source_data] = useState(/** @type{Record<String,SourceManifest>} */ ({}))
 
     useEffect(() => {
         if (sources != null) {
@@ -102,13 +98,13 @@ export const Featured = () => {
                     throw new Error(`Invalid format version: ${data.format_version}`)
                 }
 
-                set_source_data((old) => [
+                set_source_data((old) => ({
                     ...old,
-                    {
+                    [url]: {
                         ...data,
                         source_url: url,
                     },
-                ])
+                }))
             })
 
             Promise.any(promises).catch((e) => {
@@ -119,7 +115,7 @@ export const Featured = () => {
     }, [sources])
 
     useEffect(() => {
-        if (source_data?.length > 0) {
+        if (Object.entries(source_data).length > 0) {
             console.log("Sources:", source_data)
         }
     }, [source_data])
@@ -131,23 +127,29 @@ export const Featured = () => {
         }, 8 * 1000)
     }, [])
 
-    const no_data = !(source_data?.length > 0)
+    const no_data = Object.entries(source_data).length === 0
 
     return no_data && waited_too_long
         ? offline_html
         : html`
-              ${(no_data ? placeholder_data : source_data).map(
-                  (data) => html`
+              ${(no_data ? placeholder_data : Object.values(source_data)).map((/** @type {SourceManifest} */ data) => {
+                  let collections = data?.collections ?? [
+                      {
+                          title: "Notebooks",
+                          tags: "everything",
+                      },
+                  ]
+                  return html`
                       <div class="featured-source">
                           <h1>${data.title}</h1>
                           <p>${data.description}</p>
-                          ${data.collections.map((coll) => {
+                          ${collections.map((coll) => {
                               return html`
                                   <div class="collection">
                                       <h2>${coll.title}</h2>
                                       <p>${coll.description}</p>
                                       <div class="card-list">
-                                          ${collection(Object.values(data.notebooks), coll.tags).map(
+                                          ${collection(Object.values(data.notebooks), coll.tags ?? []).map(
                                               (entry) => html`<${FeaturedCard} entry=${entry} source_url=${data.source_url} />`
                                           )}
                                       </div>
@@ -156,12 +158,15 @@ export const Featured = () => {
                           })}
                       </div>
                   `
-              )}
+              })}
           `
 }
 
-const collection = (/** @type {SourceManifestNotebookEntry[]} */ notebooks, /** @type {String[]} */ tags) => {
-    const nbs = notebooks.filter((notebook) => tags.some((t) => (notebook.frontmatter?.tags ?? []).includes(t)))
+register(Featured, "pluto-featured", ["sources"])
 
-    return /** @type {SourceManifestNotebookEntry[]} */ (_.sortBy(nbs, [(nb) => Number(nb?.frontmatter?.order), "id"]))
+const collection = (/** @type {SourceManifestNotebookEntry[]} */ notebooks, /** @type {String[] | "everything"} */ tags) => {
+    const nbs = tags === "everything" ? notebooks : notebooks.filter((notebook) => tags.some((t) => (notebook.frontmatter?.tags ?? []).includes(t)))
+
+    let n = (s) => (isNaN(s) ? s : Number(s))
+    return /** @type {SourceManifestNotebookEntry[]} */ (_.sortBy(nbs, [(nb) => n(nb?.frontmatter?.order), "id"]))
 }

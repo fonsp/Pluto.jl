@@ -1,5 +1,5 @@
 import _ from "../../imports/lodash.js"
-import { html, useEffect, useState, useRef, useLayoutEffect } from "../../imports/Preact.js"
+import { html, useEffect, useState, useRef } from "../../imports/Preact.js"
 import * as preact from "../../imports/Preact.js"
 
 import { create_pluto_connection } from "../../common/PlutoConnection.js"
@@ -8,6 +8,7 @@ import { Open } from "./Open.js"
 import { Recent } from "./Recent.js"
 import { Featured } from "./Featured.js"
 import { get_environment } from "../../common/Environment.js"
+import default_featured_sources from "../../featured_sources.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../../common/Environment.js"
@@ -22,10 +23,24 @@ import { get_environment } from "../../common/Environment.js"
  * }}
  */
 
+/**
+ * @typedef LaunchParameters
+ * @type {{
+ *  featured_sources: import("./Featured.js").FeaturedSource[]?,
+ * featured_source_url?: String,
+ * featured_source_integrity?: String,
+ * }}
+ */
+
 // We use a link from the head instead of directing linking "img/logo.svg" because parcel does not bundle preact files
 const url_logo_big = document.head.querySelector("link[rel='pluto-logo-big']")?.getAttribute("href") ?? ""
 
-export const Welcome = () => {
+/**
+ * @param {{
+ * launch_params: LaunchParameters,
+ * }} props
+ */
+export const Welcome = ({ launch_params }) => {
     const [remote_notebooks, set_remote_notebooks] = useState(/** @type {Array<NotebookListEntry>} */ ([]))
 
     const [connected, set_connected] = useState(false)
@@ -92,6 +107,19 @@ export const Welcome = () => {
         }
     }
 
+    /** @type {import("./Featured.js").FeaturedSource[]} */
+    const featured_sources = preact.useMemo(
+        () =>
+            // 1
+            launch_params.featured_sources ??
+            // 2
+            (launch_params.featured_source_url
+                ? [{ url: launch_params.featured_source_url, integrity: launch_params.featured_source_integrity }]
+                : // 3
+                  default_featured_sources.sources),
+        [launch_params]
+    )
+
     return block_screen_with_this_text != null
         ? html`<div class="navigating-away-banner"><h2>Loading ${block_screen_with_this_text}...</h2></div>`
         : html`
@@ -125,8 +153,21 @@ export const Welcome = () => {
               </section>
               <section id="featured">
                   <div>
-                      <${Featured} />
+                      <${Featured} sources=${featured_sources} />
                   </div>
               </section>
           `
 }
+
+// Option 1: Dynamically load source list from a json:
+// const [sources, set_sources] = useState(/** @type{Array<{url: String, integrity: String?}>?} */ (null))
+// useEffect(() => {
+//     run(async () => {
+//         const data = await (await fetch("featured_sources.json")).json()
+
+//         set_sources(data.sources)
+//     })
+// }, [])
+
+// Option 2: From a JS file. This means that the source list can be bundled together.
+// const sources = featured_sources.sources
