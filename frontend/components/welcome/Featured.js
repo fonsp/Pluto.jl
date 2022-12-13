@@ -38,7 +38,10 @@ import { FeaturedCard } from "./FeaturedCard.js"
  * }}
  */
 
-/** @type {SourceManifest[]} */
+/**
+ * This data is used as placeholder while the real data is loading from the network.
+ * @type {SourceManifest[]}
+ */
 const placeholder_data = [
     {
         title: "Featured Notebooks",
@@ -53,6 +56,7 @@ const placeholder_data = [
     },
 ]
 
+/** This HTML is shown instead of the featured notebooks if the user is offline. */
 const offline_html = html`
     <div class="featured-source">
         <h1>${placeholder_data[0].title}</h1>
@@ -77,6 +81,18 @@ const offline_html = html`
 `
 
 /**
+ * If no collections are defined, then this special collection will just show all notebooks under the "Notebooks" category.
+ * No collections are defined if no `pluto_export_configuration.json` file was provided to PlutoSliderServer.jl.
+ * @type {SourceManifestCollectionEntry[]}
+ */
+const fallback_collections = [
+    {
+        title: "Notebooks",
+        tags: "everything",
+    },
+]
+
+/**
  * @typedef FeaturedSource
  * @type {{url: String, integrity?: String}}
  */
@@ -88,10 +104,12 @@ const offline_html = html`
  * }} props
  */
 export const Featured = ({ sources, direct_html_links }) => {
-    const [source_data, set_source_data] = useState(/** @type{Record<String,SourceManifest>} */ ({}))
+    // source_data will be a mapping from [source URL] => [data from that source]
+    const [source_data, set_source_data] = useState(/** @type {Record<String,SourceManifest>} */ ({}))
 
     useEffect(() => {
         if (sources != null) {
+            // Start downloading the sources
             const promises = sources.map(async ({ url, integrity }) => {
                 const data = await (await fetch(new Request(url, { integrity: integrity ?? undefined }))).json()
 
@@ -134,12 +152,8 @@ export const Featured = ({ sources, direct_html_links }) => {
         ? offline_html
         : html`
               ${(no_data ? placeholder_data : Object.values(source_data)).map((/** @type {SourceManifest} */ data) => {
-                  let collections = data?.collections ?? [
-                      {
-                          title: "Notebooks",
-                          tags: "everything",
-                      },
-                  ]
+                  let collections = data?.collections ?? fallback_collections
+
                   return html`
                       <div class="featured-source">
                           <h1>${data.title}</h1>
@@ -164,8 +178,9 @@ export const Featured = ({ sources, direct_html_links }) => {
           `
 }
 
-register(Featured, "pluto-featured", ["sources"])
+register(Featured, "pluto-featured", ["sources", "direct_html_links"])
 
+/** Return all notebook entries that have at least one of the given `tags`. Notebooks are sorted on `notebook.frontmatter.order` or `notebook.id`. */
 const collection = (/** @type {SourceManifestNotebookEntry[]} */ notebooks, /** @type {String[] | "everything"} */ tags) => {
     const nbs = tags === "everything" ? notebooks : notebooks.filter((notebook) => tags.some((t) => (notebook.frontmatter?.tags ?? []).includes(t)))
 
