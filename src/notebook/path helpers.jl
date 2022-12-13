@@ -119,6 +119,9 @@ const pluto_file_extensions = [
 
 endswith_pluto_file_extension(s) = any(endswith(s, e) for e in pluto_file_extensions)
 
+"""
+Extract the Julia notebook file contents from a Pluto-exported HTML file.
+"""
 function embedded_notebookfile(html_contents::AbstractString)::String
 	if !occursin("</html>", html_contents)
 		throw(ArgumentError("Pass the contents of a Pluto-exported HTML file as argument."))

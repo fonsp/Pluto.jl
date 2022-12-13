@@ -83,10 +83,11 @@ const offline_html = html`
 
 /**
  * @param {{
- * sources: FeaturedSource[]?
+ * sources: FeaturedSource[]?,
+ * direct_html_links: boolean,
  * }} props
  */
-export const Featured = ({ sources }) => {
+export const Featured = ({ sources, direct_html_links }) => {
     const [source_data, set_source_data] = useState(/** @type{Record<String,SourceManifest>} */ ({}))
 
     useEffect(() => {
@@ -150,7 +151,8 @@ export const Featured = ({ sources }) => {
                                       <p>${coll.description}</p>
                                       <div class="card-list">
                                           ${collection(Object.values(data.notebooks), coll.tags ?? []).map(
-                                              (entry) => html`<${FeaturedCard} entry=${entry} source_url=${data.source_url} />`
+                                              (entry) =>
+                                                  html`<${FeaturedCard} entry=${entry} source_url=${data.source_url} direct_html_links=${direct_html_links} />`
                                           )}
                                       </div>
                                   </div>

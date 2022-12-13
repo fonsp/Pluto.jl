@@ -11,6 +11,11 @@ const url_params = new URLSearchParams(window.location.search)
  */
 const launch_params = {
     //@ts-ignore
+    featured_static: !!(url_params.get("featured_static") ?? window.pluto_featured_static),
+    //@ts-ignore
+    featured_direct_html_links: !!(url_params.get("featured_direct_html_links") ?? window.pluto_featured_direct_html_links),
+
+    //@ts-ignore
     featured_sources: window.pluto_featured_sources,
 
     // Setting the featured_sources object is preferred, but you can also specify a single featured source using the URL (and integrity), which also supports being set as a URL parameter.
@@ -20,6 +25,8 @@ const launch_params = {
     //@ts-ignore
     featured_source_integrity: url_params.get("featured_source_integrity") ?? window.pluto_featured_source_integrity,
 }
+
+console.log("Launch parameters: ", launch_params)
 
 // @ts-ignore
 render(html`<${Welcome} launch_params=${launch_params} />`, document.querySelector("#app"))

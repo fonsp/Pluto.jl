@@ -16,19 +16,21 @@ import default_featured_sources from "../../featured_sources.js"
 /**
  * @typedef NotebookListEntry
  * @type {{
- *  notebook_id: String,
- *  path: String,
- *  in_temp_dir: Boolean,
- *  shortpath: String,
+ *  notebook_id: string,
+ *  path: string,
+ *  in_temp_dir: boolean,
+ *  shortpath: string,
  * }}
  */
 
 /**
  * @typedef LaunchParameters
  * @type {{
- *  featured_sources: import("./Featured.js").FeaturedSource[]?,
- * featured_source_url?: String,
- * featured_source_integrity?: String,
+ * featured_static: boolean,
+ * featured_direct_html_links: boolean,
+ * featured_sources: import("./Featured.js").FeaturedSource[]?,
+ * featured_source_url?: string,
+ * featured_source_integrity?: string,
  * }}
  */
 
@@ -53,6 +55,8 @@ export const Welcome = ({ launch_params }) => {
     const client_ref = useRef(/** @type {import('../../common/PlutoConnection').PlutoConnection} */ ({}))
 
     useEffect(() => {
+        if (launch_params.featured_static) return
+
         const on_update = ({ message, type }) => {
             if (type === "notebook_list") {
                 // a notebook list updates happened while the welcome screen is open, because a notebook started running for example
@@ -93,7 +97,6 @@ export const Welcome = ({ launch_params }) => {
 
     // When block_screen_with_this_text is null (default), all is fine. When it is a string, we show a big banner with that text, and disable all other UI. https://github.com/fonsp/Pluto.jl/pull/2292
     const [block_screen_with_this_text, set_block_screen_with_this_text] = useState(/** @type {string?} */ (null))
-
     const on_start_navigation = (value, expect_navigation = true) => {
         if (expect_navigation) {
             // Instead of calling set_block_screen_with_this_text(value) directly, we wait for the beforeunload to happen, and then we do it. If this event does not happen within 1 second, then that means that the user right-clicked, or Ctrl+Clicked (to open in a new tab), and we don't want to clear the main menu. https://github.com/fonsp/Pluto.jl/issues/2301
@@ -120,14 +123,27 @@ export const Welcome = ({ launch_params }) => {
         [launch_params]
     )
 
-    return block_screen_with_this_text != null
-        ? html`<div class="navigating-away-banner"><h2>Loading ${block_screen_with_this_text}...</h2></div>`
+    if (block_screen_with_this_text != null) {
+        return html`
+            <div class="navigating-away-banner">
+                <h2>Loading ${block_screen_with_this_text}...</h2>
+            </div>
+        `
+    }
+
+    const featured_html = html`
+        <section id="featured">
+            <div>
+                <${Featured} sources=${featured_sources} direct_html_links=${launch_params.featured_direct_html_links} />
+            </div>
+        </section>
+    `
+
+    return launch_params.featured_static
+        ? featured_html
         : html`
               <section id="title">
                   <h1>welcome to <img src=${url_logo_big} /></h1>
-                  <!-- <a id="github" href="https://github.com/fonsp/Pluto.jl"
-                ><img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/logo-github.svg"
-            /></a> -->
               </section>
               <section id="mywork">
                   <div>
@@ -151,11 +167,7 @@ export const Welcome = ({ launch_params }) => {
                       />
                   </div>
               </section>
-              <section id="featured">
-                  <div>
-                      <${Featured} sources=${featured_sources} />
-                  </div>
-              </section>
+              ${featured_html}
           `
 }
 
