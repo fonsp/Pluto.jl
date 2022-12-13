@@ -113,10 +113,16 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
         Status.report_business_finished!(pkg_status, :analysis)
         
         if !can_skip
-            Status.report_business_finished!(pkg_status, :analysis)
-            Status.report_business_started!(pkg_status, :waiting_for_others)
+            wait_business = if !isready(pkg_token)
+                Status.report_business_started!(pkg_status, 
+                    !PkgCompat._updated_registries_compat[] ? 
+                        :registry_update : 
+                        :waiting_for_others
+                )
+            end
+            
             return withtoken(pkg_token) do
-                Status.report_business_finished!(pkg_status, :waiting_for_others)
+                isnothing(wait_business) || Status.report_business_finished!(wait_business)
                 
                 notebook.nbpkg_ctx_instantiated || Status.report_business_planned!(pkg_status, :resolve)
                 isempty(removed) || Status.report_business_planned!(pkg_status, :remove)
