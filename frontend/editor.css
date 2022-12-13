@@ -2457,6 +2457,7 @@ pl-status > div > .status-icon {
     background-color: var(--status-color);
     /* border: 3px solid green; */
     margin: 0em 0.5em;
+    flex: 0 0 auto;
 }
 
 pl-status.busy > div > .status-icon {
@@ -2486,6 +2487,7 @@ pl-status .status-time {
     margin-left: auto;
     /* align-self: end; */
     padding-right: 0.5em;
+    padding-left: 0.5em;
     /* font-family: "Roboto Mono", monospace; */
     opacity: 0.6;
     font-size: 0.7rem;
