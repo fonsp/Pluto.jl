@@ -5,6 +5,13 @@ on:
         branches:
             - main
     workflow_dispatch:
+    pull_request:
+        paths-ignore:
+            - "**.md"
+            - "**.jl"
+        branches-ignore:
+            - release
+
 concurrency:
     group: bundle
     cancel-in-progress: false
@@ -56,6 +63,7 @@ jobs:
             # Needs to be `add --force` because frontend-dist is normally gitignored.
             # Also needs `push --force` because we reset to main (which doesn't contain the previous frontend-dist)
             - name: Force push frontend-dist changes
+              if: github.event_name != 'pull_request'
               run: |
                   git add frontend-dist --force
                   git commit -m "$GITHUB_WORKFLOW" -m "Built from hash $GITHUB_SHA"
