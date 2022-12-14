@@ -347,7 +347,7 @@ featured-card {
     align-items: stretch;
     grid-template-columns: repeat(auto-fit, minmax(var(--card-width), 1fr));
     gap: 0rem;
-    justify-items: center;
+    justify-items: stretch;
 }
 
 featured-card .banner img {
