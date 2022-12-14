@@ -1663,11 +1663,6 @@ pluto-input > button.input_context_menu ul {
 .ctx_icon.hide_logs {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-text-outline.svg");
 }
-
-.ctx_icon.bandage {
-    filter: var(--image-filters) opacity(0.3);
-    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/bandage-outline.svg");
-}
 .ctx_icon.enable_cell {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg");
 }
