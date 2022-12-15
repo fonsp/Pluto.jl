@@ -24,12 +24,16 @@ function cdnified_html(filename::AbstractString;
         if should_use_bundled_cdn
             try
                 original = read(project_relative_path("frontend-dist", filename), String)
-    
+                
+                cdn_root = "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@$(string(PLUTO_VERSION))/frontend-dist/"
+
+                @debug "Using CDN for Pluto assets:" cdn_root
+
                 replace_with_cdn(original) do url
                     # Because parcel creates filenames with a hash in them, we can check if the file exists locally to make sure that everything is in order.
-                    @assert isfile(project_relative_path("frontend-dist", url))
+                    @assert isfile(project_relative_path("frontend-dist", url)) "Could not find the file $(project_relative_path("frontend-dist", url)) locally, that's a bad sign."
                     
-                    URIs.resolvereference("https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@$(string(PLUTO_VERSION))/frontend-dist/", url) |> string
+                    URIs.resolvereference(cdn_root, url) |> string
                 end
             catch e
                 @warn "Could not use bundled CDN version of $(filename). You should only see this message if you are using a fork of Pluto." exception=(e,catch_backtrace()) maxlog=1
@@ -40,6 +44,7 @@ function cdnified_html(filename::AbstractString;
             original = read(project_relative_path("frontend", filename), String)
 
             cdn_root = something(pluto_cdn_root, "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@$(something(cdn_version_override, string(something(version, PLUTO_VERSION))))/frontend/")
+
             @debug "Using CDN for Pluto assets:" cdn_root
     
             replace_with_cdn(original) do url
