@@ -16,7 +16,7 @@ jobs:
               with:
                   version: "1.8"
 
-            - name: Run & export Pluto notebooks
+            - name: Generate exports and check for warnings
               run: |
                 julia --project=$GITHUB_WORKSPACE -e '
                   import Pkg

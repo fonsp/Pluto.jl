@@ -192,6 +192,8 @@ replace_substring(s::String, sub::SubString, newval::AbstractString) = *(
 	SubString(s, nextind(s, sub.offset + sub.ncodeunits))
 )
 
+const dont_cdnify = ("new","open","shutdown","move","notebooklist","notebookfile","statefile","notebookexport","notebookupload")
+
 const source_pattern = r"\s(?:src|href)=\"(.+?)\""
 
 function replace_with_cdn(cdnify::Function, s::String, idx::Integer=1)
@@ -200,7 +202,7 @@ function replace_with_cdn(cdnify::Function, s::String, idx::Integer=1)
 		s
 	else
 		url = only(next_match.captures)
-		if occursin("//", url)
+		if occursin("//", url) || url ∈ dont_cdnify
 			# skip this one
 			replace_with_cdn(cdnify, s, nextind(s, next_match.offset))
 		else
