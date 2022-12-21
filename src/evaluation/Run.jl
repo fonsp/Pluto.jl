@@ -247,7 +247,11 @@ Given a list of tuples of the form `(bound variable name, (untransformed) value)
 """
 function set_bond_value_pairs!(session::ServerSession, notebook::Notebook, bond_value_pairs)
 	for (bound_sym, new_value) in bond_value_pairs
-		WorkspaceManager.eval_in_workspace((session, notebook), :($(bound_sym) = Main.PlutoRunner.transform_bond_value($(QuoteNode(bound_sym)), $(new_value))))
+		assigner_cell = assigner(notebook.topology, bound_sym)
+		if isnothing(assigner_cell)
+			continue
+		end
+		WorkspaceManager.eval_in_workspace((session, notebook), :($(bound_sym) = Main.PlutoRunner.transform_bond_value($(notebook.notebook_id), $(assigner_cell.cell_id), $(QuoteNode(bound_sym)), $(new_value))))
 	end
 end
 

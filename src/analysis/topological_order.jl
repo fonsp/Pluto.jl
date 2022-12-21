@@ -213,10 +213,16 @@ function is_referenced_anywhere(notebook::Notebook, topology::NotebookTopology, 
 	end
 end
 
-"Return whether any cell defines the given symbol. Used for the @bind mechanism."
-function is_assigned_anywhere(notebook::Notebook, topology::NotebookTopology, sym::Symbol)::Bool
-	any(notebook.cells) do cell
+"Return any cell which defines the given symbol. Used for the @bind mechanism."
+function assigner(topology::NotebookTopology, sym::Symbol)::Union{Cell,Nothing}
+	cells = all_cells(topology)
+	cell_idx = findfirst(cells) do cell
 		sym ∈ topology.nodes[cell].definitions
+	end
+	if isnothing(cell_idx)
+		nothing
+	else
+		cells[cell_idx]
 	end
 end
 

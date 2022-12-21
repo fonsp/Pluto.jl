@@ -1895,10 +1895,13 @@ end
 
 const registered_bond_elements = Dict{Symbol, Any}()
 
-function transform_bond_value(s::Symbol, value_from_js)
+function transform_bond_value(notebook_id::UUID, cell_id::UUID, s::Symbol, value_from_js)
+    logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
     element = get(registered_bond_elements, s, nothing)
     return try
-        transform_value_ref[](element, value_from_js)
+        with_logger_and_io_to_logs(logger) do
+            transform_value_ref[](element, value_from_js)
+        end
     catch e
         @error "AbstractPlutoDingetjes: Bond value transformation errored." exception=(e, catch_backtrace())
         (Text("❌ AbstractPlutoDingetjes: Bond value transformation errored."), e, stacktrace(catch_backtrace()), value_from_js)
