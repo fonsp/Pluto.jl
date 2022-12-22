@@ -142,12 +142,22 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                 
                 should_instantiate_initially = !notebook.nbpkg_ctx_instantiated
                 if should_instantiate_initially
+                    
+                    # First, we instantiate. This will:
+                    # - Verify that the Manifest can be parsed and is in the correct format (important for compat across Julia versions). If not, we will fix it by deleting the Manifest.
+                    # - If no Manifest exists, resolve the environment and create one.
+                    # - Start downloading all registered packages, artifacts.
+                    # - Start downloading all unregistered packages, which are added through a URL. This also makes the Project.tomls of those packages available.
+                    # - Precompile all packages.                    
                     Status.report_business!(pkg_status, :instantiate1) do
                         with_auto_fixes(notebook) do
                             instantiate(notebook, iolistener)
                         end
                     end
                     
+                    # Second, we resolve. This will:
+                    # - Verify that the Manifest contains a correct dependency tree (e.g. all versions exists in a registry). If not, we will fix it using `with_auto_fixes`
+                    # - If we are tracking local packages by path (] dev), their Project.tomls are reparsed and everything is updated.
                     Status.report_business!(pkg_status, :resolve) do
                         with_auto_fixes(notebook) do
                             resolve(notebook, iolistener)
@@ -472,16 +482,12 @@ function update_nbpkg_core(notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEV
             PkgCompat.clear_stdlib_compat_entries!(notebook.nbpkg_ctx)
 
             if !notebook.nbpkg_ctx_instantiated
-                Status.report_business!(pkg_status, :instantiate1) do
-                    with_auto_fixes(notebook) do
-                        instantiate(notebook, iolistener)
-                    end
+                with_auto_fixes(notebook) do
+                    instantiate(notebook, iolistener)
                 end
-                
-                Status.report_business!(pkg_status, :resolve) do
-                    with_auto_fixes(notebook) do
-                        resolve(notebook, iolistener)
-                    end
+            
+                with_auto_fixes(notebook) do
+                    resolve(notebook, iolistener)
                 end
             end
 
