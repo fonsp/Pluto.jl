@@ -10,7 +10,6 @@ export const useMyClockIsAheadBy = ({ connected }) => {
     const [my_clock_is_ahead_by, set_my_clock_is_ahead_by] = useState(0)
 
     useEffect(() => {
-        console.error({ connected })
         if (connected) {
             let f = async () => {
                 let getserver = () => pluto_actions.send("current_time").then((m) => m.message.time)
