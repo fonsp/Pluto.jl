@@ -140,9 +140,8 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                 PkgCompat.clear_stdlib_compat_entries!(notebook.nbpkg_ctx)
                 
                 
-                
-
-                if !notebook.nbpkg_ctx_instantiated
+                should_instantiate_initially = !notebook.nbpkg_ctx_instantiated
+                if should_instantiate_initially
                     Status.report_business!(pkg_status, :instantiate1) do
                         with_auto_fixes(notebook) do
                             instantiate(notebook, iolistener)
@@ -230,9 +229,9 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                     @debug "PlutoPkg: done" notebook.path 
                 end
 
-                should_instantiate = !notebook.nbpkg_ctx_instantiated || !isempty(to_add) || !isempty(to_remove)
+                should_instantiate_again = !notebook.nbpkg_ctx_instantiated || !isempty(to_add) || !isempty(to_remove)
                 
-                if should_instantiate
+                if should_instantiate_again
                     Status.report_business!(pkg_status, :instantiate2) do
                         instantiate(notebook, iolistener)
                     end
@@ -243,7 +242,7 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
 
                 return (
                     did_something=👺 || (
-                        should_instantiate || (use_plutopkg_old != use_plutopkg_new)
+                        should_instantiate_initially || should_instantiate_again || (use_plutopkg_old != use_plutopkg_new)
                     ),
                     used_tier=used_tier,
                     # changed_versions=Dict{String,Pair}(),
@@ -390,7 +389,8 @@ function resolve(notebook::Notebook, iolistener::IOListener)
     startlistening(iolistener)
     PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
         withinteractive(false) do
-            PkgCompat.resolve(notebook.nbpkg_ctx)
+            @debug "PlutoPkg: Instantiating" notebook.path 
+            Pkg.resolve(notebook.nbpkg_ctx)
         end
     end
 end
