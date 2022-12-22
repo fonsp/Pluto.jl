@@ -55,6 +55,8 @@ const descriptions = {
     create_process: "Start Julia",
     init_process: "Initialize",
     pkg: "Package management",
+    instantiate1: "instantiate",
+    instantiate2: "instantiate",
     run: "Evaluating cells",
     evaluate: "Running code",
     registry_update: "Updating package registry",
