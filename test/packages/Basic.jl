@@ -236,6 +236,31 @@ import Distributed
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
     
+    @testset "Package added by url" begin
+        url_notebook = read(joinpath(@__DIR__, "url_import.jl"), String)
+
+        🍭 = ServerSession()
+
+        dir = mktempdir()
+        path = joinpath(dir, "hello.jl")
+        write(path, url_notebook)
+
+        notebook = SessionActions.open(🍭, path; run_async=false)
+        
+        @test num_backups_in(dir) == 0
+
+        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_restart_recommended_msg === nothing
+        @test notebook.nbpkg_restart_required_msg === nothing
+
+        @test noerror(notebook.cells[1])
+        @test noerror(notebook.cells[2])
+
+        @test notebook.cells[2].output.body == "1.0.0"
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
+    
     future_notebook = read(joinpath(@__DIR__, "future_nonexisting_version.jl"), String)
     @testset "Recovery from unavailable versions" begin
         🍭 = ServerSession()
@@ -393,6 +418,7 @@ import Distributed
 
     pre_pkg_notebook = read(joinpath(@__DIR__, "old_import.jl"), String)
     local post_pkg_notebook = nothing
+
     @testset "File format -- Backwards compat" begin
         🍭 = ServerSession()
 
