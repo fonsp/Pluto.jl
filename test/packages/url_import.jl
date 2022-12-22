@@ -8,7 +8,7 @@ using InteractiveUtils
 import PlutoPkgTestF
 
 # ╔═╡ f6d8e48e-f400-4e27-8a83-f7bf2e72e992
-PlutoPkgTestF.MY_VERSION
+PlutoPkgTestF.MY_VERSION |> Text
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
