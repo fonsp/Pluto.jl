@@ -49,7 +49,14 @@ Update the notebook package environment to match the notebook's code. This will:
 - Make sure that the environment is instantiated.
 - Detect the use of `Pkg.activate` and enable/disabled nbpkg accordingly.
 """
-function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology; on_terminal_output::Function=((args...) -> nothing), lag::Real=0)
+function sync_nbpkg_core(
+    notebook::Notebook, 
+    old_topology::NotebookTopology, 
+    new_topology::NotebookTopology; 
+    on_terminal_output::Function=((args...) -> nothing), 
+    cleanup::Ref{Union{Function,Nothing}}=Ref{Union{Function,Nothing}}(nothing),
+    lag::Real=0,
+)
     pkg_status = Status.report_business_started!(notebook.status_tree, :pkg)
     Status.report_business_started!(pkg_status, :analysis)
     
@@ -99,6 +106,7 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
             busy_packages = notebook.nbpkg_ctx_instantiated ? added : new_packages
             IOListener(callback=(s -> on_terminal_output(busy_packages, s)))
         end
+        cleanup[] = () -> stoplistening(iolistener)
         
         # We remember which Pkg.Types.PreserveLevel was used. If it's too low, we will recommend/require a notebook restart later.
         local used_tier = Pkg.PRESERVE_ALL
@@ -287,6 +295,7 @@ In addition to the steps performed by [`sync_nbpkg_core`](@ref):
 - `try` `catch` and reset the package environment on failure.
 """
 function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topology::NotebookTopology; save::Bool=true, take_token::Bool=true)
+    cleanup = Ref{Union{Function,Nothing}}(nothing)
 	try
         Status.report_business_started!(notebook.status_tree, :pkg)
         
@@ -299,7 +308,14 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
                 update_nbpkg_cache!(notebook)
 				send_notebook_changes!(ClientRequest(; session, notebook))
 			end
-			 sync_nbpkg_core(notebook, old_topology, new_topology; on_terminal_output=iocallback, lag = session.options.server.simulated_pkg_lag)
+			sync_nbpkg_core(
+                notebook, 
+                old_topology, 
+                new_topology; 
+                on_terminal_output=iocallback, 
+                cleanup,
+                lag=session.options.server.simulated_pkg_lag
+            )
 		end
 
 		if pkg_result.did_something
@@ -347,6 +363,7 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 
 		save && save_notebook(session, notebook)
 	finally
+        isnothing(cleanup[]) || cleanup[]()
         Status.report_business_finished!(notebook.status_tree, :pkg)
     end
 end
@@ -458,7 +475,12 @@ function reset_nbpkg!(notebook::Notebook, topology::Union{NotebookTopology,Nothi
     save && save_notebook(notebook)
 end
 
-function update_nbpkg_core(notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEVEL_MAJOR, on_terminal_output::Function=((args...) -> nothing))
+function update_nbpkg_core(
+    notebook::Notebook; 
+    level::Pkg.UpgradeLevel=Pkg.UPLEVEL_MAJOR, 
+    on_terminal_output::Function=((args...) -> nothing),
+    cleanup::Ref{Union{Function,Nothing}}=Ref{Union{Function,Nothing}}(nothing),
+)
     if notebook.nbpkg_ctx !== nothing
         PkgCompat.mark_original!(notebook.nbpkg_ctx)
 
@@ -468,6 +490,7 @@ function update_nbpkg_core(notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEV
             # we don't know which packages will be updated, so we send terminal output to all installed packages
             IOListener(callback=(s -> on_terminal_output(old_packages, s)))
         end
+        cleanup[] = () -> stoplistening(iolistener)
         
         # We remember which Pkg.Types.PreserveLevel was used. If it's too low, we will recommend/require a notebook restart later.
         local used_tier = Pkg.PRESERVE_ALL
@@ -526,6 +549,7 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
     bp = if backup && save
         writebackup(notebook)
     end
+    cleanup = Ref{Union{Function,Nothing}}(nothing)
 
     try
 		pkg_result = withtoken(notebook.executetoken) do
@@ -539,7 +563,12 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
                 update_nbpkg_cache!(notebook)
 				send_notebook_changes!(ClientRequest(; session, notebook))
 			end
-			update_nbpkg_core(notebook; level=level, on_terminal_output=iocallback)
+			update_nbpkg_core(
+                notebook; 
+                level, 
+                on_terminal_output=iocallback,
+                cleanup,
+            )
 		end
 
 		if pkg_result.did_something
@@ -555,6 +584,7 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
             !isnothing(bp) && isfile(bp) && rm(bp)
         end
 	finally
+        isnothing(cleanup[]) || cleanup[]()
 		notebook.nbpkg_busy_packages = String[]
         update_nbpkg_cache!(notebook)
 		send_notebook_changes!(ClientRequest(; session, notebook))
