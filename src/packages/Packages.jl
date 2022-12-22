@@ -122,20 +122,37 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
             end
             
             return withtoken(pkg_token) do
-                isnothing(wait_business) || Status.report_business_finished!(wait_business)
                 
-                notebook.nbpkg_ctx_instantiated || Status.report_business_planned!(pkg_status, :resolve)
-                isempty(removed) || Status.report_business_planned!(pkg_status, :remove)
-                isempty(added) || Status.report_business_planned!(pkg_status, :add)
-                if !notebook.nbpkg_ctx_instantiated || !isempty(added) || !isempty(removed)
-                    Status.report_business_planned!(pkg_status, :instantiate)
+                let
+                    isnothing(wait_business) || Status.report_business_finished!(wait_business)
+                    
+                    notebook.nbpkg_ctx_instantiated || Status.report_business_planned!(pkg_status, :instantiate1)
+                    notebook.nbpkg_ctx_instantiated || Status.report_business_planned!(pkg_status, :resolve)
+                    isempty(removed) || Status.report_business_planned!(pkg_status, :remove)
+                    isempty(added) || Status.report_business_planned!(pkg_status, :add)
+                    if !isempty(added) || !isempty(removed)
+                        Status.report_business_planned!(pkg_status, :instantiate2)
+                    end
                 end
                 
                 PkgCompat.refresh_registry_cache()
+                
+                PkgCompat.clear_stdlib_compat_entries!(notebook.nbpkg_ctx)
+                
+                
+                
 
                 if !notebook.nbpkg_ctx_instantiated
+                    Status.report_business!(pkg_status, :instantiate1) do
+                        with_auto_fixes(notebook) do
+                            instantiate(notebook, iolistener)
+                        end
+                    end
+                    
                     Status.report_business!(pkg_status, :resolve) do
-                        resolve_with_auto_fixes(notebook, iolistener)
+                        with_auto_fixes(notebook) do
+                            resolve(notebook, iolistener)
+                        end
                     end
                 end
                 
@@ -216,32 +233,12 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                 should_instantiate = !notebook.nbpkg_ctx_instantiated || !isempty(to_add) || !isempty(to_remove)
                 
                 if should_instantiate
-                    Status.report_business_started!(pkg_status, :instantiate)
-                    start_time = time_ns()
-                    startlistening(iolistener)
-                    PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
-                        @debug "PlutoPkg: Instantiating" notebook.path 
-                        
-                        # Pkg.instantiate assumes that the environment to be instantiated is active, so we will have to modify the LOAD_PATH of this Pluto server
-                        # We could also run the Pkg calls on the notebook process, but somehow I think that doing it on the server is more charming, though it requires this workaround.
-                        env_dir = PkgCompat.env_dir(notebook.nbpkg_ctx)
-                        pushfirst!(LOAD_PATH, env_dir)
-
-                        # update registries if this is the first time
-                        PkgCompat.update_registries(; force=false)
-                        # instantiate without forcing registry update
-                        PkgCompat.instantiate(notebook.nbpkg_ctx; update_registry=false)
-                        
-                        @assert LOAD_PATH[1] == env_dir
-                        popfirst!(LOAD_PATH)
+                    Status.report_business!(pkg_status, :instantiate2) do
+                        instantiate(notebook, iolistener)
                     end
-                    notebook.nbpkg_install_time_ns = notebook.nbpkg_install_time_ns === nothing ? nothing : (notebook.nbpkg_install_time_ns + (time_ns() - start_time))
-                    Status.report_business_finished!(pkg_status, :instantiate)
-                    notebook.nbpkg_ctx_instantiated = true
                 end
 
                 stoplistening(iolistener)
-                
                 Status.report_business_finished!(pkg_status)
 
                 return (
@@ -356,37 +353,74 @@ function writebackup(notebook::Notebook)
     backup_path
 end
 
-"""
-Run `Pkg.resolve` on the notebook's package environment. Keep trying more and more invasive strategies to fix problems until the operation succeeds.
-"""
-function resolve_with_auto_fixes(notebook::Notebook, iolistener::IOListener)
-    PkgCompat.clear_stdlib_compat_entries!(notebook.nbpkg_ctx)
 
+function instantiate(notebook::Notebook, iolistener::IOListener)
+    start_time = time_ns()
+    startlistening(iolistener)
     PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
         withinteractive(false) do
+            @debug "PlutoPkg: Instantiating" notebook.path 
+            
+            # update registries if this is the first time
+            PkgCompat.update_registries(; force=false)
+            
+            # Pkg.instantiate assumes that the environment to be instantiated is active, so we will have to modify the LOAD_PATH of this Pluto server
+            # We could also run the Pkg calls on the notebook process, but somehow I think that doing it on the server is more charming, though it requires this workaround.
+            env_dir = PkgCompat.env_dir(notebook.nbpkg_ctx)
+            pushfirst!(LOAD_PATH, env_dir)
+            
             try
-                Pkg.resolve(notebook.nbpkg_ctx)
-            catch e
-                @warn "Failed to resolve Pkg environment. Updating registries and trying again..." exception=e
-                
-                PkgCompat.update_registries(; force=true)
-                try
-                    Pkg.resolve(notebook.nbpkg_ctx)
-                catch e
-                    @warn "Failed to resolve Pkg environment. Removing Manifest and trying again..." exception=e
-                    
-                    reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
-                    try
-                        Pkg.resolve(notebook.nbpkg_ctx)
-                    catch e
-                        @warn "Failed to resolve Pkg environment. Removing Project compat entries and Manifest and trying again..." exception=e
-                        
-                        reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
-                        PkgCompat.clear_compat_entries!(notebook.nbpkg_ctx)
-                        
-                        Pkg.resolve(notebook.nbpkg_ctx)
-                    end
+                # instantiate without forcing registry update
+                PkgCompat.instantiate(notebook.nbpkg_ctx; update_registry=false)
+            finally
+                # reset the LOAD_PATH
+                if LOAD_PATH[1] == env_dir
+                    popfirst!(LOAD_PATH)
+                else
+                    @warn "LOAD_PATH modified during Pkg.instantiate... this is unexpected!"
                 end
+            end
+        end
+    end
+    notebook.nbpkg_install_time_ns = notebook.nbpkg_install_time_ns === nothing ? nothing : (notebook.nbpkg_install_time_ns + (time_ns() - start_time))
+    notebook.nbpkg_ctx_instantiated = true
+end
+
+function resolve(notebook::Notebook, iolistener::IOListener)
+    startlistening(iolistener)
+    PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
+        withinteractive(false) do
+            PkgCompat.resolve(notebook.nbpkg_ctx)
+        end
+    end
+end
+
+
+"""
+Run `f` (e.g. `Pkg.instantiate`) on the notebook's package environment. Keep trying more and more invasive strategies to fix problems until the operation succeeds.
+"""
+function with_auto_fixes(f::Function, notebook::Notebook)
+    try
+        f()
+    catch e
+        @warn "Operation failed. Updating registries and trying again..." exception=e
+        
+        PkgCompat.update_registries(; force=true)
+        try
+            f()
+        catch e
+            @warn "Operation failed. Removing Manifest and trying again..." exception=e
+            
+            reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
+            try
+                f()
+            catch e
+                @warn "Operation failed. Removing Project compat entries and Manifest and trying again..." exception=e
+                
+                reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
+                PkgCompat.clear_compat_entries!(notebook.nbpkg_ctx)
+                
+                f()
             end
         end
     end
@@ -441,9 +475,20 @@ function update_nbpkg_core(notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEV
 
         return withtoken(pkg_token) do
             PkgCompat.refresh_registry_cache()
+            PkgCompat.clear_stdlib_compat_entries!(notebook.nbpkg_ctx)
 
             if !notebook.nbpkg_ctx_instantiated
-                resolve_with_auto_fixes(notebook, iolistener)
+                Status.report_business!(pkg_status, :instantiate1) do
+                    with_auto_fixes(notebook) do
+                        instantiate(notebook, iolistener)
+                    end
+                end
+                
+                Status.report_business!(pkg_status, :resolve) do
+                    with_auto_fixes(notebook) do
+                        resolve(notebook, iolistener)
+                    end
+                end
             end
 
             startlistening(iolistener)
