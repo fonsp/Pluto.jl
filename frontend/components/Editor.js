@@ -912,7 +912,7 @@ patch: ${JSON.stringify(
          * User scripts that are currently running (possibly async).
          * @type {SetWithEmptyCallback<HTMLElement>}
          */
-        this.js_init_set = new SetWithEmptyCallback(() => {
+        this.currently_loading_scripts_set = new SetWithEmptyCallback(() => {
             // console.info("All scripts finished!")
             this.send_queued_bond_changes()
         })
@@ -924,7 +924,7 @@ patch: ${JSON.stringify(
                 // a cell is running:
                 Object.values(this.state.notebook.cell_results).some((cell) => cell.running || cell.queued) ||
                 // a cell is initializing JS:
-                !_.isEmpty(this.js_init_set) ||
+                !_.isEmpty(this.currently_loading_scripts_set) ||
                 !this.is_process_ready()
             )
         }
@@ -1349,7 +1349,7 @@ patch: ${JSON.stringify(
             return html`
                 <${PlutoActionsContext.Provider} value=${this.actions}>
                     <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
-                        <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
+                        <${PlutoJSInitializingContext.Provider} value=${this.currently_loading_scripts_set}>
                             <${ProgressBar} notebook=${this.state.notebook} backend_launch_phase=${this.state.backend_launch_phase} status=${status}/>
                             <div style="width: 100%">
                                 ${this.state.notebook.cell_order.map(
@@ -1387,7 +1387,7 @@ patch: ${JSON.stringify(
             
             <${PlutoActionsContext.Provider} value=${this.actions}>
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
-                    <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
+                    <${PlutoJSInitializingContext.Provider} value=${this.currently_loading_scripts_set}>
                     <button title="Go back" onClick=${() => {
                         history.back()
                     }} class="floating_back_button"><span></span></button>

@@ -1,6 +1,14 @@
 import puppeteer from "puppeteer"
 import { saveScreenshot, createPage, paste } from "../helpers/common"
-import { createNewNotebook, getPlutoUrl, prewarmPluto, setupPlutoBrowser, shutdownCurrentNotebook, waitForNoUpdateOngoing } from "../helpers/pluto"
+import {
+    createNewNotebook,
+    getPlutoUrl,
+    importNotebook,
+    prewarmPluto,
+    setupPlutoBrowser,
+    shutdownCurrentNotebook,
+    waitForNoUpdateOngoing,
+} from "../helpers/pluto"
 
 // https://github.com/fonsp/Pluto.jl/issues/928
 describe("Bonds should run once when refreshing page", () => {
@@ -82,5 +90,14 @@ numberoftimes = Ref(0)
             return document.querySelector("pluto-cell:nth-of-type(5) pluto-output")?.textContent
         })
         expect(output_after_reload).toBe(output_after_running_bonds)
+    })
+
+    it("embed_display timing and use inside a bond", async () => {
+        await importNotebook(page, "embed_display_timing.jl")
+        await waitForNoUpdateOngoing(page, { polling: 100 })
+
+        await page.waitForFunction(`document.body.innerText.includes("you found the secret")`, {
+            timeout: 30 * 1000,
+        })
     })
 })

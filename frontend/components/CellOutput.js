@@ -1,4 +1,4 @@
-import { html, Component, useRef, useLayoutEffect, useContext } from "../imports/Preact.js"
+import { html, Component, useRef, useLayoutEffect, useContext, useMemo, useEffect } from "../imports/Preact.js"
 
 import { ErrorMessage } from "./ErrorMessage.js"
 import { TreeView, TableView, DivElement } from "./TreeView.js"
@@ -14,7 +14,7 @@ import {
 import { cl } from "../common/ClassTable.js"
 
 import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
-import { PlutoBondsContext, PlutoActionsContext, PlutoJSInitializingContext } from "../common/PlutoContext.js"
+import { PlutoBondsContext, PlutoActionsContext, PlutoJSInitializingContext, SetWithEmptyCallback } from "../common/PlutoContext.js"
 import register from "../imports/PreactCustomElement.js"
 
 import { EditorState, EditorView, defaultHighlightStyle, syntaxHighlighting } from "../imports/CodemirrorPlutoSetup.js"
@@ -113,7 +113,49 @@ export let PlutoImage = ({ body, mime }) => {
     return html`<img ref=${imgref} type=${mime} src=${""} />`
 }
 
-export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last_run_timestamp }) => {
+export const OutputBody = ({
+    mime,
+    body,
+    cell_id,
+    persist_js_state = false,
+    last_run_timestamp,
+    on_scripts_completed = () => {},
+    extra_currently_loading_scripts_sets = null,
+}) => {
+    //// Set up the `on_scripts_completed` logic:
+    const deps = [mime, body, cell_id, persist_js_state, last_run_timestamp]
+    // We create a `currently_loading_scripts_set` just for the rendering of this component. It will track all script elements that are running (script elements get added when they start running, and get removed when they finish running). They are stored in a SetWithEmptyCallback, so when all scripts finish running, we call our `on_scripts_completed` callback.
+    const [token, local_currently_loading_scripts_set] = useMemo(() => {
+        const token = {}
+
+        let local_currently_loading_scripts_set = new SetWithEmptyCallback(on_scripts_completed)
+        setInterval(() => {
+            console.log(...local_currently_loading_scripts_set)
+        }, 100)
+
+        // We create a "fake script", `token`, and add it at the start. We will remove it later in a `useLayoutEffect` hook. This will:
+        // 1. Make sure that the EmptyCallback gets called, because we are removing at least one item, our token.
+        // 2. Make sure that the callback does not get fired multiple times, if this OutputBody contains multiple small scripts that finish instantly. At least, that's the plan.
+        local_currently_loading_scripts_set.add(token)
+        return [token, local_currently_loading_scripts_set]
+    }, deps)
+    useEffect(() => {
+        // this will trigger the callback if it is empty (i.e. if nothing was added in the meantime)
+        // requestIdleCallback(() => {
+        //     local_currently_loading_scripts_set.delete(token)
+        // })
+        setTimeout(() => {
+            local_currently_loading_scripts_set.delete(token)
+        }, 1000)
+        // local_currently_loading_scripts_set.delete(token)
+    }, deps)
+
+    const my_currently_loading_scripts_sets = useMemo(
+        () => [...(extra_currently_loading_scripts_sets ?? []), local_currently_loading_scripts_set],
+        [extra_currently_loading_scripts_sets, local_currently_loading_scripts_set]
+    )
+
+    //// Choose a renderer based on the MIME type
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -137,22 +179,33 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
                     body=${body}
                     persist_js_state=${persist_js_state}
                     last_run_timestamp=${last_run_timestamp}
+                    extra_currently_loading_scripts_sets=${my_currently_loading_scripts_sets}
                 />`
             }
             break
         case "application/vnd.pluto.tree+object":
             return html`<div>
-                <${TreeView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />
+                <${TreeView}
+                    cell_id=${cell_id}
+                    body=${body}
+                    persist_js_state=${persist_js_state}
+                    extra_currently_loading_scripts_sets=${my_currently_loading_scripts_sets}
+                />
             </div>`
             break
         case "application/vnd.pluto.table+object":
-            return html`<${TableView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`
+            return html`<${TableView}
+                cell_id=${cell_id}
+                body=${body}
+                persist_js_state=${persist_js_state}
+                extra_currently_loading_scripts_sets=${my_currently_loading_scripts_sets}
+            />`
             break
         case "application/vnd.pluto.stacktrace+object":
             return html`<div><${ErrorMessage} cell_id=${cell_id} ...${body} /></div>`
             break
         case "application/vnd.pluto.divelement+object":
-            return DivElement({ cell_id, ...body, persist_js_state })
+            return DivElement({ cell_id, ...body, persist_js_state, extra_currently_loading_scripts_sets: my_currently_loading_scripts_sets })
             break
         case "text/plain":
             if (body) {
@@ -174,7 +227,7 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
     }
 }
 
-register(OutputBody, "pluto-display", ["mime", "body", "cell_id", "persist_js_state", "last_run_timestamp"])
+register(OutputBody, "pluto-display", ["mime", "body", "cell_id", "persist_js_state", "last_run_timestamp", "on_scripts_completed"])
 
 let IframeContainer = ({ body }) => {
     let iframeref = useRef()
@@ -251,9 +304,10 @@ let nested_script_execution_level = 0
  * This will remove the passed in `script_element` from the DOM!
  *
  * @param {HTMLOrSVGScriptElement} script_element
+ * @param {string} original_code
  * @param {() => any} fn
  */
-let execute_inside_script_tag_that_replaces = async (script_element, fn) => {
+let execute_inside_script_tag_that_replaces = async (script_element, original_code, fn) => {
     // Mimick as much as possible from the original script (only attributes but sure)
     let new_script_tag = document.createElement("script")
     for (let attr of script_element.attributes) {
@@ -261,9 +315,12 @@ let execute_inside_script_tag_that_replaces = async (script_element, fn) => {
         new_script_tag.attributes.setNamedItem(attr.cloneNode(true))
     }
     const container_name = `____FUNCTION_TO_RUN_INSIDE_SCRIPT_${nested_script_execution_level}`
-    new_script_tag.textContent = `{
-        window.${container_name}.result = window.${container_name}.function_to_run(window.${container_name}.currentScript)
-    }`
+    new_script_tag.textContent = `${original_code
+        .split(/\r?\n/)
+        .map((l) => `// ${l}`)
+        .join("\n")}
+    window.${container_name}.result = window.${container_name}.function_to_run(window.${container_name}.currentScript)
+    `
 
     // @ts-ignore
     // I use this long variable name to pass the function and result to and from the script we created
@@ -317,6 +374,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
 
     // Run scripts sequentially
     for (let node of script_nodes) {
+        console.log("Executubg", node, node.text)
         nested_script_execution_level += 1
         if (node.src != null && node.src !== "") {
             // If it has a remote src="", de-dupe and copy the script to head
@@ -359,7 +417,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                     }
 
                     const cell = root_node.closest("pluto-cell")
-                    let { node: new_node, result } = await execute_inside_script_tag_that_replaces(node, async (currentScript) => {
+                    let { node: new_node, result } = await execute_inside_script_tag_that_replaces(node, code, async (currentScript) => {
                         return await execute_dynamic_function({
                             environment: {
                                 this: script_id ? old_result : window,
@@ -398,6 +456,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                             old_result.remove()
                         }
                         if (is_displayable(result)) {
+                            console.log("Inserting element", result)
                             new_node.parentElement?.insertBefore(result, new_node)
                         }
                     }
@@ -409,6 +468,8 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                 // TODO: relay to user
             }
         }
+        console.log("Finished", node, node.text)
+
         nested_script_execution_level -= 1
     }
     return results_map
@@ -451,10 +512,23 @@ let declarative_shadow_dom_polyfill = (template) => {
     }
 }
 
-export let RawHTMLContainer = ({ body, className = "", persist_js_state = false, last_run_timestamp }) => {
+/**
+ * @param {{
+ * body: string,
+ * className: string,
+ * persist_js_state: boolean,
+ * last_run_timestamp: number,
+ * extra_currently_loading_scripts_sets: Set<HTMLElement>[]?,
+ * }} props
+ * */
+export let RawHTMLContainer = ({ body, className = "", persist_js_state = false, last_run_timestamp, extra_currently_loading_scripts_sets = null }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     let pluto_bonds = useContext(PlutoBondsContext)
-    let js_init_set = useContext(PlutoJSInitializingContext)
+    let global_currently_loading_scripts_set = useContext(PlutoJSInitializingContext)
+    let currently_loading_scripts_sets = useMemo(
+        () => [...(extra_currently_loading_scripts_sets ?? []), global_currently_loading_scripts_set],
+        [extra_currently_loading_scripts_sets, global_currently_loading_scripts_set]
+    )
     let previous_results_map = useRef(new Map())
 
     let invalidate_scripts = useRef(() => {})
@@ -493,7 +567,8 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
 
         run(async () => {
             try {
-                js_init_set?.add(container)
+                console.log("Starting exzecution", new_scripts, currently_loading_scripts_sets)
+                currently_loading_scripts_sets.forEach((s) => s?.add(container))
                 previous_results_map.current = await execute_scripttags({
                     root_node: container,
                     script_nodes: new_scripts,
@@ -538,12 +613,13 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
                     console.warn("Highlighting failed", err)
                 }
             } finally {
-                js_init_set?.delete(container)
+                console.log("Finishing exzecution", new_scripts, currently_loading_scripts_sets)
+                currently_loading_scripts_sets.forEach((s) => s?.delete(container))
             }
         })
 
         return () => {
-            js_init_set?.delete(container)
+            currently_loading_scripts_sets.forEach((s) => s?.delete(container))
             invalidate_scripts.current?.()
         }
     }, [body, persist_js_state, last_run_timestamp, pluto_actions])

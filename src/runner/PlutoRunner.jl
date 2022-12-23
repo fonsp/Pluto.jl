@@ -2151,6 +2151,9 @@ function Base.show(io::IO, m::MIME"text/html", e::EmbeddableDisplay)
         const display = create_new ? currentScript.previousElementSibling : this;
         
         display.persist_js_state = true;
+        let inner_scripts_finished_promse = new Promise((resolve) => {
+            display.on_scripts_completed = resolve
+        });
         display.body = body;
         if(create_new) {
             // only set the mime if necessary, it triggers a second preact update
@@ -2158,6 +2161,9 @@ function Base.show(io::IO, m::MIME"text/html", e::EmbeddableDisplay)
             // add it also as unwatched property to prevent interference from Preact
             display._mime = mime;
         }
+        console.log("Starting await", currentScript);
+        await inner_scripts_finished_promse;
+        console.log("Stopping await", currentScript);
         return display;
 
         </script>"""
