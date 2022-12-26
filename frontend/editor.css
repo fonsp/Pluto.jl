@@ -428,13 +428,28 @@ pluto-output table > tbody td code {
 pluto-output table td,
 pluto-output table th {
     padding: 0.2rem 0.5rem;
+    text-align: center;
+}
+
+pluto-output div.table-col-resizer {
+    /* Resizer displayed at the right end of column */
+    position: absolute;
+    top:0;
+    right:0;
+    width: 5px;
+    height: 100%; 
+    cursor: col-resize;
+}
+
+pluto-output div.table-col-resizer:hover{
+    border-right: 2px solid rgb(0, 149, 255);
 }
 
 pluto-output table > tbody tr:hover {
     background-color: var(--table-bg-hover-color);
 }
 pluto-output table pre {
-    white-space: pre;
+    white-space: pre-wrap;
 }
 
 pluto-output kbd,

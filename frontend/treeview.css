@@ -275,6 +275,10 @@ table.pluto-table {
     table-layout: fixed;
 }
 
+table.pluto-table th {
+    word-wrap: break-word;
+}
+
 table.pluto-table td {
     max-width: 300px;
     overflow: hidden;

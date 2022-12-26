@@ -154,8 +154,79 @@ export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
             ? null
             : html`<thead>
                   <tr class="schema-names">
-                      ${["", ...body.schema.names].map((x) => html`<th>${x === "more" ? more(2) : x}</th>`)}
-                  </tr>
+                      ${["", ...body.schema.names].map((x, i) => html`<th>${x === "more" ? more(2) : x}
+                      <div class="table-col-resizer" onmousedown=${(e) => {
+                            const table = node_ref.current;
+                            const columns = Array.from(table.querySelector(".schema-names").querySelectorAll("th"));
+                            let x = e.clientX;  //initial mousedown x value
+                            let table_width = parseFloat(window.getComputedStyle(table).width);
+                            
+                            //Initialize and sets each column width to rendered column width
+                            columns.forEach((col) => {
+                                col.width = `${parseFloat(window.getComputedStyle(col).width)}px`;
+                            });
+
+                            const style = window.getComputedStyle(columns[i]);
+                            let w = parseFloat(style.width);
+
+                            const mouse_move = function(e){
+                                const dx = e.clientX-x;
+                                if (w + dx > 20){  //restrict column width to minimum 20px
+                                    columns[i].width = `${w + dx}px`;
+                                    table.width = `${table_width + dx}px`; 
+                                }
+                            };
+
+                            const mouse_up = function(e){
+                                document.removeEventListener("mousemove",mouse_move);
+                                document.removeEventListener("mouseup",mouse_up);
+                            };
+
+                            document.addEventListener("mousemove",mouse_move);
+                            document.addEventListener("mouseup",mouse_up);
+                        }} ondblclick=${() => {
+                            const table = node_ref.current;
+                            const columns = Array.from(table.querySelector(".schema-names").querySelectorAll("th"));
+                            const table_rows = table.querySelectorAll("tr");
+
+                            let table_width = parseFloat(window.getComputedStyle(table).width);
+                            const padding = 2; //2 rem
+                            //Initialize and sets each column width to rendered column width
+                            columns.forEach((col) => {
+                                col.width = `${parseFloat(window.getComputedStyle(col).width)}px`;
+                            });
+                        
+                            let max_data_length = 0.0;  //keeps track of max data length for a column
+                            Array.from(table_rows).forEach((row) => {
+                                let rw = row.querySelectorAll("th, :scope td > pre, pluto-tree, pluto-tree-pair"); //Selects column headers and column data
+                                if (rw.length !== 0){
+                                    let cur_item_length = 0.0;
+                                    switch(rw[i].tagName) {
+                                        case "PLUTO-TREE-PAIR":
+                                            cur_item_length = rw[i].clientWidth;
+                                            break;
+
+                                        case "PLUTO-TREE":
+                                            cur_item_length = rw[i].clientWidth;
+                                            break;
+
+                                        default:     // determine min cell width of th, pre using the number of characters
+                                            cur_item_length = (rw[i].innerHTML.length) * 0.5 / 0.0625 ; //(num of characters * 0.5rem) in pixels
+                                            if (rw[i].innerHTML.includes("<div class=\"table-col-resizer\"></div>")){ //subtract off column resizer div characters
+                                                cur_item_length = (cur_item_length) - ("<div class=\"table-col-resizer\"></div>".length) * 0.5 / 0.0625 ;
+                                            }
+                                            break;
+                                        }
+                                    max_data_length = cur_item_length > max_data_length? cur_item_length : max_data_length;
+                                }
+                            }); 
+                            let w = max_data_length + padding / 0.0625; //calculated column width required to horizontally fit longest string/item + padding/extra space (pixels)
+                            let dx = w - parseFloat(window.getComputedStyle(columns[i]).width);
+                            columns[i].width = `${w}px`;
+                            table.width = `${table_width + dx}px`; 
+                        }}></div>
+                      </th>`)}
+                    </tr>
                   <tr class="schema-types">
                       ${["", ...body.schema.types].map((x) => html`<th>${x === "more" ? null : x}</th>`)}
                   </tr>
