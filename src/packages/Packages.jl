@@ -49,7 +49,14 @@ Update the notebook package environment to match the notebook's code. This will:
 - Make sure that the environment is instantiated.
 - Detect the use of `Pkg.activate` and enable/disabled nbpkg accordingly.
 """
-function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology; on_terminal_output::Function=((args...) -> nothing), lag::Real=0)
+function sync_nbpkg_core(
+    notebook::Notebook, 
+    old_topology::NotebookTopology, 
+    new_topology::NotebookTopology; 
+    on_terminal_output::Function=((args...) -> nothing), 
+    cleanup::Ref{Union{Function,Nothing}}=Ref{Union{Function,Nothing}}(nothing),
+    lag::Real=0,
+)
     pkg_status = Status.report_business_started!(notebook.status_tree, :pkg)
     Status.report_business_started!(pkg_status, :analysis)
     
@@ -99,6 +106,7 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
             busy_packages = notebook.nbpkg_ctx_instantiated ? added : new_packages
             IOListener(callback=(s -> on_terminal_output(busy_packages, s)))
         end
+        cleanup[] = () -> stoplistening(iolistener)
         
         # We remember which Pkg.Types.PreserveLevel was used. If it's too low, we will recommend/require a notebook restart later.
         local used_tier = Pkg.PRESERVE_ALL
@@ -122,20 +130,46 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
             end
             
             return withtoken(pkg_token) do
-                isnothing(wait_business) || Status.report_business_finished!(wait_business)
                 
-                notebook.nbpkg_ctx_instantiated || Status.report_business_planned!(pkg_status, :resolve)
-                isempty(removed) || Status.report_business_planned!(pkg_status, :remove)
-                isempty(added) || Status.report_business_planned!(pkg_status, :add)
-                if !notebook.nbpkg_ctx_instantiated || !isempty(added) || !isempty(removed)
-                    Status.report_business_planned!(pkg_status, :instantiate)
+                let
+                    isnothing(wait_business) || Status.report_business_finished!(wait_business)
+                    
+                    notebook.nbpkg_ctx_instantiated || Status.report_business_planned!(pkg_status, :instantiate1)
+                    notebook.nbpkg_ctx_instantiated || Status.report_business_planned!(pkg_status, :resolve)
+                    isempty(removed) || Status.report_business_planned!(pkg_status, :remove)
+                    isempty(added) || Status.report_business_planned!(pkg_status, :add)
+                    if !isempty(added) || !isempty(removed)
+                        Status.report_business_planned!(pkg_status, :instantiate2)
+                    end
                 end
                 
                 PkgCompat.refresh_registry_cache()
-
-                if !notebook.nbpkg_ctx_instantiated
+                
+                PkgCompat.clear_stdlib_compat_entries!(notebook.nbpkg_ctx)
+                
+                
+                should_instantiate_initially = !notebook.nbpkg_ctx_instantiated
+                if should_instantiate_initially
+                    
+                    # First, we instantiate. This will:
+                    # - Verify that the Manifest can be parsed and is in the correct format (important for compat across Julia versions). If not, we will fix it by deleting the Manifest.
+                    # - If no Manifest exists, resolve the environment and create one.
+                    # - Start downloading all registered packages, artifacts.
+                    # - Start downloading all unregistered packages, which are added through a URL. This also makes the Project.tomls of those packages available.
+                    # - Precompile all packages.                    
+                    Status.report_business!(pkg_status, :instantiate1) do
+                        with_auto_fixes(notebook) do
+                            instantiate(notebook, iolistener)
+                        end
+                    end
+                    
+                    # Second, we resolve. This will:
+                    # - Verify that the Manifest contains a correct dependency tree (e.g. all versions exists in a registry). If not, we will fix it using `with_auto_fixes`
+                    # - If we are tracking local packages by path (] dev), their Project.tomls are reparsed and everything is updated.
                     Status.report_business!(pkg_status, :resolve) do
-                        resolve_with_auto_fixes(notebook, iolistener)
+                        with_auto_fixes(notebook) do
+                            resolve(notebook, iolistener)
+                        end
                     end
                 end
                 
@@ -171,82 +205,60 @@ function sync_nbpkg_core(notebook::Notebook, old_topology::NotebookTopology, new
                 if !isempty(to_add)
                     Status.report_business_started!(pkg_status, :add)
                     start_time = time_ns()
-                    startlistening(iolistener)
-                    PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
-                        withinteractive(false) do
-                            # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
-                            PkgCompat.clear_auto_compat_entries!(notebook.nbpkg_ctx)
+                    with_io_setup(notebook, iolistener) do
+                        # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
+                        PkgCompat.clear_auto_compat_entries!(notebook.nbpkg_ctx)
 
-                            try
-                                for tier in [
-                                    Pkg.PRESERVE_ALL,
-                                    Pkg.PRESERVE_DIRECT,
-                                    Pkg.PRESERVE_SEMVER,
-                                    Pkg.PRESERVE_NONE,
-                                ]
-                                    used_tier = tier
+                        try
+                            for tier in [
+                                Pkg.PRESERVE_ALL,
+                                Pkg.PRESERVE_DIRECT,
+                                Pkg.PRESERVE_SEMVER,
+                                Pkg.PRESERVE_NONE,
+                            ]
+                                used_tier = tier
 
-                                    try
-                                        Pkg.add(notebook.nbpkg_ctx, [
-                                            Pkg.PackageSpec(name=p)
-                                            for p in to_add
-                                        ]; preserve=used_tier)
+                                try
+                                    Pkg.add(notebook.nbpkg_ctx, [
+                                        Pkg.PackageSpec(name=p)
+                                        for p in to_add
+                                    ]; preserve=used_tier)
 
-                                        break
-                                    catch e
-                                        if used_tier == Pkg.PRESERVE_NONE
-                                            # give up
-                                            rethrow(e)
-                                        end
+                                    break
+                                catch e
+                                    if used_tier == Pkg.PRESERVE_NONE
+                                        # give up
+                                        rethrow(e)
                                     end
                                 end
-                            finally
-                                PkgCompat.write_auto_compat_entries!(notebook.nbpkg_ctx)
                             end
-
-                            # Now that Pkg is set up, the notebook process will call `using Package`, which can take some time. We write this message to the io, to notify the user.
-                            println(iolistener.buffer, "\e[32m\e[1mLoading\e[22m\e[39m packages...")
+                        finally
+                            PkgCompat.write_auto_compat_entries!(notebook.nbpkg_ctx)
                         end
+
+                        # Now that Pkg is set up, the notebook process will call `using Package`, which can take some time. We write this message to the io, to notify the user.
+                        println(iolistener.buffer, "\e[32m\e[1mLoading\e[22m\e[39m packages...")
                     end
+                
                     notebook.nbpkg_install_time_ns = notebook.nbpkg_install_time_ns === nothing ? nothing : (notebook.nbpkg_install_time_ns + (time_ns() - start_time))
                     Status.report_business_finished!(pkg_status, :add)
                     @debug "PlutoPkg: done" notebook.path 
                 end
 
-                should_instantiate = !notebook.nbpkg_ctx_instantiated || !isempty(to_add) || !isempty(to_remove)
+                should_instantiate_again = !notebook.nbpkg_ctx_instantiated || !isempty(to_add) || !isempty(to_remove)
                 
-                if should_instantiate
-                    Status.report_business_started!(pkg_status, :instantiate)
-                    start_time = time_ns()
-                    startlistening(iolistener)
-                    PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
-                        @debug "PlutoPkg: Instantiating" notebook.path 
-                        
-                        # Pkg.instantiate assumes that the environment to be instantiated is active, so we will have to modify the LOAD_PATH of this Pluto server
-                        # We could also run the Pkg calls on the notebook process, but somehow I think that doing it on the server is more charming, though it requires this workaround.
-                        env_dir = PkgCompat.env_dir(notebook.nbpkg_ctx)
-                        pushfirst!(LOAD_PATH, env_dir)
-
-                        # update registries if this is the first time
-                        PkgCompat.update_registries(; force=false)
-                        # instantiate without forcing registry update
-                        PkgCompat.instantiate(notebook.nbpkg_ctx; update_registry=false)
-                        
-                        @assert LOAD_PATH[1] == env_dir
-                        popfirst!(LOAD_PATH)
+                if should_instantiate_again
+                    Status.report_business!(pkg_status, :instantiate2) do
+                        instantiate(notebook, iolistener)
                     end
-                    notebook.nbpkg_install_time_ns = notebook.nbpkg_install_time_ns === nothing ? nothing : (notebook.nbpkg_install_time_ns + (time_ns() - start_time))
-                    Status.report_business_finished!(pkg_status, :instantiate)
-                    notebook.nbpkg_ctx_instantiated = true
                 end
 
                 stoplistening(iolistener)
-                
                 Status.report_business_finished!(pkg_status)
 
                 return (
                     did_something=👺 || (
-                        should_instantiate || (use_plutopkg_old != use_plutopkg_new)
+                        should_instantiate_initially || should_instantiate_again || (use_plutopkg_old != use_plutopkg_new)
                     ),
                     used_tier=used_tier,
                     # changed_versions=Dict{String,Pair}(),
@@ -283,6 +295,7 @@ In addition to the steps performed by [`sync_nbpkg_core`](@ref):
 - `try` `catch` and reset the package environment on failure.
 """
 function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topology::NotebookTopology; save::Bool=true, take_token::Bool=true)
+    cleanup = Ref{Union{Function,Nothing}}(nothing)
 	try
         Status.report_business_started!(notebook.status_tree, :pkg)
         
@@ -295,7 +308,14 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
                 update_nbpkg_cache!(notebook)
 				send_notebook_changes!(ClientRequest(; session, notebook))
 			end
-			 sync_nbpkg_core(notebook, old_topology, new_topology; on_terminal_output=iocallback, lag = session.options.server.simulated_pkg_lag)
+			sync_nbpkg_core(
+                notebook, 
+                old_topology, 
+                new_topology; 
+                on_terminal_output=iocallback, 
+                cleanup,
+                lag=session.options.server.simulated_pkg_lag
+            )
 		end
 
 		if pkg_result.did_something
@@ -343,6 +363,7 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 
 		save && save_notebook(session, notebook)
 	finally
+        isnothing(cleanup[]) || cleanup[]()
         Status.report_business_finished!(notebook.status_tree, :pkg)
     end
 end
@@ -356,37 +377,71 @@ function writebackup(notebook::Notebook)
     backup_path
 end
 
-"""
-Run `Pkg.resolve` on the notebook's package environment. Keep trying more and more invasive strategies to fix problems until the operation succeeds.
-"""
-function resolve_with_auto_fixes(notebook::Notebook, iolistener::IOListener)
-    PkgCompat.clear_stdlib_compat_entries!(notebook.nbpkg_ctx)
 
-    PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
-        withinteractive(false) do
+function instantiate(notebook::Notebook, iolistener::IOListener)
+    start_time = time_ns()
+    startlistening(iolistener)
+    with_io_setup(notebook, iolistener) do
+        @debug "PlutoPkg: Instantiating" notebook.path 
+        
+        # update registries if this is the first time
+        PkgCompat.update_registries(; force=false)
+        
+        # Pkg.instantiate assumes that the environment to be instantiated is active, so we will have to modify the LOAD_PATH of this Pluto server
+        # We could also run the Pkg calls on the notebook process, but somehow I think that doing it on the server is more charming, though it requires this workaround.
+        env_dir = PkgCompat.env_dir(notebook.nbpkg_ctx)
+        pushfirst!(LOAD_PATH, env_dir)
+        
+        try
+            # instantiate without forcing registry update
+            PkgCompat.instantiate(notebook.nbpkg_ctx; update_registry=false)
+        finally
+            # reset the LOAD_PATH
+            if LOAD_PATH[1] == env_dir
+                popfirst!(LOAD_PATH)
+            else
+                @warn "LOAD_PATH modified during Pkg.instantiate... this is unexpected!"
+            end
+        end
+    end
+    notebook.nbpkg_install_time_ns = notebook.nbpkg_install_time_ns === nothing ? nothing : (notebook.nbpkg_install_time_ns + (time_ns() - start_time))
+    notebook.nbpkg_ctx_instantiated = true
+end
+
+function resolve(notebook::Notebook, iolistener::IOListener)
+    startlistening(iolistener)
+    with_io_setup(notebook, iolistener) do
+        @debug "PlutoPkg: Instantiating" notebook.path 
+        Pkg.resolve(notebook.nbpkg_ctx)
+    end
+end
+
+
+"""
+Run `f` (e.g. `Pkg.instantiate`) on the notebook's package environment. Keep trying more and more invasive strategies to fix problems until the operation succeeds.
+"""
+function with_auto_fixes(f::Function, notebook::Notebook)
+    try
+        f()
+    catch e
+        @warn "Operation failed. Updating registries and trying again..." exception=e
+        
+        PkgCompat.update_registries(; force=true)
+        try
+            f()
+        catch e
+            @warn "Operation failed. Removing Manifest and trying again..." exception=e
+            
+            reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
             try
-                Pkg.resolve(notebook.nbpkg_ctx)
+                f()
             catch e
-                @warn "Failed to resolve Pkg environment. Updating registries and trying again..." exception=e
+                @warn "Operation failed. Removing Project compat entries and Manifest and trying again..." exception=e
                 
-                PkgCompat.update_registries(; force=true)
-                try
-                    Pkg.resolve(notebook.nbpkg_ctx)
-                catch e
-                    @warn "Failed to resolve Pkg environment. Removing Manifest and trying again..." exception=e
-                    
-                    reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
-                    try
-                        Pkg.resolve(notebook.nbpkg_ctx)
-                    catch e
-                        @warn "Failed to resolve Pkg environment. Removing Project compat entries and Manifest and trying again..." exception=e
-                        
-                        reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
-                        PkgCompat.clear_compat_entries!(notebook.nbpkg_ctx)
-                        
-                        Pkg.resolve(notebook.nbpkg_ctx)
-                    end
-                end
+                reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
+                PkgCompat.clear_compat_entries!(notebook.nbpkg_ctx)
+                
+                f()
             end
         end
     end
@@ -420,7 +475,12 @@ function reset_nbpkg!(notebook::Notebook, topology::Union{NotebookTopology,Nothi
     save && save_notebook(notebook)
 end
 
-function update_nbpkg_core(notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEVEL_MAJOR, on_terminal_output::Function=((args...) -> nothing))
+function update_nbpkg_core(
+    notebook::Notebook; 
+    level::Pkg.UpgradeLevel=Pkg.UPLEVEL_MAJOR, 
+    on_terminal_output::Function=((args...) -> nothing),
+    cleanup::Ref{Union{Function,Nothing}}=Ref{Union{Function,Nothing}}(nothing),
+)
     if notebook.nbpkg_ctx !== nothing
         PkgCompat.mark_original!(notebook.nbpkg_ctx)
 
@@ -430,6 +490,7 @@ function update_nbpkg_core(notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEV
             # we don't know which packages will be updated, so we send terminal output to all installed packages
             IOListener(callback=(s -> on_terminal_output(old_packages, s)))
         end
+        cleanup[] = () -> stoplistening(iolistener)
         
         # We remember which Pkg.Types.PreserveLevel was used. If it's too low, we will recommend/require a notebook restart later.
         local used_tier = Pkg.PRESERVE_ALL
@@ -441,14 +502,19 @@ function update_nbpkg_core(notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEV
 
         return withtoken(pkg_token) do
             PkgCompat.refresh_registry_cache()
+            PkgCompat.clear_stdlib_compat_entries!(notebook.nbpkg_ctx)
 
             if !notebook.nbpkg_ctx_instantiated
-                resolve_with_auto_fixes(notebook, iolistener)
+                with_auto_fixes(notebook) do
+                    instantiate(notebook, iolistener)
+                end
+            
+                with_auto_fixes(notebook) do
+                    resolve(notebook, iolistener)
+                end
             end
 
-            startlistening(iolistener)
-
-            PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
+            with_io_setup(notebook, iolistener) do
                 # We temporarily clear the "semver-compatible" [deps] entries, because it is difficult to update them after the update 🙈. TODO
                 PkgCompat.clear_auto_compat_entries!(notebook.nbpkg_ctx)
 
@@ -483,6 +549,7 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
     bp = if backup && save
         writebackup(notebook)
     end
+    cleanup = Ref{Union{Function,Nothing}}(nothing)
 
     try
 		pkg_result = withtoken(notebook.executetoken) do
@@ -496,7 +563,12 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
                 update_nbpkg_cache!(notebook)
 				send_notebook_changes!(ClientRequest(; session, notebook))
 			end
-			update_nbpkg_core(notebook; level=level, on_terminal_output=iocallback)
+			update_nbpkg_core(
+                notebook; 
+                level, 
+                on_terminal_output=iocallback,
+                cleanup,
+            )
 		end
 
 		if pkg_result.did_something
@@ -512,6 +584,7 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
             !isnothing(bp) && isfile(bp) && rm(bp)
         end
 	finally
+        isnothing(cleanup[]) || cleanup[]()
 		notebook.nbpkg_busy_packages = String[]
         update_nbpkg_cache!(notebook)
 		send_notebook_changes!(ClientRequest(; session, notebook))
@@ -558,6 +631,16 @@ function is_nbpkg_equal(a::Union{Nothing,PkgContext}, b::Union{Nothing,PkgContex
         end
     end
 end
+
+function with_io_setup(f::Function, notebook::Notebook, iolistener::IOListener)
+    startlistening(iolistener)
+    PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
+        withinteractive(false) do
+            f()
+        end
+    end
+end
+
 
 const is_interactive_defined = isdefined(Base, :is_interactive) && !Base.isconst(Base, :is_interactive)
 function withinteractive(f::Function, value::Bool)
