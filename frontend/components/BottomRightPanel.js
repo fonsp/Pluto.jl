@@ -4,6 +4,7 @@ import { cl } from "../common/ClassTable.js"
 import { LiveDocsTab } from "./LiveDocsTab.js"
 import { is_finished, ProcessTab, total_done, total_tasks } from "./ProcessTab.js"
 import { useMyClockIsAheadBy } from "../common/clock sync.js"
+import { get_environment, usePanelComponentFromEnv } from "../common/Environment.js"
 
 export const ENABLE_PROCESS_TAB = window.localStorage.getItem("ENABLE_PROCESS_TAB") === "true"
 
@@ -24,7 +25,7 @@ window.PLUTO_TOGGLE_PROCESS_TAB = () => {
 
 /**
  * @typedef PanelTabName
- * @type {"docs" | "process" | null}
+ * @type {"docs" | "process" | "extended" | null}
  */
 
 export const open_bottom_right_panel = (/** @type {PanelTabName} */ tab) => window.dispatchEvent(new CustomEvent("open_bottom_right_panel", { detail: tab }))
@@ -42,8 +43,9 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
 
     const focus_docs_on_open_ref = useRef(false)
     const [open_tab, set_open_tab] = useState(/** @type { PanelTabName} */ (null))
+    const toggle_tab = useMemo(() => (thistab) => set_open_tab(open_tab === thistab ? null : thistab), [set_open_tab])
     const hidden = open_tab == null
-
+    const { panel, panelButton } = usePanelComponentFromEnv()
     // Open panel when "open_bottom_right_panel" event is triggered
     useEffect(() => {
         let handler = (/** @type {CustomEvent} */ e) => {
@@ -92,7 +94,7 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
                         })}
                         onClick=${() => {
                             focus_docs_on_open_ref.current = true
-                            set_open_tab(open_tab === "docs" ? null : "docs")
+                            toggle_tab("docs")
                             // TODO: focus the docs input
                         }}
                     >
@@ -109,17 +111,18 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
                             "busy": ENABLE_PROCESS_TAB && show_business_outline,
                         })}
                         onClick=${() => {
-                            set_open_tab(open_tab === "process" ? null : "process")
+                            toggle_tab("process")
                         }}
                     >
                         <span class="tabicon"></span>
-                        <span class="tabname"
-                            >${ENABLE_PROCESS_TAB
+                        <span class="tabname">
+                            ${ENABLE_PROCESS_TAB
                                 ? open_tab === "process" || !show_business_counter
                                     ? "Status"
                                     : html`Status${" "}<span class="subprogress-counter">(${status_done}/${status_total})</span>`
                                 : "Coming soon"}</span
                         >
+                        ${panelButton && html`<${panelButton} onClick=${() => toggle_tab("extended")} />`}
                     </button>
                     ${hidden
                         ? null
@@ -132,16 +135,15 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
                               <span></span>
                           </button>`}
                 </header>
-                ${open_tab === "docs"
-                    ? html`<${LiveDocsTab}
-                          focus_on_open=${focus_docs_on_open_ref.current}
-                          desired_doc_query=${desired_doc_query}
-                          on_update_doc_query=${on_update_doc_query}
-                          notebook=${notebook}
-                      />`
-                    : open_tab === "process"
-                    ? html`<${ProcessTab} notebook=${notebook} my_clock_is_ahead_by=${my_clock_is_ahead_by} />`
-                    : null}
+                ${open_tab === "docs" &&
+                html`<${LiveDocsTab}
+                    focus_on_open=${focus_docs_on_open_ref.current}
+                    desired_doc_query=${desired_doc_query}
+                    on_update_doc_query=${on_update_doc_query}
+                    notebook=${notebook}
+                />`}
+                ${open_tab === "process" && html`<${ProcessTab} notebook=${notebook} my_clock_is_ahead_by=${my_clock_is_ahead_by} />`}
+                ${open_tab === "extended" && html`<${panel} />`}
             </pluto-helpbox>
         </aside>
     `

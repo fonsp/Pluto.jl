@@ -1,3 +1,5 @@
+import { useMemo, useEffect, useState, html } from "../imports/Preact.js"
+
 function environment({
     client,
     editor,
@@ -26,6 +28,25 @@ export const get_environment = async (client) => {
         environment = window.pluto_injected_environment.environment
     }
     return environment
+}
+
+/**
+ * @typedef PanelComponentBlock
+ * @type {{panel: object, panelButton: object} | null}
+ */
+export const usePanelComponentFromEnv = () => {
+    const [panel, setPanelComponent] = useState(/** @type { PanelComponentBlock } */ null)
+    useEffect(() => {
+        get_environment().then((e) => {
+            const env = e({ imports: { preact: { useMemo, useEffect, useState, html } } })
+            if (env.custom_panel && env.custom_panel_button)
+                setPanelComponent({
+                    panel: e.custon_panel,
+                    panelButton: e.custom_panel_button,
+                })
+        })
+    })
+    return panel ?? {}
 }
 
 export default environment
