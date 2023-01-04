@@ -337,6 +337,9 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:((x;p) -> f(x+p)), [], [], [], [
             :anon => ([], [], [:f, :+], [])
         ])
+        @test testee(:(() -> Date), [], [], [], [
+            :anon => ([:Date], [], [], [])
+        ])
         @test testee(:(begin x; p end -> f(x+p)), [], [], [], [
             :anon => ([], [], [:f, :+], [])
         ])
@@ -765,5 +768,12 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test ExpressionExplorer.external_package_names(:(import Plots.A: b, c)) == Set([:Plots])
 
         @test ExpressionExplorer.external_package_names(Meta.parse("import Foo as Bar, Baz.Naz as Jazz")) == Set([:Foo, :Baz])
+    end
+
+    @testset "ReactiveNode" begin
+        rn = Pluto.ReactiveNode_from_expr(quote
+            () -> Date
+        end)
+        @test :Date ∈ rn.references
     end
 end
