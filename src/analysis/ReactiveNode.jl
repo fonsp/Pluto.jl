@@ -34,14 +34,13 @@ end
 - `ReactiveNode` functions as a cache to improve efficienty, by turning the nested structures into multiple `Set{Symbol}`s with fast lookups."
 function ReactiveNode(symstate::SymbolsState)
 	macrocalls = join_funcname_parts.(symstate.macrocalls) |> Set{Symbol}
-	result = ReactiveNode(
-		references=Set{Symbol}(symstate.references), 
-		definitions=Set{Symbol}(symstate.assignments),
-		macrocalls=macrocalls,
-		)
+	result = ReactiveNode(references=symstate.references)
 
 	# defined functions are 'exploded' into the cell's reactive node
-	union!(result, (ReactiveNode(body_symstate) for (_, body_symstate) in symstate.funcdefs)...)
+	for (_, body_symstate) in symstate.funcdefs
+		union!(result, ReactiveNode(body_symstate))
+	end
+	# union!(result, (ReactiveNode(body_symstate) for (_, body_symstate) in symstate.funcdefs)...)
 
 	# now we will add the function names to our edges:
 	funccalls = Set{Symbol}(symstate.funccalls .|> join_funcname_parts)
