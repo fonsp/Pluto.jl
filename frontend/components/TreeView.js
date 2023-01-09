@@ -135,7 +135,12 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
 export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     const node_ref = useRef(null)
-
+    console.log(body.rows, body.rows?.length ?? 0)
+    if ((body.rows?.length ?? 0) === 0) {
+        return html`<div>
+            <img style="width: 24px; height: 24px;" src="https://unpkg.com/ionicons@5.5.2/dist/svg/folder-open-outline.svg" /> This table has no data!
+        </div>`
+    }
     const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${persist_js_state} />`
     const more = (dim) => html`<${More}
         on_click_more=${() => {
