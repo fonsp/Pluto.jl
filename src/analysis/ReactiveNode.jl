@@ -41,7 +41,10 @@ function ReactiveNode(symstate::SymbolsState)
 		)
 
 	# defined functions are 'exploded' into the cell's reactive node
-	union!(result, (ReactiveNode(body_symstate) for (_, body_symstate) in symstate.funcdefs)...)
+	for (_, body_symstate) in symstate.funcdefs
+		union!(result, ReactiveNode(body_symstate))
+	end
+	# union!(result, (ReactiveNode(body_symstate) for (_, body_symstate) in symstate.funcdefs)...)
 
 	# now we will add the function names to our edges:
 	funccalls = Set{Symbol}(symstate.funccalls .|> join_funcname_parts)

@@ -567,7 +567,7 @@ function explore_function_macro!(ex::Expr, scopestate::ScopeState)
     # Macro are called using @funcname, but defined with funcname. We need to change that in our scopestate
     # (The `!= 0` is for when the function named couldn't be parsed)
     if ex.head == :macro && length(funcname) != 0
-        funcname = Symbol[Symbol("@$(funcname[1])")]
+        funcname = Symbol[Symbol('@', funcname[1])]
         push!(innerscopestate.hiddenglobals, only(funcname))
     elseif length(funcname) == 1
         push!(scopestate.definedfuncs, funcname[end])
