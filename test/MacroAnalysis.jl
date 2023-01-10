@@ -583,7 +583,7 @@ import Memoize: @memoize
 
         update_run!(🍭, notebook, cell(5))
 
-        @test expecterror(UndefVarError(:x), cell(1).output.body[:msg])
+        @test expecterror(UndefVarError(:x), cell(1))
 
         update_run!(🍭, notebook, cell(3))
         update_run!(🍭, notebook, cell(2))
@@ -605,7 +605,7 @@ import Memoize: @memoize
         update_run!(🍭, notebook, cell(2))
 
         @test cell(2).errored == true
-        @test expecterror(UndefVarError(Symbol("@dateformat_str")), cell(2)) == true
+        @test expecterror(UndefVarError(Symbol("@dateformat_str")), cell(2))
 
         update_run!(🍭, notebook, notebook.cells)
 
