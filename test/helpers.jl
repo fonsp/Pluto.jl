@@ -153,6 +153,14 @@ function occursinerror(needle, haystack::Pluto.Cell)
     haystack.errored && occursin(needle, haystack.output.body[:msg])
 end
 
+function expecterror(err, cell)
+    cell.errored || return false
+    io = IOBuffer()
+    showerror(io, err)
+    msg = String(take!(io))
+    return cell.output.body[:msg] == msg
+end
+
 "Test notebook equality, ignoring cell UUIDs and such."
 macro test_notebook_inputs_equal(nbA, nbB, check_paths_equality::Bool=true)
     quote

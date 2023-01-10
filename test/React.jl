@@ -191,7 +191,8 @@ import Distributed
         @test length(notebook.cells) == 1
 
         update_run!(🍭, notebook, Cell[])
-        @test occursinerror("UndefVarError: x", notebook.cells[begin])
+
+        @test expecterror(UndefVarError(:x), notebook.cells[begin])
     end
 
     @testset ".. as an identifier" begin
@@ -541,7 +542,7 @@ import Distributed
 
         @test notebook.cells[end].errored == true
         @test occursinerror("Cyclic", notebook.cells[1])
-        @test occursinerror("UndefVarError: y", notebook.cells[end]) # this is an UndefVarError and not a CyclicError
+        @test expecterror(UndefVarError(:y), notebook.cells[end]) # this is an UndefVarError and not a CyclicError
 
         setcode!.(notebook.cells, [""])
         update_run!(🍭, notebook, notebook.cells)
@@ -991,7 +992,7 @@ import Distributed
         setcode!(notebook.cells[1], "")
         update_run!(🍭, notebook, notebook.cells[1])
         @test notebook.cells[1] |> noerror
-        @test occursinerror("x not defined", notebook.cells[2])
+        @test expecterror(UndefVarError(:x), notebook.cells[2])
 
         update_run!(🍭, notebook, notebook.cells[4])
         update_run!(🍭, notebook, notebook.cells[3])
