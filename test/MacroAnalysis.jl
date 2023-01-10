@@ -292,7 +292,7 @@ import Memoize: @memoize
         @test notebook.cells[begin] |> noerror
         @test notebook.cells[end].errored
 
-        @test occursinerror("UndefVarError: @m", notebook.cells[end])
+        @test expecterror(UndefVarError(Symbol("@m")), notebook.cells[end])
     end
 
     @testset "Redefines macro with new SymbolsState" begin
@@ -583,7 +583,7 @@ import Memoize: @memoize
 
         update_run!(🍭, notebook, cell(5))
 
-        @test occursin("UndefVarError: x", cell(1).output.body[:msg])
+        @test expecterror(UndefVarError(:x), cell(1).output.body[:msg])
 
         update_run!(🍭, notebook, cell(3))
         update_run!(🍭, notebook, cell(2))
@@ -605,7 +605,7 @@ import Memoize: @memoize
         update_run!(🍭, notebook, cell(2))
 
         @test cell(2).errored == true
-        @test occursinerror("UndefVarError: @dateformat_str", cell(2)) == true
+        @test expecterror(UndefVarError(Symbol("@dateformat_str")), cell(2)) == true
 
         update_run!(🍭, notebook, notebook.cells)
 
@@ -919,8 +919,8 @@ import Memoize: @memoize
         update_run!(🍭, notebook, notebook.cells)
         
         @test :custom_func ∉ notebook.topology.nodes[cell(3)].funcdefs_without_signatures
-        @test occursinerror("UndefVarError: custom_func", cell(4))
+        @test expecterror(UndefVarError(:custom_func), cell(4))
         @test :memoized_func ∉ notebook.topology.nodes[cell(5)].funcdefs_without_signatures
-        @test occursinerror("UndefVarError: memoized_func", cell(6))
+        @test expecterror(UndefVarError(:memoized_func), cell(6))
     end
 end
