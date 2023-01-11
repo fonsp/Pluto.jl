@@ -21,10 +21,10 @@ export let map_cmd_to_ctrl_on_mac = (keymap) => {
 }
 
 export let in_textarea_or_input = () => {
-    const in_footer = document.activeElement.closest("footer") != null
-    const in_header = document.activeElement.closest("header") != null
-    const in_cm = document.activeElement.closest(".cm-editor") != null
+    const in_footer = document.activeElement?.closest("footer") != null
+    const in_header = document.activeElement?.closest("header") != null
+    const in_cm = document.activeElement?.closest(".cm-editor") != null
 
-    const { tagName } = document.activeElement
+    const { tagName } = document.activeElement ?? {}
     return tagName === "INPUT" || tagName === "TEXTAREA" || in_footer || in_header || in_cm
 }
