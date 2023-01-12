@@ -94,7 +94,7 @@ export reset_notebook_environment
 export update_notebook_environment
 export activate_notebook_environment
 
-include("precompile.jl")
+include("./precompile.jl")
 
 if get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") != "0" && get(ENV, "CI", "🍄") != "true"
 @info """\n
