@@ -20,3 +20,4 @@ frontend/package-lock.json
 
 # PProf
 sample/
+profile.pb.gz

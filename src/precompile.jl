@@ -21,8 +21,22 @@ SnoopPrecompile.@precompile_all_calls begin
         end
     end
 
-    🍭 = Pluto.ServerSession()
+    session = Pluto.ServerSession()
+    session.options.evaluation.workspace_use_distributed = false
+    basic = joinpath(pkgdir(Pluto), "sample", "Basic.jl")
+    nb = load_notebook(basic)
 
+    # Compiling PlutoRunner is very beneficial because it saves time in each notebook.
+    let
+        show_richest = Pluto.PlutoRunner.show_richest
+        io = IOBuffer()
+        show_richest(io, (; n=1))
+        show_richest(io, [1, 2])
+        show_richest(io, [1, "2"])
+        show_richest(io, Dict("A" => 1))
+    end
+
+    # Would be really nice if HTTP.jl would add precompilation for HTTP.request.
     HTTP.stack()
 
     PkgCompat.create_empty_ctx()
