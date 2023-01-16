@@ -91,7 +91,11 @@ end
 
 function new_notebooks_directory()
     try
-        path = joinpath(first(DEPOT_PATH), "pluto_notebooks")
+        path = get(
+			ENV,
+			"JULIA_PLUTO_NEW_NOTEBOOKS_DIR",
+			joinpath(first(DEPOT_PATH), "pluto_notebooks")
+		)
         if !isdir(path)
             mkdir(path)
         end
