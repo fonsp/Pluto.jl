@@ -5,23 +5,6 @@ import { LiveDocsTab } from "./LiveDocsTab.js"
 import { is_finished, ProcessTab, total_done, total_tasks } from "./ProcessTab.js"
 import { useMyClockIsAheadBy } from "../common/clock sync.js"
 
-export const ENABLE_PROCESS_TAB = window.localStorage.getItem("ENABLE_PROCESS_TAB") === "true"
-
-if (ENABLE_PROCESS_TAB) {
-    console.log(`YOU ENABLED THE PROCESS TAB
-Thanks! Awesome!
-Please let us know if you find any bugs...
-If enough people do this, we turn it on by default. 💛
-`)
-}
-
-// Added this so we can have people test the mixed parser, because I LIKE IT SO MUCH - DRAL
-// @ts-ignore
-window.PLUTO_TOGGLE_PROCESS_TAB = () => {
-    window.localStorage.setItem("ENABLE_PROCESS_TAB", String(!ENABLE_PROCESS_TAB))
-    window.location.reload()
-}
-
 /**
  * @typedef PanelTabName
  * @type {"docs" | "process" | null}
@@ -61,7 +44,7 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
 
     const [status_total, status_done] = useMemo(
         () =>
-            !ENABLE_PROCESS_TAB || notebook.status_tree == null
+            notebook.status_tree == null
                 ? [0, 0]
                 : [
                       // total_tasks minus 1, to exclude the notebook task itself
@@ -100,13 +83,12 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
                         <span class="tabname">Live Docs</span>
                     </button>
                     <button
-                        disabled=${!ENABLE_PROCESS_TAB}
-                        title=${ENABLE_PROCESS_TAB ? "Process status" : "We are still working on this feature. Check back soon!"}
+                        title=${"Process status"}
                         class=${cl({
                             "helpbox-tab-key": true,
                             "helpbox-process": true,
                             "active": open_tab === "process",
-                            "busy": ENABLE_PROCESS_TAB && show_business_outline,
+                            "busy": show_business_outline,
                         })}
                         onClick=${() => {
                             set_open_tab(open_tab === "process" ? null : "process")
@@ -114,11 +96,9 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
                     >
                         <span class="tabicon"></span>
                         <span class="tabname"
-                            >${ENABLE_PROCESS_TAB
-                                ? open_tab === "process" || !show_business_counter
-                                    ? "Status"
-                                    : html`Status${" "}<span class="subprogress-counter">(${status_done}/${status_total})</span>`
-                                : "Coming soon"}</span
+                            >${open_tab === "process" || !show_business_counter
+                                ? "Status"
+                                : html`Status${" "}<span class="subprogress-counter">(${status_done}/${status_total})</span>`}</span
                         >
                     </button>
                     ${hidden
