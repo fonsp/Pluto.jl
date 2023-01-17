@@ -42,3 +42,6 @@ SnoopPrecompile.@precompile_all_calls begin
     PkgCompat.create_empty_ctx()
     PkgCompat.check_registry_age()
 end
+
+using PrecompileSignatures: @precompile_signatures
+@precompile_signatures(Pluto)
