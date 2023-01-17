@@ -1,3 +1,5 @@
+@import url("https://cdn.jsdelivr.net/npm/dialog-polyfill@0.5.6/dist/dialog-polyfill.css");
+
 /* @import url("https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i,500,700&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext"); */
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/400.css");
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/400-italic.css");
@@ -32,7 +34,8 @@
     --sans-serif-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
     --lato-ui-font-stack: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, Helvetica, Arial, "Apple Color Emoji",
         "Segoe UI Emoji", "Segoe UI Symbol", system-ui, sans-serif;
-
+    --system-ui-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, Helvetica, Arial, "Apple Color Emoji",
+        "Segoe UI Emoji", "Segoe UI Symbol", system-ui, sans-serif;
     color-scheme: light dark;
 }
 
@@ -46,7 +49,6 @@ html {
 }
 
 body {
-    overscroll-behavior: contain;
     margin: 0px;
     overflow-anchor: none;
     overflow-x: hidden;
@@ -80,7 +82,7 @@ body:not(.disable_ui) main {
 }
 
 body:not(.disable_ui) {
-    overscroll-behavior-x: contain;
+    overscroll-behavior: contain;
 }
 
 /* | main=25px+700px+6px=731px | pluto-helpbox=350px - 500px | */
@@ -457,7 +459,7 @@ header#pluto-nav {
     top: 0px; */
     width: 100%;
     min-height: 60px;
-    z-index: 50;
+    z-index: 60;
     background-color: var(--header-bg-color);
     transform: translateY(0px);
     transition: background-color 0.5s ease-in-out, transform 0.25s cubic-bezier(0.18, 0.89, 0.49, 1.13);
@@ -545,9 +547,11 @@ a.export_card section {
     /* font-size: 14px; */
     padding: 3px;
 }
-aside#export button.toggle_export {
+aside#export .export_small_btns {
     margin-left: auto;
     height: 60px;
+    display: flex;
+    flex-direction: row;
 }
 body.static_preview button.toggle_export {
     display: none;
@@ -616,14 +620,16 @@ nav#at_the_top img#logo-small {
     }
 }
 
-nav#at_the_top > pluto-filepicker {
+nav#at_the_top > pluto-filepicker,
+nav#at_the_top > div.desktop_picker {
     width: 210px;
     flex-grow: 1;
     display: flex;
     flex-direction: row;
 }
 
-nav#at_the_top > pluto-filepicker .cm-editor {
+nav#at_the_top > pluto-filepicker .cm-editor,
+nav#at_the_top > div.desktop_picker span {
     height: calc(1rem + 4px + 4px + 4px);
     display: inline-block;
     min-width: 10rem;
@@ -648,20 +654,42 @@ pluto-filepicker .cm-scroller::-webkit-scrollbar {
     display: none; /* Safari and Chrome */
 }
 
-nav#at_the_top > pluto-filepicker button {
+pluto-filepicker button,
+div.desktop_picker button {
     cursor: pointer;
     height: auto;
 }
 
+pluto-filepicker button:disabled {
+    cursor: not-allowed;
+}
+
+/* .desktop_picker button {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+} */
+
+div.desktop_picker span {
+    white-space: nowrap;
+    overflow-x: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+    padding: 0 5px;
+    line-height: 1.8;
+    cursor: pointer;
+}
+
 button.start_stop_recording,
-button.toggle_export {
+button.toggle_export,
+.export_small_btns button {
     border: none;
     background: none;
     cursor: pointer;
     opacity: 0.5;
 }
 button.start_stop_recording span,
-button.toggle_export span {
+button.toggle_export span,
+.export_small_btns button span {
     display: block;
     content: " " !important;
     background-size: 25px 25px;
@@ -681,7 +709,11 @@ nav#at_the_top button.toggle_export span {
 }
 aside#export button.toggle_export span {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-outline.svg");
-    filter: var(--image-filters);
+    filter: invert(1);
+}
+aside#export button.toggle_frontmatter_edit span {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/newspaper-outline.svg");
+    filter: invert(1);
 }
 nav#at_the_top:after {
     margin-left: auto;
@@ -704,22 +736,28 @@ nav#at_the_top:after {
 }
 
 @media (any-pointer: fine) {
-    nav#at_the_top > pluto-filepicker .cm-editor {
+    nav#at_the_top > pluto-filepicker .cm-editor,
+    nav#at_the_top > div.desktop_picker span {
         border: 2px solid transparent;
         border-right: none;
         transition: border 0.15s ease-in-out;
     }
-    nav#at_the_top > pluto-filepicker button {
+    nav#at_the_top > pluto-filepicker button,
+    nav#at_the_top > div.desktop_picker button {
         opacity: 0;
         transition: opacity 0.15s ease-in-out;
     }
     header:hover > nav#at_the_top > pluto-filepicker .cm-editor,
-    header:focus-within > nav#at_the_top > pluto-filepicker .cm-editor {
+    header:focus-within > nav#at_the_top > pluto-filepicker .cm-editor,
+    header:hover > nav#at_the_top > div.desktop_picker span,
+    header:focus-within > nav#at_the_top > div.desktop_picker span {
         border: 2px solid var(--footer-input-border-color);
         border-right: none;
     }
     header:hover > nav#at_the_top > pluto-filepicker button,
-    header:focus-within > nav#at_the_top > pluto-filepicker button {
+    header:focus-within > nav#at_the_top > pluto-filepicker button,
+    header:hover > nav#at_the_top > div.desktop_picker button,
+    header:focus-within > nav#at_the_top > div.desktop_picker button {
         opacity: 1;
     }
 }
@@ -1037,6 +1075,10 @@ pluto-output > assignee:empty {
     display: none;
 }
 
+.errored pluto-output > assignee {
+    display: none;
+}
+
 pluto-output > div {
     flex-shrink: 0;
     overflow-y: hidden;
@@ -1048,6 +1090,11 @@ pluto-output div.raw-html-wrapper {
 
 pluto-output:not(.rich_output) > div > pre {
     display: flex;
+}
+
+.bonds_disabled:where(.offer_binder, .offer_local) bond {
+    opacity: 0.6;
+    filter: grayscale(1);
 }
 
 /* as embedded display: */
@@ -1083,6 +1130,30 @@ pluto-cell.running_disabled > pluto-logs-container {
 pluto-cell.running_disabled > pluto-input .cm-editor,
 pluto-cell.running_disabled > pluto-output {
     background-color: var(--disabled-cell-bg-color);
+}
+
+/* SKIP AS SCRIPT CELLS */
+pluto-cell.skip_as_script .skip_as_script_marker,
+pluto-cell.depends_on_skipped_cells .depends_on_skipped_marker {
+    display: block;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    cursor: help;
+    z-index: 20;
+    right: -3px;
+    width: 4px;
+    border-radius: 0px 4px 4px 0px;
+    background-color: var(--skip-as-script-background-color);
+}
+
+pluto-cell.depends_on_skipped_cells .depends_on_skipped_marker {
+    background-color: var(--depends-on-skip-as-script-background-color);
+}
+
+pluto-cell.skip_as_script pluto-input .cm-editor,
+pluto-cell.depends_on_skipped_cells pluto-input .cm-editor {
+    border-bottom-right-radius: 0px;
 }
 
 /* SELECTION */
@@ -1172,6 +1243,7 @@ pluto-cell.code_differs > pluto-input > .cm-editor {
 
 /* UI */
 
+button.floating_back_button,
 .overlay-button button,
 pluto-cell > button,
 pluto-input > button,
@@ -1233,15 +1305,13 @@ pluto-shoulder:hover {
 pluto-shoulder > button {
     flex: 0 0 auto;
     position: sticky;
-    top: 0px;
-    margin-top: 4px;
-    margin-right: 5px;
-    padding: 0px 1px;
+    top: 0;
+    padding: 4px 5px 4px 10px;
 }
 
 pluto-cell:focus-within > pluto-shoulder > button {
     /* we use padding instead of 4px extra margin to move the eye to the left so that the hitbox becomes grows - you want to be able to double click the button */
-    padding-right: 4px;
+    padding-right: 9px;
 }
 
 /* pluto-cell.code_folded.inline-output > pluto-shoulder > button {
@@ -1419,6 +1489,7 @@ pluto-input > button > span {
         /* to make it feel smooth: */
         transition: opacity 0.25s ease-in-out;
     }
+    .export_small_btns button,
     button.toggle_export,
     button.start_stop_recording,
     pluto-cell:hover > button,
@@ -1428,6 +1499,7 @@ pluto-input > button > span {
         opacity: 0.4;
         transition: opacity 0.25s ease-in-out;
     }
+    .export_small_btns button:hover,
     button.toggle_export:hover,
     button.start_stop_recording:hover,
     .overlay-button button:hover,
@@ -1485,6 +1557,11 @@ pluto-shoulder > button > span::after {
 
 pluto-cell > button.add_cell {
     left: -12px;
+    --hit-box-extend: 20px;
+    margin-left: calc(-1 * var(--hit-box-extend));
+    margin-right: calc(-1 * var(--hit-box-extend));
+    padding-left: var(--hit-box-extend);
+    padding-right: var(--hit-box-extend);
 }
 
 pluto-cell > button.add_cell.before {
@@ -1502,13 +1579,13 @@ pluto-cell > button.add_cell > span::after {
     filter: var(--image-filters);
 }
 pluto-input > button.input_context_menu ul {
-    --width: 156px;
     left: 100%;
     top: -8px;
     margin: 0;
     padding: 0px;
     border-radius: 6px;
-    display: block;
+    display: grid;
+    grid-template-columns: max-content;
     position: absolute;
     border: 1px solid var(--input-context-menu-border-color);
     background-color: var(--input-context-menu-bg-color);
@@ -1523,7 +1600,8 @@ pluto-input > button.input_context_menu ul {
         z-index: 31;
     }
     pluto-input > button.input_context_menu ul {
-        left: calc(100% - var(--width) - 36px);
+        right: 0px;
+        left: unset;
     }
 }
 .input_context_menu li {
@@ -1535,7 +1613,6 @@ pluto-input > button.input_context_menu ul {
     position: relative;
     list-style: none;
     padding: 8px;
-    width: var(--width);
     height: 32px;
     display: flex;
     align-items: center;
@@ -1586,11 +1663,6 @@ pluto-input > button.input_context_menu ul {
 .ctx_icon.hide_logs {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-text-outline.svg");
 }
-
-.ctx_icon.bandage {
-    filter: var(--image-filters) opacity(0.3);
-    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/bandage-outline.svg");
-}
 .ctx_icon.enable_cell {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg");
 }
@@ -1602,6 +1674,16 @@ pluto-input > button.input_context_menu ul {
 }
 .ctx_icon.delete {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle-outline.svg");
+}
+.ctx_icon.run_as_script {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-lock-outline.svg");
+}
+.ctx_icon.skip_as_script {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-text-outline.svg");
+}
+
+.ctx_icon.copy_output {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/copy-outline.svg");
 }
 
 pluto-input > button.input_context_menu {
@@ -1688,7 +1770,7 @@ pkg-status-mark.disable_pkg > button > span::after {
 pluto-popup {
     display: block;
     position: absolute;
-    z-index: 50;
+    z-index: 70;
     /* left: 1.5em; */
     /* top: calc((1.5em - 200px) * 0.5); */
     width: min(90vw, 251px);
@@ -1723,6 +1805,13 @@ pluto-popup > * {
     /* Slightly changes the layout of the three pkg buttons... in just the way that we want it! */
     position: absolute;
 }
+
+pluto-popup code.auto_disabled_variable {
+    font-family: var(--julia-mono-font-stack);
+    font-size: 0.8rem;
+    font-variant-ligatures: none;
+}
+
 pluto-popup > pkg-popup {
     background: var(--pkg-popup-bg);
     border: 3px solid var(--pkg-popup-border-color);
@@ -1940,7 +2029,7 @@ pluto-helpbox {
     flex-direction: column;
     width: calc(100vw - 50px - (700px + 25px + 6px)); /* compat */
     width: clamp(300px, calc(100vw - 50px - (700px + 25px + 6px)), 450px);
-    height: 70vh; /* compat */
+    height: 95vh; /* compat */
     height: min(70vh, 900px);
     /* overflow: hidden; */
     background-color: var(--helpbox-bg-color);
@@ -1954,44 +2043,205 @@ pluto-helpbox {
 }
 pluto-helpbox > header {
     display: flex;
-    padding: 15px;
+    padding: 0.6em;
     background-color: var(--helpbox-header-bg-color);
     color: var(--helpbox-header-color);
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--system-ui-font-stack);
     font-size: 0.9rem;
-    font-weight: 700;
-    border-top-left-radius: 6px;
-    border-top-right-radius: 6px;
+    --border-radius: 0.4em;
+    font-weight: 500;
+    border-top-left-radius: var(--border-radius);
+    border-top-right-radius: var(--border-radius);
     /* border-top: 4px solid #8a8a8a; */
+    gap: 0.5em;
 }
-pluto-helpbox > header::before {
-    content: "📖 ";
-    margin-right: 10px;
+
+pluto-helpbox > header > button.helpbox-tab-key > .tabicon {
+    /* font-size: 1em; */
+    --size: 1.1em;
+    width: var(--size);
+    height: var(--size);
+    background-size: var(--size);
+    margin-bottom: calc(-0.15 * var(--size));
+    filter: var(--image-filters);
+    margin-right: 0.6em;
+    display: inline-block;
 }
-/* pluto-helpbox.loading>header::before{
-    content: "⌛ ";
-    margin-right: 10px;
+pluto-helpbox > header > button.helpbox-docs > .tabicon {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/search.svg");
+    /* content: "📚 "; */
+}
+
+pluto-helpbox > header > button.helpbox-docs.active > .tabicon {
+    /* content: "📖 "; */
+}
+pluto-helpbox > header > button.helpbox-process > .tabicon {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/terminal.svg");
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/pulse.svg");
+    /* content: "💻 "; */
+}
+
+pluto-helpbox > header > button.helpbox-tab-key:disabled > .tabicon {
+    /* display: none; */
+    opacity: 0.5;
+}
+/* 
+button.helpbox-process.helpbox-tab-key::before {
+    content: "";
+    display: block;
+    position: absolute;
+    --offset: -5px;
+    top: var(--offset);
+    right: var(--offset);
+    left: var(--offset);
+    bottom: var(--offset);
+    background: var(--process-busy);
+    border-radius: var(--border-radius);
+    background: linear-gradient(447deg, var(--process-finished), var(--process-finished) 50%, var(--process-busy) 50%, var(--process-busy));
+    background: linear-gradient(
+        447deg,
+        var(--process-busy) 0%,
+        var(--process-busy) 25%,
+        var(--process-finished) 25%,
+        var(--process-finished) 50%,
+        var(--process-busy) 50%,
+        var(--process-busy) 75%,
+        var(--process-finished) 75%,
+        var(--process-finished) 100%
+    );
+    animation: move-bg 5s linear infinite;
+    background-size: 100px auto;
+    z-index: -1;
+    opacity: 0.6;
 } */
-pluto-helpbox.hidden > header::before {
-    content: "📚 ";
-    margin-right: 10px;
+
+/* @keyframes rotate-bg {
+    0% {
+        background: linear-gradient(
+            0deg,
+            var(--process-busy) 0%,
+            var(--process-busy) 20%,
+            var(--process-finished) 20%,
+            var(--process-finished) 40%,
+            var(--process-busy) 40%,
+            var(--process-busy) 60%,
+            var(--process-finished) 60%,
+            var(--process-finished) 80%,
+            var(--process-busy) 80%,
+            var(--process-busy)
+        );
+    }
+    100% {
+        background: linear-gradient(
+            70deg,
+            var(--process-busy) 0%,
+            var(--process-busy) 20%,
+            var(--process-finished) 20%,
+            var(--process-finished) 40%,
+            var(--process-busy) 40%,
+            var(--process-busy) 60%,
+            var(--process-finished) 60%,
+            var(--process-finished) 80%,
+            var(--process-busy) 80%,
+            var(--process-busy)
+        );
+    }
+} */
+/* 
+@keyframes move-bg {
+    0% {
+        background-position-x: 0;
+    }
+    100% {
+        background-position-x: 100px;
+    }
 }
-pluto-helpbox > header > input {
+
+button.helpbox-process.helpbox-tab-key::after {
+    content: "";
+    display: block;
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    bottom: 0;
+    border-radius: var(--border-radius);
+    border: none;
+    background: var(--helpbox-header-tab-bg-color);
+    z-index: -1;
+} */
+
+pluto-helpbox .live-docs-searchbox {
+    display: flex;
+    margin: 1em;
+}
+
+pluto-helpbox .live-docs-searchbox input {
     flex-grow: 1;
     background-color: inherit;
     color: inherit;
-    font-family: inherit;
-    font-weight: inherit;
-    font-size: inherit;
     border: none;
+    padding: 0.5em;
+    margin: auto;
+    border: 3px solid var(--helpbox-search-border-color);
+    border-radius: 0.3em;
+    background: var(--helpbox-search-bg-color);
+    font-family: var(--julia-mono-font-stack);
+    font-size: 0.9rem;
 }
-pluto-helpbox.notfound > header > input {
-    color: var(--helpbox-notfound-header-color);
+pluto-helpbox .live-docs-searchbox.notfound input {
+    color: var(--helpbox-notfound-search-color);
 }
-pluto-helpbox > header > input:focus {
+pluto-helpbox .live-docs-searchbox input:focus {
     outline: none;
 }
-pluto-helpbox > header > button {
+
+button.helpbox-tab-key {
+    padding: 0.5em 0.6em;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: inherit;
+    font-style: inherit;
+    font-size: inherit;
+    border-radius: var(--border-radius);
+    border: none;
+    background: var(--helpbox-header-tab-bg-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    /* position: relative; */
+    /* flex: 1 1 auto; */
+    /* z-index: 1; */
+    /* overflow: hidden; */
+}
+
+button.helpbox-process.busy {
+    outline: 6px solid var(--process-busy);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    button.helpbox-process.busy {
+        animation: outline-heartbeat 0.8s ease-in infinite;
+        animation-direction: alternate;
+    }
+}
+@keyframes outline-heartbeat {
+    0% {
+        outline-offset: -1px;
+        outline-width: 3px;
+    }
+    100% {
+        outline-offset: 0px;
+        outline-width: 6px;
+    }
+}
+
+button.active.helpbox-tab-key {
+    outline: 3px solid #99afb9;
+    animation: none;
+}
+
+pluto-helpbox > header > button.helpbox-close {
     border: none;
     background: none;
     cursor: pointer;
@@ -1999,8 +2249,10 @@ pluto-helpbox > header > button {
     /* for bigger hitbox */
     margin: -15px;
     border: 15px solid transparent;
+    margin-left: auto;
 }
-pluto-helpbox > header > button > span {
+
+pluto-helpbox > header > button.helpbox-close > span {
     display: block;
     content: " " !important;
     background-size: 1em 1em;
@@ -2011,7 +2263,7 @@ pluto-helpbox > header > button > span {
 }
 pluto-helpbox.hidden {
     height: initial;
-    cursor: pointer;
+    width: auto;
 }
 pluto-helpbox.hidden > section {
     display: none;
@@ -2098,16 +2350,177 @@ pluto-helpbox > section hr {
 
 .pluto-docs-binding > span {
     display: inline-block;
-    transform: translate(-19px, -16px);
+    transform: translate(-1.2em, -73%);
     font-family: var(--julia-mono-font-stack);
     font-size: 0.9rem;
     font-weight: 700;
     margin-top: -1em;
-    padding: 4px;
-    border-radius: 7px;
-
+    padding: 0.235rem;
+    border-radius: 0.4rem;
     background: var(--pluto-output-bg-color);
     color: var(--black);
+}
+
+.pluto-docs-binding h1 {
+    font-size: 1.4em;
+}
+
+.pluto-docs-binding h2 {
+    font-size: 1.3em;
+}
+.pluto-docs-binding h3,
+.pluto-docs-binding h4,
+.pluto-docs-binding h5,
+.pluto-docs-binding h6 {
+    font-size: 1.1em;
+}
+
+/* PROCESS TAB */
+
+pl-status {
+    --status-color: var(--process-undefined);
+    font-family: var(--system-ui-font-stack);
+    display: flex;
+    flex-direction: column;
+    border-radius: 0.2em;
+    /* margin: 0.3em; */
+    margin-left: 0.7em;
+    border-left: 3px solid transparent;
+    margin-top: 0.4em;
+    overflow: hidden;
+    /* background: var(--status-color); */
+    /* transition: max-height 1s linear; */
+    /* max-height: 30px; */
+    flex: 1 0 auto;
+}
+
+pl-status::before {
+    flex: 1 2 auto;
+    /* content: ""; */
+    display: inline-block;
+    left: 0;
+    right: 0px;
+    width: 3px;
+    height: 10px;
+    bottom: 3px;
+    top: 3px;
+    background: pink;
+}
+
+pl-status.busy {
+    --status-color: var(--process-busy);
+}
+pl-status.finished {
+    --status-color: var(--process-finished);
+}
+
+pl-status.can_open {
+    cursor: auto;
+    border-color: #98989854;
+}
+pl-status.can_open > div {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    cursor: pointer;
+}
+pl-status.can_open.is_open {
+    border-color: var(--status-color);
+}
+
+pl-status[data-depth="0"],
+pl-status[data-depth="1"] {
+    margin-left: 0;
+}
+
+pl-status > div {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    /* margin: 0em 0em 0.4em 0; */
+    padding: 0.2em;
+    background: var(--process-item-bg);
+    border-radius: 0.4em;
+    /* flex: 1 0 auto; */
+}
+
+pl-status > div > .status-icon {
+    content: "";
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    border-radius: 50%;
+    background-color: var(--status-color);
+    /* border: 3px solid green; */
+    margin: 0em 0.5em;
+    flex: 0 0 auto;
+}
+
+pl-status.busy > div > .status-icon {
+    border: 3px solid transparent;
+    border-right-color: hsl(126deg 30% 60%);
+    border-bottom-color: hsl(126deg 30% 60%);
+    /* border-left-color: hsl(126deg 30% 60%); */
+    animation: identifier-spin 1.7s linear infinite;
+}
+
+@keyframes identifier-spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.subprogress-counter {
+    opacity: 0.5;
+    /* font-variant-numeric: tabular-nums; */
+    font-size: 0.8em;
+}
+
+pl-status .status-time {
+    margin-left: auto;
+    /* align-self: end; */
+    padding-right: 0.5em;
+    padding-left: 0.5em;
+    /* font-family: "Roboto Mono", monospace; */
+    opacity: 0.6;
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.discrete-progress-bar {
+    display: flex;
+    flex-direction: row;
+    background: var(--process-item-bg);
+    padding: 3px;
+    border-radius: 4px;
+    gap: 2px;
+    contain: strict;
+    height: 1em;
+    align-items: stretch;
+}
+
+.discrete-progress-bar > div {
+    background: var(--process-undefined);
+    flex: 1 1 auto;
+    border-radius: 2px;
+    /* margin: 0.4px; */
+}
+
+.discrete-progress-bar > div.done {
+    background: var(--process-finished);
+}
+.discrete-progress-bar > div.busy {
+    background: var(--process-busy);
+}
+
+.discrete-progress-bar.mid {
+    gap: 1px;
+}
+
+.discrete-progress-bar.big {
+    gap: 0.5px;
 }
 
 /* FOOTER */
@@ -2162,7 +2575,7 @@ footer a {
 footer input {
     margin: 0px;
     border: 2px solid var(--footer-input-border-color);
-    background: transparent;
+    background: var(--white);
     font-family: inherit;
     font-size: inherit;
     border-radius: 3px 0 0 3px;
@@ -2250,71 +2663,29 @@ nav#undo_delete.hidden {
 
 pluto-logs-container {
     display: block;
-    width: max(100px, 100vw - (700px + 25px));
+
     /* Show logs up to the RunArea */
-    max-height: calc(100% + 14px);
-    position: absolute;
     z-index: 25;
-    right: min(-100px, -100vw + (700px + 25px));
-    top: 1px;
-    overflow-x: auto;
-    /* overflow-y: hidden; */
-    background: hsl(0deg 0% 100% / 81%);
-}
-
-/* @media screen and (max-width: calc(700px + 25px + 6px + 150px)) { */
-pluto-logs {
-    display: flex !important;
-}
-
-pluto-logs-container {
-    position: static;
-    /* right: min(-6px, 700px + 25px - 100vw); */
-    /* width: 20px; */
-    /* transition: width ease-in-out 100ms; */
-    /* padding-left: 80px; */
-    width: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    max-height: 50vh;
+    margin-right: 1.3rem;
 }
 
 pluto-logs-container:not(:empty) {
     background: var(--pluto-logs-bg-color);
-    padding: 10px;
+    padding: 6px;
 }
 
-pluto-logs-container:focus-within,
-pluto-logs-container:hover {
-    /* width: 30vw; */
+pluto-logs-container > header {
+    font-family: "Roboto Mono", monospace;
+    font-size: 1.3rem;
+    padding: 0.2em;
+    padding-bottom: 0;
+    opacity: 0.6;
+    font-weight: 700;
+    /* background: #494949; */
 }
-
-pluto-logs-container pluto-logs {
-    /* grid-template-columns: repeat(auto-fill, 0px); */
-}
-pluto-logs-container:focus-within pluto-logs,
-pluto-logs-container:hover pluto-logs {
-    /* grid-template-columns: repeat(auto-fill, 10px); */
-}
-/* 
-    pluto-log-dot-positioner {
-        flex: 0 0 auto;
-        width: auto;
-    }
-    pluto-log-dot-sizer {
-        width: auto;
-    } */
-/* } */
-/* 
-@media screen and (min-width: calc(700px + 25px + 6px + 500px)) and (max-width: calc(700px + 25px + 6px + 500px + 500px)) {
-    pluto-logs-container {
-        right: calc(-500px - 6px);
-        width: calc(500px + 6px);
-    }
-}
-@media screen and (min-width: calc(700px + 25px + 6px + 500px + 500px)) {
-    pluto-logs-container {
-        width: calc(0.5 * (6px + 100vw - (700px + 25px)));
-        right: calc(-0.5 * (6px + 100vw - (700px + 25px)));
-    }
-} */
 
 pluto-logs-container pluto-progress-bars pluto-progress:not(:first-child) {
     margin-top: 10px;
@@ -2322,12 +2693,13 @@ pluto-logs-container pluto-progress-bars pluto-progress:not(:first-child) {
 
 pluto-logs-container pluto-progress-bar {
     --c: var(--pluto-logs-progress-fill);
-    padding: 1px 3px;
+    padding: 0.3em 0.6em;
     background: linear-gradient(90deg, var(--c), var(--c));
     background-repeat: no-repeat;
     width: 100%;
-    transition: background-size cubic-bezier(0.14, 0.71, 0, 0.99) 2s, opacity linear 0.2s;
-    /* background-color: salmon; */
+    transition: background-size cubic-bezier(0.14, 0.71, 0, 0.99) 0.5s, opacity linear 0.2s;
+    display: grid;
+    align-items: center;
 }
 
 pluto-logs-container pluto-progress-bar.collapsed {
@@ -2335,90 +2707,115 @@ pluto-logs-container pluto-progress-bar.collapsed {
 }
 
 pluto-logs {
-    display: grid;
-    grid-auto-rows: 15px;
-    flex-direction: row;
-    grid-template-rows: repeat(auto-fill, 15px);
-    grid-template-columns: repeat(auto-fill, 10px);
-    grid-auto-flow: column;
+    display: flex;
+    flex-direction: column;
 }
 
 pluto-logs:not(:first-child):not(:empty) {
     margin-top: 10px;
 }
 
-pluto-log-dot-positioner {
-    display: block;
-    width: 10px;
-    transition: transform 100ms ease-in-out;
-}
-
-pluto-log-dot-positioner:hover,
-pluto-log-dot-positioner.inspecting {
-    z-index: 5;
-    /* transform: translate(0px, -5px); */
-}
-
-/* pluto-log-dot-positioner {
-    transform: translateX(0px);
-} */
-pluto-log-dot-positioner.inspecting {
-    transform: translateX(5px);
-}
-pluto-log-dot-positioner.inspecting pluto-log-dot {
-    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
-}
-pluto-log-dot-positioner.inspecting ~ pluto-log-dot-positioner {
-    transform: translateX(10px);
-}
-
-pluto-log-dot-sizer {
-    display: block;
-    width: max-content;
-    transform: translateZ(10px);
-    max-width: 600px;
-    z-index: 300;
-    pointer-events: none; /* part 1: because the hit box is larger than the action log dot */
-}
 pluto-log-dot {
-    pointer-events: auto; /* part 2 */
-    box-shadow: -2px 0px 1px #00000014;
+    /* part 2 */
+    /* box-shadow: -2px 0px 1px #00000014; */
     font-family: "Roboto Mono", monospace;
     font-size: 0.6rem;
-
-    /* position: absolute; */
-    display: inline-flex;
+    position: relative;
+    display: flex;
+    flex-grow: 1;
     flex-direction: column;
     padding: 1px 3px;
     min-width: 18px;
     min-height: 18px;
-    border-radius: 7px;
+    /* border-radius: 7px; */
+    padding: 0.6em 0.9em 0.6em 0.3em;
 }
-pluto-log-dot {
-    background: var(--jl-info-color);
-    border: 3px solid var(--jl-info-accent-color);
+
+pluto-log-dot-positioner {
+    /* border-bottom: 1px solid #71717140; */
+    display: flex;
+    flex-direction: row;
+    --bg-color: var(--pluto-logs-info-color);
+    --accent-color: var(--pluto-logs-info-accent-color);
+    --icon-image: unset;
+    background: var(--bg-color);
+    color: var(--accent-color);
+    margin: 2px;
+    border-radius: 6px;
+    /* border: 2px solid var(--accent-color); */
+    /* border: 2px solid #0000001c; */
+    /* box-shadow: 0px 0px 6px #00000036; */
+    background: linear-gradient(148deg, var(--bg-color), transparent);
+    background-size: 200% 100%;
 }
-pluto-log-dot.Warn {
-    background: var(--jl-warn-color);
-    border: 3px solid var(--jl-warn-accent-color);
+
+pluto-log-dot-positioner:last-child {
+    /* border-bottom: none; */
 }
-pluto-log-dot.Error {
-    background: var(--jl-danger-color);
-    border: 3px solid var(--jl-danger-accent-color);
+
+pluto-log-truncated {
+    display: grid;
+    place-items: center;
+    font-family: var(--system-ui-font-stack);
+    opacity: 0.7;
+    padding: 0.7em;
+    font-style: italic;
 }
-pluto-log-dot.Debug {
-    background: var(--jl-debug-color);
-    border: 3px solid var(--jl-debug-accent-color);
+
+pluto-log-icon::before {
+    content: "";
+    width: 1em;
+    height: 1em;
+    background-image: var(--icon-image);
+    background-size: 1em;
+    filter: var(--image-filters);
+    display: inline-flex;
+    margin: 0.3em;
 }
+
+pluto-log-dot-positioner.Info {
+    --icon-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/information-circle-outline.svg");
+}
+pluto-log-dot-positioner.Info pluto-log-icon::before {
+    opacity: 0.4;
+}
+pluto-log-dot-positioner.Warn {
+    --bg-color: var(--pluto-logs-warn-color);
+    --accent-color: var(--pluto-logs-warn-accent-color);
+    --icon-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/warning-outline.svg");
+}
+pluto-log-dot-positioner.Error {
+    --bg-color: var(--pluto-logs-danger-color);
+    --accent-color: var(--pluto-logs-danger-accent-color);
+    --icon-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle-outline.svg");
+}
+pluto-log-dot-positioner.Debug {
+    --bg-color: var(--pluto-logs-debug-color);
+    --accent-color: var(--pluto-logs-debug-accent-color);
+    --icon-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/information-circle-outline.svg");
+}
+pluto-log-dot-positioner.Stdout {
+    --icon-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/terminal-outline.svg");
+}
+pluto-log-dot-positioner.Stdout pluto-log-icon::before {
+    opacity: 0.4;
+}
+
 pluto-log-dot.Progress {
-    width: 100px;
-    background: #94949466;
-    border: 3px solid var(--pluto-logs-progress-border);
     overflow: hidden;
     padding: 0px;
+    flex: 0 1 200px;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    align-self: center;
+    outline: 3px solid var(--pluto-logs-progress-border);
+    outline-offset: -2px;
+    border-radius: 6px;
+    background: var(--pluto-logs-progress-bg);
+    font-size: 0.7rem;
 }
 pluto-log-dot.Stdout {
-    /* filter: sepia(0.3); */
     --inner: hsl(36deg 20% 37%);
     --outer: hsl(31deg 12% 28%);
     background: radial-gradient(var(--inner), var(--inner) 20%, var(--outer));
@@ -2426,14 +2823,15 @@ pluto-log-dot.Stdout {
     border: 6px solid #b7b7b7;
     text-shadow: 1px 1px 2px #0000005e;
     min-width: 18em;
+    border-radius: 8px;
 }
 pluto-log-dot.Stdout::after,
 pluto-log-dot.Stdout::before {
     content: " ";
-    left: 6px;
-    right: 6px;
-    top: 6px;
-    bottom: 6px;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
     position: absolute;
     display: block;
     pointer-events: none;
@@ -2463,7 +2861,7 @@ a.stdout-info {
     position: absolute;
     right: 2px;
     top: 2px;
-    z-index: 50;
+    z-index: unset;
     pointer-events: initial;
 }
 
@@ -2504,7 +2902,7 @@ pluto-log-dot-kwarg > * {
     flex: 0 1 auto;
 }
 pluto-log-dot-kwarg > pluto-key {
-    color: var(--pluto-schema-types-color);
+    color: var(--pluto-logs-key-color);
     margin-right: calc(1em - 30px);
 }
 pluto-log-dot-kwarg > pluto-key::after {
@@ -2512,6 +2910,7 @@ pluto-log-dot-kwarg > pluto-key::after {
 }
 pluto-log-dot-kwarg > pluto-value {
     margin-left: 30px;
+    overflow-x: auto;
 }
 /* PRESENTATION MODE */
 
@@ -2542,6 +2941,7 @@ nav#slide_controls > button {
     padding: 5px;
 }
 
+button.floating_back_button > span::after,
 nav#slide_controls > button > span::after {
     content: " " !important;
     display: block;
@@ -2549,6 +2949,7 @@ nav#slide_controls > button > span::after {
     width: 30px;
     background-size: 30px 30px;
 }
+button.floating_back_button > span::after,
 nav#slide_controls > button.prev > span::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-back-outline.svg");
     filter: var(--image-filters);
@@ -2556,6 +2957,18 @@ nav#slide_controls > button.prev > span::after {
 nav#slide_controls > button.next > span::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-forward-outline.svg");
     filter: var(--image-filters);
+}
+
+button.floating_back_button {
+    display: none;
+}
+
+.static_preview.offer_local button.floating_back_button {
+    display: flex;
+    position: fixed;
+    z-index: 1000;
+    left: 1em;
+    top: 1em;
 }
 
 /* CODEMIRROR HINTS */
@@ -2595,6 +3008,13 @@ pluto-input .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
 }
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionLabel {
     border-color: transparent;
+}
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li .cm-completionDetail {
+    float: right;
+    margin-right: 0.5em;
+    font-size: 0.8em;
+    font-family: var(--julia-mono-font-stack);
+    font-style: normal;
 }
 
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete li.c_notexported {
@@ -2674,6 +3094,10 @@ Based on "Paraíso (Light)" by Jan T. Sott:
     background: var(--autocomplete-menu-bg-color);
 }
 
+pluto-input .cm-editor .cm-scroller {
+    overflow-y: hidden;
+}
+
 pluto-input .cm-editor .cm-content,
 pluto-input .cm-editor .cm-scroller,
 .cm-editor .cm-tooltip-autocomplete .cm-completionLabel {
@@ -2750,7 +3174,8 @@ pluto-cell.code_differs .cm-editor .cm-gutters {
 }
 
 .cm-completionIcon-c_Any::before,
-pluto-output > assignee {
+pluto-output > assignee,
+pluto-popup code.auto_disabled_variable {
     color: var(--cm-var-color) !important;
     font-weight: 700;
 }
@@ -2858,4 +3283,38 @@ pluto-cell.hooked_up pluto-output {
     border-top-right-radius: 4px;
     border-bottom: solid 2px;
     border-color: var(--pluto-cell-force-color);
+}
+
+.fm-table {
+    display: grid;
+    grid-template-columns: auto 1fr min-content;
+    gap: 0.3em 1em;
+}
+
+.pluto-frontmatter {
+    font-family: var(--system-ui-font-stack);
+    width: min(31rem, 90vw);
+    color: var(--black);
+    background: var(--white);
+}
+
+.pluto-frontmatter button {
+    cursor: pointer;
+}
+
+.pluto-frontmatter .deletefield {
+    align-self: baseline;
+}
+
+.pluto-frontmatter .addentry {
+    grid-column: 1/3;
+    margin-top: 0.5em;
+    background-color: transparent;
+}
+
+.pluto-frontmatter .final {
+    display: flex;
+    margin-top: 2rem;
+    justify-content: flex-end;
+    gap: 0.5em;
 }

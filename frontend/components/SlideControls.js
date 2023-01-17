@@ -1,13 +1,15 @@
 import { html } from "../imports/Preact.js"
 
 export const SlideControls = () => {
-    const calculate_slide_positions = () => {
+    const calculate_slide_positions = (/** @type {Event} */ e) => {
+        const notebook_node = /** @type {HTMLElement?} */ (e.target)?.closest("pluto-editor")?.querySelector("pluto-notebook")
+        if (!notebook_node) return []
+
         const height = window.innerHeight
-        const headers = Array.from(document.querySelectorAll("pluto-output h1, pluto-output h2"))
+        const headers = Array.from(notebook_node.querySelectorAll("pluto-output h1, pluto-output h2"))
         const pos = headers.map((el) => el.getBoundingClientRect())
         const edges = pos.map((rect) => rect.top + window.pageYOffset)
 
-        const notebook_node = document.querySelector("pluto-notebook")
         edges.push(notebook_node.getBoundingClientRect().bottom + window.pageYOffset)
 
         const scrollPositions = headers.map((el, i) => {
@@ -24,21 +26,18 @@ export const SlideControls = () => {
         return scrollPositions
     }
 
-    const go_previous_slide = (e) => {
-        const positions = calculate_slide_positions()
+    const go_previous_slide = (/** @type {Event} */ e) => {
+        const positions = calculate_slide_positions(e)
 
-        window.scrollTo(
-            window.pageXOffset,
-            positions.reverse().find((y) => y < window.pageYOffset - 10)
-        )
+        const pos = positions.reverse().find((y) => y < window.pageYOffset - 10)
+
+        if (pos) window.scrollTo(window.pageXOffset, pos)
     }
 
-    const go_next_slide = (e) => {
-        const positions = calculate_slide_positions()
-        window.scrollTo(
-            window.pageXOffset,
-            positions.find((y) => y - 10 > window.pageYOffset)
-        )
+    const go_next_slide = (/** @type {Event} */ e) => {
+        const positions = calculate_slide_positions(e)
+        const pos = positions.find((y) => y - 10 > window.pageYOffset)
+        if (pos) window.scrollTo(window.pageXOffset, pos)
     }
 
     // @ts-ignore

@@ -6,8 +6,8 @@
     "version": "1.0.0",
     "description": "",
     "scripts": {
-        "start": "cd ../frontend && parcel --dist-dir ../frontend-dist --config ../frontend-bundler/.parcelrc editor.html index.html error.jl.html sample.html",
-        "build": "cd ../frontend && parcel build --no-source-maps --public-url . --dist-dir ../frontend-dist --config ../frontend-bundler/.parcelrc editor.html index.html error.jl.html sample.html",
+        "start": "cd ../frontend && parcel --dist-dir ../frontend-dist --config ../frontend-bundler/.parcelrc editor.html index.html error.jl.html",
+        "build": "cd ../frontend && parcel build --no-source-maps --public-url . --dist-dir ../frontend-dist --config ../frontend-bundler/.parcelrc editor.html index.html error.jl.html && node ../frontend-bundler/add_sri.js ../frontend-dist/editor.html",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "author": "",
@@ -22,6 +22,9 @@
     "devDependencies": {
         "@parcel/optimizer-data-url": "^2.0.0",
         "@parcel/transformer-inline-string": "^2.0.0",
-        "@types/node": "^16.11.6"
+        "@plutojl/posthtml-crossorigin": "^1.0.0",
+        "@types/node": "^16.11.6",
+        "posthtml": "^0.16.6",
+        "posthtml-sri": "^1.2.0"
     }
 }

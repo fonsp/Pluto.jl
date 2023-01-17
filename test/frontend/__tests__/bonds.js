@@ -1,6 +1,6 @@
 import puppeteer from "puppeteer"
-import { saveScreenshot, getTestScreenshotPath, setupPage, paste } from "../helpers/common"
-import { createNewNotebook, getPlutoUrl, prewarmPluto, waitForNoUpdateOngoing } from "../helpers/pluto"
+import { saveScreenshot, createPage, paste } from "../helpers/common"
+import { createNewNotebook, getPlutoUrl, prewarmPluto, setupPlutoBrowser, shutdownCurrentNotebook, waitForNoUpdateOngoing } from "../helpers/pluto"
 
 // https://github.com/fonsp/Pluto.jl/issues/928
 describe("Bonds should run once when refreshing page", () => {
@@ -14,28 +14,15 @@ describe("Bonds should run once when refreshing page", () => {
     /** @type {puppeteer.Page} */
     let page = null
     beforeAll(async () => {
-        browser = await puppeteer.launch({
-            headless: process.env.HEADLESS !== "false",
-            args: ["--no-sandbox", "--disable-setuid-sandbox"],
-            devtools: false,
-        })
-
-        let page = await browser.newPage()
-        setupPage(page)
-        await prewarmPluto(browser, page)
-        await page.close()
+        browser = await setupPlutoBrowser()
     })
     beforeEach(async () => {
-        page = await browser.newPage()
-        setupPage(page)
+        page = await createPage(browser)
         await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
-        await createNewNotebook(page)
-        await page.waitForSelector("pluto-input", { visible: true })
     })
     afterEach(async () => {
-        await saveScreenshot(page, getTestScreenshotPath())
-        // @ts-ignore
-        await page.evaluate(() => window.shutdownNotebook?.())
+        await saveScreenshot(page)
+        await shutdownCurrentNotebook(page)
         await page.close()
         page = null
     })
@@ -45,6 +32,8 @@ describe("Bonds should run once when refreshing page", () => {
     })
 
     it("should not rerun bond values when refreshing page", async () => {
+        await createNewNotebook(page)
+
         await paste(
             page,
             `

@@ -22,20 +22,20 @@ jobs:
 
         steps:
             # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-            - uses: actions/checkout@v2
+            - uses: actions/checkout@v3
 
             # Makes thes `julia` command available
             - uses: julia-actions/setup-julia@v1
               with:
-                  version: "1.6"
+                  version: "1.6" # our lowest supported version
 
             - name: Install Pluto.jl packages
               run: |
                   julia --project=$GITHUB_WORKSPACE -e "using Pkg; Pkg.instantiate()"
 
-            - uses: actions/setup-node@v1
+            - uses: actions/setup-node@v3
               with:
-                  node-version: "12.x"
+                  node-version: "18.x"
 
             - name: Install Chrome dependencies
               run: |
@@ -79,7 +79,7 @@ jobs:
                   PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
                   PUPPETEER_EXECUTABLE_PATH: "/usr/bin/google-chrome-stable"
 
-            - uses: actions/upload-artifact@v2
+            - uses: actions/upload-artifact@v3
               if: failure()
               with:
                   name: test-screenshot-artifacts

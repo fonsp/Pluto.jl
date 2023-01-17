@@ -1,5 +1,6 @@
 import _ from "../imports/lodash.js"
 import { html, useContext, useEffect, useMemo, useState } from "../imports/Preact.js"
+import { scroll_cell_into_view } from "./Scroller.js"
 
 export const useDelayed = (value, delay = 500) => {
     const [current, set_current] = useState(null)
@@ -14,9 +15,16 @@ export const useDelayed = (value, delay = 500) => {
     return current
 }
 
-export const ProgressBar = ({ notebook, binder_phase, status }) => {
-    const [recently_running, set_recently_running] = useState([])
-    const [currently_running, set_currently_running] = useState([])
+/**
+ * @param {{
+ * notebook: import("./Editor.js").NotebookData,
+ * backend_launch_phase: number?,
+ * status: Record<string,any>,
+ * }} props
+ */
+export const ProgressBar = ({ notebook, backend_launch_phase, status }) => {
+    const [recently_running, set_recently_running] = useState(/** @type {string[]} */ ([]))
+    const [currently_running, set_currently_running] = useState(/** @type {string[]} */ ([]))
 
     useEffect(
         () => {
@@ -40,7 +48,7 @@ export const ProgressBar = ({ notebook, binder_phase, status }) => {
     let cell_progress = recently_running.length === 0 ? 0 : 1 - Math.max(0, currently_running.length - 0.3) / recently_running.length
 
     let binder_loading = status.loading && status.binder
-    let progress = binder_loading ? binder_phase : cell_progress
+    let progress = binder_loading ? backend_launch_phase ?? 0 : cell_progress
 
     const anything = (binder_loading || recently_running.length !== 0) && progress !== 1
     const anything_for_a_short_while = useDelayed(anything, 500) ?? false
@@ -68,10 +76,7 @@ export const ProgressBar = ({ notebook, binder_phase, status }) => {
             if (!binder_loading) {
                 const running_cell = Object.values(notebook.cell_results).find((c) => c.running) ?? Object.values(notebook.cell_results).find((c) => c.queued)
                 if (running_cell) {
-                    document.getElementById(running_cell.cell_id).scrollIntoView({
-                        block: "center",
-                        behavior: "smooth",
-                    })
+                    scroll_cell_into_view(running_cell.cell_id)
                 }
             }
         }}

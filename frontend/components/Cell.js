@@ -1,12 +1,13 @@
 import _ from "../imports/lodash.js"
-import { html, useState, useEffect, useMemo, useRef, useContext, useLayoutEffect, useCallback } from "../imports/Preact.js"
+import { html, useState, useEffect, useMemo, useRef, useContext, useLayoutEffect, useErrorBoundary, useCallback } from "../imports/Preact.js"
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
 import { Logs } from "./Logs.js"
 import { RunArea, useDebouncedTruth } from "./RunArea.js"
 import { cl } from "../common/ClassTable.js"
-import { PlutoContext } from "../common/PlutoContext.js"
+import { PlutoActionsContext } from "../common/PlutoContext.js"
+import { open_pluto_popup } from "./Popup.js"
 
 const useCellApi = (node_ref, published_object_keys, pluto_actions) => {
     const [cell_api_ready, set_cell_api_ready] = useState(false)
@@ -29,6 +30,63 @@ const useCellApi = (node_ref, published_object_keys, pluto_actions) => {
 }
 
 /**
+ * @param {String} a_cell_id
+ * @param {import("./Editor.js").NotebookData} notebook
+ * @returns {Array<String>}
+ */
+const upstream_of = (a_cell_id, notebook) => Object.values(notebook?.cell_dependencies?.[a_cell_id]?.upstream_cells_map || {}).flatMap((x) => x)
+
+/**
+ * @param {String} a_cell_id
+ * @param {import("./Editor.js").NotebookData} notebook
+ * @param {Function} predicate
+ * @param {Set<String>} explored
+ * @returns {String | null}
+ */
+const find_upstream_of = (a_cell_id, notebook, predicate, explored = new Set([])) => {
+    if (explored.has(a_cell_id)) return null
+    explored.add(a_cell_id)
+
+    if (predicate(a_cell_id)) {
+        return a_cell_id
+    }
+
+    for (let upstream of upstream_of(a_cell_id, notebook)) {
+        const upstream_val = find_upstream_of(upstream, notebook, predicate, explored)
+        if (upstream_val !== null) {
+            return upstream_val
+        }
+    }
+
+    return null
+}
+
+/**
+ * @param {String} flag_name
+ * @returns {Function}
+ */
+const hasTargetBarrier = (flag_name) => {
+    return (a_cell_id, notebook) => {
+        return notebook?.cell_inputs?.[a_cell_id].metadata[flag_name]
+    }
+}
+
+const on_jump = (hasBarrier, pluto_actions, cell_id) => () => {
+    const notebook = pluto_actions.get_notebook() || {}
+    const barrier_cell_id = find_upstream_of(cell_id, notebook, (c) => hasBarrier(c, notebook))
+    if (barrier_cell_id !== null) {
+        window.dispatchEvent(
+            new CustomEvent("cell_focus", {
+                detail: {
+                    cell_id: barrier_cell_id,
+                    line: 0, // 1-based to 0-based index
+                },
+            })
+        )
+    }
+}
+
+/**
  * @param {{
  *  cell_result: import("./Editor.js").CellResultData,
  *  cell_input: import("./Editor.js").CellInputData,
@@ -43,7 +101,7 @@ const useCellApi = (node_ref, published_object_keys, pluto_actions) => {
  * */
 export const Cell = ({
     cell_input: { cell_id, code, code_folded, metadata },
-    cell_result: { queued, running, runtime, errored, output, logs, published_object_keys, depends_on_disabled_cells },
+    cell_result: { queued, running, runtime, errored, output, logs, published_object_keys, depends_on_disabled_cells, depends_on_skipped_cells },
     cell_dependencies,
     cell_input_local,
     notebook_id,
@@ -55,24 +113,29 @@ export const Cell = ({
     nbpkg,
     global_definition_locations,
 }) => {
-    const { disabled: running_disabled } = metadata
-    let pluto_actions = useContext(PlutoContext)
-    const on_update_doc_query = pluto_actions.set_doc_query
-    const on_focus_neighbor = pluto_actions.focus_on_neighbor
+    const { show_logs, disabled: running_disabled, skip_as_script } = metadata
+    let pluto_actions = useContext(PlutoActionsContext)
+    // useCallback because pluto_actions.set_doc_query can change value when you go from viewing a static document to connecting (to binder)
+    const on_update_doc_query = useCallback((...args) => pluto_actions.set_doc_query(...args), [pluto_actions])
+    const on_focus_neighbor = useCallback((...args) => pluto_actions.focus_on_neighbor(...args), [pluto_actions])
     const on_change = useCallback((val) => pluto_actions.set_local_cell(cell_id, val), [cell_id, pluto_actions])
     const variables = useMemo(() => Object.keys(cell_dependencies?.downstream_cells_map ?? {}), [cell_dependencies])
+
+    // We need to unmount & remount when a destructive error occurs.
+    // For that reason, we will use a simple react key and increment it on error
+    const [key, setKey] = useState(0)
+    const cell_key = useMemo(() => cell_id + key, [cell_id, key])
+
+    const [, resetError] = useErrorBoundary((error) => {
+        console.log(`An error occured in the CodeMirror code, resetting CellInput component. See error below:\n\n${error}\n\n -------------- `)
+        setKey(key + 1)
+        resetError()
+    })
+
+    const remount = useMemo(() => () => setKey(key + 1))
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
-    const [cm_forced_focus, set_cm_forced_focus] = useState(null)
+    const [cm_forced_focus, set_cm_forced_focus] = useState(/** @type{any} */ (null))
     const [cm_highlighted_line, set_cm_highlighted_line] = useState(null)
-    const [show_logs, set_show_logs] = useState(true)
-
-    const any_logs = useMemo(() => !_.isEmpty(logs), [logs])
-
-    useEffect(() => {
-        if (!any_logs) {
-            set_show_logs(true)
-        }
-    }, [any_logs])
 
     useEffect(() => {
         const focusListener = (e) => {
@@ -157,20 +220,46 @@ export const Cell = ({
         pluto_actions.set_and_run_multiple(pluto_actions.get_selected_cells(cell_id, selected))
         set_waiting_to_run_smart(true)
     }, [pluto_actions, cell_id, selected, set_waiting_to_run_smart])
+    const set_show_logs = useCallback(
+        (show_logs) =>
+            pluto_actions.update_notebook((notebook) => {
+                notebook.cell_inputs[cell_id].metadata.show_logs = show_logs
+            }),
+        [pluto_actions, cell_id]
+    )
+    const set_cell_disabled = useCallback(
+        async (new_val) => {
+            await pluto_actions.update_notebook((notebook) => {
+                notebook.cell_inputs[cell_id].metadata["disabled"] = new_val
+            })
+            // we also 'run' the cell if it is disabled, this will make the backend propage the disabled state to dependent cells
+            await on_submit()
+        },
+        [pluto_actions, cell_id, on_submit]
+    )
+
+    const any_logs = useMemo(() => !_.isEmpty(logs), [logs])
+
+    const skip_as_script_jump = useCallback(on_jump(hasTargetBarrier("skip_as_script"), pluto_actions, cell_id), [pluto_actions, cell_id])
+    const disabled_jump = useCallback(on_jump(hasTargetBarrier("disabled"), pluto_actions, cell_id), [pluto_actions, cell_id])
+
     return html`
         <pluto-cell
+            key=${cell_key}
             ref=${node_ref}
             class=${cl({
                 queued: queued || (waiting_to_run && is_process_ready),
-                running: running,
-                activate_animation: activate_animation,
-                errored: errored,
-                selected: selected,
+                running,
+                activate_animation,
+                errored,
+                selected,
                 code_differs: class_code_differs,
                 code_folded: class_code_folded,
-                running_disabled: running_disabled,
-                depends_on_disabled_cells: depends_on_disabled_cells,
-                show_input: show_input,
+                skip_as_script,
+                running_disabled,
+                depends_on_disabled_cells,
+                depends_on_skipped_cells,
+                show_input,
                 shrunk: Object.values(logs).length > 0,
                 hooked_up: output?.has_pluto_hook_features ?? false,
             })}
@@ -217,8 +306,10 @@ export const Cell = ({
                 any_logs=${any_logs}
                 show_logs=${show_logs}
                 set_show_logs=${set_show_logs}
+                set_cell_disabled=${set_cell_disabled}
                 cm_highlighted_line=${cm_highlighted_line}
                 set_cm_highlighted_line=${set_cm_highlighted_line}
+                onerror=${remount}
             />
             ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${line_heights} set_cm_highlighted_line=${set_cm_highlighted_line} />` : null}
             <${RunArea}
@@ -229,10 +320,12 @@ export const Cell = ({
                 on_interrupt=${() => {
                     pluto_actions.interrupt_remote(cell_id)
                 }}
+                set_cell_disabled=${set_cell_disabled}
                 runtime=${runtime}
                 running=${running}
                 code_differs=${class_code_differs}
                 queued=${queued}
+                on_jump=${disabled_jump}
             />
             <button
                 onClick=${() => {
@@ -243,18 +336,57 @@ export const Cell = ({
             >
                 <span></span>
             </button>
+            ${skip_as_script
+                ? html`<div
+                      class="skip_as_script_marker"
+                      title=${`This cell is directly flagged as disabled in file. Click to know more!`}
+                      onClick=${(e) => {
+                          open_pluto_popup({
+                              type: "info",
+                              source_element: e.target,
+                              body: html`This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />
+                                  This way, it will not run when the notebook runs as a script outside of Pluto.<br />
+                                  Use the context menu to enable it again`,
+                          })
+                      }}
+                  ></div>`
+                : depends_on_skipped_cells
+                ? html`<div
+                      class="depends_on_skipped_marker"
+                      title=${`This cell is indirectly flagged as disabled in file. Click to know more!`}
+                      onClick=${(e) => {
+                          open_pluto_popup({
+                              type: "info",
+                              source_element: e.target,
+                              body: html`This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />
+                                  This way, it will not run when the notebook runs as a script outside of Pluto.<br />
+                                  An upstream cell is <b> indirectly</b> <em>disabling in file</em> this one; enable
+                                  <span onClick=${skip_as_script_jump} style="cursor: pointer; text-decoration: underline"> the upstream one</span> to affect
+                                  this cell.`,
+                          })
+                      }}
+                  ></div>`
+                : null}
         </pluto-cell>
     `
 }
-
-export const IsolatedCell = ({ cell_id, cell_results: { output, published_object_keys }, hidden }) => {
+/**
+ * @param {{
+ *  cell_result: import("./Editor.js").CellResultData,
+ *  cell_input: import("./Editor.js").CellInputData,
+ *  [key: string]: any,
+ * }} props
+ * */
+export const IsolatedCell = ({ cell_input: { cell_id, metadata }, cell_result: { logs, output, published_object_keys }, hidden }) => {
     const node_ref = useRef(null)
-    let pluto_actions = useContext(PlutoContext)
+    let pluto_actions = useContext(PlutoActionsContext)
     const cell_api_ready = useCellApi(node_ref, published_object_keys, pluto_actions)
+    const { show_logs } = metadata
 
     return html`
         <pluto-cell ref=${node_ref} id=${cell_id} class=${hidden ? "hidden-cell" : "isolated-cell"}>
             ${cell_api_ready ? html`<${CellOutput} ...${output} cell_id=${cell_id} />` : html``}
+            ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${[15]} set_cm_highlighted_line=${() => {}} />` : null}
         </pluto-cell>
     `
 }

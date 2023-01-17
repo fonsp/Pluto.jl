@@ -7,8 +7,33 @@ end
 
 @deprecate topological_order(::Notebook, topology::NotebookTopology, args...; kwargs...) topological_order(topology, args...; kwargs...)
 
-"Return a `TopologicalOrder` that lists the cells to be evaluated in a single reactive run, in topological order. Includes the given roots."
-function topological_order(topology::NotebookTopology, roots::AbstractVector{Cell}; allow_multiple_defs=false)::TopologicalOrder
+"""
+Return a `TopologicalOrder` that lists the cells to be evaluated in a single reactive run, in topological order. Includes the given roots.
+
+# Keyword arguments
+
+- `allow_multiple_defs::Bool = false`
+  
+  If `false` (default), multiple definitions are not allowed. When a cell is found that defines a variable that is also defined by another cell (this other cell is called a *fellow assigner*), then both cells are marked as `errable` and not `runnable`.
+  
+  If `true`, then multiple definitions are allowed, in the sense that we ignore the existance of other cells that define the same variable.
+
+
+- `skip_at_partial_multiple_defs::Bool = false`
+  
+  If `true` (not default), and `allow_multiple_defs = true` (not default), then the search stops going downward when finding a cell that has fellow assigners, *unless all fellow assigners can be reached by the `roots`*, in which case we continue searching downward.
+
+  In other words, if there is a set of fellow assigners that can only be reached **partially** by the roots, then this set blocks the search, and cells that depend on the set are not found.
+"""
+function topological_order(topology::NotebookTopology, roots::AbstractVector{Cell}; 
+	allow_multiple_defs::Bool=false,
+	skip_at_partial_multiple_defs::Bool=false,
+)::TopologicalOrder
+
+	if skip_at_partial_multiple_defs
+		@assert allow_multiple_defs
+	end
+
 	entries = Cell[]
 	exits = Cell[]
 	errable = Dict{Cell,ReactivityError}()
@@ -19,7 +44,7 @@ function topological_order(topology::NotebookTopology, roots::AbstractVector{Cel
 			return Ok()
 		elseif haskey(errable, cell)
 			return Ok()
-		elseif length(entries) > 0 && entries[end] == cell
+		elseif length(entries) > 0 && entries[end] === cell
 			return Ok() # a cell referencing itself is legal
 		elseif cell in entries
 			currently_in = setdiff(entries, exits)
@@ -42,14 +67,29 @@ function topological_order(topology::NotebookTopology, roots::AbstractVector{Cel
 		push!(entries, cell)
 
 		assigners = where_assigned(topology, cell)
+		referencers = where_referenced(topology, cell) |> Iterators.reverse
+		
 		if !allow_multiple_defs && length(assigners) > 1
 			for c in assigners
 				errable[c] = MultipleDefinitionsError(topology, c, assigners)
 			end
 		end
-		referencers = where_referenced(topology, cell) |> Iterators.reverse
-		for c in (allow_multiple_defs ? referencers : union(assigners, referencers))
-			if c != cell
+		
+		should_continue_search_down = !skip_at_partial_multiple_defs || all(c -> c === cell || c ∈ exits, assigners)
+		should_search_fellow_assigners_if_any = !allow_multiple_defs
+		
+		to_search_next = if should_continue_search_down
+			if should_search_fellow_assigners_if_any
+				union(assigners, referencers)
+			else
+				referencers
+			end
+		else
+			Cell[]
+		end
+		
+		for c in to_search_next
+			if c !== cell
 				child_result = bfs(c)
 
 				# No cycle for this child or the cycle has no soft edges
@@ -74,7 +114,7 @@ function topological_order(topology::NotebookTopology, roots::AbstractVector{Cel
 					delete!(errable, cycled_cell)
 				end
 				# 2. Remove the current child (c) from the entries if it was just added
-				if entries[end] == c
+				if entries[end] === c
 					pop!(entries)
 				end
 
@@ -89,8 +129,9 @@ function topological_order(topology::NotebookTopology, roots::AbstractVector{Cel
 	# we use MergeSort because it is a stable sort: leaves cells in order if they are in the same category
 	prelim_order_1 = sort(roots, alg=MergeSort, by=c -> cell_precedence_heuristic(topology, c))
 	# reversing because our search returns reversed order
-	prelim_order_2 = Iterators.reverse(prelim_order_1)
-	bfs.(prelim_order_2)
+    for i in length(prelim_order_1):-1:1
+        bfs(prelim_order_1[i])
+    end
 	ordered = reverse(exits)
 	TopologicalOrder(topology, setdiff(ordered, keys(errable)), errable)
 end
@@ -106,7 +147,7 @@ end
 
 Base.collect(notebook_topo_order::TopologicalOrder) = union(notebook_topo_order.runnable, keys(notebook_topo_order.errable))
 
-function disjoint(a::Set, b::Set)
+function disjoint(a, b)
 	!any(x in a for x in b)
 end
 
@@ -136,7 +177,10 @@ end
 
 "Return the cells that also assign to any variable or method defined by the given cell. If more than one cell is returned (besides the given cell), then all of them should throw a `MultipleDefinitionsError`. Non-recursive: only direct dependencies are found."
 function where_assigned(topology::NotebookTopology, myself::Cell)::Vector{Cell}
-	self = topology.nodes[myself]
+	where_assigned(topology, topology.nodes[myself])
+end
+
+function where_assigned(topology::NotebookTopology, self::ReactiveNode)::Vector{Cell}
 	return filter(all_cells(topology)) do cell
 		other = topology.nodes[cell]
 		!(

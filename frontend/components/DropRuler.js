@@ -28,10 +28,11 @@ export class DropRuler extends Component {
 
     componentDidMount() {
         document.addEventListener("dragstart", (e) => {
+            if (!e.dataTransfer) return
             let target = /** @type {Element} */ (e.target)
             if (target.matches("pluto-shoulder")) {
                 this.dropee = target.parentElement
-                e.dataTransfer.setData("text/pluto-cell", this.props.serialize_selected(this.dropee.id))
+                e.dataTransfer.setData("text/pluto-cell", this.props.serialize_selected(this.dropee?.id))
                 this.dropped = false
                 this.precompute_cell_edges()
 
@@ -50,6 +51,7 @@ export class DropRuler extends Component {
             }
         })
         document.addEventListener("dragenter", (e) => {
+            if (!e.dataTransfer) return
             if (e.dataTransfer.types[0] !== "text/pluto-cell") return
             if (!this.state.drag_target) this.precompute_cell_edges()
             this.lastenter = e.target
@@ -57,6 +59,7 @@ export class DropRuler extends Component {
             e.preventDefault()
         })
         document.addEventListener("dragleave", (e) => {
+            if (!e.dataTransfer) return
             if (e.dataTransfer.types[0] !== "text/pluto-cell") return
             if (e.target === this.lastenter) {
                 this.setState({ drag_target: false })
@@ -73,6 +76,7 @@ export class DropRuler extends Component {
             { leading: false, trailing: true }
         )
         document.addEventListener("dragover", (e) => {
+            if (!e.dataTransfer) return
             // Called continuously during drag
             if (e.dataTransfer.types[0] !== "text/pluto-cell") return
             this.pointer_position = e
@@ -96,6 +100,7 @@ export class DropRuler extends Component {
             this.props.set_scroller({ up: false, down: false })
         })
         document.addEventListener("drop", (e) => {
+            if (!e.dataTransfer) return
             // Guaranteed to fire before the 'dragend' event
             // Ignore files
             if (e.dataTransfer.types[0] !== "text/pluto-cell") {

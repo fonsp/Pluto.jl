@@ -5,6 +5,7 @@ using Pluto: ServerSession, ClientSession, SessionActions
 using Pluto.Configuration
 using Pluto.Configuration: notebook_path_suggestion, from_flat_kwargs, _convert_to_flags
 using Pluto.WorkspaceManager: poll
+import URIs
 
 @testset "Configurations" begin
 
@@ -13,17 +14,33 @@ cd(Pluto.project_relative_path("test")) do
 end
 
 @testset "from_flat_kwargs" begin
-    opt = from_flat_kwargs(;compile="min", launch_browser=false)
+    opt = from_flat_kwargs(; compile="min", launch_browser=false)
     @test opt.compiler.compile == "min"
     @test opt.server.launch_browser == false
 
-    et = @static if isdefined(Pluto.Configuration.Configurations, :InvalidKeyError)
-        Pluto.Configuration.Configurations.InvalidKeyError
-    else
-        ArgumentError
+    @test_throws MethodError from_flat_kwargs(; asdfasdf="test")
+
+    structs_kwargs = let
+        structs = [
+            Pluto.Configuration.ServerOptions,
+            Pluto.Configuration.SecurityOptions,
+            Pluto.Configuration.EvaluationOptions,
+            Pluto.Configuration.CompilerOptions
+        ]
+        sets = [collect(fieldnames(s)) for s in structs]
+        vcat(sets...)::Vector{Symbol}
     end
 
-    @test_throws et from_flat_kwargs(;asdfasdf="test")    
+    from_flat_kwargs_kwargs = let
+        method = only(methods(Pluto.Configuration.from_flat_kwargs))
+        syms = method.slot_syms
+        names = split(syms, "\0")[2:end-1]
+        Symbol.(names)::Vector{Symbol}
+    end
+
+    # Verify that all struct fields can be set via `from_flat_kwargs`.
+    # Also verifies ordering to improve code readability.
+    @test structs_kwargs == from_flat_kwargs_kwargs
 end
 
 @testset "flag conversion" begin
@@ -44,8 +61,6 @@ end
     port = 1238
     options = Pluto.Configuration.from_flat_kwargs(; port, launch_browser=false, workspace_use_distributed=false)
     🍭 = Pluto.ServerSession(; options)
-    fakeclient = ClientSession(:fake, nothing)
-    🍭.connected_clients[fakeclient.id] = fakeclient
     host = 🍭.options.server.host
     secret = 🍭.secret
     println("Launching test server...")
@@ -81,10 +96,10 @@ end
     effect_routes = [
         ("new", "GET"),
         ("new", "POST"),
-        ("open?url=$(HTTP.URIs.escapeuri("https://raw.githubusercontent.com/fonsp/Pluto.jl/v0.14.5/sample/Basic.jl"))", "GET"),
-        ("open?url=$(HTTP.URIs.escapeuri("https://raw.githubusercontent.com/fonsp/Pluto.jl/v0.14.5/sample/Basic.jl"))", "POST"),
-        ("open?path=$(HTTP.URIs.escapeuri(Pluto.project_relative_path("sample", "Basic.jl") |> tempcopy))", "GET"),
-        ("open?path=$(HTTP.URIs.escapeuri(Pluto.project_relative_path("sample", "Basic.jl") |> tempcopy))", "POST"),
+        ("open?url=$(URIs.escapeuri("https://raw.githubusercontent.com/fonsp/Pluto.jl/v0.14.5/sample/Basic.jl"))", "GET"),
+        ("open?url=$(URIs.escapeuri("https://raw.githubusercontent.com/fonsp/Pluto.jl/v0.14.5/sample/Basic.jl"))", "POST"),
+        ("open?path=$(URIs.escapeuri(Pluto.project_relative_path("sample", "Basic.jl") |> tempcopy))", "GET"),
+        ("open?path=$(URIs.escapeuri(Pluto.project_relative_path("sample", "Basic.jl") |> tempcopy))", "POST"),
         ("sample/Basic.jl", "GET"),
         ("sample/Basic.jl", "POST"),
         ("notebookupload", "POST"),
@@ -145,6 +160,27 @@ end
     end
     @async schedule(server_task, InterruptException(); error=true)
 
+end
+
+@testset "disable mimetype via workspace_custom_startup_expr" begin
+    🍭 = ServerSession()
+    🍭.options.evaluation.workspace_use_distributed = true
+    🍭.options.evaluation.workspace_custom_startup_expr = quote
+        PlutoRunner.is_mime_enabled(m::MIME"application/vnd.pluto.tree+object") = false
+    end
+
+    nb = Pluto.Notebook([
+        Pluto.Cell("x = [1, 2]")
+        Pluto.Cell("struct Foo; x; end")
+        Pluto.Cell("Foo(x)")
+    ])
+
+    Pluto.update_run!(🍭, nb, nb.cells)
+    @test nb.cells[1].output.body == repr(MIME"text/plain"(), [1,2])
+    @test nb.cells[1].output.mime isa MIME"text/plain"
+    @test nb.cells[3].output.mime isa MIME"text/plain"
+
+    Pluto.WorkspaceManager.unmake_workspace((🍭, nb))
 end
 
 # TODO are the processes closed properly?

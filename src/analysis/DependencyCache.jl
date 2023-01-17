@@ -40,9 +40,13 @@ function update_dependency_cache!(cell::Cell, topology::NotebookTopology)
 end
 
 "Fills dependency information on notebook and cell level."
-function update_dependency_cache!(notebook::Notebook)
+function update_dependency_cache!(notebook::Notebook, topology::NotebookTopology=notebook.topology)
     notebook._cached_topological_order = topological_order(notebook)
-    for cell in values(notebook.cells_dict)
-        update_dependency_cache!(cell, notebook.topology)
+    
+    if notebook._cached_cell_dependencies_source !== topology
+        notebook._cached_cell_dependencies_source = topology
+        for cell in all_cells(topology)
+            update_dependency_cache!(cell, topology)
+        end
     end
 end

@@ -35,7 +35,7 @@ export let test_scopestate = (input, expected) => {
         local_used: [],
         global_used: [],
     }
-    assertEquals(simplify_scopestate(explore_variable_usage(as_node(input).cursor, as_doc(input))), {
+    assertEquals(simplify_scopestate(explore_variable_usage(as_node(input).cursor(), as_doc(input), undefined, false)), {
         defined: new Set(expected.defined),
         local_used: new Set(expected.local_used),
         global_used: new Set(expected.global_used),

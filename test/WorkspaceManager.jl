@@ -8,24 +8,15 @@ import Distributed
 # basic functionality is already tested by the reactivity tests
 
     @testset "Multiple notebooks" begin
-
-        fakeclientA = ClientSession(:fakeA, nothing)
-        fakeclientB = ClientSession(:fakeB, nothing)
         🍭 = ServerSession()
         🍭.options.evaluation.workspace_use_distributed = true
-        🍭.connected_clients[fakeclientA.id] = fakeclientA
-        🍭.connected_clients[fakeclientB.id] = fakeclientB
-
 
         notebookA = Notebook([
             Cell("x = 3")
         ])
-        fakeclientA.connected_notebook = notebookA
-
         notebookB = Notebook([
             Cell("x")
         ])
-        fakeclientB.connected_notebook = notebookB
 
         @test notebookA.path != notebookB.path
 
@@ -42,10 +33,8 @@ import Distributed
         WorkspaceManager.unmake_workspace((🍭, notebookB))
     end
     @testset "Variables with secret names" begin
-        fakeclient = ClientSession(:fake, nothing)
         🍭 = ServerSession()
         🍭.options.evaluation.workspace_use_distributed = false
-        🍭.connected_clients[fakeclient.id] = fakeclient
 
         notebook = Notebook([
             Cell("result = 1"),
@@ -53,7 +42,6 @@ import Distributed
             Cell("elapsed_ns = 3"),
             Cell("elapsed_ns"),
         ])
-        fakeclient.connected_notebook = notebook
 
         update_save_run!(🍭, notebook, notebook.cells[1:4])
         @test notebook.cells[1].output.body == "1"
@@ -65,11 +53,8 @@ import Distributed
     end
 
     Sys.iswindows() || @testset "Pluto inside Pluto" begin
-
-        client = ClientSession(:fakeA, nothing)
         🍭 = ServerSession()
         🍭.options.evaluation.workspace_use_distributed = true
-        🍭.connected_clients[client.id] = client
 
         notebook = Notebook([
             Cell("""begin
@@ -83,11 +68,11 @@ import Distributed
             s = Pluto.ServerSession()
             """),
             Cell("""
-            nb = Pluto.SessionActions.open(s, Pluto.project_relative_path("sample", "Tower of Hanoi.jl"); run_async=false, as_sample=true)"""),
+            nb = Pluto.SessionActions.open(s, Pluto.project_relative_path("sample", "Tower of Hanoi.jl"); run_async=false, as_sample=true)
+            """),
             Cell("length(nb.cells)"),
             Cell(""),
         ])
-        client.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells)
 
@@ -97,13 +82,13 @@ import Distributed
         @test notebook.cells[4] |> noerror
         @test notebook.cells[5] |> noerror
 
-        setcode(notebook.cells[5], "length(nb.cells)")
+        setcode!(notebook.cells[5], "length(nb.cells)")
         update_run!(🍭, notebook, notebook.cells[5])
         @test notebook.cells[5] |> noerror
 
 
         desired_nprocs = Distributed.nprocs() - 1
-        setcode(notebook.cells[5], "Pluto.SessionActions.shutdown(s, nb)")
+        setcode!(notebook.cells[5], "Pluto.SessionActions.shutdown(s, nb)")
         update_run!(🍭, notebook, notebook.cells[5])
         @test noerror(notebook.cells[5])
 

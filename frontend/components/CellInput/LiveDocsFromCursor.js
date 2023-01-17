@@ -27,7 +27,21 @@ let VALID_DOCS_TYPES = [
     "Definition",
     "ParameterizedIdentifier",
 ]
-let keywords_that_have_docs_and_are_cool = ["import", "export", "try", "catch", "finally", "quote", "do", "struct", "mutable"]
+let keywords_that_have_docs_and_are_cool = [
+    "import",
+    "export",
+    "try",
+    "catch",
+    "finally",
+    "quote",
+    "do",
+    "struct",
+    "mutable",
+    "module",
+    "baremodule",
+    "if",
+    "let",
+]
 
 let is_docs_searchable = (/** @type {import("../../imports/CodemirrorPlutoSetup.js").TreeCursor} */ cursor) => {
     if (keywords_that_have_docs_and_are_cool.includes(cursor.name)) {
@@ -96,7 +110,7 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                 iterations = iterations + 1
 
                 // Collect parents in a list so I can compare them easily
-                let parent_cursor = cursor.node.cursor
+                let parent_cursor = cursor.node.cursor()
                 let parents = []
                 while (parent_cursor.parent()) {
                     parents.push(parent_cursor.name)
