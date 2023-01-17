@@ -24,7 +24,7 @@ SnoopPrecompile.@precompile_all_calls begin
     session = Pluto.ServerSession()
     session.options.evaluation.workspace_use_distributed = false
     basic = joinpath(pkgdir(Pluto), "sample", "Basic.jl")
-    nb = load_notebook(basic)
+    nb = Pluto.load_notebook_nobackup(basic)
 
     # Compiling PlutoRunner is very beneficial because it saves time in each notebook.
     let
