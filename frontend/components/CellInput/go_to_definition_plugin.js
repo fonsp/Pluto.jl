@@ -2,6 +2,8 @@ import { Facet, ViewPlugin, Decoration, EditorView } from "../../imports/Codemir
 import { ctrl_or_cmd_name, has_ctrl_or_cmd_pressed } from "../../common/KeyboardShortcuts.js"
 import _ from "../../imports/lodash.js"
 import { ScopeStateField } from "./scopestate_statefield.js"
+import { open_pluto_popup } from "../Popup.js"
+import { html } from "../../imports/Preact.js"
 
 /**
  * @param {any} state
@@ -106,42 +108,50 @@ export const go_to_definition_plugin = ViewPlugin.fromClass(
         decorations: (v) => v.decorations,
 
         eventHandlers: {
-            pointerdown: (event, view) => {
-                if (has_ctrl_or_cmd_pressed(event) && event.button === 0 && event.target instanceof Element) {
-                    let pluto_variable = event.target.closest("[data-pluto-variable]")
+            click: (event, view) => {
+                if (event.button === 0 && event.target instanceof HTMLElement) {
+                    let pluto_variable = /** @type {HTMLElement? }*/ (event.target.closest("[data-pluto-variable]"))
                     if (pluto_variable) {
                         let variable = pluto_variable.getAttribute("data-pluto-variable")
                         if (variable == null) {
                             return false
                         }
 
-                        event.preventDefault()
-                        let scrollto_selector = `[id='${encodeURI(variable)}']`
-                        document.querySelector(scrollto_selector)?.scrollIntoView({
-                            behavior: "smooth",
-                            block: "center",
-                        })
+                        if (has_ctrl_or_cmd_pressed(event)) {
+                            event.preventDefault()
+                            let scrollto_selector = `[id='${encodeURI(variable)}']`
+                            document.querySelector(scrollto_selector)?.scrollIntoView({
+                                behavior: "smooth",
+                                block: "center",
+                            })
 
-                        // TODO Something fancy where it counts going to definition as a page in history,
-                        // .... so pressing/swiping back will go back to where you clicked on the definition.
-                        // window.history.replaceState({ scrollTop: document.documentElement.scrollTop }, null)
-                        // window.history.pushState({ scrollTo: scrollto_selector }, null)
+                            // TODO Something fancy where it counts going to definition as a page in history,
+                            // .... so pressing/swiping back will go back to where you clicked on the definition.
+                            // window.history.replaceState({ scrollTop: document.documentElement.scrollTop }, null)
+                            // window.history.pushState({ scrollTo: scrollto_selector }, null)
 
-                        let global_definitions = view.state.facet(GlobalDefinitionsFacet)
+                            let global_definitions = view.state.facet(GlobalDefinitionsFacet)
 
-                        // TODO Something fancy where we actually emit the identifier we are looking for,
-                        // .... and the cell then selects exactly that definition (using lezer and cool stuff)
-                        if (global_definitions[variable]) {
-                            window.dispatchEvent(
-                                new CustomEvent("cell_focus", {
-                                    detail: {
-                                        cell_id: global_definitions[variable],
-                                        line: 0, // 1-based to 0-based index
-                                        definition_of: variable,
-                                    },
-                                })
-                            )
-                            return true
+                            // TODO Something fancy where we actually emit the identifier we are looking for,
+                            // .... and the cell then selects exactly that definition (using lezer and cool stuff)
+                            if (global_definitions[variable]) {
+                                window.dispatchEvent(
+                                    new CustomEvent("cell_focus", {
+                                        detail: {
+                                            cell_id: global_definitions[variable],
+                                            line: 0, // 1-based to 0-based index
+                                            definition_of: variable,
+                                        },
+                                    })
+                                )
+                                return true
+                            }
+                        } else {
+                            open_pluto_popup({
+                                source_element: pluto_variable.closest(`.cm-line`),
+                                type: "info",
+                                body: html`${ctrl_or_cmd_name}-Click to jump to the definition of <strong>${variable}</strong>.`,
+                            })
                         }
                     }
 
