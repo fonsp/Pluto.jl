@@ -339,3 +339,8 @@ table.pluto-table .pluto-tree-more-td pluto-tree-more {
     top: 2rem;
     max-width: 650px;
 }
+
+pluto-tree.collapsed p-v > pre {
+    max-height: 2em;
+    overflow-y: hidden;
+}
