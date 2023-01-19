@@ -1122,7 +1122,7 @@ patch: ${JSON.stringify(
         const set_ctrl_down = (value) => {
             if (value !== ctrl_down_last_val.current) {
                 ctrl_down_last_val.current = value
-                document.body.querySelectorAll("pluto-variable-link").forEach((el) => {
+                document.body.querySelectorAll("[data-pluto-variable]").forEach((el) => {
                     el.setAttribute("data-ctrl-down", value ? "true" : "false")
                 })
             }
