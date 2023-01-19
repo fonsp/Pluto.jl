@@ -19,11 +19,7 @@ let get_variable_marks = (state, { scopestate, global_definitions }) => {
                     // .... Because now it will only show variables after it has run once
                     if (global_definitions[name]) {
                         return Decoration.mark({
-                            // TODO This used to be tagName: "a", but codemirror doesn't like that...
-                            // .... https://github.com/fonsp/Pluto.jl/issues/1790
-                            // .... Ideally we'd change it back to `a` (feels better), but functionally there is no difference..
-                            // .... When I ever happen to find a lot of time I can spend on this, I'll debug and change it back to `a`
-                            tagName: "pluto-variable-link",
+                            tagName: "a",
                             attributes: {
                                 "title": `${ctrl_or_cmd_name}-Click to jump to the definition of ${name}.`,
                                 "data-pluto-variable": name,
@@ -46,7 +42,7 @@ let get_variable_marks = (state, { scopestate, global_definitions }) => {
                 } else {
                     // Could be used to select the definition of a variable inside the current cell
                     return Decoration.mark({
-                        tagName: "pluto-variable-link",
+                        tagName: "a",
                         attributes: {
                             "title": `${ctrl_or_cmd_name}-Click to jump to the definition of ${name}.`,
                             "data-cell-variable": name,
