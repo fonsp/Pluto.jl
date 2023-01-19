@@ -22,17 +22,16 @@ catch e
 end
 
 # Using a ref to avoid fixing the pwd() output during the compilation phase. We don't want this value to be baked into the sysimage, because it depends on the `pwd()`. We do want to cache it, because the pwd might change while Pluto is running.
-const pwd_ref = Ref{Union{Nothing,String}}()
+const pwd_ref = Ref{String}()
 function notebook_path_suggestion()
-    if !isassigned(pwd_ref)
-        # This occurs during precompilation.
-        string(joinpath(pwd(), ""))
+    pwd_val = if isassigned(pwd_ref)
+        pwd_ref[]
     else
-        pwd_val = something(pwd_ref[], safepwd())
-        preferred_dir = startswith(Sys.BINDIR, pwd_val) ? homedir() : pwd_val
-        # so that it ends with / or \
-        string(joinpath(preferred_dir, ""))
+        safepwd()
     end
+    preferred_dir = startswith(Sys.BINDIR, pwd_val) ? homedir() : pwd_val
+    # so that it ends with / or \
+    string(joinpath(preferred_dir, ""))
 end
 
 function __init__()
