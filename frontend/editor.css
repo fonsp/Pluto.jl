@@ -1704,15 +1704,19 @@ pluto-input > button.input_context_menu > span.icon::after {
 
 /* PKG UI */
 
-body.nbpkg_disabled pkg-status-mark:not(.disable_pkg) {
-    display: none;
-}
-
 pkg-status-mark {
     width: 1em;
     height: 1em;
     margin: 0px 0.6em 0px 0.2em;
     display: inline-block;
+}
+body.nbpkg_disabled pkg-status-mark:not(.disable_pkg) {
+    display: none;
+}
+@media print {
+    pkg-status-mark {
+        display: none;
+    }
 }
 
 pkg-status-mark > button {
