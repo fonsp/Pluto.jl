@@ -1704,15 +1704,19 @@ pluto-input > button.input_context_menu > span.icon::after {
 
 /* PKG UI */
 
-body.nbpkg_disabled pkg-status-mark:not(.disable_pkg) {
-    display: none;
-}
-
 pkg-status-mark {
     width: 1em;
     height: 1em;
     margin: 0px 0.6em 0px 0.2em;
     display: inline-block;
+}
+body.nbpkg_disabled pkg-status-mark:not(.disable_pkg) {
+    display: none;
+}
+@media print {
+    pkg-status-mark {
+        display: none;
+    }
 }
 
 pkg-status-mark > button {
@@ -3142,10 +3146,10 @@ pluto-cell.code_differs .cm-editor .cm-gutters {
     background-color: var(--cm-code-differs-gutters-color);
 }
 
+/* We show a small dot instead of line number, until you hover. */
 .cm-editor .cm-lineNumbers .cm-gutterElement {
     color: transparent;
 }
-
 .cm-editor .cm-lineNumbers .cm-gutterElement::after {
     content: "⋅";
     font-size: 0.75rem;
@@ -3154,13 +3158,29 @@ pluto-cell.code_differs .cm-editor .cm-gutters {
     right: 3px;
     pointer-events: none;
 }
-
 .cm-editor .cm-lineNumbers .cm-gutterElement:hover {
     color: var(--cm-line-numbers-color);
 }
-
 .cm-editor .cm-lineNumbers .cm-gutterElement:hover::after {
     color: transparent;
+}
+
+/* Disabling this feature in two cases: */
+/* Case 1: The cell input is in focus */
+/* pluto-input:focus-within .cm-editor .cm-lineNumbers .cm-gutterElement {
+    color: var(--cm-line-numbers-color);
+}
+pluto-input:focus-within .cm-editor .cm-lineNumbers .cm-gutterElement::after {
+    color: transparent;
+} */
+/* Case 2: Print */
+@media print {
+    .cm-editor .cm-lineNumbers .cm-gutterElement {
+        color: var(--cm-line-numbers-color) !important;
+    }
+    .cm-editor .cm-lineNumbers .cm-gutterElement::after {
+        color: transparent !important;
+    }
 }
 
 .cm-completionIcon-c_Number::before {
