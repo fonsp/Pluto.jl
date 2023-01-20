@@ -141,7 +141,7 @@ function get_assignees(ex::Expr)::FunctionName
             # e.g. (x, y) in the ex (x, y) = (1, 23)
             args = ex.args
         end
-        union!(Symbol[], get_assignees.(args)...)
+        union!(Symbol[], Iterators.map(get_assignees, args)...)
         # filter(s->s isa Symbol, ex.args)
     elseif ex.head == :(::)
         # TODO: type is referenced
@@ -151,7 +151,7 @@ function get_assignees(ex::Expr)::FunctionName
     elseif ex.head == :...
         # Handles splat assignments. e.g. _, y... = 1:5
         args = ex.args
-        union!(Symbol[], get_assignees.(args)...)
+        union!(Symbol[], Iterators.map(get_assignees, args)...)
     else
         @warn "unknown use of `=`. Assignee is unrecognised." ex
         Symbol[]
@@ -1240,7 +1240,7 @@ end
 
 function collect_implicit_usings(ex::Expr)
     if is_implicit_using(ex)
-        Set{Expr}(transform_dot_notation.(ex.args))
+        Set{Expr}(Iterators.map(transform_dot_notation, ex.args))
     else
         return Set{Expr}()
     end
@@ -1290,7 +1290,7 @@ function external_package_names(ex::Expr)::Set{Symbol}
 end
 
 function external_package_names(x::UsingsImports)::Set{Symbol}
-    union!(Set{Symbol}(), external_package_names.(x.usings)..., external_package_names.(x.imports)...)
+    union!(Set{Symbol}(), Iterators.map(external_package_names, x.usings)..., Iterators.map(external_package_names, x.imports)...)
 end
 
 "Get the sets of `using Module` and `import Module` subexpressions that are contained in this expression."

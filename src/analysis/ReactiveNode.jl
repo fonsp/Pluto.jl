@@ -33,12 +33,12 @@ end
 - A `SymbolsState` is a nested structure of function definitions inside function definitions inside... This conversion flattens this structure by merging `SymbolsState`s from defined functions.
 - `ReactiveNode` functions as a cache to improve efficienty, by turning the nested structures into multiple `Set{Symbol}`s with fast lookups."
 function ReactiveNode(symstate::SymbolsState)
-	macrocalls = join_funcname_parts.(symstate.macrocalls) |> Set{Symbol}
-	result = ReactiveNode(
+	macrocalls = Iterators.map(join_funcname_parts, symstate.macrocalls) |> Set{Symbol}
+	result = ReactiveNode(;
 		references=Set{Symbol}(symstate.references), 
 		definitions=Set{Symbol}(symstate.assignments),
 		macrocalls=macrocalls,
-		)
+	)
 
 	# defined functions are 'exploded' into the cell's reactive node
 	for (_, body_symstate) in symstate.funcdefs
@@ -58,7 +58,7 @@ function ReactiveNode(symstate::SymbolsState)
 		push!(result.funcdefs_without_signatures, join_funcname_parts(namesig.name))
 
 		generated_names = generate_funcnames(namesig.name)
-		generated_names_syms = Set{Symbol}(join_funcname_parts.(generated_names))
+		generated_names_syms = Iterators.map(join_funcname_parts, generated_names) |> Set{Symbol}
 
 		# add the generated names so that they are added as soft definitions
 		# this means that they will not be used if a cycle is created
