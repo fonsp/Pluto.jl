@@ -1294,6 +1294,8 @@ patch: ${JSON.stringify(
     componentDidUpdate(old_props, old_state) {
         //@ts-ignore
         window.editor_state = this.state
+        //@ts-ignore
+        window.editor_state_set = this.setStatePromise
 
         const new_state = this.state
 
