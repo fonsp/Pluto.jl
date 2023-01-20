@@ -28,7 +28,7 @@ jobs:
     test:
         runs-on: ${{ matrix.os }}
         timeout-minutes: 40
-        
+
         strategy:
             # Without setting this, a failing test cancels all others
             fail-fast: false
@@ -41,7 +41,7 @@ jobs:
             # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
             - uses: actions/checkout@v3
 
-            # Makes thes `julia` command available
+            # Makes the `julia` command available
             - uses: julia-actions/setup-julia@v1
               with:
                   version: ${{ matrix.julia-version }}
