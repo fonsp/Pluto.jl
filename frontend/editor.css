@@ -3071,13 +3071,17 @@ Based on "Paraíso (Light)" by Jan T. Sott:
     }
 }
 
-[data-ctrl-down="true"][data-pluto-variable],
-[data-ctrl-down="true"][data-cell-variable] {
+body.disable_ui [data-pluto-variable],
+body.disable_ui [data-cell-variable] {
+    cursor: pointer;
+}
+body:not(.disable_ui) [data-ctrl-down="true"][data-pluto-variable],
+body:not(.disable_ui) [data-ctrl-down="true"][data-cell-variable] {
     text-decoration-color: #d177e6;
     cursor: pointer;
 }
-[data-ctrl-down="true"][data-pluto-variable]:hover,
-[data-ctrl-down="true"][data-pluto-variable]:hover * {
+body:not(.disable_ui) [data-ctrl-down="true"][data-pluto-variable]:hover,
+body:not(.disable_ui) [data-ctrl-down="true"][data-pluto-variable]:hover * {
     /* This basically `color: #af5bc3`, but it works for emoji too!! */
     color: transparent !important;
     text-shadow: 0 0 #af5bc3;

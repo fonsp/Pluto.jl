@@ -103,11 +103,15 @@ export const go_to_definition_plugin = ViewPlugin.fromClass(
 
         eventHandlers: {
             click: (event, view) => {
-                if (has_ctrl_or_cmd_pressed(event) && event.target instanceof Element) {
+                if (event.target instanceof Element) {
                     let pluto_variable = event.target.closest("[data-pluto-variable]")
                     if (pluto_variable) {
                         let variable = pluto_variable.getAttribute("data-pluto-variable")
                         if (variable == null) {
+                            return false
+                        }
+
+                        if (!(has_ctrl_or_cmd_pressed(event) || view.state.readOnly)) {
                             return false
                         }
 
