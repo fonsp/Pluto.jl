@@ -1597,7 +1597,7 @@ const integrations = Integration[
         code = quote
             approx_size(p::Plots.Plot) = try
                 sum(p.series_list; init=0) do series
-                    length(series[:y])
+                    length(something(get(series, :y, ()), ()))
                 end
             catch e
                 @warn "Failed to guesstimate plot size" exception=(e,catch_backtrace())

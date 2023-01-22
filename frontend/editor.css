@@ -1704,15 +1704,19 @@ pluto-input > button.input_context_menu > span.icon::after {
 
 /* PKG UI */
 
-body.nbpkg_disabled pkg-status-mark:not(.disable_pkg) {
-    display: none;
-}
-
 pkg-status-mark {
     width: 1em;
     height: 1em;
     margin: 0px 0.6em 0px 0.2em;
     display: inline-block;
+}
+body.nbpkg_disabled pkg-status-mark:not(.disable_pkg) {
+    display: none;
+}
+@media print {
+    pkg-status-mark {
+        display: none;
+    }
 }
 
 pkg-status-mark > button {
@@ -3051,6 +3055,7 @@ Based on "Paraíso (Light)" by Jan T. Sott:
 }
 
 [data-pluto-variable],
+[data-pluto-variable]:hover,
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete li.c_from_notebook .cm-completionLabel {
     font-weight: bold;
     text-decoration: underline;
@@ -3060,18 +3065,23 @@ Based on "Paraíso (Light)" by Jan T. Sott:
 }
 
 @media (prefers-color-scheme: dark) {
-    [data-pluto-variable] {
+    [data-pluto-variable],
+    [data-pluto-variable]:hover {
         text-decoration-color: #5d5f70;
     }
 }
 
-[data-ctrl-down="true"][data-pluto-variable],
-[data-ctrl-down="true"][data-cell-variable] {
+body.disable_ui [data-pluto-variable],
+body.disable_ui [data-cell-variable] {
+    cursor: pointer;
+}
+body:not(.disable_ui) [data-ctrl-down="true"][data-pluto-variable],
+body:not(.disable_ui) [data-ctrl-down="true"][data-cell-variable] {
     text-decoration-color: #d177e6;
     cursor: pointer;
 }
-[data-ctrl-down="true"][data-pluto-variable]:hover,
-[data-ctrl-down="true"][data-pluto-variable]:hover * {
+body:not(.disable_ui) [data-ctrl-down="true"][data-pluto-variable]:hover,
+body:not(.disable_ui) [data-ctrl-down="true"][data-pluto-variable]:hover * {
     /* This basically `color: #af5bc3`, but it works for emoji too!! */
     color: transparent !important;
     text-shadow: 0 0 #af5bc3;
@@ -3142,10 +3152,10 @@ pluto-cell.code_differs .cm-editor .cm-gutters {
     background-color: var(--cm-code-differs-gutters-color);
 }
 
+/* We show a small dot instead of line number, until you hover. */
 .cm-editor .cm-lineNumbers .cm-gutterElement {
     color: transparent;
 }
-
 .cm-editor .cm-lineNumbers .cm-gutterElement::after {
     content: "⋅";
     font-size: 0.75rem;
@@ -3154,13 +3164,29 @@ pluto-cell.code_differs .cm-editor .cm-gutters {
     right: 3px;
     pointer-events: none;
 }
-
 .cm-editor .cm-lineNumbers .cm-gutterElement:hover {
     color: var(--cm-line-numbers-color);
 }
-
 .cm-editor .cm-lineNumbers .cm-gutterElement:hover::after {
     color: transparent;
+}
+
+/* Disabling this feature in two cases: */
+/* Case 1: The cell input is in focus */
+/* pluto-input:focus-within .cm-editor .cm-lineNumbers .cm-gutterElement {
+    color: var(--cm-line-numbers-color);
+}
+pluto-input:focus-within .cm-editor .cm-lineNumbers .cm-gutterElement::after {
+    color: transparent;
+} */
+/* Case 2: Print */
+@media print {
+    .cm-editor .cm-lineNumbers .cm-gutterElement {
+        color: var(--cm-line-numbers-color) !important;
+    }
+    .cm-editor .cm-lineNumbers .cm-gutterElement::after {
+        color: transparent !important;
+    }
 }
 
 .cm-completionIcon-c_Number::before {

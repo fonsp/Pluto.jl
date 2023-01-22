@@ -26,6 +26,7 @@ but "/mnt/c/Users/pankg/OneDrive/Desktop/pluto/bakery_pnl_ready2.jl" stays the s
 """
 function maybe_convert_path_to_wsl(path)
     try
+        isfile(path) && return path
         if detectwsl()
             # wslpath utility prints path to stderr if it fails to convert
             # (it used to fail for WSL-valid paths)
@@ -91,7 +92,11 @@ end
 
 function new_notebooks_directory()
     try
-        path = joinpath(first(DEPOT_PATH), "pluto_notebooks")
+        path = get(
+			ENV,
+			"JULIA_PLUTO_NEW_NOTEBOOKS_DIR",
+			joinpath(first(DEPOT_PATH), "pluto_notebooks")
+		)
         if !isdir(path)
             mkdir(path)
         end

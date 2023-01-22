@@ -157,14 +157,17 @@ function run_reactive_core!(
     to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_errable)...)
     to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_errable)...)
 
-    cells_to_macro_invalidate = map(c -> c.cell_id, cells_with_deleted_macros(old_topology, new_topology)) |> Set{UUID}
+    cells_to_macro_invalidate = Set{UUID}(c.cell_id for c in cells_with_deleted_macros(old_topology, new_topology))
 
-    to_reimport = union!(Set{Expr}(), map(c -> new_topology.codes[c].module_usings_imports.usings, setdiff(notebook.cells, to_run))...)
+    to_reimport = union!(Set{Expr}(), (
+			new_topology.codes[c].module_usings_imports.usings for c in notebook.cells if c ∉ to_run
+		)...)
+
     if will_run_code(notebook)
-        deletion_hook((session, notebook), old_workspace_name, nothing, to_delete_vars, to_delete_funcs, to_reimport, cells_to_macro_invalidate; to_run = to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
+        deletion_hook((session, notebook), old_workspace_name, nothing, to_delete_vars, to_delete_funcs, to_reimport, cells_to_macro_invalidate; to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
     end
 
-    delete!.([notebook.bonds], to_delete_vars)
+	foreach(v -> delete!(notebook.bonds, v), to_delete_vars)
 
     local any_interrupted = false
     for (i, cell) in enumerate(to_run)

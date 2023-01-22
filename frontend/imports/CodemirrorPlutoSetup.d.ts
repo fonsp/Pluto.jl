@@ -476,7 +476,7 @@ declare class EditorSelection {
     /**
     Create a selection range.
     */
-    static range(anchor: number, head: number, goalColumn?: number): SelectionRange;
+    static range(anchor: number, head: number, goalColumn?: number, bidiLevel?: number): SelectionRange;
 }
 
 declare type FacetConfig<Input, Output> = {
@@ -1586,7 +1586,7 @@ interface Input {
     readonly lineChunks: boolean;
     read(from: number, to: number): string;
 }
-declare type ParseWrapper = (inner: PartialParse, input: Input, fragments: readonly TreeFragment[], ranges: readonly {
+type ParseWrapper = (inner: PartialParse, input: Input, fragments: readonly TreeFragment[], ranges: readonly {
     from: number;
     to: number;
 }[]) => PartialParse;
@@ -1620,7 +1620,7 @@ declare class MountedTree {
         to: number;
     }[] | null, parser: Parser);
 }
-declare type NodePropSource = (type: NodeType) => null | [NodeProp<any>, any];
+type NodePropSource = (type: NodeType) => null | [NodeProp<any>, any];
 declare class NodeType {
     readonly name: string;
     readonly id: number;
@@ -1680,7 +1680,7 @@ declare class Tree {
     }): Tree;
     static build(data: BuildData): Tree;
 }
-declare type BuildData = {
+type BuildData = {
     buffer: BufferCursor | readonly number[];
     nodeSet: NodeSet;
     topID: number;
@@ -3802,6 +3802,13 @@ interface HistoryConfig {
     apart and still be grouped together. Defaults to 500.
     */
     newGroupDelay?: number;
+    /**
+    By default, when close enough together in time, changes are
+    joined into an existing undo event if they touch any of the
+    changed ranges from that event. You can pass a custom predicate
+    here to influence that logic.
+    */
+    joinToEvent?: (tr: Transaction, isAdjacent: boolean) => boolean;
 }
 /**
 Create a history extension with the given configuration.
@@ -3896,6 +3903,11 @@ interface CompletionConfig {
     completions above the cursor when possible.
     */
     aboveCursor?: boolean;
+    /**
+    When given, this may return an additional CSS class to add to
+    the completion dialog element.
+    */
+    tooltipClass?: (state: EditorState) => string;
     /**
     This can be used to add additional CSS classes to completion
     options.
@@ -4173,10 +4185,9 @@ The order of fields defaults to textual order, but you can add
 numbers to placeholders (`${1}` or `${1:defaultText}`) to provide
 a custom order.
 
-To include a literal `${` or `#{` in your template, put a
-backslash after the dollar or hash and before the brace (`$\\{`).
-This will be removed and the sequence will not be interpreted as a
-placeholder.
+To include a literal `{` or `}` in your template, put a backslash
+in front of it. This will be removed and the brace will not be
+interpreted as indicating a placeholder.
 */
 declare function snippet(template: string): (editor: {
     state: EditorState;
@@ -4617,12 +4628,28 @@ interface TagSpec {
     */
     attrs?: Record<string, null | readonly string[]>;
     /**
+    When set to false, don't complete global attributes on this tag.
+    */
+    globalAttrs?: boolean;
+    /**
     Can be used to specify a list of child tags that are valid
     inside this tag. The default is to allow any tag.
     */
     children?: readonly string[];
 }
 
+declare type NestedLang = {
+    tag: string;
+    attrs?: (attrs: {
+        [attr: string]: string;
+    }) => boolean;
+    parser: Parser;
+};
+declare type NestedAttr = {
+    name: string;
+    tagName?: string;
+    parser: Parser;
+};
 /**
 A language provider based on the [Lezer HTML
 parser](https://github.com/lezer-parser/html), extended with the
@@ -4643,6 +4670,7 @@ declare function html(config?: {
     document).
     */
     matchClosingTags?: boolean;
+    selfClosingTags?: boolean;
     /**
     Determines whether [`autoCloseTags`](https://codemirror.net/6/docs/ref/#lang-html.autoCloseTags)
     is included in the support extensions. Defaults to true.
@@ -4656,6 +4684,17 @@ declare function html(config?: {
     Add additional completable attributes to all tags.
     */
     extraGlobalAttributes?: Record<string, null | readonly string[]>;
+    /**
+    Register additional languages to parse the content of specific
+    tags. If given, `attrs` should be a function that, given an
+    object representing the tag's attributes, returns `true` if this
+    language applies.
+    */
+    nestedLanguages?: NestedLang[];
+    /**
+    Register additional languages to parse attribute values with.
+    */
+    nestedAttributes?: NestedAttr[];
 }): LanguageSupport;
 
 /**
