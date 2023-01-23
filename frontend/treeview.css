@@ -278,7 +278,7 @@ table.pluto-table {
 
 table.pluto-table td {
     max-width: 300px;
-    overflow: hidden;
+    overflow: auto;
 }
 
 table.pluto-table .schema-types {
