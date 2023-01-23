@@ -2818,7 +2818,7 @@ pluto-log-dot.Stdout {
     --inner: hsl(36deg 20% 37%);
     --outer: hsl(31deg 12% 28%);
     background: radial-gradient(var(--inner), var(--inner) 20%, var(--outer));
-    color: #8ed975;
+    color: #c0ffab;
     border: 6px solid #b7b7b7;
     text-shadow: 1px 1px 2px #0000005e;
     min-width: 18em;
@@ -2875,6 +2875,11 @@ a.stdout-info {
 @media (prefers-reduced-motion: no-preference) {
     pluto-log-dot.Stdout:hover::after {
         animation-play-state: running;
+    }
+}
+@media (prefers-contrast: more) {
+    pluto-log-dot.Stdout::after {
+        display: none !important;
     }
 }
 
@@ -3158,6 +3163,7 @@ pluto-cell.code_differs .cm-editor .cm-gutters {
     position: absolute;
     right: 3px;
     pointer-events: none;
+    color: #b3b3b3;
 }
 .cm-editor .cm-lineNumbers .cm-gutterElement:hover {
     color: var(--cm-line-numbers-color);

@@ -227,6 +227,12 @@
         --cm-md-color: #a2c9d5;
         --cm-md-accent-color: #00a9d1;
     }
+
+    @media (prefers-contrast: more) {
+        :root {
+            --cm-line-numbers-color: #b3b3b3;
+        }
+    }
     body:not(.disable_ui):not(.more-specificity) {
         /* background by SVGBackgrounds.com */
         /* background-color: #0e2a2a; */
