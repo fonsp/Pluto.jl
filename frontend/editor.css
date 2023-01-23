@@ -1713,11 +1713,6 @@ pkg-status-mark {
 body.nbpkg_disabled pkg-status-mark:not(.disable_pkg) {
     display: none;
 }
-@media print {
-    pkg-status-mark {
-        display: none;
-    }
-}
 
 pkg-status-mark > button {
     margin: 0px;

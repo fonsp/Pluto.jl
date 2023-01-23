@@ -10,6 +10,8 @@ pluto-input > button,
 pluto-shoulder,
 footer,
 pluto-runarea,
-#helpbox-wrapper {
+#helpbox-wrapper,
+.edit_or_run,
+pkg-status-mark {
     display: none !important;
 }
