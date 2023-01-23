@@ -165,6 +165,7 @@ export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
             })
         }}
     />`
+    // More than the columns, not big enough to break Firefox (https://bugzilla.mozilla.org/show_bug.cgi?id=675417)
     const maxcolspan = 3 + (body?.schema?.names?.length ?? 1)
     const thead =
         body.schema == null || !body.schema?.names?.length
