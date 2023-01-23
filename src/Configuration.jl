@@ -165,6 +165,7 @@ These options are not intended to be changed during normal use.
 end
 
 const COMPILE_DEFAULT = nothing
+const PKGIMAGES_DEFAULT = nothing
 const SYSIMAGE_DEFAULT = nothing
 const BANNER_DEFAULT = nothing
 const OPTIMIZE_DEFAULT = nothing
@@ -206,6 +207,7 @@ These options will be passed as command line argument to newly launched processe
 
 # Arguments
 - `compile::Union{Nothing,String} = $COMPILE_DEFAULT`
+- `pkgimages::Union{Nothing,String} = $PKGIMAGES_DEFAULT`
 - `sysimage::Union{Nothing,String} = $SYSIMAGE_DEFAULT`
 - `banner::Union{Nothing,String} = $BANNER_DEFAULT`
 - `optimize::Union{Nothing,Int} = $OPTIMIZE_DEFAULT`
@@ -216,6 +218,7 @@ These options will be passed as command line argument to newly launched processe
 """
 @option mutable struct CompilerOptions
     compile::Union{Nothing,String} = COMPILE_DEFAULT
+    pkgimages::Union{Nothing,String} = PKGIMAGES_DEFAULT
     sysimage::Union{Nothing,String} = SYSIMAGE_DEFAULT
     banner::Union{Nothing,String} = BANNER_DEFAULT
     optimize::Union{Nothing,Int} = OPTIMIZE_DEFAULT
@@ -270,6 +273,7 @@ function from_flat_kwargs(;
         capture_stdout::Bool = CAPTURE_STDOUT_DEFAULT,
         workspace_custom_startup_expr::Union{Nothing,Expr} = WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT,
         compile::Union{Nothing,String} = COMPILE_DEFAULT,
+        pkgimages::Union{Nothing,String} = PKGIMAGES_DEFAULT,
         sysimage::Union{Nothing,String} = SYSIMAGE_DEFAULT,
         banner::Union{Nothing,String} = BANNER_DEFAULT,
         optimize::Union{Nothing,Int} = OPTIMIZE_DEFAULT,
@@ -312,6 +316,7 @@ function from_flat_kwargs(;
     )
     compiler = CompilerOptions(;
         compile,
+        pkgimages,
         sysimage,
         banner,
         optimize,
