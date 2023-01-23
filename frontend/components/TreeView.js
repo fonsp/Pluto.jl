@@ -132,16 +132,16 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
     return html`<pluto-tree class="collapsed ${body.type}" onclick=${onclick} ref=${node_ref}>${inner}</pluto-tree>`
 }
 
-const NOCOLS = html`<thead>
+const EmptyCols = ({ colspan = 999 }) => html`<thead>
     <tr class="empty">
-        <td colspan="1000">
+        <td colspan=${colspan}>
             <div>⌀ <small>(This table has no columns)</small></div>
         </td>
     </tr>
 </thead>`
 
-const NOROWS = html`<tr class="empty">
-    <td colspan="1000">
+const EmptyRows = ({ colspan = 999 }) => html`<tr class="empty">
+    <td colspan=${colspan}>
         <div>
             <div>⌀</div>
             <small>(This table has no rows)</small>
@@ -165,10 +165,10 @@ export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
             })
         }}
     />`
-
+    const maxcolspan = 3 + (body?.schema?.names?.length ?? 1)
     const thead =
         body.schema == null || !body.schema?.names?.length
-            ? NOCOLS
+            ? html`<${EmptyCols} colspan=${maxcolspan} />`
             : html`<thead>
                   <tr class="schema-names">
                       ${["", ...body.schema.names].map((x) => html`<th>${x === "more" ? more(2) : x}</th>`)}
@@ -184,12 +184,12 @@ export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
                   (row) =>
                       html`<tr>
                           ${row === "more"
-                              ? html`<td class="pluto-tree-more-td" colspan="999">${more(1)}</td>`
+                              ? html`<td class="pluto-tree-more-td" colspan=${maxcolspan}>${more(1)}</td>`
                               : html`<th>${row[0]}</th>
                                     ${row[1].map((x) => html`<td>${x === "more" ? null : mimepair_output(x)}</td>`)}`}
                       </tr>`
               )
-            : NOROWS}
+            : html`<${EmptyRows} colspan=${maxcolspan} />`}
     </tbody>`
 
     return html`<table class="pluto-table" ref=${node_ref}>
