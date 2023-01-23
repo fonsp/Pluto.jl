@@ -231,7 +231,7 @@ These options will be passed as command line argument to newly launched processe
     compiled_modules::Union{Nothing,String} = COMPILED_MODULES_DEFAULT
 
     sysimage::Union{Nothing,String} = SYSIMAGE_DEFAULT
-    sysimage_native_code::Union{Nothing,String} = SYSIMAGE__NATIVE_CODE_DEFAULT
+    sysimage_native_code::Union{Nothing,String} = SYSIMAGE_NATIVE_CODE_DEFAULT
 
     banner::Union{Nothing,String} = BANNER_DEFAULT
     depwarn::Union{Nothing,String} = DEPWARN_DEFAULT
@@ -296,7 +296,7 @@ function from_flat_kwargs(;
         compile::Union{Nothing,String} = COMPILE_DEFAULT,
         compiled_modules::Union{Nothing,String} = COMPILED_MODULES_DEFAULT,
         sysimage::Union{Nothing,String} = SYSIMAGE_DEFAULT,
-        sysimage_native_code::Union{Nothing,String} = SYSIMAGE__NATIVE_CODE_DEFAULT,
+        sysimage_native_code::Union{Nothing,String} = SYSIMAGE_NATIVE_CODE_DEFAULT,
         banner::Union{Nothing,String} = BANNER_DEFAULT,
         depwarn::Union{Nothing,String} = DEPWARN_DEFAULT,
         optimize::Union{Nothing,Int} = OPTIMIZE_DEFAULT,
