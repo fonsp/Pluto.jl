@@ -132,15 +132,27 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
     return html`<pluto-tree class="collapsed ${body.type}" onclick=${onclick} ref=${node_ref}>${inner}</pluto-tree>`
 }
 
+const NOCOLS = html`<thead>
+    <tr class="empty">
+        <td colspan="1000">
+            <div>⌀ <small>(This table has no columns)</small></div>
+        </td>
+    </tr>
+</thead>`
+
+const NOROWS = html`<tr class="empty">
+    <td colspan="1000">
+        <div>
+            <div>⌀</div>
+            <small>(This table has no rows)</small>
+        </div>
+    </td>
+</tr>`
+
 export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     const node_ref = useRef(null)
-    console.log(body.rows, body.rows?.length ?? 0)
-    if ((body.rows?.length ?? 0) === 0) {
-        return html`<div>
-            <img style="width: 24px; height: 24px;" src="https://unpkg.com/ionicons@5.5.2/dist/svg/folder-open-outline.svg" /> This table has no data!
-        </div>`
-    }
+
     const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${persist_js_state} />`
     const more = (dim) => html`<${More}
         on_click_more=${() => {
@@ -155,8 +167,8 @@ export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
     />`
 
     const thead =
-        body.schema == null
-            ? null
+        body.schema == null || !body.schema?.names?.length
+            ? NOCOLS
             : html`<thead>
                   <tr class="schema-names">
                       ${["", ...body.schema.names].map((x) => html`<th>${x === "more" ? more(2) : x}</th>`)}
@@ -165,16 +177,19 @@ export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
                       ${["", ...body.schema.types].map((x) => html`<th>${x === "more" ? null : x}</th>`)}
                   </tr>
               </thead>`
+
     const tbody = html`<tbody>
-        ${body.rows.map(
-            (row) =>
-                html`<tr>
-                    ${row === "more"
-                        ? html`<td class="pluto-tree-more-td" colspan="999">${more(1)}</td>`
-                        : html`<th>${row[0]}</th>
-                              ${row[1].map((x) => html`<td>${x === "more" ? null : mimepair_output(x)}</td>`)}`}
-                </tr>`
-        )}
+        ${(body.rows?.length ?? 0) !== 0
+            ? body.rows.map(
+                  (row) =>
+                      html`<tr>
+                          ${row === "more"
+                              ? html`<td class="pluto-tree-more-td" colspan="999">${more(1)}</td>`
+                              : html`<th>${row[0]}</th>
+                                    ${row[1].map((x) => html`<td>${x === "more" ? null : mimepair_output(x)}</td>`)}`}
+                      </tr>`
+              )
+            : NOROWS}
     </tbody>`
 
     return html`<table class="pluto-table" ref=${node_ref}>
