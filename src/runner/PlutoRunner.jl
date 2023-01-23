@@ -1516,7 +1516,6 @@ const integrations = Integration[
 
             function table_data(x::Any, io::Context)
                 rows = Tables.rows(x)
-
                 my_row_limit = get_my_display_limit(x, 1, 0, io, table_row_display_limit, table_row_display_limit_increase)
 
                 # TODO: the commented line adds support for lazy loading columns, but it uses the same extra_items counter as the rows. So clicking More Rows will also give more columns, and vice versa, which isn't ideal. To fix, maybe use (objectid,dimension) as index instead of (objectid)?
@@ -1573,7 +1572,12 @@ const integrations = Integration[
             end
 
 
-            pluto_showable(::MIME"application/vnd.pluto.table+object", x::Any) = try Tables.rowaccess(x)::Bool && !isempty(x) catch; false end
+            #=
+            If the object we're trying to fileview provides rowaccess, let's try to show it. This is guaranteed to be fast
+            (while Table.rows() may be slow). If the object is a lazy iterator, the show method will probably crash and return text repr.
+            That's good because we don't want the show method of lazy iterators (e.g. database cursors) to be changing the (external)
+            iterator implicitly =#
+            pluto_showable(::MIME"application/vnd.pluto.table+object", x::Any) = try Tables.rowaccess(x)::Bool catch; false end
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::Type) = false
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:NamedTuple}) = false
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:Dict{Symbol,<:Any}}) = false

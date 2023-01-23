@@ -340,6 +340,18 @@ table.pluto-table .pluto-tree-more-td pluto-tree-more {
     max-width: 650px;
 }
 
+table.pluto-table tr.empty div {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    font-size: 1.5rem;
+    flex-flow: column nowrap;
+}
+table.pluto-table tr.empty small {
+    font-size: 0.5rem;
+}
+
 pluto-tree.collapsed p-v > pre {
     max-height: 2em;
     overflow-y: hidden;
