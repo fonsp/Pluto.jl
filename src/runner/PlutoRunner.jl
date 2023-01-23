@@ -1516,13 +1516,6 @@ const integrations = Integration[
 
             function table_data(x::Any, io::Context)
                 rows = Tables.rows(x)
-                if isempty(rows)
-                    return Dict{Symbol,Any}(
-                        :objectid => objectid2str(x),
-                        :schema => [],
-                        :rows => [],
-                    )
-                end
                 my_row_limit = get_my_display_limit(x, 1, 0, io, table_row_display_limit, table_row_display_limit_increase)
 
                 # TODO: the commented line adds support for lazy loading columns, but it uses the same extra_items counter as the rows. So clicking More Rows will also give more columns, and vice versa, which isn't ideal. To fix, maybe use (objectid,dimension) as index instead of (objectid)?
