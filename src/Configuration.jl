@@ -165,9 +165,15 @@ These options are not intended to be changed during normal use.
 end
 
 const COMPILE_DEFAULT = nothing
+const COMPILED_MODULES_DEFAULT = nothing
 const SYSIMAGE_DEFAULT = nothing
+const SYSIMAGE_NATIVE_CODE_DEFAULT = nothing
 const BANNER_DEFAULT = nothing
+const DEPWARN_DEFAULT = nothing
 const OPTIMIZE_DEFAULT = nothing
+const MIN_OPTLEVEL_DEFAULT = nothing
+const INLINE_DEFAULT = nothing
+const CHECK_BOUNDS_DEFAULT = nothing
 const MATH_MODE_DEFAULT = nothing
 const STARTUP_FILE_DEFAULT = "no"
 const HISTORY_FILE_DEFAULT = "no"
@@ -206,9 +212,15 @@ These options will be passed as command line argument to newly launched processe
 
 # Arguments
 - `compile::Union{Nothing,String} = $COMPILE_DEFAULT`
+- `compiled_modules::Union{Nothing,String} = $COMPILED_MODULES_DEFAULT`
 - `sysimage::Union{Nothing,String} = $SYSIMAGE_DEFAULT`
+- `sysimage_native_code::Union{Nothing,String} = $SYSIMAGE_NATIVE_CODE_DEFAULT`
 - `banner::Union{Nothing,String} = $BANNER_DEFAULT`
+- `depwarn::Union{Nothing,String} = $DEPWARN_DEFAULT`
 - `optimize::Union{Nothing,Int} = $OPTIMIZE_DEFAULT`
+- `min_optlevel::Union{Nothing,Int} = $MIN_OPTLEVEL_DEFAULT`
+- `inline::Union{Nothing,String} = $INLINE_DEFAULT`
+- `check_bounds::Union{Nothing,String} = $CHECK_BOUNDS_DEFAULT`
 - `math_mode::Union{Nothing,String} = $MATH_MODE_DEFAULT`
 - `startup_file::Union{Nothing,String} = "$STARTUP_FILE_DEFAULT"` By default, the startup file isn't loaded in notebooks.
 - `history_file::Union{Nothing,String} = "$HISTORY_FILE_DEFAULT"` By default, the history isn't loaded in notebooks.
@@ -216,9 +228,18 @@ These options will be passed as command line argument to newly launched processe
 """
 @option mutable struct CompilerOptions
     compile::Union{Nothing,String} = COMPILE_DEFAULT
+    compiled_modules::Union{Nothing,String} = COMPILED_MODULES_DEFAULT
+
     sysimage::Union{Nothing,String} = SYSIMAGE_DEFAULT
+    sysimage_native_code::Union{Nothing,String} = SYSIMAGE__NATIVE_CODE_DEFAULT
+
     banner::Union{Nothing,String} = BANNER_DEFAULT
+    depwarn::Union{Nothing,String} = DEPWARN_DEFAULT
+
     optimize::Union{Nothing,Int} = OPTIMIZE_DEFAULT
+    min_optlevel::Union{Nothing,Int} = MIN_OPTLEVEL_DEFAULT
+    inline::Union{Nothing,String} = INLINE_DEFAULT
+    check_bounds::Union{Nothing,String} = CHECK_BOUNDS_DEFAULT
     math_mode::Union{Nothing,String} = MATH_MODE_DEFAULT
 
     # notebook specified options
@@ -262,17 +283,26 @@ function from_flat_kwargs(;
         simulated_pkg_lag::Real = SIMULATED_PKG_LAG_DEFAULT,
         injected_javascript_data_url::String = INJECTED_JAVASCRIPT_DATA_URL_DEFAULT,
         on_event::Function = ON_EVENT_DEFAULT,
+
         require_secret_for_open_links::Bool = REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT,
         require_secret_for_access::Bool = REQUIRE_SECRET_FOR_ACCESS_DEFAULT,
+
         run_notebook_on_load::Bool = RUN_NOTEBOOK_ON_LOAD_DEFAULT,
         workspace_use_distributed::Bool = WORKSPACE_USE_DISTRIBUTED_DEFAULT,
         lazy_workspace_creation::Bool = LAZY_WORKSPACE_CREATION_DEFAULT,
         capture_stdout::Bool = CAPTURE_STDOUT_DEFAULT,
         workspace_custom_startup_expr::Union{Nothing,Expr} = WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT,
+
         compile::Union{Nothing,String} = COMPILE_DEFAULT,
+        compiled_modules::Union{Nothing,String} = COMPILED_MODULES_DEFAULT,
         sysimage::Union{Nothing,String} = SYSIMAGE_DEFAULT,
+        sysimage_native_code::Union{Nothing,String} = SYSIMAGE__NATIVE_CODE_DEFAULT,
         banner::Union{Nothing,String} = BANNER_DEFAULT,
+        depwarn::Union{Nothing,String} = DEPWARN_DEFAULT,
         optimize::Union{Nothing,Int} = OPTIMIZE_DEFAULT,
+        min_optlevel::Union{Nothing,Int} = MIN_OPTLEVEL_DEFAULT,
+        inline::Union{Nothing,String} = INLINE_DEFAULT,
+        check_bounds::Union{Nothing,String} = CHECK_BOUNDS_DEFAULT,
         math_mode::Union{Nothing,String} = MATH_MODE_DEFAULT,
         startup_file::Union{Nothing,String} = STARTUP_FILE_DEFAULT,
         history_file::Union{Nothing,String} = HISTORY_FILE_DEFAULT,
@@ -312,9 +342,15 @@ function from_flat_kwargs(;
     )
     compiler = CompilerOptions(;
         compile,
+        compiled_modules,
         sysimage,
+        sysimage_native_code,
         banner,
+        depwarn,
         optimize,
+        min_optlevel,
+        inline,
+        check_bounds,
         math_mode,
         startup_file,
         history_file,
