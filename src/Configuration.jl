@@ -165,6 +165,7 @@ These options are not intended to be changed during normal use.
 end
 
 const COMPILE_DEFAULT = nothing
+const PKGIMAGES_DEFAULT = nothing
 const COMPILED_MODULES_DEFAULT = nothing
 const SYSIMAGE_DEFAULT = nothing
 const SYSIMAGE_NATIVE_CODE_DEFAULT = nothing
@@ -212,6 +213,7 @@ These options will be passed as command line argument to newly launched processe
 
 # Arguments
 - `compile::Union{Nothing,String} = $COMPILE_DEFAULT`
+- `pkgimages::Union{Nothing,String} = $PKGIMAGES_DEFAULT`
 - `compiled_modules::Union{Nothing,String} = $COMPILED_MODULES_DEFAULT`
 - `sysimage::Union{Nothing,String} = $SYSIMAGE_DEFAULT`
 - `sysimage_native_code::Union{Nothing,String} = $SYSIMAGE_NATIVE_CODE_DEFAULT`
@@ -228,6 +230,7 @@ These options will be passed as command line argument to newly launched processe
 """
 @option mutable struct CompilerOptions
     compile::Union{Nothing,String} = COMPILE_DEFAULT
+    pkgimages::Union{Nothing,String} = PKGIMAGES_DEFAULT
     compiled_modules::Union{Nothing,String} = COMPILED_MODULES_DEFAULT
 
     sysimage::Union{Nothing,String} = SYSIMAGE_DEFAULT
@@ -294,6 +297,7 @@ function from_flat_kwargs(;
         workspace_custom_startup_expr::Union{Nothing,Expr} = WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT,
 
         compile::Union{Nothing,String} = COMPILE_DEFAULT,
+        pkgimages::Union{Nothing,String} = PKGIMAGES_DEFAULT,
         compiled_modules::Union{Nothing,String} = COMPILED_MODULES_DEFAULT,
         sysimage::Union{Nothing,String} = SYSIMAGE_DEFAULT,
         sysimage_native_code::Union{Nothing,String} = SYSIMAGE_NATIVE_CODE_DEFAULT,
@@ -342,6 +346,7 @@ function from_flat_kwargs(;
     )
     compiler = CompilerOptions(;
         compile,
+        pkgimages,
         compiled_modules,
         sysimage,
         sysimage_native_code,
