@@ -287,7 +287,62 @@ import Distributed
         @test comesbefore(run_order, 4, 3)
     end
 
-    
+    @testset "Cleanup of workspace variable" begin
+        notebook = Notebook([
+            Cell("x = 10000"),
+        ])
+
+        update_run!(🍭, notebook, notebook.cells[1:1])
+
+        @test haskey(WorkspaceManager.active_workspaces, notebook.notebook_id)
+        w = fetch(WorkspaceManager.active_workspaces[notebook.notebook_id])
+        oldmod = getproperty(Main, w.module_name)
+
+        setcode!(notebook.cells[begin], "")
+        update_run!(🍭, notebook, notebook.cells[1:1])
+
+        @test isdefined(oldmod, :x)
+        @test isnothing(getproperty(oldmod, :x))
+
+        newmod = getproperty(Main, w.module_name)
+        @test !isdefined(newmod, :x)
+    end
+
+    @testset "Cleanup only Pluto controlled modules" begin
+        notebook = Notebook([
+            Cell("""Core.eval(Main, :(
+                 module var\"Pluto#2443\"
+                    x = 1000
+                 end
+            ))"""),
+            Cell("import .Main.var\"Pluto#2443\": x"),
+            Cell("x"),
+        ])
+
+        update_run!(🍭, notebook, notebook.cells)
+        @test noerror(notebook.cells[1])
+        @test noerror(notebook.cells[2])
+        @test noerror(notebook.cells[3])
+
+        @test haskey(WorkspaceManager.active_workspaces, notebook.notebook_id)
+        w = fetch(WorkspaceManager.active_workspaces[notebook.notebook_id])
+        oldmod = getproperty(Main, w.module_name)
+
+        setcode!(notebook.cells[2], "")
+        setcode!(notebook.cells[3], "")
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test isdefined(oldmod, :x)
+        @test which(oldmod, :x) != oldmod
+        @test !isnothing(getproperty(oldmod, :x))
+
+        newmod = getproperty(Main, w.module_name)
+        @test !isdefined(newmod, :x)
+
+        @test !isnothing(Main.var"Pluto#2443".x)
+    end
+
     @testset "Mixed usings and reactivity" begin
         notebook = Notebook([
             Cell("a; using Dates"),

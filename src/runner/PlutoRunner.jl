@@ -82,15 +82,17 @@ const workspace_preamble = [
     :(show, showable, showerror, repr, string, print, println), # https://github.com/JuliaLang/julia/issues/18181
 ]
 
+const PLUTO_INNER_MODULE_NAME = Symbol("#___this_pluto_module_name")
+
 const moduleworkspace_count = Ref(0)
 function increment_current_module()::Symbol
     id = (moduleworkspace_count[] += 1)
     new_workspace_name = Symbol("workspace#", id)
 
-    new_module = Core.eval(Main, :(
+    Core.eval(Main, :(
         module $(new_workspace_name)
             $(workspace_preamble...)
-            const var"#___this_module_name" = $(new_workspace_name)
+            const $(PLUTO_INNER_MODULE_NAME) = $(new_workspace_name)
         end
     ))
 
@@ -121,8 +123,7 @@ We don't re-build the macro in every workspace, so we need to remove these refs 
 TODO? Don't remove the refs, but instead replace them with a new ref pointing to the new module?
 """
 function collect_and_eliminate_globalrefs!(ref::GlobalRef, mutable_ref_list=[])
-    test_mod_name = nameof(ref.mod) |> string
-    if startswith(test_mod_name, "workspace#")
+    if is_pluto_workspace(ref.mod)
         new_name = gensym(ref.name)
         push!(mutable_ref_list, ref.name => new_name)
         new_name
@@ -177,8 +178,8 @@ replace_pluto_properties_in_expr(::GiveMeCellID; cell_id, kwargs...) = cell_id
 replace_pluto_properties_in_expr(::GiveMeRerunCellFunction; rerun_cell_function, kwargs...) = rerun_cell_function
 replace_pluto_properties_in_expr(::GiveMeRegisterCleanupFunction; register_cleanup_function, kwargs...) = register_cleanup_function
 replace_pluto_properties_in_expr(expr::Expr; kwargs...) = Expr(expr.head, map(arg -> replace_pluto_properties_in_expr(arg; kwargs...), expr.args)...)
-replace_pluto_properties_in_expr(m::Module; kwargs...) = if startswith(string(nameof(m)), "workspace#")
-    Symbol("#___this_module_name")
+replace_pluto_properties_in_expr(m::Module; kwargs...) = if is_pluto_workspace(m)
+    PLUTO_INNER_MODULE_NAME
 else
     m
 end
@@ -715,10 +716,14 @@ function move_vars(
 
                 try
                     # We are clearing this variable from the notebook, so we need to find it's root
-                    # Just clearing out the definition in the old_module, besides giving an error (so that's what that `catch; end` is for)
+                    # If its root is "controlled" by Pluto's workspace system (and is not a package module for example),
+                    # we are just clearing out the definition in the old_module, besides giving an error
+                    # (so that's what that `catch; end` is for)
                     # will not actually free it from Julia, the older module will still have a reference.
                     module_to_remove_from = which(old_workspace, symbol)
-                    Core.eval(module_to_remove_from, :($(symbol) = nothing))
+                    if is_pluto_controlled(module_to_remove_from) && !isconst(module_to_remove_from, symbol)
+                        Core.eval(module_to_remove_from, :($(symbol) = nothing))
+                    end
                 catch; end # sometimes impossible, eg. when $symbol was constant
             end
         else
@@ -1680,8 +1685,37 @@ completion_detail(completion::BslashCompletion) =
         nothing
 
 function is_pluto_workspace(m::Module)
-    mod_name = nameof(m) |> string
-    startswith(mod_name, "workspace#")
+    isdefined(m, PLUTO_INNER_MODULE_NAME) &&
+        which(m, PLUTO_INNER_MODULE_NAME) == m
+end
+
+"""
+Returns wether the module is a pluto workspace or any of its ancestors is.
+
+For example, writing the following julia code in Pluto:
+
+```julia
+import Plots
+
+module A
+end
+```
+
+will give the following module tree:
+
+```
+Main                 (not pluto controlled)
+└── var"workspace#1" (pluto controlled)
+    └── A            (pluto controlled)
+└── var"workspace#2" (pluto controlled)
+    └── A            (pluto controlled)
+Plots                (not pluto controlled)
+```
+"""
+function is_pluto_controlled(m::Module)
+    is_pluto_workspace(m) && return true
+    parent = parentmodule(m)
+    parent != m && is_pluto_controlled(parent)
 end
 
 function completions_exported(cs::Vector{<:Completion})
