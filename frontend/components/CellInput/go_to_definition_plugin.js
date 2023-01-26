@@ -151,6 +151,16 @@ export const go_to_definition_plugin = ViewPlugin.fromClass(
                         let variable_from = Number(cell_variable.getAttribute("data-cell-variable-from"))
                         let variable_to = Number(cell_variable.getAttribute("data-cell-variable-to"))
 
+                        if (variable_name == null || variable_from == null || variable_to == null) {
+                            return false
+                        }
+
+                        if (!(has_ctrl_or_cmd_pressed(event) || view.state.readOnly)) {
+                            return false
+                        }
+
+                        event.preventDefault()
+
                         view.dispatch({
                             scrollIntoView: true,
                             selection: { anchor: variable_from, head: variable_to },
