@@ -1938,8 +1938,14 @@ function transform_bond_value(s::Symbol, value_from_js)
     return try
         transform_value_ref[](element, value_from_js)
     catch e
-        @error "AbstractPlutoDingetjes: Bond value transformation errored." exception=(e, catch_backtrace())
-        (Text("❌ AbstractPlutoDingetjes: Bond value transformation errored."), e, stacktrace(catch_backtrace()), value_from_js)
+        @error "🚨 AbstractPlutoDingetjes: Bond value transformation errored." exception=(e, catch_backtrace())
+        (;
+            message=Text("🚨 AbstractPlutoDingetjes: Bond value transformation errored."), 
+            exception=Text(
+                sprint(showerror, e, stacktrace(catch_backtrace()))
+            ),
+            value_from_js,
+        )
     end
 end
 
