@@ -2014,8 +2014,8 @@ struct Bond
     Bond(element, defines::Symbol) = showable(MIME"text/html"(), element) ? new(element, defines, Base64.base64encode(rand(UInt8,9))) : error("""Can only bind to html-showable objects, ie types T for which show(io, ::MIME"text/html", x::T) is defined.""")
 end
 
-function create_bond(element, defines::Symbol)
-    push!(cell_registered_bond_names[currently_running_cell_id[]], defines)
+function create_bond(element, defines::Symbol, cell_id::UUID)
+    push!(cell_registered_bond_names[cell_id], defines)
     registered_bond_elements[defines] = element
     Bond(element, defines)
 end
@@ -2053,10 +2053,10 @@ The second cell will show the square of `x`, and is updated in real-time as the 
 macro bind(def, element)    
 	if def isa Symbol
 		quote
-            $(load_integrations_if_needed)()
+			$(load_integrations_if_needed)()
 			local el = $(esc(element))
-            global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : $(initial_value_getter_ref)[](el)
-			PlutoRunner.create_bond(el, $(Meta.quot(def)))
+			global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : $(initial_value_getter_ref)[](el)
+			PlutoRunner.create_bond(el, $(Meta.quot(def)), $(GiveMeCellID()))
 		end
 	else
 		:(throw(ArgumentError("""\nMacro example usage: \n\n\t@bind my_number html"<input type='range'>"\n\n""")))
