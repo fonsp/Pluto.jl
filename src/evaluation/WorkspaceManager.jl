@@ -596,7 +596,8 @@ function move_vars(
     to_delete::Set{Symbol},
     methods_to_delete::Set{Tuple{UUID,FunctionName}},
     module_imports_to_move::Set{Expr},
-    invalidated_cell_uuids::Set{UUID};
+    invalidated_cell_uuids::Set{UUID},
+    keep_registered::Set{Symbol}=Set{Symbol}();
     kwargs...
     )
 
@@ -611,6 +612,7 @@ function move_vars(
             $methods_to_delete,
             $module_imports_to_move,
             $invalidated_cell_uuids,
+            $keep_registered,
         )
     end)
 end

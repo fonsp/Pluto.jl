@@ -529,9 +529,6 @@ function run_expression(
     cell_published_objects[cell_id] = Dict{String,Any}()
 
     # reset registered bonds
-    for s in get(cell_registered_bond_names, cell_id, Set{Symbol}())
-        delete!(registered_bond_elements, s)
-    end
     cell_registered_bond_names[cell_id] = Set{Symbol}()
 
     # If the cell contains macro calls, we want those macro calls to preserve their identity,
@@ -683,6 +680,7 @@ function move_vars(
     methods_to_delete::Set{Tuple{UUID,Vector{Symbol}}},
     module_imports_to_move::Set{Expr},
     invalidated_cell_uuids::Set{UUID},
+    keep_registered::Set{Symbol},
 )
     old_workspace = getfield(Main, old_workspace_name)
     new_workspace = getfield(Main, new_workspace_name)
@@ -705,6 +703,10 @@ function move_vars(
     for symbol in old_names
         if (symbol ∈ vars_to_delete) || (symbol ∈ name_symbols_of_funcs_with_no_methods_left)
             # var will be redefined - unreference the value so that GC can snoop it
+
+            if haskey(registered_bond_elements, symbol) && symbol ∉ keep_registered
+                delete!(registered_bond_elements, symbol)
+            end
 
             # free memory for other variables
             # & delete methods created in the old module:
