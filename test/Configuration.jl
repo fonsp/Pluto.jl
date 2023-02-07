@@ -83,6 +83,8 @@ end
         ("edit?id=$(nb.notebook_id)", "GET"),
         ("notebookfile?id=$(nb.notebook_id)", "GET"),
         ("notebookexport?id=$(nb.notebook_id)", "GET"),
+        ("notebookexportmd?id=$(nb.notebook_id)", "GET"),
+        ("notebookexportorg?id=$(nb.notebook_id)", "GET"),
         ("statefile?id=$(nb.notebook_id)", "GET"),
     ]
 

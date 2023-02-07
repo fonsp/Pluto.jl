@@ -1400,6 +1400,8 @@ patch: ${JSON.stringify(
                             notebook_id=${this.state.notebook.notebook_id}
                             notebookfile_url=${this.export_url("notebookfile")}
                             notebookexport_url=${this.export_url("notebookexport")}
+                            notebookexportmd_url=${this.export_url("notebookexportmd")}
+                            notebookexportorg_url=${this.export_url("notebookexportorg")}
                             open=${export_menu_open}
                             onClose=${() => this.setState({ export_menu_open: false })}
                             start_recording=${() => this.setState({ recording_waiting_to_start: true })}

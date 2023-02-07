@@ -26,10 +26,16 @@ const Square = ({ fill }) => html`
     </svg>
 `
 
+const Pentagon = ({ fill }) => html`
+    <svg width="48" height="48" viewBox="0 0 48 48" style="height: .72em; width: .72em; margin-left: .3em; margin-right: .2em; margin-bottom: -.1em;">
+        <polygon points="38.1,43.4 9.9,43.4 1.2,16.6 24.0,0 46.8,16.6" fill=${fill} stroke="none" />
+    </svg>
+`
+
 //@ts-ignore
 window.enable_secret_pluto_recording = true
 
-export const ExportBanner = ({ notebook_id, onClose, notebookfile_url, notebookexport_url, start_recording }) => {
+export const ExportBanner = ({ notebook_id, onClose, notebookfile_url, notebookexport_url, notebookexportmd_url, notebookexportorg_url, start_recording }) => {
     // @ts-ignore
     const isDesktop = !!window.plutoDesktop
 
@@ -56,6 +62,14 @@ export const ExportBanner = ({ notebook_id, onClose, notebookfile_url, notebooke
                 <a href="#" class="export_card" onClick=${() => window.print()}>
                     <header><${Square} fill="#619b3d" /> Static PDF</header>
                     <section>A static <b>.pdf</b> file for print or email.</section>
+                </a>
+                <a href=${notebookexportmd_url} target="_blank" class="export_card" download="">
+                    <header><${Pentagon} fill="#5573d8" /> Markdown</header>
+                    <section>A <b>.md</b> file for easy sharing.</section>
+                </a>
+                <a href=${notebookexportorg_url} target="_blank" class="export_card" download="">
+                    <header><${Pentagon} fill="#77aa99" /> Org</header>
+                    <section>An <b>.org</b> file for further work.</section>
                 </a>
                 ${
                     //@ts-ignore

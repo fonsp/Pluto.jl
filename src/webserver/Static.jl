@@ -403,8 +403,40 @@ function http_router_for(session::ServerSession)
         end
     end
     HTTP.register!(router, "GET", "/notebookexport", serve_notebookexport)
-    
-    serve_notebookupload = with_authentication(; 
+
+    serve_notebookexportmd = with_authentication(;
+        required=security.require_secret_for_access ||
+        security.require_secret_for_open_links
+    ) do request::HTTP.Request
+        try
+            notebook = notebook_from_uri(request)
+            response = HTTP.Response(200, generate_md(notebook))
+            push!(response.headers, "Content-Type" => "text/markdown; charset=utf-8")
+            push!(response.headers, "Content-Disposition" => "inline; filename=\"$(basename(notebook.path)).md\"")
+            response
+        catch e
+            return error_response(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", sprint(showerror, e, stacktrace(catch_backtrace())))
+        end
+    end
+    HTTP.register!(router, "GET", "/notebookexportmd", serve_notebookexportmd)
+
+    serve_notebookexportorg = with_authentication(;
+        required=security.require_secret_for_access ||
+        security.require_secret_for_open_links
+    ) do request::HTTP.Request
+        try
+            notebook = notebook_from_uri(request)
+            response = HTTP.Response(200, generate_org(notebook))
+            push!(response.headers, "Content-Type" => "text/org; charset=utf-8")
+            push!(response.headers, "Content-Disposition" => "inline; filename=\"$(basename(notebook.path)).org\"")
+            response
+        catch e
+            return error_response(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", sprint(showerror, e, stacktrace(catch_backtrace())))
+        end
+    end
+    HTTP.register!(router, "GET", "/notebookexportorg", serve_notebookexportorg)
+
+    serve_notebookupload = with_authentication(;
         required=security.require_secret_for_access || 
         security.require_secret_for_open_links
     ) do request::HTTP.Request
