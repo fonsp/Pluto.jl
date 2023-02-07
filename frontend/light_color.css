@@ -32,6 +32,12 @@
         --export-card-text-color: rgba(0, 0, 0, 0.5);
         --export-card-shadow-color: #00000029;
 
+        /*Frontmatter styling*/
+        --frontmatter-button-bg-color: white;
+        --frontmatter-outline-color: hsl(230, 14%, 11%);
+        --frontmatter-input-bg-color: #fbfbfb;
+        --frontmatter-input-border-color: hsl(207deg 24% 87%);
+
         /*Pluto output styling */
         --pluto-schema-types-color: rgba(0, 0, 0, 0.4);
         --pluto-schema-types-border-color: rgba(0, 0, 0, 0.2);

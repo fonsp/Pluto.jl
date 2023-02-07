@@ -3320,22 +3320,65 @@ pluto-cell.hooked_up pluto-output {
 .pluto-frontmatter {
     font-family: var(--system-ui-font-stack);
     width: min(31rem, 90vw);
-    color: var(--black);
-    background: var(--white);
+    color: var(--export-color);
+    background: var(--export-bg-color);
+    border-radius: 1em;
+    padding: 1em 1.5em;
 }
 
 .pluto-frontmatter button {
     cursor: pointer;
+    background-color: var(--frontmatter-button-bg-color);
+    border-radius: 0.5em;
+    border: 2px solid var(--frontmatter-button-bg-color);
+    padding: 0.3em 0.5em;
+    font-weight: 500;
+}
+
+.pluto-frontmatter button:hover {
+    border-color: var(--frontmatter-input-border-color);
+}
+
+.pluto-frontmatter input {
+    background-color: var(--frontmatter-input-bg-color);
+    border-radius: 0.5em;
+    border: 2px solid var(--frontmatter-input-border-color);
+    padding: 0.3em 0.5em;
+}
+
+.pluto-frontmatter input:focus {
+    outline: none;
+}
+
+.pluto-frontmatter label {
+    text-transform: capitalize;
+    font-weight: 500;
 }
 
 .pluto-frontmatter .deletefield {
+    font-size: 1.1em;
+    color: var(--export-color);
     align-self: baseline;
+    background-color: transparent;
+    border-width: 0;
+    opacity: 0.6;
+    margin-left: -1em;
+    margin-top: -0.35em;
+}
+
+.pluto-frontmatter .deletefield:hover {
+    opacity: 1;
+}
+
+.pluto-frontmatter .deletefield:focus {
+    outline: none;
+    opacity: 1;
+    font-weight: bold;
 }
 
 .pluto-frontmatter .addentry {
     grid-column: 1/3;
     margin-top: 0.5em;
-    background-color: transparent;
 }
 
 .pluto-frontmatter .final {
