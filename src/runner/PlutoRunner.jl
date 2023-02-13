@@ -1864,7 +1864,7 @@ function doc_fetcher(query, workspace::Module)
     try
         parsed_query = Meta.parse(query; raise=false, depwarn=false)
 
-        doc_md = if Meta.isexpr(parsed_query, [:incomplete, :error]) && haskey(Docs.keywords, Symbol(query))
+        doc_md = if Meta.isexpr(parsed_query, (:incomplete, :error)) && haskey(Docs.keywords, Symbol(query))
             Docs.parsedoc(Docs.keywords[Symbol(query)])
         else
             binding = binding_from(parsed_query, workspace)
@@ -1876,32 +1876,7 @@ function doc_fetcher(query, workspace::Module)
                 doc_md = Markdown.parse(repr(doc_md))
             end
 
-            # Add suggestions results if no docstring was found
-            if parsed_query isa Symbol &&
-                !Docs.defined(binding) &&
-                doc_md isa Markdown.MD &&
-                haskey(doc_md.meta, :results) &&
-                isempty(doc_md.meta[:results])
-
-                suggestions = REPL.accessible(workspace)
-                suggestions_scores = map(s -> REPL.fuzzyscore(query, s), suggestions)
-                removed_indices = [i for (i, s) in enumerate(suggestions_scores) if s < 0]
-                deleteat!(suggestions_scores, removed_indices)
-                deleteat!(suggestions, removed_indices)
-
-                perm = sortperm(suggestions_scores; lt=Base.:>)
-                permute!(suggestions, perm)
-                links = map(s -> Suggestion(s, query), @view(suggestions[begin:min(end,DOC_SUGGESTION_LIMIT)]))
-
-                if length(links) > 0
-                    push!(doc_md.content,
-                          Markdown.HorizontalRule(),
-                          Markdown.Paragraph(["Similar result$(length(links) > 1 ? "s" : ""):"]),
-                          Markdown.List(links))
-                end
-            end
-
-            doc_md
+            improve_docs!(doc_md, parsed_query, binding)
         end
 
         (repr(MIME("text/html"), doc_md), :👍)
@@ -1910,6 +1885,52 @@ function doc_fetcher(query, workspace::Module)
     end
 end
 
+function improve_docs!(doc_md::Markdown.MD, query::Symbol, binding::Docs.Binding)
+    # Reverse latex search ("\scrH" -> "\srcH<tab>")
+
+    symbol = string(query)
+    latex = REPL.symbol_latex(symbol)
+
+    if !isempty(latex)
+        push!(doc_md.content,
+              Markdown.HorizontalRule(),
+              Markdown.Paragraph([
+                  "\"",
+                  Markdown.Code(symbol),
+                  "\" can be typed by \"",
+                  Markdown.Code(latex),
+                  Base.Docs.HTML("<kbd>&lt;tab&gt;</kbd>"),
+                  "\".",
+              ]))
+    end
+
+    # Add suggestions results if no docstring was found
+
+    if !Docs.defined(binding) &&
+        haskey(doc_md.meta, :results) &&
+        isempty(doc_md.meta[:results])
+
+        suggestions = REPL.accessible(binding.mod)
+        suggestions_scores = map(s -> REPL.fuzzyscore(symbol, s), suggestions)
+        removed_indices = [i for (i, s) in enumerate(suggestions_scores) if s < 0]
+        deleteat!(suggestions_scores, removed_indices)
+        deleteat!(suggestions, removed_indices)
+
+        perm = sortperm(suggestions_scores; rev=true)
+        permute!(suggestions, perm)
+        links = map(s -> Suggestion(s, symbol), @view(suggestions[begin:min(end,DOC_SUGGESTION_LIMIT)]))
+
+        if length(links) > 0
+            push!(doc_md.content,
+                  Markdown.HorizontalRule(),
+                  Markdown.Paragraph(["Similar result$(length(links) > 1 ? "s" : ""):"]),
+                  Markdown.List(links))
+        end
+    end
+
+    doc_md
+end
+improve_docs!(other, _, _) = other
 
 
 
@@ -2386,7 +2407,6 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     # Save the default output streams.
     default_stdout = stdout
     default_stderr = stderr
-
     # Redirect both the `stdout` and `stderr` streams to a single `Pipe` object.
     pipe = Pipe()
     Base.link_pipe!(pipe; reader_supports_async = true, writer_supports_async = true)
