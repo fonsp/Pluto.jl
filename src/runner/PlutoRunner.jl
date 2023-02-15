@@ -1864,7 +1864,7 @@ function doc_fetcher(query, workspace::Module)
     try
         parsed_query = Meta.parse(query; raise=false, depwarn=false)
 
-        doc_md = if Meta.isexpr(parsed_query, (:incomplete, :error)) && haskey(Docs.keywords, Symbol(query))
+        doc_md = if Meta.isexpr(parsed_query, (:incomplete, :error, :return)) && haskey(Docs.keywords, Symbol(query))
             Docs.parsedoc(Docs.keywords[Symbol(query)])
         else
             binding = binding_from(parsed_query, workspace)
