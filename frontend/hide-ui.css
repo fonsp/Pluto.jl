@@ -19,7 +19,8 @@ pluto-runarea,
 /* These next rules only apply to @media print, i.e. the PDF export. We want to hide these items in the PDF, but not in a static HTML. */
 @media print {
     .edit_or_run,
-    pkg-status-mark {
+    pkg-status-mark,
+    nav#undo_delete {
         display: none !important;
     }
 }
