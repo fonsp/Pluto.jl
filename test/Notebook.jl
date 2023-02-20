@@ -274,6 +274,13 @@ end
         @test !isdefined(m, :skipped_var)
         @test !isdefined(m, :dependent_var)
         @test m.non_skipped_var == 15
+
+        # Test that `load_notebook` doesn't break commented out cells
+        load_notebook(nb.path)
+        m = ingredients(nb.path)
+        @test !isdefined(m, :skipped_var)
+        @test !isdefined(m, :dependent_var)
+        @test m.non_skipped_var == 15
         
         nb.cells[1].metadata["skip_as_script"] = false
         update_skipped_cells_dependency!(nb)
@@ -283,6 +290,7 @@ end
         @test m.skipped_var == 10
         @test m.non_skipped_var == 15        
         @test m.dependent_var == 11
+
         
         WorkspaceManager.unmake_workspace((🍭, nb); verbose=false)
     end
