@@ -146,7 +146,7 @@ function run(session::ServerSession)
 
     on_shutdown() = @sync begin
         # Triggered by HTTP.jl
-        @info("\n\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈\n\n")
+        @info("\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈\n\n")
         # TODO: put do_work tokens back 
         @async swallow_exception(() -> close(serversocket), Base.IOError)
         for client in values(session.connected_clients)
@@ -177,21 +177,27 @@ function run(session::ServerSession)
                                 # This stream contains data received over the WebSocket.
                                 # It is formatted and MsgPack-encoded by send(...) in PlutoConnection.js
                                 local parentbody = nothing
+                                local did_read = false
                                 try
                                     parentbody = unpack(message)
-
+                                    
                                     let
                                         lag = session.options.server.simulated_lag
                                         (lag > 0) && sleep(lag * (0.5 + rand())) # sleep(0) would yield to the process manager which we dont want
                                     end
-
+                                    
+                                    did_read = true
                                     process_ws_message(session, parentbody, clientstream)
                                 catch ex
                                     if ex isa InterruptException || ex isa HTTP.WebSockets.WebSocketError || ex isa EOFError
                                         # that's fine!
                                     else
-                                        bt = stacktrace(catch_backtrace())
-                                        @warn "Reading WebSocket client stream failed for unknown reason:" parentbody exception = (ex, bt)
+                                        bt = catch_backtrace()
+                                        if did_read
+                                            @warn "Processing message failed for unknown reason:" parentbody exception = (ex, bt)
+                                        else
+                                            @warn "Reading WebSocket client stream failed for unknown reason:" parentbody exception = (ex, bt)
+                                        end
                                     end
                                 end
                             end
@@ -287,7 +293,7 @@ function run(session::ServerSession)
     end
 
     # Start this in the background, so that the first notebook launch (which will trigger registry update) will be faster
-    @asynclog withtoken(pkg_token) do
+    initial_registry_update_task = @asynclog withtoken(pkg_token) do
         will_update = !PkgCompat.check_registry_age()
         PkgCompat.update_registries(; force = false)
         will_update && println("    Updating registry done ✓")
@@ -295,17 +301,19 @@ function run(session::ServerSession)
 
     try
         # create blocking call and switch the scheduler back to the server task, so that interrupts land there
-        wait(server)
-    catch e
-        if e isa InterruptException
-            close(server)
-        elseif e isa TaskFailedException
-            @debug "Error is " exception = e stacktrace = catch_backtrace()
-            # nice!
-        else
-            rethrow(e)
+        while isopen(server)
+            sleep(.1)
         end
+    catch e
+        println()
+        println()
+        close(server)
+        wait(server)
+        wait(initial_registry_update_task)
+        (e isa InterruptException) || rethrow(e)
     end
+    
+    nothing
 end
 precompile(run, (ServerSession, HTTP.Handlers.Router{Symbol("##001")}))
 

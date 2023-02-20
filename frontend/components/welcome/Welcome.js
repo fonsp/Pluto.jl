@@ -7,6 +7,8 @@ import { new_update_message } from "../../common/NewUpdateMessage.js"
 import { Open } from "./Open.js"
 import { Recent } from "./Recent.js"
 import { Featured } from "./Featured.js"
+import { get_environment } from "../../common/Environment.js"
+import default_featured_sources from "../../featured_sources.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../../common/Environment.js"
@@ -14,17 +16,32 @@ import { Featured } from "./Featured.js"
 /**
  * @typedef NotebookListEntry
  * @type {{
- *  notebook_id: String,
- *  path: String,
- *  in_temp_dir: Boolean,
- *  shortpath: String,
+ *  notebook_id: string,
+ *  path: string,
+ *  in_temp_dir: boolean,
+ *  shortpath: string,
+ * }}
+ */
+
+/**
+ * @typedef LaunchParameters
+ * @type {{
+ * featured_direct_html_links: boolean,
+ * featured_sources: import("./Featured.js").FeaturedSource[]?,
+ * featured_source_url?: string,
+ * featured_source_integrity?: string,
  * }}
  */
 
 // We use a link from the head instead of directing linking "img/logo.svg" because parcel does not bundle preact files
 const url_logo_big = document.head.querySelector("link[rel='pluto-logo-big']")?.getAttribute("href") ?? ""
 
-export const Welcome = () => {
+/**
+ * @param {{
+ * launch_params: LaunchParameters,
+ * }} props
+ */
+export const Welcome = ({ launch_params }) => {
     const [remote_notebooks, set_remote_notebooks] = useState(/** @type {Array<NotebookListEntry>} */ ([]))
 
     const [connected, set_connected] = useState(false)
@@ -56,7 +73,7 @@ export const Welcome = () => {
             set_connected(true)
 
             try {
-                const { default: environment } = await import(client.session_options.server.injected_javascript_data_url)
+                const environment = await get_environment(client)
                 const { custom_recent, custom_filepicker, show_samples = true } = environment({ client, editor: this, imports: { preact } })
                 set_extended_components((old) => ({
                     ...old,
@@ -69,32 +86,81 @@ export const Welcome = () => {
             new_update_message(client)
 
             // to start JIT'ting
+            client.send("current_time")
             client.send("completepath", { query: "" }, {})
         })
     }, [])
 
     const { show_samples, CustomRecent, CustomPicker } = extended_components
 
+    // When block_screen_with_this_text is null (default), all is fine. When it is a string, we show a big banner with that text, and disable all other UI. https://github.com/fonsp/Pluto.jl/pull/2292
+    const [block_screen_with_this_text, set_block_screen_with_this_text] = useState(/** @type {string?} */ (null))
+    const on_start_navigation = (value, expect_navigation = true) => {
+        if (expect_navigation) {
+            // Instead of calling set_block_screen_with_this_text(value) directly, we wait for the beforeunload to happen, and then we do it. If this event does not happen within 1 second, then that means that the user right-clicked, or Ctrl+Clicked (to open in a new tab), and we don't want to clear the main menu. https://github.com/fonsp/Pluto.jl/issues/2301
+            const handler = (e) => {
+                set_block_screen_with_this_text(value)
+            }
+            window.addEventListener("beforeunload", handler)
+            setTimeout(() => window.removeEventListener("beforeunload", handler), 1000)
+        } else {
+            set_block_screen_with_this_text(value)
+        }
+    }
+
+    /**
+     * These are the sources from which we will download the featured notebook titles and metadata.
+     * @type {import("./Featured.js").FeaturedSource[]}
+     */
+    const featured_sources = preact.useMemo(
+        () =>
+            // Option 1: configured directly
+            launch_params.featured_sources ??
+            // Option 2: configured through url and integrity strings
+            (launch_params.featured_source_url
+                ? [{ url: launch_params.featured_source_url, integrity: launch_params.featured_source_integrity }]
+                : // Option 3: default
+                  default_featured_sources.sources),
+        [launch_params]
+    )
+
+    if (block_screen_with_this_text != null) {
+        return html`
+            <div class="navigating-away-banner">
+                <h2>Loading ${block_screen_with_this_text}...</h2>
+            </div>
+        `
+    }
+
     return html`
         <section id="title">
             <h1>welcome to <img src=${url_logo_big} /></h1>
-            <!-- <a id="github" href="https://github.com/fonsp/Pluto.jl"
-                ><img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/logo-github.svg"
-            /></a> -->
         </section>
         <section id="mywork">
             <div>
-                <${Recent} client=${client_ref.current} connected=${connected} remote_notebooks=${remote_notebooks} CustomRecent=${CustomRecent} />
+                <${Recent}
+                    client=${client_ref.current}
+                    connected=${connected}
+                    remote_notebooks=${remote_notebooks}
+                    CustomRecent=${CustomRecent}
+                    on_start_navigation=${on_start_navigation}
+                />
             </div>
         </section>
         <section id="open">
             <div>
-                <${Open} client=${client_ref.current} connected=${connected} CustomPicker=${CustomPicker} show_samples=${show_samples} />
+                <${Open}
+                    client=${client_ref.current}
+                    connected=${connected}
+                    CustomPicker=${CustomPicker}
+                    show_samples=${show_samples}
+                    on_start_navigation=${on_start_navigation}
+                />
             </div>
         </section>
         <section id="featured">
             <div>
-                <${Featured} />
+                <${Featured} sources=${featured_sources} direct_html_links=${launch_params.featured_direct_html_links} />
             </div>
         </section>
     `

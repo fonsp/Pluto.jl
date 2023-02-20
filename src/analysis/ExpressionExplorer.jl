@@ -141,13 +141,17 @@ function get_assignees(ex::Expr)::FunctionName
             # e.g. (x, y) in the ex (x, y) = (1, 23)
             args = ex.args
         end
-        union!(Symbol[], get_assignees.(args)...)
+        union!(Symbol[], Iterators.map(get_assignees, args)...)
         # filter(s->s isa Symbol, ex.args)
     elseif ex.head == :(::)
         # TODO: type is referenced
         get_assignees(ex.args[1])
     elseif ex.head == :ref || ex.head == :(.)
         Symbol[]
+    elseif ex.head == :...
+        # Handles splat assignments. e.g. _, y... = 1:5
+        args = ex.args
+        union!(Symbol[], Iterators.map(get_assignees, args)...)
     else
         @warn "unknown use of `=`. Assignee is unrecognised." ex
         Symbol[]
@@ -545,12 +549,7 @@ function explore_struct!(ex::Expr, scopestate::ScopeState)
 end
 
 function explore_abstract!(ex::Expr, scopestate::ScopeState)
-    equiv_func = Expr(:function, ex.args...)
-    inner_symstate = explore!(equiv_func, scopestate)
-
-    abstracttypename = first(keys(inner_symstate.funcdefs)).name |> join_funcname_parts
-    push!(inner_symstate.assignments, abstracttypename)
-    return inner_symstate
+    explore_struct!(Expr(:struct, false, ex.args[1], Expr(:block, nothing)), scopestate)
 end
 
 function explore_function_macro!(ex::Expr, scopestate::ScopeState)
@@ -568,7 +567,7 @@ function explore_function_macro!(ex::Expr, scopestate::ScopeState)
     # Macro are called using @funcname, but defined with funcname. We need to change that in our scopestate
     # (The `!= 0` is for when the function named couldn't be parsed)
     if ex.head == :macro && length(funcname) != 0
-        funcname = Symbol[Symbol("@$(funcname[1])")]
+        funcname = Symbol[Symbol('@', funcname[1])]
         push!(innerscopestate.hiddenglobals, only(funcname))
     elseif length(funcname) == 1
         push!(scopestate.definedfuncs, funcname[end])
@@ -1241,7 +1240,7 @@ end
 
 function collect_implicit_usings(ex::Expr)
     if is_implicit_using(ex)
-        Set{Expr}(transform_dot_notation.(ex.args))
+        Set{Expr}(Iterators.map(transform_dot_notation, ex.args))
     else
         return Set{Expr}()
     end
@@ -1291,7 +1290,7 @@ function external_package_names(ex::Expr)::Set{Symbol}
 end
 
 function external_package_names(x::UsingsImports)::Set{Symbol}
-    union!(Set{Symbol}(), external_package_names.(x.usings)..., external_package_names.(x.imports)...)
+    union!(Set{Symbol}(), Iterators.map(external_package_names, x.usings)..., Iterators.map(external_package_names, x.imports)...)
 end
 
 "Get the sets of `using Module` and `import Module` subexpressions that are contained in this expression."

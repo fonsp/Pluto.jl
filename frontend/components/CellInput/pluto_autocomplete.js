@@ -16,6 +16,7 @@ import {
 import { get_selected_doc_from_state } from "./LiveDocsFromCursor.js"
 import { cl } from "../../common/ClassTable.js"
 import { ScopeStateField } from "./scopestate_statefield.js"
+import { open_bottom_right_panel } from "../BottomRightPanel.js"
 
 let { autocompletion, completionKeymap, completionStatus, acceptCompletion } = autocomplete
 
@@ -64,6 +65,10 @@ const tabCompletionState = StateField.define({
 /** @param {EditorView} cm */
 const tab_completion_command = (cm) => {
     // This will return true if the autocomplete select popup is open
+    // To test the exception sink, uncomment these lines:
+    // if (Math.random() > 0.7) {
+    //     throw "LETS CRASH THIS"
+    // }
     if (acceptCompletion(cm)) {
         return true
     }
@@ -86,9 +91,10 @@ const tab_completion_command = (cm) => {
 let open_docs_if_autocomplete_is_open_command = (cm) => {
     let autocompletion_open = cm.state.field(completionState, false)?.open ?? false
     if (autocompletion_open) {
-        window.dispatchEvent(new CustomEvent("open_live_docs"))
+        open_bottom_right_panel("docs")
         return true
     }
+    return false
 }
 
 /** @param {EditorView} cm */
@@ -142,14 +148,22 @@ let match_latex_complete = (ctx) => ctx.matchBefore(/\\[^\s"'.`]*/)
 let match_symbol_complete = (ctx) => ctx.matchBefore(/\.\:[^\s"'`()\[\].]*/)
 /** Are we matching exactly `~/`? */
 let match_expanduser_complete = (ctx) => ctx.matchBefore(/~\//)
+/** Are we matching inside a string */
+function match_string_complete(ctx) {
+    const tree = syntaxTree(ctx.state)
+    const node = tree.resolve(ctx.pos)
+    if (node == null || (node.name !== "TripleString" && node.name !== "String")) {
+        return false
+    }
+    return true
+}
 
 /** Use the completion results from the Julia server to create CM completion objects, but only for path completions (TODO: broken) and latex completions. */
 let julia_special_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (ctx) => {
-    let unicode_match = match_latex_complete(ctx) || match_expanduser_complete(ctx)
-    if (unicode_match == null) return null
-
     let to_complete = ctx.state.sliceDoc(0, ctx.pos)
     let { start, stop, results } = await request_autocomplete({ text: to_complete })
+
+    let should_apply_unicode_completion = !match_string_complete(ctx)
 
     return {
         from: start,
@@ -157,11 +171,11 @@ let julia_special_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ r
         // This is an important one when you not only complete, but also replace something.
         // @codemirror/autocomplete automatically filters out results otherwise >:(
         filter: false,
-        // TODO Add "detail" that shows the unicode character
-        // TODO Add "apply" with the unicode character so it autocompletes that immediately
-        options: results.map(([text], i) => {
+        options: results.map(([text, _, __, ___, ____, detail]) => {
             return {
                 label: text,
+                apply: detail && should_apply_unicode_completion ? detail : text,
+                detail: detail ?? undefined,
             }
         }),
         // TODO Do something docs_prefix ish when we also have the apply text
@@ -235,12 +249,13 @@ const julia_code_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ re
                 return {
                     label: text,
                     apply: text_to_apply,
-                    type: cl({
-                        c_notexported: !is_exported,
-                        [`c_${type_description}`]: type_description != null,
-                        [`completion_${completion_type}`]: completion_type != null,
-                        c_from_notebook: is_from_notebook,
-                    }),
+                    type:
+                        cl({
+                            c_notexported: !is_exported,
+                            [`c_${type_description}`]: type_description != null,
+                            [`completion_${completion_type}`]: completion_type != null,
+                            c_from_notebook: is_from_notebook,
+                        }) ?? undefined,
                     boost: 50 - i / results.length,
                 }
             }),
@@ -252,7 +267,7 @@ const julia_code_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ re
             ...results
                 .filter(([text]) => is_field_expression && override_text_to_apply_in_field_expression(text) != null)
                 .map(([text, type_description, is_exported], i) => {
-                    let text_to_apply = override_text_to_apply_in_field_expression(text)
+                    let text_to_apply = override_text_to_apply_in_field_expression(text) ?? ""
 
                     return {
                         label: text_to_apply,
@@ -269,15 +284,31 @@ const julia_code_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ re
     }
 }
 
+const pluto_completion_fetcher = (request_autocomplete) => {
+    const unicode_completions = julia_special_completions_to_cm(request_autocomplete)
+    const code_completions = julia_code_completions_to_cm(request_autocomplete)
+
+    return (ctx) => {
+        let unicode_match = match_latex_complete(ctx) || match_expanduser_complete(ctx)
+        if (unicode_match === null) {
+            return code_completions(ctx)
+        } else {
+            return unicode_completions(ctx)
+        }
+    }
+}
+
 const complete_anyword = async (ctx) => {
     const results_from_cm = await autocomplete.completeAnyWord(ctx)
+    if (results_from_cm === null) return null
+
     return {
         from: results_from_cm.from,
         options: results_from_cm.options.map(({ label }, i) => ({
             // See https://github.com/codemirror/codemirror.next/issues/788 about `type: null`
             label,
             apply: label,
-            type: null,
+            type: undefined,
             boost: 0 - i,
         })),
     }
@@ -303,7 +334,7 @@ const local_variables_completion = (ctx) => {
                 // See https://github.com/codemirror/codemirror.next/issues/788 about `type: null`
                 label: name,
                 apply: name,
-                type: null,
+                type: undefined,
                 boost: 99 - i,
             })),
     }
@@ -311,7 +342,7 @@ const local_variables_completion = (ctx) => {
 
 /**
  * @typedef PlutoAutocompleteResults
- * @type {{ start: number, stop: number, results: Array<[string, (string | null), boolean, boolean, (string | null)]> }}
+ * @type {{ start: number, stop: number, results: Array<[string, (string | null), boolean, boolean, (string | null), (string | null)]> }}
  *
  * @typedef PlutoRequestAutocomplete
  * @type {(options: { text: string }) => Promise<PlutoAutocompleteResults>}
@@ -347,15 +378,16 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
         autocompletion({
             activateOnTyping: false,
             override: [
-                julia_special_completions_to_cm(memoize_last_request_autocomplete),
-                julia_code_completions_to_cm(memoize_last_request_autocomplete),
+                pluto_completion_fetcher(memoize_last_request_autocomplete),
+                // julia_special_completions_to_cm(memoize_last_request_autocomplete),
+                // julia_code_completions_to_cm(memoize_last_request_autocomplete),
                 complete_anyword,
                 // TODO: Disabled because of performance problems, see https://github.com/fonsp/Pluto.jl/pull/1925. Remove `complete_anyword` once fixed. See https://github.com/fonsp/Pluto.jl/pull/2013
                 // local_variables_completion,
             ],
             defaultKeymap: false, // We add these manually later, so we can override them if necessary
             maxRenderedOptions: 512, // fons's magic number
-            optionClass: (c) => c.type,
+            optionClass: (c) => c.type ?? "",
         }),
 
         // If there is just one autocomplete result, apply it directly

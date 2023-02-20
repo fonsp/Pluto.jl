@@ -89,9 +89,19 @@ section#open {
     border-radius: 0.6rem;
     margin: 1rem;
     /* border: 0.3rem solid #d6e0d8; */
+}
+
+#new.desktop_opener {
     display: flex;
-    flex-direction: column;
-    align-content: stretch;
+    flex-direction: row;
+    align-content: center;
+    justify-content: space-around;
+    box-shadow: none;
+    position: relative;
+}
+
+#new.desktop_opener .desktop_picker {
+    width: 100%;
 }
 
 section {
@@ -103,8 +113,10 @@ section {
 
 section > div {
     margin: 1rem 1rem;
-    max-width: 614px; /* margin: auto; */
+    max-width: 614px;
+    /* margin: auto; */
     flex: 1 1 auto;
+    min-width: 0;
 }
 
 .pluto-logo {

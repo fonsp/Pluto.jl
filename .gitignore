@@ -17,3 +17,6 @@ frontend/dist
 .net
 net
 frontend/package-lock.json
+
+# PProf
+profile.pb.gz

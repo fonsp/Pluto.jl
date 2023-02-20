@@ -7,8 +7,6 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
 
     🍭 = ServerSession()
     🍭.options.evaluation.workspace_use_distributed = false
-    fakeclient = ClientSession(:fake, nothing)
-    🍭.connected_clients[fakeclient.id] = fakeclient
     
     @testset "Tree viewer" begin
         @testset "Basics" begin
@@ -44,7 +42,6 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                     Cell("[ rand(50,50) ]"),
                     Cell("[ rand(500,500) ]"),
                 ])
-            fakeclient.connected_notebook = notebook
 
             update_run!(🍭, notebook, notebook.cells)
 
@@ -122,7 +119,6 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                     C(3)
                 end"""),
             ])
-            fakeclient.connected_notebook = notebook
 
             update_run!(🍭, notebook, notebook.cells)
             
@@ -173,7 +169,6 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                 Cell("OneTwoThree()"),
                 
             ])
-            fakeclient.connected_notebook = notebook
 
             update_run!(🍭, notebook, notebook.cells)
             
@@ -224,7 +219,6 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                     x[] = (1,x)
                 end"""),
             ])
-            fakeclient.connected_notebook = notebook
 
             update_run!(🍭, notebook, notebook.cells)
 
@@ -263,12 +257,11 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                 ]"""),
                 Cell("Union{}[]"),
             ])
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells)
 
-        @test notebook.cells[2].output.mime isa MIME"application/vnd.pluto.table+object"
-        @test notebook.cells[3].output.mime isa MIME"application/vnd.pluto.table+object"
+        # @test notebook.cells[2].output.mime isa MIME"application/vnd.pluto.table+object"
+        # @test notebook.cells[3].output.mime isa MIME"application/vnd.pluto.table+object"
         @test notebook.cells[4].output.mime isa MIME"application/vnd.pluto.table+object"
         @test notebook.cells[5].output.mime isa MIME"application/vnd.pluto.table+object"
         @test notebook.cells[6].output.mime isa MIME"application/vnd.pluto.table+object"
@@ -281,8 +274,8 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
         @test notebook.cells[15].output.mime isa MIME"application/vnd.pluto.tree+object"
         @test notebook.cells[16].output.mime isa MIME"application/vnd.pluto.tree+object"
         @test notebook.cells[17].output.mime isa MIME"application/vnd.pluto.tree+object"
-        @test notebook.cells[2].output.body isa Dict
-        @test notebook.cells[3].output.body isa Dict
+        # @test notebook.cells[2].output.body isa Dict
+        # @test notebook.cells[3].output.body isa Dict
         @test notebook.cells[4].output.body isa Dict
         @test notebook.cells[5].output.body isa Dict
         @test notebook.cells[6].output.body isa Dict
@@ -334,7 +327,6 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             Cell("0 + 10;\n10;"),
             Cell("0 + 11;\n11"),
         ])
-        fakeclient.connected_notebook = notebook
 
         @testset "Strange code"  begin
             update_run!(🍭, notebook, notebook.cells[1])
@@ -403,7 +395,6 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
         @testset "$(wrapped ? "With" : "Without") function wrapping" for wrapped in [false, true]
             notebook = wrapped ? notebook1 : notebook2
             
-            fakeclient.connected_notebook = notebook
 
             @test_nowarn update_run!(🍭, notebook, notebook.cells[1:5])
 

@@ -82,10 +82,16 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:([a..., b]), [:a, :b], [], [], [])
         @test testee(:(struct a; b; c; end), [], [:a], [], [
             :a => ([], [], [], [])
-            ])
+        ])
+        @test testee(:(abstract type a end), [], [:a], [], [
+            :a => ([], [], [], [])
+        ])
         @test testee(:(let struct a; b; c; end end), [], [:a], [], [
             :a => ([], [], [], [])
-            ])
+        ])
+        @test testee(:(let abstract type a end end), [], [:a], [], [
+            :a => ([], [], [], [])
+        ])
 
         @test testee(:(module a; f(x) = x; z = r end), [], [:a], [], [])
     end
@@ -127,6 +133,15 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(struct a{A,B<:C{A}}; i::A; j::B end), [], [:a], [], [:a => ([:C], [], [], [])])
         @test testee(:(struct a{A,B<:C{<:A}} <: D{A,B}; i::A; j::B end), [], [:a], [], [:a => ([:C, :D], [], [], [])])
         @test testee(:(struct a{A,DD<:B.C{D.E{A}}} <: K.A{A} i::A; j::DD; k::C end), [], [:a], [], [:a => ([:B, :C, :D, :K], [], [], [])])
+        
+        @test testee(:(abstract type a <: b end), [], [:a], [], [:a => ([:b], [], [], [])])
+        @test testee(:(abstract type a{T,S} end), [], [:a], [], [:a => ([], [], [], [])])
+        @test testee(:(abstract type a{T} <: b end), [], [:a], [], [:a => ([:b], [], [], [])])
+        @test testee(:(abstract type a{T} <: b{T} end), [], [:a], [], [:a => ([:b], [], [], [])])
+        @test testee(:(abstract type a end), [], [:a], [], [:a => ([], [], [], [])])
+        @test testee(:(abstract type a{A,B<:C{A}} end), [], [:a], [], [:a => ([:C], [], [], [])])
+        @test testee(:(abstract type a{A,B<:C{<:A}} <: D{A,B} end), [], [:a], [], [:a => ([:C, :D], [], [], [])])
+        @test testee(:(abstract type a{A,DD<:B.C{D.E{A}}} <: K.A{A} end), [], [:a], [], [:a => ([:B, :D, :K], [], [], [])])
         # @test_broken testee(:(struct a; c; a(x=y) = new(x,z); end), [], [:a], [], [:a => ([:y, :z], [], [], [])], verbose=false)
     end
     @testset "Assignment operator & modifiers" begin
@@ -139,7 +154,7 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(a[b,c,:] = d), [:a, :b, :c, :d, :(:)], [], [], [])
         @test testee(:(a.b = c), [:a, :c], [], [], [])
         @test testee(:(f(a, b=c, d=e; f=g)), [:a, :c, :e, :g], [], [:f], [])
-        
+
         @test testee(:(a += 1), [:a], [:a], [:+], [])
         @test testee(:(a >>>= 1), [:a], [:a], [:>>>], [])
         @test testee(:(a ⊻= 1), [:a], [:a], [:⊻], [])
@@ -185,6 +200,9 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(quote
             (a[i], b.r) = (c.d, 2)
         end, [:a, :b, :i, :c], [], [], [])
+        @test testee(quote
+            a, b... = 0:5
+        end, [],[:a, :b], [[:(:)]], [])
         @test testee(quote (; a, b) = x end, [:x], [:a, :b], [], [])
         @test testee(quote a = (b, c) end, [:b, :c], [:a], [], [])
 
@@ -295,6 +313,12 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(f(x, y=a + 1) = x * y * z), [], [], [], [
             :f => ([:z, :a], [], [:*, :+], [])
         ])
+        @test testee(:(f(x, y...) = y),[],[],[],[
+            :f => ([], [], [], [])
+        ])
+        @test testee(:(f((x, y...), z) = y),[],[],[],[
+            :f => ([], [], [], [])
+        ])
         @test testee(:(begin f() = 1; f end), [], [], [], [
             :f => ([], [], [], [])
         ])
@@ -312,6 +336,9 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         ])
         @test testee(:((x;p) -> f(x+p)), [], [], [], [
             :anon => ([], [], [:f, :+], [])
+        ])
+        @test testee(:(() -> Date), [], [], [], [
+            :anon => ([:Date], [], [], [])
         ])
         @test testee(:(begin x; p end -> f(x+p)), [], [], [], [
             :anon => ([], [], [:f, :+], [])
@@ -357,6 +384,8 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(funcs[i](b)), [:funcs, :i, :b], [], [], [])
         @test testee(:(f(a)(b)), [:a, :b], [], [:f], [])
         @test testee(:(f(a).b()), [:a], [], [:f], [])
+        @test testee(:(f(a...)),[:a],[],[:f],[])
+        @test testee(:(f(a, b...)),[:a, :b],[],[:f],[])
 
         @test testee(:(a.b(c)), [:a, :c], [], [[:a,:b]], [])
         @test testee(:(a.b.c(d)), [:a, :d], [], [[:a,:b,:c]], [])
@@ -739,5 +768,12 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test ExpressionExplorer.external_package_names(:(import Plots.A: b, c)) == Set([:Plots])
 
         @test ExpressionExplorer.external_package_names(Meta.parse("import Foo as Bar, Baz.Naz as Jazz")) == Set([:Foo, :Baz])
+    end
+
+    @testset "ReactiveNode" begin
+        rn = Pluto.ReactiveNode_from_expr(quote
+            () -> Date
+        end)
+        @test :Date ∈ rn.references
     end
 end

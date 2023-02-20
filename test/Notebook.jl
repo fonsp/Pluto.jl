@@ -190,11 +190,6 @@ end
     🍭 = ServerSession()
     for (name, nb) in nbs
         nb.path = tempname() * "é🧡💛.jl"
-
-        client = ClientSession(Symbol("client", rand(UInt16)), nothing)
-        client.connected_notebook = nb
-
-        🍭.connected_clients[client.id] = client
     end
 
     @testset "I/O basic" begin
@@ -209,8 +204,6 @@ end
     @testset "Cell Metadata" begin
         🍭 = ServerSession()
         🍭.options.evaluation.workspace_use_distributed = false
-        fakeclient = ClientSession(:fake, nothing)
-        🍭.connected_clients[fakeclient.id] = fakeclient
 
         @testset "Disabling & Metadata" begin
             nb = cell_metadata_notebook()
@@ -246,8 +239,6 @@ end
     @testset "Notebook Metadata" begin
         🍭 = ServerSession()
         🍭.options.evaluation.workspace_use_distributed = false
-        fakeclient = ClientSession(:fake, nothing)
-        🍭.connected_clients[fakeclient.id] = fakeclient
 
         nb = notebook_metadata_notebook()
         update_run!(🍭, nb, nb.cells)
@@ -273,8 +264,6 @@ end
     @testset "Skip as script" begin
         🍭 = ServerSession()
         🍭.options.evaluation.workspace_use_distributed = false
-        fakeclient = ClientSession(:fake, nothing)
-        🍭.connected_clients[fakeclient.id] = fakeclient
 
         nb = skip_as_script_notebook()
         update_run!(🍭, nb, nb.cells)
@@ -560,7 +549,7 @@ end
         end
     end
 
-    @testset "Import & export HTML" begin
+    @testset "Export HTML" begin
         nb = basic_notebook()
         nb.metadata["frontmatter"] = Dict{String,Any}(
             "title" => "My<Title",
@@ -569,6 +558,7 @@ end
         )
         export_html = replace(Pluto.generate_html(nb), "'" => "\"")
         
+        @test occursin("<pluto-editor", export_html)
         @test occursin("<title>My&lt;Title</title>", export_html)
         @test occursin("""<meta name="description" content="ccc">""", export_html)
         @test occursin("""<meta property="og:description" content="ccc">""", export_html)
@@ -589,6 +579,15 @@ end
         export_html = Pluto.generate_html(nb; notebookfile_js=filename)
         @test occursin(filename, export_html)
         @test_throws ArgumentError Pluto.embedded_notebookfile(export_html)
+        
+        
+        export_html = Pluto.generate_index_html()
+        @test occursin("</html>", export_html)
+        @test !occursin("<pluto-editor", export_html)
+        
+        export_html = Pluto.generate_index_html(; featured_direct_html_links=true, featured_sources_js="[{url:`./zozozo.json`}]")
+        
+        @test occursin("zozozo", export_html)
     end
 
     @testset "Utilities" begin

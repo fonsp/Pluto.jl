@@ -1,15 +1,16 @@
 import puppeteer from "puppeteer"
-import { waitForContent, lastElement, saveScreenshot, getTestScreenshotPath, waitForContentToBecome, setupPage } from "../helpers/common"
+import { waitForContent, lastElement, saveScreenshot, waitForContentToBecome, createPage } from "../helpers/common"
 import {
     createNewNotebook,
     getCellIds,
-    waitForCellOutput,
     waitForNoUpdateOngoing,
     getPlutoUrl,
     prewarmPluto,
     waitForCellOutputToChange,
     keyboardPressInPlutoInput,
     writeSingleLineInPlutoInput,
+    shutdownCurrentNotebook,
+    setupPlutoBrowser,
 } from "../helpers/pluto"
 
 const manuallyEnterCells = async (page, cells) => {
@@ -37,28 +38,16 @@ describe("PlutoNewNotebook", () => {
     /** @type {puppeteer.Page} */
     let page = null
     beforeAll(async () => {
-        browser = await puppeteer.launch({
-            headless: process.env.HEADLESS !== "false",
-            args: ["--no-sandbox", "--disable-setuid-sandbox"],
-            devtools: false,
-        })
-
-        let page = await browser.newPage()
-        setupPage(page)
-        await prewarmPluto(browser, page)
-        await page.close()
+        browser = await setupPlutoBrowser()
     })
     beforeEach(async () => {
-        page = await browser.newPage()
-        setupPage(page)
+        page = await createPage(browser)
         await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
         await createNewNotebook(page)
-        await page.waitForSelector("pluto-input", { visible: true })
     })
     afterEach(async () => {
-        await saveScreenshot(page, getTestScreenshotPath())
-        // @ts-ignore
-        await page.evaluate(() => window.shutdownNotebook?.())
+        await saveScreenshot(page)
+        await shutdownCurrentNotebook(page)
         await page.close()
         page = null
     })

@@ -47,7 +47,17 @@ function set_bond_values_reactive(;
     end
     to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}(syms_to_set))
 
-    run_reactive_async!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, user_requested_run=false, run_async=false, bond_value_pairs, kwargs...)
+    run_reactive_async!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, save=false, user_requested_run=false, run_async=false, bond_value_pairs, kwargs...)
+end
+
+"""
+Returns the names of all defined bonds
+"""
+function get_bond_names(session::ServerSession, notebook::Notebook)
+    cells_bond_names = map(notebook.cell_order) do cell_id
+        WorkspaceManager.get_bond_names((session,notebook), cell_id)
+    end
+    union!(Set{Symbol}(), cells_bond_names...)
 end
 
 """

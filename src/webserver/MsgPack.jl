@@ -37,10 +37,10 @@ MsgPack.to_msgpack(::MsgPack.NilType, ::Function) = nothing
 
 # We want typed integer arrays to arrive as JS typed integer arrays:
 const JSTypedIntSupport = [Int8, UInt8, Int16, UInt16, Int32, UInt32, Float32, Float64]
-JSTypedInt = Union{Int8,UInt8,Int16,UInt16,Int32,UInt32,Float32,Float64}
+const JSTypedInt = Union{Int8,UInt8,Int16,UInt16,Int32,UInt32,Float32,Float64}
 
 MsgPack.msgpack_type(::Type{Vector{T}}) where T <: JSTypedInt = MsgPack.ExtensionType()
-MsgPack.to_msgpack(::MsgPack.ExtensionType, x::Vector{T}) where T <: JSTypedInt = let
+function MsgPack.to_msgpack(::MsgPack.ExtensionType, x::Vector{T}) where T <: JSTypedInt
     type = findfirst(isequal(T), JSTypedIntSupport) + 0x10
     MsgPack.Extension(type, reinterpret(UInt8, x))
 end

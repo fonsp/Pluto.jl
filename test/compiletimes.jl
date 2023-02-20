@@ -16,8 +16,7 @@ let
     channel = Channel{Any}(10)
     Pluto.PlutoRunner.setup_plutologger(
         test_notebook_id, 
-        channel; 
-        make_global=false
+        channel,
     )
 end
 @timeit TOUT "PlutoRunner.run_expression" @eval Pluto.PlutoRunner.run_expression(Foo, Expr(:toplevel, :(1 + 1)), test_notebook_id, uuid1(), nothing);

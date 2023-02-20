@@ -1,17 +1,45 @@
 using Test
 import Pluto
-import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell
+import Pluto: update_run!, update_save_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell
 import Distributed
 
 @testset "Bonds" begin
 
     🍭 = ServerSession()
     🍭.options.evaluation.workspace_use_distributed = false
-    fakeclient = ClientSession(:fake, nothing)
-    🍭.connected_clients[fakeclient.id] = fakeclient
+    
+    @testset "Don't write to file" begin
+        notebook = Notebook([
+            Cell("""
+            @bind x html"<input>"
+            """),
+            Cell("x"),
+        ])
+        update_save_run!(🍭, notebook, notebook.cells)
+        
+        old_mtime = mtime(notebook.path)
+        setcode!(notebook.cells[2], "x #asdf")
+        update_save_run!(🍭, notebook, notebook.cells[2])
+        @test old_mtime != mtime(notebook.path)
+        
+        
+        old_mtime = mtime(notebook.path)
+        function set_bond_value(name, value, is_first_value=false)
+            notebook.bonds[name] = Dict("value" => value)
+            Pluto.set_bond_values_reactive(; session=🍭, notebook, bound_sym_names=[name],
+                is_first_values=[is_first_value],
+                run_async=false,
+            )
+        end
+        
+        set_bond_value(:x, 1, true)
+        @test old_mtime == mtime(notebook.path)
+        set_bond_value(:x, 2, false)
+        @test old_mtime == mtime(notebook.path)
+    end
     
     @testset "AbstractPlutoDingetjes.jl" begin
-        🍭.options.evaluation.workspace_use_distributed = true
+        🍭.options.evaluation.workspace_use_distributed = true # because we use AbstractPlutoDingetjes
         notebook = Notebook([
                 # 1
                 Cell("""
@@ -178,7 +206,6 @@ import Distributed
                 # 34
                 Cell("@bind pv5 PossibleValuesTest(1:10)"),
             ])
-        fakeclient.connected_notebook = notebook
         
         
         function set_bond_value(name, value, is_first_value=false)
@@ -326,9 +353,6 @@ import Distributed
 
     @testset "Dependent Bound Variables" begin
         🍭 = ServerSession()
-        🍭.options.evaluation.workspace_use_distributed = false
-        fakeclient = ClientSession(:fake, nothing)
-        🍭.connected_clients[fakeclient.id] = fakeclient
         🍭.options.evaluation.workspace_use_distributed = true
         notebook = Notebook([
             Cell(raw"""@bind x HTML("<input type=range min=1 max=10>")"""),
@@ -362,8 +386,10 @@ import Distributed
             Cell(raw"""hello2"""), #11
             Cell(raw"""using AbstractPlutoDingetjes"""),
         ])
-        fakeclient.connected_notebook = notebook
         update_run!(🍭, notebook, notebook.cells)
+
+        # Test the get_bond_names function
+        @test Pluto.get_bond_names(🍭, notebook) == Set([:a, :b, :x, :y])
 
         function set_bond_values!(notebook:: Notebook, bonds:: Dict; is_first_value=false)
             for (name, value) in bonds

@@ -1,5 +1,6 @@
 import _ from "../imports/lodash.js"
 import { html, useContext, useEffect, useMemo, useState } from "../imports/Preact.js"
+import { scroll_cell_into_view } from "./Scroller.js"
 
 export const useDelayed = (value, delay = 500) => {
     const [current, set_current] = useState(null)
@@ -75,10 +76,7 @@ export const ProgressBar = ({ notebook, backend_launch_phase, status }) => {
             if (!binder_loading) {
                 const running_cell = Object.values(notebook.cell_results).find((c) => c.running) ?? Object.values(notebook.cell_results).find((c) => c.queued)
                 if (running_cell) {
-                    document.getElementById(running_cell.cell_id)?.scrollIntoView({
-                        block: "center",
-                        behavior: "smooth",
-                    })
+                    scroll_cell_into_view(running_cell.cell_id)
                 }
             }
         }}

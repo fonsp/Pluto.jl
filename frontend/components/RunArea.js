@@ -3,8 +3,20 @@ import { html, useContext, useEffect, useMemo, useState } from "../imports/Preac
 
 import { in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
+import { open_pluto_popup } from "./Popup.js"
 
-export const RunArea = ({ runtime, running, queued, code_differs, on_run, on_interrupt, depends_on_disabled_cells, running_disabled, on_jump }) => {
+export const RunArea = ({
+    runtime,
+    running,
+    queued,
+    code_differs,
+    on_run,
+    on_interrupt,
+    set_cell_disabled,
+    depends_on_disabled_cells,
+    running_disabled,
+    on_jump,
+}) => {
     const on_save = on_run /* because disabled cells save without running */
 
     const local_time_running_ms = useMillisSinceTruthy(running)
@@ -27,9 +39,31 @@ export const RunArea = ({ runtime, running, queued, code_differs, on_run, on_int
         run: "Run cell",
     }
 
+    const on_double_click = (/** @type {MouseEvent} */ e) => {
+        console.log(running_disabled)
+        if (running_disabled)
+            open_pluto_popup({
+                type: "info",
+                source_element: /** @type {HTMLElement?} */ (e.target),
+                body: html`${`This cell is disabled. `}
+                    <a
+                        href="#"
+                        onClick=${(e) => {
+                            //@ts-ignore
+                            set_cell_disabled(false)
+
+                            e.preventDefault()
+                            window.dispatchEvent(new CustomEvent("close pluto popup"))
+                        }}
+                        >Enable this cell</a
+                    >
+                    ${` to run the code.`}`,
+            })
+    }
+
     return html`
         <pluto-runarea class=${action}>
-            <button onClick=${fmap[`on_${action}`]} class="runcell" title=${titlemap[action]}>
+            <button onDblClick=${on_double_click} onClick=${fmap[`on_${action}`]} class="runcell" title=${titlemap[action]}>
                 <span></span>
             </button>
             <span class="runtime">${prettytime(running ? local_time_running_ns ?? runtime : runtime)}</span>
@@ -37,7 +71,7 @@ export const RunArea = ({ runtime, running, queued, code_differs, on_run, on_int
     `
 }
 
-const prettytime = (time_ns) => {
+export const prettytime = (time_ns) => {
     if (time_ns == null) {
         return "---"
     }

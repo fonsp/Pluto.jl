@@ -35,8 +35,6 @@ end
         client = ClientSession(:buffery, buffer)
 
         🍭 = ServerSession()
-        # 🍭.connected_clients[client.id] = client
-
 
         notebook = Notebook([
             Cell(
@@ -152,8 +150,15 @@ end
     @testset "Docs" begin
         @test occursin("square root", Pluto.PlutoRunner.doc_fetcher("sqrt", Main)[1])
         @test occursin("square root", Pluto.PlutoRunner.doc_fetcher("Base.sqrt", Main)[1])
+        @test occursin("Functions are defined", Pluto.PlutoRunner.doc_fetcher("function", Main)[1])
+        @test occursin("Within a module", Pluto.PlutoRunner.doc_fetcher("module", Main)[1])
         @test occursin("No documentation found", Pluto.PlutoRunner.doc_fetcher("Base.findmeta", Main)[1])
-        
+        let
+            doc_output = Pluto.PlutoRunner.doc_fetcher("sor", Main)[1]
+            @test occursin("Similar results:", doc_output)
+            @test occursin("<b>s</b><b>o</b><b>r</b>tperm", doc_output)
+        end
+
         # Issue #1128
         # Ref https://docs.julialang.org/en/v1/manual/documentation/#Dynamic-documentation
         m = Module()
@@ -169,7 +174,7 @@ end
             global y
             end
         ))
-        
+
         @test occursin("Normal docstring", Pluto.PlutoRunner.doc_fetcher("MyType", m.DocTest)[1])
         @test occursin("Normal docstring", Pluto.PlutoRunner.doc_fetcher("DocTest.MyType", m)[1])
         @test occursin("Documentation for MyType with value", Pluto.PlutoRunner.doc_fetcher("x", m.DocTest)[1])
@@ -179,10 +184,8 @@ end
     end
 
     @testset "PlutoRunner API" begin
-        fakeclient = ClientSession(:fake, nothing)
         🍭 = ServerSession()
         🍭.options.evaluation.workspace_use_distributed = true
-        🍭.connected_clients[fakeclient.id] = fakeclient
 
         notebook = Notebook([
             Cell("PlutoRunner.notebook_id[] |> Text"),
@@ -203,7 +206,6 @@ end
             Cell("x = Dict(:a => 6)"),
             Cell("PlutoRunner.publish_to_js(x)"),
         ])
-        fakeclient.connected_notebook = notebook
 
         update_save_run!(🍭, notebook, notebook.cells)
         @test notebook.cells[1].output.body == notebook.notebook_id |> string

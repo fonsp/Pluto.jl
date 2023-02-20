@@ -17,6 +17,7 @@ using Sockets
 using Test
 using HTTP
 import Distributed
+import Pkg
 
 function Base.show(io::IO, s::SymbolsState)
     print(io, "SymbolsState([")
@@ -152,6 +153,18 @@ function occursinerror(needle, haystack::Pluto.Cell)
     haystack.errored && occursin(needle, haystack.output.body[:msg])
 end
 
+function expecterror(err, cell; strict=true)
+    cell.errored || return false
+    io = IOBuffer()
+    showerror(io, err)
+    msg = String(take!(io))
+    if strict
+        return cell.output.body[:msg] == msg
+    else
+        return occursin(msg, cell.output.body[:msg])
+    end
+end
+
 "Test notebook equality, ignoring cell UUIDs and such."
 macro test_notebook_inputs_equal(nbA, nbB, check_paths_equality::Bool=true)
     quote
@@ -234,3 +247,12 @@ function verify_no_running_processes()
         @error "Not all notebook processes were closed during tests!" Distributed.procs()
     end
 end
+
+# We have our own registry for these test! Take a look at https://github.com/JuliaPluto/PlutoPkgTestRegistry#readme for more info about the test packages and their dependencies.
+
+const pluto_test_registry_spec = Pkg.RegistrySpec(;
+    url="https://github.com/JuliaPluto/PlutoPkgTestRegistry", 
+    uuid=Base.UUID("96d04d5f-8721-475f-89c4-5ee455d3eda0"),
+    name="PlutoPkgTestRegistry",
+)
+

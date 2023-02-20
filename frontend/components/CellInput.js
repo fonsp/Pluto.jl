@@ -61,8 +61,9 @@ import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
 import { cl } from "../common/ClassTable.js"
 import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_line.js"
 import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
-import { debug_syntax_plugin } from "./CellInput/debug_syntax_plugin.js"
 import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
+import { mod_d_command } from "./CellInput/mod_d_command.js"
+import { open_bottom_right_panel } from "./BottomRightPanel.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 
@@ -369,13 +370,19 @@ export const CellInput = ({
     any_logs,
     show_logs,
     set_show_logs,
+    set_cell_disabled,
     cm_highlighted_line,
     metadata,
     global_definition_locations,
 }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     const { disabled: running_disabled, skip_as_script } = metadata
-
+    let [error, set_error] = useState(null)
+    if (error) {
+        const to_throw = error
+        set_error(null)
+        throw to_throw
+    }
     const newcm_ref = useRef(/** @type {EditorView?} */ (null))
     const dom_node_ref = useRef(/** @type {HTMLElement?} */ (null))
     const remote_code_ref = useRef(/** @type {string?} */ (null))
@@ -420,8 +427,11 @@ export const CellInput = ({
 
         let select_autocomplete_command = autocomplete.completionKeymap.find((keybinding) => keybinding.key === "Enter")
         let keyMapTab = (/** @type {EditorView} */ cm) => {
+            if (cm.state.readOnly) {
+                return false
+            }
             // This will return true if the autocomplete select popup is open
-            if (select_autocomplete_command?.run(cm)) {
+            if (select_autocomplete_command?.run?.(cm)) {
                 return true
             }
 
@@ -542,6 +552,8 @@ export const CellInput = ({
             { key: "Ctrl-Delete", run: keyMapDelete },
             { key: "Backspace", run: keyMapBackspace },
             { key: "Ctrl-Backspace", run: keyMapBackspace },
+
+            mod_d_command,
         ]
 
         let DOCS_UPDATER_VERBOSE = false
@@ -564,14 +576,10 @@ export const CellInput = ({
             }
         })
 
-        // TODO remove me
-        //@ts-ignore
-        window.tags = tags
         const usesDarkTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         const newcm = (newcm_ref.current = new EditorView({
             state: EditorState.create({
                 doc: local_code,
-
                 extensions: [
                     EditorView.theme({}, { dark: usesDarkTheme }),
                     // Compartments coming from react state/props
@@ -579,6 +587,7 @@ export const CellInput = ({
                     highlighted_line_compartment,
                     global_definitions_compartment,
                     editable_compartment,
+                    highlightLinePlugin(),
 
                     // This is waaaay in front of the keys it is supposed to override,
                     // Which is necessary because it needs to run before *any* keymap,
@@ -618,12 +627,16 @@ export const CellInput = ({
                     // Remove selection on blur
                     EditorView.domEventHandlers({
                         blur: (event, view) => {
+                            // collapse the selection into a single point
                             view.dispatch({
                                 selection: {
                                     anchor: view.state.selection.main.head,
-                                    head: view.state.selection.main.head,
                                 },
+                                scrollIntoView: false,
                             })
+                            // and blur the DOM again (because the previous transaction might have re-focused it)
+                            view.contentDOM.blur()
+
                             set_cm_forced_focus(null)
                         },
                     }),
@@ -635,7 +648,7 @@ export const CellInput = ({
                     EditorView.updateListener.of((update) => {
                         if (!update.docChanged) return
                         if (update.state.doc.length > 0 && update.state.sliceDoc(0, 1) === "?") {
-                            window.dispatchEvent(new CustomEvent("open_live_docs"))
+                            open_bottom_right_panel("docs")
                         }
                     }),
                     EditorState.tabSize.of(4),
@@ -693,6 +706,14 @@ export const CellInput = ({
                     // Enable this plugin if you want to see the lezer tree,
                     // and possible lezer errors and maybe more debug info in the console:
                     // debug_syntax_plugin,
+                    // Handle errors hopefully?
+                    EditorView.exceptionSink.of((exception) => {
+                        set_error(exception)
+                        console.error("EditorView exception!", exception)
+                        // alert(
+                        //     `We ran into an issue! We have lost your cursor 😞😓😿\n If this appears again, please press F12, then click the "Console" tab,  eport an issue at https://github.com/fonsp/Pluto.jl/issues`
+                        // )
+                    }),
                 ],
             }),
             parent: dom_node_ref.current,
@@ -818,12 +839,13 @@ export const CellInput = ({
                 any_logs=${any_logs}
                 show_logs=${show_logs}
                 set_show_logs=${set_show_logs}
+                set_cell_disabled=${set_cell_disabled}
             />
         </pluto-input>
     `
 }
 
-const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, running_disabled, any_logs, show_logs, set_show_logs }) => {
+const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, running_disabled, any_logs, show_logs, set_show_logs, set_cell_disabled }) => {
     const timeout = useRef(null)
     let pluto_actions = useContext(PlutoActionsContext)
     const [open, setOpen] = useState(false)
@@ -840,13 +862,7 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
     }
     const toggle_running_disabled = async (e) => {
         const new_val = !running_disabled
-        e.preventDefault()
-        e.stopPropagation()
-        await pluto_actions.update_notebook((notebook) => {
-            notebook.cell_inputs[cell_id].metadata["disabled"] = new_val
-        })
-        // we also 'run' the cell if it is disabled, this will make the backend propage the disabled state to dependent cells
-        await run_cell()
+        await set_cell_disabled(new_val)
     }
     const toggle_logs = () => set_show_logs(!show_logs)
 

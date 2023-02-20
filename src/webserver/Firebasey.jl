@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.9
+# v0.19.12
 
 using Markdown
 using InteractiveUtils
@@ -95,7 +95,7 @@ md"""
 abstract type JSONPatch end
 
 # ╔═╡ bd0d46bb-3e58-4522-bae0-83eb799196c4
-PatchPath = Vector
+const PatchPath = Vector
 
 # ╔═╡ db2d8a3e-2de1-11eb-02b8-9ffbfaeff61c
 struct AddPatch <: JSONPatch
@@ -227,11 +227,6 @@ function Base.convert(::Type{Dict}, patch::RemovePatch)
 	Dict{String,Any}("op" => "remove", "path" => patch.path)
 end
 
-# ╔═╡ fafcb8b8-cde9-4f99-9bab-8128025953a4
-function Base.convert(::Type{<:Dict}, patch::ReplacePatch)
-	Dict{String,Any}("op" => "replace", "path" => patch.path, "value" => patch.value)
-end
-
 # ╔═╡ 921a130e-b028-4f91-b077-3bd79dcb6c6d
 function Base.convert(::Type{JSONPatch}, patch_dict::Dict)
 	op = patch_dict["op"]
@@ -256,12 +251,6 @@ Base.convert(Dict, AddPatch([:x, :y], 10))
 # ╠═╡ skip_as_script = true
 #=╠═╡
 Base.convert(Dict, RemovePatch([:x, :y]))
-  ╠═╡ =#
-
-# ╔═╡ 7feeee3a-3aec-47ce-b8d7-74a0d9b0b381
-# ╠═╡ skip_as_script = true
-#=╠═╡
-Base.convert(Dict, ReplacePatch([:x, :y], 10))
   ╠═╡ =#
 
 # ╔═╡ 6d67f8a5-0e0c-4b6e-a267-96b34d580946
@@ -679,8 +668,7 @@ function getpath(value, path)
 		return value
 	end
 	
-	current = path[firstindex(path)]
-	rest = path[firstindex(path) + 1:end]
+	current, rest... = path
 	if value isa AbstractDict
 		key = force_convert_key(value, current)
 		getpath(getindex(value, key), rest)
@@ -703,13 +691,35 @@ end
 md"### applypatch! AddPatch"
   ╠═╡ =#
 
+# ╔═╡ d7ea6052-9d9f-48e3-92fb-250afd69e417
+begin
+    _convert(::Type{Base.UUID}, s::String) = Base.UUID(s)
+    _convert(::Type{T}, a::AbstractArray) where {T<:Array} = _convert.(eltype(T), a)
+    _convert(x, y) = convert(x, y)
+
+    function _convert(::Type{<:Dict}, patch::ReplacePatch)
+        Dict{String,Any}("op" => "replace", "path" => patch.path, "value" => patch.value)
+    end
+
+    function _setproperty!(x, f::Symbol, v)
+        type = fieldtype(typeof(x), f)
+        return setfield!(x, f, _convert(type, v))
+    end
+end
+
+# ╔═╡ 7feeee3a-3aec-47ce-b8d7-74a0d9b0b381
+# ╠═╡ skip_as_script = true
+#=╠═╡
+_convert(Dict, ReplacePatch([:x, :y], 10))
+  ╠═╡ =#
+
 # ╔═╡ dd87ca7e-2de1-11eb-2ec3-d5721c32f192
 function applypatch!(value, patch::AddPatch)
 	if length(patch.path) == 0
 		throw("Impossible")
 	else
 		last = patch.path[end]
-		rest = patch.path[firstindex(patch.path):end - 1]
+		rest = patch.path[begin:end - 1]
 		subvalue = getpath(value, rest)
 		if subvalue isa AbstractDict
 			key = force_convert_key(subvalue, last)
@@ -722,7 +732,7 @@ function applypatch!(value, patch::AddPatch)
 			if strict_applypatch[]
 				@assert getproperty(subvalue, key) === nothing
 			end
-			setproperty!(subvalue, key, patch.value)
+			_setproperty!(subvalue, key, patch.value)
 		end
 	end
 	return value
@@ -746,7 +756,7 @@ function applypatch!(value, patch::ReplacePatch)
 		throw("Impossible")
 	else
 		last = patch.path[end]
-		rest = patch.path[firstindex(patch.path):end - 1]
+		rest = patch.path[begin:end - 1]
 		subvalue = getpath(value, rest)
 		if subvalue isa AbstractDict
 			key = force_convert_key(subvalue, last)
@@ -759,7 +769,7 @@ function applypatch!(value, patch::ReplacePatch)
 			if strict_applypatch[]
 				@assert getproperty(subvalue, key) !== nothing
 			end
-			setproperty!(subvalue, key, patch.value)
+			_setproperty!(subvalue, key, patch.value)
 		end
 	end
 	return value
@@ -783,7 +793,7 @@ function applypatch!(value, patch::RemovePatch)
 		throw("Impossible")
 	else
 		last = patch.path[end]
-		rest = patch.path[firstindex(patch.path):end - 1]
+		rest = patch.path[begin:end - 1]
 		subvalue = getpath(value, rest)
 		if subvalue isa AbstractDict
 			key = force_convert_key(subvalue, last)
@@ -796,7 +806,7 @@ function applypatch!(value, patch::RemovePatch)
 			if strict_applypatch[]
 				@assert getproperty(subvalue, key) !== nothing
 			end
-			setproperty!(subvalue, key, nothing)
+			_setproperty!(subvalue, key, nothing)
 		end
 	end
 	return value
@@ -1038,7 +1048,7 @@ end
 
 # ╔═╡ 34d86e02-dd34-4691-bb78-3023568a5d16
 #=╠═╡
-@track Base.convert(JSONPatch, convert(Dict, replace_patch)) == replace_patch
+@track Base.convert(JSONPatch, _convert(Dict, replace_patch)) == replace_patch
   ╠═╡ =#
 
 # ╔═╡ 95ff676d-73c8-44cb-ac35-af94418737e9
@@ -1148,7 +1158,6 @@ end
 # ╟─07eeb122-6706-4544-a007-1c8d6581eec8
 # ╠═b48e2c08-a94a-4247-877d-949d92dde626
 # ╟─c59b30b9-f702-41f1-bb2e-1736c8cd5ede
-# ╠═fafcb8b8-cde9-4f99-9bab-8128025953a4
 # ╟─7feeee3a-3aec-47ce-b8d7-74a0d9b0b381
 # ╠═921a130e-b028-4f91-b077-3bd79dcb6c6d
 # ╟─6d67f8a5-0e0c-4b6e-a267-96b34d580946
@@ -1221,6 +1230,7 @@ end
 # ╠═48a45941-2489-4666-b4e5-88d3f82e5145
 # ╠═752b2da3-ff24-4758-8843-186368069888
 # ╟─3e285076-1d97-4728-87cf-f71b22569e57
+# ╠═d7ea6052-9d9f-48e3-92fb-250afd69e417
 # ╠═dd87ca7e-2de1-11eb-2ec3-d5721c32f192
 # ╟─c3e4738f-4568-4910-a211-6a46a9d447ee
 # ╟─a11e4082-4ff4-4c1b-9c74-c8fa7dcceaa6
