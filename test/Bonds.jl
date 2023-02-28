@@ -44,8 +44,7 @@ import Distributed
                 # 1
                 Cell("""
                 begin
-                    import AbstractPlutoDingetjes
-                    const APD = AbstractPlutoDingetjes
+                    import AbstractPlutoDingetjes as APD
                     import AbstractPlutoDingetjes.Bonds
                 end
                 """),
@@ -205,9 +204,13 @@ import Distributed
                 Cell("@bind pv4 PossibleValuesTest((x+1 for x in 1:10))"),
                 # 34
                 Cell("@bind pv5 PossibleValuesTest(1:10)"),
+
+                # 35 - https://github.com/fonsp/Pluto.jl/issues/2465
+                Cell(""),
+                Cell("@bind ts2465 TransformSlider()"),
+                Cell("ts2465"),
             ])
-        
-        
+
         function set_bond_value(name, value, is_first_value=false)
             notebook.bonds[name] = Dict("value" => value)
             Pluto.set_bond_values_reactive(; session=🍭, notebook, bound_sym_names=[name],
@@ -225,8 +228,7 @@ import Distributed
         @test notebook.cells[10].output.body == "missing"
         set_bond_value(:x_simple, 1, true)
         @test notebook.cells[10].output.body == "1"
-        
-        
+
         update_run!(🍭, notebook, notebook.cells)
 
         @test noerror(notebook.cells[1])
@@ -271,7 +273,7 @@ import Distributed
         @test noerror(notebook.cells[32])
         @test noerror(notebook.cells[33])
         @test noerror(notebook.cells[34])
-        @test length(notebook.cells) == 34
+        @test length(notebook.cells) == 37
         
         
         @test Pluto.possible_bond_values(🍭, notebook, :x_new) == [1,2,3]
@@ -326,8 +328,30 @@ import Distributed
         @test notebook.cells[25].output.body == "1"
         set_bond_value(:x_counter, 7, false)
         @test notebook.cells[25].output.body == "2"
-        
-        
+
+        # https://github.com/fonsp/Pluto.jl/issues/2465
+        update_run!(🍭, notebook, notebook.cells[35:37])
+
+        @test noerror(notebook.cells[35])
+        @test noerror(notebook.cells[36])
+        @test noerror(notebook.cells[37])
+        @test notebook.cells[37].output.body == "\"x\""
+        @test isempty(notebook.cells[35].code)
+
+        # this should not deregister the TransformSlider
+        setcode!(notebook.cells[35], notebook.cells[36].code)
+        setcode!(notebook.cells[36], "")
+
+        update_run!(🍭, notebook, notebook.cells[35:36])
+        @test noerror(notebook.cells[35])
+        @test noerror(notebook.cells[36])
+        @test notebook.cells[37].output.body == "\"x\""
+
+        set_bond_value(:ts2465, 2, false)
+        @test noerror(notebook.cells[35])
+        @test noerror(notebook.cells[36])
+        @test notebook.cells[37].output.body == "\"xx\""
+
         WorkspaceManager.unmake_workspace((🍭, notebook))
         🍭.options.evaluation.workspace_use_distributed = false
         

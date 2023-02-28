@@ -529,9 +529,6 @@ function run_expression(
     cell_published_objects[cell_id] = Dict{String,Any}()
 
     # reset registered bonds
-    for s in get(cell_registered_bond_names, cell_id, Set{Symbol}())
-        delete!(registered_bond_elements, s)
-    end
     cell_registered_bond_names[cell_id] = Set{Symbol}()
 
     # If the cell contains macro calls, we want those macro calls to preserve their identity,
@@ -683,6 +680,7 @@ function move_vars(
     methods_to_delete::Set{Tuple{UUID,Vector{Symbol}}},
     module_imports_to_move::Set{Expr},
     invalidated_cell_uuids::Set{UUID},
+    keep_registered::Set{Symbol},
 )
     old_workspace = getfield(Main, old_workspace_name)
     new_workspace = getfield(Main, new_workspace_name)
@@ -705,6 +703,10 @@ function move_vars(
     for symbol in old_names
         if (symbol ∈ vars_to_delete) || (symbol ∈ name_symbols_of_funcs_with_no_methods_left)
             # var will be redefined - unreference the value so that GC can snoop it
+
+            if haskey(registered_bond_elements, symbol) && symbol ∉ keep_registered
+                delete!(registered_bond_elements, symbol)
+            end
 
             # free memory for other variables
             # & delete methods created in the old module:
@@ -2012,8 +2014,8 @@ struct Bond
     Bond(element, defines::Symbol) = showable(MIME"text/html"(), element) ? new(element, defines, Base64.base64encode(rand(UInt8,9))) : error("""Can only bind to html-showable objects, ie types T for which show(io, ::MIME"text/html", x::T) is defined.""")
 end
 
-function create_bond(element, defines::Symbol)
-    push!(cell_registered_bond_names[currently_running_cell_id[]], defines)
+function create_bond(element, defines::Symbol, cell_id::UUID)
+    push!(cell_registered_bond_names[cell_id], defines)
     registered_bond_elements[defines] = element
     Bond(element, defines)
 end
@@ -2051,10 +2053,10 @@ The second cell will show the square of `x`, and is updated in real-time as the 
 macro bind(def, element)    
 	if def isa Symbol
 		quote
-            $(load_integrations_if_needed)()
+			$(load_integrations_if_needed)()
 			local el = $(esc(element))
-            global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : $(initial_value_getter_ref)[](el)
-			PlutoRunner.create_bond(el, $(Meta.quot(def)))
+			global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : $(initial_value_getter_ref)[](el)
+			PlutoRunner.create_bond(el, $(Meta.quot(def)), $(GiveMeCellID()))
 		end
 	else
 		:(throw(ArgumentError("""\nMacro example usage: \n\n\t@bind my_number html"<input type='range'>"\n\n""")))
