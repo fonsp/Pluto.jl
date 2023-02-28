@@ -1023,7 +1023,20 @@ format_output(::Nothing; context=default_iocontext) = ("", MIME"text/plain"())
 "Downstream packages can set this to false to obtain unprettified stack traces."
 const PRETTY_STACKTRACES = Ref(true)
 
+struct ParseError
+    dict::Dict{Symbol,Any}
+end
+
+function format_output(val::ParseError; context=default_iocontext)
+    # those get populated by the Pluto process in analysis/Parse.jl
+    val.dict, MIME"application/vnd.pluto.parseerror+object"()
+end
+
 function format_output(val::CapturedException; context=default_iocontext)
+    if val.ex isa ParseError
+        return format_output(val.ex; context)
+    end
+
     stacktrace = if PRETTY_STACKTRACES[]
         ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
         stack = [s for (s, _) in val.processed_bt]

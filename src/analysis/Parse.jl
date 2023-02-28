@@ -1,10 +1,45 @@
 import .ExpressionExplorer
+import JuliaSyntax
 
 "Generate a file name to be given to the parser (will show up in stack traces)."
 pluto_filename(notebook::Notebook, cell::Cell)::String = notebook.path * "#==#" * string(cell.cell_id)
 
 "Is Julia new enough to support filenames in parsing?"
 const can_insert_filename = (Base.parse_input_line("1;2") != Base.parse_input_line("1\n2"))
+
+# @codemirror/lint has only three levels
+function convert_julia_syntax_level(level)
+    level == :error   ? "error" :
+    level == :warning ? "warning" : "info"
+end
+
+function convert_diagnostic_to_dict(source, diag)
+    # JuliaSyntax uses `last_byte < first_byte` to signal an empty range.
+    # https://github.com/JuliaLang/JuliaSyntax.jl/blob/97e2825c68e770a3f56f0ec247deda1a8588070c/src/diagnostics.jl#L67-L75
+    # it references the byte range as such: `source[first_byte:last_byte]` whereas codemirror
+    # is non inclusive, therefore we move the `last_byte` to the next valid character in the string,
+    # an empty range then becomes `from == to`, also JuliaSyntax is one based whereas code-mirror is zero-based
+    # but this is handled in `map_byte_range_to_utf16_codepoints` with `u16 = 0` initially.
+    first_byte = min(diag.first_byte, lastindex(source) + 1)
+    last_byte = min(nextind(source, diag.last_byte), lastindex(source) + 1)
+
+    from, to = map_byte_range_to_utf16_codepoints(source, first_byte, last_byte)
+
+    Dict(:from => from,
+         :to => to,
+         :message => diag.message,
+         :level => convert_julia_syntax_level(diag.level))
+end
+
+function convert_parse_error_to_dict(ex)
+   Dict(
+       :source => ex.source.code,
+       :diagnostics => [
+           convert_diagnostic_to_dict(ex.source.code, diag)
+           for diag in ex.diagnostics
+       ]
+   )
+end
 
 """
 Parse the code from `cell.code` into a Julia expression (`Expr`). Equivalent to `Meta.parse_input_line` in Julia v1.3, no matter the actual Julia version.
@@ -18,13 +53,25 @@ function parse_custom(notebook::Notebook, cell::Cell)::Expr
     # 1.
     raw = if can_insert_filename
         filename = pluto_filename(notebook, cell)
-        ex = Base.parse_input_line(cell.code, filename=filename)
-        if (ex isa Expr) && (ex.head == :toplevel)
+        #ex = Base.parse_input_line(cell.code, filename=filename)
+        ex = try
+            JuliaSyntax.parseall(Expr, cell.code; filename=filename)
+        catch ex
+            if !(ex isa JuliaSyntax.ParseError)
+                rethrow()
+            end
+            ex
+        end
+        if Meta.isexpr(ex, :toplevel)
             # if there is more than one expression:
             if count(a -> !(a isa LineNumberNode), ex.args) > 1
                 Expr(:error, "extra token after end of expression\n\nBoundaries: $(expression_boundaries(cell.code))")
             else
                 ex
+            end
+        elseif ex isa JuliaSyntax.ParseError
+            quote
+                throw(PlutoRunner.ParseError($(convert_parse_error_to_dict(ex))))
             end
         else
             ex
@@ -73,6 +120,135 @@ function fix_linenumbernodes!(ex::Expr, actual_filename)
     end
 end
 fix_linenumbernodes!(::Any, actual_filename) = nothing
+
+
+"""
+    map_byte_range_to_utf16_codepoints(s::String, start_byte::Int, end_byte::Int)::Tuple{Int,Int}
+
+Taken from `Base.transcode(::Type{UInt16}, src::Vector{UInt8})`
+but without line constraints. It also does not support invalid
+UTF-8 encoding which `String` should never be anyway.
+
+This maps the given raw byte range `(start_byte, end_byte)` range to UTF-16 codepoints indices.
+
+The resulting range can then be used by code-mirror on the frontend, quoting from the code-mirror docs:
+
+> Character positions are counted from zero, and count each line break and UTF-16 code unit as one unit.
+
+Examples:
+```julia
+                                           123
+                                             vv
+julia> map_byte_range_to_utf16_codepoints("abc", 2, 3)
+(2, 3)
+
+                                           1122
+                                           v   v
+julia> map_byte_range_to_utf16_codepoints("🍕🍕", 1, 8)
+(1, 4)
+
+                                           11233
+                                           v  v
+julia> map_byte_range_to_utf16_codepoints("🍕c🍕", 1, 5)
+(1, 3)
+```
+"""
+function map_byte_range_to_utf16_codepoints(s::String, start_byte, end_byte)
+    invalid_utf8() = error("invalid UTF-8 string")
+    codeunit(s) == UInt8 || invalid_utf8()
+
+    i, n = 1, ncodeunits(s)
+    u16 = 0
+
+    from, to = -1, -1
+
+    if i == start_byte
+        from = u16
+    end
+    if i == end_byte
+        to = u16
+        return (from, to)
+    end
+
+    a = codeunit(s, 1)
+    while true
+        if i < n && -64 <= a % Int8 <= -12 # multi-byte character
+            i += 1
+            b = codeunit(s, i)
+            if -64 <= (b % Int8) || a == 0xf4 && 0x8f < b
+                # invalid UTF-8 (non-continuation of too-high code point)
+                invalid_utf8()
+            elseif a < 0xe0 # 2-byte UTF-8
+                if i == start_byte
+                    from = u16
+                end
+                if i == end_byte
+                    to = u16
+                    break
+                end
+            elseif i < n # 3/4-byte character
+                i += 1
+                c = codeunit(s, i)
+                if -64 <= (c % Int8) # invalid UTF-8 (non-continuation)
+                    invalid_utf8()
+                elseif a < 0xf0 # 3-byte UTF-8
+                    if i == start_byte
+                        from = u16
+                    end
+                    if i == end_byte
+                        to = u16
+                        break
+                    end
+                elseif i < n
+                    i += 1
+                    d = codeunit(s, i)
+                    if -64 <= (d % Int8) # invalid UTF-8 (non-continuation)
+                        invalid_utf8()
+                    elseif a == 0xf0 && b < 0x90 # overlong encoding
+                        invalid_utf8()
+                    else # 4-byte UTF-8 && 2 codeunits UTF-16
+                        u16 += 1
+                        if i == start_byte
+                            from = u16
+                        end
+                        if i == end_byte
+                            to = u16
+                            break
+                        end
+                    end
+                else # too short
+                    invalid_utf8()
+                end
+            else # too short
+                invalid_utf8()
+            end
+        else # ASCII or invalid UTF-8 (continuation byte or too-high code point)
+            if i == start_byte
+                from = u16
+            end
+            if i == end_byte
+                to = u16
+                break
+            end
+        end
+        u16 += 1
+        if i >= n
+            break
+        end
+        i += 1
+        a = codeunit(s, i)
+    end
+
+    if from == -1
+        from = u16
+    end
+    if to == -1
+        to = u16
+    end
+
+    return (from, to)
+end
+
 
 """Get the list of string indices that denote expression boundaries.
 

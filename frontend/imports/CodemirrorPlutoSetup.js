@@ -59,10 +59,14 @@ import {
     css,
     cssLanguage,
     selectNextOccurrence,
+    linter,
+    setDiagnostics,
     //@ts-ignore
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@0.28.4/dist/index.es.min.js"
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@0.28.5/dist/index.es.min.js"
 
 export {
+    linter,
+    setDiagnostics,
     EditorState,
     EditorSelection,
     Compartment,
