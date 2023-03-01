@@ -1895,12 +1895,11 @@ function improve_docs!(doc_md::Markdown.MD, query::Symbol, binding::Docs.Binding
         push!(doc_md.content,
               Markdown.HorizontalRule(),
               Markdown.Paragraph([
-                  "\"",
                   Markdown.Code(symbol),
-                  "\" can be typed by \"",
+                  " can be typed by ",
                   Markdown.Code(latex),
                   Base.Docs.HTML("<kbd>&lt;tab&gt;</kbd>"),
-                  "\".",
+                  ".",
               ]))
     end
 
