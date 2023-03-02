@@ -632,7 +632,8 @@ function is_nbpkg_equal(a::Union{Nothing,PkgContext}, b::Union{Nothing,PkgContex
     end
 end
 
-function with_io_setup(f::Function, notebook::Notebook, iolistener::IOListener)
+function with_io_setup(f::Function, notebook::Notebook, iolistener::IOListener; capture=false)
+    !capture && return f()
     startlistening(iolistener)
     PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
         withinteractive(false) do
