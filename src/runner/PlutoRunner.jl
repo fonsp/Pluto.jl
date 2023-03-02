@@ -2452,9 +2452,9 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
 end
 
 function with_logger_and_io_to_logs(f, logger; capture_stdout=true, stdio_loglevel=Logging.LogLevel(1))
-    Logging.with_logger(logger) do
+    # Logging.with_logger(logger) do
         with_io_to_logs(f; enabled=capture_stdout, loglevel=stdio_loglevel)
-    end
+    # end
 end
 
 function setup_plutologger(notebook_id::UUID, log_channel::Channel{Any})
