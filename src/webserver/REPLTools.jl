@@ -113,17 +113,24 @@ responses[:docs] = function response_docs(🙋::ClientRequest)
     # Expand string macro calls to their macro form:
     # `html"` should yield `@html_str` and
     # `Markdown.md"` should yield `@Markdown.md_str`. (Ideally `Markdown.@md_str` but the former is easier)
-    if endswith(query, "\"") && query != "\""
-        query = "@$(query[begin:end-1])_str"
+    if endswith(query, '"') && query != "\""
+        query = string("@", SubString(query, firstindex(query), prevind(query, lastindex(query))), "_str")
     end
 
-    doc_html, status = if (doc_md = Docs.doc(Docs.Binding(Base, Symbol(query)))) isa Markdown.MD &&
+    workspace = WorkspaceManager.get_workspace((🙋.session, 🙋.notebook); allow_creation=false)
+
+    query_as_symbol = Symbol(query)
+    base_binding = Docs.Binding(Base, query_as_symbol)
+    doc_md = Docs.doc(base_binding)
+
+    doc_html, status = if doc_md isa Markdown.MD &&
             haskey(doc_md.meta, :results) && !isempty(doc_md.meta[:results])
+
         # available in Base, no need to ask worker
+        PlutoRunner.improve_docs!(doc_md, query_as_symbol, base_binding)
+
         (repr(MIME("text/html"), doc_md), :👍)
     else
-        workspace = WorkspaceManager.get_workspace((🙋.session, 🙋.notebook); allow_creation=false)
-
         if will_run_code(🙋.notebook) && workspace isa WorkspaceManager.Workspace && isready(workspace.dowork_token)
             Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.doc_fetcher(
                 $query,
