@@ -2315,10 +2315,14 @@ struct PlutoCellLogger <: Logging.AbstractLogger
     log_channel::Channel{Any}
     cell_id::UUID
     workspace_count::Int # Used to invalidate previous logs
+    message_limits::Dict{Any,Int}
 end
 function PlutoCellLogger(notebook_id, cell_id)
     notebook_log_channel = pluto_log_channels[notebook_id]
-    PlutoCellLogger(nothing, notebook_log_channel, cell_id, moduleworkspace_count[])
+    PlutoCellLogger(nothing,
+                    notebook_log_channel, cell_id,
+                    moduleworkspace_count[],
+                    Dict{Any,Int}())
 end
 
 struct CaptureLogger <: Logging.AbstractLogger
@@ -2328,10 +2332,10 @@ struct CaptureLogger <: Logging.AbstractLogger
 end
 
 Logging.shouldlog(cl::CaptureLogger, args...) = Logging.shouldlog(cl.logger, args...)
-Logging.min_enabled_level(::CaptureLogger) = min(Logging.Debug, stdout_log_level)
-Logging.catch_exceptions(::CaptureLogger) = Logging.catch_exceptions(cl.logger)
-function Logging.handle_message(pl::CaptureLogger, level, msg, _module, group, id, file, line; kwargs...)
-    push!(pl.logs, (level, msg, _module, group, id, file, line, kwargs))
+Logging.min_enabled_level(cl::CaptureLogger) = Logging.min_enabled_level(cl.logger)
+Logging.catch_exceptions(cl::CaptureLogger) = Logging.catch_exceptions(cl.logger)
+function Logging.handle_message(cl::CaptureLogger, level, msg, _module, group, id, file, line; kwargs...)
+    push!(cl.logs, (level, msg, _module, group, id, file, line, kwargs))
 end
 
 
@@ -2362,6 +2366,16 @@ function Logging.handle_message(pl::PlutoCellLogger, level, msg, _module, group,
     # println("receiving msg from ", _module, " ", group, " ", id, " ", msg, " ", level, " ", line, " ", file)
     # println("with types: ", "_module: ", typeof(_module), ", ", "msg: ", typeof(msg), ", ", "group: ", typeof(group), ", ", "id: ", typeof(id), ", ", "file: ", typeof(file), ", ", "line: ", typeof(line), ", ", "kwargs: ", typeof(kwargs)) # thanks Copilot
 
+    # https://github.com/JuliaLang/julia/blob/eb2e9687d0ac694d0aa25434b30396ee2cfa5cd3/stdlib/Logging/src/ConsoleLogger.jl#L110-L115
+    if get(kwargs, :maxlog, nothing) isa Core.BuiltinInts
+        maxlog = kwargs[:maxlog]
+        remaining = get!(pl.message_limits, id, Int(maxlog)::Int)
+        pl.message_limits[id] = remaining - 1
+        if remaining <= 0
+            return
+        end
+    end
+
     try
 
         yield()
@@ -2374,7 +2388,7 @@ function Logging.handle_message(pl::PlutoCellLogger, level, msg, _module, group,
             "file" => string(file),
             "cell_id" => pl.cell_id,
             "line" => line isa Union{Int32,Int64} ? line : nothing,
-            "kwargs" => Tuple{String,Any}[(string(k), format_log_value(v)) for (k, v) in kwargs],
+            "kwargs" => Tuple{String,Any}[(string(k), format_log_value(v)) for (k, v) in kwargs if k != :maxlog],
         ))
 
         yield()
