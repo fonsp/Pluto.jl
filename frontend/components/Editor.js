@@ -35,6 +35,7 @@ import { HijackExternalLinksToOpenInNewTab } from "./HackySideStuff/HijackExtern
 import { FrontMatterInput } from "./FrontmatterInput.js"
 import { EditorLaunchBackendButton } from "./Editor/LaunchBackendButton.js"
 import { get_environment } from "../common/Environment.js"
+import { ListOfGlobals } from "./ListOfGlobals.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -1487,6 +1488,7 @@ patch: ${JSON.stringify(
                             )}
                     />
                     <${EditorLaunchBackendButton} editor=${this} launch_params=${launch_params} status=${status} />
+                    <${ListOfGlobals} notebook=${notebook} />
                     <${FrontMatterInput} 
                         remote_frontmatter=${notebook.metadata?.frontmatter} 
                         set_remote_frontmatter=${(newval) =>
