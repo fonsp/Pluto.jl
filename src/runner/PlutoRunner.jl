@@ -2360,6 +2360,8 @@ function Logging.shouldlog(logger::PlutoCellLogger, level, _module, _...)
         level == stdout_log_level
 end
 
+const BuiltinInts = @static isdefined(Core, :BuiltinInts) ? Core.BuiltinInts : Union{Bool, Int32, Int64, UInt32, UInt64, UInt8, Int128, Int16, Int8, UInt128, UInt16}
+
 Logging.min_enabled_level(::PlutoCellLogger) = min(Logging.Debug, stdout_log_level)
 Logging.catch_exceptions(::PlutoCellLogger) = false
 function Logging.handle_message(pl::PlutoCellLogger, level, msg, _module, group, id, file, line; kwargs...)
@@ -2367,7 +2369,7 @@ function Logging.handle_message(pl::PlutoCellLogger, level, msg, _module, group,
     # println("with types: ", "_module: ", typeof(_module), ", ", "msg: ", typeof(msg), ", ", "group: ", typeof(group), ", ", "id: ", typeof(id), ", ", "file: ", typeof(file), ", ", "line: ", typeof(line), ", ", "kwargs: ", typeof(kwargs)) # thanks Copilot
 
     # https://github.com/JuliaLang/julia/blob/eb2e9687d0ac694d0aa25434b30396ee2cfa5cd3/stdlib/Logging/src/ConsoleLogger.jl#L110-L115
-    if get(kwargs, :maxlog, nothing) isa Core.BuiltinInts
+    if get(kwargs, :maxlog, nothing) isa BuiltinInts
         maxlog = kwargs[:maxlog]
         remaining = get!(pl.message_limits, id, Int(maxlog)::Int)
         pl.message_limits[id] = remaining - 1
