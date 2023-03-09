@@ -12,6 +12,8 @@ const tiers = [
 
 const pkg_token = Token()
 
+_default_cleanup() = nothing
+
 # This list appears multiple times in our codebase. Be sure to match edits everywhere.
 function use_plutopkg(topology::NotebookTopology)
     !any(values(topology.nodes)) do node
@@ -54,7 +56,7 @@ function sync_nbpkg_core(
     old_topology::NotebookTopology, 
     new_topology::NotebookTopology; 
     on_terminal_output::Function=((args...) -> nothing), 
-    cleanup::Ref{Union{Function,Nothing}}=Ref{Union{Function,Nothing}}(nothing),
+    cleanup::Ref{Function}=Ref{Function}(_default_cleanup),
     lag::Real=0,
 )
     pkg_status = Status.report_business_started!(notebook.status_tree, :pkg)
@@ -300,7 +302,7 @@ In addition to the steps performed by [`sync_nbpkg_core`](@ref):
 - `try` `catch` and reset the package environment on failure.
 """
 function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topology::NotebookTopology; save::Bool=true, take_token::Bool=true)
-    cleanup = Ref{Union{Function,Nothing}}(nothing)
+    cleanup = Ref{Function}(_default_cleanup)
 	try
         Status.report_business_started!(notebook.status_tree, :pkg)
         
@@ -368,7 +370,7 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 
 		save && save_notebook(session, notebook)
 	finally
-        isnothing(cleanup[]) || cleanup[]()
+        cleanup[]()
         Status.report_business_finished!(notebook.status_tree, :pkg)
     end
 end
@@ -485,7 +487,7 @@ function update_nbpkg_core(
     notebook::Notebook; 
     level::Pkg.UpgradeLevel=Pkg.UPLEVEL_MAJOR, 
     on_terminal_output::Function=((args...) -> nothing),
-    cleanup::Ref{Union{Function,Nothing}}=Ref{Union{Function,Nothing}}(nothing),
+    cleanup::Ref{Function}=Ref{Function}(default_cleanup),
 )
     if notebook.nbpkg_ctx !== nothing
         PkgCompat.mark_original!(notebook.nbpkg_ctx)
@@ -556,7 +558,7 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
     bp = if backup && save
         writebackup(notebook)
     end
-    cleanup = Ref{Union{Function,Nothing}}(nothing)
+    cleanup = Ref{Function}(_default_cleanup)
 
     try
 		pkg_result = withtoken(notebook.executetoken) do
@@ -591,7 +593,7 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
             !isnothing(bp) && isfile(bp) && rm(bp)
         end
 	finally
-        isnothing(cleanup[]) || cleanup[]()
+        cleanup[]()
 		notebook.nbpkg_busy_packages = String[]
         update_nbpkg_cache!(notebook)
 		send_notebook_changes!(ClientRequest(; session, notebook))

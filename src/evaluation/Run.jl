@@ -349,7 +349,7 @@ function update_save_run!(
 	run_async::Bool=false, 
 	prerender_text::Bool=false, 
 	auto_solve_multiple_defs::Bool=false,
-	on_auto_solve_multiple_defs::Union{Nothing,Function}=nothing,
+	on_auto_solve_multiple_defs::Function=identity,
 	kwargs...
 )
 	old = notebook.topology
@@ -370,7 +370,7 @@ function update_save_run!(
 			new = notebook.topology = updated_topology(new, notebook, to_disable)
 		end
 		
-		isnothing(on_auto_solve_multiple_defs) || on_auto_solve_multiple_defs(to_disable_dict)
+		on_auto_solve_multiple_defs(to_disable_dict)
 	end
 
 	update_dependency_cache!(notebook)
