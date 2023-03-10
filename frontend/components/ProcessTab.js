@@ -3,6 +3,7 @@ import { html, useEffect, useRef, useState } from "../imports/Preact.js"
 import { cl } from "../common/ClassTable.js"
 import { prettytime, useMillisSinceTruthy } from "./RunArea.js"
 import { DiscreteProgressBar } from "./DiscreteProgressBar.js"
+import { PkgTerminalView } from "./PkgTerminalView.js"
 
 /**
  * @param {{
@@ -13,7 +14,7 @@ import { DiscreteProgressBar } from "./DiscreteProgressBar.js"
 export let ProcessTab = ({ notebook, my_clock_is_ahead_by }) => {
     return html`
         <section>
-            <${StatusItem} status_tree=${notebook.status_tree} my_clock_is_ahead_by=${my_clock_is_ahead_by} path=${[]} />
+            <${StatusItem} status_tree=${notebook.status_tree} path=${[]} my_clock_is_ahead_by=${my_clock_is_ahead_by} nbpkg=${notebook.nbpkg} />
         </section>
     `
 }
@@ -76,9 +77,10 @@ const to_ns = (x) => x * 1e9
  * status_tree: import("./Editor.js").StatusEntryData?,
  * path: string[],
  * my_clock_is_ahead_by: number,
+ * nbpkg: import("./Editor.js").NotebookPkgData?,
  * }} props
  */
-const StatusItem = ({ status_tree, path, my_clock_is_ahead_by }) => {
+const StatusItem = ({ status_tree, path, my_clock_is_ahead_by, nbpkg }) => {
     if (status_tree == null) return null
     const mystatus = path.reduce((entry, key) => entry.subtasks[key], status_tree)
     if (!mystatus) return null
@@ -129,7 +131,13 @@ const StatusItem = ({ status_tree, path, my_clock_is_ahead_by }) => {
             .map(([key, _subtask]) =>
                 blocklist.includes(key)
                     ? null
-                    : html`<${StatusItem} key=${key} status_tree=${status_tree} my_clock_is_ahead_by=${my_clock_is_ahead_by} path=${[...path, key]} />`
+                    : html`<${StatusItem}
+                          key=${key}
+                          status_tree=${status_tree}
+                          my_clock_is_ahead_by=${my_clock_is_ahead_by}
+                          path=${[...path, key]}
+                          nbpkg=${nbpkg}
+                      />`
             )
 
     const render_child_progress = () => {
@@ -179,7 +187,7 @@ const StatusItem = ({ status_tree, path, my_clock_is_ahead_by }) => {
                   <span class="status-name">${friendly_name(mystatus.name)}${inner_progress}</span>
                   <span class="status-time">${finished ? prettytime(to_ns(end - start)) : busy ? prettytime(to_ns(busy_time)) : null}</span>
               </div>
-              ${inner}
+              ${inner}${is_open && mystatus.name === "pkg" ? html`<${PkgTerminalView} value=${nbpkg?.terminal_outputs?.nbpkg_sync} />` : undefined}
           </pl-status>`
 }
 
