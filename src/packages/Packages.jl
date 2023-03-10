@@ -209,6 +209,8 @@ function sync_nbpkg_core(
                     Status.report_business_started!(pkg_status, :add)
                     start_time = time_ns()
                     with_io_setup(notebook, iolistener) do
+                        println(iolistener.buffer, "\nAdding packages...")
+                        
                         # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
                         PkgCompat.clear_auto_compat_entries!(notebook.nbpkg_ctx)
 
@@ -384,6 +386,7 @@ end
 function instantiate(notebook::Notebook, iolistener::IOListener)
     start_time = time_ns()
     with_io_setup(notebook, iolistener) do
+        println(iolistener.buffer, "\nInstantiating...")
         @debug "PlutoPkg: Instantiating" notebook.path 
         
         # update registries if this is the first time
@@ -413,6 +416,7 @@ end
 function resolve(notebook::Notebook, iolistener::IOListener)
     startlistening(iolistener)
     with_io_setup(notebook, iolistener) do
+        println(iolistener.buffer, "\nResolving...")
         @debug "PlutoPkg: Instantiating" notebook.path 
         Pkg.resolve(notebook.nbpkg_ctx)
     end
