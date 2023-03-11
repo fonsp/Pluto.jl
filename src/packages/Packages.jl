@@ -101,31 +101,34 @@ function sync_nbpkg_core(
         
         removed = setdiff(old_packages, new_packages)
         added = setdiff(new_packages, old_packages)
+        can_skip = isempty(removed) && isempty(added) && notebook.nbpkg_ctx_instantiated
 
         iolistener = let
             busy_packages = notebook.nbpkg_ctx_instantiated ? added : new_packages
-            IOListener(callback=(s -> on_terminal_output(busy_packages, s)))
+            report_to = ["nbpkg_sync", busy_packages...]
+            IOListener(callback=(s -> on_terminal_output(report_to, s)))
         end
         cleanup[] = () -> stoplistening(iolistener)
-        
-        # We remember which Pkg.Types.PreserveLevel was used. If it's too low, we will recommend/require a notebook restart later.
-        local used_tier = Pkg.PRESERVE_ALL
-        
-        if !isready(pkg_token)
-            println(iolistener.buffer, "Waiting for other notebooks to finish Pkg operations...")
-            trigger(iolistener)
-        end
 
-        can_skip = isempty(removed) && isempty(added) && notebook.nbpkg_ctx_instantiated
+
 
         Status.report_business_finished!(pkg_status, :analysis)
         
+        # We remember which Pkg.Types.PreserveLevel was used. If it's too low, we will recommend/require a notebook restart later.
+        local used_tier = Pkg.PRESERVE_ALL
         if !can_skip
+            # We have a global lock, `pkg_token`, on Pluto-managed Pkg operations, which is shared between all notebooks. If this lock is not ready right now then that means that we are going to wait at the `withtoken(pkg_token)` line below. 
+            # We want to report that we are waiting, with a best guess of why.
             wait_business = if !isready(pkg_token)
+                reg = !PkgCompat._updated_registries_compat[]
+                
+                # Print something in the terminal logs
+                println(iolistener.buffer, "Waiting for $(reg ? "the package registry to update" : "other notebooks to finish Pkg operations")...")
+                trigger(iolistener) # manual trigger because we did not start listening yet
+                
+                # Create a business item
                 Status.report_business_started!(pkg_status, 
-                    !PkgCompat._updated_registries_compat[] ? 
-                        :registry_update : 
-                        :waiting_for_others
+                    reg ? :registry_update : :waiting_for_others
                 )
             end
             
@@ -206,6 +209,8 @@ function sync_nbpkg_core(
                     Status.report_business_started!(pkg_status, :add)
                     start_time = time_ns()
                     with_io_setup(notebook, iolistener) do
+                        println(iolistener.buffer, "\nAdding packages...")
+                        
                         # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
                         PkgCompat.clear_auto_compat_entries!(notebook.nbpkg_ctx)
 
@@ -381,8 +386,8 @@ end
 
 function instantiate(notebook::Notebook, iolistener::IOListener)
     start_time = time_ns()
-    startlistening(iolistener)
     with_io_setup(notebook, iolistener) do
+        println(iolistener.buffer, "\nInstantiating...")
         @debug "PlutoPkg: Instantiating" notebook.path 
         
         # update registries if this is the first time
@@ -412,6 +417,7 @@ end
 function resolve(notebook::Notebook, iolistener::IOListener)
     startlistening(iolistener)
     with_io_setup(notebook, iolistener) do
+        println(iolistener.buffer, "\nResolving...")
         @debug "PlutoPkg: Instantiating" notebook.path 
         Pkg.resolve(notebook.nbpkg_ctx)
     end
@@ -489,6 +495,7 @@ function update_nbpkg_core(
 
         iolistener = let
             # we don't know which packages will be updated, so we send terminal output to all installed packages
+            report_to = ["nbpkg_update", old_packages...]
             IOListener(callback=(s -> on_terminal_output(old_packages, s)))
         end
         cleanup[] = () -> stoplistening(iolistener)

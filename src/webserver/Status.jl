@@ -6,6 +6,7 @@ Base.@kwdef mutable struct Business
     started_at::Union{Nothing,Float64}=nothing
     finished_at::Union{Nothing,Float64}=nothing
     subtasks::Dict{Symbol,Business}=Dict{Symbol,Business}()
+
     update_listener_ref::Ref{Union{Nothing,Function}}=Ref{Union{Nothing,Function}}(nothing)
     lock::Threads.SpinLock=Threads.SpinLock()
 end
