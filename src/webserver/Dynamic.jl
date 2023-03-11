@@ -179,7 +179,7 @@ const current_state_for_clients_lock = ReentrantLock()
 Update the local state of all clients connected to this notebook.
 """
 function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, skip_send::Bool=false)
-    const outbox = Set{Tuple{ClientSession,UpdateMessage}}()
+    outbox = Set{Tuple{ClientSession,UpdateMessage}}()
     
     lock(current_state_for_clients_lock) do
         notebook_dict = notebook_to_js(🙋.notebook)
