@@ -157,6 +157,14 @@ function withio(f::Function, ctx::PkgContext, io::IO)
 end
 
 
+# struct FancyIOBuffer{IOT <: IO} <: IO
+# 	io::IOT
+# end
+# Base.unsafe_write(io::FancyIOBuffer, p::Ptr{UInt8}, n::UInt) = unsafe_write(io.io, p, n)
+
+# I'm a pirate harrr 🏴‍☠️
+Pkg.can_fancyprint(io::IOContext{IOBuffer}) = get(io, :sneaky_enable_tty, false) === true
+
 ###
 # REGISTRIES
 ###
