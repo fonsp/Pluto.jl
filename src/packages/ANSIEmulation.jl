@@ -140,7 +140,7 @@ function consume!(state::ANSITerminalState, str::AbstractString)
 				# clear the remainder of this line
 				resize!(getline(state), state.col - 1)
 				# and clear all rows below
-				for row in state.row+1 : length(state.lines)
+				for row in state.row+1 : maximum(keys(state.lines))
 					delete!(state.lines, row)
 				end
 
@@ -186,15 +186,6 @@ function consume_safe!(state::ANSITerminalState, str::AbstractString)
 	end
 end
 
-# ╔═╡ 2406fa19-8cef-4b5d-80e8-3029b872c32f
-#=╠═╡
-teststate = let
-	state = ANSITerminalState()
-	consume_safe!(state, str)
-	state
-end
-  ╠═╡ =#
-
 # ╔═╡ 6a8f71f5-7113-4074-8009-14eea11cc958
 #=╠═╡
 @bind L Slider(1:length(str))
@@ -235,11 +226,6 @@ collect(str) => collect(solve(str))
 solve(SubString(str, 1, nextind(str, 0, L))) |> Text
   ╠═╡ =#
 
-# ╔═╡ 18d341fe-dc6f-4fec-8118-5c063efab0eb
-#=╠═╡
-build_str(teststate)
-  ╠═╡ =#
-
 # ╔═╡ 535f471d-a049-4d74-aa52-9be86e2d4352
 #=╠═╡
 let
@@ -265,13 +251,13 @@ ANSITerminalState(
   ╠═╡ =#
 
 # ╔═╡ 032a10cc-8b2b-4e85-bac4-b9623b91d016
+# ╠═╡ disabled = true
 # ╠═╡ skip_as_script = true
 #=╠═╡
 str = "\nInstantiating...\n\e[32m\e[1m  No Changes\e[22m\e[39m to `/private/var/folders/v_/fhpj9jn151d4p9c2fdw2gv780000gn/T/jl_DivOhV/Project.toml`\n\e[32m\e[1m  No Changes\e[22m\e[39m to `/private/var/folders/v_/fhpj9jn151d4p9c2fdw2gv780000gn/T/jl_DivOhV/Manifest.toml`\n\e[?25l\e[?25h\e[2K\nResolving...\n\e[32m\e[1m  No Changes\e[22m\e[39m to `/private/var/folders/v_/fhpj9jn151d4p9c2fdw2gv780000gn/T/jl_DivOhV/Project.toml`\n\e[32m\e[1m  No Changes\e[22m\e[39m to `/private/var/folders/v_/fhpj9jn151d4p9c2fdw2gv780000gn/T/jl_DivOhV/Manifest.toml`\n\e[?25l\e[?25h\e[2K"
   ╠═╡ =#
 
 # ╔═╡ e665ae4e-bf4e-11ed-330a-f3670dd00a95
-# ╠═╡ disabled = true
 # ╠═╡ skip_as_script = true
 #=╠═╡
 str = read(download("https://raw.githubusercontent.com/fonsp/disorganised-mess/main/ansidemo.txt"), String)
@@ -294,7 +280,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.9.0-beta4"
 manifest_format = "2.0"
-project_hash = "e2d3efcbedc4eec7465348c1d2d08b26d7df5b2f"
+project_hash = "ce886088241d89ce6a9168ebf44701e0c6f4421f"
 
 [[deps.AbstractPlutoDingetjes]]
 deps = ["Pkg"]
@@ -576,8 +562,6 @@ version = "17.4.0+0"
 # ╠═a1ebfaf3-dadb-40dc-95c5-ae8a9d6de1ec
 # ╠═6dc56641-7d0d-4bd7-a1ef-22e373908207
 # ╠═6f1cb799-21b7-459a-a7c5-6c42b1376b11
-# ╠═2406fa19-8cef-4b5d-80e8-3029b872c32f
-# ╠═18d341fe-dc6f-4fec-8118-5c063efab0eb
 # ╠═48c686f9-722f-4d84-ac9d-9b11c934370c
 # ╠═ee9a24d4-7a9f-4024-8100-f7ce4ef436cb
 # ╠═2453d8e0-ca26-4033-a272-c5c51fc8d16d
