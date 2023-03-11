@@ -177,7 +177,7 @@ function run_reactive_core!(
         cell.running = true
         # Important to not use empty! here because AppendonlyMarker requires a new array identity.
         # Eventually we could even make AppendonlyArray to enforce this but idk if it's worth it. yadiyadi.
-        cell.logs = []
+        cell.logs = Vector{Dict{String,Any}}()
         send_notebook_changes_throttled()
 
         if any_interrupted || notebook.wants_to_interrupt || !will_run_code(notebook)
