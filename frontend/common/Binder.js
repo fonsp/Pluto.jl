@@ -161,12 +161,14 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
         // Opening a notebook gives us the notebook ID, which means that we have a running session! Time to connect.
 
         const new_notebook_id = await open_response.text()
+        const edit_url = with_token(with_query_params(new URL("edit", binder_session_url), { id: new_notebook_id }))
         console.info("notebook_id:", new_notebook_id)
 
         await setStatePromise(
-            immer((state) => {
+            immer((/** @type {import("../components/Editor.js").EditorState} */ state) => {
                 state.notebook.notebook_id = new_notebook_id
                 state.backend_launch_phase = BackendLaunchPhase.notebook_running
+                state.refresh_target = edit_url
             })
         )
 
@@ -177,8 +179,7 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
         const connect_promise = connect(with_token(new URL("channels", ws_address_from_base(binder_session_url))))
         await timeout_promise(connect_promise, 20_000).catch((e) => {
             console.error("Failed to establish connection within 20 seconds. Navigating to the edit URL directly.", e)
-            const edit_url = with_query_params(new URL("edit", binder_session_url), { id: new_notebook_id })
-            window.parent.location.href = with_token(edit_url)
+            window.parent.location.href = edit_url
         })
     } catch (err) {
         console.error("Failed to initialize binder!", err)
