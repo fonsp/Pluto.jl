@@ -22,15 +22,9 @@ pluto-runarea,
     pkg-status-mark {
         display: none !important;
     }
-    [data-pluto-variable] {
-        text-decoration-color: transparent;
-    }
     pluto-input .cm-editor {
         border-left: 1px solid var(--normal-cell-color);
         border-radius: 4px !important;
-    }
-    .cm-gutterElement {
-        display: none;
     }
 }
 
