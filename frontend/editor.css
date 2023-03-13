@@ -2522,7 +2522,7 @@ pl-status .status-time {
 }
 
 .discrete-progress-bar.big {
-    gap: 0.5px;
+    gap: 0px;
 }
 
 pl-status pkg-terminal {
