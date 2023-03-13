@@ -427,10 +427,8 @@ end
 
 """
 Run `f` (e.g. `Pkg.instantiate`) on the notebook's package environment. Keep trying more and more invasive strategies to fix problems until the operation succeeds.
-
-Returns the number of fixes that were applied.
 """
-function with_auto_fixes(f::Function, notebook::Notebook)::Int
+function with_auto_fixes(f::Function, notebook::Notebook)
     try
         f()
     catch e
