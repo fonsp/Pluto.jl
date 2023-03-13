@@ -432,19 +432,19 @@ function with_auto_fixes(f::Function, notebook::Notebook)
     try
         f()
     catch e
-        @warn "Operation failed. Updating registries and trying again..." exception=e
+        @warn "Operation failed. Updating registries and trying again..." exception=(e, catch_backtrace())
         
         PkgCompat.update_registries(; force=true)
         try
             f()
         catch e
-            @warn "Operation failed. Removing Manifest and trying again..." exception=e
+            @warn "Operation failed. Removing Manifest and trying again..." exception=(e, catch_backtrace())
             
             reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
             try
                 f()
             catch e
-                @warn "Operation failed. Removing Project compat entries and Manifest and trying again..." exception=e
+                @warn "Operation failed. Removing Project compat entries and Manifest and trying again..." exception=(e, catch_backtrace())
                 
                 reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
                 PkgCompat.clear_compat_entries!(notebook.nbpkg_ctx)
@@ -497,7 +497,7 @@ function update_nbpkg_core(
         iolistener = let
             # we don't know which packages will be updated, so we send terminal output to all installed packages
             report_to = ["nbpkg_update", old_packages...]
-            IOListener(callback=(s -> on_terminal_output(old_packages, s)))
+            IOListener(callback=(s -> on_terminal_output(report_to, s)))
         end
         cleanup[] = () -> stoplistening(iolistener)
         
