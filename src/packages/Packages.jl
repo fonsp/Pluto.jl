@@ -172,12 +172,9 @@ function sync_nbpkg_core(
                     # - Verify that the Manifest contains a correct dependency tree (e.g. all versions exists in a registry). If not, we will fix it using `with_auto_fixes`
                     # - If we are tracking local packages by path (] dev), their Project.tomls are reparsed and everything is updated.
                     Status.report_business!(pkg_status, :resolve) do
-                        num_fixes = with_auto_fixes(notebook) do
+                        with_auto_fixes(notebook) do
                             resolve(notebook, iolistener)
                         end
-
-                        # if we had to fix the environment to resolve, then we should instantiate again to make sure that everything gets precompiled (in parallel)
-                        num_fixes ≥ 2 && instantiate(notebook, iolistener)
                     end
                 end
                 
@@ -435,26 +432,28 @@ Returns the number of fixes that were applied.
 """
 function with_auto_fixes(f::Function, notebook::Notebook)::Int
     try
-        f(); 0
+        f()
     catch e
         @warn "Operation failed. Updating registries and trying again..." exception=(e, catch_backtrace())
         
         PkgCompat.update_registries(; force=true)
         try
-            f(); 1
+            f()
         catch e
             @warn "Operation failed. Removing Manifest and trying again..." exception=(e, catch_backtrace())
             
             reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
+            notebook.nbpkg_ctx_instantiated = false
             try
-                f(); 2
+                f()
             catch e
                 @warn "Operation failed. Removing Project compat entries and Manifest and trying again..." exception=(e, catch_backtrace())
                 
                 reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
                 PkgCompat.clear_compat_entries!(notebook.nbpkg_ctx)
+                notebook.nbpkg_ctx_instantiated = false
                 
-                f(); 3
+                f()
             end
         end
     end
@@ -523,12 +522,9 @@ function update_nbpkg_core(
                     instantiate(notebook, iolistener)
                 end
             
-                num_fixes = with_auto_fixes(notebook) do
+                with_auto_fixes(notebook) do
                     resolve(notebook, iolistener)
                 end
-                
-                # if we had to fix the environment to resolve, then we should instantiate again to make sure that everything gets precompiled (in parallel)
-                num_fixes ≥ 2 && instantiate(notebook, iolistener)
             end
 
             with_io_setup(notebook, iolistener) do
@@ -543,10 +539,19 @@ function update_nbpkg_core(
                     PkgCompat.write_auto_compat_entries!(notebook.nbpkg_ctx)
                 end
             end
+            
+            🐧 = !PkgCompat.is_original(notebook.nbpkg_ctx)
+            
+            should_instantiate_again = !notebook.nbpkg_ctx_instantiated || 🐧
+            
+            if should_instantiate_again
+                # Status.report_business!(pkg_status, :instantiate2) do
+                instantiate(notebook, iolistener)
+                # end
+            end
 
             stoplistening(iolistener)
 
-            🐧 = !PkgCompat.is_original(notebook.nbpkg_ctx)
             (
                 did_something=🐧,
                 restart_recommended=🐧,
