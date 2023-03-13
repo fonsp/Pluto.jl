@@ -23,16 +23,19 @@ function MultipleDefinitionsError(topology::NotebookTopology, cell::Cell, all_de
 	)
 end
 
-hint1 = "Combine all definitions into a single reactive cell using a `begin ... end` block."
-hint2 = "Wrap all code in a `begin ... end` block."
+const hint1 = "Combine all definitions into a single reactive cell using a `begin ... end` block."
 
 # TODO: handle case when cells are in cycle, but variables aren't
 function showerror(io::IO, cre::CyclicReferenceError)
-	print(io, "Cyclic references among $(join(cre.syms, ", ", " and ")).\n$hint1")
+	print(io, "Cyclic references among ")
+	println(io, join(cre.syms, ", ", " and "))
+	print(io, hint1)
 end
 
 function showerror(io::IO, mde::MultipleDefinitionsError)
-	print(io, "Multiple definitions for $(join(mde.syms, ", ", " and ")).\n$hint1") # TODO: hint about mutable globals
+	print(io, "Multiple definitions for ")
+	println(io, join(mde.syms, ", ", " and "))
+	print(io, hint1) # TODO: hint about mutable globals
 end
 
 "Send `error` to the frontend without backtrace. Runtime errors are handled by `WorkspaceManager.eval_format_fetch_in_workspace` - this function is for Reactivity errors."

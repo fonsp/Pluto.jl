@@ -359,7 +359,7 @@ function trigger_resolver(anything, path, values=[])
 end
 function trigger_resolver(resolvers::Dict, path, values=[])
 	if isempty(path)
-		throw(BoundsError("resolver path ends at Dict with keys $(keys(resolver))"))
+		throw(BoundsError("resolver path ends at Dict with keys $(keys(resolvers))"))
 	end
 	
 	segment, rest... = path
@@ -368,7 +368,7 @@ function trigger_resolver(resolvers::Dict, path, values=[])
 	elseif haskey(resolvers, Wildcard())
 		trigger_resolver(resolvers[Wildcard()], rest, (values..., segment))
     else
-        throw(BoundsError("failed to match path $(path), possible keys $(keys(resolver))"))
+        throw(BoundsError("failed to match path $(path), possible keys $(keys(resolvers))"))
 	end
 end
 
