@@ -172,9 +172,12 @@ function sync_nbpkg_core(
                     # - Verify that the Manifest contains a correct dependency tree (e.g. all versions exists in a registry). If not, we will fix it using `with_auto_fixes`
                     # - If we are tracking local packages by path (] dev), their Project.tomls are reparsed and everything is updated.
                     Status.report_business!(pkg_status, :resolve) do
-                        with_auto_fixes(notebook) do
+                        num_fixes = with_auto_fixes(notebook) do
                             resolve(notebook, iolistener)
                         end
+
+                        # if we had to fix the environment to resolve, then we should instantiate again to make sure that everything gets precompiled (in parallel)
+                        num_fixes ≥ 2 && instantiate(notebook, iolistener)
                     end
                 end
                 
@@ -427,29 +430,31 @@ end
 
 """
 Run `f` (e.g. `Pkg.instantiate`) on the notebook's package environment. Keep trying more and more invasive strategies to fix problems until the operation succeeds.
+
+Returns the number of fixes that were applied.
 """
-function with_auto_fixes(f::Function, notebook::Notebook)
+function with_auto_fixes(f::Function, notebook::Notebook)::Int
     try
-        f()
+        f(); 0
     catch e
-        @warn "Operation failed. Updating registries and trying again..." exception=e
+        @warn "Operation failed. Updating registries and trying again..." exception=(e, catch_backtrace())
         
         PkgCompat.update_registries(; force=true)
         try
-            f()
+            f(); 1
         catch e
-            @warn "Operation failed. Removing Manifest and trying again..." exception=e
+            @warn "Operation failed. Removing Manifest and trying again..." exception=(e, catch_backtrace())
             
             reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
             try
-                f()
+                f(); 2
             catch e
-                @warn "Operation failed. Removing Project compat entries and Manifest and trying again..." exception=e
+                @warn "Operation failed. Removing Project compat entries and Manifest and trying again..." exception=(e, catch_backtrace())
                 
                 reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
                 PkgCompat.clear_compat_entries!(notebook.nbpkg_ctx)
                 
-                f()
+                f(); 3
             end
         end
     end
@@ -497,7 +502,7 @@ function update_nbpkg_core(
         iolistener = let
             # we don't know which packages will be updated, so we send terminal output to all installed packages
             report_to = ["nbpkg_update", old_packages...]
-            IOListener(callback=(s -> on_terminal_output(old_packages, s)))
+            IOListener(callback=(s -> on_terminal_output(report_to, s)))
         end
         cleanup[] = () -> stoplistening(iolistener)
         
@@ -518,9 +523,12 @@ function update_nbpkg_core(
                     instantiate(notebook, iolistener)
                 end
             
-                with_auto_fixes(notebook) do
+                num_fixes = with_auto_fixes(notebook) do
                     resolve(notebook, iolistener)
                 end
+                
+                # if we had to fix the environment to resolve, then we should instantiate again to make sure that everything gets precompiled (in parallel)
+                num_fixes ≥ 2 && instantiate(notebook, iolistener)
             end
 
             with_io_setup(notebook, iolistener) do
