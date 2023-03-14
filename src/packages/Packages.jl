@@ -446,6 +446,7 @@ function with_auto_fixes(f::Function, notebook::Notebook)
             @warn "Operation failed. Removing Manifest and trying again..." exception=e
             
             reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
+            notebook.nbpkg_ctx_instantiated = false
             try
                 f()
             catch e
@@ -453,6 +454,7 @@ function with_auto_fixes(f::Function, notebook::Notebook)
                 
                 reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
                 PkgCompat.clear_compat_entries!(notebook.nbpkg_ctx)
+                notebook.nbpkg_ctx_instantiated = false
                 
                 f()
             end
