@@ -370,7 +370,10 @@ function dependencies(ctx)
 			Pkg.dependencies(ctx.env)
 		end
 	catch e
-		if !occursin(r"expected.*exist.*manifest", sprint(showerror, e))
+		if !any(occursin(sprint(showerror, e)), (
+			r"expected.*exist.*manifest",
+			r"no method.*project_rel_path.*Nothing\)", # https://github.com/JuliaLang/Pkg.jl/issues/3404
+		))
 			@error """
 			Pkg error: you might need to use
 
