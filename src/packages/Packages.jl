@@ -437,13 +437,13 @@ function with_auto_fixes(f::Function, notebook::Notebook)
     try
         f()
     catch e
-        @warn "Operation failed. Updating registries and trying again..." exception=(e, catch_backtrace())
+        @info "Operation failed. Updating registries and trying again..." exception=e
         
         PkgCompat.update_registries(; force=true)
         try
             f()
         catch e
-            @warn "Operation failed. Removing Manifest and trying again..." exception=(e, catch_backtrace())
+            @warn "Operation failed. Removing Manifest and trying again..." exception=e
             
             reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
             try
