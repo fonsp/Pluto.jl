@@ -2,6 +2,8 @@
 import .ExpressionExplorer: external_package_names
 import .PkgCompat
 import .PkgCompat: select, is_stdlib
+import Logging
+import LoggingExtras
 
 const tiers = [
 	Pkg.PRESERVE_ALL,
@@ -135,148 +137,150 @@ function sync_nbpkg_core(
             end
             
             return withtoken(pkg_token) do
-                
-                let
-                    isnothing(wait_business) || Status.report_business_finished!(wait_business)
+                withlogcapture(iolistener) do
                     
-                    notebook.nbpkg_ctx_instantiated || Status.report_business_planned!(pkg_status, :instantiate1)
-                    notebook.nbpkg_ctx_instantiated || Status.report_business_planned!(pkg_status, :resolve)
-                    isempty(removed) || Status.report_business_planned!(pkg_status, :remove)
-                    isempty(added) || Status.report_business_planned!(pkg_status, :add)
-                    if !isempty(added) || !isempty(removed)
-                        Status.report_business_planned!(pkg_status, :instantiate2)
+                    let
+                        isnothing(wait_business) || Status.report_business_finished!(wait_business)
+                        
+                        notebook.nbpkg_ctx_instantiated || Status.report_business_planned!(pkg_status, :instantiate1)
+                        notebook.nbpkg_ctx_instantiated || Status.report_business_planned!(pkg_status, :resolve)
+                        isempty(removed) || Status.report_business_planned!(pkg_status, :remove)
+                        isempty(added) || Status.report_business_planned!(pkg_status, :add)
+                        if !isempty(added) || !isempty(removed)
+                            Status.report_business_planned!(pkg_status, :instantiate2)
+                        end
                     end
-                end
-                
-                PkgCompat.refresh_registry_cache()
-                
-                PkgCompat.clear_stdlib_compat_entries!(notebook.nbpkg_ctx)
-                
-                
-                should_instantiate_initially = !notebook.nbpkg_ctx_instantiated
-                if should_instantiate_initially
                     
-                    # First, we instantiate. This will:
-                    # - Verify that the Manifest can be parsed and is in the correct format (important for compat across Julia versions). If not, we will fix it by deleting the Manifest.
-                    # - If no Manifest exists, resolve the environment and create one.
-                    # - Start downloading all registered packages, artifacts.
-                    # - Start downloading all unregistered packages, which are added through a URL. This also makes the Project.tomls of those packages available.
-                    # - Precompile all packages.                    
-                    Status.report_business!(pkg_status, :instantiate1) do
-                        with_auto_fixes(notebook) do
+                    PkgCompat.refresh_registry_cache()
+                    
+                    PkgCompat.clear_stdlib_compat_entries!(notebook.nbpkg_ctx)
+                    
+                    
+                    should_instantiate_initially = !notebook.nbpkg_ctx_instantiated
+                    if should_instantiate_initially
+                        
+                        # First, we instantiate. This will:
+                        # - Verify that the Manifest can be parsed and is in the correct format (important for compat across Julia versions). If not, we will fix it by deleting the Manifest.
+                        # - If no Manifest exists, resolve the environment and create one.
+                        # - Start downloading all registered packages, artifacts.
+                        # - Start downloading all unregistered packages, which are added through a URL. This also makes the Project.tomls of those packages available.
+                        # - Precompile all packages.                    
+                        Status.report_business!(pkg_status, :instantiate1) do
+                            with_auto_fixes(notebook) do
+                                instantiate(notebook, iolistener)
+                            end
+                        end
+                        
+                        # Second, we resolve. This will:
+                        # - Verify that the Manifest contains a correct dependency tree (e.g. all versions exists in a registry). If not, we will fix it using `with_auto_fixes`
+                        # - If we are tracking local packages by path (] dev), their Project.tomls are reparsed and everything is updated.
+                        Status.report_business!(pkg_status, :resolve) do
+                            with_auto_fixes(notebook) do
+                                resolve(notebook, iolistener)
+                            end
+                        end
+                    end
+                    
+                    to_add = filter(PkgCompat.package_exists, added)
+                    to_remove = filter(removed) do p
+                        haskey(PkgCompat.project(notebook.nbpkg_ctx).dependencies, p)
+                    end
+                    @debug "PlutoPkg:" notebook.path to_add to_remove
+                    
+                    if !isempty(to_remove)
+                        Status.report_business_started!(pkg_status, :remove)
+                        # See later comment
+                        mkeys() = Set(filter(!is_stdlib, [m.name for m in values(PkgCompat.dependencies(notebook.nbpkg_ctx))]))
+                        old_manifest_keys = mkeys()
+
+                        Pkg.rm(notebook.nbpkg_ctx, [
+                            Pkg.PackageSpec(name=p)
+                            for p in to_remove
+                        ])
+
+                        notebook.nbpkg_install_time_ns = nothing # we lose our estimate of install time
+                        # We record the manifest before and after, to prevent recommending a reboot when nothing got removed from the manifest (e.g. when removing GR, but leaving Plots), or when only stdlibs got removed.
+                        new_manifest_keys = mkeys()
+                        
+                        # TODO: we might want to upgrade other packages now that constraints have loosened? Does this happen automatically?
+                        Status.report_business_finished!(pkg_status, :remove)
+                    end
+
+                    
+                    # TODO: instead of Pkg.PRESERVE_ALL, we actually want:
+                    # "Pkg.PRESERVE_DIRECT, but preserve exact verisons of Base.loaded_modules"
+                    
+                    if !isempty(to_add)
+                        Status.report_business_started!(pkg_status, :add)
+                        start_time = time_ns()
+                        with_io_setup(notebook, iolistener) do
+                            println(iolistener.buffer, "\nAdding packages...")
+                            
+                            # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
+                            PkgCompat.clear_auto_compat_entries!(notebook.nbpkg_ctx)
+
+                            try
+                                for tier in [
+                                    Pkg.PRESERVE_ALL,
+                                    Pkg.PRESERVE_DIRECT,
+                                    Pkg.PRESERVE_SEMVER,
+                                    Pkg.PRESERVE_NONE,
+                                ]
+                                    used_tier = tier
+
+                                    try
+                                        Pkg.add(notebook.nbpkg_ctx, [
+                                            Pkg.PackageSpec(name=p)
+                                            for p in to_add
+                                        ]; preserve=used_tier)
+
+                                        break
+                                    catch e
+                                        if used_tier == Pkg.PRESERVE_NONE
+                                            # give up
+                                            rethrow(e)
+                                        end
+                                    end
+                                end
+                            finally
+                                PkgCompat.write_auto_compat_entries!(notebook.nbpkg_ctx)
+                            end
+
+                            # Now that Pkg is set up, the notebook process will call `using Package`, which can take some time. We write this message to the io, to notify the user.
+                            println(iolistener.buffer, "\e[32m\e[1mLoading\e[22m\e[39m packages...")
+                        end
+                    
+                        notebook.nbpkg_install_time_ns = notebook.nbpkg_install_time_ns === nothing ? nothing : (notebook.nbpkg_install_time_ns + (time_ns() - start_time))
+                        Status.report_business_finished!(pkg_status, :add)
+                        @debug "PlutoPkg: done" notebook.path 
+                    end
+
+                    should_instantiate_again = !notebook.nbpkg_ctx_instantiated || !isempty(to_add) || !isempty(to_remove)
+                    
+                    if should_instantiate_again
+                        Status.report_business!(pkg_status, :instantiate2) do
                             instantiate(notebook, iolistener)
                         end
                     end
-                    
-                    # Second, we resolve. This will:
-                    # - Verify that the Manifest contains a correct dependency tree (e.g. all versions exists in a registry). If not, we will fix it using `with_auto_fixes`
-                    # - If we are tracking local packages by path (] dev), their Project.tomls are reparsed and everything is updated.
-                    Status.report_business!(pkg_status, :resolve) do
-                        with_auto_fixes(notebook) do
-                            resolve(notebook, iolistener)
-                        end
-                    end
+
+                    stoplistening(iolistener)
+                    Status.report_business_finished!(pkg_status)
+
+                    return (
+                        did_something=👺 || (
+                            should_instantiate_initially || should_instantiate_again || (use_plutopkg_old != use_plutopkg_new)
+                        ),
+                        used_tier=used_tier,
+                        # changed_versions=Dict{String,Pair}(),
+                        restart_recommended=👺 || (
+                            (!isempty(to_remove) && old_manifest_keys != new_manifest_keys) ||
+                            used_tier != Pkg.PRESERVE_ALL
+                        ),
+                        restart_required=👺 || (
+                            used_tier ∈ [Pkg.PRESERVE_SEMVER, Pkg.PRESERVE_NONE]
+                        ),
+                    )
                 end
-                
-                to_add = filter(PkgCompat.package_exists, added)
-                to_remove = filter(removed) do p
-                    haskey(PkgCompat.project(notebook.nbpkg_ctx).dependencies, p)
-                end
-                @debug "PlutoPkg:" notebook.path to_add to_remove
-                
-                if !isempty(to_remove)
-                    Status.report_business_started!(pkg_status, :remove)
-                    # See later comment
-                    mkeys() = Set(filter(!is_stdlib, [m.name for m in values(PkgCompat.dependencies(notebook.nbpkg_ctx))]))
-                    old_manifest_keys = mkeys()
-
-                    Pkg.rm(notebook.nbpkg_ctx, [
-                        Pkg.PackageSpec(name=p)
-                        for p in to_remove
-                    ])
-
-                    notebook.nbpkg_install_time_ns = nothing # we lose our estimate of install time
-                    # We record the manifest before and after, to prevent recommending a reboot when nothing got removed from the manifest (e.g. when removing GR, but leaving Plots), or when only stdlibs got removed.
-                    new_manifest_keys = mkeys()
-                    
-                    # TODO: we might want to upgrade other packages now that constraints have loosened? Does this happen automatically?
-                    Status.report_business_finished!(pkg_status, :remove)
-                end
-
-                
-                # TODO: instead of Pkg.PRESERVE_ALL, we actually want:
-                # "Pkg.PRESERVE_DIRECT, but preserve exact verisons of Base.loaded_modules"
-                
-                if !isempty(to_add)
-                    Status.report_business_started!(pkg_status, :add)
-                    start_time = time_ns()
-                    with_io_setup(notebook, iolistener) do
-                        println(iolistener.buffer, "\nAdding packages...")
-                        
-                        # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
-                        PkgCompat.clear_auto_compat_entries!(notebook.nbpkg_ctx)
-
-                        try
-                            for tier in [
-                                Pkg.PRESERVE_ALL,
-                                Pkg.PRESERVE_DIRECT,
-                                Pkg.PRESERVE_SEMVER,
-                                Pkg.PRESERVE_NONE,
-                            ]
-                                used_tier = tier
-
-                                try
-                                    Pkg.add(notebook.nbpkg_ctx, [
-                                        Pkg.PackageSpec(name=p)
-                                        for p in to_add
-                                    ]; preserve=used_tier)
-
-                                    break
-                                catch e
-                                    if used_tier == Pkg.PRESERVE_NONE
-                                        # give up
-                                        rethrow(e)
-                                    end
-                                end
-                            end
-                        finally
-                            PkgCompat.write_auto_compat_entries!(notebook.nbpkg_ctx)
-                        end
-
-                        # Now that Pkg is set up, the notebook process will call `using Package`, which can take some time. We write this message to the io, to notify the user.
-                        println(iolistener.buffer, "\e[32m\e[1mLoading\e[22m\e[39m packages...")
-                    end
-                
-                    notebook.nbpkg_install_time_ns = notebook.nbpkg_install_time_ns === nothing ? nothing : (notebook.nbpkg_install_time_ns + (time_ns() - start_time))
-                    Status.report_business_finished!(pkg_status, :add)
-                    @debug "PlutoPkg: done" notebook.path 
-                end
-
-                should_instantiate_again = !notebook.nbpkg_ctx_instantiated || !isempty(to_add) || !isempty(to_remove)
-                
-                if should_instantiate_again
-                    Status.report_business!(pkg_status, :instantiate2) do
-                        instantiate(notebook, iolistener)
-                    end
-                end
-
-                stoplistening(iolistener)
-                Status.report_business_finished!(pkg_status)
-
-                return (
-                    did_something=👺 || (
-                        should_instantiate_initially || should_instantiate_again || (use_plutopkg_old != use_plutopkg_new)
-                    ),
-                    used_tier=used_tier,
-                    # changed_versions=Dict{String,Pair}(),
-                    restart_recommended=👺 || (
-                        (!isempty(to_remove) && old_manifest_keys != new_manifest_keys) ||
-                        used_tier != Pkg.PRESERVE_ALL
-                    ),
-                    restart_required=👺 || (
-                        used_tier ∈ [Pkg.PRESERVE_SEMVER, Pkg.PRESERVE_NONE]
-                    ),
-                )
             end
         end
     end
@@ -312,6 +316,7 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 				for p in pkgs
 					notebook.nbpkg_terminal_outputs[p] = s
 				end
+                # TODO: this should be throttled/debounced?
                 update_nbpkg_cache!(notebook)
 				send_notebook_changes!(ClientRequest(; session, notebook))
 			end
@@ -419,7 +424,7 @@ function resolve(notebook::Notebook, iolistener::IOListener)
     startlistening(iolistener)
     with_io_setup(notebook, iolistener) do
         println(iolistener.buffer, "\nResolving...")
-        @debug "PlutoPkg: Instantiating" notebook.path 
+        @debug "PlutoPkg: Resolving" notebook.path 
         Pkg.resolve(notebook.nbpkg_ctx)
     end
 end
@@ -510,40 +515,42 @@ function update_nbpkg_core(
         end
 
         return withtoken(pkg_token) do
-            PkgCompat.refresh_registry_cache()
-            PkgCompat.clear_stdlib_compat_entries!(notebook.nbpkg_ctx)
+            withlogcapture(iolistener) do
+                PkgCompat.refresh_registry_cache()
+                PkgCompat.clear_stdlib_compat_entries!(notebook.nbpkg_ctx)
 
-            if !notebook.nbpkg_ctx_instantiated
-                with_auto_fixes(notebook) do
-                    instantiate(notebook, iolistener)
+                if !notebook.nbpkg_ctx_instantiated
+                    with_auto_fixes(notebook) do
+                        instantiate(notebook, iolistener)
+                    end
+                
+                    with_auto_fixes(notebook) do
+                        resolve(notebook, iolistener)
+                    end
                 end
-            
-                with_auto_fixes(notebook) do
-                    resolve(notebook, iolistener)
+
+                with_io_setup(notebook, iolistener) do
+                    # We temporarily clear the "semver-compatible" [deps] entries, because it is difficult to update them after the update 🙈. TODO
+                    PkgCompat.clear_auto_compat_entries!(notebook.nbpkg_ctx)
+
+                    try
+                        ###
+                        Pkg.update(notebook.nbpkg_ctx; level=level)
+                        ###
+                    finally
+                        PkgCompat.write_auto_compat_entries!(notebook.nbpkg_ctx)
+                    end
                 end
+
+                stoplistening(iolistener)
+
+                🐧 = !PkgCompat.is_original(notebook.nbpkg_ctx)
+                (
+                    did_something=🐧,
+                    restart_recommended=🐧,
+                    restart_required=🐧,
+                )
             end
-
-            with_io_setup(notebook, iolistener) do
-                # We temporarily clear the "semver-compatible" [deps] entries, because it is difficult to update them after the update 🙈. TODO
-                PkgCompat.clear_auto_compat_entries!(notebook.nbpkg_ctx)
-
-                try
-                    ###
-                    Pkg.update(notebook.nbpkg_ctx; level=level)
-                    ###
-                finally
-                    PkgCompat.write_auto_compat_entries!(notebook.nbpkg_ctx)
-                end
-            end
-
-            stoplistening(iolistener)
-
-            🐧 = !PkgCompat.is_original(notebook.nbpkg_ctx)
-            (
-                did_something=🐧,
-                restart_recommended=🐧,
-                restart_required=🐧,
-            )
         end
     end
     (
@@ -649,6 +656,12 @@ function with_io_setup(f::Function, notebook::Notebook, iolistener::IOListener)
         end
     end
 end
+
+withlogcapture(f::Function, iolistener::IOListener) = 
+    Logging.with_logger(f, LoggingExtras.TeeLogger(
+        Logging.current_logger(),
+        Logging.ConsoleLogger(IOContext(iolistener.buffer, :color => true), Logging.Info)
+    ))
 
 
 const is_interactive_defined = isdefined(Base, :is_interactive) && !Base.isconst(Base, :is_interactive)
