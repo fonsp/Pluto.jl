@@ -545,6 +545,14 @@ function update_nbpkg_core(
                 stoplistening(iolistener)
 
                 🐧 = !PkgCompat.is_original(notebook.nbpkg_ctx)
+                should_instantiate_again = !notebook.nbpkg_ctx_instantiated || 🐧
+                
+                if should_instantiate_again
+                    # Status.report_business!(pkg_status, :instantiate2) do
+                    instantiate(notebook, iolistener)
+                    # end
+                end
+
                 (
                     did_something=🐧,
                     restart_recommended=🐧,
