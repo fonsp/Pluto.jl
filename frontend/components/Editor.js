@@ -643,6 +643,7 @@ export class Editor extends Component {
                 const { message } = await this.client.send("nbpkg_available_versions", { package_name: package_name }, { notebook_id: notebook_id })
                 return message.versions
             },
+            get_openai_key: () => this.client.session_options?.server?._experimental_openai_key,
         }
         this.actions = { ...this.real_actions }
 
