@@ -2356,7 +2356,7 @@ function Logging.shouldlog(logger::PlutoCellLogger, level, _module, _...)
     level = convert(Logging.LogLevel, level)
     (_module isa Module && is_pluto_workspace(_module)) ||
         level >= Logging.Info ||
-        level == Logging.LogLevel(-1) ||
+        level == progress_log_level ||
         level == stdout_log_level
 end
 
@@ -2414,6 +2414,7 @@ function _send_stdio_output!(output, loglevel)
 end
 
 const stdout_log_level = Logging.LogLevel(-555) # https://en.wikipedia.org/wiki/555_timer_IC
+const progress_log_level = Logging.LogLevel(-1) # https://github.com/JuliaLogging/ProgressLogging.jl/blob/0e7933005233722d6214b0debe3316c82b4d14a7/src/ProgressLogging.jl#L36
 function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogLevel=Logging.LogLevel(1))
     if !enabled
         return f()
