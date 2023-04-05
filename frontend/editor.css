@@ -3327,22 +3327,51 @@ pluto-cell.hooked_up pluto-output {
 .pluto-frontmatter {
     font-family: var(--system-ui-font-stack);
     width: min(31rem, 90vw);
-    color: var(--black);
-    background: var(--white);
+    color: var(--export-color);
+    background: var(--export-bg-color);
+    border-radius: 1em;
+    padding: 1em 1.5em;
 }
 
 .pluto-frontmatter button {
     cursor: pointer;
+    background-color: var(--frontmatter-button-bg-color);
+    border-radius: 0.5em;
+    border: 2px solid var(--frontmatter-button-bg-color);
+    font-weight: 500;
+}
+
+.pluto-frontmatter button:hover {
+    border-color: var(--frontmatter-input-border-color);
+}
+
+.pluto-frontmatter input {
+    background-color: var(--frontmatter-input-bg-color);
+    border-radius: 0.5em;
+    border: 2px solid var(--frontmatter-input-border-color);
+    padding: 0.3em 0.5em;
+}
+
+.pluto-frontmatter rbl-tag-input {
+    color: var(--black);
+}
+
+.pluto-frontmatter label {
+    text-transform: capitalize;
+    font-weight: 500;
 }
 
 .pluto-frontmatter .deletefield {
-    align-self: baseline;
+    color: var(--export-color);
+    background-color: transparent;
+    border-width: 0;
+    align-self: stretch;
+    margin-left: -1em;
 }
 
 .pluto-frontmatter .addentry {
     grid-column: 1/3;
     margin-top: 0.5em;
-    background-color: transparent;
 }
 
 .pluto-frontmatter .final {
