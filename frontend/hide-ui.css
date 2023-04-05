@@ -28,8 +28,3 @@ pluto-runarea,
         border-radius: 4px !important;
     }
 }
-
-@page {
-    size: auto;
-    margin: 2cm auto; /* suppress browser header/footers */
-}
