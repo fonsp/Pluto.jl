@@ -3331,7 +3331,6 @@ pluto-cell.hooked_up pluto-output {
     background-color: var(--frontmatter-button-bg-color);
     border-radius: 0.5em;
     border: 2px solid var(--frontmatter-button-bg-color);
-    padding: 0.3em 0.5em;
     font-weight: 500;
 }
 
@@ -3346,8 +3345,8 @@ pluto-cell.hooked_up pluto-output {
     padding: 0.3em 0.5em;
 }
 
-.pluto-frontmatter input:focus {
-    outline: none;
+.pluto-frontmatter rbl-tag-input {
+    color: var(--black);
 }
 
 .pluto-frontmatter label {
@@ -3356,24 +3355,11 @@ pluto-cell.hooked_up pluto-output {
 }
 
 .pluto-frontmatter .deletefield {
-    font-size: 1.1em;
     color: var(--export-color);
-    align-self: baseline;
     background-color: transparent;
     border-width: 0;
-    opacity: 0.6;
+    align-self: stretch;
     margin-left: -1em;
-    margin-top: -0.35em;
-}
-
-.pluto-frontmatter .deletefield:hover {
-    opacity: 1;
-}
-
-.pluto-frontmatter .deletefield:focus {
-    outline: none;
-    opacity: 1;
-    font-weight: bold;
 }
 
 .pluto-frontmatter .addentry {

@@ -26,7 +26,7 @@
 
         /*Export styling*/
         --export-bg-color: rgb(60, 67, 101);
-        --export-color: rgba(255, 255, 255, 0.7);
+        --export-color: rgb(228, 228, 228);
         --export-card-bg-color: rgba(255, 255, 255, 0.8);
         --export-card-title-color: rgba(0, 0, 0, 0.7);
         --export-card-text-color: rgba(0, 0, 0, 0.5);
