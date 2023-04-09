@@ -31,7 +31,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 export const trailingslash = (s) => (s.endsWith("/") ? s : s + "/")
 
-export const request_binder = (build_url) =>
+export const request_binder = (build_url, { on_log }) =>
     new Promise((resolve, reject) => {
         console.log("Starting binder connection to", build_url)
         try {
@@ -42,18 +42,23 @@ export const request_binder = (build_url) =>
                 reject(err)
             }
             let phase = null
+            let logs = ``
+            let report_log = (msg) => {
+                console.log("Binder: ", msg, ` at ${new Date().toLocaleTimeString()}`)
+
+                logs = `${logs}${msg}\n`
+                on_log(logs)
+            }
             es.onmessage = (evt) => {
                 let msg = JSON.parse(evt.data)
+
                 if (msg.phase && msg.phase !== phase) {
                     phase = msg.phase.toLowerCase()
-                    console.log("Binder subphase: " + phase)
-                    let status = phase
-                    if (status === "ready") {
-                        status = "server-ready"
-                    }
+
+                    report_log(`\n\n⏱️ Binder subphase: ${phase}\n`)
                 }
                 if (msg.message) {
-                    console.log("Binder message: " + msg.message)
+                    report_log(msg.message.replace(`] `, `]\n`))
                 }
                 switch (msg.phase) {
                     case "failed":
@@ -69,8 +74,6 @@ export const request_binder = (build_url) =>
                             binder_session_token: msg.token,
                         })
                         break
-                    default:
-                    // console.log(msg);
                 }
             }
         } catch (err) {
@@ -91,14 +94,23 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
         // view stats on https://stats.plutojl.org/
         count_stat(`binder-start`)
         await setStatePromise(
-            immer((state) => {
+            immer((/** @type {import("../components/Editor.js").EditorState} */ state) => {
                 state.backend_launch_phase = BackendLaunchPhase.requesting
                 state.disable_ui = false
+                // Clear the Status of the process that generated the HTML
+                state.notebook.status_tree = null
             })
         )
 
         /// PART 1: Creating a binder session..
-        const { binder_session_url, binder_session_token } = await request_binder(launch_params.binder_url.replace("mybinder.org/v2/", "mybinder.org/build/"))
+        const { binder_session_url, binder_session_token } = await request_binder(launch_params.binder_url.replace("mybinder.org/v2/", "mybinder.org/build/"), {
+            on_log: (logs) =>
+                setStatePromise(
+                    immer((/** @type {import("../components/Editor.js").EditorState} */ state) => {
+                        state.backend_launch_logs = logs
+                    })
+                ),
+        })
         const with_token = (u) => with_query_params(u, { token: binder_session_token })
 
         console.log("Binder URL:", with_token(binder_session_url))
@@ -109,7 +121,7 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
         }
 
         await setStatePromise(
-            immer((state) => {
+            immer((/** @type {import("../components/Editor.js").EditorState} */ state) => {
                 state.backend_launch_phase = BackendLaunchPhase.created
                 state.binder_session_url = binder_session_url
                 state.binder_session_token = binder_session_token

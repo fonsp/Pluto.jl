@@ -2,8 +2,9 @@ import { html, useState, useRef, useEffect, useMemo } from "../imports/Preact.js
 import { cl } from "../common/ClassTable.js"
 
 import { LiveDocsTab } from "./LiveDocsTab.js"
-import { is_finished, ProcessTab, total_done, total_tasks } from "./ProcessTab.js"
+import { is_finished, ProcessTab, total_done, total_tasks, useStatusItem } from "./ProcessTab.js"
 import { useMyClockIsAheadBy } from "../common/clock sync.js"
+import { BackendLaunchPhase } from "../common/Binder.js"
 
 /**
  * @typedef PanelTabName
@@ -18,9 +19,11 @@ export const open_bottom_right_panel = (/** @type {PanelTabName} */ tab) => wind
  * desired_doc_query: string?,
  * on_update_doc_query: (query: string?) => void,
  * connected: boolean,
+ * backend_launch_phase: number?,
+ * backend_launch_logs: string?,
  * }} props
  */
-export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, notebook, connected }) => {
+export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, notebook, connected, backend_launch_phase, backend_launch_logs }) => {
     let container_ref = useRef()
 
     const focus_docs_on_open_ref = useRef(false)
@@ -42,17 +45,21 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
         return () => window.removeEventListener("open_bottom_right_panel", handler)
     }, [])
 
+    const status = useWithBackendStatus(notebook, backend_launch_phase)
+
+    console.log({ status })
+
     const [status_total, status_done] = useMemo(
         () =>
-            notebook.status_tree == null
+            status == null
                 ? [0, 0]
                 : [
                       // total_tasks minus 1, to exclude the notebook task itself
-                      total_tasks(notebook.status_tree) - 1,
+                      total_tasks(status) - 1,
                       // the notebook task should never be done, but lets be sure and subtract 1 if it is:
-                      total_done(notebook.status_tree) - (is_finished(notebook.status_tree) ? 1 : 0),
+                      total_done(status) - (is_finished(status) ? 1 : 0),
                   ],
-        [notebook.status_tree]
+        [status]
     )
 
     const busy = status_done < status_total
@@ -120,7 +127,12 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
                           notebook=${notebook}
                       />`
                     : open_tab === "process"
-                    ? html`<${ProcessTab} notebook=${notebook} my_clock_is_ahead_by=${my_clock_is_ahead_by} />`
+                    ? html`<${ProcessTab}
+                          notebook=${notebook}
+                          backend_launch_logs=${backend_launch_logs}
+                          my_clock_is_ahead_by=${my_clock_is_ahead_by}
+                          status=${status}
+                      />`
                     : null}
             </pluto-helpbox>
         </aside>
@@ -142,4 +154,49 @@ const useDelayedTruth = (/** @type {boolean} */ x, /** @type {number} */ timeout
     }, [x])
 
     return output
+}
+
+/**
+ *
+ * @param {import("./Editor.js").NotebookData} notebook
+ * @param {number?} backend_launch_phase
+ * @returns {import("./Editor.js").StatusEntryData?}
+ */
+const useWithBackendStatus = (notebook, backend_launch_phase) => {
+    const backend_launch = useBackendStatus(backend_launch_phase)
+
+    return useMemo(
+        () =>
+            backend_launch_phase == null
+                ? notebook.status_tree
+                : {
+                      name: "notebook",
+                      started_at: 0,
+                      finished_at: null,
+                      subtasks: {
+                          ...notebook.status_tree?.subtasks,
+                          backend_launch,
+                      },
+                  },
+        [notebook.status_tree, backend_launch, backend_launch_phase]
+    )
+}
+
+const useBackendStatus = (/** @type {number | null} */ backend_launch_phase) => {
+    let x = backend_launch_phase ?? -1
+
+    const subtasks = Object.fromEntries(
+        ["requesting", "created", "notebook_running"].map((key) => {
+            let val = BackendLaunchPhase[key]
+            let name = `backend_${key}`
+            return [name, useStatusItem(name, x >= val, x > val)]
+        })
+    )
+
+    return useStatusItem(
+        "backend_launch",
+        backend_launch_phase != null && backend_launch_phase > BackendLaunchPhase.wait_for_user,
+        backend_launch_phase === BackendLaunchPhase.ready,
+        subtasks
+    )
 }

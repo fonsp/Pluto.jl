@@ -142,6 +142,7 @@ const first_true_key = (obj) => {
  *   name: string,
  *   started_at: number?,
  *   finished_at: number?,
+ *   type?: "remote" | "local",
  *   subtasks: Record<string,StatusEntryData>,
  * }}
  */
@@ -269,6 +270,7 @@ const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']
  * disable_ui: boolean,
  * static_preview: boolean,
  * backend_launch_phase: ?number,
+ * backend_launch_logs: ?string,
  * binder_session_url: ?string,
  * binder_session_token: ?string,
  * refresh_target: ?string,
@@ -311,6 +313,7 @@ export class Editor extends Component {
                 launch_params.notebookfile != null && (launch_params.binder_url != null || launch_params.pluto_server_url != null)
                     ? BackendLaunchPhase.wait_for_user
                     : null,
+            backend_launch_logs: null,
             binder_session_url: null,
             binder_session_token: null,
             refresh_target: null,
@@ -1557,6 +1560,8 @@ patch: ${JSON.stringify(
                         desired_doc_query=${this.state.desired_doc_query}
                         on_update_doc_query=${this.actions.set_doc_query}
                         connected=${this.state.connected}
+                        backend_launch_phase=${this.state.backend_launch_phase}
+                        backend_launch_logs=${this.state.backend_launch_logs}
                         notebook=${this.state.notebook}
                     />
                     <${Popup} 
