@@ -144,19 +144,23 @@ function sync_nbpkg_core(
                     let # Status stuff
                         isnothing(wait_business) || Status.report_business_finished!(wait_business)
                         
-                        notebook.nbpkg_ctx_instantiated || Status.report_business_planned!(pkg_status, :instantiate1)
-                        notebook.nbpkg_ctx_instantiated || Status.report_business_planned!(pkg_status, :resolve)
+                        if !notebook.nbpkg_ctx_instantiated
+                            Status.report_business_planned!(pkg_status, :instantiate1)
+                            Status.report_business_planned!(pkg_status, :resolve)
+                            Status.report_business_planned!(pkg_status, :precompile)
+                        end
+                        
                         isempty(removed) || Status.report_business_planned!(pkg_status, :remove)
                         isempty(added) || Status.report_business_planned!(pkg_status, :add)
                         if !isempty(added) || !isempty(removed)
                             Status.report_business_planned!(pkg_status, :instantiate2)
+                            Status.report_business_planned!(pkg_status, :precompile)
                         end
                     end
                     
                     should_precompile_later = false
                     
                     PkgCompat.refresh_registry_cache()
-                    
                     PkgCompat.clear_stdlib_compat_entries!(notebook.nbpkg_ctx)
                     
                     
@@ -524,6 +528,7 @@ function update_nbpkg_core(
     level::Pkg.UpgradeLevel=Pkg.UPLEVEL_MAJOR, 
     on_terminal_output::Function=((args...) -> nothing),
     cleanup::Ref{Function}=Ref{Function}(default_cleanup),
+    compiler_options::CompilerOptions=CompilerOptions(),
 )
     if notebook.nbpkg_ctx !== nothing
         PkgCompat.mark_original!(notebook.nbpkg_ctx)
@@ -573,7 +578,6 @@ function update_nbpkg_core(
                     end
                 end
 
-                stoplistening(iolistener)
 
                 🐧 = !PkgCompat.is_original(notebook.nbpkg_ctx)
                 should_instantiate_again = !notebook.nbpkg_ctx_instantiated || 🐧
@@ -581,8 +585,11 @@ function update_nbpkg_core(
                 if should_instantiate_again
                     # Status.report_business!(pkg_status, :instantiate2) do
                     _instantiate(notebook, iolistener)
+                    _precompile(notebook, iolistener, compiler_options)
                     # end
                 end
+
+                stoplistening(iolistener)
 
                 (
                     did_something=🐧,
@@ -623,6 +630,7 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
                 level, 
                 on_terminal_output=iocallback,
                 cleanup,
+                compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler),
             )
 		end
 
