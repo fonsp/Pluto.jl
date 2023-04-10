@@ -133,7 +133,10 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(struct a{A,B<:C{A}}; i::A; j::B end), [], [:a], [], [:a => ([:C], [], [], [])])
         @test testee(:(struct a{A,B<:C{<:A}} <: D{A,B}; i::A; j::B end), [], [:a], [], [:a => ([:C, :D], [], [], [])])
         @test testee(:(struct a{A,DD<:B.C{D.E{A}}} <: K.A{A} i::A; j::DD; k::C end), [], [:a], [], [:a => ([:B, :C, :D, :K], [], [], [])])
-        
+        @test testee(:(struct a; x; a(t::T) where {T} = new(t); end), [], [:a], [], [:a => ([], [], [[:new]], [])])
+        @test testee(:(struct a; x; y; a(t::T) where {T} = new(t, T); end), [], [:a], [], [:a => ([], [], [[:new]], [])])
+        @test testee(:(struct a; f() = a() end), [], [:a], [], [:a => ([], [], [], [])])
+
         @test testee(:(abstract type a <: b end), [], [:a], [], [:a => ([:b], [], [], [])])
         @test testee(:(abstract type a{T,S} end), [], [:a], [], [:a => ([], [], [], [])])
         @test testee(:(abstract type a{T} <: b end), [], [:a], [], [:a => ([:b], [], [], [])])
