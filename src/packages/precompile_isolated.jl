@@ -10,26 +10,29 @@ function precompile_isolated(
     
     code = """
     # Add some color
-    redirect_stdout(IOContext(stdout, :color => true))
-    redirect_stderr(IOContext(stderr, :color => true))
+    
+    out_stream = IOContext(stdout, :color => true)
+    
+    # redirect_stdout(IOContext(stdout, :color => true))
+    # redirect_stderr(IOContext(stderr, :color => true))
     
     # import Pkg with safe load path
     pushfirst!(LOAD_PATH, "@stdlib")
     import Pkg
     popfirst!(LOAD_PATH)
     
-    Pkg.activate($(repr(environment)))
-    if hasmethod(Pkg.precompile, Tuple{}, (:already_instantiated, ))
-        Pkg.precompile(; already_instantiated=true)
+    Pkg.activate($(repr(environment)); io=out_stream)
+    if VERSION >= v"1.8.0" # https://github.com/JuliaLang/Pkg.jl/pull/2816
+        Pkg.precompile(; already_instantiated=true, io=out_stream)
     else
-        Pkg.precompile()
+        Pkg.precompile(; io=out_stream)
     end
     """
 
     cmd = `$(Base.julia_cmd()[1]) $(flags) -e $(code)`
 
     Base.run(pipeline(
-        cmd; stdout=io, stderr=io,
+        cmd; stdout=io, #dont campture stderr because we want it to show in the server terminal when something goes wrong
     ))
     
     # In the future we could allow interrupting the precompilation process (e.g. when the notebook is shut down)
