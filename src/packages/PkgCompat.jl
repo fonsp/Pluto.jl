@@ -228,8 +228,12 @@ end
 ###
 
 # ⚠️✅ Internal API with fallback
-function instantiate(ctx; update_registry::Bool)
-	@static if hasmethod(Pkg.instantiate, Tuple{}, (:update_registry,))
+function instantiate(ctx; update_registry::Bool, allow_autoprecomp::Bool)
+	@static if hasmethod(Pkg.instantiate, Tuple{}, (:update_registry, :allow_autoprecomp))
+		Pkg.instantiate(ctx; update_registry, allow_autoprecomp)
+	elseif hasmethod(Pkg.instantiate, Tuple{}, (:allow_autoprecomp,))
+		Pkg.instantiate(ctx; allow_autoprecomp)
+	elseif hasmethod(Pkg.instantiate, Tuple{}, (:update_registry,))
 		Pkg.instantiate(ctx; update_registry)
 	else
 		Pkg.instantiate(ctx)
