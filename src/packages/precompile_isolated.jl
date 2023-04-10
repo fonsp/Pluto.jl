@@ -19,7 +19,11 @@ function precompile_isolated(
     popfirst!(LOAD_PATH)
     
     Pkg.activate($(repr(environment)))
-    Pkg.precompile()
+    if hasmethod(Pkg.precompile, Tuple{}, (:already_instantiated, ))
+        Pkg.precompile(; already_instantiated=true)
+    else
+        Pkg.precompile()
+    end
     """
 
     cmd = `$(Base.julia_cmd()[1]) $(flags) -e $(code)`
