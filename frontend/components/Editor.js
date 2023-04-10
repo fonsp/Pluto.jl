@@ -678,8 +678,9 @@ export class Editor extends Component {
                                 const failing_path = String(exception).match(".*'(.*)'.*")?.[1].replace(/\//gi, ".") ?? exception
                                 const path_value = _.get(this.state.notebook, failing_path, "Not Found")
                                 console.log(String(exception).match(".*'(.*)'.*")?.[1].replace(/\//gi, ".") ?? exception, failing_path, typeof failing_path)
+                                const ignore = should_ignore_patch_error(failing_path)
 
-                                console.error(
+                                ;(ignore ? console.log : console.error)(
                                     `#######################**************************########################
 PlutoError: StateOutOfSync: Failed to apply patches.
 Please report this: https://github.com/fonsp/Pluto.jl/issues adding the info below:
@@ -694,7 +695,7 @@ patch: ${JSON.stringify(
                                     exception
                                 )
 
-                                if (should_ignore_patch_error(failing_path)) {
+                                if (ignore) {
                                     console.info("Safe to ignore this patch failure...")
                                 } else if (this.state.connected) {
                                     console.error("Trying to recover: Refetching notebook...")
