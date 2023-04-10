@@ -154,11 +154,11 @@ function run(session::ServerSession)
         end
         empty!(session.connected_clients)
         for nb in values(session.notebooks)
-            @asynclog SessionActions.shutdown(session, nb; keep_in_session = false, async = false, verbose = false)
+            @asynclog SessionActions.shutdown(session, nb; keep_in_session=false, async=false, verbose=false)
         end
     end
 
-    server = HTTP.listen!(hostIP, port; stream = true, server = serversocket, on_shutdown) do http::HTTP.Stream
+    server = HTTP.listen!(hostIP, port; stream=true, server=serversocket, on_shutdown, verbose=-1) do http::HTTP.Stream
         # messy messy code so that we can use the websocket on the same port as the HTTP server
         if HTTP.WebSockets.isupgrade(http.message)
             secret_required = let

@@ -79,9 +79,10 @@ function open(session::ServerSession, path::AbstractString;
     run_status = Status.report_business_planned!(notebook.status_tree, :run)
     if session.options.evaluation.run_notebook_on_load
         Status.report_business_planned!(run_status, :resolve_topology)
+        cell_status = Status.report_business_planned!(run_status, :evaluate)
         for (i,c) in enumerate(notebook.cells)
             c.queued = true
-            Status.report_business_planned!(run_status, Symbol(i))
+            Status.report_business_planned!(cell_status, Symbol(i))
         end
     end
 

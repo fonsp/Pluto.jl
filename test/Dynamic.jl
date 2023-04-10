@@ -159,6 +159,14 @@ end
             @test occursin("<b>s</b><b>o</b><b>r</b>tperm", doc_output)
         end
 
+        @test occursin("\\div", Pluto.PlutoRunner.doc_fetcher("÷", Main)[1])
+        @test occursin("\\gamma", Pluto.PlutoRunner.doc_fetcher("γ", Main)[1])
+        let # the expression is not valid, so this doc fetch fails
+            doc_output, result = Pluto.PlutoRunner.doc_fetcher("🍕\"", Main)
+            @test isnothing(doc_output)
+            @test result == :👎
+        end
+
         # Issue #1128
         # Ref https://docs.julialang.org/en/v1/manual/documentation/#Dynamic-documentation
         m = Module()

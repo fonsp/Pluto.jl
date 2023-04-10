@@ -177,7 +177,7 @@ function run_reactive_core!(
         cell.running = true
         # Important to not use empty! here because AppendonlyMarker requires a new array identity.
         # Eventually we could even make AppendonlyArray to enforce this but idk if it's worth it. yadiyadi.
-        cell.logs = []
+        cell.logs = Vector{Dict{String,Any}}()
         send_notebook_changes_throttled()
 
         if any_interrupted || notebook.wants_to_interrupt || !will_run_code(notebook)
@@ -349,7 +349,7 @@ function update_save_run!(
 	run_async::Bool=false, 
 	prerender_text::Bool=false, 
 	auto_solve_multiple_defs::Bool=false,
-	on_auto_solve_multiple_defs::Union{Nothing,Function}=nothing,
+	on_auto_solve_multiple_defs::Function=identity,
 	kwargs...
 )
 	old = notebook.topology
@@ -370,7 +370,7 @@ function update_save_run!(
 			new = notebook.topology = updated_topology(new, notebook, to_disable)
 		end
 		
-		isnothing(on_auto_solve_multiple_defs) || on_auto_solve_multiple_defs(to_disable_dict)
+		on_auto_solve_multiple_defs(to_disable_dict)
 	end
 
 	update_dependency_cache!(notebook)
@@ -615,5 +615,16 @@ function update_skipped_cells_dependency!(notebook::Notebook, topology::Notebook
     end
     for cell in indirectly_skipped
         cell.depends_on_skipped_cells = true
+    end
+end
+
+function update_disabled_cells_dependency!(notebook::Notebook, topology::NotebookTopology=notebook.topology)
+    disabled_cells = filter(is_disabled, notebook.cells)
+    indirectly_disabled = collect(topological_order(topology, disabled_cells))
+    for cell in notebook.cells
+        cell.depends_on_disabled_cells = false
+    end
+    for cell in indirectly_disabled
+        cell.depends_on_disabled_cells = true
     end
 end

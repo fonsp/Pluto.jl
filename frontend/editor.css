@@ -2040,6 +2040,12 @@ pluto-helpbox {
     border-top-right-radius: 9px;
     box-shadow: 0 0 11px 0px var(--helpbox-box-shadow-color);
 }
+pluto-helpbox > section {
+    height: 100%;
+    overflow: auto;
+    padding: 10px;
+}
+
 pluto-helpbox > header {
     display: flex;
     padding: 0.6em;
@@ -2273,54 +2279,49 @@ pluto-helpbox.hidden > section {
 /* https://docs.julialang.org/en/v1/assets/themes/documenter-light.css */
 /* see https://github.com/JuliaDocs/Documenter.jl for author information */
 
-pluto-helpbox {
+.helpbox-docs {
     font-family: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
     line-height: 1.5;
     font-size: 0.9rem;
 }
-pluto-helpbox pre,
-pluto-helpbox code,
-pluto-helpbox .cm-line {
+.helpbox-docs pre,
+.helpbox-docs code,
+.helpbox-docs .cm-line {
     /* from https://docs.julialang.org/en/v1/assets/themes/documenter-light.css */
     font-family: "Roboto Mono", "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", "DejaVu Sans Mono", monospace;
     font-size: 0.95em;
     line-height: initial;
 }
-pluto-helpbox pre code {
+.helpbox-docs pre code {
     font-size: 1em;
 }
 
-pluto-helpbox pre code.hljs {
+.helpbox-docs pre code.hljs {
     padding: 0;
 }
 
-pluto-helpbox code .cm-editor .cm-content {
+.helpbox-docs code .cm-editor .cm-content {
     padding: 0px;
 }
 
-pluto-helpbox img {
+.helpbox-docs img {
     max-width: 100%;
 }
 
-pluto-helpbox > section {
-    height: 100%;
-    overflow: auto;
-    padding: 10px;
-}
-pluto-helpbox > section h1,
-pluto-helpbox > section h2,
-pluto-helpbox > section h3,
-pluto-helpbox > section h4,
-pluto-helpbox > section h5,
-pluto-helpbox > section h6 {
+.helpbox-docs > section h1,
+.helpbox-docs > section h2,
+.helpbox-docs > section h3,
+.helpbox-docs > section h4,
+.helpbox-docs > section h5,
+.helpbox-docs > section h6 {
     font-family: inherit;
     border-bottom: none;
     font-size: 1rem;
 }
-pluto-helpbox > section h1 {
+.helpbox-docs > section h1 {
     font-size: 1.3rem;
 }
-pluto-helpbox > section pre {
+.helpbox-docs > section pre {
     padding: 0.7rem 0.5rem;
     -webkit-overflow-scrolling: touch;
     overflow-x: auto;
@@ -2330,11 +2331,11 @@ pluto-helpbox > section pre {
     white-space: pre;
     word-wrap: normal;
 }
-/* pluto-helpbox > section code {
+/* .helpbox-docs > section code {
     background-color: whitesmoke;
     padding: 0.1em;
 } */
-pluto-helpbox > section hr {
+.helpbox-docs > section hr {
     border: none;
     border-top: 3px solid var(--rule-color);
 }
@@ -2379,11 +2380,13 @@ pluto-helpbox > section hr {
 pl-status {
     --status-color: var(--process-undefined);
     font-family: var(--system-ui-font-stack);
+    font-size: 0.9rem;
     display: flex;
     flex-direction: column;
     border-radius: 0.2em;
     /* margin: 0.3em; */
-    margin-left: 0.7em;
+    --indent: 0.7rem;
+    margin-left: var(--indent);
     border-left: 3px solid transparent;
     margin-top: 0.4em;
     overflow: hidden;
@@ -2519,7 +2522,11 @@ pl-status .status-time {
 }
 
 .discrete-progress-bar.big {
-    gap: 0.5px;
+    gap: 0px;
+}
+
+pl-status pkg-terminal {
+    margin-left: var(--indent);
 }
 
 /* FOOTER */
@@ -3320,22 +3327,51 @@ pluto-cell.hooked_up pluto-output {
 .pluto-frontmatter {
     font-family: var(--system-ui-font-stack);
     width: min(31rem, 90vw);
-    color: var(--black);
-    background: var(--white);
+    color: var(--export-color);
+    background: var(--export-bg-color);
+    border-radius: 1em;
+    padding: 1em 1.5em;
 }
 
 .pluto-frontmatter button {
     cursor: pointer;
+    background-color: var(--frontmatter-button-bg-color);
+    border-radius: 0.5em;
+    border: 2px solid var(--frontmatter-button-bg-color);
+    font-weight: 500;
+}
+
+.pluto-frontmatter button:hover {
+    border-color: var(--frontmatter-input-border-color);
+}
+
+.pluto-frontmatter input {
+    background-color: var(--frontmatter-input-bg-color);
+    border-radius: 0.5em;
+    border: 2px solid var(--frontmatter-input-border-color);
+    padding: 0.3em 0.5em;
+}
+
+.pluto-frontmatter rbl-tag-input {
+    color: var(--black);
+}
+
+.pluto-frontmatter label {
+    text-transform: capitalize;
+    font-weight: 500;
 }
 
 .pluto-frontmatter .deletefield {
-    align-self: baseline;
+    color: var(--export-color);
+    background-color: transparent;
+    border-width: 0;
+    align-self: stretch;
+    margin-left: -1em;
 }
 
 .pluto-frontmatter .addentry {
     grid-column: 1/3;
     margin-top: 0.5em;
-    background-color: transparent;
 }
 
 .pluto-frontmatter .final {

@@ -11,9 +11,11 @@ const TerminalViewAnsiUp = ({ value }) => {
         if (parent) parent.scrollTop = 1e5
     }, [node_ref.current, value])
 
-    return html`<pkg-terminal
-        ><div class="scroller"><pre ref=${node_ref} class="pkg-terminal"></pre></div
-    ></pkg-terminal>`
+    return !!value
+        ? html`<pkg-terminal
+              ><div class="scroller"><pre ref=${node_ref} class="pkg-terminal"></pre></div
+          ></pkg-terminal>`
+        : null
 }
 
 export const PkgTerminalView = TerminalViewAnsiUp

@@ -929,6 +929,12 @@ function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FunctionName,
         # and explore the function arguments
         return umapfoldl(a -> explore_funcdef!(a, scopestate), params_to_explore; init=(name, symstate))
     elseif ex.head == :(::) || ex.head == :kw || ex.head == :(=)
+        # Treat custom struct constructors as a local scope function
+        if ex.head == :(=) && is_function_assignment(ex)
+            symstate = explore!(ex, scopestate)
+            return Symbol[], symstate
+        end
+
         # account for unnamed params, like in f(::Example) = 1
         if ex.head == :(::) && length(ex.args) == 1
             symstate = explore!(ex.args[1], scopestate)
