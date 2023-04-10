@@ -450,7 +450,7 @@ end
 # ✅ Internal API with fallback
 "Update the project hash in the manifest file (https://github.com/JuliaLang/Pkg.jl/pull/2815)"
 function _update_project_hash!(ctx::PkgContext)
-	VERSION >= v"1.8.0" && try
+	VERSION >= v"1.8.0" && isfile(manifest_file(ctx)) && try
 		Pkg.Operations.record_project_hash(ctx.env)
 		Pkg.Types.write_manifest(ctx.env)
 	catch e
