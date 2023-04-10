@@ -142,7 +142,7 @@ const first_true_key = (obj) => {
  *   name: string,
  *   started_at: number?,
  *   finished_at: number?,
- *   type?: "remote" | "local",
+ *   timing?: "remote" | "local",
  *   subtasks: Record<string,StatusEntryData>,
  * }}
  */

@@ -47,8 +47,6 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
 
     const status = useWithBackendStatus(notebook, backend_launch_phase)
 
-    console.log({ status })
-
     const [status_total, status_done] = useMemo(
         () =>
             status == null
@@ -165,21 +163,17 @@ const useDelayedTruth = (/** @type {boolean} */ x, /** @type {number} */ timeout
 const useWithBackendStatus = (notebook, backend_launch_phase) => {
     const backend_launch = useBackendStatus(backend_launch_phase)
 
-    return useMemo(
-        () =>
-            backend_launch_phase == null
-                ? notebook.status_tree
-                : {
-                      name: "notebook",
-                      started_at: 0,
-                      finished_at: null,
-                      subtasks: {
-                          ...notebook.status_tree?.subtasks,
-                          backend_launch,
-                      },
-                  },
-        [notebook.status_tree, backend_launch, backend_launch_phase]
-    )
+    return backend_launch_phase == null
+        ? notebook.status_tree
+        : {
+              name: "notebook",
+              started_at: 0,
+              finished_at: null,
+              subtasks: {
+                  ...notebook.status_tree?.subtasks,
+                  backend_launch,
+              },
+          }
 }
 
 const useBackendStatus = (/** @type {number | null} */ backend_launch_phase) => {

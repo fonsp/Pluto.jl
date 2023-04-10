@@ -19,7 +19,7 @@ export const start_local = async ({ setStatePromise, connect, launch_params }) =
 
         await setStatePromise(
             immer((/** @type {import("../components/Editor.js").EditorState} */ state) => {
-                state.backend_launch_phase = BackendLaunchPhase.created
+                state.backend_launch_phase = BackendLaunchPhase.responded
                 state.disable_ui = false
                 // Clear the Status of the process that generated the HTML
                 state.notebook.status_tree = null

@@ -6,6 +6,7 @@ export const BackendLaunchPhase = {
     wait_for_user: 0,
     requesting: 0.4,
     created: 0.6,
+    responded: 0.7,
     notebook_running: 0.9,
     ready: 1.0,
 }
@@ -128,8 +129,14 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
             })
         )
 
-        // fetch index to say hello
+        // fetch index to say hello to the pluto server. this ensures that the pluto server is running and it triggers JIT compiling some of the HTTP code.
         await fetch(with_token(binder_session_url))
+
+        await setStatePromise(
+            immer((/** @type {import("../components/Editor.js").EditorState} */ state) => {
+                state.backend_launch_phase = BackendLaunchPhase.responded
+            })
+        )
 
         /// PART 2: Using Pluto's REST API to open the notebook file. We either upload the notebook with a POST request, or we let the server open by giving it the filename/URL.
 

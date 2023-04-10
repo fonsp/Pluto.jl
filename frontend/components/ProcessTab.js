@@ -4,7 +4,6 @@ import { cl } from "../common/ClassTable.js"
 import { prettytime, useMillisSinceTruthy } from "./RunArea.js"
 import { DiscreteProgressBar } from "./DiscreteProgressBar.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
-import { BackendLaunchPhase } from "../common/Binder.js"
 
 /**
  * @param {{
@@ -74,7 +73,8 @@ const descriptions = {
 
     backend_launch: "Connecting to backend",
     backend_requesting: "Requesting a worker",
-    backend_created: "Starting Pluto & opening notebook file",
+    backend_created: "Starting Pluto server",
+    backend_responded: "Opening notebook file",
     backend_notebook_running: "Switching to live editing",
 }
 
@@ -113,7 +113,7 @@ const StatusItem = ({ status_tree, path, my_clock_is_ahead_by, nbpkg, backend_la
     const local_busy_time = (useMillisSinceTruthy(busy) ?? 0) / 1000
     const mytime = Date.now() / 1000
 
-    const busy_time = Math.max(local_busy_time, mytime - start - (mystatus.type === "local" ? 0 : my_clock_is_ahead_by))
+    const busy_time = Math.max(local_busy_time, mytime - start - (mystatus.timing === "local" ? 0 : my_clock_is_ahead_by))
 
     useEffect(() => {
         if (busy) {
@@ -204,8 +204,10 @@ const StatusItem = ({ status_tree, path, my_clock_is_ahead_by, nbpkg, backend_la
                   <span class="status-name">${friendly_name(mystatus.name)}${inner_progress}</span>
                   <span class="status-time">${finished ? prettytime(to_ns(end - start)) : busy ? prettytime(to_ns(busy_time)) : null}</span>
               </div>
-              ${inner}${is_open && mystatus.name === "pkg" ? html`<${PkgTerminalView} value=${nbpkg?.terminal_outputs?.nbpkg_sync} />` : undefined}${is_open &&
-              mystatus.name === "backend_launch"
+              ${inner}
+              ${is_open && mystatus.name === "pkg"
+                  ? html`<${PkgTerminalView} value=${nbpkg?.terminal_outputs?.nbpkg_sync} />`
+                  : is_open && mystatus.name === "backend_launch"
                   ? html`<${PkgTerminalView} value=${backend_launch_logs} />`
                   : undefined}
           </pl-status>`
@@ -278,7 +280,7 @@ export const path_to_first_busy_business = (status) => {
 export const useStatusItem = (/** @type {string} */ name, /** @type {boolean} */ started, /** @type {boolean} */ finished, subtasks = {}) => ({
     name,
     subtasks,
-    type: "local",
+    timing: "local",
     started_at: useMemo(() => (started || finished ? Date.now() / 1000 : null), [started || finished]),
     finished_at: useMemo(() => (finished ? Date.now() / 1000 : null), [finished]),
 })
