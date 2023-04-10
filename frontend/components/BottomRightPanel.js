@@ -180,7 +180,7 @@ const useBackendStatus = (/** @type {number | null} */ backend_launch_phase) => 
     let x = backend_launch_phase ?? -1
 
     const subtasks = Object.fromEntries(
-        ["requesting", "created", "notebook_running"].map((key) => {
+        ["requesting", "created", "responded", "notebook_running"].map((key) => {
             let val = BackendLaunchPhase[key]
             let name = `backend_${key}`
             return [name, useStatusItem(name, x >= val, x > val)]
