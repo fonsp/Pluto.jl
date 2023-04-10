@@ -380,7 +380,7 @@ function http_router_for(session::ServerSession)
             notebook = notebook_from_uri(request)
             response = HTTP.Response(200, Pluto.pack(Pluto.notebook_to_js(notebook)))
             HTTP.setheader(response, "Content-Type" => "application/octet-stream")
-            HTTP.setheader(response, "Content-Disposition" => "inline; filename=\"$(without_pluto_file_extension(basename(notebook.path))).plutostate\"")
+            HTTP.setheader(response, "Content-Disposition" => "attachment; filename=\"$(without_pluto_file_extension(basename(notebook.path))).plutostate\"")
             response
         catch e
             return error_response(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", sprint(showerror, e, stacktrace(catch_backtrace())))
@@ -396,7 +396,7 @@ function http_router_for(session::ServerSession)
             notebook = notebook_from_uri(request)
             response = HTTP.Response(200, generate_html(notebook))
             HTTP.setheader(response, "Content-Type" => "text/html; charset=utf-8")
-            HTTP.setheader(response, "Content-Disposition" => "inline; filename=\"$(basename(notebook.path)).html\"")
+            HTTP.setheader(response, "Content-Disposition" => "attachment; filename=\"$(basename(notebook.path)).html\"")
             response
         catch e
             return error_response(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", sprint(showerror, e, stacktrace(catch_backtrace())))
