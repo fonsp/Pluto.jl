@@ -45,6 +45,10 @@ resolve
 remove
 add
 instantiate
+instantiate1
+instantiate2
+instantiate3
+precompile
 
 run
 
@@ -66,6 +70,7 @@ const descriptions = {
     pkg: "Package management",
     instantiate1: "instantiate",
     instantiate2: "instantiate",
+    instantiate3: "instantiate",
     run: "Evaluating cells",
     evaluate: "Running code",
     registry_update: "Updating package registry",

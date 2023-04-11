@@ -227,13 +227,12 @@ end
 # Instantiate
 ###
 
-# ⚠️✅ Internal API with fallback
-function instantiate(ctx; update_registry::Bool)
-	@static if hasmethod(Pkg.instantiate, Tuple{}, (:update_registry,))
-		Pkg.instantiate(ctx; update_registry)
-	else
-		Pkg.instantiate(ctx)
-	end
+# ⚠️ Internal API
+function instantiate(ctx; update_registry::Bool, allow_autoprecomp::Bool)
+	Pkg.instantiate(ctx; update_registry, allow_autoprecomp)
+	# Not sure how to make a fallback:
+	# - hasmethod cannot test for kwargs because instantiate takes kwargs... that are passed on somewhere else
+	# - can't catch for a CallError because the error is weird
 end
 
 
