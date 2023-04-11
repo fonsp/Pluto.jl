@@ -654,7 +654,7 @@ import Distributed
         precomp_entries() = readdir(mkpath(compilation_dir_testA))
         
         # clear cache
-        isdir(compilation_dir_testA) && rm(compilation_dir_testA; recursive=true)
+        isdir(compilation_dir_testA) && rm(compilation_dir_testA; force=true, recursive=true)
         @test precomp_entries() == []
 
         @testset "Match compiler options: $(match)" for match in [true, false]
