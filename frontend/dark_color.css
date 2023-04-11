@@ -158,6 +158,7 @@
         --process-busy: #ffcd70;
         --process-finished: hsl(126deg 30% 60%);
         --process-undefined: rgb(151, 151, 151);
+        --process-notify-bg: hsl(0 0% 21%);
 
         /*footer*/
         --footer-color: #cacaca;
