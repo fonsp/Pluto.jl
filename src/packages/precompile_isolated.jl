@@ -12,6 +12,10 @@ function precompile_isolated(
     popfirst!(LOAD_PATH)
     
     out_stream = IOContext(stdout, :color => true)
+    # I'm a pirate harrr 🏴‍☠️
+    @static if isdefined(Pkg, :can_fancyprint)
+        Pkg.can_fancyprint(io::IO) = true
+    end
     
     Pkg.activate($(repr(environment)); io=out_stream)
     if VERSION >= v"1.8.0" # https://github.com/JuliaLang/Pkg.jl/pull/2816
