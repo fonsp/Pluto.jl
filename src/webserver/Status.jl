@@ -1,13 +1,13 @@
 module Status
 
+_default_update_listener() = nothing
 
 Base.@kwdef mutable struct Business
     name::Symbol=:ignored
     started_at::Union{Nothing,Float64}=nothing
     finished_at::Union{Nothing,Float64}=nothing
     subtasks::Dict{Symbol,Business}=Dict{Symbol,Business}()
-
-    update_listener_ref::Ref{Union{Nothing,Function}}=Ref{Union{Nothing,Function}}(nothing)
+    update_listener_ref::Ref{Function}=Ref{Function}(_default_update_listener)
     lock::Threads.SpinLock=Threads.SpinLock()
 end
 
@@ -32,7 +32,7 @@ function report_business_started!(business::Business)
         empty!(business.subtasks)
     end
     
-    isnothing(business.update_listener_ref[]) || business.update_listener_ref[]()
+    business.update_listener_ref[]()
     return business
 end
 
@@ -51,7 +51,7 @@ function report_business_finished!(business::Business)
         report_business_finished!(v)
     end
     
-    isnothing(business.update_listener_ref[]) || business.update_listener_ref[]()
+    business.update_listener_ref[]()
     
     return business
 end

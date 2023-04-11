@@ -530,9 +530,9 @@ function collect_soft_definitions(session_notebook::SN, modules::Set{Expr})
     end)
 end
 
-function macroexpand_in_workspace(session_notebook::SN, macrocall, cell_id, module_name = nothing; capture_stdout::Bool=true)::Tuple{Bool, Any}
+function macroexpand_in_workspace(session_notebook::SN, macrocall, cell_id, module_name = Symbol(""); capture_stdout::Bool=true)::Tuple{Bool, Any}
     workspace = get_workspace(session_notebook)
-    module_name = module_name === nothing ? workspace.module_name : module_name
+    module_name = module_name === Symbol("") ? workspace.module_name : module_name
 
     Distributed.remotecall_eval(Main, workspace.pid, quote
         try

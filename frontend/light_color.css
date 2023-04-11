@@ -26,11 +26,17 @@
 
         /*Export styling*/
         --export-bg-color: rgb(60, 67, 101);
-        --export-color: rgba(255, 255, 255, 0.7);
+        --export-color: rgb(228, 228, 228);
         --export-card-bg-color: rgba(255, 255, 255, 0.8);
         --export-card-title-color: rgba(0, 0, 0, 0.7);
         --export-card-text-color: rgba(0, 0, 0, 0.5);
         --export-card-shadow-color: #00000029;
+
+        /*Frontmatter styling*/
+        --frontmatter-button-bg-color: white;
+        --frontmatter-outline-color: hsl(230, 14%, 11%);
+        --frontmatter-input-bg-color: #fbfbfb;
+        --frontmatter-input-border-color: hsl(207deg 24% 87%);
 
         /*Pluto output styling */
         --pluto-schema-types-color: rgba(0, 0, 0, 0.4);
