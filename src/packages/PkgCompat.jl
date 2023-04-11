@@ -443,7 +443,20 @@ function _modify_compat!(f!::Function, ctx::PkgContext)::PkgContext
 		Pkg.TOML.print(io, toml; sorted=true, by=(key -> (project_key_order(key), key)))
 	end)
 	
-	return load_ctx!(ctx)
+	return _update_project_hash!(load_ctx!(ctx))
+end
+
+# ✅ Internal API with fallback
+"Update the project hash in the manifest file (https://github.com/JuliaLang/Pkg.jl/pull/2815)"
+function _update_project_hash!(ctx::PkgContext)
+	VERSION >= v"1.8.0" && isfile(manifest_file(ctx)) && try
+		Pkg.Operations.record_project_hash(ctx.env)
+		Pkg.Types.write_manifest(ctx.env)
+	catch e
+		@info "Failed to update project hash." exception=(e,catch_backtrace())
+	end
+	
+	ctx
 end
 
 
