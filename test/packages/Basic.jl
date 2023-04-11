@@ -673,6 +673,45 @@ import Distributed
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
+    VERSION >= v"1.9.0-aaa" && @testset "Precompilation" begin
+        
+        @assert Base.JLOptions().use_pkgimages == 1
+        
+        compilation_dir = joinpath(DEPOT_PATH[1], "compiled", "v$(VERSION.major).$(VERSION.minor)")
+        @assert isdir(compilation_dir)
+        compilation_dir_testA = joinpath(compilation_dir, "PlutoPkgTestA")
+        precomp_entries() = readdir(mkpath(compilation_dir_testA))
+        
+        # clear cache
+        isdir(compilation_dir_testA) && rm(compilation_dir_testA; recursive=true)
+        
+        @test precomp_entries() == []
+        
+        
+        🍭 = ServerSession()
+        🍭.options.compiler.pkgimages = "no"
+
+        notebook = Notebook([
+            Cell("false && import PlutoPkgTestA"),
+        ])
+
+        @test !notebook.nbpkg_ctx_instantiated
+        update_save_run!(🍭, notebook, notebook.cells)
+        @test notebook.nbpkg_ctx_instantiated
+        
+        after_sync = precomp_entries()
+        @test !isempty(after_sync)
+        
+        setcode!(notebook.cells[1], "import PlutoPkgTestA")
+        update_save_run!(🍭, notebook, notebook.cells[1])
+        
+        after_run = precomp_entries()
+        
+        # Running the import should not have triggered additional precompilation, everything should have been precompiled during Pkg.precompile() (in sync_nbpkg).
+        @test after_sync == after_run
+        
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
 
     Pkg.Registry.rm(pluto_test_registry_spec)
     # Pkg.Registry.add("General")
