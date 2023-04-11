@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.22
+# v0.19.24
 
 using Markdown
 using InteractiveUtils
@@ -14,6 +14,19 @@ using BenchmarkTools: @benchmark
 # ╠═╡ skip_as_script = true
 #=╠═╡
 using PlutoUI: Slider
+  ╠═╡ =#
+
+# ╔═╡ e665ae4e-bf4e-11ed-330a-f3670dd00a95
+# ╠═╡ skip_as_script = true
+#=╠═╡
+str = read(download("https://raw.githubusercontent.com/fonsp/disorganised-mess/main/ansidemo.txt"), String)
+  ╠═╡ =#
+
+# ╔═╡ 032a10cc-8b2b-4e85-bac4-b9623b91d016
+# ╠═╡ disabled = true
+# ╠═╡ skip_as_script = true
+#=╠═╡
+str = "\nInstantiating...\n\e[32m\e[1m  No Changes\e[22m\e[39m to `/private/var/folders/v_/fhpj9jn151d4p9c2fdw2gv780000gn/T/jl_DivOhV/Project.toml`\n\e[32m\e[1m  No Changes\e[22m\e[39m to `/private/var/folders/v_/fhpj9jn151d4p9c2fdw2gv780000gn/T/jl_DivOhV/Manifest.toml`\n\e[?25l\e[?25h\e[2K\nResolving...\n\e[32m\e[1m  No Changes\e[22m\e[39m to `/private/var/folders/v_/fhpj9jn151d4p9c2fdw2gv780000gn/T/jl_DivOhV/Project.toml`\n\e[32m\e[1m  No Changes\e[22m\e[39m to `/private/var/folders/v_/fhpj9jn151d4p9c2fdw2gv780000gn/T/jl_DivOhV/Manifest.toml`\n\e[?25l\e[?25h\e[2K"
   ╠═╡ =#
 
 # ╔═╡ 209f221c-be89-4976-b712-2b9214c3291c
@@ -200,11 +213,14 @@ function build_str(state::ANSITerminalState)
 end
 
 # ╔═╡ a1ebfaf3-dadb-40dc-95c5-ae8a9d6de1ec
+# ╠═╡ skip_as_script = true
+#=╠═╡
 function solve(str::AbstractString)
 	state = ANSITerminalState()
 	consume_safe!(state, str)
 	build_str(state)
 end
+  ╠═╡ =#
 
 # ╔═╡ 6dc56641-7d0d-4bd7-a1ef-22e373908207
 #=╠═╡
@@ -246,21 +262,8 @@ end
 # ╠═╡ skip_as_script = true
 #=╠═╡
 ANSITerminalState(
-	lines=Dict(2 => Char['a', 't'], 1 => ['c'])
+	lines=Dict(3 => Char['a', 't'], 1 => ['c'])
 ) |> build_str |> Text
-  ╠═╡ =#
-
-# ╔═╡ 032a10cc-8b2b-4e85-bac4-b9623b91d016
-# ╠═╡ disabled = true
-# ╠═╡ skip_as_script = true
-#=╠═╡
-str = "\nInstantiating...\n\e[32m\e[1m  No Changes\e[22m\e[39m to `/private/var/folders/v_/fhpj9jn151d4p9c2fdw2gv780000gn/T/jl_DivOhV/Project.toml`\n\e[32m\e[1m  No Changes\e[22m\e[39m to `/private/var/folders/v_/fhpj9jn151d4p9c2fdw2gv780000gn/T/jl_DivOhV/Manifest.toml`\n\e[?25l\e[?25h\e[2K\nResolving...\n\e[32m\e[1m  No Changes\e[22m\e[39m to `/private/var/folders/v_/fhpj9jn151d4p9c2fdw2gv780000gn/T/jl_DivOhV/Project.toml`\n\e[32m\e[1m  No Changes\e[22m\e[39m to `/private/var/folders/v_/fhpj9jn151d4p9c2fdw2gv780000gn/T/jl_DivOhV/Manifest.toml`\n\e[?25l\e[?25h\e[2K"
-  ╠═╡ =#
-
-# ╔═╡ e665ae4e-bf4e-11ed-330a-f3670dd00a95
-# ╠═╡ skip_as_script = true
-#=╠═╡
-str = read(download("https://raw.githubusercontent.com/fonsp/disorganised-mess/main/ansidemo.txt"), String)
   ╠═╡ =#
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -278,7 +281,7 @@ PlutoUI = "~0.7.50"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.9.0-beta4"
+julia_version = "1.9.0-rc2"
 manifest_format = "2.0"
 project_hash = "ce886088241d89ce6a9168ebf44701e0c6f4421f"
 
@@ -402,7 +405,7 @@ uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
 [[deps.MbedTLS_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
-version = "2.28.0+0"
+version = "2.28.2+0"
 
 [[deps.Mmap]]
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
@@ -418,7 +421,7 @@ version = "1.2.0"
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
 uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
-version = "0.3.21+0"
+version = "0.3.21+4"
 
 [[deps.Parsers]]
 deps = ["Dates", "SnoopPrecompile"]
