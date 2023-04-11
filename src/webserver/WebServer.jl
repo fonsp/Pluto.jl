@@ -365,7 +365,7 @@ end
 function process_ws_message(session::ServerSession, parentbody::Dict, clientstream)
     client_id = Symbol(parentbody["client_id"])
     client = get!(session.connected_clients, client_id ) do 
-        ClientSession(client_id, clientstream)
+        ClientSession(client_id, clientstream, session.options.server.simulated_lag)
     end
     client.stream = clientstream # it might change when the same client reconnects
 
