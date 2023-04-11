@@ -672,11 +672,8 @@ import Distributed
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
-
-    VERSION >= v"1.9.0-aaa" && @testset "Precompilation" begin
-        
-        @assert Base.JLOptions().use_pkgimages == 1
-        
+    
+    @testset "Precompilation" begin
         compilation_dir = joinpath(DEPOT_PATH[1], "compiled", "v$(VERSION.major).$(VERSION.minor)")
         @assert isdir(compilation_dir)
         compilation_dir_testA = joinpath(compilation_dir, "PlutoPkgTestA")
@@ -684,33 +681,80 @@ import Distributed
         
         # clear cache
         isdir(compilation_dir_testA) && rm(compilation_dir_testA; recursive=true)
-        
         @test precomp_entries() == []
-        
-        
-        🍭 = ServerSession()
-        🍭.options.compiler.pkgimages = "no"
 
-        notebook = Notebook([
-            Cell("false && import PlutoPkgTestA"),
-        ])
+        @testset "Match compiler options: $(match)" for match in [true, false]
+            
+            before_sync = precomp_entries()
+            
+            🍭 = ServerSession()
+            # make compiler settings of the worker (not) match the server settings
+            let
+                # you can find out which settings are relevant for cache validation by running JULIA_DEBUG="loading" julia and then missing a cache. Example output on julia1.9.0-rc1:
+                # ┌ Debug: Rejecting cache file /Applications/Julia-1.9.0-beta4 ARM.app/Contents/Resources/julia/share/julia/compiled/v1.9/SuiteSparse_jll/ME9At_bvckq.ji for  [top-level] since the flags are mismatched
+                # │   current session: use_pkgimages = true, debug_level = 1, check_bounds = 0, inline = true, opt_level = 2
+                # │   cache file:      use_pkgimages = true, debug_level = 1, check_bounds = 1, inline = true, opt_level = 2
+                # └ @ Base loading.jl:2668
+                flip = !match
+                if VERSION >= v"1.9.0-aaa"
+                    🍭.options.compiler.pkgimages = (flip ⊻ Base.JLOptions().use_pkgimages == 1) ? "yes" : "no"
+                end
+                🍭.options.compiler.check_bounds = (flip ⊻ Base.JLOptions().check_bounds == 1) ? "yes" : "no"
+                🍭.options.compiler.inline = (flip ⊻ Base.JLOptions().can_inline == 1) ? "yes" : "no"
+                🍭.options.compiler.optimize = match ? Base.JLOptions().opt_level : 3 - Base.JLOptions().opt_level
+                # cant set the debug level but whatevs
+            end
+            
 
-        @test !notebook.nbpkg_ctx_instantiated
-        update_save_run!(🍭, notebook, notebook.cells)
-        @test notebook.nbpkg_ctx_instantiated
-        
-        after_sync = precomp_entries()
-        @test !isempty(after_sync)
-        
-        setcode!(notebook.cells[1], "import PlutoPkgTestA")
-        update_save_run!(🍭, notebook, notebook.cells[1])
-        
-        after_run = precomp_entries()
-        
-        # Running the import should not have triggered additional precompilation, everything should have been precompiled during Pkg.precompile() (in sync_nbpkg).
-        @test after_sync == after_run
-        
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+            notebook = Notebook([
+                # An import for Pluto to recognize, but don't actually run it. When you run an import, Julia will precompile the package if necessary, which would skew our results.
+                Cell("false && import PlutoPkgTestA"),
+            ])
+
+            @test !notebook.nbpkg_ctx_instantiated
+            update_save_run!(🍭, notebook, notebook.cells)
+            @test notebook.nbpkg_ctx_instantiated
+            
+            after_sync = precomp_entries()
+            
+            # syncing should have called Pkg.precompile(), which should have generated new precompile caches. 
+            # If `match == false`, then this is the second run, and the precompile caches should be different. 
+            # These new caches use the same filename (weird...), EXCEPT when the pkgimages flag changed, then you get a new filename.
+            if match == true || VERSION >= v"1.9.0-aaa"
+                @test before_sync != after_sync
+                @test length(before_sync) < length(after_sync)
+            end
+            
+            
+            
+            # Now actually run the import.
+            setcode!(notebook.cells[1], """begin
+            ENV["JULIA_DEBUG"] = "loading"
+            
+            PlutoRunner.Logging.shouldlog(logger::PlutoRunner.PlutoCellLogger, level, _module, _...) = true # https://github.com/fonsp/Pluto.jl/issues/2487
+            
+            import PlutoPkgTestA
+            end""")
+            update_save_run!(🍭, notebook, notebook.cells[1])
+            @test noerror(notebook.cells[1])
+            
+            after_run = precomp_entries()
+            
+
+            # There should be a log message about loading the cache.
+            @test any(notebook.cells[1].logs) do log
+                occursin(r"Loading.*cache"i, log["msg"][1])
+            end
+            # There should NOT be a log message about rejecting the cache.
+            @test !any(notebook.cells[1].logs) do log
+                occursin(r"reject.*cache"i, log["msg"][1])
+            end
+            
+            # Running the import should not have triggered additional precompilation, everything should have been precompiled during Pkg.precompile() (in sync_nbpkg).
+            @test after_sync == after_run
+            
+            WorkspaceManager.unmake_workspace((🍭, notebook))
+        end
     end
 
     Pkg.Registry.rm(pluto_test_registry_spec)
