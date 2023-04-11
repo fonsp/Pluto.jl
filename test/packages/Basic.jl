@@ -596,32 +596,6 @@ import Distributed
 
     end
 
-    # @test false
-
-    # @testset "File format" begin
-    #     notebook = Notebook([
-    #         Cell("import PlutoPkgTestA"), # cell 1
-    #         Cell("PlutoPkgTestA.MY_VERSION |> Text"),
-    #         Cell("import PlutoPkgTestB"), # cell 3
-    #         Cell("PlutoPkgTestB.MY_VERSION |> Text"),
-    #         Cell("import PlutoPkgTestC"), # cell 5
-    #         Cell("PlutoPkgTestC.MY_VERSION |> Text"),
-    #         Cell("import PlutoPkgTestD"), # cell 7
-    #         Cell("PlutoPkgTestD.MY_VERSION |> Text"),
-    #         Cell("import PlutoPkgTestE"), # cell 9
-    #         Cell("PlutoPkgTestE.MY_VERSION |> Text"),
-    #         Cell("eval(:(import DataFrames))")
-    #     ])
-
-    #     file1 = tempname()
-    #     notebook.path = file1
-
-    #     save_notebook()
-
-
-    #     save_notebook
-    # end
-    
     @testset "Race conditions" begin
         🍭 = ServerSession()
         lag = 0.2
@@ -742,7 +716,7 @@ import Distributed
             
 
             # There should be a log message about loading the cache.
-            @test any(notebook.cells[1].logs) do log
+            VERSION >= v"1.8.0-aaa" && @test any(notebook.cells[1].logs) do log
                 occursin(r"Loading.*cache"i, log["msg"][1])
             end
             # There should NOT be a log message about rejecting the cache.
