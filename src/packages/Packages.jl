@@ -333,8 +333,12 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 				for p in pkgs
 					notebook.nbpkg_terminal_outputs[p] = s
 				end
-                # TODO: this should be throttled/debounced?
+                # incoming IO is a good sign that something might have changed, so we update the cache.
                 update_nbpkg_cache!(notebook)
+                
+                # This is throttled "automatically":
+                # If io is coming in very fast, then it won't build up a queue of updates for the client. That's because `send_notebook_changes!` is a blocking call, including the websocket transfer. So this `iocallback` function will only return when the last message has been sent.
+                # The nice thing is that IOCallback is not actually implemented as a callback when IO comes in, but it is an async loop that sleeps, maybe calls iocallback with the latest buffer content, and repeats. So a blocking iocallback avoids overflowing the queue.
 				send_notebook_changes!(ClientRequest(; session, notebook))
 			end
 			sync_nbpkg_core(
@@ -373,7 +377,8 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 		PlutoPkg: Failed to add/remove packages! Resetting package environment...
 		""" PLUTO_VERSION VERSION old_packages new_packages exception=(e, bt)
 		# TODO: send to user
-
+        showerror(stderr, e, bt)
+        
 		error_text = sprint(showerror, e, bt)
 		for p in notebook.nbpkg_busy_packages
             old = get(notebook.nbpkg_terminal_outputs, p, "")
@@ -697,7 +702,7 @@ end
 
 function with_io_setup(f::Function, notebook::Notebook, iolistener::IOListener)
     startlistening(iolistener)
-    PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
+    PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true, :sneaky_enable_tty => true)) do
         withinteractive(false) do
             f()
         end

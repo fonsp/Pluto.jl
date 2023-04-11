@@ -156,6 +156,10 @@ function withio(f::Function, ctx::PkgContext, io::IO)
     end
 end
 
+# I'm a pirate harrr 🏴‍☠️
+@static if isdefined(Pkg, :can_fancyprint)
+	Pkg.can_fancyprint(io::IOContext{IOBuffer}) = get(io, :sneaky_enable_tty, false) === true
+end
 
 ###
 # REGISTRIES
