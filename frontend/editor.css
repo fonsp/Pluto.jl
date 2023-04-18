@@ -2044,6 +2044,8 @@ pluto-helpbox > section {
     height: 100%;
     overflow: auto;
     padding: 10px;
+    display: flex;
+    flex-direction: column;
 }
 
 pluto-helpbox > header {
@@ -2384,16 +2386,12 @@ pl-status {
     display: flex;
     flex-direction: column;
     border-radius: 0.2em;
-    /* margin: 0.3em; */
     --indent: 0.7rem;
     margin-left: var(--indent);
     border-left: 3px solid transparent;
     margin-top: 0.4em;
     overflow: hidden;
-    /* background: var(--status-color); */
-    /* transition: max-height 1s linear; */
-    /* max-height: 30px; */
-    flex: 1 0 auto;
+    flex: 0 0 auto;
 }
 
 pl-status::before {
@@ -2527,6 +2525,55 @@ pl-status .status-time {
 
 pl-status pkg-terminal {
     margin-left: var(--indent);
+}
+
+pluto-helpbox.helpbox-process > section {
+    padding-bottom: 3.6rem; /* to make space for the notification toggle */
+}
+
+.notify-when-done {
+    position: absolute;
+    bottom: 0.3em;
+    right: 0;
+    left: 0;
+
+    font-family: var(--system-ui-font-stack);
+    font-weight: bold;
+    font-size: 0.8rem;
+    transition: opacity 0.2s;
+    display: flex;
+    justify-content: center;
+    opacity: 0;
+    user-select: none;
+}
+
+.notify-when-done.visible {
+    opacity: 1;
+}
+
+.notify-when-done.visible label {
+    cursor: pointer;
+}
+
+.notify-when-done label {
+    display: flex;
+    align-items: center;
+    background: var(--process-notify-bg);
+    padding: 0.3em 0.6em;
+    border-radius: 1000px;
+    box-shadow: 0px 3px 5px #0000003b;
+}
+
+.notify-when-done label::before {
+    content: "";
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/notifications-outline.svg");
+    background-size: contain;
+    filter: var(--image-filters);
+    margin-bottom: -0.2em;
+    margin-right: 0.3em;
 }
 
 /* FOOTER */

@@ -4,6 +4,7 @@ import { cl } from "../common/ClassTable.js"
 import { prettytime, useMillisSinceTruthy } from "./RunArea.js"
 import { DiscreteProgressBar } from "./DiscreteProgressBar.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
+import { NotifyWhenDone } from "./NotifyWhenDone.js"
 
 /**
  * @param {{
@@ -23,6 +24,7 @@ export let ProcessTab = ({ status, notebook, backend_launch_logs, my_clock_is_ah
                 nbpkg=${notebook.nbpkg}
                 backend_launch_logs=${backend_launch_logs}
             />
+            <${NotifyWhenDone} status=${status} />
         </section>
     `
 }

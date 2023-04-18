@@ -137,7 +137,7 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
     `
 }
 
-const useDelayedTruth = (/** @type {boolean} */ x, /** @type {number} */ timeout) => {
+export const useDelayedTruth = (/** @type {boolean} */ x, /** @type {number} */ timeout) => {
     const [output, set_output] = useState(false)
 
     useEffect(() => {
