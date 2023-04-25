@@ -654,7 +654,11 @@ import Distributed
         precomp_entries() = readdir(mkpath(compilation_dir_testA))
         
         # clear cache
-        isdir(compilation_dir_testA) && rm(compilation_dir_testA; force=true, recursive=true)
+        let
+            # sleep workaround for julia issue 34700.
+            sleep(3)
+            isdir(compilation_dir_testA) && rm(compilation_dir_testA; force=true, recursive=true)
+        end
         @test precomp_entries() == []
 
         @testset "Match compiler options: $(match)" for match in [true, false]
