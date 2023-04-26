@@ -704,7 +704,7 @@ nav#at_the_top button.start_stop_recording.stop span {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/stop-circle-outline.svg");
 }
 nav#at_the_top button.toggle_export span {
-    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/download-outline.svg");
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/share-outline.svg");
     filter: var(--image-filters);
 }
 aside#export button.toggle_export span {
