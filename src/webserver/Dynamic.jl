@@ -112,6 +112,7 @@ function notebook_to_js(notebook::Notebook)
                 "code" => cell.code,
                 "code_folded" => cell.code_folded,
                 "metadata" => cell.metadata,
+                "run_requested_timestamp" => cell.run_requested_timestamp,
             )
         for (id, cell) in notebook.cells_dict),
         "cell_dependencies" => Dict{UUID,Dict{String,Any}}(
@@ -134,7 +135,6 @@ function notebook_to_js(notebook::Notebook)
                 "depends_on_disabled_cells" => cell.depends_on_disabled_cells,
                 "output" => FirebaseyUtils.ImmutableMarker(cell.output),
                 "published_object_keys" => keys(cell.published_objects),
-                "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,
                 "runtime" => cell.runtime,
@@ -499,7 +499,7 @@ responses[:reshow_cell] = function response_reshow_cell(🙋::ClientRequest)
         collect(keys(cell.published_objects)),
         (parse(PlutoRunner.ObjectID, 🙋.body["objectid"], base=16), convert(Int64, 🙋.body["dim"])),
     )
-    set_output!(cell, run, ExprAnalysisCache(🙋.notebook, cell); persist_js_state=true)
+    set_output!(cell, run, ExprAnalysisCache(🙋.notebook, cell), cell.output.last_run_timestamp + 1.0; persist_js_state=true)
     # send to all clients, why not
     send_notebook_changes!(🙋 |> without_initiator)
 end

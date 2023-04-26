@@ -80,12 +80,16 @@ function open(session::ServerSession, path::AbstractString;
     if session.options.evaluation.run_notebook_on_load
         Status.report_business_planned!(run_status, :resolve_topology)
         cell_status = Status.report_business_planned!(run_status, :evaluate)
-        for (i,c) in enumerate(notebook.cells)
-            c.queued = true
+        for i in eachindex(notebook.cells)
             Status.report_business_planned!(cell_status, Symbol(i))
         end
     end
 
+    let t = time()
+        for c in notebook.cells
+            c.run_requested_timestamp = t
+        end
+    end
     update_save_run!(session, notebook, notebook.cells; run_async, prerender_text=true)
     add(session, notebook; run_async)
     try_event_call(session, OpenNotebookEvent(notebook))

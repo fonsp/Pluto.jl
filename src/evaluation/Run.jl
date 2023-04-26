@@ -96,8 +96,8 @@ function run_reactive_core!(
     indirectly_deactivated = collect(topological_order(new_topology, collect(new_topology.disabled_cells); allow_multiple_defs=true, skip_at_partial_multiple_defs=true))
 	
     for cell in indirectly_deactivated
+		set_output_timestamp!(cell, cell.run_requested_timestamp)
         cell.running = false
-        cell.queued = false
         cell.depends_on_disabled_cells = true
     end
 	
@@ -119,17 +119,14 @@ function run_reactive_core!(
     to_run = setdiff(union(new_runnable, old_runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
 
 
-    # change the bar on the sides of cells to "queued"
     for cell in to_run
-        cell.queued = true
         cell.depends_on_disabled_cells = false
     end
 	
     for (cell, error) in new_order.errable
         cell.running = false
-        cell.queued = false
 		cell.depends_on_disabled_cells = false
-        relay_reactivity_error!(cell, error)
+        relay_reactivity_error!(cell, error, cell.run_requested_timestamp)
     end
 
 	# Save the notebook. This is the only time that we save the notebook, so any state changes that influence the file contents (like `depends_on_disabled_cells`) should be behind this point.
@@ -173,7 +170,6 @@ function run_reactive_core!(
     for (i, cell) in enumerate(to_run)
 		Status.report_business_started!(cell_status, Symbol(i))
 
-        cell.queued = false
         cell.running = true
         # Important to not use empty! here because AppendonlyMarker requires a new array identity.
         # Eventually we could even make AppendonlyArray to enforce this but idk if it's worth it. yadiyadi.
@@ -181,11 +177,12 @@ function run_reactive_core!(
         send_notebook_changes_throttled()
 
         if any_interrupted || notebook.wants_to_interrupt || !will_run_code(notebook)
-            relay_reactivity_error!(cell, InterruptException())
+            relay_reactivity_error!(cell, InterruptException(), cell.run_requested_timestamp)
         else
             run = run_single!(
                 (session, notebook), cell,
-                new_topology.nodes[cell], new_topology.codes[cell];
+                new_topology.nodes[cell], new_topology.codes[cell],
+				cell.run_requested_timestamp;
                 user_requested_run = (user_requested_run && cell ∈ roots),
                 capture_stdout = session.options.evaluation.capture_stdout,
             )
@@ -276,7 +273,8 @@ function run_single!(
 	session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, 
 	cell::Cell, 
 	reactive_node::ReactiveNode, 
-	expr_cache::ExprAnalysisCache; 
+	expr_cache::ExprAnalysisCache,
+	run_requested_timestamp::Float64; 
 	user_requested_run::Bool=true,
 	capture_stdout::Bool=true,
 )
@@ -296,14 +294,14 @@ function run_single!(
 		user_requested_run,
 		capture_stdout,
 	)
-	set_output!(cell, run, expr_cache; persist_js_state=!user_requested_run)
+	set_output!(cell, run, expr_cache, run_requested_timestamp; persist_js_state=!user_requested_run)
 	if session_notebook isa Tuple && run.process_exited
 		session_notebook[2].process_status = ProcessStatus.no_process
 	end
 	return run
 end
 
-function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache; persist_js_state::Bool=false)
+function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache, timestamp::Float64; persist_js_state::Bool=false)
 	cell.output = CellOutput(
 		body=run.output_formatted[1],
 		mime=run.output_formatted[2],
@@ -317,7 +315,7 @@ function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache; persist_js_
 				nothing
 			end
 		end,
-		last_run_timestamp=time(),
+		last_run_timestamp=timestamp,
 		persist_js_state=persist_js_state,
 		has_pluto_hook_features=run.has_pluto_hook_features,
 	)
@@ -334,7 +332,20 @@ function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache; persist_js_
 	
 	cell.runtime = run.runtime
 	cell.errored = run.errored
-	cell.running = cell.queued = false
+	cell.running = false
+end
+
+function set_output_timestamp!(cell::Cell, timestamp::Float64)
+	o = cell.output
+	cell.output = CellOutput(
+		body=o.body,
+		mime=o.mime,
+		rootassignee=o.rootassignee,
+		last_run_timestamp=timestamp,
+		persist_js_state=o.persist_js_state,
+		has_pluto_hook_features=o.has_pluto_hook_features,
+	)
+	cell.running = false
 end
 
 will_run_code(notebook::Notebook) = notebook.process_status != ProcessStatus.no_process && notebook.process_status != ProcessStatus.waiting_to_restart
@@ -394,7 +405,7 @@ function update_save_run!(
 
 		to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)
 		for cell in to_run_offline
-			run_single!(offline_workspace, cell, new.nodes[cell], new.codes[cell])
+			run_single!(offline_workspace, cell, new.nodes[cell], new.codes[cell], cell.run_requested_timestamp)
 		end
 
 		cd(original_pwd)

@@ -18,7 +18,7 @@ Base.@kwdef struct CellOutput
     rootassignee::Union{Symbol,Nothing}=nothing
 
     "Time that the last output was created, used only on the frontend to rerender the output"
-    last_run_timestamp::Float64=0
+    last_run_timestamp::Float64=0.0
     
     "Whether `this` inside `<script id=something>` should refer to the previously returned object in HTML output. This is used for fancy animations. true iff a cell runs as a reactive consequence."
     persist_js_state::Bool=false
@@ -42,8 +42,8 @@ Base.@kwdef mutable struct Cell
     code_folded::Bool=false
     
     output::CellOutput=CellOutput()
-    queued::Bool=false
     running::Bool=false
+    run_requested_timestamp::Float64=0.0
 
     published_objects::Dict{String,Any}=Dict{String,Any}()
     
