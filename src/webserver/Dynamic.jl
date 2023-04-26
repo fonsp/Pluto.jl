@@ -224,40 +224,47 @@ A placeholder path. The path elements that it replaced will be given to the func
 """
 struct Wildcard end
 
-abstract type Changed end
-struct CodeChanged <: Changed end
-struct FileChanged <: Changed end
-struct BondChanged <: Changed
+abstract type SideEffect end
+struct CodeChanged <: SideEffect end
+struct FileChanged <: SideEffect end
+struct RunRequested <: SideEffect
+    cell_id::UUID
+end
+struct BondChanged <: SideEffect
     bond_name::Symbol
     is_first_value::Bool
 end
 
 # to support push!(x, y...) # with y = []
-Base.push!(x::Set{Changed}) = x
+Base.push!(x::Set{SideEffect}) = x
 
-const no_changes = Changed[]
+const no_sideeffects = SideEffect[]
 
 
 const effects_of_changed_state = Dict(
     "path" => function(; request::ClientRequest, patch::Firebasey.ReplacePatch)
         SessionActions.move(request.session, request.notebook, patch.value)
-        return no_changes
+        return no_sideeffects
     end,
     "process_status" => function(; request::ClientRequest, patch::Firebasey.ReplacePatch)
         newstatus = patch.value
 
         @info "Process status set by client" newstatus
     end,
-    "in_temp_dir" => function(; _...) no_changes end,
+    "in_temp_dir" => function(; _...) no_sideeffects end,
     "cell_inputs" => Dict(
         Wildcard() => function(cell_id, rest...; request::ClientRequest, patch::Firebasey.JSONPatch)
             Firebasey.applypatch!(request.notebook, patch)
 
             if length(rest) == 0
-                [CodeChanged(), FileChanged()]
+                # then the entire object for this cell was changed or deleted
+                [CodeChanged(), FileChanged(), RunRequested(cell_id)]
             elseif length(rest) == 1 && Symbol(rest[1]) == :code
                 [CodeChanged(), FileChanged()]
+            elseif length(rest) == 1 && Symbol(rest[1]) == :run_requested_timestamp
+                [RunRequested(UUID(cell_id))]
             else
+                # code_folded or metadata changed
                 [FileChanged()]
             end
         end,
@@ -302,18 +309,18 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
             Firebasey.applypatch!(current_state_for_clients[🙋.initiator.client], patch)
         end
 
-        changes = Set{Changed}()
+        effects = Set{SideEffect}()
 
         for patch in patches
             (mutator, matches, rest) = trigger_resolver(effects_of_changed_state, patch.path)
             
-            current_changes = if isempty(rest) && applicable(mutator, matches...)
+            current_effects = if isempty(rest) && applicable(mutator, matches...)
                 mutator(matches...; request=🙋, patch)
             else
                 mutator(matches..., rest...; request=🙋, patch)
             end
 
-            union!(changes, current_changes)
+            union!(effects, current_effects)
         end
 
         # We put a flag to check whether any patch changes the skip_as_script metadata. This is to eventually trigger a notebook updated if no reactive_run is part of this update
@@ -327,10 +334,9 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
             end
         end
 
-        # If CodeChanged ∈ changes, then the client will also send a request like run_multiple_cells, which will trigger a file save _before_ running the cells.
-        # In the future, we should get rid of that request, and save the file here. For now, we don't save the file here, to prevent unnecessary file IO.
+        # If RunRequested ∈ effects, then we will trigger a file save before running the cells.
         # (You can put a log in save_notebook to track how often the file is saved)
-        if FileChanged() ∈ changes && CodeChanged() ∉ changes
+        if FileChanged() ∈ effects && any(x -> x isa RunRequested, effects)
             if skip_as_script_changed
                 # If skip_as_script has changed but no cell run is happening we want to update the notebook dependency here before saving the file
                 update_skipped_cells_dependency!(notebook)
@@ -338,9 +344,42 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
              save_notebook(🙋.session, notebook)
         end
 
-        let bond_changes = filter(x -> x isa BondChanged, changes)
-            bound_sym_names = Symbol[x.bond_name for x in bond_changes]
-            is_first_values = Bool[x.is_first_value for x in bond_changes]
+        let run_requested_effects = filter(x -> x isa RunRequested, effects)
+            uuids = UUID[x.cell_id for x in run_requested_effects if x.cell_id in notebook.cell_order]
+            cells = map(uuids) do uuid
+                🙋.notebook.cells_dict[uuid]
+            end
+            
+            
+            # TODO we still need something like this
+            # if will_run_code(🙋.notebook)
+            #     foreach(c -> c.queued = true, cells)
+            #     # run send_notebook_changes! without actually sending it, to update current_state_for_clients for our client with c.queued = true.
+            #     # later, during update_save_run!, the cell will actually run, eventually setting c.queued = false again, which will be sent to the client through a patch update. 
+            #     # We *need* to send *something* to the client, because of https://github.com/fonsp/Pluto.jl/pull/1892, but we also don't want to send unnecessary updates. We can skip sending this update, because update_save_run! will trigger a send_notebook_changes! very very soon.
+            #     send_notebook_changes!(🙋; skip_send=true)
+            # end
+            
+            function on_auto_solve_multiple_defs(disabled_cells_dict)
+                response = Dict{Symbol,Any}(
+                    :disabled_cells => Dict{UUID,Any}(cell_id(k) => v for (k,v) in disabled_cells_dict),
+                )
+                putclientupdates!(
+                    🙋.initiator.client, 
+                    UpdateMessage(:run_feedback, response, 🙋.notebook)
+                )
+            end
+            
+            # save=true fixes the issue where "Submit all changes" or `Ctrl+S` has no effect.
+            update_save_run!(🙋.session, 🙋.notebook, cells; 
+                run_async=true, save=true, 
+                auto_solve_multiple_defs=true, on_auto_solve_multiple_defs
+            )
+        end
+
+        let bond_effects = filter(x -> x isa BondChanged, effects)
+            bound_sym_names = Symbol[x.bond_name for x in bond_effects]
+            is_first_values = Bool[x.is_first_value for x in bond_effects]
             set_bond_values_reactive(;
                 session=🙋.session,
                 notebook=🙋.notebook,
@@ -353,7 +392,7 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
     
         send_notebook_changes!(🙋; commentary=Dict(:update_went_well => :👍))
     catch ex
-        @error "Update notebook failed"  🙋.body["updates"] exception=(ex, stacktrace(catch_backtrace()))
+        @error "Update notebook failed" 🙋.body["updates"] exception=(ex, stacktrace(catch_backtrace()))
         response = Dict(
             :update_went_well => :👎,
             :why_not => sprint(showerror, ex),
@@ -413,35 +452,6 @@ responses[:reset_shared_state] = function response_reset_shared_state(🙋::Clie
     send_notebook_changes!(🙋; commentary=Dict(:from_reset =>  true))
 end
 
-responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::ClientRequest)
-    require_notebook(🙋)
-    uuids = UUID.(🙋.body["cells"])
-    cells = map(uuids) do uuid
-        🙋.notebook.cells_dict[uuid]
-    end
-
-    if will_run_code(🙋.notebook)
-        foreach(c -> c.queued = true, cells)
-        # run send_notebook_changes! without actually sending it, to update current_state_for_clients for our client with c.queued = true.
-        # later, during update_save_run!, the cell will actually run, eventually setting c.queued = false again, which will be sent to the client through a patch update. 
-        # We *need* to send *something* to the client, because of https://github.com/fonsp/Pluto.jl/pull/1892, but we also don't want to send unnecessary updates. We can skip sending this update, because update_save_run! will trigger a send_notebook_changes! very very soon.
-        send_notebook_changes!(🙋; skip_send=true)
-    end
-    
-    function on_auto_solve_multiple_defs(disabled_cells_dict)
-        response = Dict{Symbol,Any}(
-            :disabled_cells => Dict{UUID,Any}(cell_id(k) => v for (k,v) in disabled_cells_dict),
-        )
-        putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:run_feedback, response, 🙋.notebook, nothing, 🙋.initiator))
-    end
-    
-    # save=true fixes the issue where "Submit all changes" or `Ctrl+S` has no effect.
-    update_save_run!(🙋.session, 🙋.notebook, cells; 
-        run_async=true, save=true, 
-        auto_solve_multiple_defs=true, on_auto_solve_multiple_defs
-    )
-end
-
 responses[:get_all_notebooks] = function response_get_all_notebooks(🙋::ClientRequest)
     putplutoupdates!(🙋.session, clientupdate_notebook_list(🙋.session.notebooks, initiator=🙋.initiator))
 end
@@ -499,7 +509,7 @@ responses[:reshow_cell] = function response_reshow_cell(🙋::ClientRequest)
         collect(keys(cell.published_objects)),
         (parse(PlutoRunner.ObjectID, 🙋.body["objectid"], base=16), convert(Int64, 🙋.body["dim"])),
     )
-    set_output!(cell, run, ExprAnalysisCache(🙋.notebook, cell), cell.output.last_run_timestamp + 1.0; persist_js_state=true)
+    set_output!(cell, run, ExprAnalysisCache(🙋.notebook, cell), nextfloat(cell.output.last_run_timestamp); persist_js_state=true)
     # send to all clients, why not
     send_notebook_changes!(🙋 |> without_initiator)
 end

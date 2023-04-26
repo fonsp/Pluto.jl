@@ -559,7 +559,6 @@ export class Editor extends Component {
                             }
                             notebook.cell_order = notebook.cell_order.filter((cell_id) => !cell_ids.includes(cell_id))
                         })
-                        await this.client.send("run_multiple_cells", { cells: [] }, { notebook_id: this.state.notebook.notebook_id })
                     }
                 }
             },
@@ -587,31 +586,12 @@ export class Editor extends Component {
                 if (cell_ids.length > 0) {
                     await update_notebook((notebook) => {
                         for (let cell_id of cell_ids) {
-                            if (this.state.cell_inputs_local[cell_id]) {
+                            if (this.state.cell_inputs_local[cell_id] != null) {
                                 notebook.cell_inputs[cell_id].code = this.state.cell_inputs_local[cell_id].code
+                                notebook.cell_inputs[cell_id].run_requested_timestamp = Date.now() / 1000
                             }
                         }
                     })
-                    // This is a "dirty" trick, as this should actually be stored in some shared request_status => status state
-                    // But for now... this is fine 😼
-                    await this.setStatePromise(
-                        immer((/** @type {EditorState} */ state) => {
-                            for (let cell_id of cell_ids) {
-                                if (state.notebook.cell_results[cell_id] != null) {
-                                    state.notebook.cell_results[cell_id].queued = this.is_process_ready()
-                                } else {
-                                    // nothing
-                                }
-                            }
-                        })
-                    )
-                    const result = await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.state.notebook.notebook_id })
-                    const { disabled_cells } = result.message
-                    if (Object.entries(disabled_cells).length > 0) {
-                        await this.setStatePromise({
-                            recently_auto_disabled_cells: disabled_cells,
-                        })
-                    }
                 }
             },
             /**
@@ -782,6 +762,13 @@ patch: ${JSON.stringify(
                             })
 
                         break
+                    case "run_feedback":
+                        const { disabled_cells } = message
+                        if (Object.entries(disabled_cells).length > 0) {
+                            this.setStatePromise({
+                                recently_auto_disabled_cells: disabled_cells,
+                            })
+                        }
                     default:
                         console.error("Received unknown update type!", update)
                         // alert("Something went wrong 🙈\n Try clearing your browser cache and refreshing the page")
