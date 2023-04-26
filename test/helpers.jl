@@ -83,7 +83,7 @@ function testee(expr::Any, expected_references, expected_definitions, expected_f
     result.funcdefs = let
         newfuncdefs = Dict{FunctionNameSignaturePair,SymbolsState}()
         for (k, v) in result.funcdefs
-            union!(newfuncdefs, Dict(FunctionNameSignaturePair(new_name.(k.name), "hello") => v))
+            union!(newfuncdefs, Dict(FunctionNameSignaturePair(new_name.(k.name), hash("hello")) => v))
         end
         newfuncdefs
     end
@@ -120,7 +120,7 @@ function easy_symstate(expected_references, expected_definitions, expected_funcc
     new_expected_funcdefs = map(expected_funcdefs) do (k, v)
         new_k = k isa Symbol ? [k] : k
         new_v = v isa SymbolsState ? v : easy_symstate(v...)
-        return FunctionNameSignaturePair(new_k, "hello") => new_v
+        return FunctionNameSignaturePair(new_k, hash("hello")) => new_v
     end |> Dict
 
     new_expected_macrocalls = array_to_set(expected_macrocalls)

@@ -12,13 +12,18 @@ import Base: union, union!, ==, push!
 
 const FunctionName = Vector{Symbol}
 
+"""
+For an expression like `function Base.sqrt(x::Int)::Int x; end`, it has the following fields:
+- `name::FunctionName`: the name, `[:Base, :sqrt]`
+- `signature_hash::UInt`: a `UInt` that is unique for the type signature of the method declaration, ignoring argument names. In the example, this is equals `hash(ExpressionExplorer.canonalize( :(Base.sqrt(x::Int)::Int) ))`, see [`canonalize`](@ref) for more details.
+"""
 struct FunctionNameSignaturePair
     name::FunctionName
-    canonicalized_head::Any
+    signature_hash::UInt
 end
 
-Base.:(==)(a::FunctionNameSignaturePair, b::FunctionNameSignaturePair) = a.name == b.name && a.canonicalized_head == b.canonicalized_head
-Base.hash(a::FunctionNameSignaturePair, h::UInt) = hash(a.name, hash(a.canonicalized_head, h))
+Base.:(==)(a::FunctionNameSignaturePair, b::FunctionNameSignaturePair) = a.name == b.name && a.signature_hash == b.signature_hash
+Base.hash(a::FunctionNameSignaturePair, h::UInt) = hash(a.name, hash(a.signature_hash, h))
 
 "SymbolsState trickles _down_ the ASTree: it carries referenced and defined variables from endpoints down to the root."
 Base.@kwdef mutable struct SymbolsState
@@ -578,7 +583,7 @@ function explore_function_macro!(ex::Expr, scopestate::ScopeState)
     end
 
     union!(innersymstate, explore!(Expr(:block, ex.args[2:end]...), innerscopestate))
-    funcnamesig = FunctionNameSignaturePair(funcname, canonalize(funcroot))
+    funcnamesig = FunctionNameSignaturePair(funcname, hash(canonalize(funcroot)))
 
     if will_assign_global(funcname, scopestate)
         symstate.funcdefs[funcnamesig] = innersymstate
