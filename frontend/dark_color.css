@@ -162,7 +162,7 @@
 
         /*footer*/
         --footer-color: #cacaca;
-        --footer-bg-color: rgb(38, 39, 44);
+        --footer-bg-color: var(--header-bg-color);
         --footer-atag-color: rgb(114, 161, 223);
         --footer-input-border-color: #6c6c6c;
         --footer-filepicker-button-color: black;
