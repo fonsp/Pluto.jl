@@ -675,7 +675,6 @@ export const CellInput = ({
                     go_to_definition_plugin,
                     pluto_autocomplete({
                         request_autocomplete: async ({ text }) => {
-                            console.log(pluto_actions.send, notebook_id_ref.current)
                             let response = await timeout_promise(
                                 pluto_actions.send("complete", { query: text }, { notebook_id: notebook_id_ref.current }),
                                 5000
