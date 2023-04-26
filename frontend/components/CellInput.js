@@ -64,6 +64,7 @@ import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
 import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
 import { mod_d_command } from "./CellInput/mod_d_command.js"
 import { open_bottom_right_panel } from "./BottomRightPanel.js"
+import { timeout_promise } from "../common/PlutoConnection.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 
@@ -383,6 +384,9 @@ export const CellInput = ({
         set_error(null)
         throw to_throw
     }
+    const notebook_id_ref = useRef(notebook_id)
+    notebook_id_ref.current = notebook_id
+
     const newcm_ref = useRef(/** @type {EditorView?} */ (null))
     const dom_node_ref = useRef(/** @type {HTMLElement?} */ (null))
     const remote_code_ref = useRef(/** @type {string?} */ (null))
@@ -596,7 +600,7 @@ export const CellInput = ({
                     // TODO Use https://codemirror.net/6/docs/ref/#state.Prec when added to pluto-codemirror-setup
                     prevent_holding_a_key_from_doing_things_across_cells,
 
-                    pkgBubblePlugin({ pluto_actions, notebook_id }),
+                    pkgBubblePlugin({ pluto_actions, notebook_id_ref }),
                     ScopeStateField,
                     syntaxHighlighting(pluto_syntax_colors),
                     syntaxHighlighting(pluto_syntax_colors_html),
@@ -641,8 +645,8 @@ export const CellInput = ({
                         },
                     }),
                     pluto_paste_plugin({
-                        pluto_actions: pluto_actions,
-                        cell_id: cell_id,
+                        pluto_actions,
+                        cell_id,
                     }),
                     // Update live docs when in a cell that starts with `?`
                     EditorView.updateListener.of((update) => {
@@ -671,7 +675,14 @@ export const CellInput = ({
                     go_to_definition_plugin,
                     pluto_autocomplete({
                         request_autocomplete: async ({ text }) => {
-                            let { message } = await pluto_actions.send("complete", { query: text }, { notebook_id: notebook_id })
+                            console.log(pluto_actions.send, notebook_id_ref.current)
+                            let response = await timeout_promise(
+                                pluto_actions.send("complete", { query: text }, { notebook_id: notebook_id_ref.current }),
+                                5000
+                            ).catch(console.warn)
+                            if (!response) return null
+
+                            let { message } = response
                             return {
                                 start: utf8index_to_ut16index(text, message.start),
                                 stop: utf8index_to_ut16index(text, message.stop),

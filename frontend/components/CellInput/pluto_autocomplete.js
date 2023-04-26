@@ -161,7 +161,10 @@ function match_string_complete(ctx) {
 /** Use the completion results from the Julia server to create CM completion objects, but only for path completions (TODO: broken) and latex completions. */
 let julia_special_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (ctx) => {
     let to_complete = ctx.state.sliceDoc(0, ctx.pos)
-    let { start, stop, results } = await request_autocomplete({ text: to_complete })
+
+    let found = await request_autocomplete({ text: to_complete })
+    if (!found) return null
+    let { start, stop, results } = found
 
     let should_apply_unicode_completion = !match_string_complete(ctx)
 
@@ -216,7 +219,9 @@ const julia_code_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ re
         to_complete = to_complete.slice(0, is_symbol_completion.from + 1) + to_complete.slice(is_symbol_completion.from + 2)
     }
 
-    let { start, stop, results } = await request_autocomplete({ text: to_complete })
+    let found = await request_autocomplete({ text: to_complete })
+    if (!found) return null
+    let { start, stop, results } = found
 
     if (is_symbol_completion) {
         // If this is a symbol completion thing, we need to add the `:` back in by moving the end a bit furher
@@ -345,7 +350,7 @@ const local_variables_completion = (ctx) => {
  * @type {{ start: number, stop: number, results: Array<[string, (string | null), boolean, boolean, (string | null), (string | null)]> }}
  *
  * @typedef PlutoRequestAutocomplete
- * @type {(options: { text: string }) => Promise<PlutoAutocompleteResults>}
+ * @type {(options: { text: string }) => Promise<PlutoAutocompleteResults?>}
  */
 
 /**
@@ -365,12 +370,13 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
      **/
     let memoize_last_request_autocomplete = async (options) => {
         if (_.isEqual(options, last_query)) {
-            return await last_result
-        } else {
-            last_query = options
-            last_result = request_autocomplete(options)
-            return await last_result
+            let result = await last_result
+            if (result != null) return result
         }
+
+        last_query = options
+        last_result = request_autocomplete(options)
+        return await last_result
     }
 
     return [
