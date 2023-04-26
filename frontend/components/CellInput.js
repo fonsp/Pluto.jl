@@ -60,7 +60,7 @@ import { cell_movement_plugin, prevent_holding_a_key_from_doing_things_across_ce
 import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
 import { cl } from "../common/ClassTable.js"
-import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_line.js"
+import { HighlightLineFacet, HighlightRangeFacet, highlightLinePlugin, highlightRangePlugin } from "./CellInput/highlight_line.js"
 import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
 import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
 import { mod_d_command } from "./CellInput/mod_d_command.js"
@@ -373,6 +373,7 @@ export const CellInput = ({
     set_show_logs,
     set_cell_disabled,
     cm_highlighted_line,
+    cm_highlighted_range,
     metadata,
     global_definition_locations,
     cm_diagnostics,
@@ -392,6 +393,8 @@ export const CellInput = ({
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
     let global_definitions_compartment = useCompartment(newcm_ref, GlobalDefinitionsFacet.of(global_definition_locations))
     let highlighted_line_compartment = useCompartment(newcm_ref, HighlightLineFacet.of(cm_highlighted_line))
+    console.log({ cm_highlighted_range })
+    let highlighted_range_compartment = useCompartment(newcm_ref, HighlightRangeFacet.of(cm_highlighted_range))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
 
     let on_change_compartment = useCompartment(
@@ -587,9 +590,11 @@ export const CellInput = ({
                     // Compartments coming from react state/props
                     nbpkg_compartment,
                     highlighted_line_compartment,
+                    highlighted_range_compartment,
                     global_definitions_compartment,
                     editable_compartment,
                     highlightLinePlugin(),
+                    highlightRangePlugin(),
 
                     // This is waaaay in front of the keys it is supposed to override,
                     // Which is necessary because it needs to run before *any* keymap,
@@ -773,14 +778,7 @@ export const CellInput = ({
     useEffect(() => {
         if (newcm_ref.current == null) return
         const cm = newcm_ref.current
-        const diagnostics = cm_diagnostics.map(({ from, to, message, level }) => ({
-            from,
-            to,
-            severity: level,
-            message,
-        }))
-
-        console.log(diagnostics)
+        const diagnostics = cm_diagnostics
 
         cm.dispatch(setDiagnostics(cm.state, diagnostics))
     }, [cm_diagnostics])

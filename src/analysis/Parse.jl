@@ -1,5 +1,5 @@
 import .ExpressionExplorer
-import JuliaSyntax
+import JuliaSyntax, Markdown
 
 "Generate a file name to be given to the parser (will show up in stack traces)."
 pluto_filename(notebook::Notebook, cell::Cell)::String = notebook.path * "#==#" * string(cell.cell_id)
@@ -14,6 +14,8 @@ function convert_julia_syntax_level(level)
 end
 
 function convert_diagnostic_to_dict(source, diag)
+    line_byte_ends = cumsum(map(line -> sizeof(line) + 1, eachsplit(source, '\n')))
+
     # JuliaSyntax uses `last_byte < first_byte` to signal an empty range.
     # https://github.com/JuliaLang/JuliaSyntax.jl/blob/97e2825c68e770a3f56f0ec247deda1a8588070c/src/diagnostics.jl#L67-L75
     # it references the byte range as such: `source[first_byte:last_byte]` whereas codemirror
@@ -28,14 +30,15 @@ function convert_diagnostic_to_dict(source, diag)
     Dict(:from => from,
          :to => to,
          :message => diag.message,
-         :level => convert_julia_syntax_level(diag.level))
+         :line => findfirst(bs -> first_byte <= bs, line_byte_ends),
+         :severity => convert_julia_syntax_level(diag.level))
 end
 
-function convert_parse_error_to_dict(ex)
+function convert_parse_error_to_dict(code, ex)
    Dict(
        :source => ex.source.code,
        :diagnostics => [
-           convert_diagnostic_to_dict(ex.source.code, diag)
+           convert_diagnostic_to_dict(code, diag)
            for diag in ex.diagnostics
        ]
    )
@@ -71,7 +74,7 @@ function parse_custom(notebook::Notebook, cell::Cell)::Expr
             end
         elseif ex isa JuliaSyntax.ParseError
             quote
-                throw(PlutoRunner.ParseError($(convert_parse_error_to_dict(ex))))
+                throw(PlutoRunner.ParseError($(convert_parse_error_to_dict(cell.code, ex))))
             end
         else
             ex

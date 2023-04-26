@@ -134,20 +134,32 @@ export const Cell = ({
 
     const remount = useMemo(() => () => setKey(key + 1))
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
-    const [cm_forced_focus, set_cm_forced_focus] = useState(/** @type{any} */(null))
+    const [cm_forced_focus, set_cm_forced_focus] = useState(/** @type{any} */ (null))
+    const [cm_highlighted_range, set_cm_highlighted_range] = useState(null)
     const [cm_highlighted_line, set_cm_highlighted_line] = useState(null)
     const [cm_diagnostics, set_cm_diagnostics] = useState([])
 
     useEffect(() => {
         const diagnosticListener = (e) => {
-            console.log("got event")
             if (e.detail.cell_id === cell_id) {
                 set_cm_diagnostics(e.detail.diagnostics)
             }
         }
         window.addEventListener("cell_diagnostics", diagnosticListener)
         return () => window.removeEventListener("cell_diagnostics", diagnosticListener)
-    })
+    }, [cell_id])
+
+    useEffect(() => {
+        const highlightRangeListener = (e) => {
+            if (e.detail.cell_id == cell_id && e.detail.from != null && e.detail.to != null) {
+                set_cm_highlighted_range({ from: e.detail.from, to: e.detail.to })
+            } else {
+                set_cm_highlighted_range(null)
+            }
+        }
+        window.addEventListener("cell_highlight_range", highlightRangeListener)
+        return () => window.removeEventListener("cell_highlight_range", highlightRangeListener)
+    }, [cell_id])
 
     useEffect(() => {
         const focusListener = (e) => {
@@ -320,7 +332,7 @@ export const Cell = ({
                 set_show_logs=${set_show_logs}
                 set_cell_disabled=${set_cell_disabled}
                 cm_highlighted_line=${cm_highlighted_line}
-                set_cm_highlighted_line=${set_cm_highlighted_line}
+                cm_highlighted_range=${cm_highlighted_range}
                 cm_diagnostics=${cm_diagnostics}
                 onerror=${remount}
             />

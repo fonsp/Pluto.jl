@@ -58,16 +58,23 @@ export const ParseError = ({ cell_id, diagnostics }) => {
 
     return html`
         <jlerror>
-            <header>Syntax error</header>
+            <header><p>Syntax error</p></header>
             <section>
-              <ul>
+              <ol>
                   ${diagnostics.map(
-                    ({ message }) =>
-                        html`<li>
-                            <span>${message}</span>
+                    ({ message, from, to, line }) =>
+                        html`<li onmouseenter=${() => // move to `StackFrameFilename`
+                                window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from, to }}))
+                        }
+                        onmouseleave=${() =>
+                                window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from: null, to: null }}))
+                        }
+                      >
+                            ${message}<span>@</span>
+                            <${StackFrameFilename} frame=${{file: "#==#" + cell_id, line}} cell_id=${cell_id} />
                         </li>`)
                     }
-              </ul>
+              </ol>
             </section>
             <pluto-parse-error-editor ref=${dom_node_ref} />
         </jlerror>
