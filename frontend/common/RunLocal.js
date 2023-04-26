@@ -26,6 +26,10 @@ export const start_local = async ({ setStatePromise, connect, launch_params }) =
             })
         )
 
+        await new Promise((r) => {
+            setTimeout(r, 10000)
+        })
+
         const with_token = (x) => String(x)
         const binder_session_url = new URL(launch_params.pluto_server_url, window.location.href)
 

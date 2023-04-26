@@ -869,6 +869,7 @@ patch: ${JSON.stringify(
             // 3. Static HTML without PlutoSliderServer. All interactions are ignored.
             //
             // To easily support all three with minimal changes to the source code, we sneakily swap out the `this.actions` object (`pluto_actions` in other source files) with a different one:
+            console.warn("Switching actions!")
             Object.assign(
                 this.actions,
                 // if we have no pluto server...
@@ -904,6 +905,27 @@ patch: ${JSON.stringify(
                 update_stored_recent_notebooks(this.state.notebook.path)
             }
         }, 1000 * 5)
+
+        this.holding_changes_while_waiting_for_backend = false
+        this.changes_while_waiting_for_backend = []
+        let apply_changes_held_while_waiting_for_backend = async () => {
+            const new_task = last_update_notebook_task.then(async () => {
+                await this.client
+                    .send("update_notebook", { updates: this.changes_while_waiting_for_backend }, { notebook_id: this.state.notebook.notebook_id }, false)
+                    .then((response) => {
+                        if (response.message?.response?.update_went_well === "👎") {
+                            // We only throw an error for functions that are waiting for this
+                            // Notebook state will already have the changes reversed
+                            throw new Error(`Pluto update_notebook error: (from Julia: ${response.message.response.why_not})`)
+                        }
+                    })
+
+                this.changes_while_waiting_for_backend = []
+                this.holding_changes_while_waiting_for_backend = false
+            })
+            last_update_notebook_task = new_task.catch(console.error)
+            return new_task
+        }
 
         // Not completely happy with this yet, but it will do for now - DRAL
         /** Patches that are being delayed until all cells have finished running. */
@@ -1040,6 +1062,7 @@ patch: ${JSON.stringify(
             return new_task
         }
         this.update_notebook = update_notebook
+
         //@ts-ignore
         window.shutdownNotebook = this.close = () => {
             this.client.send(
