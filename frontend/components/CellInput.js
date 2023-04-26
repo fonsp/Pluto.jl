@@ -1,4 +1,4 @@
-import { html, useState, useEffect, useLayoutEffect, useRef, useContext, useMemo } from "../imports/Preact.js"
+import { html, useState, useEffect, useLayoutEffect, useRef, useContext, useMemo, useCallback } from "../imports/Preact.js"
 import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 import _ from "../imports/lodash.js"
 
@@ -6,6 +6,8 @@ import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { get_selected_doc_from_state } from "./CellInput/LiveDocsFromCursor.js"
 import { go_to_definition_plugin, GlobalDefinitionsFacet } from "./CellInput/go_to_definition_plugin.js"
+
+import md from "https://esm.sh/markdown-js"
 
 import {
     EditorState,
@@ -64,6 +66,7 @@ import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
 import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
 import { mod_d_command } from "./CellInput/mod_d_command.js"
 import { open_bottom_right_panel } from "./BottomRightPanel.js"
+import { open_pluto_popup } from "./Popup.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 
@@ -828,6 +831,51 @@ export const CellInput = ({
         }
     }, [cm_forced_focus])
 
+    const on_explain = useCallback(async () => {
+        const code = newcm_ref.current?.state?.doc?.toString?.()
+        const key = pluto_actions.get_openai_key()
+
+        if (code && key) {
+            const response = await fetch("https://api.openai.com/v1/completions", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${key}`,
+                },
+                body: JSON.stringify({
+                    model: "text-davinci-003",
+                    prompt: `\`\`\`\n${code}\n\`\`\`\n\n${
+                        code.length > 100 ? "Summarize the the intent of" : "Explain"
+                    } this Julia code in a consise way. Use Markdown to highlight important concepts:\n1.`,
+                    temperature: 0.3,
+                    max_tokens: 256,
+                    top_p: 1,
+                    frequency_penalty: 0,
+                    presence_penalty: 0,
+                }),
+            })
+
+            if (response.ok) {
+                const json = await response.json()
+                console.info("OpenAI API response", json)
+                const explanation = `1. ${json.choices[0].text}`
+
+                open_pluto_popup({
+                    type: "info",
+                    source_element: dom_node_ref.current,
+                    body: html`${explanation
+                            .split("\n")
+                            .map((line) => html`<p dangerouslySetInnerHTML=${{ __html: md.makeHtml(line.replace(/^\d+\. /, "")) }}></p>`)}
+                        <p><small>Powered by AI ✨</small></p>`,
+                })
+
+                return true
+            } else {
+                console.error("OpenAI API error", await response.text())
+            }
+        }
+    }, [])
+
     return html`
         <pluto-input ref=${dom_node_ref} class="CodeMirror" translate=${false}>
             <${InputContextMenu}
@@ -840,12 +888,24 @@ export const CellInput = ({
                 show_logs=${show_logs}
                 set_show_logs=${set_show_logs}
                 set_cell_disabled=${set_cell_disabled}
+                on_explain=${on_explain}
             />
         </pluto-input>
     `
 }
 
-const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, running_disabled, any_logs, show_logs, set_show_logs, set_cell_disabled }) => {
+const InputContextMenu = ({
+    on_delete,
+    cell_id,
+    run_cell,
+    skip_as_script,
+    running_disabled,
+    any_logs,
+    show_logs,
+    set_show_logs,
+    set_cell_disabled,
+    on_explain,
+}) => {
     const timeout = useRef(null)
     let pluto_actions = useContext(PlutoActionsContext)
     const [open, setOpen] = useState(false)
@@ -921,6 +981,10 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
                   >
                       ${skip_as_script ? html`<span class="skip_as_script ctx_icon" />` : html`<span class="run_as_script ctx_icon" />`}
                       ${skip_as_script ? html`<b>Enable in file</b>` : html`Disable in file`}
+                  </li>
+                  <li onClick=${on_explain} title="Ask OpenAI to explain this code">
+                      <span class="ai_explain ctx_icon" />
+                      ${html`Explain code`}
                   </li>
               </ul>`
             : html``}

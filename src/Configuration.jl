@@ -46,6 +46,7 @@ const PORT_HINT_DEFAULT = 1234
 const LAUNCH_BROWSER_DEFAULT = true
 const DISMISS_UPDATE_NOTIFICATION_DEFAULT = false
 const SHOW_FILE_SYSTEM_DEFAULT = true
+const _EXPERIMENTAL_OPENAI_KEY_DEFAULT = nothing
 const ENABLE_PACKAGE_AUTHOR_FEATURES_DEFAULT = true
 const DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT = false
 const AUTO_RELOAD_FROM_FILE_DEFAULT = false
@@ -94,6 +95,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
     launch_browser::Bool = LAUNCH_BROWSER_DEFAULT
     dismiss_update_notification::Bool = DISMISS_UPDATE_NOTIFICATION_DEFAULT
     show_file_system::Bool = SHOW_FILE_SYSTEM_DEFAULT
+    _experimental_openai_key::Union{String,Nothing} = _EXPERIMENTAL_OPENAI_KEY_DEFAULT
     notebook_path_suggestion::String = notebook_path_suggestion()
     disable_writing_notebook_files::Bool = DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT
     auto_reload_from_file::Bool = AUTO_RELOAD_FROM_FILE_DEFAULT
@@ -275,6 +277,7 @@ function from_flat_kwargs(;
         launch_browser::Bool = LAUNCH_BROWSER_DEFAULT,
         dismiss_update_notification::Bool = DISMISS_UPDATE_NOTIFICATION_DEFAULT,
         show_file_system::Bool = SHOW_FILE_SYSTEM_DEFAULT,
+        _experimental_openai_key::Union{String,Nothing} = _EXPERIMENTAL_OPENAI_KEY_DEFAULT,
         notebook_path_suggestion::String = notebook_path_suggestion(),
         disable_writing_notebook_files::Bool = DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT,
         auto_reload_from_file::Bool = AUTO_RELOAD_FROM_FILE_DEFAULT,
@@ -321,6 +324,7 @@ function from_flat_kwargs(;
         launch_browser,
         dismiss_update_notification,
         show_file_system,
+        _experimental_openai_key,
         notebook_path_suggestion,
         disable_writing_notebook_files,
         auto_reload_from_file,
