@@ -1,9 +1,9 @@
-using SnoopPrecompile: SnoopPrecompile
+using PrecompileTools: PrecompileTools
 import JuliaSyntax
 
 const __TEST_NOTEBOOK_ID = uuid1()
 
-SnoopPrecompile.@precompile_all_calls begin
+PrecompileTools.@compile_workload begin
     let
         channel = Channel{Any}(10)
         Pluto.PlutoRunner.setup_plutologger(

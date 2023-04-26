@@ -4,6 +4,7 @@ import .PkgCompat
 import .PkgCompat: select, is_stdlib
 import Logging
 import LoggingExtras
+import .Configuration: CompilerOptions, _merge_notebook_compiler_options, _convert_to_flags
 
 const tiers = [
 	Pkg.PRESERVE_ALL,
@@ -60,6 +61,7 @@ function sync_nbpkg_core(
     on_terminal_output::Function=((args...) -> nothing), 
     cleanup::Ref{Function}=Ref{Function}(_default_cleanup),
     lag::Real=0,
+    compiler_options::CompilerOptions=CompilerOptions(),
 )
     pkg_status = Status.report_business_started!(notebook.status_tree, :pkg)
     Status.report_business_started!(pkg_status, :analysis)
@@ -138,26 +140,34 @@ function sync_nbpkg_core(
             
             return withtoken(pkg_token) do
                 withlogcapture(iolistener) do
-                    
-                    let
+
+                    let # Status stuff
                         isnothing(wait_business) || Status.report_business_finished!(wait_business)
                         
-                        notebook.nbpkg_ctx_instantiated || Status.report_business_planned!(pkg_status, :instantiate1)
-                        notebook.nbpkg_ctx_instantiated || Status.report_business_planned!(pkg_status, :resolve)
+                        if !notebook.nbpkg_ctx_instantiated
+                            Status.report_business_planned!(pkg_status, :instantiate1)
+                            Status.report_business_planned!(pkg_status, :resolve)
+                            Status.report_business_planned!(pkg_status, :precompile)
+                        end
+                        
                         isempty(removed) || Status.report_business_planned!(pkg_status, :remove)
                         isempty(added) || Status.report_business_planned!(pkg_status, :add)
                         if !isempty(added) || !isempty(removed)
                             Status.report_business_planned!(pkg_status, :instantiate2)
+                            Status.report_business_planned!(pkg_status, :precompile)
                         end
                     end
                     
-                    PkgCompat.refresh_registry_cache()
+                    should_precompile_later = false
                     
+                    PkgCompat.refresh_registry_cache()
                     PkgCompat.clear_stdlib_compat_entries!(notebook.nbpkg_ctx)
                     
                     
                     should_instantiate_initially = !notebook.nbpkg_ctx_instantiated
                     if should_instantiate_initially
+                        
+                        should_precompile_later = true
                         
                         # First, we instantiate. This will:
                         # - Verify that the Manifest can be parsed and is in the correct format (important for compat across Julia versions). If not, we will fix it by deleting the Manifest.
@@ -167,7 +177,7 @@ function sync_nbpkg_core(
                         # - Precompile all packages.                    
                         Status.report_business!(pkg_status, :instantiate1) do
                             with_auto_fixes(notebook) do
-                                instantiate(notebook, iolistener)
+                                _instantiate(notebook, iolistener)
                             end
                         end
                         
@@ -176,7 +186,7 @@ function sync_nbpkg_core(
                         # - If we are tracking local packages by path (] dev), their Project.tomls are reparsed and everything is updated.
                         Status.report_business!(pkg_status, :resolve) do
                             with_auto_fixes(notebook) do
-                                resolve(notebook, iolistener)
+                                _resolve(notebook, iolistener)
                             end
                         end
                     end
@@ -258,8 +268,15 @@ function sync_nbpkg_core(
                     should_instantiate_again = !notebook.nbpkg_ctx_instantiated || !isempty(to_add) || !isempty(to_remove)
                     
                     if should_instantiate_again
+                        should_precompile_later = true
                         Status.report_business!(pkg_status, :instantiate2) do
-                            instantiate(notebook, iolistener)
+                            _instantiate(notebook, iolistener)
+                        end
+                    end
+                    
+                    if should_precompile_later
+                        Status.report_business!(pkg_status, :precompile) do
+                            _precompile(notebook, iolistener, compiler_options)
                         end
                     end
 
@@ -316,8 +333,12 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 				for p in pkgs
 					notebook.nbpkg_terminal_outputs[p] = s
 				end
-                # TODO: this should be throttled/debounced?
+                # incoming IO is a good sign that something might have changed, so we update the cache.
                 update_nbpkg_cache!(notebook)
+                
+                # This is throttled "automatically":
+                # If io is coming in very fast, then it won't build up a queue of updates for the client. That's because `send_notebook_changes!` is a blocking call, including the websocket transfer. So this `iocallback` function will only return when the last message has been sent.
+                # The nice thing is that IOCallback is not actually implemented as a callback when IO comes in, but it is an async loop that sleeps, maybe calls iocallback with the latest buffer content, and repeats. So a blocking iocallback avoids overflowing the queue.
 				send_notebook_changes!(ClientRequest(; session, notebook))
 			end
 			sync_nbpkg_core(
@@ -326,7 +347,8 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
                 new_topology; 
                 on_terminal_output=iocallback, 
                 cleanup,
-                lag=session.options.server.simulated_pkg_lag
+                lag=session.options.server.simulated_pkg_lag,
+                compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler),
             )
 		end
 
@@ -355,7 +377,8 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 		PlutoPkg: Failed to add/remove packages! Resetting package environment...
 		""" PLUTO_VERSION VERSION old_packages new_packages exception=(e, bt)
 		# TODO: send to user
-
+        showerror(stderr, e, bt)
+        
 		error_text = sprint(showerror, e, bt)
 		for p in notebook.nbpkg_busy_packages
             old = get(notebook.nbpkg_terminal_outputs, p, "")
@@ -390,7 +413,7 @@ function writebackup(notebook::Notebook)
 end
 
 
-function instantiate(notebook::Notebook, iolistener::IOListener)
+function _instantiate(notebook::Notebook, iolistener::IOListener)
     start_time = time_ns()
     with_io_setup(notebook, iolistener) do
         println(iolistener.buffer, "\nInstantiating...")
@@ -406,7 +429,7 @@ function instantiate(notebook::Notebook, iolistener::IOListener)
         
         try
             # instantiate without forcing registry update
-            PkgCompat.instantiate(notebook.nbpkg_ctx; update_registry=false)
+            PkgCompat.instantiate(notebook.nbpkg_ctx; update_registry=false, allow_autoprecomp=false)
         finally
             # reset the LOAD_PATH
             if LOAD_PATH[1] == env_dir
@@ -420,7 +443,22 @@ function instantiate(notebook::Notebook, iolistener::IOListener)
     notebook.nbpkg_ctx_instantiated = true
 end
 
-function resolve(notebook::Notebook, iolistener::IOListener)
+function _precompile(notebook::Notebook, iolistener::IOListener, compiler_options::CompilerOptions)
+    start_time = time_ns()
+    with_io_setup(notebook, iolistener) do
+        println(iolistener.buffer, "\nPrecompiling...")
+        @debug "PlutoPkg: Precompiling" notebook.path 
+        
+        env_dir = PkgCompat.env_dir(notebook.nbpkg_ctx)
+        precompile_isolated(env_dir; 
+            io=iolistener.buffer,
+            compiler_options,
+        )
+    end
+    notebook.nbpkg_install_time_ns = notebook.nbpkg_install_time_ns === nothing ? nothing : (notebook.nbpkg_install_time_ns + (time_ns() - start_time))
+end
+
+function _resolve(notebook::Notebook, iolistener::IOListener)
     startlistening(iolistener)
     with_io_setup(notebook, iolistener) do
         println(iolistener.buffer, "\nResolving...")
@@ -495,6 +533,7 @@ function update_nbpkg_core(
     level::Pkg.UpgradeLevel=Pkg.UPLEVEL_MAJOR, 
     on_terminal_output::Function=((args...) -> nothing),
     cleanup::Ref{Function}=Ref{Function}(default_cleanup),
+    compiler_options::CompilerOptions=CompilerOptions(),
 )
     if notebook.nbpkg_ctx !== nothing
         PkgCompat.mark_original!(notebook.nbpkg_ctx)
@@ -523,11 +562,11 @@ function update_nbpkg_core(
 
                 if !notebook.nbpkg_ctx_instantiated
                     with_auto_fixes(notebook) do
-                        instantiate(notebook, iolistener)
+                        _instantiate(notebook, iolistener)
                     end
                 
                     with_auto_fixes(notebook) do
-                        resolve(notebook, iolistener)
+                        _resolve(notebook, iolistener)
                     end
                 end
 
@@ -544,16 +583,18 @@ function update_nbpkg_core(
                     end
                 end
 
-                stoplistening(iolistener)
 
                 🐧 = !PkgCompat.is_original(notebook.nbpkg_ctx)
                 should_instantiate_again = !notebook.nbpkg_ctx_instantiated || 🐧
                 
                 if should_instantiate_again
                     # Status.report_business!(pkg_status, :instantiate2) do
-                    instantiate(notebook, iolistener)
+                    _instantiate(notebook, iolistener)
+                    _precompile(notebook, iolistener, compiler_options)
                     # end
                 end
+
+                stoplistening(iolistener)
 
                 (
                     did_something=🐧,
@@ -594,6 +635,7 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
                 level, 
                 on_terminal_output=iocallback,
                 cleanup,
+                compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler),
             )
 		end
 
@@ -660,7 +702,7 @@ end
 
 function with_io_setup(f::Function, notebook::Notebook, iolistener::IOListener)
     startlistening(iolistener)
-    PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
+    PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true, :sneaky_enable_tty => true)) do
         withinteractive(false) do
             f()
         end

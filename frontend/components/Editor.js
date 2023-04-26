@@ -142,6 +142,7 @@ const first_true_key = (obj) => {
  *   name: string,
  *   started_at: number?,
  *   finished_at: number?,
+ *   timing?: "remote" | "local",
  *   subtasks: Record<string,StatusEntryData>,
  * }}
  */
@@ -248,7 +249,7 @@ const first_true_key = (obj) => {
  */
 
 const url_logo_big = document.head.querySelector("link[rel='pluto-logo-big']")?.getAttribute("href") ?? ""
-const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']")?.getAttribute("href") ?? ""
+export const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']")?.getAttribute("href") ?? ""
 
 /**
  * @typedef EditorProps
@@ -269,6 +270,7 @@ const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']
  * disable_ui: boolean,
  * static_preview: boolean,
  * backend_launch_phase: ?number,
+ * backend_launch_logs: ?string,
  * binder_session_url: ?string,
  * binder_session_token: ?string,
  * refresh_target: ?string,
@@ -311,6 +313,7 @@ export class Editor extends Component {
                 launch_params.notebookfile != null && (launch_params.binder_url != null || launch_params.pluto_server_url != null)
                     ? BackendLaunchPhase.wait_for_user
                     : null,
+            backend_launch_logs: null,
             binder_session_url: null,
             binder_session_token: null,
             refresh_target: null,
@@ -675,8 +678,9 @@ export class Editor extends Component {
                                 const failing_path = String(exception).match(".*'(.*)'.*")?.[1].replace(/\//gi, ".") ?? exception
                                 const path_value = _.get(this.state.notebook, failing_path, "Not Found")
                                 console.log(String(exception).match(".*'(.*)'.*")?.[1].replace(/\//gi, ".") ?? exception, failing_path, typeof failing_path)
+                                const ignore = should_ignore_patch_error(failing_path)
 
-                                console.error(
+                                ;(ignore ? console.log : console.error)(
                                     `#######################**************************########################
 PlutoError: StateOutOfSync: Failed to apply patches.
 Please report this: https://github.com/fonsp/Pluto.jl/issues adding the info below:
@@ -691,7 +695,7 @@ patch: ${JSON.stringify(
                                     exception
                                 )
 
-                                if (should_ignore_patch_error(failing_path)) {
+                                if (ignore) {
                                     console.info("Safe to ignore this patch failure...")
                                 } else if (this.state.connected) {
                                     console.error("Trying to recover: Refetching notebook...")
@@ -1557,6 +1561,8 @@ patch: ${JSON.stringify(
                         desired_doc_query=${this.state.desired_doc_query}
                         on_update_doc_query=${this.actions.set_doc_query}
                         connected=${this.state.connected}
+                        backend_launch_phase=${this.state.backend_launch_phase}
+                        backend_launch_logs=${this.state.backend_launch_logs}
                         notebook=${this.state.notebook}
                     />
                     <${Popup} 
