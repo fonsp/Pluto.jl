@@ -140,34 +140,46 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
 
         /// PART 2: Using Pluto's REST API to open the notebook file. We either upload the notebook with a POST request, or we let the server open by giving it the filename/URL.
 
-        let open_response = new Response()
-
-        if (launch_params.notebookfile.startsWith("data:")) {
-            open_response = await fetch(
-                with_token(
-                    with_query_params(new URL("notebookupload", binder_session_url), {
-                        name: new URLSearchParams(window.location.search).get("name"),
-                    })
-                ),
-                {
-                    method: "POST",
-                    body: await (await fetch(new Request(launch_params.notebookfile, { integrity: launch_params.notebookfile_integrity }))).arrayBuffer(),
-                }
-            )
-        } else {
-            for (const [p1, p2] of [
-                ["path", launch_params.notebookfile],
-                ["url", new URL(launch_params.notebookfile, window.location.href).href],
-            ]) {
-                const open_url = with_query_params(new URL("open", binder_session_url), { [p1]: p2 })
-
-                console.log(`open ${p1}:`, open_url)
-                open_response = await fetch(with_token(open_url), {
-                    method: "POST",
+        let download_locally_and_upload = async () => {
+            const upload_url = with_token(
+                with_query_params(new URL("notebookupload", binder_session_url), {
+                    name: new URLSearchParams(window.location.search).get("name"),
                 })
-                if (open_response.ok) {
-                    break
-                }
+            )
+            console.log(`downloading locally and uploading `, upload_url, launch_params.notebookfile)
+
+            return fetch(upload_url, {
+                method: "POST",
+                body: await (await fetch(new Request(launch_params.notebookfile, { integrity: launch_params.notebookfile_integrity }))).arrayBuffer(),
+            })
+        }
+
+        let open_remotely = async (p1, p2) => {
+            const open_url = with_query_params(new URL("open", binder_session_url), { [p1]: p2 })
+
+            console.log(`open ${p1}:`, open_url)
+            return fetch(with_token(open_url), {
+                method: "POST",
+            })
+        }
+        let open_remotely_fn = (p1, p2) => () => open_remotely(p1, p2)
+
+        let methods_to_try = launch_params.notebookfile.startsWith("data:")
+            ? [download_locally_and_upload]
+            : [
+                  //
+                  open_remotely_fn("path", launch_params.notebookfile),
+                  //
+                  open_remotely_fn("url", new URL(launch_params.notebookfile, window.location.href).href),
+                  //
+                  download_locally_and_upload,
+              ]
+
+        let open_response = new Response()
+        for (let method of methods_to_try) {
+            open_response = await method()
+            if (open_response.ok) {
+                break
             }
         }
 
