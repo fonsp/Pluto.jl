@@ -85,11 +85,12 @@ export const FrontMatterInput = ({ remote_frontmatter, set_remote_frontmatter })
                     <${Input} type=${field_type(key)} id=${id} value=${value} on_value=${fm_setter(key)} />
                     <button
                         class="deletefield"
+                        title="Delete field"
                         onClick=${() => {
                             set_frontmatter((fm) => Object.fromEntries(Object.entries(fm).filter(([k]) => k !== key)))
                         }}
                     >
-                        ⨯
+                        ✕
                     </button>
                 `
             })}

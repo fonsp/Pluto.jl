@@ -82,15 +82,17 @@ const workspace_preamble = [
     :(show, showable, showerror, repr, string, print, println), # https://github.com/JuliaLang/julia/issues/18181
 ]
 
+const PLUTO_INNER_MODULE_NAME = Symbol("#___this_pluto_module_name")
+
 const moduleworkspace_count = Ref(0)
 function increment_current_module()::Symbol
     id = (moduleworkspace_count[] += 1)
     new_workspace_name = Symbol("workspace#", id)
 
-    new_module = Core.eval(Main, :(
+    Core.eval(Main, :(
         module $(new_workspace_name)
             $(workspace_preamble...)
-            const var"#___this_module_name" = $(new_workspace_name)
+            const $(PLUTO_INNER_MODULE_NAME) = $(new_workspace_name)
         end
     ))
 
@@ -121,8 +123,7 @@ We don't re-build the macro in every workspace, so we need to remove these refs 
 TODO? Don't remove the refs, but instead replace them with a new ref pointing to the new module?
 """
 function collect_and_eliminate_globalrefs!(ref::GlobalRef, mutable_ref_list=[])
-    test_mod_name = nameof(ref.mod) |> string
-    if startswith(test_mod_name, "workspace#")
+    if is_pluto_workspace(ref.mod)
         new_name = gensym(ref.name)
         push!(mutable_ref_list, ref.name => new_name)
         new_name
@@ -177,8 +178,8 @@ replace_pluto_properties_in_expr(::GiveMeCellID; cell_id, kwargs...) = cell_id
 replace_pluto_properties_in_expr(::GiveMeRerunCellFunction; rerun_cell_function, kwargs...) = rerun_cell_function
 replace_pluto_properties_in_expr(::GiveMeRegisterCleanupFunction; register_cleanup_function, kwargs...) = register_cleanup_function
 replace_pluto_properties_in_expr(expr::Expr; kwargs...) = Expr(expr.head, map(arg -> replace_pluto_properties_in_expr(arg; kwargs...), expr.args)...)
-replace_pluto_properties_in_expr(m::Module; kwargs...) = if startswith(string(nameof(m)), "workspace#")
-    Symbol("#___this_module_name")
+replace_pluto_properties_in_expr(m::Module; kwargs...) = if is_pluto_workspace(m)
+    PLUTO_INNER_MODULE_NAME
 else
     m
 end
@@ -528,9 +529,6 @@ function run_expression(
     cell_published_objects[cell_id] = Dict{String,Any}()
 
     # reset registered bonds
-    for s in get(cell_registered_bond_names, cell_id, Set{Symbol}())
-        delete!(registered_bond_elements, s)
-    end
     cell_registered_bond_names[cell_id] = Set{Symbol}()
 
     # If the cell contains macro calls, we want those macro calls to preserve their identity,
@@ -682,6 +680,7 @@ function move_vars(
     methods_to_delete::Set{Tuple{UUID,Vector{Symbol}}},
     module_imports_to_move::Set{Expr},
     invalidated_cell_uuids::Set{UUID},
+    keep_registered::Set{Symbol},
 )
     old_workspace = getfield(Main, old_workspace_name)
     new_workspace = getfield(Main, new_workspace_name)
@@ -705,6 +704,10 @@ function move_vars(
         if (symbol ∈ vars_to_delete) || (symbol ∈ name_symbols_of_funcs_with_no_methods_left)
             # var will be redefined - unreference the value so that GC can snoop it
 
+            if haskey(registered_bond_elements, symbol) && symbol ∉ keep_registered
+                delete!(registered_bond_elements, symbol)
+            end
+
             # free memory for other variables
             # & delete methods created in the old module:
             # for example, the old module might extend an imported function:
@@ -715,10 +718,14 @@ function move_vars(
 
                 try
                     # We are clearing this variable from the notebook, so we need to find it's root
-                    # Just clearing out the definition in the old_module, besides giving an error (so that's what that `catch; end` is for)
+                    # If its root is "controlled" by Pluto's workspace system (and is not a package module for example),
+                    # we are just clearing out the definition in the old_module, besides giving an error
+                    # (so that's what that `catch; end` is for)
                     # will not actually free it from Julia, the older module will still have a reference.
                     module_to_remove_from = which(old_workspace, symbol)
-                    Core.eval(module_to_remove_from, :($(symbol) = nothing))
+                    if is_pluto_controlled(module_to_remove_from) && !isconst(module_to_remove_from, symbol)
+                        Core.eval(module_to_remove_from, :($(symbol) = nothing))
+                    end
                 catch; end # sometimes impossible, eg. when $symbol was constant
             end
         else
@@ -1516,7 +1523,6 @@ const integrations = Integration[
 
             function table_data(x::Any, io::Context)
                 rows = Tables.rows(x)
-
                 my_row_limit = get_my_display_limit(x, 1, 0, io, table_row_display_limit, table_row_display_limit_increase)
 
                 # TODO: the commented line adds support for lazy loading columns, but it uses the same extra_items counter as the rows. So clicking More Rows will also give more columns, and vice versa, which isn't ideal. To fix, maybe use (objectid,dimension) as index instead of (objectid)?
@@ -1573,7 +1579,12 @@ const integrations = Integration[
             end
 
 
-            pluto_showable(::MIME"application/vnd.pluto.table+object", x::Any) = try Tables.rowaccess(x)::Bool && !isempty(x) catch; false end
+            #=
+            If the object we're trying to fileview provides rowaccess, let's try to show it. This is guaranteed to be fast
+            (while Table.rows() may be slow). If the object is a lazy iterator, the show method will probably crash and return text repr.
+            That's good because we don't want the show method of lazy iterators (e.g. database cursors) to be changing the (external)
+            iterator implicitly =#
+            pluto_showable(::MIME"application/vnd.pluto.table+object", x::Any) = try Tables.rowaccess(x)::Bool catch; false end
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::Type) = false
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:NamedTuple}) = false
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:Dict{Symbol,<:Any}}) = false
@@ -1676,8 +1687,37 @@ completion_detail(completion::BslashCompletion) =
         nothing
 
 function is_pluto_workspace(m::Module)
-    mod_name = nameof(m) |> string
-    startswith(mod_name, "workspace#")
+    isdefined(m, PLUTO_INNER_MODULE_NAME) &&
+        which(m, PLUTO_INNER_MODULE_NAME) == m
+end
+
+"""
+Returns wether the module is a pluto workspace or any of its ancestors is.
+
+For example, writing the following julia code in Pluto:
+
+```julia
+import Plots
+
+module A
+end
+```
+
+will give the following module tree:
+
+```
+Main                 (not pluto controlled)
+└── var"workspace#1" (pluto controlled)
+    └── A            (pluto controlled)
+└── var"workspace#2" (pluto controlled)
+    └── A            (pluto controlled)
+Plots                (not pluto controlled)
+```
+"""
+function is_pluto_controlled(m::Module)
+    is_pluto_workspace(m) && return true
+    parent = parentmodule(m)
+    parent != m && is_pluto_controlled(parent)
 end
 
 function completions_exported(cs::Vector{<:Completion})
@@ -1826,7 +1866,7 @@ function doc_fetcher(query, workspace::Module)
     try
         parsed_query = Meta.parse(query; raise=false, depwarn=false)
 
-        doc_md = if Meta.isexpr(parsed_query, [:incomplete, :error]) && haskey(Docs.keywords, Symbol(query))
+        doc_md = if Meta.isexpr(parsed_query, (:incomplete, :error, :return)) && haskey(Docs.keywords, Symbol(query))
             Docs.parsedoc(Docs.keywords[Symbol(query)])
         else
             binding = binding_from(parsed_query, workspace)
@@ -1838,32 +1878,7 @@ function doc_fetcher(query, workspace::Module)
                 doc_md = Markdown.parse(repr(doc_md))
             end
 
-            # Add suggestions results if no docstring was found
-            if parsed_query isa Symbol &&
-                !Docs.defined(binding) &&
-                doc_md isa Markdown.MD &&
-                haskey(doc_md.meta, :results) &&
-                isempty(doc_md.meta[:results])
-
-                suggestions = REPL.accessible(workspace)
-                suggestions_scores = map(s -> REPL.fuzzyscore(query, s), suggestions)
-                removed_indices = [i for (i, s) in enumerate(suggestions_scores) if s < 0]
-                deleteat!(suggestions_scores, removed_indices)
-                deleteat!(suggestions, removed_indices)
-
-                perm = sortperm(suggestions_scores; lt=Base.:>)
-                permute!(suggestions, perm)
-                links = map(s -> Suggestion(s, query), @view(suggestions[begin:min(end,DOC_SUGGESTION_LIMIT)]))
-
-                if length(links) > 0
-                    push!(doc_md.content,
-                          Markdown.HorizontalRule(),
-                          Markdown.Paragraph(["Similar result$(length(links) > 1 ? "s" : ""):"]),
-                          Markdown.List(links))
-                end
-            end
-
-            doc_md
+            improve_docs!(doc_md, parsed_query, binding)
         end
 
         (repr(MIME("text/html"), doc_md), :👍)
@@ -1872,6 +1887,51 @@ function doc_fetcher(query, workspace::Module)
     end
 end
 
+function improve_docs!(doc_md::Markdown.MD, query::Symbol, binding::Docs.Binding)
+    # Reverse latex search ("\scrH" -> "\srcH<tab>")
+
+    symbol = string(query)
+    latex = REPL.symbol_latex(symbol)
+
+    if !isempty(latex)
+        push!(doc_md.content,
+              Markdown.HorizontalRule(),
+              Markdown.Paragraph([
+                  Markdown.Code(symbol),
+                  " can be typed by ",
+                  Markdown.Code(latex),
+                  Base.Docs.HTML("<kbd>&lt;tab&gt;</kbd>"),
+                  ".",
+              ]))
+    end
+
+    # Add suggestions results if no docstring was found
+
+    if !Docs.defined(binding) &&
+        haskey(doc_md.meta, :results) &&
+        isempty(doc_md.meta[:results])
+
+        suggestions = REPL.accessible(binding.mod)
+        suggestions_scores = map(s -> REPL.fuzzyscore(symbol, s), suggestions)
+        removed_indices = [i for (i, s) in enumerate(suggestions_scores) if s < 0]
+        deleteat!(suggestions_scores, removed_indices)
+        deleteat!(suggestions, removed_indices)
+
+        perm = sortperm(suggestions_scores; rev=true)
+        permute!(suggestions, perm)
+        links = map(s -> Suggestion(s, symbol), @view(suggestions[begin:min(end,DOC_SUGGESTION_LIMIT)]))
+
+        if length(links) > 0
+            push!(doc_md.content,
+                  Markdown.HorizontalRule(),
+                  Markdown.Paragraph(["Similar result$(length(links) > 1 ? "s" : ""):"]),
+                  Markdown.List(links))
+        end
+    end
+
+    doc_md
+end
+improve_docs!(other, _, _) = other
 
 
 
@@ -1900,8 +1960,14 @@ function transform_bond_value(s::Symbol, value_from_js)
     return try
         transform_value_ref[](element, value_from_js)
     catch e
-        @error "AbstractPlutoDingetjes: Bond value transformation errored." exception=(e, catch_backtrace())
-        (Text("❌ AbstractPlutoDingetjes: Bond value transformation errored."), e, stacktrace(catch_backtrace()), value_from_js)
+        @error "🚨 AbstractPlutoDingetjes: Bond value transformation errored." exception=(e, catch_backtrace())
+        (;
+            message=Text("🚨 AbstractPlutoDingetjes: Bond value transformation errored."), 
+            exception=Text(
+                sprint(showerror, e, stacktrace(catch_backtrace()))
+            ),
+            value_from_js,
+        )
     end
 end
 
@@ -1968,8 +2034,8 @@ struct Bond
     Bond(element, defines::Symbol) = showable(MIME"text/html"(), element) ? new(element, defines, Base64.base64encode(rand(UInt8,9))) : error("""Can only bind to html-showable objects, ie types T for which show(io, ::MIME"text/html", x::T) is defined.""")
 end
 
-function create_bond(element, defines::Symbol)
-    push!(cell_registered_bond_names[currently_running_cell_id[]], defines)
+function create_bond(element, defines::Symbol, cell_id::UUID)
+    push!(cell_registered_bond_names[cell_id], defines)
     registered_bond_elements[defines] = element
     Bond(element, defines)
 end
@@ -2007,10 +2073,10 @@ The second cell will show the square of `x`, and is updated in real-time as the 
 macro bind(def, element)    
 	if def isa Symbol
 		quote
-            $(load_integrations_if_needed)()
+			$(load_integrations_if_needed)()
 			local el = $(esc(element))
-            global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : $(initial_value_getter_ref)[](el)
-			PlutoRunner.create_bond(el, $(Meta.quot(def)))
+			global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : $(initial_value_getter_ref)[](el)
+			PlutoRunner.create_bond(el, $(Meta.quot(def)), $(GiveMeCellID()))
 		end
 	else
 		:(throw(ArgumentError("""\nMacro example usage: \n\n\t@bind my_number html"<input type='range'>"\n\n""")))
@@ -2249,10 +2315,14 @@ struct PlutoCellLogger <: Logging.AbstractLogger
     log_channel::Channel{Any}
     cell_id::UUID
     workspace_count::Int # Used to invalidate previous logs
+    message_limits::Dict{Any,Int}
 end
 function PlutoCellLogger(notebook_id, cell_id)
     notebook_log_channel = pluto_log_channels[notebook_id]
-    PlutoCellLogger(nothing, notebook_log_channel, cell_id, moduleworkspace_count[])
+    PlutoCellLogger(nothing,
+                    notebook_log_channel, cell_id,
+                    moduleworkspace_count[],
+                    Dict{Any,Int}())
 end
 
 struct CaptureLogger <: Logging.AbstractLogger
@@ -2262,10 +2332,10 @@ struct CaptureLogger <: Logging.AbstractLogger
 end
 
 Logging.shouldlog(cl::CaptureLogger, args...) = Logging.shouldlog(cl.logger, args...)
-Logging.min_enabled_level(::CaptureLogger) = min(Logging.Debug, stdout_log_level)
-Logging.catch_exceptions(::CaptureLogger) = Logging.catch_exceptions(cl.logger)
-function Logging.handle_message(pl::CaptureLogger, level, msg, _module, group, id, file, line; kwargs...)
-    push!(pl.logs, (level, msg, _module, group, id, file, line, kwargs))
+Logging.min_enabled_level(cl::CaptureLogger) = Logging.min_enabled_level(cl.logger)
+Logging.catch_exceptions(cl::CaptureLogger) = Logging.catch_exceptions(cl.logger)
+function Logging.handle_message(cl::CaptureLogger, level, msg, _module, group, id, file, line; kwargs...)
+    push!(cl.logs, (level, msg, _module, group, id, file, line, kwargs))
 end
 
 
@@ -2286,15 +2356,27 @@ function Logging.shouldlog(logger::PlutoCellLogger, level, _module, _...)
     level = convert(Logging.LogLevel, level)
     (_module isa Module && is_pluto_workspace(_module)) ||
         level >= Logging.Info ||
-        level == Logging.LogLevel(-1) ||
+        level == progress_log_level ||
         level == stdout_log_level
 end
+
+const BuiltinInts = @static isdefined(Core, :BuiltinInts) ? Core.BuiltinInts : Union{Bool, Int32, Int64, UInt32, UInt64, UInt8, Int128, Int16, Int8, UInt128, UInt16}
 
 Logging.min_enabled_level(::PlutoCellLogger) = min(Logging.Debug, stdout_log_level)
 Logging.catch_exceptions(::PlutoCellLogger) = false
 function Logging.handle_message(pl::PlutoCellLogger, level, msg, _module, group, id, file, line; kwargs...)
     # println("receiving msg from ", _module, " ", group, " ", id, " ", msg, " ", level, " ", line, " ", file)
     # println("with types: ", "_module: ", typeof(_module), ", ", "msg: ", typeof(msg), ", ", "group: ", typeof(group), ", ", "id: ", typeof(id), ", ", "file: ", typeof(file), ", ", "line: ", typeof(line), ", ", "kwargs: ", typeof(kwargs)) # thanks Copilot
+
+    # https://github.com/JuliaLang/julia/blob/eb2e9687d0ac694d0aa25434b30396ee2cfa5cd3/stdlib/Logging/src/ConsoleLogger.jl#L110-L115
+    if get(kwargs, :maxlog, nothing) isa BuiltinInts
+        maxlog = kwargs[:maxlog]
+        remaining = get!(pl.message_limits, id, Int(maxlog)::Int)
+        pl.message_limits[id] = remaining - 1
+        if remaining <= 0
+            return
+        end
+    end
 
     try
 
@@ -2308,7 +2390,7 @@ function Logging.handle_message(pl::PlutoCellLogger, level, msg, _module, group,
             "file" => string(file),
             "cell_id" => pl.cell_id,
             "line" => line isa Union{Int32,Int64} ? line : nothing,
-            "kwargs" => Tuple{String,Any}[(string(k), format_log_value(v)) for (k, v) in kwargs],
+            "kwargs" => Tuple{String,Any}[(string(k), format_log_value(v)) for (k, v) in kwargs if k != :maxlog],
         ))
 
         yield()
@@ -2332,6 +2414,7 @@ function _send_stdio_output!(output, loglevel)
 end
 
 const stdout_log_level = Logging.LogLevel(-555) # https://en.wikipedia.org/wiki/555_timer_IC
+const progress_log_level = Logging.LogLevel(-1) # https://github.com/JuliaLogging/ProgressLogging.jl/blob/0e7933005233722d6214b0debe3316c82b4d14a7/src/ProgressLogging.jl#L36
 function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogLevel=Logging.LogLevel(1))
     if !enabled
         return f()
@@ -2342,7 +2425,6 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     # Save the default output streams.
     default_stdout = stdout
     default_stderr = stderr
-
     # Redirect both the `stdout` and `stderr` streams to a single `Pipe` object.
     pipe = Pipe()
     Base.link_pipe!(pipe; reader_supports_async = true, writer_supports_async = true)

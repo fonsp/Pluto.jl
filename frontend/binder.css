@@ -102,6 +102,7 @@ body.wiggle_binder .edit_or_run > button {
     font-style: normal;
     color: black;
     font-weight: 900;
+    height: 2.2em;
 }
 
 .edit_or_run > button {

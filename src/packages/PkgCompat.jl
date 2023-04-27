@@ -156,6 +156,10 @@ function withio(f::Function, ctx::PkgContext, io::IO)
     end
 end
 
+# I'm a pirate harrr 🏴‍☠️
+@static if isdefined(Pkg, :can_fancyprint)
+	Pkg.can_fancyprint(io::IOContext{IOBuffer}) = get(io, :sneaky_enable_tty, false) === true
+end
 
 ###
 # REGISTRIES
@@ -227,13 +231,12 @@ end
 # Instantiate
 ###
 
-# ⚠️✅ Internal API with fallback
-function instantiate(ctx; update_registry::Bool)
-	@static if hasmethod(Pkg.instantiate, Tuple{}, (:update_registry,))
-		Pkg.instantiate(ctx; update_registry)
-	else
-		Pkg.instantiate(ctx)
-	end
+# ⚠️ Internal API
+function instantiate(ctx; update_registry::Bool, allow_autoprecomp::Bool)
+	Pkg.instantiate(ctx; update_registry, allow_autoprecomp)
+	# Not sure how to make a fallback:
+	# - hasmethod cannot test for kwargs because instantiate takes kwargs... that are passed on somewhere else
+	# - can't catch for a CallError because the error is weird
 end
 
 
@@ -370,7 +373,10 @@ function dependencies(ctx)
 			Pkg.dependencies(ctx.env)
 		end
 	catch e
-		if !occursin(r"expected.*exist.*manifest", sprint(showerror, e))
+		if !any(occursin(sprint(showerror, e)), (
+			r"expected.*exist.*manifest",
+			r"no method.*project_rel_path.*Nothing\)", # https://github.com/JuliaLang/Pkg.jl/issues/3404
+		))
 			@error """
 			Pkg error: you might need to use
 
@@ -441,7 +447,20 @@ function _modify_compat!(f!::Function, ctx::PkgContext)::PkgContext
 		Pkg.TOML.print(io, toml; sorted=true, by=(key -> (project_key_order(key), key)))
 	end)
 	
-	return load_ctx!(ctx)
+	return _update_project_hash!(load_ctx!(ctx))
+end
+
+# ✅ Internal API with fallback
+"Update the project hash in the manifest file (https://github.com/JuliaLang/Pkg.jl/pull/2815)"
+function _update_project_hash!(ctx::PkgContext)
+	VERSION >= v"1.8.0" && isfile(manifest_file(ctx)) && try
+		Pkg.Operations.record_project_hash(ctx.env)
+		Pkg.Types.write_manifest(ctx.env)
+	catch e
+		@info "Failed to update project hash." exception=(e,catch_backtrace())
+	end
+	
+	ctx
 end
 
 

@@ -12,13 +12,18 @@ import Base: union, union!, ==, push!
 
 const FunctionName = Vector{Symbol}
 
+"""
+For an expression like `function Base.sqrt(x::Int)::Int x; end`, it has the following fields:
+- `name::FunctionName`: the name, `[:Base, :sqrt]`
+- `signature_hash::UInt`: a `UInt` that is unique for the type signature of the method declaration, ignoring argument names. In the example, this is equals `hash(ExpressionExplorer.canonalize( :(Base.sqrt(x::Int)::Int) ))`, see [`canonalize`](@ref) for more details.
+"""
 struct FunctionNameSignaturePair
     name::FunctionName
-    canonicalized_head::Any
+    signature_hash::UInt
 end
 
-Base.:(==)(a::FunctionNameSignaturePair, b::FunctionNameSignaturePair) = a.name == b.name && a.canonicalized_head == b.canonicalized_head
-Base.hash(a::FunctionNameSignaturePair, h::UInt) = hash(a.name, hash(a.canonicalized_head, h))
+Base.:(==)(a::FunctionNameSignaturePair, b::FunctionNameSignaturePair) = a.name == b.name && a.signature_hash == b.signature_hash
+Base.hash(a::FunctionNameSignaturePair, h::UInt) = hash(a.name, hash(a.signature_hash, h))
 
 "SymbolsState trickles _down_ the ASTree: it carries referenced and defined variables from endpoints down to the root."
 Base.@kwdef mutable struct SymbolsState
@@ -141,7 +146,7 @@ function get_assignees(ex::Expr)::FunctionName
             # e.g. (x, y) in the ex (x, y) = (1, 23)
             args = ex.args
         end
-        union!(Symbol[], get_assignees.(args)...)
+        union!(Symbol[], Iterators.map(get_assignees, args)...)
         # filter(s->s isa Symbol, ex.args)
     elseif ex.head == :(::)
         # TODO: type is referenced
@@ -151,7 +156,7 @@ function get_assignees(ex::Expr)::FunctionName
     elseif ex.head == :...
         # Handles splat assignments. e.g. _, y... = 1:5
         args = ex.args
-        union!(Symbol[], get_assignees.(args)...)
+        union!(Symbol[], Iterators.map(get_assignees, args)...)
     else
         @warn "unknown use of `=`. Assignee is unrecognised." ex
         Symbol[]
@@ -578,7 +583,7 @@ function explore_function_macro!(ex::Expr, scopestate::ScopeState)
     end
 
     union!(innersymstate, explore!(Expr(:block, ex.args[2:end]...), innerscopestate))
-    funcnamesig = FunctionNameSignaturePair(funcname, canonalize(funcroot))
+    funcnamesig = FunctionNameSignaturePair(funcname, hash(canonalize(funcroot)))
 
     if will_assign_global(funcname, scopestate)
         symstate.funcdefs[funcnamesig] = innersymstate
@@ -929,6 +934,12 @@ function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FunctionName,
         # and explore the function arguments
         return umapfoldl(a -> explore_funcdef!(a, scopestate), params_to_explore; init=(name, symstate))
     elseif ex.head == :(::) || ex.head == :kw || ex.head == :(=)
+        # Treat custom struct constructors as a local scope function
+        if ex.head == :(=) && is_function_assignment(ex)
+            symstate = explore!(ex, scopestate)
+            return Symbol[], symstate
+        end
+
         # account for unnamed params, like in f(::Example) = 1
         if ex.head == :(::) && length(ex.args) == 1
             symstate = explore!(ex.args[1], scopestate)
@@ -1240,7 +1251,7 @@ end
 
 function collect_implicit_usings(ex::Expr)
     if is_implicit_using(ex)
-        Set{Expr}(transform_dot_notation.(ex.args))
+        Set{Expr}(Iterators.map(transform_dot_notation, ex.args))
     else
         return Set{Expr}()
     end
@@ -1290,7 +1301,7 @@ function external_package_names(ex::Expr)::Set{Symbol}
 end
 
 function external_package_names(x::UsingsImports)::Set{Symbol}
-    union!(Set{Symbol}(), external_package_names.(x.usings)..., external_package_names.(x.imports)...)
+    union!(Set{Symbol}(), Iterators.map(external_package_names, x.usings)..., Iterators.map(external_package_names, x.imports)...)
 end
 
 "Get the sets of `using Module` and `import Module` subexpressions that are contained in this expression."

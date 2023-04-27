@@ -1,7 +1,7 @@
-function set_bond_values_reactive(; 
-    session::ServerSession, notebook::Notebook, 
-    bound_sym_names::AbstractVector{Symbol}, 
-    is_first_values::AbstractVector{Bool}=[false for x in bound_sym_names], 
+function set_bond_values_reactive(;
+    session::ServerSession, notebook::Notebook,
+    bound_sym_names::AbstractVector{Symbol},
+    is_first_values::AbstractVector{Bool}=[false for x in bound_sym_names],
     initiator=nothing,
     kwargs...
 )::Union{Task,TopologicalOrder}
@@ -39,13 +39,23 @@ function set_bond_values_reactive(;
 
     new_values = Any[notebook.bonds[bound_sym].value for bound_sym in syms_to_set]
     bond_value_pairs = zip(syms_to_set, new_values)
-    
+
+    syms_to_set_set = Set{Symbol}(syms_to_set)
     function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Notebook}, old_workspace_name, new_workspace_name, to_delete_vars::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}, invalidated_cell_uuids::Set{UUID}; to_run::AbstractVector{Cell})
-        to_delete_vars = Set([to_delete_vars..., syms_to_set...]) # also delete the bound symbols
-        WorkspaceManager.move_vars((session, notebook), old_workspace_name, new_workspace_name, to_delete_vars, methods_to_delete, to_reimport, invalidated_cell_uuids)
+        to_delete_vars = union(to_delete_vars, syms_to_set_set) # also delete the bound symbols
+        WorkspaceManager.move_vars(
+            (session, notebook),
+            old_workspace_name,
+            new_workspace_name,
+            to_delete_vars,
+            methods_to_delete,
+            to_reimport,
+            invalidated_cell_uuids,
+            syms_to_set_set,
+        )
         set_bond_value_pairs!(session, notebook, zip(syms_to_set, new_values))
     end
-    to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}(syms_to_set))
+    to_reeval = where_referenced(notebook, notebook.topology, syms_to_set_set)
 
     run_reactive_async!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, save=false, user_requested_run=false, run_async=false, bond_value_pairs, kwargs...)
 end

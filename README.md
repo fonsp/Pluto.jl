@@ -172,9 +172,9 @@ The Pluto project is an ambition to [_rethink what a programming environment sho
 
 ### You can chat with us
 
--   contact me (fonsi) **[via email](mailto:fons@plutojl.org)** or on my <a href="https://whereby.com/plutojl"><b>video chat room</b></a> (wait a minute for me to join)
 -   talk with fellow Pluto users in the **[Zulip chat room](https://gist.github.com/fonsp/db7d00fd3fe5bc0b379b4af9ec6674b6)** (_search for the `pluto.jl` stream_)
 -   use Pluto's **[built-in feedback system:](https://github.com/fonsp/Pluto.jl/issues/182#issue-637726414)**
+-   contact fons **[via email](mailto:fons@plutojl.org)**
 
 <img alt="feedback screencap" src="https://user-images.githubusercontent.com/6933510/84502876-6f08db00-acb9-11ea-84c3-f5daaba29273.png" width="100%">
 

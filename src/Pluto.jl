@@ -74,6 +74,7 @@ include("./analysis/MoreAnalysis.jl")
 include("./evaluation/WorkspaceManager.jl")
 include("./evaluation/MacroAnalysis.jl")
 include("./packages/IOListener.jl")
+include("./packages/precompile_isolated.jl")
 include("./packages/Packages.jl")
 include("./packages/PkgUtils.jl")
 include("./evaluation/Run.jl")
@@ -94,6 +95,8 @@ export reset_notebook_environment
 export update_notebook_environment
 export activate_notebook_environment
 
+include("./precompile.jl")
+
 if get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") != "0" && get(ENV, "CI", "🍄") != "true"
 @info """\n
     Welcome to Pluto $(PLUTO_VERSION_STR) 🎈
@@ -105,10 +108,5 @@ if get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") != "0" && get(ENV, "CI", "🍄") != 
     https://github.com/fonsp/Pluto.jl/wiki
 \n"""
 end
-
-# Generate and include `precompile` directives during the precompilation phase.
-# This aims to reduce the time to first X (time to first running notebook in this case).
-using PrecompileSignatures: @precompile_signatures
-@precompile_signatures(Pluto)
 
 end

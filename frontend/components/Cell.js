@@ -90,7 +90,7 @@ const on_jump = (hasBarrier, pluto_actions, cell_id) => () => {
  * @param {{
  *  cell_result: import("./Editor.js").CellResultData,
  *  cell_input: import("./Editor.js").CellInputData,
- *  cell_input_local: import("./Editor.js").CellInputData,
+ *  cell_input_local: { code: String },
  *  cell_dependencies: import("./Editor.js").CellDependencyData
  *  nbpkg: import("./Editor.js").NotebookPkgData?,
  *  selected: boolean,
