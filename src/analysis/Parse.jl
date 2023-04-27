@@ -14,7 +14,7 @@ function convert_julia_syntax_level(level)
 end
 
 function convert_diagnostic_to_dict(source, diag)
-    line_byte_ends = cumsum(map(line -> sizeof(line) + 1, eachsplit(source, '\n')))
+    line_byte_ends = findall(==('\n'), source)
 
     # JuliaSyntax uses `last_byte < first_byte` to signal an empty range.
     # https://github.com/JuliaLang/JuliaSyntax.jl/blob/97e2825c68e770a3f56f0ec247deda1a8588070c/src/diagnostics.jl#L67-L75
