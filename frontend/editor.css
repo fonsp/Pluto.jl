@@ -247,7 +247,7 @@ pluto-output pre > code {
 }
 
 pluto-output.rich_output code {
-    padding: 3px;
+    padding: 0.18em;
     border-radius: 8px;
     background-color: var(--pluto-output-bg-color);
 }
