@@ -177,7 +177,8 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event, disable_input })
                 class="pkg-update"
                 target="_blank"
                 title="Update packages"
-                style=${(!!showupdate ? "" : "opacity: .4;") + (recent_event?.is_disable_pkg || disable_input ? "display: none;" : "")}
+                style=${(!!showupdate ? "" : "opacity: .4;") +
+                (recent_event?.is_disable_pkg || disable_input || notebook.nbpkg?.waiting_for_permission ? "display: none;" : "")}
                 href="#"
                 onClick=${(e) => {
                     if (busy) {

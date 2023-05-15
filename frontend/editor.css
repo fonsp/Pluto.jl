@@ -776,6 +776,7 @@ body.binder header#pluto-nav > nav#at_the_top > pluto-filepicker > a {
 body.nbpkg_restart_recommended header#pluto-nav,
 body.nbpkg_restart_required header#pluto-nav,
 body.binder.loading header#pluto-nav,
+body.process_waiting_for_permission header#pluto-nav,
 body.process_dead header#pluto-nav,
 body.disconnected header#pluto-nav {
     position: sticky;
@@ -792,6 +793,9 @@ body.nbpkg_restart_required header#pluto-nav {
 }
 body.process_dead header#pluto-nav {
     background-color: var(--dead-process-header-color);
+}
+body.process_waiting_for_permission header#pluto-nav {
+    background-color: var(--restart-recc-header-color);
 }
 body.loading header#pluto-nav {
     background-color: var(--loading-header-color);

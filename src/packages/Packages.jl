@@ -323,6 +323,8 @@ In addition to the steps performed by [`sync_nbpkg_core`](@ref):
 - `try` `catch` and reset the package environment on failure.
 """
 function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topology::NotebookTopology; save::Bool=true, take_token::Bool=true)
+    @assert will_run_pkg(notebook)
+
     cleanup = Ref{Function}(_default_cleanup)
 	try
         Status.report_business_started!(notebook.status_tree, :pkg)
@@ -613,6 +615,8 @@ end
 
 
 function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEVEL_MAJOR, backup::Bool=true, save::Bool=true)
+    @assert will_run_pkg(notebook)
+
     bp = if backup && save
         writebackup(notebook)
     end

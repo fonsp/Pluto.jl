@@ -1,6 +1,6 @@
 module SessionActions
 
-import ..Pluto: Pluto, Status, ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, cutename, readwrite, update_save_run!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, try_event_call, NewNotebookEvent, OpenNotebookEvent, ShutdownNotebookEvent, @asynclog, ProcessStatus, maybe_convert_path_to_wsl, move_notebook!, throttled
+import ..Pluto: Pluto, Status, ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, cutename, readwrite, update_save_run!, update_nbpkg_cache!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, try_event_call, NewNotebookEvent, OpenNotebookEvent, ShutdownNotebookEvent, @asynclog, ProcessStatus, maybe_convert_path_to_wsl, move_notebook!, throttled
 using FileWatching
 import ..Pluto.DownloadCool: download_cool
 import HTTP
@@ -42,6 +42,7 @@ end
 
 "Open the notebook at `path` into `session::ServerSession` and run it. Returns the `Notebook`."
 function open(session::ServerSession, path::AbstractString; 
+    execution_allowed::Bool=true,
     run_async::Bool=true, 
     compiler_options=nothing, 
     as_sample::Bool=false, 
@@ -65,6 +66,7 @@ function open(session::ServerSession, path::AbstractString;
     
     notebook = load_notebook(tamepath(path); disable_writing_notebook_files=session.options.server.disable_writing_notebook_files)
     notebook.notebook_id = notebook_id
+    notebook.process_status = execution_allowed ? ProcessStatus.starting : ProcessStatus.waiting_for_permission
 
     # overwrites the notebook environment if specified
     if compiler_options !== nothing
@@ -76,8 +78,8 @@ function open(session::ServerSession, path::AbstractString;
 
     session.notebooks[notebook.notebook_id] = notebook
     
-    run_status = Status.report_business_planned!(notebook.status_tree, :run)
-    if session.options.evaluation.run_notebook_on_load
+    if execution_allowed && session.options.evaluation.run_notebook_on_load
+        run_status = Status.report_business_planned!(notebook.status_tree, :run)
         Status.report_business_planned!(run_status, :resolve_topology)
         cell_status = Status.report_business_planned!(run_status, :evaluate)
         for (i,c) in enumerate(notebook.cells)
@@ -85,6 +87,14 @@ function open(session::ServerSession, path::AbstractString;
             Status.report_business_planned!(cell_status, Symbol(i))
         end
     end
+    
+    if !execution_allowed
+        Status.delete_business!(notebook.status_tree, :run)
+        Status.delete_business!(notebook.status_tree, :workspace)
+        Status.delete_business!(notebook.status_tree, :pkg)
+    end
+
+    update_nbpkg_cache!(notebook)
 
     update_save_run!(session, notebook, notebook.cells; run_async, prerender_text=true)
     add(session, notebook; run_async)
@@ -229,7 +239,7 @@ function shutdown(session::ServerSession, notebook::Notebook; keep_in_session::B
     notebook.nbpkg_restart_recommended_msg = nothing
     notebook.nbpkg_restart_required_msg = nothing
     
-    if notebook.process_status == ProcessStatus.ready || notebook.process_status == ProcessStatus.starting
+    if notebook.process_status ∈ (ProcessStatus.ready, ProcessStatus.starting)
         notebook.process_status = ProcessStatus.no_process
     end
 

@@ -337,7 +337,8 @@ function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache; persist_js_
 	cell.running = cell.queued = false
 end
 
-will_run_code(notebook::Notebook) = notebook.process_status != ProcessStatus.no_process && notebook.process_status != ProcessStatus.waiting_to_restart
+will_run_code(notebook::Notebook) = notebook.process_status ∈ (ProcessStatus.ready, ProcessStatus.starting)
+will_run_pkg(notebook::Notebook) = notebook.process_status !== ProcessStatus.waiting_for_permission
 
 
 "Do all the things!"
@@ -438,10 +439,13 @@ function update_save_run!(
 				@async WorkspaceManager.get_workspace((session, notebook))
 			end
 			
-            sync_nbpkg(session, notebook, old, new; 
-				save=(save && !session.options.server.disable_writing_notebook_files), 
-				take_token=false
-			)
+			if will_run_pkg(notebook)
+				# downloading and precompiling packages from the General registry is also arbitrary code execution
+				sync_nbpkg(session, notebook, old, new; 
+					save=(save && !session.options.server.disable_writing_notebook_files), 
+					take_token=false
+				)
+			end
 			
             if run_code
                 # not async because that would be double async

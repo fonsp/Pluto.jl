@@ -19,6 +19,7 @@ const ProcessStatus = (
     starting="starting",
     no_process="no_process",
     waiting_to_restart="waiting_to_restart",
+    waiting_for_permission="waiting_for_permission",
 )
 
 "Like a [`Diary`](@ref) but more serious. 📓"

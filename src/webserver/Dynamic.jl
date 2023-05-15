@@ -101,8 +101,8 @@ function notebook_to_js(notebook::Notebook)
     Dict{String,Any}(
         "notebook_id" => notebook.notebook_id,
         "path" => notebook.path,
-        "in_temp_dir" => startswith(notebook.path, new_notebooks_directory()),
         "shortpath" => basename(notebook.path),
+        "in_temp_dir" => startswith(notebook.path, new_notebooks_directory()),
         "process_status" => notebook.process_status,
         "last_save_time" => notebook.last_save_time,
         "last_hot_reload_time" => notebook.last_hot_reload_time,
@@ -154,6 +154,8 @@ function notebook_to_js(notebook::Notebook)
             ctx = notebook.nbpkg_ctx
             Dict{String,Any}(
                 "enabled" => ctx !== nothing,
+                "waiting_for_permission" => notebook.process_status === ProcessStatus.waiting_for_permission,
+                "waiting_for_permission_but_probably_disabled" => notebook.process_status === ProcessStatus.waiting_for_permission && !use_plutopkg(notebook.topology),
                 "restart_recommended_msg" => notebook.nbpkg_restart_recommended_msg,
                 "restart_required_msg" => notebook.nbpkg_restart_required_msg,
                 "installed_versions" => ctx === nothing ? Dict{String,String}() : notebook.nbpkg_installed_versions_cache,
@@ -247,6 +249,18 @@ const effects_of_changed_state = Dict(
 
         @info "Process status set by client" newstatus
     end,
+    # "execution_allowed" => function(; request::ClientRequest, patch::Firebasey.ReplacePatch)
+    #     Firebasey.applypatch!(request.notebook, patch)
+    #     newstatus = patch.value
+
+    #     @info "execution_allowed set by client" newstatus
+    #     if newstatus
+    #         @info "lets run some cells!"
+    #         update_save_run!(request.session, request.notebook, notebook.cells; 
+    #             run_async=true, save=true
+    #         )
+    #     end
+    # end,
     "in_temp_dir" => function(; _...) no_changes end,
     "cell_inputs" => Dict(
         Wildcard() => function(cell_id, rest...; request::ClientRequest, patch::Firebasey.JSONPatch)
@@ -475,6 +489,7 @@ responses[:restart_process] = function response_restart_process(🙋::ClientRequ
         🙋.notebook.process_status = ProcessStatus.waiting_to_restart
         send_notebook_changes!(🙋 |> without_initiator)
 
+        # TODO skip necessary?
         SessionActions.shutdown(🙋.session, 🙋.notebook; keep_in_session=true, async=true)
 
         🙋.notebook.process_status = ProcessStatus.starting
@@ -487,6 +502,8 @@ end
 
 responses[:reshow_cell] = function response_reshow_cell(🙋::ClientRequest)
     require_notebook(🙋)
+    @assert will_run_code(🙋.notebook)
+
     cell = let
         cell_id = UUID(🙋.body["cell_id"])
         🙋.notebook.cells_dict[cell_id]

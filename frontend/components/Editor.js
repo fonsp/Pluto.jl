@@ -69,6 +69,7 @@ const ProcessStatus = {
     starting: "starting",
     no_process: "no_process",
     waiting_to_restart: "waiting_to_restart",
+    waiting_for_permission: "waiting_for_permission",
 }
 
 /**
@@ -82,11 +83,12 @@ const statusmap = (/** @type {EditorState} */ state, /** @type {LaunchParameters
             state.backend_launch_phase < BackendLaunchPhase.ready) ||
         state.initializing ||
         state.moving_file,
+    process_waiting_for_permission: state.notebook.process_status === ProcessStatus.waiting_for_permission,
     process_restarting: state.notebook.process_status === ProcessStatus.waiting_to_restart,
     process_dead: state.notebook.process_status === ProcessStatus.no_process || state.notebook.process_status === ProcessStatus.waiting_to_restart,
     nbpkg_restart_required: state.notebook.nbpkg?.restart_required_msg != null,
     nbpkg_restart_recommended: state.notebook.nbpkg?.restart_recommended_msg != null,
-    nbpkg_disabled: state.notebook.nbpkg?.enabled === false,
+    nbpkg_disabled: state.notebook.nbpkg?.enabled === false || state.notebook.nbpkg?.waiting_for_permission_but_probably_disabled === true,
     static_preview: state.static_preview,
     bonds_disabled: !(state.connected || state.initializing || launch_params.slider_server_url != null),
     offer_binder: state.backend_launch_phase === BackendLaunchPhase.wait_for_user && launch_params.binder_url != null,
@@ -185,6 +187,8 @@ const first_true_key = (obj) => {
  * @typedef NotebookPkgData
  * @type {{
  *  enabled: boolean,
+ *  waiting_for_permission: boolean?,
+ *  waiting_for_permission_but_probably_disabled: boolean?,
  *  restart_recommended_msg: string?,
  *  restart_required_msg: string?,
  *  installed_versions: { [pkg_name: string]: string },
@@ -1476,6 +1480,8 @@ patch: ${JSON.stringify(
                                     ? "Process exited — restarting..."
                                     : statusval === "process_dead"
                                     ? html`${"Process exited — "}${restart_button("restart")}`
+                                    : statusval === "process_waiting_for_permission"
+                                    ? html`${restart_button("Run notebook code")}`
                                     : null
                             }</div>
                         </nav>

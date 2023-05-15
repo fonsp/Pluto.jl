@@ -246,6 +246,7 @@ function http_router_for(session::ServerSession)
                 if isfile(path)
                     return try_launch_notebook_response(
                         SessionActions.open, path; 
+                        execution_allowed=false,
                         as_redirect=(request.method == "GET"), 
                         as_sample, 
                         title="Failed to load notebook", 
@@ -258,6 +259,7 @@ function http_router_for(session::ServerSession)
                 url = query["url"]
                 return try_launch_notebook_response(
                     SessionActions.open_url, url;
+                    execution_allowed=false,
                     as_redirect=(request.method == "GET"), 
                     as_sample, 
                     title="Failed to load notebook", 
