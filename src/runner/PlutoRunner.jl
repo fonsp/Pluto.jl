@@ -1096,7 +1096,11 @@ function pretty_stackcall(frame::Base.StackFrame, linfo::Core.MethodInstance)
     end
 end
 
-function pretty_stackcall(frame::Base.StackFrame, linfo::Union{Module,Method})
+function pretty_stackcall(frame::Base.StackFrame, linfo::Method)
+    sprint(Base.show_tuple_as_call, linfo.name, linfo.specTypes)
+end
+
+function pretty_stackcall(frame::Base.StackFrame, linfo::Module)
     sprint(Base.show, linfo)
 end
 
