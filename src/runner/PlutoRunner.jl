@@ -1096,6 +1096,10 @@ function pretty_stackcall(frame::Base.StackFrame, linfo::Core.MethodInstance)
     end
 end
 
+function pretty_stackcall(frame::Base.StackFrame, linfo::Module)
+    sprint(Base.show, linfo)
+end
+
 "Return a `(String, Any)` tuple containing function output as the second entry."
 function show_richest_withreturned(context::IOContext, @nospecialize(args))
     buffer = IOBuffer(; sizehint=0)
