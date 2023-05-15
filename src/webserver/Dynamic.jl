@@ -156,7 +156,6 @@ function notebook_to_js(notebook::Notebook)
                 "enabled" => ctx !== nothing,
                 "restart_recommended_msg" => notebook.nbpkg_restart_recommended_msg,
                 "restart_required_msg" => notebook.nbpkg_restart_required_msg,
-                # TODO: cache this
                 "installed_versions" => ctx === nothing ? Dict{String,String}() : notebook.nbpkg_installed_versions_cache,
                 "terminal_outputs" => notebook.nbpkg_terminal_outputs,
                 "install_time_ns" => notebook.nbpkg_install_time_ns,
