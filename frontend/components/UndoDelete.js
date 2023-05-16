@@ -7,7 +7,7 @@ export const UndoDelete = ({ recently_deleted, on_click }) => {
     const [hidden, set_hidden] = useState(true)
 
     useEffect(() => {
-        if (recently_deleted != null) {
+        if (recently_deleted != null && recently_deleted.length > 0) {
             set_hidden(false)
             const interval = setTimeout(() => {
                 set_hidden(true)

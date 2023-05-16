@@ -1,20 +1,30 @@
-import { html, useEffect, useRef, useState } from "../imports/Preact.js"
+import { html, useEffect, useMemo, useRef, useState } from "../imports/Preact.js"
 
 import { cl } from "../common/ClassTable.js"
 import { prettytime, useMillisSinceTruthy } from "./RunArea.js"
 import { DiscreteProgressBar } from "./DiscreteProgressBar.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
+import { NotifyWhenDone } from "./NotifyWhenDone.js"
 
 /**
  * @param {{
+ * status: import("./Editor.js").StatusEntryData,
  * notebook: import("./Editor.js").NotebookData,
+ * backend_launch_logs: string?,
  * my_clock_is_ahead_by: number,
  * }} props
  */
-export let ProcessTab = ({ notebook, my_clock_is_ahead_by }) => {
+export let ProcessTab = ({ status, notebook, backend_launch_logs, my_clock_is_ahead_by }) => {
     return html`
         <section>
-            <${StatusItem} status_tree=${notebook.status_tree} path=${[]} my_clock_is_ahead_by=${my_clock_is_ahead_by} nbpkg=${notebook.nbpkg} />
+            <${StatusItem}
+                status_tree=${status}
+                path=${[]}
+                my_clock_is_ahead_by=${my_clock_is_ahead_by}
+                nbpkg=${notebook.nbpkg}
+                backend_launch_logs=${backend_launch_logs}
+            />
+            <${NotifyWhenDone} status=${status} />
         </section>
     `
 }
@@ -37,6 +47,10 @@ resolve
 remove
 add
 instantiate
+instantiate1
+instantiate2
+instantiate3
+precompile
 
 run
 
@@ -58,10 +72,17 @@ const descriptions = {
     pkg: "Package management",
     instantiate1: "instantiate",
     instantiate2: "instantiate",
+    instantiate3: "instantiate",
     run: "Evaluating cells",
     evaluate: "Running code",
     registry_update: "Updating package registry",
     waiting_for_others: "Waiting for other notebooks to finish package operations",
+
+    backend_launch: "Connecting to backend",
+    backend_requesting: "Requesting a worker",
+    backend_created: "Starting Pluto server",
+    backend_responded: "Opening notebook file",
+    backend_notebook_running: "Switching to live editing",
 }
 
 export const friendly_name = (/** @type {string} */ task_name) => {
@@ -78,10 +99,12 @@ const to_ns = (x) => x * 1e9
  * path: string[],
  * my_clock_is_ahead_by: number,
  * nbpkg: import("./Editor.js").NotebookPkgData?,
+ * backend_launch_logs: string?,
  * }} props
  */
-const StatusItem = ({ status_tree, path, my_clock_is_ahead_by, nbpkg }) => {
+const StatusItem = ({ status_tree, path, my_clock_is_ahead_by, nbpkg, backend_launch_logs }) => {
     if (status_tree == null) return null
+
     const mystatus = path.reduce((entry, key) => entry.subtasks[key], status_tree)
     if (!mystatus) return null
 
@@ -97,7 +120,7 @@ const StatusItem = ({ status_tree, path, my_clock_is_ahead_by, nbpkg }) => {
     const local_busy_time = (useMillisSinceTruthy(busy) ?? 0) / 1000
     const mytime = Date.now() / 1000
 
-    const busy_time = Math.max(local_busy_time, mytime - my_clock_is_ahead_by - start)
+    const busy_time = Math.max(local_busy_time, mytime - start - (mystatus.timing === "local" ? 0 : my_clock_is_ahead_by))
 
     useEffect(() => {
         if (busy) {
@@ -137,6 +160,7 @@ const StatusItem = ({ status_tree, path, my_clock_is_ahead_by, nbpkg }) => {
                           my_clock_is_ahead_by=${my_clock_is_ahead_by}
                           path=${[...path, key]}
                           nbpkg=${nbpkg}
+                          backend_launch_logs=${backend_launch_logs}
                       />`
             )
 
@@ -187,7 +211,12 @@ const StatusItem = ({ status_tree, path, my_clock_is_ahead_by, nbpkg }) => {
                   <span class="status-name">${friendly_name(mystatus.name)}${inner_progress}</span>
                   <span class="status-time">${finished ? prettytime(to_ns(end - start)) : busy ? prettytime(to_ns(busy_time)) : null}</span>
               </div>
-              ${inner}${is_open && mystatus.name === "pkg" ? html`<${PkgTerminalView} value=${nbpkg?.terminal_outputs?.nbpkg_sync} />` : undefined}
+              ${inner}
+              ${is_open && mystatus.name === "pkg"
+                  ? html`<${PkgTerminalView} value=${nbpkg?.terminal_outputs?.nbpkg_sync} />`
+                  : is_open && mystatus.name === "backend_launch"
+                  ? html`<${PkgTerminalView} value=${backend_launch_logs} />`
+                  : undefined}
           </pl-status>`
 }
 
@@ -253,6 +282,15 @@ export const path_to_first_busy_business = (status) => {
     }
     return []
 }
+
+/** @returns {import("./Editor.js").StatusEntryData} */
+export const useStatusItem = (/** @type {string} */ name, /** @type {boolean} */ started, /** @type {boolean} */ finished, subtasks = {}) => ({
+    name,
+    subtasks,
+    timing: "local",
+    started_at: useMemo(() => (started || finished ? Date.now() / 1000 : null), [started || finished]),
+    finished_at: useMemo(() => (finished ? Date.now() / 1000 : null), [finished]),
+})
 
 /** Like `useEffect`, but the handler function gets the previous deps value as argument. */
 const useEffectWithPrevious = (fn, deps) => {

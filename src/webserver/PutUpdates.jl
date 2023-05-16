@@ -89,6 +89,11 @@ function flushclient(client::ClientSession)
         try
             if client.stream !== nothing
                 if is_stream_open(client.stream)
+                    let
+                        lag = client.simulated_lag
+                        (lag > 0) && sleep(lag * (0.5 + rand())) # sleep(0) would yield to the process manager which we dont want
+                    end
+
                     send_message(client.stream, next_to_send)
                 else
                     put!(flushtoken)

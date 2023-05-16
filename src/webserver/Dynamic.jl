@@ -156,7 +156,6 @@ function notebook_to_js(notebook::Notebook)
                 "enabled" => ctx !== nothing,
                 "restart_recommended_msg" => notebook.nbpkg_restart_recommended_msg,
                 "restart_required_msg" => notebook.nbpkg_restart_required_msg,
-                # TODO: cache this
                 "installed_versions" => ctx === nothing ? Dict{String,String}() : notebook.nbpkg_installed_versions_cache,
                 "terminal_outputs" => notebook.nbpkg_terminal_outputs,
                 "install_time_ns" => notebook.nbpkg_install_time_ns,
@@ -173,30 +172,39 @@ end
 For each connected client, we keep a copy of their current state. This way we know exactly which updates to send when the server-side state changes.
 """
 const current_state_for_clients = WeakKeyDict{ClientSession,Any}()
+const current_state_for_clients_lock = ReentrantLock()
 
 """
 Update the local state of all clients connected to this notebook.
 """
 function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, skip_send::Bool=false)
-    notebook_dict = notebook_to_js(🙋.notebook)
-    for (_, client) in 🙋.session.connected_clients
-        if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == 🙋.notebook.notebook_id
-            current_dict = get(current_state_for_clients, client, :empty)
-            patches = Firebasey.diff(current_dict, notebook_dict)
-            patches_as_dicts::Array{Dict} = Firebasey._convert(Array{Dict}, patches)
-            current_state_for_clients[client] = deep_enough_copy(notebook_dict)
+    outbox = Set{Tuple{ClientSession,UpdateMessage}}()
+    
+    lock(current_state_for_clients_lock) do
+        notebook_dict = notebook_to_js(🙋.notebook)
+        for (_, client) in 🙋.session.connected_clients
+            if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == 🙋.notebook.notebook_id
+                current_dict = get(current_state_for_clients, client, :empty)
+                patches = Firebasey.diff(current_dict, notebook_dict)
+                patches_as_dicts::Array{Dict} = Firebasey._convert(Array{Dict}, patches)
+                current_state_for_clients[client] = deep_enough_copy(notebook_dict)
 
-            # Make sure we do send a confirmation to the client who made the request, even without changes
-            is_response = 🙋.initiator !== nothing && client == 🙋.initiator.client
+                # Make sure we do send a confirmation to the client who made the request, even without changes
+                is_response = 🙋.initiator !== nothing && client == 🙋.initiator.client
 
-            if !skip_send && (!isempty(patches) || is_response)
-                response = Dict(
-                    :patches => patches_as_dicts,
-                    :response => is_response ? commentary : nothing
-                )
-                putclientupdates!(client, UpdateMessage(:notebook_diff, response, 🙋.notebook, nothing, 🙋.initiator))
+                if !skip_send && (!isempty(patches) || is_response)
+                    response = Dict(
+                        :patches => patches_as_dicts,
+                        :response => is_response ? commentary : nothing
+                    )
+                    push!(outbox, (client, UpdateMessage(:notebook_diff, response, 🙋.notebook, nothing, 🙋.initiator)))
+                end
             end
         end
+    end
+    
+    for (client, msg) in outbox
+        putclientupdates!(client, msg)
     end
     try_event_call(🙋.session, FileEditEvent(🙋.notebook))
 end

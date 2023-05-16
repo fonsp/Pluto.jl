@@ -409,7 +409,7 @@ export const create_pluto_connection = async ({
                         // Ping faster than timeout?
                         setTimeout(ping, 28 * 1000)
                     })
-                    .catch()
+                    .catch(() => undefined)
             }
             ping()
 

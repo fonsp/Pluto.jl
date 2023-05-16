@@ -23,4 +23,8 @@ pluto-runarea,
     nav#undo_delete {
         display: none !important;
     }
+    pluto-input .cm-editor {
+        border-left: 1px solid var(--normal-cell-color);
+        border-radius: 4px !important;
+    }
 }

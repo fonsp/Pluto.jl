@@ -1,5 +1,4 @@
 import UUIDs: UUID, uuid1
-import .ExpressionExplorer: SymbolsState, FunctionNameSignaturePair, FunctionName
 import .Configuration
 import .PkgCompat: PkgCompat, PkgContext
 import Pkg
