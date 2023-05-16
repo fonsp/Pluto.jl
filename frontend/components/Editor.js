@@ -647,6 +647,8 @@ export class Editor extends Component {
                 return message.versions
             },
             get_openai_key: () => this.client.session_options?.server?._experimental_openai_key,
+            get_juliahub_key: () => this.client.session_options?.server?._experimental_juliahub_key,
+            get_anthropic_key: () => this.client.session_options?.server?._experimental_anthropic_key,
         }
         this.actions = { ...this.real_actions }
 

@@ -11,7 +11,7 @@ Note that Pluto is designed to be _zero-configuration_, and most users should no
 module Configuration
 
 using Configurations # https://github.com/Roger-luo/Configurations.jl
-
+import Pkg
 import ..Pluto: tamepath
 
 safepwd() = try
@@ -33,8 +33,9 @@ function notebook_path_suggestion()
     # so that it ends with / or \
     string(joinpath(preferred_dir, ""))
 end
-
+juliahub_auth = nothing
 function __init__()
+    juliahub_auth = Pkg.PlatformEngines.get_auth_header("https://juliahub.com"; verbose=true)
     pwd_ref[] = safepwd()
 end
 
@@ -47,6 +48,8 @@ const LAUNCH_BROWSER_DEFAULT = true
 const DISMISS_UPDATE_NOTIFICATION_DEFAULT = false
 const SHOW_FILE_SYSTEM_DEFAULT = true
 const _EXPERIMENTAL_OPENAI_KEY_DEFAULT = nothing
+const _EXPERIMENTAL_JULIAHUB_KEY_DEFAULT = nothing
+const _EXPERIMENTAL_ANTHROPIC_KEY_DEFAULT = nothing
 const ENABLE_PACKAGE_AUTHOR_FEATURES_DEFAULT = true
 const DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT = false
 const AUTO_RELOAD_FROM_FILE_DEFAULT = false
@@ -96,6 +99,8 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
     dismiss_update_notification::Bool = DISMISS_UPDATE_NOTIFICATION_DEFAULT
     show_file_system::Bool = SHOW_FILE_SYSTEM_DEFAULT
     _experimental_openai_key::Union{String,Nothing} = _EXPERIMENTAL_OPENAI_KEY_DEFAULT
+    _experimental_juliahub_key::Union{String,Nothing} = something(_EXPERIMENTAL_OPENAI_KEY_DEFAULT, juliahub_auth) 
+    _experimental_anthropic_key::Union{String,Nothing} = _EXPERIMENTAL_ANTHROPIC_KEY_DEFAULT
     notebook_path_suggestion::String = notebook_path_suggestion()
     disable_writing_notebook_files::Bool = DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT
     auto_reload_from_file::Bool = AUTO_RELOAD_FROM_FILE_DEFAULT
@@ -278,6 +283,8 @@ function from_flat_kwargs(;
         dismiss_update_notification::Bool = DISMISS_UPDATE_NOTIFICATION_DEFAULT,
         show_file_system::Bool = SHOW_FILE_SYSTEM_DEFAULT,
         _experimental_openai_key::Union{String,Nothing} = _EXPERIMENTAL_OPENAI_KEY_DEFAULT,
+        _experimental_juliahub_key::Union{String,Nothing} = _EXPERIMENTAL_JULIAHUB_KEY_DEFAULT
+        _experimental_anthropic_key::Union{String,Nothing} = _EXPERIMENTAL_ANTHROPIC_KEY_DEFAULT
         notebook_path_suggestion::String = notebook_path_suggestion(),
         disable_writing_notebook_files::Bool = DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT,
         auto_reload_from_file::Bool = AUTO_RELOAD_FROM_FILE_DEFAULT,
@@ -325,6 +332,8 @@ function from_flat_kwargs(;
         dismiss_update_notification,
         show_file_system,
         _experimental_openai_key,
+        _experimental_juliahub_key,
+        _experimental_anthropic_key,
         notebook_path_suggestion,
         disable_writing_notebook_files,
         auto_reload_from_file,

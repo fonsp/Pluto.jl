@@ -68,6 +68,7 @@ import { mod_d_command } from "./CellInput/mod_d_command.js"
 import { open_bottom_right_panel } from "./BottomRightPanel.js"
 import { open_pluto_popup } from "./Popup.js"
 import { timeout_promise } from "../common/PlutoConnection.js"
+import { select_api } from "./CellInput/PlutoAIBackends.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 
@@ -843,33 +844,14 @@ export const CellInput = ({
 
     const on_explain = useCallback(async () => {
         const code = newcm_ref.current?.state?.doc?.toString?.()
-        const key = pluto_actions.get_openai_key()
-
-        if (code && key) {
-            const response = await fetch("https://api.openai.com/v1/completions", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${key}`,
-                },
-                body: JSON.stringify({
-                    model: "text-davinci-003",
-                    prompt: `\`\`\`\n${code}\n\`\`\`\n\n${
-                        code.length > 100 ? "Summarize the the intent of" : "Explain"
-                    } this Julia code in a consise way. Use Markdown to highlight important concepts:\n1.`,
-                    temperature: 0.3,
-                    max_tokens: 256,
-                    top_p: 1,
-                    frequency_penalty: 0,
-                    presence_penalty: 0,
-                }),
-            })
-
-            if (response.ok) {
-                const json = await response.json()
-                console.info("OpenAI API response", json)
-                const explanation = `1. ${json.choices[0].text}`
-
+        const api = select_api({
+            openai_key: pluto_actions.get_openai_key(),
+            juliahub_key: pluto_actions.get_juliahub_key(),
+            anthropic_key: pluto_actions.get_anthropic_key(),
+        })
+        if (code) {
+            const explanation = await api(code)
+            if (explanation)
                 open_pluto_popup({
                     type: "info",
                     source_element: dom_node_ref.current,
@@ -879,10 +861,7 @@ export const CellInput = ({
                         <p><small>Powered by AI ✨</small></p>`,
                 })
 
-                return true
-            } else {
-                console.error("OpenAI API error", await response.text())
-            }
+            return true
         }
     }, [])
 
