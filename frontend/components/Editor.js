@@ -260,6 +260,7 @@ export const url_logo_small = document.head.querySelector("link[rel='pluto-logo-
  * @type {{
  * launch_params: LaunchParameters,
  * initial_notebook_state: NotebookData,
+ * preamble_element: preact.ReactElement?,
  * }}
  */
 
@@ -1514,7 +1515,7 @@ patch: ${JSON.stringify(
                                 nb.metadata["frontmatter"] = newval
                             })} 
                     />
-                    ${launch_params.preamble_html ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />` : null}
+                    ${this.props.preamble_element}
                     <${Main}>
                         <${Preamble}
                             last_update_time=${this.state.last_update_time}

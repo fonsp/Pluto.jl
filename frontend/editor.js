@@ -73,6 +73,8 @@ const from_attribute = (element, name) => {
     }
 }
 
+const preamble_html_comes_from_url_params = url_params.has("preamble_url")
+
 /**
  *
  * @returns {import("./components/Editor.js").NotebookData}
@@ -153,7 +155,9 @@ const EditorLoader = ({ launch_params }) => {
         set_disable_ui_css(launch_params.disable_ui)
     }, [launch_params.disable_ui])
 
-    const preamble_element = launch_params.preamble_html ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />` : null
+    const preamble_element = launch_params.preamble_html
+        ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} sanitize=${preamble_html_comes_from_url_params} />`
+        : null
 
     return ready_for_editor
         ? html`<${Editor} initial_notebook_state=${initial_notebook_state_ref.current} launch_params=${launch_params} preamble_element=${preamble_element} />`
