@@ -83,7 +83,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 - `injected_javascript_data_url::String = "$INJECTED_JAVASCRIPT_DATA_URL_DEFAULT"` (internal) Optional javascript injectables to the front-end. Can be used to customize the editor, but this API is not meant for general use yet.
 - `on_event::Function = $ON_EVENT_DEFAULT`
 - `root_url::Union{Nothing,String} = $ROOT_URL_DEFAULT` This setting is used to specify the root URL of the Pluto server, but this setting is *only* used to customize the launch message (*"Go to http://localhost:1234/ in your browser"*). You can probably ignore this and use `base_url` instead.
-- `base_url::String = "$BASE_URL_DEFAULT"` This setting is used to specify the base URL at which the Pluto server will receive requests, it should start be a valid path starting and ending with a '/'.
+- `base_url::String = "$BASE_URL_DEFAULT"` This (advanced) setting is used to specify a subpath at which the Pluto server will run, it should be a path starting and ending with a '/'. E.g. with `base_url = "/hello/world/"`, the server will run at `http://localhost:1234/hello/world/`, and you edit a notebook at `http://localhost:1234/hello/world/edit?id=...`.
 """
 @option mutable struct ServerOptions
     root_url::Union{Nothing,String} = ROOT_URL_DEFAULT
