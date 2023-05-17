@@ -133,6 +133,8 @@ function run(session::ServerSession)
     end
 
     pluto_router = http_router_for(session)
+    store_session_middleware = create_session_context_middleware(session)
+    app = pluto_router |> auth_middleware |> store_session_middleware
 
     notebook_at_startup = session.options.server.notebook
     open_notebook!(session, notebook_at_startup)
@@ -246,7 +248,7 @@ function run(session::ServerSession)
                 session.binder_token = params["token"]
             end
 
-            response_body = pluto_router(request)
+            response_body = app(request)
 
             request.response::HTTP.Response = response_body
             request.response.request = request
