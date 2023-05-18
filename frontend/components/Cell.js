@@ -110,6 +110,7 @@ export const Cell = ({
     focus_after_creation,
     is_process_ready,
     disable_input,
+    sanitize_html = true,
     nbpkg,
     global_definition_locations,
 }) => {
@@ -281,7 +282,7 @@ export const Cell = ({
             >
                 <span></span>
             </button>
-            ${cell_api_ready ? html`<${CellOutput} errored=${errored} ...${output} cell_id=${cell_id} />` : html``}
+            ${cell_api_ready ? html`<${CellOutput} errored=${errored} ...${output} sanitize_html=${sanitize_html} cell_id=${cell_id} />` : html``}
             <${CellInput}
                 local_code=${cell_input_local?.code ?? code}
                 remote_code=${code}
@@ -377,7 +378,7 @@ export const Cell = ({
  *  [key: string]: any,
  * }} props
  * */
-export const IsolatedCell = ({ cell_input: { cell_id, metadata }, cell_result: { logs, output, published_object_keys }, hidden }) => {
+export const IsolatedCell = ({ cell_input: { cell_id, metadata }, cell_result: { logs, output, published_object_keys }, hidden }, sanitize_html = true) => {
     const node_ref = useRef(null)
     let pluto_actions = useContext(PlutoActionsContext)
     const cell_api_ready = useCellApi(node_ref, published_object_keys, pluto_actions)
@@ -385,7 +386,7 @@ export const IsolatedCell = ({ cell_input: { cell_id, metadata }, cell_result: {
 
     return html`
         <pluto-cell ref=${node_ref} id=${cell_id} class=${hidden ? "hidden-cell" : "isolated-cell"}>
-            ${cell_api_ready ? html`<${CellOutput} ...${output} cell_id=${cell_id} />` : html``}
+            ${cell_api_ready ? html`<${CellOutput} ...${output} sanitize_html=${sanitize_html} cell_id=${cell_id} />` : html``}
             ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${[15]} set_cm_highlighted_line=${() => {}} />` : null}
         </pluto-cell>
     `

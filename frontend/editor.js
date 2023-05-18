@@ -1,7 +1,7 @@
 import { html, render, useEffect, useRef, useState } from "./imports/Preact.js"
 import "./common/NodejsCompatibilityPolyfill.js"
 
-import { Editor, default_path } from "./components/Editor.js"
+import { Editor, default_path, ProcessStatus } from "./components/Editor.js"
 import { FetchProgress, read_Uint8Array_with_progress } from "./components/FetchProgress.js"
 import { unpack } from "./common/MsgPack.js"
 import { RawHTMLContainer } from "./components/CellOutput.js"
@@ -85,7 +85,7 @@ export const empty_notebook_state = ({ notebook_id }) => ({
     path: default_path,
     shortpath: "",
     in_temp_dir: true,
-    process_status: "starting",
+    process_status: ProcessStatus.waiting_for_permission,
     last_save_time: 0.0,
     last_hot_reload_time: 0.0,
     cell_inputs: {},
@@ -156,7 +156,7 @@ const EditorLoader = ({ launch_params }) => {
     }, [launch_params.disable_ui])
 
     const preamble_element = launch_params.preamble_html
-        ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} sanitize=${preamble_html_comes_from_url_params} />`
+        ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} sanitize_html=${preamble_html_comes_from_url_params} />`
         : null
 
     return ready_for_editor

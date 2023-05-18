@@ -52,8 +52,8 @@ export class CellOutput extends Component {
         })
     }
 
-    shouldComponentUpdate({ last_run_timestamp }) {
-        return last_run_timestamp !== this.props.last_run_timestamp
+    shouldComponentUpdate({ last_run_timestamp, sanitize_html }) {
+        return last_run_timestamp !== this.props.last_run_timestamp || sanitize_html !== this.props.sanitize_html
     }
 
     componentDidMount() {
@@ -115,7 +115,7 @@ export let PlutoImage = ({ body, mime }) => {
     return html`<img ref=${imgref} type=${mime} src=${""} />`
 }
 
-export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last_run_timestamp, sanitize = true }) => {
+export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last_run_timestamp, sanitize_html = true }) => {
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -132,30 +132,30 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
             // NOTE: Jupyter doesn't do this, jupyter renders everything directly in pages DOM.
             //                                                                   -DRAL
             if (body.startsWith("<!DOCTYPE") || body.startsWith("<html")) {
-                return sanitize ? null : html`<${IframeContainer} body=${body} />`
+                return sanitize_html ? null : html`<${IframeContainer} body=${body} />`
             } else {
                 return html`<${RawHTMLContainer}
                     cell_id=${cell_id}
                     body=${body}
                     persist_js_state=${persist_js_state}
                     last_run_timestamp=${last_run_timestamp}
-                    sanitize=${sanitize}
+                    sanitize_html=${sanitize_html}
                 />`
             }
             break
         case "application/vnd.pluto.tree+object":
             return html`<div>
-                <${TreeView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} sanitize=${sanitize} />
+                <${TreeView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} sanitize_html=${sanitize_html} />
             </div>`
             break
         case "application/vnd.pluto.table+object":
-            return html`<${TableView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} sanitize=${sanitize} />`
+            return html`<${TableView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} sanitize_html=${sanitize_html} />`
             break
         case "application/vnd.pluto.stacktrace+object":
             return html`<div><${ErrorMessage} cell_id=${cell_id} ...${body} /></div>`
             break
         case "application/vnd.pluto.divelement+object":
-            return DivElement({ cell_id, ...body, persist_js_state, sanitize })
+            return DivElement({ cell_id, ...body, persist_js_state, sanitize_html })
             break
         case "text/plain":
             if (body) {
@@ -177,7 +177,7 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
     }
 }
 
-register(OutputBody, "pluto-display", ["mime", "body", "cell_id", "persist_js_state", "last_run_timestamp", "sanitize"])
+register(OutputBody, "pluto-display", ["mime", "body", "cell_id", "persist_js_state", "last_run_timestamp", "sanitize_html"])
 
 let IframeContainer = ({ body }) => {
     let iframeref = useRef()
@@ -454,7 +454,7 @@ let declarative_shadow_dom_polyfill = (template) => {
     }
 }
 
-export let RawHTMLContainer = ({ body, className = "", persist_js_state = false, last_run_timestamp, sanitize = true }) => {
+export let RawHTMLContainer = ({ body, className = "", persist_js_state = false, last_run_timestamp, sanitize_html = true }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     let pluto_bonds = useContext(PlutoBondsContext)
     let js_init_set = useContext(PlutoJSInitializingContext)
@@ -466,9 +466,10 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
 
     useLayoutEffect(() => {
         if (container_ref.current && pluto_bonds) set_bound_elements_to_their_value(container_ref.current.querySelectorAll("bond"), pluto_bonds)
-    }, [body, persist_js_state, pluto_actions, pluto_bonds, sanitize])
+    }, [body, persist_js_state, pluto_actions, pluto_bonds, sanitize_html])
 
     useLayoutEffect(() => {
+        console.log({ body, sanitize_html })
         const container = container_ref.current
         if (container == null) return
 
@@ -484,7 +485,7 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
         dump.append(...container.childNodes)
 
         // Actually "load" the html
-        container.innerHTML = sanitize
+        container.innerHTML = sanitize_html
             ? DOMPurify.sanitize(body, {
                   FORBID_TAGS: ["style"],
               })
@@ -553,7 +554,7 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
             js_init_set?.delete(container)
             invalidate_scripts.current?.()
         }
-    }, [body, persist_js_state, last_run_timestamp, pluto_actions, sanitize])
+    }, [body, persist_js_state, last_run_timestamp, pluto_actions, sanitize_html])
 
     return html`<div class="raw-html-wrapper ${className}" ref=${container_ref}></div>`
 }

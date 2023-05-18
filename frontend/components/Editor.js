@@ -64,7 +64,7 @@ const Main = ({ children }) => {
     return html`<main>${children}</main>`
 }
 
-const ProcessStatus = {
+export const ProcessStatus = {
     ready: "ready",
     starting: "starting",
     no_process: "no_process",
@@ -100,6 +100,7 @@ const statusmap = (/** @type {EditorState} */ state, /** @type {LaunchParameters
     recording_waiting_to_start: state.recording_waiting_to_start,
     is_recording: state.is_recording,
     isolated_cell_view: launch_params.isolated_cell_ids != null && launch_params.isolated_cell_ids.length > 0,
+    sanitize_html: state.notebook.process_status === ProcessStatus.waiting_for_permission,
 })
 
 const first_true_key = (obj) => {
@@ -1379,6 +1380,7 @@ patch: ${JSON.stringify(
                                             cell_input=${notebook.cell_inputs[cell_id]}
                                             cell_result=${this.state.notebook.cell_results[cell_id]}
                                             hidden=${!launch_params.isolated_cell_ids?.includes(cell_id)}
+                                            sanitize_html=${status.sanitize_html}
                                         />
                                     `
                                 )}
@@ -1531,6 +1533,7 @@ patch: ${JSON.stringify(
                             selected_cells=${this.state.selected_cells}
                             is_initializing=${this.state.initializing}
                             is_process_ready=${this.is_process_ready()}
+                            sanitize_html=${status.sanitize_html}
                         />
                         <${DropRuler} 
                             actions=${this.actions}

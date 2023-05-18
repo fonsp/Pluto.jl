@@ -11,7 +11,7 @@ import { PlutoActionsContext } from "../common/PlutoContext.js"
 // We use a `<pre>${body}` instead of `<pre><code>${body}`, also for some CSS reasons that I forgot
 //
 // TODO: remove this, use OutputBody instead (maybe add a `wrap_in_div` option), and fix the CSS classes so that i all looks nice again
-export const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state, sanitize = true }) => {
+export const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state, sanitize_html = true }) => {
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -27,7 +27,7 @@ export const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state, saniti
             return html`<${TreeView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`
             break
         default:
-            return OutputBody({ mime, body, cell_id, persist_js_state, sanitize, last_run_timestamp: null })
+            return OutputBody({ mime, body, cell_id, persist_js_state, sanitize_html, last_run_timestamp: null })
             break
     }
 }
@@ -56,7 +56,7 @@ const actions_show_more = ({ pluto_actions, cell_id, node_ref, objectid, dim }) 
     actions.reshow_cell(cell_id ?? node_ref.current.closest("pluto-cell").id, objectid, dim)
 }
 
-export const TreeView = ({ mime, body, cell_id, persist_js_state, sanitize = true }) => {
+export const TreeView = ({ mime, body, cell_id, persist_js_state, sanitize_html = true }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     const node_ref = useRef(/** @type {HTMLElement?} */ (null))
     const onclick = (e) => {
@@ -88,7 +88,7 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state, sanitize = tru
     }
 
     const mimepair_output = (pair) =>
-        html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${persist_js_state} sanitize=${sanitize} />`
+        html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${persist_js_state} sanitize_html=${sanitize_html} />`
     const more = html`<p-r><${More} on_click_more=${on_click_more} /></p-r>`
 
     let inner = null
