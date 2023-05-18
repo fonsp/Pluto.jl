@@ -1,6 +1,6 @@
 import { html, Component, useRef, useLayoutEffect, useContext } from "../imports/Preact.js"
 
-import "https://esm.sh/gh/fonsp/sanitizer-polyfill@4581ed138cecbe703d8de3b9d9ce22a37e43ca51/src/polyfill.js?pin=v122"
+import DOMPurify from "../imports/DOMPurify.js"
 
 import { ErrorMessage } from "./ErrorMessage.js"
 import { TreeView, TableView, DivElement } from "./TreeView.js"
@@ -484,17 +484,11 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
         dump.append(...container.childNodes)
 
         // Actually "load" the html
-        if (sanitize) {
-            container.setHTML(body, {
-                sanitizer: new Sanitizer({
-                    dropElements: ["style"],
-                    allowCustomElements: true,
-                }),
-            })
-            return
-        } else {
-            container.innerHTML = body
-        }
+        container.innerHTML = sanitize
+            ? DOMPurify.sanitize(body, {
+                  FORBID_TAGS: ["style"],
+              })
+            : body
 
         let scripts_in_shadowroots = Array.from(container.querySelectorAll("template[shadowroot]")).flatMap((template) => {
             // @ts-ignore
