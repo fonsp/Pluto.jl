@@ -491,6 +491,8 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
               })
             : body
 
+        if (sanitize_html) return
+
         let scripts_in_shadowroots = Array.from(container.querySelectorAll("template[shadowroot]")).flatMap((template) => {
             // @ts-ignore
             return declarative_shadow_dom_polyfill(template)
