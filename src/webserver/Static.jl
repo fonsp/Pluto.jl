@@ -62,10 +62,14 @@ function error_response(
     response
 end
 
-function notebook_response(notebook; home_url="./", as_redirect=true)
+function notebook_response(notebook; home_url="./", as_redirect=true, secret=nothing)
     if as_redirect
         response = HTTP.Response(302, "")
-        HTTP.setheader(response, "Location" => home_url * "edit?id=" * string(notebook.notebook_id))
+        HTTP.setheader(response,
+            "Location" => home_url * "edit?$(
+                isnothing(secret) ? "" : "secret=$secret&"
+            )id=" * string(notebook.notebook_id)
+        )
         return response
     else
         HTTP.Response(200, string(notebook.notebook_id))
