@@ -68,7 +68,7 @@ export const Welcome = ({ launch_params }) => {
             on_unrequested_update: on_update,
             on_connection_status: on_connection_status,
             on_reconnect: () => true,
-            ws_address: ws_address_from_base(launch_params.pluto_server_url) ?? undefined,
+            ws_address: launch_params.pluto_server_url ? ws_address_from_base(launch_params.pluto_server_url) : undefined,
         })
         client_promise.then(async (client) => {
             Object.assign(client_ref.current, client)
