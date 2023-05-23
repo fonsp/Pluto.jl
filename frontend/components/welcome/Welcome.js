@@ -2,7 +2,7 @@ import _ from "../../imports/lodash.js"
 import { html, useEffect, useState, useRef } from "../../imports/Preact.js"
 import * as preact from "../../imports/Preact.js"
 
-import { create_pluto_connection } from "../../common/PlutoConnection.js"
+import { create_pluto_connection, ws_address_from_base } from "../../common/PlutoConnection.js"
 import { new_update_message } from "../../common/NewUpdateMessage.js"
 import { Open } from "./Open.js"
 import { Recent } from "./Recent.js"
@@ -26,7 +26,7 @@ import default_featured_sources from "../../featured_sources.js"
 /**
  * @typedef LaunchParameters
  * @type {{
- * ws_url: string?,
+ * pluto_server_url: string?,
  * featured_direct_html_links: boolean,
  * featured_sources: import("./Featured.js").FeaturedSource[]?,
  * featured_source_url?: string,
@@ -68,7 +68,7 @@ export const Welcome = ({ launch_params }) => {
             on_unrequested_update: on_update,
             on_connection_status: on_connection_status,
             on_reconnect: () => true,
-            ws_address: launch_params.ws_url ?? undefined,
+            ws_address: ws_address_from_base(launch_params.pluto_server_url) ?? undefined,
         })
         client_promise.then(async (client) => {
             Object.assign(client_ref.current, client)

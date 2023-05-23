@@ -4,7 +4,7 @@ import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
 import { empty_notebook_state, set_disable_ui_css } from "../editor.js"
-import { create_pluto_connection } from "../common/PlutoConnection.js"
+import { create_pluto_connection, ws_address_from_base } from "../common/PlutoConnection.js"
 import { init_feedback } from "../common/Feedback.js"
 import { serialize_cells, deserialize_cells, detect_deserializer } from "../common/Serialization.js"
 
@@ -207,7 +207,6 @@ const first_true_key = (obj) => {
  *  preamble_html: string?,
  *  isolated_cell_ids: string[]?,
  *  binder_url: string?,
- *  ws_url: string?,
  *  pluto_server_url: string?,
  *  slider_server_url: string?,
  *  recording_url: string?,
@@ -1302,7 +1301,11 @@ patch: ${JSON.stringify(
                 count_stat(`article-view`)
             }
         } else {
-            this.connect(this.props.launch_params.ws_url ?? undefined)
+            if (this.props.launch_params.pluto_server_url) {
+                this.connect(ws_address_from_base(this.props.launch_params.pluto_server_url))
+            } else {
+                this.connect()
+            }
         }
     }
 
