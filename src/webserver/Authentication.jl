@@ -103,8 +103,7 @@ function auth_middleware(handler)
                 filter!(p -> p[1] != "Access-Control-Allow-Origin", response.headers)
                 HTTP.setheader(response, "Access-Control-Allow-Origin" => "*")
             end
-            
-            if HTTP.URI(request.target).path ∈ ("", "/")
+            if required || HTTP.URI(request.target).path ∈ ("", "/")
                 add_set_secret_cookie!(session, response)
             end
             response
