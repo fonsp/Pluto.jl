@@ -22,6 +22,9 @@ const launch_params = {
     featured_source_url: url_params.get("featured_source_url") ?? window.pluto_featured_source_url,
     //@ts-ignore
     featured_source_integrity: url_params.get("featured_source_integrity") ?? window.pluto_featured_source_integrity,
+
+    //@ts-ignore
+    ws_url: url_params.get("ws_url") ?? window.pluto_ws_url,
 }
 
 console.log("Launch parameters: ", launch_params)

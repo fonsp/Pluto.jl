@@ -26,6 +26,7 @@ import default_featured_sources from "../../featured_sources.js"
 /**
  * @typedef LaunchParameters
  * @type {{
+ * ws_url: string?,
  * featured_direct_html_links: boolean,
  * featured_sources: import("./Featured.js").FeaturedSource[]?,
  * featured_source_url?: string,
@@ -67,6 +68,7 @@ export const Welcome = ({ launch_params }) => {
             on_unrequested_update: on_update,
             on_connection_status: on_connection_status,
             on_reconnect: () => true,
+            ws_address: launch_params.ws_url ?? undefined,
         })
         client_promise.then(async (client) => {
             Object.assign(client_ref.current, client)

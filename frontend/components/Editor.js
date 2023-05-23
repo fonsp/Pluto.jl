@@ -207,6 +207,7 @@ const first_true_key = (obj) => {
  *  preamble_html: string?,
  *  isolated_cell_ids: string[]?,
  *  binder_url: string?,
+ *  ws_url: string?,
  *  pluto_server_url: string?,
  *  slider_server_url: string?,
  *  recording_url: string?,
@@ -851,7 +852,7 @@ patch: ${JSON.stringify(
         /** @type {import('../common/PlutoConnection').PlutoConnection} */
         this.client = /** @type {import('../common/PlutoConnection').PlutoConnection} */ ({})
 
-        this.connect = (ws_address = undefined) =>
+        this.connect = (/** @type {string | undefined} */ ws_address = undefined) =>
             create_pluto_connection({
                 ws_address: ws_address,
                 on_unrequested_update: on_update,
@@ -1301,7 +1302,7 @@ patch: ${JSON.stringify(
                 count_stat(`article-view`)
             }
         } else {
-            this.connect()
+            this.connect(this.props.launch_params.ws_url ?? undefined)
         }
     }
 
