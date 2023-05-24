@@ -4,7 +4,7 @@ import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
 import { empty_notebook_state, set_disable_ui_css } from "../editor.js"
-import { create_pluto_connection } from "../common/PlutoConnection.js"
+import { create_pluto_connection, ws_address_from_base } from "../common/PlutoConnection.js"
 import { init_feedback } from "../common/Feedback.js"
 import { serialize_cells, deserialize_cells, detect_deserializer } from "../common/Serialization.js"
 
@@ -851,7 +851,7 @@ patch: ${JSON.stringify(
         /** @type {import('../common/PlutoConnection').PlutoConnection} */
         this.client = /** @type {import('../common/PlutoConnection').PlutoConnection} */ ({})
 
-        this.connect = (ws_address = undefined) =>
+        this.connect = (/** @type {string | undefined} */ ws_address = undefined) =>
             create_pluto_connection({
                 ws_address: ws_address,
                 on_unrequested_update: on_update,
@@ -1301,7 +1301,7 @@ patch: ${JSON.stringify(
                 count_stat(`article-view`)
             }
         } else {
-            this.connect()
+            this.connect(this.props.launch_params.pluto_server_url ? ws_address_from_base(this.props.launch_params.pluto_server_url) : undefined)
         }
     }
 
