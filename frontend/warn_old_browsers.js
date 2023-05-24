@@ -3,9 +3,12 @@ function ismodern() {
         // See: https://kangax.github.io/compat-table/es2016plus/
 
         // 2020 check:
-        return eval("let {a, ...r} = {a:1,b:1}; r?.a != r.b; 1 ?? 2")
+        // return eval("let {a, ...r} = {a:1,b:1}; r?.a != r.b; 1 ?? 2")
         // 2021 check:
         // return eval("let {a, ...r} = {a:1,b:1}; r?.a != r.b; 1 ?? 2; a ||= false")
+        // 2021 check (Chrome 85+, Firefox 77+, Safari 13.1+)
+        // Please check with macs
+        return Boolean(String.prototype.replaceAll)
     } catch (ex) {
         return false
     }
