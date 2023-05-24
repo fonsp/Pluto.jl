@@ -36,7 +36,7 @@ end
 juliahub_auth = nothing
 function __init__()
     juliahub_auth = Pkg.PlatformEngines.get_auth_header(Pkg.pkg_server(); verbose=true)
-    !isnothing(juliahub_auth) && juliahub_auth = juliahub_auth[2]
+    !isnothing(juliahub_auth) && (juliahub_auth = juliahub_auth[2])
     pwd_ref[] = safepwd()
 end
 
