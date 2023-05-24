@@ -1301,11 +1301,7 @@ patch: ${JSON.stringify(
                 count_stat(`article-view`)
             }
         } else {
-            if (this.props.launch_params.pluto_server_url) {
-                this.connect(ws_address_from_base(this.props.launch_params.pluto_server_url))
-            } else {
-                this.connect()
-            }
+            this.connect(this.props.launch_params.pluto_server_url ? ws_address_from_base(this.props.launch_params.pluto_server_url) : undefined)
         }
     }
 
