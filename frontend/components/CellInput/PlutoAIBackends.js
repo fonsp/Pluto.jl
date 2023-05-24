@@ -12,7 +12,7 @@ export const select_api = ({ openai_key = window.openai_key, juliahub_key = wind
             "Content-Type": "text/plain",
         }
         if (juliahub_key?.length > 5) {
-            headers["Authorization"] = `Bearer ${juliahub_key}`
+            headers["Authorization"] = `Bearer ${juliahub_key.replace("Bearer ", "")}`
         }
         const resp = await fetch("https://pg.juliahub.dev/api/v1/askjulia", {
             method: "POST",
