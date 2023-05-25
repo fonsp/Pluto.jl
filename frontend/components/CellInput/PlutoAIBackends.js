@@ -7,9 +7,11 @@ export const select_api = ({ openai_key = window.openai_key, juliahub_key = wind
     const can_use_anthropic = !!anthropic_key
 
     const juliahub_client = async (question) => {
+        console.log(juliahub_key, question) 
         const headers = {
-            "accept": "application/json",
+            "accept": "text/plain",
             "Content-Type": "text/plain",
+            "x-juliahub-ensure-js": "true"
         }
         if (juliahub_key?.length > 5) {
             headers["Authorization"] = `Bearer ${juliahub_key.replace("Bearer ", "")}`

@@ -33,10 +33,8 @@ function notebook_path_suggestion()
     # so that it ends with / or \
     string(joinpath(preferred_dir, ""))
 end
-juliahub_auth = nothing
+
 function __init__()
-    juliahub_auth = Pkg.PlatformEngines.get_auth_header(Pkg.pkg_server(); verbose=true)
-    !isnothing(juliahub_auth) && (juliahub_auth = juliahub_auth[2])
     pwd_ref[] = safepwd()
 end
 
@@ -100,7 +98,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
     dismiss_update_notification::Bool = DISMISS_UPDATE_NOTIFICATION_DEFAULT
     show_file_system::Bool = SHOW_FILE_SYSTEM_DEFAULT
     _experimental_openai_key::Union{String,Nothing} = _EXPERIMENTAL_OPENAI_KEY_DEFAULT
-    _experimental_juliahub_key::Union{String,Nothing} = something(_EXPERIMENTAL_JULIAHUB_KEY_DEFAULT, juliahub_auth)
+    _experimental_juliahub_key::Union{String,Nothing} = _EXPERIMENTAL_JULIAHUB_KEY_DEFAULT
     _experimental_anthropic_key::Union{String,Nothing} = _EXPERIMENTAL_ANTHROPIC_KEY_DEFAULT
     notebook_path_suggestion::String = notebook_path_suggestion()
     disable_writing_notebook_files::Bool = DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT
@@ -284,7 +282,7 @@ function from_flat_kwargs(;
         dismiss_update_notification::Bool = DISMISS_UPDATE_NOTIFICATION_DEFAULT,
         show_file_system::Bool = SHOW_FILE_SYSTEM_DEFAULT,
         _experimental_openai_key::Union{String,Nothing} = _EXPERIMENTAL_OPENAI_KEY_DEFAULT,
-        _experimental_juliahub_key::Union{String,Nothing} = something(_EXPERIMENTAL_JULIAHUB_KEY_DEFAULT, juliahub_auth),
+        _experimental_juliahub_key::Union{String,Nothing} = _EXPERIMENTAL_JULIAHUB_KEY_DEFAULT,
         _experimental_anthropic_key::Union{String,Nothing} = _EXPERIMENTAL_ANTHROPIC_KEY_DEFAULT,
         notebook_path_suggestion::String = notebook_path_suggestion(),
         disable_writing_notebook_files::Bool = DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT,
