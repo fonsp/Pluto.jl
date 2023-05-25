@@ -111,6 +111,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
     simulated_pkg_lag::Real = SIMULATED_PKG_LAG_DEFAULT
     injected_javascript_data_url::String = INJECTED_JAVASCRIPT_DATA_URL_DEFAULT
     on_event::Function = ON_EVENT_DEFAULT
+    pkg_server::Union{Nothing,String} = try Pkg.pkg_server() catch; nothing end
 end
 
 const REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT = true
@@ -320,6 +321,7 @@ function from_flat_kwargs(;
         startup_file::Union{Nothing,String} = STARTUP_FILE_DEFAULT,
         history_file::Union{Nothing,String} = HISTORY_FILE_DEFAULT,
         threads::Union{Nothing,String,Int} = default_number_of_threads(),
+        pkg_server::Union{Nothing,String} = try Pkg.pkg_server() catch; nothing end
     )
     server = ServerOptions(;
         root_url,
@@ -344,6 +346,7 @@ function from_flat_kwargs(;
         simulated_pkg_lag,
         injected_javascript_data_url,
         on_event,
+        pkg_server,
     )
     security = SecurityOptions(;
         require_secret_for_open_links,
