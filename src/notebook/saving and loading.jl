@@ -49,7 +49,7 @@ function save_notebook(io::IO, notebook::Notebook)
     println(io, "")
 
     if using_plutopkg
-        println(io, PlutoRunner.script_pkg)
+        println(io, PlutoRunner.script_pkg(PLUTO_VERSION_STR))
         println(io, "")
     end
 

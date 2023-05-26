@@ -2105,10 +2105,12 @@ end"""
 
 # At some point it would be nice to move
 # activate_notebook_environment either to Pkg or PlutoPkg.jl
-const script_pkg = """
+script_pkg(version) = """
 if !isdefined(Main, :PlutoRunner)
-    import Pluto
     import Pkg
+    Pkg.activate(;temp=true)
+    Pkg.add(Pkg.Types.PackageSpec(name="Pluto", version="$version"))
+    import Pluto
     Pluto.activate_notebook_environment(@__FILE__)
     Pkg.instantiate()
 end
