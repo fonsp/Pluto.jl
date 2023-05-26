@@ -30,6 +30,8 @@ In the produced file, cells are not saved in the notebook order. If `notebook.to
 Have a look at our [JuliaCon 2020 presentation](https://youtu.be/IAF8DjrQSSk?t=1085) to learn more!
 """
 function save_notebook(io::IO, notebook::Notebook)
+    using_plutopkg = notebook.nbpkg_ctx !== nothing
+    
     println(io, _notebook_header)
     println(io, "# ", PLUTO_VERSION_STR)
     
@@ -45,6 +47,12 @@ function save_notebook(io::IO, notebook::Notebook)
 
     # Anything between the version string and the first UUID delimiter will be ignored by the notebook loader.
     println(io, "")
+
+    if using_plutopkg
+        println(io, PlutoRunner.script_pkg)
+        println(io, "")
+    end
+
     println(io, "using Markdown")
     println(io, "using InteractiveUtils")
     # Super Advanced Code Analysis™ to add the @bind macro to the saved file if it's used somewhere.
@@ -80,8 +88,6 @@ function save_notebook(io::IO, notebook::Notebook)
         end
     end
 
-    
-    using_plutopkg = notebook.nbpkg_ctx !== nothing
     
     write_package = if using_plutopkg
         ptoml_contents = PkgCompat.read_project_file(notebook)

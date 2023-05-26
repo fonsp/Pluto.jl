@@ -2103,6 +2103,16 @@ const fake_bind = """macro bind(def, element)
     end
 end"""
 
+# At some point it would be nice to move
+# activate_notebook_environment either to Pkg or PlutoPkg.jl
+const script_pkg = """
+if !isdefined(Main, :PlutoRunner)
+    import Pluto
+    import Pkg
+    Pluto.activate_notebook_environment(@__FILE__)
+    Pkg.instantiate()
+end
+"""
 
 
 
