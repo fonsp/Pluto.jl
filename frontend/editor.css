@@ -452,6 +452,11 @@ pluto-output mjx-assistive-mml {
     height: 1px;
 }
 
+/* Avoid scrollbar in cells that contain just a h3 element, like the h3 headers in https://computationalthinking.mit.edu/Fall22/images_abstractions/transformations_and_autodiff/ */
+.raw-html-wrapper > div.markdown {
+    overflow: hidden;
+}
+
 /* HEADER */
 
 header#pluto-nav {
