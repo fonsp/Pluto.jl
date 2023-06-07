@@ -880,12 +880,12 @@ const cell_runtimes = Dict{UUID,Union{Nothing,UInt64}}()
 const cell_published_objects = Dict{UUID,Dict{String,Any}}()
 const cell_registered_bond_names = Dict{UUID,Set{Symbol}}()
 
-const tree_display_limit = 30
-const tree_display_limit_increase = 40
-const table_row_display_limit = 10
-const table_row_display_limit_increase = 60
-const table_column_display_limit = 8
-const table_column_display_limit_increase = 30
+const tree_display_limit = 1000
+const tree_display_limit_increase = 1000
+const table_row_display_limit = 1000
+const table_row_display_limit_increase = 1000
+const table_column_display_limit = 100
+const table_column_display_limit_increase = 100
 
 const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 
