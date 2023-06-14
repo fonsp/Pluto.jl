@@ -1,5 +1,6 @@
 import _ from "../imports/lodash.js"
 import { html, useContext, useEffect, useMemo, useState } from "../imports/Preact.js"
+import { is_queued, is_queued_or_running, is_running } from "./Cell.js"
 import { scroll_cell_into_view } from "./Scroller.js"
 
 export const useDelayed = (value, delay = 500) => {
@@ -28,9 +29,7 @@ export const ProgressBar = ({ notebook, backend_launch_phase, status }) => {
 
     useEffect(
         () => {
-            const currently = Object.values(notebook.cell_results)
-                .filter((c) => c.running || c.queued)
-                .map((c) => c.cell_id)
+            const currently = notebook.cell_order.filter((c) => is_queued_or_running(notebook.cell_inputs[c], notebook.cell_results[c]))
 
             set_currently_running(currently)
 
@@ -42,7 +41,7 @@ export const ProgressBar = ({ notebook, backend_launch_phase, status }) => {
                 set_recently_running(_.union(currently, recently_running))
             }
         },
-        Object.values(notebook.cell_results).map((c) => c.running || c.queued)
+        notebook.cell_order.map((c) => is_queued_or_running(notebook.cell_inputs[c], notebook.cell_results[c]))
     )
 
     let cell_progress = recently_running.length === 0 ? 0 : 1 - Math.max(0, currently_running.length - 0.3) / recently_running.length
@@ -74,9 +73,12 @@ export const ProgressBar = ({ notebook, backend_launch_phase, status }) => {
         `}
         onClick=${(e) => {
             if (!binder_loading) {
-                const running_cell = Object.values(notebook.cell_results).find((c) => c.running) ?? Object.values(notebook.cell_results).find((c) => c.queued)
-                if (running_cell) {
-                    scroll_cell_into_view(running_cell.cell_id)
+                const running_cell_id =
+                    notebook.cell_order.find((c) => is_running(notebook.cell_inputs[c], notebook.cell_results[c])) ??
+                    notebook.cell_order.find((c) => is_queued(notebook.cell_inputs[c], notebook.cell_results[c]))
+
+                if (running_cell_id != null) {
+                    scroll_cell_into_view(running_cell_id)
                 }
             }
         }}

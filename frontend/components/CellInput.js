@@ -879,7 +879,7 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
     const is_copy_output_supported = () => {
         let notebook = /** @type{import("./Editor.js").NotebookData?} */ (pluto_actions.get_notebook())
         let cell_result = notebook?.cell_results?.[cell_id]
-        return !!cell_result && !cell_result.errored && !cell_result.queued && cell_result.output.mime === "text/plain" && cell_result.output.body
+        return cell_result != null && !cell_result.errored && cell_result.output.mime === "text/plain" && cell_result.output.body
     }
 
     const copy_output = () => {

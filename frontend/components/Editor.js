@@ -28,7 +28,7 @@ import { setup_mathjax } from "../common/SetupMathJax.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
 import { ProgressBar } from "./ProgressBar.js"
 import { NonCellOutput } from "./NonCellOutput.js"
-import { IsolatedCell } from "./Cell.js"
+import { IsolatedCell, is_queued_or_running } from "./Cell.js"
 import { RawHTMLContainer } from "./CellOutput.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
 import { HijackExternalLinksToOpenInNewTab } from "./HackySideStuff/HijackExternalLinksToOpenInNewTab.js"
@@ -122,6 +122,7 @@ const first_true_key = (obj) => {
  *  code: string,
  *  code_folded: boolean,
  *  metadata: CellMetaData,
+ *  run_requested_timestamp: number,
  * }}
  */
 
@@ -151,7 +152,6 @@ const first_true_key = (obj) => {
  * @typedef CellResultData
  * @type {{
  *  cell_id: string,
- *  queued: boolean,
  *  running: boolean,
  *  errored: boolean,
  *  runtime: number?,
@@ -301,7 +301,7 @@ export class Editor extends Component {
 
         this.state = {
             notebook: /** @type {NotebookData} */ initial_notebook_state,
-            cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
+            cell_inputs_local: {},
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ ([]),
             recently_auto_disabled_cells: /** @type {Map<string,[string,string]>} */ ({}),
@@ -375,14 +375,10 @@ export class Editor extends Component {
             },
             add_deserialized_cells: async (data, index_or_id, deserializer = deserialize_cells) => {
                 let new_codes = deserializer(data)
-                /** @type {Array<CellInputData>} Create copies of the cells with fresh ids */
+                /** Create copies of the cells with fresh ids */
                 let new_cells = new_codes.map((code) => ({
                     cell_id: uuidv4(),
                     code: code,
-                    code_folded: false,
-                    metadata: {
-                        ...DEFAULT_CELL_METADATA,
-                    },
                 }))
 
                 let index
@@ -406,7 +402,7 @@ export class Editor extends Component {
                  * (the usual flow is keyboard event -> cm -> local_code and not the opposite )
                  * See ** 1 **
                  */
-                this.setState(
+                await this.setStatePromise(
                     immer((/** @type {EditorState} */ state) => {
                         // Deselect everything first, to clean things up
                         state.selected_cells = []
@@ -428,9 +424,11 @@ export class Editor extends Component {
                             ...cell,
                             // Fill the cell with empty code remotely, so it doesn't run unsafe code
                             code: "",
+                            code_folded: false,
                             metadata: {
                                 ...DEFAULT_CELL_METADATA,
                             },
+                            run_requested_timestamp: 0.0,
                         }
                     }
                     notebook.cell_order = [
@@ -464,15 +462,16 @@ export class Editor extends Component {
                 const cells_to_add = parts.map((code) => {
                     return {
                         cell_id: uuidv4(),
-                        code: code,
+                        code: submit ? code : "",
                         code_folded: false,
                         metadata: {
                             ...DEFAULT_CELL_METADATA,
                         },
+                        run_requested_timestamp: submit ? Date.now() / 1000 : 0.0,
                     }
                 })
 
-                this.setState(
+                await this.setStatePromise(
                     immer((/** @type {EditorState} */ state) => {
                         for (let cell of cells_to_add) {
                             state.cell_inputs_local[cell.cell_id] = cell
@@ -527,10 +526,10 @@ export class Editor extends Component {
                         code,
                         code_folded: false,
                         metadata: { ...DEFAULT_CELL_METADATA },
+                        run_requested_timestamp: Date.now() / 1000,
                     }
                     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
                 })
-                await this.client.send("run_multiple_cells", { cells: [id] }, { notebook_id: this.state.notebook.notebook_id })
                 return id
             },
             add_remote_cell: async (cell_id, before_or_after, code) => {
@@ -540,7 +539,7 @@ export class Editor extends Component {
             },
             confirm_delete_multiple: async (verb, cell_ids) => {
                 if (cell_ids.length <= 1 || confirm(`${verb} ${cell_ids.length} cells?`)) {
-                    if (cell_ids.some((cell_id) => this.state.notebook.cell_results[cell_id].running || this.state.notebook.cell_results[cell_id].queued)) {
+                    if (cell_ids.some((cell_id) => is_queued_or_running(this.state.notebook.cell_inputs[cell_id], this.state.notebook.cell_results[cell_id]))) {
                         if (confirm("This cell is still running - would you like to interrupt the notebook?")) {
                             this.actions.interrupt_remote(cell_ids[0])
                         }
@@ -560,7 +559,6 @@ export class Editor extends Component {
                             }
                             notebook.cell_order = notebook.cell_order.filter((cell_id) => !cell_ids.includes(cell_id))
                         })
-                        await this.client.send("run_multiple_cells", { cells: [] }, { notebook_id: this.state.notebook.notebook_id })
                     }
                 }
             },
@@ -588,31 +586,12 @@ export class Editor extends Component {
                 if (cell_ids.length > 0) {
                     await update_notebook((notebook) => {
                         for (let cell_id of cell_ids) {
-                            if (this.state.cell_inputs_local[cell_id]) {
+                            if (this.state.cell_inputs_local[cell_id] != null) {
                                 notebook.cell_inputs[cell_id].code = this.state.cell_inputs_local[cell_id].code
+                                notebook.cell_inputs[cell_id].run_requested_timestamp = Date.now() / 1000
                             }
                         }
                     })
-                    // This is a "dirty" trick, as this should actually be stored in some shared request_status => status state
-                    // But for now... this is fine 😼
-                    await this.setStatePromise(
-                        immer((/** @type {EditorState} */ state) => {
-                            for (let cell_id of cell_ids) {
-                                if (state.notebook.cell_results[cell_id] != null) {
-                                    state.notebook.cell_results[cell_id].queued = this.is_process_ready()
-                                } else {
-                                    // nothing
-                                }
-                            }
-                        })
-                    )
-                    const result = await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.state.notebook.notebook_id })
-                    const { disabled_cells } = result.message
-                    if (Object.entries(disabled_cells).length > 0) {
-                        await this.setStatePromise({
-                            recently_auto_disabled_cells: disabled_cells,
-                        })
-                    }
                 }
             },
             /**
@@ -783,6 +762,13 @@ patch: ${JSON.stringify(
                             })
 
                         break
+                    case "run_feedback":
+                        const { disabled_cells } = message
+                        if (Object.entries(disabled_cells).length > 0) {
+                            this.setStatePromise({
+                                recently_auto_disabled_cells: disabled_cells,
+                            })
+                        }
                     default:
                         console.error("Received unknown update type!", update)
                         // alert("Something went wrong 🙈\n Try clearing your browser cache and refreshing the page")
@@ -930,13 +916,18 @@ patch: ${JSON.stringify(
             // console.info("All scripts finished!")
             this.send_queued_bond_changes()
         })
+        this.any_cells_queued_or_running = () =>
+            this.state.notebook.cell_order.some((cell_id) =>
+                is_queued_or_running(this.state.notebook.cell_inputs[cell_id], this.state.notebook.cell_results[cell_id])
+            )
+
         /** Is the notebook ready to execute code right now? (i.e. are no cells queued or running?) */
         this.notebook_is_idle = () => {
             return !(
                 this.waiting_for_bond_to_trigger_execution ||
                 this.pending_local_updates > 0 ||
                 // a cell is running:
-                Object.values(this.state.notebook.cell_results).some((cell) => cell.running || cell.queued) ||
+                this.any_cells_queued_or_running() ||
                 // a cell is initializing JS:
                 !_.isEmpty(this.js_init_set) ||
                 !this.is_process_ready()
@@ -1159,7 +1150,7 @@ patch: ${JSON.stringify(
             // }
             if (e.key.toLowerCase() === "q" && has_ctrl_or_cmd_pressed(e)) {
                 // This one can't be done as cmd+q on mac, because that closes chrome - Dral
-                if (Object.values(this.state.notebook.cell_results).some((c) => c.running || c.queued)) {
+                if (this.any_cells_queued_or_running()) {
                     this.actions.interrupt_remote()
                 }
                 e.preventDefault()

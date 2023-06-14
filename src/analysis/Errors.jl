@@ -39,13 +39,13 @@ function showerror(io::IO, mde::MultipleDefinitionsError)
 end
 
 "Send `error` to the frontend without backtrace. Runtime errors are handled by `WorkspaceManager.eval_format_fetch_in_workspace` - this function is for Reactivity errors."
-function relay_reactivity_error!(cell::Cell, error::Exception)
+function relay_reactivity_error!(cell::Cell, error::Exception, timestamp::Float64)
 	body, mime = PlutoRunner.format_output(CapturedException(error, []))
 	cell.output = CellOutput(
 		body=body,
 		mime=mime,
 		rootassignee=nothing,
-		last_run_timestamp=time(),
+		last_run_timestamp=timestamp,
 		persist_js_state=false,
 	)
 	cell.published_objects = Dict{String,Any}()

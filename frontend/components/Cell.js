@@ -86,6 +86,17 @@ const on_jump = (hasBarrier, pluto_actions, cell_id) => () => {
     }
 }
 
+export const is_queued = (/** @type {import("./Editor.js").CellInputData} */ cell_input, /** @type {import("./Editor.js").CellResultData} */ cell_result) =>
+    cell_input.run_requested_timestamp > (cell_result.output.last_run_timestamp ?? 0) && !cell_result.running
+
+export const is_running = (/** @type {import("./Editor.js").CellInputData} */ cell_input, /** @type {import("./Editor.js").CellResultData} */ cell_result) =>
+    cell_result.running
+
+export const is_queued_or_running = (
+    /** @type {import("./Editor.js").CellInputData} */ cell_input,
+    /** @type {import("./Editor.js").CellResultData} */ cell_result
+) => is_queued(cell_input, cell_result) || is_running(cell_input, cell_result)
+
 /**
  * @param {{
  *  cell_result: import("./Editor.js").CellResultData,
@@ -100,8 +111,8 @@ const on_jump = (hasBarrier, pluto_actions, cell_id) => () => {
  * }} props
  * */
 export const Cell = ({
-    cell_input: { cell_id, code, code_folded, metadata },
-    cell_result: { queued, running, runtime, errored, output, logs, published_object_keys, depends_on_disabled_cells, depends_on_skipped_cells },
+    cell_input,
+    cell_result,
     cell_dependencies,
     cell_input_local,
     notebook_id,
@@ -113,6 +124,11 @@ export const Cell = ({
     nbpkg,
     global_definition_locations,
 }) => {
+    const { cell_id, code, code_folded, metadata, run_requested_timestamp } = cell_input
+    const { running, runtime, errored, output, logs, published_object_keys, depends_on_disabled_cells, depends_on_skipped_cells } = cell_result
+
+    const queued = is_queued(cell_input, cell_result)
+
     const { show_logs, disabled: running_disabled, skip_as_script } = metadata
     let pluto_actions = useContext(PlutoActionsContext)
     // useCallback because pluto_actions.set_doc_query can change value when you go from viewing a static document to connecting (to binder)

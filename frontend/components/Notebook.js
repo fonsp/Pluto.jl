@@ -24,6 +24,19 @@ const useMemoDebug = (fn, args) => {
     }, args)
 }
 
+/**
+ * @param {{
+ *  cell_result: import("./Editor.js").CellResultData,
+ *  cell_input: import("./Editor.js").CellInputData,
+ *  cell_input_local: { code: String },
+ *  cell_dependencies: import("./Editor.js").CellDependencyData
+ *  nbpkg: import("./Editor.js").NotebookPkgData?,
+ *  selected: boolean,
+ *  force_hide_input: boolean,
+ *  focus_after_creation: boolean,
+ *  [key: string]: any,
+ * }} props
+ * */
 let CellMemo = ({
     cell_result,
     cell_input,
@@ -41,8 +54,8 @@ let CellMemo = ({
     global_definition_locations,
 }) => {
     const { body, last_run_timestamp, mime, persist_js_state, rootassignee } = cell_result?.output || {}
-    const { queued, running, runtime, errored, depends_on_disabled_cells, logs, depends_on_skipped_cells } = cell_result || {}
-    const { cell_id, code, code_folded, metadata } = cell_input || {}
+    const { running, runtime, errored, depends_on_disabled_cells, logs, depends_on_skipped_cells } = cell_result || {}
+    const { cell_id, code, code_folded, metadata, run_requested_timestamp } = cell_input || {}
     return useMemo(() => {
         return html`
             <${Cell}
@@ -65,9 +78,9 @@ let CellMemo = ({
         cell_id,
         ...Object.keys(metadata),
         ...Object.values(metadata),
+        run_requested_timestamp,
         depends_on_disabled_cells,
         depends_on_skipped_cells,
-        queued,
         running,
         runtime,
         errored,
@@ -154,7 +167,6 @@ export const Notebook = ({ notebook, cell_inputs_local, last_created_cell, selec
                         key=${cell_id}
                         cell_result=${notebook.cell_results[cell_id] ?? {
                             cell_id: cell_id,
-                            queued: true,
                             running: false,
                             errored: false,
                             runtime: null,
