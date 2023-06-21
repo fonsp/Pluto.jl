@@ -198,7 +198,7 @@ export const createPage = async (browser) => {
     page.on("request", (request) => {
       if(blocked_domains.some(domain => request.url().includes(domain))) {
         if(!hide_warning(request.url()))
-          console.error(`Blocking request to ${request.url()}`)
+          console.info(`Blocking request to ${request.url()}`)
         request.abort();
       } else {
         request.continue();

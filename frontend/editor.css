@@ -247,7 +247,7 @@ pluto-output pre > code {
 }
 
 pluto-output.rich_output code {
-    padding: 3px;
+    padding: 0.18em;
     border-radius: 8px;
     background-color: var(--pluto-output-bg-color);
 }
@@ -450,6 +450,11 @@ kbd {
 /* Avoid scrollbar in in-line latex with markdown, see https://github.com/fonsp/Pluto.jl/issues/1309 */
 pluto-output mjx-assistive-mml {
     height: 1px;
+}
+
+/* Avoid scrollbar in cells that contain just a h3 element, like the h3 headers in https://computationalthinking.mit.edu/Fall22/images_abstractions/transformations_and_autodiff/ */
+.raw-html-wrapper > div.markdown {
+    overflow: hidden;
 }
 
 /* HEADER */
