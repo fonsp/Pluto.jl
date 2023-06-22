@@ -1,5 +1,4 @@
 using PrecompileTools: PrecompileTools
-import JuliaSyntax
 
 const __TEST_NOTEBOOK_ID = uuid1()
 
@@ -13,8 +12,6 @@ PrecompileTools.@compile_workload begin
     end
     expr = Expr(:toplevel, :(1 + 1))
     Pluto.PlutoRunner.run_expression(Module(), expr, __TEST_NOTEBOOK_ID, uuid1(), nothing);
-
-    JuliaSyntax.parseall(Expr, "function f() 1 + 1 end")
 
     nb = Pluto.Notebook([
         Pluto.Cell("""md"Hello *world*" """)

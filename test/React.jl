@@ -1752,4 +1752,26 @@ import Distributed
         update_run!(🍭, notebook, notebook.cells)
         @test all(noerror, notebook.cells)
     end
+
+    @testset "ParseError messages" begin
+        notebook = Notebook(Cell.([
+            "begin",
+            "\n\nend",
+        ]))
+        update_run!(🍭, notebook, notebook.cells)
+        @static if VERSION >= v"1.10.0-DEV.1548" # ~JuliaSyntax PR Pluto.jl#2526 julia#46372
+            @test haskey(notebook.cells[1].output.body, :source)
+            @test haskey(notebook.cells[1].output.body, :diagnostics)
+
+            @test haskey(notebook.cells[2].output.body, :source)
+            @test haskey(notebook.cells[2].output.body, :diagnostics)
+        else
+            @test !occursinerror("(incomplete ", notebook.cells[1])
+            @test !occursinerror("(incomplete ", notebook.cells[2])
+
+            @show notebook.cells[1].output.body
+            @test startswith(notebook.cells[1].output.body[:msg], "syntax:")
+            @test startswith(notebook.cells[2].output.body[:msg], "syntax:")
+        end
+    end
 end

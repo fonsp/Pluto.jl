@@ -42,8 +42,6 @@ const Funccall = ({ frame }) => {
 const insert_commas_and_and = (/** @type {any[]} */ xs) => xs.flatMap((x, i) => (i === xs.length - 1 ? [x] : i === xs.length - 2 ? [x, " and "] : [x, ", "]))
 
 export const ParseError = ({ cell_id, diagnostics }) => {
-    const dom_node_ref = useRef(/** @type {HTMLElement?} */(null))
-
     useEffect(() => {
         window.dispatchEvent(
             new CustomEvent("cell_diagnostics", {
@@ -63,7 +61,7 @@ export const ParseError = ({ cell_id, diagnostics }) => {
               <ol>
                   ${diagnostics.map(
                     ({ message, from, to, line }) =>
-                        html`<li onmouseenter=${() => // move to `StackFrameFilename`
+                        html`<li onmouseenter=${() => // NOTE: this could be moved move to `StackFrameFilename`
                                 window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from, to }}))
                         }
                         onmouseleave=${() =>
@@ -76,7 +74,6 @@ export const ParseError = ({ cell_id, diagnostics }) => {
                     }
               </ol>
             </section>
-            <pluto-parse-error-editor ref=${dom_node_ref} />
         </jlerror>
     `;
 }

@@ -1,5 +1,5 @@
 import .ExpressionExplorer
-import JuliaSyntax, Markdown
+import Markdown
 
 "Generate a file name to be given to the parser (will show up in stack traces)."
 pluto_filename(notebook::Notebook, cell::Cell)::String = notebook.path * "#==#" * string(cell.cell_id)

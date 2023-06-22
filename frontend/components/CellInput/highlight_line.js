@@ -102,7 +102,6 @@ export const highlightRangePlugin = () =>
              * @param {ViewUpdate} update
              */
             update(update) {
-                console.log("update", update.state.facet("HighlightRangeFacet"))
                 if (update.docChanged || update.state.facet(HighlightRangeFacet) !== update.startState.facet(HighlightRangeFacet)) {
                     this.updateDecos(update.view)
                 }

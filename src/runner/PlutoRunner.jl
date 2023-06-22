@@ -1077,7 +1077,6 @@ function map_byte_range_to_utf16_codepoints(s, start_byte, end_byte)
             to = u16
             break
         end
-
         if i < n && -64 <= a % Int8 <= -12 # multi-byte character
             i += 1
             b = codeunit(s, i)
