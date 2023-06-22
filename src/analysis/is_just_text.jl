@@ -1,4 +1,4 @@
-const md_and_friends = [Symbol("@md_str"), Symbol("@html_str"), :getindex]
+const md_and_friends = [Symbol("@md_str"), Symbol("@html_str"), :getindex, :PlutoRunner]
 
 """Does the cell only contain md"..." and html"..."?
 

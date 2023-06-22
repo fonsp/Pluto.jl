@@ -1347,6 +1347,7 @@ function can_be_function_wrapped(x::Expr)
        x.head === :using ||
        x.head === :import ||
        x.head === :module ||
+       x.head === :incomplete ||
        # Only bail on named functions, but anonymous functions (args[1].head == :tuple) are fine.
        # TODO Named functions INSIDE other functions should be fine too
        (x.head === :function && !Meta.isexpr(x.args[1], :tuple)) ||
