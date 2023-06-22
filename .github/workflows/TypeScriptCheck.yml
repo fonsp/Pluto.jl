@@ -32,4 +32,6 @@ jobs:
         working-directory: frontend
       
       - name: Run TypeScript checks on frontend/
+        env:
+          NODE_OPTIONS: "--max_old_space_size=4096"
         run: tsc --noEmit --strictNullChecks false
