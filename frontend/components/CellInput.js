@@ -398,7 +398,6 @@ export const CellInput = ({
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
     let global_definitions_compartment = useCompartment(newcm_ref, GlobalDefinitionsFacet.of(global_definition_locations))
     let highlighted_line_compartment = useCompartment(newcm_ref, HighlightLineFacet.of(cm_highlighted_line))
-    console.log({ cm_highlighted_range })
     let highlighted_range_compartment = useCompartment(newcm_ref, HighlightRangeFacet.of(cm_highlighted_range))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
 

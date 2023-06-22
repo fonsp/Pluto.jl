@@ -178,6 +178,11 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                 }),
         },
         {
+            pattern: /^syntax: (.*)$/,
+            display: default_rewriter.display,
+            show_stacktrace: () => false,
+        },
+        {
             pattern: /^UndefVarError: (.*) not defined\.?$/,
             display: (/** @type{string} */ x) => {
                 const notebook = /** @type{import("./Editor.js").NotebookData?} */ (pluto_actions.get_notebook())
