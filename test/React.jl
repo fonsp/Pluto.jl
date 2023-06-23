@@ -1759,6 +1759,8 @@ import Distributed
             "\n\nend",
         ]))
         update_run!(🍭, notebook, notebook.cells)
+        @test Pluto.is_just_text(notebook.topology, notebook.cells[1])
+        @test Pluto.is_just_text(notebook.topology, notebook.cells[2])
         @static if VERSION >= v"1.10.0-DEV.1548" # ~JuliaSyntax PR Pluto.jl#2526 julia#46372
             @test haskey(notebook.cells[1].output.body, :source)
             @test haskey(notebook.cells[1].output.body, :diagnostics)
