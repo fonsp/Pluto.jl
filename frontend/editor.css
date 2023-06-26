@@ -2834,7 +2834,8 @@ pluto-log-icon::before {
 pluto-log-dot-positioner.Info {
     --icon-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/information-circle-outline.svg");
 }
-pluto-log-dot-positioner.Info pluto-log-icon::before {
+pluto-log-dot-positioner.Info pluto-log-icon::before,
+pluto-log-dot-positioner.Progress pluto-log-icon::before {
     opacity: 0.4;
 }
 pluto-log-dot-positioner.Warn {
@@ -2851,6 +2852,10 @@ pluto-log-dot-positioner.Debug {
     --bg-color: var(--pluto-logs-debug-color);
     --accent-color: var(--pluto-logs-debug-accent-color);
     --icon-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/information-circle-outline.svg");
+}
+pluto-log-dot-positioner.Progress {
+    --bg-color: transparent;
+    --icon-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/hourglass-outline.svg");
 }
 pluto-log-dot-positioner.Stdout {
     --icon-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/terminal-outline.svg");
