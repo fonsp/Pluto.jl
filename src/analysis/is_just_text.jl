@@ -1,4 +1,11 @@
-const md_and_friends = [Symbol("@md_str"), Symbol("@html_str"), :getindex, :PlutoRunner]
+const md_and_friends = [
+	# Text
+	Symbol("@md_str"),
+	Symbol("@html_str"),
+	:getindex,
+	# These two are for Syntax errors (see `preprocess_expr(::Expr)`)
+	:PlutoRunner, Symbol("PlutoRunner.throw_syntax_error")
+]
 
 """Does the cell only contain md"..." and html"..."?
 
