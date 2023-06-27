@@ -509,9 +509,9 @@ export const CellInput = ({
                     selection:
                         selection.from === 0
                             ? {
-                                anchor: selection.from + prefix.length,
-                                head: selection.to + prefix.length,
-                            }
+                                  anchor: selection.from + prefix.length,
+                                  head: selection.to + prefix.length,
+                              }
                             : undefined,
                 })
             }
@@ -638,15 +638,17 @@ export const CellInput = ({
                     // Remove selection on blur
                     EditorView.domEventHandlers({
                         blur: (event, view) => {
-                            // collapse the selection into a single point
-                            view.dispatch({
-                                selection: {
-                                    anchor: view.state.selection.main.head,
-                                },
-                                scrollIntoView: false,
-                            })
-                            // and blur the DOM again (because the previous transaction might have re-focused it)
-                            view.contentDOM.blur()
+                            // collapse the selection into a single point if not already into a single point
+                            if (view.state.selection.ranges.length > 1 || view.state.selection.main.from != view.state.selection.main.to) {
+                                view.dispatch({
+                                    selection: {
+                                        anchor: view.state.selection.main.head,
+                                    },
+                                    scrollIntoView: false,
+                                })
+                                // and blur the DOM again (because the previous transaction might have re-focused it)
+                                view.contentDOM.blur()
+                            }
 
                             set_cm_forced_focus(null)
                         },
@@ -666,19 +668,19 @@ export const CellInput = ({
                     indentUnit.of("\t"),
                     ...(ENABLE_CM_MIXED_PARSER
                         ? [
-                            julia_mixed(),
-                            markdown({
-                                defaultCodeLanguage: julia_mixed(),
-                            }),
-                            htmlLang(), //Provides tag closing!,
-                            javascript(),
-                            python(),
-                            sqlLang,
-                        ]
+                              julia_mixed(),
+                              markdown({
+                                  defaultCodeLanguage: julia_mixed(),
+                              }),
+                              htmlLang(), //Provides tag closing!,
+                              javascript(),
+                              python(),
+                              sqlLang,
+                          ]
                         : [
-                            //
-                            julia_andrey(),
-                        ]),
+                              //
+                              julia_andrey(),
+                          ]),
                     go_to_definition_plugin,
                     pluto_autocomplete({
                         request_autocomplete: async ({ text }) => {
@@ -717,7 +719,7 @@ export const CellInput = ({
                     // Reset diagnostics on change
                     EditorView.updateListener.of((update) => {
                         if (!update.docChanged) return
-                        update.view.dispatch(setDiagnostics(update.state, []));
+                        update.view.dispatch(setDiagnostics(update.state, []))
                     }),
 
                     on_change_compartment,
@@ -772,7 +774,7 @@ export const CellInput = ({
         if (lines_wrapper_dom_node) {
             const lines_wrapper_resize_observer = new ResizeObserver(() => {
                 const line_nodes = lines_wrapper_dom_node.children
-                const tops = _.map(line_nodes, (c) => /** @type{HTMLElement} */(c).offsetTop)
+                const tops = _.map(line_nodes, (c) => /** @type{HTMLElement} */ (c).offsetTop)
                 const diffs = tops.slice(1).map((y, i) => y - tops[i])
                 const heights = [...diffs, 15]
                 on_line_heights(heights)
@@ -916,9 +918,9 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
         onClick=${() => setOpen(!open)}
         onBlur=${() => setOpen(false)}
         class=${cl({
-        input_context_menu: true,
-        open,
-    })}
+            input_context_menu: true,
+            open,
+        })}
         title="Actions"
     >
         <span class="icon"></span>
@@ -933,22 +935,22 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
                       ${running_disabled ? html`<b>Enable cell</b>` : html`Disable cell`}
                   </li>
                   ${any_logs
-                    ? html`<li title="" onClick=${toggle_logs}>
+                      ? html`<li title="" onClick=${toggle_logs}>
                             ${show_logs
-                            ? html`<span class="hide_logs ctx_icon" /><span>Hide logs</span>`
-                            : html`<span class="show_logs ctx_icon" /><span>Show logs</span>`}
+                                ? html`<span class="hide_logs ctx_icon" /><span>Hide logs</span>`
+                                : html`<span class="show_logs ctx_icon" /><span>Show logs</span>`}
                         </li>`
-                    : null}
+                      : null}
                   ${is_copy_output_supported()
-                    ? html`<li title="Copy the output of this cell to the clipboard." onClick=${copy_output}>
+                      ? html`<li title="Copy the output of this cell to the clipboard." onClick=${copy_output}>
                             <span class="copy_output ctx_icon" />Copy output
                         </li>`
-                    : null}
+                      : null}
                   <li
                       onClick=${toggle_skip_as_script}
                       title=${skip_as_script
-                    ? "This cell is currently stored in the notebook file as a Julia comment. Click here to disable."
-                    : "Store this code in the notebook file as a Julia comment. This way, it will not run when the notebook runs as a script outside of Pluto."}
+                          ? "This cell is currently stored in the notebook file as a Julia comment. Click here to disable."
+                          : "Store this code in the notebook file as a Julia comment. This way, it will not run when the notebook runs as a script outside of Pluto."}
                   >
                       ${skip_as_script ? html`<span class="skip_as_script ctx_icon" />` : html`<span class="run_as_script ctx_icon" />`}
                       ${skip_as_script ? html`<b>Enable in file</b>` : html`Disable in file`}

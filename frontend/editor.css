@@ -3185,10 +3185,10 @@ pluto-input .cm-editor .cm-content {
     padding: 2px 0px;
 }
 
-.cm-editor .cm-selectionBackground {
+.cm-editor .cm-scroller > .cm-selectionLayer .cm-selectionBackground {
     background: var(--cm-selection-background-blurred);
 }
-.cm-editor.cm-focused .cm-selectionBackground {
+.cm-editor.cm-focused .cm-scroller > .cm-selectionLayer .cm-selectionBackground {
     background: var(--cm-selection-background);
 }
 
