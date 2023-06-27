@@ -23,6 +23,8 @@ export const nothing_actions = ({ actions }) =>
     )
 
 export const slider_server_actions = ({ setStatePromise, launch_params, actions, get_original_state, get_current_state, apply_notebook_patches }) => {
+    const base = trailingslash(launch_params.slider_server_url)
+
     const notebookfile_hash = fetch(new Request(launch_params.notebookfile, { integrity: launch_params.notebookfile_integrity }))
         .then(assert_response_ok)
         .then((r) => r.arrayBuffer())
@@ -31,19 +33,38 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
     notebookfile_hash.then((x) => console.log("Notebook file hash:", x))
 
     const bond_connections = notebookfile_hash
-        .then((hash) => fetch(trailingslash(launch_params.slider_server_url) + "bondconnections/" + hash))
+        .then((hash) => fetch(base + "bondconnections/" + hash))
         .then(assert_response_ok)
         .then((r) => r.arrayBuffer())
         .then((b) => unpack(new Uint8Array(b)))
 
     bond_connections.then((x) => console.log("Bond connections:", x))
 
+    const bundle_cache = {}
+    const bundle_list = notebookfile_hash
+        .then((hash) => fetch(base + "bundles/" + hash))
+        .then(assert_response_ok)
+        .then((r) => r.arrayBuffer())
+        .then((b) => unpack(new Uint8Array(b)))
+        .then((bundles) => {
+            // greedily load bundles so first interaction is "instant" once loaded
+            console.log(`Found bundles!`, bundles)
+            for (let bundle_signature of bundles) {
+                bundle_cache[bundle_signature] = notebookfile_hash
+                    .then((hash) => fetch(base + "staterequest-bundled/" + hash + "/" + bundle_signature))
+                    .then(assert_response_ok)
+                    .then((r) => r.arrayBuffer())
+                    .then((b) => unpack(new Uint8Array(b)))
+            }
+            return bundles
+        })
+        .catch(() => [])
+
     const mybonds = {}
     const bonds_to_set = {
         current: new Set(),
     }
     const request_bond_response = debounced_promises(async () => {
-        const base = trailingslash(launch_params.slider_server_url)
         const hash = await notebookfile_hash
         const graph = await bond_connections
 
@@ -60,7 +81,12 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
                 )
             )
 
+            const ordered_to_send = [...to_send].sort()
+            const bundle_signature = await base64url_arraybuffer(pack(ordered_to_send))
+            const available_bundles = await bundle_list
+
             const packed = pack(mybonds_filtered)
+            const bond_signature = await base64url_arraybuffer(packed)
 
             const url = base + "staterequest/" + hash + "/"
 
@@ -69,16 +95,30 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
                 const force_post = get_current_state().metadata["sliderserver_force_post"] ?? false
                 const use_get = !force_post && url.length + (packed.length * 4) / 3 + 20 < 8000
 
-                const response = use_get
-                    ? await fetch(url + (await base64url_arraybuffer(packed)), {
-                          method: "GET",
-                      }).then(assert_response_ok)
-                    : await fetch(url, {
-                          method: "POST",
-                          body: packed,
-                      }).then(assert_response_ok)
+                const no_bundling = !available_bundles.includes(bundle_signature)
 
-                unpacked = unpack(new Uint8Array(await response.arrayBuffer()))
+                if (no_bundling) {
+                    const response = use_get
+                        ? await fetch(url + bond_signature, {
+                              method: "GET",
+                          }).then(assert_response_ok)
+                        : await fetch(url, {
+                              method: "POST",
+                              body: packed,
+                          }).then(assert_response_ok)
+
+                    unpacked = unpack(new Uint8Array(await response.arrayBuffer()))
+                } else {
+                    let unpacked_bundled
+
+                    if (Object.keys(bundle_cache).includes(bundle_signature)) {
+                        unpacked_bundled = await bundle_cache[bundle_signature]
+                    } else {
+                        console.error(`Unknown bundle signature '${bundle_signature}'`)
+                    }
+
+                    unpacked = unpacked_bundled[bond_signature]
+                }
                 const { patches, ids_of_cells_that_ran } = unpacked
 
                 await apply_notebook_patches(
