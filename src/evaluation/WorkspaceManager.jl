@@ -7,6 +7,7 @@ import ..Configuration: CompilerOptions, _merge_notebook_compiler_options, _conv
 import ..Pluto.ExpressionExplorer: FunctionName
 import ..PlutoRunner
 import Malt
+import Malt.Distributed
 
 """
 Contains the Julia process to evaluate code in.
@@ -17,7 +18,7 @@ Base.@kwdef mutable struct Workspace
     worker::Malt.AbstractWorker
     notebook_id::UUID
     discarded::Bool=false
-    remote_log_channel::Channel
+    remote_log_channel::Union{Distributed.RemoteChannel,Channel}
     module_name::Symbol
     dowork_token::Token=Token()
     nbpkg_was_active::Bool=false
@@ -29,7 +30,7 @@ end
 const SN = Tuple{ServerSession, Notebook}
 
 "These expressions get evaluated whenever a new `Workspace` process is created."
-const process_preamble = quote
+process_preamble() = quote
     ccall(:jl_exit_on_sigint, Cvoid, (Cint,), 0)
     include($(project_relative_path(joinpath("src", "runner"), "Loader.jl")))
     ENV["GKSwstype"] = "nul"
@@ -44,9 +45,17 @@ const discarded_workspaces = Set{UUID}()
 "Create a workspace for the notebook, optionally in the main process."
 function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false)::Workspace
     is_offline_renderer || (notebook.process_status = ProcessStatus.starting)
-
+    
+    WorkerType = if is_offline_renderer || !session.options.evaluation.workspace_use_distributed
+        Malt.InProcessWorker
+    elseif session.options.evaluation.workspace_use_distributed_stdlib
+        Malt.DistributedStdlibWorker
+    else
+        Malt.Worker
+    end
+    
     @debug "Creating workspace process" notebook.path length(notebook.cells)
-    worker = create_workspaceprocess(;compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler))
+    worker = create_workspaceprocess(WorkerType; compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler))
 
     Malt.remote_eval_wait(worker, session.options.evaluation.workspace_custom_startup_expr)
 
@@ -222,7 +231,7 @@ function possible_bond_values(session_notebook::SN, n::Symbol; get_length::Bool=
     end)
 end
 
-function create_emptyworkspacemodule(worker::Malt.Worker)::Symbol
+function create_emptyworkspacemodule(worker::Malt.AbstractWorker)::Symbol
     Malt.remote_eval_fetch(worker, quote
         PlutoRunner.increment_current_module()
     end)
@@ -231,20 +240,34 @@ end
 # NOTE: this function only start a worker process using given
 # compiler options, it does not resolve paths for notebooks
 # compiler configurations passed to it should be resolved before this
-function create_workspaceprocess(;compiler_options=CompilerOptions())::Malt.Worker
-    worker = Malt.Worker(;exeflags=_convert_to_flags(compiler_options))
-    Malt.remote_eval_wait(worker, process_preamble)
-
-    # so that we NEVER break the workspace with an interrupt 🤕
-    Malt.remote_eval(worker, quote
-        while true
-            try
-                wait()
-            catch end
+function create_workspaceprocess(WorkerType; compiler_options=CompilerOptions())::Malt.AbstractWorker
+    if WorkerType === Malt.InProcessWorker
+        worker = WorkerType()
+        
+        if !(isdefined(Main, :PlutoRunner) && Main.PlutoRunner isa Module)
+            # we make PlutoRunner available in Main, right now it's only defined inside this Pluto module.
+            Malt.remote_eval_wait(Main, worker, quote
+                PlutoRunner = $(PlutoRunner)
+            end)
         end
-    end)
-
-    worker
+        
+        worker
+    else
+        worker = WorkerType(; exeflags=_convert_to_flags(compiler_options))
+        
+        Malt.remote_eval_wait(worker, process_preamble())
+    
+        # so that we NEVER break the workspace with an interrupt 🤕
+        Malt.remote_eval(worker, quote
+            while true
+                try
+                    wait()
+                catch end
+            end
+        end)
+    
+        worker
+    end
 end
 
 """
