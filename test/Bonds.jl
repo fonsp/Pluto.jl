@@ -1,13 +1,15 @@
 using Test
 import Pluto
 import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell
-import Malt
+import Distributed
 
 @testset "Bonds" begin
 
     🍭 = ServerSession()
-
+    🍭.options.evaluation.workspace_use_distributed = false
+    
     @testset "AbstractPlutoDingetjes.jl" begin
+        🍭.options.evaluation.workspace_use_distributed = true
         notebook = Notebook([
                 # 1
                 Cell("""
@@ -243,7 +245,7 @@ import Malt
         
         
         @test Pluto.possible_bond_values(🍭, notebook, :x_new) == [1,2,3]
-        @test Pluto.possible_bond_values(🍭, notebook, :asdfasdfx_new) == KeyError(:asdfasdfx_new)
+        @test_throws Exception Pluto.possible_bond_values(🍭, notebook, :asdfasdfx_new)
         @test Pluto.possible_bond_values(🍭, notebook, :pv1) == :NotGiven
         @test Pluto.possible_bond_values(🍭, notebook, :pv2) == :InfinitePossibilities
         @test Pluto.possible_bond_values(🍭, notebook, :pv3) == [1,2,3]
@@ -297,13 +299,14 @@ import Malt
         
         
         WorkspaceManager.unmake_workspace((🍭, notebook))
+        🍭.options.evaluation.workspace_use_distributed = false
         
         
         # test that the notebook file is runnable:
         
-        test_worker = Malt.Worker()
+        test_proc = Distributed.addprocs(1)[1]
         
-        Malt.remote_eval_fetch(Main, test_worker, quote
+        Distributed.remotecall_eval(Main, test_proc, quote
             import Pkg
             try
                 Pkg.UPDATED_REGISTRY_THIS_SESSION[] = true
@@ -311,16 +314,16 @@ import Malt
             Pkg.activate(mktempdir())
             Pkg.add("AbstractPlutoDingetjes")
         end)
-        @test Malt.remote_eval_fetch(Main, test_worker, quote
+        @test Distributed.remotecall_eval(Main, test_proc, quote
             include($(notebook.path))
             true
         end)
-        Malt.stop(test_worker)
+        Distributed.rmprocs(test_proc)
     end
 
     @testset "Dependent Bound Variables" begin
         🍭 = ServerSession()
-
+        🍭.options.evaluation.workspace_use_distributed = true
         notebook = Notebook([
             Cell(raw"""@bind x HTML("<input type=range min=1 max=10>")"""),
             Cell(raw"""@bind y HTML("<input type=range min=1 max=$(x)>")"""),
