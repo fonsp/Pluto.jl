@@ -5,6 +5,7 @@ using Pluto.WorkspaceManager: poll
 
 @testset "Logging" begin
     🍭 = ServerSession()
+    🍭.options.evaluation.workspace_use_distributed = true
 
     notebook = Notebook(Cell.([
         "println(123)",
