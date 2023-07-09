@@ -30,6 +30,7 @@ end
 
 🍭 = Pluto.ServerSession()
 🍭.options.server.disable_writing_notebook_files = true
+🍭.options.evaluation.workspace_use_distributed = false
 
 path = joinpath(pkgdir(Pluto), "sample", "Basic.jl")
 
@@ -44,7 +45,7 @@ HTTP.get("http://github.com")
 
 @timeit TOUT "Pluto.run" server_task = @eval let
     port = 13435
-    options = Pluto.Configuration.from_flat_kwargs(; port, launch_browser=false, require_secret_for_access=false, require_secret_for_open_links=false)
+    options = Pluto.Configuration.from_flat_kwargs(; port, launch_browser=false, workspace_use_distributed=false, require_secret_for_access=false, require_secret_for_open_links=false)
     🍭 = Pluto.ServerSession(; options)
     server_task = @async Pluto.run(🍭)
 
