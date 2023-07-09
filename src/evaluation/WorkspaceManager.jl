@@ -108,6 +108,10 @@ function use_nbpkg_environment((session, notebook)::SN, workspace=nothing)
     workspace.discarded && return
 
     workspace.nbpkg_was_active = enabled
+    if workspace.worker isa Malt.InProcessWorker
+        # Not supported
+        return
+    end
     new_LP = enabled ? ["@", "@stdlib"] : workspace.original_LOAD_PATH
     new_AP = enabled ? PkgCompat.env_dir(notebook.nbpkg_ctx) : workspace.original_ACTIVE_PROJECT
 
@@ -117,7 +121,7 @@ function use_nbpkg_environment((session, notebook)::SN, workspace=nothing)
     end)
 end
 
-function start_relaying_self_updates((session, notebook)::SN, run_channel::Channel)
+function start_relaying_self_updates((session, notebook)::SN, run_channel)
     while true
         try
             next_run_uuid = take!(run_channel)
@@ -133,7 +137,7 @@ function start_relaying_self_updates((session, notebook)::SN, run_channel::Chann
     end
 end
 
-function start_relaying_logs((session, notebook)::SN, log_channel::Channel)
+function start_relaying_logs((session, notebook)::SN, log_channel)
     update_throttled, flush_throttled = Pluto.throttled(0.1) do
         Pluto.send_notebook_changes!(Pluto.ClientRequest(session=session, notebook=notebook))
     end

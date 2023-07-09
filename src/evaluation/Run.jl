@@ -339,8 +339,10 @@ function update_save_run!(
 	old = notebook.topology
 	new = notebook.topology = updated_topology(old, notebook, cells) # macros are not yet resolved
 
+	@info 80923
 	update_dependency_cache!(notebook)
 	save && save_notebook(session, notebook)
+	@info 91832098732
 
 	# _assume `prerender_text == false` if you want to skip some details_
 	to_run_online = if !prerender_text
@@ -391,8 +393,12 @@ function update_save_run!(
 		to_run_online = to_run_online ∩ setup_cells
 	end
 
+	@info 87389173
 	maybe_async(run_async) do
+		@info 67236723678
         withtoken(notebook.executetoken) do
+		@info 32167236723678
+			
             sync_nbpkg(session, notebook, old, new; save=(save && !session.options.server.disable_writing_notebook_files), take_token=false)
             if !(isempty(to_run_online) && session.options.evaluation.lazy_workspace_creation) && will_run_code(notebook)
                 # not async because that would be double async
