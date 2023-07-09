@@ -520,7 +520,7 @@ function notebook_differences(from::Notebook, to::Notebook)
 		changed = let
 			remained = keys(from_cells) ∩ keys(to_cells)
 			filter(remained) do id
-				from_cells[id].code != to_cells[id].code || from_cells[id].metadata != to_cells[id].metadata
+				from_cells[id].code != to_cells[id].code || from_cells[id].metadata != to_cells[id].metadata || from_cells[id].code_folded != to_cells[id].code_folded
 			end
 		end,
 		
