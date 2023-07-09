@@ -8,6 +8,7 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook, set_disa
 
 @testset "Cell Disabling" begin
     🍭 = ServerSession()
+    🍭.options.evaluation.workspace_use_distributed = false
 
     notebook = Notebook([
                 Cell("const a = 1")
