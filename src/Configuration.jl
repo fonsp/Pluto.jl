@@ -128,6 +128,7 @@ Note that Pluto is quickly evolving software, maintained by designers, educators
 end
 
 const RUN_NOTEBOOK_ON_LOAD_DEFAULT = true
+const WORKSPACE_USE_DISTRIBUTED_DEFAULT = true
 const LAZY_WORKSPACE_CREATION_DEFAULT = false
 const CAPTURE_STDOUT_DEFAULT = true
 const WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT = nothing
@@ -139,12 +140,14 @@ Options to change Pluto's evaluation behaviour during internal testing and by do
 These options are not intended to be changed during normal use.
 
 - `run_notebook_on_load::Bool = $RUN_NOTEBOOK_ON_LOAD_DEFAULT` Whether to evaluate a notebook on load.
+- `workspace_use_distributed::Bool = $WORKSPACE_USE_DISTRIBUTED_DEFAULT` Whether to start notebooks in a separate process.
 - `lazy_workspace_creation::Bool = $LAZY_WORKSPACE_CREATION_DEFAULT`
 - `capture_stdout::Bool = $CAPTURE_STDOUT_DEFAULT`
 - `workspace_custom_startup_expr::Union{Nothing,Expr} = $WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT` An expression to be evaluated in the workspace process before running notebook code.
 """
 @option mutable struct EvaluationOptions
     run_notebook_on_load::Bool = RUN_NOTEBOOK_ON_LOAD_DEFAULT
+    workspace_use_distributed::Bool = WORKSPACE_USE_DISTRIBUTED_DEFAULT
     lazy_workspace_creation::Bool = LAZY_WORKSPACE_CREATION_DEFAULT
     capture_stdout::Bool = CAPTURE_STDOUT_DEFAULT
     workspace_custom_startup_expr::Union{Nothing,Expr} = WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT
@@ -251,6 +254,7 @@ function from_flat_kwargs(;
         require_secret_for_open_links::Bool = REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT,
         require_secret_for_access::Bool = REQUIRE_SECRET_FOR_ACCESS_DEFAULT,
         run_notebook_on_load::Bool = RUN_NOTEBOOK_ON_LOAD_DEFAULT,
+        workspace_use_distributed::Bool = WORKSPACE_USE_DISTRIBUTED_DEFAULT,
         lazy_workspace_creation::Bool = LAZY_WORKSPACE_CREATION_DEFAULT,
         capture_stdout::Bool = CAPTURE_STDOUT_DEFAULT,
         workspace_custom_startup_expr::Union{Nothing,Expr} = WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT,
@@ -290,6 +294,7 @@ function from_flat_kwargs(;
     )
     evaluation = EvaluationOptions(;
         run_notebook_on_load,
+        workspace_use_distributed,
         lazy_workspace_creation,
         capture_stdout,
         workspace_custom_startup_expr,
