@@ -14,7 +14,7 @@ Each notebook gets at most one `Workspace` at any time, but it can also have no 
 (it cannot `eval` code in this case).
 """
 Base.@kwdef mutable struct Workspace
-    worker::Malt.Worker
+    worker::Malt.AbstractWorker
     notebook_id::UUID
     discarded::Bool=false
     remote_log_channel::Channel
@@ -48,9 +48,9 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
     @debug "Creating workspace process" notebook.path length(notebook.cells)
     worker = create_workspaceprocess(;compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler))
 
-    Malt.remote_eval_wait(Main, worker, session.options.evaluation.workspace_custom_startup_expr)
+    Malt.remote_eval_wait(worker, session.options.evaluation.workspace_custom_startup_expr)
 
-    Malt.remote_eval_wait(Main, worker, quote
+    Malt.remote_eval_wait(worker, quote
         PlutoRunner.notebook_id[] = $(notebook.notebook_id)
     end)
 
@@ -68,7 +68,7 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
 
     module_name = create_emptyworkspacemodule(worker)
 
-    original_LOAD_PATH, original_ACTIVE_PROJECT = Malt.remote_eval_fetch(Main, worker, :(Base.LOAD_PATH, Base.ACTIVE_PROJECT[]))
+    original_LOAD_PATH, original_ACTIVE_PROJECT = Malt.remote_eval_fetch(worker, :(Base.LOAD_PATH, Base.ACTIVE_PROJECT[]))
 
     workspace = Workspace(;
         worker,
@@ -102,7 +102,7 @@ function use_nbpkg_environment((session, notebook)::SN, workspace=nothing)
     new_LP = enabled ? ["@", "@stdlib"] : workspace.original_LOAD_PATH
     new_AP = enabled ? PkgCompat.env_dir(notebook.nbpkg_ctx) : workspace.original_ACTIVE_PROJECT
 
-    Malt.remote_eval_wait(Main, workspace.worker, quote
+    Malt.remote_eval_wait(workspace.worker, quote
         copy!(LOAD_PATH, $(new_LP))
         Base.ACTIVE_PROJECT[] = $(new_AP)
     end)
@@ -217,13 +217,13 @@ end
 function possible_bond_values(session_notebook::SN, n::Symbol; get_length::Bool=false)
     workspace = get_workspace(session_notebook)
 
-    Malt.remote_eval_fetch(Main, workspace.worker, quote
+    Malt.remote_eval_fetch(workspace.worker, quote
         PlutoRunner.possible_bond_values($(QuoteNode(n)); get_length=$(get_length))
     end)
 end
 
 function create_emptyworkspacemodule(worker::Malt.Worker)::Symbol
-    Malt.remote_eval_fetch(Main, worker, quote
+    Malt.remote_eval_fetch(worker, quote
         PlutoRunner.increment_current_module()
     end)
 end
@@ -233,10 +233,10 @@ end
 # compiler configurations passed to it should be resolved before this
 function create_workspaceprocess(;compiler_options=CompilerOptions())::Malt.Worker
     worker = Malt.Worker(;exeflags=_convert_to_flags(compiler_options))
-    Malt.remote_eval_wait(Main, worker, process_preamble)
+    Malt.remote_eval_wait(worker, process_preamble)
 
     # so that we NEVER break the workspace with an interrupt 🤕
-    Malt.remote_eval(Main, worker, quote
+    Malt.remote_eval(worker, quote
         while true
             try
                 wait()
@@ -370,7 +370,7 @@ function eval_format_fetch_in_workspace(
     # A try block (on this process) to catch an InterruptException
     take!(workspace.dowork_token)
     early_result = try
-        Malt.remote_eval_wait(Main, workspace.worker, quote
+        Malt.remote_eval_wait(workspace.worker, quote
             PlutoRunner.run_expression(
                 getfield(Main, $(QuoteNode(workspace.module_name))),
                 $(QuoteNode(expr)),
@@ -401,7 +401,7 @@ end
 function eval_in_workspace(session_notebook::Union{SN,Workspace}, expr)
     workspace = get_workspace(session_notebook)
 
-    Malt.remote_eval_wait(Main, workspace.worker, quote
+    Malt.remote_eval_wait(workspace.worker, quote
         Core.eval($(workspace.module_name), $(QuoteNode(expr)))
     end)
     nothing
@@ -421,7 +421,7 @@ function format_fetch_in_workspace(
     # we format the cell output on the worker, and fetch the formatted output.
     withtoken(workspace.dowork_token) do
         try
-            Malt.remote_eval_fetch(Main, workspace.worker, quote
+            Malt.remote_eval_fetch(workspace.worker, quote
                 PlutoRunner.formatted_result_of(
                     $(workspace.notebook_id),
                     $cell_id,
@@ -440,7 +440,7 @@ end
 function collect_soft_definitions(session_notebook::SN, modules::Set{Expr})
     workspace = get_workspace(session_notebook)
 
-    Malt.remote_eval_fetch(Main, workspace.worker, quote
+    Malt.remote_eval_fetch(workspace.worker, quote
         PlutoRunner.collect_soft_definitions($(workspace.module_name), $modules)
     end)
 end
@@ -449,7 +449,7 @@ function macroexpand_in_workspace(session_notebook::Union{SN,Workspace}, macroca
     workspace = get_workspace(session_notebook)
     module_name = module_name === nothing ? workspace.module_name : module_name
 
-    Malt.remote_eval_fetch(Main, workspace.worker, quote
+    Malt.remote_eval_fetch(workspace.worker, quote
         try
             (true, PlutoRunner.try_macroexpand($module_name, $(workspace.notebook_id), $cell_id, $(QuoteNode(macrocall))))
         catch error
@@ -469,7 +469,7 @@ end
 function eval_fetch_in_workspace(session_notebook::Union{SN,Workspace}, expr)
     workspace = get_workspace(session_notebook)
 
-    Malt.remote_eval_fetch(Main, workspace.worker, quote
+    Malt.remote_eval_fetch(workspace.worker, quote
         Core.eval($(workspace.module_name), $(QuoteNode(expr)))
     end)
 end
@@ -477,7 +477,7 @@ end
 function do_reimports(session_notebook::Union{SN,Workspace}, module_imports_to_move::Set{Expr})
     workspace = get_workspace(session_notebook)
 
-    Malt.remote_eval_wait(Main, workspace.worker, quote
+    Malt.remote_eval_wait(workspace.worker, quote
         PlutoRunner.do_reimports($(workspace.module_name), $module_imports_to_move)
     end)
 end
@@ -499,7 +499,7 @@ function move_vars(
     workspace = get_workspace(session_notebook)
     new_workspace_name = something(new_workspace_name, workspace.module_name)
 
-    Malt.remote_eval_wait(Main, workspace.worker, quote
+    Malt.remote_eval_wait(workspace.worker, quote
         PlutoRunner.move_vars(
             $(QuoteNode(old_workspace_name)),
             $(QuoteNode(new_workspace_name)),
