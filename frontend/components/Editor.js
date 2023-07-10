@@ -35,6 +35,7 @@ import { HijackExternalLinksToOpenInNewTab } from "./HackySideStuff/HijackExtern
 import { FrontMatterInput } from "./FrontmatterInput.js"
 import { EditorLaunchBackendButton } from "./Editor/LaunchBackendButton.js"
 import { get_environment } from "../common/Environment.js"
+import { SliderServerStatus } from "./SliderServerStatus.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -1515,6 +1516,9 @@ patch: ${JSON.stringify(
                             any_code_differs=${status.code_differs}
                             last_hot_reload_time=${notebook.last_hot_reload_time}
                             connected=${this.state.connected}
+                        />
+                        <${SliderServerStatus}
+                            bond_connections=${null}
                         />
                         <${Notebook}
                             notebook=${notebook}
