@@ -40,6 +40,12 @@ export const nothing_actions = ({ actions }) =>
     )
 
 export const slider_server_actions = ({ setStatePromise, launch_params, actions, get_original_state, get_current_state, apply_notebook_patches }) => {
+    setStatePromise(
+        immer((state) => {
+            state.slider_server.connecting = true
+        })
+    )
+
     const notebookfile_hash = fetch(new Request(launch_params.notebookfile, { integrity: launch_params.notebookfile_integrity }))
         .then(assert_response_ok)
         .then((r) => r.arrayBuffer())
@@ -53,7 +59,15 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
         .then((r) => r.arrayBuffer())
         .then((b) => unpack(new Uint8Array(b)))
 
-    bond_connections.then((x) => console.log("Bond connections:", x))
+    bond_connections.then((x) => {
+        console.log("Bond connections:", x)
+        setStatePromise(
+            immer((state) => {
+                state.slider_server.connecting = false
+                state.slider_server.interactive = Object.keys(x).length > 0
+            })
+        )
+    })
 
     const mybonds = {}
     const bonds_to_set = {

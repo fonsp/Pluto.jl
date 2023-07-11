@@ -337,6 +337,11 @@ export class Editor extends Component {
 
             is_recording: false,
             recording_waiting_to_start: false,
+
+            slider_server: {
+                connecting: false,
+                interactive: false,
+            },
         }
 
         this.setStatePromise = (fn) => new Promise((r) => this.setState(fn, r))
@@ -1518,7 +1523,7 @@ patch: ${JSON.stringify(
                             connected=${this.state.connected}
                         />
                         <${SliderServerStatus}
-                            bond_connections=${null}
+                            ...${this.state.slider_server}
                         />
                         <${Notebook}
                             notebook=${notebook}

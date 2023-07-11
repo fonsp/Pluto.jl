@@ -997,6 +997,22 @@ main > preamble #saveall-container.saved > span {
     opacity: 0.5;
 }
 
+#sliderstatus-container {
+    position: fixed;
+    bottom: 15px;
+    right: 20px;
+}
+#sliderstatus-container > span::after {
+    content: "";
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/checkmark-outline.svg");
+    background-size: contain;
+    filter: var(--image-filters);
+    opacity: 0.15;
+}
+
 .overlay-button span.pluto-icon::after {
     content: "";
     display: inline-block;

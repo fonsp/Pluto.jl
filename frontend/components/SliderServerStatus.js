@@ -1,12 +1,6 @@
 import { html, useEffect, useState, useContext, useRef, useMemo } from "../imports/Preact.js"
 
-export const SliderServerStatus = ({ bond_connections }) => {
-    return html`<preamble>
-        <!-- TODO: detach with own styles -->
-        <div id="saveall-container" class="overlay-button">
-            <button title="More status info here...">
-                <span>Connecting...</span>
-            </button>
-        </div>
-    </preamble>`
+export const SliderServerStatus = ({ interactive }) => {
+    const details_message = interactive ? "Connected to sliders!" : ""
+    return html`<div id="sliderstatus-container" title=${details_message}>${interactive && html`<span></span>`}</div>`
 }
