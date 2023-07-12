@@ -146,7 +146,7 @@ function get_assignees(ex::Expr)::FunctionName
             # e.g. (x, y) in the ex (x, y) = (1, 23)
             args = ex.args
         end
-        union!(Symbol[], Iterators.map(get_assignees, args)...)
+        mapfoldl(get_assignees, union!, args; init=Symbol[])
         # filter(s->s isa Symbol, ex.args)
     elseif ex.head == :(::)
         # TODO: type is referenced
@@ -156,7 +156,7 @@ function get_assignees(ex::Expr)::FunctionName
     elseif ex.head == :...
         # Handles splat assignments. e.g. _, y... = 1:5
         args = ex.args
-        union!(Symbol[], Iterators.map(get_assignees, args)...)
+        mapfoldl(get_assignees, union!, args; init=Symbol[])
     else
         @warn "unknown use of `=`. Assignee is unrecognised." ex
         Symbol[]
@@ -379,7 +379,7 @@ function explore_assignment!(ex::Expr, scopestate::ScopeState)::SymbolsState
     union!(scopestate.hiddenglobals, global_assignees)
     union!(symstate.assignments, global_assignees)
     union!(symstate.references, setdiff(assigneesymstate.references, global_assignees))
-    union!(symstate.funccalls, assigneesymstate.funccalls)
+    union!(symstate.funccalls, filter!(call -> length(call) != 1 || only(call) ∉ global_assignees, assigneesymstate.funccalls))
     filter!(!all_underscores, symstate.references)  # Never record _ as a reference
 
     return symstate

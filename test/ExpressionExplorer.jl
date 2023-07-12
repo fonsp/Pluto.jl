@@ -209,6 +209,18 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(quote
             a, b... = 0:5
         end, [],[:a, :b], [[:(:)]], [])
+        @test testee(quote
+            a[x], x = 1, 2
+        end, [:a], [:x], [], [])
+        @test testee(quote
+            x, a[x] = 1, 2
+        end, [:a], [:x], [], [])
+        @test testee(quote
+            f, a[f()] = g
+        end, [:g, :a], [:f], [], [])
+        @test testee(quote
+            a[f()], f = g
+        end, [:g, :a], [:f], [], [])
         @test testee(quote (; a, b) = x end, [:x], [:a, :b], [], [])
         @test testee(quote a = (b, c) end, [:b, :c], [:a], [], [])
 
