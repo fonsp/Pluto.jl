@@ -373,12 +373,13 @@ function explore_assignment!(ex::Expr, scopestate::ScopeState)::SymbolsState
     global_assignees = get_global_assignees(assignees, scopestate)
 
     # If we are _not_ assigning a global variable, then this symbol hides any global definition with that name
-    push!(scopestate.hiddenglobals, setdiff(assignees, global_assignees)...)
+    union!(scopestate.hiddenglobals, setdiff(assignees, global_assignees))
     assigneesymstate = explore!(ex.args[1], scopestate)
 
-    push!(scopestate.hiddenglobals, global_assignees...)
-    push!(symstate.assignments, global_assignees...)
-    push!(symstate.references, setdiff(assigneesymstate.references, global_assignees)...)
+    union!(scopestate.hiddenglobals, global_assignees)
+    union!(symstate.assignments, global_assignees)
+    union!(symstate.references, setdiff(assigneesymstate.references, global_assignees))
+    union!(symstate.funccalls, assigneesymstate.funccalls)
     filter!(!all_underscores, symstate.references)  # Never record _ as a reference
 
     return symstate

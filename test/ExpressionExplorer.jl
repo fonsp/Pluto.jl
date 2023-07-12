@@ -165,6 +165,9 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(x = let a = 1; a += b end), [:b], [:x], [:+], [])
         @test testee(:(_ = a + 1), [:a], [], [:+], [])
         @test testee(:(a = _ + 1), [], [:a], [:+], [])
+
+        @test testee(:(f()[] = 1), [], [], [:f], [])
+        @test testee(:(x[f()] = 1), [:x], [], [:f], [])
     end
     @testset "Multiple assignments" begin
         # Note that using the shorthand syntax :(a = 1, b = 2) to create an expression
