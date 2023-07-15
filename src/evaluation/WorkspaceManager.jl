@@ -18,7 +18,7 @@ Base.@kwdef mutable struct Workspace
     worker::Malt.AbstractWorker
     notebook_id::UUID
     discarded::Bool=false
-    remote_log_channel::Union{Distributed.RemoteChannel,Channel}
+    remote_log_channel::Union{Distributed.RemoteChannel,AbstractChannel}
     module_name::Symbol
     dowork_token::Token=Token()
     nbpkg_was_active::Bool=false

@@ -19,7 +19,6 @@ import Malt
         🍭.options.evaluation.workspace_use_distributed_stdlib = use_distributed_stdlib
 
         # See https://github.com/JuliaPluto/PlutoPkgTestRegistry
-@info 1
         notebook = Notebook([
             Cell("import PlutoPkgTestA"), # cell 1
             Cell("PlutoPkgTestA.MY_VERSION |> Text"),
@@ -37,10 +36,10 @@ import Malt
 
         @test !notebook.nbpkg_ctx_instantiated
         
-@info 2
-update_save_run!(🍭, notebook, notebook.cells[[1, 2, 7, 8]]) # import A and D
-@info 3
-@test noerror(notebook.cells[1])
+
+        update_save_run!(🍭, notebook, notebook.cells[[1, 2, 7, 8]]) # import A and D
+
+        @test noerror(notebook.cells[1])
         @test noerror(notebook.cells[2])
         @test noerror(notebook.cells[7])
         @test noerror(notebook.cells[8])
@@ -54,7 +53,6 @@ update_save_run!(🍭, notebook, notebook.cells[[1, 2, 7, 8]]) # import A and D
         last_install_time = notebook.nbpkg_install_time_ns
 
         terminals = notebook.nbpkg_terminal_outputs
-        @info 4
 
         @test haskey(terminals, "PlutoPkgTestA")
         @test haskey(terminals, "PlutoPkgTestD")
@@ -68,8 +66,7 @@ update_save_run!(🍭, notebook, notebook.cells[[1, 2, 7, 8]]) # import A and D
         @test PkgCompat.get_manifest_version(notebook.nbpkg_ctx, "PlutoPkgTestA") == v"0.3.1"
         @test PkgCompat.get_manifest_version(notebook.nbpkg_ctx, "PlutoPkgTestD") == v"0.1.0"
 
-        @info 5
-
+        
         old_A_terminal = deepcopy(terminals["PlutoPkgTestA"])
         # @show old_A_terminal
 
@@ -85,7 +82,6 @@ update_save_run!(🍭, notebook, notebook.cells[[1, 2, 7, 8]]) # import A and D
         @test notebook.nbpkg_install_time_ns > last_install_time
         @test notebook.nbpkg_busy_packages |> isempty
         last_install_time = notebook.nbpkg_install_time_ns
-        @info 6
 
         @test haskey(terminals, "PlutoPkgTestB")
         @test terminals["PlutoPkgTestA"] == terminals["PlutoPkgTestD"] == old_A_terminal
@@ -97,7 +93,6 @@ update_save_run!(🍭, notebook, notebook.cells[[1, 2, 7, 8]]) # import A and D
 
         # running the 5th cell will import PlutoPkgTestC, putting a 0.2 compatibility bound on PlutoPkgTestA. This means that a notebook restart is required, since PlutoPkgTestA was already loaded at version 0.3.1.
         update_save_run!(🍭, notebook, notebook.cells[[5, 6]])
-        @info 7
 
         @test noerror(notebook.cells[5])
         @test noerror(notebook.cells[6])
@@ -112,7 +107,6 @@ update_save_run!(🍭, notebook, notebook.cells[[1, 2, 7, 8]]) # import A and D
         # running cells again should persist the restart message
 
         update_save_run!(🍭, notebook, notebook.cells[1:8])
-        @info 8
         @test notebook.nbpkg_restart_required_msg !== nothing
 
         Pluto.response_restart_process(Pluto.ClientRequest(
@@ -120,7 +114,6 @@ update_save_run!(🍭, notebook, notebook.cells[[1, 2, 7, 8]]) # import A and D
             notebook=notebook,
         ); run_async=false)
 
-        @info 9
         # @test_nowarn SessionActions.shutdown(🍭, notebook; keep_in_session=true, async=true)
         # @test_nowarn update_save_run!(🍭, notebook, notebook.cells[1:8]; , save=true)
 
@@ -146,7 +139,6 @@ update_save_run!(🍭, notebook, notebook.cells[[1, 2, 7, 8]]) # import A and D
 
 
         update_save_run!(🍭, notebook, notebook.cells[9])
-        @info 10
 
         @test noerror(notebook.cells[9])
         @test notebook.nbpkg_ctx !== nothing
@@ -159,12 +151,10 @@ update_save_run!(🍭, notebook, notebook.cells[[1, 2, 7, 8]]) # import A and D
         @test notebook.cells[10].errored == true
 
 
-        @info 11
         ptoml_contents() = PkgCompat.read_project_file(notebook)
         mtoml_contents() = PkgCompat.read_manifest_file(notebook)
 
         nb_contents() = read(notebook.path, String)
-        @info 12
 
         @testset "Project & Manifest stored in notebook" begin
             
@@ -194,7 +184,6 @@ update_save_run!(🍭, notebook, notebook.cells[[1, 2, 7, 8]]) # import A and D
         ## remove `import Dates`
         setcode!(notebook.cells[9], "")
         update_save_run!(🍭, notebook, notebook.cells[9])
-        @info 13
 
         # removing a stdlib does not require a restart
         @test noerror(notebook.cells[9])
@@ -217,10 +206,8 @@ update_save_run!(🍭, notebook, notebook.cells[[1, 2, 7, 8]]) # import A and D
 
         @test count("PlutoPkgTestD", ptoml_contents()) == 0
 
-        @info 14
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
-        @info 15
     end
 
     simple_import_path = joinpath(@__DIR__, "simple_import.jl")
