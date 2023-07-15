@@ -53,6 +53,7 @@ import Malt
     Sys.iswindows() || @testset "Pluto inside Pluto" begin
         🍭 = ServerSession()
         🍭.options.evaluation.capture_stdout = false
+        🍭.options.evaluation.workspace_use_distributed_stdlib = false
 
         notebook = Notebook([
             Cell("""begin
@@ -63,7 +64,10 @@ import Malt
                 import Pluto
             end"""),
             Cell("""
-            s = Pluto.ServerSession()
+            begin
+                s = Pluto.ServerSession()
+                s.options.evaluation.workspace_use_distributed_stdlib = false
+            end
             """),
             Cell("""
             nb = Pluto.SessionActions.open(s, Pluto.project_relative_path("sample", "Tower of Hanoi.jl"); run_async=false, as_sample=true)
