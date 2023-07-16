@@ -40,7 +40,7 @@ describe("publish_to_js", () => {
         browser = null
     })
 
-    it("Should correctly show published_to_js in cell output, but not in logs", async () => {
+    it("Should correctly show published_to_js in cell output, and in logs", async () => {
         await importNotebook(page, "published_to_js.jl")
         await waitForNoUpdateOngoing(page, { polling: 100 })
         let output_of_published = await page.evaluate(() => {
