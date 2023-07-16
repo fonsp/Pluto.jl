@@ -133,7 +133,7 @@ function notebook_to_js(notebook::Notebook)
                 "cell_id" => cell.cell_id,
                 "depends_on_disabled_cells" => cell.depends_on_disabled_cells,
                 "output" => FirebaseyUtils.ImmutableMarker(cell.output),
-                "published_object_keys" => keys(cell.published_objects),
+                "published_object_keys" => collect(keys(cell.published_objects)),
                 "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,
