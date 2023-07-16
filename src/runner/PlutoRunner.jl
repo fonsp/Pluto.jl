@@ -2126,7 +2126,7 @@ end"""
 const currently_running_cell_id = Ref{UUID}(uuid4())
 
 function _publish(x, id_start, cell_id)::String
-    id = string(notebook_id[], "/", cell_id, "/", id_start)
+    id = "$(notebook_id[])/$cell_id/$id_start"
     d = get!(Dict{String,Any}, cell_published_objects, cell_id)
     d[id] = x
     return id

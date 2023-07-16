@@ -194,17 +194,19 @@ end
     @testset "PlutoRunner API" begin
         🍭 = ServerSession()
         🍭.options.evaluation.workspace_use_distributed = true
+        
+        cid = uuid1()
 
         notebook = Notebook([
             Cell("PlutoRunner.notebook_id[] |> Text"),
-            Cell("""
+            Cell(cid, """
             let
                 # not actually public API but we test it anyways
                 a = PlutoRunner._publish(Dict(
                     "hello" => "world",
                     "xx" => UInt8[6,7,8],
-                ))
-                b = PlutoRunner._publish("cool")
+                ), "aaa", Base.UUID("$cid"))
+                b = PlutoRunner._publish("cool", "bbb", Base.UUID("$cid"))
                 Text((a, b))
             end
             """),
