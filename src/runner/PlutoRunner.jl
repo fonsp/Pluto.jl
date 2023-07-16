@@ -23,11 +23,12 @@ using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
 import Distributed
 import Base64
-import FuzzyCompletions: Completion, ModuleCompletion, PropertyCompletion, FieldCompletion, PathCompletion, DictCompletion, completions, completion_text, score
+import FuzzyCompletions: Completion, BslashCompletion, ModuleCompletion, PropertyCompletion, FieldCompletion, PathCompletion, DictCompletion, completions, completion_text, score
 import Base: show, istextmime
 import UUIDs: UUID, uuid4
 import Dates: DateTime
 import Logging
+import REPL
 
 export @bind
 
@@ -43,6 +44,7 @@ struct CachedMacroExpansion
     expansion_duration::UInt64
     has_pluto_hook_features::Bool
     did_mention_expansion_time::Bool
+    expansion_logs::Vector{Any}
 end
 const cell_expanded_exprs = Dict{UUID,CachedMacroExpansion}()
 
@@ -80,15 +82,17 @@ const workspace_preamble = [
     :(show, showable, showerror, repr, string, print, println), # https://github.com/JuliaLang/julia/issues/18181
 ]
 
+const PLUTO_INNER_MODULE_NAME = Symbol("#___this_pluto_module_name")
+
 const moduleworkspace_count = Ref(0)
 function increment_current_module()::Symbol
     id = (moduleworkspace_count[] += 1)
     new_workspace_name = Symbol("workspace#", id)
 
-    new_module = Core.eval(Main, :(
+    Core.eval(Main, :(
         module $(new_workspace_name)
             $(workspace_preamble...)
-            const var"#___this_module_name" = $(new_workspace_name)
+            const $(PLUTO_INNER_MODULE_NAME) = $(new_workspace_name)
         end
     ))
 
@@ -119,8 +123,7 @@ We don't re-build the macro in every workspace, so we need to remove these refs 
 TODO? Don't remove the refs, but instead replace them with a new ref pointing to the new module?
 """
 function collect_and_eliminate_globalrefs!(ref::GlobalRef, mutable_ref_list=[])
-    test_mod_name = nameof(ref.mod) |> string
-    if startswith(test_mod_name, "workspace#")
+    if is_pluto_workspace(ref.mod)
         new_name = gensym(ref.name)
         push!(mutable_ref_list, ref.name => new_name)
         new_name
@@ -175,12 +178,23 @@ replace_pluto_properties_in_expr(::GiveMeCellID; cell_id, kwargs...) = cell_id
 replace_pluto_properties_in_expr(::GiveMeRerunCellFunction; rerun_cell_function, kwargs...) = rerun_cell_function
 replace_pluto_properties_in_expr(::GiveMeRegisterCleanupFunction; register_cleanup_function, kwargs...) = register_cleanup_function
 replace_pluto_properties_in_expr(expr::Expr; kwargs...) = Expr(expr.head, map(arg -> replace_pluto_properties_in_expr(arg; kwargs...), expr.args)...)
-replace_pluto_properties_in_expr(m::Module; kwargs...) = if startswith(string(nameof(m)), "workspace#")
-    Symbol("#___this_module_name")
+replace_pluto_properties_in_expr(m::Module; kwargs...) = if is_pluto_workspace(m)
+    PLUTO_INNER_MODULE_NAME
 else
     m
 end
 replace_pluto_properties_in_expr(other; kwargs...) = other
+function replace_pluto_properties_in_expr(ln::LineNumberNode; cell_id, kwargs...) # See https://github.com/fonsp/Pluto.jl/pull/2241
+    file = string(ln.file)
+    out = if endswith(file, string(cell_id))
+        # We already have the correct cell_id in this LineNumberNode
+        ln
+    else
+        # We append to the LineNumberNode file #@#==# + cell_id
+        LineNumberNode(ln.line, Symbol(file * "#@#==#$(cell_id)"))
+    end
+    return out
+end
 
 "Similar to [`replace_pluto_properties_in_expr`](@ref), but just checks for existance and doesn't check for [`GiveMeCellID`](@ref)"
 has_hook_style_pluto_properties_in_expr(::GiveMeRerunCellFunction) = true
@@ -242,9 +256,9 @@ module CantReturnInPluto
     replace_returns_with_error(other) = other
 
     "Go through a quoted expression and remove returns"
-    function replace_returns_with_error_in_interpolation(ex::Expr)
-        if ex.head == :$
-            Expr(:$, replace_returns_with_error_in_interpolation(ex.args[1]))
+    function replace_returns_with_error_in_interpolation(expr::Expr)
+        if expr.head == :$
+            Expr(:$, replace_returns_with_error_in_interpolation(expr.args[1]))
         else
             # We are still in a quote, so we do go deeper, but we keep ignoring everything except :$'s
             Expr(expr.head, map(arg -> replace_returns_with_error_in_interpolation(arg), expr.args)...)
@@ -253,11 +267,10 @@ module CantReturnInPluto
     replace_returns_with_error_in_interpolation(ex) = ex
 end
 
-
-function try_macroexpand(mod, cell_uuid, expr)
+function try_macroexpand(mod::Module, notebook_id::UUID, cell_id::UUID, expr; capture_stdout::Bool=true)
     # Remove the precvious cached expansion, so when we error somewhere before we update,
     # the old one won't linger around and get run accidentally.
-    delete!(cell_expanded_exprs, cell_uuid)
+    pop!(cell_expanded_exprs, cell_id, nothing)
 
     # Remove toplevel block, as that screws with the computer and everything
     expr_not_toplevel = if expr.head == :toplevel || expr.head == :block
@@ -267,9 +280,21 @@ function try_macroexpand(mod, cell_uuid, expr)
         Expr(:block, expr)
     end
 
-    elapsed_ns = time_ns()
-    expanded_expr = macroexpand(mod, expr_not_toplevel)::Expr
-    elapsed_ns = time_ns() - elapsed_ns
+    logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
+    if logger.workspace_count < moduleworkspace_count[]
+        logger = pluto_cell_loggers[cell_id] = PlutoCellLogger(notebook_id, cell_id)
+    end
+
+    capture_logger = CaptureLogger(nothing, logger, Dict[])
+
+    expanded_expr, elapsed_ns = with_logger_and_io_to_logs(capture_logger; capture_stdout, stdio_loglevel=stdout_log_level) do
+        elapsed_ns = time_ns()
+        expanded_expr = macroexpand(mod, expr_not_toplevel)::Expr
+        elapsed_ns = time_ns() - elapsed_ns
+        expanded_expr, elapsed_ns
+    end
+
+    logs = capture_logger.logs
 
     # Removes baked in references to the module this was macroexpanded in.
     # Fix for https://github.com/fonsp/Pluto.jl/issues/1112
@@ -277,19 +302,20 @@ function try_macroexpand(mod, cell_uuid, expr)
     expr_without_globalrefs = globalref_to_workspaceref(expr_without_return)
 
     has_pluto_hook_features = has_hook_style_pluto_properties_in_expr(expr_without_globalrefs)
-    expr_to_save = replace_pluto_properties_in_expr(expr_without_globalrefs,
-        cell_id=cell_uuid,
-        rerun_cell_function=() -> rerun_cell_from_notebook(cell_uuid),
-        register_cleanup_function=(fn) -> UseEffectCleanups.register_cleanup(fn, cell_uuid),
+    expr_to_save = replace_pluto_properties_in_expr(expr_without_globalrefs;
+        cell_id,
+        rerun_cell_function=() -> rerun_cell_from_notebook(cell_id),
+        register_cleanup_function=(fn) -> UseEffectCleanups.register_cleanup(fn, cell_id),
     )
 
     did_mention_expansion_time = false
-    cell_expanded_exprs[cell_uuid] = CachedMacroExpansion(
+    cell_expanded_exprs[cell_id] = CachedMacroExpansion(
         expr_hash(expr),
         expr_to_save,
         elapsed_ns,
         has_pluto_hook_features,
-        did_mention_expansion_time
+        did_mention_expansion_time,
+        logs,
     )
 
     return (sanitize_expr(expr_to_save), expr_hash(expr_to_save))
@@ -399,7 +425,10 @@ struct OutputNotDefined end
 function compute(m::Module, computer::Computer)
     # 1. get the referenced global variables
     # this might error if the global does not exist, which is exactly what we want
-    input_global_values = getfield.([m], computer.input_globals)
+    input_global_values = Vector{Any}(undef, length(computer.input_globals))
+    for (i, s) in enumerate(computer.input_globals)
+        input_global_values[i] = getfield(m, s)
+    end
 
     # 2. run the function
     out = Base.invokelatest(computer.f, input_global_values...)
@@ -490,16 +519,16 @@ function run_expression(
 
     old_currently_running_cell_id = currently_running_cell_id[]
     currently_running_cell_id[] = cell_id
-    logger = pluto_loggers[notebook_id]
-    logger.currently_running_cell_id[] = cell_id
+
+    logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
+    if logger.workspace_count < moduleworkspace_count[]
+        logger = pluto_cell_loggers[cell_id] = PlutoCellLogger(notebook_id, cell_id)
+    end
 
     # reset published objects
     cell_published_objects[cell_id] = Dict{String,Any}()
 
     # reset registered bonds
-    for s in get(cell_registered_bond_names, cell_id, Set{Symbol}())
-        delete!(registered_bond_elements, s)
-    end
     cell_registered_bond_names[cell_id] = Set{Symbol}()
 
     # If the cell contains macro calls, we want those macro calls to preserve their identity,
@@ -511,7 +540,7 @@ function run_expression(
     # .... But ideally we wouldn't re-macroexpand and store the error the first time (TODO-ish)
     if !haskey(cell_expanded_exprs, cell_id) || cell_expanded_exprs[cell_id].original_expr_hash != expr_hash(expr)
         try
-            try_macroexpand(m, cell_id, expr)
+            try_macroexpand(m, notebook_id, cell_id, expr; capture_stdout)
         catch e
             result = CapturedException(e, stacktrace(catch_backtrace()))
             cell_results[cell_id], cell_runtimes[cell_id] = (result, nothing)
@@ -524,6 +553,13 @@ function run_expression(
     original_expr = expr
     expr = expanded_cache.expanded_expr
 
+    # Re-play logs from expansion cache
+    for log in expanded_cache.expansion_logs
+        (level, msg, _module, group, id, file, line, kwargs) = log
+        Logging.handle_message(logger, level, msg, _module, group, id, file, line; kwargs...)
+    end
+    empty!(expanded_cache.expansion_logs)
+
     # We add the time it took to macroexpand to the time for the first call,
     # but we make sure we don't mention it on subsequent calls
     expansion_runtime = if expanded_cache.did_mention_expansion_time === false
@@ -533,7 +569,8 @@ function run_expression(
             expanded_cache.expanded_expr,
             expanded_cache.expansion_duration,
             expanded_cache.has_pluto_hook_features,
-            did_mention_expansion_time
+            did_mention_expansion_time,
+            expanded_cache.expansion_logs,
         )
         expanded_cache.expansion_duration
     else
@@ -545,37 +582,35 @@ function run_expression(
         throw("Expression still contains macro calls!!")
     end
 
-    result, runtime = Logging.with_logger(logger) do # about 200ns overhead
-        with_io_to_logs(; enabled=capture_stdout, loglevel=stdout_log_level) do # about 3ms overhead i think?
-            if function_wrapped_info === nothing
-                toplevel_expr = Expr(:toplevel, expr)
-                wrapped = timed_expr(toplevel_expr)
-                ans, runtime = run_inside_trycatch(m, wrapped)
-                (ans, add_runtimes(runtime, expansion_runtime))
-            else
-                expr_id = forced_expr_id !== nothing ? forced_expr_id : expr_hash(expr)
-                local computer = get(computers, cell_id, nothing)
-                if computer === nothing || computer.expr_id !== expr_id
-                    try
-                        computer = register_computer(expr, expr_id, cell_id, collect.(function_wrapped_info)...)
-                    catch e
-                        # @error "Failed to generate computer function" expr exception=(e,stacktrace(catch_backtrace()))
-                        return run_expression(m, original_expr, notebook_id, cell_id, nothing; user_requested_run=user_requested_run)
-                    end
+    result, runtime = with_logger_and_io_to_logs(logger; capture_stdout, stdio_loglevel=stdout_log_level) do # about 200ns + 3ms overhead
+        if function_wrapped_info === nothing
+            toplevel_expr = Expr(:toplevel, expr)
+            wrapped = timed_expr(toplevel_expr)
+            ans, runtime = run_inside_trycatch(m, wrapped)
+            (ans, add_runtimes(runtime, expansion_runtime))
+        else
+            expr_id = forced_expr_id !== nothing ? forced_expr_id : expr_hash(expr)
+            local computer = get(computers, cell_id, nothing)
+            if computer === nothing || computer.expr_id !== expr_id
+                try
+                    computer = register_computer(expr, expr_id, cell_id, collect.(function_wrapped_info)...)
+                catch e
+                    # @error "Failed to generate computer function" expr exception=(e,stacktrace(catch_backtrace()))
+                    return run_expression(m, original_expr, notebook_id, cell_id, nothing; user_requested_run=user_requested_run)
                 end
-
-                # This check solves the problem of a cell like `false && variable_that_does_not_exist`. This should run without error, but will fail in our function-wrapping-magic because we get the value of `variable_that_does_not_exist` before calling the generated function.
-                # The fix is to detect this situation and run the expression in the classical way.
-                ans, runtime = if any(name -> !isdefined(m, name), computer.input_globals)
-                    # Do run_expression but with function_wrapped_info=nothing so it doesn't go in a Computer()
-                    # @warn "Got variables that don't exist, running outside of computer" not_existing=filter(name -> !isdefined(m, name), computer.input_globals)
-                    run_expression(m, original_expr, notebook_id, cell_id; user_requested_run)
-                else
-                    run_inside_trycatch(m, () -> compute(m, computer))
-                end
-
-                ans, add_runtimes(runtime, expansion_runtime)
             end
+
+            # This check solves the problem of a cell like `false && variable_that_does_not_exist`. This should run without error, but will fail in our function-wrapping-magic because we get the value of `variable_that_does_not_exist` before calling the generated function.
+            # The fix is to detect this situation and run the expression in the classical way.
+            ans, runtime = if any(name -> !isdefined(m, name), computer.input_globals)
+                # Do run_expression but with function_wrapped_info=nothing so it doesn't go in a Computer()
+                # @warn "Got variables that don't exist, running outside of computer" not_existing=filter(name -> !isdefined(m, name), computer.input_globals)
+                run_expression(m, original_expr, notebook_id, cell_id; user_requested_run)
+            else
+                run_inside_trycatch(m, () -> compute(m, computer))
+            end
+
+            ans, add_runtimes(runtime, expansion_runtime)
         end
     end
     
@@ -618,6 +653,8 @@ end
 # DELETING GLOBALS
 ###
 
+# This function checks whether the symbol provided to it represents a name of a memoized_cache variable from Memoize.jl, see https://github.com/fonsp/Pluto.jl/issues/2305 for more details
+is_memoized_cache(s::Symbol) = startswith(string(s), "##") && endswith(string(s), "_memoized_cache")
 
 function do_reimports(workspace_name, module_imports_to_move::Set{Expr})
     for expr in module_imports_to_move
@@ -643,6 +680,7 @@ function move_vars(
     methods_to_delete::Set{Tuple{UUID,Vector{Symbol}}},
     module_imports_to_move::Set{Expr},
     invalidated_cell_uuids::Set{UUID},
+    keep_registered::Set{Symbol},
 )
     old_workspace = getfield(Main, old_workspace_name)
     new_workspace = getfield(Main, new_workspace_name)
@@ -666,6 +704,10 @@ function move_vars(
         if (symbol ∈ vars_to_delete) || (symbol ∈ name_symbols_of_funcs_with_no_methods_left)
             # var will be redefined - unreference the value so that GC can snoop it
 
+            if haskey(registered_bond_elements, symbol) && symbol ∉ keep_registered
+                delete!(registered_bond_elements, symbol)
+            end
+
             # free memory for other variables
             # & delete methods created in the old module:
             # for example, the old module might extend an imported function:
@@ -676,15 +718,19 @@ function move_vars(
 
                 try
                     # We are clearing this variable from the notebook, so we need to find it's root
-                    # Just clearing out the definition in the old_module, besides giving an error (so that's what that `catch; end` is for)
+                    # If its root is "controlled" by Pluto's workspace system (and is not a package module for example),
+                    # we are just clearing out the definition in the old_module, besides giving an error
+                    # (so that's what that `catch; end` is for)
                     # will not actually free it from Julia, the older module will still have a reference.
                     module_to_remove_from = which(old_workspace, symbol)
-                    Core.eval(module_to_remove_from, :($(symbol) = nothing))
+                    if is_pluto_controlled(module_to_remove_from) && !isconst(module_to_remove_from, symbol)
+                        Core.eval(module_to_remove_from, :($(symbol) = nothing))
+                    end
                 catch; end # sometimes impossible, eg. when $symbol was constant
             end
         else
             # var will not be redefined in the new workspace, move it over
-            if !(symbol == :eval || symbol == :include || string(symbol)[1] == '#' || startswith(string(symbol), "workspace#"))
+            if !(symbol == :eval || symbol == :include || (string(symbol)[1] == '#' && !is_memoized_cache(symbol)) || startswith(string(symbol), "workspace#"))
                 try
                     getfield(old_workspace, symbol)
 
@@ -841,12 +887,11 @@ function formatted_result_of(
     ends_with_semicolon::Bool, 
     known_published_objects::Vector{String}=String[],
     showmore::Union{ObjectDimPair,Nothing}=nothing, 
-    workspace::Module=Main,
+    workspace::Module=Main;
+    capture_stdout::Bool=true,
 )::FormattedCellResult
     load_integrations_if_needed()
     currently_running_cell_id[] = cell_id
-    logger = pluto_loggers[notebook_id]
-    logger.currently_running_cell_id[] = cell_id
 
     extra_items = if showmore === nothing
         tree_display_extra_items[cell_id] = Dict{ObjectDimPair,Int64}()
@@ -861,25 +906,28 @@ function formatted_result_of(
     errored = ans isa CapturedException
 
     output_formatted = if (!ends_with_semicolon || errored)
-        format_output(ans; context=IOContext(
+        logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
+        with_logger_and_io_to_logs(logger; capture_stdout, stdio_loglevel=stdout_log_level) do
+            format_output(ans; context=IOContext(
             default_iocontext, 
             :extra_items=>extra_items, 
             :module => workspace,
             :pluto_notebook_id => notebook_id,
             :pluto_cell_id => cell_id,
         ))
+        end
     else
         ("", MIME"text/plain"())
     end
-    
+
     published_objects = get(cell_published_objects, cell_id, Dict{String,Any}())
-    
+
     for k in known_published_objects
         if haskey(published_objects, k)
             published_objects[k] = nothing
         end
     end
-    
+
     return (;
         output_formatted,
         errored,
@@ -940,7 +988,7 @@ const default_stdout_iocontext = IOContext(devnull,
     :is_pluto => false,
 )
 
-const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
+const imagemimes = MIME[MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
 # in descending order of coolness
 # text/plain always matches - almost always
 """
@@ -948,7 +996,7 @@ The MIMEs that Pluto supports, in order of how much I like them.
 
 `text/plain` should always match - the difference between `show(::IO, ::MIME"text/plain", x)` and `show(::IO, x)` is an unsolved mystery.
 """
-const allmimes = [MIME"application/vnd.pluto.table+object"(); MIME"application/vnd.pluto.divelement+object"(); MIME"text/html"(); imagemimes; MIME"application/vnd.pluto.tree+object"(); MIME"text/latex"(); MIME"text/plain"()]
+const allmimes = MIME[MIME"application/vnd.pluto.table+object"(); MIME"application/vnd.pluto.divelement+object"(); MIME"text/html"(); imagemimes; MIME"application/vnd.pluto.tree+object"(); MIME"text/latex"(); MIME"text/plain"()]
 
 
 """
@@ -979,33 +1027,41 @@ format_output(@nospecialize(x); context=default_iocontext) = format_output_defau
 
 format_output(::Nothing; context=default_iocontext) = ("", MIME"text/plain"())
 
+"Downstream packages can set this to false to obtain unprettified stack traces."
+const PRETTY_STACKTRACES = Ref(true)
+
 function format_output(val::CapturedException; context=default_iocontext)
-    ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
-    stack = [s for (s, _) in val.processed_bt]
+    stacktrace = if PRETTY_STACKTRACES[]
+        ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
+        stack = [s for (s, _) in val.processed_bt]
 
-    # function_wrap_index = findfirst(f -> occursin("function_wrapped_cell", String(f.func)), stack)
+        # function_wrap_index = findfirst(f -> occursin("function_wrapped_cell", String(f.func)), stack)
 
-    function_wrap_index = findlast(f -> occursin("#==#", String(f.file)), stack)
+        function_wrap_index = findlast(f -> occursin("#==#", String(f.file)), stack)
 
-    if function_wrap_index === nothing
-        for _ in 1:2
-            until = findfirst(b -> b.func == :eval, reverse(stack))
-            stack = until === nothing ? stack : stack[1:end - until]
+        if function_wrap_index === nothing
+            for _ in 1:2
+                until = findfirst(b -> b.func == :eval, reverse(stack))
+                stack = until === nothing ? stack : stack[1:end - until]
+            end
+        else
+            stack = stack[1:function_wrap_index]
+        end
+
+        pretty = map(stack) do s
+            Dict(
+                :call => pretty_stackcall(s, s.linfo),
+                :inlined => s.inlined,
+                :file => basename(String(s.file)),
+                :path => String(s.file),
+                :line => s.line,
+            )
         end
     else
-        stack = stack[1:function_wrap_index]
+        val
     end
 
-    pretty = map(stack) do s
-        Dict(
-            :call => pretty_stackcall(s, s.linfo),
-            :inlined => s.inlined,
-            :file => basename(String(s.file)),
-            :path => String(s.file),
-            :line => s.line,
-        )
-    end
-    Dict{Symbol,Any}(:msg => sprint(try_showerror, val.ex), :stacktrace => pretty), MIME"application/vnd.pluto.stacktrace+object"()
+    Dict{Symbol,Any}(:msg => sprint(try_showerror, val.ex), :stacktrace => stacktrace), MIME"application/vnd.pluto.stacktrace+object"()
 end
 
 function format_output(binding::Base.Docs.Binding; context=default_iocontext)
@@ -1047,6 +1103,14 @@ function pretty_stackcall(frame::Base.StackFrame, linfo::Core.MethodInstance)
     end
 end
 
+function pretty_stackcall(frame::Base.StackFrame, linfo::Method)
+    sprint(Base.show_tuple_as_call, linfo.name, linfo.sig)
+end
+
+function pretty_stackcall(frame::Base.StackFrame, linfo::Module)
+    sprint(Base.show, linfo)
+end
+
 "Return a `(String, Any)` tuple containing function output as the second entry."
 function show_richest_withreturned(context::IOContext, @nospecialize(args))
     buffer = IOBuffer(; sizehint=0)
@@ -1079,11 +1143,19 @@ function use_tree_viewer_for_struct(@nospecialize(x::T))::Bool where T
     end
 end
 
+"""
+    is_mime_enabled(::MIME) -> Bool
+
+Return whether the argument's mimetype is enabled.
+This defaults to `true`, but additional dispatches can be set to `false` by downstream packages.
+"""
+is_mime_enabled(::MIME) = true
+
 "Return the first mimetype in `allmimes` which can show `x`."
 function mimetype(x)
     # ugly code to fix an ugly performance problem
     for m in allmimes
-        if pluto_showable(m, x)
+        if pluto_showable(m, x) && is_mime_enabled(m)
             return m
         end
     end
@@ -1098,7 +1170,7 @@ Like two-argument `Base.show`, except:
 function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
     mime = mimetype(x)
 
-    if mime isa MIME"text/plain" && use_tree_viewer_for_struct(x)
+    if mime isa MIME"text/plain" && is_mime_enabled(MIME"application/vnd.pluto.tree+object"()) && use_tree_viewer_for_struct(x)
         tree_data(x, io), MIME"application/vnd.pluto.tree+object"()
     elseif mime isa MIME"application/vnd.pluto.tree+object"
         try
@@ -1478,7 +1550,6 @@ const integrations = Integration[
 
             function table_data(x::Any, io::Context)
                 rows = Tables.rows(x)
-
                 my_row_limit = get_my_display_limit(x, 1, 0, io, table_row_display_limit, table_row_display_limit_increase)
 
                 # TODO: the commented line adds support for lazy loading columns, but it uses the same extra_items counter as the rows. So clicking More Rows will also give more columns, and vice versa, which isn't ideal. To fix, maybe use (objectid,dimension) as index instead of (objectid)?
@@ -1511,8 +1582,11 @@ const integrations = Integration[
 
                 if truncate_rows
                     push!(row_data, "more")
-                    if applicable(lastindex, rows)
-                        push!(row_data, (length(rows), row_data_for(last(rows))))
+
+                    # In some environments this fails. Not sure why.
+                    last_row = applicable(lastindex, rows) ? try last(rows) catch e nothing end : nothing
+                    if !isnothing(last_row)
+                        push!(row_data, (length(rows), row_data_for(last_row)))
                     end
                 end
                 
@@ -1532,6 +1606,11 @@ const integrations = Integration[
             end
 
 
+            #=
+            If the object we're trying to fileview provides rowaccess, let's try to show it. This is guaranteed to be fast
+            (while Table.rows() may be slow). If the object is a lazy iterator, the show method will probably crash and return text repr.
+            That's good because we don't want the show method of lazy iterators (e.g. database cursors) to be changing the (external)
+            iterator implicitly =#
             pluto_showable(::MIME"application/vnd.pluto.table+object", x::Any) = try Tables.rowaccess(x)::Bool catch; false end
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::Type) = false
             pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:NamedTuple}) = false
@@ -1545,14 +1624,24 @@ const integrations = Integration[
         code = quote
             approx_size(p::Plots.Plot) = try
                 sum(p.series_list; init=0) do series
-                    length(series[:y])
+                    length(something(get(series, :y, ()), ()))
                 end
             catch e
                 @warn "Failed to guesstimate plot size" exception=(e,catch_backtrace())
                 0
             end
             const max_plot_size = 8000
-            pluto_showable(::MIME"image/svg+xml", p::Plots.Plot{Plots.GRBackend}) = approx_size(p) <= max_plot_size
+            function pluto_showable(::MIME"image/svg+xml", p::Plots.Plot{Plots.GRBackend})
+                format = try
+                    p.attr[:html_output_format]
+                catch
+                    :auto
+                end
+                
+                format === :svg || (
+                    format === :auto && approx_size(p) <= max_plot_size
+                )
+            end
             pluto_showable(::MIME"text/html", p::Plots.Plot{Plots.GRBackend}) = false
         end,
     ),
@@ -1616,9 +1705,46 @@ catch
 end
 completion_description(::Completion) = nothing
 
+completion_detail(::Completion) = nothing
+completion_detail(completion::BslashCompletion) =
+    haskey(REPL.REPLCompletions.latex_symbols, completion.bslash) ?
+        REPL.REPLCompletions.latex_symbols[completion.bslash] :
+    haskey(REPL.REPLCompletions.emoji_symbols, completion.bslash) ?
+        REPL.REPLCompletions.emoji_symbols[completion.bslash] :
+        nothing
+
 function is_pluto_workspace(m::Module)
-    mod_name = nameof(m) |> string
-    startswith(mod_name, "workspace#")
+    isdefined(m, PLUTO_INNER_MODULE_NAME) &&
+        which(m, PLUTO_INNER_MODULE_NAME) == m
+end
+
+"""
+Returns wether the module is a pluto workspace or any of its ancestors is.
+
+For example, writing the following julia code in Pluto:
+
+```julia
+import Plots
+
+module A
+end
+```
+
+will give the following module tree:
+
+```
+Main                 (not pluto controlled)
+└── var"workspace#1" (pluto controlled)
+    └── A            (pluto controlled)
+└── var"workspace#2" (pluto controlled)
+    └── A            (pluto controlled)
+Plots                (not pluto controlled)
+```
+"""
+function is_pluto_controlled(m::Module)
+    is_pluto_workspace(m) && return true
+    parent = parentmodule(m)
+    parent != m && is_pluto_controlled(parent)
 end
 
 function completions_exported(cs::Vector{<:Completion})
@@ -1634,12 +1760,16 @@ function completions_exported(cs::Vector{<:Completion})
     end
 end
 
-completion_from_notebook(c::ModuleCompletion) = is_pluto_workspace(c.parent) && c.mod != "include" && c.mod != "eval"
+completion_from_notebook(c::ModuleCompletion) =
+    is_pluto_workspace(c.parent) &&
+    c.mod != "include" &&
+    c.mod != "eval" &&
+    !startswith(c.mod, "#")
 completion_from_notebook(c::Completion) = false
 
-only_special_completion_types(c::PathCompletion) = :path
-only_special_completion_types(c::DictCompletion) = :dict
-only_special_completion_types(c::Completion) = nothing
+only_special_completion_types(::PathCompletion) = :path
+only_special_completion_types(::DictCompletion) = :dict
+only_special_completion_types(::Completion) = nothing
 
 "You say Linear, I say Algebra!"
 function completion_fetcher(query, pos, workspace::Module)
@@ -1659,13 +1789,16 @@ function completion_fetcher(query, pos, workspace::Module)
         filter!(isenough ∘ score, results) # too many candiates otherwise
     end
 
-    texts = completion_text.(results)
-    descriptions = completion_description.(results)
     exported = completions_exported(results)
-    from_notebook = completion_from_notebook.(results)
-    completion_type = only_special_completion_types.(results)
-
-    smooshed_together = collect(zip(texts, descriptions, exported, from_notebook, completion_type))
+    smooshed_together = [
+        (completion_text(result),
+         completion_description(result),
+         rexported,
+         completion_from_notebook(result),
+         only_special_completion_types(result),
+         completion_detail(result))
+        for (result, rexported) in zip(results, exported)
+    ]
 
     p = if endswith(query, '.')
         sortperm(smooshed_together; alg=MergeSort, by=basic_completion_priority)
@@ -1675,8 +1808,8 @@ function completion_fetcher(query, pos, workspace::Module)
         sortperm(scores .+ 3.0 * exported; alg=MergeSort, rev=true)
     end
 
-    final = smooshed_together[p]
-    (final, loc, found)
+    permute!(smooshed_together, p)
+    (smooshed_together, loc, found)
 end
 
 is_dot_completion(::Union{ModuleCompletion,PropertyCompletion,FieldCompletion}) = true
@@ -1733,24 +1866,99 @@ binding_from(s::Symbol, workspace::Module) = Docs.Binding(workspace, s)
 binding_from(r::GlobalRef, workspace::Module) = Docs.Binding(r.mod, r.name)
 binding_from(other, workspace::Module) = error("Invalid @var syntax `$other`.")
 
+const DOC_SUGGESTION_LIMIT = 10
+
+struct Suggestion
+    match::String
+    query::String
+end
+
+# inspired from REPL.printmatch()
+function Base.show(io::IO, ::MIME"text/html", suggestion::Suggestion)
+    print(io, "<a href=\"@ref\"><code>")
+    is, _ = REPL.bestmatch(suggestion.query, suggestion.match)
+    for (i, char) in enumerate(suggestion.match)
+        esc_c = get(Markdown._htmlescape_chars, char, char)
+        if i in is
+            print(io, "<b>", esc_c, "</b>")
+        else
+            print(io, esc_c)
+        end
+    end
+    print(io, "</code></a>")
+end
+
 "You say doc_fetcher, I say You say doc_fetcher, I say You say doc_fetcher, I say You say doc_fetcher, I say ...!!!!"
 function doc_fetcher(query, workspace::Module)
     try
-        value = binding_from(Meta.parse(query), workspace)
-        doc_md = Docs.doc(value)
+        parsed_query = Meta.parse(query; raise=false, depwarn=false)
 
-        if !showable(MIME("text/html"), doc_md)
-            # PyPlot returns `Text{String}` objects from their docs...
-            # which is a bit silly, but turns out it actuall is markdown if you look hard enough.
-            doc_md = Markdown.parse(repr(doc_md))
+        doc_md = if Meta.isexpr(parsed_query, (:incomplete, :error, :return)) && haskey(Docs.keywords, Symbol(query))
+            Docs.parsedoc(Docs.keywords[Symbol(query)])
+        else
+            binding = binding_from(parsed_query, workspace)
+            doc_md = Docs.doc(binding)
+
+            if !showable(MIME("text/html"), doc_md)
+                # PyPlot returns `Text{String}` objects from their docs...
+                # which is a bit silly, but turns out it actuall is markdown if you look hard enough.
+                doc_md = Markdown.parse(repr(doc_md))
+            end
+
+            improve_docs!(doc_md, parsed_query, binding)
         end
-        
+
         (repr(MIME("text/html"), doc_md), :👍)
     catch ex
         (nothing, :👎)
     end
 end
 
+function improve_docs!(doc_md::Markdown.MD, query::Symbol, binding::Docs.Binding)
+    # Reverse latex search ("\scrH" -> "\srcH<tab>")
+
+    symbol = string(query)
+    latex = REPL.symbol_latex(symbol)
+
+    if !isempty(latex)
+        push!(doc_md.content,
+              Markdown.HorizontalRule(),
+              Markdown.Paragraph([
+                  Markdown.Code(symbol),
+                  " can be typed by ",
+                  Markdown.Code(latex),
+                  Base.Docs.HTML("<kbd>&lt;tab&gt;</kbd>"),
+                  ".",
+              ]))
+    end
+
+    # Add suggestions results if no docstring was found
+
+    if !Docs.defined(binding) &&
+        haskey(doc_md.meta, :results) &&
+        isempty(doc_md.meta[:results])
+
+        suggestions = REPL.accessible(binding.mod)
+        suggestions_scores = map(s -> REPL.fuzzyscore(symbol, s), suggestions)
+        removed_indices = [i for (i, s) in enumerate(suggestions_scores) if s < 0]
+        deleteat!(suggestions_scores, removed_indices)
+        deleteat!(suggestions, removed_indices)
+
+        perm = sortperm(suggestions_scores; rev=true)
+        permute!(suggestions, perm)
+        links = map(s -> Suggestion(s, symbol), @view(suggestions[begin:min(end,DOC_SUGGESTION_LIMIT)]))
+
+        if length(links) > 0
+            push!(doc_md.content,
+                  Markdown.HorizontalRule(),
+                  Markdown.Paragraph(["Similar result$(length(links) > 1 ? "s" : ""):"]),
+                  Markdown.List(links))
+        end
+    end
+
+    doc_md
+end
+improve_docs!(other, _, _) = other
 
 
 
@@ -1779,9 +1987,19 @@ function transform_bond_value(s::Symbol, value_from_js)
     return try
         transform_value_ref[](element, value_from_js)
     catch e
-        @error "AbstractPlutoDingetjes: Bond value transformation errored." exception=(e, catch_backtrace())
-        (Text("❌ AbstractPlutoDingetjes: Bond value transformation errored."), e, stacktrace(catch_backtrace()), value_from_js)
+        @error "🚨 AbstractPlutoDingetjes: Bond value transformation errored." exception=(e, catch_backtrace())
+        (;
+            message=Text("🚨 AbstractPlutoDingetjes: Bond value transformation errored."), 
+            exception=Text(
+                sprint(showerror, e, stacktrace(catch_backtrace()))
+            ),
+            value_from_js,
+        )
     end
+end
+
+function get_bond_names(cell_id)
+    get(cell_registered_bond_names, cell_id, Set{Symbol}())
 end
 
 function possible_bond_values(s::Symbol; get_length::Bool=false)
@@ -1843,8 +2061,8 @@ struct Bond
     Bond(element, defines::Symbol) = showable(MIME"text/html"(), element) ? new(element, defines, Base64.base64encode(rand(UInt8,9))) : error("""Can only bind to html-showable objects, ie types T for which show(io, ::MIME"text/html", x::T) is defined.""")
 end
 
-function create_bond(element, defines::Symbol)
-    push!(cell_registered_bond_names[currently_running_cell_id[]], defines)
+function create_bond(element, defines::Symbol, cell_id::UUID)
+    push!(cell_registered_bond_names[cell_id], defines)
     registered_bond_elements[defines] = element
     Bond(element, defines)
 end
@@ -1882,10 +2100,10 @@ The second cell will show the square of `x`, and is updated in real-time as the 
 macro bind(def, element)    
 	if def isa Symbol
 		quote
-            $(load_integrations_if_needed)()
+			$(load_integrations_if_needed)()
 			local el = $(esc(element))
-            global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : $(initial_value_getter_ref)[](el)
-			PlutoRunner.create_bond(el, $(Meta.quot(def)))
+			global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : $(initial_value_getter_ref)[](el)
+			PlutoRunner.create_bond(el, $(Meta.quot(def)), $(GiveMeCellID()))
 		end
 	else
 		:(throw(ArgumentError("""\nMacro example usage: \n\n\t@bind my_number html"<input type='range'>"\n\n""")))
@@ -2113,73 +2331,121 @@ const original_stderr = stderr
 
 const old_logger = Ref{Union{Logging.AbstractLogger,Nothing}}(nothing)
 
-struct PlutoLogger <: Logging.AbstractLogger
+struct PlutoCellLogger <: Logging.AbstractLogger
     stream # some packages expect this field to exist...
     log_channel::Channel{Any}
-    currently_running_cell_id::Ref{UUID}
+    cell_id::UUID
+    workspace_count::Int # Used to invalidate previous logs
+    message_limits::Dict{Any,Int}
+end
+function PlutoCellLogger(notebook_id, cell_id)
+    notebook_log_channel = pluto_log_channels[notebook_id]
+    PlutoCellLogger(nothing,
+                    notebook_log_channel, cell_id,
+                    moduleworkspace_count[],
+                    Dict{Any,Int}())
 end
 
-const pluto_loggers = Dict{UUID,PlutoLogger}()
+struct CaptureLogger <: Logging.AbstractLogger
+    stream
+    logger::PlutoCellLogger
+    logs::Vector{Any}
+end
 
-function Logging.shouldlog(::PlutoLogger, level, _module, _...)
+Logging.shouldlog(cl::CaptureLogger, args...) = Logging.shouldlog(cl.logger, args...)
+Logging.min_enabled_level(cl::CaptureLogger) = Logging.min_enabled_level(cl.logger)
+Logging.catch_exceptions(cl::CaptureLogger) = Logging.catch_exceptions(cl.logger)
+function Logging.handle_message(cl::CaptureLogger, level, msg, _module, group, id, file, line; kwargs...)
+    push!(cl.logs, (level, msg, _module, group, id, file, line, kwargs))
+end
+
+
+const pluto_cell_loggers = Dict{UUID,PlutoCellLogger}() # One logger per cell
+const pluto_log_channels = Dict{UUID,Channel{Any}}() # One channel per notebook
+
+function Logging.shouldlog(logger::PlutoCellLogger, level, _module, _...)
     # Accept logs
+    # - Only if the logger is the latest for this cell using the increasing workspace_count tied to each logger
     # - From the user's workspace module
     # - Info level and above for other modules
     # - LogLevel(-1) because that's what ProgressLogging.jl uses for its messages
+    current_logger = pluto_cell_loggers[logger.cell_id]
+    if current_logger.workspace_count > logger.workspace_count
+        return false
+    end
+
     level = convert(Logging.LogLevel, level)
     (_module isa Module && is_pluto_workspace(_module)) ||
         level >= Logging.Info ||
-        level == Logging.LogLevel(-1) ||
+        level == progress_log_level ||
         level == stdout_log_level
 end
 
-Logging.min_enabled_level(::PlutoLogger) = min(Logging.Debug, stdout_log_level)
-Logging.catch_exceptions(::PlutoLogger) = false
-function Logging.handle_message(pl::PlutoLogger, level, msg, _module, group, id, file, line; kwargs...)
+const BuiltinInts = @static isdefined(Core, :BuiltinInts) ? Core.BuiltinInts : Union{Bool, Int32, Int64, UInt32, UInt64, UInt8, Int128, Int16, Int8, UInt128, UInt16}
+
+Logging.min_enabled_level(::PlutoCellLogger) = min(Logging.Debug, stdout_log_level)
+Logging.catch_exceptions(::PlutoCellLogger) = false
+function Logging.handle_message(pl::PlutoCellLogger, level, msg, _module, group, id, file, line; kwargs...)
     # println("receiving msg from ", _module, " ", group, " ", id, " ", msg, " ", level, " ", line, " ", file)
     # println("with types: ", "_module: ", typeof(_module), ", ", "msg: ", typeof(msg), ", ", "group: ", typeof(group), ", ", "id: ", typeof(id), ", ", "file: ", typeof(file), ", ", "line: ", typeof(line), ", ", "kwargs: ", typeof(kwargs)) # thanks Copilot
 
+    # https://github.com/JuliaLang/julia/blob/eb2e9687d0ac694d0aa25434b30396ee2cfa5cd3/stdlib/Logging/src/ConsoleLogger.jl#L110-L115
+    if get(kwargs, :maxlog, nothing) isa BuiltinInts
+        maxlog = kwargs[:maxlog]
+        remaining = get!(pl.message_limits, id, Int(maxlog)::Int)
+        pl.message_limits[id] = remaining - 1
+        if remaining <= 0
+            return
+        end
+    end
+
     try
-        
+
         yield()
-        
+
         put!(pl.log_channel, Dict{String,Any}(
             "level" => string(level),
-            "msg" => format_output_default(msg isa String ? Text(msg) : msg),
+            "msg" => format_output_default(msg isa AbstractString ? Text(msg) : msg),
             "group" => string(group),
             "id" => string(id),
             "file" => string(file),
-            "cell_id" => pl.currently_running_cell_id[],
+            "cell_id" => pl.cell_id,
             "line" => line isa Union{Int32,Int64} ? line : nothing,
-            "kwargs" => Tuple{String,Any}[(string(k), format_log_value(v)) for (k, v) in kwargs],
-            )
-        )
-        
+            "kwargs" => Tuple{String,Any}[(string(k), format_log_value(v)) for (k, v) in kwargs if k != :maxlog],
+        ))
+
         yield()
-        
-        # Also print to console (disabled)
-        # Logging.handle_message(old_logger[], level, msg, _module, group, id, file, line; kwargs...)
+
     catch e
         println(original_stderr, "Failed to relay log from PlutoRunner")
         showerror(original_stderr, e, stacktrace(catch_backtrace()))
+
+        nothing
     end
 end
 
 format_log_value(v) = format_output_default(v)
 format_log_value(v::Tuple{<:Exception,Vector{<:Any}}) = format_output(CapturedException(v...))
 
+function _send_stdio_output!(output, loglevel)
+    output_str = String(take!(output))
+    if !isempty(output_str)
+        Logging.@logmsg loglevel output_str
+    end
+end
+
 const stdout_log_level = Logging.LogLevel(-555) # https://en.wikipedia.org/wiki/555_timer_IC
+const progress_log_level = Logging.LogLevel(-1) # https://github.com/JuliaLogging/ProgressLogging.jl/blob/0e7933005233722d6214b0debe3316c82b4d14a7/src/ProgressLogging.jl#L36
 function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogLevel=Logging.LogLevel(1))
     if !enabled
         return f()
     end
     # Taken from https://github.com/JuliaDocs/IOCapture.jl/blob/master/src/IOCapture.jl with some modifications to make it log.
-    
+
     # Original implementation from Documenter.jl (MIT license)
     # Save the default output streams.
     default_stdout = stdout
     default_stderr = stderr
-
     # Redirect both the `stdout` and `stderr` streams to a single `Pipe` object.
     pipe = Pipe()
     Base.link_pipe!(pipe; reader_supports_async = true, writer_supports_async = true)
@@ -2192,8 +2458,26 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     # `String`. We need to use an asynchronous task to continously tranfer bytes from the
     # pipe to `output` in order to avoid the buffer filling up and stalling write() calls in
     # user code.
+    execution_done = Ref(false)
     output = IOBuffer()
-    buffer_redirect_task = @async write(output, pipe)
+
+    @async begin
+        pipe_reader = Base.pipe_reader(pipe)
+        try
+            while !eof(pipe_reader)
+                write(output, readavailable(pipe_reader))
+
+                # NOTE: we don't really have to wait for the end of execution to stream output logs
+                #       so maybe we should just enable it?
+                if execution_done[]
+                    _send_stdio_output!(output, loglevel)
+                end
+            end
+            _send_stdio_output!(output, loglevel)
+        catch err
+            @error "Failed to redirect stdout/stderr to logs"  exception=(err,catch_backtrace())
+        end
+    end
 
     # To make the `display` function work.
     redirect_display = TextDisplay(pe_stdout)
@@ -2211,33 +2495,27 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
             # This happens when the user calls `popdisplay()`, fine.
             # @warn "Pluto's display was already removed?" e
         end
+
+        execution_done[] = true
+
         # Restore the original output streams.
         redirect_stdout(default_stdout)
         redirect_stderr(default_stderr)
         close(pe_stdout)
         close(pe_stderr)
-        wait(buffer_redirect_task)
-    end
-
-
-    output = String(take!(output))
-    if !isempty(output)
-        Logging.@logmsg loglevel output
     end
 
     result
 end
 
-
-function setup_plutologger(notebook_id::UUID, log_channel::Channel{Any}; make_global::Bool=false)
-    logger = pluto_loggers[notebook_id] = 
-        PlutoLogger(nothing, log_channel, Ref{UUID}(uuid4()))
-    
-    if make_global
-        old_logger[] = Logging.global_logger()
-        Logging.global_logger(logger)
+function with_logger_and_io_to_logs(f, logger; capture_stdout=true, stdio_loglevel=Logging.LogLevel(1))
+    Logging.with_logger(logger) do
+        with_io_to_logs(f; enabled=capture_stdout, loglevel=stdio_loglevel)
     end
-    logger
+end
+
+function setup_plutologger(notebook_id::UUID, log_channel::Channel{Any})
+    pluto_log_channels[notebook_id] = log_channel
 end
 
 end

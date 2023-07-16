@@ -1,7 +1,7 @@
 import { html, Component, useRef, useLayoutEffect, useState, useEffect } from "../imports/Preact.js"
 import { has_ctrl_or_cmd_pressed } from "../common/KeyboardShortcuts.js"
 
-import "https://cdn.jsdelivr.net/gh/fonsp/rebel-tag-input@1.0.4/lib/rebel-tag-input.mjs"
+import "https://cdn.jsdelivr.net/gh/fonsp/rebel-tag-input@1.0.6/lib/rebel-tag-input.mjs"
 
 //@ts-ignore
 import dialogPolyfill from "https://cdn.jsdelivr.net/npm/dialog-polyfill@0.5.6/dist/dialog-polyfill.esm.min.js"
@@ -85,11 +85,12 @@ export const FrontMatterInput = ({ remote_frontmatter, set_remote_frontmatter })
                     <${Input} type=${field_type(key)} id=${id} value=${value} on_value=${fm_setter(key)} />
                     <button
                         class="deletefield"
+                        title="Delete field"
                         onClick=${() => {
                             set_frontmatter((fm) => Object.fromEntries(Object.entries(fm).filter(([k]) => k !== key)))
                         }}
                     >
-                        ⨯
+                        ✕
                     </button>
                 `
             })}

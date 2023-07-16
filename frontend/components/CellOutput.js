@@ -232,6 +232,15 @@ let execute_dynamic_function = async ({ environment, code }) => {
 }
 
 /**
+ * It is possible for `execute_scripttags` to run during the execution of `execute_scripttags`, and this variable counts the depth of this nesting.
+ *
+ * One case where nesting occurs is when using PlutoRunner.embed_display. In its HTML render, it outputs a `<script>`, which will render a `<pluto-display>` element with content. If that content contains a `<script>` tag, then it will be executed during the execution of the original script, etc.
+ *
+ * See https://github.com/fonsp/Pluto.jl/pull/2329
+ */
+let nested_script_execution_level = 0
+
+/**
  * Runs the code `fn` with `document.currentScript` being set to a new script_element thats
  * is placed on the page where `script_element` was.
  *
@@ -251,13 +260,14 @@ let execute_inside_script_tag_that_replaces = async (script_element, fn) => {
         //@ts-ignore because of https://github.com/microsoft/TypeScript-DOM-lib-generator/issues/1260
         new_script_tag.attributes.setNamedItem(attr.cloneNode(true))
     }
+    const container_name = `____FUNCTION_TO_RUN_INSIDE_SCRIPT_${nested_script_execution_level}`
     new_script_tag.textContent = `{
-        window.____FUNCTION_TO_RUN_INSIDE_SCRIPT.result = window.____FUNCTION_TO_RUN_INSIDE_SCRIPT.function_to_run(window.____FUNCTION_TO_RUN_INSIDE_SCRIPT.currentScript)
+        window.${container_name}.result = window.${container_name}.function_to_run(window.${container_name}.currentScript)
     }`
 
     // @ts-ignore
     // I use this long variable name to pass the function and result to and from the script we created
-    window.____FUNCTION_TO_RUN_INSIDE_SCRIPT = { function_to_run: fn, currentScript: new_script_tag, result: null }
+    window[container_name] = { function_to_run: fn, currentScript: new_script_tag, result: null }
     // Put the script in the DOM, this will run the script
     const parent = script_element.parentNode
     if (parent == null) {
@@ -265,9 +275,9 @@ let execute_inside_script_tag_that_replaces = async (script_element, fn) => {
     }
     parent.replaceChild(new_script_tag, script_element)
     // @ts-ignore - Get the result back
-    let result = await window.____FUNCTION_TO_RUN_INSIDE_SCRIPT.result
+    let result = await window[container_name].result
     // @ts-ignore - Reset the global variable "just in case"
-    window.____FUNCTION_TO_RUN_INSIDE_SCRIPT = { function_to_run: fn, result: null }
+    window[container_name] = { function_to_run: fn, result: null }
 
     return { node: new_script_tag, result: result }
 }
@@ -307,6 +317,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
 
     // Run scripts sequentially
     for (let node of script_nodes) {
+        nested_script_execution_level += 1
         if (node.src != null && node.src !== "") {
             // If it has a remote src="", de-dupe and copy the script to head
             let script_el = Array.from(document.head.querySelectorAll("script")).find((s) => s.src === node.src)
@@ -334,6 +345,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
         } else {
             // If there is no src="", we take the content and run it in an observablehq-like environment
             try {
+                let code = node.innerText
                 let script_id = node.id
                 let old_result = script_id ? previous_results_map.get(script_id) : null
 
@@ -372,7 +384,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
 
                                 ...observablehq_for_cells,
                             },
-                            code: node.innerText,
+                            code,
                         })
                     })
 
@@ -397,6 +409,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                 // TODO: relay to user
             }
         }
+        nested_script_execution_level -= 1
     }
     return results_map
 }
@@ -490,9 +503,11 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
                 })
 
                 if (pluto_actions != null) {
+                    const on_bond_value = (name, value) => pluto_actions?.set_bond?.(name, value) ?? Promise.resolve()
+
                     const bond_nodes = container.querySelectorAll("bond")
                     set_bound_elements_to_their_value(bond_nodes, pluto_bonds ?? {})
-                    add_bonds_listener(bond_nodes, pluto_actions.set_bond, pluto_bonds ?? {}, invalidation)
+                    add_bonds_listener(bond_nodes, on_bond_value, pluto_bonds ?? {}, invalidation)
                     add_bonds_disabled_message_handler(bond_nodes, invalidation)
                 }
 
@@ -512,7 +527,7 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
                 try {
                     container.querySelectorAll("code").forEach((code_element) => {
                         code_element.classList.forEach((className) => {
-                            if (className.startsWith("language-")) {
+                            if (className.startsWith("language-") && !className.endsWith("undefined")) {
                                 // Remove "language-"
                                 let language = className.substring(9)
                                 highlight(code_element, language)
@@ -559,6 +574,7 @@ export let highlight = (code_element, language) => {
                     // its shows up as a comment and can be confusing
                     doc: code_element.innerText
                         .trim()
+                        .replace(/Main.var\"workspace#\d+\"\./, "")
                         .replace(/Main.workspace#\d+\./, "")
                         .replace(/Main.workspace#(\d+)/, 'Main.var"workspace#$1"'),
 

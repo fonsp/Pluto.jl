@@ -1,3 +1,5 @@
+/* This CSS file will be loaded when you print the notebook (@media print), or when the disable_ui frontend parameter is set (in a static HTML export). */
+
 main {
     margin-top: 20px;
     cursor: auto;
@@ -12,4 +14,17 @@ footer,
 pluto-runarea,
 #helpbox-wrapper {
     display: none !important;
+}
+
+/* These next rules only apply to @media print, i.e. the PDF export. We want to hide these items in the PDF, but not in a static HTML. */
+@media print {
+    .edit_or_run,
+    pkg-status-mark,
+    nav#undo_delete {
+        display: none !important;
+    }
+    pluto-input .cm-editor {
+        border-left: 1px solid var(--normal-cell-color);
+        border-radius: 4px !important;
+    }
 }

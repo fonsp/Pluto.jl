@@ -7,9 +7,6 @@ import Distributed
     🍭 = ServerSession()
     🍭.options.evaluation.workspace_use_distributed = false
 
-    fakeclient = ClientSession(:fake, nothing)
-    🍭.connected_clients[fakeclient.id] = fakeclient
-
     @testset "Basic $(parallel ? "distributed" : "single-process")" for parallel in [false, true]
         🍭.options.evaluation.workspace_use_distributed = parallel
         
@@ -28,9 +25,8 @@ import Distributed
             Cell("import Distributed"),
             Cell("Distributed.myid()"),
         ])
-        fakeclient.connected_notebook = notebook
 
-        @test !haskey(WorkspaceManager.workspaces, notebook.notebook_id)
+        @test !haskey(WorkspaceManager.active_workspaces, notebook.notebook_id)
 
         update_run!(🍭, notebook, notebook.cells[1:2])
         @test notebook.cells[1].output.body == notebook.cells[2].output.body
@@ -95,7 +91,6 @@ import Distributed
             Cell("g(x) = 5"),
             Cell("g = 6"),
         ])
-        fakeclient.connected_notebook = notebook
     
 
         update_run!(🍭, notebook, notebook.cells[1])
@@ -159,6 +154,47 @@ import Distributed
         end
     end
 
+    @testset "Simple insert cell" begin
+        notebook = Notebook(Cell[])
+        update_run!(🍭, notebook, notebook.cells)
+
+        insert_cell!(notebook, Cell("a = 1"))
+        update_run!(🍭, notebook, notebook.cells[begin])
+
+        insert_cell!(notebook, Cell("b = 2"))
+        update_run!(🍭, notebook, notebook.cells[begin+1])
+
+        insert_cell!(notebook, Cell("c = 3"))
+        update_run!(🍭, notebook, notebook.cells[begin+2])
+
+        insert_cell!(notebook, Cell("a + b + c"))
+        update_run!(🍭, notebook, notebook.cells[begin+3])
+
+        @test notebook.cells[begin+3].output.body == "6"
+
+        setcode!(notebook.cells[begin+1], "b = 10")
+        update_run!(🍭, notebook, notebook.cells[begin+1])
+
+        @test notebook.cells[begin+3].output.body == "14"
+    end
+
+    @testset "Simple delete cell" begin
+        notebook = Notebook(Cell.([
+            "x = 42",
+            "x",
+        ]))
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test all(noerror, notebook.cells)
+
+        delete_cell!(notebook, notebook.cells[begin])
+        @test length(notebook.cells) == 1
+
+        update_run!(🍭, notebook, Cell[])
+
+        @test expecterror(UndefVarError(:x), notebook.cells[begin])
+    end
+
     @testset ".. as an identifier" begin
         notebook = Notebook(Cell.([
            ".. = 1",
@@ -178,7 +214,6 @@ import Distributed
         write(file, read(normpath(Pluto.project_relative_path("src", "webserver", "Firebasey.jl"))))
 
         notebook = Pluto.load_notebook_nobackup(file)
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells)
 
@@ -252,7 +287,62 @@ import Distributed
         @test comesbefore(run_order, 4, 3)
     end
 
-    
+    @testset "Cleanup of workspace variable" begin
+        notebook = Notebook([
+            Cell("x = 10000"),
+        ])
+
+        update_run!(🍭, notebook, notebook.cells[1:1])
+
+        @test haskey(WorkspaceManager.active_workspaces, notebook.notebook_id)
+        w = fetch(WorkspaceManager.active_workspaces[notebook.notebook_id])
+        oldmod = getproperty(Main, w.module_name)
+
+        setcode!(notebook.cells[begin], "")
+        update_run!(🍭, notebook, notebook.cells[1:1])
+
+        @test isdefined(oldmod, :x)
+        @test isnothing(getproperty(oldmod, :x))
+
+        newmod = getproperty(Main, w.module_name)
+        @test !isdefined(newmod, :x)
+    end
+
+    @testset "Cleanup only Pluto controlled modules" begin
+        notebook = Notebook([
+            Cell("""Core.eval(Main, :(
+                 module var\"Pluto#2443\"
+                    x = 1000
+                 end
+            ))"""),
+            Cell("import .Main.var\"Pluto#2443\": x"),
+            Cell("x"),
+        ])
+
+        update_run!(🍭, notebook, notebook.cells)
+        @test noerror(notebook.cells[1])
+        @test noerror(notebook.cells[2])
+        @test noerror(notebook.cells[3])
+
+        @test haskey(WorkspaceManager.active_workspaces, notebook.notebook_id)
+        w = fetch(WorkspaceManager.active_workspaces[notebook.notebook_id])
+        oldmod = getproperty(Main, w.module_name)
+
+        setcode!(notebook.cells[2], "")
+        setcode!(notebook.cells[3], "")
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test isdefined(oldmod, :x)
+        @test which(oldmod, :x) != oldmod
+        @test !isnothing(getproperty(oldmod, :x))
+
+        newmod = getproperty(Main, w.module_name)
+        @test !isdefined(newmod, :x)
+
+        @test !isnothing(Main.var"Pluto#2443".x)
+    end
+
     @testset "Mixed usings and reactivity" begin
         notebook = Notebook([
             Cell("a; using Dates"),
@@ -273,7 +363,6 @@ import Distributed
             Cell("using Dates"),
             Cell("July"),
         ])
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells[1:1])
 
@@ -293,7 +382,6 @@ import Distributed
             Cell("December"),
             Cell(""),
         ])
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells)
 
@@ -325,7 +413,6 @@ import Distributed
             Cell("archive_artifact"),
             Cell("using Unknown.Package"),
         ])
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells)
 
@@ -349,7 +436,6 @@ import Distributed
             Cell(""),
         ])
 
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells)
 
@@ -377,7 +463,6 @@ import Distributed
             "December = 3",
         ]))
 
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells)
 
@@ -410,7 +495,6 @@ import Distributed
             "b = 10",
         ]))
 
-        fakeclient.connected_notebook = notebook
         update_run!(🍭, notebook, notebook.cells)
 
         @test :conj ∈ notebook.topology.nodes[notebook.cells[3]].soft_definitions
@@ -436,7 +520,6 @@ import Distributed
             "MyStruct(1.) |> inv"
         ]))
         cell(idx) = notebook.cells[idx]
-        fakeclient.connected_notebook = notebook
         update_run!(🍭, notebook, notebook.cells)
 
         @test cell(1) |> noerror
@@ -465,7 +548,6 @@ import Distributed
             "inv(a)",
         ]))
         cell(idx) = notebook.cells[idx]
-        fakeclient.connected_notebook = notebook
         update_run!(🍭, notebook, notebook.cells)
 
         @test all(noerror, notebook.cells)
@@ -497,7 +579,6 @@ import Distributed
             "Base.inv(x::Float64) = a",
             "d = Float64(c)",
         ]))
-        fakeclient.connected_notebook = notebook
         update_run!(🍭, notebook, notebook.cells)
 
         @test all(noerror, notebook.cells)
@@ -512,12 +593,11 @@ import Distributed
             "Base.inv(::Float64) = y",
             "inv(1.0)",
         ]))
-        fakeclient.connected_notebook = notebook
         update_run!(🍭, notebook, notebook.cells)
 
         @test notebook.cells[end].errored == true
         @test occursinerror("Cyclic", notebook.cells[1])
-        @test occursinerror("UndefVarError: y", notebook.cells[end]) # this is an UndefVarError and not a CyclicError
+        @test expecterror(UndefVarError(:y), notebook.cells[end]) # this is an UndefVarError and not a CyclicError
 
         setcode!.(notebook.cells, [""])
         update_run!(🍭, notebook, notebook.cells)
@@ -535,7 +615,6 @@ import Distributed
             "",
         ]))
         cell(idx) = notebook.cells[idx]
-        fakeclient.connected_notebook = notebook
         update_run!(🍭, notebook, notebook.cells)
 
         output_21 = cell(2).output.body
@@ -643,7 +722,6 @@ import Distributed
                     e14
                 end"""),
         ])
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells[1:4])
         @test notebook.cells[1] |> noerror
@@ -862,7 +940,6 @@ import Distributed
             Cell("j(x) = (x > 0) ? f(x-1) : :done")
             Cell("f(8)")
         ])
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells[1:3])
         @test occursinerror("Cyclic reference", notebook.cells[1])
@@ -963,7 +1040,6 @@ import Distributed
             Cell("struct a; x end"),
             Cell("a")
         ])
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells[1:2])
         @test notebook.cells[1].output.body == notebook.cells[2].output.body
@@ -971,7 +1047,7 @@ import Distributed
         setcode!(notebook.cells[1], "")
         update_run!(🍭, notebook, notebook.cells[1])
         @test notebook.cells[1] |> noerror
-        @test occursinerror("x not defined", notebook.cells[2])
+        @test expecterror(UndefVarError(:x), notebook.cells[2])
 
         update_run!(🍭, notebook, notebook.cells[4])
         update_run!(🍭, notebook, notebook.cells[3])
@@ -1005,7 +1081,6 @@ import Distributed
 
             Cell("h(4)"),
         ])
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells[1])
         @test notebook.cells[1].output.body == "f" || startswith(notebook.cells[1].output.body, "f (generic function with ")
@@ -1031,7 +1106,6 @@ import Distributed
         notebook = Notebook([
         Cell("x = 3")
     ])
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells[1])
         setcode!(notebook.cells[1], "x = x + 1")
@@ -1098,7 +1172,6 @@ import Distributed
         Cell("using Dates"),
         Cell("year(DateTime(31))"),
     ])
-    fakeclient.connected_notebook = notebook
 
     @testset "Changing functions" begin
 
@@ -1259,7 +1332,6 @@ import Distributed
             Cell("h = [x -> x + b][1]"),
             Cell("h(8)"),
         ])
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells[1:2])
         @test notebook.cells[1].output.body == "1"
@@ -1315,7 +1387,6 @@ import Distributed
             Cell("map(14:14) do i; global apple = orange; end"),
             Cell("orange = 15"),
         ])
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells[1])
         update_run!(🍭, notebook, notebook.cells[2])
@@ -1611,7 +1682,6 @@ import Distributed
             Cell("g(x) = x + y"),
             Cell("y = 22"),
         ])
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells[1])
 
@@ -1665,5 +1735,21 @@ import Distributed
         @test notebook.cells[19].output.body == "38"
 
         WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
+    end
+
+    @testset "Broadcast bug - Issue #2211" begin
+        notebook = Notebook(Cell.([
+            "abstract type AbstractFoo{T} <: AbstractMatrix{T} end",
+            "struct X{T} <: AbstractFoo{T} end",
+            "convert(::Type{AbstractArray{T}}, S::AbstractFoo) where {T<:Number} = convert(AbstractFoo{T}, S)",
+            "Base.convert(::Type{AbstractArray{T}}, ::AbstractFoo) where {T} = nothing",
+            "Base.size(::AbstractFoo) = (2,2)",
+            "Base.getindex(::AbstractFoo{T}, args...) where {T} = one(T)",
+            "x = X{Float64}()",
+            "y = zeros(2,)",
+            "x, y",
+        ]))
+        update_run!(🍭, notebook, notebook.cells)
+        @test all(noerror, notebook.cells)
     end
 end

@@ -52,3 +52,10 @@ export const Scroller = ({ active }) => {
 
     return null
 }
+
+export const scroll_cell_into_view = (/** @type {string} */ cell_id) => {
+    document.getElementById(cell_id)?.scrollIntoView({
+        block: "center",
+        behavior: "smooth",
+    })
+}

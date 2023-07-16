@@ -69,9 +69,9 @@ Lastly, here's _**one more feature**_: Pluto notebooks have a `@bind` macro to c
 
 <br >
 
-You don't need to know HTML to use it! The [PlutoUI package](https://github.com/fonsp/PlutoUI.jl) contains basic inputs like sliders and buttons. Pluto's interactivity is very easy to use, you will learn more from the sample notebooks inside Pluto!
+You don't need to know HTML to use it! The [PlutoUI package](https://github.com/fonsp/PlutoUI.jl) contains basic inputs like sliders and buttons. Pluto's interactivity is very easy to use, you will learn more from the featured notebooks inside Pluto!
 
-But for those who want to dive deeper - you can use HTML, JavaScript and CSS to write your own widgets! Custom update events can be fired by dispatching a `new CustomEvent("input")`, making it compatible with the [`viewof` operator of observablehq](https://observablehq.com/@observablehq/a-brief-introduction-to-viewof). Have a look at the JavaScript sample notebook inside Pluto!
+But for those who want to dive deeper - you can use HTML, JavaScript and CSS to write your own widgets! Custom update events can be fired by dispatching a `new CustomEvent("input")`, making it compatible with the [`viewof` operator of observablehq](https://observablehq.com/@observablehq/a-brief-introduction-to-viewof). Have a look at the JavaScript featured notebook inside Pluto!
 
 <br >
 
@@ -160,9 +160,9 @@ Pluto.jl is open source! Specifically, it is [MIT Licensed](https://github.com/f
 
 If you want to reference Pluto.jl in scientific writing, you can use our DOI: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4792401.svg)](https://doi.org/10.5281/zenodo.4792401)
 
-### Sample notebooks
+### Featured notebooks
 
-The included sample notebooks have a more permissive license: the [Unlicense](https://github.com/fonsp/Pluto.jl/blob/main/sample/LICENSE). This means that you can use sample notebook code however you like - you do not need to credit us! 
+Unless otherwise specified, the included featured notebooks have a more permissive license: the [Unlicense](https://github.com/fonsp/Pluto.jl/blob/main/sample/LICENSE). This means that you can use them however you like - you do not need to credit us! 
 
 Your notebook files are _yours_, you also do not need to credit us. Have fun!
 
@@ -172,9 +172,9 @@ The Pluto project is an ambition to [_rethink what a programming environment sho
 
 ### You can chat with us
 
--   contact me (fonsi) **[via email](mailto:fons@plutojl.org)** or on my <a href="https://whereby.com/plutojl"><b>video chat room</b></a> (wait a minute for me to join)
 -   talk with fellow Pluto users in the **[Zulip chat room](https://gist.github.com/fonsp/db7d00fd3fe5bc0b379b4af9ec6674b6)** (_search for the `pluto.jl` stream_)
 -   use Pluto's **[built-in feedback system:](https://github.com/fonsp/Pluto.jl/issues/182#issue-637726414)**
+-   contact fons **[via email](mailto:fons@plutojl.org)**
 
 <img alt="feedback screencap" src="https://user-images.githubusercontent.com/6933510/84502876-6f08db00-acb9-11ea-84c3-f5daaba29273.png" width="100%">
 

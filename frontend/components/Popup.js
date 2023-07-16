@@ -39,7 +39,7 @@ export const open_pluto_popup = (/** @type{PkgPopupDetails | MiscPopupDetails} *
     )
 }
 
-export const Popup = ({ notebook }) => {
+export const Popup = ({ notebook, disable_input }) => {
     const [recent_event, set_recent_event] = useState(/** @type{(PkgPopupDetails | MiscPopupDetails)?} */ (null))
     const recent_source_element_ref = useRef(/** @type{HTMLElement?} */ (null))
     const pos_ref = useRef("")
@@ -55,6 +55,10 @@ export const Popup = ({ notebook }) => {
         set_recent_event(e.detail)
     }
 
+    const close = () => {
+        set_recent_event(null)
+    }
+
     useEffect(() => {
         const onpointerdown = (e) => {
             if (e.target == null) return
@@ -62,19 +66,21 @@ export const Popup = ({ notebook }) => {
             if (recent_source_element_ref.current == null) return
             if (recent_source_element_ref.current.contains(e.target)) return
 
-            set_recent_event(null)
+            close()
         }
         const onkeydown = (e) => {
             if (e.key === "Escape") {
-                set_recent_event(null)
+                close()
             }
         }
         window.addEventListener("open pluto popup", open)
+        window.addEventListener("close pluto popup", close)
         window.addEventListener("pointerdown", onpointerdown)
         document.addEventListener("keydown", onkeydown)
 
         return () => {
             window.removeEventListener("open pluto popup", open)
+            window.removeEventListener("close pluto popup", close)
             window.removeEventListener("pointerdown", onpointerdown)
             document.removeEventListener("keydown", onkeydown)
         }
@@ -88,7 +94,12 @@ export const Popup = ({ notebook }) => {
         style="${pos_ref.current}"
     >
         ${type === "nbpkg"
-            ? html`<${PkgPopup} notebook=${notebook} recent_event=${recent_event} clear_recent_event=${() => set_recent_event(null)} />`
+            ? html`<${PkgPopup}
+                  notebook=${notebook}
+                  disable_input=${disable_input}
+                  recent_event=${recent_event}
+                  clear_recent_event=${() => set_recent_event(null)}
+              />`
             : type === "info"
             ? html`<div>${recent_event?.body}</div>`
             : null}
@@ -100,9 +111,10 @@ export const Popup = ({ notebook }) => {
  * notebook: import("./Editor.js").NotebookData,
  * recent_event: PkgPopupDetails,
  * clear_recent_event: () => void,
+ * disable_input: boolean,
  * }} props
  */
-const PkgPopup = ({ notebook, recent_event, clear_recent_event }) => {
+const PkgPopup = ({ notebook, recent_event, clear_recent_event, disable_input }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     const [pkg_status, set_pkg_status] = useState(/** @type{import("./PkgStatusMark.js").PackageStatus?} */ (null))
 
@@ -165,7 +177,7 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event }) => {
                 class="pkg-update"
                 target="_blank"
                 title="Update packages"
-                style=${(!!showupdate ? "" : "opacity: .4;") + (recent_event?.is_disable_pkg ? "display: none;" : "")}
+                style=${(!!showupdate ? "" : "opacity: .4;") + (recent_event?.is_disable_pkg || disable_input ? "display: none;" : "")}
                 href="#"
                 onClick=${(e) => {
                     if (busy) {

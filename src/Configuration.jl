@@ -14,25 +14,39 @@ using Configurations # https://github.com/Roger-luo/Configurations.jl
 
 import ..Pluto: tamepath
 
+safepwd() = try
+    pwd()
+catch e
+    @warn "pwd() failure" exception=(e, catch_backtrace())
+    homedir()
+end
+
 # Using a ref to avoid fixing the pwd() output during the compilation phase. We don't want this value to be baked into the sysimage, because it depends on the `pwd()`. We do want to cache it, because the pwd might change while Pluto is running.
-const pwd_ref = Ref{Union{Nothing,String}}()
+const pwd_ref = Ref{String}()
 function notebook_path_suggestion()
-    pwd_val = something(pwd_ref[], pwd())
+    pwd_val = if isassigned(pwd_ref)
+        pwd_ref[]
+    else
+        safepwd()
+    end
     preferred_dir = startswith(Sys.BINDIR, pwd_val) ? homedir() : pwd_val
     # so that it ends with / or \
     string(joinpath(preferred_dir, ""))
 end
 
 function __init__()
-    pwd_ref[] = pwd()
+    pwd_ref[] = safepwd()
 end
 
 const ROOT_URL_DEFAULT = nothing
+const BASE_URL_DEFAULT = "/"
 const HOST_DEFAULT = "127.0.0.1"
 const PORT_DEFAULT = nothing
+const PORT_HINT_DEFAULT = 1234
 const LAUNCH_BROWSER_DEFAULT = true
 const DISMISS_UPDATE_NOTIFICATION_DEFAULT = false
 const SHOW_FILE_SYSTEM_DEFAULT = true
+const ENABLE_PACKAGE_AUTHOR_FEATURES_DEFAULT = true
 const DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT = false
 const AUTO_RELOAD_FROM_FILE_DEFAULT = false
 const AUTO_RELOAD_FROM_FILE_COOLDOWN_DEFAULT = 0.4
@@ -49,13 +63,13 @@ const ON_EVENT_DEFAULT = function(a) #= @info "$(typeof(a))" =# end
 
 The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 
-# Arguments
+# Keyword arguments
 
-- `root_url::Union{Nothing,String} = $ROOT_URL_DEFAULT`
-- `host::String = "$HOST_DEFAULT"`
-- `port::Union{Nothing,Integer} = $PORT_DEFAULT`
+- `host::String = "$HOST_DEFAULT"` Set to `"127.0.0.1"` (default) to run on *localhost*, which makes the server available to your computer and the local network (LAN). Set to `"0.0.0.0"` to make the server available to the entire network (internet).
+- `port::Union{Nothing,Integer} = $PORT_DEFAULT` When specified, this port will be used for the server.
+- `port_hint::Integer = $PORT_HINT_DEFAULT` If the other setting `port` is not specified, then this setting (`port_hint`) will be used as the starting point in finding an available port to run the server on. 
 - `launch_browser::Bool = $LAUNCH_BROWSER_DEFAULT`
-- `dismiss_update_notification::Bool = $DISMISS_UPDATE_NOTIFICATION_DEFAULT`
+- `dismiss_update_notification::Bool = $DISMISS_UPDATE_NOTIFICATION_DEFAULT` If `false`, the Pluto frontend will check the Pluto.jl github releases for any new recommended updates, and show a notification if there are any. If `true`, this is disabled.
 - `show_file_system::Bool = $SHOW_FILE_SYSTEM_DEFAULT`
 - `notebook_path_suggestion::String = notebook_path_suggestion()`
 - `disable_writing_notebook_files::Bool = $DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT`
@@ -68,11 +82,15 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 - `simulated_pkg_lag::Real=$SIMULATED_PKG_LAG_DEFAULT` (internal) Extra lag to add to operations done by Pluto's package manager. Will be multiplied by `0.5 + rand()`.
 - `injected_javascript_data_url::String = "$INJECTED_JAVASCRIPT_DATA_URL_DEFAULT"` (internal) Optional javascript injectables to the front-end. Can be used to customize the editor, but this API is not meant for general use yet.
 - `on_event::Function = $ON_EVENT_DEFAULT`
+- `root_url::Union{Nothing,String} = $ROOT_URL_DEFAULT` This setting is used to specify the root URL of the Pluto server, but this setting is *only* used to customize the launch message (*"Go to http://localhost:1234/ in your browser"*). You can probably ignore this and use `base_url` instead.
+- `base_url::String = "$BASE_URL_DEFAULT"` This (advanced) setting is used to specify a subpath at which the Pluto server will run, it should be a path starting and ending with a '/'. E.g. with `base_url = "/hello/world/"`, the server will run at `http://localhost:1234/hello/world/`, and you edit a notebook at `http://localhost:1234/hello/world/edit?id=...`.
 """
 @option mutable struct ServerOptions
     root_url::Union{Nothing,String} = ROOT_URL_DEFAULT
+    base_url::String = BASE_URL_DEFAULT
     host::String = HOST_DEFAULT
     port::Union{Nothing,Integer} = PORT_DEFAULT
+    port_hint::Integer = PORT_HINT_DEFAULT
     launch_browser::Bool = LAUNCH_BROWSER_DEFAULT
     dismiss_update_notification::Bool = DISMISS_UPDATE_NOTIFICATION_DEFAULT
     show_file_system::Bool = SHOW_FILE_SYSTEM_DEFAULT
@@ -90,7 +108,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 end
 
 const REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT = true
-const REQUIRE_SECRET_FOR_ACESS_DEFAULT = true
+const REQUIRE_SECRET_FOR_ACCESS_DEFAULT = true
 
 """
     SecurityOptions([; kwargs...])
@@ -105,7 +123,7 @@ Security settings for the HTTP server.
 
     Use `true` for almost every setup. Only use `false` if Pluto is running in a safe container (like mybinder.org), where arbitrary code execution is not a problem.
 
-- `require_secret_for_access::Bool = $REQUIRE_SECRET_FOR_ACESS_DEFAULT`
+- `require_secret_for_access::Bool = $REQUIRE_SECRET_FOR_ACCESS_DEFAULT`
 
     If false, you do not need to use a `secret` in the URL to access Pluto: you will be authenticated by visiting `http://localhost:1234/` in your browser. An authentication cookie is still used for access (to prevent XSS and deceptive links or an img src to `http://localhost:1234/open?url=badpeople.org/script.jl`), and is set automatically, but this request to `/` is protected by cross-origin policy.
 
@@ -117,47 +135,66 @@ Note that Pluto is quickly evolving software, maintained by designers, educators
 """
 @option mutable struct SecurityOptions
     require_secret_for_open_links::Bool = REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT
-    require_secret_for_access::Bool = REQUIRE_SECRET_FOR_ACESS_DEFAULT
+    require_secret_for_access::Bool = REQUIRE_SECRET_FOR_ACCESS_DEFAULT
 end
 
 const RUN_NOTEBOOK_ON_LOAD_DEFAULT = true
 const WORKSPACE_USE_DISTRIBUTED_DEFAULT = true
 const LAZY_WORKSPACE_CREATION_DEFAULT = false
 const CAPTURE_STDOUT_DEFAULT = true
+const WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT = nothing
 
 """
     EvaluationOptions([; kwargs...])
 
-Options to change Pluto's evaluation behaviour during internal testing. These options are not intended to be changed during normal use.
+Options to change Pluto's evaluation behaviour during internal testing and by downstream packages.
+These options are not intended to be changed during normal use.
 
 - `run_notebook_on_load::Bool = $RUN_NOTEBOOK_ON_LOAD_DEFAULT` Whether to evaluate a notebook on load.
 - `workspace_use_distributed::Bool = $WORKSPACE_USE_DISTRIBUTED_DEFAULT` Whether to start notebooks in a separate process.
 - `lazy_workspace_creation::Bool = $LAZY_WORKSPACE_CREATION_DEFAULT`
 - `capture_stdout::Bool = $CAPTURE_STDOUT_DEFAULT`
+- `workspace_custom_startup_expr::Union{Nothing,Expr} = $WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT` An expression to be evaluated in the workspace process before running notebook code.
 """
 @option mutable struct EvaluationOptions
     run_notebook_on_load::Bool = RUN_NOTEBOOK_ON_LOAD_DEFAULT
     workspace_use_distributed::Bool = WORKSPACE_USE_DISTRIBUTED_DEFAULT
     lazy_workspace_creation::Bool = LAZY_WORKSPACE_CREATION_DEFAULT
     capture_stdout::Bool = CAPTURE_STDOUT_DEFAULT
+    workspace_custom_startup_expr::Union{Nothing,Expr} = WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT
 end
 
 const COMPILE_DEFAULT = nothing
+const PKGIMAGES_DEFAULT = nothing
+const COMPILED_MODULES_DEFAULT = nothing
 const SYSIMAGE_DEFAULT = nothing
+const SYSIMAGE_NATIVE_CODE_DEFAULT = nothing
 const BANNER_DEFAULT = nothing
+const DEPWARN_DEFAULT = nothing
 const OPTIMIZE_DEFAULT = nothing
+const MIN_OPTLEVEL_DEFAULT = nothing
+const INLINE_DEFAULT = nothing
+const CHECK_BOUNDS_DEFAULT = nothing
 const MATH_MODE_DEFAULT = nothing
 const STARTUP_FILE_DEFAULT = "no"
 const HISTORY_FILE_DEFAULT = "no"
 
 function roughly_the_number_of_physical_cpu_cores()
     # https://gist.github.com/fonsp/738fe244719cae820245aa479e7b4a8d
-    if Sys.CPU_THREADS == 1
+    threads = Sys.CPU_THREADS
+    num_threads_is_maybe_doubled_for_marketing = Sys.ARCH === :x86_64
+    
+    if threads == 1
         1
-    elseif Sys.CPU_THREADS == 2 || Sys.CPU_THREADS == 3
+    elseif threads == 2 || threads == 3
         2
+    elseif num_threads_is_maybe_doubled_for_marketing
+        # This includes:
+        # - intel hyperthreading
+        # - Apple ARM efficiency cores included in the count (when running the x86 executable)
+        threads ÷ 2
     else
-        Sys.CPU_THREADS ÷ 2
+        threads
     end
 end
 
@@ -176,9 +213,16 @@ These options will be passed as command line argument to newly launched processe
 
 # Arguments
 - `compile::Union{Nothing,String} = $COMPILE_DEFAULT`
+- `pkgimages::Union{Nothing,String} = $PKGIMAGES_DEFAULT`
+- `compiled_modules::Union{Nothing,String} = $COMPILED_MODULES_DEFAULT`
 - `sysimage::Union{Nothing,String} = $SYSIMAGE_DEFAULT`
+- `sysimage_native_code::Union{Nothing,String} = $SYSIMAGE_NATIVE_CODE_DEFAULT`
 - `banner::Union{Nothing,String} = $BANNER_DEFAULT`
+- `depwarn::Union{Nothing,String} = $DEPWARN_DEFAULT`
 - `optimize::Union{Nothing,Int} = $OPTIMIZE_DEFAULT`
+- `min_optlevel::Union{Nothing,Int} = $MIN_OPTLEVEL_DEFAULT`
+- `inline::Union{Nothing,String} = $INLINE_DEFAULT`
+- `check_bounds::Union{Nothing,String} = $CHECK_BOUNDS_DEFAULT`
 - `math_mode::Union{Nothing,String} = $MATH_MODE_DEFAULT`
 - `startup_file::Union{Nothing,String} = "$STARTUP_FILE_DEFAULT"` By default, the startup file isn't loaded in notebooks.
 - `history_file::Union{Nothing,String} = "$HISTORY_FILE_DEFAULT"` By default, the history isn't loaded in notebooks.
@@ -186,9 +230,19 @@ These options will be passed as command line argument to newly launched processe
 """
 @option mutable struct CompilerOptions
     compile::Union{Nothing,String} = COMPILE_DEFAULT
+    pkgimages::Union{Nothing,String} = PKGIMAGES_DEFAULT
+    compiled_modules::Union{Nothing,String} = COMPILED_MODULES_DEFAULT
+
     sysimage::Union{Nothing,String} = SYSIMAGE_DEFAULT
+    sysimage_native_code::Union{Nothing,String} = SYSIMAGE_NATIVE_CODE_DEFAULT
+
     banner::Union{Nothing,String} = BANNER_DEFAULT
+    depwarn::Union{Nothing,String} = DEPWARN_DEFAULT
+
     optimize::Union{Nothing,Int} = OPTIMIZE_DEFAULT
+    min_optlevel::Union{Nothing,Int} = MIN_OPTLEVEL_DEFAULT
+    inline::Union{Nothing,String} = INLINE_DEFAULT
+    check_bounds::Union{Nothing,String} = CHECK_BOUNDS_DEFAULT
     math_mode::Union{Nothing,String} = MATH_MODE_DEFAULT
 
     # notebook specified options
@@ -214,8 +268,10 @@ end
 
 function from_flat_kwargs(;
         root_url::Union{Nothing,String} = ROOT_URL_DEFAULT,
+        base_url::String = BASE_URL_DEFAULT,
         host::String = HOST_DEFAULT,
         port::Union{Nothing,Integer} = PORT_DEFAULT,
+        port_hint::Integer = PORT_HINT_DEFAULT,
         launch_browser::Bool = LAUNCH_BROWSER_DEFAULT,
         dismiss_update_notification::Bool = DISMISS_UPDATE_NOTIFICATION_DEFAULT,
         show_file_system::Bool = SHOW_FILE_SYSTEM_DEFAULT,
@@ -230,16 +286,27 @@ function from_flat_kwargs(;
         simulated_pkg_lag::Real = SIMULATED_PKG_LAG_DEFAULT,
         injected_javascript_data_url::String = INJECTED_JAVASCRIPT_DATA_URL_DEFAULT,
         on_event::Function = ON_EVENT_DEFAULT,
+
         require_secret_for_open_links::Bool = REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT,
-        require_secret_for_access::Bool = REQUIRE_SECRET_FOR_ACESS_DEFAULT,
+        require_secret_for_access::Bool = REQUIRE_SECRET_FOR_ACCESS_DEFAULT,
+
         run_notebook_on_load::Bool = RUN_NOTEBOOK_ON_LOAD_DEFAULT,
         workspace_use_distributed::Bool = WORKSPACE_USE_DISTRIBUTED_DEFAULT,
         lazy_workspace_creation::Bool = LAZY_WORKSPACE_CREATION_DEFAULT,
         capture_stdout::Bool = CAPTURE_STDOUT_DEFAULT,
+        workspace_custom_startup_expr::Union{Nothing,Expr} = WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT,
+
         compile::Union{Nothing,String} = COMPILE_DEFAULT,
+        pkgimages::Union{Nothing,String} = PKGIMAGES_DEFAULT,
+        compiled_modules::Union{Nothing,String} = COMPILED_MODULES_DEFAULT,
         sysimage::Union{Nothing,String} = SYSIMAGE_DEFAULT,
+        sysimage_native_code::Union{Nothing,String} = SYSIMAGE_NATIVE_CODE_DEFAULT,
         banner::Union{Nothing,String} = BANNER_DEFAULT,
+        depwarn::Union{Nothing,String} = DEPWARN_DEFAULT,
         optimize::Union{Nothing,Int} = OPTIMIZE_DEFAULT,
+        min_optlevel::Union{Nothing,Int} = MIN_OPTLEVEL_DEFAULT,
+        inline::Union{Nothing,String} = INLINE_DEFAULT,
+        check_bounds::Union{Nothing,String} = CHECK_BOUNDS_DEFAULT,
         math_mode::Union{Nothing,String} = MATH_MODE_DEFAULT,
         startup_file::Union{Nothing,String} = STARTUP_FILE_DEFAULT,
         history_file::Union{Nothing,String} = HISTORY_FILE_DEFAULT,
@@ -247,8 +314,10 @@ function from_flat_kwargs(;
     )
     server = ServerOptions(;
         root_url,
+        base_url,
         host,
         port,
+        port_hint,
         launch_browser,
         dismiss_update_notification,
         show_file_system,
@@ -273,12 +342,20 @@ function from_flat_kwargs(;
         workspace_use_distributed,
         lazy_workspace_creation,
         capture_stdout,
+        workspace_custom_startup_expr,
     )
     compiler = CompilerOptions(;
         compile,
+        pkgimages,
+        compiled_modules,
         sysimage,
+        sysimage_native_code,
         banner,
+        depwarn,
         optimize,
+        min_optlevel,
+        inline,
+        check_bounds,
         math_mode,
         startup_file,
         history_file,

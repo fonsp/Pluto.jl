@@ -16,8 +16,7 @@ let
     channel = Channel{Any}(10)
     Pluto.PlutoRunner.setup_plutologger(
         test_notebook_id, 
-        channel; 
-        make_global=false
+        channel,
     )
 end
 @timeit TOUT "PlutoRunner.run_expression" @eval Pluto.PlutoRunner.run_expression(Foo, Expr(:toplevel, :(1 + 1)), test_notebook_id, uuid1(), nothing);
@@ -40,7 +39,7 @@ wait_for_ready(nb)
 
 Pluto.SessionActions.shutdown(🍭, nb; async=false)
 
-# Compile HTTP get.
+# Compile HTTP get. Use no encoding since there seem to be an issue with Accept-Encoding: gzip
 HTTP.get("http://github.com")
 
 @timeit TOUT "Pluto.run" server_task = @eval let

@@ -124,7 +124,7 @@ export const SelectionArea = ({ on_selection, set_scroller, cell_order }) => {
                 return A.start_left < B.end_left && A.end_left > B.start_left && A.start_top < B.end_top && A.end_top > B.start_top
             })
 
-            set_scroller({ up: selection.start.y > new_selection_end.y, down: selection.start.y < new_selection_end.y })
+            set_scroller({ up: true, down: true })
             on_selection(in_selection.map((x) => x.id))
             set_selection({ start: selection.start, end: new_selection_end })
         })

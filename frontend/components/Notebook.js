@@ -41,7 +41,7 @@ let CellMemo = ({
     global_definition_locations,
 }) => {
     const { body, last_run_timestamp, mime, persist_js_state, rootassignee } = cell_result?.output || {}
-    const { queued, running, runtime, errored, depends_on_disabled_cells, logs } = cell_result || {}
+    const { queued, running, runtime, errored, depends_on_disabled_cells, logs, depends_on_skipped_cells } = cell_result || {}
     const { cell_id, code, code_folded, metadata } = cell_input || {}
     return useMemo(() => {
         return html`
@@ -63,9 +63,10 @@ let CellMemo = ({
     }, [
         // Object references may invalidate this faster than the optimal. To avoid this, spread out objects to primitives!
         cell_id,
-        metadata.disabled,
-        metadata.show_logs,
+        ...Object.keys(metadata),
+        ...Object.values(metadata),
         depends_on_disabled_cells,
+        depends_on_skipped_cells,
         queued,
         running,
         runtime,
@@ -104,7 +105,7 @@ const render_cell_outputs_minimum = 20
 /**
  * @param {{
  *  notebook: import("./Editor.js").NotebookData,
- *  cell_inputs_local: { [uuid: string]: import("./Editor.js").CellInputData },
+ *  cell_inputs_local: { [uuid: string]: { code: String } },
  *  on_update_doc_query: any,
  *  on_cell_input: any,
  *  on_focus_neighbor: any,

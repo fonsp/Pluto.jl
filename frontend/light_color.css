@@ -26,11 +26,17 @@
 
         /*Export styling*/
         --export-bg-color: rgb(60, 67, 101);
-        --export-color: rgba(255, 255, 255, 0.7);
+        --export-color: rgb(228, 228, 228);
         --export-card-bg-color: rgba(255, 255, 255, 0.8);
         --export-card-title-color: rgba(0, 0, 0, 0.7);
         --export-card-text-color: rgba(0, 0, 0, 0.5);
         --export-card-shadow-color: #00000029;
+
+        /*Frontmatter styling*/
+        --frontmatter-button-bg-color: white;
+        --frontmatter-outline-color: hsl(230, 14%, 11%);
+        --frontmatter-input-bg-color: #fbfbfb;
+        --frontmatter-input-border-color: hsl(207deg 24% 87%);
 
         /*Pluto output styling */
         --pluto-schema-types-color: rgba(0, 0, 0, 0.4);
@@ -62,14 +68,27 @@
         --selected-cell-bg-color: rgba(40, 78, 189, 0.24);
         --hover-scrollbar-color-1: rgba(0, 0, 0, 0.15);
         --hover-scrollbar-color-2: rgba(0, 0, 0, 0.05);
+        --skip-as-script-background-color: #ccc;
+        --depends-on-skip-as-script-background-color: #eee;
 
         /* Pluto shoulders */
         --shoulder-hover-bg-color: rgba(0, 0, 0, 0.05);
 
         /* Logs */
-        --pluto-logs-bg-color: #efeff3;
+        --pluto-logs-bg-color: hsl(0deg 0% 98%);
+        --pluto-logs-key-color: rgb(0 0 0 / 51%);
         --pluto-logs-progress-fill: #ffffff;
+        --pluto-logs-progress-bg: #e7e7e7;
         --pluto-logs-progress-border: hsl(210deg 16% 74%);
+
+        --pluto-logs-info-color: white;
+        --pluto-logs-info-accent-color: inherit;
+        --pluto-logs-warn-color: rgb(236 234 213);
+        --pluto-logs-warn-accent-color: #665f26;
+        --pluto-logs-danger-color: rgb(245 218 215);
+        --pluto-logs-danger-accent-color: rgb(172 66 52);
+        --pluto-logs-debug-color: rgb(236 223 247);
+        --pluto-logs-debug-accent-color: rgb(100 50 179);
 
         /*Top navbar styling*/
         --nav-h1-text-color: black;
@@ -128,12 +147,21 @@
         /* helpbox */
         --helpbox-bg-color: white;
         --helpbox-box-shadow-color: #00000010;
-        --helpbox-header-bg-color: #eef1f7;
+        --helpbox-header-bg-color: hsl(0deg 0% 92%);
+        --helpbox-header-tab-bg-color: white;
         --helpbox-header-color: hsl(230, 14%, 11%);
-        --helpbox-notfound-header-color: rgb(139, 139, 139);
+        --helpbox-search-bg-color: #fbfbfb;
+        --helpbox-search-border-color: hsl(207deg 24% 87%);
+        --helpbox-notfound-search-color: rgb(139, 139, 139);
         --helpbox-text-color: black;
         --code-section-bg-color: whitesmoke;
         --code-section-bg-color: #f3f3f3;
+
+        --process-item-bg: #f2f2f2;
+        --process-busy: #ffcd70;
+        --process-finished: hsl(126deg 30% 60%);
+        --process-undefined: rgb(151, 151, 151);
+        --process-notify-bg: hsl(44.86deg 50% 94%);
 
         /*footer*/
         --footer-color: #333333;
@@ -188,6 +216,13 @@
         --index-text-color: hsl(0, 0, 60);
         --index-clickable-text-color: hsl(0, 0, 30);
         --docs-binding-bg: #8383830a;
+        --index-card-bg: white;
+        --welcome-mywork-bg: hsl(35deg 66% 93%);
+        --welcome-newnotebook-bg: whitesmoke;
+        --welcome-recentnotebook-bg: white;
+        --welcome-recentnotebook-border: #dfdfdf;
+        --welcome-open-bg: #fbfbfb;
+        --welcome-card-author-backdrop: #ffffffb0;
 
         /* HTML in codemirror! */
         --cm-html-color: #48b685;

@@ -6,7 +6,6 @@ import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { get_selected_doc_from_state } from "./CellInput/LiveDocsFromCursor.js"
 import { go_to_definition_plugin, GlobalDefinitionsFacet } from "./CellInput/go_to_definition_plugin.js"
-import { detect_deserializer } from "../common/Serialization.js"
 
 import {
     EditorState,
@@ -62,8 +61,10 @@ import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
 import { cl } from "../common/ClassTable.js"
 import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_line.js"
 import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
-import { debug_syntax_plugin } from "./CellInput/debug_syntax_plugin.js"
 import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
+import { mod_d_command } from "./CellInput/mod_d_command.js"
+import { open_bottom_right_panel } from "./BottomRightPanel.js"
+import { timeout_promise } from "../common/PlutoConnection.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 
@@ -370,12 +371,21 @@ export const CellInput = ({
     any_logs,
     show_logs,
     set_show_logs,
+    set_cell_disabled,
     cm_highlighted_line,
     metadata,
     global_definition_locations,
 }) => {
     let pluto_actions = useContext(PlutoActionsContext)
-    const { disabled: running_disabled } = metadata
+    const { disabled: running_disabled, skip_as_script } = metadata
+    let [error, set_error] = useState(null)
+    if (error) {
+        const to_throw = error
+        set_error(null)
+        throw to_throw
+    }
+    const notebook_id_ref = useRef(notebook_id)
+    notebook_id_ref.current = notebook_id
 
     const newcm_ref = useRef(/** @type {EditorView?} */ (null))
     const dom_node_ref = useRef(/** @type {HTMLElement?} */ (null))
@@ -421,8 +431,11 @@ export const CellInput = ({
 
         let select_autocomplete_command = autocomplete.completionKeymap.find((keybinding) => keybinding.key === "Enter")
         let keyMapTab = (/** @type {EditorView} */ cm) => {
+            if (cm.state.readOnly) {
+                return false
+            }
             // This will return true if the autocomplete select popup is open
-            if (select_autocomplete_command?.run(cm)) {
+            if (select_autocomplete_command?.run?.(cm)) {
                 return true
             }
 
@@ -543,6 +556,8 @@ export const CellInput = ({
             { key: "Ctrl-Delete", run: keyMapDelete },
             { key: "Backspace", run: keyMapBackspace },
             { key: "Ctrl-Backspace", run: keyMapBackspace },
+
+            mod_d_command,
         ]
 
         let DOCS_UPDATER_VERBOSE = false
@@ -565,14 +580,10 @@ export const CellInput = ({
             }
         })
 
-        // TODO remove me
-        //@ts-ignore
-        window.tags = tags
         const usesDarkTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         const newcm = (newcm_ref.current = new EditorView({
             state: EditorState.create({
                 doc: local_code,
-
                 extensions: [
                     EditorView.theme({}, { dark: usesDarkTheme }),
                     // Compartments coming from react state/props
@@ -580,6 +591,7 @@ export const CellInput = ({
                     highlighted_line_compartment,
                     global_definitions_compartment,
                     editable_compartment,
+                    highlightLinePlugin(),
 
                     // This is waaaay in front of the keys it is supposed to override,
                     // Which is necessary because it needs to run before *any* keymap,
@@ -588,7 +600,7 @@ export const CellInput = ({
                     // TODO Use https://codemirror.net/6/docs/ref/#state.Prec when added to pluto-codemirror-setup
                     prevent_holding_a_key_from_doing_things_across_cells,
 
-                    pkgBubblePlugin({ pluto_actions, notebook_id }),
+                    pkgBubblePlugin({ pluto_actions, notebook_id_ref }),
                     ScopeStateField,
                     syntaxHighlighting(pluto_syntax_colors),
                     syntaxHighlighting(pluto_syntax_colors_html),
@@ -619,24 +631,28 @@ export const CellInput = ({
                     // Remove selection on blur
                     EditorView.domEventHandlers({
                         blur: (event, view) => {
+                            // collapse the selection into a single point
                             view.dispatch({
                                 selection: {
                                     anchor: view.state.selection.main.head,
-                                    head: view.state.selection.main.head,
                                 },
+                                scrollIntoView: false,
                             })
+                            // and blur the DOM again (because the previous transaction might have re-focused it)
+                            view.contentDOM.blur()
+
                             set_cm_forced_focus(null)
                         },
                     }),
                     pluto_paste_plugin({
-                        pluto_actions: pluto_actions,
-                        cell_id: cell_id,
+                        pluto_actions,
+                        cell_id,
                     }),
                     // Update live docs when in a cell that starts with `?`
                     EditorView.updateListener.of((update) => {
                         if (!update.docChanged) return
                         if (update.state.doc.length > 0 && update.state.sliceDoc(0, 1) === "?") {
-                            window.dispatchEvent(new CustomEvent("open_live_docs"))
+                            open_bottom_right_panel("docs")
                         }
                     }),
                     EditorState.tabSize.of(4),
@@ -659,7 +675,13 @@ export const CellInput = ({
                     go_to_definition_plugin,
                     pluto_autocomplete({
                         request_autocomplete: async ({ text }) => {
-                            let { message } = await pluto_actions.send("complete", { query: text }, { notebook_id: notebook_id })
+                            let response = await timeout_promise(
+                                pluto_actions.send("complete", { query: text }, { notebook_id: notebook_id_ref.current }),
+                                5000
+                            ).catch(console.warn)
+                            if (!response) return null
+
+                            let { message } = response
                             return {
                                 start: utf8index_to_ut16index(text, message.start),
                                 stop: utf8index_to_ut16index(text, message.stop),
@@ -694,6 +716,14 @@ export const CellInput = ({
                     // Enable this plugin if you want to see the lezer tree,
                     // and possible lezer errors and maybe more debug info in the console:
                     // debug_syntax_plugin,
+                    // Handle errors hopefully?
+                    EditorView.exceptionSink.of((exception) => {
+                        set_error(exception)
+                        console.error("EditorView exception!", exception)
+                        // alert(
+                        //     `We ran into an issue! We have lost your cursor 😞😓😿\n If this appears again, please press F12, then click the "Console" tab,  eport an issue at https://github.com/fonsp/Pluto.jl/issues`
+                        // )
+                    }),
                 ],
             }),
             parent: dom_node_ref.current,
@@ -814,31 +844,35 @@ export const CellInput = ({
                 on_delete=${on_delete}
                 cell_id=${cell_id}
                 run_cell=${on_submit}
+                skip_as_script=${skip_as_script}
                 running_disabled=${running_disabled}
                 any_logs=${any_logs}
                 show_logs=${show_logs}
                 set_show_logs=${set_show_logs}
+                set_cell_disabled=${set_cell_disabled}
             />
         </pluto-input>
     `
 }
 
-const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled, any_logs, show_logs, set_show_logs }) => {
+const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, running_disabled, any_logs, show_logs, set_show_logs, set_cell_disabled }) => {
     const timeout = useRef(null)
     let pluto_actions = useContext(PlutoActionsContext)
     const [open, setOpen] = useState(false)
     const mouseenter = () => {
         if (timeout.current) clearTimeout(timeout.current)
     }
+    const toggle_skip_as_script = async (e) => {
+        const new_val = !skip_as_script
+        e.preventDefault()
+        // e.stopPropagation()
+        await pluto_actions.update_notebook((notebook) => {
+            notebook.cell_inputs[cell_id].metadata["skip_as_script"] = new_val
+        })
+    }
     const toggle_running_disabled = async (e) => {
         const new_val = !running_disabled
-        e.preventDefault()
-        e.stopPropagation()
-        await pluto_actions.update_notebook((notebook) => {
-            notebook.cell_inputs[cell_id].metadata["disabled"] = new_val
-        })
-        // we also 'run' the cell if it is disabled, this will make the backend propage the disabled state to dependent cells
-        await run_cell()
+        await set_cell_disabled(new_val)
     }
     const toggle_logs = () => set_show_logs(!show_logs)
 
@@ -884,8 +918,20 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled, any_
                                 : html`<span class="show_logs ctx_icon" /><span>Show logs</span>`}
                         </li>`
                       : null}
-                  ${is_copy_output_supported() ? html`<li title="" onClick=${copy_output}><span class="copy_output ctx_icon" />Copy output</li>` : null}
-                  <li class="coming_soon" title=""><span class="bandage ctx_icon" /><em>Coming soon…</em></li>
+                  ${is_copy_output_supported()
+                      ? html`<li title="Copy the output of this cell to the clipboard." onClick=${copy_output}>
+                            <span class="copy_output ctx_icon" />Copy output
+                        </li>`
+                      : null}
+                  <li
+                      onClick=${toggle_skip_as_script}
+                      title=${skip_as_script
+                          ? "This cell is currently stored in the notebook file as a Julia comment. Click here to disable."
+                          : "Store this code in the notebook file as a Julia comment. This way, it will not run when the notebook runs as a script outside of Pluto."}
+                  >
+                      ${skip_as_script ? html`<span class="skip_as_script ctx_icon" />` : html`<span class="run_as_script ctx_icon" />`}
+                      ${skip_as_script ? html`<b>Enable in file</b>` : html`Disable in file`}
+                  </li>
               </ul>`
             : html``}
     </button>`

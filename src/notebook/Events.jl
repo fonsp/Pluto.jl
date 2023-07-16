@@ -40,7 +40,8 @@ function try_event_call(session, event::PlutoEvent)
     return try
         session.options.server.on_event(event)
     catch e
-        @warn "Couldn't run event listener" event exception=(e, catch_backtrace())
+        # Do not print all the event; it's too big!
+        @warn "Couldn't run event listener" event_type=typeof(event) exception=(e, catch_backtrace())
         nothing
     end
 end
@@ -83,13 +84,19 @@ FileEditEvent(notebook::Notebook) = begin
     FileEditEvent(notebook, file_contents, notebook.path)
 end
 
-# Triggered when we open a new notebook
+# Triggered when we create a new notebook
 struct NewNotebookEvent <: PlutoEvent
 end
 
-# Triggered when a user opens a notebook
+# Triggered when we open any notebook
 struct OpenNotebookEvent <: PlutoEvent
     notebook::Notebook
+end
+
+# Triggered when Pluto completes an evaluation loop
+struct NotebookExecutionDoneEvent <: PlutoEvent
+    notebook::Notebook
+    user_requested_run::Bool
 end
 
 # This will be fired ONLY if URL params don't match anything else.

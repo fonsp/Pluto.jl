@@ -4,6 +4,7 @@ let fetch = require("node-fetch")
 let fs = require("fs/promises")
 let mkdirp = require("mkdirp")
 let { URL } = require("url")
+let crypto = require("crypto")
 
 let DONT_INCLUDE = { isExcluded: true }
 
@@ -61,12 +62,18 @@ module.exports = new Resolver({
             let found_extension = /\.[a-zA-Z][a-zA-Z0-9]+$/.exec(url.pathname)?.[0]
 
             let extension_to_add = found_extension ?? (dependency.specifierType === "esm" ? ".mjs" : "")
+
+            let search_component = ""
+            if (url.search !== "") {
+                search_component = "." + crypto.createHmac("sha256", "42").update(url.search).digest("hex").slice(0, 10)
+            }
+
             // If a search is given in the URL, this will search be appended to the path, so we need to repeat the extension.
-            let should_add_extension = url.search !== "" || found_extension == null
+            let should_add_extension = search_component !== "" || found_extension == null
             let suffix = should_add_extension ? extension_to_add : ""
 
             // Create a folder structure and file for the import. This folder structure will match the URL structure, to make sure that relative imports still work.
-            let filename_parts = (url.pathname.slice(1) + encodeURIComponent(url.search) + suffix).split("/")
+            let filename_parts = (url.pathname.slice(1) + search_component + suffix).split("/")
             let url_to_path = path.join(url.protocol.slice(0, -1), url.hostname, ...filename_parts)
             let fullpath = path.join(my_temp_cave, url_to_path)
             let folder = path.dirname(fullpath)

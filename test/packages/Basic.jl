@@ -2,31 +2,19 @@
 import Pkg
 using Test
 using Pluto.Configuration: CompilerOptions
-using Pluto.WorkspaceManager: _merge_notebook_compiler_options, poll
 import Pluto: update_save_run!, update_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell, project_relative_path, SessionActions, load_notebook
 import Pluto.PkgUtils
 import Pluto.PkgCompat
 import Distributed
 
-# We have our own registry for these test! Take a look at https://github.com/JuliaPluto/PlutoPkgTestRegistry#readme for more info about the test packages and their dependencies.
-
-const pluto_test_registry_spec = Pkg.RegistrySpec(;
-    url="https://github.com/JuliaPluto/PlutoPkgTestRegistry", 
-    uuid=Base.UUID("96d04d5f-8721-475f-89c4-5ee455d3eda0"),
-    name="PlutoPkgTestRegistry",
-)
-
 
 @testset "Built-in Pkg" begin
     
-    # Pkg.Registry.rm("General")
+    # We have our own registry for these test! Take a look at https://github.com/JuliaPluto/PlutoPkgTestRegistry#readme for more info about the test packages and their dependencies.
     Pkg.Registry.add(pluto_test_registry_spec)
 
-    # We have our own registry for these test! Take a look at https://github.com/JuliaPluto/PlutoPkgTestRegistry#readme for more info about the test packages and their dependencies.
     @testset "Basic" begin
-        fakeclient = ClientSession(:fake, nothing)
         🍭 = ServerSession()
-        🍭.connected_clients[fakeclient.id] = fakeclient
 
         # See https://github.com/JuliaPluto/PlutoPkgTestRegistry
 
@@ -44,7 +32,6 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
             Cell("eval(:(import DataFrames))"),
             Cell("import HelloWorldC_jll"),
         ])
-        fakeclient.connected_notebook = notebook
 
         @test !notebook.nbpkg_ctx_instantiated
         
@@ -58,7 +45,9 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test notebook.nbpkg_restart_recommended_msg === nothing
         @test notebook.nbpkg_restart_required_msg === nothing
         @test notebook.nbpkg_ctx_instantiated
+        @test notebook.nbpkg_install_time_ns > 0
         @test notebook.nbpkg_busy_packages |> isempty
+        last_install_time = notebook.nbpkg_install_time_ns
 
         terminals = notebook.nbpkg_terminal_outputs
 
@@ -66,7 +55,8 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test haskey(terminals, "PlutoPkgTestD")
         # they were installed in one batch, so their terminal outputs should be the same
         @test terminals["PlutoPkgTestA"] == terminals["PlutoPkgTestD"]
-
+        # " [9e88b42a] PackageName" should be present in terminal output
+        @test !isnothing(match(r"\[........\] ", terminals["PlutoPkgTestA"]))
 
         @test notebook.cells[2].output.body == "0.3.1" # A
         @test notebook.cells[8].output.body == "0.1.0" # D
@@ -86,6 +76,10 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test notebook.nbpkg_ctx !== nothing
         @test notebook.nbpkg_restart_recommended_msg === nothing
         @test notebook.nbpkg_restart_required_msg === nothing
+        @test notebook.nbpkg_ctx_instantiated
+        @test notebook.nbpkg_install_time_ns > last_install_time
+        @test notebook.nbpkg_busy_packages |> isempty
+        last_install_time = notebook.nbpkg_install_time_ns
 
         @test haskey(terminals, "PlutoPkgTestB")
         @test terminals["PlutoPkgTestA"] == terminals["PlutoPkgTestD"] == old_A_terminal
@@ -106,6 +100,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
             notebook.nbpkg_restart_recommended_msg !==  nothing || notebook.nbpkg_restart_required_msg !== nothing
         )
         @test notebook.nbpkg_restart_required_msg !== nothing
+        @test notebook.nbpkg_install_time_ns > last_install_time
 
         # running cells again should persist the restart message
 
@@ -205,6 +200,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test notebook.nbpkg_ctx !== nothing
         @test notebook.nbpkg_restart_recommended_msg !== nothing # recommend restart
         @test notebook.nbpkg_restart_required_msg === nothing
+        @test notebook.nbpkg_install_time_ns === nothing # removing a package means that we lose our estimate
 
         @test count("PlutoPkgTestD", ptoml_contents()) == 0
 
@@ -216,16 +212,13 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
     simple_import_notebook = read(simple_import_path, String)
 
     @testset "Manifest loading" begin
-        fakeclient = ClientSession(:fake, nothing)
         🍭 = ServerSession()
-        🍭.connected_clients[fakeclient.id] = fakeclient
 
         dir = mktempdir()
         path = joinpath(dir, "hello.jl")
         write(path, simple_import_notebook)
 
         notebook = SessionActions.open(🍭, path; run_async=false)
-        fakeclient.connected_notebook = notebook
         
         @test num_backups_in(dir) == 0
 
@@ -241,13 +234,60 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
+    
+    @testset "Package added by url" begin
+        url_notebook = read(joinpath(@__DIR__, "url_import.jl"), String)
+
+        🍭 = ServerSession()
+
+        dir = mktempdir()
+        path = joinpath(dir, "hello.jl")
+        write(path, url_notebook)
+
+        notebook = SessionActions.open(🍭, path; run_async=false)
+        
+        @test num_backups_in(dir) == 0
+
+        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_restart_recommended_msg === nothing
+        @test notebook.nbpkg_restart_required_msg === nothing
+
+        @test noerror(notebook.cells[1])
+        @test noerror(notebook.cells[2])
+
+        @test notebook.cells[2].output.body == "1.0.0"
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
+    
+    future_notebook = read(joinpath(@__DIR__, "future_nonexisting_version.jl"), String)
+    @testset "Recovery from unavailable versions" begin
+        🍭 = ServerSession()
+
+        dir = mktempdir()
+        path = joinpath(dir, "hello.jl")
+        write(path, future_notebook)
+
+        notebook = SessionActions.open(🍭, path; run_async=false)
+        
+        @test num_backups_in(dir) == 0
+
+
+        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_restart_recommended_msg === nothing
+        @test notebook.nbpkg_restart_required_msg === nothing
+
+        @test noerror(notebook.cells[1])
+        @test noerror(notebook.cells[2])
+
+        @test notebook.cells[2].output.body == "0.3.1"
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
 
 
     @testset "Pkg cell -- dynamically added" begin
-        fakeclient = ClientSession(:fake, nothing)
         🍭 = ServerSession()
-        🍭.connected_clients[fakeclient.id] = fakeclient
-
         
         notebook = Notebook([
             Cell("1"),
@@ -257,7 +297,6 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
             Cell("5"),
             Cell("6"),
         ])
-        fakeclient.connected_notebook = notebook
 
         update_save_run!(🍭, notebook, notebook.cells)
 
@@ -301,11 +340,8 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
     end
     
     pkg_cell_notebook = read(joinpath(@__DIR__, "pkg_cell.jl"), String)
-    
     @testset "Pkg cell -- loaded from file" begin
-        fakeclient = ClientSession(:fake, nothing)
         🍭 = ServerSession()
-        🍭.connected_clients[fakeclient.id] = fakeclient
 
         dir = mktempdir()
         for n in ["Project.toml", "Manifest.toml"]
@@ -318,7 +354,6 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test num_backups_in(dir) == 0
 
         notebook = SessionActions.open(🍭, path; run_async=false)
-        fakeclient.connected_notebook = notebook
         nb_contents() = read(notebook.path, String)
         
         @test num_backups_in(dir) == 0
@@ -360,17 +395,14 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
     end
 
     @testset "DrWatson cell" begin
-        fakeclient = ClientSession(:fake, nothing)
         🍭 = ServerSession()            
         🍭.options.evaluation.workspace_use_distributed = false
-        🍭.connected_clients[fakeclient.id] = fakeclient
 
         notebook = Notebook([
             Cell("using Plots"),
             Cell("@quickactivate"),
             Cell("using DrWatson"),
         ])
-        fakeclient.connected_notebook = notebook
 
         notebook.topology = Pluto.updated_topology(Pluto.NotebookTopology(cell_order=Pluto.ImmutableVector(notebook.cells)), notebook, notebook.cells) |> Pluto.static_resolve_topology
 
@@ -384,13 +416,10 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
     end
 
     pre_pkg_notebook = read(joinpath(@__DIR__, "old_import.jl"), String)
-
     local post_pkg_notebook = nothing
 
     @testset "File format -- Backwards compat" begin
-        fakeclient = ClientSession(:fake, nothing)
         🍭 = ServerSession()
-        🍭.connected_clients[fakeclient.id] = fakeclient
 
         dir = mktempdir()
         path = joinpath(dir, "hello.jl")
@@ -399,7 +428,6 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test num_backups_in(dir) == 0
 
         notebook = SessionActions.open(🍭, path; run_async=false)
-        fakeclient.connected_notebook = notebook
         nb_contents() = read(notebook.path, String)
         
         @test num_backups_in(dir) == 0
@@ -483,7 +511,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
         write(f, simple_import_notebook)
         @test !occursin("0.3.1", read(f, String))
-        
+
         @test num_backups_in(dir) == 0
         Pluto.update_notebook_environment(f)
 
@@ -502,9 +530,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
             original_path = joinpath(@__DIR__, "$(name).jl")
             original_contents = read(original_path, String)
 
-            fakeclient = ClientSession(:fake, nothing)
             🍭 = ServerSession()
-            🍭.connected_clients[fakeclient.id] = fakeclient
     
             dir = mktempdir()
             path = joinpath(dir, "hello.jl")
@@ -513,7 +539,6 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
             @test num_backups_in(dir) == 0
     
             notebook = SessionActions.open(🍭, path; run_async=false)
-            fakeclient.connected_notebook = notebook
             nb_contents() = read(notebook.path, String)
 
             should_restart = (
@@ -571,36 +596,8 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
     end
 
-    # @test false
-
-    # @testset "File format" begin
-    #     notebook = Notebook([
-    #         Cell("import PlutoPkgTestA"), # cell 1
-    #         Cell("PlutoPkgTestA.MY_VERSION |> Text"),
-    #         Cell("import PlutoPkgTestB"), # cell 3
-    #         Cell("PlutoPkgTestB.MY_VERSION |> Text"),
-    #         Cell("import PlutoPkgTestC"), # cell 5
-    #         Cell("PlutoPkgTestC.MY_VERSION |> Text"),
-    #         Cell("import PlutoPkgTestD"), # cell 7
-    #         Cell("PlutoPkgTestD.MY_VERSION |> Text"),
-    #         Cell("import PlutoPkgTestE"), # cell 9
-    #         Cell("PlutoPkgTestE.MY_VERSION |> Text"),
-    #         Cell("eval(:(import DataFrames))")
-    #     ])
-
-    #     file1 = tempname()
-    #     notebook.path = file1
-
-    #     save_notebook()
-
-
-    #     save_notebook
-    # end
-    
     @testset "Race conditions" begin
-        fakeclient = ClientSession(:fake, nothing)
         🍭 = ServerSession()
-        🍭.connected_clients[fakeclient.id] = fakeclient
         lag = 0.2
         🍭.options.server.simulated_pkg_lag = lag
 
@@ -618,7 +615,6 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
             Cell("import PlutoPkgTestE"), # cell 9
             Cell("PlutoPkgTestE.MY_VERSION |> Text"),
         ])
-        fakeclient.connected_notebook = notebook
 
         @test !notebook.nbpkg_ctx_instantiated
         
@@ -650,7 +646,94 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
+    
+    @testset "Precompilation" begin
+        compilation_dir = joinpath(DEPOT_PATH[1], "compiled", "v$(VERSION.major).$(VERSION.minor)")
+        @assert isdir(compilation_dir)
+        compilation_dir_testA = joinpath(compilation_dir, "PlutoPkgTestA")
+        precomp_entries() = readdir(mkpath(compilation_dir_testA))
+        
+        # clear cache
+        let
+            # sleep workaround for julia issue 34700.
+            sleep(3)
+            isdir(compilation_dir_testA) && rm(compilation_dir_testA; force=true, recursive=true)
+        end
+        @test precomp_entries() == []
 
+        @testset "Match compiler options: $(match)" for match in [true, false]
+            
+            before_sync = precomp_entries()
+            
+            🍭 = ServerSession()
+            # make compiler settings of the worker (not) match the server settings
+            let
+                # you can find out which settings are relevant for cache validation by running JULIA_DEBUG="loading" julia and then missing a cache. Example output on julia1.9.0-rc1:
+                # ┌ Debug: Rejecting cache file /Applications/Julia-1.9.0-beta4 ARM.app/Contents/Resources/julia/share/julia/compiled/v1.9/SuiteSparse_jll/ME9At_bvckq.ji for  [top-level] since the flags are mismatched
+                # │   current session: use_pkgimages = true, debug_level = 1, check_bounds = 0, inline = true, opt_level = 2
+                # │   cache file:      use_pkgimages = true, debug_level = 1, check_bounds = 1, inline = true, opt_level = 2
+                # └ @ Base loading.jl:2668
+                flip = !match
+                if VERSION >= v"1.9.0-aaa"
+                    🍭.options.compiler.pkgimages = (flip ⊻ Base.JLOptions().use_pkgimages == 1) ? "yes" : "no"
+                end
+                🍭.options.compiler.check_bounds = (flip ⊻ Base.JLOptions().check_bounds == 1) ? "yes" : "no"
+                🍭.options.compiler.inline = (flip ⊻ Base.JLOptions().can_inline == 1) ? "yes" : "no"
+                🍭.options.compiler.optimize = match ? Base.JLOptions().opt_level : 3 - Base.JLOptions().opt_level
+                # cant set the debug level but whatevs
+            end
+            
+
+            notebook = Notebook([
+                # An import for Pluto to recognize, but don't actually run it. When you run an import, Julia will precompile the package if necessary, which would skew our results.
+                Cell("false && import PlutoPkgTestA"),
+            ])
+
+            @test !notebook.nbpkg_ctx_instantiated
+            update_save_run!(🍭, notebook, notebook.cells)
+            @test notebook.nbpkg_ctx_instantiated
+            
+            after_sync = precomp_entries()
+            
+            # syncing should have called Pkg.precompile(), which should have generated new precompile caches. 
+            # If `match == false`, then this is the second run, and the precompile caches should be different. 
+            # These new caches use the same filename (weird...), EXCEPT when the pkgimages flag changed, then you get a new filename.
+            if match == true || VERSION >= v"1.9.0-aaa"
+                @test before_sync != after_sync
+                @test length(before_sync) < length(after_sync)
+            end
+            
+            
+            
+            # Now actually run the import.
+            setcode!(notebook.cells[1], """begin
+            ENV["JULIA_DEBUG"] = "loading"
+            
+            PlutoRunner.Logging.shouldlog(logger::PlutoRunner.PlutoCellLogger, level, _module, _...) = true # https://github.com/fonsp/Pluto.jl/issues/2487
+            
+            import PlutoPkgTestA
+            end""")
+            update_save_run!(🍭, notebook, notebook.cells[1])
+            @test noerror(notebook.cells[1])
+            
+            after_run = precomp_entries()
+            
+
+            # There should be a log message about loading the cache.
+            VERSION >= v"1.8.0-aaa" && @test any(notebook.cells[1].logs) do log
+                occursin(r"Loading.*cache"i, log["msg"][1])
+            end
+            # There should NOT be a log message about rejecting the cache.
+            @test !any(notebook.cells[1].logs) do log
+                occursin(r"reject.*cache"i, log["msg"][1])
+            end
+            
+            # Running the import should not have triggered additional precompilation, everything should have been precompiled during Pkg.precompile() (in sync_nbpkg).
+            @test after_sync == after_run
+            
+            WorkspaceManager.unmake_workspace((🍭, notebook))
+        end
+    end
 
     Pkg.Registry.rm(pluto_test_registry_spec)
     # Pkg.Registry.add("General")
