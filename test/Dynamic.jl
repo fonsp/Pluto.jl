@@ -200,14 +200,25 @@ end
         notebook = Notebook([
             Cell("PlutoRunner.notebook_id[] |> Text"),
             Cell(cid, """
-            let
+            begin
                 # not actually public API but we test it anyways
-                a = PlutoRunner._publish(Dict(
+                a = Dict(
                     "hello" => "world",
                     "xx" => UInt8[6,7,8],
-                ), "aaa", Base.UUID("$cid"))
-                b = PlutoRunner._publish("cool", "bbb", Base.UUID("$cid"))
-                Text((a, b))
+                )
+                b = "cool"
+                
+                struct ZZZ
+                end
+                
+                function Base.show(io::IO, ::MIME"text/html", ::ZZZ)
+                    write(io, "<script>\n")
+                    PlutoRunner.core_published_to_js(io, a)
+                    PlutoRunner.core_published_to_js(io, b)
+                    write(io, "\n</script>")
+                end
+                
+                ZZZ()
             end
             """),
             Cell("3"),
@@ -220,11 +231,17 @@ end
         update_save_run!(🍭, notebook, notebook.cells)
         @test notebook.cells[1].output.body == notebook.notebook_id |> string
 
-        @test !notebook.cells[2].errored
-        a, b = Meta.parse(notebook.cells[2].output.body) |> eval
+        @test notebook.cells[2] |> noerror
+        @test notebook.cells[2].output.mime isa MIME"text/html"
+
+        ab1, ab2 = keys(notebook.cells[2].published_objects)
+        @test occursin(ab1, notebook.cells[2].output.body)
+        @test occursin(ab2, notebook.cells[2].output.body)
+        
+        ab() = sort(collect(keys(notebook.cells[2].published_objects)); by=(s -> findfirst(s, notebook.cells[2].output.body) |> first))
+        a, b = ab()
+        
         p = notebook.cells[2].published_objects
-        @test sort(collect(keys(p))) == sort([a,b])
-        @test isempty(notebook.cells[3].published_objects)
 
         @test p[a] == Dict(
             "hello" => "world",
@@ -236,7 +253,7 @@ end
         old_pb = p[b]
         update_save_run!(🍭, notebook, notebook.cells)
         p = notebook.cells[2].published_objects
-        a, b = Meta.parse(notebook.cells[2].output.body) |> eval
+        a, b = ab()
         @test p[a] == old_pa
         @test p[b] == old_pb
         
@@ -245,9 +262,10 @@ end
         setcode!(notebook.cells[2], "2")
         update_save_run!(🍭, notebook, notebook.cells)
         @test isempty(notebook.cells[2].published_objects)
-
+        
+        @test isempty(notebook.cells[3].published_objects)
         @test notebook.cells[4].errored
-        @test !notebook.cells[5].errored
+        @test notebook.cells[5] |> noerror
         @test !isempty(notebook.cells[5].published_objects)
         
         

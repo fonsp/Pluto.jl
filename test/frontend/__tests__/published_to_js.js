@@ -12,7 +12,7 @@ import {
     setupPlutoBrowser,
 } from "../helpers/pluto"
 
-describe("publish_to_js", () => {
+describe("published_to_js", () => {
     /**
      * Launch a shared browser instance for all tests.
      * I don't use jest-puppeteer because it takes away a lot of control and works buggy for me,
