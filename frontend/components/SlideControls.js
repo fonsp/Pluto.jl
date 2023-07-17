@@ -1,6 +1,32 @@
-import { html } from "../imports/Preact.js"
+import { html, useRef, useEffect, useState, useLayoutEffect } from "../imports/Preact.js"
 
 export const SlideControls = () => {
+    const button_prev_ref = useRef(/** @type {HTMLButtonElement?} */ (null))
+    const button_next_ref = useRef(/** @type {HTMLButtonElement?} */ (null))
+
+    const [presenting, set_presenting] = useState(false)
+
+    const move_slides_with_arrows = (/** @type {KeyboardEvent} */ e) => {
+        const activeElement = document.activeElement
+        if (
+            activeElement != null &&
+            activeElement !== document.body &&
+            activeElement !== button_prev_ref.current &&
+            activeElement !== button_next_ref.current
+        ) {
+            // We do not move slides with arrow if we have an active element
+            return
+        }
+        if (e.key === "ArrowLeft") {
+            button_prev_ref.current?.click()
+        } else if (e.key === "ArrowRight") {
+            button_next_ref.current?.click()
+        } else {
+            return
+        }
+        e.preventDefault()
+    }
+
     const calculate_slide_positions = (/** @type {Event} */ e) => {
         const notebook_node = /** @type {HTMLElement?} */ (e.target)?.closest("pluto-editor")?.querySelector("pluto-notebook")
         if (!notebook_node) return []
@@ -40,15 +66,27 @@ export const SlideControls = () => {
         if (pos) window.scrollTo(window.pageXOffset, pos)
     }
 
+    const presenting_ref = useRef(false)
+    presenting_ref.current = presenting
     // @ts-ignore
     window.present = () => {
-        document.body.classList.toggle("presentation")
+        set_presenting(!presenting_ref.current)
     }
+
+    useLayoutEffect(() => {
+        document.body.classList.toggle("presentation", presenting)
+
+        window.addEventListener("keydown", move_slides_with_arrows)
+
+        return () => {
+            window.removeEventListener("keydown", move_slides_with_arrows)
+        }
+    }, [presenting])
 
     return html`
         <nav id="slide_controls">
-            <button class="changeslide prev" title="Previous slide" onClick=${go_previous_slide}><span></span></button>
-            <button class="changeslide next" title="Next slide" onClick=${go_next_slide}><span></span></button>
+            <button ref=${button_prev_ref} class="changeslide prev" title="Previous slide" onClick=${go_previous_slide}><span></span></button>
+            <button ref=${button_next_ref} class="changeslide next" title="Next slide" onClick=${go_next_slide}><span></span></button>
         </nav>
     `
 }
