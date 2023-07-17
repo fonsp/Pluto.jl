@@ -1747,7 +1747,11 @@ const integrations = Integration[
                 end
 
                 row_data_for(row) = maptruncated(row, "more", my_column_limit; truncate=truncate_columns) do el
-                    format_output_default(el, io)
+                    if el !== missing
+                        format_output_default(el, io)
+                    else
+                        ("", MIME"text/plain"())
+                    end
                 end
 
                 # ugliest code in Pluto:
