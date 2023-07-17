@@ -71,29 +71,33 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
 
     notebookfile_hash.then((x) => console.log("Notebook file hash:", x))
 
-    const bond_connections = notebookfile_hash
-        .then((hash) => fetch(trailingslash(launch_params.slider_server_url) + "bondconnections/" + hash))
-        .then((r) => r.arrayBuffer())
-        .then((b) => unpack(new Uint8Array(b)))
-
-    bond_connections.then((x) => {
-        console.log("Bond connections:", x)
-        setStatePromise(
-            immer((state) => {
-                state.slider_server.connecting = false
-                state.slider_server.interactive = Object.keys(x).length > 0
-            })
-        )
-    })
+    let bond_connections = null
 
     const mybonds = {}
     const bonds_to_set = {
         current: new Set(),
     }
     const request_bond_response = debounced_promises(async () => {
+        if (!bond_connections) {
+            const bond_connections_res = await notebookfile_hash.then((hash) =>
+                fetch(trailingslash(launch_params.slider_server_url) + "bondconnections/" + hash)
+            )
+            if (bond_connections_res.ok) {
+                bond_connections = await bond_connections_res.arrayBuffer().then((x) => unpack(new Uint8Array(x)))
+
+                console.log("Bond connections:", bond_connections)
+                setStatePromise(
+                    immer((state) => {
+                        state.slider_server.connecting = false
+                        state.slider_server.interactive = Object.keys(bond_connections).length > 0
+                    })
+                )
+            }
+        }
+
         const base = trailingslash(launch_params.slider_server_url)
         const hash = await notebookfile_hash
-        const graph = await bond_connections
+        const graph = bond_connections || {}
 
         // compute dependencies and update cell running statuses
         const dep_graph = get_current_state().cell_dependencies
