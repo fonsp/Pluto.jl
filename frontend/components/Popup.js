@@ -48,10 +48,15 @@ export const Popup = ({ notebook, disable_input }) => {
         const el = e.detail.source_element
         recent_source_element_ref.current = el
 
-        const elb = el.getBoundingClientRect()
-        const bodyb = document.body.getBoundingClientRect()
+        if (el == null) {
+            pos_ref.current = `top: 20%; left: 50%; transform: translate(-50%, -50%); position: fixed;`
+        } else {
+            const elb = el.getBoundingClientRect()
+            const bodyb = document.body.getBoundingClientRect()
 
-        pos_ref.current = `top: ${0.5 * (elb.top + elb.bottom) - bodyb.top}px; left: min(max(0px,100vw - 251px - 30px), ${elb.right - bodyb.left}px);`
+            pos_ref.current = `top: ${0.5 * (elb.top + elb.bottom) - bodyb.top}px; left: min(max(0px,100vw - 251px - 30px), ${elb.right - bodyb.left}px);`
+        }
+
         set_recent_event(e.detail)
     }
 
