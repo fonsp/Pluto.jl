@@ -229,6 +229,10 @@ function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.R
 
             @assert !isnothing(display_cell)
 
+            # this handles the use of published_to_js inside logs: objects that were newly published during the rendering of the log args.
+            merge!(display_cell.published_objects, next_log["new_published_objects"])
+            delete!(next_log, "new_published_objects")
+
             push!(display_cell.logs, next_log)
             Pluto.@asynclog update_throttled()
         catch e

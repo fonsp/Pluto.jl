@@ -26,7 +26,7 @@ export const help_circle_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/
 
 /**
  * @typedef MiscPopupDetails
- * @property {string} type
+ * @property {"info" | "warn"} type
  * @property {import("../imports/Preact.js").ReactElement} body
  * @property {HTMLElement?} source_element
  */
@@ -48,10 +48,15 @@ export const Popup = ({ notebook, disable_input }) => {
         const el = e.detail.source_element
         recent_source_element_ref.current = el
 
-        const elb = el.getBoundingClientRect()
-        const bodyb = document.body.getBoundingClientRect()
+        if (el == null) {
+            pos_ref.current = `top: 20%; left: 50%; transform: translate(-50%, -50%); position: fixed;`
+        } else {
+            const elb = el.getBoundingClientRect()
+            const bodyb = document.body.getBoundingClientRect()
 
-        pos_ref.current = `top: ${0.5 * (elb.top + elb.bottom) - bodyb.top}px; left: min(max(0px,100vw - 251px - 30px), ${elb.right - bodyb.left}px);`
+            pos_ref.current = `top: ${0.5 * (elb.top + elb.bottom) - bodyb.top}px; left: min(max(0px,100vw - 251px - 30px), ${elb.right - bodyb.left}px);`
+        }
+
         set_recent_event(e.detail)
     }
 
@@ -90,6 +95,7 @@ export const Popup = ({ notebook, disable_input }) => {
     return html`<pluto-popup
         class=${cl({
             visible: recent_event != null,
+            [type ?? ""]: type != null,
         })}
         style="${pos_ref.current}"
     >
@@ -100,7 +106,7 @@ export const Popup = ({ notebook, disable_input }) => {
                   recent_event=${recent_event}
                   clear_recent_event=${() => set_recent_event(null)}
               />`
-            : type === "info"
+            : type === "info" || type === "warn"
             ? html`<div>${recent_event?.body}</div>`
             : null}
     </pluto-popup>`
