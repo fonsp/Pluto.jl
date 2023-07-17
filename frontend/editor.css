@@ -1810,6 +1810,11 @@ pluto-popup > * {
     position: absolute;
 }
 
+pluto-popup.warn > * {
+    background: var(--pluto-logs-warn-color);
+    border-color: var(--pluto-logs-warn-accent-color);
+}
+
 pluto-popup code.auto_disabled_variable {
     font-family: var(--julia-mono-font-stack);
     font-size: 0.8rem;

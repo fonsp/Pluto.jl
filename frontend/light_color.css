@@ -111,7 +111,7 @@
 
         /*saveall container*/
         --overlay-button-bg: #ffffff;
-        --overlay-button-border: #f3f2f2;
+        --overlay-button-border: hsl(0 4% 91% / 1);
         --overlay-button-border-save: #f3f2f2;
 
         /*input_context_menu*/
