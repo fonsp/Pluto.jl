@@ -561,7 +561,7 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 	nbpkg_changed = d.nbpkg_changed
 		
 	something_changed = cells_changed || folded_changed || order_changed || (include_nbpg && nbpkg_changed)
-	
+
 	if something_changed
 		@info "Reloading notebook from file and applying changes!"
 		notebook.last_hot_reload_time = time()
