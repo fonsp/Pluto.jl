@@ -1,4 +1,4 @@
-import { html, useState, useRef, useEffect, useMemo } from "../imports/Preact.js"
+import { html, useState, useRef, useEffect, useMemo, useLayoutEffect } from "../imports/Preact.js"
 import { cl } from "../common/ClassTable.js"
 
 import { LiveDocsTab } from "./LiveDocsTab.js"
@@ -12,6 +12,51 @@ import { BackendLaunchPhase } from "../common/Binder.js"
  */
 
 export const open_bottom_right_panel = (/** @type {PanelTabName} */ tab) => window.dispatchEvent(new CustomEvent("open_bottom_right_panel", { detail: tab }))
+
+export const useStateWithViewTransition = (/** @type {any} */ value) => {
+    const [state, set_state] = useState(value)
+
+    const to_resolve = useRef(new Set())
+
+    useLayoutEffect(() => {
+        to_resolve.current.forEach((resolve) => resolve())
+    }, [state])
+
+    const set_state_with_view_transition = (/** @type {any} */ new_value, /** @type {Boolean} */ transition = true) => {
+        if (transition) {
+            document.startViewTransition(async () => {
+                await new Promise((resolve) => {
+                    to_resolve.current.add(resolve)
+                    set_state(new_value)
+                })
+            })
+        } else {
+            set_state(new_value)
+        }
+    }
+
+    return [state, set_state_with_view_transition]
+}
+
+export const useViewTransition = (deps) => {
+    const to_resolve = useRef(new Set())
+
+    useMemo(() => {
+        document.startViewTransition(async () => {
+            await new Promise((resolve) => {
+                to_resolve.current.add(resolve)
+            })
+        })
+    }, deps)
+
+    useLayoutEffect(() => {
+        to_resolve.current.forEach((resolve) =>
+            setTimeout(() => {
+                resolve()
+            }, 500)
+        )
+    }, deps)
+}
 
 /**
  * @param {{
@@ -27,7 +72,7 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
     let container_ref = useRef()
 
     const focus_docs_on_open_ref = useRef(false)
-    const [open_tab, set_open_tab] = useState(/** @type { PanelTabName} */ (null))
+    const [open_tab, set_open_tab] = useStateWithViewTransition(/** @type { PanelTabName} */ (null))
     const hidden = open_tab == null
 
     // Open panel when "open_bottom_right_panel" event is triggered

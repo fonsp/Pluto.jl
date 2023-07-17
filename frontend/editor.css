@@ -2281,6 +2281,45 @@ pluto-helpbox.hidden > section {
     display: none;
 }
 
+@keyframes fade-in {
+    from {
+        opacity: 0;
+    }
+}
+
+@keyframes fade-out {
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes slide-from-right {
+    from {
+        transform: translateX(30px);
+    }
+}
+
+@keyframes slide-to-left {
+    to {
+        transform: translateX(-30px);
+    }
+}
+
+::view-transition-old(helpbox) {
+    /* animation: none; */
+}
+
+::view-transition-new(helpbox) {
+    /* animation: none; */
+}
+
+::view-transition-group(helpbox) {
+    animation-duration: 0.1s;
+}
+pluto-helpbox {
+    view-transition-name: helpbox;
+}
+
 /* NOTE */
 /* We try to match the visual style of Documenter.jl, so we have copied over some rules from */
 /* https://docs.julialang.org/en/v1/assets/themes/documenter-light.css */
