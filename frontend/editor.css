@@ -192,6 +192,11 @@ pluto-output p {
     line-height: 1.45em;
 }
 
+/* This allows a linebreak in Markdown using backslash with smaller spacing compared to paragraph in firefox */
+pluto-output br {
+    margin-block-end: 0;
+}
+
 pluto-output p:first-child {
     margin-block-start: 0px;
 }
@@ -450,15 +455,6 @@ kbd {
 /* Avoid scrollbar in in-line latex with markdown, see https://github.com/fonsp/Pluto.jl/issues/1309 */
 pluto-output mjx-assistive-mml {
     height: 1px;
-}
-
-/* This allows a linebreak in Markdown using backslash with smaller spacing compared to paragraph in firefox */
-pluto-output p, pluto-output br {
-    line-height: 1.45em;
-}
-
-pluto-output br {
-    margin-block-end: 0;
 }
 
 /* Avoid scrollbar in cells that contain just a h3 element, like the h3 headers in https://computationalthinking.mit.edu/Fall22/images_abstractions/transformations_and_autodiff/ */
