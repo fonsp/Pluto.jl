@@ -2125,28 +2125,26 @@ end"""
 """
 const currently_running_cell_id = Ref{UUID}(uuid4())
 
-function _publish(x, id_start)::String
-    assertpackable(x)
-    
-    id = string(notebook_id[], "/", currently_running_cell_id[], "/", id_start)
-    d = get!(Dict{String,Any}, cell_published_objects, currently_running_cell_id[])
+function _publish(x, id_start, cell_id)::String
+    id = "$(notebook_id[])/$cell_id/$id_start"
+    d = get!(Dict{String,Any}, cell_published_objects, cell_id)
     d[id] = x
     return id
 end
 
-_publish(x) = _publish(x, objectid2str(x))
-
 # TODO? Possibly move this to it's own package, with fallback that actually msgpack?
 # ..... Ideally we'd make this require `await` on the javascript side too...
 Base.@kwdef struct PublishedToJavascript
-    published_id
+    published_object
+    published_id_start
     cell_id
 end
 function Base.show(io::IO, ::MIME"text/javascript", published::PublishedToJavascript)
-    if published.cell_id != currently_running_cell_id[]
-        error("Showing result from PlutoRunner.publish_to_js() in a cell different from where it was created, not (yet?) supported.")
-    end
-    write(io, "/* See the documentation for PlutoRunner.publish_to_js */ getPublishedObject(\"$(published.published_id)\")")
+    id = _publish(published.published_object, published.published_id_start, published.cell_id)
+    # if published.cell_id != currently_running_cell_id[]
+    #     error("Showing result from PlutoRunner.publish_to_js() in a cell different from where it was created, not (yet?) supported.")
+    # end
+    write(io, "/* See the documentation for PlutoRunner.publish_to_js */ getPublishedObject(\"$(id)\")")
 end
 Base.show(io::IO, ::MIME"text/plain", published::PublishedToJavascript) = show(io, MIME("text/javascript"), published)    
 Base.show(io::IO, published::PublishedToJavascript) = show(io, MIME("text/javascript"), published)    
@@ -2179,9 +2177,13 @@ let
 end
 ```
 """
-function publish_to_js(args...)
+publish_to_js(x) = publish_to_js(x, objectid2str(x))
+
+function publish_to_js(x, id_start)
+    assertpackable(x)
     PublishedToJavascript(
-        published_id=_publish(args...),
+        published_object=x,
+        published_id_start=id_start,
         cell_id=currently_running_cell_id[],
     )
 end
@@ -2387,18 +2389,32 @@ function Logging.handle_message(pl::PlutoCellLogger, level, msg, _module, group,
     end
 
     try
-
         yield()
 
+        po() = get(cell_published_objects, pl.cell_id, Dict{String,Any}())
+        before_published_object_keys = collect(keys(po()))
+
+        # Render the log arguments:
+        msg_formatted = format_output_default(msg isa AbstractString ? Text(msg) : msg)
+        kwargs_formatted = Tuple{String,Any}[(string(k), format_log_value(v)) for (k, v) in kwargs if k != :maxlog]
+
+        after_published_object_keys = collect(keys(po()))
+        new_published_object_keys = setdiff(after_published_object_keys, before_published_object_keys)
+
+        # (Running `put!(pl.log_channel, x)` will send `x` to the pluto server. See `start_relaying_logs` for the receiving end.)
         put!(pl.log_channel, Dict{String,Any}(
             "level" => string(level),
-            "msg" => format_output_default(msg isa AbstractString ? Text(msg) : msg),
+            "msg" => msg_formatted,
+            # This is a dictionary containing all published objects that were published during the rendering of the log arguments (we cannot track which objects were published during the execution of the log statement itself i think...)
+            "new_published_objects" => Dict{String,Any}(
+                key => po()[key] for key in new_published_object_keys
+            ),
             "group" => string(group),
             "id" => string(id),
             "file" => string(file),
             "cell_id" => pl.cell_id,
             "line" => line isa Union{Int32,Int64} ? line : nothing,
-            "kwargs" => Tuple{String,Any}[(string(k), format_log_value(v)) for (k, v) in kwargs if k != :maxlog],
+            "kwargs" => kwargs_formatted,
         ))
 
         yield()
