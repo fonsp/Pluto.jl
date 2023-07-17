@@ -2144,20 +2144,6 @@ end"""
 """
 const currently_running_cell_id = Ref{UUID}(uuid4())
 
-# TODO: remove me
-function _publish(x, id_start)::String
-    assertpackable(x)
-    
-    id = string(notebook_id[], "/", currently_running_cell_id[], "/", id_start)
-    d = get!(Dict{String,Any}, cell_published_objects, currently_running_cell_id[])
-    d[id] = x
-    return id
-end
-
-# TODO: remove me
-_publish(x) = _publish(x, objectid2str(x))
-
-
 function core_published_to_js(io, x)
     id_start = objectid2str(x)
     
@@ -2165,38 +2151,32 @@ function core_published_to_js(io, x)
     _cell_id = get(io, :pluto_cell_id, currently_running_cell_id[])::UUID
     
     # The unique identifier of this object
-    id = string(_notebook_id, "/", id_start)
+    id = "$_notebook_id/$id_start"
     
     d = get!(Dict{String,Any}, cell_published_objects, _cell_id)
     d[id] = x
     
-    write(io, "/* See the documentation for published_to_js */ getPublishedObject(\"$(id)\")")
+    write(io, "/* See the documentation for AbstractPlutoDingetjes.Display.published_to_js */ getPublishedObject(\"$(id)\")")
     
     return nothing
 end
 
-# TODO: remove me
-Base.@kwdef struct PublishedToJavascript
-    published_id
-    cell_id
+# TODO: This is the deprecated old function. Remove me at some point.
+struct PublishedToJavascript
+    published_object
 end
 function Base.show(io::IO, ::MIME"text/javascript", published::PublishedToJavascript)
-    if published.cell_id !== get(io, :pluto_cell_id, currently_running_cell_id[])
-        error("Showing result from published_to_js() in a cell different from where it was created, not (yet?) supported.")
-    end
-    write(io, "/* See the documentation for published_to_js */ getPublishedObject(\"$(published.published_id)\")")
+    core_published_to_js(io, published.published_object)
 end
 Base.show(io::IO, ::MIME"text/plain", published::PublishedToJavascript) = show(io, MIME("text/javascript"), published)    
 Base.show(io::IO, published::PublishedToJavascript) = show(io, MIME("text/javascript"), published)    
 
-# TODO: remove me
-function publish_to_js(args...)
+# TODO: This is the deprecated old function. Remove me at some point.
+function publish_to_js(x)
     @warn "Deprecated, use `AbstractPlutoDingetjes.Display.published_to_js(x)` instead of `PlutoRunner.publish_to_js(x)`."
-    
-    PublishedToJavascript(
-        published_id=_publish(args...),
-        cell_id=currently_running_cell_id[],
-    )
+
+    assertpackable(x)
+    PublishedToJavascript(x)
 end
 
 const Packable = Union{Nothing,Missing,String,Symbol,Int64,Int32,Int16,Int8,UInt64,UInt32,UInt16,UInt8,Float32,Float64,Bool,MIME,UUID,DateTime}
@@ -2400,18 +2380,32 @@ function Logging.handle_message(pl::PlutoCellLogger, level, msg, _module, group,
     end
 
     try
-
         yield()
 
+        po() = get(cell_published_objects, pl.cell_id, Dict{String,Any}())
+        before_published_object_keys = collect(keys(po()))
+
+        # Render the log arguments:
+        msg_formatted = format_output_default(msg isa AbstractString ? Text(msg) : msg)
+        kwargs_formatted = Tuple{String,Any}[(string(k), format_log_value(v)) for (k, v) in kwargs if k != :maxlog]
+
+        after_published_object_keys = collect(keys(po()))
+        new_published_object_keys = setdiff(after_published_object_keys, before_published_object_keys)
+
+        # (Running `put!(pl.log_channel, x)` will send `x` to the pluto server. See `start_relaying_logs` for the receiving end.)
         put!(pl.log_channel, Dict{String,Any}(
             "level" => string(level),
-            "msg" => format_output_default(msg isa AbstractString ? Text(msg) : msg),
+            "msg" => msg_formatted,
+            # This is a dictionary containing all published objects that were published during the rendering of the log arguments (we cannot track which objects were published during the execution of the log statement itself i think...)
+            "new_published_objects" => Dict{String,Any}(
+                key => po()[key] for key in new_published_object_keys
+            ),
             "group" => string(group),
             "id" => string(id),
             "file" => string(file),
             "cell_id" => pl.cell_id,
             "line" => line isa Union{Int32,Int64} ? line : nothing,
-            "kwargs" => Tuple{String,Any}[(string(k), format_log_value(v)) for (k, v) in kwargs if k != :maxlog],
+            "kwargs" => kwargs_formatted,
         ))
 
         yield()
