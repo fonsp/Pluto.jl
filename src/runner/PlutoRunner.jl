@@ -2145,6 +2145,8 @@ end"""
 const currently_running_cell_id = Ref{UUID}(uuid4())
 
 function core_published_to_js(io, x)
+    assertpackable(x)
+
     id_start = objectid2str(x)
     
     _notebook_id = get(io, :pluto_notebook_id, notebook_id[])::UUID
