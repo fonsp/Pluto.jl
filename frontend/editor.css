@@ -2327,6 +2327,7 @@ pluto-helpbox.hidden > section {
 }
 .helpbox-docs > section h1 {
     font-size: 1.3rem;
+    overflow-wrap: anywhere;
 }
 .helpbox-docs > section pre {
     padding: 0.7rem 0.5rem;
