@@ -3,6 +3,7 @@ import { plutohash_arraybuffer, debounced_promises, base64url_arraybuffer } from
 import { pack, unpack } from "./MsgPack.js"
 import immer from "../imports/immer.js"
 import _ from "../imports/lodash.js"
+import { open_pluto_popup } from "../components/Popup.js"
 
 const assert_response_ok = (/** @type {Response} */ r) => (r.ok ? r : Promise.reject(r))
 
@@ -39,6 +40,23 @@ export const nothing_actions = ({ actions }) =>
         ])
     )
 
+const sliders_error = (e, previously_set) => {
+    const el = previously_set ? document.querySelector(`bond[def=${previously_set.values().next().value}]`) : null
+    if (e.status === 503) {
+        open_pluto_popup({
+            type: "warn",
+            body: "Sliders are still starting, check back later for interactivity!",
+            source_element: el,
+        })
+    } else {
+        open_pluto_popup({
+            type: "warn",
+            body: "Error connecting to slider server!",
+            source_element: el,
+        })
+    }
+}
+
 export const slider_server_actions = ({ setStatePromise, launch_params, actions, get_original_state, get_current_state, apply_notebook_patches }) => {
     setStatePromise(
         immer((state) => {
@@ -55,7 +73,6 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
 
     const bond_connections = notebookfile_hash
         .then((hash) => fetch(trailingslash(launch_params.slider_server_url) + "bondconnections/" + hash))
-        .then(assert_response_ok)
         .then((r) => r.arrayBuffer())
         .then((b) => unpack(new Uint8Array(b)))
 
@@ -92,6 +109,7 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
             const to_send = new Set(bonds_to_set.current)
             bonds_to_set.current.forEach((varname) => (graph[varname] ?? []).forEach((x) => to_send.add(x)))
             console.debug("Requesting bonds", bonds_to_set.current, to_send)
+            const previously_set = new Set(bonds_to_set.current)
             bonds_to_set.current = new Set()
 
             const mybonds_filtered = Object.fromEntries(
@@ -129,16 +147,25 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
                         ids_of_cells_that_ran.forEach((id) => {
                             state.cell_results[id] = original.cell_results[id]
                         })
-                        running_cells.forEach((id) => {
-                            state.cell_results[id].queued = false
-                            state.cell_results[id].running = false
-                        })
                     })(get_current_state())
                 )
             } catch (e) {
                 console.error(unpacked, e)
+
+                if (previously_set.size === 1) {
+                    sliders_error(e, previously_set)
+                }
             }
         }
+
+        await setStatePromise(
+            immer((state) => {
+                running_cells.forEach((id) => {
+                    state.notebook.cell_results[id].queued = false
+                    state.notebook.cell_results[id].running = false
+                })
+            })
+        )
     })
 
     return {
