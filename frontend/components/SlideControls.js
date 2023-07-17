@@ -1,4 +1,4 @@
-import { html, useRef, useEffect, useState, useLayoutEffect } from "../imports/Preact.js"
+import { html, useRef, useState, useLayoutEffect } from "../imports/Preact.js"
 
 export const SlideControls = () => {
     const button_prev_ref = useRef(/** @type {HTMLButtonElement?} */ (null))
