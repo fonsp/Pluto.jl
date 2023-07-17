@@ -8,7 +8,8 @@ using InteractiveUtils
 begin
 	using Pkg
 	Pkg.activate(temp=true)
-	Pkg.add(url="https://github.com/disberd/AbstractPlutoDingetjes.jl", rev="published_to_js")
+	# the latest versions of these packages:
+	Pkg.add(url="https://github.com/JuliaPluto/AbstractPlutoDingetjes.jl", rev="main")
 	Pkg.add("HypertextLiteral")
 end
 
