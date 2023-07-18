@@ -1,10 +1,12 @@
-import { html, useRef, useState, useLayoutEffect } from "../imports/Preact.js"
+import { html, useRef, useState, useLayoutEffect, useEffect } from "../imports/Preact.js"
+import { open_pluto_popup } from "./Popup.js"
 
 export const SlideControls = () => {
     const button_prev_ref = useRef(/** @type {HTMLButtonElement?} */ (null))
     const button_next_ref = useRef(/** @type {HTMLButtonElement?} */ (null))
 
     const [presenting, set_presenting] = useState(false)
+    const [fullscreen, set_fullscreen] = useState(false)
 
     const move_slides_with_arrows = (/** @type {KeyboardEvent} */ e) => {
         const activeElement = document.activeElement
@@ -73,6 +75,25 @@ export const SlideControls = () => {
         set_presenting(!presenting_ref.current)
     }
 
+    const fullscreen_ref = useRef(false)
+    fullscreen_ref.current = fullscreen
+    const check_fullscreen_status = (/** @type {UIEvent} */ e) => {
+        // This will detect full screen if the window height becomes equivalent to the screen height
+        // In firefox, screen.height is adapted based on OS DPI settings (at least on windows) and browser zoom, while on chrome the screen is not reflecting the browser zoom level. This means that the current approach will only work on chrome when the browser zoom is 100%.
+        let maxHeight = window.screen.height
+        let curHeight = window.innerHeight
+
+        if (!fullscreen_ref.current && maxHeight === curHeight) {
+            // We just got into FullScreen
+            set_fullscreen(true)
+        } else if (fullscreen_ref.current && maxHeight !== curHeight) {
+            // We just got out of FullScreen
+            set_fullscreen(false)
+        } else {
+            return
+        }
+    }
+
     useLayoutEffect(() => {
         document.body.classList.toggle("presentation", presenting)
 
@@ -84,6 +105,69 @@ export const SlideControls = () => {
             window.removeEventListener("keydown", move_slides_with_arrows)
         }
     }, [presenting])
+
+    useLayoutEffect(() => {
+        console.log("presenting")
+        if (!presenting_ref.current && fullscreen) {
+            open_pluto_popup({
+                type: "info",
+                source_element: null,
+                body: html`It seems you have just entered fullscreen mode.
+                    <p>Would you like to <b>activate</b> Pluto presentation mode?</p>
+                    <a
+                        href="#"
+                        onClick=${(e) => {
+                            e.preventDefault()
+                            set_presenting(true)
+                            window.dispatchEvent(new CustomEvent("close pluto popup"))
+                        }}
+                        >Yes</a
+                    >
+                    <br />
+                    <a
+                        href="#"
+                        onClick=${(e) => {
+                            e.preventDefault()
+                            window.dispatchEvent(new CustomEvent("close pluto popup"))
+                        }}
+                        >No</a
+                    >`,
+            })
+        } else if (presenting_ref.current && !fullscreen) {
+            open_pluto_popup({
+                type: "info",
+                source_element: null,
+                body: html`It seems you have just exited fullscreen mode.
+                    <p>Would you like to <b>deactivate</b> Pluto presentation mode?</p>
+                    <a
+                        href="#"
+                        onClick=${(e) => {
+                            e.preventDefault()
+                            set_presenting(false)
+                            window.dispatchEvent(new CustomEvent("close pluto popup"))
+                        }}
+                        >Yes</a
+                    >
+                    <br />
+                    <a
+                        href="#"
+                        onClick=${(e) => {
+                            e.preventDefault()
+                            window.dispatchEvent(new CustomEvent("close pluto popup"))
+                        }}
+                        >No</a
+                    >`,
+            })
+        }
+    }, [fullscreen])
+
+    useEffect(() => {
+        window.addEventListener("resize", check_fullscreen_status)
+
+        return () => {
+            window.removeEventListener("resize", check_fullscreen_status)
+        }
+    }, [])
 
     return html`
         <nav id="slide_controls">
