@@ -76,6 +76,8 @@ export const SlideControls = () => {
     useLayoutEffect(() => {
         document.body.classList.toggle("presentation", presenting)
 
+        if (!presenting) return // We do not add listeners if not presenting
+
         window.addEventListener("keydown", move_slides_with_arrows)
 
         return () => {
