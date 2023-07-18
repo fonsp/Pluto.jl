@@ -524,7 +524,7 @@ function notebook_differences(from::Notebook, to::Notebook)
 			end
 		end,
 		
-		folded_changed = any(from_cells[id].code_folded != to_cells[id].code_folded for id in keys(from_cells) if id in keys(to_cells)),
+		folded_changed = any(from_cells[id].code_folded != to_cells[id].code_folded for id in keys(from_cells) if haskey(to_cells, id)),
 		order_changed = from.cell_order != to.cell_order,
 		nbpkg_changed = !is_nbpkg_equal(from.nbpkg_ctx, to.nbpkg_ctx),
 	)
