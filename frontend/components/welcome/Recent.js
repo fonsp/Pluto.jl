@@ -4,6 +4,7 @@ import * as preact from "../../imports/Preact.js"
 
 import { cl } from "../../common/ClassTable.js"
 import { link_edit, link_open_path } from "./Open.js"
+import { unpack } from "../../common/MsgPack.js"
 
 /**
  * @typedef CombinedNotebook
@@ -40,6 +41,22 @@ const shortest_path = (path, allpaths) => {
         }
     }
     return split_at_level(path, level)
+}
+
+const NumCells = ({ id }) => {
+    const [num_cells, set_num_cells] = useState(/** @type {number?} */ (null))
+
+    useEffect(() => {
+        fetch(`statefile?id=${id}`)
+            .then((r) => r.arrayBuffer())
+            .then((ab) => {
+                let state = /** @type {import("../Editor.js").NotebookData} */ (unpack(new Uint8Array(ab)))
+
+                set_num_cells(state.cell_order.length)
+            })
+    }, [id])
+
+    return html`<span class="num-cells">${num_cells ?? "..."}</span>`
 }
 
 /**
@@ -196,7 +213,7 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
                               }
                           }}
                           >${shortest_path(nb.path, all_paths)}</a
-                      >
+                      >${running ? html` has <${NumCells} id=${nb.notebook_id} /> cells` : null}
                   </li>`
               })
 
