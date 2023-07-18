@@ -18,7 +18,7 @@ import { RecentlyDisabledInfo, UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
 import { Scroller } from "./Scroller.js"
 import { ExportBanner } from "./ExportBanner.js"
-import { Popup } from "./Popup.js"
+import { open_pluto_popup, Popup } from "./Popup.js"
 
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
@@ -840,7 +840,30 @@ patch: ${JSON.stringify(
             setTimeout(init_feedback, 2 * 1000) // 2 seconds - load feedback a little later for snappier UI
         }
 
-        const on_connection_status = (val) => this.setState({ connected: val })
+        const on_connection_status = (val, hopeless) => {
+            this.setState({ connected: val })
+            if (hopeless) {
+                // https://github.com/fonsp/Pluto.jl/issues/55
+                // https://github.com/fonsp/Pluto.jl/issues/2398
+                open_pluto_popup({
+                    type: "warn",
+                    source_element: null,
+                    body: html`<p>A new server was started - this notebook session is no longer running.</p>
+                        <p>Would you like to go back to the main menu?</p>
+                        <br />
+                        <a href="./">Go back</a>
+                        <br />
+                        <a
+                            href="#"
+                            onClick=${(e) => {
+                                e.preventDefault()
+                                window.dispatchEvent(new CustomEvent("close pluto popup"))
+                            }}
+                            >Stay here</a
+                        >`,
+                })
+            }
+        }
 
         const on_reconnect = () => {
             console.warn("Reconnected! Checking states")
