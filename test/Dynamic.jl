@@ -199,9 +199,10 @@ end
 
         notebook = Notebook([
             Cell("PlutoRunner.notebook_id[] |> Text"),
+            # These cells tests `core_published_to_js`, which is the function used by the official API (`AbtractPlutoDingetjes.Display.published_to_js`).
             Cell(cid, """
             begin
-                # not actually public API but we test it anyways
+                
                 a = Dict(
                     "hello" => "world",
                     "xx" => UInt8[6,7,8],
@@ -209,21 +210,34 @@ end
                 b = "cool"
                 
                 struct ZZZ
+                    x
+                    y
                 end
                 
-                function Base.show(io::IO, ::MIME"text/html", ::ZZZ)
+                function Base.show(io::IO, ::MIME"text/html", z::ZZZ)
                     write(io, "<script>\n")
-                    PlutoRunner.core_published_to_js(io, a)
-                    PlutoRunner.core_published_to_js(io, b)
+                    PlutoRunner.core_published_to_js(io, z.x)
+                    PlutoRunner.core_published_to_js(io, z.y)
                     write(io, "\n</script>")
                 end
                 
-                ZZZ()
+                ZZZ(a, b)
             end
             """),
-            Cell("3"),
+            Cell("""
+            begin
+                struct ABC
+                    x
+                end
+                ZZZ(
+                    123, 
+                    Dict("a" => 234, "b" => ABC(4)),
+                )
+            end
+            """),
+            # This is the deprecated API:
             Cell("PlutoRunner.publish_to_js(Ref(4))"),
-            Cell("PlutoRunner.publish_to_js((ref=4,))"),
+            Cell("PlutoRunner.publish_to_js((ref=5,))"),
             Cell("x = Dict(:a => 6)"),
             Cell("PlutoRunner.publish_to_js(x)"),
         ])
@@ -259,11 +273,21 @@ end
         
         @test !isempty(notebook.cells[2].published_objects)
         
+        # display should have failed
+        @test only(values(notebook.cells[3].published_objects)) == 123
+        msg = notebook.cells[3].output.body[:msg]
+        @test occursin("Failed to show value", msg)
+        @test occursin("ABC is not compatible", msg)
+        
+        
+        
         setcode!(notebook.cells[2], "2")
         update_save_run!(🍭, notebook, notebook.cells)
         @test isempty(notebook.cells[2].published_objects)
+        @test isempty(notebook.cells[2].published_objects)
         
-        @test isempty(notebook.cells[3].published_objects)
+        
+        
         @test notebook.cells[4].errored
         @test notebook.cells[5] |> noerror
         @test !isempty(notebook.cells[5].published_objects)
