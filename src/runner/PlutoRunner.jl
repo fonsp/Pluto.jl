@@ -2182,10 +2182,10 @@ function publish_to_js(x)
 end
 
 const Packable = Union{Nothing,Missing,String,Symbol,Int64,Int32,Int16,Int8,UInt64,UInt32,UInt16,UInt8,Float32,Float64,Bool,MIME,UUID,DateTime}
-assertpackable(::Packable) = true
+assertpackable(::Packable) = nothing
 assertpackable(t::Any) = throw(ArgumentError("Only simple objects can be shared with JS, like vectors and dictionaries. $(string(typeof(t))) is not compatible."))
-assertpackable(::Vector{<:Packable}) = true
-assertpackable(::Dict{<:Packable,<:Packable}) = true
+assertpackable(::Vector{<:Packable}) = nothing
+assertpackable(::Dict{<:Packable,<:Packable}) = nothing
 assertpackable(x::Vector) = foreach(assertpackable, x)
 assertpackable(d::Dict) = let
     foreach(assertpackable, keys(d))
