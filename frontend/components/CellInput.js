@@ -631,17 +631,23 @@ export const CellInput = ({
                     // Remove selection on blur
                     EditorView.domEventHandlers({
                         blur: (event, view) => {
-                            // collapse the selection into a single point
-                            view.dispatch({
-                                selection: {
-                                    anchor: view.state.selection.main.head,
-                                },
-                                scrollIntoView: false,
-                            })
-                            // and blur the DOM again (because the previous transaction might have re-focused it)
-                            view.contentDOM.blur()
+                            // it turns out that this condition is true *exactly* if and only if the blur event was triggered by blurring the window
+                            let caused_by_window_blur = document.activeElement === view.contentDOM
 
-                            set_cm_forced_focus(null)
+                            if (!caused_by_window_blur) {
+                                // then it's caused by focusing something other than this cell in the editor.
+                                // in this case, we want to collapse the selection into a single point, for aesthetic reasons.
+                                view.dispatch({
+                                    selection: {
+                                        anchor: view.state.selection.main.head,
+                                    },
+                                    scrollIntoView: false,
+                                })
+                                // and blur the DOM again (because the previous transaction might have re-focused it)
+                                view.contentDOM.blur()
+
+                                set_cm_forced_focus(null)
+                            }
                         },
                     }),
                     pluto_paste_plugin({

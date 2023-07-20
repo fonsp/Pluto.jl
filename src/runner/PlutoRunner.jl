@@ -908,7 +908,13 @@ function formatted_result_of(
     output_formatted = if (!ends_with_semicolon || errored)
         logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
         with_logger_and_io_to_logs(logger; capture_stdout, stdio_loglevel=stdout_log_level) do
-            format_output(ans; context=IOContext(default_iocontext, :extra_items=>extra_items, :module => workspace))
+            format_output(ans; context=IOContext(
+            default_iocontext, 
+            :extra_items=>extra_items, 
+            :module => workspace,
+            :pluto_notebook_id => notebook_id,
+            :pluto_cell_id => cell_id,
+        ))
         end
     else
         ("", MIME"text/plain"())
@@ -972,6 +978,7 @@ const default_iocontext = IOContext(devnull,
     :displaysize => (18, 88), 
     :is_pluto => true, 
     :pluto_supported_integration_features => supported_integration_features,
+    :pluto_published_to_js => (io, x) -> core_published_to_js(io, x),
 )
 
 const default_stdout_iocontext = IOContext(devnull, 
@@ -1494,17 +1501,29 @@ const integrations = Integration[
         id = Base.PkgId(Base.UUID(reinterpret(UInt128, codeunits("Paul Berg Berlin")) |> first), "AbstractPlutoDingetjes"),
         code = quote
             @assert v"1.0.0" <= AbstractPlutoDingetjes.MY_VERSION < v"2.0.0"
-            initial_value_getter_ref[] = AbstractPlutoDingetjes.Bonds.initial_value
-            transform_value_ref[] = AbstractPlutoDingetjes.Bonds.transform_value
-            possible_bond_values_ref[] = AbstractPlutoDingetjes.Bonds.possible_values
-
-            push!(supported_integration_features,
+            
+            supported!(xs...) = push!(supported_integration_features, xs...)
+            
+            # don't need feature checks for these because they existed in every version of AbstractPlutoDingetjes:
+            supported!(
                 AbstractPlutoDingetjes,
                 AbstractPlutoDingetjes.Bonds,
                 AbstractPlutoDingetjes.Bonds.initial_value,
                 AbstractPlutoDingetjes.Bonds.transform_value,
                 AbstractPlutoDingetjes.Bonds.possible_values,
             )
+            initial_value_getter_ref[] = AbstractPlutoDingetjes.Bonds.initial_value
+            transform_value_ref[] = AbstractPlutoDingetjes.Bonds.transform_value
+            possible_bond_values_ref[] = AbstractPlutoDingetjes.Bonds.possible_values
+            
+            # feature checks because these were added in a later release of AbstractPlutoDingetjes
+            if isdefined(AbstractPlutoDingetjes, :Display)
+                supported!(AbstractPlutoDingetjes.Display)
+                if isdefined(AbstractPlutoDingetjes.Display, :published_to_js)
+                    supported!(AbstractPlutoDingetjes.Display.published_to_js)
+                end
+            end
+
         end,
     ),
     Integration(
@@ -2125,74 +2144,48 @@ end"""
 """
 const currently_running_cell_id = Ref{UUID}(uuid4())
 
-function _publish(x, id_start, cell_id)::String
-    id = "$(notebook_id[])/$cell_id/$id_start"
-    d = get!(Dict{String,Any}, cell_published_objects, cell_id)
+function core_published_to_js(io, x)
+    assertpackable(x)
+
+    id_start = objectid2str(x)
+    
+    _notebook_id = get(io, :pluto_notebook_id, notebook_id[])::UUID
+    _cell_id = get(io, :pluto_cell_id, currently_running_cell_id[])::UUID
+    
+    # The unique identifier of this object
+    id = "$_notebook_id/$id_start"
+    
+    d = get!(Dict{String,Any}, cell_published_objects, _cell_id)
     d[id] = x
-    return id
+    
+    write(io, "/* See the documentation for AbstractPlutoDingetjes.Display.published_to_js */ getPublishedObject(\"$(id)\")")
+    
+    return nothing
 end
 
-# TODO? Possibly move this to it's own package, with fallback that actually msgpack?
-# ..... Ideally we'd make this require `await` on the javascript side too...
-Base.@kwdef struct PublishedToJavascript
+# TODO: This is the deprecated old function. Remove me at some point.
+struct PublishedToJavascript
     published_object
-    published_id_start
-    cell_id
 end
 function Base.show(io::IO, ::MIME"text/javascript", published::PublishedToJavascript)
-    id = _publish(published.published_object, published.published_id_start, published.cell_id)
-    # if published.cell_id != currently_running_cell_id[]
-    #     error("Showing result from PlutoRunner.publish_to_js() in a cell different from where it was created, not (yet?) supported.")
-    # end
-    write(io, "/* See the documentation for PlutoRunner.publish_to_js */ getPublishedObject(\"$(id)\")")
+    core_published_to_js(io, published.published_object)
 end
 Base.show(io::IO, ::MIME"text/plain", published::PublishedToJavascript) = show(io, MIME("text/javascript"), published)    
 Base.show(io::IO, published::PublishedToJavascript) = show(io, MIME("text/javascript"), published)    
 
-"""
-    publish_to_js(x)
+# TODO: This is the deprecated old function. Remove me at some point.
+function publish_to_js(x)
+    @warn "Deprecated, use `AbstractPlutoDingetjes.Display.published_to_js(x)` instead of `PlutoRunner.publish_to_js(x)`."
 
-Make the object `x` available to the JS runtime of this cell. The returned string is a JS command that, when executed in this cell's output, gives the object.
-
-!!! warning
-
-    This function is not yet public API, it will become public in the next weeks. Only use for experiments.
-
-# Example
-```julia
-let
-    x = Dict(
-        "data" => rand(Float64, 20),
-        "name" => "juliette",
-    )
-
-    HTML("\""
-    <script>
-    // we interpolate into JavaScript:
-    const x = \$(PlutoRunner.publish_to_js(x))
-
-    console.log(x.name, x.data)
-    </script>
-    "\"")
-end
-```
-"""
-publish_to_js(x) = publish_to_js(x, objectid2str(x))
-
-function publish_to_js(x, id_start)
     assertpackable(x)
-    PublishedToJavascript(
-        published_object=x,
-        published_id_start=id_start,
-        cell_id=currently_running_cell_id[],
-    )
+    PublishedToJavascript(x)
 end
 
 const Packable = Union{Nothing,Missing,String,Symbol,Int64,Int32,Int16,Int8,UInt64,UInt32,UInt16,UInt8,Float32,Float64,Bool,MIME,UUID,DateTime}
-assertpackable(::Packable) = true
+assertpackable(::Packable) = nothing
 assertpackable(t::Any) = throw(ArgumentError("Only simple objects can be shared with JS, like vectors and dictionaries. $(string(typeof(t))) is not compatible."))
-assertpackable(::Vector{<:Packable}) = true
-assertpackable(::Dict{<:Packable,<:Packable}) = true
+assertpackable(::Vector{<:Packable}) = nothing
+assertpackable(::Dict{<:Packable,<:Packable}) = nothing
 assertpackable(x::Vector) = foreach(assertpackable, x)
 assertpackable(d::Dict) = let
     foreach(assertpackable, keys(d))

@@ -3415,7 +3415,6 @@ pluto-cell.hooked_up pluto-output {
 }
 
 .pluto-frontmatter label {
-    text-transform: capitalize;
     font-weight: 500;
 }
 

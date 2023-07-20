@@ -101,14 +101,14 @@ end
     sleep(timeout_between_tests)
     
     file4 = read(notebook.path, String)
+    last_hot_reload_time4 = notebook.last_hot_reload_time
     notebook.cells[3].code_folded = true
     save_notebook(notebook)
     sleep(timeout_between_tests)
     
     file5 = read(notebook.path, String)
-    @assert file4 != file5
-    
-    @assert notebook.cells[3].code_folded
+    @test file4 != file5
+    @test notebook.cells[3].code_folded
     write(notebook.path, file4)
     
     
@@ -119,7 +119,10 @@ end
     # cell folded, but cell should not re-run
     @assert original_rand_output == notebook.cells[3].output.body
 
-    
+    @assert poll(10) do
+        last_hot_reload_time5 = notebook.last_hot_reload_time
+        last_hot_reload_time5 != last_hot_reload_time4
+    end
         
     ###
     sleep(timeout_between_tests)
