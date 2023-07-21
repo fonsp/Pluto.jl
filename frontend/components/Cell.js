@@ -336,7 +336,9 @@ export const Cell = ({
                 cm_diagnostics=${cm_diagnostics}
                 onerror=${remount}
             />
-            ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${line_heights} set_cm_highlighted_line=${set_cm_highlighted_line} />` : null}
+            ${show_logs && cell_api_ready
+                ? html`<${Logs} logs=${Object.values(logs)} line_heights=${line_heights} set_cm_highlighted_line=${set_cm_highlighted_line} />`
+                : null}
             <${RunArea}
                 cell_id=${cell_id}
                 running_disabled=${running_disabled}

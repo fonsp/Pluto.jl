@@ -385,6 +385,21 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                                         delete notebook.metadata[key]
                                     }),
 
+                                ...(cell == null
+                                    ? {}
+                                    : {
+                                          getCellMetadataExperimental: (key, { cell_id = null } = {}) =>
+                                              pluto_actions.get_notebook()?.cell_inputs?.[cell_id ?? cell.id]?.metadata[key],
+                                          setCellMetadataExperimental: (key, value, { cell_id = null } = {}) =>
+                                              pluto_actions.update_notebook((notebook) => {
+                                                  notebook.cell_inputs[cell_id ?? cell.id].metadata[key] = value
+                                              }),
+                                          deleteCellMetadataExperimental: (key, { cell_id = null } = {}) =>
+                                              pluto_actions.update_notebook((notebook) => {
+                                                  delete notebook.cell_inputs[cell_id ?? cell.id].metadata[key]
+                                              }),
+                                      }),
+
                                 ...observablehq_for_cells,
                             },
                             code,
