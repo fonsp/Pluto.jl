@@ -624,7 +624,7 @@ import Memoize: @memoize
 
     @testset "Package macro 2" begin
         🍭.options.evaluation.workspace_use_distributed = true
-        
+
         notebook = Notebook([
             Cell("z = x^2 + y"),
             Cell("@variables x y"),
@@ -632,7 +632,7 @@ import Memoize: @memoize
             begin
                 import Pkg
                 Pkg.activate(mktempdir())
-                Pkg.add(Pkg.PackageSpec(name="Symbolics", version="1"))
+                Pkg.add(Pkg.PackageSpec(name="Symbolics", version="5.5.1"))
                 import Symbolics: @variables
             end
             """),
@@ -648,7 +648,7 @@ import Memoize: @memoize
 
         @test cell(1) |> noerror
         @test cell(2) |> noerror
-        @test cell(2) |> noerror
+        @test cell(3) |> noerror
 
         update_run!(🍭, notebook, notebook.cells)
 
