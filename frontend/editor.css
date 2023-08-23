@@ -740,11 +740,6 @@ nav#at_the_top:after {
     color: black;
 }
 
-.cm-tooltip-lint {
-    font-family: "JuliaMono";
-    font-size: 0.75rem;
-}
-
 @media (any-pointer: fine) {
     nav#at_the_top > pluto-filepicker .cm-editor,
     nav#at_the_top > div.desktop_picker span {
@@ -1940,6 +1935,9 @@ pluto-runarea {
     border-bottom-left-radius: 5px;
     border-bottom-right-radius: 5px;
     border-top: none;
+    /* One less than z-index for pluto-input .cm-editor.
+       Otherwise it gets on top of the tooltips */
+    z-index: 19;
 }
 
 pluto-runarea > span {
@@ -3052,6 +3050,12 @@ button.floating_back_button {
     border: 1px solid var(--cm-editor-tooltip-border-color);
     box-shadow: 3px 3px 4px rgb(0 0 0 / 20%);
     border-radius: 4px;
+}
+
+.cm-tooltip-lint {
+    font-family: "JuliaMono";
+    font-size: 0.75rem;
+    z-index: 100;
 }
 
 .cm-tooltip-autocomplete {
