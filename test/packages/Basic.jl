@@ -648,7 +648,25 @@ import Distributed
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
-    
+
+    @testset "PlutoRunner Syntax Error" begin
+        notebook = Notebook([
+            Cell("1 +"),
+            Cell("PlutoRunner.throw_syntax_error"),
+            Cell("PlutoRunner.throw_syntax_error(1)"),
+        ])
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test notebook.cells[1].errored
+        @test noerror(notebook.cells[2])
+        @test notebook.cells[3].errored
+
+        @test Pluto.is_just_text(notebook.topology, notebook.cells[1])
+        @test !Pluto.is_just_text(notebook.topology, notebook.cells[2]) # Not a syntax error form
+        @test Pluto.is_just_text(notebook.topology, notebook.cells[3])
+    end
+
     @testset "Precompilation" begin
         compilation_dir = joinpath(DEPOT_PATH[1], "compiled", "v$(VERSION.major).$(VERSION.minor)")
         @assert isdir(compilation_dir)
