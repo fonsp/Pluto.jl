@@ -1519,7 +1519,7 @@ pluto-input > button > span {
     }
 }
 
-@media screen and (any-pointer: coarse) {
+@media screen and (pointer: coarse) {
     pluto-cell > button,
     pluto-cell > pluto-runarea {
         opacity: 0;
