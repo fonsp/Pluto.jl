@@ -1,5 +1,8 @@
 import { PlutoActionsContext } from "../common/PlutoContext.js"
-import { html, useContext, useState } from "../imports/Preact.js"
+import { EditorState, EditorView, julia_andrey, lineNumbers, syntaxHighlighting } from "../imports/CodemirrorPlutoSetup.js"
+import { html, useContext, useEffect, useLayoutEffect, useRef, useState } from "../imports/Preact.js"
+import { pluto_syntax_colors } from "./CellInput.js"
+import { Editor } from "./Editor.js"
 
 const StackFrameFilename = ({ frame, cell_id }) => {
     const sep_index = frame.file.indexOf("#==#")
@@ -38,6 +41,43 @@ const Funccall = ({ frame }) => {
 
 const insert_commas_and_and = (/** @type {any[]} */ xs) => xs.flatMap((x, i) => (i === xs.length - 1 ? [x] : i === xs.length - 2 ? [x, " and "] : [x, ", "]))
 
+export const ParseError = ({ cell_id, diagnostics }) => {
+    useEffect(() => {
+        window.dispatchEvent(
+            new CustomEvent("cell_diagnostics", {
+                detail: {
+                    cell_id,
+                    diagnostics,
+                },
+            })
+        )
+        return () => window.dispatchEvent(new CustomEvent("cell_diagnostics", { detail: { cell_id, diagnostics: [] } }))
+    }, [diagnostics])
+
+    return html`
+        <jlerror>
+            <header><p>Syntax error</p></header>
+            <section>
+              <ol>
+                  ${diagnostics.map(
+                    ({ message, from, to, line }) =>
+                        html`<li onmouseenter=${() => // NOTE: this could be moved move to `StackFrameFilename`
+                                window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from, to }}))
+                        }
+                        onmouseleave=${() =>
+                                window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from: null, to: null }}))
+                        }
+                      >
+                            ${message}<span>@</span>
+                            <${StackFrameFilename} frame=${{file: "#==#" + cell_id, line}} cell_id=${cell_id} />
+                        </li>`)
+                    }
+              </ol>
+            </section>
+        </jlerror>
+    `;
+}
+
 export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     const default_rewriter = {
@@ -62,9 +102,9 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                         <a
                             href="#"
                             onClick=${(e) => {
-                                e.preventDefault()
-                                pluto_actions.split_remote_cell(cell_id, boundaries, true)
-                            }}
+                            e.preventDefault()
+                            pluto_actions.split_remote_cell(cell_id, boundaries, true)
+                        }}
                             >Split this cell into ${boundaries.length} cells</a
                         >, or
                     </p>`
@@ -138,6 +178,11 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                 }),
         },
         {
+            pattern: /^syntax: (.*)$/,
+            display: default_rewriter.display,
+            show_stacktrace: () => false,
+        },
+        {
             pattern: /^UndefVarError: (.*) not defined\.?$/,
             display: (/** @type{string} */ x) => {
                 const notebook = /** @type{import("./Editor.js").NotebookData?} */ (pluto_actions.get_notebook())
@@ -183,14 +228,14 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
             : html`<section>
                   <ol>
                       ${stacktrace.map(
-                          (frame) =>
-                              html`<li>
+                (frame) =>
+                    html`<li>
                                   <${Funccall} frame=${frame} />
                                   <span>@</span>
                                   <${StackFrameFilename} frame=${frame} cell_id=${cell_id} />
                                   ${frame.inlined ? html`<span>[inlined]</span>` : null}
                               </li>`
-                      )}
+            )}
                   </ol>
               </section>`}
     </jlerror>`

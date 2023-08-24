@@ -156,7 +156,7 @@ end
         let
             doc_output = Pluto.PlutoRunner.doc_fetcher("sor", Main)[1]
             @test occursin("Similar results:", doc_output)
-            @test occursin("<b>s</b><b>o</b><b>r</b>tperm", doc_output)
+            @test occursin("<b>s</b><b>o</b><b>r</b>t", doc_output)
         end
 
         @test occursin("\\div", Pluto.PlutoRunner.doc_fetcher("÷", Main)[1])

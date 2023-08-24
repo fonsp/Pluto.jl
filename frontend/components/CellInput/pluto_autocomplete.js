@@ -131,7 +131,11 @@ let update_docs_from_autocomplete_selection = (on_update_doc_query) => {
         // The nice thing about this is that we can use the resulting state from the transaction,
         // without updating the actual state of the editor.
         let result_transaction = update.state.update({
-            changes: { from: selected_option.source.from, to: selected_option.source.to, insert: text_to_apply },
+            changes: {
+                from: selected_option.source.from,
+                to: Math.min(selected_option.source.to, update.state.doc.length),
+                insert: text_to_apply,
+            },
         })
 
         // So we can use `get_selected_doc_from_state` on our virtual state

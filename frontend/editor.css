@@ -1232,6 +1232,7 @@ pluto-input .cm-editor .cm-line {
     transition: background-color 0.15s ease-in-out;
 }
 
+pluto-input .cm-editor span.cm-highlighted-range,
 pluto-input .cm-editor .cm-line.cm-highlighted-line {
     background-color: #bdbdbd68;
     border-radius: 3px;
@@ -1934,6 +1935,9 @@ pluto-runarea {
     border-bottom-left-radius: 5px;
     border-bottom-right-radius: 5px;
     border-top: none;
+    /* One less than z-index for pluto-input .cm-editor.
+       Otherwise it gets on top of the tooltips */
+    z-index: 19;
 }
 
 pluto-runarea > span {
@@ -3048,6 +3052,12 @@ button.floating_back_button {
     border-radius: 4px;
 }
 
+.cm-tooltip-lint {
+    font-family: "JuliaMono";
+    font-size: 0.75rem;
+    z-index: 100;
+}
+
 .cm-tooltip-autocomplete {
     max-height: calc(20 * 16px);
     box-sizing: content-box;
@@ -3185,10 +3195,10 @@ pluto-input .cm-editor .cm-content {
     padding: 2px 0px;
 }
 
-.cm-editor .cm-selectionBackground {
+.cm-editor .cm-scroller > .cm-selectionLayer .cm-selectionBackground {
     background: var(--cm-selection-background-blurred);
 }
-.cm-editor.cm-focused .cm-selectionBackground {
+.cm-editor.cm-focused .cm-scroller > .cm-selectionLayer .cm-selectionBackground {
     background: var(--cm-selection-background);
 }
 
