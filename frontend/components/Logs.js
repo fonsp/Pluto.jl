@@ -20,7 +20,7 @@ const is_stdout_log = (log) => {
     return log.level == STDOUT_LOG_LEVEL
 }
 
-export const Logs = ({ logs, line_heights, set_cm_highlighted_line }) => {
+export const Logs = ({ cell_id, logs, line_heights, set_cm_highlighted_line }) => {
     const progress_logs = logs.filter(is_progress_log)
     const latest_progress_logs = progress_logs.reduce((progress_logs, log) => ({ ...progress_logs, [log.id]: log }), {})
     const stdout_log = logs.reduce((stdout_log, log) => {
@@ -59,6 +59,7 @@ export const Logs = ({ logs, line_heights, set_cm_highlighted_line }) => {
     }
 
     const dot = (log, i) => html`<${Dot}
+        cell_id=${cell_id}
         set_cm_highlighted_line=${set_cm_highlighted_line}
         level=${log.level}
         msg=${log.msg}
@@ -97,9 +98,9 @@ const Progress = ({ progress }) => {
     return html`<pluto-progress-bar ref=${bar_ref}>${Math.ceil(100 * progress)}%</pluto-progress-bar>`
 }
 
-const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${"adsf"} mime=${pair[1]} body=${pair[0]} persist_js_state=${false} />`
+const mimepair_output = (cell_id, pair) => html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${false} />`
 
-const Dot = ({ set_cm_highlighted_line, msg, kwargs, y, level }) => {
+const Dot = ({ cell_id, set_cm_highlighted_line, msg, kwargs, y, level }) => {
     const is_progress = is_progress_log({ level, kwargs })
     const is_stdout = level === STDOUT_LOG_LEVEL
     let progress = null
@@ -139,8 +140,8 @@ const Dot = ({ set_cm_highlighted_line, msg, kwargs, y, level }) => {
                               >`}
                       />
                       <${LogViewAnsiUp} value=${msg[0]} />`
-                : html`${mimepair_output(msg)}${kwargs.map(
-                      ([k, v]) => html`<pluto-log-dot-kwarg><pluto-key>${k}</pluto-key><pluto-value>${mimepair_output(v)}</pluto-value></pluto-log-dot-kwarg>`
+                : html`${mimepair_output(cell_id, msg)}${kwargs.map(
+                      ([k, v]) => html`<pluto-log-dot-kwarg><pluto-key>${k}</pluto-key><pluto-value>${mimepair_output(cell_id, v)}</pluto-value></pluto-log-dot-kwarg>`
                   )}`}</pluto-log-dot
         >
     </pluto-log-dot-positioner>`
