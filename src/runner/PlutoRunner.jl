@@ -2382,7 +2382,7 @@ function Base.show(io::IO, m::MIME"text/html", e::EmbeddableDisplay)
 
         // see https://plutocon2021-demos.netlify.app/fonsp%20%E2%80%94%20javascript%20inside%20pluto to learn about the techniques used in this script
         
-        const body = $(publish_to_js(body, e.script_id));
+        const body = $(PublishedToJavascript(body));
         const mime = "$(string(mime))";
         
         const create_new = this == null || this._mime !== mime;
