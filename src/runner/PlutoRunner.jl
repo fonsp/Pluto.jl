@@ -1422,7 +1422,7 @@ function array_prefix(@nospecialize(x::Vector{<:Any}))
 end
 
 function array_prefix(@nospecialize(x))
-    original = sprint(Base.showarg, x, false)
+    original = sprint(Base.showarg, x, false; context=:limit => true)
     string(lstrip(original, ':'), ": ")::String
 end
 
