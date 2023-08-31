@@ -277,7 +277,7 @@ export const Cell = ({
                     pluto_actions.add_remote_cell(cell_id, "before")
                 }}
                 class="add_cell before"
-                title="Add cell"
+                title="Add cell (Ctrl + Enter)"
             >
                 <span></span>
             </button>
@@ -334,7 +334,7 @@ export const Cell = ({
                     pluto_actions.add_remote_cell(cell_id, "after")
                 }}
                 class="add_cell after"
-                title="Add cell"
+                title="Add cell (Ctrl + Enter)"
             >
                 <span></span>
             </button>

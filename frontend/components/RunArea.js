@@ -36,7 +36,7 @@ export const RunArea = ({
         interrupt: "Interrupt",
         save: "Save code without running",
         jump: "This cell depends on a disabled cell",
-        run: "Run cell",
+        run: "Run cell (Shift + Enter) <3",
     }
 
     const on_double_click = (/** @type {MouseEvent} */ e) => {

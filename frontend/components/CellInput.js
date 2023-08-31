@@ -909,7 +909,7 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
         <span class="icon"></span>
         ${open
             ? html`<ul onMouseenter=${mouseenter}>
-                  <li onClick=${on_delete} title="Delete"><span class="delete ctx_icon" />Delete cell</li>
+                  <li onClick=${on_delete} title="Delete (Ctrl + Backspace)"><span class="delete ctx_icon" />Delete cell</li>
                   <li
                       onClick=${toggle_running_disabled}
                       title=${running_disabled ? "Enable and run the cell" : "Disable this cell, and all cells that depend on it"}
