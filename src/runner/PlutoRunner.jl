@@ -1735,9 +1735,18 @@ const integrations = Integration[
                     my_column_limit + 5 < length(first(rows))
                 end
 
-                row_data_for(row) = maptruncated(row, "more", my_column_limit; truncate=truncate_columns) do el
-                    format_output_default(el, io)
+                # TODO: render entire schema by default?
+
+                schema = Tables.schema(rows)
+                schema_data = schema === nothing ? nothing : Dict{Symbol,Any}(
+                    :names => maptruncated(string, schema.names, "more", my_column_limit; truncate=truncate_columns),
+                    :types => String.(maptruncated(trynameof, schema.types, "more", my_column_limit; truncate=truncate_columns)),
+                )
+                
+                row_data_for(row) = maptruncated(zip(row, schema.types), "more", my_column_limit; truncate=truncate_columns) do (el, col_type)
+                    format_output_default(el, IOContext(io, :typeinfo => col_type))
                 end
+
 
                 # ugliest code in Pluto:
 
@@ -1760,13 +1769,6 @@ const integrations = Integration[
                     end
                 end
                 
-                # TODO: render entire schema by default?
-
-                schema = Tables.schema(rows)
-                schema_data = schema === nothing ? nothing : Dict{Symbol,Any}(
-                    :names => maptruncated(string, schema.names, "more", my_column_limit; truncate=truncate_columns),
-                    :types => String.(maptruncated(trynameof, schema.types, "more", my_column_limit; truncate=truncate_columns)),
-                )
 
                 Dict{Symbol,Any}(
                     :objectid => objectid2str(x),
