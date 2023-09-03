@@ -2665,7 +2665,7 @@ footer button {
     font-size: 0.75rem;
 }
 
-#info {
+footer #info {
     max-width: 9400px;
     margin: 0 auto;
     padding: 1rem;
