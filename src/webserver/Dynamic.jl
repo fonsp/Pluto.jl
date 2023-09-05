@@ -497,9 +497,10 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
             #     end
             #     String(current)
             # end
-            cell.code = String(cell.code_text)
-
-            cell.last_run_version = length(cell.cm_updates)
+            withtoken(cell.cm_token) do
+                cell.code = String(cell.code_text)
+                cell.last_run_version = length(cell.cm_updates)
+            end
         end
         send_notebook_changes!(🙋)
 
