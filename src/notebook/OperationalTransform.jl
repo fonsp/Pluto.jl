@@ -105,7 +105,7 @@ struct Update
     specs::Vector{ChangeSpec}
     document_length::Int
     client_id::String
-	effects::Vector{EditorSelection}
+    effects::Vector{EditorSelection}
 end
 
 # ╔═╡ 57ab53eb-eb84-49d3-88b4-938842c669c7
@@ -356,7 +356,10 @@ function apply(text::Text, update::Update)
         # This means we can map it to UTF-8 indices and shift the next
         # changes by the edited amount.
         change = mapchange(codepoints_mapping, change)
+        # 2. Then then change is applied to the text document.
         text = _apply(text, shift_diff(change, offset))
+        # 3. We update the amount of shift with this change.
+        # to map the next changes to the right indices.
         offset += diff_offset(change)
     end
     return text

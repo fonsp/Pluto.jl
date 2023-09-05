@@ -136,7 +136,7 @@ export const pluto_collab = (startVersion, { subscribe_to_updates, push_updates 
              */
             constructor(view) {
                 this.view = view
-                this.handler = subscribe_to_updates((updates) => this.sync(updates))
+                this.handler = subscribe_to_updates(this.sync)
             }
 
             update(/** @type ViewUpdate */ update) {
@@ -157,7 +157,7 @@ export const pluto_collab = (startVersion, { subscribe_to_updates, push_updates 
                 // Regardless of whether the push failed or new updates came in
                 // while it was running, try again if there's updates remaining
                 if (sendableUpdates(this.view.state).length) {
-                    setTimeout(() => this.push(), 100)
+                    setTimeout(this.push, 100)
                 }
             }
 
