@@ -17,6 +17,7 @@ using Sockets
 using Test
 using HTTP
 import Distributed
+import Pkg
 
 function Base.show(io::IO, s::SymbolsState)
     print(io, "SymbolsState([")
@@ -82,7 +83,7 @@ function testee(expr::Any, expected_references, expected_definitions, expected_f
     result.funcdefs = let
         newfuncdefs = Dict{FunctionNameSignaturePair,SymbolsState}()
         for (k, v) in result.funcdefs
-            union!(newfuncdefs, Dict(FunctionNameSignaturePair(new_name.(k.name), "hello") => v))
+            union!(newfuncdefs, Dict(FunctionNameSignaturePair(new_name.(k.name), hash("hello")) => v))
         end
         newfuncdefs
     end
@@ -119,7 +120,7 @@ function easy_symstate(expected_references, expected_definitions, expected_funcc
     new_expected_funcdefs = map(expected_funcdefs) do (k, v)
         new_k = k isa Symbol ? [k] : k
         new_v = v isa SymbolsState ? v : easy_symstate(v...)
-        return FunctionNameSignaturePair(new_k, "hello") => new_v
+        return FunctionNameSignaturePair(new_k, hash("hello")) => new_v
     end |> Dict
 
     new_expected_macrocalls = array_to_set(expected_macrocalls)
@@ -150,6 +151,18 @@ end
 
 function occursinerror(needle, haystack::Pluto.Cell)
     haystack.errored && occursin(needle, haystack.output.body[:msg])
+end
+
+function expecterror(err, cell; strict=true)
+    cell.errored || return false
+    io = IOBuffer()
+    showerror(io, err)
+    msg = String(take!(io))
+    if strict
+        return cell.output.body[:msg] == msg
+    else
+        return occursin(msg, cell.output.body[:msg])
+    end
 end
 
 "Test notebook equality, ignoring cell UUIDs and such."
@@ -234,3 +247,12 @@ function verify_no_running_processes()
         @error "Not all notebook processes were closed during tests!" Distributed.procs()
     end
 end
+
+# We have our own registry for these test! Take a look at https://github.com/JuliaPluto/PlutoPkgTestRegistry#readme for more info about the test packages and their dependencies.
+
+const pluto_test_registry_spec = Pkg.RegistrySpec(;
+    url="https://github.com/JuliaPluto/PlutoPkgTestRegistry", 
+    uuid=Base.UUID("96d04d5f-8721-475f-89c4-5ee455d3eda0"),
+    name="PlutoPkgTestRegistry",
+)
+

@@ -63,16 +63,15 @@ import {
     receiveUpdates,
     getSyncedVersion,
     ChangeSet,
+    selectNextOccurrence,
+    linter,
+    setDiagnostics,
     //@ts-ignore
-} from "./index.es.js"
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@1234.0.0/dist/index.es.min.js"
 
 export {
-    collab,
-    sendableUpdates,
-    receiveUpdates,
-    getSyncedVersion,
-    ChangeSet,
-
+    linter,
+    setDiagnostics,
     EditorState,
     EditorSelection,
     Compartment,
@@ -131,4 +130,10 @@ export {
     Text,
     css,
     cssLanguage,
+    selectNextOccurrence,
+    collab,
+    sendableUpdates,
+    receiveUpdates,
+    getSyncedVersion,
+    ChangeSet,
 }

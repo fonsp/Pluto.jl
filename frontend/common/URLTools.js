@@ -1,4 +1,4 @@
-export const with_query_params = (/** @type {String | URL} */ url_str, /** @type {Record<string,string?>} */ params) => {
+export const with_query_params = (/** @type {String | URL} */ url_str, /** @type {Record<string,string | null | undefined>} */ params) => {
     const fake_base = "http://delete-me.com/"
     const url = new URL(url_str, fake_base)
     Object.entries(params).forEach(([key, val]) => {

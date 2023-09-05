@@ -71,7 +71,7 @@ export const RunArea = ({
     `
 }
 
-const prettytime = (time_ns) => {
+export const prettytime = (time_ns) => {
     if (time_ns == null) {
         return "---"
     }

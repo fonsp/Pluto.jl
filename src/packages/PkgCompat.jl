@@ -4,7 +4,7 @@ export package_versions, package_completions
 
 import Pkg
 import Pkg.Types: VersionRange
-
+import RegistryInstances
 import ..Pluto
 
 # Should be in Base
@@ -60,23 +60,42 @@ else
 	Pkg.Types.Context
 end
 
-# 🐸 "Public API", but using PkgContext
-load_ctx(env_dir)::PkgContext = PkgContext(env=Pkg.Types.EnvCache(joinpath(env_dir, "Project.toml")))
+function PkgContext!(ctx::PkgContext; kwargs...)
+    for (k, v) in kwargs
+        setfield!(ctx, k, v)
+    end
+    ctx
+end
 
 # 🐸 "Public API", but using PkgContext
-create_empty_ctx()::PkgContext = load_ctx(mktempdir())
+load_ctx(env_dir)::PkgContext = PkgContext(;env=Pkg.Types.EnvCache(joinpath(env_dir, "Project.toml")))
+
+# 🐸 "Public API", but using PkgContext
+load_ctx!(ctx::PkgContext, env_dir)::PkgContext = PkgContext!(ctx; env=Pkg.Types.EnvCache(joinpath(env_dir, "Project.toml")))
+
+# 🐸 "Public API", but using PkgContext
+load_empty_ctx!(ctx) = @static if :io ∈ fieldnames(PkgContext)
+    PkgContext!(create_empty_ctx(); io=ctx.io)
+else
+    create_empty_ctx()
+end
+
+# 🐸 "Public API", but using PkgContext
+create_empty_ctx()::PkgContext = load_ctx!(PkgContext(), mktempdir())
 
 # ⚠️ Internal API with fallback
-function load_ctx(original::PkgContext)
-	new = load_ctx(env_dir(original))
-	
+function load_ctx!(original::PkgContext)
+	original_project = deepcopy(original.env.original_project)
+	original_manifest = deepcopy(original.env.original_manifest)
+	new = load_ctx!(original, env_dir(original))
+
 	try
-		new.env.original_project = original.env.original_project
-		new.env.original_manifest = original.env.original_manifest
+		new.env.original_project = original_project
+		new.env.original_manifest = original_manifest
 	catch e
 		@warn "Pkg compat: failed to set original_project" exception=(e,catch_backtrace())
 	end
-	
+
 	new
 end
 
@@ -137,39 +156,24 @@ function withio(f::Function, ctx::PkgContext, io::IO)
     end
 end
 
+# I'm a pirate harrr 🏴‍☠️
+@static if isdefined(Pkg, :can_fancyprint)
+	Pkg.can_fancyprint(io::IOContext{IOBuffer}) = get(io, :sneaky_enable_tty, false) === true
+end
 
 ###
 # REGISTRIES
 ###
 
-# (⛔️ Internal API)
-"Return paths to all installed registries."
-_get_registry_paths() = @static if isdefined(Pkg, :Types) && isdefined(Pkg.Types, :registries)
-	Pkg.Types.registries()
-elseif isdefined(Pkg, :Registry) && isdefined(Pkg.Registry, :reachable_registries)
-	registry_specs = Pkg.Registry.reachable_registries()
-	[s.path for s in registry_specs]
-elseif isdefined(Pkg, :Types) && isdefined(Pkg.Types, :collect_registries)
-	registry_specs = Pkg.Types.collect_registries()
-	[s.path for s in registry_specs]
-else
-	String[]
-end
+# (✅ "Public" API using RegistryInstances)
+"Return all installed registries as `RegistryInstances.RegistryInstance` structs."
+_get_registries() = RegistryInstances.reachable_registries()
 
-# (⛔️ Internal API)
-_get_registries() = map(_get_registry_paths()) do r
-	@static if isdefined(Pkg, :Registry) && isdefined(Pkg.Registry, :RegistryInstance)
-		Pkg.Registry.RegistryInstance(r)
-	else
-		r => Pkg.Types.read_registry(joinpath(r, "Registry.toml"))
-	end
-end
-
-# (⛔️ Internal API)
-"Contains all registries as `Pkg.Types.Registry` structs."
+# (✅ "Public" API using RegistryInstances)
+"The cached output value of `_get_registries`."
 const _parsed_registries = Ref(_get_registries())
 
-# (⛔️ Internal API)
+# (✅ "Public" API using RegistryInstances)
 "Re-parse the installed registries from disk."
 function refresh_registry_cache()
 	_parsed_registries[] = _get_registries()
@@ -198,17 +202,17 @@ end
 """
 Check when the registries were last updated. If it is recent (max 7 days), then `Pkg.UPDATED_REGISTRY_THIS_SESSION[]` is set to `true`, which will prevent Pkg from doing an automatic registry update.
 
-Returns the new value of `Pkg.UPDATED_REGISTRY_THIS_SESSION`.
+Returns the new value of `Pkg.UPDATED_REGISTRY_THIS_SESSION[]`.
 """
 function check_registry_age(max_age_ms = 1000.0 * 60 * 60 * 24 * 7)::Bool
 	if get(ENV, "GITHUB_ACTIONS", "false") == "true"
 		# don't do this optimization in CI
 		return false
 	end
-	paths = _get_registry_paths()
+	paths = [s.path for s in _get_registries()]
 	isempty(paths) && return _updated_registries_compat[]
 	
-	ages = map(paths) do p
+	mtimes = map(paths) do p
 		try
 			mtime(p)
 		catch
@@ -216,7 +220,7 @@ function check_registry_age(max_age_ms = 1000.0 * 60 * 60 * 24 * 7)::Bool
 		end
 	end
 	
-	if all(ages .> time() - max_age_ms)
+	if all(mtimes .> time() - max_age_ms)
 		_updated_registries_compat[] = true
 	end
 	_updated_registries_compat[]
@@ -227,13 +231,12 @@ end
 # Instantiate
 ###
 
-# ⚠️✅ Internal API with fallback
-function instantiate(ctx; update_registry::Bool)
-	@static if hasmethod(Pkg.instantiate, Tuple{}, (:update_registry,))
-		Pkg.instantiate(ctx; update_registry)
-	else
-		Pkg.instantiate(ctx)
-	end
+# ⚠️ Internal API
+function instantiate(ctx; update_registry::Bool, allow_autoprecomp::Bool)
+	Pkg.instantiate(ctx; update_registry, allow_autoprecomp)
+	# Not sure how to make a fallback:
+	# - hasmethod cannot test for kwargs because instantiate takes kwargs... that are passed on somewhere else
+	# - can't catch for a CallError because the error is weird
 end
 
 
@@ -294,7 +297,7 @@ end
 # Package versions
 ###
 
-# (⛔️ Internal API)
+# (✅ "Public" API)
 """
 Return paths to all found registry entries of a given package name.
 
@@ -306,17 +309,17 @@ julia> Pluto.PkgCompat._registry_entries("Pluto")
 ```
 """
 function _registry_entries(package_name::AbstractString, registries::Vector=_parsed_registries[])::Vector{String}
-	flatmap(registries) do (rpath, r)
-		packages = values(r["packages"])
+	flatmap(registries) do reg
+		packages = values(reg.pkgs)
 		String[
-			joinpath(rpath, d["path"])
+			joinpath(reg.path, d.path)
 			for d in packages
-			if d["name"] == package_name
+			if d.name == package_name
 		]
 	end
 end
 
-# (⛔️ Internal API)
+# (🐸 "Public API", but using PkgContext)
 function _package_versions_from_path(registry_entry_fullpath::AbstractString)::Vector{VersionNumber}
 	# compat
     vd = @static if isdefined(Pkg, :Operations) && isdefined(Pkg.Operations, :load_versions) && hasmethod(Pkg.Operations.load_versions, (String,))
@@ -327,8 +330,7 @@ function _package_versions_from_path(registry_entry_fullpath::AbstractString)::V
 	vd |> keys |> collect
 end
 
-# ⚠️ Internal API with fallback
-# See https://github.com/JuliaLang/Pkg.jl/issues/2607
+# ✅ "Public" API using RegistryInstances
 """
 Return all registered versions of the given package. Returns `["stdlib"]` for standard libraries, and a `Vector{VersionNumber}` for registered packages.
 """
@@ -337,23 +339,18 @@ function package_versions(package_name::AbstractString)::Vector
         ["stdlib"]
     else
 		try
-			@static(if isdefined(Pkg, :Registry) && isdefined(Pkg.Registry, :uuids_from_name)
-				flatmap(_parsed_registries[]) do reg
-					uuids_with_name = Pkg.Registry.uuids_from_name(reg, package_name)
-					flatmap(uuids_with_name) do u
-						pkg = get(reg, u, nothing)
-						if pkg !== nothing
-							info = Pkg.Registry.registry_info(pkg)
-							collect(keys(info.version_info))
-						else
-							[]
-						end
+			flatmap(_parsed_registries[]) do reg
+				uuids_with_name = RegistryInstances.uuids_from_name(reg, package_name)
+				flatmap(uuids_with_name) do u
+					pkg = get(reg, u, nothing)
+					if pkg !== nothing
+						info = RegistryInstances.registry_info(pkg)
+						collect(keys(info.version_info))
+					else
+						[]
 					end
 				end
-			else
-				ps = _registry_entries(package_name)
-				flatmap(_package_versions_from_path, ps)
-			end) |> sort
+			end
 		catch e
 			@warn "Pkg compat: failed to get installable versions." exception=(e,catch_backtrace())
 			["latest"]
@@ -376,7 +373,10 @@ function dependencies(ctx)
 			Pkg.dependencies(ctx.env)
 		end
 	catch e
-		if !occursin(r"expected.*exist.*manifest", sprint(showerror, e))
+		if !any(occursin(sprint(showerror, e)), (
+			r"expected.*exist.*manifest",
+			r"no method.*project_rel_path.*Nothing\)", # https://github.com/JuliaLang/Pkg.jl/issues/3404
+		))
 			@error """
 			Pkg error: you might need to use
 
@@ -429,19 +429,38 @@ project_key_order(key::String) =
     something(findfirst(x -> x == key, _project_key_order), length(_project_key_order) + 1)
 
 # ✅ Public API
-function _modify_compat(f!::Function, ctx::PkgContext)::PkgContext
-	toml = Pkg.TOML.parsefile(project_file(ctx))
-	compat = get!(Dict, toml, "compat")
-
+function _modify_compat!(f!::Function, ctx::PkgContext)::PkgContext
+	project_path = project_file(ctx)
+	
+	toml = if isfile(project_path)
+		Pkg.TOML.parsefile(project_path)
+	else
+		Dict{String,Any}()
+	end
+	compat = get!(Dict{String,Any}, toml, "compat")
+	
 	f!(compat)
 
 	isempty(compat) && delete!(toml, "compat")
 
-	write(project_file(ctx), sprint() do io
+	write(project_path, sprint() do io
 		Pkg.TOML.print(io, toml; sorted=true, by=(key -> (project_key_order(key), key)))
 	end)
 	
-	return load_ctx(ctx)
+	return _update_project_hash!(load_ctx!(ctx))
+end
+
+# ✅ Internal API with fallback
+"Update the project hash in the manifest file (https://github.com/JuliaLang/Pkg.jl/pull/2815)"
+function _update_project_hash!(ctx::PkgContext)
+	VERSION >= v"1.8.0" && isfile(manifest_file(ctx)) && try
+		Pkg.Operations.record_project_hash(ctx.env)
+		Pkg.Types.write_manifest(ctx.env)
+	catch e
+		@info "Failed to update project hash." exception=(e,catch_backtrace())
+	end
+	
+	ctx
 end
 
 
@@ -451,8 +470,8 @@ Add any missing [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entr
 
 The automatic compat entry is: `"~" * string(installed_version)`.
 """
-function write_auto_compat_entries(ctx::PkgContext)::PkgContext
-	_modify_compat(ctx) do compat
+function write_auto_compat_entries!(ctx::PkgContext)::PkgContext
+	_modify_compat!(ctx) do compat
 		for p in keys(project(ctx).dependencies)
 			if !haskey(compat, p)
 				m_version = get_manifest_version(ctx, p)
@@ -469,9 +488,9 @@ end
 """
 Remove all [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries from the `Project.toml`.
 """
-function clear_compat_entries(ctx::PkgContext)::PkgContext
+function clear_compat_entries!(ctx::PkgContext)::PkgContext
 	if isfile(project_file(ctx))
-		_modify_compat(empty!, ctx)
+		_modify_compat!(empty!, ctx)
 	else
 		ctx
 	end
@@ -480,11 +499,11 @@ end
 
 # ✅ Public API
 """
-Remove any automatically-generated [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries from the `Project.toml`. This will undo the effects of [`write_auto_compat_entries`](@ref) but leave other (e.g. manual) compat entries intact. Return the new `PkgContext`.
+Remove any automatically-generated [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries from the `Project.toml`. This will undo the effects of [`write_auto_compat_entries!`](@ref) but leave other (e.g. manual) compat entries intact. Return the new `PkgContext`.
 """
-function clear_auto_compat_entries(ctx::PkgContext)::PkgContext
+function clear_auto_compat_entries!(ctx::PkgContext)::PkgContext
 	if isfile(project_file(ctx))
-		_modify_compat(ctx) do compat
+		_modify_compat!(ctx) do compat
 			for p in keys(compat)
 				m_version = get_manifest_version(ctx, p)
 				if m_version !== nothing && !is_stdlib(p)
@@ -503,9 +522,9 @@ end
 """
 Remove any [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries from the `Project.toml` for standard libraries. These entries are created when an old version of Julia uses a package that later became a standard library, like https://github.com/JuliaPackaging/Artifacts.jl. Return the new `PkgContext`.
 """
-function clear_stdlib_compat_entries(ctx::PkgContext)::PkgContext
+function clear_stdlib_compat_entries!(ctx::PkgContext)::PkgContext
 	if isfile(project_file(ctx))
-		_modify_compat(ctx) do compat
+		_modify_compat!(ctx) do compat
 			for p in keys(compat)
 				if is_stdlib(p)
 					@info "Removing compat entry for stdlib" p

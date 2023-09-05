@@ -8,6 +8,23 @@ const assert_response_ok = (/** @type {Response} */ r) => (r.ok ? r : Promise.re
 
 const actions_to_keep = ["get_published_object"]
 
+const get_start = (graph, v) => Object.values(graph).find((node) => Object.keys(node.downstream_cells_map).includes(v))?.cell_id
+const get_starts = (graph, vars) => new Set([...vars].map((v) => get_start(graph, v)))
+const recursive_dependencies = (graph, starts) => {
+    const deps = new Set(starts)
+    const ends = [...starts]
+    while (ends.length > 0) {
+        const node = ends.splice(0, 1)[0]
+        _.flatten(Object.values(graph[node].downstream_cells_map)).forEach((child) => {
+            if (!deps.has(child)) {
+                ends.push(child)
+                deps.add(child)
+            }
+        })
+    }
+    return deps
+}
+
 export const nothing_actions = ({ actions }) =>
     Object.fromEntries(
         Object.entries(actions).map(([k, v]) => [
@@ -23,6 +40,12 @@ export const nothing_actions = ({ actions }) =>
     )
 
 export const slider_server_actions = ({ setStatePromise, launch_params, actions, get_original_state, get_current_state, apply_notebook_patches }) => {
+    setStatePromise(
+        immer((state) => {
+            state.slider_server.connecting = true
+        })
+    )
+
     const notebookfile_hash = fetch(new Request(launch_params.notebookfile, { integrity: launch_params.notebookfile_integrity }))
         .then(assert_response_ok)
         .then((r) => r.arrayBuffer())
@@ -36,7 +59,15 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
         .then((r) => r.arrayBuffer())
         .then((b) => unpack(new Uint8Array(b)))
 
-    bond_connections.then((x) => console.log("Bond connections:", x))
+    bond_connections.then((x) => {
+        console.log("Bond connections:", x)
+        setStatePromise(
+            immer((state) => {
+                state.slider_server.connecting = false
+                state.slider_server.interactive = Object.keys(x).length > 0
+            })
+        )
+    })
 
     const mybonds = {}
     const bonds_to_set = {
@@ -46,6 +77,16 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
         const base = trailingslash(launch_params.slider_server_url)
         const hash = await notebookfile_hash
         const graph = await bond_connections
+
+        // compute dependencies and update cell running statuses
+        const dep_graph = get_current_state().cell_dependencies
+        const starts = get_starts(dep_graph, bonds_to_set.current)
+        const running_cells = [...recursive_dependencies(dep_graph, starts)]
+        await setStatePromise(
+            immer((state) => {
+                running_cells.forEach((cell_id) => (state.notebook.cell_results[cell_id][starts.has(cell_id) ? "running" : "queued"] = true))
+            })
+        )
 
         if (bonds_to_set.current.size > 0) {
             const to_send = new Set(bonds_to_set.current)
@@ -66,7 +107,8 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
 
             let unpacked = null
             try {
-                const use_get = url.length + (packed.length * 4) / 3 + 20 < 8000
+                const force_post = get_current_state().metadata["sliderserver_force_post"] ?? false
+                const use_get = !force_post && url.length + (packed.length * 4) / 3 + 20 < 8000
 
                 const response = use_get
                     ? await fetch(url + (await base64url_arraybuffer(packed)), {
@@ -86,6 +128,10 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
                         const original = get_original_state()
                         ids_of_cells_that_ran.forEach((id) => {
                             state.cell_results[id] = original.cell_results[id]
+                        })
+                        running_cells.forEach((id) => {
+                            state.cell_results[id].queued = false
+                            state.cell_results[id].running = false
                         })
                     })(get_current_state())
                 )

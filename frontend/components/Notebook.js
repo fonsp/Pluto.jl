@@ -105,7 +105,7 @@ const render_cell_outputs_minimum = 20
 /**
  * @param {{
  *  notebook: import("./Editor.js").NotebookData,
- *  cell_inputs_local: { [uuid: string]: import("./Editor.js").CellInputData },
+ *  cell_inputs_local: { [uuid: string]: { code: String } },
  *  on_update_doc_query: any,
  *  on_cell_input: any,
  *  on_focus_neighbor: any,

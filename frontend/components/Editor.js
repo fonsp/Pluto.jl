@@ -4,28 +4,27 @@ import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
 import { empty_notebook_state, set_disable_ui_css } from "../editor.js"
-import { create_pluto_connection } from "../common/PlutoConnection.js"
+import { create_pluto_connection, ws_address_from_base } from "../common/PlutoConnection.js"
 import { init_feedback } from "../common/Feedback.js"
 import { serialize_cells, deserialize_cells, detect_deserializer } from "../common/Serialization.js"
 
 import { FilePicker } from "./FilePicker.js"
 import { Preamble } from "./Preamble.js"
 import { NotebookMemo as Notebook } from "./Notebook.js"
-import { LiveDocs } from "./LiveDocs.js"
+import { BottomRightPanel } from "./BottomRightPanel.js"
 import { DropRuler } from "./DropRuler.js"
 import { SelectionArea } from "./SelectionArea.js"
-import { UndoDelete } from "./UndoDelete.js"
+import { RecentlyDisabledInfo, UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
 import { Scroller } from "./Scroller.js"
 import { ExportBanner } from "./ExportBanner.js"
-import { Popup } from "./Popup.js"
+import { open_pluto_popup, Popup } from "./Popup.js"
 
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { PlutoActionsContext, PlutoBondsContext, PlutoJSInitializingContext, SetWithEmptyCallback } from "../common/PlutoContext.js"
-import { start_binder, BackendLaunchPhase, count_stat } from "../common/Binder.js"
+import { BackendLaunchPhase, count_stat } from "../common/Binder.js"
 import { setup_mathjax } from "../common/SetupMathJax.js"
-import { BinderButton, RunLocalButton } from "./EditOrRunButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
 import { ProgressBar } from "./ProgressBar.js"
 import { NonCellOutput } from "./NonCellOutput.js"
@@ -33,8 +32,9 @@ import { IsolatedCell } from "./Cell.js"
 import { RawHTMLContainer } from "./CellOutput.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
 import { HijackExternalLinksToOpenInNewTab } from "./HackySideStuff/HijackExternalLinksToOpenInNewTab.js"
-import { start_local } from "../common/RunLocal.js"
 import { FrontMatterInput } from "./FrontmatterInput.js"
+import { EditorLaunchBackendButton } from "./Editor/LaunchBackendButton.js"
+import { get_environment } from "../common/Environment.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -72,7 +72,7 @@ const ProcessStatus = {
 }
 
 /**
- * Map of status => Bool. In order of decreasing prioirty.
+ * Map of status => Bool. In order of decreasing priority.
  */
 const statusmap = (/** @type {EditorState} */ state, /** @type {LaunchParameters} */ launch_params) => ({
     disconnected: !(state.connected || state.initializing || state.static_preview),
@@ -139,6 +139,17 @@ const first_true_key = (obj) => {
  *   file: string,
  *   line: number,
  *   kwargs: Object,
+ * }}
+ */
+
+/**
+ * @typedef StatusEntryData
+ * @type {{
+ *   name: string,
+ *   started_at: number?,
+ *   finished_at: number?,
+ *   timing?: "remote" | "local",
+ *   subtasks: Record<string,StatusEntryData>,
  * }}
  */
 
@@ -239,11 +250,12 @@ const first_true_key = (obj) => {
  *  bonds: BondValuesDict,
  *  nbpkg: NotebookPkgData?,
  *  metadata: object,
+ *  status_tree: StatusEntryData?,
  * }}
  */
 
 const url_logo_big = document.head.querySelector("link[rel='pluto-logo-big']")?.getAttribute("href") ?? ""
-const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']")?.getAttribute("href") ?? ""
+export const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']")?.getAttribute("href") ?? ""
 
 /**
  * @typedef EditorProps
@@ -257,15 +269,17 @@ const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']
  * @typedef EditorState
  * @type {{
  * notebook: NotebookData,
- * cell_inputs_local: { [uuid: string]: CellInputData },
+ * cell_inputs_local: { [uuid: string]: { code: String } },
  * desired_doc_query: ?String,
  * recently_deleted: ?Array<{ index: number, cell: CellInputData }>,
  * last_update_time: number,
  * disable_ui: boolean,
  * static_preview: boolean,
  * backend_launch_phase: ?number,
+ * backend_launch_logs: ?string,
  * binder_session_url: ?string,
  * binder_session_token: ?string,
+ * refresh_target: ?string,
  * connected: boolean,
  * initializing: boolean,
  * moving_file: boolean,
@@ -296,6 +310,7 @@ export class Editor extends Component {
             cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ ([]),
+            recently_auto_disabled_cells: /** @type {Map<string,[string,string]>} */ ({}),
             last_update_time: 0,
 
             disable_ui: launch_params.disable_ui,
@@ -304,8 +319,10 @@ export class Editor extends Component {
                 launch_params.notebookfile != null && (launch_params.binder_url != null || launch_params.pluto_server_url != null)
                     ? BackendLaunchPhase.wait_for_user
                     : null,
+            backend_launch_logs: null,
             binder_session_url: null,
             binder_session_token: null,
+            refresh_target: null,
             connected: false,
             initializing: true,
 
@@ -325,6 +342,11 @@ export class Editor extends Component {
 
             is_recording: false,
             recording_waiting_to_start: false,
+
+            slider_server: {
+                connecting: false,
+                interactive: false,
+            },
         }
 
         this.setStatePromise = (fn) => new Promise((r) => this.setState(fn, r))
@@ -339,7 +361,7 @@ export class Editor extends Component {
             set_doc_query: (query) => this.setState({ desired_doc_query: query }),
             set_local_cell: (cell_id, new_val) => {
                 return this.setStatePromise(
-                    immer((state) => {
+                    immer((/** @type {EditorState} */ state) => {
                         state.cell_inputs_local[cell_id] = {
                             code: new_val,
                         }
@@ -364,8 +386,7 @@ export class Editor extends Component {
             },
             add_deserialized_cells: async (data, index_or_id, deserializer = deserialize_cells) => {
                 let new_codes = deserializer(data)
-                /** @type {Array<CellInputData>} */
-                /** Create copies of the cells with fresh ids */
+                /** @type {Array<CellInputData>} Create copies of the cells with fresh ids */
                 let new_cells = new_codes.map((code) => ({
                     cell_id: uuidv4(),
                     code: code,
@@ -374,6 +395,9 @@ export class Editor extends Component {
                     start_version: 0,
                     last_run_version: 0,
                     code_folded: false,
+                    metadata: {
+                        ...DEFAULT_CELL_METADATA,
+                    },
                 }))
 
                 let index
@@ -392,6 +416,22 @@ export class Editor extends Component {
                 if (index === -1) {
                     index = this.state.notebook.cell_order.length
                 }
+
+                /** Update local_code. Local code doesn't force CM to update it's state
+                 * (the usual flow is keyboard event -> cm -> local_code and not the opposite )
+                 * See ** 1 **
+                 */
+                this.setState(
+                    immer((/** @type {EditorState} */ state) => {
+                        // Deselect everything first, to clean things up
+                        state.selected_cells = []
+
+                        for (let cell of new_cells) {
+                            state.cell_inputs_local[cell.cell_id] = cell
+                        }
+                        state.last_created_cell = new_cells[0]?.cell_id
+                    })
+                )
 
                 /**
                  * Create an empty cell in the julia-side.
@@ -422,10 +462,8 @@ export class Editor extends Component {
                 const new_code = `${block_start}\n\t${cell.code.replace(/\n/g, "\n\t")}\n${block_end}`
 
                 await this.setStatePromise(
-                    immer((state) => {
+                    immer((/** @type {EditorState} */ state) => {
                         state.cell_inputs_local[cell_id] = {
-                            ...cell,
-                            ...state.cell_inputs_local[cell_id],
                             code: new_code,
                         }
                     })
@@ -456,7 +494,7 @@ export class Editor extends Component {
                 })
 
                 this.setState(
-                    immer((state) => {
+                    immer((/** @type {EditorState} */ state) => {
                         for (let cell of cells_to_add) {
                             state.cell_inputs_local[cell.cell_id] = cell
                         }
@@ -584,7 +622,7 @@ export class Editor extends Component {
                     // This is a "dirty" trick, as this should actually be stored in some shared request_status => status state
                     // But for now... this is fine 😼
                     await this.setStatePromise(
-                        immer((state) => {
+                        immer((/** @type {EditorState} */ state) => {
                             for (let cell_id of cell_ids) {
                                 if (state.notebook.cell_results[cell_id] != null) {
                                     state.notebook.cell_results[cell_id].queued = this.is_process_ready()
@@ -594,7 +632,13 @@ export class Editor extends Component {
                             }
                         })
                     )
-                    await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.state.notebook.notebook_id }, false)
+                    const result = await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.state.notebook.notebook_id })
+                    const { disabled_cells } = result.message
+                    if (Object.entries(disabled_cells).length > 0) {
+                        await this.setStatePromise({
+                            recently_auto_disabled_cells: disabled_cells,
+                        })
+                    }
                 }
             },
             /**
@@ -634,10 +678,12 @@ export class Editor extends Component {
         const apply_notebook_patches = (patches, /** @type {NotebookData?} */ old_state = null, get_reverse_patches = false) =>
             new Promise((resolve) => {
                 if (patches.length !== 0) {
-                    let copy_of_patches,
+                    const should_ignore_patch_error = (/** @type {string} */ failing_path) => failing_path.startsWith("status_tree")
+
+                    let _copy_of_patches,
                         reverse_of_patches = []
                     this.setState(
-                        immer((state) => {
+                        immer((/** @type {EditorState} */ state) => {
                             let new_notebook
                             try {
                                 // To test this, uncomment the lines below:
@@ -646,7 +692,7 @@ export class Editor extends Component {
                                 // }
 
                                 if (get_reverse_patches) {
-                                    ;[new_notebook, copy_of_patches, reverse_of_patches] = produceWithPatches(old_state ?? state.notebook, (state) => {
+                                    ;[new_notebook, _copy_of_patches, reverse_of_patches] = produceWithPatches(old_state ?? state.notebook, (state) => {
                                         applyPatches(state, patches)
                                     })
                                     // TODO: why was `new_notebook` not updated?
@@ -654,14 +700,13 @@ export class Editor extends Component {
                                 }
                                 new_notebook = applyPatches(old_state ?? state.notebook, patches)
                             } catch (exception) {
+                                /** @type {String} Example: `"a.b[2].c"` */
                                 const failing_path = String(exception).match(".*'(.*)'.*")?.[1].replace(/\//gi, ".") ?? exception
                                 const path_value = _.get(this.state.notebook, failing_path, "Not Found")
                                 console.log(String(exception).match(".*'(.*)'.*")?.[1].replace(/\//gi, ".") ?? exception, failing_path, typeof failing_path)
-                                // The alert below is not catastrophic: the editor will try to recover.
-                                // Deactivating to be user-friendly!
-                                // alert(`Ooopsiee.`)
+                                const ignore = should_ignore_patch_error(failing_path)
 
-                                console.error(
+                                ;(ignore ? console.log : console.error)(
                                     `#######################**************************########################
 PlutoError: StateOutOfSync: Failed to apply patches.
 Please report this: https://github.com/fonsp/Pluto.jl/issues adding the info below:
@@ -675,15 +720,23 @@ patch: ${JSON.stringify(
 #######################**************************########################`,
                                     exception
                                 )
-                                console.log("Trying to recover: Refetching notebook...")
-                                this.client.send(
-                                    "reset_shared_state",
-                                    {},
-                                    {
-                                        notebook_id: this.state.notebook.notebook_id,
-                                    },
-                                    false
-                                )
+
+                                if (ignore) {
+                                    console.info("Safe to ignore this patch failure...")
+                                } else if (this.state.connected) {
+                                    console.error("Trying to recover: Refetching notebook...")
+                                    this.client.send(
+                                        "reset_shared_state",
+                                        {},
+                                        {
+                                            notebook_id: this.state.notebook.notebook_id,
+                                        },
+                                        false
+                                    )
+                                } else {
+                                    console.error("Trying to recover: reloading...")
+                                    window.parent.location.href = this.state.refresh_target ?? window.location.href
+                                }
                                 return
                             }
 
@@ -771,7 +824,7 @@ patch: ${JSON.stringify(
             // nasty
             Object.assign(this.client, client)
             try {
-                const { default: environment } = await import(this.client.session_options.server.injected_javascript_data_url)
+                const environment = await get_environment(client)
                 const { custom_editor_header_component, custom_non_cell_output } = environment({ client, editor: this, imports: { preact } })
                 this.setState({
                     extended_components: {
@@ -784,6 +837,8 @@ patch: ${JSON.stringify(
 
             // @ts-ignore
             window.version_info = this.client.version_info // for debugging
+            // @ts-ignore
+            window.kill_socket = this.client.kill // for debugging
 
             if (!client.notebook_exists) {
                 console.error("Notebook does not exist. Not connecting.")
@@ -806,7 +861,30 @@ patch: ${JSON.stringify(
             setTimeout(init_feedback, 2 * 1000) // 2 seconds - load feedback a little later for snappier UI
         }
 
-        const on_connection_status = (val) => this.setState({ connected: val })
+        const on_connection_status = (val, hopeless) => {
+            this.setState({ connected: val })
+            if (hopeless) {
+                // https://github.com/fonsp/Pluto.jl/issues/55
+                // https://github.com/fonsp/Pluto.jl/issues/2398
+                open_pluto_popup({
+                    type: "warn",
+                    source_element: null,
+                    body: html`<p>A new server was started - this notebook session is no longer running.</p>
+                        <p>Would you like to go back to the main menu?</p>
+                        <br />
+                        <a href="./">Go back</a>
+                        <br />
+                        <a
+                            href="#"
+                            onClick=${(e) => {
+                                e.preventDefault()
+                                window.dispatchEvent(new CustomEvent("close pluto popup"))
+                            }}
+                            >Stay here</a
+                        >`,
+                })
+            }
+        }
 
         const on_reconnect = () => {
             console.warn("Reconnected! Checking states")
@@ -822,7 +900,7 @@ patch: ${JSON.stringify(
         /** @type {import('../common/PlutoConnection').PlutoConnection} */
         this.client = /** @type {import('../common/PlutoConnection').PlutoConnection} */ ({})
 
-        this.connect = (ws_address = undefined) =>
+        this.connect = (/** @type {string | undefined} */ ws_address = undefined) =>
             create_pluto_connection({
                 ws_address: ws_address,
                 on_unrequested_update: on_update,
@@ -867,7 +945,7 @@ patch: ${JSON.stringify(
             if (!this.state.static_preview && document.visibilityState === "visible") {
                 // view stats on https://stats.plutojl.org/
                 //@ts-ignore
-                count_stat(`editing/${window?.version_info?.pluto ?? "unknown"}`)
+                count_stat(`editing/${window?.version_info?.pluto ?? "unknown"}${window.plutoDesktop ? "-desktop" : ""}`)
             }
         }, 1000 * 15 * 60)
         setInterval(() => {
@@ -1051,6 +1129,35 @@ patch: ${JSON.stringify(
             }
         }
 
+        this.desktop_submit_file_change = async () => {
+            this.setState({ moving_file: true })
+            /**
+             * `window.plutoDesktop?.ipcRenderer` is basically what allows the
+             * frontend to communicate with the electron side. It is an IPC
+             * bridge between render process and main process. More info
+             * [here](https://www.electronjs.org/docs/latest/api/ipc-renderer).
+             *
+             * "PLUTO-MOVE-NOTEBOOK" is an event triggered in the main process
+             * once the move is complete, we listen to it using `once`.
+             * More info [here](https://www.electronjs.org/docs/latest/api/ipc-renderer#ipcrendereroncechannel-listener)
+             */
+            window.plutoDesktop?.ipcRenderer.once("PLUTO-MOVE-NOTEBOOK", async (/** @type {string?} */ loc) => {
+                if (!!loc)
+                    await this.setStatePromise(
+                        immer((/** @type {EditorState} */ state) => {
+                            state.notebook.in_temp_dir = false
+                            state.notebook.path = loc
+                        })
+                    )
+                this.setState({ moving_file: false })
+                // @ts-ignore
+                document.activeElement?.blur()
+            })
+
+            // ask the electron backend to start moving the notebook. The event above will be fired once it is done.
+            window.plutoDesktop?.fileSystem.moveNotebook()
+        }
+
         this.delete_selected = (verb) => {
             if (this.state.selected_cells.length > 0) {
                 this.actions.confirm_delete_multiple(verb, this.state.selected_cells)
@@ -1078,7 +1185,7 @@ patch: ${JSON.stringify(
         const set_ctrl_down = (value) => {
             if (value !== ctrl_down_last_val.current) {
                 ctrl_down_last_val.current = value
-                document.body.querySelectorAll("pluto-variable-link").forEach((el) => {
+                document.body.querySelectorAll("[data-pluto-variable], [data-cell-variable]").forEach((el) => {
                     el.setAttribute("data-ctrl-down", value ? "true" : "false")
                 })
             }
@@ -1243,13 +1350,15 @@ patch: ${JSON.stringify(
                 count_stat(`article-view`)
             }
         } else {
-            this.connect()
+            this.connect(this.props.launch_params.pluto_server_url ? ws_address_from_base(this.props.launch_params.pluto_server_url) : undefined)
         }
     }
 
     componentDidUpdate(old_props, old_state) {
         //@ts-ignore
         window.editor_state = this.state
+        //@ts-ignore
+        window.editor_state_set = this.setStatePromise
 
         const new_state = this.state
 
@@ -1351,6 +1460,7 @@ patch: ${JSON.stringify(
                     <${ProgressBar} notebook=${this.state.notebook} backend_launch_phase=${this.state.backend_launch_phase} status=${status}/>
                     <header id="pluto-nav" className=${export_menu_open ? "show_export" : ""}>
                         <${ExportBanner}
+                            notebook_id=${this.state.notebook.notebook_id}
                             notebookfile_url=${this.export_url("notebookfile")}
                             notebookexport_url=${this.export_url("notebookexport")}
                             open=${export_menu_open}
@@ -1387,6 +1497,7 @@ patch: ${JSON.stringify(
                                           client=${this.client}
                                           value=${notebook.in_temp_dir ? "" : notebook.path}
                                           on_submit=${this.submit_file_change}
+                                          on_desktop_submit=${this.desktop_submit_file_change}
                                           suggest_new_file=${{
                                               base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
                                               name: notebook.shortpath,
@@ -1433,36 +1544,12 @@ patch: ${JSON.stringify(
                         apply_notebook_patches=${this.apply_notebook_patches}
                         reset_notebook_state=${() =>
                             this.setStatePromise(
-                                immer((state) => {
+                                immer((/** @type {EditorState} */ state) => {
                                     state.notebook = this.props.initial_notebook_state
                                 })
                             )}
                     />
-                    
-                    ${
-                        status.offer_local
-                            ? html`<${RunLocalButton}
-                                  start_local=${() =>
-                                      start_local({
-                                          setStatePromise: this.setStatePromise,
-                                          connect: this.connect,
-                                          launch_params: launch_params,
-                                      })}
-                              />`
-                            : status.offer_binder
-                            ? html`<${BinderButton}
-                                  offer_binder=${status.offer_binder}
-                                  start_binder=${() =>
-                                      start_binder({
-                                          setStatePromise: this.setStatePromise,
-                                          connect: this.connect,
-                                          launch_params: launch_params,
-                                      })}
-                                  notebookfile=${launch_params.notebookfile == null ? null : new URL(launch_params.notebookfile, window.location.href).href}
-                                  notebook=${notebook}
-                              />`
-                            : null
-                    }
+                    <${EditorLaunchBackendButton} editor=${this} launch_params=${launch_params} status=${status} />
                     <${FrontMatterInput} 
                         remote_frontmatter=${notebook.metadata?.frontmatter} 
                         set_remote_frontmatter=${(newval) =>
@@ -1519,14 +1606,21 @@ patch: ${JSON.stringify(
                             notebook_id=${this.state.notebook.notebook_id} 
                             environment_component=${this.state.extended_components.NonCellOutputComponents} />
                     </${Main}>
-                    <${LiveDocs}
+                    <${BottomRightPanel}
                         desired_doc_query=${this.state.desired_doc_query}
                         on_update_doc_query=${this.actions.set_doc_query}
+                        connected=${this.state.connected}
+                        backend_launch_phase=${this.state.backend_launch_phase}
+                        backend_launch_logs=${this.state.backend_launch_logs}
                         notebook=${this.state.notebook}
                     />
                     <${Popup} 
                         notebook=${this.state.notebook}
                         disable_input=${this.state.disable_ui || !this.state.connected /* && this.state.backend_launch_phase == null*/}
+                    />
+                    <${RecentlyDisabledInfo} 
+                        recently_auto_disabled_cells=${this.state.recently_auto_disabled_cells}
+                        notebook=${this.state.notebook}
                     />
                     <${UndoDelete}
                         recently_deleted=${this.state.recently_deleted}
@@ -1547,7 +1641,7 @@ patch: ${JSON.stringify(
                             <a href="https://github.com/fonsp/Pluto.jl/wiki" target="_blank">FAQ</a>
                             <span style="flex: 1"></span>
                             <form id="feedback" action="#" method="post">
-                                <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl" target="_blank">Pluto.jl</a> better?</label>
+                                <label for="opinion">🙋 How can we make <a href="https://plutojl.org/" target="_blank">Pluto.jl</a> better?</label>
                                 <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
                                 <button>Send</button>
                             </form>

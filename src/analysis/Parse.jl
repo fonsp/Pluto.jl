@@ -1,4 +1,5 @@
 import .ExpressionExplorer
+import Markdown
 
 "Generate a file name to be given to the parser (will show up in stack traces)."
 pluto_filename(notebook::Notebook, cell::Cell)::String = notebook.path * "#==#" * string(cell.cell_id)
@@ -6,18 +7,20 @@ pluto_filename(notebook::Notebook, cell::Cell)::String = notebook.path * "#==#" 
 "Is Julia new enough to support filenames in parsing?"
 const can_insert_filename = (Base.parse_input_line("1;2") != Base.parse_input_line("1\n2"))
 
-"Parse the code from `cell.last_run_code` into a Julia expression (`Expr`). Equivalent to `Meta.parse_input_line` in Julia v1.3, no matter the actual Julia version.
+"""
+Parse the code from `cell.code` into a Julia expression (`Expr`). Equivalent to `Meta.parse_input_line` in Julia v1.3, no matter the actual Julia version.
 
 1. Turn multiple expressions into an error expression.
 2. Fix some `LineNumberNode` idiosyncrasies to be more like modern Julia.
 3. Will always produce an expression of the form: `Expr(:toplevel, LineNumberNode(..), root)`. It gets transformed (i.e. wrapped) into this form if needed. A `LineNumberNode` contains a line number and a file name. We use the cell UUID as a 'file name', which makes the stack traces easier to interpret. (Otherwise it would be impossible to tell from which cell a stack frame originates.) Not all Julia versions insert these `LineNumberNode`s, so we insert it ourselves if Julia doesn't.
-4. Apply `preprocess_expr` (below) to `root` (from rule 2)."
+4. Apply `preprocess_expr` (below) to `root` (from rule 2).
+"""
 function parse_custom(notebook::Notebook, cell::Cell)::Expr
     # 1.
     raw = if can_insert_filename
         filename = pluto_filename(notebook, cell)
         ex = Base.parse_input_line(cell.code, filename=filename)
-        if (ex isa Expr) && (ex.head == :toplevel)
+        if Meta.isexpr(ex, :toplevel)
             # if there is more than one expression:
             if count(a -> !(a isa LineNumberNode), ex.args) > 1
                 Expr(:error, "extra token after end of expression\n\nBoundaries: $(expression_boundaries(cell.code))")
@@ -90,18 +93,22 @@ function expression_boundaries(code::String, start=1)::Vector{<:Integer}
     end
 end
 
-"Make some small adjustments to the `expr` to make it work nicely inside a timed, wrapped expression:
+"""
+Make some small adjustments to the `expr` to make it work nicely inside a timed, wrapped expression:
 
 1. If `expr` is a `:toplevel` expression (this is the case iff the expression is a combination of expressions using semicolons, like `a = 1; b` or `123;`), then it gets turned into a `:block` expression. The reason for this transformation is that `:toplevel` does not return/relay the output of its last argument, unlike `begin`, `let`, `if`, etc. (But we want it!)
 2. If `expr` is a `:module` expression, wrap it in a `:toplevel` block - module creation needs to be at toplevel. Rule 1. is not applied.
-3. If `expr` is a `:(=)` expression with a curly assignment, wrap it in a `:const` to allow execution - see https://github.com/fonsp/Pluto.jl/issues/517 "
+3. If `expr` is a `:(=)` expression with a curly assignment, wrap it in a `:const` to allow execution - see https://github.com/fonsp/Pluto.jl/issues/517
+"""
 function preprocess_expr(expr::Expr)
-    if expr.head == :toplevel
+    if expr.head === :toplevel
 		Expr(:block, expr.args...)
-    elseif expr.head == :module
+    elseif expr.head === :module
         Expr(:toplevel, expr)
-    elseif expr.head == :(=) && (expr.args[1] isa Expr && expr.args[1].head == :curly)
+    elseif expr.head === :(=) && (expr.args[1] isa Expr && expr.args[1].head == :curly)
         Expr(:const, expr)
+    elseif expr.head === :incomplete
+        Expr(:call, :(PlutoRunner.throw_syntax_error), expr.args...)
     else
         expr
     end

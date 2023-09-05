@@ -186,7 +186,9 @@ console.log(`Offline mode enabled: ${should_be_offline}`)
 const blocked_domains = ["cdn.jsdelivr.net", "unpkg.com", "cdn.skypack.dev", "esm.sh", "firebase.google.com"]
 const hide_warning = url => url.includes("mathjax")
 
-export const setupPage = (page) => {
+export const createPage = async (browser) => {
+  const page = await browser.newPage()
+  
   failOnError(page);
   dismissBeforeUnloadDialogs(page);
   dismissVersionDialogs(page);
@@ -196,13 +198,15 @@ export const setupPage = (page) => {
     page.on("request", (request) => {
       if(blocked_domains.some(domain => request.url().includes(domain))) {
         if(!hide_warning(request.url()))
-          console.error(`Blocking request to ${request.url()}`)
+          console.info(`Blocking request to ${request.url()}`)
         request.abort();
       } else {
         request.continue();
       }
     });
   }
+  
+  return page
 };
 
 let testname = () => expect.getState().currentTestName.replace(/ /g, "_");
@@ -211,7 +215,7 @@ export const lastElement = (arr) => arr[arr.length - 1];
 
 const getFixturesDir = () => path.join(__dirname, "..", "fixtures");
 
-const getArtifactsDir = () => path.join(__dirname, "..", "artifacts");
+export const getArtifactsDir = () => path.join(__dirname, "..", "artifacts");
 
 export const getFixtureNotebookPath = (name) =>
   path.join(getFixturesDir(), name);
@@ -229,7 +233,7 @@ export const getTestScreenshotPath = () => {
   );
 };
 
-export const saveScreenshot = async (page, screenshot_path) => {
+export const saveScreenshot = async (page, screenshot_path=getTestScreenshotPath()) => {
   let dirname = path.dirname(screenshot_path);
   await mkdirp(dirname); // Because some of our tests contain /'s 🤷‍♀️
   await page.screenshot({ path: screenshot_path });

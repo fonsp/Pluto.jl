@@ -153,6 +153,10 @@ let explorer_function_definition_argument = (cursor, doc, scopestate, verbose = 
         if (type) scopestate = explore_variable_usage(type.cursor(), doc, scopestate, verbose)
         return scopestate
     } else {
+        // Fall back to "just explore pattern"...
+        // There is more overlap between function arguments and patterns than I use now, I think
+        scopestate = explore_pattern(cursor, doc, scopestate)
+
         verbose && console.warn("UNKNOWN FUNCTION DEFINITION ARGUMENT:", cursor.toString())
         return scopestate
     }
@@ -186,6 +190,13 @@ let explore_pattern = (node, doc, scopestate, valid_from = null, verbose = false
             let { name, value } = match
             scopestate = explore_pattern(name, doc, scopestate, value.from, verbose)
             scopestate = explore_variable_usage(value.cursor(), doc, scopestate, verbose)
+            return scopestate
+        } else if ((match = match_assignee(node)`(; ${t.many("named_tuples")})`)) {
+            // `(; x, y) = z` => ["x", "y"]
+            let { named_tuples } = match
+            for (let name of named_tuples) {
+                scopestate = explore_pattern(name.node.cursor(), doc, scopestate, valid_from, verbose)
+            }
             return scopestate
         } else if (
             (match = match_assignee(node)`${t.as("first")}, ${t.many("rest")}`) ??
@@ -418,7 +429,7 @@ let scopestate_add_definition = (scopestate, doc, node, valid_from = null) => {
 }
 
 /**
- * @param {TreeCursor} cursor
+ * @param {TreeCursor | SyntaxNode} cursor
  * @param {any} doc
  * @param {ScopeState} scopestate
  * @param {boolean} [verbose]
@@ -436,7 +447,7 @@ export let explore_variable_usage = (
 ) => {
     if ("cursor" in cursor) {
         // console.trace("`explore_variable_usage()` called with a SyntaxNode, not a TreeCursor")
-        cursor = cursor["cursor"]()
+        cursor = cursor.cursor()
     }
 
     let start_node = null

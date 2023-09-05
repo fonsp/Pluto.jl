@@ -21,12 +21,13 @@ pluto-tree,
 pluto-tree-items {
     display: inline-flex;
     flex-direction: column;
-    align-items: baseline;
+    align-items: flex-start;
 }
 pluto-tree.collapsed,
 pluto-tree.collapsed pluto-tree,
 pluto-tree.collapsed pluto-tree-items {
     flex-direction: row;
+    align-items: baseline;
 }
 
 pluto-tree-items {
@@ -277,7 +278,7 @@ table.pluto-table {
 
 table.pluto-table td {
     max-width: 300px;
-    overflow: hidden;
+    overflow: auto;
 }
 
 table.pluto-table .schema-types {
@@ -337,4 +338,21 @@ table.pluto-table .pluto-tree-more-td pluto-tree-more {
     left: 0;
     top: 2rem;
     max-width: 650px;
+}
+
+table.pluto-table tr.empty div {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    font-size: 1.5rem;
+    flex-flow: column nowrap;
+}
+table.pluto-table tr.empty small {
+    font-size: 0.5rem;
+}
+
+pluto-tree.collapsed p-v > pre {
+    max-height: 2em;
+    overflow-y: hidden;
 }

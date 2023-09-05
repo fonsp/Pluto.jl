@@ -90,7 +90,7 @@ const on_jump = (hasBarrier, pluto_actions, cell_id) => () => {
  * @param {{
  *  cell_result: import("./Editor.js").CellResultData,
  *  cell_input: import("./Editor.js").CellInputData,
- *  cell_input_local: import("./Editor.js").CellInputData,
+ *  cell_input_local: { code: String },
  *  cell_dependencies: import("./Editor.js").CellDependencyData
  *  nbpkg: import("./Editor.js").NotebookPkgData?,
  *  selected: boolean,
@@ -115,8 +115,9 @@ export const Cell = ({
 }) => {
     const { show_logs, disabled: running_disabled, skip_as_script } = metadata
     let pluto_actions = useContext(PlutoActionsContext)
-    const on_update_doc_query = pluto_actions.set_doc_query
-    const on_focus_neighbor = pluto_actions.focus_on_neighbor
+    // useCallback because pluto_actions.set_doc_query can change value when you go from viewing a static document to connecting (to binder)
+    const on_update_doc_query = useCallback((...args) => pluto_actions.set_doc_query(...args), [pluto_actions])
+    const on_focus_neighbor = useCallback((...args) => pluto_actions.focus_on_neighbor(...args), [pluto_actions])
     const on_change = useCallback((val) => pluto_actions.set_local_cell(cell_id, val), [cell_id, pluto_actions])
     const variables = useMemo(() => Object.keys(cell_dependencies?.downstream_cells_map ?? {}), [cell_dependencies])
 
@@ -133,8 +134,32 @@ export const Cell = ({
 
     const remount = useMemo(() => () => setKey(key + 1))
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
-    const [cm_forced_focus, set_cm_forced_focus] = useState(/** @type{any} */(null))
+    const [cm_forced_focus, set_cm_forced_focus] = useState(/** @type{any} */ (null))
+    const [cm_highlighted_range, set_cm_highlighted_range] = useState(null)
     const [cm_highlighted_line, set_cm_highlighted_line] = useState(null)
+    const [cm_diagnostics, set_cm_diagnostics] = useState([])
+
+    useEffect(() => {
+        const diagnosticListener = (e) => {
+            if (e.detail.cell_id === cell_id) {
+                set_cm_diagnostics(e.detail.diagnostics)
+            }
+        }
+        window.addEventListener("cell_diagnostics", diagnosticListener)
+        return () => window.removeEventListener("cell_diagnostics", diagnosticListener)
+    }, [cell_id])
+
+    useEffect(() => {
+        const highlightRangeListener = (e) => {
+            if (e.detail.cell_id == cell_id && e.detail.from != null && e.detail.to != null) {
+                set_cm_highlighted_range({ from: e.detail.from, to: e.detail.to })
+            } else {
+                set_cm_highlighted_range(null)
+            }
+        }
+        window.addEventListener("cell_highlight_range", highlightRangeListener)
+        return () => window.removeEventListener("cell_highlight_range", highlightRangeListener)
+    }, [cell_id])
 
     useEffect(() => {
         const focusListener = (e) => {
@@ -285,7 +310,7 @@ export const Cell = ({
             >
                 <span></span>
             </button>
-            ${cell_api_ready ? html`<${CellOutput} errored=${errored} ...${output} cell_id=${cell_id} />` : html``}
+        ${cell_api_ready ? html`<${CellOutput} errored=${errored} ...${output} cell_id=${cell_id} />` : html``}
             <${CellInput}
                 cm_updates=${cm_updates}
                 code_text=${code_text}
@@ -316,10 +341,13 @@ export const Cell = ({
                 set_show_logs=${set_show_logs}
                 set_cell_disabled=${set_cell_disabled}
                 cm_highlighted_line=${cm_highlighted_line}
-                set_cm_highlighted_line=${set_cm_highlighted_line}
+                cm_highlighted_range=${cm_highlighted_range}
+                cm_diagnostics=${cm_diagnostics}
                 onerror=${remount}
             />
-            ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${line_heights} set_cm_highlighted_line=${set_cm_highlighted_line} />` : null}
+            ${show_logs && cell_api_ready
+                ? html`<${Logs} logs=${Object.values(logs)} line_heights=${line_heights} set_cm_highlighted_line=${set_cm_highlighted_line} />`
+                : null}
             <${RunArea}
                 cell_id=${cell_id}
                 running_disabled=${running_disabled}
@@ -354,7 +382,7 @@ export const Cell = ({
                         source_element: e.target,
                         body: html`This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />
                                   This way, it will not run when the notebook runs as a script outside of Pluto.<br />
-                                  Use the context menu to change enable it again`,
+                                  Use the context menu to enable it again`,
                     })
                 }}
                   ></div>`
