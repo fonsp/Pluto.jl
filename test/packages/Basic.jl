@@ -650,6 +650,8 @@ import Distributed
     end
 
     @testset "PlutoRunner Syntax Error" begin
+        🍭 = ServerSession()
+
         notebook = Notebook([
             Cell("1 +"),
             Cell("PlutoRunner.throw_syntax_error"),
@@ -665,6 +667,8 @@ import Distributed
         @test Pluto.is_just_text(notebook.topology, notebook.cells[1])
         @test !Pluto.is_just_text(notebook.topology, notebook.cells[2]) # Not a syntax error form
         @test Pluto.is_just_text(notebook.topology, notebook.cells[3])
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
     @testset "Precompilation" begin
