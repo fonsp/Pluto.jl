@@ -447,7 +447,7 @@ import Malt
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
-    @static if VERSION ≤ v"1.9"
+    @static if VERSION < v"1.10.0-0" # see https://github.com/fonsp/Pluto.jl/pull/2626#issuecomment-1671244510
         @testset "File format -- Forwards compat" begin
             # Using Distributed, we will create a new Julia process in which we install Pluto 0.14.7 (before PlutoPkg). We run the new notebook file on the old Pluto.
             test_worker = Malt.Worker()
