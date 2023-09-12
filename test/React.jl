@@ -23,7 +23,13 @@ import Pluto.Configuration: Options, EvaluationOptions
             end"""),
             Cell("g(6) + g(6,6)"),
 
-            Cell("import Distributed"),
+            Cell("""
+            begin
+                pushfirst!(LOAD_PATH, "@stdlib")
+                import Distributed
+                popfirst!(LOAD_PATH)
+            end
+            """),
             Cell("Distributed.myid()"),
         ])
 
@@ -71,12 +77,14 @@ import Pluto.Configuration: Options, EvaluationOptions
         @test notebook.cells[6].output.body == "3"
 
         update_run!(🍭, notebook, notebook.cells[7:8])
-        @test if workertype === :Distributed
-            notebook.cells[8].output.body ∉ ("1", string(Distributed.myid()))
+        if workertype === :Distributed
+            @test notebook.cells[8].output.body ∉ ("1", string(Distributed.myid()))
         elseif workertype === :Malt
-            notebook.cells[8].output.body == "1"
+            @test notebook.cells[8].output.body == "1"
         elseif workertype === :InProcess
-            notebook.cells[8].output.body == string(Distributed.myid())
+            @test notebook.cells[8].output.body == string(Distributed.myid())
+        else
+            error()
         end
 
         WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
