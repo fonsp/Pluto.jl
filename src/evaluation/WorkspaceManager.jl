@@ -363,7 +363,8 @@ end
 function workspace_exception_result(exs::CompositeException, workspace::Workspace)
     ex = first(exs.exceptions)
 
-    if ex.worker == workspace.worker && ex.captured.ex isa InterruptException
+    if ex isa InterruptException || (ex isa Malt.RemoteException && occursin("InterruptException", ex.message))
+        @info "Found an interrupt!" ex
         (
             output_formatted=PlutoRunner.format_output(CapturedException(InterruptException(), [])),
             errored=true,
