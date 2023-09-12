@@ -7,8 +7,10 @@ import Distributed
     🍭 = ServerSession()
     🍭.options.evaluation.workspace_use_distributed = false
 
-    @testset "Basic $(parallel ? "distributed" : "single-process")" for parallel in [false, true]
-        🍭.options.evaluation.workspace_use_distributed = parallel
+    @testset "Basic $workertype" for workertype in [:Malt, :Distributed, :InProcess]
+        🍭.options.evaluation.workspace_use_distributed = workertype !== :InProcess
+        🍭.options.evaluation.workspace_use_distributed_stdlib = workertype === :Distributed
+        
         
         notebook = Notebook([
             Cell("x = 1"),
@@ -70,9 +72,11 @@ import Distributed
         @test notebook.cells[6].output.body == "3"
 
         update_run!(🍭, notebook, notebook.cells[7:8])
-        @test if parallel
-            notebook.cells[8].output.body != string(Distributed.myid())
-        else
+        @test if workertype === :Distributed
+            notebook.cells[8].output.body ∉ ("1", string(Distributed.myid()))
+        elseif workertype === :Malt
+            notebook.cells[8].output.body == "1"
+        elseif workertype === :InProcess
             notebook.cells[8].output.body == string(Distributed.myid())
         end
 
