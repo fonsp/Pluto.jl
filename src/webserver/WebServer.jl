@@ -23,8 +23,6 @@ function open_in_default_browser(url::AbstractString)::Bool
     end
 end
 
-isurl(s::String) = startswith(s, "http://") || startswith(s, "https://")
-
 function swallow_exception(f, exception_type::Type{T}) where {T}
     try
         f()
@@ -86,18 +84,6 @@ function run(port::Integer; kwargs...)
     "
 end
 
-# open notebook(s) on startup
-
-open_notebook!(session::ServerSession, notebook::Nothing) = Nothing
-
-open_notebook!(session::ServerSession, notebook::AbstractString) = SessionActions.open(session, notebook)
-
-function open_notebook!(session::ServerSession, notebook::AbstractVector{<:AbstractString})
-    for nb in notebook
-        SessionActions.open(session, nb)
-    end
-end
-
 
 const is_first_run = Ref(true)
 
@@ -136,8 +122,14 @@ function run(session::ServerSession)
     store_session_middleware = create_session_context_middleware(session)
     app = pluto_router |> auth_middleware |> store_session_middleware
 
-    notebook_at_startup = session.options.server.notebook
-    open_notebook!(session, notebook_at_startup)
+    let n = session.options.server.notebook
+        SessionActions.open.((session,), 
+            n === nothing ? [] : 
+            n isa AbstractString ? [n] : 
+            n;
+            run_async=true,
+        )
+    end
 
     host = session.options.server.host
     hostIP = parse(Sockets.IPAddr, host)
@@ -319,10 +311,6 @@ function run(session::ServerSession)
 end
 precompile(run, (ServerSession, HTTP.Handlers.Router{Symbol("##001")}))
 
-get_favorite_notebook(notebook::Nothing) = nothing
-get_favorite_notebook(notebook::String) = notebook
-get_favorite_notebook(notebook::AbstractVector) = first(notebook)
-
 function pretty_address(session::ServerSession, hostIP, port)
     root = if session.options.server.root_url !== nothing
         @assert endswith(session.options.server.root_url, "/")
@@ -352,10 +340,12 @@ function pretty_address(session::ServerSession, hostIP, port)
     if session.options.security.require_secret_for_access
         url_params["secret"] = session.secret
     end
-    fav_notebook = get_favorite_notebook(session.options.server.notebook)
+    fav_notebook = let n = session.options.server.notebook
+        n isa AbstractVector ? (isempty(n) ? nothing : first(n)) : n
+    end
     new_root = if fav_notebook !== nothing
-        key = isurl(fav_notebook) ? "url" : "path"
-        url_params[key] = string(fav_notebook)
+        # since this notebook already started running, this will get redicted to that session
+        url_params["path"] = string(fav_notebook)
         root * "open"
     else
         root
