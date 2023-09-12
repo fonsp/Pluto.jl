@@ -16,9 +16,9 @@ import Pluto.ExpressionExplorer: SymbolsState, compute_symbolreferences, Functio
 using Sockets
 using Test
 using HTTP
-import Distributed
 import Pkg
 import Malt
+import Malt.Distributed
 
 function Base.show(io::IO, s::SymbolsState)
     print(io, "SymbolsState([")

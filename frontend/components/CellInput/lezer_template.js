@@ -2,7 +2,7 @@ import { julia_andrey, NodeProp, syntaxTree, Text } from "../../imports/Codemirr
 import lodash from "../../imports/lodash.js"
 
 // @ts-ignore
-import ManyKeysWeakMap from "https://esm.sh/many-keys-weakmap@1.0.0?pin=v113&target=es202"
+import ManyKeysWeakMap from "https://esm.sh/many-keys-weakmap@1.0.0?pin=v113&target=es2020"
 
 /**
  * @param {string} julia_code
