@@ -246,8 +246,8 @@ end
 function get_bond_names(session_notebook::SN, cell_id)
     workspace = get_workspace(session_notebook)
 
-    Distributed.remotecall_eval(Main, workspace.pid, quote
-        PlutoRunner.get_bond_names($cell_id)
+    Malt.remote_eval_fetch(workspace.worker, quote
+    PlutoRunner.get_bond_names($cell_id)
     end)
 end
 
