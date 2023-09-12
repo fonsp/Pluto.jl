@@ -9,6 +9,7 @@ import Malt
 
     @testset "Multiple notebooks" begin
         🍭 = ServerSession()
+        🍭.options.evaluation.workspace_use_distributed = true
 
         notebookA = Notebook([
             Cell("x = 3")
@@ -33,6 +34,7 @@ import Malt
     end
     @testset "Variables with secret names" begin
         🍭 = ServerSession()
+        🍭.options.evaluation.workspace_use_distributed = false
 
         notebook = Notebook([
             Cell("result = 1"),

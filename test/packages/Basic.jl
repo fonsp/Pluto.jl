@@ -18,6 +18,7 @@ import Malt
         🍭.options.evaluation.workspace_use_distributed_stdlib = use_distributed_stdlib
 
         # See https://github.com/JuliaPluto/PlutoPkgTestRegistry
+
         notebook = Notebook([
             Cell("import PlutoPkgTestA"), # cell 1
             Cell("PlutoPkgTestA.MY_VERSION |> Text"),
@@ -35,9 +36,7 @@ import Malt
 
         @test !notebook.nbpkg_ctx_instantiated
         
-
         update_save_run!(🍭, notebook, notebook.cells[[1, 2, 7, 8]]) # import A and D
-
         @test noerror(notebook.cells[1])
         @test noerror(notebook.cells[2])
         @test noerror(notebook.cells[7])
@@ -66,7 +65,7 @@ import Malt
         @test PkgCompat.get_manifest_version(notebook.nbpkg_ctx, "PlutoPkgTestA") == v"0.3.1"
         @test PkgCompat.get_manifest_version(notebook.nbpkg_ctx, "PlutoPkgTestD") == v"0.1.0"
 
-        
+
         old_A_terminal = deepcopy(terminals["PlutoPkgTestA"])
         # @show old_A_terminal
 
@@ -495,6 +494,7 @@ import Malt
             # end)
 
             Malt.stop(test_worker)
+        end
     end
 
     @testset "PkgUtils -- reset" begin
@@ -766,5 +766,4 @@ end
 # repo = LibGit2.clone("https://github.com/JuliaRegistries/General.git", reg_path)
 
 # LibGit2.checkout!(repo, "aef26d37e1d0e8f8387c011ccb7c4a38398a18f6")
-
 

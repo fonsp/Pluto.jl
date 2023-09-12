@@ -14,6 +14,7 @@ import UUIDs: UUID
     end
     🍭 = ServerSession()
     🍭.options.server.on_event = test_listener
+    # 🍭.options.evaluation.workspace_use_distributed = false
 
     notebook = Notebook([
         Cell("[1,1,[1]]"),

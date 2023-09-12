@@ -268,7 +268,7 @@ end
 # NOTE: this function only start a worker process using given
 # compiler options, it does not resolve paths for notebooks
 # compiler configurations passed to it should be resolved before this
-function create_workspaceprocess(WorkerType; compiler_options=CompilerOptions(), status::Status.Business=Business())::Malt.AbstractWorker
+function create_workspaceprocess(WorkerType; compiler_options=CompilerOptions(), status::Status.Business=Status.Business())::Malt.AbstractWorker
 
     if WorkerType === Malt.InProcessWorker
         worker = WorkerType()
@@ -417,7 +417,7 @@ function eval_format_fetch_in_workspace(
 )::PlutoRunner.FormattedCellResult
 
     workspace = get_workspace(session_notebook)
-    is_on_this_process = worker.worker isa Malt.InProcessWorker
+    is_on_this_process = workspace.worker isa Malt.InProcessWorker
 
     # if multiple notebooks run on the same process, then we need to `cd` between the different notebook paths
     if session_notebook isa Tuple
