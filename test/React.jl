@@ -1,7 +1,6 @@
 using Test
 import Pluto: Configuration, Notebook, ServerSession, ClientSession, update_run!, Cell, WorkspaceManager
 import Pluto.Configuration: Options, EvaluationOptions
-import Distributed
 
 @testset "Reactivity" begin
     🍭 = ServerSession()

@@ -1,7 +1,6 @@
 using Test
 import Pluto
 import Pluto: update_run!, update_save_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell
-import Distributed
 import Malt
 
 @testset "Bonds" begin
