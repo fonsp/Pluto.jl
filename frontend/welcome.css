@@ -113,8 +113,10 @@ section {
 
 section > div {
     margin: 1rem 1rem;
-    max-width: 614px; /* margin: auto; */
+    max-width: 614px;
+    /* margin: auto; */
     flex: 1 1 auto;
+    min-width: 0;
 }
 
 .pluto-logo {

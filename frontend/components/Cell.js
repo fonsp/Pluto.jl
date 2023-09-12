@@ -90,7 +90,7 @@ const on_jump = (hasBarrier, pluto_actions, cell_id) => () => {
  * @param {{
  *  cell_result: import("./Editor.js").CellResultData,
  *  cell_input: import("./Editor.js").CellInputData,
- *  cell_input_local: import("./Editor.js").CellInputData,
+ *  cell_input_local: { code: String },
  *  cell_dependencies: import("./Editor.js").CellDependencyData
  *  nbpkg: import("./Editor.js").NotebookPkgData?,
  *  selected: boolean,
@@ -115,8 +115,9 @@ export const Cell = ({
 }) => {
     const { show_logs, disabled: running_disabled, skip_as_script } = metadata
     let pluto_actions = useContext(PlutoActionsContext)
-    const on_update_doc_query = pluto_actions.set_doc_query
-    const on_focus_neighbor = pluto_actions.focus_on_neighbor
+    // useCallback because pluto_actions.set_doc_query can change value when you go from viewing a static document to connecting (to binder)
+    const on_update_doc_query = useCallback((...args) => pluto_actions.set_doc_query(...args), [pluto_actions])
+    const on_focus_neighbor = useCallback((...args) => pluto_actions.focus_on_neighbor(...args), [pluto_actions])
     const on_change = useCallback((val) => pluto_actions.set_local_cell(cell_id, val), [cell_id, pluto_actions])
     const variables = useMemo(() => Object.keys(cell_dependencies?.downstream_cells_map ?? {}), [cell_dependencies])
 
@@ -134,7 +135,31 @@ export const Cell = ({
     const remount = useMemo(() => () => setKey(key + 1))
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(/** @type{any} */ (null))
+    const [cm_highlighted_range, set_cm_highlighted_range] = useState(null)
     const [cm_highlighted_line, set_cm_highlighted_line] = useState(null)
+    const [cm_diagnostics, set_cm_diagnostics] = useState([])
+
+    useEffect(() => {
+        const diagnosticListener = (e) => {
+            if (e.detail.cell_id === cell_id) {
+                set_cm_diagnostics(e.detail.diagnostics)
+            }
+        }
+        window.addEventListener("cell_diagnostics", diagnosticListener)
+        return () => window.removeEventListener("cell_diagnostics", diagnosticListener)
+    }, [cell_id])
+
+    useEffect(() => {
+        const highlightRangeListener = (e) => {
+            if (e.detail.cell_id == cell_id && e.detail.from != null && e.detail.to != null) {
+                set_cm_highlighted_range({ from: e.detail.from, to: e.detail.to })
+            } else {
+                set_cm_highlighted_range(null)
+            }
+        }
+        window.addEventListener("cell_highlight_range", highlightRangeListener)
+        return () => window.removeEventListener("cell_highlight_range", highlightRangeListener)
+    }, [cell_id])
 
     useEffect(() => {
         const focusListener = (e) => {
@@ -247,21 +272,21 @@ export const Cell = ({
             key=${cell_key}
             ref=${node_ref}
             class=${cl({
-                queued: queued || (waiting_to_run && is_process_ready),
-                running,
-                activate_animation,
-                errored,
-                selected,
-                code_differs: class_code_differs,
-                code_folded: class_code_folded,
-                skip_as_script,
-                running_disabled,
-                depends_on_disabled_cells,
-                depends_on_skipped_cells,
-                show_input,
-                shrunk: Object.values(logs).length > 0,
-                hooked_up: output?.has_pluto_hook_features ?? false,
-            })}
+        queued: queued || (waiting_to_run && is_process_ready),
+        running,
+        activate_animation,
+        errored,
+        selected,
+        code_differs: class_code_differs,
+        code_folded: class_code_folded,
+        skip_as_script,
+        running_disabled,
+        depends_on_disabled_cells,
+        depends_on_skipped_cells,
+        show_input,
+        shrunk: Object.values(logs).length > 0,
+        hooked_up: output?.has_pluto_hook_features ?? false,
+    })}
             id=${cell_id}
         >
             ${variables.map((name) => html`<span id=${encodeURI(name)} />`)}
@@ -273,14 +298,14 @@ export const Cell = ({
             <pluto-trafficlight></pluto-trafficlight>
             <button
                 onClick=${() => {
-                    pluto_actions.add_remote_cell(cell_id, "before")
-                }}
+            pluto_actions.add_remote_cell(cell_id, "before")
+        }}
                 class="add_cell before"
                 title="Add cell"
             >
                 <span></span>
             </button>
-            ${cell_api_ready ? html`<${CellOutput} errored=${errored} ...${output} cell_id=${cell_id} />` : html``}
+        ${cell_api_ready ? html`<${CellOutput} errored=${errored} ...${output} cell_id=${cell_id} />` : html``}
             <${CellInput}
                 local_code=${cell_input_local?.code ?? code}
                 remote_code=${code}
@@ -307,18 +332,21 @@ export const Cell = ({
                 set_show_logs=${set_show_logs}
                 set_cell_disabled=${set_cell_disabled}
                 cm_highlighted_line=${cm_highlighted_line}
-                set_cm_highlighted_line=${set_cm_highlighted_line}
+                cm_highlighted_range=${cm_highlighted_range}
+                cm_diagnostics=${cm_diagnostics}
                 onerror=${remount}
             />
-            ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${line_heights} set_cm_highlighted_line=${set_cm_highlighted_line} />` : null}
+            ${show_logs && cell_api_ready
+                ? html`<${Logs} logs=${Object.values(logs)} line_heights=${line_heights} set_cm_highlighted_line=${set_cm_highlighted_line} />`
+                : null}
             <${RunArea}
                 cell_id=${cell_id}
                 running_disabled=${running_disabled}
                 depends_on_disabled_cells=${depends_on_disabled_cells}
                 on_run=${on_run}
                 on_interrupt=${() => {
-                    pluto_actions.interrupt_remote(cell_id)
-                }}
+            pluto_actions.interrupt_remote(cell_id)
+        }}
                 set_cell_disabled=${set_cell_disabled}
                 runtime=${runtime}
                 running=${running}
@@ -328,42 +356,42 @@ export const Cell = ({
             />
             <button
                 onClick=${() => {
-                    pluto_actions.add_remote_cell(cell_id, "after")
-                }}
+            pluto_actions.add_remote_cell(cell_id, "after")
+        }}
                 class="add_cell after"
                 title="Add cell"
             >
                 <span></span>
             </button>
             ${skip_as_script
-                ? html`<div
+            ? html`<div
                       class="skip_as_script_marker"
                       title=${`This cell is directly flagged as disabled in file. Click to know more!`}
                       onClick=${(e) => {
-                          open_pluto_popup({
-                              type: "info",
-                              source_element: e.target,
-                              body: html`This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />
+                    open_pluto_popup({
+                        type: "info",
+                        source_element: e.target,
+                        body: html`This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />
                                   This way, it will not run when the notebook runs as a script outside of Pluto.<br />
-                                  Use the context menu to change enable it again`,
-                          })
-                      }}
+                                  Use the context menu to enable it again`,
+                    })
+                }}
                   ></div>`
-                : depends_on_skipped_cells
+            : depends_on_skipped_cells
                 ? html`<div
                       class="depends_on_skipped_marker"
                       title=${`This cell is indirectly flagged as disabled in file. Click to know more!`}
                       onClick=${(e) => {
-                          open_pluto_popup({
-                              type: "info",
-                              source_element: e.target,
-                              body: html`This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />
+                        open_pluto_popup({
+                            type: "info",
+                            source_element: e.target,
+                            body: html`This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />
                                   This way, it will not run when the notebook runs as a script outside of Pluto.<br />
                                   An upstream cell is <b> indirectly</b> <em>disabling in file</em> this one; enable
                                   <span onClick=${skip_as_script_jump} style="cursor: pointer; text-decoration: underline"> the upstream one</span> to affect
                                   this cell.`,
-                          })
-                      }}
+                        })
+                    }}
                   ></div>`
                 : null}
         </pluto-cell>
@@ -385,7 +413,7 @@ export const IsolatedCell = ({ cell_input: { cell_id, metadata }, cell_result: {
     return html`
         <pluto-cell ref=${node_ref} id=${cell_id} class=${hidden ? "hidden-cell" : "isolated-cell"}>
             ${cell_api_ready ? html`<${CellOutput} ...${output} cell_id=${cell_id} />` : html``}
-            ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${[15]} set_cm_highlighted_line=${() => {}} />` : null}
+            ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${[15]} set_cm_highlighted_line=${() => { }} />` : null}
         </pluto-cell>
     `
 }

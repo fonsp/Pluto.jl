@@ -191,7 +191,8 @@ import Distributed
         @test length(notebook.cells) == 1
 
         update_run!(🍭, notebook, Cell[])
-        @test occursinerror("UndefVarError: x", notebook.cells[begin])
+
+        @test expecterror(UndefVarError(:x), notebook.cells[begin])
     end
 
     @testset ".. as an identifier" begin
@@ -286,7 +287,62 @@ import Distributed
         @test comesbefore(run_order, 4, 3)
     end
 
-    
+    @testset "Cleanup of workspace variable" begin
+        notebook = Notebook([
+            Cell("x = 10000"),
+        ])
+
+        update_run!(🍭, notebook, notebook.cells[1:1])
+
+        @test haskey(WorkspaceManager.active_workspaces, notebook.notebook_id)
+        w = fetch(WorkspaceManager.active_workspaces[notebook.notebook_id])
+        oldmod = getproperty(Main, w.module_name)
+
+        setcode!(notebook.cells[begin], "")
+        update_run!(🍭, notebook, notebook.cells[1:1])
+
+        @test isdefined(oldmod, :x)
+        @test isnothing(getproperty(oldmod, :x))
+
+        newmod = getproperty(Main, w.module_name)
+        @test !isdefined(newmod, :x)
+    end
+
+    @testset "Cleanup only Pluto controlled modules" begin
+        notebook = Notebook([
+            Cell("""Core.eval(Main, :(
+                 module var\"Pluto#2443\"
+                    x = 1000
+                 end
+            ))"""),
+            Cell("import .Main.var\"Pluto#2443\": x"),
+            Cell("x"),
+        ])
+
+        update_run!(🍭, notebook, notebook.cells)
+        @test noerror(notebook.cells[1])
+        @test noerror(notebook.cells[2])
+        @test noerror(notebook.cells[3])
+
+        @test haskey(WorkspaceManager.active_workspaces, notebook.notebook_id)
+        w = fetch(WorkspaceManager.active_workspaces[notebook.notebook_id])
+        oldmod = getproperty(Main, w.module_name)
+
+        setcode!(notebook.cells[2], "")
+        setcode!(notebook.cells[3], "")
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test isdefined(oldmod, :x)
+        @test which(oldmod, :x) != oldmod
+        @test !isnothing(getproperty(oldmod, :x))
+
+        newmod = getproperty(Main, w.module_name)
+        @test !isdefined(newmod, :x)
+
+        @test !isnothing(Main.var"Pluto#2443".x)
+    end
+
     @testset "Mixed usings and reactivity" begin
         notebook = Notebook([
             Cell("a; using Dates"),
@@ -541,7 +597,7 @@ import Distributed
 
         @test notebook.cells[end].errored == true
         @test occursinerror("Cyclic", notebook.cells[1])
-        @test occursinerror("UndefVarError: y", notebook.cells[end]) # this is an UndefVarError and not a CyclicError
+        @test expecterror(UndefVarError(:y), notebook.cells[end]) # this is an UndefVarError and not a CyclicError
 
         setcode!.(notebook.cells, [""])
         update_run!(🍭, notebook, notebook.cells)
@@ -991,7 +1047,7 @@ import Distributed
         setcode!(notebook.cells[1], "")
         update_run!(🍭, notebook, notebook.cells[1])
         @test notebook.cells[1] |> noerror
-        @test occursinerror("x not defined", notebook.cells[2])
+        @test expecterror(UndefVarError(:x), notebook.cells[2])
 
         update_run!(🍭, notebook, notebook.cells[4])
         update_run!(🍭, notebook, notebook.cells[3])
@@ -1695,5 +1751,29 @@ import Distributed
         ]))
         update_run!(🍭, notebook, notebook.cells)
         @test all(noerror, notebook.cells)
+    end
+
+    @testset "ParseError messages" begin
+        notebook = Notebook(Cell.([
+            "begin",
+            "\n\nend",
+        ]))
+        update_run!(🍭, notebook, notebook.cells)
+        @test Pluto.is_just_text(notebook.topology, notebook.cells[1])
+        @test Pluto.is_just_text(notebook.topology, notebook.cells[2])
+        @static if VERSION >= v"1.10.0-DEV.1548" # ~JuliaSyntax PR Pluto.jl#2526 julia#46372
+            @test haskey(notebook.cells[1].output.body, :source)
+            @test haskey(notebook.cells[1].output.body, :diagnostics)
+
+            @test haskey(notebook.cells[2].output.body, :source)
+            @test haskey(notebook.cells[2].output.body, :diagnostics)
+        else
+            @test !occursinerror("(incomplete ", notebook.cells[1])
+            @test !occursinerror("(incomplete ", notebook.cells[2])
+
+            @show notebook.cells[1].output.body
+            @test startswith(notebook.cells[1].output.body[:msg], "syntax:")
+            @test startswith(notebook.cells[2].output.body[:msg], "syntax:")
+        end
     end
 end

@@ -147,7 +147,7 @@ end
 
 Base.collect(notebook_topo_order::TopologicalOrder) = union(notebook_topo_order.runnable, keys(notebook_topo_order.errable))
 
-function disjoint(a::Set, b::Set)
+function disjoint(a, b)
 	!any(x in a for x in b)
 end
 
@@ -177,7 +177,10 @@ end
 
 "Return the cells that also assign to any variable or method defined by the given cell. If more than one cell is returned (besides the given cell), then all of them should throw a `MultipleDefinitionsError`. Non-recursive: only direct dependencies are found."
 function where_assigned(topology::NotebookTopology, myself::Cell)::Vector{Cell}
-	self = topology.nodes[myself]
+	where_assigned(topology, topology.nodes[myself])
+end
+
+function where_assigned(topology::NotebookTopology, self::ReactiveNode)::Vector{Cell}
 	return filter(all_cells(topology)) do cell
 		other = topology.nodes[cell]
 		!(

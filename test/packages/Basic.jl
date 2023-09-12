@@ -2,7 +2,6 @@
 import Pkg
 using Test
 using Pluto.Configuration: CompilerOptions
-using Pluto.WorkspaceManager: _merge_notebook_compiler_options, poll
 import Pluto: update_save_run!, update_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell, project_relative_path, SessionActions, load_notebook
 import Pluto.PkgUtils
 import Pluto.PkgCompat
@@ -58,7 +57,8 @@ import Malt
         @test haskey(terminals, "PlutoPkgTestD")
         # they were installed in one batch, so their terminal outputs should be the same
         @test terminals["PlutoPkgTestA"] == terminals["PlutoPkgTestD"]
-
+        # " [9e88b42a] PackageName" should be present in terminal output
+        @test !isnothing(match(r"\[........\] ", terminals["PlutoPkgTestA"]))
 
         @test notebook.cells[2].output.body == "0.3.1" # A
         @test notebook.cells[8].output.body == "0.1.0" # D
@@ -237,6 +237,31 @@ import Malt
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
     
+    @testset "Package added by url" begin
+        url_notebook = read(joinpath(@__DIR__, "url_import.jl"), String)
+
+        🍭 = ServerSession()
+
+        dir = mktempdir()
+        path = joinpath(dir, "hello.jl")
+        write(path, url_notebook)
+
+        notebook = SessionActions.open(🍭, path; run_async=false)
+        
+        @test num_backups_in(dir) == 0
+
+        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_restart_recommended_msg === nothing
+        @test notebook.nbpkg_restart_required_msg === nothing
+
+        @test noerror(notebook.cells[1])
+        @test noerror(notebook.cells[2])
+
+        @test notebook.cells[2].output.body == "1.0.0"
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
+    
     future_notebook = read(joinpath(@__DIR__, "future_nonexisting_version.jl"), String)
     @testset "Recovery from unavailable versions" begin
         🍭 = ServerSession()
@@ -393,6 +418,7 @@ import Malt
 
     pre_pkg_notebook = read(joinpath(@__DIR__, "old_import.jl"), String)
     local post_pkg_notebook = nothing
+
     @testset "File format -- Backwards compat" begin
         🍭 = ServerSession()
 
@@ -421,54 +447,54 @@ import Malt
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
-    @testset "File format -- Forwards compat" begin
-        # Using Malt, create a Julia process in which we install Pluto 0.14.7 (before PlutoPkg).
-        # Run the new notebook file on the old Pluto.
-        test_worker = Malt.Worker()
+    @static if VERSION ≤ v"1.9"
+        @testset "File format -- Forwards compat" begin
+            # Using Distributed, we will create a new Julia process in which we install Pluto 0.14.7 (before PlutoPkg). We run the new notebook file on the old Pluto.
+            test_worker = Malt.Worker()
 
-        @test post_pkg_notebook isa String
+            @test post_pkg_notebook isa String
 
-        Malt.remote_eval_wait(Main, test_worker, quote
-            path = tempname()
-            write(path, $(post_pkg_notebook))
-            import Pkg
-            # optimization:
-            if isdefined(Pkg, :UPDATED_REGISTRY_THIS_SESSION)
-                Pkg.UPDATED_REGISTRY_THIS_SESSION[] = true
-            end
+            Malt.remote_eval_wait(Main, test_worker, quote
+                path = tempname()
+                write(path, $(post_pkg_notebook))
+                import Pkg
+                # optimization:
+                if isdefined(Pkg, :UPDATED_REGISTRY_THIS_SESSION)
+                    Pkg.UPDATED_REGISTRY_THIS_SESSION[] = true
+                end
 
-            Pkg.activate(;temp=true)
-            Pkg.add(Pkg.PackageSpec(;name="Pluto",version=v"0.14.7"))
-            # Distributed is required for old Pluto to work!
-            Pkg.add("Distributed") 
+                Pkg.activate(;temp=true)
+                Pkg.add(Pkg.PackageSpec(;name="Pluto",version=v"0.14.7"))
+                # Distributed is required for old Pluto to work!
+                Pkg.add("Distributed") 
 
-            import Pluto
-            @info Pluto.PLUTO_VERSION
-            @assert Pluto.PLUTO_VERSION == v"0.14.7"
-        end)
+                import Pluto
+                @info Pluto.PLUTO_VERSION
+                @assert Pluto.PLUTO_VERSION == v"0.14.7"
+            end)
 
-        @test Malt.remote_eval_fetch(Main, test_worker, quote
-            s = Pluto.ServerSession()
-            nb = Pluto.SessionActions.open(s, path; run_async=false)
-            nb.cells[2].errored == false
-        end)
+            @test Malt.remote_eval_fetch(Main, test_worker, quote
+                s = Pluto.ServerSession()
+                nb = Pluto.SessionActions.open(s, path; run_async=false)
+                nb.cells[2].errored == false
+            end)
 
-        # Cells that use Example will error because the package is not installed.
+            # Cells that use Example will error because the package is not installed.
 
-        # @test Malt.remote_eval_fetch(Main, test_worker, quote
-        #     nb.cells[1].errored == false
-        # end)
-        # @test Malt.remote_eval_fetch(Main, test_worker, quote
-        #     nb.cells[2].errored == false
-        # end)
-        # @test Malt.remote_eval_fetch(Main, test_worker, quote
-        #     nb.cells[3].errored == false
-        # end)
-        # @test Malt.remote_eval_fetch(Main, test_worker, quote
-        #     nb.cells[3].output.body == "25"
-        # end)
+            # @test Malt.remote_eval_fetch(Main, test_worker, quote
+            #     nb.cells[1].errored == false
+            # end)
+            @test Malt.remote_eval_fetch(Main, test_worker, quote
+                nb.cells[2].errored == false
+            end)
+            # @test Malt.remote_eval_fetch(Main, test_worker, quote
+            #     nb.cells[3].errored == false
+            # end)
+            # @test Malt.remote_eval_fetch(Main, test_worker, quote
+            #     nb.cells[3].output.body == "25"
+            # end)
 
-        Malt.stop(test_worker)
+            Malt.stop(test_worker)
     end
 
     @testset "PkgUtils -- reset" begin
@@ -490,7 +516,7 @@ import Malt
 
         write(f, simple_import_notebook)
         @test !occursin("0.3.1", read(f, String))
-        
+
         @test num_backups_in(dir) == 0
         Pluto.update_notebook_environment(f)
 
@@ -575,32 +601,6 @@ import Malt
 
     end
 
-    # @test false
-
-    # @testset "File format" begin
-    #     notebook = Notebook([
-    #         Cell("import PlutoPkgTestA"), # cell 1
-    #         Cell("PlutoPkgTestA.MY_VERSION |> Text"),
-    #         Cell("import PlutoPkgTestB"), # cell 3
-    #         Cell("PlutoPkgTestB.MY_VERSION |> Text"),
-    #         Cell("import PlutoPkgTestC"), # cell 5
-    #         Cell("PlutoPkgTestC.MY_VERSION |> Text"),
-    #         Cell("import PlutoPkgTestD"), # cell 7
-    #         Cell("PlutoPkgTestD.MY_VERSION |> Text"),
-    #         Cell("import PlutoPkgTestE"), # cell 9
-    #         Cell("PlutoPkgTestE.MY_VERSION |> Text"),
-    #         Cell("eval(:(import DataFrames))")
-    #     ])
-
-    #     file1 = tempname()
-    #     notebook.path = file1
-
-    #     save_notebook()
-
-
-    #     save_notebook
-    # end
-    
     @testset "Race conditions" begin
         🍭 = ServerSession()
         lag = 0.2
@@ -652,6 +652,111 @@ import Malt
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
+    @testset "PlutoRunner Syntax Error" begin
+        notebook = Notebook([
+            Cell("1 +"),
+            Cell("PlutoRunner.throw_syntax_error"),
+            Cell("PlutoRunner.throw_syntax_error(1)"),
+        ])
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test notebook.cells[1].errored
+        @test noerror(notebook.cells[2])
+        @test notebook.cells[3].errored
+
+        @test Pluto.is_just_text(notebook.topology, notebook.cells[1])
+        @test !Pluto.is_just_text(notebook.topology, notebook.cells[2]) # Not a syntax error form
+        @test Pluto.is_just_text(notebook.topology, notebook.cells[3])
+    end
+
+    @testset "Precompilation" begin
+        compilation_dir = joinpath(DEPOT_PATH[1], "compiled", "v$(VERSION.major).$(VERSION.minor)")
+        @assert isdir(compilation_dir)
+        compilation_dir_testA = joinpath(compilation_dir, "PlutoPkgTestA")
+        precomp_entries() = readdir(mkpath(compilation_dir_testA))
+        
+        # clear cache
+        let
+            # sleep workaround for julia issue 34700.
+            sleep(3)
+            isdir(compilation_dir_testA) && rm(compilation_dir_testA; force=true, recursive=true)
+        end
+        @test precomp_entries() == []
+
+        @testset "Match compiler options: $(match)" for match in [true, false]
+            
+            before_sync = precomp_entries()
+            
+            🍭 = ServerSession()
+            # make compiler settings of the worker (not) match the server settings
+            let
+                # you can find out which settings are relevant for cache validation by running JULIA_DEBUG="loading" julia and then missing a cache. Example output on julia1.9.0-rc1:
+                # ┌ Debug: Rejecting cache file /Applications/Julia-1.9.0-beta4 ARM.app/Contents/Resources/julia/share/julia/compiled/v1.9/SuiteSparse_jll/ME9At_bvckq.ji for  [top-level] since the flags are mismatched
+                # │   current session: use_pkgimages = true, debug_level = 1, check_bounds = 0, inline = true, opt_level = 2
+                # │   cache file:      use_pkgimages = true, debug_level = 1, check_bounds = 1, inline = true, opt_level = 2
+                # └ @ Base loading.jl:2668
+                flip = !match
+                if VERSION >= v"1.9.0-aaa"
+                    🍭.options.compiler.pkgimages = (flip ⊻ Base.JLOptions().use_pkgimages == 1) ? "yes" : "no"
+                end
+                🍭.options.compiler.check_bounds = (flip ⊻ Base.JLOptions().check_bounds == 1) ? "yes" : "no"
+                🍭.options.compiler.inline = (flip ⊻ Base.JLOptions().can_inline == 1) ? "yes" : "no"
+                🍭.options.compiler.optimize = match ? Base.JLOptions().opt_level : 3 - Base.JLOptions().opt_level
+                # cant set the debug level but whatevs
+            end
+            
+
+            notebook = Notebook([
+                # An import for Pluto to recognize, but don't actually run it. When you run an import, Julia will precompile the package if necessary, which would skew our results.
+                Cell("false && import PlutoPkgTestA"),
+            ])
+
+            @test !notebook.nbpkg_ctx_instantiated
+            update_save_run!(🍭, notebook, notebook.cells)
+            @test notebook.nbpkg_ctx_instantiated
+            
+            after_sync = precomp_entries()
+            
+            # syncing should have called Pkg.precompile(), which should have generated new precompile caches. 
+            # If `match == false`, then this is the second run, and the precompile caches should be different. 
+            # These new caches use the same filename (weird...), EXCEPT when the pkgimages flag changed, then you get a new filename.
+            if match == true || VERSION >= v"1.9.0-aaa"
+                @test before_sync != after_sync
+                @test length(before_sync) < length(after_sync)
+            end
+            
+            
+            
+            # Now actually run the import.
+            setcode!(notebook.cells[1], """begin
+            ENV["JULIA_DEBUG"] = "loading"
+            
+            PlutoRunner.Logging.shouldlog(logger::PlutoRunner.PlutoCellLogger, level, _module, _...) = true # https://github.com/fonsp/Pluto.jl/issues/2487
+            
+            import PlutoPkgTestA
+            end""")
+            update_save_run!(🍭, notebook, notebook.cells[1])
+            @test noerror(notebook.cells[1])
+            
+            after_run = precomp_entries()
+            
+
+            # There should be a log message about loading the cache.
+            VERSION >= v"1.8.0-aaa" && @test any(notebook.cells[1].logs) do log
+                occursin(r"Loading.*cache"i, log["msg"][1])
+            end
+            # There should NOT be a log message about rejecting the cache.
+            @test !any(notebook.cells[1].logs) do log
+                occursin(r"reject.*cache"i, log["msg"][1])
+            end
+            
+            # Running the import should not have triggered additional precompilation, everything should have been precompiled during Pkg.precompile() (in sync_nbpkg).
+            @test after_sync == after_run
+            
+            WorkspaceManager.unmake_workspace((🍭, notebook))
+        end
+    end
 
     Pkg.Registry.rm(pluto_test_registry_spec)
     # Pkg.Registry.add("General")

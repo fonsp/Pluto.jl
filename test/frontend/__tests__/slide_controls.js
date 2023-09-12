@@ -1,33 +1,36 @@
 import puppeteer from "puppeteer"
-import { setupPage, waitForContent } from "../helpers/common"
-import { createNewNotebook, getPlutoUrl, manuallyEnterCells, prewarmPluto, waitForNoUpdateOngoing } from "../helpers/pluto"
+import { saveScreenshot, createPage, waitForContent } from "../helpers/common"
+import {
+    createNewNotebook,
+    getPlutoUrl,
+    manuallyEnterCells,
+    prewarmPluto,
+    setupPlutoBrowser,
+    shutdownCurrentNotebook,
+    waitForNoUpdateOngoing,
+} from "../helpers/pluto"
 
 describe("slideControls", () => {
     let browser = null
     let page = null
 
     beforeAll(async () => {
-        browser = await puppeteer.launch({
-            headless: process.env.HEADLESS !== "false",
-            args: ["--no-sandbox", "--disable-setuid-sandbox"],
-            devtools: false,
-        })
-
-        let page = await browser.newPage()
-        setupPage(page)
-        await prewarmPluto(browser, page)
-        await page.close()
+        browser = await setupPlutoBrowser()
     })
     beforeEach(async () => {
-        page = await browser.newPage()
-        setupPage(page)
+        page = await createPage(browser)
         await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
         await createNewNotebook(page)
-        await page.waitForSelector("pluto-input", { visible: true })
+    })
+    afterEach(async () => {
+        await saveScreenshot(page)
+        await shutdownCurrentNotebook(page)
+        await page.close()
+        page = null
     })
     afterAll(async () => {
-        await page.close()
         await browser.close()
+        browser = null
     })
 
     it("should create titles", async () => {

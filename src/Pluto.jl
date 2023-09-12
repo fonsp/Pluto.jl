@@ -50,6 +50,7 @@ include("./analysis/ExpressionExplorer.jl")
 include("./analysis/FunctionDependencies.jl")
 include("./analysis/ReactiveNode.jl")
 include("./packages/PkgCompat.jl")
+include("./webserver/Status.jl")
 
 include("./notebook/Cell.jl")
 include("./analysis/data structures.jl")
@@ -73,6 +74,7 @@ include("./analysis/MoreAnalysis.jl")
 include("./evaluation/WorkspaceManager.jl")
 include("./evaluation/MacroAnalysis.jl")
 include("./packages/IOListener.jl")
+include("./packages/precompile_isolated.jl")
 include("./packages/Packages.jl")
 include("./packages/PkgUtils.jl")
 include("./evaluation/Run.jl")
@@ -82,6 +84,8 @@ module DownloadCool include("./webserver/data_url.jl") end
 include("./webserver/MsgPack.jl")
 include("./webserver/SessionActions.jl")
 include("./webserver/Static.jl")
+include("./webserver/Authentication.jl")
+include("./webserver/Router.jl")
 include("./webserver/Dynamic.jl")
 include("./webserver/REPLTools.jl")
 include("./webserver/WebServer.jl")
@@ -92,6 +96,8 @@ const activate_notebook_environment = PkgUtils.activate_notebook_environment
 export reset_notebook_environment
 export update_notebook_environment
 export activate_notebook_environment
+
+include("./precompile.jl")
 
 if get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") != "0" && get(ENV, "CI", "🍄") != "true"
 @info """\n
@@ -104,10 +110,5 @@ if get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") != "0" && get(ENV, "CI", "🍄") != 
     https://github.com/fonsp/Pluto.jl/wiki
 \n"""
 end
-
-# Generate and include `precompile` directives during the precompilation phase.
-# This aims to reduce the time to first X (time to first running notebook in this case).
-using PrecompileSignatures: @precompile_signatures
-@precompile_signatures(Pluto)
 
 end

@@ -130,8 +130,10 @@ end
 function save_notebook(notebook::Notebook, path::String)
     # @warn "Saving to file!!" exception=(ErrorException(""), backtrace())
     notebook.last_save_time = time()
-    write_buffered(path) do io
-        save_notebook(io, notebook)
+    Status.report_business!(notebook.status_tree, :saving) do
+        write_buffered(path) do io
+            save_notebook(io, notebook)
+        end
     end
 end
 
@@ -338,6 +340,9 @@ function load_notebook(path::String; disable_writing_notebook_files::Bool=false)
     loaded = load_notebook_nobackup(path)
     # Analyze cells so that the initial save is in topological order
     loaded.topology = updated_topology(loaded.topology, loaded, loaded.cells) |> static_resolve_topology
+    # We update cell dependency on skip_as_script and disabled to avoid removing block comments on the file. See https://github.com/fonsp/Pluto.jl/issues/2182
+    update_disabled_cells_dependency!(loaded)
+    update_skipped_cells_dependency!(loaded)
     update_dependency_cache!(loaded)
 
     disable_writing_notebook_files || save_notebook(loaded)

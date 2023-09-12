@@ -31,9 +31,36 @@ using Pluto.WorkspaceManager: poll
             @info "even more logging"
         end
         """, # 11
+        
+        "t1 = @async sleep(3)", # 12
+        "!istaskfailed(t1) && !istaskdone(t1)", # 13
+        "t2 = @async run(`sleep 3`)", # 14
+        "!istaskfailed(t2) && !istaskdone(t2)", # 15
+        
+        """
+        macro hello()
+            a = rand()
+            @info a
+            nothing
+        end
+        """, # 16
+        
+        "@hello", # 17
+        
+        "123", # 18
+        
+
+        "struct StructWithCustomShowThatLogs end", # 19
+        """ # 20
+        function Base.show(io::IO, ::StructWithCustomShowThatLogs)
+            println("stdio log")
+            @info "showing StructWithCustomShowThatLogs"
+            show(io, "hello")
+        end
+        """,
+        "StructWithCustomShowThatLogs()", # 21
     ]))
-    
-    
+
     @testset "Stdout" begin
         
         idx_123 = [1,2,3,4,5,7,9]
@@ -60,6 +87,39 @@ using Pluto.WorkspaceManager: poll
             @test log["level"] == "LogLevel(-555)"
             @test strip(log["msg"][1]) == "123"
             @test log["msg"][2] == MIME"text/plain"()
+        end
+        
+        update_run!(🍭, notebook, notebook.cells[12:15])
+        update_run!(🍭, notebook, notebook.cells[[12,14]])
+        @test notebook.cells[13].output.body == "true"
+        Sys.iswindows() || @test notebook.cells[15].output.body == "true"
+        
+        update_run!(🍭, notebook, notebook.cells[16:18])
+        
+        @test isempty(notebook.cells[16].logs)
+        @test length(notebook.cells[17].logs) == 1
+        @test isempty(notebook.cells[18].logs)
+        
+        update_run!(🍭, notebook, notebook.cells[18])
+        update_run!(🍭, notebook, notebook.cells[17])
+        
+        @test isempty(notebook.cells[16].logs)
+        @test length(notebook.cells[17].logs) == 1
+        @test isempty(notebook.cells[18].logs)
+        
+        update_run!(🍭, notebook, notebook.cells[16])
+        
+        @test isempty(notebook.cells[16].logs)
+        @test length(notebook.cells[17].logs) == 1
+        @test isempty(notebook.cells[18].logs)
+
+        update_run!(🍭, notebook, notebook.cells[19:21])
+
+        @test isempty(notebook.cells[19].logs)
+        @test isempty(notebook.cells[20].logs)
+
+        @test poll(5, 1/60) do
+            length(notebook.cells[21].logs) == 2
         end
     end
 

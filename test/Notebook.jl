@@ -1,6 +1,6 @@
 using Test
 import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new, readwrite, without_pluto_file_extension, update_run!, get_metadata_no_default, is_disabled, create_cell_metadata, update_skipped_cells_dependency!
-import Pluto.WorkspaceManager: poll, WorkspaceManager
+import Pluto.WorkspaceManager
 import Random
 import Pkg
 import UUIDs: UUID
@@ -274,6 +274,13 @@ end
         @test !isdefined(m, :skipped_var)
         @test !isdefined(m, :dependent_var)
         @test m.non_skipped_var == 15
+
+        # Test that `load_notebook` doesn't break commented out cells
+        load_notebook(nb.path)
+        m = ingredients(nb.path)
+        @test !isdefined(m, :skipped_var)
+        @test !isdefined(m, :dependent_var)
+        @test m.non_skipped_var == 15
         
         nb.cells[1].metadata["skip_as_script"] = false
         update_skipped_cells_dependency!(nb)
@@ -283,6 +290,7 @@ end
         @test m.skipped_var == 10
         @test m.non_skipped_var == 15        
         @test m.dependent_var == 11
+
         
         WorkspaceManager.unmake_workspace((🍭, nb); verbose=false)
     end
@@ -541,7 +549,7 @@ end
         end
     end
 
-    @testset "Import & export HTML" begin
+    @testset "Export HTML" begin
         nb = basic_notebook()
         nb.metadata["frontmatter"] = Dict{String,Any}(
             "title" => "My<Title",
@@ -550,6 +558,7 @@ end
         )
         export_html = replace(Pluto.generate_html(nb), "'" => "\"")
         
+        @test occursin("<pluto-editor", export_html)
         @test occursin("<title>My&lt;Title</title>", export_html)
         @test occursin("""<meta name="description" content="ccc">""", export_html)
         @test occursin("""<meta property="og:description" content="ccc">""", export_html)
@@ -570,6 +579,15 @@ end
         export_html = Pluto.generate_html(nb; notebookfile_js=filename)
         @test occursin(filename, export_html)
         @test_throws ArgumentError Pluto.embedded_notebookfile(export_html)
+        
+        
+        export_html = Pluto.generate_index_html()
+        @test occursin("</html>", export_html)
+        @test !occursin("<pluto-editor", export_html)
+        
+        export_html = Pluto.generate_index_html(; featured_direct_html_links=true, featured_sources_js="[{url:`./zozozo.json`}]")
+        
+        @test occursin("zozozo", export_html)
     end
 
     @testset "Utilities" begin

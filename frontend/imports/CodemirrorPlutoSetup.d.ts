@@ -263,6 +263,7 @@ stores the document length, and can only be applied to documents
 with exactly that length.
 */
 declare class ChangeSet extends ChangeDesc {
+    private constructor();
     /**
     Apply the changes to a document, returning the modified
     document.
@@ -348,6 +349,7 @@ declare class SelectionRange {
     */
     readonly to: number;
     private flags;
+    private constructor();
     /**
     The anchor of the range—the side that doesn't move when you
     extend it.
@@ -418,6 +420,7 @@ declare class EditorSelection {
     usually the range that was added last).
     */
     readonly mainIndex: number;
+    private constructor();
     /**
     Map a selection through a change. Used to adjust the selection
     position for changes.
@@ -473,7 +476,7 @@ declare class EditorSelection {
     /**
     Create a selection range.
     */
-    static range(anchor: number, head: number, goalColumn?: number): SelectionRange;
+    static range(anchor: number, head: number, goalColumn?: number, bidiLevel?: number): SelectionRange;
 }
 
 declare type FacetConfig<Input, Output> = {
@@ -502,13 +505,14 @@ declare type FacetConfig<Input, Output> = {
     */
     static?: boolean;
     /**
-    If given, these extension(s) will be added to any state where
-    this facet is provided. (Note that, while a facet's default
-    value can be read from a state even if the facet wasn't present
-    in the state at all, these extensions won't be added in that
+    If given, these extension(s) (or the result of calling the given
+    function with the facet) will be added to any state where this
+    facet is provided. (Note that, while a facet's default value can
+    be read from a state even if the facet wasn't present in the
+    state at all, these extensions won't be added in that
     situation.)
     */
-    enables?: Extension;
+    enables?: Extension | ((self: Facet<Input, Output>) => Extension);
 };
 /**
 A facet is a labeled value that is associated with an editor
@@ -849,6 +853,7 @@ declare class Transaction {
     transaction is dispatched.
     */
     readonly scrollIntoView: boolean;
+    private constructor();
     /**
     The new document produced by the transaction. Contrary to
     [`.state`](https://codemirror.net/6/docs/ref/#state.Transaction.state)`.doc`, accessing this won't
@@ -1006,6 +1011,7 @@ declare class EditorState {
     The current selection.
     */
     readonly selection: EditorSelection;
+    private constructor();
     /**
     Retrieve the value of a [state field](https://codemirror.net/6/docs/ref/#state.StateField). Throws
     an error when the state doesn't have that field, unless you pass
@@ -1167,8 +1173,13 @@ declare class EditorState {
     Look up a translation for the given phrase (via the
     [`phrases`](https://codemirror.net/6/docs/ref/#state.EditorState^phrases) facet), or return the
     original string if no translation is found.
+    
+    If additional arguments are passed, they will be inserted in
+    place of markers like `$1` (for the first value) and `$2`, etc.
+    A single `$` is equivalent to `$1`, and `$$` will produce a
+    literal dollar sign.
     */
-    phrase(phrase: string): string;
+    phrase(phrase: string, ...insert: any[]): string;
     /**
     A facet used to register [language
     data](https://codemirror.net/6/docs/ref/#state.EditorState.languageDataAt) providers.
@@ -1181,6 +1192,18 @@ declare class EditorState {
     /**
     Find the values for a given language data field, provided by the
     the [`languageData`](https://codemirror.net/6/docs/ref/#state.EditorState^languageData) facet.
+    
+    Examples of language data fields are...
+    
+    - [`"commentTokens"`](https://codemirror.net/6/docs/ref/#commands.CommentTokens) for specifying
+      comment syntax.
+    - [`"autocomplete"`](https://codemirror.net/6/docs/ref/#autocomplete.autocompletion^config.override)
+      for providing language-specific completion sources.
+    - [`"wordChars"`](https://codemirror.net/6/docs/ref/#state.EditorState.charCategorizer) for adding
+      characters that should be considered part of words in this
+      language.
+    - [`"closeBrackets"`](https://codemirror.net/6/docs/ref/#autocomplete.CloseBracketConfig) controls
+      bracket closing behavior.
     */
     languageDataAt<T>(name: string, pos: number, side?: -1 | 0 | 1): readonly T[];
     /**
@@ -1335,6 +1358,7 @@ declare class Range<T extends RangeValue> {
     The value associated with this range.
     */
     readonly value: T;
+    private constructor();
 }
 /**
 Collection of methods used when comparing range sets.
@@ -1435,6 +1459,7 @@ way that makes them efficient to [map](https://codemirror.net/6/docs/ref/#state.
 structure.
 */
 declare class RangeSet<T extends RangeValue> {
+    private constructor();
     /**
     The number of ranges in the set.
     */
@@ -1561,7 +1586,7 @@ interface Input {
     readonly lineChunks: boolean;
     read(from: number, to: number): string;
 }
-declare type ParseWrapper = (inner: PartialParse, input: Input, fragments: readonly TreeFragment[], ranges: readonly {
+type ParseWrapper = (inner: PartialParse, input: Input, fragments: readonly TreeFragment[], ranges: readonly {
     from: number;
     to: number;
 }[]) => PartialParse;
@@ -1595,7 +1620,7 @@ declare class MountedTree {
         to: number;
     }[] | null, parser: Parser);
 }
-declare type NodePropSource = (type: NodeType) => null | [NodeProp<any>, any];
+type NodePropSource = (type: NodeType) => null | [NodeProp<any>, any];
 declare class NodeType {
     readonly name: string;
     readonly id: number;
@@ -1655,7 +1680,7 @@ declare class Tree {
     }): Tree;
     static build(data: BuildData): Tree;
 }
-declare type BuildData = {
+type BuildData = {
     buffer: BufferCursor | readonly number[];
     nodeSet: NodeSet;
     topID: number;
@@ -1688,6 +1713,7 @@ interface SyntaxNodeRef {
     readonly name: string;
     readonly tree: Tree | null;
     readonly node: SyntaxNode;
+    matchContext(context: readonly string[]): boolean;
 }
 interface SyntaxNode extends SyntaxNodeRef {
     parent: SyntaxNode | null;
@@ -1766,7 +1792,6 @@ declare class InputStream {
     pos: number;
     private rangeIndex;
     private range;
-    resolveOffset(offset: number, assoc: -1 | 1): number;
     peek(offset: number): any;
     acceptToken(token: number, endOffset?: number): void;
     private getChunk;
@@ -1774,14 +1799,12 @@ declare class InputStream {
     advance(n?: number): number;
     private setDone;
 }
-interface Tokenizer {
-}
 interface ExternalOptions {
     contextual?: boolean;
     fallback?: boolean;
     extend?: boolean;
 }
-declare class ExternalTokenizer implements Tokenizer {
+declare class ExternalTokenizer {
     constructor(token: (input: InputStream, stack: Stack) => void, options?: ExternalOptions);
 }
 
@@ -1803,6 +1826,10 @@ interface ParserConfig {
         from: ExternalTokenizer;
         to: ExternalTokenizer;
     }[];
+    specializers?: {
+        from: (value: string, stack: Stack) => number;
+        to: (value: string, stack: Stack) => number;
+    }[];
     contextTracker?: ContextTracker<any>;
     strict?: boolean;
     wrap?: ParseWrapper;
@@ -1818,6 +1845,7 @@ declare class LRParser extends Parser {
     hasWrappers(): boolean;
     getName(term: number): string;
     get topNode(): NodeType;
+    static deserialize(spec: any): LRParser;
 }
 
 declare class StyleModule {
@@ -1836,6 +1864,17 @@ type StyleSpec = {
 declare type Attrs = {
     [name: string]: string;
 };
+
+/**
+Basic rectangle type.
+*/
+interface Rect {
+    readonly left: number;
+    readonly right: number;
+    readonly top: number;
+    readonly bottom: number;
+}
+declare type ScrollStrategy = "nearest" | "start" | "end" | "center";
 
 interface MarkDecorationSpec {
     /**
@@ -1985,7 +2024,7 @@ declare abstract class WidgetType {
     couldn't (in which case the widget will be redrawn). The default
     implementation just returns false.
     */
-    updateDOM(dom: HTMLElement): boolean;
+    updateDOM(dom: HTMLElement, view: EditorView): boolean;
     /**
     The estimated height this widget will have, to be used when
     estimating the height of content that hasn't been drawn. May
@@ -1999,6 +2038,14 @@ declare abstract class WidgetType {
     events.
     */
     ignoreEvent(event: Event): boolean;
+    /**
+    Override the way screen coordinates for positions at/in the
+    widget are found. `pos` will be the offset into the widget, and
+    `side` the side of the position that is being queried—less than
+    zero for before, greater than zero for after, and zero for
+    directly at that position.
+    */
+    coordsAt(dom: HTMLElement, pos: number, side: number): Rect | null;
     /**
     This is called when the an instance of the widget is removed
     from the editor view.
@@ -2101,17 +2148,6 @@ declare abstract class Decoration extends RangeValue {
     */
     static none: DecorationSet;
 }
-
-/**
-Basic rectangle type.
-*/
-interface Rect {
-    readonly left: number;
-    readonly right: number;
-    readonly top: number;
-    readonly bottom: number;
-}
-declare type ScrollStrategy = "nearest" | "start" | "end" | "center";
 
 /**
 Command functions are used in key bindings and other types of user
@@ -2377,10 +2413,16 @@ declare class BidiSpan {
     get dir(): Direction;
 }
 
-interface EditorConfig {
+/**
+The type of object given to the [`EditorView`](https://codemirror.net/6/docs/ref/#view.EditorView)
+constructor.
+*/
+interface EditorViewConfig extends EditorStateConfig {
     /**
-    The view's initial state. Defaults to an extension-less state
-    with an empty document.
+    The view's initial state. If not given, a new state is created
+    by passing this configuration object to
+    [`EditorState.create`](https://codemirror.net/6/docs/ref/#state.EditorState^create), using its
+    `doc`, `selection`, and `extensions` field (if provided).
     */
     state?: EditorState;
     /**
@@ -2459,10 +2501,11 @@ declare class EditorView {
     */
     get compositionStarted(): boolean;
     private _dispatch;
+    private _root;
     /**
     The document or shadow root that the view lives in.
     */
-    readonly root: DocumentOrShadowRoot;
+    get root(): DocumentOrShadowRoot;
     /**
     The DOM element that wraps the entire editor view.
     */
@@ -2494,11 +2537,7 @@ declare class EditorView {
     option, or put `view.dom` into your document after creating a
     view, so that the user can see the editor.
     */
-    constructor(
-    /**
-    Initialization options.
-    */
-    config?: EditorConfig);
+    constructor(config?: EditorViewConfig);
     /**
     All regular editor state updates should go through this. It
     takes a transaction or transaction spec and updates the view to
@@ -2551,7 +2590,7 @@ declare class EditorView {
     know you registered a given plugin, it is recommended to check
     the return value of this method.
     */
-    plugin<T>(plugin: ViewPlugin<T>): T | null;
+    plugin<T extends PluginValue>(plugin: ViewPlugin<T>): T | null;
     /**
     The top position of the document, in screen coordinates. This
     may be negative when the editor is scrolled down. Points
@@ -2568,13 +2607,14 @@ declare class EditorView {
     /**
     Find the text line or block widget at the given vertical
     position (which is interpreted as relative to the [top of the
-    document](https://codemirror.net/6/docs/ref/#view.EditorView.documentTop)
+    document](https://codemirror.net/6/docs/ref/#view.EditorView.documentTop)).
     */
     elementAtHeight(height: number): BlockInfo;
     /**
     Find the line block (see
     [`lineBlockAt`](https://codemirror.net/6/docs/ref/#view.EditorView.lineBlockAt) at the given
-    height.
+    height, again interpreted relative to the [top of the
+    document](https://codemirror.net/6/docs/ref/#view.EditorView.documentTop).
     */
     lineBlockAtHeight(height: number): BlockInfo;
     /**
@@ -2737,6 +2777,11 @@ declare class EditorView {
     */
     focus(): void;
     /**
+    Update the [root](https://codemirror.net/6/docs/ref/##view.EditorViewConfig.root) in which the editor lives. This is only
+    necessary when moving the editor's existing DOM to a new window or shadow root.
+    */
+    setRoot(root: Document | ShadowRoot): void;
+    /**
     Clean up this editor view, removing its element from the
     document, unregistering event handlers, and notifying
     plugins. The view instance can no longer be used after
@@ -2804,6 +2849,11 @@ declare class EditorView {
     */
     static inputHandler: Facet<(view: EditorView, from: number, to: number, text: string) => boolean, readonly ((view: EditorView, from: number, to: number, text: string) => boolean)[]>;
     /**
+    This facet can be used to provide functions that create effects
+    to be dispatched when the editor's focus state changes.
+    */
+    static focusChangeEffect: Facet<(state: EditorState, focusing: boolean) => StateEffect<any> | null, readonly ((state: EditorState, focusing: boolean) => StateEffect<any> | null)[]>;
+    /**
     By default, the editor assumes all its content has the same
     [text direction](https://codemirror.net/6/docs/ref/#view.Direction). Configure this with a `true`
     value to make it read the text direction of every (rendered)
@@ -2863,6 +2913,11 @@ declare class EditorView {
     functions are called _after_ the new viewport has been computed,
     and thus **must not** introduce block widgets or replacing
     decorations that cover line breaks.
+    
+    If you want decorated ranges to behave like atomic units for
+    cursor motion and deletion purposes, also provide the range set
+    containing the decorations to
+    [`EditorView.atomicRanges`](https://codemirror.net/6/docs/ref/#view.EditorView^atomicRanges).
     */
     static decorations: Facet<DecorationSet | ((view: EditorView) => DecorationSet), readonly (DecorationSet | ((view: EditorView) => DecorationSet))[]>;
     /**
@@ -2949,6 +3004,11 @@ declare class EditorView {
     search match).
     */
     static announce: StateEffectType<string>;
+    /**
+    Retrieve an editor view instance from the view's DOM
+    representation.
+    */
+    static findFromDOM(dom: HTMLElement): EditorView | null;
 }
 /**
 Helper type that maps event names to event object types, or the
@@ -3018,13 +3078,18 @@ interface KeyBinding {
     command function returns `false`, further bindings will be tried
     for the key.
     */
-    run: Command;
+    run?: Command;
     /**
     When given, this defines a second binding, using the (possibly
     platform-specific) key name prefixed with `Shift-` to activate
     this command.
     */
     shift?: Command;
+    /**
+    When this property is present, the function is called for every
+    key that is not a multi-stroke prefix.
+    */
+    any?: (view: EditorView, event: KeyboardEvent) => boolean;
     /**
     By default, key bindings apply when focus is on the editor
     content (the `"editor"` scope). Some extensions, mostly those
@@ -3164,99 +3229,458 @@ Create a line number gutter extension.
 */
 declare function lineNumbers(config?: LineNumberConfig): Extension;
 
+/**
+Highlighting tags are markers that denote a highlighting category.
+They are [associated](#highlight.styleTags) with parts of a syntax
+tree by a language mode, and then mapped to an actual CSS style by
+a [highlighter](#highlight.Highlighter).
+
+Because syntax tree node types and highlight styles have to be
+able to talk the same language, CodeMirror uses a mostly _closed_
+[vocabulary](#highlight.tags) of syntax tags (as opposed to
+traditional open string-based systems, which make it hard for
+highlighting themes to cover all the tokens produced by the
+various languages).
+
+It _is_ possible to [define](#highlight.Tag^define) your own
+highlighting tags for system-internal use (where you control both
+the language package and the highlighter), but such tags will not
+be picked up by regular highlighters (though you can derive them
+from standard tags to allow highlighters to fall back to those).
+*/
 declare class Tag {
+    /**
+    The set of this tag and all its parent tags, starting with
+    this one itself and sorted in order of decreasing specificity.
+    */
     readonly set: Tag[];
+    /**
+    Define a new tag. If `parent` is given, the tag is treated as a
+    sub-tag of that parent, and
+    [highlighters](#highlight.tagHighlighter) that don't mention
+    this tag will try to fall back to the parent tag (or grandparent
+    tag, etc).
+    */
     static define(parent?: Tag): Tag;
+    /**
+    Define a tag _modifier_, which is a function that, given a tag,
+    will return a tag that is a subtag of the original. Applying the
+    same modifier to a twice tag will return the same value (`m1(t1)
+    == m1(t1)`) and applying multiple modifiers will, regardless or
+    order, produce the same tag (`m1(m2(t1)) == m2(m1(t1))`).
+    
+    When multiple modifiers are applied to a given base tag, each
+    smaller set of modifiers is registered as a parent, so that for
+    example `m1(m2(m3(t1)))` is a subtype of `m1(m2(t1))`,
+    `m1(m3(t1)`, and so on.
+    */
     static defineModifier(): (tag: Tag) => Tag;
 }
+/**
+A highlighter defines a mapping from highlighting tags and
+language scopes to CSS class names. They are usually defined via
+[`tagHighlighter`](#highlight.tagHighlighter) or some wrapper
+around that, but it is also possible to implement them from
+scratch.
+*/
 interface Highlighter {
+    /**
+    Get the set of classes that should be applied to the given set
+    of highlighting tags, or null if this highlighter doesn't assign
+    a style to the tags.
+    */
     style(tags: readonly Tag[]): string | null;
+    /**
+    When given, the highlighter will only be applied to trees on
+    whose [top](#common.NodeType.isTop) node this predicate returns
+    true.
+    */
     scope?(node: NodeType): boolean;
 }
+/**
+The default set of highlighting [tags](#highlight.Tag).
+
+This collection is heavily biased towards programming languages,
+and necessarily incomplete. A full ontology of syntactic
+constructs would fill a stack of books, and be impractical to
+write themes for. So try to make do with this set. If all else
+fails, [open an
+issue](https://github.com/codemirror/codemirror.next) to propose a
+new tag, or [define](#highlight.Tag^define) a local custom tag for
+your use case.
+
+Note that it is not obligatory to always attach the most specific
+tag possible to an element—if your grammar can't easily
+distinguish a certain type of element (such as a local variable),
+it is okay to style it as its more general variant (a variable).
+
+For tags that extend some parent tag, the documentation links to
+the parent.
+*/
 declare const tags: {
+    /**
+    A comment.
+    */
     comment: Tag;
+    /**
+    A line [comment](#highlight.tags.comment).
+    */
     lineComment: Tag;
+    /**
+    A block [comment](#highlight.tags.comment).
+    */
     blockComment: Tag;
+    /**
+    A documentation [comment](#highlight.tags.comment).
+    */
     docComment: Tag;
+    /**
+    Any kind of identifier.
+    */
     name: Tag;
+    /**
+    The [name](#highlight.tags.name) of a variable.
+    */
     variableName: Tag;
+    /**
+    A type [name](#highlight.tags.name).
+    */
     typeName: Tag;
+    /**
+    A tag name (subtag of [`typeName`](#highlight.tags.typeName)).
+    */
     tagName: Tag;
+    /**
+    A property or field [name](#highlight.tags.name).
+    */
     propertyName: Tag;
+    /**
+    An attribute name (subtag of [`propertyName`](#highlight.tags.propertyName)).
+    */
     attributeName: Tag;
+    /**
+    The [name](#highlight.tags.name) of a class.
+    */
     className: Tag;
+    /**
+    A label [name](#highlight.tags.name).
+    */
     labelName: Tag;
+    /**
+    A namespace [name](#highlight.tags.name).
+    */
     namespace: Tag;
+    /**
+    The [name](#highlight.tags.name) of a macro.
+    */
     macroName: Tag;
+    /**
+    A literal value.
+    */
     literal: Tag;
+    /**
+    A string [literal](#highlight.tags.literal).
+    */
     string: Tag;
+    /**
+    A documentation [string](#highlight.tags.string).
+    */
     docString: Tag;
+    /**
+    A character literal (subtag of [string](#highlight.tags.string)).
+    */
     character: Tag;
+    /**
+    An attribute value (subtag of [string](#highlight.tags.string)).
+    */
     attributeValue: Tag;
+    /**
+    A number [literal](#highlight.tags.literal).
+    */
     number: Tag;
+    /**
+    An integer [number](#highlight.tags.number) literal.
+    */
     integer: Tag;
+    /**
+    A floating-point [number](#highlight.tags.number) literal.
+    */
     float: Tag;
+    /**
+    A boolean [literal](#highlight.tags.literal).
+    */
     bool: Tag;
+    /**
+    Regular expression [literal](#highlight.tags.literal).
+    */
     regexp: Tag;
+    /**
+    An escape [literal](#highlight.tags.literal), for example a
+    backslash escape in a string.
+    */
     escape: Tag;
+    /**
+    A color [literal](#highlight.tags.literal).
+    */
     color: Tag;
+    /**
+    A URL [literal](#highlight.tags.literal).
+    */
     url: Tag;
+    /**
+    A language keyword.
+    */
     keyword: Tag;
+    /**
+    The [keyword](#highlight.tags.keyword) for the self or this
+    object.
+    */
     self: Tag;
+    /**
+    The [keyword](#highlight.tags.keyword) for null.
+    */
     null: Tag;
+    /**
+    A [keyword](#highlight.tags.keyword) denoting some atomic value.
+    */
     atom: Tag;
+    /**
+    A [keyword](#highlight.tags.keyword) that represents a unit.
+    */
     unit: Tag;
+    /**
+    A modifier [keyword](#highlight.tags.keyword).
+    */
     modifier: Tag;
+    /**
+    A [keyword](#highlight.tags.keyword) that acts as an operator.
+    */
     operatorKeyword: Tag;
+    /**
+    A control-flow related [keyword](#highlight.tags.keyword).
+    */
     controlKeyword: Tag;
+    /**
+    A [keyword](#highlight.tags.keyword) that defines something.
+    */
     definitionKeyword: Tag;
+    /**
+    A [keyword](#highlight.tags.keyword) related to defining or
+    interfacing with modules.
+    */
     moduleKeyword: Tag;
+    /**
+    An operator.
+    */
     operator: Tag;
+    /**
+    An [operator](#highlight.tags.operator) that dereferences something.
+    */
     derefOperator: Tag;
+    /**
+    Arithmetic-related [operator](#highlight.tags.operator).
+    */
     arithmeticOperator: Tag;
+    /**
+    Logical [operator](#highlight.tags.operator).
+    */
     logicOperator: Tag;
+    /**
+    Bit [operator](#highlight.tags.operator).
+    */
     bitwiseOperator: Tag;
+    /**
+    Comparison [operator](#highlight.tags.operator).
+    */
     compareOperator: Tag;
+    /**
+    [Operator](#highlight.tags.operator) that updates its operand.
+    */
     updateOperator: Tag;
+    /**
+    [Operator](#highlight.tags.operator) that defines something.
+    */
     definitionOperator: Tag;
+    /**
+    Type-related [operator](#highlight.tags.operator).
+    */
     typeOperator: Tag;
+    /**
+    Control-flow [operator](#highlight.tags.operator).
+    */
     controlOperator: Tag;
+    /**
+    Program or markup punctuation.
+    */
     punctuation: Tag;
+    /**
+    [Punctuation](#highlight.tags.punctuation) that separates
+    things.
+    */
     separator: Tag;
+    /**
+    Bracket-style [punctuation](#highlight.tags.punctuation).
+    */
     bracket: Tag;
+    /**
+    Angle [brackets](#highlight.tags.bracket) (usually `<` and `>`
+    tokens).
+    */
     angleBracket: Tag;
+    /**
+    Square [brackets](#highlight.tags.bracket) (usually `[` and `]`
+    tokens).
+    */
     squareBracket: Tag;
+    /**
+    Parentheses (usually `(` and `)` tokens). Subtag of
+    [bracket](#highlight.tags.bracket).
+    */
     paren: Tag;
+    /**
+    Braces (usually `{` and `}` tokens). Subtag of
+    [bracket](#highlight.tags.bracket).
+    */
     brace: Tag;
+    /**
+    Content, for example plain text in XML or markup documents.
+    */
     content: Tag;
+    /**
+    [Content](#highlight.tags.content) that represents a heading.
+    */
     heading: Tag;
+    /**
+    A level 1 [heading](#highlight.tags.heading).
+    */
     heading1: Tag;
+    /**
+    A level 2 [heading](#highlight.tags.heading).
+    */
     heading2: Tag;
+    /**
+    A level 3 [heading](#highlight.tags.heading).
+    */
     heading3: Tag;
+    /**
+    A level 4 [heading](#highlight.tags.heading).
+    */
     heading4: Tag;
+    /**
+    A level 5 [heading](#highlight.tags.heading).
+    */
     heading5: Tag;
+    /**
+    A level 6 [heading](#highlight.tags.heading).
+    */
     heading6: Tag;
+    /**
+    A prose separator (such as a horizontal rule).
+    */
     contentSeparator: Tag;
+    /**
+    [Content](#highlight.tags.content) that represents a list.
+    */
     list: Tag;
+    /**
+    [Content](#highlight.tags.content) that represents a quote.
+    */
     quote: Tag;
+    /**
+    [Content](#highlight.tags.content) that is emphasized.
+    */
     emphasis: Tag;
+    /**
+    [Content](#highlight.tags.content) that is styled strong.
+    */
     strong: Tag;
+    /**
+    [Content](#highlight.tags.content) that is part of a link.
+    */
     link: Tag;
+    /**
+    [Content](#highlight.tags.content) that is styled as code or
+    monospace.
+    */
     monospace: Tag;
+    /**
+    [Content](#highlight.tags.content) that has a strike-through
+    style.
+    */
     strikethrough: Tag;
+    /**
+    Inserted text in a change-tracking format.
+    */
     inserted: Tag;
+    /**
+    Deleted text.
+    */
     deleted: Tag;
+    /**
+    Changed text.
+    */
     changed: Tag;
+    /**
+    An invalid or unsyntactic element.
+    */
     invalid: Tag;
+    /**
+    Metadata or meta-instruction.
+    */
     meta: Tag;
+    /**
+    [Metadata](#highlight.tags.meta) that applies to the entire
+    document.
+    */
     documentMeta: Tag;
+    /**
+    [Metadata](#highlight.tags.meta) that annotates or adds
+    attributes to a given syntactic element.
+    */
     annotation: Tag;
+    /**
+    Processing instruction or preprocessor directive. Subtag of
+    [meta](#highlight.tags.meta).
+    */
     processingInstruction: Tag;
+    /**
+    [Modifier](#highlight.Tag^defineModifier) that indicates that a
+    given element is being defined. Expected to be used with the
+    various [name](#highlight.tags.name) tags.
+    */
     definition: (tag: Tag) => Tag;
+    /**
+    [Modifier](#highlight.Tag^defineModifier) that indicates that
+    something is constant. Mostly expected to be used with
+    [variable names](#highlight.tags.variableName).
+    */
     constant: (tag: Tag) => Tag;
+    /**
+    [Modifier](#highlight.Tag^defineModifier) used to indicate that
+    a [variable](#highlight.tags.variableName) or [property
+    name](#highlight.tags.propertyName) is being called or defined
+    as a function.
+    */
     function: (tag: Tag) => Tag;
+    /**
+    [Modifier](#highlight.Tag^defineModifier) that can be applied to
+    [names](#highlight.tags.name) to indicate that they belong to
+    the language's standard environment.
+    */
     standard: (tag: Tag) => Tag;
+    /**
+    [Modifier](#highlight.Tag^defineModifier) that indicates a given
+    [names](#highlight.tags.name) is local to some scope.
+    */
     local: (tag: Tag) => Tag;
+    /**
+    A generic variant [modifier](#highlight.Tag^defineModifier) that
+    can be used to tag language-specific alternative variants of
+    some common tag. It is recommended for themes to define special
+    forms of at least the [string](#highlight.tags.string) and
+    [variable name](#highlight.tags.variableName) tags, since those
+    come up a lot.
+    */
     special: (tag: Tag) => Tag;
 };
 
@@ -3277,6 +3701,10 @@ declare class Language {
     readonly data: Facet<{
         [name: string]: any;
     }>;
+    /**
+    A language name.
+    */
+    readonly name: string;
     /**
     The extension value to install this as the document language.
     */
@@ -3300,7 +3728,11 @@ declare class Language {
     */
     data: Facet<{
         [name: string]: any;
-    }>, parser: Parser, extraExtensions?: Extension[]);
+    }>, parser: Parser, extraExtensions?: Extension[], 
+    /**
+    A language name.
+    */
+    name?: string);
     /**
     Query whether this language is active at the given position.
     */
@@ -3333,6 +3765,10 @@ declare class LRLanguage extends Language {
     */
     static define(spec: {
         /**
+        The [name](https://codemirror.net/6/docs/ref/#Language.name) of the language.
+        */
+        name?: string;
+        /**
         The parser to use. Should already have added editor-relevant
         node props (and optionally things like dialect and top rule)
         configured.
@@ -3348,9 +3784,9 @@ declare class LRLanguage extends Language {
     }): LRLanguage;
     /**
     Create a new instance of this language with a reconfigured
-    version of its parser.
+    version of its parser and optionally a new name.
     */
-    configure(options: ParserConfig): LRLanguage;
+    configure(options: ParserConfig, name?: string): LRLanguage;
     get allowsNesting(): boolean;
 }
 /**
@@ -3497,9 +3933,9 @@ declare class LanguageDescription {
     static matchLanguageName(descs: readonly LanguageDescription[], name: string, fuzzy?: boolean): LanguageDescription | null;
 }
 /**
-Facet for overriding the unit by which indentation happens.
-Should be a string consisting either entirely of spaces or
-entirely of tabs. When not set, this defaults to 2 spaces.
+Facet for overriding the unit by which indentation happens. Should
+be a string consisting either entirely of the same whitespace
+character. When not set, this defaults to 2 spaces.
 */
 declare const indentUnit: Facet<string, string>;
 /**
@@ -3549,6 +3985,11 @@ interface FoldGutterConfig {
     Supply event handlers for DOM events on this gutter.
     */
     domEventHandlers?: Handlers;
+    /**
+    When given, if this returns true for a given view update,
+    recompute the fold markers.
+    */
+    foldingChanged?: (update: ViewUpdate) => boolean;
 }
 /**
 Create an extension that registers a fold gutter, which shows a
@@ -3562,6 +4003,10 @@ A highlight style associates CSS styles with higlighting
 [tags](https://lezer.codemirror.net/docs/ref#highlight.Tag).
 */
 declare class HighlightStyle implements Highlighter {
+    /**
+    The tag styles used to create this highlight style.
+    */
+    readonly specs: readonly TagStyle[];
     /**
     A style module holding the CSS rules for this highlight style.
     When using
@@ -3729,6 +4174,13 @@ interface HistoryConfig {
     apart and still be grouped together. Defaults to 500.
     */
     newGroupDelay?: number;
+    /**
+    By default, when close enough together in time, changes are
+    joined into an existing undo event if they touch any of the
+    changed ranges from that event. You can pass a custom predicate
+    here to influence that logic.
+    */
+    joinToEvent?: (tr: Transaction, isAdjacent: boolean) => boolean;
 }
 /**
 Create a history extension with the given configuration.
@@ -3738,7 +4190,7 @@ declare function history(config?: HistoryConfig): Extension;
 Default key bindings for the undo history.
 
 - Mod-z: [`undo`](https://codemirror.net/6/docs/ref/#commands.undo).
-- Mod-y (Mod-Shift-z on macOS): [`redo`](https://codemirror.net/6/docs/ref/#commands.redo).
+- Mod-y (Mod-Shift-z on macOS) + Ctrl-Shift-z on Linux: [`redo`](https://codemirror.net/6/docs/ref/#commands.redo).
 - Mod-u: [`undoSelection`](https://codemirror.net/6/docs/ref/#commands.undoSelection).
 - Alt-u (Mod-Shift-u on macOS): [`redoSelection`](https://codemirror.net/6/docs/ref/#commands.redoSelection).
 */
@@ -3764,7 +4216,7 @@ The default keymap. Includes all bindings from
 - Shift-Alt-ArrowUp: [`copyLineUp`](https://codemirror.net/6/docs/ref/#commands.copyLineUp)
 - Shift-Alt-ArrowDown: [`copyLineDown`](https://codemirror.net/6/docs/ref/#commands.copyLineDown)
 - Escape: [`simplifySelection`](https://codemirror.net/6/docs/ref/#commands.simplifySelection)
-- Ctrl-Enter (Comd-Enter on macOS): [`insertBlankLine`](https://codemirror.net/6/docs/ref/#commands.insertBlankLine)
+- Ctrl-Enter (Cmd-Enter on macOS): [`insertBlankLine`](https://codemirror.net/6/docs/ref/#commands.insertBlankLine)
 - Alt-l (Ctrl-l on macOS): [`selectLine`](https://codemirror.net/6/docs/ref/#commands.selectLine)
 - Ctrl-i (Cmd-i on macOS): [`selectParentSyntax`](https://codemirror.net/6/docs/ref/#commands.selectParentSyntax)
 - Ctrl-[ (Cmd-[ on macOS): [`indentLess`](https://codemirror.net/6/docs/ref/#commands.indentLess)
@@ -3783,6 +4235,15 @@ interface CompletionConfig {
     whenever the user types something that can be completed.
     */
     activateOnTyping?: boolean;
+    /**
+    By default, when completion opens, the first option is selected
+    and can be confirmed with
+    [`acceptCompletion`](https://codemirror.net/6/docs/ref/#autocomplete.acceptCompletion). When this
+    is set to false, the completion widget starts with no completion
+    selected, and the user has to explicitly move to a completion
+    before you can confirm one.
+    */
+    selectOnOpen?: boolean;
     /**
     Override the completion sources used. By default, they will be
     taken from the `"autocomplete"` [language
@@ -3815,6 +4276,11 @@ interface CompletionConfig {
     */
     aboveCursor?: boolean;
     /**
+    When given, this may return an additional CSS class to add to
+    the completion dialog element.
+    */
+    tooltipClass?: (state: EditorState) => string;
+    /**
     This can be used to add additional CSS classes to completion
     options.
     */
@@ -3831,12 +4297,39 @@ interface CompletionConfig {
     completion, and should produce a DOM node to show. `position`
     determines where in the DOM the result appears, relative to
     other added widgets and the standard content. The default icons
-    have position 20, the label position 50, and the detail position 70.
+    have position 20, the label position 50, and the detail position
+    80.
     */
     addToOptions?: {
         render: (completion: Completion, state: EditorState) => Node | null;
         position: number;
     }[];
+    /**
+    By default, [info](https://codemirror.net/6/docs/ref/#autocomplet.Completion.info) tooltips are
+    placed to the side of the selected. This option can be used to
+    override that. It will be given rectangles for the list of
+    completions, the selected option, the info element, and the
+    availble [tooltip space](https://codemirror.net/6/docs/ref/#view.tooltips^config.tooltipSpace),
+    and should return style and/or class strings for the info
+    element.
+    */
+    positionInfo?: (view: EditorView, list: Rect, option: Rect, info: Rect, space: Rect) => {
+        style?: string;
+        class?: string;
+    };
+    /**
+    The comparison function to use when sorting completions with the same
+    match score. Defaults to using
+    [`localeCompare`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/localeCompare).
+    */
+    compareCompletions?: (a: Completion, b: Completion) => number;
+    /**
+    By default, commands relating to an open completion only take
+    effect 75 milliseconds after the completion opened, so that key
+    presses made before the user is aware of the tooltip don't go to
+    the tooltip. This option can be used to configure that delay.
+    */
+    interactionDelay?: number;
 }
 
 /**
@@ -3889,6 +4382,39 @@ interface Completion {
     down the list, a positive number moves it up.
     */
     boost?: number;
+    /**
+    Can be used to divide the completion list into sections.
+    Completions in a given section (matched by name) will be grouped
+    together, with a heading above them. Options without section
+    will appear above all sections. A string value is equivalent to
+    a `{name}` object.
+    */
+    section?: string | CompletionSection;
+}
+/**
+Object used to describe a completion
+[section](https://codemirror.net/6/docs/ref/#autocomplete.Completion.section). It is recommended to
+create a shared object used by all the completions in a given
+section.
+*/
+interface CompletionSection {
+    /**
+    The name of the section. If no `render` method is present, this
+    will be displayed above the options.
+    */
+    name: string;
+    /**
+    An optional function that renders the section header. Since the
+    headers are shown inside a list, you should make sure the
+    resulting element has a `display: list-item` style.
+    */
+    header?: (section: CompletionSection) => HTMLElement;
+    /**
+    By default, sections are ordered alphabetically by name. To
+    specify an explicit order, `rank` can be used. Sections with a
+    lower rank will be shown above sections with a higher rank.
+    */
+    rank?: number;
 }
 /**
 An instance of this is passed to completion source functions.
@@ -4044,6 +4570,12 @@ This annotation is added to transactions that are produced by
 picking a completion.
 */
 declare const pickedCompletion: AnnotationType<Completion>;
+/**
+Helper function that returns a transaction spec which inserts a
+completion's text in the main selection range, and any other
+selection range that has the same text in front of it.
+*/
+declare function insertCompletionText(state: EditorState, text: string, from: number, to: number): TransactionSpec;
 
 /**
 Convert a snippet template to a function that can
@@ -4070,11 +4602,15 @@ cursor out of the current field deactivates the fields.
 The order of fields defaults to textual order, but you can add
 numbers to placeholders (`${1}` or `${1:defaultText}`) to provide
 a custom order.
+
+To include a literal `{` or `}` in your template, put a backslash
+in front of it. This will be removed and the brace will not be
+interpreted as indicating a placeholder.
 */
 declare function snippet(template: string): (editor: {
     state: EditorState;
     dispatch: (tr: Transaction) => void;
-}, _completion: Completion, from: number, to: number) => void;
+}, completion: Completion, from: number, to: number) => void;
 /**
 A command that clears the active snippet, if any.
 */
@@ -4145,6 +4681,11 @@ interface CloseBracketConfig {
     whitespace. Defaults to `")]}:;>"`.
     */
     before?: string;
+    /**
+    When determining whether a given node may be a string, recognize
+    these prefixes before the opening quote.
+    */
+    stringPrefixes?: string[];
 }
 /**
 Extension to enable bracket-closing behavior. When a closeable
@@ -4219,71 +4760,75 @@ the currently selected completion.
 */
 declare function setSelectedCompletion(index: number): StateEffect<unknown>;
 
-type index_CloseBracketConfig = CloseBracketConfig;
-type index_Completion = Completion;
-type index_CompletionContext = CompletionContext;
-declare const index_CompletionContext: typeof CompletionContext;
-type index_CompletionResult = CompletionResult;
-type index_CompletionSource = CompletionSource;
-declare const index_acceptCompletion: typeof acceptCompletion;
-declare const index_autocompletion: typeof autocompletion;
-declare const index_clearSnippet: typeof clearSnippet;
-declare const index_closeBrackets: typeof closeBrackets;
-declare const index_closeBracketsKeymap: typeof closeBracketsKeymap;
-declare const index_closeCompletion: typeof closeCompletion;
-declare const index_completeAnyWord: typeof completeAnyWord;
-declare const index_completeFromList: typeof completeFromList;
-declare const index_completionKeymap: typeof completionKeymap;
-declare const index_completionStatus: typeof completionStatus;
-declare const index_currentCompletions: typeof currentCompletions;
-declare const index_deleteBracketPair: typeof deleteBracketPair;
-declare const index_ifIn: typeof ifIn;
-declare const index_ifNotIn: typeof ifNotIn;
-declare const index_insertBracket: typeof insertBracket;
-declare const index_moveCompletionSelection: typeof moveCompletionSelection;
-declare const index_nextSnippetField: typeof nextSnippetField;
-declare const index_pickedCompletion: typeof pickedCompletion;
-declare const index_prevSnippetField: typeof prevSnippetField;
-declare const index_selectedCompletion: typeof selectedCompletion;
-declare const index_selectedCompletionIndex: typeof selectedCompletionIndex;
-declare const index_setSelectedCompletion: typeof setSelectedCompletion;
-declare const index_snippet: typeof snippet;
-declare const index_snippetCompletion: typeof snippetCompletion;
-declare const index_snippetKeymap: typeof snippetKeymap;
-declare const index_startCompletion: typeof startCompletion;
-declare namespace index {
+type index_d_CloseBracketConfig = CloseBracketConfig;
+type index_d_Completion = Completion;
+type index_d_CompletionContext = CompletionContext;
+declare const index_d_CompletionContext: typeof CompletionContext;
+type index_d_CompletionResult = CompletionResult;
+type index_d_CompletionSection = CompletionSection;
+type index_d_CompletionSource = CompletionSource;
+declare const index_d_acceptCompletion: typeof acceptCompletion;
+declare const index_d_autocompletion: typeof autocompletion;
+declare const index_d_clearSnippet: typeof clearSnippet;
+declare const index_d_closeBrackets: typeof closeBrackets;
+declare const index_d_closeBracketsKeymap: typeof closeBracketsKeymap;
+declare const index_d_closeCompletion: typeof closeCompletion;
+declare const index_d_completeAnyWord: typeof completeAnyWord;
+declare const index_d_completeFromList: typeof completeFromList;
+declare const index_d_completionKeymap: typeof completionKeymap;
+declare const index_d_completionStatus: typeof completionStatus;
+declare const index_d_currentCompletions: typeof currentCompletions;
+declare const index_d_deleteBracketPair: typeof deleteBracketPair;
+declare const index_d_ifIn: typeof ifIn;
+declare const index_d_ifNotIn: typeof ifNotIn;
+declare const index_d_insertBracket: typeof insertBracket;
+declare const index_d_insertCompletionText: typeof insertCompletionText;
+declare const index_d_moveCompletionSelection: typeof moveCompletionSelection;
+declare const index_d_nextSnippetField: typeof nextSnippetField;
+declare const index_d_pickedCompletion: typeof pickedCompletion;
+declare const index_d_prevSnippetField: typeof prevSnippetField;
+declare const index_d_selectedCompletion: typeof selectedCompletion;
+declare const index_d_selectedCompletionIndex: typeof selectedCompletionIndex;
+declare const index_d_setSelectedCompletion: typeof setSelectedCompletion;
+declare const index_d_snippet: typeof snippet;
+declare const index_d_snippetCompletion: typeof snippetCompletion;
+declare const index_d_snippetKeymap: typeof snippetKeymap;
+declare const index_d_startCompletion: typeof startCompletion;
+declare namespace index_d {
   export {
-    index_CloseBracketConfig as CloseBracketConfig,
-    index_Completion as Completion,
-    index_CompletionContext as CompletionContext,
-    index_CompletionResult as CompletionResult,
-    index_CompletionSource as CompletionSource,
-    index_acceptCompletion as acceptCompletion,
-    index_autocompletion as autocompletion,
-    index_clearSnippet as clearSnippet,
-    index_closeBrackets as closeBrackets,
-    index_closeBracketsKeymap as closeBracketsKeymap,
-    index_closeCompletion as closeCompletion,
-    index_completeAnyWord as completeAnyWord,
-    index_completeFromList as completeFromList,
-    index_completionKeymap as completionKeymap,
-    index_completionStatus as completionStatus,
-    index_currentCompletions as currentCompletions,
-    index_deleteBracketPair as deleteBracketPair,
-    index_ifIn as ifIn,
-    index_ifNotIn as ifNotIn,
-    index_insertBracket as insertBracket,
-    index_moveCompletionSelection as moveCompletionSelection,
-    index_nextSnippetField as nextSnippetField,
-    index_pickedCompletion as pickedCompletion,
-    index_prevSnippetField as prevSnippetField,
-    index_selectedCompletion as selectedCompletion,
-    index_selectedCompletionIndex as selectedCompletionIndex,
-    index_setSelectedCompletion as setSelectedCompletion,
-    index_snippet as snippet,
-    index_snippetCompletion as snippetCompletion,
-    index_snippetKeymap as snippetKeymap,
-    index_startCompletion as startCompletion,
+    index_d_CloseBracketConfig as CloseBracketConfig,
+    index_d_Completion as Completion,
+    index_d_CompletionContext as CompletionContext,
+    index_d_CompletionResult as CompletionResult,
+    index_d_CompletionSection as CompletionSection,
+    index_d_CompletionSource as CompletionSource,
+    index_d_acceptCompletion as acceptCompletion,
+    index_d_autocompletion as autocompletion,
+    index_d_clearSnippet as clearSnippet,
+    index_d_closeBrackets as closeBrackets,
+    index_d_closeBracketsKeymap as closeBracketsKeymap,
+    index_d_closeCompletion as closeCompletion,
+    index_d_completeAnyWord as completeAnyWord,
+    index_d_completeFromList as completeFromList,
+    index_d_completionKeymap as completionKeymap,
+    index_d_completionStatus as completionStatus,
+    index_d_currentCompletions as currentCompletions,
+    index_d_deleteBracketPair as deleteBracketPair,
+    index_d_ifIn as ifIn,
+    index_d_ifNotIn as ifNotIn,
+    index_d_insertBracket as insertBracket,
+    index_d_insertCompletionText as insertCompletionText,
+    index_d_moveCompletionSelection as moveCompletionSelection,
+    index_d_nextSnippetField as nextSnippetField,
+    index_d_pickedCompletion as pickedCompletion,
+    index_d_prevSnippetField as prevSnippetField,
+    index_d_selectedCompletion as selectedCompletion,
+    index_d_selectedCompletionIndex as selectedCompletionIndex,
+    index_d_setSelectedCompletion as setSelectedCompletion,
+    index_d_snippet as snippet,
+    index_d_snippetCompletion as snippetCompletion,
+    index_d_snippetKeymap as snippetKeymap,
+    index_d_startCompletion as startCompletion,
   };
 }
 
@@ -4315,6 +4860,11 @@ the `"cm-selectionMatch"` class for the highlighting. When
 itself will be highlighted with `"cm-selectionMatch-main"`.
 */
 declare function highlightSelectionMatches(options?: HighlightOptions): Extension;
+/**
+Select next occurrence of the current selection. Expand selection
+to the surrounding word when the selection is empty.
+*/
+declare const selectNextOccurrence: StateCommand;
 /**
 Default search-related key bindings.
 
@@ -4461,12 +5011,14 @@ declare function markdown(config?: {
     */
     defaultCodeLanguage?: Language | LanguageSupport;
     /**
-    A collection of language descriptions to search through for a
-    matching language (with
-    [`LanguageDescription.matchLanguageName`](https://codemirror.net/6/docs/ref/#language.LanguageDescription^matchLanguageName))
-    when a fenced code block has an info string.
+    A source of language support for highlighting fenced code
+    blocks. When it is an array, the parser will use
+    [`LanguageDescription.matchLanguageName`](https://codemirror.net/6/docs/ref/#language.LanguageDescription^matchLanguageName)
+    with the fenced code info to find a matching language. When it
+    is a function, will be called with the info string and may
+    return a language or `LanguageDescription` object.
     */
-    codeLanguages?: readonly LanguageDescription[];
+    codeLanguages?: readonly LanguageDescription[] | ((info: string) => Language | LanguageDescription | null);
     /**
     Set this to false to disable installation of the Markdown
     [keymap](https://codemirror.net/6/docs/ref/#lang-markdown.markdownKeymap).
@@ -4485,6 +5037,39 @@ declare function markdown(config?: {
     base?: Language;
 }): LanguageSupport;
 
+/**
+Type used to specify tags to complete.
+*/
+interface TagSpec {
+    /**
+    Define tag-specific attributes. Property names are attribute
+    names, and property values can be null to indicate free-form
+    attributes, or a list of strings for suggested attribute values.
+    */
+    attrs?: Record<string, null | readonly string[]>;
+    /**
+    When set to false, don't complete global attributes on this tag.
+    */
+    globalAttrs?: boolean;
+    /**
+    Can be used to specify a list of child tags that are valid
+    inside this tag. The default is to allow any tag.
+    */
+    children?: readonly string[];
+}
+
+declare type NestedLang = {
+    tag: string;
+    attrs?: (attrs: {
+        [attr: string]: string;
+    }) => boolean;
+    parser: Parser;
+};
+declare type NestedAttr = {
+    name: string;
+    tagName?: string;
+    parser: Parser;
+};
 /**
 A language provider based on the [Lezer HTML
 parser](https://github.com/lezer-parser/html), extended with the
@@ -4505,12 +5090,127 @@ declare function html(config?: {
     document).
     */
     matchClosingTags?: boolean;
+    selfClosingTags?: boolean;
     /**
     Determines whether [`autoCloseTags`](https://codemirror.net/6/docs/ref/#lang-html.autoCloseTags)
     is included in the support extensions. Defaults to true.
     */
     autoCloseTags?: boolean;
+    /**
+    Add additional tags that can be completed.
+    */
+    extraTags?: Record<string, TagSpec>;
+    /**
+    Add additional completable attributes to all tags.
+    */
+    extraGlobalAttributes?: Record<string, null | readonly string[]>;
+    /**
+    Register additional languages to parse the content of specific
+    tags. If given, `attrs` should be a function that, given an
+    object representing the tag's attributes, returns `true` if this
+    language applies.
+    */
+    nestedLanguages?: NestedLang[];
+    /**
+    Register additional languages to parse attribute values with.
+    */
+    nestedAttributes?: NestedAttr[];
 }): LanguageSupport;
+
+/**
+Describes a problem or hint for a piece of code.
+*/
+interface Diagnostic {
+    /**
+    The start position of the relevant text.
+    */
+    from: number;
+    /**
+    The end position. May be equal to `from`, though actually
+    covering text is preferable.
+    */
+    to: number;
+    /**
+    The severity of the problem. This will influence how it is
+    displayed.
+    */
+    severity: "info" | "warning" | "error";
+    /**
+    An optional source string indicating where the diagnostic is
+    coming from. You can put the name of your linter here, if
+    applicable.
+    */
+    source?: string;
+    /**
+    The message associated with this diagnostic.
+    */
+    message: string;
+    /**
+    An optional custom rendering function that displays the message
+    as a DOM node.
+    */
+    renderMessage?: () => Node;
+    /**
+    An optional array of actions that can be taken on this
+    diagnostic.
+    */
+    actions?: readonly Action[];
+}
+/**
+An action associated with a diagnostic.
+*/
+interface Action {
+    /**
+    The label to show to the user. Should be relatively short.
+    */
+    name: string;
+    /**
+    The function to call when the user activates this action. Is
+    given the diagnostic's _current_ position, which may have
+    changed since the creation of the diagnostic, due to editing.
+    */
+    apply: (view: EditorView, from: number, to: number) => void;
+}
+declare type DiagnosticFilter = (diagnostics: readonly Diagnostic[]) => Diagnostic[];
+interface LintConfig {
+    /**
+    Time to wait (in milliseconds) after a change before running
+    the linter. Defaults to 750ms.
+    */
+    delay?: number;
+    /**
+    Optional predicate that can be used to indicate when diagnostics
+    need to be recomputed. Linting is always re-done on document
+    changes.
+    */
+    needsRefresh?: null | ((update: ViewUpdate) => boolean);
+    /**
+    Optional filter to determine which diagnostics produce markers
+    in the content.
+    */
+    markerFilter?: null | DiagnosticFilter;
+    /**
+    Filter applied to a set of diagnostics shown in a tooltip. No
+    tooltip will appear if the empty set is returned.
+    */
+    tooltipFilter?: null | DiagnosticFilter;
+}
+/**
+Returns a transaction spec which updates the current set of
+diagnostics, and enables the lint extension if if wasn't already
+active.
+*/
+declare function setDiagnostics(state: EditorState, diagnostics: readonly Diagnostic[]): TransactionSpec;
+/**
+The type of a function that produces diagnostics.
+*/
+declare type LintSource = (view: EditorView) => readonly Diagnostic[] | Promise<readonly Diagnostic[]>;
+/**
+Given a diagnostic source, this function returns an extension that
+enables linting with that source. It will be called whenever the
+editor is idle (after its content changed).
+*/
+declare function linter(source: LintSource, config?: LintConfig): Extension;
 
 /**
 A language provider based on the [Lezer JavaScript
@@ -4569,6 +5269,11 @@ declare type SQLDialectSpec = {
     */
     spaceAfterDashes?: boolean;
     /**
+    When enabled, things quoted with "$$" are treated as
+    strings, rather than identifiers.
+    */
+    doubleDollarQuotedStrings?: boolean;
+    /**
     When enabled, things quoted with double quotes are treated as
     strings, rather than identifiers.
     */
@@ -4592,6 +5297,12 @@ declare type SQLDialectSpec = {
     to `"\""`.
     */
     identifierQuotes?: string;
+    /**
+    Controls whether bit values can be defined as 0b1010. Defaults
+    to false.
+    */
+    unquotedBitLiterals?: boolean;
+    treatBitsAsBytes?: boolean;
 };
 /**
 Represents an SQL dialect.
@@ -4601,6 +5312,7 @@ declare class SQLDialect {
     The language for this dialect.
     */
     readonly language: LRLanguage;
+    private constructor();
     /**
     Returns the language for this dialect as an extension.
     */
@@ -4620,8 +5332,9 @@ interface SQLConfig {
     */
     dialect?: SQLDialect;
     /**
-    An object that maps table names to options (columns) that can
-    be completed for that table. Use lower-case names here.
+    An object that maps table names, optionally prefixed with a
+    schema name (`"schema.table"`) to options (columns) that can be
+    completed for that table. Use lower-case names here.
     */
     schema?: {
         [table: string]: readonly (string | Completion)[];
@@ -4634,10 +5347,21 @@ interface SQLConfig {
     */
     tables?: readonly Completion[];
     /**
+    Similar to `tables`, if you want to provide completion objects
+    for your schemas rather than using the generated ones, pass them
+    here.
+    */
+    schemas?: readonly Completion[];
+    /**
     When given, columns from the named table can be completed
     directly at the top level.
     */
     defaultTable?: string;
+    /**
+    When given, tables prefixed with this schema name can be
+    completed directly at the top level.
+    */
+    defaultSchema?: string;
     /**
     When set to true, keyword completions will be upper-case.
     */
@@ -4690,4 +5414,4 @@ Create an instance of the collaborative editing plugin.
 */
 declare function collab(config?: CollabConfig): Extension;
 
-export { Annotation, Compartment, Decoration, EditorSelection, EditorState, EditorView, Facet, HighlightStyle, NodeProp, PostgreSQL, SelectionRange, StateEffect, StateField, Text, Transaction, TreeCursor, ViewPlugin, ViewUpdate, WidgetType, index as autocomplete, bracketMatching, closeBrackets, closeBracketsKeymap, collab, combineConfig, completionKeymap, css, cssLanguage, defaultHighlightStyle, defaultKeymap, drawSelection, foldGutter, foldKeymap, highlightSelectionMatches, highlightSpecialChars, history, historyKeymap, html, htmlLanguage, indentLess, indentMore, indentOnInput, indentUnit, javascript, javascriptLanguage, julia as julia_andrey, keymap, lineNumbers, markdown, markdownLanguage, parseCode, parseMixed, placeholder, python, pythonLanguage, rectangularSelection, searchKeymap, sql, syntaxHighlighting, syntaxTree, syntaxTreeAvailable, tags };
+export { Annotation, Compartment, Decoration, Diagnostic, EditorSelection, EditorState, EditorView, Facet, HighlightStyle, NodeProp, PostgreSQL, SelectionRange, StateEffect, StateField, Text, Transaction, TreeCursor, ViewPlugin, ViewUpdate, WidgetType, index_d as autocomplete, bracketMatching, closeBrackets, closeBracketsKeymap, collab, combineConfig, completionKeymap, css, cssLanguage, defaultHighlightStyle, defaultKeymap, drawSelection, foldGutter, foldKeymap, highlightSelectionMatches, highlightSpecialChars, history, historyKeymap, html, htmlLanguage, indentLess, indentMore, indentOnInput, indentUnit, javascript, javascriptLanguage, julia as julia_andrey, keymap, lineNumbers, linter, markdown, markdownLanguage, parseCode, parseMixed, placeholder, python, pythonLanguage, rectangularSelection, searchKeymap, selectNextOccurrence, setDiagnostics, sql, syntaxHighlighting, syntaxTree, syntaxTreeAvailable, tags };

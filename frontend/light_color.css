@@ -26,11 +26,17 @@
 
         /*Export styling*/
         --export-bg-color: rgb(60, 67, 101);
-        --export-color: rgba(255, 255, 255, 0.7);
+        --export-color: rgb(228, 228, 228);
         --export-card-bg-color: rgba(255, 255, 255, 0.8);
         --export-card-title-color: rgba(0, 0, 0, 0.7);
         --export-card-text-color: rgba(0, 0, 0, 0.5);
         --export-card-shadow-color: #00000029;
+
+        /*Frontmatter styling*/
+        --frontmatter-button-bg-color: white;
+        --frontmatter-outline-color: hsl(230, 14%, 11%);
+        --frontmatter-input-bg-color: #fbfbfb;
+        --frontmatter-input-border-color: hsl(207deg 24% 87%);
 
         /*Pluto output styling */
         --pluto-schema-types-color: rgba(0, 0, 0, 0.4);
@@ -105,7 +111,7 @@
 
         /*saveall container*/
         --overlay-button-bg: #ffffff;
-        --overlay-button-border: #f3f2f2;
+        --overlay-button-border: hsl(0 4% 91% / 1);
         --overlay-button-border-save: #f3f2f2;
 
         /*input_context_menu*/
@@ -141,12 +147,21 @@
         /* helpbox */
         --helpbox-bg-color: white;
         --helpbox-box-shadow-color: #00000010;
-        --helpbox-header-bg-color: #eef1f7;
+        --helpbox-header-bg-color: hsl(0deg 0% 92%);
+        --helpbox-header-tab-bg-color: white;
         --helpbox-header-color: hsl(230, 14%, 11%);
-        --helpbox-notfound-header-color: rgb(139, 139, 139);
+        --helpbox-search-bg-color: #fbfbfb;
+        --helpbox-search-border-color: hsl(207deg 24% 87%);
+        --helpbox-notfound-search-color: rgb(139, 139, 139);
         --helpbox-text-color: black;
         --code-section-bg-color: whitesmoke;
         --code-section-bg-color: #f3f3f3;
+
+        --process-item-bg: #f2f2f2;
+        --process-busy: #ffcd70;
+        --process-finished: hsl(126deg 30% 60%);
+        --process-undefined: rgb(151, 151, 151);
+        --process-notify-bg: hsl(44.86deg 50% 94%);
 
         /*footer*/
         --footer-color: #333333;

@@ -83,7 +83,7 @@ function resolve_topology(
 	sn = (session, notebook)
 
 	function macroexpand_cell(cell)
-		try_macroexpand(module_name::Union{Nothing,Symbol}=nothing) = begin
+		try_macroexpand(module_name::Symbol=Symbol("")) = begin
 			success, result = macroexpand_in_workspace(sn, unresolved_topology.codes[cell].parsedcode, cell.cell_id, module_name)
 			if success
 				Success(result)

@@ -7,26 +7,50 @@ import AnsiUp from "../imports/AnsiUp.js"
 
 const LOGS_VISIBLE_START = 60
 const LOGS_VISIBLE_END = 20
+
 const PROGRESS_LOG_LEVEL = "LogLevel(-1)"
+const STDOUT_LOG_LEVEL = "LogLevel(-555)"
+// const RESIZE_THROTTLE = 60
 
 const is_progress_log = (log) => {
     return log.level == PROGRESS_LOG_LEVEL && log.kwargs.find((kwarg) => kwarg[0] === "progress") !== undefined
 }
 
+const is_stdout_log = (log) => {
+    return log.level == STDOUT_LOG_LEVEL
+}
+
 export const Logs = ({ logs, line_heights, set_cm_highlighted_line }) => {
     const progress_logs = logs.filter(is_progress_log)
     const latest_progress_logs = progress_logs.reduce((progress_logs, log) => ({ ...progress_logs, [log.id]: log }), {})
-    const [_, grouped_progress_and_logs] = logs.reduce(
-        ([seen, final_logs], log) => {
+    const stdout_log = logs.reduce((stdout_log, log) => {
+        if (!is_stdout_log(log)) {
+            return stdout_log
+        }
+        if (stdout_log === null) {
+            return log
+        }
+        return {
+            ...stdout_log,
+            msg: [stdout_log.msg[0] + log.msg[0]], // Append to the previous stdout
+        }
+    }, null)
+    const [_, __, grouped_progress_and_logs] = logs.reduce(
+        ([seen_progress, seen_stdout, final_logs], log) => {
             const ipl = is_progress_log(log)
-            if (ipl && !(log.id in seen)) {
-                return [{ ...seen, [log.id]: true }, [...final_logs, latest_progress_logs[log.id]]]
+            if (ipl && !seen_progress.has(log.id)) {
+                seen_progress.add(log.id)
+                return [seen_progress, seen_stdout, [...final_logs, latest_progress_logs[log.id]]]
             } else if (!ipl) {
-                return [seen, [...final_logs, log]]
+                if (is_stdout_log(log) && !seen_stdout) {
+                    return [seen_progress, true, [...final_logs, stdout_log]]
+                } else if (!is_stdout_log(log)) {
+                    return [seen_progress, seen_stdout, [...final_logs, log]]
+                }
             }
-            return [seen, final_logs]
+            return [seen_progress, seen_stdout, final_logs]
         },
-        [{}, []]
+        [new Set(), false, []]
     )
 
     const is_hidden_input = line_heights[0] === 0
@@ -77,7 +101,7 @@ const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${"adsf"} mi
 
 const Dot = ({ set_cm_highlighted_line, msg, kwargs, y, level }) => {
     const is_progress = is_progress_log({ level, kwargs })
-    const is_stdout = level === "LogLevel(-555)"
+    const is_stdout = level === STDOUT_LOG_LEVEL
     let progress = null
     if (is_progress) {
         progress = kwargs.find((p) => p[0] === "progress")[1][0]
@@ -99,7 +123,6 @@ const Dot = ({ set_cm_highlighted_line, msg, kwargs, y, level }) => {
         class=${cl({ [level]: true })}
         onMouseenter=${() => is_progress || set_cm_highlighted_line(y + 1)}
         onMouseleave=${() => {
-            console.log("leaving!")
             set_cm_highlighted_line(null)
         }}
     >

@@ -292,7 +292,7 @@ import Memoize: @memoize
         @test notebook.cells[begin] |> noerror
         @test notebook.cells[end].errored
 
-        @test occursinerror("UndefVarError: @m", notebook.cells[end])
+        @test expecterror(UndefVarError(Symbol("@m")), notebook.cells[end]; strict=VERSION >= v"1.7")
     end
 
     @testset "Redefines macro with new SymbolsState" begin
@@ -583,7 +583,7 @@ import Memoize: @memoize
 
         update_run!(🍭, notebook, cell(5))
 
-        @test occursin("UndefVarError: x", cell(1).output.body[:msg])
+        @test expecterror(UndefVarError(:x), cell(1))
 
         update_run!(🍭, notebook, cell(3))
         update_run!(🍭, notebook, cell(2))
@@ -605,7 +605,7 @@ import Memoize: @memoize
         update_run!(🍭, notebook, cell(2))
 
         @test cell(2).errored == true
-        @test occursinerror("UndefVarError: @dateformat_str", cell(2)) == true
+        @test expecterror(UndefVarError(Symbol("@dateformat_str")), cell(2); strict=VERSION >= v"1.7")
 
         update_run!(🍭, notebook, notebook.cells)
 
@@ -624,7 +624,7 @@ import Memoize: @memoize
 
     @testset "Package macro 2" begin
         🍭.options.evaluation.workspace_use_distributed = true
-        
+
         notebook = Notebook([
             Cell("z = x^2 + y"),
             Cell("@variables x y"),
@@ -632,7 +632,7 @@ import Memoize: @memoize
             begin
                 import Pkg
                 Pkg.activate(mktempdir())
-                Pkg.add(Pkg.PackageSpec(name="Symbolics", version="1"))
+                Pkg.add(Pkg.PackageSpec(name="Symbolics", version="5.5.1"))
                 import Symbolics: @variables
             end
             """),
@@ -648,7 +648,7 @@ import Memoize: @memoize
 
         @test cell(1) |> noerror
         @test cell(2) |> noerror
-        @test cell(2) |> noerror
+        @test cell(3) |> noerror
 
         update_run!(🍭, notebook, notebook.cells)
 
@@ -919,8 +919,8 @@ import Memoize: @memoize
         update_run!(🍭, notebook, notebook.cells)
         
         @test :custom_func ∉ notebook.topology.nodes[cell(3)].funcdefs_without_signatures
-        @test occursinerror("UndefVarError: custom_func", cell(4))
+        @test expecterror(UndefVarError(:custom_func), cell(4))
         @test :memoized_func ∉ notebook.topology.nodes[cell(5)].funcdefs_without_signatures
-        @test occursinerror("UndefVarError: memoized_func", cell(6))
+        @test expecterror(UndefVarError(:memoized_func), cell(6))
     end
 end

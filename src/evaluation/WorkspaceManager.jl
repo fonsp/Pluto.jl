@@ -1,7 +1,8 @@
 module WorkspaceManager
-import UUIDs: UUID
+import UUIDs: UUID, uuid1
 import ..Pluto
 import ..Pluto: Configuration, Notebook, Cell, ProcessStatus, ServerSession, ExpressionExplorer, pluto_filename, Token, withtoken, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
+import ..Pluto.Status
 import ..Pluto.PkgCompat
 import ..Configuration: CompilerOptions, _merge_notebook_compiler_options, _convert_to_flags
 import ..Pluto.ExpressionExplorer: FunctionName
@@ -31,7 +32,7 @@ const SN = Tuple{ServerSession, Notebook}
 
 "These expressions get evaluated whenever a new `Workspace` process is created."
 process_preamble() = quote
-    ccall(:jl_exit_on_sigint, Cvoid, (Cint,), 0)
+    Base.exit_on_sigint(false)
     include($(project_relative_path(joinpath("src", "runner"), "Loader.jl")))
     ENV["GKSwstype"] = "nul"
     ENV["JULIA_REVISE_WORKER_ONLY"] = "1"
@@ -44,6 +45,10 @@ const discarded_workspaces = Set{UUID}()
 
 "Create a workspace for the notebook, optionally in the main process."
 function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false)::Workspace
+    workspace_business = is_offline_renderer ? Status.Business(name=:gobble) : Status.report_business_started!(notebook.status_tree, :workspace)
+    create_status = Status.report_business_started!(workspace_business, :create_process)
+    Status.report_business_planned!(workspace_business, :init_process)
+    
     is_offline_renderer || (notebook.process_status = ProcessStatus.starting)
     
     WorkerType = if is_offline_renderer || !session.options.evaluation.workspace_use_distributed
@@ -56,6 +61,13 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
     
     @debug "Creating workspace process" notebook.path length(notebook.cells)
     worker = create_workspaceprocess(WorkerType; compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler))
+    
+    Status.report_business_finished!(workspace_business, :create_process)
+    init_status = Status.report_business_started!(workspace_business, :init_process)
+    Status.report_business_started!(init_status, Symbol(1))
+    Status.report_business_planned!(init_status, Symbol(2))
+    Status.report_business_planned!(init_status, Symbol(3))
+    Status.report_business_planned!(init_status, Symbol(4))
 
     Malt.remote_eval_wait(worker, session.options.evaluation.workspace_custom_startup_expr)
 
@@ -67,8 +79,7 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
         channel = Channel{Any}(10)
         Main.PlutoRunner.setup_plutologger(
             $(notebook.notebook_id),
-            channel;
-            make_global=false # TODO(savq): Is this still necessary?
+            channel
         )
         channel
     end)
@@ -88,11 +99,30 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
         original_ACTIVE_PROJECT,
         is_offline_renderer,
     )
+    
+    
+    Status.report_business_finished!(init_status, Symbol(1))
+    Status.report_business_started!(init_status, Symbol(2))
 
     @async start_relaying_logs((session, notebook), remote_log_channel)
     @async start_relaying_self_updates((session, notebook), run_channel)
     cd_workspace(workspace, notebook.path)
+    
+    Status.report_business_finished!(init_status, Symbol(2))
+    Status.report_business_started!(init_status, Symbol(3))
+    
     use_nbpkg_environment((session, notebook), workspace)
+    
+    Status.report_business_finished!(init_status, Symbol(3))
+    Status.report_business_started!(init_status, Symbol(4))
+    
+    # TODO: precompile 1+1 with display
+    # sleep(3)
+    eval_format_fetch_in_workspace(workspace, Expr(:toplevel, LineNumberNode(-1), :(1+1)), uuid1())
+    
+    Status.report_business_finished!(init_status, Symbol(4))
+    Status.report_business_finished!(workspace_business, :init_process)
+    Status.report_business_finished!(workspace_business)
 
     is_offline_renderer || if notebook.process_status == ProcessStatus.starting
         notebook.process_status = ProcessStatus.ready
@@ -139,7 +169,7 @@ end
 
 function start_relaying_logs((session, notebook)::SN, log_channel)
     update_throttled, flush_throttled = Pluto.throttled(0.1) do
-        Pluto.send_notebook_changes!(Pluto.ClientRequest(session=session, notebook=notebook))
+        Pluto.send_notebook_changes!(Pluto.ClientRequest(; session, notebook))
     end
 
     while true
@@ -182,23 +212,9 @@ function start_relaying_logs((session, notebook)::SN, log_channel)
 
             @assert !isnothing(display_cell)
 
-            maybe_max_log = findfirst(((key, _),) -> key == "maxlog", next_log["kwargs"])
-            if maybe_max_log !== nothing
-                n_logs = count(log -> log["id"] == next_log["id"], display_cell.logs)
-                try
-                    max_log = parse(Int, next_log["kwargs"][maybe_max_log][2] |> first)
-
-                    # Don't include maxlog in the log-message, in line
-                    # with how Julia handles it.
-                    deleteat!(next_log["kwargs"], maybe_max_log)
-
-                    # Don't show message with id more than max_log times
-                    if max_log isa Int && n_logs >= max_log
-                        continue
-                    end
-                catch
-                end
-            end
+            # this handles the use of published_to_js inside logs: objects that were newly published during the rendering of the log args.
+            merge!(display_cell.published_objects, next_log["new_published_objects"])
+            delete!(next_log, "new_published_objects")
 
             push!(display_cell.logs, next_log)
             Pluto.@asynclog update_throttled()
@@ -227,6 +243,14 @@ function bump_workspace_module(session_notebook::SN)
     old_name, new_name
 end
 
+function get_bond_names(session_notebook::SN, cell_id)
+    workspace = get_workspace(session_notebook)
+
+    Distributed.remotecall_eval(Main, workspace.pid, quote
+        PlutoRunner.get_bond_names($cell_id)
+    end)
+end
+
 function possible_bond_values(session_notebook::SN, n::Symbol; get_length::Bool=false)
     workspace = get_workspace(session_notebook)
 
@@ -244,7 +268,8 @@ end
 # NOTE: this function only start a worker process using given
 # compiler options, it does not resolve paths for notebooks
 # compiler configurations passed to it should be resolved before this
-function create_workspaceprocess(WorkerType; compiler_options=CompilerOptions())::Malt.AbstractWorker
+function create_workspaceprocess(WorkerType; compiler_options=CompilerOptions(), status::Status.Business=Business())::Malt.AbstractWorker
+
     if WorkerType === Malt.InProcessWorker
         worker = WorkerType()
         
@@ -254,10 +279,15 @@ function create_workspaceprocess(WorkerType; compiler_options=CompilerOptions())
                 PlutoRunner = $(PlutoRunner)
             end)
         end
-        
-        worker
     else
+            
+        Status.report_business_started!(status, Symbol(1))
+        Status.report_business_planned!(status, Symbol(2))
+        
         worker = WorkerType(; exeflags=_convert_to_flags(compiler_options))
+            
+        Status.report_business_finished!(status, Symbol(1))
+        Status.report_business_started!(status, Symbol(2))
         
         Malt.remote_eval_wait(worker, process_preamble())
     
@@ -269,9 +299,10 @@ function create_workspaceprocess(WorkerType; compiler_options=CompilerOptions())
                 catch end
             end
         end)
-    
-        worker
     end
+    
+    Status.report_business_finished!(status)
+    worker
 end
 
 """
@@ -386,6 +417,7 @@ function eval_format_fetch_in_workspace(
 )::PlutoRunner.FormattedCellResult
 
     workspace = get_workspace(session_notebook)
+    is_on_this_process = worker.worker isa Malt.InProcessWorker
 
     # if multiple notebooks run on the same process, then we need to `cd` between the different notebook paths
     if session_notebook isa Tuple
@@ -406,7 +438,7 @@ function eval_format_fetch_in_workspace(
                 $function_wrapped_info,
                 $forced_expr_id;
                 user_requested_run=$user_requested_run,
-                capture_stdout=$capture_stdout,
+                capture_stdout=$(capture_stdout && !is_on_this_process),
             )
         end)
         put!(workspace.dowork_token)
@@ -418,7 +450,7 @@ function eval_format_fetch_in_workspace(
     end
 
     if early_result === nothing
-        format_fetch_in_workspace(workspace, cell_id, ends_with_semicolon, known_published_objects)
+        format_fetch_in_workspace(workspace, cell_id, ends_with_semicolon, known_published_objects; capture_stdout)
     else
         early_result
     end
@@ -439,7 +471,8 @@ function format_fetch_in_workspace(
     cell_id,
     ends_with_semicolon,
     known_published_objects::Vector{String}=String[],
-    showmore_id::Union{PlutoRunner.ObjectDimPair,Nothing}=nothing,
+    showmore_id::Union{PlutoRunner.ObjectDimPair,Nothing}=nothing;
+    capture_stdout::Bool=true,
 )::PlutoRunner.FormattedCellResult
     workspace = get_workspace(session_notebook)
 
@@ -455,7 +488,8 @@ function format_fetch_in_workspace(
                     $ends_with_semicolon,
                     $known_published_objects,
                     $showmore_id,
-                    getfield(Main, $(QuoteNode(workspace.module_name))),
+                    getfield(Main, $(QuoteNode(workspace.module_name)));
+                    capture_stdout=$capture_stdout,
                 )
             end)
         catch e
@@ -472,13 +506,13 @@ function collect_soft_definitions(session_notebook::SN, modules::Set{Expr})
     end)
 end
 
-function macroexpand_in_workspace(session_notebook::Union{SN,Workspace}, macrocall, cell_id, module_name=nothing)::Tuple{Bool,Any}
+function macroexpand_in_workspace(session_notebook::SN, macrocall, cell_id, module_name = Symbol(""); capture_stdout::Bool=true)::Tuple{Bool, Any}
     workspace = get_workspace(session_notebook)
-    module_name = module_name === nothing ? workspace.module_name : module_name
+    module_name = module_name === Symbol("") ? workspace.module_name : module_name
 
     Malt.remote_eval_fetch(workspace.worker, quote
         try
-            (true, PlutoRunner.try_macroexpand($module_name, $(workspace.notebook_id), $cell_id, $(QuoteNode(macrocall))))
+            (true, PlutoRunner.try_macroexpand($(module_name), $(workspace.notebook_id), $(cell_id), $(macrocall |> QuoteNode); capture_stdout=$(capture_stdout)))
         catch error
             # We have to be careful here, for example a thrown `MethodError()` will contain the called method and arguments.
             # which normally would be very useful for debugging, but we can't serialize it!
@@ -520,8 +554,10 @@ function move_vars(
     to_delete::Set{Symbol},
     methods_to_delete::Set{Tuple{UUID,FunctionName}},
     module_imports_to_move::Set{Expr},
-    invalidated_cell_uuids::Set{UUID};
-    kwargs...)
+    invalidated_cell_uuids::Set{UUID},
+    keep_registered::Set{Symbol}=Set{Symbol}();
+    kwargs...
+    )
 
     workspace = get_workspace(session_notebook)
     new_workspace_name = something(new_workspace_name, workspace.module_name)
@@ -534,12 +570,14 @@ function move_vars(
             $methods_to_delete,
             $module_imports_to_move,
             $invalidated_cell_uuids,
+            $keep_registered,
         )
     end)
 end
 
-move_vars(session_notebook::Union{SN,Workspace}, to_delete::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,FunctionName}}, module_imports_to_move::Set{Expr}, invalidated_cell_uuids::Set{UUID}; kwargs...) =
+function move_vars(session_notebook::Union{SN,Workspace}, to_delete::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,FunctionName}}, module_imports_to_move::Set{Expr}, invalidated_cell_uuids::Set{UUID}; kwargs...)
     move_vars(session_notebook, bump_workspace_module(session_notebook)..., to_delete, methods_to_delete, module_imports_to_move, invalidated_cell_uuids; kwargs...)
+end
 
 # TODO: delete me
 @deprecate(

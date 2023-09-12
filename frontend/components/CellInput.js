@@ -48,6 +48,7 @@ import {
     pythonLanguage,
     syntaxHighlighting,
     cssLanguage,
+    setDiagnostics,
 } from "../imports/CodemirrorPlutoSetup.js"
 
 import { markdown, html as htmlLang, javascript, sqlLang, python, julia_mixed } from "./CellInput/mixedParsers.js"
@@ -59,9 +60,12 @@ import { cell_movement_plugin, prevent_holding_a_key_from_doing_things_across_ce
 import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
 import { cl } from "../common/ClassTable.js"
-import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_line.js"
+import { HighlightLineFacet, HighlightRangeFacet, highlightLinePlugin, highlightRangePlugin } from "./CellInput/highlight_line.js"
 import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
 import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
+import { mod_d_command } from "./CellInput/mod_d_command.js"
+import { open_bottom_right_panel } from "./BottomRightPanel.js"
+import { timeout_promise } from "../common/PlutoConnection.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 
@@ -370,8 +374,10 @@ export const CellInput = ({
     set_show_logs,
     set_cell_disabled,
     cm_highlighted_line,
+    cm_highlighted_range,
     metadata,
     global_definition_locations,
+    cm_diagnostics,
 }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     const { disabled: running_disabled, skip_as_script } = metadata
@@ -381,6 +387,10 @@ export const CellInput = ({
         set_error(null)
         throw to_throw
     }
+
+    const notebook_id_ref = useRef(notebook_id)
+    notebook_id_ref.current = notebook_id
+
     const newcm_ref = useRef(/** @type {EditorView?} */ (null))
     const dom_node_ref = useRef(/** @type {HTMLElement?} */ (null))
     const remote_code_ref = useRef(/** @type {string?} */ (null))
@@ -388,6 +398,7 @@ export const CellInput = ({
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
     let global_definitions_compartment = useCompartment(newcm_ref, GlobalDefinitionsFacet.of(global_definition_locations))
     let highlighted_line_compartment = useCompartment(newcm_ref, HighlightLineFacet.of(cm_highlighted_line))
+    let highlighted_range_compartment = useCompartment(newcm_ref, HighlightRangeFacet.of(cm_highlighted_range))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
 
     let on_change_compartment = useCompartment(
@@ -425,8 +436,11 @@ export const CellInput = ({
 
         let select_autocomplete_command = autocomplete.completionKeymap.find((keybinding) => keybinding.key === "Enter")
         let keyMapTab = (/** @type {EditorView} */ cm) => {
+            if (cm.state.readOnly) {
+                return false
+            }
             // This will return true if the autocomplete select popup is open
-            if (select_autocomplete_command?.run(cm)) {
+            if (select_autocomplete_command?.run?.(cm)) {
                 return true
             }
 
@@ -547,6 +561,8 @@ export const CellInput = ({
             { key: "Ctrl-Delete", run: keyMapDelete },
             { key: "Backspace", run: keyMapBackspace },
             { key: "Ctrl-Backspace", run: keyMapBackspace },
+
+            mod_d_command,
         ]
 
         let DOCS_UPDATER_VERBOSE = false
@@ -569,9 +585,6 @@ export const CellInput = ({
             }
         })
 
-        // TODO remove me
-        //@ts-ignore
-        window.tags = tags
         const usesDarkTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         const newcm = (newcm_ref.current = new EditorView({
             state: EditorState.create({
@@ -581,9 +594,11 @@ export const CellInput = ({
                     // Compartments coming from react state/props
                     nbpkg_compartment,
                     highlighted_line_compartment,
+                    highlighted_range_compartment,
                     global_definitions_compartment,
                     editable_compartment,
                     highlightLinePlugin(),
+                    highlightRangePlugin(),
 
                     // This is waaaay in front of the keys it is supposed to override,
                     // Which is necessary because it needs to run before *any* keymap,
@@ -592,7 +607,7 @@ export const CellInput = ({
                     // TODO Use https://codemirror.net/6/docs/ref/#state.Prec when added to pluto-codemirror-setup
                     prevent_holding_a_key_from_doing_things_across_cells,
 
-                    pkgBubblePlugin({ pluto_actions, notebook_id }),
+                    pkgBubblePlugin({ pluto_actions, notebook_id_ref }),
                     ScopeStateField,
                     syntaxHighlighting(pluto_syntax_colors),
                     syntaxHighlighting(pluto_syntax_colors_html),
@@ -623,24 +638,34 @@ export const CellInput = ({
                     // Remove selection on blur
                     EditorView.domEventHandlers({
                         blur: (event, view) => {
-                            view.dispatch({
-                                selection: {
-                                    anchor: view.state.selection.main.head,
-                                    head: view.state.selection.main.head,
-                                },
-                            })
-                            set_cm_forced_focus(null)
+                            // it turns out that this condition is true *exactly* if and only if the blur event was triggered by blurring the window
+                            let caused_by_window_blur = document.activeElement === view.contentDOM
+
+                            if (!caused_by_window_blur) {
+                                // then it's caused by focusing something other than this cell in the editor.
+                                // in this case, we want to collapse the selection into a single point, for aesthetic reasons.
+                                view.dispatch({
+                                    selection: {
+                                        anchor: view.state.selection.main.head,
+                                    },
+                                    scrollIntoView: false,
+                                })
+                                // and blur the DOM again (because the previous transaction might have re-focused it)
+                                view.contentDOM.blur()
+
+                                set_cm_forced_focus(null)
+                            }
                         },
                     }),
                     pluto_paste_plugin({
-                        pluto_actions: pluto_actions,
-                        cell_id: cell_id,
+                        pluto_actions,
+                        cell_id,
                     }),
                     // Update live docs when in a cell that starts with `?`
                     EditorView.updateListener.of((update) => {
                         if (!update.docChanged) return
                         if (update.state.doc.length > 0 && update.state.sliceDoc(0, 1) === "?") {
-                            window.dispatchEvent(new CustomEvent("open_live_docs"))
+                            open_bottom_right_panel("docs")
                         }
                     }),
                     EditorState.tabSize.of(4),
@@ -663,7 +688,13 @@ export const CellInput = ({
                     go_to_definition_plugin,
                     pluto_autocomplete({
                         request_autocomplete: async ({ text }) => {
-                            let { message } = await pluto_actions.send("complete", { query: text }, { notebook_id: notebook_id })
+                            let response = await timeout_promise(
+                                pluto_actions.send("complete", { query: text }, { notebook_id: notebook_id_ref.current }),
+                                5000
+                            ).catch(console.warn)
+                            if (!response) return null
+
+                            let { message } = response
                             return {
                                 start: utf8index_to_ut16index(text, message.start),
                                 stop: utf8index_to_ut16index(text, message.stop),
@@ -688,6 +719,12 @@ export const CellInput = ({
                     EditorView.lineWrapping,
                     // Wowww this has been enabled for some time now... wonder if there are issues about this yet ;) - DRAL
                     awesome_line_wrapping,
+
+                    // Reset diagnostics on change
+                    EditorView.updateListener.of((update) => {
+                        if (!update.docChanged) return
+                        update.view.dispatch(setDiagnostics(update.state, []))
+                    }),
 
                     on_change_compartment,
 
@@ -753,6 +790,14 @@ export const CellInput = ({
             }
         }
     }, [])
+
+    useEffect(() => {
+        if (newcm_ref.current == null) return
+        const cm = newcm_ref.current
+        const diagnostics = cm_diagnostics
+
+        cm.dispatch(setDiagnostics(cm.state, diagnostics))
+    }, [cm_diagnostics])
 
     // Effect to apply "remote_code" to the cell when it changes...
     // ideally this won't be necessary as we'll have actual multiplayer,

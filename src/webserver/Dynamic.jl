@@ -1,6 +1,7 @@
 import UUIDs: uuid1
 
 import .PkgCompat
+import .Status
 
 "Will hold all 'response handlers': functions that respond to a WebSocket request from the client."
 const responses = Dict{Symbol,Function}()
@@ -132,7 +133,7 @@ function notebook_to_js(notebook::Notebook)
                 "cell_id" => cell.cell_id,
                 "depends_on_disabled_cells" => cell.depends_on_disabled_cells,
                 "output" => FirebaseyUtils.ImmutableMarker(cell.output),
-                "published_object_keys" => keys(cell.published_objects),
+                "published_object_keys" => collect(keys(cell.published_objects)),
                 "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,
@@ -155,7 +156,6 @@ function notebook_to_js(notebook::Notebook)
                 "enabled" => ctx !== nothing,
                 "restart_recommended_msg" => notebook.nbpkg_restart_recommended_msg,
                 "restart_required_msg" => notebook.nbpkg_restart_required_msg,
-                # TODO: cache this
                 "installed_versions" => ctx === nothing ? Dict{String,String}() : notebook.nbpkg_installed_versions_cache,
                 "terminal_outputs" => notebook.nbpkg_terminal_outputs,
                 "install_time_ns" => notebook.nbpkg_install_time_ns,
@@ -163,6 +163,7 @@ function notebook_to_js(notebook::Notebook)
                 "instantiated" => notebook.nbpkg_ctx_instantiated,
             )
         end,
+        "status_tree" => Status.tojs(notebook.status_tree),
         "cell_execution_order" => cell_id.(collect(topological_order(notebook))),
     )
 end
@@ -171,30 +172,39 @@ end
 For each connected client, we keep a copy of their current state. This way we know exactly which updates to send when the server-side state changes.
 """
 const current_state_for_clients = WeakKeyDict{ClientSession,Any}()
+const current_state_for_clients_lock = ReentrantLock()
 
 """
 Update the local state of all clients connected to this notebook.
 """
-function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing)
-    notebook_dict = notebook_to_js(🙋.notebook)
-    for (_, client) in 🙋.session.connected_clients
-        if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == 🙋.notebook.notebook_id
-            current_dict = get(current_state_for_clients, client, :empty)
-            patches = Firebasey.diff(current_dict, notebook_dict)
-            patches_as_dicts::Array{Dict} = Firebasey._convert(Array{Dict}, patches)
-            current_state_for_clients[client] = deep_enough_copy(notebook_dict)
+function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, skip_send::Bool=false)
+    outbox = Set{Tuple{ClientSession,UpdateMessage}}()
+    
+    lock(current_state_for_clients_lock) do
+        notebook_dict = notebook_to_js(🙋.notebook)
+        for (_, client) in 🙋.session.connected_clients
+            if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == 🙋.notebook.notebook_id
+                current_dict = get(current_state_for_clients, client, :empty)
+                patches = Firebasey.diff(current_dict, notebook_dict)
+                patches_as_dicts = Firebasey._convert(Vector{Dict}, patches)
+                current_state_for_clients[client] = deep_enough_copy(notebook_dict)
 
-            # Make sure we do send a confirmation to the client who made the request, even without changes
-            is_response = 🙋.initiator !== nothing && client == 🙋.initiator.client
+                # Make sure we do send a confirmation to the client who made the request, even without changes
+                is_response = 🙋.initiator !== nothing && client == 🙋.initiator.client
 
-            if !isempty(patches) || is_response
-                response = Dict(
-                    :patches => patches_as_dicts,
-                    :response => is_response ? commentary : nothing
-                )
-                putclientupdates!(client, UpdateMessage(:notebook_diff, response, 🙋.notebook, nothing, 🙋.initiator))
+                if !skip_send && (!isempty(patches) || is_response)
+                    response = Dict(
+                        :patches => patches_as_dicts,
+                        :response => is_response ? commentary : nothing
+                    )
+                    push!(outbox, (client, UpdateMessage(:notebook_diff, response, 🙋.notebook, nothing, 🙋.initiator)))
+                end
             end
         end
+    end
+    
+    for (client, msg) in outbox
+        putclientupdates!(client, msg)
     end
     try_event_call(🙋.session, FileEditEvent(🙋.notebook))
 end
@@ -357,7 +367,7 @@ function trigger_resolver(anything, path, values=[])
 end
 function trigger_resolver(resolvers::Dict, path, values=[])
 	if isempty(path)
-		throw(BoundsError("resolver path ends at Dict with keys $(keys(resolver))"))
+		throw(BoundsError("resolver path ends at Dict with keys $(keys(resolvers))"))
 	end
 	
 	segment, rest... = path
@@ -366,7 +376,7 @@ function trigger_resolver(resolvers::Dict, path, values=[])
 	elseif haskey(resolvers, Wildcard())
 		trigger_resolver(resolvers[Wildcard()], rest, (values..., segment))
     else
-        throw(BoundsError("failed to match path $(path), possible keys $(keys(resolver))"))
+        throw(BoundsError("failed to match path $(path), possible keys $(keys(resolvers))"))
 	end
 end
 
@@ -376,6 +386,10 @@ end
 ###
 # MISC RESPONSES
 ###
+
+responses[:current_time] = function response_current_time(🙋::ClientRequest)
+    putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:current_time, Dict(:time => time()), nothing, nothing, 🙋.initiator))
+end
 
 responses[:connect] = function response_connect(🙋::ClientRequest)
     putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:👋, Dict(
@@ -407,11 +421,24 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
 
     if will_run_code(🙋.notebook)
         foreach(c -> c.queued = true, cells)
-        send_notebook_changes!(🙋)
+        # run send_notebook_changes! without actually sending it, to update current_state_for_clients for our client with c.queued = true.
+        # later, during update_save_run!, the cell will actually run, eventually setting c.queued = false again, which will be sent to the client through a patch update. 
+        # We *need* to send *something* to the client, because of https://github.com/fonsp/Pluto.jl/pull/1892, but we also don't want to send unnecessary updates. We can skip sending this update, because update_save_run! will trigger a send_notebook_changes! very very soon.
+        send_notebook_changes!(🙋; skip_send=true)
+    end
+    
+    function on_auto_solve_multiple_defs(disabled_cells_dict)
+        response = Dict{Symbol,Any}(
+            :disabled_cells => Dict{UUID,Any}(cell_id(k) => v for (k,v) in disabled_cells_dict),
+        )
+        putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:run_feedback, response, 🙋.notebook, nothing, 🙋.initiator))
     end
     
     # save=true fixes the issue where "Submit all changes" or `Ctrl+S` has no effect.
-    update_save_run!(🙋.session, 🙋.notebook, cells; run_async=true, save=true)
+    update_save_run!(🙋.session, 🙋.notebook, cells; 
+        run_async=true, save=true, 
+        auto_solve_multiple_defs=true, on_auto_solve_multiple_defs
+    )
 end
 
 responses[:get_all_notebooks] = function response_get_all_notebooks(🙋::ClientRequest)

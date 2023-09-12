@@ -21,6 +21,7 @@ import {
     keyboardPressInPlutoInput,
     writeSingleLineInPlutoInput,
     manuallyEnterCells,
+    shutdownCurrentNotebook,
 } from "../helpers/pluto"
 
 describe("Paste Functionality", () => {
@@ -36,8 +37,8 @@ describe("Paste Functionality", () => {
     })
 
     afterEach(async () => {
-        await saveScreenshot(page, getTestScreenshotPath())
-        await page.evaluate(() => window.shutdownNotebook())
+        await saveScreenshot(page)
+        await shutdownCurrentNotebook(page)
     })
 
     it("should *not* create new cell when you paste code into cell", async () => {
