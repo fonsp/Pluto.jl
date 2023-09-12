@@ -18,6 +18,7 @@ using Test
 using HTTP
 import Distributed
 import Pkg
+import Malt
 
 function Base.show(io::IO, s::SymbolsState)
     print(io, "SymbolsState([")
@@ -239,14 +240,14 @@ has_embedded_pkgfiles(contents::AbstractString) =
 has_embedded_pkgfiles(nb::Pluto.Notebook) = 
     read(nb.path, String) |> has_embedded_pkgfiles
 
-# """
-# Log an error message if there are any running processes created by Distrubted, that were not shut down.
-# """
-# function verify_no_running_processes()
-#     if length(Distributed.procs()) != 1
-#         @error "Not all notebook processes were closed during tests!" Distributed.procs()
-#     end
-# end
+"""
+Log an error message if there are any running processes created by Distrubted, that were not shut down.
+"""
+function verify_no_running_processes()
+    if length(Distributed.procs()) != 1 || !isempty(Malt.__iNtErNaL_get_running_procs())
+        @error "Not all notebook processes were closed during tests!" Distributed.procs() Malt.__iNtErNaL_get_running_procs()
+    end
+end
 
 # We have our own registry for these test! Take a look at https://github.com/JuliaPluto/PlutoPkgTestRegistry#readme for more info about the test packages and their dependencies.
 
