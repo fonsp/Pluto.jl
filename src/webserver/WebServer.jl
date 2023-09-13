@@ -103,12 +103,43 @@ function port_serversocket(hostIP::Sockets.IPAddr, favourite_port, port_hint)
     return port, serversocket
 end
 
+struct RunningPlutoServer
+    http_server
+    initial_registry_update_task::Task
+end
+
+function Base.close(ssc::RunningPlutoServer)
+    close(ssc.http_server)
+    wait(ssc.http_server)
+    wait(ssc.initial_registry_update_task)
+end
+
+function Base.wait(ssc::RunningPlutoServer)
+    try
+        # create blocking call and switch the scheduler back to the server task, so that interrupts land there
+        while isopen(ssc.http_server)
+            sleep(.1)
+        end
+    catch e
+        println()
+        println()
+        Base.close(ssc)
+        (e isa InterruptException) || rethrow(e)
+    end
+    
+    nothing
+end
+
 """
     run(session::ServerSession)
 
 Specifiy the [`Pluto.ServerSession`](@ref) to run the web server on, which includes the configuration. Passing a session as argument allows you to start the web server with some notebooks already running. See [`SessionActions`](@ref) to learn more about manipulating a `ServerSession`.
 """
 function run(session::ServerSession)
+    Base.wait(run!(session))
+end
+
+function run!(session::ServerSession)
     if is_first_run[]
         is_first_run[] = false
         @info "Loading..."
@@ -293,21 +324,7 @@ function run(session::ServerSession)
         will_update && println("    Updating registry done ✓")
     end
 
-    try
-        # create blocking call and switch the scheduler back to the server task, so that interrupts land there
-        while isopen(server)
-            sleep(.1)
-        end
-    catch e
-        println()
-        println()
-        close(server)
-        wait(server)
-        wait(initial_registry_update_task)
-        (e isa InterruptException) || rethrow(e)
-    end
-    
-    nothing
+    return RunningPlutoServer(server, initial_registry_update_task)
 end
 precompile(run, (ServerSession, HTTP.Handlers.Router{Symbol("##001")}))
 

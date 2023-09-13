@@ -27,14 +27,14 @@ on:
 jobs:
     test:
         runs-on: ${{ matrix.os }}
-        timeout-minutes: 40
+        timeout-minutes: 50
 
         strategy:
             # Without setting this, a failing test cancels all others
             fail-fast: false
             matrix:
                 # We test quite a lot of versions because we do some OS and version specific things unfortunately
-                julia-version: ["1.6", "1.7", "1.8", "1.9", "nightly"]
+                julia-version: ["1.6", "1.8", "1.9", "~1.10.0-0"]
                 os: [ubuntu-latest, macOS-latest, windows-latest]
 
         steps:

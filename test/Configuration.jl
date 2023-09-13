@@ -64,8 +64,7 @@ end
     host = 🍭.options.server.host
     secret = 🍭.secret
     println("Launching test server...")
-    server_task = @async Pluto.run(🍭)
-    sleep(2)
+    server = Pluto.run!(🍭)
 
     local_url(suffix) = "http://$host:$port/$suffix"
     withsecret(url) = occursin('?', url) ? "$url&secret=$secret" : "$url?secret=$secret"
@@ -123,7 +122,7 @@ end
         @test requeststatus(url, method) ∈ 200:399 # 3xx are redirects
     end
 
-    @async schedule(server_task, InterruptException(); error=true)
+    close(server)
 end
 
 @testset "disable mimetype via workspace_custom_startup_expr" begin
