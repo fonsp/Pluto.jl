@@ -446,7 +446,7 @@ import Distributed
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
-    @static if VERSION ≤ v"1.9"
+    @static if VERSION < v"1.10.0-0" # see https://github.com/fonsp/Pluto.jl/pull/2626#issuecomment-1671244510
         @testset "File format -- Forwards compat" begin
             # Using Distributed, we will create a new Julia process in which we install Pluto 0.14.7 (before PlutoPkg). We run the new notebook file on the old Pluto.
             p = Distributed.addprocs(1) |> first
@@ -650,6 +650,8 @@ import Distributed
     end
 
     @testset "PlutoRunner Syntax Error" begin
+        🍭 = ServerSession()
+
         notebook = Notebook([
             Cell("1 +"),
             Cell("PlutoRunner.throw_syntax_error"),
@@ -665,6 +667,8 @@ import Distributed
         @test Pluto.is_just_text(notebook.topology, notebook.cells[1])
         @test !Pluto.is_just_text(notebook.topology, notebook.cells[2]) # Not a syntax error form
         @test Pluto.is_just_text(notebook.topology, notebook.cells[3])
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
     @testset "Precompilation" begin
