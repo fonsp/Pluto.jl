@@ -284,8 +284,12 @@ function create_workspaceprocess(WorkerType; compiler_options=CompilerOptions(),
         Status.report_business_started!(status, Symbol(1))
         Status.report_business_planned!(status, Symbol(2))
         
-        worker = WorkerType(; exeflags=_convert_to_flags(compiler_options))
-            
+        # NOTE: Test to reduce the required memory on windows
+        # ....  see https://github.com/JuliaLang/julia/pull/47803
+        # ....  the same fix can maybe be applied to other os?
+        env = Sys.iswindows() && WorkerType == Malt.Worker ? String["OPENBLAS_NUM_THREADS=1"] : String[]
+        worker = WorkerType(; exeflags=_convert_to_flags(compiler_options), env)
+   
         Status.report_business_finished!(status, Symbol(1))
         Status.report_business_started!(status, Symbol(2))
         
