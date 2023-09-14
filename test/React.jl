@@ -213,7 +213,6 @@ import Distributed
         write(file, read(normpath(Pluto.project_relative_path("src", "notebook", "OperationalTransform.jl"))))
 
         notebook = Pluto.load_notebook_nobackup(file)
-        fakeclient.connected_notebook = notebook
 
         # Make sure that all tests run as well.
         for cell in notebook.cells
