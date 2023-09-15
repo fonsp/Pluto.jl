@@ -9,7 +9,7 @@
 # SOME EXTRA NOTES
 
 # 1. The entire PlutoRunner should be a single file.
-# 2. We restrict the communication between this PlutoRunner and the Pluto server to only use *Base Julia types*, like `String`, `Dict`, `NamedTuple`, etc.
+# 2. We restrict the communication between this PlutoRunner and the Pluto server to only use *Base Julia types*, like `String`, `Dict`, `NamedTuple`, etc. 
 
 # These restriction are there to allow flexibility in the way that this file is loaded on a runner process, which is something that we might want to change in the future, like when we make the transition to our own Distributed.
 
@@ -157,8 +157,8 @@ function globalref_to_workspaceref(expr)
 
     Expr(:block,
         # Create new lines to assign to the replaced names of the global refs.
-        # This way the expression explorer doesn't care (it just sees references to variables outside of the workspace),
-        # and the variables don't get overwriten by local assigments to the same name (because we have special names).
+        # This way the expression explorer doesn't care (it just sees references to variables outside of the workspace), 
+        # and the variables don't get overwriten by local assigments to the same name (because we have special names). 
         (mutable_ref_list .|> ref -> :(local $(ref[2])))...,
         map(mutable_ref_list) do ref
             # I can just do Expr(:isdefined, ref[1]) here, but it feels better to macroexpand,
@@ -613,14 +613,14 @@ function run_expression(
             ans, add_runtimes(runtime, expansion_runtime)
         end
     end
-
+    
     currently_running_cell_id[] = old_currently_running_cell_id
-
+    
 
     if (result isa CapturedException) && (result.ex isa InterruptException)
         throw(result.ex)
     end
-
+    
     cell_results[cell_id], cell_runtimes[cell_id] = result, runtime
 end
 precompile(run_expression, (Module, Expr, UUID, UUID, Nothing, Nothing))
@@ -882,11 +882,11 @@ const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 const FormattedCellResult = NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
 
 function formatted_result_of(
-    notebook_id::UUID,
-    cell_id::UUID,
-    ends_with_semicolon::Bool,
+    notebook_id::UUID, 
+    cell_id::UUID, 
+    ends_with_semicolon::Bool, 
     known_published_objects::Vector{String}=String[],
-    showmore::Union{ObjectDimPair,Nothing}=nothing,
+    showmore::Union{ObjectDimPair,Nothing}=nothing, 
     workspace::Module=Main;
     capture_stdout::Bool=true,
 )::FormattedCellResult
@@ -909,8 +909,8 @@ function formatted_result_of(
         logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
         with_logger_and_io_to_logs(logger; capture_stdout, stdio_loglevel=stdout_log_level) do
             format_output(ans; context=IOContext(
-            default_iocontext,
-            :extra_items=>extra_items,
+            default_iocontext, 
+            :extra_items=>extra_items, 
             :module => workspace,
             :pluto_notebook_id => notebook_id,
             :pluto_cell_id => cell_id,
@@ -972,19 +972,19 @@ end
 Base.IOContext(io::IOContext, ::Nothing) = io
 
 "The `IOContext` used for converting arbitrary objects to pretty strings."
-const default_iocontext = IOContext(devnull,
-    :color => false,
-    :limit => true,
-    :displaysize => (18, 88),
-    :is_pluto => true,
+const default_iocontext = IOContext(devnull, 
+    :color => false, 
+    :limit => true, 
+    :displaysize => (18, 88), 
+    :is_pluto => true, 
     :pluto_supported_integration_features => supported_integration_features,
     :pluto_published_to_js => (io, x) -> core_published_to_js(io, x),
 )
 
-const default_stdout_iocontext = IOContext(devnull,
-    :color => true,
-    :limit => true,
-    :displaysize => (18, 75),
+const default_stdout_iocontext = IOContext(devnull, 
+    :color => true, 
+    :limit => true, 
+    :displaysize => (18, 75), 
     :is_pluto => false,
 )
 
@@ -1241,7 +1241,7 @@ function format_output(binding::Base.Docs.Binding; context=default_iocontext)
         <span>$(binding.var)</span>
         $(repr(MIME"text/html"(), Base.Docs.doc(binding)))
         </div>
-        """, MIME"text/html"())
+        """, MIME"text/html"()) 
     catch e
         @warn "Failed to pretty-print binding" exception=(e, catch_backtrace())
         repr(binding, MIME"text/plain"())
@@ -1605,7 +1605,7 @@ function tree_data(@nospecialize(x::Any), context::Context)
         return circular(x)
     else
         depth = get(context, :tree_viewer_depth, 0)
-        recur_io = IOContext(context,
+        recur_io = IOContext(context, 
             Pair{Symbol,Any}(:SHOWN_SET, x),
             Pair{Symbol,Any}(:typeinfo, Any),
             Pair{Symbol,Any}(:tree_viewer_depth, depth + 1),
@@ -1671,9 +1671,9 @@ const integrations = Integration[
         id = Base.PkgId(Base.UUID(reinterpret(UInt128, codeunits("Paul Berg Berlin")) |> first), "AbstractPlutoDingetjes"),
         code = quote
             @assert v"1.0.0" <= AbstractPlutoDingetjes.MY_VERSION < v"2.0.0"
-
+            
             supported!(xs...) = push!(supported_integration_features, xs...)
-
+            
             # don't need feature checks for these because they existed in every version of AbstractPlutoDingetjes:
             supported!(
                 AbstractPlutoDingetjes,
@@ -1685,7 +1685,7 @@ const integrations = Integration[
             initial_value_getter_ref[] = AbstractPlutoDingetjes.Bonds.initial_value
             transform_value_ref[] = AbstractPlutoDingetjes.Bonds.transform_value
             possible_bond_values_ref[] = AbstractPlutoDingetjes.Bonds.possible_values
-
+            
             # feature checks because these were added in a later release of AbstractPlutoDingetjes
             if isdefined(AbstractPlutoDingetjes, :Display)
                 supported!(AbstractPlutoDingetjes.Display)
@@ -1759,7 +1759,7 @@ const integrations = Integration[
                         push!(row_data, (length(rows), row_data_for(last_row)))
                     end
                 end
-
+                
                 # TODO: render entire schema by default?
 
                 schema = Tables.schema(rows)
@@ -1807,7 +1807,7 @@ const integrations = Integration[
                 catch
                     :auto
                 end
-
+                
                 format === :svg || (
                     format === :auto && approx_size(p) <= max_plot_size
                 )
@@ -2159,7 +2159,7 @@ function transform_bond_value(s::Symbol, value_from_js)
     catch e
         @error "🚨 AbstractPlutoDingetjes: Bond value transformation errored." exception=(e, catch_backtrace())
         (;
-            message=Text("🚨 AbstractPlutoDingetjes: Bond value transformation errored."),
+            message=Text("🚨 AbstractPlutoDingetjes: Bond value transformation errored."), 
             exception=Text(
                 sprint(showerror, e, stacktrace(catch_backtrace()))
             ),
@@ -2184,16 +2184,16 @@ function possible_bond_values(s::Symbol; get_length::Bool=false)
         :InfinitePossibilities
     elseif (possible_values isa AbstractPlutoDingetjes.Bonds.NotGiven)
         # error("Bond \"$s\" did not specify its possible values with `AbstractPlutoDingetjes.Bond.possible_values()`. Try using PlutoUI for the `@bind` values.")
-
+        
         # If you change this, change it everywhere in this file.
         :NotGiven
     else
-        get_length ?
+        get_length ? 
             try
                 length(possible_values)
             catch
                 length(make_distributed_serializable(possible_values))
-            end :
+            end : 
             make_distributed_serializable(possible_values)
     end
 end
@@ -2267,7 +2267,7 @@ x^2
 The first cell will show a slider as the cell's output, ranging from 0 until 100.
 The second cell will show the square of `x`, and is updated in real-time as the slider is moved.
 """
-macro bind(def, element)
+macro bind(def, element)    
 	if def isa Symbol
 		quote
 			$(load_integrations_if_needed)()
@@ -2318,18 +2318,18 @@ function core_published_to_js(io, x)
     assertpackable(x)
 
     id_start = objectid2str(x)
-
+    
     _notebook_id = get(io, :pluto_notebook_id, notebook_id[])::UUID
     _cell_id = get(io, :pluto_cell_id, currently_running_cell_id[])::UUID
-
+    
     # The unique identifier of this object
     id = "$_notebook_id/$id_start"
-
+    
     d = get!(Dict{String,Any}, cell_published_objects, _cell_id)
     d[id] = x
-
+    
     write(io, "/* See the documentation for AbstractPlutoDingetjes.Display.published_to_js */ getPublishedObject(\"$(id)\")")
-
+    
     return nothing
 end
 
@@ -2340,8 +2340,8 @@ end
 function Base.show(io::IO, ::MIME"text/javascript", published::PublishedToJavascript)
     core_published_to_js(io, published.published_object)
 end
-Base.show(io::IO, ::MIME"text/plain", published::PublishedToJavascript) = show(io, MIME("text/javascript"), published)
-Base.show(io::IO, published::PublishedToJavascript) = show(io, MIME("text/javascript"), published)
+Base.show(io::IO, ::MIME"text/plain", published::PublishedToJavascript) = show(io, MIME("text/javascript"), published)    
+Base.show(io::IO, published::PublishedToJavascript) = show(io, MIME("text/javascript"), published)    
 
 # TODO: This is the deprecated old function. Remove me at some point.
 function publish_to_js(x)
@@ -2373,7 +2373,7 @@ end
 
 function Base.show(io::IO, m::MIME"text/html", e::EmbeddableDisplay)
     body, mime = format_output_default(e.x, io)
-
+	
     to_write = if mime === m && _EmbeddableDisplay_enable_html_shortcut[]
         # In this case, we can just embed the HTML content directly.
         body
@@ -2381,14 +2381,14 @@ function Base.show(io::IO, m::MIME"text/html", e::EmbeddableDisplay)
         s = """<pluto-display></pluto-display><script id=$(e.script_id)>
 
         // see https://plutocon2021-demos.netlify.app/fonsp%20%E2%80%94%20javascript%20inside%20pluto to learn about the techniques used in this script
-
+        
         const body = $(PublishedToJavascript(body));
         const mime = "$(string(mime))";
-
+        
         const create_new = this == null || this._mime !== mime;
-
+        
         const display = create_new ? currentScript.previousElementSibling : this;
-
+        
         display.persist_js_state = true;
         display.body = body;
         if(create_new) {
@@ -2400,7 +2400,7 @@ function Base.show(io::IO, m::MIME"text/html", e::EmbeddableDisplay)
         return display;
 
         </script>"""
-
+        
         replace(replace(s, r"//.+" => ""), "\n" => "")
     end
     write(io, to_write)
@@ -2411,7 +2411,7 @@ export embed_display
 """
     embed_display(x)
 
-A wrapper around any object that will display it using Pluto's interactive multimedia viewer (images, arrays, tables, etc.), the same system used to display cell output. The returned object can be **embedded in HTML output** (we recommend [HypertextLiteral.jl](https://github.com/MechanicalRabbit/HypertextLiteral.jl) or [HyperScript.jl](https://github.com/yurivish/Hyperscript.jl)), which means that you can use it to create things like _"table viewer left, plot right"_.
+A wrapper around any object that will display it using Pluto's interactive multimedia viewer (images, arrays, tables, etc.), the same system used to display cell output. The returned object can be **embedded in HTML output** (we recommend [HypertextLiteral.jl](https://github.com/MechanicalRabbit/HypertextLiteral.jl) or [HyperScript.jl](https://github.com/yurivish/Hyperscript.jl)), which means that you can use it to create things like _"table viewer left, plot right"_. 
 
 # Example
 
@@ -2462,8 +2462,8 @@ Base.@kwdef struct DivElement
 end
 
 tree_data(@nospecialize(e::DivElement), context::Context) = Dict{Symbol, Any}(
-    :style => e.style,
-    :classname => e.class,
+    :style => e.style, 
+    :classname => e.class, 
     :children => Any[
         format_output_default(value, context) for value in e.children
     ],
