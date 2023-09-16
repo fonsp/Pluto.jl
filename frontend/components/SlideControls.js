@@ -18,9 +18,9 @@ export const SlideControls = () => {
             // We do not move slides with arrow if we have an active element
             return
         }
-        if (e.key === "ArrowLeft" || e.key === " " || e.key === "PageDown") {
+        if (e.key === "ArrowLeft" || e.key === "PageUp") {
             button_prev_ref.current?.click()
-        } else if (e.key === "ArrowRight" || e.key === "PageUp") {
+        } else if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") {
             button_next_ref.current?.click()
         } else if (e.key === "Escape") {
             set_presenting(false)
