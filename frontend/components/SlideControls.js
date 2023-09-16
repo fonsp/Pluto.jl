@@ -7,7 +7,7 @@ export const SlideControls = () => {
 
     const [presenting, set_presenting] = useState(false)
 
-    const move_slides_with_arrows = (/** @type {KeyboardEvent} */ e) => {
+    const move_slides_with_keyboard = (/** @type {KeyboardEvent} */ e) => {
         const activeElement = document.activeElement
         if (
             activeElement != null &&
@@ -81,10 +81,10 @@ export const SlideControls = () => {
 
         if (!presenting) return // We do not add listeners if not presenting
 
-        window.addEventListener("keydown", move_slides_with_arrows)
+        window.addEventListener("keydown", move_slides_with_keyboard)
 
         return () => {
-            window.removeEventListener("keydown", move_slides_with_arrows)
+            window.removeEventListener("keydown", move_slides_with_keyboard)
         }
     }, [presenting])
 
