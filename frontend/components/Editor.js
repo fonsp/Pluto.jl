@@ -92,10 +92,10 @@ const statusmap = (/** @type {EditorState} */ state, /** @type {LaunchParameters
     offer_binder: state.backend_launch_phase === BackendLaunchPhase.wait_for_user && launch_params.binder_url != null,
     offer_local: state.backend_launch_phase === BackendLaunchPhase.wait_for_user && launch_params.pluto_server_url != null,
     binder: launch_params.binder_url != null && state.backend_launch_phase != null,
-    code_differs: state.notebook.cell_order.some(
-        (cell_id) => state.cell_inputs_local[cell_id] ?
-            state.notebook.cell_inputs[cell_id].code !== state.cell_inputs_local[cell_id].code :
-            state.notebook.cell_inputs[cell_id].code !== state.notebook.cell_inputs[cell_id].code_text,
+    code_differs: state.notebook.cell_order.some((cell_id) =>
+        state.cell_inputs_local[cell_id]
+            ? state.notebook.cell_inputs[cell_id].code !== state.cell_inputs_local[cell_id].code
+            : state.notebook.cell_inputs[cell_id].code !== state.notebook.cell_inputs[cell_id].code_text
     ),
     recording_waiting_to_start: state.recording_waiting_to_start,
     is_recording: state.is_recording,
@@ -307,6 +307,8 @@ export class Editor extends Component {
 
         this.state = {
             notebook: /** @type {NotebookData} */ initial_notebook_state,
+            /** @type Map<string,EditorView> */
+            cell_views: new Map(),
             cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ ([]),
@@ -355,6 +357,12 @@ export class Editor extends Component {
         this.real_actions = {
             get_notebook: () => this?.state?.notebook || {},
             send: (message_type, ...args) => this.client.send(message_type, ...args),
+            register_cell_view: (cell_id, view) => {
+                this.state.cell_views.set(cell_id, view)
+            },
+            unregister_cell_view: (cell_id) => {
+                this.state.cell_views.delete(cell_id)
+            },
             get_published_object: (objectid) => this.state.notebook.published_objects[objectid],
             //@ts-ignore
             update_notebook: (...args) => this.update_notebook(...args),
@@ -633,6 +641,7 @@ export class Editor extends Component {
                         })
                     )
                     const result = await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.state.notebook.notebook_id })
+                    console.log({ result })
                     const { disabled_cells } = result.message
                     if (Object.entries(disabled_cells).length > 0) {
                         await this.setStatePromise({

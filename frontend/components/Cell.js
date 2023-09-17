@@ -163,6 +163,7 @@ export const Cell = ({
 
     useEffect(() => {
         const focusListener = (e) => {
+            // TODO: dispatch selected here
             if (e.detail.cell_id === cell_id) {
                 if (e.detail.line != null) {
                     const ch = e.detail.ch
@@ -198,12 +199,7 @@ export const Cell = ({
     // We then toggle animation visibility using opacity. This saves a bunch of repaints.
     const activate_animation = useDebouncedTruth(running || queued || waiting_to_run)
 
-    const class_code_differs = useMemo(() => cell_input_local ?
-        cell_input_local.code != code : code_text != code, [
-        cell_input_local?.code,
-        code,
-        code_text,
-    ])
+    const class_code_differs = useMemo(() => (cell_input_local ? cell_input_local.code != code : code_text != code), [cell_input_local?.code, code, code_text])
     const class_code_folded = code_folded && cm_forced_focus == null
 
     // during the initial page load, force_hide_input === true, so that cell outputs render fast, and codemirrors are loaded after
@@ -277,21 +273,21 @@ export const Cell = ({
             key=${cell_key}
             ref=${node_ref}
             class=${cl({
-        queued: queued || (waiting_to_run && is_process_ready),
-        running,
-        activate_animation,
-        errored,
-        selected,
-        code_differs: class_code_differs,
-        code_folded: class_code_folded,
-        skip_as_script,
-        running_disabled,
-        depends_on_disabled_cells,
-        depends_on_skipped_cells,
-        show_input,
-        shrunk: Object.values(logs).length > 0,
-        hooked_up: output?.has_pluto_hook_features ?? false,
-    })}
+                queued: queued || (waiting_to_run && is_process_ready),
+                running,
+                activate_animation,
+                errored,
+                selected,
+                code_differs: class_code_differs,
+                code_folded: class_code_folded,
+                skip_as_script,
+                running_disabled,
+                depends_on_disabled_cells,
+                depends_on_skipped_cells,
+                show_input,
+                shrunk: Object.values(logs).length > 0,
+                hooked_up: output?.has_pluto_hook_features ?? false,
+            })}
             id=${cell_id}
         >
             ${variables.map((name) => html`<span id=${encodeURI(name)} />`)}
@@ -303,14 +299,14 @@ export const Cell = ({
             <pluto-trafficlight></pluto-trafficlight>
             <button
                 onClick=${() => {
-            pluto_actions.add_remote_cell(cell_id, "before")
-        }}
+                    pluto_actions.add_remote_cell(cell_id, "before")
+                }}
                 class="add_cell before"
                 title="Add cell"
             >
                 <span></span>
             </button>
-        ${cell_api_ready ? html`<${CellOutput} errored=${errored} ...${output} cell_id=${cell_id} />` : html``}
+            ${cell_api_ready ? html`<${CellOutput} errored=${errored} ...${output} cell_id=${cell_id} />` : html``}
             <${CellInput}
                 cm_updates=${cm_updates}
                 code_text=${code_text}
@@ -354,8 +350,8 @@ export const Cell = ({
                 depends_on_disabled_cells=${depends_on_disabled_cells}
                 on_run=${on_run}
                 on_interrupt=${() => {
-            pluto_actions.interrupt_remote(cell_id)
-        }}
+                    pluto_actions.interrupt_remote(cell_id)
+                }}
                 set_cell_disabled=${set_cell_disabled}
                 runtime=${runtime}
                 running=${running}
@@ -365,42 +361,42 @@ export const Cell = ({
             />
             <button
                 onClick=${() => {
-            pluto_actions.add_remote_cell(cell_id, "after")
-        }}
+                    pluto_actions.add_remote_cell(cell_id, "after")
+                }}
                 class="add_cell after"
                 title="Add cell"
             >
                 <span></span>
             </button>
             ${skip_as_script
-            ? html`<div
+                ? html`<div
                       class="skip_as_script_marker"
                       title=${`This cell is directly flagged as disabled in file. Click to know more!`}
                       onClick=${(e) => {
-                    open_pluto_popup({
-                        type: "info",
-                        source_element: e.target,
-                        body: html`This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />
+                          open_pluto_popup({
+                              type: "info",
+                              source_element: e.target,
+                              body: html`This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />
                                   This way, it will not run when the notebook runs as a script outside of Pluto.<br />
                                   Use the context menu to enable it again`,
-                    })
-                }}
+                          })
+                      }}
                   ></div>`
-            : depends_on_skipped_cells
+                : depends_on_skipped_cells
                 ? html`<div
                       class="depends_on_skipped_marker"
                       title=${`This cell is indirectly flagged as disabled in file. Click to know more!`}
                       onClick=${(e) => {
-                        open_pluto_popup({
-                            type: "info",
-                            source_element: e.target,
-                            body: html`This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />
+                          open_pluto_popup({
+                              type: "info",
+                              source_element: e.target,
+                              body: html`This cell is currently stored in the notebook file as a Julia <em>comment</em>, instead of <em>code</em>.<br />
                                   This way, it will not run when the notebook runs as a script outside of Pluto.<br />
                                   An upstream cell is <b> indirectly</b> <em>disabling in file</em> this one; enable
                                   <span onClick=${skip_as_script_jump} style="cursor: pointer; text-decoration: underline"> the upstream one</span> to affect
                                   this cell.`,
-                        })
-                    }}
+                          })
+                      }}
                   ></div>`
                 : null}
         </pluto-cell>
@@ -422,7 +418,7 @@ export const IsolatedCell = ({ cell_input: { cell_id, metadata }, cell_result: {
     return html`
         <pluto-cell ref=${node_ref} id=${cell_id} class=${hidden ? "hidden-cell" : "isolated-cell"}>
             ${cell_api_ready ? html`<${CellOutput} ...${output} cell_id=${cell_id} />` : html``}
-            ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${[15]} set_cm_highlighted_line=${() => { }} />` : null}
+            ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${[15]} set_cm_highlighted_line=${() => {}} />` : null}
         </pluto-cell>
     `
 }

@@ -183,7 +183,7 @@ const current_state_for_clients_lock = ReentrantLock()
 """
 Update the local state of all clients connected to this notebook.
 """
-function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, skip_send::Bool=false)
+function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, skip_send::Bool=false, respond_to_request::Bool=true)
     outbox = Set{Tuple{ClientSession,UpdateMessage}}()
     
     lock(current_state_for_clients_lock) do
@@ -203,7 +203,8 @@ function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, sk
                         :patches => patches_as_dicts,
                         :response => is_response ? commentary : nothing
                     )
-                    push!(outbox, (client, UpdateMessage(:notebook_diff, response, 🙋.notebook, nothing, 🙋.initiator)))
+                    initiator = respond_to_request ? 🙋.initiator : Initiator(🙋.initiator.client, :not_a_response)
+                    push!(outbox, (client, UpdateMessage(:notebook_diff, response, 🙋.notebook, nothing, initiator)))
                 end
             end
         end
@@ -481,30 +482,20 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
         🙋.notebook.cells_dict[uuid]
     end
 
-    if will_run_code(🙋.notebook)
-        for cell in cells
-            cell.queued = true
-
-            # # FIXME: this may need to be token protected inside the run update
-            # # NOTE: The client version may not be up to date, is this a problem?
-            # #       we are currently using the latest available version which may
-            # #       have been submitted by someone else.
-            # cell.code = let
-            #     current = OT.Text(cell.code)
-            #     updates_to_apply = @view(cell.cm_updates[cell.last_run_version+1:end])
-            #     for update in updates_to_apply
-            #         current = OT.apply(current, update)
-            #     end
-            #     String(current)
-            # end
-            withtoken(cell.cm_token) do
-                cell.code = String(cell.code_text)
-                cell.last_run_version = length(cell.cm_updates)
-            end
+    for cell in cells
+        # NOTE: The client version may not be up to date, is this a problem?
+        #       we are currently using the latest available version which may
+        #       have been submitted by someone else.
+        withtoken(cell.cm_token) do
+            cell.code = String(cell.code_text)
+            cell.last_run_version = length(cell.cm_updates)
         end
-        send_notebook_changes!(🙋)
+    end
+    send_notebook_changes!(🙋; respond_to_request=false)
 
-        foreach(c -> c.queued = true, cells)
+    if will_run_code(🙋.notebook)
+        foreach(c -> c.queued =true, cells)
+
         # run send_notebook_changes! without actually sending it, to update current_state_for_clients for our client with c.queued = true.
         # later, during update_save_run!, the cell will actually run, eventually setting c.queued = false again, which will be sent to the client through a patch update. 
         # We *need* to send *something* to the client, because of https://github.com/fonsp/Pluto.jl/pull/1892, but we also don't want to send unnecessary updates. We can skip sending this update, because update_save_run! will trigger a send_notebook_changes! very very soon.

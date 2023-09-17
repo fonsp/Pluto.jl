@@ -1,4 +1,6 @@
 import {
+    showTooltip,
+    tooltips,
     EditorState,
     EditorSelection,
     Compartment,
@@ -67,7 +69,7 @@ import {
     linter,
     setDiagnostics,
     //@ts-ignore
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@1234.0.0/dist/index.es.min.js"
+} from "./index.es.js"
 
 export {
     linter,
@@ -136,4 +138,6 @@ export {
     receiveUpdates,
     getSyncedVersion,
     ChangeSet,
+    showTooltip,
+    tooltips,
 }

@@ -1,4 +1,6 @@
 import {
+    showTooltip,
+    tooltips,
     ChangeSet,
     collab,
     Decoration,
@@ -60,6 +62,8 @@ const DEBUG_COLLAB = false
  * }}
  */
 
+export const RunEffect = StateEffect.define()
+
 /** @type {any} */
 const CaretEffect = StateEffect.define({
     /**
@@ -72,44 +76,75 @@ const CaretEffect = StateEffect.define({
         return { selection, clientID }
     },
 })
-const CaretField = StateField.define({
-    create() {
-        return {}
-    },
-    update(value, tr) {
-        const new_value = { ...value }
 
-        /** @type {StateEffect<CarretEffectValue>[]} */
-        const caretEffects = tr.effects.filter((effect) => effect.is(CaretEffect))
-        for (let effect of caretEffects) {
-            new_value[effect.value.clientID] = effect.value.selection
-        }
-
-        return new_value
-    },
-    provide: (f) =>
-        EditorView.decorations.from(f, (/** @type {{[key: string]: EditorSelection}} */ value) => {
-            let decorations = []
-
-            for (let selection of Object.values(value)) {
-                decorations.push(
-                    Decoration.widget({
-                        widget: new ReactWidget(
-                            html`<span style="display: inline-block; width: 2px; height: 1.0em; cursor: text; background-color: green"></span>`
-                        ),
-                    }).range(selection.main.head) // Let's assume the remote cursor is here
-                )
-
-                for (let range of selection.ranges) {
-                    if (range.from != range.to) {
-                        decorations.push(Decoration.mark({ class: "cm-remoteSelection" }).range(range.from, range.to))
+const CursorField = (client_id) =>
+    StateField.define({
+        create: () => [], 
+        update(tooltips, tr) {
+            const newTooltips =
+                tr.effects
+                .filter((effect) => effect.is(CaretEffect) && effect.value.clientID != client_id)
+                .map(effect => ({
+                    pos: effect.value.selection.main.head,
+                    hover: true,
+                    above: true,
+                    strictSide: true,
+                    arrow: false,
+                    create: () => {
+                        let dom = document.createElement("div")
+                        dom.className = "cm-tooltip-remoteClientID"
+                        dom.textContent = effect.value.clientID
+                        return {dom}
                     }
-                }
+                }))
+            return newTooltips
+        },
+        provide: (f) => showTooltip.computeN([f], state => state.field(f))
+    })
+const CaretField = (client_id) =>
+    StateField.define({
+        create() {
+            return {}
+        },
+        update(value, tr) {
+            const new_value = { ...value }
+
+            /** @type {StateEffect<CarretEffectValue>[]} */
+            const caretEffects = tr.effects.filter((effect) => effect.is(CaretEffect))
+            for (const effect of caretEffects) {
+                if (effect.value.clientID == client_id) continue // don't show our own cursor
+                if (effect.value.clientID) new_value[effect.value.clientID] = effect.value.selection
             }
 
-            return Decoration.set(decorations, true)
-        }),
-})
+            return new_value
+        },
+        provide: (f) =>
+            EditorView.decorations.from(f, (/** @type {{[key: string]: EditorSelection}} */ value) => {
+                const decorations = []
+
+                for (const selection of Object.values(value)) {
+                    decorations.push(
+                        Decoration.widget({
+                            widget: new ReactWidget(
+                                html`<span class="cm-remoteCaret"></span>`
+                            ),
+                        }).range(selection.main.head) // Let's assume the remote cursor is here
+                    )
+
+                    for (const range of selection.ranges) {
+                        if (range.from != range.to) {
+                            decorations.push(Decoration.mark({ class: "cm-remoteSelection" }).range(range.from, range.to))
+                        }
+                    }
+                }
+
+
+                let decs =  Decoration.set(decorations, true)
+                console.log({decs})
+                return decs
+                // return showTooltip.computeN([f], state => state.field(f))
+            }),
+    })
 
 /**
  * @typedef EventHandler
@@ -127,7 +162,7 @@ const CaretField = StateField.define({
  * @returns
  */
 export const pluto_collab = (startVersion, { subscribe_to_updates, push_updates }) => {
-    let plugin = ViewPlugin.fromClass(
+    const plugin = ViewPlugin.fromClass(
         class {
             pushing = false
 
@@ -135,8 +170,9 @@ export const pluto_collab = (startVersion, { subscribe_to_updates, push_updates 
              * @param {EditorView} view
              */
             constructor(view) {
+                console.log("BUILD", view)
                 this.view = view
-                this.handler = subscribe_to_updates(this.sync)
+                this.handler = subscribe_to_updates((updates) => this.sync(updates))
             }
 
             update(/** @type ViewUpdate */ update) {
@@ -157,7 +193,7 @@ export const pluto_collab = (startVersion, { subscribe_to_updates, push_updates 
                 // Regardless of whether the push failed or new updates came in
                 // while it was running, try again if there's updates remaining
                 if (sendableUpdates(this.view.state).length) {
-                    setTimeout(this.push, 100)
+                    setTimeout(() => this.push(), 100)
                 }
             }
 
@@ -191,22 +227,24 @@ export const pluto_collab = (startVersion, { subscribe_to_updates, push_updates 
         }
     )
 
-    let authorName = Math.random() + "_ok"
+    const clientID = Math.random() + "_ok"
     const cursorPlugin = EditorView.updateListener.of((update) => {
         if (!update.selectionSet) {
             return
         }
 
-        const effect = CaretEffect.of({ selection: update.view.state.selection, clientID: authorName })
+        const effect = CaretEffect.of({ selection: update.view.state.selection, clientID })
         update.view.dispatch({
             effects: [effect],
         })
     })
 
     return [
-        collab({ clientID: authorName, startVersion, sharedEffects: (tr) => tr.effects.filter((effect) => effect.is(CaretEffect)) }),
+        collab({ clientID, startVersion, sharedEffects: (tr) => tr.effects.filter((effect) => effect.is(CaretEffect) || effect.is(RunEffect)) }),
         plugin,
         cursorPlugin,
-        CaretField,
+        // tooltips(),
+        // CaretField(clientID),
+        // CursorField(clientID),
     ]
 }

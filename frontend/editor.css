@@ -3310,9 +3310,24 @@ pluto-popup code.auto_disabled_variable {
     }
 }
 
+.cm-tooltip-remoteClientID {
+    font-size: 0.5em;
+}
+
 .cm-editor .cm-remoteSelection {
-    background-color: green;
+    background-color: #ff00aa;
     opacity: 0.8;
+}
+
+.cm-remoteCaret {
+    display: inline;
+    position: relative;
+    border-left: 1px solid black;
+    border-right: 1px solid black;
+    border-color: #ff00aa;
+    margin-left: -1px;
+    margin-right: -1px;
+    box-sizing: border-box;
 }
 
 .cm-editor .cm-matchingBracket,
