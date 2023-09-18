@@ -82,11 +82,15 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
         const dep_graph = get_current_state().cell_dependencies
         const starts = get_starts(dep_graph, bonds_to_set.current)
         const running_cells = [...recursive_dependencies(dep_graph, starts)]
-        await setStatePromise(
-            immer((state) => {
-                running_cells.forEach((cell_id) => (state.notebook.cell_results[cell_id][starts.has(cell_id) ? "running" : "queued"] = true))
-            })
-        )
+
+        const update_cells_running = async (running) =>
+            await setStatePromise(
+                immer((state) => {
+                    running_cells.forEach((cell_id) => (state.notebook.cell_results[cell_id][starts.has(cell_id) ? "running" : "queued"] = running))
+                })
+            )
+
+        await update_cells_running(true)
 
         if (bonds_to_set.current.size > 0) {
             const to_send = new Set(bonds_to_set.current)
@@ -129,14 +133,13 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
                         ids_of_cells_that_ran.forEach((id) => {
                             state.cell_results[id] = original.cell_results[id]
                         })
-                        running_cells.forEach((id) => {
-                            state.cell_results[id].queued = false
-                            state.cell_results[id].running = false
-                        })
                     })(get_current_state())
                 )
             } catch (e) {
                 console.error(unpacked, e)
+            } finally {
+                // reset cell running state regardless of request outcome
+                await update_cells_running(false)
             }
         }
     })
