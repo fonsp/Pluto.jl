@@ -136,7 +136,31 @@ export const Cell = ({
     const remount = useMemo(() => () => setKey(key + 1))
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(/** @type{any} */ (null))
+    const [cm_highlighted_range, set_cm_highlighted_range] = useState(null)
     const [cm_highlighted_line, set_cm_highlighted_line] = useState(null)
+    const [cm_diagnostics, set_cm_diagnostics] = useState([])
+
+    useEffect(() => {
+        const diagnosticListener = (e) => {
+            if (e.detail.cell_id === cell_id) {
+                set_cm_diagnostics(e.detail.diagnostics)
+            }
+        }
+        window.addEventListener("cell_diagnostics", diagnosticListener)
+        return () => window.removeEventListener("cell_diagnostics", diagnosticListener)
+    }, [cell_id])
+
+    useEffect(() => {
+        const highlightRangeListener = (e) => {
+            if (e.detail.cell_id == cell_id && e.detail.from != null && e.detail.to != null) {
+                set_cm_highlighted_range({ from: e.detail.from, to: e.detail.to })
+            } else {
+                set_cm_highlighted_range(null)
+            }
+        }
+        window.addEventListener("cell_highlight_range", highlightRangeListener)
+        return () => window.removeEventListener("cell_highlight_range", highlightRangeListener)
+    }, [cell_id])
 
     useEffect(() => {
         const focusListener = (e) => {
@@ -278,7 +302,7 @@ export const Cell = ({
                     pluto_actions.add_remote_cell(cell_id, "before")
                 }}
                 class="add_cell before"
-                title="Add cell"
+                title="Add cell (Ctrl + Enter)"
             >
                 <span></span>
             </button>
@@ -309,10 +333,13 @@ export const Cell = ({
                 set_show_logs=${set_show_logs}
                 set_cell_disabled=${set_cell_disabled}
                 cm_highlighted_line=${cm_highlighted_line}
-                set_cm_highlighted_line=${set_cm_highlighted_line}
+                cm_highlighted_range=${cm_highlighted_range}
+                cm_diagnostics=${cm_diagnostics}
                 onerror=${remount}
             />
-            ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${line_heights} set_cm_highlighted_line=${set_cm_highlighted_line} />` : null}
+            ${show_logs && cell_api_ready
+                ? html`<${Logs} logs=${Object.values(logs)} line_heights=${line_heights} set_cm_highlighted_line=${set_cm_highlighted_line} />`
+                : null}
             <${RunArea}
                 cell_id=${cell_id}
                 running_disabled=${running_disabled}
@@ -333,7 +360,7 @@ export const Cell = ({
                     pluto_actions.add_remote_cell(cell_id, "after")
                 }}
                 class="add_cell after"
-                title="Add cell"
+                title="Add cell (Ctrl + Enter)"
             >
                 <span></span>
             </button>
@@ -386,8 +413,10 @@ export const IsolatedCell = ({ cell_input: { cell_id, metadata }, cell_result: {
 
     return html`
         <pluto-cell ref=${node_ref} id=${cell_id} class=${hidden ? "hidden-cell" : "isolated-cell"}>
-            ${cell_api_ready ? html`<${CellOutput} ...${output} sanitize_html=${sanitize_html} cell_id=${cell_id} />` : html``}
-            ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${[15]} set_cm_highlighted_line=${() => {}} />` : null}
+            <<<<<<< HEAD ${cell_api_ready ? html`<${CellOutput} ...${output} sanitize_html=${sanitize_html} cell_id=${cell_id} />` : html``}
+            ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${[15]} set_cm_highlighted_line=${() => {}} />` : null} =======
+            ${cell_api_ready ? html`<${CellOutput} ...${output} cell_id=${cell_id} />` : html``}
+            ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${[15]} set_cm_highlighted_line=${() => {}} />` : null} >>>>>>> main
         </pluto-cell>
     `
 }

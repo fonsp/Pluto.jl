@@ -5,7 +5,7 @@ using Pluto.Configuration: CompilerOptions
 import Pluto: update_save_run!, update_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell, project_relative_path, SessionActions, load_notebook
 import Pluto.PkgUtils
 import Pluto.PkgCompat
-import Distributed
+import Malt
 
 
 @testset "Built-in Pkg" begin
@@ -13,8 +13,9 @@ import Distributed
     # We have our own registry for these test! Take a look at https://github.com/JuliaPluto/PlutoPkgTestRegistry#readme for more info about the test packages and their dependencies.
     Pkg.Registry.add(pluto_test_registry_spec)
 
-    @testset "Basic" begin
+    @testset "Basic $(use_distributed_stdlib ? "Distributed" : "Malt")" for use_distributed_stdlib in (false, true)
         🍭 = ServerSession()
+        🍭.options.evaluation.workspace_use_distributed_stdlib = use_distributed_stdlib
 
         # See https://github.com/JuliaPluto/PlutoPkgTestRegistry
 
@@ -395,8 +396,7 @@ import Distributed
     end
 
     @testset "DrWatson cell" begin
-        🍭 = ServerSession()            
-        🍭.options.evaluation.workspace_use_distributed = false
+        🍭 = ServerSession()
 
         notebook = Notebook([
             Cell("using Plots"),
@@ -446,50 +446,55 @@ import Distributed
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
-    @testset "File format -- Forwards compat" begin
-        # Using Distributed, we will create a new Julia process in which we install Pluto 0.14.7 (before PlutoPkg). We run the new notebook file on the old Pluto.
-        p = Distributed.addprocs(1) |> first
+    @static if VERSION < v"1.10.0-0" # see https://github.com/fonsp/Pluto.jl/pull/2626#issuecomment-1671244510
+        @testset "File format -- Forwards compat" begin
+            # Using Distributed, we will create a new Julia process in which we install Pluto 0.14.7 (before PlutoPkg). We run the new notebook file on the old Pluto.
+            test_worker = Malt.Worker()
 
-        @test post_pkg_notebook isa String
+            @test post_pkg_notebook isa String
 
-        Distributed.remotecall_eval(Main, p, quote
-            path = tempname()
-            write(path, $(post_pkg_notebook))
-            import Pkg
-            # optimization:
-            if isdefined(Pkg, :UPDATED_REGISTRY_THIS_SESSION)
-                Pkg.UPDATED_REGISTRY_THIS_SESSION[] = true
-            end
+            Malt.remote_eval_wait(Main, test_worker, quote
+                path = tempname()
+                write(path, $(post_pkg_notebook))
+                import Pkg
+                # optimization:
+                if isdefined(Pkg, :UPDATED_REGISTRY_THIS_SESSION)
+                    Pkg.UPDATED_REGISTRY_THIS_SESSION[] = true
+                end
 
-            Pkg.activate(mktempdir())
-            Pkg.add(Pkg.PackageSpec(;name="Pluto",version=v"0.14.7"))
-            import Pluto
-            @assert Pluto.PLUTO_VERSION == v"0.14.7"
+                Pkg.activate(;temp=true)
+                Pkg.add(Pkg.PackageSpec(;name="Pluto",version=v"0.14.7"))
+                # Distributed is required for old Pluto to work!
+                Pkg.add("Distributed") 
 
-            s = Pluto.ServerSession()
-            s.options.evaluation.workspace_use_distributed = false
+                import Pluto
+                @info Pluto.PLUTO_VERSION
+                @assert Pluto.PLUTO_VERSION == v"0.14.7"
+            end)
 
-            nb = Pluto.SessionActions.open(s, path; run_async=false)
+            @test Malt.remote_eval_fetch(Main, test_worker, quote
+                s = Pluto.ServerSession()
+                nb = Pluto.SessionActions.open(s, path; run_async=false)
+                nb.cells[2].errored == false
+            end)
 
-            nothing
-        end)
+            # Cells that use Example will error because the package is not installed.
 
-        # Cells that use Example will error because the package is not installed.
+            # @test Malt.remote_eval_fetch(Main, test_worker, quote
+            #     nb.cells[1].errored == false
+            # end)
+            @test Malt.remote_eval_fetch(Main, test_worker, quote
+                nb.cells[2].errored == false
+            end)
+            # @test Malt.remote_eval_fetch(Main, test_worker, quote
+            #     nb.cells[3].errored == false
+            # end)
+            # @test Malt.remote_eval_fetch(Main, test_worker, quote
+            #     nb.cells[3].output.body == "25"
+            # end)
 
-        # @test Distributed.remotecall_eval(Main, p, quote
-        #     nb.cells[1].errored == false
-        # end)
-        @test Distributed.remotecall_eval(Main, p, quote
-            nb.cells[2].errored == false
-        end)
-        # @test Distributed.remotecall_eval(Main, p, quote
-        #     nb.cells[3].errored == false
-        # end)
-        # @test Distributed.remotecall_eval(Main, p, quote
-        #     nb.cells[3].output.body == "25"
-        # end)
-
-        Distributed.rmprocs([p])
+            Malt.stop(test_worker)
+        end
     end
 
     @testset "PkgUtils -- reset" begin
@@ -646,7 +651,29 @@ import Distributed
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
-    
+
+    @testset "PlutoRunner Syntax Error" begin
+        🍭 = ServerSession()
+
+        notebook = Notebook([
+            Cell("1 +"),
+            Cell("PlutoRunner.throw_syntax_error"),
+            Cell("PlutoRunner.throw_syntax_error(1)"),
+        ])
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test notebook.cells[1].errored
+        @test noerror(notebook.cells[2])
+        @test notebook.cells[3].errored
+
+        @test Pluto.is_just_text(notebook.topology, notebook.cells[1])
+        @test !Pluto.is_just_text(notebook.topology, notebook.cells[2]) # Not a syntax error form
+        @test Pluto.is_just_text(notebook.topology, notebook.cells[3])
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
+
     @testset "Precompilation" begin
         compilation_dir = joinpath(DEPOT_PATH[1], "compiled", "v$(VERSION.major).$(VERSION.minor)")
         @assert isdir(compilation_dir)
@@ -743,5 +770,4 @@ end
 # repo = LibGit2.clone("https://github.com/JuliaRegistries/General.git", reg_path)
 
 # LibGit2.checkout!(repo, "aef26d37e1d0e8f8387c011ccb7c4a38398a18f6")
-
 

@@ -146,7 +146,7 @@ function get_assignees(ex::Expr)::FunctionName
             # e.g. (x, y) in the ex (x, y) = (1, 23)
             args = ex.args
         end
-        union!(Symbol[], Iterators.map(get_assignees, args)...)
+        mapfoldl(get_assignees, union!, args; init=Symbol[])
         # filter(s->s isa Symbol, ex.args)
     elseif ex.head == :(::)
         # TODO: type is referenced
@@ -156,7 +156,7 @@ function get_assignees(ex::Expr)::FunctionName
     elseif ex.head == :...
         # Handles splat assignments. e.g. _, y... = 1:5
         args = ex.args
-        union!(Symbol[], Iterators.map(get_assignees, args)...)
+        mapfoldl(get_assignees, union!, args; init=Symbol[])
     else
         @warn "unknown use of `=`. Assignee is unrecognised." ex
         Symbol[]
@@ -373,12 +373,13 @@ function explore_assignment!(ex::Expr, scopestate::ScopeState)::SymbolsState
     global_assignees = get_global_assignees(assignees, scopestate)
 
     # If we are _not_ assigning a global variable, then this symbol hides any global definition with that name
-    push!(scopestate.hiddenglobals, setdiff(assignees, global_assignees)...)
+    union!(scopestate.hiddenglobals, setdiff(assignees, global_assignees))
     assigneesymstate = explore!(ex.args[1], scopestate)
 
-    push!(scopestate.hiddenglobals, global_assignees...)
-    push!(symstate.assignments, global_assignees...)
-    push!(symstate.references, setdiff(assigneesymstate.references, global_assignees)...)
+    union!(scopestate.hiddenglobals, global_assignees)
+    union!(symstate.assignments, global_assignees)
+    union!(symstate.references, setdiff(assigneesymstate.references, global_assignees))
+    union!(symstate.funccalls, filter!(call -> length(call) != 1 || only(call) ∉ global_assignees, assigneesymstate.funccalls))
     filter!(!all_underscores, symstate.references)  # Never record _ as a reference
 
     return symstate
@@ -1347,6 +1348,7 @@ function can_be_function_wrapped(x::Expr)
        x.head === :using ||
        x.head === :import ||
        x.head === :module ||
+       x.head === :incomplete ||
        # Only bail on named functions, but anonymous functions (args[1].head == :tuple) are fine.
        # TODO Named functions INSIDE other functions should be fine too
        (x.head === :function && !Meta.isexpr(x.args[1], :tuple)) ||

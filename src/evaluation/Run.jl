@@ -528,6 +528,7 @@ function notebook_differences(from::Notebook, to::Notebook)
 			end
 		end,
 		
+		folded_changed = any(from_cells[id].code_folded != to_cells[id].code_folded for id in keys(from_cells) if haskey(to_cells, id)),
 		order_changed = from.cell_order != to.cell_order,
 		nbpkg_changed = !is_nbpkg_equal(from.nbpkg_ctx, to.nbpkg_ctx),
 	)
@@ -559,16 +560,17 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 	# @show added removed changed
 	
 	cells_changed = !(isempty(added) && isempty(removed) && isempty(changed))
+	folded_changed = d.folded_changed
 	order_changed = d.order_changed
 	nbpkg_changed = d.nbpkg_changed
 		
-	something_changed = cells_changed || order_changed || (include_nbpg && nbpkg_changed)
-	
+	something_changed = cells_changed || folded_changed || order_changed || (include_nbpg && nbpkg_changed)
+
 	if something_changed
 		@info "Reloading notebook from file and applying changes!"
 		notebook.last_hot_reload_time = time()
 	end
-
+	
 	for c in added
 		notebook.cells_dict[c] = just_loaded.cells_dict[c]
 	end
@@ -583,10 +585,10 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 	for c in keys(notebook.cells_dict) ∩ keys(just_loaded.cells_dict)
 		notebook.cells_dict[c].code_folded = just_loaded.cells_dict[c].code_folded
 	end
-	
+
 	notebook.cell_order = just_loaded.cell_order
 	notebook.metadata = just_loaded.metadata
-	
+
 	if include_nbpg && nbpkg_changed
 		@info "nbpkgs not equal" (notebook.nbpkg_ctx isa Nothing) (just_loaded.nbpkg_ctx isa Nothing)
 		
@@ -603,11 +605,11 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 		end
 		notebook.nbpkg_restart_required_msg = "Yes, because the file was changed externally and the embedded Pkg changed."
 	end
-	
+
 	if something_changed
-		update_save_run!(session, notebook, Cell[notebook.cells_dict[c] for c in union(added, changed)]; kwargs...) # this will also update nbpkg
+		update_save_run!(session, notebook, Cell[notebook.cells_dict[c] for c in union(added, changed)]; kwargs...) # this will also update nbpkg if needed
 	end
-	
+
 	return true
 end
 

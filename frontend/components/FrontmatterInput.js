@@ -1,10 +1,12 @@
 import { html, Component, useRef, useLayoutEffect, useState, useEffect } from "../imports/Preact.js"
 import { has_ctrl_or_cmd_pressed } from "../common/KeyboardShortcuts.js"
+import _ from "../imports/lodash.js"
 
 import "https://cdn.jsdelivr.net/gh/fonsp/rebel-tag-input@1.0.6/lib/rebel-tag-input.mjs"
 
 //@ts-ignore
 import dialogPolyfill from "https://cdn.jsdelivr.net/npm/dialog-polyfill@0.5.6/dist/dialog-polyfill.esm.min.js"
+import immer from "../imports/immer.js"
 
 /**
  * @param {{
@@ -23,9 +25,12 @@ export const FrontMatterInput = ({ remote_frontmatter, set_remote_frontmatter })
     //     console.log("New frontmatter:", frontmatter)
     // }, [frontmatter])
 
-    const fm_setter = (key) => (value) => {
-        set_frontmatter((fm) => ({ ...fm, [key]: value }))
-    }
+    const fm_setter = (key) => (value) =>
+        set_frontmatter(
+            immer((fm) => {
+                _.set(fm, key, value)
+            })
+        )
 
     const dialog_ref = useRef(/** @type {HTMLDialogElement?} */ (null))
     useLayoutEffect(() => {
@@ -42,8 +47,24 @@ export const FrontMatterInput = ({ remote_frontmatter, set_remote_frontmatter })
         close()
     }
     const submit = () => {
-        set_remote_frontmatter(frontmatter).then(() => alert("Frontmatter synchronized ✔\n\nThese parameters will be used in future exports."))
+        set_remote_frontmatter(clean_data(frontmatter) ?? {}).then(() =>
+            alert("Frontmatter synchronized ✔\n\nThese parameters will be used in future exports.")
+        )
         close()
+    }
+
+    const clean_data = (obj) => {
+        let a = _.isPlainObject(obj)
+            ? Object.fromEntries(
+                  Object.entries(obj)
+                      .map(([key, val]) => [key, clean_data(val)])
+                      .filter(([key, val]) => val != null)
+              )
+            : _.isArray(obj)
+            ? obj.map(clean_data).filter((x) => x != null)
+            : obj
+
+        return _.isEmpty(a) ? null : a
     }
 
     useLayoutEffect(() => {
@@ -68,7 +89,54 @@ export const FrontMatterInput = ({ remote_frontmatter, set_remote_frontmatter })
         description: null,
         date: null,
         tags: [],
+        author: [{}],
         ...frontmatter,
+    }
+
+    const show_entry = ([key, value]) => !((_.isArray(value) && field_type(key) !== "tags") || _.isPlainObject(value))
+
+    const entries_input = (data, base_path) => {
+        return html`
+            ${Object.entries(data)
+                .filter(show_entry)
+                .map(([key, value]) => {
+                    let path = `${base_path}${key}`
+                    let id = `fm-${path}`
+                    return html`
+                        <label for=${id}>${key}</label>
+                        <${Input} type=${field_type(key)} id=${id} value=${value} on_value=${fm_setter(path)} />
+                        <button
+                            class="deletefield"
+                            title="Delete field"
+                            onClick=${() => {
+                                //  TODO
+                                set_frontmatter(
+                                    immer((fm) => {
+                                        _.unset(fm, path)
+                                    })
+                                )
+                            }}
+                        >
+                            ✕
+                        </button>
+                    `
+                })}
+            <button
+                class="addentry"
+                onClick=${() => {
+                    const fieldname = prompt("Field name:")
+                    if (fieldname) {
+                        set_frontmatter(
+                            immer((fm) => {
+                                _.set(fm, `${base_path}${fieldname}`, null)
+                            })
+                        )
+                    }
+                }}
+            >
+                Add entry +
+            </button>
+        `
     }
 
     return html`<dialog ref=${dialog_ref} class="pluto-frontmatter">
@@ -78,33 +146,34 @@ export const FrontMatterInput = ({ remote_frontmatter, set_remote_frontmatter })
             social media.
         </p>
         <div class="fm-table">
-            ${Object.entries(frontmatter_with_defaults).map(([key, value]) => {
-                let id = `fm-${key}`
-                return html`
-                    <label for=${id}>${key}</label>
-                    <${Input} type=${field_type(key)} id=${id} value=${value} on_value=${fm_setter(key)} />
-                    <button
-                        class="deletefield"
-                        title="Delete field"
-                        onClick=${() => {
-                            set_frontmatter((fm) => Object.fromEntries(Object.entries(fm).filter(([k]) => k !== key)))
-                        }}
-                    >
-                        ✕
-                    </button>
-                `
-            })}
-            <button
-                class="addentry"
-                onClick=${() => {
-                    const fieldname = prompt("Field name:")
-                    if (fieldname) {
-                        set_frontmatter((fm) => ({ ...fm, [fieldname]: null }))
-                    }
-                }}
-            >
-                Add entry +
-            </button>
+            ${entries_input(frontmatter_with_defaults, ``)}
+            ${!_.isArray(frontmatter_with_defaults.author)
+                ? null
+                : frontmatter_with_defaults.author.map((author, i) => {
+                      let author_with_defaults = {
+                          name: null,
+                          url: null,
+                          ...author,
+                      }
+
+                      return html`
+                          <fieldset class="fm-table">
+                              <legend>Author ${i + 1}</legend>
+
+                              ${entries_input(author_with_defaults, `author[${i}].`)}
+                          </fieldset>
+                      `
+                  })}
+            ${!_.isArray(frontmatter_with_defaults.author)
+                ? null
+                : html`<button
+                      class="addentry"
+                      onClick=${() => {
+                          set_frontmatter((fm) => ({ ...fm, author: [...(fm?.author ?? []), {}] }))
+                      }}
+                  >
+                      Add author +
+                  </button>`}
         </div>
 
         <div class="final"><button onClick=${cancel}>Cancel</button><button onClick=${submit}>Save</button></div>
