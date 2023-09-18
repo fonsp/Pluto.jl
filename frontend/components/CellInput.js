@@ -644,14 +644,16 @@ export const CellInput = ({
                             if (!caused_by_window_blur) {
                                 // then it's caused by focusing something other than this cell in the editor.
                                 // in this case, we want to collapse the selection into a single point, for aesthetic reasons.
-                                view.dispatch({
-                                    selection: {
-                                        anchor: view.state.selection.main.head,
-                                    },
-                                    scrollIntoView: false,
-                                })
-                                // and blur the DOM again (because the previous transaction might have re-focused it)
-                                view.contentDOM.blur()
+                                setTimeout(() => {
+                                    view.dispatch({
+                                        selection: {
+                                            anchor: view.state.selection.main.head,
+                                        },
+                                        scrollIntoView: false,
+                                    })
+                                    // and blur the DOM again (because the previous transaction might have re-focused it)
+                                    view.contentDOM.blur()
+                                }, 0)
 
                                 set_cm_forced_focus(null)
                             }
