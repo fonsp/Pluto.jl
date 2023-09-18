@@ -236,6 +236,7 @@ const first_true_key = (obj) => {
  *  notebook_id: string,
  *  path: string,
  *  shortpath: string,
+ *  risky_file_source: string?,
  *  in_temp_dir: boolean,
  *  process_status: string,
  *  last_save_time: number,
@@ -1391,16 +1392,25 @@ patch: ${JSON.stringify(
             `
         }
 
-        const restart_button = (text) => html`<a
+        const restart_button = (text, maybe_confirm = false) => html`<a
             href="#"
             onClick=${() => {
-                this.client.send(
-                    "restart_process",
-                    {},
-                    {
-                        notebook_id: notebook.notebook_id,
-                    }
-                )
+                let source = notebook.risky_file_source
+                if (
+                    !maybe_confirm ||
+                    source == null ||
+                    confirm(
+                        `This will run code downloaded from a URL:\n\n${source}\n\n⚠️ Are you sure that you trust this file? A malicious notebook can steal passwords and data.`
+                    )
+                ) {
+                    this.client.send(
+                        "restart_process",
+                        {},
+                        {
+                            notebook_id: notebook.notebook_id,
+                        }
+                    )
+                }
             }}
             >${text}</a
         >`
@@ -1484,7 +1494,7 @@ patch: ${JSON.stringify(
                                     : statusval === "process_dead"
                                     ? html`${"Process exited — "}${restart_button("restart")}`
                                     : statusval === "process_waiting_for_permission"
-                                    ? html`${restart_button("Run notebook code")}`
+                                    ? html`${restart_button("Run notebook code", true)}`
                                     : null
                             }</div>
                         </nav>

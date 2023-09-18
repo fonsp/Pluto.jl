@@ -13,7 +13,12 @@ function http_router_for(session::ServerSession)
     HTTP.register!(router, "GET", "/ping", r -> HTTP.Response(200, "OK!"))
     HTTP.register!(router, "GET", "/possible_binder_token_please", r -> session.binder_token === nothing ? HTTP.Response(200,"") : HTTP.Response(200, session.binder_token))
     
-    function try_launch_notebook_response(action::Function, path_or_url::AbstractString; title="", advice="", home_url="./", as_redirect=true, action_kwargs...)
+    function try_launch_notebook_response(
+        action::Function, path_or_url::AbstractString; 
+        as_redirect=true,
+        title="", advice="", home_url="./", 
+        action_kwargs...
+    )
         try
             nb = action(session, path_or_url; action_kwargs...)
             notebook_response(nb; home_url, as_redirect)
@@ -47,6 +52,7 @@ function http_router_for(session::ServerSession)
                         execution_allowed=false,
                         as_redirect=(request.method == "GET"), 
                         as_sample, 
+                        risky_file_source=nothing,
                         title="Failed to load notebook", 
                         advice="The file <code>$(htmlesc(path))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!",
                     )
@@ -60,6 +66,7 @@ function http_router_for(session::ServerSession)
                     execution_allowed=false,
                     as_redirect=(request.method == "GET"), 
                     as_sample, 
+                    risky_file_source=url,
                     title="Failed to load notebook", 
                     advice="The notebook from <code>$(htmlesc(url))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!"
                 )

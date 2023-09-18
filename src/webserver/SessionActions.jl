@@ -46,6 +46,7 @@ function open(session::ServerSession, path::AbstractString;
     run_async::Bool=true, 
     compiler_options=nothing, 
     as_sample::Bool=false, 
+    risky_file_source::Union{Nothing,String}=nothing,
     clear_frontmatter::Bool=false,
     notebook_id::UUID=uuid1()
 )
@@ -67,6 +68,7 @@ function open(session::ServerSession, path::AbstractString;
     notebook = load_notebook(tamepath(path); disable_writing_notebook_files=session.options.server.disable_writing_notebook_files)
     notebook.notebook_id = notebook_id
     notebook.process_status = execution_allowed ? ProcessStatus.starting : ProcessStatus.waiting_for_permission
+    notebook.risky_file_source = risky_file_source
 
     # overwrites the notebook environment if specified
     if compiler_options !== nothing

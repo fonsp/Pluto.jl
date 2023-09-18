@@ -102,6 +102,7 @@ function notebook_to_js(notebook::Notebook)
         "notebook_id" => notebook.notebook_id,
         "path" => notebook.path,
         "shortpath" => basename(notebook.path),
+        "risky_file_source" => notebook.risky_file_source,
         "in_temp_dir" => startswith(notebook.path, new_notebooks_directory()),
         "process_status" => notebook.process_status,
         "last_save_time" => notebook.last_save_time,
