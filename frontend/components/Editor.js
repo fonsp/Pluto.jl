@@ -1419,9 +1419,7 @@ patch: ${JSON.stringify(
                 if (
                     !maybe_confirm ||
                     source == null ||
-                    confirm(
-                        `This will run code downloaded from a URL:\n\n${source}\n\n⚠️ Are you sure that you trust this file? A malicious notebook can steal passwords and data.`
-                    )
+                    confirm(`⚠️ Danger! Are you sure that you trust this file? \n\n${source}\n\nA malicious notebook can steal passwords and data.`)
                 ) {
                     await this.actions.update_notebook((notebook) => {
                         // delete the old cell
