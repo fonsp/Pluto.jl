@@ -3445,6 +3445,10 @@ pluto-cell.hooked_up pluto-output {
     margin-top: 0.5em;
 }
 
+.pluto-frontmatter fieldset {
+    grid-column: 1/4;
+}
+
 .pluto-frontmatter .final {
     display: flex;
     margin-top: 2rem;
