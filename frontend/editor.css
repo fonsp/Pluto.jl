@@ -502,7 +502,7 @@ aside#export div#container {
     flex-direction: row;
     display: flex;
     max-width: 1000px;
-    padding-right: 20px;
+    padding-right: 10em;
     margin: 0 auto;
 }
 header aside#export div#container {
@@ -553,10 +553,14 @@ a.export_card section {
     padding: 3px;
 }
 aside#export .export_small_btns {
-    margin-left: auto;
-    height: 60px;
     display: flex;
     flex-direction: row;
+    padding: 0.9em;
+    border-radius: 0.9em;
+    position: absolute;
+    right: 0.8em;
+    top: 0em;
+    background: var(--export-bg-color);
 }
 body.static_preview button.toggle_export {
     display: none;
