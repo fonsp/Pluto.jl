@@ -68,7 +68,9 @@ function open(session::ServerSession, path::AbstractString;
     notebook = load_notebook(tamepath(path); disable_writing_notebook_files=session.options.server.disable_writing_notebook_files)
     notebook.notebook_id = notebook_id
     notebook.process_status = execution_allowed ? ProcessStatus.starting : ProcessStatus.waiting_for_permission
-    notebook.risky_file_source = risky_file_source
+    if !isnothing(risky_file_source)
+        notebook.metadata["risky_file_source"] = risky_file_source
+    end
 
     # overwrites the notebook environment if specified
     if compiler_options !== nothing

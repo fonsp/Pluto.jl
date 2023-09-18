@@ -35,6 +35,7 @@ import { HijackExternalLinksToOpenInNewTab } from "./HackySideStuff/HijackExtern
 import { FrontMatterInput } from "./FrontmatterInput.js"
 import { EditorLaunchBackendButton } from "./Editor/LaunchBackendButton.js"
 import { get_environment } from "../common/Environment.js"
+import { ProcessStatus } from "../common/ProcessStatus.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -62,14 +63,6 @@ const uuidv4 = () =>
 
 const Main = ({ children }) => {
     return html`<main>${children}</main>`
-}
-
-export const ProcessStatus = {
-    ready: "ready",
-    starting: "starting",
-    no_process: "no_process",
-    waiting_to_restart: "waiting_to_restart",
-    waiting_for_permission: "waiting_for_permission",
 }
 
 /**
@@ -236,7 +229,6 @@ const first_true_key = (obj) => {
  *  notebook_id: string,
  *  path: string,
  *  shortpath: string,
- *  risky_file_source: string?,
  *  in_temp_dir: boolean,
  *  process_status: string,
  *  last_save_time: number,
@@ -1422,8 +1414,8 @@ patch: ${JSON.stringify(
 
         const restart_button = (text, maybe_confirm = false) => html`<a
             href="#"
-            onClick=${() => {
-                let source = notebook.risky_file_source
+            onClick=${async () => {
+                let source = notebook.metadata?.risky_file_source
                 if (
                     !maybe_confirm ||
                     source == null ||
@@ -1431,7 +1423,11 @@ patch: ${JSON.stringify(
                         `This will run code downloaded from a URL:\n\n${source}\n\n⚠️ Are you sure that you trust this file? A malicious notebook can steal passwords and data.`
                     )
                 ) {
-                    this.client.send(
+                    await this.actions.update_notebook((notebook) => {
+                        // delete the old cell
+                        delete notebook.metadata.risky_file_source
+                    })
+                    await this.client.send(
                         "restart_process",
                         {},
                         {
