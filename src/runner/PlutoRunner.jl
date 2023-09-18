@@ -2645,6 +2645,9 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
             _send_stdio_output!(output, loglevel)
         catch err
             @error "Failed to redirect stdout/stderr to logs"  exception=(err,catch_backtrace())
+            if err isa InterruptException
+                rethrow(err)
+            end
         end
     end
 

@@ -352,7 +352,7 @@ function unmake_workspace(session_notebook::SN; async::Bool=false, verbose::Bool
     nothing
 end
 
-function workspace_exception_result(ex::Base.IOError, workspace::Workspace)
+function workspace_exception_result(ex::Union{Base.IOError, Malt.TerminatedWorkerException, Distributed.ProcessExitedException}, workspace::Workspace)
     (
         output_formatted=PlutoRunner.format_output(CapturedException(ex, [])),
         errored=true,
@@ -364,9 +364,9 @@ function workspace_exception_result(ex::Base.IOError, workspace::Workspace)
     )
 end
 
-function workspace_exception_result(exs::CompositeException, workspace::Workspace)
-    ex = first(exs.exceptions)
+workspace_exception_result(exs::CompositeException, workspace::Workspace) = workspace_exception_result(first(exs.exceptions), workspace)
 
+function workspace_exception_result(ex::Exception, workspace::Workspace)
     if ex isa InterruptException || (ex isa Malt.RemoteException && occursin("InterruptException", ex.message))
         @info "Found an interrupt!" ex
         (
@@ -378,23 +378,13 @@ function workspace_exception_result(exs::CompositeException, workspace::Workspac
             published_objects=Dict{String,Any}(),
             has_pluto_hook_features=false,
         )
-    elseif ex isa Malt.TerminatedWorkerException
-        (
-            output_formatted=PlutoRunner.format_output(CapturedException(exs, [])),
-            errored=true,
-            interrupted=true,
-            process_exited=true && !workspace.discarded, # don't report a process exit if the workspace was discarded on purpose
-            runtime=nothing,
-            published_objects=Dict{String,Any}(),
-            has_pluto_hook_features=false,
-        )
     else
         @error "Unkown error during eval_format_fetch_in_workspace" ex
         (
-            output_formatted=PlutoRunner.format_output(CapturedException(exs, [])),
+            output_formatted=PlutoRunner.format_output(CapturedException(ex, [])),
             errored=true,
             interrupted=true,
-            process_exited=false,
+            process_exited=!Malt.isrunning(workspace.worker) && !workspace.discarded, # don't report a process exit if the workspace was discarded on purpose
             runtime=nothing,
             published_objects=Dict{String,Any}(),
             has_pluto_hook_features=false,
