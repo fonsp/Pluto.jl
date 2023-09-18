@@ -5,6 +5,7 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
 
 @testset "CellDepencencyVisualization" begin
     🍭 = ServerSession()
+    🍭.options.evaluation.workspace_use_distributed = false
 
     notebook = Notebook([
                 Cell("x = 1"), # prerequisite of test cell

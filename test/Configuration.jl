@@ -59,7 +59,7 @@ end
 
 @testset "Authentication" begin
     port = 1238
-    options = Pluto.Configuration.from_flat_kwargs(; port, launch_browser=false)
+    options = Pluto.Configuration.from_flat_kwargs(; port, launch_browser=false, workspace_use_distributed=false)
     🍭 = Pluto.ServerSession(; options)
     host = 🍭.options.server.host
     secret = 🍭.secret
