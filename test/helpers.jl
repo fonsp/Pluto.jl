@@ -16,8 +16,9 @@ import Pluto.ExpressionExplorer: SymbolsState, compute_symbolreferences, Functio
 using Sockets
 using Test
 using HTTP
-import Distributed
 import Pkg
+import Malt
+import Malt.Distributed
 
 function Base.show(io::IO, s::SymbolsState)
     print(io, "SymbolsState([")
@@ -243,8 +244,8 @@ has_embedded_pkgfiles(nb::Pluto.Notebook) =
 Log an error message if there are any running processes created by Distrubted, that were not shut down.
 """
 function verify_no_running_processes()
-    if length(Distributed.procs()) != 1
-        @error "Not all notebook processes were closed during tests!" Distributed.procs()
+    if length(Distributed.procs()) != 1 || !isempty(Malt.__iNtErNaL_get_running_procs())
+        @error "Not all notebook processes were closed during tests!" Distributed.procs() Malt.__iNtErNaL_get_running_procs()
     end
 end
 
