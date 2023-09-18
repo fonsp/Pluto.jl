@@ -44,12 +44,13 @@ function http_router_for(session::ServerSession)
             uri = HTTP.URI(request.target)
             query = HTTP.queryparams(uri)
             as_sample = haskey(query, "as_sample")
+            execution_allowed = haskey(query, "execution_allowed")
             if haskey(query, "path")
                 path = tamepath(maybe_convert_path_to_wsl(query["path"]))
                 if isfile(path)
                     return try_launch_notebook_response(
                         SessionActions.open, path; 
-                        execution_allowed=false,
+                        execution_allowed,
                         as_redirect=(request.method == "GET"), 
                         as_sample, 
                         risky_file_source=nothing,
@@ -63,7 +64,7 @@ function http_router_for(session::ServerSession)
                 url = query["url"]
                 return try_launch_notebook_response(
                     SessionActions.open_url, url;
-                    execution_allowed=false,
+                    execution_allowed,
                     as_redirect=(request.method == "GET"), 
                     as_sample, 
                     risky_file_source=url,

@@ -152,7 +152,7 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
             set_notebook_state(nb.path, {
                 transitioning: true,
             })
-            fetch(link_open_path(nb.path), {
+            fetch(link_open_path(nb.path) + "&execution_allowed=true", {
                 method: "GET",
             })
                 .then((r) => {
