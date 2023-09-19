@@ -1059,7 +1059,7 @@ span.pluto-icon::after {
     display: inline-block;
     padding-right: 1.5em;
     height: 1.3em;
-    margin-bottom: -.3em;
+    margin-bottom: -0.3em;
     transform: translateY(-0.1em);
     background-size: 1.3em;
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sync-circle-outline.svg");
@@ -1298,8 +1298,8 @@ pluto-input .cm-editor .cm-line.cm-highlighted-line {
 pluto-cell:not(.show_input) > pluto-input {
     display: none;
 }
-pluto-cell.code_folded.show_input > pluto-input {
-    opacity: 0.7;
+pluto-cell.code_folded.show_input > pluto-input:not(:focus-within) {
+    opacity: 0.4;
 }
 
 pluto-cell.code_differs > pluto-input > .cm-editor {
