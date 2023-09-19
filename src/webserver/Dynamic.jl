@@ -448,10 +448,14 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
         putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:run_feedback, response, 🙋.notebook, nothing, 🙋.initiator))
     end
     
-    # save=true fixes the issue where "Submit all changes" or `Ctrl+S` has no effect.
+    wfp = 🙋.notebook.process_status == ProcessStatus.waiting_for_permission
+
     update_save_run!(🙋.session, 🙋.notebook, cells; 
         run_async=true, save=true, 
-        auto_solve_multiple_defs=true, on_auto_solve_multiple_defs
+        auto_solve_multiple_defs=true, on_auto_solve_multiple_defs,
+        # special case: just render md cells in "Safe preview" mode
+        prerender_text=wfp,
+        clear_not_prerendered_cells=wfp,
     )
 end
 

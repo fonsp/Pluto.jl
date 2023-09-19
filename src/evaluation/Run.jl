@@ -337,6 +337,15 @@ function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache; persist_js_
 	cell.running = cell.queued = false
 end
 
+function clear_output!(cell::Cell)
+	cell.output = CellOutput()
+	cell.published_objects = Dict{String,Any}()
+	
+	cell.runtime = nothing
+	cell.errored = false
+	cell.running = cell.queued = false
+end
+
 will_run_code(notebook::Notebook) = notebook.process_status ∈ (ProcessStatus.ready, ProcessStatus.starting)
 will_run_pkg(notebook::Notebook) = notebook.process_status !== ProcessStatus.waiting_for_permission
 
@@ -349,6 +358,7 @@ function update_save_run!(
 	save::Bool=true, 
 	run_async::Bool=false, 
 	prerender_text::Bool=false, 
+	clear_not_prerendered_cells::Bool=false, 
 	auto_solve_multiple_defs::Bool=false,
 	on_auto_solve_multiple_defs::Function=identity,
 	kwargs...
@@ -393,7 +403,7 @@ function update_save_run!(
 			is_offline_renderer=true,
 		)
 
-		to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)
+		to_run_offline = filter(c -> !c.running && is_just_text(new, c), cells)
 		for cell in to_run_offline
 			run_single!(offline_workspace, cell, new.nodes[cell], new.codes[cell])
 		end
@@ -401,6 +411,8 @@ function update_save_run!(
 		cd(original_pwd)
 		setdiff(cells, to_run_offline)
 	end
+	
+	clear_not_prerendered_cells && foreach(clear_output!, to_run_online)
 	
 	# this setting is not officially supported (default is `false`), so you can skip this block when reading the code
 	if !session.options.evaluation.run_notebook_on_load && prerender_text
