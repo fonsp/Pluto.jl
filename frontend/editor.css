@@ -933,19 +933,19 @@ body.is_recording header#pluto-nav {
 .outline-frame-actions-container > .overlay-button.playback {
     border-color: #c6c6dc;
 }
-.outline-frame-actions-container span.stop-recording-icon::after {
+span.pluto-icon.stop-recording-icon::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/stop-circle-outline.svg");
 }
-.outline-frame-actions-container span.microphone-icon::after {
+span.pluto-icon.microphone-icon::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/mic-outline.svg");
 }
-.outline-frame-actions-container span.info-icon::after {
+span.pluto-icon.info-icon::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/information-circle-outline.svg");
 }
-.outline-frame-actions-container span.mute-icon::after {
+span.pluto-icon.mute-icon::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/mic-off-outline.svg");
 }
-.outline-frame-actions-container span.follow-recording-icon::after {
+span.pluto-icon.follow-recording-icon::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-undo-outline.svg");
 }
 
@@ -1057,11 +1057,11 @@ main > preamble #saveall-container.saved > span {
 span.pluto-icon::after {
     content: "";
     display: inline-block;
-    padding-right: 20px;
-    /* width: 17px; */
-    height: 18px;
-    margin-bottom: -5px;
-    background-size: 17px 17px;
+    padding-right: 1.5em;
+    height: 1.3em;
+    margin-bottom: -.3em;
+    transform: translateY(-0.1em);
+    background-size: 1.3em;
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sync-circle-outline.svg");
     background-repeat: no-repeat;
     background-position-x: right;
