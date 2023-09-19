@@ -885,8 +885,7 @@ body.binder.loading #binder_spinners {
 }
 
 body.process_waiting_for_permission .outline-frame.safe-preview {
-    border: 12px solid var(--restart-recc-header-color);
-    border-top: none;
+    border-bottom: 12px solid var(--restart-recc-header-color);
 }
 
 body.recording_waiting_to_start .outline-frame.recording {
@@ -943,6 +942,9 @@ span.pluto-icon.microphone-icon::after {
 span.pluto-icon.info-icon::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/information-circle-outline.svg");
 }
+span.pluto-icon.offline-icon::after {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/cloud-offline-outline.svg");
+}
 span.pluto-icon.mute-icon::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/mic-off-outline.svg");
 }
@@ -961,10 +963,10 @@ div.recording-playback audio {
 }
 
 .safe-preview-info {
-    color: var(--helpbox-header-color);
+    color: var(--black);
     font-family: var(--system-ui-font-stack);
     font-weight: 700;
-    background: white;
+    background: var(--white);
     border: 3px solid var(--restart-recc-accent-color);
     padding: 0.3em 0.8em;
     border-radius: 0.8em;

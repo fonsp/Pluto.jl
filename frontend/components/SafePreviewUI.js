@@ -65,7 +65,7 @@ export const SafePreviewUI = ({ process_waiting_for_permission, risky_file_sourc
 export const SafePreviewOutput = () => {
     return html`<pluto-output class="rich_output"
         ><div class="safe-preview-output">
-            <span class="info-icon pluto-icon"></span><span>${`Code not executed in `}<em>Safe preview</em></span>
+            <span class="offline-icon pluto-icon"></span><span>${`Code not executed in `}<em>Safe preview</em></span>
         </div></pluto-output
     >`
 }
