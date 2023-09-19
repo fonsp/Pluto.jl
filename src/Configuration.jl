@@ -144,6 +144,7 @@ const WORKSPACE_USE_DISTRIBUTED_STDLIB_DEFAULT = nothing
 const LAZY_WORKSPACE_CREATION_DEFAULT = false
 const CAPTURE_STDOUT_DEFAULT = true
 const WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT = nothing
+const PROJECT_DEFAULT = nothing
 
 """
     EvaluationOptions([; kwargs...])
@@ -157,6 +158,7 @@ These options are not intended to be changed during normal use.
 - `lazy_workspace_creation::Bool = $LAZY_WORKSPACE_CREATION_DEFAULT`
 - `capture_stdout::Bool = $CAPTURE_STDOUT_DEFAULT`
 - `workspace_custom_startup_expr::Union{Nothing,Expr} = $WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT` An expression to be evaluated in the workspace process before running notebook code.
+- `project::Union{Nothing, String} = $PROJECT_DEFAULT` Optionally supply project environment for Pluto notebooks. Disables Pluto's built-in package manager. Useful e.g. for batch runs during continuous integration.
 """
 @option mutable struct EvaluationOptions
     run_notebook_on_load::Bool = RUN_NOTEBOOK_ON_LOAD_DEFAULT
@@ -165,6 +167,7 @@ These options are not intended to be changed during normal use.
     lazy_workspace_creation::Bool = LAZY_WORKSPACE_CREATION_DEFAULT
     capture_stdout::Bool = CAPTURE_STDOUT_DEFAULT
     workspace_custom_startup_expr::Union{Nothing,Expr} = WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT
+    project::Union{Nothing, String} = PROJECT_DEFAULT
 end
 
 const COMPILE_DEFAULT = nothing
@@ -315,6 +318,8 @@ function from_flat_kwargs(;
         startup_file::Union{Nothing,String} = STARTUP_FILE_DEFAULT,
         history_file::Union{Nothing,String} = HISTORY_FILE_DEFAULT,
         threads::Union{Nothing,String,Int} = default_number_of_threads(),
+                          
+        project::Union{Nothing,String} = nothing,
     )
     server = ServerOptions(;
         root_url,
@@ -348,6 +353,7 @@ function from_flat_kwargs(;
         lazy_workspace_creation,
         capture_stdout,
         workspace_custom_startup_expr,
+        project,
     )
     compiler = CompilerOptions(;
         compile,
