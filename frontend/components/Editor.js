@@ -847,7 +847,6 @@ patch: ${JSON.stringify(
                 // https://github.com/fonsp/Pluto.jl/issues/2398
                 open_pluto_popup({
                     type: "warn",
-                    source_element: null,
                     body: html`<p>A new server was started - this notebook session is no longer running.</p>
                         <p>Would you like to go back to the main menu?</p>
                         <br />

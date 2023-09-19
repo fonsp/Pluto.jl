@@ -89,7 +89,7 @@ export const SlideControls = () => {
     }, [presenting])
 
     return html`
-        <nav id="slide_controls">
+        <nav id="slide_controls" inert=${!presenting}>
             <button ref=${button_prev_ref} class="changeslide prev" title="Previous slide" onClick=${go_previous_slide}><span></span></button>
             <button ref=${button_next_ref} class="changeslide next" title="Next slide" onClick=${go_next_slide}><span></span></button>
         </nav>

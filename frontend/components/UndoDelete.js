@@ -24,6 +24,7 @@ export const UndoDelete = ({ recently_deleted, on_click }) => {
     return html`
         <nav
             id="undo_delete"
+            inert=${hidden}
             class=${cl({
                 hidden: hidden,
             })}

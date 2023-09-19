@@ -602,17 +602,18 @@ nav#at_the_top > a {
     /* margin-right: 5rem; */
 }
 
-nav#at_the_top img {
-    height: 39px;
-    margin-bottom: -8px;
-    filter: var(--image-filters);
-}
-
 nav#at_the_top h1 {
     font-weight: 700;
     font-size: 1.8rem;
     display: inline;
     border-bottom: none;
+}
+
+nav#at_the_top img#logo-small,
+nav#at_the_top img#logo-big {
+    height: 39px;
+    margin-bottom: -8px;
+    filter: var(--image-filters);
 }
 
 nav#at_the_top img#logo-small {
@@ -2054,6 +2055,9 @@ pluto-runarea.save > button.runcell > span::after {
 
 pluto-cell:not(.show_input) > pluto-runarea {
     display: none;
+}
+pluto-cell.code_folded.show_input > pluto-input:not(:focus-within) {
+    opacity: 0.4;
 }
 
 pluto-cell:focus-within > pluto-runarea,
