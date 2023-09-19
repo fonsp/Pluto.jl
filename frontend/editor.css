@@ -322,6 +322,7 @@ pluto-output div.admonition .admonition-title ~ * {
 
 pluto-output div.admonition {
     padding-left: 0.5rem;
+    padding-right: 0.5rem;
     background: var(--jl-message-color);
     border: 5px solid var(--jl-message-accent-color);
 }
@@ -329,6 +330,7 @@ pluto-output div.admonition .admonition-title {
     background: var(--jl-message-accent-color);
     margin: -1px; /* Fixes a rendering glitch in Chrome */
     margin-left: -0.55rem;
+    margin-right: -0.55rem;
 }
 pluto-output div.admonition.note,
 pluto-output div.admonition.info,
@@ -1005,7 +1007,7 @@ main > preamble #saveall-container.saved > span {
     opacity: 0.5;
 }
 
-.overlay-button span.pluto-icon::after {
+span.pluto-icon::after {
     content: "";
     display: inline-block;
     padding-right: 20px;
@@ -1783,17 +1785,18 @@ pkg-status-mark.disable_pkg > button > span::after {
 pluto-popup {
     display: block;
     position: absolute;
-    z-index: 70;
+    z-index: 1800;
     /* left: 1.5em; */
     /* top: calc((1.5em - 200px) * 0.5); */
-    width: min(90vw, 251px);
+    --max-size: 251px;
+    width: min(90vw, var(--max-size));
     /* min-height: 80px; */
     margin-left: 0.4rem;
     margin-top: 0px;
     margin-top: -1rem;
     /* margin-top: calc(0.5 * (1rem - 80px)); */
     overflow-wrap: break-word;
-    font-family: var(--lato-ui-font-stack);
+    font-family: var(--system-ui-font-stack);
     opacity: 0;
     transform: scale(0.2);
     transform-origin: left;
@@ -1817,6 +1820,15 @@ pluto-popup > * {
     padding: 8px;
     /* Slightly changes the layout of the three pkg buttons... in just the way that we want it! */
     position: absolute;
+    max-width: 100%;
+}
+
+pluto-popup > div > *:first-child {
+    margin-block-start: 0;
+}
+
+pluto-popup h1 {
+    font-size: 1.6em;
 }
 
 pluto-popup.warn > * {
@@ -2689,7 +2701,7 @@ footer #info {
 /* UNDO DELETED CELL */
 
 nav#undo_delete {
-    z-index: 1000;
+    z-index: 2000;
     display: block;
     position: fixed;
     bottom: 0px;
