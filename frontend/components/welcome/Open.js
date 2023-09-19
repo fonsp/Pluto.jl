@@ -58,7 +58,10 @@ export const Open = ({ client, connected, CustomPicker, show_samples, on_start_n
                 key=${picker.placeholder}
                 client=${client}
                 value=""
-                on_desktop_submit=${desktop_on_open_url}
+                on_desktop_submit=${() => {
+                    console.log("TODO: implement prompt or input component")
+                    desktop_on_open_url(prompt("Enter notebook URL"))
+                }}
                 button_label="Open from URL"
                 placeholder=${picker.placeholder}
             />`}

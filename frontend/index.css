@@ -117,7 +117,7 @@ pluto-filepicker .cm-scroller::-webkit-scrollbar {
 }
 
 pluto-filepicker button,
-.desktop_picker button {
+.desktop_picker_group button {
     margin: 0px;
     background: var(--footer-filepicker-focus-color);
     border-radius: 3px;
@@ -130,18 +130,18 @@ pluto-filepicker button,
 }
 
 .desktop_picker_group {
-    display: inline-flex;
+    flex-grow: 1;
+    display: flex;
+    padding: 5px;
 }
 
-.desktop_picker_group > input {
-    margin-left: 1em;
-}
-
-.desktop_picker > button {
+.desktop_picker_group > button {
     cursor: pointer;
+    flex-grow: 1;
+    padding: 8px;
 }
 
-.desktop_picker > button.full_width {
+.desktop_picker_group > button.full_width {
     width: 100%;
 }
 

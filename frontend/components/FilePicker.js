@@ -66,7 +66,6 @@ if (is_desktop) {
  */
 export const FilePicker = ({ value, suggest_new_file, button_label, placeholder, on_submit, on_desktop_submit, client }) => {
     const [is_button_disabled, set_is_button_disabled] = useState(true)
-    const [url_value, set_url_value] = useState("")
     const forced_value = useRef("")
     /** @type {import("../imports/Preact.js").Ref<HTMLElement>} */
     const base = useRef(/** @type {any} */ (null))
@@ -98,7 +97,7 @@ export const FilePicker = ({ value, suggest_new_file, button_label, placeholder,
         run(async () => {
             try {
                 if (is_desktop && on_desktop_submit) {
-                    await on_desktop_submit((await guess_notebook_location(url_value)).path_or_url)
+                    await on_desktop_submit()
                 } else await on_submit(current_cm.state.doc.toString())
                 current_cm.dom.blur()
             } catch (error) {
@@ -271,16 +270,8 @@ export const FilePicker = ({ value, suggest_new_file, button_label, placeholder,
 
     return is_desktop
         ? html`<div class="desktop_picker_group" ref=${base}>
-              <input
-                  value=${url_value}
-                  placeholder="Enter notebook URL..."
-                  onChange=${(v) => {
-                      set_url_value(v.target.value)
-                  }}
-              />
-              <div onClick=${onSubmit} class="desktop_picker">
-                  <button>${button_label}</button>
-              </div>
+              <span title=${value}>${value.replace(/^.*[\\\/]/, "")}</span>
+              <button onClick=${onSubmit}>${button_label}</button>
           </div>`
         : html`
               <pluto-filepicker ref=${base}>
