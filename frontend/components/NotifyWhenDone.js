@@ -60,7 +60,7 @@ export let NotifyWhenDone = ({ status }) => {
     const visible = useDelayedTruth(!all_done, 2500) || enabled
 
     return html`
-        <div class=${cl({ visible, "notify-when-done": true })}>
+        <div class=${cl({ visible, "notify-when-done": true })} inert=${!visible}>
             <label
                 >${"Notify when done"}
                 <input

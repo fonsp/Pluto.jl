@@ -19,7 +19,8 @@ export const help_circle_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/
 /**
  * @typedef PkgPopupDetails
  * @property {"nbpkg"} type
- * @property {HTMLElement?} source_element
+ * @property {HTMLElement} [source_element]
+ * @property {Boolean} [big]
  * @property {string} package_name
  * @property {boolean} is_disable_pkg
  */
@@ -28,7 +29,8 @@ export const help_circle_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/
  * @typedef MiscPopupDetails
  * @property {"info" | "warn"} type
  * @property {import("../imports/Preact.js").ReactElement} body
- * @property {HTMLElement?} source_element
+ * @property {HTMLElement} [source_element]
+ * @property {Boolean} [big]
  */
 
 export const open_pluto_popup = (/** @type{PkgPopupDetails | MiscPopupDetails} */ detail) => {
@@ -41,6 +43,8 @@ export const open_pluto_popup = (/** @type{PkgPopupDetails | MiscPopupDetails} *
 
 export const Popup = ({ notebook, disable_input }) => {
     const [recent_event, set_recent_event] = useState(/** @type{(PkgPopupDetails | MiscPopupDetails)?} */ (null))
+    const recent_event_ref = useRef(/** @type{(PkgPopupDetails | MiscPopupDetails)?} */ (null))
+    recent_event_ref.current = recent_event
     const recent_source_element_ref = useRef(/** @type{HTMLElement?} */ (null))
     const pos_ref = useRef("")
 
@@ -66,10 +70,10 @@ export const Popup = ({ notebook, disable_input }) => {
 
     useEffect(() => {
         const onpointerdown = (e) => {
+            if (recent_event_ref.current == null) return
             if (e.target == null) return
             if (e.target.closest("pluto-popup") != null) return
-            if (recent_source_element_ref.current == null) return
-            if (recent_source_element_ref.current.contains(e.target)) return
+            if (recent_source_element_ref.current != null && recent_source_element_ref.current.contains(e.target)) return
 
             close()
         }
@@ -96,6 +100,7 @@ export const Popup = ({ notebook, disable_input }) => {
         class=${cl({
             visible: recent_event != null,
             [type ?? ""]: type != null,
+            big: recent_event?.big === true,
         })}
         style="${pos_ref.current}"
     >

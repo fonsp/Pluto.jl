@@ -1808,6 +1808,10 @@ pluto-popup.visible {
     pointer-events: initial;
 }
 
+pluto-popup.big {
+    --max-size: 25em;
+}
+
 pluto-popup > * {
     display: block;
     background: var(--overlay-button-bg);
