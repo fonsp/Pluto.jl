@@ -30,6 +30,8 @@ MsgPack.msgpack_type(::Type{Configuration.EvaluationOptions}) = MsgPack.StructTy
 MsgPack.msgpack_type(::Type{Configuration.CompilerOptions}) = MsgPack.StructType()
 MsgPack.msgpack_type(::Type{Configuration.ServerOptions}) = MsgPack.StructType()
 MsgPack.msgpack_type(::Type{Configuration.SecurityOptions}) = MsgPack.StructType()
+# We also want expression to be packable due to the `workspace_custom_startup_expr` configuration variable
+MsgPack.msgpack_type(::Type{T}) where T <: Union{Expr, LineNumberNode, QuoteNode} = MsgPack.StructType()
 
 # Don't try to send callback functions which can't be serialized (see ServerOptions.event_listener)
 MsgPack.msgpack_type(::Type{Function}) = MsgPack.NilType()
