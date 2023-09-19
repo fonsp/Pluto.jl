@@ -36,6 +36,7 @@ import { FrontMatterInput } from "./FrontmatterInput.js"
 import { EditorLaunchBackendButton } from "./Editor/LaunchBackendButton.js"
 import { get_environment } from "../common/Environment.js"
 import { ProcessStatus } from "../common/ProcessStatus.js"
+import { SafePreviewUI } from "./SafePreviewUI.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -1412,30 +1413,27 @@ patch: ${JSON.stringify(
             `
         }
 
-        const restart_button = (text, maybe_confirm = false) => html`<a
-            href="#"
-            onClick=${async () => {
-                let source = notebook.metadata?.risky_file_source
-                if (
-                    !maybe_confirm ||
-                    source == null ||
-                    confirm(`⚠️ Danger! Are you sure that you trust this file? \n\n${source}\n\nA malicious notebook can steal passwords and data.`)
-                ) {
-                    await this.actions.update_notebook((notebook) => {
-                        // delete the old cell
-                        delete notebook.metadata.risky_file_source
-                    })
-                    await this.client.send(
-                        "restart_process",
-                        {},
-                        {
-                            notebook_id: notebook.notebook_id,
-                        }
-                    )
-                }
-            }}
-            >${text}</a
-        >`
+        const restart = async (maybe_confirm = false) => {
+            let source = notebook.metadata?.risky_file_source
+            if (
+                !maybe_confirm ||
+                source == null ||
+                confirm(`⚠️ Danger! Are you sure that you trust this file? \n\n${source}\n\nA malicious notebook can steal passwords and data.`)
+            ) {
+                await this.actions.update_notebook((notebook) => {
+                    delete notebook.metadata.risky_file_source
+                })
+                await this.client.send(
+                    "restart_process",
+                    {},
+                    {
+                        notebook_id: notebook.notebook_id,
+                    }
+                )
+            }
+        }
+
+        const restart_button = (text, maybe_confirm = false) => html`<a href="#" onClick=${() => restart(maybe_confirm)}>${text}</a>`
 
         return html`
             ${this.state.disable_ui === false && html`<${HijackExternalLinksToOpenInNewTab} />`}
@@ -1521,6 +1519,12 @@ patch: ${JSON.stringify(
                             }</div>
                         </nav>
                     </header>
+                    
+                    <${SafePreviewUI}
+                        waiting_for_permission=${statusval === "process_waiting_for_permission"}
+                        risky_file_source=${notebook.metadata?.risky_file_source}
+                        restart=${restart}
+                    />
                     
                     <${RecordingUI} 
                         notebook_name=${notebook.shortpath}
