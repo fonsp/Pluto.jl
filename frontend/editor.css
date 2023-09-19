@@ -1878,6 +1878,8 @@ pluto-popup > * {
     /* Slightly changes the layout of the three pkg buttons... in just the way that we want it! */
     position: absolute;
     max-width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
 }
 
 pluto-popup > div > *:first-child {
