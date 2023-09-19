@@ -2005,6 +2005,9 @@ pluto-runarea.save > button.runcell > span::after {
 pluto-cell:not(.show_input) > pluto-runarea {
     display: none;
 }
+pluto-cell.code_folded.show_input > pluto-input:not(:focus-within) {
+    opacity: 0.4;
+}
 
 pluto-cell:focus-within > pluto-runarea,
 pluto-cell.code_differs > pluto-runarea {
