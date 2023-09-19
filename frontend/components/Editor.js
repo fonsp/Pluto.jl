@@ -1413,9 +1413,12 @@ patch: ${JSON.stringify(
             `
         }
 
+        const warn_about_untrusted_code = this.client.session_options?.security?.warn_about_untrusted_code ?? true
+
         const restart = async (maybe_confirm = false) => {
             let source = notebook.metadata?.risky_file_source
             if (
+                !warn_about_untrusted_code ||
                 !maybe_confirm ||
                 source == null ||
                 confirm(`⚠️ Danger! Are you sure that you trust this file? \n\n${source}\n\nA malicious notebook can steal passwords and data.`)
@@ -1487,7 +1490,7 @@ patch: ${JSON.stringify(
                                           on_submit=${this.submit_file_change}
                                           on_desktop_submit=${this.desktop_submit_file_change}
                                           suggest_new_file=${{
-                                              base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
+                                              base: this.client.session_options?.server?.notebook_path_suggestion ?? "",
                                               name: notebook.shortpath,
                                           }}
                                           placeholder="Save notebook..."
@@ -1524,6 +1527,7 @@ patch: ${JSON.stringify(
                         waiting_for_permission=${statusval === "process_waiting_for_permission"}
                         risky_file_source=${notebook.metadata?.risky_file_source}
                         restart=${restart}
+                        warn_about_untrusted_code=${warn_about_untrusted_code}
                     />
                     
                     <${RecordingUI} 

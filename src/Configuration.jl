@@ -109,6 +109,7 @@ end
 
 const REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT = true
 const REQUIRE_SECRET_FOR_ACCESS_DEFAULT = true
+const WARN_ABOUT_UNTRUSTED_CODE_DEFAULT = true
 
 """
     SecurityOptions([; kwargs...])
@@ -125,10 +126,14 @@ Security settings for the HTTP server.
 
 - `require_secret_for_access::Bool = $REQUIRE_SECRET_FOR_ACCESS_DEFAULT`
 
-    If false, you do not need to use a `secret` in the URL to access Pluto: you will be authenticated by visiting `http://localhost:1234/` in your browser. An authentication cookie is still used for access (to prevent XSS and deceptive links or an img src to `http://localhost:1234/open?url=badpeople.org/script.jl`), and is set automatically, but this request to `/` is protected by cross-origin policy.
+    If `false`, you do not need to use a `secret` in the URL to access Pluto: you will be authenticated by visiting `http://localhost:1234/` in your browser. An authentication cookie is still used for access (to prevent XSS and deceptive links or an img src to `http://localhost:1234/open?url=badpeople.org/script.jl`), and is set automatically, but this request to `/` is protected by cross-origin policy.
 
     Use `true` on a computer used by multiple people simultaneously. Only use `false` if necessary.
 
+- `warn_about_untrusted_code::Bool = $WARN_ABOUT_UNTRUSTED_CODE_DEFAULT`
+
+    Should the Pluto GUI show warning messages about executing code from an unknown source?
+        
 **Leave these options on `true` for the most secure setup.**
 
 Note that Pluto is quickly evolving software, maintained by designers, educators and enthusiasts — not security experts. If security is a serious concern for your application, then we recommend running Pluto inside a container and verifying the relevant security aspects of Pluto yourself.
@@ -136,6 +141,7 @@ Note that Pluto is quickly evolving software, maintained by designers, educators
 @option mutable struct SecurityOptions
     require_secret_for_open_links::Bool = REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT
     require_secret_for_access::Bool = REQUIRE_SECRET_FOR_ACCESS_DEFAULT
+    warn_about_untrusted_code::Bool = WARN_ABOUT_UNTRUSTED_CODE_DEFAULT
 end
 
 const RUN_NOTEBOOK_ON_LOAD_DEFAULT = true
@@ -292,6 +298,7 @@ function from_flat_kwargs(;
 
         require_secret_for_open_links::Bool = REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT,
         require_secret_for_access::Bool = REQUIRE_SECRET_FOR_ACCESS_DEFAULT,
+        warn_about_untrusted_code::Bool = WARN_ABOUT_UNTRUSTED_CODE_DEFAULT,
 
         run_notebook_on_load::Bool = RUN_NOTEBOOK_ON_LOAD_DEFAULT,
         workspace_use_distributed::Bool = WORKSPACE_USE_DISTRIBUTED_DEFAULT,
@@ -340,6 +347,7 @@ function from_flat_kwargs(;
     security = SecurityOptions(;
         require_secret_for_open_links,
         require_secret_for_access,
+        warn_about_untrusted_code,
     )
     evaluation = EvaluationOptions(;
         run_notebook_on_load,

@@ -7,7 +7,7 @@ import { base64_arraybuffer, blob_url_to_data_url } from "../common/PlutoHash.js
 import { pack, unpack } from "../common/MsgPack.js"
 import { open_pluto_popup } from "./Popup.js"
 
-export const SafePreviewUI = ({ waiting_for_permission, risky_file_source, restart }) => {
+export const SafePreviewUI = ({ waiting_for_permission, risky_file_source, restart, warn_about_untrusted_code }) => {
     return html`
         <div class="outline-frame safe-preview"></div>
         ${waiting_for_permission
@@ -22,7 +22,7 @@ export const SafePreviewUI = ({ waiting_for_permission, risky_file_source, resta
                                       big: true,
                                       body: html`
                                           <h1>Safe preview</h1>
-                                          <p>You can read and edit without running Julia code.</p>
+                                          <p>You are reading and editing this file without running Julia code.</p>
 
                                           <p>
                                               ${`When you are ready, you can `}<a
@@ -35,17 +35,20 @@ export const SafePreviewUI = ({ waiting_for_permission, risky_file_source, resta
                                                   >run this notebook</a
                                               >.
                                           </p>
-
-                                          <pluto-output class="rich_output"
-                                              ><div class="markdown">
-                                                  <div class="admonition warning">
-                                                      <p class="admonition-title">Warning</p>
-                                                      <p>Are you sure that you trust this file?</p>
-                                                      ${risky_file_source == null ? null : html`<p><code>${risky_file_source}</code></pre>`}
-                                                      <p>A malicious notebook can steal passwords and data.</p>
-                                                  </div>
-                                              </div></pluto-output
-                                          >
+                                          ${warn_about_untrusted_code
+                                              ? html`
+                                                    <pluto-output class="rich_output"
+                                                        ><div class="markdown">
+                                                            <div class="admonition warning">
+                                                                <p class="admonition-title">Warning</p>
+                                                                <p>Are you sure that you trust this file?</p>
+                                                                ${risky_file_source == null ? null : html`<p><code>${risky_file_source}</code></pre>`}
+                                                                <p>A malicious notebook can steal passwords and data.</p>
+                                                            </div>
+                                                        </div></pluto-output
+                                                    >
+                                                `
+                                              : null}
                                       `,
                                   })
                               }}
