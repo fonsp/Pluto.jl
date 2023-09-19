@@ -1524,7 +1524,7 @@ patch: ${JSON.stringify(
                     </header>
                     
                     <${SafePreviewUI}
-                        waiting_for_permission=${statusval === "process_waiting_for_permission"}
+                        process_waiting_for_permission=${status.process_waiting_for_permission}
                         risky_file_source=${notebook.metadata?.risky_file_source}
                         restart=${restart}
                         warn_about_untrusted_code=${warn_about_untrusted_code}
@@ -1573,6 +1573,7 @@ patch: ${JSON.stringify(
                             selected_cells=${this.state.selected_cells}
                             is_initializing=${this.state.initializing}
                             is_process_ready=${this.is_process_ready()}
+                            process_waiting_for_permission=${status.process_waiting_for_permission}
                             sanitize_html=${status.sanitize_html}
                         />
                         <${DropRuler} 

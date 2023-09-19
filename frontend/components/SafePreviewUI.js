@@ -7,10 +7,10 @@ import { base64_arraybuffer, blob_url_to_data_url } from "../common/PlutoHash.js
 import { pack, unpack } from "../common/MsgPack.js"
 import { open_pluto_popup } from "./Popup.js"
 
-export const SafePreviewUI = ({ waiting_for_permission, risky_file_source, restart, warn_about_untrusted_code }) => {
+export const SafePreviewUI = ({ process_waiting_for_permission, risky_file_source, restart, warn_about_untrusted_code }) => {
     return html`
         <div class="outline-frame safe-preview"></div>
-        ${waiting_for_permission
+        ${process_waiting_for_permission
             ? html`<div class="outline-frame-actions-container safe-preview">
                   <div class="safe-preview-info">
                       <span
@@ -60,4 +60,12 @@ export const SafePreviewUI = ({ waiting_for_permission, risky_file_source, resta
               </div>`
             : null}
     `
+}
+
+export const SafePreviewOutput = () => {
+    return html`<pluto-output class="rich_output"
+        ><div class="safe-preview-output">
+            <span class="info-icon pluto-icon"></span><span>${`Code not executed in `}<em>Safe preview</em></span>
+        </div></pluto-output
+    >`
 }

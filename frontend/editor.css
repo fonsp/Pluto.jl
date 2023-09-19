@@ -978,6 +978,21 @@ div.recording-playback audio {
     cursor: pointer;
 }
 
+.safe-preview-output {
+    color: var(--helpbox-header-color);
+    font-family: var(--system-ui-font-stack);
+    font-weight: 700;
+    opacity: 0.5;
+    font-size: 0.8rem;
+    padding: 0.2em 0.4em;
+    background: var(--restart-recc-header-color);
+    border-radius: 0.4em;
+    display: inline-flex;
+    margin: 0.7em 0;
+    gap: 0.3em;
+    align-items: baseline;
+}
+
 /* PREAMBLE */
 
 .raw-html-wrapper.preamble {
@@ -1282,6 +1297,9 @@ pluto-input .cm-editor .cm-line.cm-highlighted-line {
 
 pluto-cell:not(.show_input) > pluto-input {
     display: none;
+}
+pluto-cell.code_folded.show_input > pluto-input {
+    opacity: 0.7;
 }
 
 pluto-cell.code_differs > pluto-input > .cm-editor {

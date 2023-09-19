@@ -36,6 +36,7 @@ let CellMemo = ({
     is_process_ready,
     disable_input,
     sanitize_html = true,
+    process_waiting_for_permission,
     show_logs,
     set_show_logs,
     nbpkg,
@@ -57,6 +58,7 @@ let CellMemo = ({
                 focus_after_creation=${focus_after_creation}
                 is_process_ready=${is_process_ready}
                 disable_input=${disable_input}
+                process_waiting_for_permission=${process_waiting_for_permission}
                 sanitize_html=${sanitize_html}
                 nbpkg=${nbpkg}
                 global_definition_locations=${global_definition_locations}
@@ -89,6 +91,7 @@ let CellMemo = ({
         focus_after_creation,
         is_process_ready,
         disable_input,
+        process_waiting_for_permission,
         sanitize_html,
         ...nbpkg_fingerprint(nbpkg),
         global_definition_locations,
@@ -117,6 +120,7 @@ const render_cell_outputs_minimum = 20
  *  is_initializing: boolean,
  *  is_process_ready: boolean,
  *  disable_input: boolean,
+ *  process_waiting_for_permission: boolean,
  *  sanitize_html: boolean,
  * }} props
  * */
@@ -128,6 +132,7 @@ export const Notebook = ({
     is_initializing,
     is_process_ready,
     disable_input,
+    process_waiting_for_permission,
     sanitize_html = true,
 }) => {
     let pluto_actions = useContext(PlutoActionsContext)
@@ -183,6 +188,7 @@ export const Notebook = ({
                         force_hide_input=${false}
                         is_process_ready=${is_process_ready}
                         disable_input=${disable_input}
+                        process_waiting_for_permission=${process_waiting_for_permission}
                         sanitize_html=${sanitize_html}
                         nbpkg=${notebook.nbpkg}
                         global_definition_locations=${global_definition_locations}
