@@ -83,7 +83,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 - `injected_javascript_data_url::String = "$INJECTED_JAVASCRIPT_DATA_URL_DEFAULT"` (internal) Optional javascript injectables to the front-end. Can be used to customize the editor, but this API is not meant for general use yet.
 - `on_event::Function = $ON_EVENT_DEFAULT`
 - `root_url::Union{Nothing,String} = $ROOT_URL_DEFAULT` This setting is used to specify the root URL of the Pluto server, but this setting is *only* used to customize the launch message (*"Go to http://localhost:1234/ in your browser"*). You can probably ignore this and use `base_url` instead.
-- `base_url::String = "$BASE_URL_DEFAULT"` This setting is used to specify the base URL at which the Pluto server will receive requests, it should start be a valid path starting and ending with a '/'.
+- `base_url::String = "$BASE_URL_DEFAULT"` This (advanced) setting is used to specify a subpath at which the Pluto server will run, it should be a path starting and ending with a '/'. E.g. with `base_url = "/hello/world/"`, the server will run at `http://localhost:1234/hello/world/`, and you edit a notebook at `http://localhost:1234/hello/world/edit?id=...`.
 """
 @option mutable struct ServerOptions
     root_url::Union{Nothing,String} = ROOT_URL_DEFAULT
@@ -140,6 +140,7 @@ end
 
 const RUN_NOTEBOOK_ON_LOAD_DEFAULT = true
 const WORKSPACE_USE_DISTRIBUTED_DEFAULT = true
+const WORKSPACE_USE_DISTRIBUTED_STDLIB_DEFAULT = nothing
 const LAZY_WORKSPACE_CREATION_DEFAULT = false
 const CAPTURE_STDOUT_DEFAULT = true
 const WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT = nothing
@@ -152,6 +153,7 @@ These options are not intended to be changed during normal use.
 
 - `run_notebook_on_load::Bool = $RUN_NOTEBOOK_ON_LOAD_DEFAULT` Whether to evaluate a notebook on load.
 - `workspace_use_distributed::Bool = $WORKSPACE_USE_DISTRIBUTED_DEFAULT` Whether to start notebooks in a separate process.
+- `workspace_use_distributed_stdlib::Bool? = $WORKSPACE_USE_DISTRIBUTED_STDLIB_DEFAULT` Should we use the Distributed stdlib to run processes? Distributed will be replaced by Malt.jl, you can use this option to already get the old behaviour. `nothing` means: determine automatically (which is currently the same as `true`).
 - `lazy_workspace_creation::Bool = $LAZY_WORKSPACE_CREATION_DEFAULT`
 - `capture_stdout::Bool = $CAPTURE_STDOUT_DEFAULT`
 - `workspace_custom_startup_expr::Union{Nothing,Expr} = $WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT` An expression to be evaluated in the workspace process before running notebook code.
@@ -159,6 +161,7 @@ These options are not intended to be changed during normal use.
 @option mutable struct EvaluationOptions
     run_notebook_on_load::Bool = RUN_NOTEBOOK_ON_LOAD_DEFAULT
     workspace_use_distributed::Bool = WORKSPACE_USE_DISTRIBUTED_DEFAULT
+    workspace_use_distributed_stdlib::Union{Bool,Nothing} = WORKSPACE_USE_DISTRIBUTED_STDLIB_DEFAULT
     lazy_workspace_creation::Bool = LAZY_WORKSPACE_CREATION_DEFAULT
     capture_stdout::Bool = CAPTURE_STDOUT_DEFAULT
     workspace_custom_startup_expr::Union{Nothing,Expr} = WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT
@@ -292,6 +295,7 @@ function from_flat_kwargs(;
 
         run_notebook_on_load::Bool = RUN_NOTEBOOK_ON_LOAD_DEFAULT,
         workspace_use_distributed::Bool = WORKSPACE_USE_DISTRIBUTED_DEFAULT,
+        workspace_use_distributed_stdlib::Union{Bool,Nothing} = WORKSPACE_USE_DISTRIBUTED_STDLIB_DEFAULT,
         lazy_workspace_creation::Bool = LAZY_WORKSPACE_CREATION_DEFAULT,
         capture_stdout::Bool = CAPTURE_STDOUT_DEFAULT,
         workspace_custom_startup_expr::Union{Nothing,Expr} = WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT,
@@ -340,6 +344,7 @@ function from_flat_kwargs(;
     evaluation = EvaluationOptions(;
         run_notebook_on_load,
         workspace_use_distributed,
+        workspace_use_distributed_stdlib,
         lazy_workspace_creation,
         capture_stdout,
         workspace_custom_startup_expr,

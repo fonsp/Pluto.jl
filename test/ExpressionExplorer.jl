@@ -1,4 +1,5 @@
 using Test
+import Pluto: PlutoRunner
 
 #=
 `@test_broken` means that the test doesn't pass right now, but we want it to pass. Feel free to try to fix it and open a PR!
@@ -165,6 +166,9 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(x = let a = 1; a += b end), [:b], [:x], [:+], [])
         @test testee(:(_ = a + 1), [:a], [], [:+], [])
         @test testee(:(a = _ + 1), [], [:a], [:+], [])
+
+        @test testee(:(f()[] = 1), [], [], [:f], [])
+        @test testee(:(x[f()] = 1), [:x], [], [:f], [])
     end
     @testset "Multiple assignments" begin
         # Note that using the shorthand syntax :(a = 1, b = 2) to create an expression
@@ -206,6 +210,18 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(quote
             a, b... = 0:5
         end, [],[:a, :b], [[:(:)]], [])
+        @test testee(quote
+            a[x], x = 1, 2
+        end, [:a], [:x], [], [])
+        @test testee(quote
+            x, a[x] = 1, 2
+        end, [:a], [:x], [], [])
+        @test testee(quote
+            f, a[f()] = g
+        end, [:g, :a], [:f], [], [])
+        @test testee(quote
+            a[f()], f = g
+        end, [:g, :a], [:f], [], [])
         @test testee(quote (; a, b) = x end, [:x], [:a, :b], [], [])
         @test testee(quote a = (b, c) end, [:b, :c], [:a], [], [])
 
@@ -778,5 +794,18 @@ Some of these @test_broken lines are commented out to prevent printing to the te
             () -> Date
         end)
         @test :Date ∈ rn.references
+    end
+end
+
+@testset "UTF-8 to Codemirror UTF-16 byte mapping" begin
+    # range ends are non inclusives
+    tests = [
+        (" aaaa", (2, 4), (1, 3)), # cm is zero based
+        (" 🍕🍕", (2, 6), (1, 3)), # a 🍕 is two UTF16 codeunits
+        (" 🍕🍕", (6, 10), (3, 5)), # a 🍕 is two UTF16 codeunits
+    ]
+    for (s, (start_byte, end_byte), (from, to)) in tests
+        @show s
+        @test PlutoRunner.map_byte_range_to_utf16_codepoints(s, start_byte, end_byte) == (from, to)
     end
 end

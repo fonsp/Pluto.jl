@@ -18,7 +18,7 @@ import { RecentlyDisabledInfo, UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
 import { Scroller } from "./Scroller.js"
 import { ExportBanner } from "./ExportBanner.js"
-import { Popup } from "./Popup.js"
+import { open_pluto_popup, Popup } from "./Popup.js"
 
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
@@ -336,6 +336,11 @@ export class Editor extends Component {
 
             is_recording: false,
             recording_waiting_to_start: false,
+
+            slider_server: {
+                connecting: false,
+                interactive: false,
+            },
         }
 
         this.setStatePromise = (fn) => new Promise((r) => this.setState(fn, r))
@@ -835,7 +840,30 @@ patch: ${JSON.stringify(
             setTimeout(init_feedback, 2 * 1000) // 2 seconds - load feedback a little later for snappier UI
         }
 
-        const on_connection_status = (val) => this.setState({ connected: val })
+        const on_connection_status = (val, hopeless) => {
+            this.setState({ connected: val })
+            if (hopeless) {
+                // https://github.com/fonsp/Pluto.jl/issues/55
+                // https://github.com/fonsp/Pluto.jl/issues/2398
+                open_pluto_popup({
+                    type: "warn",
+                    source_element: null,
+                    body: html`<p>A new server was started - this notebook session is no longer running.</p>
+                        <p>Would you like to go back to the main menu?</p>
+                        <br />
+                        <a href="./">Go back</a>
+                        <br />
+                        <a
+                            href="#"
+                            onClick=${(e) => {
+                                e.preventDefault()
+                                window.dispatchEvent(new CustomEvent("close pluto popup"))
+                            }}
+                            >Stay here</a
+                        >`,
+                })
+            }
+        }
 
         const on_reconnect = () => {
             console.warn("Reconnected! Checking states")
@@ -1157,13 +1185,13 @@ patch: ${JSON.stringify(
             // if (e.defaultPrevented) {
             //     return
             // }
-            if (e.key.toLowerCase() === "q" && has_ctrl_or_cmd_pressed(e)) {
+            if (e.key?.toLowerCase() === "q" && has_ctrl_or_cmd_pressed(e)) {
                 // This one can't be done as cmd+q on mac, because that closes chrome - Dral
                 if (Object.values(this.state.notebook.cell_results).some((c) => c.running || c.queued)) {
                     this.actions.interrupt_remote()
                 }
                 e.preventDefault()
-            } else if (e.key.toLowerCase() === "s" && has_ctrl_or_cmd_pressed(e)) {
+            } else if (e.key?.toLowerCase() === "s" && has_ctrl_or_cmd_pressed(e)) {
                 const some_cells_ran = this.actions.set_and_run_all_changed_remote_cells()
                 if (!some_cells_ran) {
                     // all cells were in sync allready
@@ -1211,8 +1239,8 @@ patch: ${JSON.stringify(
             }
 
             if (this.state.disable_ui && this.state.backend_launch_phase === BackendLaunchPhase.wait_for_user) {
-                // const code = e.key.charCodeAt(0)
-                if (e.key === "Enter" || e.key.length === 1) {
+                // const code = e.key?.charCodeAt(0)
+                if (e.key === "Enter" || e.key?.length === 1) {
                     if (!document.body.classList.contains("wiggle_binder")) {
                         document.body.classList.add("wiggle_binder")
                         setTimeout(() => {
@@ -1301,11 +1329,7 @@ patch: ${JSON.stringify(
                 count_stat(`article-view`)
             }
         } else {
-            if (this.props.launch_params.pluto_server_url) {
-                this.connect(ws_address_from_base(this.props.launch_params.pluto_server_url))
-            } else {
-                this.connect()
-            }
+            this.connect(this.props.launch_params.pluto_server_url ? ws_address_from_base(this.props.launch_params.pluto_server_url) : undefined)
         }
     }
 

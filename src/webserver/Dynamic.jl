@@ -133,7 +133,7 @@ function notebook_to_js(notebook::Notebook)
                 "cell_id" => cell.cell_id,
                 "depends_on_disabled_cells" => cell.depends_on_disabled_cells,
                 "output" => FirebaseyUtils.ImmutableMarker(cell.output),
-                "published_object_keys" => keys(cell.published_objects),
+                "published_object_keys" => collect(keys(cell.published_objects)),
                 "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,
@@ -156,7 +156,6 @@ function notebook_to_js(notebook::Notebook)
                 "enabled" => ctx !== nothing,
                 "restart_recommended_msg" => notebook.nbpkg_restart_recommended_msg,
                 "restart_required_msg" => notebook.nbpkg_restart_required_msg,
-                # TODO: cache this
                 "installed_versions" => ctx === nothing ? Dict{String,String}() : notebook.nbpkg_installed_versions_cache,
                 "terminal_outputs" => notebook.nbpkg_terminal_outputs,
                 "install_time_ns" => notebook.nbpkg_install_time_ns,
@@ -187,7 +186,7 @@ function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, sk
             if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == 🙋.notebook.notebook_id
                 current_dict = get(current_state_for_clients, client, :empty)
                 patches = Firebasey.diff(current_dict, notebook_dict)
-                patches_as_dicts::Array{Dict} = Firebasey._convert(Array{Dict}, patches)
+                patches_as_dicts = Firebasey._convert(Vector{Dict}, patches)
                 current_state_for_clients[client] = deep_enough_copy(notebook_dict)
 
                 # Make sure we do send a confirmation to the client who made the request, even without changes

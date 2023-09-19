@@ -1,6 +1,6 @@
 import { html, Component, useRef, useLayoutEffect, useContext } from "../imports/Preact.js"
 
-import { ErrorMessage } from "./ErrorMessage.js"
+import { ErrorMessage, ParseError } from "./ErrorMessage.js"
 import { TreeView, TableView, DivElement } from "./TreeView.js"
 
 import {
@@ -147,6 +147,9 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
             break
         case "application/vnd.pluto.table+object":
             return html`<${TableView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`
+            break
+        case "application/vnd.pluto.parseerror+object":
+            return html`<div><${ParseError} cell_id=${cell_id} ...${body} /></div>`
             break
         case "application/vnd.pluto.stacktrace+object":
             return html`<div><${ErrorMessage} cell_id=${cell_id} ...${body} /></div>`
@@ -381,6 +384,21 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                                     pluto_actions.update_notebook((notebook) => {
                                         delete notebook.metadata[key]
                                     }),
+
+                                ...(cell == null
+                                    ? {}
+                                    : {
+                                          getCellMetadataExperimental: (key, { cell_id = null } = {}) =>
+                                              pluto_actions.get_notebook()?.cell_inputs?.[cell_id ?? cell.id]?.metadata[key],
+                                          setCellMetadataExperimental: (key, value, { cell_id = null } = {}) =>
+                                              pluto_actions.update_notebook((notebook) => {
+                                                  notebook.cell_inputs[cell_id ?? cell.id].metadata[key] = value
+                                              }),
+                                          deleteCellMetadataExperimental: (key, { cell_id = null } = {}) =>
+                                              pluto_actions.update_notebook((notebook) => {
+                                                  delete notebook.cell_inputs[cell_id ?? cell.id].metadata[key]
+                                              }),
+                                      }),
 
                                 ...observablehq_for_cells,
                             },

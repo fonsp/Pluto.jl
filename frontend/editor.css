@@ -247,7 +247,7 @@ pluto-output pre > code {
 }
 
 pluto-output.rich_output code {
-    padding: 3px;
+    padding: 0.18em;
     border-radius: 8px;
     background-color: var(--pluto-output-bg-color);
 }
@@ -452,6 +452,11 @@ pluto-output mjx-assistive-mml {
     height: 1px;
 }
 
+/* Avoid scrollbar in cells that contain just a h3 element, like the h3 headers in https://computationalthinking.mit.edu/Fall22/images_abstractions/transformations_and_autodiff/ */
+.raw-html-wrapper > div.markdown {
+    overflow: hidden;
+}
+
 /* HEADER */
 
 header#pluto-nav {
@@ -497,7 +502,7 @@ aside#export div#container {
     flex-direction: row;
     display: flex;
     max-width: 1000px;
-    padding-right: 20px;
+    padding-right: 10em;
     margin: 0 auto;
 }
 header aside#export div#container {
@@ -548,10 +553,14 @@ a.export_card section {
     padding: 3px;
 }
 aside#export .export_small_btns {
-    margin-left: auto;
-    height: 60px;
     display: flex;
     flex-direction: row;
+    padding: 0.9em;
+    border-radius: 0.9em;
+    position: absolute;
+    right: 0.8em;
+    top: 0em;
+    background: var(--export-bg-color);
 }
 body.static_preview button.toggle_export {
     display: none;
@@ -1227,6 +1236,7 @@ pluto-input .cm-editor .cm-line {
     transition: background-color 0.15s ease-in-out;
 }
 
+pluto-input .cm-editor span.cm-highlighted-range,
 pluto-input .cm-editor .cm-line.cm-highlighted-line {
     background-color: #bdbdbd68;
     border-radius: 3px;
@@ -1514,7 +1524,7 @@ pluto-input > button > span {
     }
 }
 
-@media screen and (any-pointer: coarse) {
+@media screen and (pointer: coarse) {
     pluto-cell > button,
     pluto-cell > pluto-runarea {
         opacity: 0;
@@ -1805,6 +1815,11 @@ pluto-popup > * {
     position: absolute;
 }
 
+pluto-popup.warn > * {
+    background: var(--pluto-logs-warn-color);
+    border-color: var(--pluto-logs-warn-accent-color);
+}
+
 pluto-popup code.auto_disabled_variable {
     font-family: var(--julia-mono-font-stack);
     font-size: 0.8rem;
@@ -1924,6 +1939,9 @@ pluto-runarea {
     border-bottom-left-radius: 5px;
     border-bottom-right-radius: 5px;
     border-top: none;
+    /* One less than z-index for pluto-input .cm-editor.
+       Otherwise it gets on top of the tooltips */
+    z-index: 19;
 }
 
 pluto-runarea > span {
@@ -2322,6 +2340,7 @@ pluto-helpbox.hidden > section {
 }
 .helpbox-docs > section h1 {
     font-size: 1.3rem;
+    overflow-wrap: anywhere;
 }
 .helpbox-docs > section pre {
     padding: 0.7rem 0.5rem;
@@ -2650,7 +2669,7 @@ footer button {
     font-size: 0.75rem;
 }
 
-#info {
+footer #info {
     max-width: 9400px;
     margin: 0 auto;
     padding: 1rem;
@@ -3037,6 +3056,12 @@ button.floating_back_button {
     border-radius: 4px;
 }
 
+.cm-tooltip-lint {
+    font-family: "JuliaMono";
+    font-size: 0.75rem;
+    z-index: 100;
+}
+
 .cm-tooltip-autocomplete {
     max-height: calc(20 * 16px);
     box-sizing: content-box;
@@ -3174,10 +3199,10 @@ pluto-input .cm-editor .cm-content {
     padding: 2px 0px;
 }
 
-.cm-editor .cm-selectionBackground {
+.cm-editor .cm-scroller > .cm-selectionLayer .cm-selectionBackground {
     background: var(--cm-selection-background-blurred);
 }
-.cm-editor.cm-focused .cm-selectionBackground {
+.cm-editor.cm-focused .cm-scroller > .cm-selectionLayer .cm-selectionBackground {
     background: var(--cm-selection-background);
 }
 
@@ -3404,7 +3429,6 @@ pluto-cell.hooked_up pluto-output {
 }
 
 .pluto-frontmatter label {
-    text-transform: capitalize;
     font-weight: 500;
 }
 
@@ -3419,6 +3443,10 @@ pluto-cell.hooked_up pluto-output {
 .pluto-frontmatter .addentry {
     grid-column: 1/3;
     margin-top: 0.5em;
+}
+
+.pluto-frontmatter fieldset {
+    grid-column: 1/4;
 }
 
 .pluto-frontmatter .final {

@@ -1,17 +1,21 @@
 # Will be evaluated _inside_ the workspace process.
 
-# Pluto does most things on process 1 (the server), and it uses little workspace processes to evaluate notebook code in.
-# These baby processes don't import Pluto, they only import this module. Functions from this module are called by WorkspaceManager.jl via Distributed
+# Pluto does most things on the server, but it uses worker processes to evaluate notebook code in.
+# These processes don't import Pluto, they only import this module.
+# Functions from this module are called by WorkspaceManager.jl via Malt.
 
-# So when reading this file, pretend that you are living in process 2, and you are communicating with Pluto's server, who lives in process 1.
+# When reading this file, pretend that you are living in a worker process,
+# and you are communicating with Pluto's server, who lives in the main process.
 # The package environment that this file is loaded with is the NotebookProcessProject.toml file in this directory.
 
 # SOME EXTRA NOTES
 
 # 1. The entire PlutoRunner should be a single file.
-# 2. We restrict the communication between this PlutoRunner and the Pluto server to only use *Base Julia types*, like `String`, `Dict`, `NamedTuple`, etc. 
+# 2. Restrict the communication between this PlutoRunner and the Pluto server to only use *Base Julia types*, like `String`, `Dict`, `NamedTuple`, etc. 
 
-# These restriction are there to allow flexibility in the way that this file is loaded on a runner process, which is something that we might want to change in the future, like when we make the transition to our own Distributed.
+# These restriction are there to allow flexibility in the way that this file is
+# loaded on a runner process, which is something that we might want to change
+# in the future.
 
 module PlutoRunner
 
@@ -21,7 +25,6 @@ import InteractiveUtils
 
 using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
-import Distributed
 import Base64
 import FuzzyCompletions: Completion, BslashCompletion, ModuleCompletion, PropertyCompletion, FieldCompletion, PathCompletion, DictCompletion, completions, completion_text, score
 import Base: show, istextmime
@@ -32,7 +35,7 @@ import REPL
 
 export @bind
 
-# This is not a struct to make it easier to pass these objects between distributed processes.
+# This is not a struct to make it easier to pass these objects between processes.
 const MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
 
 const ObjectID = typeof(objectid("hello computer"))
@@ -273,7 +276,7 @@ function try_macroexpand(mod::Module, notebook_id::UUID, cell_id::UUID, expr; ca
     pop!(cell_expanded_exprs, cell_id, nothing)
 
     # Remove toplevel block, as that screws with the computer and everything
-    expr_not_toplevel = if expr.head == :toplevel || expr.head == :block
+    expr_not_toplevel = if Meta.isexpr(expr, (:toplevel, :block))
         Expr(:block, expr.args...)
     else
         @warn "try_macroexpand expression not :toplevel or :block" expr
@@ -671,7 +674,7 @@ Notebook code does run in `Main` - it runs in workspace modules. Every time that
 
 The trick boils down to two things:
 1. When we create a new workspace module, we move over some of the global from the old workspace. (But not the ones that we want to 'delete'!)
-2. If a function used to be defined, but now we want to delete it, then we go through the method table of that function and snoop out all methods that we defined by us, and not by another package. This is how we reverse extending external functions. For example, if you run a cell with `Base.sqrt(s::String) = "the square root of" * s`, and then delete that cell, then you can still call `sqrt(1)` but `sqrt("one")` will err. Cool right!
+2. If a function used to be defined, but now we want to delete it, then we go through the method table of that function and snoop out all methods that were defined by us, and not by another package. This is how we reverse extending external functions. For example, if you run a cell with `Base.sqrt(s::String) = "the square root of" * s`, and then delete that cell, then you can still call `sqrt(1)` but `sqrt("one")` will err. Cool right!
 """
 function move_vars(
     old_workspace_name::Symbol,
@@ -878,7 +881,7 @@ const table_column_display_limit_increase = 30
 
 const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 
-# This is not a struct to make it easier to pass these objects between distributed processes.
+# This is not a struct to make it easier to pass these objects between processes.
 const FormattedCellResult = NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
 
 function formatted_result_of(
@@ -908,7 +911,13 @@ function formatted_result_of(
     output_formatted = if (!ends_with_semicolon || errored)
         logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
         with_logger_and_io_to_logs(logger; capture_stdout, stdio_loglevel=stdout_log_level) do
-            format_output(ans; context=IOContext(default_iocontext, :extra_items=>extra_items, :module => workspace))
+            format_output(ans; context=IOContext(
+            default_iocontext, 
+            :extra_items=>extra_items, 
+            :module => workspace,
+            :pluto_notebook_id => notebook_id,
+            :pluto_cell_id => cell_id,
+        ))
         end
     else
         ("", MIME"text/plain"())
@@ -972,6 +981,7 @@ const default_iocontext = IOContext(devnull,
     :displaysize => (18, 88), 
     :is_pluto => true, 
     :pluto_supported_integration_features => supported_integration_features,
+    :pluto_published_to_js => (io, x) -> core_published_to_js(io, x),
 )
 
 const default_stdout_iocontext = IOContext(devnull, 
@@ -1023,7 +1033,177 @@ format_output(::Nothing; context=default_iocontext) = ("", MIME"text/plain"())
 "Downstream packages can set this to false to obtain unprettified stack traces."
 const PRETTY_STACKTRACES = Ref(true)
 
+# @codemirror/lint has only three levels
+function convert_julia_syntax_level(level)
+    level == :error   ? "error" :
+    level == :warning ? "warning" : "info"
+end
+
+"""
+    map_byte_range_to_utf16_codepoints(s::String, start_byte::Int, end_byte::Int)::Tuple{Int,Int}
+
+Taken from `Base.transcode(::Type{UInt16}, src::Vector{UInt8})`
+but without line constraints. It also does not support invalid
+UTF-8 encoding which `String` should never be anyway.
+
+This maps the given raw byte range `(start_byte, end_byte)` range to UTF-16 codepoints indices.
+
+The resulting range can then be used by code-mirror on the frontend, quoting from the code-mirror docs:
+
+> Character positions are counted from zero, and count each line break and UTF-16 code unit as one unit.
+
+Examples:
+```julia
+                                           123
+                                             vv
+julia> map_byte_range_to_utf16_codepoints("abc", 2, 3)
+(2, 3)
+
+                                           1122
+                                           v   v
+julia> map_byte_range_to_utf16_codepoints("🍕🍕", 1, 8)
+(1, 4)
+
+                                           11233
+                                           v  v
+julia> map_byte_range_to_utf16_codepoints("🍕c🍕", 1, 5)
+(1, 3)
+```
+"""
+function map_byte_range_to_utf16_codepoints(s, start_byte, end_byte)
+    invalid_utf8() = error("invalid UTF-8 string")
+    codeunit(s) == UInt8 || invalid_utf8()
+
+    i, n = 1, ncodeunits(s)
+    u16 = 0
+
+    from, to = -1, -1
+    a = codeunit(s, 1)
+    while true
+        if i == start_byte
+            from = u16
+        end
+        if i == end_byte
+            to = u16
+            break
+        end
+        if i < n && -64 <= a % Int8 <= -12 # multi-byte character
+            i += 1
+            b = codeunit(s, i)
+            if -64 <= (b % Int8) || a == 0xf4 && 0x8f < b
+                # invalid UTF-8 (non-continuation of too-high code point)
+                invalid_utf8()
+            elseif a < 0xe0 # 2-byte UTF-8
+                if i == start_byte
+                    from = u16
+                end
+                if i == end_byte
+                    to = u16
+                    break
+                end
+            elseif i < n # 3/4-byte character
+                i += 1
+                c = codeunit(s, i)
+                if -64 <= (c % Int8) # invalid UTF-8 (non-continuation)
+                    invalid_utf8()
+                elseif a < 0xf0 # 3-byte UTF-8
+                    if i == start_byte
+                        from = u16
+                    end
+                    if i == end_byte
+                        to = u16
+                        break
+                    end
+                elseif i < n
+                    i += 1
+                    d = codeunit(s, i)
+                    if -64 <= (d % Int8) # invalid UTF-8 (non-continuation)
+                        invalid_utf8()
+                    elseif a == 0xf0 && b < 0x90 # overlong encoding
+                        invalid_utf8()
+                    else # 4-byte UTF-8 && 2 codeunits UTF-16
+                        u16 += 1
+                        if i == start_byte
+                            from = u16
+                        end
+                        if i == end_byte
+                            to = u16
+                            break
+                        end
+                    end
+                else # too short
+                    invalid_utf8()
+                end
+            else # too short
+                invalid_utf8()
+            end
+        else
+            # ASCII or invalid UTF-8 (continuation byte or too-high code point)
+        end
+        u16 += 1
+        if i >= n
+            break
+        end
+        i += 1
+        a = codeunit(s, i)
+    end
+
+    if from == -1
+        from = u16
+    end
+    if to == -1
+        to = u16
+    end
+
+    return (from, to)
+end
+
+function convert_diagnostic_to_dict(source, diag)
+    code = source.code
+
+    # JuliaSyntax uses `last_byte < first_byte` to signal an empty range.
+    # https://github.com/JuliaLang/JuliaSyntax.jl/blob/97e2825c68e770a3f56f0ec247deda1a8588070c/src/diagnostics.jl#L67-L75
+    # it references the byte range as such: `source[first_byte:last_byte]` whereas codemirror
+    # is non inclusive, therefore we move the `last_byte` to the next valid character in the string,
+    # an empty range then becomes `from == to`, also JuliaSyntax is one based whereas code-mirror is zero-based
+    # but this is handled in `map_byte_range_to_utf16_codepoints` with `u16 = 0` initially.
+    first_byte = min(diag.first_byte, lastindex(code) + 1)
+    last_byte = min(nextind(code, diag.last_byte), lastindex(code) + 1)
+
+    from, to = map_byte_range_to_utf16_codepoints(code, first_byte, last_byte)
+
+    Dict(:from => from,
+         :to => to,
+         :message => diag.message,
+         :source => "JuliaSyntax.jl",
+         :line => first(Base.JuliaSyntax.source_location(source, diag.first_byte)),
+         :severity => convert_julia_syntax_level(diag.level))
+end
+
+function convert_parse_error_to_dict(ex)
+   Dict(
+       :source => ex.source.code,
+       :diagnostics => [
+           convert_diagnostic_to_dict(ex.source, diag)
+           for diag in ex.diagnostics
+       ]
+   )
+end
+
+function throw_syntax_error(@nospecialize(syntax_err))
+    syntax_err isa String && (syntax_err = "syntax: $syntax_err")
+    syntax_err isa Exception || (syntax_err = ErrorException(syntax_err))
+    throw(syntax_err)
+end
+
+const has_julia_syntax = isdefined(Base, :JuliaSyntax) && fieldcount(Base.Meta.ParseError) == 2
+
 function format_output(val::CapturedException; context=default_iocontext)
+    if has_julia_syntax && val.ex isa Base.Meta.ParseError && val.ex.detail isa Base.JuliaSyntax.ParseError
+        dict = convert_parse_error_to_dict(val.ex.detail)
+        return dict, MIME"application/vnd.pluto.parseerror+object"()
+    end
+
     stacktrace = if PRETTY_STACKTRACES[]
         ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
         stack = [s for (s, _) in val.processed_bt]
@@ -1094,6 +1274,14 @@ function pretty_stackcall(frame::Base.StackFrame, linfo::Core.MethodInstance)
     else
         sprint(Base.show, linfo)
     end
+end
+
+function pretty_stackcall(frame::Base.StackFrame, linfo::Method)
+    sprint(Base.show_tuple_as_call, linfo.name, linfo.sig)
+end
+
+function pretty_stackcall(frame::Base.StackFrame, linfo::Module)
+    sprint(Base.show, linfo)
 end
 
 "Return a `(String, Any)` tuple containing function output as the second entry."
@@ -1237,7 +1425,7 @@ function array_prefix(@nospecialize(x::Vector{<:Any}))
 end
 
 function array_prefix(@nospecialize(x))
-    original = sprint(Base.showarg, x, false)
+    original = sprint(Base.showarg, x, false; context=:limit => true)
     string(lstrip(original, ':'), ": ")::String
 end
 
@@ -1486,17 +1674,29 @@ const integrations = Integration[
         id = Base.PkgId(Base.UUID(reinterpret(UInt128, codeunits("Paul Berg Berlin")) |> first), "AbstractPlutoDingetjes"),
         code = quote
             @assert v"1.0.0" <= AbstractPlutoDingetjes.MY_VERSION < v"2.0.0"
-            initial_value_getter_ref[] = AbstractPlutoDingetjes.Bonds.initial_value
-            transform_value_ref[] = AbstractPlutoDingetjes.Bonds.transform_value
-            possible_bond_values_ref[] = AbstractPlutoDingetjes.Bonds.possible_values
-
-            push!(supported_integration_features,
+            
+            supported!(xs...) = push!(supported_integration_features, xs...)
+            
+            # don't need feature checks for these because they existed in every version of AbstractPlutoDingetjes:
+            supported!(
                 AbstractPlutoDingetjes,
                 AbstractPlutoDingetjes.Bonds,
                 AbstractPlutoDingetjes.Bonds.initial_value,
                 AbstractPlutoDingetjes.Bonds.transform_value,
                 AbstractPlutoDingetjes.Bonds.possible_values,
             )
+            initial_value_getter_ref[] = AbstractPlutoDingetjes.Bonds.initial_value
+            transform_value_ref[] = AbstractPlutoDingetjes.Bonds.transform_value
+            possible_bond_values_ref[] = AbstractPlutoDingetjes.Bonds.possible_values
+            
+            # feature checks because these were added in a later release of AbstractPlutoDingetjes
+            if isdefined(AbstractPlutoDingetjes, :Display)
+                supported!(AbstractPlutoDingetjes.Display)
+                if isdefined(AbstractPlutoDingetjes.Display, :published_to_js)
+                    supported!(AbstractPlutoDingetjes.Display.published_to_js)
+                end
+            end
+
         end,
     ),
     Integration(
@@ -1995,15 +2195,15 @@ function possible_bond_values(s::Symbol; get_length::Bool=false)
             try
                 length(possible_values)
             catch
-                length(make_distributed_serializable(possible_values))
+                length(make_serializable(possible_values))
             end : 
-            make_distributed_serializable(possible_values)
+            make_serializable(possible_values)
     end
 end
 
-make_distributed_serializable(x::Any) = x
-make_distributed_serializable(x::Union{AbstractVector,AbstractSet,Base.Generator}) = collect(x)
-make_distributed_serializable(x::Union{Vector,Set,OrdinalRange}) = x
+make_serializable(x::Any) = x
+make_serializable(x::Union{AbstractVector,AbstractSet,Base.Generator}) = collect(x)
+make_serializable(x::Union{Vector,Set,OrdinalRange}) = x
 
 
 """
@@ -2117,72 +2317,48 @@ end"""
 """
 const currently_running_cell_id = Ref{UUID}(uuid4())
 
-function _publish(x, id_start)::String
+function core_published_to_js(io, x)
     assertpackable(x)
+
+    id_start = objectid2str(x)
     
-    id = string(notebook_id[], "/", currently_running_cell_id[], "/", id_start)
-    d = get!(Dict{String,Any}, cell_published_objects, currently_running_cell_id[])
+    _notebook_id = get(io, :pluto_notebook_id, notebook_id[])::UUID
+    _cell_id = get(io, :pluto_cell_id, currently_running_cell_id[])::UUID
+    
+    # The unique identifier of this object
+    id = "$_notebook_id/$id_start"
+    
+    d = get!(Dict{String,Any}, cell_published_objects, _cell_id)
     d[id] = x
-    return id
+    
+    write(io, "/* See the documentation for AbstractPlutoDingetjes.Display.published_to_js */ getPublishedObject(\"$(id)\")")
+    
+    return nothing
 end
 
-_publish(x) = _publish(x, objectid2str(x))
-
-# TODO? Possibly move this to it's own package, with fallback that actually msgpack?
-# ..... Ideally we'd make this require `await` on the javascript side too...
-Base.@kwdef struct PublishedToJavascript
-    published_id
-    cell_id
+# TODO: This is the deprecated old function. Remove me at some point.
+struct PublishedToJavascript
+    published_object
 end
 function Base.show(io::IO, ::MIME"text/javascript", published::PublishedToJavascript)
-    if published.cell_id != currently_running_cell_id[]
-        error("Showing result from PlutoRunner.publish_to_js() in a cell different from where it was created, not (yet?) supported.")
-    end
-    write(io, "/* See the documentation for PlutoRunner.publish_to_js */ getPublishedObject(\"$(published.published_id)\")")
+    core_published_to_js(io, published.published_object)
 end
 Base.show(io::IO, ::MIME"text/plain", published::PublishedToJavascript) = show(io, MIME("text/javascript"), published)    
 Base.show(io::IO, published::PublishedToJavascript) = show(io, MIME("text/javascript"), published)    
 
-"""
-    publish_to_js(x)
+# TODO: This is the deprecated old function. Remove me at some point.
+function publish_to_js(x)
+    @warn "Deprecated, use `AbstractPlutoDingetjes.Display.published_to_js(x)` instead of `PlutoRunner.publish_to_js(x)`."
 
-Make the object `x` available to the JS runtime of this cell. The returned string is a JS command that, when executed in this cell's output, gives the object.
-
-!!! warning
-
-    This function is not yet public API, it will become public in the next weeks. Only use for experiments.
-
-# Example
-```julia
-let
-    x = Dict(
-        "data" => rand(Float64, 20),
-        "name" => "juliette",
-    )
-
-    HTML("\""
-    <script>
-    // we interpolate into JavaScript:
-    const x = \$(PlutoRunner.publish_to_js(x))
-
-    console.log(x.name, x.data)
-    </script>
-    "\"")
-end
-```
-"""
-function publish_to_js(args...)
-    PublishedToJavascript(
-        published_id=_publish(args...),
-        cell_id=currently_running_cell_id[],
-    )
+    assertpackable(x)
+    PublishedToJavascript(x)
 end
 
 const Packable = Union{Nothing,Missing,String,Symbol,Int64,Int32,Int16,Int8,UInt64,UInt32,UInt16,UInt8,Float32,Float64,Bool,MIME,UUID,DateTime}
-assertpackable(::Packable) = true
+assertpackable(::Packable) = nothing
 assertpackable(t::Any) = throw(ArgumentError("Only simple objects can be shared with JS, like vectors and dictionaries. $(string(typeof(t))) is not compatible."))
-assertpackable(::Vector{<:Packable}) = true
-assertpackable(::Dict{<:Packable,<:Packable}) = true
+assertpackable(::Vector{<:Packable}) = nothing
+assertpackable(::Dict{<:Packable,<:Packable}) = nothing
 assertpackable(x::Vector) = foreach(assertpackable, x)
 assertpackable(d::Dict) = let
     foreach(assertpackable, keys(d))
@@ -2209,7 +2385,7 @@ function Base.show(io::IO, m::MIME"text/html", e::EmbeddableDisplay)
 
         // see https://plutocon2021-demos.netlify.app/fonsp%20%E2%80%94%20javascript%20inside%20pluto to learn about the techniques used in this script
         
-        const body = $(publish_to_js(body, e.script_id));
+        const body = $(PublishedToJavascript(body));
         const mime = "$(string(mime))";
         
         const create_new = this == null || this._mime !== mime;
@@ -2379,18 +2555,32 @@ function Logging.handle_message(pl::PlutoCellLogger, level, msg, _module, group,
     end
 
     try
-
         yield()
 
+        po() = get(cell_published_objects, pl.cell_id, Dict{String,Any}())
+        before_published_object_keys = collect(keys(po()))
+
+        # Render the log arguments:
+        msg_formatted = format_output_default(msg isa AbstractString ? Text(msg) : msg)
+        kwargs_formatted = Tuple{String,Any}[(string(k), format_log_value(v)) for (k, v) in kwargs if k != :maxlog]
+
+        after_published_object_keys = collect(keys(po()))
+        new_published_object_keys = setdiff(after_published_object_keys, before_published_object_keys)
+
+        # (Running `put!(pl.log_channel, x)` will send `x` to the pluto server. See `start_relaying_logs` for the receiving end.)
         put!(pl.log_channel, Dict{String,Any}(
             "level" => string(level),
-            "msg" => format_output_default(msg isa AbstractString ? Text(msg) : msg),
+            "msg" => msg_formatted,
+            # This is a dictionary containing all published objects that were published during the rendering of the log arguments (we cannot track which objects were published during the execution of the log statement itself i think...)
+            "new_published_objects" => Dict{String,Any}(
+                key => po()[key] for key in new_published_object_keys
+            ),
             "group" => string(group),
             "id" => string(id),
             "file" => string(file),
             "cell_id" => pl.cell_id,
             "line" => line isa Union{Int32,Int64} ? line : nothing,
-            "kwargs" => Tuple{String,Any}[(string(k), format_log_value(v)) for (k, v) in kwargs if k != :maxlog],
+            "kwargs" => kwargs_formatted,
         ))
 
         yield()
@@ -2455,6 +2645,9 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
             _send_stdio_output!(output, loglevel)
         catch err
             @error "Failed to redirect stdout/stderr to logs"  exception=(err,catch_backtrace())
+            if err isa InterruptException
+                rethrow(err)
+            end
         end
     end
 
