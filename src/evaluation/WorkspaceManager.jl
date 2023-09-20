@@ -73,7 +73,9 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
     Status.report_business_planned!(init_status, Symbol(3))
     Status.report_business_planned!(init_status, Symbol(4))
 
-    Malt.remote_eval_wait(worker, session.options.evaluation.workspace_custom_startup_expr)
+    let s = session.options.evaluation.workspace_custom_startup_expr
+        s === nothing || Malt.remote_eval_wait(worker, Meta.parse(s))
+    end
 
     Malt.remote_eval_wait(worker, quote
         PlutoRunner.notebook_id[] = $(notebook.notebook_id)

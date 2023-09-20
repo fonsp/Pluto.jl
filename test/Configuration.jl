@@ -132,6 +132,15 @@ end
         PlutoRunner.is_mime_enabled(m::MIME"application/vnd.pluto.tree+object") = false
     end
 
+    # backwards compat: setting the value to an Expr should still work
+    @test 🍭.options.evaluation.workspace_custom_startup_expr isa String
+    @test occursin("PlutoRunner.is_mime_enabled", 🍭.options.evaluation.workspace_custom_startup_expr)
+
+    # normally you set it to a String
+    🍭.options.evaluation.workspace_custom_startup_expr = """
+        PlutoRunner.is_mime_enabled(m::MIME"application/vnd.pluto.tree+object") = false
+    """
+
     nb = Pluto.Notebook([
         Pluto.Cell("x = [1, 2]")
         Pluto.Cell("struct Foo; x; end")

@@ -156,7 +156,7 @@ These options are not intended to be changed during normal use.
 - `workspace_use_distributed_stdlib::Bool? = $WORKSPACE_USE_DISTRIBUTED_STDLIB_DEFAULT` Should we use the Distributed stdlib to run processes? Distributed will be replaced by Malt.jl, you can use this option to already get the old behaviour. `nothing` means: determine automatically (which is currently the same as `true`).
 - `lazy_workspace_creation::Bool = $LAZY_WORKSPACE_CREATION_DEFAULT`
 - `capture_stdout::Bool = $CAPTURE_STDOUT_DEFAULT`
-- `workspace_custom_startup_expr::Union{Nothing,Expr} = $WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT` An expression to be evaluated in the workspace process before running notebook code.
+- `workspace_custom_startup_expr::Union{Nothing,String} = $WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT` An expression to be evaluated in the workspace process before running notebook code.
 """
 @option mutable struct EvaluationOptions
     run_notebook_on_load::Bool = RUN_NOTEBOOK_ON_LOAD_DEFAULT
@@ -164,7 +164,17 @@ These options are not intended to be changed during normal use.
     workspace_use_distributed_stdlib::Union{Bool,Nothing} = WORKSPACE_USE_DISTRIBUTED_STDLIB_DEFAULT
     lazy_workspace_creation::Bool = LAZY_WORKSPACE_CREATION_DEFAULT
     capture_stdout::Bool = CAPTURE_STDOUT_DEFAULT
-    workspace_custom_startup_expr::Union{Nothing,Expr} = WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT
+    workspace_custom_startup_expr::Union{Nothing,String} = WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT
+end
+
+# TODO: deprecated, remove me in the next breaking release
+function Base.setproperty!(x::EvaluationOptions, property::Symbol, val)
+    if property === :workspace_custom_startup_expr && val isa Expr
+        @warn "Deprecated: workspace_custom_startup_expr should be a String, not an Expr."
+        setfield!(x, property, string(val))            
+    else
+        setfield!(x, property, val)
+    end
 end
 
 const COMPILE_DEFAULT = nothing
@@ -298,7 +308,7 @@ function from_flat_kwargs(;
         workspace_use_distributed_stdlib::Union{Bool,Nothing} = WORKSPACE_USE_DISTRIBUTED_STDLIB_DEFAULT,
         lazy_workspace_creation::Bool = LAZY_WORKSPACE_CREATION_DEFAULT,
         capture_stdout::Bool = CAPTURE_STDOUT_DEFAULT,
-        workspace_custom_startup_expr::Union{Nothing,Expr} = WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT,
+        workspace_custom_startup_expr::Union{Nothing,String} = WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT,
 
         compile::Union{Nothing,String} = COMPILE_DEFAULT,
         pkgimages::Union{Nothing,String} = PKGIMAGES_DEFAULT,
