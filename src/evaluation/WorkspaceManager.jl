@@ -74,7 +74,7 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
     Status.report_business_planned!(init_status, Symbol(4))
 
     let s = session.options.evaluation.workspace_custom_startup_expr
-        s === nothing || Malt.remote_eval_wait(worker, Meta.parse(s))
+        s === nothing || Malt.remote_eval_wait(worker, Meta.parseall(s))
     end
 
     Malt.remote_eval_wait(worker, quote
