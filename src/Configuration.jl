@@ -167,16 +167,6 @@ These options are not intended to be changed during normal use.
     workspace_custom_startup_expr::Union{Nothing,String} = WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT
 end
 
-# TODO: deprecated, remove me in the next breaking release
-function Base.setproperty!(x::EvaluationOptions, property::Symbol, val)
-    if property === :workspace_custom_startup_expr && val isa Expr
-        @warn "Deprecated: workspace_custom_startup_expr should be a String, not an Expr."
-        setfield!(x, property, string(val))            
-    else
-        setfield!(x, property, val)
-    end
-end
-
 const COMPILE_DEFAULT = nothing
 const PKGIMAGES_DEFAULT = nothing
 const COMPILED_MODULES_DEFAULT = nothing

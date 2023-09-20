@@ -128,16 +128,8 @@ end
 @testset "disable mimetype via workspace_custom_startup_expr" begin
     🍭 = ServerSession()
     🍭.options.evaluation.workspace_use_distributed = true
-    🍭.options.evaluation.workspace_custom_startup_expr = quote
-        PlutoRunner.is_mime_enabled(m::MIME"application/vnd.pluto.tree+object") = false
-    end
-
-    # backwards compat: setting the value to an Expr should still work
-    @test 🍭.options.evaluation.workspace_custom_startup_expr isa String
-    @test occursin("PlutoRunner.is_mime_enabled", 🍭.options.evaluation.workspace_custom_startup_expr)
-
-    # normally you set it to a String
     🍭.options.evaluation.workspace_custom_startup_expr = """
+        1 + 1
         PlutoRunner.is_mime_enabled(m::MIME"application/vnd.pluto.tree+object") = false
     """
 
