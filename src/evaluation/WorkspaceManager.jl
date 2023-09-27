@@ -641,10 +641,8 @@ function interrupt_workspace(session_notebook::Union{SN,Workspace}; verbose=true
         return true
     end
 
-    if Sys.iswindows()
-        verbose && @warn "Unfortunately, stopping cells is currently not supported on Windows :(
-        Maybe the Windows Subsystem for Linux is right for you:
-        https://docs.microsoft.com/en-us/windows/wsl"
+    if (workspace.worker isa Malt.DistributedStdlibWorker) && Sys.iswindows()
+        verbose && @warn "Stopping cells is not yet supported on Windows, but it will be soon!\n\nYou can already try out this new functionality with:\n\nPluto.run(workspace_use_distributed_stdlib=false)\n\nLet us know what you think!"
         return false
     end
 
