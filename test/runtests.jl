@@ -10,7 +10,7 @@ if get(ENV, "PLUTO_TEST_ONLY_COMPILETIMES", nothing) == "true"
 end
 @timeit_include("Events.jl")
 verify_no_running_processes()
-@timeit_include("WorkspaceManager.jl")
+@timeit_include("Configuration.jl")
 verify_no_running_processes()
 @timeit_include("packages/Basic.jl")
 verify_no_running_processes()
@@ -30,7 +30,7 @@ verify_no_running_processes()
 verify_no_running_processes()
 @timeit_include("Notebook.jl")
 verify_no_running_processes()
-@timeit_include("Configuration.jl")
+@timeit_include("WorkspaceManager.jl")
 verify_no_running_processes()
 
 # tests that don't start new processes:

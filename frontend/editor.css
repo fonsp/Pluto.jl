@@ -192,6 +192,11 @@ pluto-output p {
     line-height: 1.45em;
 }
 
+/* This allows a linebreak in Markdown using backslash with smaller spacing compared to paragraph in firefox */
+pluto-output br {
+    margin-block-end: 0;
+}
+
 pluto-output p:first-child {
     margin-block-start: 0px;
 }
@@ -322,6 +327,7 @@ pluto-output div.admonition .admonition-title ~ * {
 
 pluto-output div.admonition {
     padding-left: 0.5rem;
+    padding-right: 0.5rem;
     background: var(--jl-message-color);
     border: 5px solid var(--jl-message-accent-color);
 }
@@ -329,6 +335,7 @@ pluto-output div.admonition .admonition-title {
     background: var(--jl-message-accent-color);
     margin: -1px; /* Fixes a rendering glitch in Chrome */
     margin-left: -0.55rem;
+    margin-right: -0.55rem;
 }
 pluto-output div.admonition.note,
 pluto-output div.admonition.info,
@@ -502,7 +509,7 @@ aside#export div#container {
     flex-direction: row;
     display: flex;
     max-width: 1000px;
-    padding-right: 20px;
+    padding-right: 10em;
     margin: 0 auto;
 }
 header aside#export div#container {
@@ -553,10 +560,14 @@ a.export_card section {
     padding: 3px;
 }
 aside#export .export_small_btns {
-    margin-left: auto;
-    height: 60px;
     display: flex;
     flex-direction: row;
+    padding: 0.9em;
+    border-radius: 0.9em;
+    position: absolute;
+    right: 0.8em;
+    top: 0em;
+    background: var(--export-bg-color);
 }
 body.static_preview button.toggle_export {
     display: none;
@@ -596,17 +607,18 @@ nav#at_the_top > a {
     /* margin-right: 5rem; */
 }
 
-nav#at_the_top img {
-    height: 39px;
-    margin-bottom: -8px;
-    filter: var(--image-filters);
-}
-
 nav#at_the_top h1 {
     font-weight: 700;
     font-size: 1.8rem;
     display: inline;
     border-bottom: none;
+}
+
+nav#at_the_top img#logo-small,
+nav#at_the_top img#logo-big {
+    height: 39px;
+    margin-bottom: -8px;
+    filter: var(--image-filters);
 }
 
 nav#at_the_top img#logo-small {
@@ -913,16 +925,19 @@ body.is_recording header#pluto-nav {
 #record-ui-container > .overlay-button.playback {
     border-color: #c6c6dc;
 }
-#record-ui-container span.stop-recording-icon::after {
+span.pluto-icon.stop-recording-icon::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/stop-circle-outline.svg");
 }
-#record-ui-container span.microphone-icon::after {
+span.pluto-icon.microphone-icon::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/mic-outline.svg");
 }
-#record-ui-container span.mute-icon::after {
+span.pluto-icon.info-icon::after {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/information-circle-outline.svg");
+}
+span.pluto-icon.mute-icon::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/mic-off-outline.svg");
 }
-#record-ui-container span.follow-recording-icon::after {
+span.pluto-icon.follow-recording-icon::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-undo-outline.svg");
 }
 
@@ -997,14 +1012,14 @@ main > preamble #saveall-container.saved > span {
     opacity: 0.5;
 }
 
-.overlay-button span.pluto-icon::after {
+span.pluto-icon::after {
     content: "";
     display: inline-block;
-    padding-right: 20px;
-    /* width: 17px; */
-    height: 18px;
-    margin-bottom: -5px;
-    background-size: 17px 17px;
+    padding-right: 1.5em;
+    height: 1.3em;
+    margin-bottom: -0.3em;
+    transform: translateY(-0.1em);
+    background-size: 1.3em;
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sync-circle-outline.svg");
     background-repeat: no-repeat;
     background-position-x: right;
@@ -1775,17 +1790,18 @@ pkg-status-mark.disable_pkg > button > span::after {
 pluto-popup {
     display: block;
     position: absolute;
-    z-index: 70;
+    z-index: 1800;
     /* left: 1.5em; */
     /* top: calc((1.5em - 200px) * 0.5); */
-    width: min(90vw, 251px);
+    --max-size: 251px;
+    width: min(90vw, var(--max-size));
     /* min-height: 80px; */
     margin-left: 0.4rem;
     margin-top: 0px;
     margin-top: -1rem;
     /* margin-top: calc(0.5 * (1rem - 80px)); */
     overflow-wrap: break-word;
-    font-family: var(--lato-ui-font-stack);
+    font-family: var(--system-ui-font-stack);
     opacity: 0;
     transform: scale(0.2);
     transform-origin: left;
@@ -1800,6 +1816,10 @@ pluto-popup.visible {
     pointer-events: initial;
 }
 
+pluto-popup.big {
+    --max-size: 25em;
+}
+
 pluto-popup > * {
     display: block;
     background: var(--overlay-button-bg);
@@ -1809,6 +1829,15 @@ pluto-popup > * {
     padding: 8px;
     /* Slightly changes the layout of the three pkg buttons... in just the way that we want it! */
     position: absolute;
+    max-width: 100%;
+}
+
+pluto-popup > div > *:first-child {
+    margin-block-start: 0;
+}
+
+pluto-popup h1 {
+    font-size: 1.6em;
 }
 
 pluto-popup.warn > * {
@@ -1980,6 +2009,9 @@ pluto-runarea.save > button.runcell > span::after {
 
 pluto-cell:not(.show_input) > pluto-runarea {
     display: none;
+}
+pluto-cell.code_folded.show_input > pluto-input:not(:focus-within) {
+    opacity: 0.4;
 }
 
 pluto-cell:focus-within > pluto-runarea,
@@ -2681,7 +2713,7 @@ footer #info {
 /* UNDO DELETED CELL */
 
 nav#undo_delete {
-    z-index: 1000;
+    z-index: 2000;
     display: block;
     position: fixed;
     bottom: 0px;
@@ -3459,6 +3491,10 @@ pluto-cell.hooked_up pluto-output {
 .pluto-frontmatter .addentry {
     grid-column: 1/3;
     margin-top: 0.5em;
+}
+
+.pluto-frontmatter fieldset {
+    grid-column: 1/4;
 }
 
 .pluto-frontmatter .final {

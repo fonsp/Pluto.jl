@@ -1,7 +1,7 @@
 using Test
 import Pluto
 import Pluto: update_run!, update_save_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell
-import Distributed
+import Malt
 
 @testset "Bonds" begin
 
@@ -358,9 +358,8 @@ import Distributed
         
         # test that the notebook file is runnable:
         
-        test_proc = Distributed.addprocs(1)[1]
-        
-        Distributed.remotecall_eval(Main, test_proc, quote
+        test_proc = Malt.Worker()
+        Malt.remote_eval_wait(test_proc, quote
             import Pkg
             try
                 Pkg.UPDATED_REGISTRY_THIS_SESSION[] = true
@@ -368,11 +367,11 @@ import Distributed
             Pkg.activate(mktempdir())
             Pkg.add("AbstractPlutoDingetjes")
         end)
-        @test Distributed.remotecall_eval(Main, test_proc, quote
+        @test Malt.remote_eval_fetch(test_proc, quote
             include($(notebook.path))
             true
         end)
-        Distributed.rmprocs(test_proc)
+        Malt.stop(test_proc)
     end
 
     @testset "Dependent Bound Variables" begin

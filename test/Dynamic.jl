@@ -193,7 +193,7 @@ end
 
     @testset "PlutoRunner API" begin
         🍭 = ServerSession()
-        🍭.options.evaluation.workspace_use_distributed = true
+        # 🍭.options.evaluation.workspace_use_distributed = true
         
         cid = uuid1()
 

@@ -1,17 +1,21 @@
 # Will be evaluated _inside_ the workspace process.
 
-# Pluto does most things on process 1 (the server), and it uses little workspace processes to evaluate notebook code in.
-# These baby processes don't import Pluto, they only import this module. Functions from this module are called by WorkspaceManager.jl via Distributed
+# Pluto does most things on the server, but it uses worker processes to evaluate notebook code in.
+# These processes don't import Pluto, they only import this module.
+# Functions from this module are called by WorkspaceManager.jl via Malt.
 
-# So when reading this file, pretend that you are living in process 2, and you are communicating with Pluto's server, who lives in process 1.
+# When reading this file, pretend that you are living in a worker process,
+# and you are communicating with Pluto's server, who lives in the main process.
 # The package environment that this file is loaded with is the NotebookProcessProject.toml file in this directory.
 
 # SOME EXTRA NOTES
 
 # 1. The entire PlutoRunner should be a single file.
-# 2. We restrict the communication between this PlutoRunner and the Pluto server to only use *Base Julia types*, like `String`, `Dict`, `NamedTuple`, etc. 
+# 2. Restrict the communication between this PlutoRunner and the Pluto server to only use *Base Julia types*, like `String`, `Dict`, `NamedTuple`, etc. 
 
-# These restriction are there to allow flexibility in the way that this file is loaded on a runner process, which is something that we might want to change in the future, like when we make the transition to our own Distributed.
+# These restriction are there to allow flexibility in the way that this file is
+# loaded on a runner process, which is something that we might want to change
+# in the future.
 
 module PlutoRunner
 
@@ -21,7 +25,6 @@ import InteractiveUtils
 
 using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
-import Distributed
 import Base64
 import FuzzyCompletions: Completion, BslashCompletion, ModuleCompletion, PropertyCompletion, FieldCompletion, PathCompletion, DictCompletion, completions, completion_text, score
 import Base: show, istextmime
@@ -32,7 +35,7 @@ import REPL
 
 export @bind
 
-# This is not a struct to make it easier to pass these objects between distributed processes.
+# This is not a struct to make it easier to pass these objects between processes.
 const MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
 
 const ObjectID = typeof(objectid("hello computer"))
@@ -671,7 +674,7 @@ Notebook code does run in `Main` - it runs in workspace modules. Every time that
 
 The trick boils down to two things:
 1. When we create a new workspace module, we move over some of the global from the old workspace. (But not the ones that we want to 'delete'!)
-2. If a function used to be defined, but now we want to delete it, then we go through the method table of that function and snoop out all methods that we defined by us, and not by another package. This is how we reverse extending external functions. For example, if you run a cell with `Base.sqrt(s::String) = "the square root of" * s`, and then delete that cell, then you can still call `sqrt(1)` but `sqrt("one")` will err. Cool right!
+2. If a function used to be defined, but now we want to delete it, then we go through the method table of that function and snoop out all methods that were defined by us, and not by another package. This is how we reverse extending external functions. For example, if you run a cell with `Base.sqrt(s::String) = "the square root of" * s`, and then delete that cell, then you can still call `sqrt(1)` but `sqrt("one")` will err. Cool right!
 """
 function move_vars(
     old_workspace_name::Symbol,
@@ -878,7 +881,7 @@ const table_column_display_limit_increase = 30
 
 const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 
-# This is not a struct to make it easier to pass these objects between distributed processes.
+# This is not a struct to make it easier to pass these objects between processes.
 const FormattedCellResult = NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
 
 function formatted_result_of(
@@ -2192,15 +2195,15 @@ function possible_bond_values(s::Symbol; get_length::Bool=false)
             try
                 length(possible_values)
             catch
-                length(make_distributed_serializable(possible_values))
+                length(make_serializable(possible_values))
             end : 
-            make_distributed_serializable(possible_values)
+            make_serializable(possible_values)
     end
 end
 
-make_distributed_serializable(x::Any) = x
-make_distributed_serializable(x::Union{AbstractVector,AbstractSet,Base.Generator}) = collect(x)
-make_distributed_serializable(x::Union{Vector,Set,OrdinalRange}) = x
+make_serializable(x::Any) = x
+make_serializable(x::Union{AbstractVector,AbstractSet,Base.Generator}) = collect(x)
+make_serializable(x::Union{Vector,Set,OrdinalRange}) = x
 
 
 """
@@ -2642,6 +2645,9 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
             _send_stdio_output!(output, loglevel)
         catch err
             @error "Failed to redirect stdout/stderr to logs"  exception=(err,catch_backtrace())
+            if err isa InterruptException
+                rethrow(err)
+            end
         end
     end
 

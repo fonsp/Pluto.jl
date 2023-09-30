@@ -877,7 +877,6 @@ patch: ${JSON.stringify(
                 // https://github.com/fonsp/Pluto.jl/issues/2398
                 open_pluto_popup({
                     type: "warn",
-                    source_element: null,
                     body: html`<p>A new server was started - this notebook session is no longer running.</p>
                         <p>Would you like to go back to the main menu?</p>
                         <br />
@@ -1215,13 +1214,13 @@ patch: ${JSON.stringify(
             // if (e.defaultPrevented) {
             //     return
             // }
-            if (e.key.toLowerCase() === "q" && has_ctrl_or_cmd_pressed(e)) {
+            if (e.key?.toLowerCase() === "q" && has_ctrl_or_cmd_pressed(e)) {
                 // This one can't be done as cmd+q on mac, because that closes chrome - Dral
                 if (Object.values(this.state.notebook.cell_results).some((c) => c.running || c.queued)) {
                     this.actions.interrupt_remote()
                 }
                 e.preventDefault()
-            } else if (e.key.toLowerCase() === "s" && has_ctrl_or_cmd_pressed(e)) {
+            } else if (e.key?.toLowerCase() === "s" && has_ctrl_or_cmd_pressed(e)) {
                 const some_cells_ran = this.actions.set_and_run_all_changed_remote_cells()
                 if (!some_cells_ran) {
                     // all cells were in sync allready
@@ -1269,8 +1268,8 @@ patch: ${JSON.stringify(
             }
 
             if (this.state.disable_ui && this.state.backend_launch_phase === BackendLaunchPhase.wait_for_user) {
-                // const code = e.key.charCodeAt(0)
-                if (e.key === "Enter" || e.key.length === 1) {
+                // const code = e.key?.charCodeAt(0)
+                if (e.key === "Enter" || e.key?.length === 1) {
                     if (!document.body.classList.contains("wiggle_binder")) {
                         document.body.classList.add("wiggle_binder")
                         setTimeout(() => {

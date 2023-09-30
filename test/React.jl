@@ -1,14 +1,15 @@
 using Test
 import Pluto: Configuration, Notebook, ServerSession, ClientSession, update_run!, Cell, WorkspaceManager
 import Pluto.Configuration: Options, EvaluationOptions
-import Distributed
 
 @testset "Reactivity" begin
     🍭 = ServerSession()
     🍭.options.evaluation.workspace_use_distributed = false
 
-    @testset "Basic $(parallel ? "distributed" : "single-process")" for parallel in [false, true]
-        🍭.options.evaluation.workspace_use_distributed = parallel
+    @testset "Basic $workertype" for workertype in [:Malt, :Distributed, :InProcess]
+        🍭.options.evaluation.workspace_use_distributed = workertype !== :InProcess
+        🍭.options.evaluation.workspace_use_distributed_stdlib = workertype === :Distributed
+        
         
         notebook = Notebook([
             Cell("x = 1"),
@@ -22,7 +23,13 @@ import Distributed
             end"""),
             Cell("g(6) + g(6,6)"),
 
-            Cell("import Distributed"),
+            Cell("""
+            begin
+                pushfirst!(LOAD_PATH, "@stdlib")
+                import Distributed
+                popfirst!(LOAD_PATH)
+            end
+            """),
             Cell("Distributed.myid()"),
         ])
 
@@ -70,10 +77,14 @@ import Distributed
         @test notebook.cells[6].output.body == "3"
 
         update_run!(🍭, notebook, notebook.cells[7:8])
-        @test if parallel
-            notebook.cells[8].output.body != string(Distributed.myid())
+        if workertype === :Distributed
+            @test notebook.cells[8].output.body ∉ ("1", string(Distributed.myid()))
+        elseif workertype === :Malt
+            @test notebook.cells[8].output.body == "1"
+        elseif workertype === :InProcess
+            @test notebook.cells[8].output.body == string(Distributed.myid())
         else
-            notebook.cells[8].output.body == string(Distributed.myid())
+            error()
         end
 
         WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)

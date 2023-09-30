@@ -33,10 +33,10 @@ export const RunArea = ({
     }
 
     const titlemap = {
-        interrupt: "Interrupt",
+        interrupt: "Interrupt (Ctrl + Q)",
         save: "Save code without running",
         jump: "This cell depends on a disabled cell",
-        run: "Run cell",
+        run: "Run cell (Shift + Enter)",
     }
 
     const on_double_click = (/** @type {MouseEvent} */ e) => {

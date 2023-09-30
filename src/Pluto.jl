@@ -33,6 +33,7 @@ function project_relative_path(root, xs...)
 end
 
 import Pkg
+import Scratch
 
 include_dependency("../Project.toml")
 const PLUTO_VERSION = VersionNumber(Pkg.TOML.parsefile(joinpath(ROOT_DIR, "Project.toml"))["version"])
@@ -103,16 +104,31 @@ export activate_notebook_environment
 
 include("./precompile.jl")
 
-if get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") != "0" && get(ENV, "CI", "🍄") != "true"
-@info """\n
-    Welcome to Pluto $(PLUTO_VERSION_STR) 🎈
-    Start a notebook server using:
+function __init__()
+    # Print a welcome banner
+    if (get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") != "0" &&
+        get(ENV, "CI", "🍄") != "true" && isinteractive())
+        # Print the banner only once per version, if there isn't
+        # yet a file for this version in banner_shown scratch space.
+        # (Using the Pluto version as the filename enables later
+        # version-specific "what's new" messages.)
+        fn = joinpath(Scratch.@get_scratch!("banner_shown"), PLUTO_VERSION_STR)
+        if !isfile(fn)
+            @info """
 
-  julia> Pluto.run()
+              Welcome to Pluto $(PLUTO_VERSION_STR) 🎈
+              Start a notebook server using:
 
-    Have a look at the FAQ:
-    https://github.com/fonsp/Pluto.jl/wiki
-\n"""
+            julia> Pluto.run()
+
+              Have a look at the FAQ:
+              https://github.com/fonsp/Pluto.jl/wiki
+
+            """
+            # create empty file to indicate that we've shown the banner
+            write(fn, "");
+        end
+    end
 end
 
 end
