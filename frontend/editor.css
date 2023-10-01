@@ -3503,3 +3503,22 @@ pluto-cell.hooked_up pluto-output {
     justify-content: flex-end;
     gap: 0.5em;
 }
+
+/** NOTE: This will need some actual CSS person to do something about this
+          but this works for now. */
+.pluto-multiplayer {
+    position: fixed;
+    bottom: 0;
+    background-color: gray;
+    border: 5px solid salmon;
+    border-radius: 8px;
+    font-family: "JuliaMono";
+    font-size: 15px;
+    z-index: 1000;
+}
+
+.pluto-multiplayer ul {
+    margin: 0;
+    padding: 5px;
+    list-style: none;
+}
