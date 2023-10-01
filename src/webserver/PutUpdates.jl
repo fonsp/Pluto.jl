@@ -124,6 +124,12 @@ function flushallclients(session::ServerSession, subset::Union{Set{ClientSession
         end
     end
     for to_delete_id in disconnected
+        client_id = session.connected_clients[to_delete_id].client_id
+        if !isnothing(client_id)
+            for nb in values(session.notebooks)
+                pop!(nb.users, client_id, nothing)
+            end
+        end
         delete!(session.connected_clients, to_delete_id)
     end
 end

@@ -1,15 +1,14 @@
 import {
     showTooltip,
     tooltips,
+    Facet,
     ChangeSet,
     collab,
     Decoration,
     EditorSelection,
     EditorView,
-    Facet,
     getSyncedVersion,
     receiveUpdates,
-    SelectionRange,
     sendableUpdates,
     StateEffect,
     StateField,
@@ -43,7 +42,7 @@ function pushUpdates(push_updates, version, fullUpdates) {
     }
 
     // Strip off transaction data
-    let updates = fullUpdates.map((u) => ({
+    const updates = fullUpdates.map((u) => ({
         client_id: u.clientID,
         document_length: u.changes.desc.length,
         effects: u.effects.map((effect) => effect.value.selection.toJSON()),
@@ -77,72 +76,99 @@ const CaretEffect = StateEffect.define({
     },
 })
 
-const CursorField = (client_id) =>
+export const UsersFacet = Facet.define({
+    combine: (values) => values[0],
+    compare: (a, b) => a === b, // <-- TODO: not very performant
+})
+
+/** Shows the name of client on top of its cursor */
+const CursorField = (client_id, cell_id) =>
     StateField.define({
-        create: () => [], 
+        create: () => [],
         update(tooltips, tr) {
-            const newTooltips =
-                tr.effects
-                .filter((effect) => effect.is(CaretEffect) && effect.value.clientID != client_id)
-                .map(effect => ({
+            const users = tr.state.facet(UsersFacet)
+            const seen = new Set()
+            const newTooltips = tr.effects
+                .filter((effect) => {
+                    const clientID = effect.value.clientID
+                    if (!users[clientID]?.focused_cell || users[clientID]?.focused_cell != cell_id) return false
+                    if (effect.is(CaretEffect) && clientID != client_id && !seen.has(clientID)) {
+                        // TODO: still not in sync with caret
+                        seen.add(clientID)
+                        return true
+                    }
+                    return false
+                })
+                .map((effect) => ({
                     pos: effect.value.selection.main.head,
                     hover: true,
                     above: true,
                     strictSide: true,
                     arrow: false,
                     create: () => {
-                        let dom = document.createElement("div")
+                        const dom = document.createElement("div")
                         dom.className = "cm-tooltip-remoteClientID"
-                        dom.textContent = effect.value.clientID
-                        return {dom}
-                    }
+                        dom.textContent = users[effect.value.clientID]?.name || effect.value.clientID
+                        return { dom }
+                    },
                 }))
             return newTooltips
         },
-        provide: (f) => showTooltip.computeN([f], state => state.field(f))
+        provide: (f) => showTooltip.computeN([f, UsersFacet], (state) => state.field(f)),
     })
-const CaretField = (client_id) =>
+
+/** Shows cursor and selection of user */
+const CaretField = (client_id, cell_id) =>
     StateField.define({
-        create() {
-            return {}
-        },
+        create: () => ({}),
         update(value, tr) {
-            const new_value = { ...value }
+            const users = tr.state.facet(UsersFacet)
+            const new_value = {}
+
+            for (const clientID of Object.keys(value)) {
+                const client_cell = users[clientID]?.focused_cell
+                if (client_cell && client_cell == cell_id) {
+                    new_value[clientID] = value[clientID]
+                }
+            }
 
             /** @type {StateEffect<CarretEffectValue>[]} */
             const caretEffects = tr.effects.filter((effect) => effect.is(CaretEffect))
             for (const effect of caretEffects) {
-                if (effect.value.clientID == client_id) continue // don't show our own cursor
-                if (effect.value.clientID) new_value[effect.value.clientID] = effect.value.selection
+                const clientID = effect.value.clientID
+                if (clientID == client_id) continue // don't show our own cursor
+                const client_cell = users[clientID]?.focused_cell
+                if (!client_cell || client_cell != cell_id) continue // only show when focusing this cell
+                if (clientID) new_value[clientID] = { selection: effect.value.selection, color: users[clientID]?.color ?? "#ff00aa" }
             }
 
             return new_value
         },
         provide: (f) =>
-            EditorView.decorations.from(f, (/** @type {{[key: string]: EditorSelection}} */ value) => {
+            EditorView.decorations.compute([f, UsersFacet], (/** @type EditorState */ state) => {
+                const value = state.field(f)
                 const decorations = []
 
-                for (const selection of Object.values(value)) {
+                for (const { selection, color } of Object.values(value)) {
                     decorations.push(
                         Decoration.widget({
-                            widget: new ReactWidget(
-                                html`<span class="cm-remoteCaret"></span>`
-                            ),
+                            widget: new ReactWidget(html`<span style=${`border-color: ${color};`} class="cm-remoteCaret"></span>`),
                         }).range(selection.main.head) // Let's assume the remote cursor is here
                     )
 
                     for (const range of selection.ranges) {
                         if (range.from != range.to) {
-                            decorations.push(Decoration.mark({ class: "cm-remoteSelection" }).range(range.from, range.to))
+                            decorations.push(
+                                Decoration.mark({ class: "cm-remoteSelection", attributes: { style: `background-color: ${color};` } }).range(
+                                    range.from,
+                                    range.to
+                                )
+                            )
                         }
                     }
                 }
 
-
-                let decs =  Decoration.set(decorations, true)
-                console.log({decs})
-                return decs
-                // return showTooltip.computeN([f], state => state.field(f))
+                return Decoration.set(decorations, true)
             }),
     })
 
@@ -156,12 +182,15 @@ const CaretField = (client_id) =>
 /**
  * @param {number} startVersion
  * @param {{
+ *   get_notebook: () => Notebook,
  *   subscribe_to_updates: (cb: Function) => EventHandler,
  *   push_updates: (updates: Array<any>) => Promise<any>
+ *   client_id: string,
+ *   cell_id: string,
  * }} param1
  * @returns
  */
-export const pluto_collab = (startVersion, { subscribe_to_updates, push_updates }) => {
+export const pluto_collab = (startVersion, { subscribe_to_updates, push_updates, client_id, cell_id }) => {
     const plugin = ViewPlugin.fromClass(
         class {
             pushing = false
@@ -170,7 +199,6 @@ export const pluto_collab = (startVersion, { subscribe_to_updates, push_updates 
              * @param {EditorView} view
              */
             constructor(view) {
-                console.log("BUILD", view)
                 this.view = view
                 this.handler = subscribe_to_updates((updates) => this.sync(updates))
             }
@@ -180,13 +208,13 @@ export const pluto_collab = (startVersion, { subscribe_to_updates, push_updates 
             }
 
             async push() {
-                let updates = sendableUpdates(this.view.state)
+                const updates = sendableUpdates(this.view.state)
                 if (this.pushing || !updates.length) {
                     return
                 }
 
                 this.pushing = true
-                let version = getSyncedVersion(this.view.state)
+                const version = getSyncedVersion(this.view.state)
                 await pushUpdates(push_updates, version, updates)
                 this.pushing = false
 
@@ -201,8 +229,15 @@ export const pluto_collab = (startVersion, { subscribe_to_updates, push_updates 
              * @param {Array<any>} updates
              */
             sync(updates) {
-                let version = getSyncedVersion(this.view.state)
-                updates = updates.slice(version).map((u) => ({
+                const version = getSyncedVersion(this.view.state)
+                this.syncNewUpdates(updates.slice(version))
+            }
+
+            /**
+             * @param {Array<any>} updates
+             */
+            syncNewUpdates(newUpdates) {
+                const updates = newUpdates.map((u) => ({
                     changes: ChangeSet.of(u.specs, u.document_length, "\n"),
                     effects: u.effects.map((selection) => CaretEffect.of({ selection: EditorSelection.fromJSON(selection), clientID: u.client_id })),
                     clientID: u.client_id,
@@ -227,24 +262,23 @@ export const pluto_collab = (startVersion, { subscribe_to_updates, push_updates 
         }
     )
 
-    const clientID = Math.random() + "_ok"
     const cursorPlugin = EditorView.updateListener.of((update) => {
         if (!update.selectionSet) {
             return
         }
 
-        const effect = CaretEffect.of({ selection: update.view.state.selection, clientID })
+        const effect = CaretEffect.of({ selection: update.view.state.selection, clientID: client_id })
         update.view.dispatch({
             effects: [effect],
         })
     })
 
     return [
-        collab({ clientID, startVersion, sharedEffects: (tr) => tr.effects.filter((effect) => effect.is(CaretEffect) || effect.is(RunEffect)) }),
+        collab({ clientID: client_id, startVersion, sharedEffects: (tr) => tr.effects.filter((effect) => effect.is(CaretEffect) || effect.is(RunEffect)) }),
         plugin,
         cursorPlugin,
         // tooltips(),
-        // CaretField(clientID),
-        // CursorField(clientID),
+        CaretField(client_id, cell_id),
+        CursorField(client_id, cell_id),
     ]
 }

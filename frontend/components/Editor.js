@@ -11,6 +11,7 @@ import { serialize_cells, deserialize_cells, detect_deserializer } from "../comm
 import { FilePicker } from "./FilePicker.js"
 import { Preamble } from "./Preamble.js"
 import { NotebookMemo as Notebook } from "./Notebook.js"
+import { MultiplayerPanel } from "./MultiplayerPanel.js"
 import { BottomRightPanel } from "./BottomRightPanel.js"
 import { DropRuler } from "./DropRuler.js"
 import { SelectionArea } from "./SelectionArea.js"
@@ -682,6 +683,7 @@ export class Editor extends Component {
             },
         }
         this.actions = { ...this.real_actions }
+        window.pluto_actions = this.actions
 
         const apply_notebook_patches = (patches, /** @type {NotebookData?} */ old_state = null, get_reverse_patches = false) =>
             new Promise((resolve) => {
@@ -866,6 +868,13 @@ patch: ${JSON.stringify(
             this.client.send("complete", { query: "sq" }, { notebook_id: this.state.notebook.notebook_id })
             this.client.send("complete", { query: "\\sq" }, { notebook_id: this.state.notebook.notebook_id })
 
+            const users = this.actions.get_notebook().users
+            const names = ["Mars", "Earth", "Moon", "Sun"]
+            const colors = ["#ffc09f", "#a0ced9", "#adf7b6", "#fcf5c7"]
+            this.actions.update_notebook((nb) => {
+                nb.users[this.client_id] = { name: names[Object.keys(users).length], color: colors[Object.keys(users).length] }
+            })
+
             setTimeout(init_feedback, 2 * 1000) // 2 seconds - load feedback a little later for snappier UI
         }
 
@@ -904,6 +913,7 @@ patch: ${JSON.stringify(
                 ? `./${u}?id=${this.state.notebook.notebook_id}`
                 : `${this.state.binder_session_url}${u}?id=${this.state.notebook.notebook_id}&token=${this.state.binder_session_token}`
 
+        this.client_id = Math.random().toString(36).slice(2)
         /** @type {import('../common/PlutoConnection').PlutoConnection} */
         this.client = /** @type {import('../common/PlutoConnection').PlutoConnection} */ ({})
 
@@ -1572,8 +1582,10 @@ patch: ${JSON.stringify(
                             last_hot_reload_time=${notebook.last_hot_reload_time}
                             connected=${this.state.connected}
                         />
+                        <${MultiplayerPanel} users=${notebook.users}/>
                         <${Notebook}
                             notebook=${notebook}
+                            client_id=${this.client_id}
                             cell_inputs_local=${this.state.cell_inputs_local}
                             disable_input=${this.state.disable_ui || !this.state.connected /* && this.state.backend_launch_phase == null*/}
                             last_created_cell=${this.state.last_created_cell}

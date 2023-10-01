@@ -134,13 +134,12 @@ function compose(a, b)
     out
 end
 
-
 struct OpIterator
     r::Vector{Range}
     i::UInt32 # op index
-    ℓ::UInt32 # consumed length in r
+    ℓ::UInt32 # consumed length in r[i]
 end
-OpIterator(r) = OpIterator(r, firstindex(r), 0)
+OpIterator(r) = OpIterator(r, firstindex(r), zero(UInt32))
 
 function peek_length(it::OpIterator)
     it.i > lastindex(it.r) && return typemax(UInt32)
@@ -161,15 +160,14 @@ function next(it::OpIterator, ℓ=nothing)
     it.i > lastindex(it.r) && return Range(Retain, typemax(UInt32), nothing), it
     op = it.r[it.i]
     if op.type == Insert
-        return Range(
-            Insert, op.length, op.insert
-        ), OpIterator(it.r, it.i+1, 0)
+        @assert isnothing(ℓ)
+        return Range(Insert, op.length, op.insert), OpIterator(it.r, it.i+one(UInt32), zero(UInt32))
     end
     ty = op.type
     ℓ  = @something(ℓ, peek_length(it))
     ni, nℓ = it.i, it.ℓ+ℓ
     r = Range(ty, ℓ, nothing)
-    if it.ℓ + ℓ == op.length
+    if it.ℓ + ℓ == op.length # move to next
         ni += 1
         nℓ = 0
     end
@@ -187,74 +185,34 @@ function transform(a, b, priority)
     out = Range[]
 
     @assert priority ∈ (:left, :right)
-    priority == :left
+    before = priority == :left
 
-    i = firstindex(a)
-    j = firstindex(b)
+    itA = OpIterator(a)
+    itB = OpIterator(b)
 
-    ca = a[i]
-    cb = b[j]
-
-    while i <= lastindex(a) &&
-            j <= lastindex(b)
-        @show ca cb
-        if ca.type == Insert && priority === :left
+    while has_next(itA) || has_next(itB)
+        if peek_type(itA) == Insert && (before || peek_type(itB) != Insert)
+            ca, itA = next(itA)
             retain!(out, sizeof(ca.insert))
-            i += 1
-            i > lastindex(a) && break
-            ca = a[i]
-        elseif cb.type == Insert
+        elseif peek_type(itB) == Insert
+            cb, itB = next(itB)
             push!(out, cb)
-            j += 1
-            j > lastindex(b) && break
-            cb = b[j]
         else
             # ca, cb are either Retain or Delete
-            ℓ = min(ca.length, cb.length)
+            ℓ = min(peek_length(itA), peek_length(itB))
 
-            # move forward
-            if ca.length == cb.length
-                i += 1
-                j += 1
-            elseif ca.length < cb.length
-                i += 1
-            else
-                j += 1
-            end
-
-            if ca.type == Delete
+            if peek_type(itA) == Delete
                 # our delete either makes their delete redundant or removes their retain
-            elseif cb.type == Delete
+            elseif peek_type(itB) == Delete
                 push!(out, Range(Delete, ℓ, nothing))
             else
                 # ca and cb are Retain
                 retain!(out, ℓ)
             end
 
-            if i > lastindex(a) || j > lastindex(b)
-                break
-            end
-
-            if ca.length == cb.length
-                ca = a[i]
-                cb = b[j]
-            elseif ca.length < cb.length
-                ca = a[i]
-                cb = Range(cb.type, b[j].length - ℓ, cb.insert)
-            else
-                ca = Range(ca.type, a[i].length - ℓ, ca.insert)
-                cb = b[j]
-            end
+            _, itA = next(itA, ℓ)
+            _, itB = next(itB, ℓ)
         end
-    end
-
-    if i <= lastindex(a)
-        push!(out, ca)
-
-    end
-
-    if j <= lastindex(b)
-        push!(out, cb)
     end
 
     out
@@ -326,9 +284,7 @@ updateC = Update(changesC,sizeof(text)+2,"clientC",[])
 updateB = Update(changesB, sizeof(text), "clientB", [])
 
 rA = ranges(updateA)
-@show apply(text, rA)
 rB = ranges(updateB)
-@show apply(text, rB)
 
 rC = ranges(updateC)
 

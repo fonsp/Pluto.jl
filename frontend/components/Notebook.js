@@ -1,9 +1,7 @@
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { html, useContext, useEffect, useMemo, useRef, useState } from "../imports/Preact.js"
-import { EditorView } from "../imports/index.es.js"
 
 import { Cell } from "./Cell.js"
-import { RunEffect } from "./CellInput/pluto_collab.js"
 import { nbpkg_fingerprint } from "./PkgStatusMark.js"
 
 /** Like `useMemo`, but explain to the console what invalidated the memo. */
@@ -31,6 +29,8 @@ let CellMemo = ({
     cell_input,
     cell_input_local,
     notebook_id,
+    client_id,
+    users,
     cell_dependencies,
     selected,
     focus_after_creation,
@@ -51,6 +51,8 @@ let CellMemo = ({
                 cell_input=${cell_input}
                 cell_input_local=${cell_input_local}
                 notebook_id=${notebook_id}
+                client_id=${client_id}
+                users=${users}
                 selected=${selected}
                 force_hide_input=${force_hide_input}
                 focus_after_creation=${focus_after_creation}
@@ -83,6 +85,8 @@ let CellMemo = ({
         code_folded,
         cell_input_local,
         notebook_id,
+        client_id,
+        users,
         cell_dependencies,
         selected,
         force_hide_input,
@@ -118,7 +122,7 @@ const render_cell_outputs_minimum = 20
  *  disable_input: boolean,
  * }} props
  * */
-export const Notebook = ({ notebook, cell_inputs_local, last_created_cell, selected_cells, is_initializing, is_process_ready, disable_input }) => {
+export const Notebook = ({ notebook, client_id, cell_inputs_local, last_created_cell, selected_cells, is_initializing, is_process_ready, disable_input }) => {
     let pluto_actions = useContext(PlutoActionsContext)
 
     // Add new cell when the last cell gets deleted
@@ -167,6 +171,8 @@ export const Notebook = ({ notebook, cell_inputs_local, last_created_cell, selec
                         cell_dependencies=${notebook?.cell_dependencies?.[cell_id] ?? {}}
                         cell_input_local=${cell_inputs_local[cell_id]}
                         notebook_id=${notebook.notebook_id}
+                        client_id=${client_id}
+                        users=${notebook.users}
                         selected=${selected_cells.includes(cell_id)}
                         focus_after_creation=${last_created_cell === cell_id}
                         force_hide_input=${false}

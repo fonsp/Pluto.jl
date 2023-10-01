@@ -105,6 +105,8 @@ export const Cell = ({
     cell_dependencies,
     cell_input_local,
     notebook_id,
+    client_id,
+    users,
     selected,
     force_hide_input,
     focus_after_creation,
@@ -331,6 +333,8 @@ export const Cell = ({
                 nbpkg=${nbpkg}
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
+                client_id=${client_id}
+                users=${users}
                 metadata=${metadata}
                 any_logs=${any_logs}
                 show_logs=${show_logs}

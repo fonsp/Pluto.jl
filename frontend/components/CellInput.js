@@ -54,7 +54,7 @@ import {
 import { markdown, html as htmlLang, javascript, sqlLang, python, julia_mixed } from "./CellInput/mixedParsers.js"
 import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
-import { pluto_collab } from "./CellInput/pluto_collab.js"
+import { UsersFacet, pluto_collab } from "./CellInput/pluto_collab.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
 import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"
 import { cell_movement_plugin, prevent_holding_a_key_from_doing_things_across_cells } from "./CellInput/cell_movement_plugin.js"
@@ -342,7 +342,7 @@ let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPluto
 }
 
 function eventEmitter() {
-    let events = {}
+    const events = {}
     return {
         subscribe: (/** @type {string} */ name, cb) => {
             ;(events[name] || (events[name] = [])).push(cb)
@@ -408,6 +408,8 @@ export const CellInput = ({
     nbpkg,
     cell_id,
     notebook_id,
+    client_id,
+    users,
     any_logs,
     show_logs,
     set_show_logs,
@@ -427,6 +429,8 @@ export const CellInput = ({
         throw to_throw
     }
 
+    console.log(users)
+
     const notebook_id_ref = useRef(notebook_id)
     notebook_id_ref.current = notebook_id
 
@@ -439,6 +443,7 @@ export const CellInput = ({
     let highlighted_line_compartment = useCompartment(newcm_ref, HighlightLineFacet.of(cm_highlighted_line))
     let highlighted_range_compartment = useCompartment(newcm_ref, HighlightRangeFacet.of(cm_highlighted_range))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
+    let users_compartment = useCompartment(newcm_ref, UsersFacet.of(users))
 
     let on_change_compartment = useCompartment(
         newcm_ref,
@@ -616,6 +621,7 @@ export const CellInput = ({
             if (!update.view.hasFocus) {
                 return
             }
+            pluto_actions.update_notebook((nb) => nb.users[client_id] && (nb.users[client_id].focused_cell = cell_id))
 
             if (update.docChanged || update.selectionSet) {
                 let state = update.state
@@ -643,6 +649,7 @@ export const CellInput = ({
                     highlighted_range_compartment,
                     global_definitions_compartment,
                     editable_compartment,
+                    users_compartment,
                     highlightLinePlugin(),
                     highlightRangePlugin(),
 
@@ -690,6 +697,7 @@ export const CellInput = ({
                             if (!caused_by_window_blur) {
                                 // then it's caused by focusing something other than this cell in the editor.
                                 // in this case, we want to collapse the selection into a single point, for aesthetic reasons.
+                                pluto_actions.update_notebook((nb) => nb.users[client_id] && (nb.users[client_id].focused_cell = null))
                                 setTimeout(() => {
                                     view.dispatch({
                                         selection: {
@@ -779,6 +787,8 @@ export const CellInput = ({
                     pluto_collab(start_version, {
                         push_updates: (data) => pluto_actions.send("push_updates", { ...data, cell_id: cell_id }, { notebook_id }, false),
                         subscribe_to_updates: (cb) => updater.subscribe("updates", cb),
+                        client_id,
+                        cell_id,
                     }),
 
                     // This is my weird-ass extension that checks the AST and shows you where

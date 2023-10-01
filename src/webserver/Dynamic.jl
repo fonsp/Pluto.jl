@@ -171,6 +171,7 @@ function notebook_to_js(notebook::Notebook)
         end,
         "status_tree" => Status.tojs(notebook.status_tree),
         "cell_execution_order" => cell_id.(collect(topological_order(notebook))),
+        "users" => notebook.users,
     )
 end
 
@@ -237,6 +238,9 @@ struct BondChanged <: Changed
     bond_name::Symbol
     is_first_value::Bool
 end
+struct UserCreated <: Changed
+    client_id::String
+end
 
 # to support push!(x, y...) # with y = []
 Base.push!(x::Set{Changed}) = x
@@ -284,7 +288,16 @@ const effects_of_changed_state = Dict(
             Firebasey.applypatch!(request.notebook, patch)
             [FileChanged()]
         end
-    )
+    ),
+    "users" => Dict(
+        Wildcard() => function(client_id, path...; request::ClientRequest, patch::Firebasey.JSONPatch)
+            Firebasey.applypatch!(request.notebook, patch)
+            if patch isa Firebasey.AddPatch && isempty(path)
+                return [UserCreated(client_id)]
+            end
+            return no_changes
+        end,
+    ),
 )
 
 responses[:update_notebook] = function response_update_notebook(🙋::ClientRequest)
@@ -341,6 +354,13 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
                 update_skipped_cells_dependency!(notebook)
             end  
              save_notebook(🙋.session, notebook)
+        end
+
+        let created_user = filter(x -> x isa UserCreated, changes)
+            if !isempty(created_user) && !isnothing(🙋.initiator)
+                created_user = only(created_user)
+                🙋.initiator.client.client_id = created_user.client_id
+            end
         end
 
         let bond_changes = filter(x -> x isa BondChanged, changes)
@@ -444,11 +464,24 @@ responses[:push_updates] = function response_push_updates(🙋::ClientRequest)
 
     withtoken(cell.cm_token) do
         current_version = length(cell.cm_updates)
+        # change_ranges = map(Delta.ranges, updates)
 
         # Refuse client changes if it is not up to date.
         if current_version != version
+            # Client synced version is out of date, transform updates over past changes
+            updates_to_transform = @view cell.cm_updates[version+1:end]
+            # @assert !any(up->up.client_id==first(updates).client_id,updates_to_transform)
+            # updates_to_transform = map(Delta.ranges, updates_to_transform)
+
+            # new_changes = map(change_ranges) do cu
+            #     for tu in updates_to_transform
+            #         cu = Delta.transform(tu,cu,:left)
+            #     end
+            #     cu
+            # end
+            # new_text = foldl(Delta.apply, new_changes; init=string(cell.code_text))
             @warn "Wrong version" current_version version
-            send_notebook_changes!(🙋; commentary=:👎)
+            send_notebook_changes!(🙋; commentary=updates_to_transform)
             return
         end
 

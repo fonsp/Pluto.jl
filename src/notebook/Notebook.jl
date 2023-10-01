@@ -62,6 +62,9 @@ Base.@kwdef mutable struct Notebook
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
 
     metadata::Dict{String, Any}=copy(DEFAULT_NOTEBOOK_METADATA)
+
+    # stores the metadata related to each client such as name, id, color and so on
+    users::Dict{String,Dict}=Dict{String,Dict}()
 end
 
 function _initial_nb_status()

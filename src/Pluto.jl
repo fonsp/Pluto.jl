@@ -56,6 +56,7 @@ include("./webserver/Status.jl")
 module OperationalTransform
 include("./notebook/OperationalTransform.jl")
 end
+include("./collab/OperationalTransform.jl")
 
 include("./notebook/Cell.jl")
 include("./analysis/data structures.jl")
