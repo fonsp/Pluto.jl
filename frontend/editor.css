@@ -511,6 +511,7 @@ aside#export div#container {
     max-width: 1000px;
     padding-right: 10em;
     margin: 0 auto;
+    position: relative;
 }
 header aside#export div#container {
     /* to prevent the div from taking up horizontal page when the export pane is closed. On small screen this causes overscroll on the right. */
@@ -730,6 +731,10 @@ aside#export button.toggle_export span {
 }
 aside#export button.toggle_frontmatter_edit span {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/newspaper-outline.svg");
+    filter: invert(1);
+}
+aside#export button.toggle_presentation span {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/easel-outline.svg");
     filter: invert(1);
 }
 nav#at_the_top:after {
