@@ -131,21 +131,25 @@ pluto-filepicker button,
 
 .desktop_picker_group {
     flex-grow: 1;
-    display: flex;
+    /* display: flex; */
     padding: 5px;
 }
 
 .desktop_picker_group > button {
     cursor: pointer;
-    flex-grow: 1;
     padding: 8px;
-}
-
-.desktop_picker_group > button.full_width {
     width: 100%;
 }
 
-pluto-filepicker button {
+.desktop_picker_group > .option_splitter {
+    color: gray;
+    font-style: italic;
+    text-align: center;
+    margin: 15px 0;
+    font-size: 10pt;
+}
+
+#new pluto-filepicker button {
     cursor: pointer;
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;

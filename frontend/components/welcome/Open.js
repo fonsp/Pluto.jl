@@ -1,9 +1,11 @@
 import _ from "../../imports/lodash.js"
-import { html } from "../../imports/Preact.js"
+import { html, useState } from "../../imports/Preact.js"
 
 import { FilePicker } from "../FilePicker.js"
 import { PasteHandler } from "../PasteHandler.js"
 import { guess_notebook_location } from "../../common/NotebookLocationFromURL.js"
+
+import * as desktop from "../DesktopInterface.js"
 
 /**
  * @param {{
@@ -28,43 +30,52 @@ export const Open = ({ client, connected, CustomPicker, show_samples, on_start_n
         }
     }
 
-    const desktop_on_open_path = async (_p) => {
-        window.plutoDesktop?.fileSystem.openNotebook("path")
-    }
-
-    const desktop_on_open_url = async (url) => {
-        window.plutoDesktop?.fileSystem.openNotebook("url", url)
-    }
-
     const picker = CustomPicker ?? {
         text: "Open a notebook",
         placeholder: "Enter path or URL...",
     }
 
+    // may be passed to FilePicker to disable autocomplete by spoofing an autocompletion client
+    const dummy_client = {
+        send: (_) => {
+            return {
+                then: (_) => {},
+            }
+        },
+    }
+
     return html`<${PasteHandler} on_start_navigation=${on_start_navigation} />
         <h2>${picker.text}</h2>
         <div id="new" class=${!!window.plutoDesktop ? "desktop_opener" : ""}>
-            <${FilePicker}
-                key=${picker.placeholder}
-                client=${client}
-                value=""
-                on_submit=${on_open_path}
-                on_desktop_submit=${desktop_on_open_path}
-                button_label=${window.plutoDesktop ? "Open File" : "Open"}
-                placeholder=${picker.placeholder}
-            />
-            ${window.plutoDesktop &&
-            html`<${FilePicker}
-                key=${picker.placeholder}
-                client=${client}
-                value=""
-                on_desktop_submit=${() => {
-                    console.log("TODO: implement prompt or input component")
-                    desktop_on_open_url(prompt("Enter notebook URL"))
-                }}
-                button_label="Open from URL"
-                placeholder=${picker.placeholder}
-            />`}
+            ${window.plutoDesktop
+                ? html`
+                      <div class="desktop_picker_group">
+                          <button onClick=${desktop.open_from_path}>Open File</button>
+                          <div class="option_splitter">— OR —</div>
+                          <div>
+                              <${FilePicker}
+                                  key=${picker.placeholder}
+                                  client=${client}
+                                  value=""
+                                  on_submit=${desktop.open_from_url}
+                                  button_label=${"Open from URL"}
+                                  placeholder=${"Enter a URL..."}
+                                  client=${dummy_client}
+                                  force_on_blur=${false}
+                              />
+                          </div>
+                      </div>
+                  `
+                : html`
+                      <${FilePicker}
+                          key=${picker.placeholder}
+                          client=${client}
+                          value=""
+                          on_submit=${on_open_path}
+                          button_label=${window.plutoDesktop ? "Open File" : "Open"}
+                          placeholder=${picker.placeholder}
+                      />
+                  `}
         </div>`
 }
 

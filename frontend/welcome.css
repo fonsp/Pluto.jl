@@ -91,19 +91,6 @@ section#open {
     /* border: 0.3rem solid #d6e0d8; */
 }
 
-#new.desktop_opener {
-    display: flex;
-    flex-direction: row;
-    align-content: center;
-    justify-content: space-around;
-    box-shadow: none;
-    position: relative;
-}
-
-#new.desktop_opener .desktop_picker {
-    width: 100%;
-}
-
 section {
     display: flex; /* overflow: hidden; */ /* place-items: center; */ /* margin: 0rem 0rem; */
 
