@@ -55,6 +55,7 @@ const set_cm_value = (/** @type{EditorView} */ cm, /** @type {string} */ value, 
  *  placeholder: String,
  *  on_submit: (new_path: String) => Promise<void>,
  *  client: import("../common/PlutoConnection.js").PlutoConnection,
+ *  force_on_blur: Boolean
  * }} props
  */
 export const FilePicker = ({ value, suggest_new_file, button_label, placeholder, on_submit, client, force_on_blur = true }) => {

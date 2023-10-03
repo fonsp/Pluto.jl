@@ -93,6 +93,12 @@ export const Welcome = ({ launch_params }) => {
         })
     }, [])
 
+    useEffect(() => {
+        window.plutoDesktop?.ipcRenderer.on("set-block-screen-text", (/** @type string */ block_screen_text) => {
+            set_block_screen_with_this_text(block_screen_text)
+        })
+    }, [])
+
     const { show_samples, CustomRecent, CustomPicker } = extended_components
 
     // When block_screen_with_this_text is null (default), all is fine. When it is a string, we show a big banner with that text, and disable all other UI. https://github.com/fonsp/Pluto.jl/pull/2292
