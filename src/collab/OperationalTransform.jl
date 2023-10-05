@@ -164,7 +164,7 @@ function next(it::OpIterator, ℓ=nothing)
         return Range(Insert, op.length, op.insert), OpIterator(it.r, it.i+one(UInt32), zero(UInt32))
     end
     ty = op.type
-    ℓ  = @something(ℓ, peek_length(it))
+    ℓ  = isnothing(ℓ) ? ℓ : peek_length(it)
     ni, nℓ = it.i, it.ℓ+ℓ
     r = Range(ty, ℓ, nothing)
     if it.ℓ + ℓ == op.length # move to next
