@@ -326,7 +326,7 @@ end
 
 function exported_names(mod::Module)
     @static if VERSION ≥ v"1.11.0-DEV.469"
-        filter!(b -> Base.isexported(mod, b), names(mod; all=true))
+        filter!(Base.Fix1(Base.isexported, mod), names(mod; all=true))
     else
         names(mod)
     end
