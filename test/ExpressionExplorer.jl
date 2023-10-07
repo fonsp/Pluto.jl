@@ -805,7 +805,6 @@ end
         (" 🍕🍕", (6, 10), (3, 5)), # a 🍕 is two UTF16 codeunits
     ]
     for (s, (start_byte, end_byte), (from, to)) in tests
-        @show s
         @test PlutoRunner.map_byte_range_to_utf16_codepoints(s, start_byte, end_byte) == (from, to)
     end
 end

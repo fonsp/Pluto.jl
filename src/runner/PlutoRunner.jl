@@ -324,9 +324,17 @@ function try_macroexpand(mod::Module, notebook_id::UUID, cell_id::UUID, expr; ca
     return (sanitize_expr(expr_to_save), expr_hash(expr_to_save))
 end
 
+function exported_names(mod::Module)
+    @static if VERSION ≥ v"1.11.0-DEV.469"
+        filter!(b -> Base.isexported(mod, b), names(mod; all=true))
+    else
+        names(mod)
+    end
+end
+
 function get_module_names(workspace_module, module_ex::Expr)
     try
-        Core.eval(workspace_module, Expr(:call, :names, module_ex)) |> Set{Symbol}
+        Core.eval(workspace_module, Expr(:call, exported_names, module_ex)) |> Set{Symbol}
     catch
         Set{Symbol}()
     end
