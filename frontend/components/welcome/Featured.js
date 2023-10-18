@@ -35,6 +35,8 @@ import { FeaturedCard } from "./FeaturedCard.js"
  *   source_url?: String,
  *   title?: String,
  *   description?: String,
+ *   binder_url?: String,
+ *   slider_server_url?: String,
  * }}
  */
 
