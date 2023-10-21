@@ -1,6 +1,6 @@
 import puppeteer from "puppeteer"
 import { saveScreenshot, createPage, paste } from "../helpers/common"
-import { importNotebook, getPlutoUrl, shutdownCurrentNotebook, setupPlutoBrowser, waitForPlutoToCalmDown } from "../helpers/pluto"
+import { importNotebook, getPlutoUrl, shutdownCurrentNotebook, setupPlutoBrowser, waitForPlutoToCalmDown, restartProcess } from "../helpers/pluto"
 
 describe("safe_preview", () => {
     /**
@@ -68,5 +68,37 @@ Hello
     it("Importing notebook should open in safe preview", async () => {
         await importNotebook(page, "safe_preview.jl", { permissionToRunCode: false })
         await expect_safe_preview(page)
+
+        await waitForPlutoToCalmDown(page)
+
+        const get_cell_contents = () => page.evaluate(() => Array.from(document.querySelectorAll(`pluto-cell>pluto-output`)).map((c) => c.innerText))
+        let cell_contents = await get_cell_contents()
+
+        expect(cell_contents[0]).toBe("one")
+        expect(cell_contents[1]).toBe("Scripts and styles not rendered in Safe preview\ni should not be red\ntwo\nsafe")
+        expect(cell_contents[2]).toBe("three")
+        expect(cell_contents[3]).toBe("Code not executed in Safe preview")
+        expect(cell_contents[4]).toBe("Code not executed in Safe preview")
+        expect(cell_contents[5]).toContain("yntax")
+        expect(cell_contents[6]).toBe("")
+
+        expect(await page.evaluate(() => getComputedStyle(document.querySelector(`.zo`)).color)).not.toBe("rgb(255, 0, 0)")
+
+        await restartProcess(page)
+        await waitForPlutoToCalmDown(page)
+
+        cell_contents = await get_cell_contents()
+
+        expect(cell_contents[0]).toBe("one")
+        expect(cell_contents[1]).toBe("i should not be red\ntwo\nsafe\nDANGER")
+        expect(cell_contents[2]).toBe("three")
+        expect(cell_contents[3]).toBe("123")
+        expect(cell_contents[4]).toBe("")
+        expect(cell_contents[5]).toContain("yntax")
+        expect(cell_contents[6]).toBe("")
+
+        expect(await page.evaluate(() => document.querySelector(`pluto-log-dot`).innerText)).toBe("four\nDANGER")
+
+        expect(await page.evaluate(() => getComputedStyle(document.querySelector(`.zo`)).color)).toBe("rgb(255, 0, 0)")
     })
 })

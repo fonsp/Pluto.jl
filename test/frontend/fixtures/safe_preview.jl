@@ -33,13 +33,20 @@ return html`<div style="color: red;">DANGER</div>`
 """
 
 # ╔═╡ 99e2bfea-4e5d-4d94-bd96-77be7b04811d
-html"asdf"
+html"three"
 
 # ╔═╡ 76e68adf-16ab-4e88-a601-3177f34db6ec
 122 + 1
 
 # ╔═╡ 873d58c2-8590-4bb3-bf9c-596b1cdbe402
-
+let
+	stuff = html"""
+four <script>
+return html`<div style="color: red;">DANGER</div>`
+</script>
+"""
+	@info stuff
+end
 
 # ╔═╡ 55c74b79-41a6-461e-99c4-a61994673824
 modify me to make me safe
