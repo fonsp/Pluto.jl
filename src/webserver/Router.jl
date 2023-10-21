@@ -202,7 +202,8 @@ function http_router_for(session::ServerSession)
             save_path;
             as_redirect=false,
             as_sample=false,
-            clear_frontmatter=!isnothing(get(query, "clear_frontmatter", nothing)),
+            execution_allowed=haskey(query, "execution_allowed"),
+            clear_frontmatter=haskey(query, "clear_frontmatter"),
             title="Failed to load notebook",
             advice="The contents could not be read as a Pluto notebook file. When copying contents from somewhere else, make sure that you copy the entire notebook file.  You can also <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!"
         )
