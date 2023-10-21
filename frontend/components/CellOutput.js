@@ -26,6 +26,7 @@ import { pluto_syntax_colors, ENABLE_CM_MIXED_PARSER } from "./CellInput.js"
 import hljs from "../imports/highlightjs.js"
 import { julia_mixed } from "./CellInput/mixedParsers.js"
 import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
+import { SafePreviewSanitizeMessage } from "./SafePreviewUI.js"
 
 export class CellOutput extends Component {
     constructor() {
@@ -487,7 +488,6 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
     }, [body, persist_js_state, pluto_actions, pluto_bonds, sanitize_html])
 
     useLayoutEffect(() => {
-        console.log({ body, sanitize_html })
         const container = container_ref.current
         if (container == null) return
 
@@ -502,12 +502,20 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
         // @ts-ignore
         dump.append(...container.childNodes)
 
-        // Actually "load" the html
-        container.innerHTML = sanitize_html
+        let html_content_to_set = sanitize_html
             ? DOMPurify.sanitize(body, {
                   FORBID_TAGS: ["style"],
               })
             : body
+
+        // Actually "load" the html
+        container.innerHTML = html_content_to_set
+
+        if (html_content_to_set !== body) {
+            let info_element = document.createElement("div")
+            info_element.innerHTML = SafePreviewSanitizeMessage
+            container.prepend(info_element)
+        }
 
         if (sanitize_html) return
 

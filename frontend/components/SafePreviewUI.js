@@ -69,3 +69,7 @@ export const SafePreviewOutput = () => {
         </div></pluto-output
     >`
 }
+
+export const SafePreviewSanitizeMessage = `<div class="safe-preview-output">
+<span class="offline-icon pluto-icon"></span><span>${`Scripts and styles not rendered in `}<em>Safe preview</em></span>
+</div>`
