@@ -1902,6 +1902,14 @@ pkg-popup .toggle-terminal {
     right: 20px;
 }
 
+.pkg-time-estimate {
+    font-size: 0.8em;
+    margin: 0.5em 0em;
+    padding: 0.5em 0.5em;
+    background: var(--pluto-logs-info-color);
+    border-radius: 0.5em;
+}
+
 pkg-terminal {
     display: block;
     /* width: 20rem; */

@@ -88,6 +88,7 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
 }
 
 /**
+ * The little icon that appears inline next to a package import in code (e.g. `using PlutoUI ✅`)
  * @param {{
  *  package_name: string,
  *  pluto_actions: any,
