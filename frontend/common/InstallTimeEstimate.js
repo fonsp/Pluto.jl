@@ -83,8 +83,17 @@ export const time_estimate = (/** @type {PackageTimingData} */ data, /** @type {
     let sum = (xs) => xs.reduce((acc, x) => acc + (x == null || isNaN(x) ? 0 : x), 0)
 
     return {
-        install: sum(times.map(_.property("install"))),
-        precompile: sum(times.map(_.property("precompile"))),
-        load: sum(times.map(_.property("load"))),
+        install: sum(times.map(_.property("install"))) * timing_weights.install,
+        precompile: sum(times.map(_.property("precompile"))) * timing_weights.precompile,
+        load: sum(times.map(_.property("load"))) * timing_weights.load,
     }
+}
+
+const timing_weights = {
+    // Because the GitHub Action runner has superfast internet
+    install: 2,
+    // Because the GitHub Action runner has average compute speed
+    load: 1,
+    // Because precompilation happens in parallel
+    precompile: 0.3,
 }

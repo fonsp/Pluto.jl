@@ -178,8 +178,8 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event, disable_input })
 
     const timingdata = usePackageTimingData()
     const estimate = timingdata == null || recent_event?.package_name == null ? null : time_estimate(timingdata, [recent_event?.package_name])
-    const total_time = estimate == null ? null : estimate.install * 2 + estimate.load + estimate.precompile
-    const total_second_time = estimate == null ? null : estimate.load
+    const total_time = estimate == null ? 0 : estimate.install + estimate.load + estimate.precompile
+    const total_second_time = estimate == null ? 0 : estimate.load
 
     // <header>${recent_event?.package_name}</header>
     return html`<pkg-popup
