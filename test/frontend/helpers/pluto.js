@@ -120,6 +120,9 @@ export const waitForPlutoToCalmDown = async (/** @type {puppeteer.Page} */ page,
         () =>
             //@ts-ignore
             document?.body?._update_is_ongoing === false &&
+            //@ts-ignore
+            document?.body?._js_init_set?.size === 0 &&
+            document?.body?.classList?.contains("loading") === false &&
             document?.querySelector(`#process-status-tab-button.something_is_happening`) == null &&
             document?.querySelector(`pluto-cell.running, pluto-cell.queued`) === null,
         options
