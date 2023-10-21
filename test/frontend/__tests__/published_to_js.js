@@ -43,6 +43,6 @@ describe("published_to_js", () => {
             return document.querySelector("#to_cell_log")?.textContent
         })
         // This test is currently broken, due to https://github.com/fonsp/Pluto.jl/issues/2092
-        // expect(log_of_published).toBe("[4,5,6] MAGIC!")
+        expect(log_of_published).toBe("[4,5,6] MAGIC!")
     })
 })
