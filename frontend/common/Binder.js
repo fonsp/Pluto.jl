@@ -144,6 +144,7 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
             const upload_url = with_token(
                 with_query_params(new URL("notebookupload", binder_session_url), {
                     name: new URLSearchParams(window.location.search).get("name"),
+                    execution_allowed: "true",
                 })
             )
             console.log(`downloading locally and uploading `, upload_url, launch_params.notebookfile)
