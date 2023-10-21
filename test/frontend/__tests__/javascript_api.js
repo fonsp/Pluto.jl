@@ -1,19 +1,6 @@
 import puppeteer from "puppeteer"
-import { waitForContent, lastElement, saveScreenshot, getTestScreenshotPath, waitForContentToBecome, createPage, paste, countCells } from "../helpers/common"
-import {
-    createNewNotebook,
-    getCellIds,
-    waitForCellOutput,
-    waitForNoUpdateOngoing,
-    getPlutoUrl,
-    prewarmPluto,
-    waitForCellOutputToChange,
-    keyboardPressInPlutoInput,
-    writeSingleLineInPlutoInput,
-    manuallyEnterCells,
-    shutdownCurrentNotebook,
-    setupPlutoBrowser,
-} from "../helpers/pluto"
+import { saveScreenshot, waitForContentToBecome, createPage, paste } from "../helpers/common"
+import { createNewNotebook, waitForNoUpdateOngoing, getPlutoUrl, shutdownCurrentNotebook, setupPlutoBrowser, waitForPlutoToCalmDown } from "../helpers/pluto"
 
 describe("JavaScript API", () => {
     /**
@@ -62,7 +49,7 @@ describe("JavaScript API", () => {
             timeout: 0,
         })
         await page.click(`.runallchanged`)
-        await waitForNoUpdateOngoing(page, { polling: 100 })
+        await waitForPlutoToCalmDown(page, { polling: 100 })
         const initialLastCellContent = await waitForContentToBecome(page, `pluto-cell:last-child pluto-output`, expected)
         expect(initialLastCellContent).toBe(expected)
     })
@@ -83,7 +70,7 @@ describe("JavaScript API", () => {
             timeout: 0,
         })
         await page.click(`.runallchanged`)
-        await waitForNoUpdateOngoing(page, { polling: 100 })
+        await waitForPlutoToCalmDown(page, { polling: 100 })
         let initialLastCellContent = await waitForContentToBecome(page, `pluto-cell:last-child pluto-output`, expected)
         expect(initialLastCellContent).toBe(expected)
 
@@ -103,7 +90,7 @@ describe("JavaScript API", () => {
             timeout: 0,
         })
         await page.click(`.runallchanged`)
-        await waitForNoUpdateOngoing(page, { polling: 100 })
+        await waitForPlutoToCalmDown(page, { polling: 100 })
         initialLastCellContent = await waitForContentToBecome(page, `pluto-cell:last-child pluto-output`, expected)
         expect(initialLastCellContent).toBe(expected)
     })
@@ -136,7 +123,7 @@ describe("JavaScript API", () => {
             timeout: 0,
         })
         await page.click(`.runallchanged`)
-        await waitForNoUpdateOngoing(page, { polling: 100 })
+        await waitForPlutoToCalmDown(page, { polling: 100 })
         await waitForContentToBecome(page, `pluto-cell:nth-child(2) pluto-output`, "emitter")
         page.waitForTimeout(2000)
 
