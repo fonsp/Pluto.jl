@@ -473,6 +473,7 @@ responses[:restart_process] = function response_restart_process(🙋::ClientRequ
     
     if 🙋.notebook.process_status != ProcessStatus.waiting_to_restart
         🙋.notebook.process_status = ProcessStatus.waiting_to_restart
+        🙋.session.options.evaluation.run_notebook_on_load && _report_business_cells_planned!(🙋.notebook)
         send_notebook_changes!(🙋 |> without_initiator)
 
         SessionActions.shutdown(🙋.session, 🙋.notebook; keep_in_session=true, async=true)

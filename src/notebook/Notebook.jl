@@ -72,6 +72,17 @@ function _initial_nb_status()
     return b
 end
 
+function _report_business_cells_planned!(notebook::Notebook)
+    run_status = Status.report_business_planned!(notebook.status_tree, :run)
+    Status.report_business_planned!(run_status, :resolve_topology)
+    cell_status = Status.report_business_planned!(run_status, :evaluate)
+    for (i,c) in enumerate(notebook.cells)
+        c.running = true
+        c.queued = true
+        Status.report_business_planned!(cell_status, Symbol(i))
+    end
+end
+
 _collect_cells(cells_dict::Dict{UUID,Cell}, cells_order::Vector{UUID}) = 
     map(i -> cells_dict[i], cells_order)
 _initial_topology(cells_dict::Dict{UUID,Cell}, cells_order::Vector{UUID}) =

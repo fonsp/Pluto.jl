@@ -76,14 +76,8 @@ function open(session::ServerSession, path::AbstractString;
 
     session.notebooks[notebook.notebook_id] = notebook
     
-    run_status = Status.report_business_planned!(notebook.status_tree, :run)
     if session.options.evaluation.run_notebook_on_load
-        Status.report_business_planned!(run_status, :resolve_topology)
-        cell_status = Status.report_business_planned!(run_status, :evaluate)
-        for (i,c) in enumerate(notebook.cells)
-            c.queued = true
-            Status.report_business_planned!(cell_status, Symbol(i))
-        end
+        _report_business_cells_planned!(notebook)
     end
 
     update_save_run!(session, notebook, notebook.cells; run_async, prerender_text=true)
