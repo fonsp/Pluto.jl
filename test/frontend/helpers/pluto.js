@@ -87,7 +87,7 @@ export const createNewNotebook = async (page) => {
  * @param {Page} page
  * @param {string} notebookName`
  */
-export const importNotebook = async (page, notebookName) => {
+export const importNotebook = async (page, notebookName, { permissionToRunCode = true } = {}) => {
     // Copy notebook before using it, so we don't mess it up with test changes
     const notebookPath = getFixtureNotebookPath(notebookName)
     const artifactsPath = getTemporaryNotebookPath()
@@ -98,6 +98,8 @@ export const importNotebook = async (page, notebookName) => {
 
     const openFileButton = "pluto-filepicker button"
     await clickAndWaitForNavigation(page, openFileButton)
+    // Give permission to run code in this notebook
+    if (permissionToRunCode) await restartProcess(page)
     await waitForPlutoToCalmDown(page)
 }
 
@@ -105,6 +107,14 @@ export const importNotebook = async (page, notebookName) => {
  * @param {Page} page
  */
 export const getCellIds = (page) => page.evaluate(() => Array.from(document.querySelectorAll("pluto-cell")).map((cell) => cell.id))
+
+/**
+ * @param {Page} page
+ */
+export const restartProcess = async (page) => {
+    //@ts-ignore
+    await page.waitForFunction(() => document?.querySelector(`a#restart-process-button`).click())
+}
 
 /**
  * @param {Page} page

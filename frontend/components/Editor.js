@@ -1435,7 +1435,8 @@ patch: ${JSON.stringify(
             }
         }
 
-        const restart_button = (text, maybe_confirm = false) => html`<a href="#" onClick=${() => restart(maybe_confirm)}>${text}</a>`
+        const restart_button = (text, maybe_confirm = false) =>
+            html`<a href="#" id="restart-process-button" onClick=${() => restart(maybe_confirm)}>${text}</a>`
 
         return html`
             ${this.state.disable_ui === false && html`<${HijackExternalLinksToOpenInNewTab} />`}
