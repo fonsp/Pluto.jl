@@ -79,6 +79,7 @@ export const createNewNotebook = async (page) => {
     const newNotebookSelector = 'a[href="new"]'
     await page.waitForSelector(newNotebookSelector)
     await clickAndWaitForNavigation(page, newNotebookSelector)
+    await page.waitForTimeout(1000)
     await waitForPlutoToCalmDown(page)
     await page.waitForSelector("pluto-input", { visible: true })
 }
@@ -100,6 +101,7 @@ export const importNotebook = async (page, notebookName, { permissionToRunCode =
     await clickAndWaitForNavigation(page, openFileButton)
     // Give permission to run code in this notebook
     if (permissionToRunCode) await restartProcess(page)
+    await page.waitForTimeout(1000)
     await waitForPlutoToCalmDown(page)
 }
 
@@ -112,17 +114,21 @@ export const getCellIds = (page) => page.evaluate(() => Array.from(document.quer
  * @param {Page} page
  */
 export const restartProcess = async (page) => {
-    //@ts-ignore
-    await page.waitForFunction(() => document?.querySelector(`a#restart-process-button`).click())
+    await page.click(`a#restart-process-button`)
 }
 
-/**
- * @param {Page} page
- */
-export const waitForPlutoToCalmDown = async (page) => {
-    await page.waitForTimeout(1000)
-    //@ts-ignore
-    await page.waitForFunction(() => document?.body?._update_is_ongoing === false && document?.querySelector(`pluto-cell.running, pluto-cell.queued`) === null)
+export const waitForPlutoToCalmDown = async (/** @type {puppeteer.Page} */ page, /** @type {{ polling: string | number; timeout?: number; }} */ options) => {
+    await page.waitForFunction(
+        () =>
+            //@ts-ignore
+            document?.body?._update_is_ongoing === false &&
+            //@ts-ignore
+            document?.body?._js_init_set?.size === 0 &&
+            document?.body?.classList?.contains("loading") === false &&
+            document?.querySelector(`#process-status-tab-button.something_is_happening`) == null &&
+            document?.querySelector(`pluto-cell.running, pluto-cell.queued`) === null,
+        options
+    )
 }
 
 /**
