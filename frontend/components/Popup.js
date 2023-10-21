@@ -29,7 +29,7 @@ export const help_circle_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/
  * @typedef MiscPopupDetails
  * @property {"info" | "warn"} type
  * @property {import("../imports/Preact.js").ReactElement} body
- * @property {HTMLElement} [source_element]
+ * @property {HTMLElement?} [source_element]
  * @property {Boolean} [big]
  */
 

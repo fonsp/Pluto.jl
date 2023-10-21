@@ -98,7 +98,7 @@ const on_jump = (hasBarrier, pluto_actions, cell_id) => () => {
  *  force_hide_input: boolean,
  *  focus_after_creation: boolean,
  *  process_waiting_for_permission: boolean,
- *  sanitze_html: boolean,
+ *  sanitize_html: boolean,
  *  [key: string]: any,
  * }} props
  * */
@@ -139,8 +139,8 @@ export const Cell = ({
 
     const remount = useMemo(() => () => setKey(key + 1))
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
-    const [cm_forced_focus, set_cm_forced_focus] = useState(/** @type{any} */ (null))
-    const [cm_highlighted_range, set_cm_highlighted_range] = useState(null)
+    const [cm_forced_focus, set_cm_forced_focus] = useState(/** @type {any} */ (null))
+    const [cm_highlighted_range, set_cm_highlighted_range] = useState(/** @type {{from, to}?} */ (null))
     const [cm_highlighted_line, set_cm_highlighted_line] = useState(null)
     const [cm_diagnostics, set_cm_diagnostics] = useState([])
 
@@ -349,7 +349,12 @@ export const Cell = ({
                 onerror=${remount}
             />
             ${show_logs && cell_api_ready
-                ? html`<${Logs} logs=${Object.values(logs)} line_heights=${line_heights} set_cm_highlighted_line=${set_cm_highlighted_line} />`
+                ? html`<${Logs}
+                      logs=${Object.values(logs)}
+                      line_heights=${line_heights}
+                      set_cm_highlighted_line=${set_cm_highlighted_line}
+                      sanitize_html=${sanitize_html}
+                  />`
                 : null}
             <${RunArea}
                 cell_id=${cell_id}
