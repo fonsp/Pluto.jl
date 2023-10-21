@@ -957,6 +957,10 @@ patch: ${JSON.stringify(
             // console.info("All scripts finished!")
             this.send_queued_bond_changes()
         })
+
+        // @ts-ignore This is for tests
+        document.body._js_init_set = this.js_init_set
+
         /** Is the notebook ready to execute code right now? (i.e. are no cells queued or running?) */
         this.notebook_is_idle = () => {
             return !(

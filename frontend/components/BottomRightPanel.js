@@ -94,7 +94,9 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
                             "helpbox-process": true,
                             "active": open_tab === "process",
                             "busy": show_business_outline,
+                            "something_is_happening": busy || !connected,
                         })}
+                        id="process-status-tab-button"
                         onClick=${() => {
                             set_open_tab(open_tab === "process" ? null : "process")
                         }}

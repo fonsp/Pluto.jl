@@ -1,13 +1,11 @@
 import puppeteer from "puppeteer"
-import { lastElement, saveScreenshot, getTestScreenshotPath, createPage } from "../helpers/common"
+import { lastElement, saveScreenshot, createPage } from "../helpers/common"
 import {
     getCellIds,
     importNotebook,
     waitForCellOutput,
     getPlutoUrl,
-    prewarmPluto,
     writeSingleLineInPlutoInput,
-    waitForNoUpdateOngoing,
     shutdownCurrentNotebook,
     setupPlutoBrowser,
 } from "../helpers/pluto"
@@ -42,7 +40,6 @@ describe("PlutoAutocomplete", () => {
 
     it("should get the correct autocomplete suggestions", async () => {
         await importNotebook(page, "autocomplete_notebook.jl")
-        await waitForNoUpdateOngoing(page, { polling: 100 })
         const importedCellIds = await getCellIds(page)
         await Promise.all(importedCellIds.map((cellId) => waitForCellOutput(page, cellId)))
 

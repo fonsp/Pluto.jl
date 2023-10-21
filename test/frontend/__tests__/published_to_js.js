@@ -1,16 +1,6 @@
 import puppeteer from "puppeteer"
-import { lastElement, saveScreenshot, getTestScreenshotPath, createPage } from "../helpers/common"
-import {
-    getCellIds,
-    importNotebook,
-    waitForCellOutput,
-    getPlutoUrl,
-    prewarmPluto,
-    writeSingleLineInPlutoInput,
-    waitForNoUpdateOngoing,
-    shutdownCurrentNotebook,
-    setupPlutoBrowser,
-} from "../helpers/pluto"
+import { saveScreenshot, createPage } from "../helpers/common"
+import { importNotebook, getPlutoUrl, shutdownCurrentNotebook, setupPlutoBrowser } from "../helpers/pluto"
 
 describe("published_to_js", () => {
     /**
@@ -42,7 +32,7 @@ describe("published_to_js", () => {
 
     it("Should correctly show published_to_js in cell output, and in logs", async () => {
         await importNotebook(page, "published_to_js.jl")
-        await waitForNoUpdateOngoing(page, { polling: 100 })
+
         let output_of_published = await page.evaluate(() => {
             return document.querySelector("#to_cell_output")?.textContent
         })
@@ -53,6 +43,6 @@ describe("published_to_js", () => {
             return document.querySelector("#to_cell_log")?.textContent
         })
         // This test is currently broken, due to https://github.com/fonsp/Pluto.jl/issues/2092
-        // expect(log_of_published).toBe("[4,5,6] MAGIC!")
+        expect(log_of_published).toBe("[4,5,6] MAGIC!")
     })
 })
