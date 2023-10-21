@@ -1,14 +1,5 @@
-import puppeteer from "puppeteer"
 import { saveScreenshot, createPage, waitForContent } from "../helpers/common"
-import {
-    createNewNotebook,
-    getPlutoUrl,
-    manuallyEnterCells,
-    prewarmPluto,
-    setupPlutoBrowser,
-    shutdownCurrentNotebook,
-    waitForNoUpdateOngoing,
-} from "../helpers/pluto"
+import { createNewNotebook, getPlutoUrl, manuallyEnterCells, setupPlutoBrowser, shutdownCurrentNotebook, waitForPlutoToCalmDown } from "../helpers/pluto"
 
 describe("slideControls", () => {
     let browser = null
@@ -38,7 +29,7 @@ describe("slideControls", () => {
         const plutoCellIds = await manuallyEnterCells(page, cells)
         await page.waitForSelector(".runallchanged", { visible: true, polling: 200, timeout: 0 })
         await page.click(".runallchanged")
-        await waitForNoUpdateOngoing(page, { polling: 100 })
+        await waitForPlutoToCalmDown(page, { polling: 100 })
         const content = await waitForContent(page, `pluto-cell[id="${plutoCellIds[1]}"] pluto-output`)
         expect(content).toBe("Slide 2")
 
