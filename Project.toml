@@ -2,7 +2,7 @@ name = "Pluto"
 uuid = "c3e4b0f8-55cb-11ea-2926-15256bba5781"
 license = "MIT"
 authors = ["Fons van der Plas <fons@plutojl.org>"]
-version = "0.19.27"
+version = "0.19.29"
 
 [deps]
 Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
@@ -39,7 +39,7 @@ HTTP = "^1.5.2"
 HypertextLiteral = "0.7, 0.8, 0.9"
 LoggingExtras = "0.4, 1"
 MIMEs = "0.1"
-Malt = "1.0.3"
+Malt = "1.1"
 MsgPack = "1.1"
 PrecompileSignatures = "3"
 PrecompileTools = "1"

@@ -108,6 +108,17 @@ export const ExportBanner = ({ notebook_id, open, onClose, notebookfile_url, not
                     >
                         <span></span>
                     </button>
+                    <button
+                        title="Start presentation"
+                        class="toggle_presentation"
+                        onClick=${() => {
+                            onClose()
+                            // @ts-ignore
+                            window.present()
+                        }}
+                    >
+                        <span></span>
+                    </button>
                     <button title="Close" class="toggle_export" onClick=${() => onClose()}>
                         <span></span>
                     </button>

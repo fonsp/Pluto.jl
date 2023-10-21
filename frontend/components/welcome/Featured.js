@@ -94,8 +94,15 @@ const fallback_collections = [
 
 /**
  * @typedef FeaturedSource
- * @type {{url: String, integrity?: String}}
+ * @type {{
+ *  url: String,
+ *  id?: String,
+ *  integrity?: String,
+ *  valid_until?: String
+ * }}
  */
+
+const get_id = (/** @type {FeaturedSource} */ source) => source?.id ?? source.url
 
 /**
  * @param {{
@@ -109,25 +116,51 @@ export const Featured = ({ sources, direct_html_links }) => {
 
     useEffect(() => {
         if (sources != null) {
+            set_waited_too_long(false)
+            set_source_data({})
+
             // Start downloading the sources
-            const promises = sources.map(async ({ url, integrity }) => {
-                const data = await (await fetch(new Request(url, { integrity: integrity ?? undefined }))).json()
 
-                if (data.format_version !== "1") {
-                    throw new Error(`Invalid format version: ${data.format_version}`)
-                }
+            const ids = Array.from(new Set(sources.map(get_id)))
 
-                set_source_data((old) => ({
-                    ...old,
-                    [url]: {
-                        ...data,
-                        source_url: url,
-                    },
-                }))
+            console.log(ids)
+            console.log("123123123213123")
+
+            const promises = ids.map((id) => {
+                const sources_for_id = sources.filter((source) => get_id(source) === id)
+
+                let result = promise_any_with_priority(
+                    sources_for_id.map(async (source) => {
+                        const { url, integrity, valid_until } = source
+
+                        if (valid_until != null && new Date(valid_until) < new Date()) {
+                            throw new Error(`Source ${url} is expired with valid_until ${valid_until}`)
+                        }
+
+                        const data = await (await fetch(new Request(url, { integrity: integrity ?? undefined }))).json()
+
+                        if (data.format_version !== "1") {
+                            throw new Error(`Invalid format version: ${data.format_version}`)
+                        }
+
+                        return [data, id, url]
+                    })
+                )
+
+                return result.then(([data, id, url]) => {
+                    set_source_data((old) => ({
+                        ...old,
+                        [id]: {
+                            ...data,
+                            source_url: url,
+                        },
+                    }))
+                })
             })
 
             Promise.any(promises).catch((e) => {
                 console.error("All featured sources failed to load: ", e)
+                ;(e?.errors ?? []).forEach((e) => console.error(e))
                 set_waited_too_long(true)
             })
         }
@@ -148,10 +181,14 @@ export const Featured = ({ sources, direct_html_links }) => {
 
     const no_data = Object.entries(source_data).length === 0
 
+    const ids = Array.from(new Set(sources?.map(get_id) ?? []))
+
+    const sorted_on_source_order = ids.map((id) => source_data[id]).filter((d) => d != null)
+
     return no_data && waited_too_long
         ? offline_html
         : html`
-              ${(no_data ? placeholder_data : Object.values(source_data)).map((/** @type {SourceManifest} */ data) => {
+              ${(no_data ? placeholder_data : sorted_on_source_order).map((/** @type {SourceManifest} */ data) => {
                   let collections = data?.collections ?? fallback_collections
 
                   return html`
@@ -186,4 +223,17 @@ const collection = (/** @type {SourceManifestNotebookEntry[]} */ notebooks, /** 
 
     let n = (s) => (isNaN(s) ? s : Number(s))
     return /** @type {SourceManifestNotebookEntry[]} */ (_.sortBy(nbs, [(nb) => n(nb?.frontmatter?.order), "id"]))
+}
+
+/**
+ * Given a list promises, return promise[0].catch(() => promise[1].catch(() => promise[2]... etc))
+ * @param {Promise[]} promises
+ * @returns {Promise}
+ */
+const promise_any_with_priority = (/** @type {Promise[]} */ promises, /** @type {Promise[]} */ already_rejected = []) => {
+    if (promises.length <= 1) {
+        return Promise.any([...promises, ...already_rejected])
+    } else {
+        return promises[0].catch(() => promise_any_with_priority(promises.slice(1), [...already_rejected, promises[0]]))
+    }
 }

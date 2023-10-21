@@ -74,7 +74,9 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
     Status.report_business_planned!(init_status, Symbol(3))
     Status.report_business_planned!(init_status, Symbol(4))
 
-    Malt.remote_eval_wait(worker, session.options.evaluation.workspace_custom_startup_expr)
+    let s = session.options.evaluation.workspace_custom_startup_expr
+        s === nothing || Malt.remote_eval_wait(worker, Meta.parseall(s))
+    end
 
     Malt.remote_eval_wait(worker, quote
         PlutoRunner.notebook_id[] = $(notebook.notebook_id)
@@ -642,10 +644,8 @@ function interrupt_workspace(session_notebook::Union{SN,Workspace}; verbose=true
         return true
     end
 
-    if Sys.iswindows()
-        verbose && @warn "Unfortunately, stopping cells is currently not supported on Windows :(
-        Maybe the Windows Subsystem for Linux is right for you:
-        https://docs.microsoft.com/en-us/windows/wsl"
+    if (workspace.worker isa Malt.DistributedStdlibWorker) && Sys.iswindows()
+        verbose && @warn "Stopping cells is not yet supported on Windows, but it will be soon!\n\nYou can already try out this new functionality with:\n\nPluto.run(workspace_use_distributed_stdlib=false)\n\nLet us know what you think!"
         return false
     end
 
