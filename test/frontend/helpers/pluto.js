@@ -114,7 +114,13 @@ export const getCellIds = (page) => page.evaluate(() => Array.from(document.quer
  * @param {Page} page
  */
 export const restartProcess = async (page) => {
+    await page.waitForSelector(`a#restart-process-button`)
     await page.click(`a#restart-process-button`)
+    // page.once("dialog", async (dialog) => {
+    //     await dialog.accept()
+    // })
+    await page.waitForFunction(() => document?.querySelector(`a#restart-process-button`) == null)
+    await page.waitForSelector(`#process-status-tab-button.something_is_happening`)
 }
 
 export const waitForPlutoToCalmDown = async (/** @type {puppeteer.Page} */ page, /** @type {{ polling: string | number; timeout?: number; }} */ options) => {
