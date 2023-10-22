@@ -270,10 +270,10 @@ Some of these @test_broken lines are commented out to prevent printing to the te
 
         # try catch else was introduced in 1.8
         @static if VERSION >= v"1.8.0"
-            @test testee(:(try 1 catch else x = 1; x finally a; end), [:a], [], [], [])
-            @test testee(:(try 1 catch else x = j; x finally a; end), [:a, :j], [], [], [])
-            @test testee(:(try x = 2 catch else x finally a; end), [:a, :x], [], [], [])
-            @test testee(:(try x = 2 catch else x end), [:x], [], [], [])
+            @test testee(Meta.parse("try 1 catch else x = 1; x finally a; end"), [:a], [], [], [])
+            @test testee(Meta.parse("try 1 catch else x = j; x finally a; end"), [:a, :j], [], [], [])
+            @test testee(Meta.parse("try x = 2 catch else x finally a; end"), [:a, :x], [], [], [])
+            @test testee(Meta.parse("try x = 2 catch else x end"), [:x], [], [], [])
         end
     end
     @testset "Comprehensions" begin
