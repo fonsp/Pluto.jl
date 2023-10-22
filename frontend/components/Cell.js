@@ -218,7 +218,13 @@ export const Cell = ({
     disable_input_ref.current = disable_input
     const should_set_waiting_to_run_ref = useRef(true)
     should_set_waiting_to_run_ref.current = !running_disabled && !depends_on_disabled_cells
-    const set_waiting_to_run_smart = (x) => set_waiting_to_run(x && should_set_waiting_to_run_ref.current)
+    useEffect(() => {
+        const handler = (e) => {
+            if (e.detail.cell_ids.includes(cell_id)) set_waiting_to_run(should_set_waiting_to_run_ref.current)
+        }
+        window.addEventListener("set_waiting_to_run_smart", handler)
+        return () => window.removeEventListener("set_waiting_to_run_smart", handler)
+    }, [cell_id])
 
     const cell_api_ready = useCellApi(node_ref, published_object_keys, pluto_actions)
     const on_delete = useCallback(() => {
@@ -226,10 +232,9 @@ export const Cell = ({
     }, [pluto_actions, selected, cell_id])
     const on_submit = useCallback(() => {
         if (!disable_input_ref.current) {
-            set_waiting_to_run_smart(true)
             pluto_actions.set_and_run_multiple([cell_id])
         }
-    }, [pluto_actions, set_waiting_to_run, cell_id])
+    }, [pluto_actions, cell_id])
     const on_change_cell_input = useCallback(
         (new_code) => {
             if (!disable_input_ref.current) {
@@ -249,8 +254,7 @@ export const Cell = ({
     }, [pluto_actions, cell_id, selected, code_folded])
     const on_run = useCallback(() => {
         pluto_actions.set_and_run_multiple(pluto_actions.get_selected_cells(cell_id, selected))
-        set_waiting_to_run_smart(true)
-    }, [pluto_actions, cell_id, selected, set_waiting_to_run_smart])
+    }, [pluto_actions, cell_id, selected])
     const set_show_logs = useCallback(
         (show_logs) =>
             pluto_actions.update_notebook((notebook) => {
