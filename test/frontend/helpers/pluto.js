@@ -94,8 +94,16 @@ export const importNotebook = async (page, notebookName, { permissionToRunCode =
     const notebookPath = getFixtureNotebookPath(notebookName)
     const artifactsPath = getTemporaryNotebookPath()
     fs.copyFileSync(notebookPath, artifactsPath)
+    await openPathOrURLNotebook(page, artifactsPath, { permissionToRunCode })
+}
+
+/**
+ * @param {Page} page
+ * @param {string} path_or_url
+ */
+export const openPathOrURLNotebook = async (page, path_or_url, { permissionToRunCode = true } = {}) => {
     const openFileInputSelector = "pluto-filepicker"
-    await writeSingleLineInPlutoInput(page, openFileInputSelector, artifactsPath)
+    await writeSingleLineInPlutoInput(page, openFileInputSelector, path_or_url)
     // await writeSingleLineInPlutoInput(page, openFileInputSelector, notebookPath)
 
     const openFileButton = "pluto-filepicker button"
@@ -156,6 +164,11 @@ export const waitForCellOutput = (page, cellId) => {
     const cellOutputSelector = `pluto-cell[id="${cellId}"] pluto-output`
     return waitForContent(page, cellOutputSelector)
 }
+
+/**
+ * @param {Page} page
+ */
+export const getAllCellOutputs = (page) => page.evaluate(() => Array.from(document.querySelectorAll(`pluto-cell > pluto-output`)).map((c) => c.innerText))
 
 /**
  * @param {Page} page
@@ -233,6 +246,7 @@ export const keyboardPressInPlutoInput = async (page, plutoInputSelector, key) =
  * @param {string} plutoInputSelector
  */
 export const clearPlutoInput = async (page, plutoInputSelector) => {
+    await page.waitForSelector(`${plutoInputSelector} .cm-editor`)
     if ((await page.$(`${plutoInputSelector} .cm-placeholder`)) == null) {
         await page.focus(`${plutoInputSelector} .cm-content`)
         await page.waitForTimeout(500)
