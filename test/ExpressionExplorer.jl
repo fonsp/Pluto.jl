@@ -260,14 +260,16 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(for k in 1:2, r in 3:4; global z = k + r; end), [], [:z], [:+, :(:)], [])
         @test testee(:(while k < 2; r = w; global z = k + r; end), [:k, :w], [:z], [:+, :(<)], [])
     end
-    @testset "`try` & `catch`" begin
+    @testset "`try` & `catch` & `else` & `finally`" begin
         @test testee(:(try a = b + 1 catch; end), [:b], [], [:+], [])
         @test testee(:(try a() catch e; e end), [], [], [:a], [])
         @test testee(:(try a() catch; e end), [:e], [], [:a], [])
         @test testee(:(try a + 1 catch a; a end), [:a], [], [:+], [])
         @test testee(:(try 1 catch e; e finally a end), [:a], [], [], [])
         @test testee(:(try 1 finally a end), [:a], [], [], [])
-        @test testee(:(try 1 finally a; else x = 1; x end), [:a], [], [], [])
+        @test testee(:(try 1 catch else x = 1; x finally a; end), [:a], [], [], [])
+        @test testee(:(try 1 catch else x = j; x finally a; end), [:a, :j], [], [], [])
+        @test testee(:(try x = 2 catch else x finally a; end), [:a, :x], [], [], [])
     end
     @testset "Comprehensions" begin
         @test testee(:([sqrt(s) for s in 1:n]), [:n], [], [:sqrt, :(:)], [])
