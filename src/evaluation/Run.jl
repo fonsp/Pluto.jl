@@ -366,6 +366,8 @@ function update_save_run!(
 	old = notebook.topology
 	new = notebook.topology = updated_topology(old, notebook, cells) # macros are not yet resolved
 	
+	@info "update_save_run!" cells=cell_id.(cells) codes_old=[old.codes[c] for c in cells] codes=[new.codes[c] for c in cells] 
+	
 	# _assume `auto_solve_multiple_defs == false` if you want to skip some details_
 	if auto_solve_multiple_defs
 		to_disable_dict = cells_to_disable_to_resolve_multiple_defs(old, new, cells)
@@ -388,9 +390,8 @@ function update_save_run!(
 	save && save_notebook(session, notebook)
 
 	# _assume `prerender_text == false` if you want to skip some details_
-	to_run_online = if !prerender_text
-		cells
-	else
+	to_run_online = cells
+	if prerender_text
 		# this code block will run cells that only contain text offline, i.e. on the server process, before doing anything else
 		# this makes the notebook load a lot faster - the front-end does not have to wait for each output, and perform costly reflows whenever one updates
 		# "A Workspace on the main process, used to prerender markdown before starting a notebook process for speedy UI."
@@ -409,12 +410,14 @@ function update_save_run!(
 		end
 
 		cd(original_pwd)
-		setdiff(cells, to_run_offline)
+		to_run_online = setdiff(cells, to_run_offline)
+		
+		clear_not_prerenderable_cells && foreach(clear_output!, to_run_online)
+		
+		send_notebook_changes!(ClientRequest(; session, notebook))
 	end
-	
-	clear_not_prerenderable_cells && foreach(clear_output!, to_run_online)
-	
-	# this setting is not officially supported (default is `false`), so you can skip this block when reading the code
+
+	# this setting is not officially supported (default is `true`), so you can skip this block when reading the code
 	if !session.options.evaluation.run_notebook_on_load && prerender_text
 		# these cells do something like settings up an environment, we should always run them
 		setup_cells = filter(notebook.cells) do c
