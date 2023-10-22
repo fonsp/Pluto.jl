@@ -141,7 +141,7 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
         const running = nb.entry != null
         if (running) {
             if (client == null) return
-            if (nb.entry?.process_status === ProcessStatus.waiting_for_permission || confirm("Shut down notebook process?")) {
+            if (confirm(nb.entry?.process_status === ProcessStatus.waiting_for_permission ? "Close notebook session?" : "Shut down notebook process?")) {
                 set_notebook_state(nb.path, {
                     running: false,
                     transitioning: true,
