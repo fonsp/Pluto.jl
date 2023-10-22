@@ -12,6 +12,7 @@ import {
     lastElement,
     createPage,
     getArtifactsDir,
+    waitForContentToBecome,
 } from "./common"
 import path from "path"
 
@@ -166,6 +167,17 @@ export const waitForNoUpdateOngoing = async (page, options = {}) => {
 
 /**
  * @param {Page} page
+ */
+export const runAllChanged = async (page) => {
+    await page.waitForSelector(`.runallchanged`, {
+        visible: true,
+    })
+    await page.click(`.runallchanged`)
+    await waitForPlutoToCalmDown(page)
+}
+
+/**
+ * @param {Page} page
  * @param {string} plutoInputSelector
  * @param {string} text
  */
@@ -201,6 +213,23 @@ export const keyboardPressInPlutoInput = async (page, plutoInputSelector, key) =
     await page.waitForTimeout(500)
     // Wait for CodeMirror to process the input and display the text
     return waitForContentToChange(page, `${plutoInputSelector} .cm-line`, currentLineText)
+}
+
+/**
+ * @param {Page} page
+ * @param {string} plutoInputSelector
+ */
+export const clearPlutoInput = async (page, plutoInputSelector) => {
+    await page.focus(`${plutoInputSelector} .cm-content`)
+    await page.waitForTimeout(500)
+    // Move to end of the input
+    await page.keyboard.down(platform === "darwin" ? "Meta" : "Control")
+    await page.keyboard.press("KeyA")
+    await page.keyboard.up(platform === "darwin" ? "Meta" : "Control")
+    // Press the key we care about
+    await page.keyboard.press("Delete")
+    // Wait for CodeMirror to process the input and display the text
+    await page.waitForSelector(`${plutoInputSelector} .cm-placeholder`)
 }
 
 /**

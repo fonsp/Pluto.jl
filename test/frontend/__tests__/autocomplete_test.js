@@ -1,5 +1,5 @@
 import puppeteer from "puppeteer"
-import { lastElement, saveScreenshot, createPage } from "../helpers/common"
+import { lastElement, saveScreenshot, createPage, waitForContentToBecome } from "../helpers/common"
 import {
     getCellIds,
     importNotebook,
@@ -81,13 +81,7 @@ describe("PlutoAutocomplete", () => {
 
         // Trigger autocomplete
         await page.keyboard.press("Tab")
-        await page.waitForTimeout(5000)
 
-        // Get suggestions
-        const autocompletedInput = await page.evaluate(
-            (selector) => document.querySelector(selector).textContent.trim(),
-            `pluto-cell[id="${lastPlutoCellId}"] pluto-input .CodeMirror-line`
-        )
-        expect(autocompletedInput).toEqual("my_subtract")
+        expect(await waitForContentToBecome(page, `pluto-cell[id="${lastPlutoCellId}"] pluto-input .CodeMirror-line`, "my_subtract")).toBe("my_subtract")
     })
 })
