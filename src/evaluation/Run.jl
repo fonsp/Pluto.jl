@@ -337,7 +337,17 @@ function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache; persist_js_
 	cell.running = cell.queued = false
 end
 
-will_run_code(notebook::Notebook) = notebook.process_status != ProcessStatus.no_process && notebook.process_status != ProcessStatus.waiting_to_restart
+function clear_output!(cell::Cell)
+	cell.output = CellOutput()
+	cell.published_objects = Dict{String,Any}()
+	
+	cell.runtime = nothing
+	cell.errored = false
+	cell.running = cell.queued = false
+end
+
+will_run_code(notebook::Notebook) = notebook.process_status ∈ (ProcessStatus.ready, ProcessStatus.starting)
+will_run_pkg(notebook::Notebook) = notebook.process_status !== ProcessStatus.waiting_for_permission
 
 
 "Do all the things!"
@@ -348,6 +358,7 @@ function update_save_run!(
 	save::Bool=true, 
 	run_async::Bool=false, 
 	prerender_text::Bool=false, 
+	clear_not_prerenderable_cells::Bool=false, 
 	auto_solve_multiple_defs::Bool=false,
 	on_auto_solve_multiple_defs::Function=identity,
 	kwargs...
@@ -377,9 +388,8 @@ function update_save_run!(
 	save && save_notebook(session, notebook)
 
 	# _assume `prerender_text == false` if you want to skip some details_
-	to_run_online = if !prerender_text
-		cells
-	else
+	to_run_online = cells
+	if prerender_text
 		# this code block will run cells that only contain text offline, i.e. on the server process, before doing anything else
 		# this makes the notebook load a lot faster - the front-end does not have to wait for each output, and perform costly reflows whenever one updates
 		# "A Workspace on the main process, used to prerender markdown before starting a notebook process for speedy UI."
@@ -392,16 +402,20 @@ function update_save_run!(
 			is_offline_renderer=true,
 		)
 
-		to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)
+		to_run_offline = filter(c -> !c.running && is_just_text(new, c), cells)
 		for cell in to_run_offline
 			run_single!(offline_workspace, cell, new.nodes[cell], new.codes[cell])
 		end
 
 		cd(original_pwd)
-		setdiff(cells, to_run_offline)
+		to_run_online = setdiff(cells, to_run_offline)
+		
+		clear_not_prerenderable_cells && foreach(clear_output!, to_run_online)
+		
+		send_notebook_changes!(ClientRequest(; session, notebook))
 	end
-	
-	# this setting is not officially supported (default is `false`), so you can skip this block when reading the code
+
+	# this setting is not officially supported (default is `true`), so you can skip this block when reading the code
 	if !session.options.evaluation.run_notebook_on_load && prerender_text
 		# these cells do something like settings up an environment, we should always run them
 		setup_cells = filter(notebook.cells) do c
@@ -438,10 +452,13 @@ function update_save_run!(
 				@async WorkspaceManager.get_workspace((session, notebook))
 			end
 			
-            sync_nbpkg(session, notebook, old, new; 
-				save=(save && !session.options.server.disable_writing_notebook_files), 
-				take_token=false
-			)
+			if will_run_pkg(notebook)
+				# downloading and precompiling packages from the General registry is also arbitrary code execution
+				sync_nbpkg(session, notebook, old, new; 
+					save=(save && !session.options.server.disable_writing_notebook_files), 
+					take_token=false
+				)
+			end
 			
             if run_code
                 # not async because that would be double async

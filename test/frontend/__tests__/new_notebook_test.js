@@ -10,21 +10,10 @@ import {
     shutdownCurrentNotebook,
     setupPlutoBrowser,
     waitForPlutoToCalmDown,
+    manuallyEnterCells,
+    runAllChanged,
+    clearPlutoInput,
 } from "../helpers/pluto"
-
-const manuallyEnterCells = async (page, cells) => {
-    const plutoCellIds = []
-    for (const cell of cells) {
-        const plutoCellId = lastElement(await getCellIds(page))
-        plutoCellIds.push(plutoCellId)
-        await page.waitForSelector(`pluto-cell[id="${plutoCellId}"] pluto-input .cm-content`)
-        await writeSingleLineInPlutoInput(page, `pluto-cell[id="${plutoCellId}"] pluto-input`, cell)
-
-        await page.click(`pluto-cell[id="${plutoCellId}"] .add_cell.after`)
-        await page.waitForFunction((nCells) => document.querySelectorAll("pluto-cell").length === nCells, {}, plutoCellIds.length + 1)
-    }
-    return plutoCellIds
-}
 
 describe("PlutoNewNotebook", () => {
     /**
@@ -55,12 +44,6 @@ describe("PlutoNewNotebook", () => {
         browser = null
     })
 
-    it("should create new notebook", async () => {
-        // A pluto-input should exist in a new notebook
-        const plutoInput = await page.evaluate(() => document.querySelector("pluto-input"))
-        expect(plutoInput).not.toBeNull()
-    })
-
     it("should run a single cell", async () => {
         const cellInputSelector = "pluto-input .cm-content"
         await page.waitForSelector(cellInputSelector)
@@ -72,24 +55,12 @@ describe("PlutoNewNotebook", () => {
 
         const content = await waitForContent(page, "pluto-output")
         expect(content).toBe("2")
-    })
 
-    it("should run multiple cells", async () => {
+        await clearPlutoInput(page, "pluto-input")
+
         const cells = ["a = 1", "b = 2", "c = 3", "a + b + c"]
         const plutoCellIds = await manuallyEnterCells(page, cells)
-        await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
-        await page.click(`.runallchanged`)
-        await waitForPlutoToCalmDown(page, { polling: 100 })
-        const content = await waitForContentToBecome(page, `pluto-cell[id="${plutoCellIds[3]}"] pluto-output`, "6")
-        expect(content).toBe("6")
-    })
-
-    it("should reactively re-evaluate dependent cells", async () => {
-        const cells = ["a = 1", "b = 2", "c = 3", "a + b + c"]
-        const plutoCellIds = await manuallyEnterCells(page, cells)
-        await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
-        await page.click(`.runallchanged`)
-        await waitForPlutoToCalmDown(page, { polling: 100 })
+        await runAllChanged(page)
         const initialLastCellContent = await waitForContentToBecome(page, `pluto-cell[id="${plutoCellIds[3]}"] pluto-output`, "6")
         expect(initialLastCellContent).toBe("6")
 
