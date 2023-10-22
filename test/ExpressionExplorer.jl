@@ -267,6 +267,7 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(try a + 1 catch a; a end), [:a], [], [:+], [])
         @test testee(:(try 1 catch e; e finally a end), [:a], [], [], [])
         @test testee(:(try 1 finally a end), [:a], [], [], [])
+        @test testee(:(try 1 finally a; else x = 1; x end), [:a], [], [], [])
     end
     @testset "Comprehensions" begin
         @test testee(:([sqrt(s) for s in 1:n]), [:n], [], [:sqrt, :(:)], [])
