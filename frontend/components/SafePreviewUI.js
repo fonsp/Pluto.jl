@@ -1,10 +1,5 @@
 import _ from "../imports/lodash.js"
-import { createSilentAudio, create_recorder } from "../common/AudioRecording.js"
-import { html, useEffect, useState, useRef, useCallback, useLayoutEffect, useMemo } from "../imports/Preact.js"
-import { AudioPlayer } from "./AudioPlayer.js"
-import immer from "../imports/immer.js"
-import { base64_arraybuffer, blob_url_to_data_url } from "../common/PlutoHash.js"
-import { pack, unpack } from "../common/MsgPack.js"
+import { html } from "../imports/Preact.js"
 import { open_pluto_popup } from "./Popup.js"
 
 export const SafePreviewUI = ({ process_waiting_for_permission, risky_file_source, restart, warn_about_untrusted_code }) => {

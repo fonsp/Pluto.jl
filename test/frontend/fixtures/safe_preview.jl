@@ -21,6 +21,7 @@ i should not be red
 
 
 <script>
+window.I_DID_SOMETHING_DANGEROUS = true
 return html`<div style="color: red;">DANGER</div>`
 </script>
 
