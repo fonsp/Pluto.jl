@@ -175,6 +175,7 @@ export const runAllChanged = async (page) => {
         visible: true,
     })
     await page.click(`.runallchanged`)
+    await page.waitForSelector(`#process-status-tab-button.something_is_happening`, { timeout: 10000 }).catch(() => {})
     await waitForPlutoToCalmDown(page)
 }
 
