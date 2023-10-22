@@ -366,8 +366,6 @@ function update_save_run!(
 	old = notebook.topology
 	new = notebook.topology = updated_topology(old, notebook, cells) # macros are not yet resolved
 	
-	@info "update_save_run!" cells=cell_id.(cells) codes_old=[old.codes[c] for c in cells] codes=[new.codes[c] for c in cells] 
-	
 	# _assume `auto_solve_multiple_defs == false` if you want to skip some details_
 	if auto_solve_multiple_defs
 		to_disable_dict = cells_to_disable_to_resolve_multiple_defs(old, new, cells)
