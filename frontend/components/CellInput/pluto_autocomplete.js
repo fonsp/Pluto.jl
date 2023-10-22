@@ -20,11 +20,17 @@ import { open_bottom_right_panel } from "../BottomRightPanel.js"
 
 let { autocompletion, completionKeymap, completionStatus, acceptCompletion } = autocomplete
 
+// Option.source is now the source, we find to find the corresponding ActiveResult
+// https://github.com/codemirror/autocomplete/commit/6d9f24115e9357dc31bc265cd3da7ce2287fdcbd
+const getActiveResult = (view, source) =>
+    view.state.field(completionState).active.find(a => a.source == source)
+
 // These should be imported from  @codemirror/autocomplete, but they are not exported.
 let completionState = autocompletion()[0]
 let applyCompletion = (/** @type {EditorView} */ view, option) => {
     let apply = option.completion.apply || option.completion.label
-    let result = option.source
+    let result = getActiveResult(view, option.source)
+    if (!result?.from) return
     if (typeof apply == "string") {
         view.dispatch({
             changes: { from: result.from, to: result.to, insert: apply },
@@ -127,13 +133,19 @@ let update_docs_from_autocomplete_selection = (on_update_doc_query) => {
         let text_to_apply = selected_option.completion.apply ?? selected_option.completion.label
         if (typeof text_to_apply !== "string") return
 
+        const active_result = getActiveResult(update.view, selected_option.source)
+        if (!active_result?.from) return // not an ActiveResult instance
+
+        const from = active_result.from,
+              to = Math.min(active_result.to, update.state.doc.length)
+
         // Apply completion to state, which will yield us a `Transaction`.
         // The nice thing about this is that we can use the resulting state from the transaction,
         // without updating the actual state of the editor.
         let result_transaction = update.state.update({
             changes: {
-                from: selected_option.source.from,
-                to: Math.min(selected_option.source.to, update.state.doc.length),
+                from,
+                to,
                 insert: text_to_apply,
             },
         })
