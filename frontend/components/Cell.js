@@ -430,8 +430,7 @@ export const IsolatedCell = ({ cell_input: { cell_id, metadata }, cell_result: {
 
     return html`
         <pluto-cell ref=${node_ref} id=${cell_id} class=${hidden ? "hidden-cell" : "isolated-cell"}>
-            <<<<<<< HEAD ${cell_api_ready ? html`<${CellOutput} ...${output} sanitize_html=${sanitize_html} cell_id=${cell_id} />` : html``} =======
-            ${cell_api_ready ? html`<${CellOutput} ...${output} cell_id=${cell_id} />` : html``} >>>>>>> main
+            ${cell_api_ready ? html`<${CellOutput} ...${output} sanitize_html=${sanitize_html} cell_id=${cell_id} />` : html``}
             ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${[15]} set_cm_highlighted_line=${() => {}} />` : null}
         </pluto-cell>
     `
