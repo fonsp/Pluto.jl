@@ -102,6 +102,8 @@ export const importNotebook = async (page, notebookName, { permissionToRunCode =
  * @param {string} path_or_url
  */
 export const openPathOrURLNotebook = async (page, path_or_url, { permissionToRunCode = true } = {}) => {
+    await page.waitForFunction(() => document.querySelector(`.not_yet_ready`) == null)
+
     const openFileInputSelector = "pluto-filepicker"
     await writeSingleLineInPlutoInput(page, openFileInputSelector, path_or_url)
     // await writeSingleLineInPlutoInput(page, openFileInputSelector, notebookPath)
