@@ -180,10 +180,17 @@ const expected_runtime_str = (/** @type {import("./Editor.js").NotebookData} */ 
     }
 
     const sec = _.round(runtime_overhead + ex * runtime_multiplier, -1)
+    return pretty_long_time(sec)
+}
+
+export const pretty_long_time = (/** @type {number} */ sec) => {
+    const min = sec / 60
+    const sec_r = Math.ceil(sec)
+    const min_r = Math.round(min)
+
     if (sec < 60) {
-        return `${Math.ceil(sec)} second${sec > 1 ? "s" : ""}`
+        return `${sec_r} second${sec_r > 1 ? "s" : ""}`
     } else {
-        const min = sec / 60
-        return `${Math.ceil(min)} minute${min > 1 ? "s" : ""}`
+        return `${min_r} minute${min_r > 1 ? "s" : ""}`
     }
 }
