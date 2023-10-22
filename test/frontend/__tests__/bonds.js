@@ -1,6 +1,6 @@
 import puppeteer from "puppeteer"
 import { saveScreenshot, createPage, paste } from "../helpers/common"
-import { createNewNotebook, getPlutoUrl, setupPlutoBrowser, shutdownCurrentNotebook, waitForPlutoToCalmDown } from "../helpers/pluto"
+import { createNewNotebook, getPlutoUrl, runAllChanged, setupPlutoBrowser, shutdownCurrentNotebook, waitForPlutoToCalmDown } from "../helpers/pluto"
 
 // https://github.com/fonsp/Pluto.jl/issues/928
 describe("Bonds should run once when refreshing page", () => {
@@ -47,11 +47,7 @@ describe("Bonds should run once when refreshing page", () => {
 @bind z html"<input type=range>"
 `
         )
-        await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
-        await page.click(`.runallchanged`)
-
-        await page.waitForSelector(`pluto-cell.running`, { visible: true, timeout: 0 })
-        await waitForPlutoToCalmDown(page)
+        await runAllChanged(page)
 
         await paste(
             page,
@@ -64,9 +60,7 @@ numberoftimes = Ref(0)
         `
         )
 
-        await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
-        await page.click(`.runallchanged`)
-        await waitForPlutoToCalmDown(page)
+        await runAllChanged(page)
         await page.waitForFunction(() => Boolean(document.querySelector("pluto-cell:nth-of-type(5) pluto-output")?.textContent))
         await waitForPlutoToCalmDown(page)
 
