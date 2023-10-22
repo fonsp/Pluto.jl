@@ -77,7 +77,7 @@ const statusmap = (/** @type {EditorState} */ state, /** @type {LaunchParameters
             state.backend_launch_phase < BackendLaunchPhase.ready) ||
         state.initializing ||
         state.moving_file,
-    process_waiting_for_permission: state.notebook.process_status === ProcessStatus.waiting_for_permission,
+    process_waiting_for_permission: state.notebook.process_status === ProcessStatus.waiting_for_permission && !state.initializing,
     process_restarting: state.notebook.process_status === ProcessStatus.waiting_to_restart,
     process_dead: state.notebook.process_status === ProcessStatus.no_process || state.notebook.process_status === ProcessStatus.waiting_to_restart,
     nbpkg_restart_required: state.notebook.nbpkg?.restart_required_msg != null,

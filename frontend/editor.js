@@ -86,7 +86,7 @@ export const empty_notebook_state = ({ notebook_id }) => ({
     path: default_path,
     shortpath: "",
     in_temp_dir: true,
-    process_status: ProcessStatus.waiting_for_permission,
+    process_status: ProcessStatus.starting,
     last_save_time: 0.0,
     last_hot_reload_time: 0.0,
     cell_inputs: {},
