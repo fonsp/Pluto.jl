@@ -29,7 +29,7 @@ export const help_circle_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/
  * @typedef MiscPopupDetails
  * @property {"info" | "warn"} type
  * @property {import("../imports/Preact.js").ReactElement} body
- * @property {HTMLElement} [source_element]
+ * @property {HTMLElement?} [source_element]
  * @property {Boolean} [big]
  */
 
@@ -188,7 +188,8 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event, disable_input })
                 class="pkg-update"
                 target="_blank"
                 title="Update packages"
-                style=${(!!showupdate ? "" : "opacity: .4;") + (recent_event?.is_disable_pkg || disable_input ? "display: none;" : "")}
+                style=${(!!showupdate ? "" : "opacity: .4;") +
+                (recent_event?.is_disable_pkg || disable_input || notebook.nbpkg?.waiting_for_permission ? "display: none;" : "")}
                 href="#"
                 onClick=${(e) => {
                     if (busy) {

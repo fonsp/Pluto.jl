@@ -42,7 +42,7 @@ describe("slideControls", () => {
     })
 
     it("should create titles", async () => {
-        await importNotebook(page, "slides.jl")
+        await importNotebook(page, "slides.jl", { permissionToRunCode: false })
         const plutoCellIds = await getCellIds(page)
         const content = await waitForContent(page, `pluto-cell[id="${plutoCellIds[1]}"] pluto-output`)
         expect(content).toBe("Slide 2")
