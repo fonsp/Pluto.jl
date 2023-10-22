@@ -591,6 +591,14 @@ export class Editor extends Component {
             set_and_run_multiple: async (cell_ids) => {
                 // TODO: this function is called with an empty list sometimes, where?
                 if (cell_ids.length > 0) {
+                    window.dispatchEvent(
+                        new CustomEvent("set_waiting_to_run_smart", {
+                            detail: {
+                                cell_ids,
+                            },
+                        })
+                    )
+
                     await update_notebook((notebook) => {
                         for (let cell_id of cell_ids) {
                             if (this.state.cell_inputs_local[cell_id]) {
