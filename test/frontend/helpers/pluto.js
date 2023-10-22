@@ -124,18 +124,28 @@ export const restartProcess = async (page) => {
     await page.waitForSelector(`#process-status-tab-button.something_is_happening`)
 }
 
-export const waitForPlutoToCalmDown = async (/** @type {puppeteer.Page} */ page, /** @type {{ polling: string | number; timeout?: number; }} */ options) => {
+const waitForPlutoBusy = async (page, iWantBusiness, options) => {
+    await page.waitForTimeout(1)
     await page.waitForFunction(
-        () =>
-            //@ts-ignore
-            document?.body?._update_is_ongoing === false &&
-            //@ts-ignore
-            document?.body?._js_init_set?.size === 0 &&
-            document?.body?.classList?.contains("loading") === false &&
-            document?.querySelector(`#process-status-tab-button.something_is_happening`) == null &&
-            document?.querySelector(`pluto-cell.running, pluto-cell.queued`) === null,
-        options
+        (iWantBusiness) => {
+            let quiet = //@ts-ignore
+                document?.body?._update_is_ongoing === false &&
+                //@ts-ignore
+                document?.body?._js_init_set?.size === 0 &&
+                document?.body?.classList?.contains("loading") === false &&
+                document?.querySelector(`#process-status-tab-button.something_is_happening`) == null &&
+                document?.querySelector(`pluto-cell.running, pluto-cell.queued, pluto-cell.internal_test_queued`) == null
+
+            return iWantBusiness ? !quiet : quiet
+        },
+        options,
+        iWantBusiness
     )
+    await page.waitForTimeout(1)
+}
+
+export const waitForPlutoToCalmDown = async (/** @type {puppeteer.Page} */ page, /** @type {{ polling: string | number; timeout?: number; }} */ options) => {
+    await waitForPlutoBusy(page, false, options)
 }
 
 /**
@@ -175,8 +185,8 @@ export const runAllChanged = async (page) => {
         visible: true,
     })
     await page.click(`.runallchanged`)
-    await page.waitForSelector(`#process-status-tab-button.something_is_happening`, { timeout: 10000 }).catch(() => {})
-    await waitForPlutoToCalmDown(page)
+    await waitForPlutoBusy(page, true)
+    await waitForPlutoBusy(page, false)
 }
 
 /**
@@ -223,16 +233,18 @@ export const keyboardPressInPlutoInput = async (page, plutoInputSelector, key) =
  * @param {string} plutoInputSelector
  */
 export const clearPlutoInput = async (page, plutoInputSelector) => {
-    await page.focus(`${plutoInputSelector} .cm-content`)
-    await page.waitForTimeout(500)
-    // Move to end of the input
-    await page.keyboard.down(platform === "darwin" ? "Meta" : "Control")
-    await page.keyboard.press("KeyA")
-    await page.keyboard.up(platform === "darwin" ? "Meta" : "Control")
-    // Press the key we care about
-    await page.keyboard.press("Delete")
-    // Wait for CodeMirror to process the input and display the text
-    await page.waitForSelector(`${plutoInputSelector} .cm-placeholder`)
+    if ((await page.$(`${plutoInputSelector} .cm-placeholder`)) == null) {
+        await page.focus(`${plutoInputSelector} .cm-content`)
+        await page.waitForTimeout(500)
+        // Move to end of the input
+        await page.keyboard.down(platform === "darwin" ? "Meta" : "Control")
+        await page.keyboard.press("KeyA")
+        await page.keyboard.up(platform === "darwin" ? "Meta" : "Control")
+        // Press the key we care about
+        await page.keyboard.press("Delete")
+        // Wait for CodeMirror to process the input and display the text
+        await page.waitForSelector(`${plutoInputSelector} .cm-placeholder`)
+    }
 }
 
 /**

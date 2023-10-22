@@ -1,3 +1,4 @@
+import puppeteer from "puppeteer"
 import { saveScreenshot, createPage, waitForContent } from "../helpers/common"
 import {
     createNewNotebook,
@@ -12,7 +13,14 @@ import {
 } from "../helpers/pluto"
 
 describe("slideControls", () => {
+    /**
+     * Launch a shared browser instance for all tests.
+     * I don't use jest-puppeteer because it takes away a lot of control and works buggy for me,
+     * so I need to manually create the shared browser.
+     * @type {puppeteer.Browser}
+     */
     let browser = null
+    /** @type {puppeteer.Page} */
     let page = null
 
     beforeAll(async () => {
