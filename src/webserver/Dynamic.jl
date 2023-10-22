@@ -455,7 +455,7 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
         auto_solve_multiple_defs=true, on_auto_solve_multiple_defs,
         # special case: just render md cells in "Safe preview" mode
         prerender_text=wfp,
-        clear_not_prerendered_cells=wfp,
+        clear_not_prerenderable_cells=wfp,
     )
 end
 

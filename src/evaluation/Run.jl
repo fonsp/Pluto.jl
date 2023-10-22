@@ -358,7 +358,7 @@ function update_save_run!(
 	save::Bool=true, 
 	run_async::Bool=false, 
 	prerender_text::Bool=false, 
-	clear_not_prerendered_cells::Bool=false, 
+	clear_not_prerenderable_cells::Bool=false, 
 	auto_solve_multiple_defs::Bool=false,
 	on_auto_solve_multiple_defs::Function=identity,
 	kwargs...
@@ -412,7 +412,7 @@ function update_save_run!(
 		setdiff(cells, to_run_offline)
 	end
 	
-	clear_not_prerendered_cells && foreach(clear_output!, to_run_online)
+	clear_not_prerenderable_cells && foreach(clear_output!, to_run_online)
 	
 	# this setting is not officially supported (default is `false`), so you can skip this block when reading the code
 	if !session.options.evaluation.run_notebook_on_load && prerender_text
