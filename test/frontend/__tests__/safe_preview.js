@@ -1,6 +1,17 @@
 import puppeteer from "puppeteer"
 import { saveScreenshot, createPage, paste } from "../helpers/common"
-import { importNotebook, getPlutoUrl, shutdownCurrentNotebook, setupPlutoBrowser, waitForPlutoToCalmDown, restartProcess } from "../helpers/pluto"
+import {
+    importNotebook,
+    getPlutoUrl,
+    shutdownCurrentNotebook,
+    setupPlutoBrowser,
+    waitForPlutoToCalmDown,
+    restartProcess,
+    getCellIds,
+    clearPlutoInput,
+    writeSingleLineInPlutoInput,
+    runAllChanged,
+} from "../helpers/pluto"
 
 describe("safe_preview", () => {
     /**
@@ -83,6 +94,25 @@ Hello
         expect(cell_contents[6]).toBe("")
 
         expect(await page.evaluate(() => getComputedStyle(document.querySelector(`.zo`)).color)).not.toBe("rgb(255, 0, 0)")
+
+        // Modifying should not execute code
+        const cellids = await getCellIds(page)
+        let sel = `pluto-cell[id="${cellids[0]}"] pluto-input`
+
+        let expectNewOutput = async (contents) => {
+            await clearPlutoInput(page, sel)
+            await writeSingleLineInPlutoInput(page, sel, contents)
+            await runAllChanged(page)
+            return expect((await get_cell_contents())[0])
+        }
+
+        ;(await expectNewOutput(`md"een"`)).toBe("een")
+        ;(await expectNewOutput(`un`)).toBe("Code not executed in Safe preview")
+        ;(await expectNewOutput(`md"one"`)).toBe("one")
+        ;(await expectNewOutput(`a b c function`)).toContain("yntax")
+        ;(await expectNewOutput(`md"one"`)).toBe("one")
+        ;(await expectNewOutput(``)).toBe("")
+        ;(await expectNewOutput(`md"one"`)).toBe("one")
 
         await restartProcess(page)
         await waitForPlutoToCalmDown(page)
