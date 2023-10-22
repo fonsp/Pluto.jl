@@ -85,7 +85,7 @@ function open(session::ServerSession, path::AbstractString;
     session.notebooks[notebook.notebook_id] = notebook
     
     if execution_allowed && session.options.evaluation.run_notebook_on_load
-        _report_business_cells_planned!(notebook)
+        Pluto._report_business_cells_planned!(notebook)
     end
     
     if !execution_allowed
