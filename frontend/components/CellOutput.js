@@ -512,9 +512,17 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
         container.innerHTML = html_content_to_set
 
         if (html_content_to_set !== body) {
-            let info_element = document.createElement("div")
-            info_element.innerHTML = SafePreviewSanitizeMessage
-            container.prepend(info_element)
+            // DOMPurify also resolves HTML entities, which can give a false positive. To fix this, we use DOMParser to parse both strings, and we compare the innerHTML of the resulting documents.
+            const parser = new DOMParser()
+            const p1 = parser.parseFromString(body, "text/html")
+            const p2 = parser.parseFromString(html_content_to_set, "text/html")
+
+            if (p2.documentElement.innerHTML !== p1.documentElement.innerHTML) {
+                console.info("HTML sanitized", { body, html_content_to_set })
+                let info_element = document.createElement("div")
+                info_element.innerHTML = SafePreviewSanitizeMessage
+                container.prepend(info_element)
+            }
         }
 
         if (sanitize_html) return

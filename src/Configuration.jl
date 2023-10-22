@@ -132,7 +132,7 @@ Security settings for the HTTP server.
 
 - `warn_about_untrusted_code::Bool = $WARN_ABOUT_UNTRUSTED_CODE_DEFAULT`
 
-    Should the Pluto GUI show warning messages about executing code from an unknown source?
+    Should the Pluto GUI show warning messages about executing code from an unknown source, e.g. when opening a notebook from a URL? When `false`, notebooks will still open in Safe mode, but there is no scary message when you run it.
         
 **Leave these options on `true` for the most secure setup.**
 
@@ -157,7 +157,7 @@ const WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT = nothing
 Options to change Pluto's evaluation behaviour during internal testing and by downstream packages.
 These options are not intended to be changed during normal use.
 
-- `run_notebook_on_load::Bool = $RUN_NOTEBOOK_ON_LOAD_DEFAULT` Whether to evaluate a notebook on load.
+- `run_notebook_on_load::Bool = $RUN_NOTEBOOK_ON_LOAD_DEFAULT` When running a notebook (not in Safe mode), should all cells evaluate immediately? Warning: this is only for internal testing, and using it will lead to unexpected behaviour and hard-to-reproduce notebooks. It's not the Pluto way!
 - `workspace_use_distributed::Bool = $WORKSPACE_USE_DISTRIBUTED_DEFAULT` Whether to start notebooks in a separate process.
 - `workspace_use_distributed_stdlib::Bool? = $WORKSPACE_USE_DISTRIBUTED_STDLIB_DEFAULT` Should we use the Distributed stdlib to run processes? Distributed will be replaced by Malt.jl, you can use this option to already get the old behaviour. `nothing` means: determine automatically (which is currently the same as `true`).
 - `lazy_workspace_creation::Bool = $LAZY_WORKSPACE_CREATION_DEFAULT`
