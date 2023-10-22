@@ -89,19 +89,19 @@ export const createNewNotebook = async (page) => {
  * @param {Page} page
  * @param {string} notebookName`
  */
-export const importNotebook = async (page, notebookName, { permissionToRunCode = true } = {}) => {
+export const importNotebook = async (page, notebookName, { permissionToRunCode = true, timeout = 60000 } = {}) => {
     // Copy notebook before using it, so we don't mess it up with test changes
     const notebookPath = getFixtureNotebookPath(notebookName)
     const artifactsPath = getTemporaryNotebookPath()
     fs.copyFileSync(notebookPath, artifactsPath)
-    await openPathOrURLNotebook(page, artifactsPath, { permissionToRunCode })
+    await openPathOrURLNotebook(page, artifactsPath, { permissionToRunCode, timeout })
 }
 
 /**
  * @param {Page} page
  * @param {string} path_or_url
  */
-export const openPathOrURLNotebook = async (page, path_or_url, { permissionToRunCode = true } = {}) => {
+export const openPathOrURLNotebook = async (page, path_or_url, { permissionToRunCode = true, timeout = 60000 } = {}) => {
     await page.waitForFunction(() => document.querySelector(`.not_yet_ready`) == null)
 
     const openFileInputSelector = "pluto-filepicker"
@@ -113,7 +113,7 @@ export const openPathOrURLNotebook = async (page, path_or_url, { permissionToRun
     // Give permission to run code in this notebook
     if (permissionToRunCode) await restartProcess(page)
     await page.waitForTimeout(1000)
-    await waitForPlutoToCalmDown(page)
+    await waitForPlutoToCalmDown(page, { polling: "raf", timeout })
 }
 
 /**

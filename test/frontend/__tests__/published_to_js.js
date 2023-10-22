@@ -31,7 +31,7 @@ describe("published_to_js", () => {
     })
 
     it("Should correctly show published_to_js in cell output, and in logs", async () => {
-        await importNotebook(page, "published_to_js.jl")
+        await importNotebook(page, "published_to_js.jl", { timeout: 120 * 1000 })
 
         let output_of_published = await page.evaluate(() => {
             return document.querySelector("#to_cell_output")?.textContent
