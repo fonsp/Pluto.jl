@@ -56,10 +56,11 @@ function save_notebook(io::IO, notebook::Notebook)
     println(io)
 
     cells_ordered = collect(topological_order(notebook))
-    
+    @assert length(cells_ordered) == length(notebook.cells) "Cells were dropped"
+
     for c in cells_ordered
         println(io, _cell_id_delimiter, string(c.cell_id))
-        
+
         let metadata_toml = strip(sprint(TOML.print, get_metadata_no_default(c)))
             if metadata_toml != ""
                 for line in split(metadata_toml, "\n")
@@ -67,7 +68,7 @@ function save_notebook(io::IO, notebook::Notebook)
                 end
             end
         end
-        
+
         if must_be_commented_in_file(c)
             print(io, _disabled_prefix)
             print(io, replace(c.code, _cell_id_delimiter => "# "))

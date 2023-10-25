@@ -58,12 +58,18 @@ function set_unresolved(topology::NotebookTopology, unresolved_cells::Vector{Cel
 end
 
 
-function Base.setdiff(topology::NotebookTopology, cells::Vector{Cell})
+"""
+    exclude_roots(topology::NotebookTopology, roots_to_exclude)::NotebookTopology
+
+Returns a new topology as if `topology` was created with all code for `roots_to_exclude`
+being empty, preserving disabled cells and cell order.
+"""
+function exclude_roots(topology::NotebookTopology, cells::Vector{Cell})
     NotebookTopology(
         nodes=setdiffkeys(topology.nodes, cells),
         codes=setdiffkeys(topology.codes, cells),
         unresolved_cells=ImmutableSet{Cell}(setdiff(topology.unresolved_cells.c, cells); skip_copy=true),
-        cell_order=ImmutableVector{Cell}(setdiff(topology.cell_order.c, cells); skip_copy=true),
-        disabled_cells=ImmutableSet{Cell}(setdiff(topology.disabled_cells.c, cells); skip_copy=true),
+        cell_order=topology.cell_order,
+        disabled_cells=topology.disabled_cells,
     )
 end

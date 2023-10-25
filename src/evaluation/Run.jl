@@ -100,8 +100,8 @@ function run_reactive_core!(
         cell.queued = false
         cell.depends_on_disabled_cells = true
     end
-	
-	new_topology = setdiff(new_topology, indirectly_deactivated)
+
+	new_topology = exclude_roots(new_topology, indirectly_deactivated)
 
     # save the old topological order - we'll delete variables assigned from its
     # and re-evalutate its cells unless the cells have already run previously in the reactive run
