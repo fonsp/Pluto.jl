@@ -60,7 +60,7 @@ function save_notebook(io::IO, notebook::Notebook)
     if length(cells_ordered) != length(notebook.cells)
         cells = notebook.cells
         updated_topo = updated_topology(notebook.topology, notebook, cells)
-        cells_ordered = collect((updated_topo, cells))
+        cells_ordered = collect(topological_order(updated_topo, cells))
     end
 
     for c in cells_ordered
