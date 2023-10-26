@@ -56,7 +56,12 @@ function save_notebook(io::IO, notebook::Notebook)
     println(io)
 
     cells_ordered = collect(topological_order(notebook))
-    @assert length(cells_ordered) == length(notebook.cells) "Cells were dropped"
+    # TODO: add test for this case
+    if length(cells_ordered) != length(notebook.cells)
+        cells = notebook.cells
+        updated_topo = updated_topology(notebook.topology, notebook, cells)
+        cells_ordered = collect((updated_topo, cells))
+    end
 
     for c in cells_ordered
         println(io, _cell_id_delimiter, string(c.cell_id))
