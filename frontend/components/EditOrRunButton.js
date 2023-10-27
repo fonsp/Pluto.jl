@@ -1,6 +1,9 @@
 import _ from "../imports/lodash.js"
 import { BackendLaunchPhase } from "../common/Binder.js"
-import { html, useEffect, useState, useRef } from "../imports/Preact.js"
+import { html, useEffect, useState, useRef, useLayoutEffect } from "../imports/Preact.js"
+
+import { has_ctrl_or_cmd_pressed } from "../common/KeyboardShortcuts.js"
+import { useDialog } from "../common/useDialog.js"
 
 export const RunLocalButton = ({ show, start_local }) => {
     //@ts-ignore
@@ -30,36 +33,14 @@ export const RunLocalButton = ({ show, start_local }) => {
  * }} props
  * */
 export const BinderButton = ({ offer_binder, start_binder, notebookfile, notebook }) => {
-    const [popupOpen, setPopupOpen] = useState(false)
+    const [dialog_ref, openModal, closeModal, toggleModal] = useDialog({ light_dismiss: true })
+
     const [showCopyPopup, setShowCopyPopup] = useState(false)
     const notebookfile_ref = useRef("")
     notebookfile_ref.current = notebookfile ?? ""
 
     //@ts-ignore
-    window.open_edit_or_run_popup = () => {
-        setPopupOpen(true)
-    }
-
-    useEffect(() => {
-        const handlekeyup = (e) => {
-            e.key === "Escape" && setPopupOpen(false)
-        }
-        const handleclick = (e) => {
-            if (popupOpen && !e.target?.closest(".binder_help_text")) {
-                setPopupOpen(false)
-                // Avoid activating whatever was below
-                e.stopPropagation()
-                e.preventDefault()
-            }
-        }
-        document.body.addEventListener("keyup", handlekeyup)
-        document.body.addEventListener("click", handleclick)
-
-        return () => {
-            document.body.removeEventListener("keyup", handlekeyup)
-            document.body.removeEventListener("click", handleclick)
-        }
-    }, [popupOpen])
+    window.open_edit_or_run_popup = openModal
 
     useEffect(() => {
         //@ts-ignore
@@ -73,19 +54,19 @@ export const BinderButton = ({ offer_binder, start_binder, notebookfile, noteboo
 
     const recommend_download = notebookfile_ref.current.startsWith("data:")
     const runtime_str = expected_runtime_str(notebook)
+
     return html`<div class="edit_or_run">
         <button
             onClick=${(e) => {
+                toggleModal()
                 e.stopPropagation()
                 e.preventDefault()
-                setPopupOpen(!popupOpen)
             }}
         >
             <b>Edit</b> or <b>run</b> this notebook
         </button>
-        ${popupOpen &&
-        html`<div class="binder_help_text">
-            <span onClick=${() => setPopupOpen(false)} class="close"></span>
+        <dialog ref=${dialog_ref} class="binder_help_text">
+            <span onClick=${closeModal} class="close"></span>
             ${offer_binder
                 ? html`
                       <p style="text-align: center;">
@@ -162,7 +143,7 @@ export const BinderButton = ({ offer_binder, start_binder, notebookfile, noteboo
                           `}
                 </li>
             </ol>
-        </div>`}
+        </dialog>
     </div>`
 }
 
