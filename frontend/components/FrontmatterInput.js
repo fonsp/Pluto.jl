@@ -7,6 +7,7 @@ import "https://cdn.jsdelivr.net/gh/fonsp/rebel-tag-input@1.0.6/lib/rebel-tag-in
 //@ts-ignore
 import dialogPolyfill from "https://cdn.jsdelivr.net/npm/dialog-polyfill@0.5.6/dist/dialog-polyfill.esm.min.js"
 import immer from "../imports/immer.js"
+import { useDialog } from "../common/useDialog.js"
 
 /**
  * @param {{
@@ -32,15 +33,7 @@ export const FrontMatterInput = ({ remote_frontmatter, set_remote_frontmatter })
             })
         )
 
-    const dialog_ref = useRef(/** @type {HTMLDialogElement?} */ (null))
-    useLayoutEffect(() => {
-        dialogPolyfill.registerDialog(dialog_ref.current)
-    })
-
-    //@ts-ignore
-    const open = () => dialog_ref.current.showModal()
-    //@ts-ignore
-    const close = () => dialog_ref.current.close()
+    const [dialog_ref, open, close, _toggle] = useDialog({ light_dismiss: false })
 
     const cancel = () => {
         set_frontmatter(remote_frontmatter ?? {})
