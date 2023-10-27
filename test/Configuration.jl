@@ -58,6 +58,8 @@ end
 end
 
 @testset "Authentication" begin
+    basic_nb_path = Pluto.project_relative_path("sample", "Basic.jl")
+
     port = 1238
     options = Pluto.Configuration.from_flat_kwargs(; port, launch_browser=false, workspace_use_distributed=false)
     🍭 = Pluto.ServerSession(; options)
@@ -71,11 +73,12 @@ end
     @test HTTP.get(local_url("favicon.ico")).status == 200
 
     function requeststatus(url, method)
-        r = HTTP.request(method, url; status_exception=false, redirect=false)
+        r = HTTP.request(method, url, nothing, method == "POST" ? read(basic_nb_path) : UInt8[]; status_exception=false, redirect=false)
         r.status
     end
+    
 
-    nb = SessionActions.open(🍭, Pluto.project_relative_path("sample", "Basic.jl"); as_sample=true)
+    nb = SessionActions.open(🍭, basic_nb_path; as_sample=true)
 
     simple_routes = [
         ("", "GET"),
@@ -90,18 +93,20 @@ end
         Pluto.readwrite(x, p)
         p
     end
-    @assert isfile(Pluto.project_relative_path("sample", "Basic.jl"))
+    @assert isfile(basic_nb_path)
 
     effect_routes = [
         ("new", "GET"),
         ("new", "POST"),
         ("open?url=$(URIs.escapeuri("https://raw.githubusercontent.com/fonsp/Pluto.jl/v0.14.5/sample/Basic.jl"))", "GET"),
+        ("open?url=$(URIs.escapeuri("https://raw.githubusercontent.com/fonsp/Pluto.jl/v0.14.5/sample/Basic.jl"))&execution_allowed=asdf", "GET"),
         ("open?url=$(URIs.escapeuri("https://raw.githubusercontent.com/fonsp/Pluto.jl/v0.14.5/sample/Basic.jl"))", "POST"),
-        ("open?path=$(URIs.escapeuri(Pluto.project_relative_path("sample", "Basic.jl") |> tempcopy))", "GET"),
-        ("open?path=$(URIs.escapeuri(Pluto.project_relative_path("sample", "Basic.jl") |> tempcopy))", "POST"),
+        ("open?path=$(URIs.escapeuri(basic_nb_path |> tempcopy))", "GET"),
+        ("open?path=$(URIs.escapeuri(basic_nb_path |> tempcopy))", "POST"),
         ("sample/Basic.jl", "GET"),
         ("sample/Basic.jl", "POST"),
         ("notebookupload", "POST"),
+        ("notebookupload?execution_allowed=asdf", "POST"),
     ]
 
     for (suffix, method) in simple_routes ∪ effect_routes
@@ -117,9 +122,23 @@ end
         @test requeststatus(url, method)  ∈ 200:299
     end
 
-    for (suffix, method) in setdiff(effect_routes, [("notebookupload", "POST")])
+    for (suffix, method) in effect_routes
+        old_ids = collect(keys(🍭.notebooks))
+        
         url = local_url(suffix) |> withsecret
         @test requeststatus(url, method) ∈ 200:399 # 3xx are redirects
+        
+        new_ids = collect(keys(🍭.notebooks))
+        nb = 🍭.notebooks[only(setdiff(new_ids, old_ids))]
+
+        if any(x -> occursin(x, suffix), ["new", "execution_allowed", "sample/Basic.jl"])
+            @test Pluto.will_run_code(nb)
+            @test Pluto.will_run_pkg(nb)
+        else
+            @test !Pluto.will_run_code(nb)
+            @test !Pluto.will_run_pkg(nb)
+            @test nb.process_status === Pluto.ProcessStatus.waiting_for_permission
+        end
     end
 
     close(server)

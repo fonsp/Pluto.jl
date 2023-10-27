@@ -323,6 +323,8 @@ In addition to the steps performed by [`sync_nbpkg_core`](@ref):
 - `try` `catch` and reset the package environment on failure.
 """
 function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topology::NotebookTopology; save::Bool=true, take_token::Bool=true)
+    @assert will_run_pkg(notebook)
+
     cleanup = Ref{Function}(_default_cleanup)
 	try
         Status.report_business_started!(notebook.status_tree, :pkg)
@@ -353,16 +355,18 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 		end
 
 		if pkg_result.did_something
-			@debug "PlutoPkg: success!" notebook.path pkg_result 
-
-			if pkg_result.restart_recommended
-				notebook.nbpkg_restart_recommended_msg = "Yes, something changed during regular sync."
-				@debug "PlutoPkg: Notebook restart recommended" notebook.path notebook.nbpkg_restart_recommended_msg
-			end
-			if pkg_result.restart_required
-				notebook.nbpkg_restart_required_msg = "Yes, something changed during regular sync."
-				@debug "PlutoPkg: Notebook restart REQUIRED" notebook.path notebook.nbpkg_restart_required_msg
-			end
+			@debug "PlutoPkg: success!" notebook.path pkg_result
+            
+            if _has_executed_effectful_code(session, notebook)
+                if pkg_result.restart_recommended
+                    notebook.nbpkg_restart_recommended_msg = "Yes, something changed during regular sync."
+                    @debug "PlutoPkg: Notebook restart recommended" notebook.path notebook.nbpkg_restart_recommended_msg
+                end
+                if pkg_result.restart_required
+                    notebook.nbpkg_restart_required_msg = "Yes, something changed during regular sync."
+                    @debug "PlutoPkg: Notebook restart REQUIRED" notebook.path notebook.nbpkg_restart_required_msg
+                end
+            end
 
 			notebook.nbpkg_busy_packages = String[]
             update_nbpkg_cache!(notebook)
@@ -402,6 +406,12 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
         Status.report_business_finished!(notebook.status_tree, :pkg)
     end
 end
+
+function _has_executed_effectful_code(session::ServerSession, notebook::Notebook)
+    workspace = WorkspaceManager.get_workspace((session, notebook); allow_creation=false)
+    workspace === nothing ? false : workspace.has_executed_effectful_code
+end
+    
 
 function writebackup(notebook::Notebook)
     backup_path = backup_filename(notebook.path)
@@ -613,6 +623,8 @@ end
 
 
 function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEVEL_MAJOR, backup::Bool=true, save::Bool=true)
+    @assert will_run_pkg(notebook)
+
     bp = if backup && save
         writebackup(notebook)
     end

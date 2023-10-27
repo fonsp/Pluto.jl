@@ -5,6 +5,7 @@ import { Editor, default_path } from "./components/Editor.js"
 import { FetchProgress, read_Uint8Array_with_progress } from "./components/FetchProgress.js"
 import { unpack } from "./common/MsgPack.js"
 import { RawHTMLContainer } from "./components/CellOutput.js"
+import { ProcessStatus } from "./common/ProcessStatus.js"
 
 const url_params = new URLSearchParams(window.location.search)
 
@@ -73,6 +74,8 @@ const from_attribute = (element, name) => {
     }
 }
 
+const preamble_html_comes_from_url_params = url_params.has("preamble_url")
+
 /**
  *
  * @returns {import("./components/Editor.js").NotebookData}
@@ -83,7 +86,7 @@ export const empty_notebook_state = ({ notebook_id }) => ({
     path: default_path,
     shortpath: "",
     in_temp_dir: true,
-    process_status: "starting",
+    process_status: ProcessStatus.starting,
     last_save_time: 0.0,
     last_hot_reload_time: 0.0,
     cell_inputs: {},
@@ -153,7 +156,9 @@ const EditorLoader = ({ launch_params }) => {
         set_disable_ui_css(launch_params.disable_ui)
     }, [launch_params.disable_ui])
 
-    const preamble_element = launch_params.preamble_html ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />` : null
+    const preamble_element = launch_params.preamble_html
+        ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} sanitize_html=${preamble_html_comes_from_url_params} />`
+        : null
 
     return ready_for_editor
         ? html`<${Editor} initial_notebook_state=${initial_notebook_state_ref.current} launch_params=${launch_params} preamble_element=${preamble_element} />`
