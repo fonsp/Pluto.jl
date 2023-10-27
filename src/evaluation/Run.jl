@@ -132,7 +132,7 @@ function run_reactive_core!(
         relay_reactivity_error!(cell, error)
     end
 
-	# Save the notebook. This is the only time that we save the notebook, so any state changes that influence the file contents (like `depends_on_disabled_cells`) should be behind this point.
+	# Save the notebook. In most cases, this is the only time that we save the notebook, so any state changes that influence the file contents (like `depends_on_disabled_cells`) should be behind this point. (More saves might happen if a macro expansion or package using happens.)
 	save && save_notebook(session, notebook)
 
     # Send intermediate updates to the clients at most 20 times / second during a reactive run. (The effective speed of a slider is still unbounded, because the last update is not throttled.)
@@ -220,7 +220,7 @@ function run_reactive_core!(
 
             # update cache and save notebook because the dependencies might have changed after expanding macros
             update_dependency_cache!(notebook)
-            save_notebook(session, notebook)
+            save && save_notebook(session, notebook)
 
             return run_reactive_core!(session, notebook, new_topology, new_new_topology, to_run; save, deletion_hook, user_requested_run, already_run = to_run[1:i])
         elseif !isempty(implicit_usings)
@@ -229,7 +229,7 @@ function run_reactive_core!(
 
             # update cache and save notebook because the dependencies might have changed after expanding macros
             update_dependency_cache!(notebook)
-            save_notebook(session, notebook)
+            save && save_notebook(session, notebook)
 
             return run_reactive_core!(session, notebook, new_topology, new_new_topology, to_run; save, deletion_hook, user_requested_run, already_run = to_run[1:i])
         end
