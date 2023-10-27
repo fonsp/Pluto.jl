@@ -1,9 +1,7 @@
 import _ from "../imports/lodash.js"
-import { html, useEffect, useState, useRef, useLayoutEffect } from "../imports/Preact.js"
-import { BackendLaunchPhase } from "../common/Binder.js"
+import { html, useEffect, useState, useRef } from "../imports/Preact.js"
 import { time_estimate, usePackageTimingData } from "../common/InstallTimeEstimate.js"
 
-import { has_ctrl_or_cmd_pressed } from "../common/KeyboardShortcuts.js"
 import { useDialog } from "../common/useDialog.js"
 
 export const RunLocalButton = ({ show, start_local }) => {
