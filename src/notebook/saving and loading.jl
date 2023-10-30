@@ -56,10 +56,16 @@ function save_notebook(io::IO, notebook::Notebook)
     println(io)
 
     cells_ordered = collect(topological_order(notebook))
-    
+    # TODO: add test for this case
+    if length(cells_ordered) != length(notebook.cells)
+        cells = notebook.cells
+        updated_topo = updated_topology(notebook.topology, notebook, cells)
+        cells_ordered = collect(topological_order(updated_topo, cells))
+    end
+
     for c in cells_ordered
         println(io, _cell_id_delimiter, string(c.cell_id))
-        
+
         let metadata_toml = strip(sprint(TOML.print, get_metadata_no_default(c)))
             if metadata_toml != ""
                 for line in split(metadata_toml, "\n")
@@ -67,7 +73,7 @@ function save_notebook(io::IO, notebook::Notebook)
                 end
             end
         end
-        
+
         if must_be_commented_in_file(c)
             print(io, _disabled_prefix)
             print(io, replace(c.code, _cell_id_delimiter => "# "))
