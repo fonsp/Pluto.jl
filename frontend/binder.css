@@ -143,6 +143,7 @@ body.wiggle_binder .edit_or_run > button {
     color-scheme: light;
     box-shadow: 0px 0px 0px 100vmax #0000004a;
     font-family: var(--sans-serif-font-stack);
+    border: 0;
 }
 .binder_help_text a {
     color: black;
