@@ -199,7 +199,7 @@ export const Featured = ({ sources, direct_html_links }) => {
                                       <p>${coll.description}</p>
                                       <div class="card-list">
                                           ${collection(Object.values(data.notebooks), coll.tags ?? []).map(
-                                              (entry) => html`<${FeaturedCard} entry=${entry} source_data=${data} direct_html_links=${direct_html_links} />`
+                                              (entry) => html`<${FeaturedCard} entry=${entry} source_manifest=${data} direct_html_links=${direct_html_links} />`
                                           )}
                                       </div>
                                   </div>
