@@ -147,7 +147,7 @@ export const FrontMatterInput = ({ filename, remote_frontmatter, set_remote_fron
                     /** @type {import("./welcome/Featured.js").SourceManifestNotebookEntry} */ ({
                         id: filename.replace(/\.jl$/, ""),
                         hash: "xx",
-                        frontmatter,
+                        frontmatter: clean_data(frontmatter) ?? {},
                     })
                 }
                 disable_links=${true}
