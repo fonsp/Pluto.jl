@@ -3,37 +3,27 @@
 
 <head>
     <meta name="viewport" content="width=device-width" />
-    <title>⚡ Pluto.jl ⚡</title>
     <meta charset="utf-8" />
-    <script>
-        console.log("Pluto.jl, by Fons van der Plas (https://github.com/fonsp) and Mikołaj Bochenski (https://github.com/malyvsen) 🌈");
-    </script>
-    <meta name="author" content="Fons van der Plas; Mikołaj Bochenski" />
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="white">
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#2a2928">
+
+    <title>$TITLE</title>
+
     <meta name="color-scheme" content="light dark">
-    <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="96x96" href="img/favicon-96x96.png">
-    <meta name="description" content="Pluto.jl notebooks" />
 
     <!-- The following import will be inserted inline to not depend on the URL path -->
-    <!-- <link rel="stylesheet" href="./index.css"> -->
+    <!-- <link rel="stylesheet" href="./error.css"> -->
     $STYLE
 </head>
 
-<body class="error">
-    <div id="title">
-        <h2 style="font-style: normal;">$TITLE</h2>
-        <main>
-            <p>$ADVICE</p>
-            <br />
-            <p><a href="#" onclick="history.back()">Go back</a></p>
-            <br />
-            <p>$BODYTITLE</p>
-            <pre>$BODY</pre>
-        </main>
-    </div>
+<body>
+    <h2>$TITLE</h2>
+    <main>
+        <p>$ADVICE</p>
+        <br />
+        <p><a href="#" onclick="history.back()">Go back</a></p>
+        <br />
+        <p>$BODYTITLE</p>
+        <pre><code>$BODY</code></pre>
+    </main>
 </body>
 
 </html>

@@ -1,8 +1,15 @@
 import UUIDs: UUID, uuid1
 import .ExpressionExplorer: SymbolsState, UsingsImports
 
-const DEFAULT_METADATA = Dict{String, Any}(
-    "disabled" => false
+const METADATA_DISABLED_KEY = "disabled"
+const METADATA_SHOW_LOGS_KEY = "show_logs"
+const METADATA_SKIP_AS_SCRIPT_KEY = "skip_as_script"
+
+# Make sure to keep this in sync with DEFAULT_CELL_METADATA in ../frontend/components/Editor.js
+const DEFAULT_CELL_METADATA = Dict{String, Any}(
+    METADATA_DISABLED_KEY => false,
+    METADATA_SHOW_LOGS_KEY => true,
+    METADATA_SKIP_AS_SCRIPT_KEY => false,
 )
 
 Base.@kwdef struct CellOutput
@@ -49,11 +56,12 @@ Base.@kwdef mutable struct Cell
     cell_dependencies::CellDependencies{Cell}=CellDependencies{Cell}(Dict{Symbol,Vector{Cell}}(), Dict{Symbol,Vector{Cell}}(), 99)
 
     depends_on_disabled_cells::Bool=false
+    depends_on_skipped_cells::Bool=false
 
-    metadata::Dict{String,Any}=copy(DEFAULT_METADATA)
+    metadata::Dict{String,Any}=copy(DEFAULT_CELL_METADATA)
 end
 
-Cell(cell_id, code) = Cell(cell_id=cell_id, code=code)
+Cell(cell_id, code) = Cell(; cell_id, code)
 Cell(code) = Cell(uuid1(), code)
 
 cell_id(cell::Cell) = cell.cell_id
@@ -66,9 +74,14 @@ function Base.convert(::Type{Cell}, cell::Dict)
         metadata=cell["metadata"],
     )
 end
-function Base.convert(::Type{UUID}, string::String)
-    UUID(string)
-end
 
-get_cell_metadata(cell::Cell)::Dict{String,Any} = cell.metadata
-get_cell_metadata_no_default(cell::Cell)::Dict{String,Any} = Dict{String,Any}(setdiff(pairs(cell.metadata), pairs(DEFAULT_METADATA)))
+"Returns whether or not the cell is **explicitely** disabled."
+is_disabled(c::Cell) = get(c.metadata, METADATA_DISABLED_KEY, DEFAULT_CELL_METADATA[METADATA_DISABLED_KEY])
+set_disabled(c::Cell, value::Bool) = if value == DEFAULT_CELL_METADATA[METADATA_DISABLED_KEY]
+    delete!(c.metadata, METADATA_DISABLED_KEY)
+else
+    c.metadata[METADATA_DISABLED_KEY] = value
+end
+can_show_logs(c::Cell) = get(c.metadata, METADATA_SHOW_LOGS_KEY, DEFAULT_CELL_METADATA[METADATA_SHOW_LOGS_KEY])
+is_skipped_as_script(c::Cell) = get(c.metadata, METADATA_SKIP_AS_SCRIPT_KEY, DEFAULT_CELL_METADATA[METADATA_SKIP_AS_SCRIPT_KEY])
+must_be_commented_in_file(c::Cell) = is_disabled(c) || is_skipped_as_script(c) || c.depends_on_disabled_cells || c.depends_on_skipped_cells

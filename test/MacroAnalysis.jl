@@ -1,13 +1,11 @@
 using Test
 import UUIDs
 import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, ClientSession, update_run!
+import Memoize: @memoize
 
 @testset "Macro analysis" begin
     🍭 = ServerSession()
     🍭.options.evaluation.workspace_use_distributed = false
-
-    fakeclient = ClientSession(:fake, nothing)
-    🍭.connected_clients[fakeclient.id] = fakeclient
 
     @testset "Base macro call" begin
         notebook = Notebook([
@@ -62,12 +60,12 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
 
         update_run!(🍭, notebook, notebook.cells)
         
-        setcode(cell(2), """macro my_identity(expr)
+        setcode!(cell(2), """macro my_identity(expr)
             esc(expr)
         end""")
         update_run!(🍭, notebook, cell(2))
         
-        setcode(cell(3), "f(x) = x")
+        setcode!(cell(3), "f(x) = x")
         update_run!(🍭, notebook, cell(3))
         
         @test cell(1) |> noerror
@@ -200,15 +198,15 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
 
         @test all(noerror, notebook.cells)
 
-        setcode(cell(1), raw"""
+        setcode!(cell(1), raw"""
             macro test(sym)
                 esc(:($sym = true))
             end
         """)
         update_run!(🍭, notebook, cell(1))
 
-        setcode(cell(2), "x")
-        setcode(cell(3), "@test x")
+        setcode!(cell(2), "x")
+        setcode!(cell(3), "@test x")
         update_run!(🍭, notebook, notebook.cells[2:3])
 
         @test cell(2).output.body == "true"
@@ -220,18 +218,18 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         cell(idx) = notebook.cells[idx]
         update_run!(🍭, notebook, notebook.cells)
 
-        setcode(cell(1), "x")
+        setcode!(cell(1), "x")
         update_run!(🍭, notebook, cell(1))
 
         @test cell(1).errored == true
 
-        setcode(cell(2), "@bar x")
+        setcode!(cell(2), "@bar x")
         update_run!(🍭, notebook, cell(2))
 
         @test cell(1).errored == true
         @test cell(2).errored == true
 
-        setcode(cell(3), raw"""macro bar(sym)
+        setcode!(cell(3), raw"""macro bar(sym)
             esc(:($sym = "yay"))
         end""")
         update_run!(🍭, notebook, cell(3))
@@ -247,13 +245,13 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         cell(idx) = notebook.cells[idx]
         update_run!(🍭, notebook, notebook.cells)
 
-        setcode(cell(1), "x")
+        setcode!(cell(1), "x")
         update_run!(🍭, notebook, cell(1))
 
         @test cell(1).errored == true
 
-        setcode(cell(3), "@a()")
-        setcode(cell(2), raw"""macro a()
+        setcode!(cell(3), "@a()")
+        setcode!(cell(2), raw"""macro a()
             quote
                 macro b(sym)
                     esc(:($sym = 42))
@@ -266,7 +264,7 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         @test cell(2) |> noerror
         @test cell(3) |> noerror
 
-        setcode(cell(4), "@b x")
+        setcode!(cell(4), "@b x")
         update_run!(🍭, notebook, cell(4))
 
         @test cell(1) |> noerror
@@ -274,6 +272,27 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         @test cell(3) |> noerror
         @test cell(4) |> noerror
         @test cell(1).output.body == "42"
+    end
+
+    @testset "Removing macros undefvar errors dependent cells" begin
+        notebook = Notebook(Cell.([
+            """macro m()
+                :(1 + 1)
+            end""",
+            "@m()",
+        ]))
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test all(noerror, notebook.cells)
+
+        setcode!(notebook.cells[begin], "") # remove definition of m
+        update_run!(🍭, notebook, notebook.cells[begin])
+
+        @test notebook.cells[begin] |> noerror
+        @test notebook.cells[end].errored
+
+        @test expecterror(UndefVarError(Symbol("@m")), notebook.cells[end]; strict=VERSION >= v"1.7")
     end
 
     @testset "Redefines macro with new SymbolsState" begin
@@ -291,7 +310,7 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         @test cell(3).output.body == "42"
         @test cell(4).errored == true
 
-        setcode(cell(2), """macro b(_)
+        setcode!(cell(2), """macro b(_)
             esc(:(y = 42))
         end""")
         update_run!(🍭, notebook, cell(2))
@@ -312,7 +331,7 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         @test cell(3).output.body == "42"
         @test cell(4).errored == true
 
-        setcode(cell(2), """macro b(_)
+        setcode!(cell(2), """macro b(_)
             esc(:(y = 42))
         end""")
         update_run!(🍭, notebook, [cell(1), cell(2)])
@@ -348,7 +367,7 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         @test cell(4) |> noerror        
         @test cell(5).errored == true
 
-        setcode(cell(2), "z = 39")
+        setcode!(cell(2), "z = 39")
 
         # running only 2, running all cells here works however
         update_run!(🍭, notebook, cell(2))
@@ -420,7 +439,7 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         @test cell(5).errored == true
         @test cell(6) |> noerror
 
-        setcode(cell(6), "updater = 2")
+        setcode!(cell(6), "updater = 2")
         update_run!(🍭, notebook, cell(6))
 
         # the output of cell 4 has not changed since the underlying computer
@@ -444,13 +463,13 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
 
         @test cell(3).errored == true
 
-        setcode(cell(3), "huh(z)")
+        setcode!(cell(3), "huh(z)")
         update_run!(🍭, notebook, cell(3))
 
         @test cell(3) |> noerror
         @test cell(3).output.body == "101010"
 
-        setcode(cell(4), "z = 1234")
+        setcode!(cell(4), "z = 1234")
         update_run!(🍭, notebook, cell(4))
 
         @test cell(3) |> noerror
@@ -518,7 +537,7 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         output_1 = cell(1).output.body
         @test sleep_time <= runtime
 
-        setcode(cell(3), "updater = :fast")
+        setcode!(cell(3), "updater = :fast")
         update_run!(🍭, notebook, cell(3))
 
         @test noerror(cell(1))
@@ -535,7 +554,7 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         @test output_1 != cell(1).output.body
         output_3 = cell(1).output.body
 
-        setcode(cell(1), "@b()") # changing code generates a new 💻
+        setcode!(cell(1), "@b()") # changing code generates a new 💻
         update_run!(🍭, notebook, cell(1))
 
         @test cell(1) |> noerror
@@ -564,7 +583,7 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
 
         update_run!(🍭, notebook, cell(5))
 
-        @test occursin("UndefVarError: x", cell(1).output.body[:msg])
+        @test expecterror(UndefVarError(:x), cell(1))
 
         update_run!(🍭, notebook, cell(3))
         update_run!(🍭, notebook, cell(2))
@@ -586,7 +605,7 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         update_run!(🍭, notebook, cell(2))
 
         @test cell(2).errored == true
-        @test occursinerror("UndefVarError: @dateformat_str", cell(2)) == true
+        @test expecterror(UndefVarError(Symbol("@dateformat_str")), cell(2); strict=VERSION >= v"1.7")
 
         update_run!(🍭, notebook, notebook.cells)
 
@@ -605,7 +624,7 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
 
     @testset "Package macro 2" begin
         🍭.options.evaluation.workspace_use_distributed = true
-        
+
         notebook = Notebook([
             Cell("z = x^2 + y"),
             Cell("@variables x y"),
@@ -613,7 +632,7 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
             begin
                 import Pkg
                 Pkg.activate(mktempdir())
-                Pkg.add(Pkg.PackageSpec(name="Symbolics", version="1"))
+                Pkg.add(Pkg.PackageSpec(name="Symbolics", version="5.5.1"))
                 import Symbolics: @variables
             end
             """),
@@ -629,7 +648,7 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
 
         @test cell(1) |> noerror
         @test cell(2) |> noerror
-        @test cell(2) |> noerror
+        @test cell(3) |> noerror
 
         update_run!(🍭, notebook, notebook.cells)
 
@@ -642,13 +661,13 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         @test cell(1) |> noerror
         @test cell(2) |> noerror
 
-        setcode(cell(2), "@variables 🐰 y")
+        setcode!(cell(2), "@variables 🐰 y")
         update_run!(🍭, notebook, cell(2))
 
         @test cell(1).errored
         @test cell(2) |> noerror
 
-        setcode(cell(1), "z = 🐰^2 + y")
+        setcode!(cell(1), "z = 🐰^2 + y")
         update_run!(🍭, notebook, cell(1))
 
         @test cell(1) |> noerror
@@ -701,11 +720,25 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         @test :b ∈ notebook.topology.nodes[cell(3)].definitions
         @test [:c, Symbol("@my_assign")] ⊆ notebook.topology.nodes[cell(3)].references
 
-        setcode(notebook.cells[2], "c = :world")
+        setcode!(notebook.cells[2], "c = :world")
         update_run!(🍭, notebook, cell(2))
 
         @test ":world" == cell(3).output.body
         @test ":world" == cell(4).output.body
+    end
+
+    @testset "Is just text macros" begin
+        notebook = Notebook(Cell.([
+            """
+            md"# Hello world!"
+            """,
+            """
+            "no julia value here"
+            """,
+        ]))
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test isempty(notebook.topology.unresolved_cells)
     end
 
     @testset "Macros using import" begin
@@ -773,5 +806,121 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
 
         @test all(cell.([1,2]) .|> noerror)
         @test cell(2).output.body == ":this_should_be_returned"
+    end
+
+    @testset "Doc strings" begin
+        notebook = Notebook(Cell.([
+            "x = 1",
+            raw"""
+            "::Bool"
+            f(::Bool) = x
+            """,
+            raw"""
+            "::Int"
+            f(::Int) = 1
+            """,
+        ]))
+
+        trigger, bool, int = notebook.cells
+
+        workspace = WorkspaceManager.get_workspace((🍭, notebook))
+        workspace_module = getproperty(Main, workspace.module_name)
+
+        # Propose suggestions when no binding is found
+        doc_content, status = PlutoRunner.doc_fetcher("filer", workspace_module)
+        @test status == :👍
+        @test occursin("Similar results:", doc_content)
+        @test occursin("<b>f</b><b>i</b><b>l</b>t<b>e</b><b>r</b>", doc_content)
+
+        update_run!(🍭, notebook, notebook.cells)
+        @test all(noerror, notebook.cells)
+        @test occursin("::Bool", bool.output.body)
+        @test !occursin("::Int", bool.output.body)
+        @test occursin("::Bool", int.output.body)
+        @test occursin("::Int", int.output.body)
+
+        setcode!(int, raw"""
+        "::Int new docstring"
+        f(::Int) = 1
+        """)
+        update_run!(🍭, notebook, int)
+
+        @test occursin("::Bool", int.output.body)
+        @test occursin("::Int new docstring", int.output.body)
+
+        update_run!(🍭, notebook, trigger)
+
+        @test occursin("::Bool", bool.output.body)
+        @test occursin("::Int new docstring", bool.output.body)
+        @test length(eachmatch(r"Bool", bool.output.body) |> collect) == 1
+        @test length(eachmatch(r"Int", bool.output.body) |> collect) == 1
+
+        update_run!(🍭, notebook, trigger)
+
+        @test length(eachmatch(r"Bool", bool.output.body) |> collect) == 1
+
+        setcode!(int, "")
+        update_run!(🍭, notebook, [bool, int])
+        @test !occursin("::Int", bool.output.body)
+
+        setcode!(bool, """
+        "An empty conjugate"
+        Base.conj() = x
+        """)
+
+        update_run!(🍭, notebook, bool)
+        @test noerror(bool)
+        @test noerror(trigger)
+        @test occursin("An empty conjugate", bool.output.body)
+        @test occursin("complex conjugate", bool.output.body)
+
+        setcode!(bool, "Docs.doc(conj)")
+        update_run!(🍭, notebook, bool)
+        @test !occursin("An empty conjugate", bool.output.body)
+        @test occursin("complex conjugate", bool.output.body)
+    end
+
+    @testset "Delete methods from macros" begin
+        🍭 = ServerSession()
+        🍭.options.evaluation.workspace_use_distributed = false
+
+        notebook = Notebook([
+            Cell("using Memoize"),
+            Cell("""
+                macro user_defined()
+                    quote
+                        struct ASD end
+                        custom_func(::ASD) = "ASD"
+                    end |> esc
+                end
+            """),
+            Cell("@user_defined"),
+            Cell("methods(custom_func)"),
+            Cell("""
+                @memoize function memoized_func(a)
+                    println("Running")
+                    2a
+                end
+            """),
+            Cell("methods(memoized_func)"),
+        ])
+        cell(idx) = notebook.cells[idx]
+
+        update_run!(🍭, notebook, notebook.cells)
+        
+        @test :custom_func ∈ notebook.topology.nodes[cell(3)].funcdefs_without_signatures
+        @test cell(4) |> noerror
+        @test :memoized_func ∈ notebook.topology.nodes[cell(5)].funcdefs_without_signatures
+        @test cell(6) |> noerror
+
+        cell(3).code = "#=$(cell(3).code)=#"
+        cell(5).code = "#=$(cell(5).code)=#"
+        
+        update_run!(🍭, notebook, notebook.cells)
+        
+        @test :custom_func ∉ notebook.topology.nodes[cell(3)].funcdefs_without_signatures
+        @test expecterror(UndefVarError(:custom_func), cell(4))
+        @test :memoized_func ∉ notebook.topology.nodes[cell(5)].funcdefs_without_signatures
+        @test expecterror(UndefVarError(:memoized_func), cell(6))
     end
 end

@@ -2,7 +2,7 @@ import { julia_andrey, NodeProp, syntaxTree, Text } from "../../imports/Codemirr
 import lodash from "../../imports/lodash.js"
 
 // @ts-ignore
-import ManyKeysWeakMap from "https://cdn.esm.sh/v64/many-keys-weakmap@1.0.0/es2021/many-keys-weakmap.js"
+import ManyKeysWeakMap from "https://esm.sh/many-keys-weakmap@1.0.0?pin=v113&target=es2020"
 
 /**
  * @param {string} julia_code
@@ -12,6 +12,8 @@ export let julia_to_ast = (julia_code) => {
     return /** @type {any} */ (julia_andrey().language.parser.parse(julia_code).topNode.firstChild)
 }
 
+// When you get errors while creating the templates (stuff related to substitutions),
+// turn this on, and you will get a lot of info you can debug with!
 const TEMPLATE_CREATION_VERBOSE = false
 
 /**
@@ -131,6 +133,7 @@ export let child_cursors = function* (cursor) {
 /** @param {SyntaxNode} node */
 export let child_nodes = function* (node) {
     if (node.firstChild) {
+        /** @type {SyntaxNode?} */
         let child = node.firstChild
         do {
             yield child
@@ -148,7 +151,7 @@ export let child_nodes = function* (node) {
  *  children: Array<AstTemplate>,
  * } | {
  *  pattern: (
- *      haystack: (TreeCursor | void),
+ *      haystack: (TreeCursor | null),
  *      matches: { [key: string]: any },
  *      verbose?: boolean
  *  ) => boolean,
@@ -156,7 +159,7 @@ export let child_nodes = function* (node) {
  */
 
 /**
- * @param {TreeCursor | void} haystack_cursor
+ * @param {TreeCursor | null} haystack_cursor
  * @param {AstTemplate} template
  * @param {{ [name: string]: any }} matches
  * @param {boolean} verbose
@@ -383,70 +386,97 @@ let substitutions_to_template = (ast, substitutions) => {
     }
 }
 
+let node_to_explorable = (cursor) => {
+    if ("cursor" in cursor) {
+        cursor = cursor.cursor()
+    }
+
+    let children = []
+    if (cursor.firstChild()) {
+        try {
+            do {
+                children.push(node_to_explorable(cursor))
+            } while (cursor.nextSibling())
+        } finally {
+            cursor.parent()
+        }
+    }
+    return {
+        name: cursor.name,
+        from: cursor.from,
+        to: cursor.to,
+        children,
+    }
+}
+
 /**
  * @param {Templatable} julia_code_object
  * @returns {TemplateGenerator}
  */
 export let to_template = function* (julia_code_object) {
-    TEMPLATE_CREATION_VERBOSE && console.log(`to_template(`, julia_code_object, `)`)
-    if (julia_code_object instanceof JuliaCodeObject) {
-        let julia_code_to_parse = ""
+    TEMPLATE_CREATION_VERBOSE && console.group(`to_template(`, typeof julia_code_object === "function" ? julia_code_object.name + "()" : julia_code_object, `)`)
+    try {
+        if (julia_code_object instanceof JuliaCodeObject) {
+            let julia_code_to_parse = ""
 
-        let subsitions = []
-        for (let [string_part, substitution] of lodash.zip(julia_code_object.template, julia_code_object.substitutions)) {
-            julia_code_to_parse += string_part
+            let subsitions = []
+            for (let [string_part, substitution] of lodash.zip(julia_code_object.template, julia_code_object.substitutions)) {
+                julia_code_to_parse += string_part
 
-            if (substitution) {
-                let substitution_generator = to_template(substitution)
+                if (substitution) {
+                    let substitution_generator = to_template(substitution)
 
-                let substitution_code = intermediate_value(substitution_generator.next())
+                    let substitution_code = intermediate_value(substitution_generator.next())
 
-                subsitions.push({
-                    from: julia_code_to_parse.length,
-                    to: julia_code_to_parse.length + substitution_code.length,
-                    generator: substitution_generator,
-                })
-                julia_code_to_parse += substitution_code
+                    subsitions.push({
+                        from: julia_code_to_parse.length,
+                        to: julia_code_to_parse.length + substitution_code.length,
+                        generator: substitution_generator,
+                    })
+                    julia_code_to_parse += substitution_code
+                }
             }
-        }
 
-        let template_node = yield julia_code_to_parse
+            let template_node = yield julia_code_to_parse
 
-        let substitution_with_proper_position = subsitions.map((substitution) => {
-            return {
-                from: substitution.from + template_node.from,
-                to: substitution.to + template_node.from,
-                generator: substitution.generator,
-                used: false,
-            }
-        })
-
-        if (TEMPLATE_CREATION_VERBOSE) {
-            console.log(`julia_code_to_parse:`, julia_code_to_parse)
-            console.log(`template_node:`, template_node)
-            console.log(`subsitions:`, subsitions)
-            console.log(`substitution_with_proper_position:`, substitution_with_proper_position)
-        }
-
-        let result = substitutions_to_template(template_node.node, substitution_with_proper_position)
-        let unused_substitutions = substitution_with_proper_position
-            .filter((substitution) => !substitution.used)
-            .map((x) => {
+            let substitution_with_proper_position = subsitions.map((substitution) => {
                 return {
-                    text: julia_code_to_parse.slice(x.from, x.to),
-                    from: x.from,
-                    to: x.to,
+                    from: substitution.from + template_node.from,
+                    to: substitution.to + template_node.from,
+                    generator: substitution.generator,
+                    used: false,
                 }
             })
-        if (unused_substitutions.length > 0) {
-            throw new Error(`Some substitutions not applied, this means it couldn't be matched to a AST position:`, unused_substitutions)
+
+            if (TEMPLATE_CREATION_VERBOSE) {
+                console.log(`julia_code_to_parse:`, julia_code_to_parse)
+                console.log(`template_node:`, node_to_explorable(template_node.node.cursor()))
+                console.log(`subsitions:`, subsitions)
+                console.log(`substitution_with_proper_position:`, substitution_with_proper_position)
+            }
+
+            let result = substitutions_to_template(template_node.node, substitution_with_proper_position)
+            let unused_substitutions = substitution_with_proper_position
+                .filter((substitution) => !substitution.used)
+                .map((x) => {
+                    return {
+                        text: julia_code_to_parse.slice(x.from, x.to),
+                        from: x.from,
+                        to: x.to,
+                    }
+                })
+            if (unused_substitutions.length > 0) {
+                throw new Error(`Some substitutions not applied, this means it couldn't be matched to a AST position: ${JSON.stringify(unused_substitutions)}`)
+            }
+            return result
+        } else if (typeof julia_code_object === "function") {
+            return yield* julia_code_object()
+        } else {
+            console.log(`julia_code_object:`, julia_code_object)
+            throw new Error("Unknown substition type")
         }
-        return result
-    } else if (typeof julia_code_object === "function") {
-        return yield* julia_code_object()
-    } else {
-        console.log(`julia_code_object:`, julia_code_object)
-        throw new Error("Unknown substition type")
+    } finally {
+        TEMPLATE_CREATION_VERBOSE && console.groupEnd()
     }
 }
 
@@ -516,7 +546,7 @@ export let template = weak_memo1((julia_code_object) => {
             if ("node" in template_description && template_description.node.name !== haystack_cursor.name) return
             if (haystack_cursor.type.isError) return null
 
-            if ("cursor" in haystack_cursor) haystack_cursor = haystack_cursor.cursor
+            if ("cursor" in haystack_cursor) haystack_cursor = haystack_cursor.cursor()
 
             let matches = /** @type {{ [key: string]: MatchResult }} */ ({})
 
@@ -555,7 +585,7 @@ let memo_first_argument_weakmemo_second = (func) => {
     let fake_weakmap_no_arg = {}
     let per_name_memo = memo((name) => {
         return weak_memo1((arg) => {
-            if (arg === fake_weakmap_no_arg) return func(name)
+            if (arg === fake_weakmap_no_arg) return func(name, undefined)
             return func(name, arg)
         })
     })
@@ -666,6 +696,13 @@ export const t = /** @type {const} */ ({
                     try {
                         let matches_nodes = []
                         while (true) {
+                            // So, big oof here, but I think we shouldn't match error nodes in many
+                            if (cursor.type.isError) {
+                                cursor.prevSibling()
+                                verbose && console.log("✋ I don't do errors - many")
+                                return true // Still we did finish, lets just hope someone else cares about the error
+                            }
+
                             let local_match = {}
                             let did_match = match_template(cursor, sub_template, local_match, verbose)
                             if (!did_match) {
@@ -757,8 +794,8 @@ export const t = /** @type {const} */ ({
             template_generator.return()
 
             return {
-                pattern: function something_with_the_same_type_as(cursor, matches, verbose = false) {
-                    return cursor && ast.name === cursor.name
+                pattern: function something_with_the_same_type_as(haystack, matches, verbose = false) {
+                    return haystack != null && ast.name === haystack.name
                 },
             }
         }
@@ -775,12 +812,12 @@ export const t = /** @type {const} */ ({
             let sub_template = yield* to_template(what)
             return {
                 sub_template,
-                pattern: function as(cursor, matches, verbose = false) {
-                    let did_match = match_template(cursor, sub_template, matches, verbose)
+                pattern: function as(haystack, matches, verbose = false) {
+                    let did_match = match_template(haystack, sub_template, matches, verbose)
                     if (did_match === true) {
-                        matches[name] = cursor?.["node"]
+                        matches[name] = haystack?.["node"]
                     }
-                    return cursor && did_match
+                    return haystack != null && did_match
                 },
             }
         }
@@ -790,8 +827,8 @@ export const t = /** @type {const} */ ({
     Identifier: function* Identifier() {
         yield "identifier"
         return {
-            pattern: function Identifier(cursor, matches, verbose = false) {
-                return cursor && narrow_name(cursor) === "Identifier"
+            pattern: function Identifier(haystack, matches, verbose = false) {
+                return haystack != null && narrow_name(haystack) === "Identifier"
             },
         }
     },
@@ -799,8 +836,8 @@ export const t = /** @type {const} */ ({
     Number: function* Number() {
         yield "69"
         return {
-            pattern: function Number(cursor, matches, verbose = false) {
-                return cursor && narrow_name(cursor) === "Number"
+            pattern: function Number(haystack, matches, verbose = false) {
+                return haystack != null && narrow_name(haystack) === "Number"
             },
         }
     },
@@ -808,8 +845,10 @@ export const t = /** @type {const} */ ({
     String: function* String() {
         yield `"A113"`
         return {
-            pattern: function String(cursor, matches, verbose = false) {
-                return cursor && (narrow_name(cursor) === "StringWithoutInterpolation" || narrow_name(cursor) === "TripleStringWithoutInterpolation")
+            pattern: function String(haystack, matches, verbose = false) {
+                return (
+                    haystack != null && (narrow_name(haystack) === "StringWithoutInterpolation" || narrow_name(haystack) === "TripleStringWithoutInterpolation")
+                )
             },
         }
     },
@@ -859,7 +898,7 @@ export let take_little_piece_of_template = weak_memo((template, meta_template) =
         // And for some reason this works?
         // Still feels like it shouldn't... it feels like I conjured some dark magic and I will be swiming in tartarus soon...
 
-        return {
+        return /** @type {Matcher} */ ({
             possible_parents,
             template_description,
             /**
@@ -871,7 +910,7 @@ export let take_little_piece_of_template = weak_memo((template, meta_template) =
                     verbose && console.log(`❌ Short circuiting because haystack(${haystack_cursor.name}) is an error`)
                     return false
                 }
-                if ("cursor" in haystack_cursor) haystack_cursor = haystack_cursor.cursor
+                if ("cursor" in haystack_cursor) haystack_cursor = haystack_cursor.cursor()
 
                 // Should possible parents be all-or-nothing?
                 // So either it matches all the possible parents, or it matches none?
@@ -917,7 +956,7 @@ export let take_little_piece_of_template = weak_memo((template, meta_template) =
                     verbose && console.groupEnd()
                 }
             },
-        }
+        })
     } else {
         console.log(`meta_template:`, meta_template)
         console.log(`template:`, template)

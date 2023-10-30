@@ -12,18 +12,14 @@ import { ScopeStateField } from "./scopestate_statefield.js"
  */
 let get_variable_marks = (state, { scopestate, global_definitions }) => {
     return Decoration.set(
-        scopestate.usages
-            .map(({ definition, usage, name }) => {
+        filter_non_null(
+            scopestate.usages.map(({ definition, usage, name }) => {
                 if (definition == null) {
                     // TODO variables_with_origin_cell should be notebook wide, not just in the current cell
                     // .... Because now it will only show variables after it has run once
                     if (global_definitions[name]) {
                         return Decoration.mark({
-                            // TODO This used to be tagName: "a", but codemirror doesn't like that...
-                            // .... https://github.com/fonsp/Pluto.jl/issues/1790
-                            // .... Ideally we'd change it back to `a` (feels better), but functionally there is no difference..
-                            // .... When I ever happen to find a lot of time I can spend on this, I'll debug and change it back to `a`
-                            tagName: "pluto-variable-link",
+                            tagName: "a",
                             attributes: {
                                 "title": `${ctrl_or_cmd_name}-Click to jump to the definition of ${name}.`,
                                 "data-pluto-variable": name,
@@ -46,7 +42,7 @@ let get_variable_marks = (state, { scopestate, global_definitions }) => {
                 } else {
                     // Could be used to select the definition of a variable inside the current cell
                     return Decoration.mark({
-                        tagName: "pluto-variable-link",
+                        tagName: "a",
                         attributes: {
                             "title": `${ctrl_or_cmd_name}-Click to jump to the definition of ${name}.`,
                             "data-cell-variable": name,
@@ -55,13 +51,20 @@ let get_variable_marks = (state, { scopestate, global_definitions }) => {
                             "href": `#`,
                         },
                     }).range(usage.from, usage.to)
-                    return null
                 }
             })
-            .filter((x) => x != null),
+        ),
         true
     )
 }
+
+/**
+ *
+ * @argument {Array<T?>} xs
+ * @template T
+ * @return {Array<T>}
+ */
+const filter_non_null = (xs) => /** @type {Array<T>} */ (xs.filter((x) => x != null))
 
 /**
  * @type {Facet<{ [variable_name: string]: string }, { [variable_name: string]: string }>}
@@ -99,15 +102,22 @@ export const go_to_definition_plugin = ViewPlugin.fromClass(
         decorations: (v) => v.decorations,
 
         eventHandlers: {
-            pointerdown: (event, view) => {
-                if (has_ctrl_or_cmd_pressed(event) && event.button === 0 && event.target instanceof Element) {
+            click: (event, view) => {
+                if (event.target instanceof Element) {
                     let pluto_variable = event.target.closest("[data-pluto-variable]")
                     if (pluto_variable) {
                         let variable = pluto_variable.getAttribute("data-pluto-variable")
+                        if (variable == null) {
+                            return false
+                        }
+
+                        if (!(has_ctrl_or_cmd_pressed(event) || view.state.readOnly)) {
+                            return false
+                        }
 
                         event.preventDefault()
                         let scrollto_selector = `[id='${encodeURI(variable)}']`
-                        document.querySelector(scrollto_selector).scrollIntoView({
+                        document.querySelector(scrollto_selector)?.scrollIntoView({
                             behavior: "smooth",
                             block: "center",
                         })
@@ -140,6 +150,16 @@ export const go_to_definition_plugin = ViewPlugin.fromClass(
                         let variable_name = cell_variable.getAttribute("data-cell-variable")
                         let variable_from = Number(cell_variable.getAttribute("data-cell-variable-from"))
                         let variable_to = Number(cell_variable.getAttribute("data-cell-variable-to"))
+
+                        if (variable_name == null || variable_from == null || variable_to == null) {
+                            return false
+                        }
+
+                        if (!(has_ctrl_or_cmd_pressed(event) || view.state.readOnly)) {
+                            return false
+                        }
+
+                        event.preventDefault()
 
                         view.dispatch({
                             scrollIntoView: true,

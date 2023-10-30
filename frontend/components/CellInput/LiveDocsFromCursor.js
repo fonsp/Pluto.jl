@@ -27,7 +27,21 @@ let VALID_DOCS_TYPES = [
     "Definition",
     "ParameterizedIdentifier",
 ]
-let keywords_that_have_docs_and_are_cool = ["import", "export", "try", "catch", "finally", "quote", "do", "struct", "mutable"]
+let keywords_that_have_docs_and_are_cool = [
+    "import",
+    "export",
+    "try",
+    "catch",
+    "finally",
+    "quote",
+    "do",
+    "struct",
+    "mutable",
+    "module",
+    "baremodule",
+    "if",
+    "let",
+]
 
 let is_docs_searchable = (/** @type {import("../../imports/CodemirrorPlutoSetup.js").TreeCursor} */ cursor) => {
     if (keywords_that_have_docs_and_are_cool.includes(cursor.name)) {
@@ -96,7 +110,7 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                 iterations = iterations + 1
 
                 // Collect parents in a list so I can compare them easily
-                let parent_cursor = cursor.node.cursor
+                let parent_cursor = cursor.node.cursor()
                 let parents = []
                 while (parent_cursor.parent()) {
                     parents.push(parent_cursor.name)
@@ -119,6 +133,15 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                         // We're inside a `... = ...` inside the struct
                     } else if (parents.includes("TypedExpression") && parents.indexOf("TypedExpression") < index_of_struct_in_parents) {
                         // We're inside a `x::X` inside the struct
+                    } else if (parents.includes("SubtypedExpression") && parents.indexOf("SubtypedExpression") < index_of_struct_in_parents) {
+                        // We're inside `Real` in `struct MyNumber<:Real`
+                        while (parent?.name !== "SubtypedExpression") {
+                            parent = parent.parent
+                        }
+                        const type_node = parent.lastChild
+                        if (type_node.from <= cursor.from && type_node.to >= cursor.to) {
+                            return state.doc.sliceString(type_node.from, type_node.to)
+                        }
                     } else if (cursor.name === "struct" || cursor.name === "mutable") {
                         cursor.parent()
                         cursor.firstChild()
@@ -221,7 +244,8 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                 if (
                     cursor.name === "Identifier" &&
                     parent.name === "ArgumentList" &&
-                    (parent.parent.name === "FunctionAssignmentExpression" || parent.parent.name === "FunctionDefinition")
+                    (parent.parent.parent.name === "FunctionAssignmentExpression" ||
+                        parent.parent.name === "FunctionDefinition")
                 ) {
                     continue
                 }

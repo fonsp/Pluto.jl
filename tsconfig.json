@@ -9,8 +9,10 @@
         "strict": false,
         "noImplicitThis": true,
         "alwaysStrict": true,
-        "esModuleInterop": true
+        "esModuleInterop": true,
+        "strictNullChecks": true,
+        "skipDefaultLibCheck": true
     },
-    "include": ["frontend/**/*.js", "node_modules/**/*.js"],
-    "exclude": []
+    "include": ["frontend/**/*.js", "node_modules/**/*.js", "frontend/Desktop.d.ts"],
+    "exclude": ["frontend/components/CellInput/tests/"]
 }

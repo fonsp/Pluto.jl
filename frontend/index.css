@@ -7,29 +7,16 @@
 @import url("light_color.css");
 @import url("dark_color.css");
 
+@import url("featured-card.css");
+
 * {
     box-sizing: border-box;
 }
-
-#title {
-    /* position: absolute; */
-    /* left: 0; */
-    /* right: 0; */
-    margin-top: 34vh;
-    /* bottom: 0; */
-    /* margin: auto; */
-    display: block;
-    width: 100%;
-    text-align: center;
+html {
+    font-size: 17px;
 }
 
-body.error #title {
-    margin-top: 10vh;
-    /* text-align: left; */
-}
-
-#title h1,
-#title h2 {
+#title h1 {
     font-style: italic;
     font-size: 2em;
     letter-spacing: 0.08em;
@@ -37,15 +24,14 @@ body.error #title {
     font-family: "Vollkorn", serif;
     color: var(--pluto-output-h-color);
     margin: 0px;
-    border-bottom: solid 2px var(--rule-color);
+    padding: 4rem 1rem 3rem 1rem;
+    /* flex: 1 1 auto; */ /* max-width: 920px; */
+    text-align: center;
 }
 
-#title h2 {
-    font-size: 1.4em;
-}
-
-#title img {
+#title h1 img {
     height: 1.2em;
+    width: 4.9em;
     margin-bottom: -0.27em;
     /* margin-right: -1.5em; */
     margin-left: 0.1em;
@@ -60,39 +46,24 @@ body {
     background: var(--main-bg-color);
 }
 
-main {
-    width: 15em;
-    margin: 0 auto;
-    margin-top: 20vh;
-    text-align: left;
-    font-family: "Roboto Mono", monospace;
+p {
     color: var(--index-text-color);
 }
 
-body.error main {
-    width: unset;
-    max-width: 40em;
-    padding: 0.5em;
-    margin-top: 5vh;
-    font-size: 14px;
-}
-
-p {
-    color: var(--index-clickable-text-color);
-}
-
 ul {
-    padding-left: 0.5em;
+    padding-left: 0;
     list-style: none;
 }
 
 li {
     white-space: nowrap;
-    margin-bottom: 0.9em;
+    padding: 0.4em;
+    border-bottom: 1px solid var(--welcome-recentnotebook-border);
 }
 
 a {
     color: inherit;
+
     color: var(--index-clickable-text-color);
 }
 
@@ -109,7 +80,14 @@ a {
 pluto-filepicker {
     display: flex;
     flex-direction: row;
-    margin-top: 0.3rem;
+    /* margin-top: 0.3rem; */
+    background: var(--white);
+}
+
+.desktop_picker {
+    display: flex;
+    flex-direction: row;
+    margin-left: 5px;
 }
 
 pluto-filepicker .cm-editor {
@@ -118,16 +96,19 @@ pluto-filepicker .cm-editor {
     width: 100%;
     font-style: normal;
     font-weight: 500;
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--inter-ui-font-stack);
     font-size: 0.75rem;
     letter-spacing: 1px;
     background: none;
     color: var(--nav-filepicker-color);
-    border: 2px solid var(--nav-filepicker-border-color);
+    border: 2px solid var(--footer-filepicker-focus-color);
     border-radius: 3px;
     border-right: none;
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
+    flex: 1 1 auto;
+    width: 0px;
+    /* min-width: 0px; */
 }
 
 pluto-filepicker .cm-scroller {
@@ -137,7 +118,8 @@ pluto-filepicker .cm-scroller::-webkit-scrollbar {
     display: none; /* Safari and Chrome */
 }
 
-pluto-filepicker button {
+pluto-filepicker button,
+.desktop_picker button {
     margin: 0px;
     background: var(--footer-filepicker-focus-color);
     border-radius: 3px;
@@ -149,10 +131,32 @@ pluto-filepicker button {
     font-size: 0.75rem;
 }
 
+.desktop_picker_group {
+    display: inline-flex;
+}
+
+.desktop_picker_group > input {
+    margin-left: 1em;
+}
+
+.desktop_picker > button {
+    cursor: pointer;
+}
+
+.desktop_picker > button.full_width {
+    width: 100%;
+}
+
 pluto-filepicker button {
     cursor: pointer;
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
+    flex: 0 1 auto;
+}
+
+pluto-filepicker button:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
 }
 
 .cm-editor .cm-tooltip {
@@ -162,9 +166,12 @@ pluto-filepicker button {
 }
 
 .cm-tooltip-autocomplete {
-    max-height: calc(20 * 16px);
     box-sizing: content-box;
     z-index: 100;
+}
+
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul {
+    max-height: max(3em, min(50dvh, 20em));
 }
 
 .cm-tooltip.cm-completionInfo.cm-completionInfo-right:empty {
@@ -174,10 +181,10 @@ pluto-filepicker button {
 
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
     /* this is the line height rounded to an integer to prevent jiggle */
-    height: 16px;
+    height: 18px;
     overflow-y: hidden;
     /* font-size: 16px; */
-    line-height: 16px;
+    /* line-height: 16px; */
     border-radius: 3px;
     margin-bottom: unset;
 }
@@ -188,9 +195,7 @@ pluto-filepicker button {
 }
 
 .cm-editor .cm-completionIcon {
-    opacity: 1;
-    width: 1em;
-    transform: translateY(-1.5px);
+    display: none;
 }
 
 .cm-completionIcon::before {
@@ -223,9 +228,10 @@ pluto-filepicker button {
 }
 
 .cm-editor .cm-tooltip-autocomplete .cm-completionLabel {
-    font-family: JuliaMono, Menlo, "Roboto Mono", "Lucida Sans Typewriter", "Source Code Pro", monospace !important;
+    font-family: var(--inter-ui-font-stack);
+    font-weight: 400;
     font-variant-ligatures: none;
-    font-size: 0.75rem;
+    font-size: 0.8rem;
 }
 
 body.nosessions ul#new ~ * {
@@ -233,7 +239,14 @@ body.nosessions ul#new ~ * {
 }
 
 #recent {
-    margin-bottom: 8em;
+    scrollbar-gutter: stable;
+    background: var(--welcome-recentnotebook-bg); /* margin-bottom: 8em; */
+    max-height: 16em;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border-radius: 0.4rem;
+    box-shadow: -2px 4px 9px 0px #00000012;
+    border: 0.2rem solid #d5d5d5;
 }
 
 #recent > li.recent {
@@ -252,28 +265,30 @@ body.nosessions ul#new ~ * {
     color: var(--ui-button-color);
 }
 
-#recent button > span::after {
-    display: block;
+span.ionicon::after {
+    display: inline-block;
     content: " ";
-    background-size: 17px 17px;
-    height: 17px;
-    width: 17px;
-    margin-bottom: -3px;
+    background-size: 1rem 1rem;
+    height: 1rem;
+    width: 1rem;
+    margin-bottom: -0.17rem;
+    filter: var(--image-filters);
 }
 
 #recent li.running button > span::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle.svg");
-    filter: var(--image-filters);
 }
 
 #recent li.recent button > span::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg");
-    filter: var(--image-filters);
 }
 
 #recent li.transitioning button > span::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ellipsis-horizontal-outline.svg");
-    filter: var(--image-filters);
+}
+
+#recent li.new span::after {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/add-outline.svg");
 }
 
 loading-bar {
@@ -301,4 +316,28 @@ body.loading loading-bar {
     100% {
         right: 0vw;
     }
+}
+
+.card-list {
+    display: grid;
+    /* grid-auto-columns: 50px; */
+    place-items: center;
+    align-items: stretch;
+    grid-template-columns: repeat(auto-fit, minmax(var(--card-width), 1fr));
+    gap: 0rem;
+    justify-items: stretch;
+}
+
+.navigating-away-banner {
+    width: 100vw;
+    min-height: 70vh;
+    place-content: center;
+    display: grid;
+    padding: 3em;
+}
+
+.navigating-away-banner h2 {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
 }

@@ -1,5 +1,6 @@
 import _ from "../imports/lodash.js"
 import { html, useEffect, useState } from "../imports/Preact.js"
+import { open_pluto_popup } from "./Popup.js"
 
 export const nbpkg_fingerprint = (nbpkg) => (nbpkg == null ? [null] : Object.entries(nbpkg).flat())
 
@@ -16,20 +17,33 @@ const can_update = (installed, available) => {
 }
 
 /**
+ * @typedef PackageStatus
+ * @property {string} status
+ * @property {import("../imports/Preact.js").ReactElement} hint
+ * @property {string} hint_raw
+ * @property {string[]?} available_versions
+ * @property {string?} chosen_version
+ * @property {boolean} busy
+ * @property {boolean} offer_update
+ */
+
+/**
  * @param {{
  *  package_name: string,
  *  is_disable_pkg: boolean,
- *  available_versions: string[],
+ *  available_versions: string[]?,
  *  nbpkg: import("./Editor.js").NotebookPkgData?,
  * }} props
+ * @returns {PackageStatus}
  */
 export const package_status = ({ nbpkg, package_name, available_versions, is_disable_pkg }) => {
-    let status = null
-    let hint_raw = null
-    let hint = null
+    let status = "error"
+    let hint_raw = "error"
+    let hint = html`error`
     let offer_update = false
-    const chosen_version = nbpkg?.installed_versions[package_name]
-    const busy = (nbpkg?.busy_packages ?? []).includes(package_name) || !(nbpkg?.instantiated ?? true)
+    const chosen_version = nbpkg?.installed_versions[package_name] ?? null
+    const nbpkg_waiting_for_permission = nbpkg?.waiting_for_permission ?? false
+    const busy = !nbpkg_waiting_for_permission && ((nbpkg?.busy_packages ?? []).includes(package_name) || !(nbpkg?.instantiated ?? true))
 
     if (is_disable_pkg) {
         const f_name = package_name
@@ -42,7 +56,12 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
             hint_raw = `${package_name} is part of Julia's pre-installed 'standard library'.`
             hint = html`<b>${package_name}</b> is part of Julia's pre-installed <em>standard library</em>.`
         } else {
-            if (busy) {
+            if (nbpkg_waiting_for_permission) {
+                status = "will_be_installed"
+                hint_raw = `${package_name} (v${_.last(available_versions)}) will be installed when you run this notebook.`
+                hint = html`<header><b>${package_name}</b> <pkg-version>v${_.last(available_versions)}</pkg-version></header>
+                    will be installed when you run this notebook.`
+            } else if (busy) {
                 status = "busy"
                 hint_raw = `${package_name} (v${chosen_version}) is installing...`
                 hint = html`<header><b>${package_name}</b> <pkg-version>v${chosen_version}</pkg-version></header>
@@ -56,7 +75,7 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
             }
         }
     } else {
-        if (_.isArray(available_versions)) {
+        if (available_versions != null && _.isArray(available_versions)) {
             if (available_versions.length === 0) {
                 status = "not_found"
                 hint_raw = `The package "${package_name}" could not be found in the registry. Did you make a typo?`
@@ -75,6 +94,7 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
 }
 
 /**
+ * The little icon that appears inline next to a package import in code (e.g. `using PlutoUI ✅`)
  * @param {{
  *  package_name: string,
  *  pluto_actions: any,
@@ -83,7 +103,7 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
  * }} props
  */
 export const PkgStatusMark = ({ package_name, pluto_actions, notebook_id, nbpkg }) => {
-    const [available_versions, set_available_versions] = useState(null)
+    const [available_versions, set_available_versions] = useState(/** @type {string[]?} */ (null))
 
     useEffect(() => {
         let available_version_promise = pluto_actions.get_avaible_versions({ package_name, notebook_id }) ?? Promise.resolve([])
@@ -96,7 +116,7 @@ export const PkgStatusMark = ({ package_name, pluto_actions, notebook_id, nbpkg 
         nbpkg: nbpkg,
         package_name: package_name,
         is_disable_pkg: false,
-        available_versions: available_versions,
+        available_versions,
     })
 
     return html`
@@ -114,16 +134,12 @@ export const PkgStatusMark = ({ package_name, pluto_actions, notebook_id, nbpkg 
         >
             <button
                 onClick=${(event) => {
-                    window.dispatchEvent(
-                        new CustomEvent("open pluto popup", {
-                            detail: {
-                                type: "nbpkg",
-                                source_element: event.currentTarget.parentElement,
-                                package_name: package_name,
-                                is_disable_pkg: false,
-                            },
-                        })
-                    )
+                    open_pluto_popup({
+                        type: "nbpkg",
+                        source_element: event.currentTarget.parentElement,
+                        package_name: package_name,
+                        is_disable_pkg: false,
+                    })
                 }}
             >
                 <span></span>
@@ -144,16 +160,12 @@ export const PkgActivateMark = ({ package_name }) => {
         <pkg-status-mark title=${hint_raw} class="disable_pkg">
             <button
                 onClick=${(event) => {
-                    window.dispatchEvent(
-                        new CustomEvent("open pluto popup", {
-                            detail: {
-                                type: "nbpkg",
-                                source_element: event.currentTarget.parentElement,
-                                package_name: package_name,
-                                is_disable_pkg: true,
-                            },
-                        })
-                    )
+                    open_pluto_popup({
+                        type: "nbpkg",
+                        source_element: event.currentTarget.parentElement,
+                        package_name: package_name,
+                        is_disable_pkg: true,
+                    })
                 }}
             >
                 <span></span>

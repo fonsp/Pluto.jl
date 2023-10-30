@@ -16,7 +16,9 @@ function serialize_message_to_stream(io::IO, message::UpdateMessage)
 end
 
 function serialize_message(message::UpdateMessage)
-    sprint(serialize_message_to_stream, message)
+    io = IOBuffer()
+    serialize_message_to_stream(io, message)
+    take!(io)
 end
 
 "Send `messages` to all clients connected to the `notebook`."
@@ -65,18 +67,34 @@ end
 # https://github.com/JuliaWeb/HTTP.jl/issues/382
 const flushtoken = Token()
 
+function send_message(stream::HTTP.WebSocket, msg)
+    HTTP.send(stream, serialize_message(msg))
+end
+function send_message(stream::IO, msg)
+    write(stream, serialize_message(msg))
+end
+
+function is_stream_open(stream::HTTP.WebSocket)
+    !HTTP.WebSockets.isclosed(stream)
+end
+function is_stream_open(io::IO)
+    isopen(io)
+end
+
 function flushclient(client::ClientSession)
     take!(flushtoken)
     while isready(client.pendingupdates)
         next_to_send = take!(client.pendingupdates)
-        
+
         try
             if client.stream !== nothing
-                if isopen(client.stream)
-                    if client.stream isa HTTP.WebSockets.WebSocket
-                        client.stream.frame_type = HTTP.WebSockets.WS_BINARY
+                if is_stream_open(client.stream)
+                    let
+                        lag = client.simulated_lag
+                        (lag > 0) && sleep(lag * (0.5 + rand())) # sleep(0) would yield to the process manager which we dont want
                     end
-                    write(client.stream, serialize_message(next_to_send))
+
+                    send_message(client.stream, next_to_send)
                 else
                     put!(flushtoken)
                     return false

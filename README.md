@@ -69,9 +69,9 @@ Lastly, here's _**one more feature**_: Pluto notebooks have a `@bind` macro to c
 
 <br >
 
-You don't need to know HTML to use it! The [PlutoUI package](https://github.com/fonsp/PlutoUI.jl) contains basic inputs like sliders and buttons. Pluto's interactivity is very easy to use, you will learn more from the sample notebooks inside Pluto!
+You don't need to know HTML to use it! The [PlutoUI package](https://github.com/fonsp/PlutoUI.jl) contains basic inputs like sliders and buttons. Pluto's interactivity is very easy to use, you will learn more from the featured notebooks inside Pluto!
 
-But for those who want to dive deeper - you can use HTML, JavaScript and CSS to write your own widgets! Custom update events can be fired by dispatching a `new CustomEvent("input")`, making it compatible with the [`viewof` operator of observablehq](https://observablehq.com/@observablehq/a-brief-introduction-to-viewof). Have a look at the JavaScript sample notebook inside Pluto!
+But for those who want to dive deeper - you can use HTML, JavaScript and CSS to write your own widgets! Custom update events can be fired by dispatching a `new CustomEvent("input")`, making it compatible with the [`viewof` operator of observablehq](https://observablehq.com/@observablehq/a-brief-introduction-to-viewof). Have a look at the JavaScript featured notebook inside Pluto!
 
 <br >
 
@@ -158,11 +158,11 @@ Pluto.jl is open source! Specifically, it is [MIT Licensed](https://github.com/f
 -   `developit/htm` - [license](https://github.com/developit/htm/blob/master/LICENSE)
 -   `KaTeX` - [license](https://github.com/KaTeX/KaTeX/blob/main/LICENSE)
 
-If you want to reference Pluto.jl in scientific writing, you can use our DOI: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5889169.svg)](https://doi.org/10.5281/zenodo.5889169)
+If you want to reference Pluto.jl in scientific writing, you can use our DOI: [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4792401.svg)](https://doi.org/10.5281/zenodo.4792401)
 
-### Sample notebooks
+### Featured notebooks
 
-The included sample notebooks have a more permissive license: the [Unlicense](https://github.com/fonsp/Pluto.jl/blob/main/sample/LICENSE). This means that you can use sample notebook code however you like - you do not need to credit us! 
+Unless otherwise specified, the included featured notebooks have a more permissive license: the [Unlicense](https://github.com/fonsp/Pluto.jl/blob/main/sample/LICENSE). This means that you can use them however you like - you do not need to credit us! 
 
 Your notebook files are _yours_, you also do not need to credit us. Have fun!
 
@@ -172,9 +172,9 @@ The Pluto project is an ambition to [_rethink what a programming environment sho
 
 ### You can chat with us
 
--   contact me (fonsi) **[via email](mailto:fons@plutojl.org)** or on my <a href="https://whereby.com/plutojl"><b>video chat room</b></a> (wait a minute for me to join)
 -   talk with fellow Pluto users in the **[Zulip chat room](https://gist.github.com/fonsp/db7d00fd3fe5bc0b379b4af9ec6674b6)** (_search for the `pluto.jl` stream_)
 -   use Pluto's **[built-in feedback system:](https://github.com/fonsp/Pluto.jl/issues/182#issue-637726414)**
+-   contact fons **[via email](mailto:fons@plutojl.org)**
 
 <img alt="feedback screencap" src="https://user-images.githubusercontent.com/6933510/84502876-6f08db00-acb9-11ea-84c3-f5daaba29273.png" width="100%">
 
@@ -188,7 +188,7 @@ Development of Pluto.jl is partially sponsored by
 |----|----|
 | <a href="https://computationalthinking.mit.edu"><img title="Massachusetts Institute of Technology" src="https://user-images.githubusercontent.com/6933510/103308960-09412e00-4a14-11eb-8a3a-39201a9c186d.png" width=400 alt="MIT logo"></a> | The free online course _[Introduction to Computational Thinking](https://computationalthinking.mit.edu)_ at **MIT** uses Pluto notebooks to teach scientific computing in a new way. Homeworks react to the student in realtime, with _live answer checks and visualizations_ while you solve problems. |
 | <a href="http://quera-computing.com"><img title="QuEra Computing" src="https://user-images.githubusercontent.com/6933510/103309531-9e90f200-4a15-11eb-850f-99609e3b9bd8.png" width=400 alt="QuEra logo"></a> | **QuEra Computing** uses a Pluto notebook as an online dashboard to control their _quantum computer_! |
-| <a href="https://juliacomputing.com/"><img title="Julia Computing" src="https://user-images.githubusercontent.com/6933510/110478267-780dc800-80e4-11eb-91e5-2ef0256ad0db.png" width=400 alt="Julia Computing logo"></a> | [JuliaHub](https://juliahub.com) by **Julia Computing** enables the creation and editing of Pluto notebooks *on the cloud*! |
+| <a href="https://juliahub.com/"><img title="JuliaHub" src="https://i.imgur.com/IGdcVt7.png" width=200 alt="JuliaHub logo"></a> | [**JuliaHub**](https://juliahub.com) enables the creation and editing of Pluto notebooks *on the cloud*! |
 | <a href="https://numfocus.org/"><img title="Julia Computing" src="https://user-images.githubusercontent.com/6933510/110683397-42e4a100-81dc-11eb-9bdb-db58f9c283b4.png" width=400 alt="NumFOCUS logo"></a> | The mission of **NumFOCUS** is to promote open practices in research, data, and scientific computing by serving as a fiscal sponsor for open source projects and organizing community-driven educational programs. |
 
 _Created by [**Fons van der Plas**](https://github.com/fonsp) and [**Mikołaj Bochenski**](https://github.com/malyvsen). Inspired by [Observable](https://observablehq.com/)._

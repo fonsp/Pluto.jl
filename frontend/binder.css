@@ -53,7 +53,7 @@ binder-spinner {
     }
 }
 
-#launch_binder {
+.edit_or_run {
     /* position: absolute; */
     position: fixed;
     z-index: 2000;
@@ -62,7 +62,7 @@ binder-spinner {
     /* width: 153.2px; */
     /* height: 60px; */
 }
-#launch_binder button {
+.binder_help_text button {
     padding: 7px 20px;
     background: #fffdf7;
     box-shadow: 0px 0px 20px 0px #ffffff;
@@ -76,8 +76,7 @@ binder-spinner {
     display: block;
 }
 
-body.wiggle_binder button#launch_binder,
-body.wiggle_binder #binder_launch_help {
+body.wiggle_binder .edit_or_run > button {
     /* position: fixed; */
     animation: wiggle-binder-button 0.3s ease-in-out 0s 1;
 }
@@ -97,15 +96,16 @@ body.wiggle_binder #binder_launch_help {
     }
 }
 
-#launch_binder button img {
+.binder_help_text button img {
     margin: -8px;
     margin-left: 0px;
     font-style: normal;
     color: black;
     font-weight: 900;
+    height: 2.2em;
 }
 
-#binder_launch_help {
+.edit_or_run > button {
     width: 100%;
     display: block;
     text-align: center;
@@ -114,42 +114,43 @@ body.wiggle_binder #binder_launch_help {
     cursor: pointer;
     background: unset;
     background-color: var(--overlay-button-bg);
-    border: 3px solid hsl(236deg 28% 50% / 70%);
-    font-size: 14px;
-    font-style: italic;
+    border: 3px solid hsl(236deg 28% 50% / 46%);
+    font-size: 16px;
+    /* font-style: italic; */
     font-family: "Roboto Mono";
-    letter-spacing: -0.2px;
+    font-family: var(--lato-ui-font-stack);
+    letter-spacing: 0.1px;
     color: var(--black);
     white-space: nowrap;
     padding: 8px 16px;
     border-radius: 30px;
 }
 
-#binder_launch_help:hover {
+.edit_or_run > button:hover {
     text-decoration: underline;
 }
 
-#binder_help_text {
+.binder_help_text {
     --width: min(85vw, 570px);
     position: fixed;
-    top: 5rem;
     max-height: calc(100vh - 4rem);
     overflow: auto;
     width: var(--width);
     padding: 16px;
     border-radius: 8px;
-    left: calc(50vw - var(--width) / 2);
     background-color: white;
     color: black;
+    color-scheme: light;
     box-shadow: 0px 0px 0px 100vmax #0000004a;
-    font-family: "Lato", sans-serif;
+    font-family: var(--sans-serif-font-stack);
+    border: 0;
 }
-#binder_help_text a {
+.binder_help_text a {
     color: black;
 }
 
 @media (max-width: 500px) {
-    #binder_help_text {
+    .binder_help_text {
         top: 0;
         width: 100vw;
         left: 0;
@@ -157,7 +158,7 @@ body.wiggle_binder #binder_launch_help {
     }
 }
 
-#binder_help_text .close {
+.binder_help_text .close {
     position: absolute;
     top: 12px;
     right: 12px;
@@ -179,7 +180,7 @@ body.wiggle_binder #binder_launch_help {
 }
 
 .download_div,
-#launch_binder button,
+.binder_help_text button,
 .download_div,
 .copy_div {
     width: max(60%, 10rem);
@@ -274,13 +275,28 @@ body.wiggle_binder #binder_launch_help {
     font-weight: bold;
     margin-bottom: 0.75rem;
 }
-#launch_binder li {
+.edit_or_run li {
     margin-bottom: 2rem;
 }
-#launch_binder li video,
-#launch_binder li img {
+.edit_or_run li video,
+.edit_or_run li img {
     /* outline: 1px solid black; */
     border: 5px solid rgb(212, 212, 212);
     border-radius: 5px;
     width: 100%;
+}
+
+.expected_runtime_box {
+    padding: 0.6em 1em;
+    border-radius: 0.6em;
+    font-style: italic;
+    display: block;
+    background: linear-gradient(45deg, hsl(222deg 52% 87%), #e5f7ff);
+    margin: 2em 0em -2em 0em;
+    color: #323232;
+}
+
+.expected_runtime_box span {
+    font-style: initial;
+    font-weight: bold;
 }

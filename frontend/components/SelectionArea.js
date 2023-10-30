@@ -35,28 +35,34 @@ const in_request_animation_frame = (fn) => {
     }
 }
 
+/**
+ *
+ * @typedef Coordinate2D
+ * @property {number} x
+ * @property {number} y
+ */
+
 export const SelectionArea = ({ on_selection, set_scroller, cell_order }) => {
     const mouse_position_ref = useRef()
     const is_selecting_ref = useRef(false)
-    const element_ref = useRef(/** @type {HTMLElement} */ (null))
+    const element_ref = useRef(/** @type {HTMLElement?} */ (null))
 
-    const [selection_start, set_selection_start] = useState(null)
-    const [selection_end, set_selection_end] = useState(null)
+    const [selection, set_selection] = useState(/** @type {{start: Coordinate2D, end: Coordinate2D}?} */ (null))
 
     useEffect(() => {
-        const event_target_inside_this_notebook = (e) => {
+        const event_target_inside_this_notebook = (/** @type {MouseEvent} */ e) => {
             if (e.target == null) {
                 return false
             }
 
             // this should also work for notebooks inside notebooks!
-            let closest_editor = e.target.closest("pluto-editor")
-            let my_editor = element_ref.current.closest("pluto-editor")
+            let closest_editor = /** @type {HTMLElement} */ (e.target).closest("pluto-editor")
+            let my_editor = element_ref.current?.closest("pluto-editor")
 
             return closest_editor === my_editor
         }
 
-        const onmousedown = (e) => {
+        const onmousedown = (/** @type {MouseEvent} */ e) => {
             // @ts-ignore
             const t = e.target?.tagName
 
@@ -67,16 +73,14 @@ export const SelectionArea = ({ on_selection, set_scroller, cell_order }) => {
                 (t === "PLUTO-EDITOR" || t === "MAIN" || t === "PLUTO-NOTEBOOK" || t === "PREAMBLE")
             ) {
                 on_selection([])
-                set_selection_start({ x: e.pageX, y: e.pageY })
-                set_selection_end({ x: e.pageX, y: e.pageY })
+                set_selection({ start: { x: e.pageX, y: e.pageY }, end: { x: e.pageX, y: e.pageY } })
                 is_selecting_ref.current = true
             }
         }
 
-        const onmouseup = (e) => {
+        const onmouseup = (/** @type {MouseEvent} */ e) => {
             if (is_selecting_ref.current) {
-                set_selection_start(null)
-                set_selection_end(null)
+                set_selection(null)
                 set_scroller({ up: false, down: false })
                 is_selecting_ref.current = false
             } else {
@@ -95,17 +99,17 @@ export const SelectionArea = ({ on_selection, set_scroller, cell_order }) => {
         }
 
         let update_selection = in_request_animation_frame(({ pageX, pageY }) => {
-            if (!is_selecting_ref.current || selection_start == null) return
+            if (!is_selecting_ref.current || selection == null) return
 
             let new_selection_end = { x: pageX, y: pageY }
 
             const cell_nodes = Array.from(document.querySelectorAll("pluto-notebook > pluto-cell"))
 
             let A = {
-                start_left: Math.min(selection_start.x, new_selection_end.x),
-                start_top: Math.min(selection_start.y, new_selection_end.y),
-                end_left: Math.max(selection_start.x, new_selection_end.x),
-                end_top: Math.max(selection_start.y, new_selection_end.y),
+                start_left: Math.min(selection.start.x, new_selection_end.x),
+                start_top: Math.min(selection.start.y, new_selection_end.y),
+                end_left: Math.max(selection.start.x, new_selection_end.x),
+                end_top: Math.max(selection.start.y, new_selection_end.y),
             }
             let in_selection = cell_nodes.filter((cell) => {
                 let cell_position = get_element_position_in_document(cell)
@@ -120,9 +124,9 @@ export const SelectionArea = ({ on_selection, set_scroller, cell_order }) => {
                 return A.start_left < B.end_left && A.end_left > B.start_left && A.start_top < B.end_top && A.end_top > B.start_top
             })
 
-            set_scroller({ up: selection_start.y > new_selection_end.y, down: selection_start.y < new_selection_end.y })
+            set_scroller({ up: true, down: true })
             on_selection(in_selection.map((x) => x.id))
-            set_selection_end(new_selection_end)
+            set_selection({ start: selection.start, end: new_selection_end })
         })
 
         const onscroll = (e) => {
@@ -147,9 +151,9 @@ export const SelectionArea = ({ on_selection, set_scroller, cell_order }) => {
 
         // Ctrl+A to select all cells
         const onkeydown = (e) => {
-            if (e.key.toLowerCase() === "a" && has_ctrl_or_cmd_pressed(e)) {
+            if (e.key?.toLowerCase() === "a" && has_ctrl_or_cmd_pressed(e)) {
                 // if you are not writing text somewhere else
-                if (document.activeElement === document.body && window.getSelection().isCollapsed) {
+                if (document.activeElement === document.body && (window.getSelection()?.isCollapsed ?? true)) {
                     on_selection(cell_order)
                     e.preventDefault()
                 }
@@ -171,14 +175,14 @@ export const SelectionArea = ({ on_selection, set_scroller, cell_order }) => {
             // @ts-ignore
             document.removeEventListener("scroll", onscroll, { passive: true })
         }
-    }, [selection_start])
+    }, [selection])
 
     // let translateY = `translateY(${Math.min(selection_start.y, selection_end.y)}px)`
     // let translateX = `translateX(${Math.min(selection_start.x, selection_end.x)}px)`
     // let scaleX = `scaleX(${Math.abs(selection_start.x - selection_end.x)})`
     // let scaleY = `scaleY(${Math.abs(selection_start.y - selection_end.y)})`
 
-    if (selection_start == null) {
+    if (selection == null) {
         return html`<span ref=${element_ref}></span>`
     }
     return html`
@@ -188,10 +192,10 @@ export const SelectionArea = ({ on_selection, set_scroller, cell_order }) => {
                 position: "absolute",
                 background: "rgba(40, 78, 189, 0.24)",
                 zIndex: 1000000, // Yes, really
-                top: Math.min(selection_start.y, selection_end.y),
-                left: Math.min(selection_start.x, selection_end.x),
-                width: Math.abs(selection_start.x - selection_end.x),
-                height: Math.abs(selection_start.y - selection_end.y),
+                top: Math.min(selection.start.y, selection.end.y),
+                left: Math.min(selection.start.x, selection.end.x),
+                width: Math.abs(selection.start.x - selection.end.x),
+                height: Math.abs(selection.start.y - selection.end.y),
 
                 // Transform could be faster
                 // top: 0,

@@ -1,13 +1,251 @@
 using Test
 using Pluto
-using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
+using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook, set_disabled, is_disabled, WorkspaceManager
+
+
+
+
 
 @testset "Cell Disabling" begin
     🍭 = ServerSession()
     🍭.options.evaluation.workspace_use_distributed = false
 
-    fakeclient = ClientSession(:fake, nothing)
-    🍭.connected_clients[fakeclient.id] = fakeclient
+    notebook = Notebook([
+                Cell("const a = 1")
+                Cell("const b = 2")
+                Cell("const c = 3")
+                Cell("const d = 4")
+                
+                Cell("const x = a")    # 5
+                # these cells will be uncommented later
+                Cell("# const x = b")  # 6
+                Cell("# const x = c")  # 7
+                
+                Cell("const z = x")    # 8
+                Cell("# const z = d")  # 9
+                
+                Cell("const y = z")    # 10
+                
+                Cell("things = []")    # 11
+                Cell("""begin
+                    cool = 1
+                    push!(things, 1)
+                end""")                # 12
+                Cell("""begin
+                    # cool = 2
+                    # push!(things, 2)
+                end""")                # 13
+                Cell("cool; length(things)")   # 14
+            ])
+    update_run!(🍭, notebook, notebook.cells)
+
+    # helper functions
+    id(i) = notebook.cells[i].cell_id
+    c(i) = notebook.cells[i]
+    get_indirectly_disabled_cells(notebook) = [i for (i, c) in pairs(notebook.cells) if c.depends_on_disabled_cells]
+
+    
+    
+    @test !any(is_disabled, notebook.cells)
+    @test get_indirectly_disabled_cells(notebook) == []
+    @test all(noerror, notebook.cells)
+    
+    ###
+    setcode!(c(6), "const x = b")
+    update_run!(🍭, notebook, c(6))
+    
+    @test c(5).errored
+    @test c(6).errored
+    @test c(8).errored
+    @test c(10).errored
+    @test get_indirectly_disabled_cells(notebook) == []
+    
+    ###
+    set_disabled(c(1), true)
+    update_run!(🍭, notebook, c(1))
+    
+    @test noerror(c(1))
+    @test noerror(c(6))
+    @test noerror(c(8))
+    @test noerror(c(10))
+    @test get_indirectly_disabled_cells(notebook) == [1, 5]
+    
+    update_run!(🍭, notebook, c(5:6))
+    @test noerror(c(1))
+    @test noerror(c(6))
+    @test noerror(c(8))
+    @test noerror(c(10))    
+    @test get_indirectly_disabled_cells(notebook) == [1, 5]
+    
+    ###
+    set_disabled(c(1), false)
+    update_run!(🍭, notebook, c(1))
+    
+    @test noerror(c(1))
+    @test c(5).errored
+    @test c(6).errored
+    @test c(8).errored
+    @test c(10).errored
+    @test get_indirectly_disabled_cells(notebook) == []
+    
+    ###
+    set_disabled(c(5), true)
+    update_run!(🍭, notebook, c(5))
+    
+    @test noerror(c(1))
+    @test noerror(c(6))
+    @test noerror(c(8))
+    @test noerror(c(10))
+    @test get_indirectly_disabled_cells(notebook) == [5]
+    
+    ###
+    set_disabled(c(1), true)
+    update_run!(🍭, notebook, c(1))
+    
+    @test noerror(c(1))
+    @test noerror(c(6))
+    @test noerror(c(8))
+    @test noerror(c(10))
+    @test get_indirectly_disabled_cells(notebook) == [1, 5]
+    
+    
+    ###
+    set_disabled(c(5), false)
+    setcode!(c(7), "const x = c")
+    update_run!(🍭, notebook, c([5,7]))
+    
+    @test c(5).errored
+    @test c(6).errored
+    @test c(7).errored
+    @test c(8).errored
+    @test c(10).errored
+    @test get_indirectly_disabled_cells(notebook) == [1, 5]
+    
+    ###
+    set_disabled(c(2), true)
+    update_run!(🍭, notebook, c(2))
+    
+    @test noerror(c(3))
+    @test noerror(c(7))
+    @test noerror(c(8))
+    @test noerror(c(10))
+    @test get_indirectly_disabled_cells(notebook) == [1, 2, 5, 6]
+    
+    
+    ###
+    setcode!(c(9), "const z = d")
+    update_run!(🍭, notebook, c([9]))
+    
+    @test noerror(c(7))
+    @test c(8).errored
+    @test c(9).errored
+    @test c(10).errored
+    @test get_indirectly_disabled_cells(notebook) == [1, 2, 5, 6]
+    
+    
+    ###
+    set_disabled(c(4), true)
+    update_run!(🍭, notebook, c(4))
+    
+    @test noerror(c(3))
+    @test noerror(c(4))
+    @test noerror(c(7))
+    @test noerror(c(8))
+    @test noerror(c(10))
+    @test get_indirectly_disabled_cells(notebook) == [1, 2, 4, 5, 6, 9]
+    
+    
+    ###
+    set_disabled(c(1), true)
+    set_disabled(c(2), false)
+    set_disabled(c(3), true)
+    set_disabled(c(4), false)
+    
+    set_disabled(c(5), true)
+    set_disabled(c(6), true)
+    set_disabled(c(7), false)
+    
+    set_disabled(c(8), false)
+    set_disabled(c(9), true)
+    
+    setcode!(c(10), "const x = 123123")
+    set_disabled(c(10), false)
+    
+    update_run!(🍭, notebook, c(1:10))
+    
+    
+    @test noerror(c(1))
+    @test noerror(c(2))
+    @test noerror(c(3))
+    @test noerror(c(4))
+    
+    @test noerror(c(8))
+    @test noerror(c(10))
+    
+    @test get_indirectly_disabled_cells(notebook) == [1, 3, 5, 6, 7, 9]
+    
+    ###
+    set_disabled(c(3), false)
+    update_run!(🍭, notebook, c(3))
+    
+    @test get_indirectly_disabled_cells(notebook) == [1, 5, 6, 9]
+    @test c(7).errored
+    @test c(8).errored
+    @test c(10).errored
+    
+    ###
+    set_disabled(c(10), true)
+    update_run!(🍭, notebook, c(10))
+    
+    @test get_indirectly_disabled_cells(notebook) == [1, 5, 6, 9, 10]
+    @test noerror(c(7))
+    @test noerror(c(8))
+    
+    ###
+    set_disabled(c(7), true)
+    set_disabled(c(10), false)
+    update_run!(🍭, notebook, c([7,10]))
+    
+    @test get_indirectly_disabled_cells(notebook) == [1, 5, 6, 7, 9]
+    @test noerror(c(7))
+    @test noerror(c(8))
+    @test noerror(c(10))
+    
+    
+    ### check that they really don't run when disabled
+    @test c(14).output.body == "1"
+    
+    setcode!(c(13), replace(c(13).code, "#" => ""))
+    update_run!(🍭, notebook, c([11,13]))
+    
+    
+    @test c(12).errored
+    @test c(13).errored
+    @test c(14).errored
+    
+    set_disabled(c(13), true)
+    update_run!(🍭, notebook, c([13]))
+    
+    @test noerror(c(12))
+    @test noerror(c(14))
+    
+    @test c(14).output.body == "1"
+    update_run!(🍭, notebook, c([11]))
+    @test c(14).output.body == "1"
+    update_run!(🍭, notebook, c([12]))
+    update_run!(🍭, notebook, c([12]))
+    @test c(14).output.body == "3"
+    
+    WorkspaceManager.unmake_workspace((🍭, notebook))
+end
+
+
+
+
+
+@testset "Cell Disabling 1" begin
+    🍭 = ServerSession()
+    🍭.options.evaluation.workspace_use_distributed = false
 
     notebook = Notebook([
                 Cell("""y = begin
@@ -19,7 +257,6 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
                 Cell("w = z^5"),
                 Cell(""),
             ])
-    fakeclient.connected_notebook = notebook
     update_run!(🍭, notebook, notebook.cells)
 
     # helper functions
@@ -31,7 +268,7 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
 
     # disable first cell
     notebook.cells[1].metadata["disabled"] = true
-    update_run!(🍭, notebook, notebook.cells)
+    update_run!(🍭, notebook, notebook.cells[1])
     should_be_disabled = [1, 3, 5]
     @test get_disabled_cells(notebook) == should_be_disabled
     @test notebook.cells[1].metadata["disabled"] == true
@@ -44,14 +281,14 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
     original_z_output = notebook.cells[3].output.body
     original_a_output = notebook.cells[4].output.body
     original_w_output = notebook.cells[5].output.body
-    setcode(notebook.cells[2], "x = 123123")
+    setcode!(notebook.cells[2], "x = 123123")
     update_run!(🍭, notebook, notebook.cells[2])
     @test notebook.cells[1].output.body == original_y_output
     @test notebook.cells[3].output.body == original_z_output
     @test notebook.cells[4].output.body != original_a_output
     @test notebook.cells[5].output.body == original_w_output
 
-    setcode(notebook.cells[2], "x = 2")
+    setcode!(notebook.cells[2], "x = 2")
     update_run!(🍭, notebook, notebook.cells[2])
     @test notebook.cells[1].output.body == original_y_output
     @test notebook.cells[3].output.body == original_z_output
@@ -65,7 +302,7 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
 
 
     original_6_output = notebook.cells[6].output.body
-    setcode(notebook.cells[6], "x + 6")
+    setcode!(notebook.cells[6], "x + 6")
     update_run!(🍭, notebook, notebook.cells[6])
     @test notebook.cells[6].depends_on_disabled_cells
     @test notebook.cells[6].errored === false
@@ -77,7 +314,7 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
     @test get_disabled_cells(notebook) == collect(1:6)
 
     # the x cell is disabled, so changing it should have no effect
-    setcode(notebook.cells[2], "x = 123123")
+    setcode!(notebook.cells[2], "x = 123123")
     update_run!(🍭, notebook, notebook.cells[2])
     @test notebook.cells[1].output.body == original_y_output
     @test notebook.cells[3].output.body == original_z_output
@@ -106,4 +343,5 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
     update_run!(🍭, notebook, notebook.cells)
     @test get_disabled_cells(notebook) == []
 
+    WorkspaceManager.unmake_workspace((🍭, notebook))
 end

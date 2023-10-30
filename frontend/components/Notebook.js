@@ -1,4 +1,4 @@
-import { PlutoContext } from "../common/PlutoContext.js"
+import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { html, useContext, useEffect, useMemo, useRef, useState } from "../imports/Preact.js"
 
 import { Cell } from "./Cell.js"
@@ -35,13 +35,15 @@ let CellMemo = ({
     force_hide_input,
     is_process_ready,
     disable_input,
+    sanitize_html = true,
+    process_waiting_for_permission,
     show_logs,
     set_show_logs,
     nbpkg,
     global_definition_locations,
 }) => {
     const { body, last_run_timestamp, mime, persist_js_state, rootassignee } = cell_result?.output || {}
-    const { queued, running, runtime, errored, depends_on_disabled_cells, logs } = cell_result || {}
+    const { queued, running, runtime, errored, depends_on_disabled_cells, logs, depends_on_skipped_cells } = cell_result || {}
     const { cell_id, code, code_folded, metadata } = cell_input || {}
     return useMemo(() => {
         return html`
@@ -56,8 +58,8 @@ let CellMemo = ({
                 focus_after_creation=${focus_after_creation}
                 is_process_ready=${is_process_ready}
                 disable_input=${disable_input}
-                show_logs=${show_logs}
-                set_show_logs=${set_show_logs}
+                process_waiting_for_permission=${process_waiting_for_permission}
+                sanitize_html=${sanitize_html}
                 nbpkg=${nbpkg}
                 global_definition_locations=${global_definition_locations}
             />
@@ -65,8 +67,10 @@ let CellMemo = ({
     }, [
         // Object references may invalidate this faster than the optimal. To avoid this, spread out objects to primitives!
         cell_id,
-        metadata.disabled,
+        ...Object.keys(metadata),
+        ...Object.values(metadata),
         depends_on_disabled_cells,
+        depends_on_skipped_cells,
         queued,
         running,
         runtime,
@@ -87,7 +91,8 @@ let CellMemo = ({
         focus_after_creation,
         is_process_ready,
         disable_input,
-        show_logs,
+        process_waiting_for_permission,
+        sanitize_html,
         ...nbpkg_fingerprint(nbpkg),
         global_definition_locations,
     ])
@@ -106,7 +111,7 @@ const render_cell_outputs_minimum = 20
 /**
  * @param {{
  *  notebook: import("./Editor.js").NotebookData,
- *  cell_inputs_local: { [uuid: string]: import("./Editor.js").CellInputData },
+ *  cell_inputs_local: { [uuid: string]: { code: String } },
  *  on_update_doc_query: any,
  *  on_cell_input: any,
  *  on_focus_neighbor: any,
@@ -114,9 +119,9 @@ const render_cell_outputs_minimum = 20
  *  selected_cells: Array<string>,
  *  is_initializing: boolean,
  *  is_process_ready: boolean,
- *  disable_input: any,
- *  show_logs: boolean,
- *  set_show_logs: any,
+ *  disable_input: boolean,
+ *  process_waiting_for_permission: boolean,
+ *  sanitize_html: boolean,
  * }} props
  * */
 export const Notebook = ({
@@ -127,10 +132,10 @@ export const Notebook = ({
     is_initializing,
     is_process_ready,
     disable_input,
-    show_logs,
-    set_show_logs,
+    process_waiting_for_permission,
+    sanitize_html = true,
 }) => {
-    let pluto_actions = useContext(PlutoContext)
+    let pluto_actions = useContext(PlutoActionsContext)
 
     // Add new cell when the last cell gets deleted
     useEffect(() => {
@@ -183,8 +188,8 @@ export const Notebook = ({
                         force_hide_input=${false}
                         is_process_ready=${is_process_ready}
                         disable_input=${disable_input}
-                        show_logs=${show_logs}
-                        set_show_logs=${set_show_logs}
+                        process_waiting_for_permission=${process_waiting_for_permission}
+                        sanitize_html=${sanitize_html}
                         nbpkg=${notebook.nbpkg}
                         global_definition_locations=${global_definition_locations}
                     />`
