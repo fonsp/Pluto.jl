@@ -46,7 +46,8 @@ export const FeaturedCard = ({ entry, source_manifest, direct_html_links, disabl
               disable_ui: `true`,
               name: title == null ? null : `sample ${title}`,
               pluto_server_url: `.`,
-              slider_server_url: u(source_manifest?.slider_server_url),
+              // Little monkey patch because we don't want to use the slider server when for the CDN source, only for the featured.plutojl.org source. But both sources have the same pluto_export.json so this is easiest.
+              slider_server_url: source_url?.includes("cdn.jsdelivr.net/gh/JuliaPluto/featured") ? null : u(source_manifest?.slider_server_url),
           })
 
     const author = author_info(entry.frontmatter)
