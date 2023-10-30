@@ -70,11 +70,41 @@ end
 
     local_url(suffix) = "http://$host:$port/$suffix"
     withsecret(url) = occursin('?', url) ? "$url&secret=$secret" : "$url?secret=$secret"
-    @test HTTP.get(local_url("favicon.ico")).status == 200
 
-    function requeststatus(url, method)
-        r = HTTP.request(method, url, nothing, method == "POST" ? read(basic_nb_path) : UInt8[]; status_exception=false, redirect=false)
-        r.status
+    function request(url, method; kwargs...)
+        HTTP.request(method, url, nothing, method == "POST" ? read(basic_nb_path) : UInt8[]; status_exception=false, redirect=false, cookies=false, kwargs...)
+    end
+    
+    function shares_secret(response)
+        any(occursin(secret, y) for (x,y) in response.headers)
+    end
+    
+    public_routes = [
+        ("favicon.ico", "GET"),
+        ("possible_binder_token_please", "GET"),
+        ("index.css", "GET"),
+        ("index.js", "GET"),
+        ("img/favicon-32x32.png", "GET"),
+    ]
+    
+    broken_routes = [
+        ("../tsconfig.json", "GET"),
+        ("/img/", "GET"),
+        ("open.png?url=$(URIs.escapeuri("https://raw.githubusercontent.com/fonsp/Pluto.jl/v0.14.5/sample/Basic.jl"))", "GET"),
+    ]
+    
+    for (suffix, method) in public_routes
+        url = local_url(suffix)
+        r = request(url, method)
+        @test r.status == 200
+        @test !shares_secret(r)
+    end
+    
+    for (suffix, method) in broken_routes
+        url = local_url(suffix)
+        r = request(url, method)
+        @test r.status ∈ 400:499
+        @test !shares_secret(r)
     end
     
 
@@ -83,6 +113,7 @@ end
     simple_routes = [
         ("", "GET"),
         ("edit?id=$(nb.notebook_id)", "GET"),
+        ("editor.html", "GET"),
         ("notebookfile?id=$(nb.notebook_id)", "GET"),
         ("notebookexport?id=$(nb.notebook_id)", "GET"),
         ("statefile?id=$(nb.notebook_id)", "GET"),
@@ -109,24 +140,74 @@ end
         ("notebookupload?execution_allowed=asdf", "POST"),
     ]
 
-    for (suffix, method) in simple_routes ∪ effect_routes
+    @testset "simple & effect w/o auth $suffix $method" for (suffix, method) in simple_routes ∪ effect_routes
         url = local_url(suffix)
-        @test requeststatus(url, method) == 403
+        r = request(url, method)
+        @test r.status == 403
+        @test !shares_secret(r)
     end
 
     # no notebooks were opened
     @test length(🍭.notebooks) == 1
+    
+    @testset "require secret only for open links" begin
+        @test !shares_secret(request(local_url(""), "GET"))
+        jar = HTTP.Cookies.CookieJar()
+        
+        # Let's test the config
+        # require_secret_for_access = false
+        # require_secret_for_open_links = true
+        🍭.options.security.require_secret_for_access = false
+        
+        # Effectful paths should not work without a secret.
+        @testset "simple & effect w/o auth 1 $suffix $method" for (suffix, method) in effect_routes
+            url = local_url(suffix)
+            r = request(url, method; cookies=true, jar)
+            @test r.status == 403
+            @test !shares_secret(r)
+        end
+        
+        # With this config, the / path should work and share the secret, even when requested without a secret.
+        r = request(local_url(""), "GET"; cookies=true, jar)
+        @test r.status == 200
+        @test shares_secret(r)
+        
+        # Now, the other effectful paths should work bc of the secret.
+        @testset "simple w/o auth 2 $suffix $method" for (suffix, method) in simple_routes
+            url = local_url(suffix)
+            r = request(url, method; cookies=true, jar)
+            @test r.status ∈ 200:299 # 2xx is OK
+            @test shares_secret(r)
+        end
+        
+        🍭.options.security.require_secret_for_access = true
+    end
+    
+    jar = HTTP.Cookies.CookieJar()
+    
+    @test shares_secret(request(local_url("") |> withsecret, "GET"; cookies=true, jar))
+    
 
-    for (suffix, method) in simple_routes
-        url = local_url(suffix) |> withsecret
-        @test requeststatus(url, method)  ∈ 200:299
+    @testset "simple w/ auth $suffix $method" for (suffix, method) in simple_routes
+        # should work because of cookie
+        url = local_url(suffix)
+        r = request(url, method; cookies=true, jar)
+        @test r.status ∈ 200:299 # 2xx is OK
+        @test shares_secret(r) # see reasoning in of https://github.com/fonsp/Pluto.jl/commit/20515dd46678a49ca90e042fcfa3eab1e5c8e162
+
+        # Without cookies, but with secret in URL
+        r = request(url |> withsecret, method)
+        @test r.status ∈ 200:299 # 2xx is OK
+        @test shares_secret(r)
     end
 
-    for (suffix, method) in effect_routes
+    @testset "effect w/ auth $suffix $method" for (suffix, method) in effect_routes
         old_ids = collect(keys(🍭.notebooks))
         
         url = local_url(suffix) |> withsecret
-        @test requeststatus(url, method) ∈ 200:399 # 3xx are redirects
+        r = request(url, method)
+        @test r.status ∈ 200:399 # 3xx are redirects
+        @test shares_secret(r) # see reasoning in of https://github.com/fonsp/Pluto.jl/commit/20515dd46678a49ca90e042fcfa3eab1e5c8e162
         
         new_ids = collect(keys(🍭.notebooks))
         nb = 🍭.notebooks[only(setdiff(new_ids, old_ids))]

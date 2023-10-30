@@ -121,8 +121,6 @@ export const Featured = ({ sources, direct_html_links }) => {
             set_waited_too_long(false)
             set_source_data({})
 
-            // Start downloading the sources
-
             const ids = Array.from(new Set(sources.map(get_id)))
 
             const promises = ids.map((id) => {

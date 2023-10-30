@@ -1510,9 +1510,6 @@ patch: ${JSON.stringify(
                                       />`)
                             }
                             <div class="flex_grow_2"></div>
-                            <button class="toggle_export" title="Export..." onClick=${() => {
-                                this.setState({ export_menu_open: !export_menu_open })
-                            }}><span></span></button>
                             <div id="process_status">${
                                 status.binder && status.loading
                                     ? "Loading binder..."
@@ -1532,6 +1529,9 @@ patch: ${JSON.stringify(
                                     ? html`${restart_button("Run notebook code", true)}`
                                     : null
                             }</div>
+                            <button class="toggle_export" title="Export..." onClick=${() => {
+                                this.setState({ export_menu_open: !export_menu_open })
+                            }}><span></span></button>
                         </nav>
                     </header>
                     

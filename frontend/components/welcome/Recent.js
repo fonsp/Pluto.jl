@@ -181,7 +181,7 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
 
     let recents =
         combined_notebooks == null
-            ? html`<li><em>Loading...</em></li>`
+            ? html`<li class="not_yet_ready"><em>Loading...</em></li>`
             : combined_notebooks.map((nb) => {
                   const running = nb.entry != null
                   return html`<li
@@ -221,7 +221,7 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
     if (CustomRecent == null) {
         return html`
             <h2>My work</h2>
-            <ul id="recent" class="show-scrollbar">
+            <ul id="recent" class="show_scrollbar">
                 <li class="new">
                     <a
                         href="new"

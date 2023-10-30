@@ -2,12 +2,13 @@ name = "Pluto"
 uuid = "c3e4b0f8-55cb-11ea-2926-15256bba5781"
 license = "MIT"
 authors = ["Fons van der Plas <fons@plutojl.org>"]
-version = "0.19.29"
+version = "0.19.30"
 
 [deps]
 Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 Configurations = "5218b696-f38b-4ac9-8b61-a12ec717816d"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+Downloads = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
 FileWatching = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
 FuzzyCompletions = "fb4132e2-a121-4a70-b8a1-d5b831dcdcc2"
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
