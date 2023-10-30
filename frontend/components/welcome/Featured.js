@@ -65,12 +65,13 @@ const offline_html = html`
         <p>Here are a couple of notebooks to get started with Pluto.jl:</p>
         <ul>
             <li>1. <a href="sample/Getting%20started.jl">Getting started</a></li>
-            <li>2. <a href="sample/Basic%20mathematics.jl">Basic mathematics</a></li>
-            <li>3. <a href="sample/Interactivity.jl">Interactivity</a></li>
-            <li>4. <a href="sample/PlutoUI.jl.jl">PlutoUI.jl</a></li>
-            <li>5. <a href="sample/Plots.jl.jl">Plots.jl</a></li>
-            <li>6. <a href="sample/Tower%20of%20Hanoi.jl">Tower of Hanoi</a></li>
-            <li>7. <a href="sample/JavaScript.jl">JavaScript</a></li>
+            <li>2. <a href="sample/Markdown.jl">Markdown</a></li>
+            <li>3. <a href="sample/Basic%20mathematics.jl">Basic mathematics</a></li>
+            <li>4. <a href="sample/Interactivity.jl">Interactivity</a></li>
+            <li>5. <a href="sample/PlutoUI.jl.jl">PlutoUI.jl</a></li>
+            <li>6. <a href="sample/Plots.jl.jl">Plots.jl</a></li>
+            <li>7. <a href="sample/Tower%20of%20Hanoi.jl">Tower of Hanoi</a></li>
+            <li>8. <a href="sample/JavaScript.jl">JavaScript</a></li>
         </ul>
         <br />
         <br />
