@@ -19,6 +19,7 @@ const ProcessStatus = (
     starting="starting",
     no_process="no_process",
     waiting_to_restart="waiting_to_restart",
+    waiting_for_permission="waiting_for_permission",
 )
 
 "Like a [`Diary`](@ref) but more serious. 📓"
@@ -70,6 +71,17 @@ function _initial_nb_status()
     Status.report_business_planned!(b, :pkg)
     Status.report_business_planned!(b, :run)
     return b
+end
+
+function _report_business_cells_planned!(notebook::Notebook)
+    run_status = Status.report_business_planned!(notebook.status_tree, :run)
+    Status.report_business_planned!(run_status, :resolve_topology)
+    cell_status = Status.report_business_planned!(run_status, :evaluate)
+    for (i,c) in enumerate(notebook.cells)
+        c.running = true
+        c.queued = true
+        Status.report_business_planned!(cell_status, Symbol(i))
+    end
 end
 
 _collect_cells(cells_dict::Dict{UUID,Cell}, cells_order::Vector{UUID}) = 

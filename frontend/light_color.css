@@ -99,6 +99,7 @@
 
         /*header*/
         --restart-recc-header-color: rgba(114, 192, 255, 0.56);
+        --restart-recc-accent-color: rgba(114, 192, 255);
         --restart-req-header-color: rgba(170, 41, 32, 0.56);
         --dead-process-header-color: rgb(230 88 46 / 38%);
         --loading-header-color: hsla(290, 10%, 80%, 0.5);

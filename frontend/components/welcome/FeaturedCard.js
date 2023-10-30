@@ -32,7 +32,7 @@ export const FeaturedCard = ({ entry, source_url, direct_html_links }) => {
     // `direct_html_links` means that we will navigate you directly to the exported HTML file. Otherwise, we use our local editor, with the exported state as parameters. This lets users run the featured notebooks locally.
     const href = direct_html_links
         ? u(entry.html_path)
-        : with_query_params(`editor.html`, {
+        : with_query_params(`edit`, {
               statefile: u(entry.statefile_path),
               notebookfile: u(entry.notebookfile_path),
               notebookfile_integrity: `sha256-${base64url_to_base64(entry.hash)}`,

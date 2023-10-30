@@ -1,3 +1,4 @@
+import puppeteer from "puppeteer"
 import path from "path";
 import mkdirp from "mkdirp";
 import * as process from "process";
@@ -187,6 +188,7 @@ const blocked_domains = ["cdn.jsdelivr.net", "unpkg.com", "cdn.skypack.dev", "es
 const hide_warning = url => url.includes("mathjax")
 
 export const createPage = async (browser) => {
+    /** @type {puppeteer.Page} */
   const page = await browser.newPage()
   
   failOnError(page);

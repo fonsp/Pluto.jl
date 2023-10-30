@@ -51,6 +51,7 @@ random_data = rand(UInt8, 30)
 begin
 	import HTTP.URIs
 	import Base64
+	import Downloads
 end
 
 # ╔═╡ a85c0c0b-47d0-4377-bc22-3c87239a67b3
@@ -86,7 +87,7 @@ function download_cool(url::AbstractString, path::AbstractString=tempname())
 		write(path, data)
 		path
 	else
-		download(url, path)
+		Downloads.download(url, path)
 	end
 end
 
