@@ -331,6 +331,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
 
             if (script_el == undefined) {
                 script_el = document.createElement("script")
+                script_el.integrity = node.integrity
                 script_el.src = node.src
                 script_el.type = node.type === "module" ? "module" : "text/javascript"
                 // @ts-ignore
