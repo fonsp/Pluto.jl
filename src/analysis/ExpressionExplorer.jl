@@ -620,9 +620,14 @@ function explore_try!(ex::Expr, scopestate::ScopeState)
     # Handle the try block
     union!(symstate, explore_inner_scoped(ex.args[1], scopestate))
 
-    # Finally, handle finally
-    if length(ex.args) == 4
+    # Handle finally
+    if 4 <= length(ex.args) <= 5 && ex.args[4] isa Expr
         union!(symstate, explore_inner_scoped(ex.args[4], scopestate))
+    end
+
+    # Finally, handle else
+    if length(ex.args) == 5
+        union!(symstate, explore_inner_scoped(ex.args[5], scopestate))
     end
 
     return symstate

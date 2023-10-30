@@ -13,6 +13,26 @@ import { Decoration } from "../../imports/CodemirrorPlutoSetup.js"
  * Also it doesn't do non-matching now, there is just matching or nothing.
  */
 
+function match_try_node(node) {
+    let try_node = node.parent.firstChild
+    let possibly_end = node.parent.lastChild
+    let did_match = possibly_end.name === "end"
+    if (!did_match) return null
+
+    let catch_node = node.parent.getChild("CatchClause")?.firstChild
+    let else_node = node.parent.getChild("TryElseClause")?.firstChild
+    let finally_node = node.parent.getChild("FinallyClause")?.firstChild
+
+    return [
+        { from: try_node.from, to: try_node.to },
+        catch_node && { from: catch_node.from, to: catch_node.to },
+        else_node && { from: else_node.from, to: else_node.to },
+        finally_node && { from: finally_node.from, to: finally_node.to },
+        { from: possibly_end.from, to: possibly_end.to },
+    ].filter((x) => x != null)
+
+}
+
 function match_block(node) {
     if (node.name === "end") {
         if (node.parent.name === "IfStatement") {
@@ -154,35 +174,23 @@ function match_block(node) {
         ]
     }
 
-    if (node.name === "try" || node.name === "catch" || node.name === "finally") {
-        if (node.name === "catch") node = node.parent
-        if (node.name === "finally") node = node.parent
-
-        let try_node = node.parent.firstChild
-        let possibly_end = node.parent.lastChild
-        let did_match = possibly_end.name === "end"
-        if (!did_match) return null
-
-        let catch_node = node.parent.getChild("CatchClause")?.firstChild
-        let finally_node = node.parent.getChild("FinallyClause")?.firstChild
-
-        return [
-            { from: try_node.from, to: try_node.to },
-            catch_node && { from: catch_node.from, to: catch_node.to },
-            finally_node && { from: finally_node.from, to: finally_node.to },
-            { from: possibly_end.from, to: possibly_end.to },
-        ].filter((x) => x != null)
-    }
-
     if (node.name === "if" || node.name === "else" || node.name === "elseif") {
         if (node.name === "if") node = node.parent
-        if (node.name === "else") node = node.parent
+        let iselse = false
+        if (node.name === "else") {
+            node = node.parent
+            iselse = true
+        }
         if (node.name === "elseif") node = node.parent.parent
 
         let try_node = node.parent.firstChild
         let possibly_end = node.parent.lastChild
         let did_match = possibly_end.name === "end"
         if (!did_match) return null
+
+        if (iselse && try_node.name === "try") {
+            return match_try_node(node) // try catch else finally end
+        }
 
         let decorations = []
         decorations.push({ from: try_node.from, to: try_node.to })
@@ -198,6 +206,23 @@ function match_block(node) {
 
         return decorations
     }
+
+    if (node.name === "try"
+        || node.name === "catch"
+        || node.name === "finally"
+        || node.name === "else") {
+
+        if (node.name === "catch") node = node.parent
+        if (node.name === "finally") node = node.parent
+        if (node.name === "else") node = node.parent
+
+        let possibly_end = node.parent.lastChild
+        let did_match = possibly_end.name === "end"
+        if (!did_match) return null
+
+        return match_try_node(node)
+    }
+
 
     return null
 }

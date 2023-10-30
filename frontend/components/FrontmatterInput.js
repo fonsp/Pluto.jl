@@ -7,14 +7,17 @@ import "https://cdn.jsdelivr.net/gh/fonsp/rebel-tag-input@1.0.6/lib/rebel-tag-in
 //@ts-ignore
 import dialogPolyfill from "https://cdn.jsdelivr.net/npm/dialog-polyfill@0.5.6/dist/dialog-polyfill.esm.min.js"
 import immer from "../imports/immer.js"
+import { useDialog } from "../common/useDialog.js"
+import { FeaturedCard } from "./welcome/FeaturedCard.js"
 
 /**
  * @param {{
+ *  filename: String,
  *  remote_frontmatter: Record<String,any>?,
  *  set_remote_frontmatter: (newval: Record<String,any>) => Promise<void>,
  * }} props
  * */
-export const FrontMatterInput = ({ remote_frontmatter, set_remote_frontmatter }) => {
+export const FrontMatterInput = ({ filename, remote_frontmatter, set_remote_frontmatter }) => {
     const [frontmatter, set_frontmatter] = useState(remote_frontmatter ?? {})
 
     useEffect(() => {
@@ -32,15 +35,7 @@ export const FrontMatterInput = ({ remote_frontmatter, set_remote_frontmatter })
             })
         )
 
-    const dialog_ref = useRef(/** @type {HTMLDialogElement?} */ (null))
-    useLayoutEffect(() => {
-        dialogPolyfill.registerDialog(dialog_ref.current)
-    })
-
-    //@ts-ignore
-    const open = () => dialog_ref.current.showModal()
-    //@ts-ignore
-    const close = () => dialog_ref.current.close()
+    const [dialog_ref, open, close, _toggle] = useDialog({ light_dismiss: false })
 
     const cancel = () => {
         set_frontmatter(remote_frontmatter ?? {})
@@ -145,6 +140,19 @@ export const FrontMatterInput = ({ remote_frontmatter, set_remote_frontmatter })
             If you are publishing this notebook on the web, you can set the parameters below to provide HTML metadata. This is useful for search engines and
             social media.
         </p>
+        <div class="card-preview">
+            <h2>Preview</h2>
+            <${FeaturedCard}
+                entry=${
+                    /** @type {import("./welcome/Featured.js").SourceManifestNotebookEntry} */ ({
+                        id: filename.replace(/\.jl$/, ""),
+                        hash: "xx",
+                        frontmatter: clean_data(frontmatter) ?? {},
+                    })
+                }
+                disable_links=${true}
+            />
+        </div>
         <div class="fm-table">
             ${entries_input(frontmatter_with_defaults, ``)}
             ${!_.isArray(frontmatter_with_defaults.author)
@@ -212,11 +220,13 @@ const Input = ({ value, on_value, type, id }) => {
         }
     }, [input_ref.current])
 
+    const placeholder = type === "url" ? "https://..." : undefined
+
     return type === "tags"
         ? html`<rbl-tag-input id=${id} ref=${input_ref} />`
         : type === "license"
         ? LicenseInput({ ref: input_ref, id })
-        : html`<input type=${type} id=${id} ref=${input_ref} />`
+        : html`<input type=${type} id=${id} ref=${input_ref} placeholder=${placeholder} />`
 }
 
 // https://choosealicense.com/licenses/

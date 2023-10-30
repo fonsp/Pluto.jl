@@ -1,6 +1,6 @@
 import puppeteer from "puppeteer"
 import { saveScreenshot, createPage, paste } from "../helpers/common"
-import { createNewNotebook, getPlutoUrl, prewarmPluto, setupPlutoBrowser, shutdownCurrentNotebook, waitForNoUpdateOngoing } from "../helpers/pluto"
+import { createNewNotebook, getPlutoUrl, runAllChanged, setupPlutoBrowser, shutdownCurrentNotebook, waitForPlutoToCalmDown } from "../helpers/pluto"
 
 // https://github.com/fonsp/Pluto.jl/issues/928
 describe("Bonds should run once when refreshing page", () => {
@@ -47,11 +47,7 @@ describe("Bonds should run once when refreshing page", () => {
 @bind z html"<input type=range>"
 `
         )
-        await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
-        await page.click(`.runallchanged`)
-
-        await page.waitForSelector(`pluto-cell.running`, { visible: true, timeout: 0 })
-        await waitForNoUpdateOngoing(page)
+        await runAllChanged(page)
 
         await paste(
             page,
@@ -64,11 +60,10 @@ numberoftimes = Ref(0)
         `
         )
 
-        await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
-        await page.click(`.runallchanged`)
+        await runAllChanged(page)
         await page.waitForFunction(() => Boolean(document.querySelector("pluto-cell:nth-of-type(5) pluto-output")?.textContent))
+        await waitForPlutoToCalmDown(page)
 
-        await waitForNoUpdateOngoing(page)
         let output_after_running_bonds = await page.evaluate(() => {
             return document.querySelector("pluto-cell:nth-of-type(5) pluto-output")?.textContent
         })
@@ -77,7 +72,7 @@ numberoftimes = Ref(0)
         // Let's refresh and see
         await page.reload({ waitUntil: ["networkidle0", "domcontentloaded"] })
         await page.waitForFunction(() => Boolean(document.querySelector("pluto-cell:nth-of-type(5) pluto-output")?.textContent))
-        await waitForNoUpdateOngoing(page)
+        await waitForPlutoToCalmDown(page)
         let output_after_reload = await page.evaluate(() => {
             return document.querySelector("pluto-cell:nth-of-type(5) pluto-output")?.textContent
         })

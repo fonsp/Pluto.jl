@@ -2401,6 +2401,7 @@ function Base.show(io::IO, m::MIME"text/html", e::EmbeddableDisplay)
         const display = create_new ? currentScript.previousElementSibling : this;
         
         display.persist_js_state = true;
+        display.sanitize_html = false;
         display.body = body;
         if(create_new) {
             // only set the mime if necessary, it triggers a second preact update

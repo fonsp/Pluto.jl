@@ -35,6 +35,8 @@ import { FeaturedCard } from "./FeaturedCard.js"
  *   source_url?: String,
  *   title?: String,
  *   description?: String,
+ *   binder_url?: String,
+ *   slider_server_url?: String,
  * }}
  */
 
@@ -119,12 +121,7 @@ export const Featured = ({ sources, direct_html_links }) => {
             set_waited_too_long(false)
             set_source_data({})
 
-            // Start downloading the sources
-
             const ids = Array.from(new Set(sources.map(get_id)))
-
-            console.log(ids)
-            console.log("123123123213123")
 
             const promises = ids.map((id) => {
                 const sources_for_id = sources.filter((source) => get_id(source) === id)
@@ -202,8 +199,7 @@ export const Featured = ({ sources, direct_html_links }) => {
                                       <p>${coll.description}</p>
                                       <div class="card-list">
                                           ${collection(Object.values(data.notebooks), coll.tags ?? []).map(
-                                              (entry) =>
-                                                  html`<${FeaturedCard} entry=${entry} source_url=${data.source_url} direct_html_links=${direct_html_links} />`
+                                              (entry) => html`<${FeaturedCard} entry=${entry} source_manifest=${data} direct_html_links=${direct_html_links} />`
                                           )}
                                       </div>
                                   </div>

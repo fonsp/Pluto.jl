@@ -12,6 +12,7 @@ import {
     lastElement,
     createPage,
     getArtifactsDir,
+    waitForContentToBecome,
 } from "./common"
 import path from "path"
 
@@ -79,6 +80,7 @@ export const createNewNotebook = async (page) => {
     const newNotebookSelector = 'a[href="new"]'
     await page.waitForSelector(newNotebookSelector)
     await clickAndWaitForNavigation(page, newNotebookSelector)
+    await page.waitForTimeout(1000)
     await waitForPlutoToCalmDown(page)
     await page.waitForSelector("pluto-input", { visible: true })
 }
@@ -87,18 +89,31 @@ export const createNewNotebook = async (page) => {
  * @param {Page} page
  * @param {string} notebookName`
  */
-export const importNotebook = async (page, notebookName) => {
+export const importNotebook = async (page, notebookName, { permissionToRunCode = true, timeout = 60000 } = {}) => {
     // Copy notebook before using it, so we don't mess it up with test changes
     const notebookPath = getFixtureNotebookPath(notebookName)
     const artifactsPath = getTemporaryNotebookPath()
     fs.copyFileSync(notebookPath, artifactsPath)
+    await openPathOrURLNotebook(page, artifactsPath, { permissionToRunCode, timeout })
+}
+
+/**
+ * @param {Page} page
+ * @param {string} path_or_url
+ */
+export const openPathOrURLNotebook = async (page, path_or_url, { permissionToRunCode = true, timeout = 60000 } = {}) => {
+    await page.waitForFunction(() => document.querySelector(`.not_yet_ready`) == null)
+
     const openFileInputSelector = "pluto-filepicker"
-    await writeSingleLineInPlutoInput(page, openFileInputSelector, artifactsPath)
+    await writeSingleLineInPlutoInput(page, openFileInputSelector, path_or_url)
     // await writeSingleLineInPlutoInput(page, openFileInputSelector, notebookPath)
 
     const openFileButton = "pluto-filepicker button"
     await clickAndWaitForNavigation(page, openFileButton)
-    await waitForPlutoToCalmDown(page)
+    // Give permission to run code in this notebook
+    if (permissionToRunCode) await restartProcess(page)
+    await page.waitForTimeout(1000)
+    await waitForPlutoToCalmDown(page, { polling: "raf", timeout })
 }
 
 /**
@@ -109,10 +124,38 @@ export const getCellIds = (page) => page.evaluate(() => Array.from(document.quer
 /**
  * @param {Page} page
  */
-export const waitForPlutoToCalmDown = async (page) => {
-    await page.waitForTimeout(1000)
-    //@ts-ignore
-    await page.waitForFunction(() => document?.body?._update_is_ongoing === false && document?.querySelector(`pluto-cell.running, pluto-cell.queued`) === null)
+export const restartProcess = async (page) => {
+    await page.waitForSelector(`a#restart-process-button`)
+    await page.click(`a#restart-process-button`)
+    // page.once("dialog", async (dialog) => {
+    //     await dialog.accept()
+    // })
+    await page.waitForFunction(() => document?.querySelector(`a#restart-process-button`) == null)
+    await page.waitForSelector(`#process-status-tab-button.something_is_happening`)
+}
+
+const waitForPlutoBusy = async (page, iWantBusiness, options) => {
+    await page.waitForTimeout(1)
+    await page.waitForFunction(
+        (iWantBusiness) => {
+            let quiet = //@ts-ignore
+                document?.body?._update_is_ongoing === false &&
+                //@ts-ignore
+                document?.body?._js_init_set?.size === 0 &&
+                document?.body?.classList?.contains("loading") === false &&
+                document?.querySelector(`#process-status-tab-button.something_is_happening`) == null &&
+                document?.querySelector(`pluto-cell.running, pluto-cell.queued, pluto-cell.internal_test_queued`) == null
+
+            return iWantBusiness ? !quiet : quiet
+        },
+        options,
+        iWantBusiness
+    )
+    await page.waitForTimeout(1)
+}
+
+export const waitForPlutoToCalmDown = async (/** @type {puppeteer.Page} */ page, /** @type {{ polling: string | number; timeout?: number; }} */ options) => {
+    await waitForPlutoBusy(page, false, options)
 }
 
 /**
@@ -123,6 +166,11 @@ export const waitForCellOutput = (page, cellId) => {
     const cellOutputSelector = `pluto-cell[id="${cellId}"] pluto-output`
     return waitForContent(page, cellOutputSelector)
 }
+
+/**
+ * @param {Page} page
+ */
+export const getAllCellOutputs = (page) => page.evaluate(() => Array.from(document.querySelectorAll(`pluto-cell > pluto-output`)).map((c) => c.innerText))
 
 /**
  * @param {Page} page
@@ -142,6 +190,18 @@ export const waitForNoUpdateOngoing = async (page, options = {}) => {
             document.body?._update_is_ongoing === false,
         options
     )
+}
+
+/**
+ * @param {Page} page
+ */
+export const runAllChanged = async (page) => {
+    await page.waitForSelector(`.runallchanged`, {
+        visible: true,
+    })
+    await page.click(`.runallchanged`)
+    await waitForPlutoBusy(page, true)
+    await waitForPlutoBusy(page, false)
 }
 
 /**
@@ -181,6 +241,26 @@ export const keyboardPressInPlutoInput = async (page, plutoInputSelector, key) =
     await page.waitForTimeout(500)
     // Wait for CodeMirror to process the input and display the text
     return waitForContentToChange(page, `${plutoInputSelector} .cm-line`, currentLineText)
+}
+
+/**
+ * @param {Page} page
+ * @param {string} plutoInputSelector
+ */
+export const clearPlutoInput = async (page, plutoInputSelector) => {
+    await page.waitForSelector(`${plutoInputSelector} .cm-editor`)
+    if ((await page.$(`${plutoInputSelector} .cm-placeholder`)) == null) {
+        await page.focus(`${plutoInputSelector} .cm-content`)
+        await page.waitForTimeout(500)
+        // Move to end of the input
+        await page.keyboard.down(platform === "darwin" ? "Meta" : "Control")
+        await page.keyboard.press("KeyA")
+        await page.keyboard.up(platform === "darwin" ? "Meta" : "Control")
+        // Press the key we care about
+        await page.keyboard.press("Delete")
+        // Wait for CodeMirror to process the input and display the text
+        await page.waitForSelector(`${plutoInputSelector} .cm-placeholder`)
+    }
 }
 
 /**
