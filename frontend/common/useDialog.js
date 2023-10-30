@@ -13,12 +13,9 @@ export const useDialog = ({ light_dismiss = false } = {}) => {
         if (dialog_ref.current != null) dialogPolyfill.registerDialog(dialog_ref.current)
     }, [dialog_ref.current])
 
-    //@ts-ignore
-    const open = () => dialog_ref.current.showModal()
-    //@ts-ignore
-    const close = () => dialog_ref.current.close()
-    //@ts-ignore
-    const toggle = () => (dialog_ref.current.open ? dialog_ref.current?.close() : dialog_ref.current?.showModal())
+    const open = () => dialog_ref.current?.showModal()
+    const close = () => dialog_ref.current?.close()
+    const toggle = () => (dialog_ref.current?.open === true ? dialog_ref.current?.close() : dialog_ref.current?.showModal())
 
     useEffect(() => {
         if (light_dismiss) {
