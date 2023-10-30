@@ -1562,7 +1562,8 @@ patch: ${JSON.stringify(
                             )}
                     />
                     <${EditorLaunchBackendButton} editor=${this} launch_params=${launch_params} status=${status} />
-                    <${FrontMatterInput} 
+                    <${FrontMatterInput}
+                        filename=${notebook.shortpath}
                         remote_frontmatter=${notebook.metadata?.frontmatter} 
                         set_remote_frontmatter=${(newval) =>
                             this.actions.update_notebook((nb) => {
