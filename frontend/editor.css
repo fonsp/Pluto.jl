@@ -23,6 +23,8 @@
 @import url("./light_color.css");
 @import url("./dark_color.css");
 
+@import url("./featured-card.css");
+
 /* VARIABLES */
 
 :root {
@@ -3499,6 +3501,19 @@ pluto-cell.hooked_up pluto-output {
     background: var(--export-bg-color);
     border-radius: 1em;
     padding: 1em 1.5em;
+}
+
+.pluto-frontmatter .card-preview {
+    background: var(--white);
+    padding: 1.2rem 1.1rem;
+    margin: 1rem 0;
+    box-shadow: inset 0px 0px 15px -4px #00000054;
+    border-radius: 1rem;
+}
+
+.pluto-frontmatter .card-preview > h2 {
+    margin-block-start: 0;
+    color: var(--black);
 }
 
 .pluto-frontmatter button {
