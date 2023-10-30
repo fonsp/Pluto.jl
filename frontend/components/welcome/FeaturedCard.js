@@ -9,13 +9,15 @@ const str_to_degree = (s) => ([...s].reduce((a, b) => a + b.charCodeAt(0), 0) * 
 
 /**
  * @param {{
+ *  source_manifest: import("./Featured.js").SourceManifest,
  *  entry: import("./Featured.js").SourceManifestNotebookEntry,
- *  source_url?: string,
  *  direct_html_links: boolean,
  * }} props
  */
-export const FeaturedCard = ({ entry, source_url, direct_html_links }) => {
+export const FeaturedCard = ({ entry, source_manifest, direct_html_links }) => {
     const title = entry.frontmatter?.title
+
+    const { source_url } = source_manifest
 
     const u = (/** @type {string | null | undefined} */ x) =>
         source_url == null
@@ -37,8 +39,9 @@ export const FeaturedCard = ({ entry, source_url, direct_html_links }) => {
               notebookfile: u(entry.notebookfile_path),
               notebookfile_integrity: `sha256-${base64url_to_base64(entry.hash)}`,
               disable_ui: `true`,
-              pluto_server_url: `.`,
               name: title == null ? null : `sample ${title}`,
+              pluto_server_url: `.`,
+              slider_server_url: u(source_manifest.slider_server_url),
           })
 
     const author = author_info(entry.frontmatter)
