@@ -331,9 +331,14 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
 
             if (script_el == undefined) {
                 script_el = document.createElement("script")
+                script_el.referrerPolicy = node.referrerPolicy
+                script_el.crossOrigin = node.crossOrigin
                 script_el.integrity = node.integrity
+                script_el.noModule = node.noModule
+                script_el.nonce = node.nonce
+                script_el.type = node.type
                 script_el.src = node.src
-                script_el.type = node.type === "module" ? "module" : "text/javascript"
+                // Not copying defer or async because this script is not included in the initial HTML document, so it has no effect.
                 // @ts-ignore
                 script_el.pluto_is_loading_me = true
             }
