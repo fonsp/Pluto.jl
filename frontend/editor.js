@@ -140,15 +140,29 @@ const EditorLoader = ({ launch_params }) => {
     const [statefile_download_progress, set_statefile_download_progress] = useState(null)
 
     const initial_notebook_state_ref = useRef(empty_notebook_state(launch_params))
+    const [error_banner, set_error_banner] = useState(/** @type {import("./imports/Preact.js").ReactElement?} */ (null))
     const [ready_for_editor, set_ready_for_editor] = useState(!static_preview)
 
     useEffect(() => {
         if (!ready_for_editor && static_preview) {
-            get_statefile(launch_params, set_statefile_download_progress).then((state) => {
-                console.log({ state })
-                initial_notebook_state_ref.current = state
-                set_ready_for_editor(true)
-            })
+            get_statefile(launch_params, set_statefile_download_progress)
+                .then((state) => {
+                    console.log({ state })
+                    initial_notebook_state_ref.current = state
+                    set_ready_for_editor(true)
+                })
+                .catch((e) => {
+                    console.error(e)
+                    set_error_banner(html`
+                        <main style="font-family: system-ui, sans-serif;">
+                            <h2>Failed to load notebook</h2>
+                            <p>The statefile failed to download. Original error message:</p>
+                            <pre style="overflow: auto;"><code>${e.toString()}</code></pre>
+                            <p>Launch parameters:</p>
+                            <pre style="overflow: auto;"><code>${JSON.stringify(launch_params, null, 2)}</code></pre>
+                        </main>
+                    `)
+                })
         }
     }, [ready_for_editor, static_preview, statefile])
 
@@ -160,7 +174,9 @@ const EditorLoader = ({ launch_params }) => {
         ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} sanitize_html=${preamble_html_comes_from_url_params} />`
         : null
 
-    return ready_for_editor
+    return error_banner != null
+        ? error_banner
+        : ready_for_editor
         ? html`<${Editor} initial_notebook_state=${initial_notebook_state_ref.current} launch_params=${launch_params} preamble_element=${preamble_element} />`
         : // todo: show preamble html
           html`
