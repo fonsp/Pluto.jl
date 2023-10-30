@@ -11,7 +11,6 @@ const str_to_degree = (s) => ([...s].reduce((a, b) => a + b.charCodeAt(0), 0) * 
  * @param {{
  *  source_manifest: import("./Featured.js").SourceManifest,
  *  entry: import("./Featured.js").SourceManifestNotebookEntry,
- *  source_url?: string,
  *  direct_html_links: boolean,
  * }} props
  */
