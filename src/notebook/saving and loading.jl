@@ -56,8 +56,13 @@ function save_notebook(io::IO, notebook::Notebook)
     println(io)
 
     cells_ordered = collect(topological_order(notebook))
-    # TODO: add test for this case
-    if length(cells_ordered) != length(notebook.cells)
+    
+    # NOTE: the notebook topological is cached on every update_dependency! call
+    # ....  so it is possible that a cell was added/removed since this last update.
+    # ....  in this case, it will not contain that cell since it is build from its
+    # ....  store notebook topology. therefore, we compute an updated topological
+    # ....  order in this unlikely case.
+    if length(cells_ordered) != length(notebook.cells_dict)
         cells = notebook.cells
         updated_topo = updated_topology(notebook.topology, notebook, cells)
         cells_ordered = collect(topological_order(updated_topo, cells))
