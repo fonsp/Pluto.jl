@@ -7,7 +7,9 @@ import { RawHTMLContainer, highlight } from "./CellOutput.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { package_status, nbpkg_fingerprint_without_terminal } from "./PkgStatusMark.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
-import { useDebouncedTruth } from "./RunArea.js"
+import { prettytime, useDebouncedTruth } from "./RunArea.js"
+import { time_estimate, usePackageTimingData } from "../common/InstallTimeEstimate.js"
+import { pretty_long_time } from "./EditOrRunButton.js"
 
 // This funny thing is a way to tell parcel to bundle these files..
 // Eventually I'll write a plugin that is able to parse html`...`, but this is it for now.
@@ -19,7 +21,8 @@ export const help_circle_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/
 /**
  * @typedef PkgPopupDetails
  * @property {"nbpkg"} type
- * @property {HTMLElement?} source_element
+ * @property {HTMLElement} [source_element]
+ * @property {Boolean} [big]
  * @property {string} package_name
  * @property {boolean} is_disable_pkg
  */
@@ -28,7 +31,8 @@ export const help_circle_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/
  * @typedef MiscPopupDetails
  * @property {"info" | "warn"} type
  * @property {import("../imports/Preact.js").ReactElement} body
- * @property {HTMLElement?} source_element
+ * @property {HTMLElement?} [source_element]
+ * @property {Boolean} [big]
  */
 
 export const open_pluto_popup = (/** @type{PkgPopupDetails | MiscPopupDetails} */ detail) => {
@@ -41,6 +45,8 @@ export const open_pluto_popup = (/** @type{PkgPopupDetails | MiscPopupDetails} *
 
 export const Popup = ({ notebook, disable_input }) => {
     const [recent_event, set_recent_event] = useState(/** @type{(PkgPopupDetails | MiscPopupDetails)?} */ (null))
+    const recent_event_ref = useRef(/** @type{(PkgPopupDetails | MiscPopupDetails)?} */ (null))
+    recent_event_ref.current = recent_event
     const recent_source_element_ref = useRef(/** @type{HTMLElement?} */ (null))
     const pos_ref = useRef("")
 
@@ -66,10 +72,10 @@ export const Popup = ({ notebook, disable_input }) => {
 
     useEffect(() => {
         const onpointerdown = (e) => {
+            if (recent_event_ref.current == null) return
             if (e.target == null) return
             if (e.target.closest("pluto-popup") != null) return
-            if (recent_source_element_ref.current == null) return
-            if (recent_source_element_ref.current.contains(e.target)) return
+            if (recent_source_element_ref.current != null && recent_source_element_ref.current.contains(e.target)) return
 
             close()
         }
@@ -96,6 +102,7 @@ export const Popup = ({ notebook, disable_input }) => {
         class=${cl({
             visible: recent_event != null,
             [type ?? ""]: type != null,
+            big: recent_event?.big === true,
         })}
         style="${pos_ref.current}"
     >
@@ -169,6 +176,11 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event, disable_input })
 
     const showupdate = pkg_status?.offer_update ?? false
 
+    const timingdata = usePackageTimingData()
+    const estimate = timingdata == null || recent_event?.package_name == null ? null : time_estimate(timingdata, [recent_event?.package_name])
+    const total_time = estimate == null ? 0 : estimate.install + estimate.load + estimate.precompile
+    const total_second_time = estimate == null ? 0 : estimate.load
+
     // <header>${recent_event?.package_name}</header>
     return html`<pkg-popup
         class=${cl({
@@ -178,12 +190,19 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event, disable_input })
         })}
     >
         ${pkg_status?.hint ?? "Loading..."}
+        ${(pkg_status?.status === "will_be_installed" || pkg_status?.status === "busy") && total_time > 10
+            ? html`<div class="pkg-time-estimate">
+                  Installation can take <strong>${pretty_long_time(total_time)}</strong>${`. `}<br />${`Afterwards, it loads in `}
+                  <strong>${pretty_long_time(total_second_time)}</strong>.
+              </div>`
+            : null}
         <div class="pkg-buttons">
             <a
                 class="pkg-update"
                 target="_blank"
                 title="Update packages"
-                style=${(!!showupdate ? "" : "opacity: .4;") + (recent_event?.is_disable_pkg || disable_input ? "display: none;" : "")}
+                style=${(!!showupdate ? "" : "opacity: .4;") +
+                (recent_event?.is_disable_pkg || disable_input || notebook.nbpkg?.waiting_for_permission ? "display: none;" : "")}
                 href="#"
                 onClick=${(e) => {
                     if (busy) {

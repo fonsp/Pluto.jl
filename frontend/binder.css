@@ -133,18 +133,17 @@ body.wiggle_binder .edit_or_run > button {
 .binder_help_text {
     --width: min(85vw, 570px);
     position: fixed;
-    top: 5rem;
     max-height: calc(100vh - 4rem);
     overflow: auto;
     width: var(--width);
     padding: 16px;
     border-radius: 8px;
-    left: calc(50vw - var(--width) / 2);
     background-color: white;
     color: black;
     color-scheme: light;
     box-shadow: 0px 0px 0px 100vmax #0000004a;
     font-family: var(--sans-serif-font-stack);
+    border: 0;
 }
 .binder_help_text a {
     color: black;

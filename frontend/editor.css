@@ -23,6 +23,8 @@
 @import url("./light_color.css");
 @import url("./dark_color.css");
 
+@import url("./featured-card.css");
+
 /* VARIABLES */
 
 :root {
@@ -192,6 +194,11 @@ pluto-output p {
     line-height: 1.45em;
 }
 
+/* This allows a linebreak in Markdown using backslash with smaller spacing compared to paragraph in firefox */
+pluto-output br {
+    margin-block-end: 0;
+}
+
 pluto-output p:first-child {
     margin-block-start: 0px;
 }
@@ -322,6 +329,7 @@ pluto-output div.admonition .admonition-title ~ * {
 
 pluto-output div.admonition {
     padding-left: 0.5rem;
+    padding-right: 0.5rem;
     background: var(--jl-message-color);
     border: 5px solid var(--jl-message-accent-color);
 }
@@ -329,6 +337,7 @@ pluto-output div.admonition .admonition-title {
     background: var(--jl-message-accent-color);
     margin: -1px; /* Fixes a rendering glitch in Chrome */
     margin-left: -0.55rem;
+    margin-right: -0.55rem;
 }
 pluto-output div.admonition.note,
 pluto-output div.admonition.info,
@@ -504,6 +513,7 @@ aside#export div#container {
     max-width: 1000px;
     padding-right: 10em;
     margin: 0 auto;
+    position: relative;
 }
 header aside#export div#container {
     /* to prevent the div from taking up horizontal page when the export pane is closed. On small screen this causes overscroll on the right. */
@@ -600,17 +610,18 @@ nav#at_the_top > a {
     /* margin-right: 5rem; */
 }
 
-nav#at_the_top img {
-    height: 39px;
-    margin-bottom: -8px;
-    filter: var(--image-filters);
-}
-
 nav#at_the_top h1 {
     font-weight: 700;
     font-size: 1.8rem;
     display: inline;
     border-bottom: none;
+}
+
+nav#at_the_top img#logo-small,
+nav#at_the_top img#logo-big {
+    height: 39px;
+    margin-bottom: -8px;
+    filter: var(--image-filters);
 }
 
 nav#at_the_top img#logo-small {
@@ -742,6 +753,10 @@ aside#export button.toggle_frontmatter_edit span {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/newspaper-outline.svg");
     filter: invert(1);
 }
+aside#export button.toggle_presentation span {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/easel-outline.svg");
+    filter: invert(1);
+}
 nav#at_the_top:after {
     margin-left: auto;
     align-self: center;
@@ -803,6 +818,7 @@ body.binder header#pluto-nav > nav#at_the_top > pluto-filepicker > a {
 body.nbpkg_restart_recommended header#pluto-nav,
 body.nbpkg_restart_required header#pluto-nav,
 body.binder.loading header#pluto-nav,
+body.process_waiting_for_permission header#pluto-nav,
 body.process_dead header#pluto-nav,
 body.disconnected header#pluto-nav {
     position: sticky;
@@ -819,6 +835,9 @@ body.nbpkg_restart_required header#pluto-nav {
 }
 body.process_dead header#pluto-nav {
     background-color: var(--dead-process-header-color);
+}
+body.process_waiting_for_permission header#pluto-nav {
+    background-color: var(--restart-recc-header-color);
 }
 body.loading header#pluto-nav {
     background-color: var(--loading-header-color);
@@ -884,7 +903,7 @@ body.binder.loading #binder_spinners {
 }
 
 .outline-frame {
-    z-index: 9990;
+    z-index: 1500;
     pointer-events: none;
     position: fixed;
     top: 0px;
@@ -893,6 +912,10 @@ body.binder.loading #binder_spinners {
     height: 100vh;
     /* outline: red inset 15px; */
     box-sizing: border-box;
+}
+
+body.process_waiting_for_permission .outline-frame.safe-preview {
+    border-bottom: 12px solid var(--restart-recc-header-color);
 }
 
 body.recording_waiting_to_start .outline-frame.recording {
@@ -915,36 +938,47 @@ body.is_recording header#pluto-nav {
     display: none;
 }
 
-#record-ui-container {
+.outline-frame-actions-container {
     position: fixed;
     top: 3px;
-    z-index: 9999;
+    z-index: 1501;
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
 }
 
-#record-ui-container > .overlay-button {
+.outline-frame-actions-container.safe-preview {
+    top: auto;
+    bottom: 4px;
+}
+
+.outline-frame-actions-container > .overlay-button {
     /* background: pink; */
     border-color: #e86f6c;
     margin: 0 3px;
 }
-#record-ui-container > .overlay-button.record-no-audio {
+.outline-frame-actions-container > .overlay-button.record-no-audio {
     border-color: #dcc6c6;
 }
-#record-ui-container > .overlay-button.playback {
+.outline-frame-actions-container > .overlay-button.playback {
     border-color: #c6c6dc;
 }
-#record-ui-container span.stop-recording-icon::after {
+span.pluto-icon.stop-recording-icon::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/stop-circle-outline.svg");
 }
-#record-ui-container span.microphone-icon::after {
+span.pluto-icon.microphone-icon::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/mic-outline.svg");
 }
-#record-ui-container span.mute-icon::after {
+span.pluto-icon.info-icon::after {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/information-circle-outline.svg");
+}
+span.pluto-icon.offline-icon::after {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/cloud-offline-outline.svg");
+}
+span.pluto-icon.mute-icon::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/mic-off-outline.svg");
 }
-#record-ui-container span.follow-recording-icon::after {
+span.pluto-icon.follow-recording-icon::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-undo-outline.svg");
 }
 
@@ -952,10 +986,44 @@ div.recording-playback {
     width: min(500px, 90vw);
     position: fixed;
     bottom: 16px;
-    z-index: 9999;
+    z-index: 1501;
 }
 div.recording-playback audio {
     width: 100%;
+}
+
+.safe-preview-info {
+    color: var(--black);
+    font-family: var(--system-ui-font-stack);
+    font-weight: 700;
+    background: var(--white);
+    border: 3px solid var(--restart-recc-accent-color);
+    padding: 0.3em 0.8em;
+    border-radius: 0.8em;
+}
+.safe-preview-info > span {
+    display: flex;
+    /* flex-direction: row; */
+}
+.safe-preview-info button {
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.safe-preview-output {
+    color: var(--helpbox-header-color);
+    font-family: var(--system-ui-font-stack);
+    font-weight: 700;
+    opacity: 0.5;
+    font-size: 0.8rem;
+    padding: 0.2em 0.4em;
+    background: var(--restart-recc-header-color);
+    border-radius: 0.4em;
+    display: inline-flex;
+    margin: 0.7em 0;
+    gap: 0.3em;
+    align-items: baseline;
 }
 
 /* PREAMBLE */
@@ -1019,14 +1087,14 @@ main > preamble #saveall-container.saved > span {
     opacity: 0.5;
 }
 
-.overlay-button span.pluto-icon::after {
+span.pluto-icon::after {
     content: "";
     display: inline-block;
-    padding-right: 20px;
-    /* width: 17px; */
-    height: 18px;
-    margin-bottom: -5px;
-    background-size: 17px 17px;
+    padding-right: 1.5em;
+    height: 1.3em;
+    margin-bottom: -0.3em;
+    transform: translateY(-0.1em);
+    background-size: 1.3em;
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sync-circle-outline.svg");
     background-repeat: no-repeat;
     background-position-x: right;
@@ -1262,6 +1330,9 @@ pluto-input .cm-editor .cm-line.cm-highlighted-line {
 
 pluto-cell:not(.show_input) > pluto-input {
     display: none;
+}
+pluto-cell.code_folded.show_input > pluto-input:not(:focus-within) {
+    opacity: 0.4;
 }
 
 pluto-cell.code_differs > pluto-input > .cm-editor {
@@ -1797,17 +1868,18 @@ pkg-status-mark.disable_pkg > button > span::after {
 pluto-popup {
     display: block;
     position: absolute;
-    z-index: 70;
+    z-index: 1800;
     /* left: 1.5em; */
     /* top: calc((1.5em - 200px) * 0.5); */
-    width: min(90vw, 251px);
+    --max-size: 251px;
+    width: min(90vw, var(--max-size));
     /* min-height: 80px; */
     margin-left: 0.4rem;
     margin-top: 0px;
     margin-top: -1rem;
     /* margin-top: calc(0.5 * (1rem - 80px)); */
     overflow-wrap: break-word;
-    font-family: var(--lato-ui-font-stack);
+    font-family: var(--system-ui-font-stack);
     opacity: 0;
     transform: scale(0.2);
     transform-origin: left;
@@ -1822,6 +1894,10 @@ pluto-popup.visible {
     pointer-events: initial;
 }
 
+pluto-popup.big {
+    --max-size: 25em;
+}
+
 pluto-popup > * {
     display: block;
     background: var(--overlay-button-bg);
@@ -1831,6 +1907,17 @@ pluto-popup > * {
     padding: 8px;
     /* Slightly changes the layout of the three pkg buttons... in just the way that we want it! */
     position: absolute;
+    max-width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+pluto-popup > div > *:first-child {
+    margin-block-start: 0;
+}
+
+pluto-popup h1 {
+    font-size: 1.6em;
 }
 
 pluto-popup.warn > * {
@@ -1888,6 +1975,14 @@ pkg-popup .pkg-buttons > * {
 
 pkg-popup .toggle-terminal {
     right: 20px;
+}
+
+.pkg-time-estimate {
+    font-size: 0.8em;
+    margin: 0.5em 0em;
+    padding: 0.5em 0.5em;
+    background: var(--pluto-logs-info-color);
+    border-radius: 0.5em;
 }
 
 pkg-terminal {
@@ -2002,6 +2097,9 @@ pluto-runarea.save > button.runcell > span::after {
 
 pluto-cell:not(.show_input) > pluto-runarea {
     display: none;
+}
+pluto-cell.code_folded.show_input > pluto-input:not(:focus-within) {
+    opacity: 0.4;
 }
 
 pluto-cell:focus-within > pluto-runarea,
@@ -2704,7 +2802,7 @@ footer #info {
 /* UNDO DELETED CELL */
 
 nav#undo_delete {
-    z-index: 1000;
+    z-index: 2000;
     display: block;
     position: fixed;
     bottom: 0px;
@@ -3422,6 +3520,19 @@ pluto-cell.hooked_up pluto-output {
     background: var(--export-bg-color);
     border-radius: 1em;
     padding: 1em 1.5em;
+}
+
+.pluto-frontmatter .card-preview {
+    background: var(--white);
+    padding: 1.2rem 1.1rem;
+    margin: 1rem 0;
+    box-shadow: inset 0px 0px 15px -4px #00000054;
+    border-radius: 1rem;
+}
+
+.pluto-frontmatter .card-preview > h2 {
+    margin-block-start: 0;
+    color: var(--black);
 }
 
 .pluto-frontmatter button {

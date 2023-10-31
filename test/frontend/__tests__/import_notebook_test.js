@@ -9,6 +9,7 @@ import {
     writeSingleLineInPlutoInput,
     shutdownCurrentNotebook,
     setupPlutoBrowser,
+    runAllChanged,
 } from "../helpers/pluto"
 
 describe("PlutoImportNotebook", () => {
@@ -61,11 +62,7 @@ describe("PlutoImportNotebook", () => {
         // Use the previously defined sum function in the new cell
         lastPlutoCellId = lastElement(await getCellIds(page))
         await writeSingleLineInPlutoInput(page, `pluto-cell[id="${lastPlutoCellId}"] pluto-input`, "sum(2, 3)")
-
-        // Run cells
-
-        await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
-        await page.click(".runallchanged")
+        await runAllChanged(page)
         const lastCellContent = await waitForCellOutput(page, lastPlutoCellId)
         expect(lastCellContent).toBe("5")
     })

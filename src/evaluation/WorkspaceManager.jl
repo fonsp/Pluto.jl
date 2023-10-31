@@ -23,6 +23,7 @@ Base.@kwdef mutable struct Workspace
     module_name::Symbol
     dowork_token::Token=Token()
     nbpkg_was_active::Bool=false
+    has_executed_effectful_code::Bool=false
     is_offline_renderer::Bool=false
     original_LOAD_PATH::Vector{String}=String[]
     original_ACTIVE_PROJECT::Union{Nothing,String}=nothing
@@ -73,7 +74,9 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
     Status.report_business_planned!(init_status, Symbol(3))
     Status.report_business_planned!(init_status, Symbol(4))
 
-    Malt.remote_eval_wait(worker, session.options.evaluation.workspace_custom_startup_expr)
+    let s = session.options.evaluation.workspace_custom_startup_expr
+        s === nothing || Malt.remote_eval_wait(worker, Meta.parseall(s))
+    end
 
     Malt.remote_eval_wait(worker, quote
         PlutoRunner.notebook_id[] = $(notebook.notebook_id)
@@ -122,7 +125,7 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
     
     # TODO: precompile 1+1 with display
     # sleep(3)
-    eval_format_fetch_in_workspace(workspace, Expr(:toplevel, LineNumberNode(-1), :(1+1)), uuid1())
+    eval_format_fetch_in_workspace(workspace, Expr(:toplevel, LineNumberNode(-1), :(1+1)), uuid1(); code_is_effectful=false)
     
     Status.report_business_finished!(init_status, Symbol(4))
     Status.report_business_finished!(workspace_business, :init_process)
@@ -408,7 +411,8 @@ function eval_format_fetch_in_workspace(
     forced_expr_id::Union{PlutoRunner.ObjectID,Nothing}=nothing,
     known_published_objects::Vector{String}=String[],
     user_requested_run::Bool=true,
-    capture_stdout::Bool=true
+    capture_stdout::Bool=true,
+    code_is_effectful::Bool=true,
 )::PlutoRunner.FormattedCellResult
 
     workspace = get_workspace(session_notebook)
@@ -423,6 +427,7 @@ function eval_format_fetch_in_workspace(
 
     # A try block (on this process) to catch an InterruptException
     take!(workspace.dowork_token)
+    workspace.has_executed_effectful_code |= code_is_effectful
     early_result = try
         Malt.remote_eval_wait(workspace.worker, quote
             PlutoRunner.run_expression(
@@ -639,10 +644,8 @@ function interrupt_workspace(session_notebook::Union{SN,Workspace}; verbose=true
         return true
     end
 
-    if Sys.iswindows()
-        verbose && @warn "Unfortunately, stopping cells is currently not supported on Windows :(
-        Maybe the Windows Subsystem for Linux is right for you:
-        https://docs.microsoft.com/en-us/windows/wsl"
+    if (workspace.worker isa Malt.DistributedStdlibWorker) && Sys.iswindows()
+        verbose && @warn "Stopping cells is not yet supported on Windows, but it will be soon!\n\nYou can already try out this new functionality with:\n\nPluto.run(workspace_use_distributed_stdlib=false)\n\nLet us know what you think!"
         return false
     end
 

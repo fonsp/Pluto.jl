@@ -20,6 +20,7 @@ import default_featured_sources from "../../featured_sources.js"
  *  path: string,
  *  in_temp_dir: boolean,
  *  shortpath: string,
+ *  process_status: string,
  * }}
  */
 

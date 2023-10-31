@@ -44,7 +44,7 @@ export const WarnForVisisblePasswords = () => {
     }
 }
 
-export const ExportBanner = ({ notebook_id, onClose, notebookfile_url, notebookexport_url, start_recording }) => {
+export const ExportBanner = ({ notebook_id, open, onClose, notebookfile_url, notebookexport_url, start_recording }) => {
     // @ts-ignore
     const isDesktop = !!window.plutoDesktop
 
@@ -56,7 +56,7 @@ export const ExportBanner = ({ notebook_id, onClose, notebookfile_url, notebooke
     }
 
     return html`
-        <aside id="export">
+        <aside id="export" inert=${!open}>
             <div id="container">
                 <div class="export_title">export</div>
                 <!-- no "download" attribute here: we want the jl contents to be shown in a new tab -->
@@ -104,6 +104,17 @@ export const ExportBanner = ({ notebook_id, onClose, notebookfile_url, notebooke
                         onClick=${() => {
                             onClose()
                             window.dispatchEvent(new CustomEvent("open pluto frontmatter"))
+                        }}
+                    >
+                        <span></span>
+                    </button>
+                    <button
+                        title="Start presentation"
+                        class="toggle_presentation"
+                        onClick=${() => {
+                            onClose()
+                            // @ts-ignore
+                            window.present()
                         }}
                     >
                         <span></span>

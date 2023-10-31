@@ -35,6 +35,8 @@ import { FeaturedCard } from "./FeaturedCard.js"
  *   source_url?: String,
  *   title?: String,
  *   description?: String,
+ *   binder_url?: String,
+ *   slider_server_url?: String,
  * }}
  */
 
@@ -63,12 +65,13 @@ const offline_html = html`
         <p>Here are a couple of notebooks to get started with Pluto.jl:</p>
         <ul>
             <li>1. <a href="sample/Getting%20started.jl">Getting started</a></li>
-            <li>2. <a href="sample/Basic%20mathematics.jl">Basic mathematics</a></li>
-            <li>3. <a href="sample/Interactivity.jl">Interactivity</a></li>
-            <li>4. <a href="sample/PlutoUI.jl.jl">PlutoUI.jl</a></li>
-            <li>5. <a href="sample/Plots.jl.jl">Plots.jl</a></li>
-            <li>6. <a href="sample/Tower%20of%20Hanoi.jl">Tower of Hanoi</a></li>
-            <li>7. <a href="sample/JavaScript.jl">JavaScript</a></li>
+            <li>2. <a href="sample/Markdown.jl">Markdown</a></li>
+            <li>3. <a href="sample/Basic%20mathematics.jl">Basic mathematics</a></li>
+            <li>4. <a href="sample/Interactivity.jl">Interactivity</a></li>
+            <li>5. <a href="sample/PlutoUI.jl.jl">PlutoUI.jl</a></li>
+            <li>6. <a href="sample/Plots.jl.jl">Plots.jl</a></li>
+            <li>7. <a href="sample/Tower%20of%20Hanoi.jl">Tower of Hanoi</a></li>
+            <li>8. <a href="sample/JavaScript.jl">JavaScript</a></li>
         </ul>
         <br />
         <br />
@@ -94,8 +97,15 @@ const fallback_collections = [
 
 /**
  * @typedef FeaturedSource
- * @type {{url: String, integrity?: String}}
+ * @type {{
+ *  url: String,
+ *  id?: String,
+ *  integrity?: String,
+ *  valid_until?: String
+ * }}
  */
+
+const get_id = (/** @type {FeaturedSource} */ source) => source?.id ?? source.url
 
 /**
  * @param {{
@@ -109,25 +119,46 @@ export const Featured = ({ sources, direct_html_links }) => {
 
     useEffect(() => {
         if (sources != null) {
-            // Start downloading the sources
-            const promises = sources.map(async ({ url, integrity }) => {
-                const data = await (await fetch(new Request(url, { integrity: integrity ?? undefined }))).json()
+            set_waited_too_long(false)
+            set_source_data({})
 
-                if (data.format_version !== "1") {
-                    throw new Error(`Invalid format version: ${data.format_version}`)
-                }
+            const ids = Array.from(new Set(sources.map(get_id)))
 
-                set_source_data((old) => ({
-                    ...old,
-                    [url]: {
-                        ...data,
-                        source_url: url,
-                    },
-                }))
+            const promises = ids.map((id) => {
+                const sources_for_id = sources.filter((source) => get_id(source) === id)
+
+                let result = promise_any_with_priority(
+                    sources_for_id.map(async (source) => {
+                        const { url, integrity, valid_until } = source
+
+                        if (valid_until != null && new Date(valid_until) < new Date()) {
+                            throw new Error(`Source ${url} is expired with valid_until ${valid_until}`)
+                        }
+
+                        const data = await (await fetch(new Request(url, { integrity: integrity ?? undefined }))).json()
+
+                        if (data.format_version !== "1") {
+                            throw new Error(`Invalid format version: ${data.format_version}`)
+                        }
+
+                        return [data, id, url]
+                    })
+                )
+
+                return result.then(([data, id, url]) => {
+                    set_source_data((old) => ({
+                        ...old,
+                        [id]: {
+                            ...data,
+                            source_url: url,
+                        },
+                    }))
+                })
             })
 
             Promise.any(promises).catch((e) => {
                 console.error("All featured sources failed to load: ", e)
+                ;(e?.errors ?? []).forEach((e) => console.error(e))
                 set_waited_too_long(true)
             })
         }
@@ -148,10 +179,14 @@ export const Featured = ({ sources, direct_html_links }) => {
 
     const no_data = Object.entries(source_data).length === 0
 
+    const ids = Array.from(new Set(sources?.map(get_id) ?? []))
+
+    const sorted_on_source_order = ids.map((id) => source_data[id]).filter((d) => d != null)
+
     return no_data && waited_too_long
         ? offline_html
         : html`
-              ${(no_data ? placeholder_data : Object.values(source_data)).map((/** @type {SourceManifest} */ data) => {
+              ${(no_data ? placeholder_data : sorted_on_source_order).map((/** @type {SourceManifest} */ data) => {
                   let collections = data?.collections ?? fallback_collections
 
                   return html`
@@ -165,8 +200,7 @@ export const Featured = ({ sources, direct_html_links }) => {
                                       <p>${coll.description}</p>
                                       <div class="card-list">
                                           ${collection(Object.values(data.notebooks), coll.tags ?? []).map(
-                                              (entry) =>
-                                                  html`<${FeaturedCard} entry=${entry} source_url=${data.source_url} direct_html_links=${direct_html_links} />`
+                                              (entry) => html`<${FeaturedCard} entry=${entry} source_manifest=${data} direct_html_links=${direct_html_links} />`
                                           )}
                                       </div>
                                   </div>
@@ -186,4 +220,17 @@ const collection = (/** @type {SourceManifestNotebookEntry[]} */ notebooks, /** 
 
     let n = (s) => (isNaN(s) ? s : Number(s))
     return /** @type {SourceManifestNotebookEntry[]} */ (_.sortBy(nbs, [(nb) => n(nb?.frontmatter?.order), "id"]))
+}
+
+/**
+ * Given a list promises, return promise[0].catch(() => promise[1].catch(() => promise[2]... etc))
+ * @param {Promise[]} promises
+ * @returns {Promise}
+ */
+const promise_any_with_priority = (/** @type {Promise[]} */ promises, /** @type {Promise[]} */ already_rejected = []) => {
+    if (promises.length <= 1) {
+        return Promise.any([...promises, ...already_rejected])
+    } else {
+        return promises[0].catch(() => promise_any_with_priority(promises.slice(1), [...already_rejected, promises[0]]))
+    }
 }

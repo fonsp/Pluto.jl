@@ -35,6 +35,8 @@ import { HijackExternalLinksToOpenInNewTab } from "./HackySideStuff/HijackExtern
 import { FrontMatterInput } from "./FrontmatterInput.js"
 import { EditorLaunchBackendButton } from "./Editor/LaunchBackendButton.js"
 import { get_environment } from "../common/Environment.js"
+import { ProcessStatus } from "../common/ProcessStatus.js"
+import { SafePreviewUI } from "./SafePreviewUI.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -64,13 +66,6 @@ const Main = ({ children }) => {
     return html`<main>${children}</main>`
 }
 
-const ProcessStatus = {
-    ready: "ready",
-    starting: "starting",
-    no_process: "no_process",
-    waiting_to_restart: "waiting_to_restart",
-}
-
 /**
  * Map of status => Bool. In order of decreasing priority.
  */
@@ -82,11 +77,12 @@ const statusmap = (/** @type {EditorState} */ state, /** @type {LaunchParameters
             state.backend_launch_phase < BackendLaunchPhase.ready) ||
         state.initializing ||
         state.moving_file,
+    process_waiting_for_permission: state.notebook.process_status === ProcessStatus.waiting_for_permission && !state.initializing,
     process_restarting: state.notebook.process_status === ProcessStatus.waiting_to_restart,
     process_dead: state.notebook.process_status === ProcessStatus.no_process || state.notebook.process_status === ProcessStatus.waiting_to_restart,
     nbpkg_restart_required: state.notebook.nbpkg?.restart_required_msg != null,
     nbpkg_restart_recommended: state.notebook.nbpkg?.restart_recommended_msg != null,
-    nbpkg_disabled: state.notebook.nbpkg?.enabled === false,
+    nbpkg_disabled: state.notebook.nbpkg?.enabled === false || state.notebook.nbpkg?.waiting_for_permission_but_probably_disabled === true,
     static_preview: state.static_preview,
     bonds_disabled: !(state.connected || state.initializing || launch_params.slider_server_url != null),
     offer_binder: state.backend_launch_phase === BackendLaunchPhase.wait_for_user && launch_params.binder_url != null,
@@ -98,6 +94,7 @@ const statusmap = (/** @type {EditorState} */ state, /** @type {LaunchParameters
     recording_waiting_to_start: state.recording_waiting_to_start,
     is_recording: state.is_recording,
     isolated_cell_view: launch_params.isolated_cell_ids != null && launch_params.isolated_cell_ids.length > 0,
+    sanitize_html: state.notebook.process_status === ProcessStatus.waiting_for_permission,
 })
 
 const first_true_key = (obj) => {
@@ -185,6 +182,8 @@ const first_true_key = (obj) => {
  * @typedef NotebookPkgData
  * @type {{
  *  enabled: boolean,
+ *  waiting_for_permission: boolean?,
+ *  waiting_for_permission_but_probably_disabled: boolean?,
  *  restart_recommended_msg: string?,
  *  restart_required_msg: string?,
  *  installed_versions: { [pkg_name: string]: string },
@@ -256,6 +255,7 @@ export const url_logo_small = document.head.querySelector("link[rel='pluto-logo-
  * @type {{
  * launch_params: LaunchParameters,
  * initial_notebook_state: NotebookData,
+ * preamble_element: preact.ReactElement?,
  * }}
  */
 
@@ -591,6 +591,14 @@ export class Editor extends Component {
             set_and_run_multiple: async (cell_ids) => {
                 // TODO: this function is called with an empty list sometimes, where?
                 if (cell_ids.length > 0) {
+                    window.dispatchEvent(
+                        new CustomEvent("set_waiting_to_run_smart", {
+                            detail: {
+                                cell_ids,
+                            },
+                        })
+                    )
+
                     await update_notebook((notebook) => {
                         for (let cell_id of cell_ids) {
                             if (this.state.cell_inputs_local[cell_id]) {
@@ -847,7 +855,6 @@ patch: ${JSON.stringify(
                 // https://github.com/fonsp/Pluto.jl/issues/2398
                 open_pluto_popup({
                     type: "warn",
-                    source_element: null,
                     body: html`<p>A new server was started - this notebook session is no longer running.</p>
                         <p>Would you like to go back to the main menu?</p>
                         <br />
@@ -958,6 +965,10 @@ patch: ${JSON.stringify(
             // console.info("All scripts finished!")
             this.send_queued_bond_changes()
         })
+
+        // @ts-ignore This is for tests
+        document.body._js_init_set = this.js_init_set
+
         /** Is the notebook ready to execute code right now? (i.e. are no cells queued or running?) */
         this.notebook_is_idle = () => {
             return !(
@@ -1402,6 +1413,7 @@ patch: ${JSON.stringify(
                                             cell_input=${notebook.cell_inputs[cell_id]}
                                             cell_result=${this.state.notebook.cell_results[cell_id]}
                                             hidden=${!launch_params.isolated_cell_ids?.includes(cell_id)}
+                                            sanitize_html=${status.sanitize_html}
                                         />
                                     `
                                 )}
@@ -1412,19 +1424,31 @@ patch: ${JSON.stringify(
             `
         }
 
-        const restart_button = (text) => html`<a
-            href="#"
-            onClick=${() => {
-                this.client.send(
+        const warn_about_untrusted_code = this.client.session_options?.security?.warn_about_untrusted_code ?? true
+
+        const restart = async (maybe_confirm = false) => {
+            let source = notebook.metadata?.risky_file_source
+            if (
+                !warn_about_untrusted_code ||
+                !maybe_confirm ||
+                source == null ||
+                confirm(`⚠️ Danger! Are you sure that you trust this file? \n\n${source}\n\nA malicious notebook can steal passwords and data.`)
+            ) {
+                await this.actions.update_notebook((notebook) => {
+                    delete notebook.metadata.risky_file_source
+                })
+                await this.client.send(
                     "restart_process",
                     {},
                     {
                         notebook_id: notebook.notebook_id,
                     }
                 )
-            }}
-            >${text}</a
-        >`
+            }
+        }
+
+        const restart_button = (text, maybe_confirm = false) =>
+            html`<a href="#" id="restart-process-button" onClick=${() => restart(maybe_confirm)}>${text}</a>`
 
         return html`
             ${this.state.disable_ui === false && html`<${HijackExternalLinksToOpenInNewTab} />`}
@@ -1478,7 +1502,7 @@ patch: ${JSON.stringify(
                                           on_submit=${this.submit_file_change}
                                           on_desktop_submit=${this.desktop_submit_file_change}
                                           suggest_new_file=${{
-                                              base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
+                                              base: this.client.session_options?.server?.notebook_path_suggestion ?? "",
                                               name: notebook.shortpath,
                                           }}
                                           placeholder="Save notebook..."
@@ -1486,9 +1510,6 @@ patch: ${JSON.stringify(
                                       />`)
                             }
                             <div class="flex_grow_2"></div>
-                            <button class="toggle_export" title="Export..." onClick=${() => {
-                                this.setState({ export_menu_open: !export_menu_open })
-                            }}><span></span></button>
                             <div id="process_status">${
                                 status.binder && status.loading
                                     ? "Loading binder..."
@@ -1504,10 +1525,22 @@ patch: ${JSON.stringify(
                                     ? "Process exited — restarting..."
                                     : statusval === "process_dead"
                                     ? html`${"Process exited — "}${restart_button("restart")}`
+                                    : statusval === "process_waiting_for_permission"
+                                    ? html`${restart_button("Run notebook code", true)}`
                                     : null
                             }</div>
+                            <button class="toggle_export" title="Export..." onClick=${() => {
+                                this.setState({ export_menu_open: !export_menu_open })
+                            }}><span></span></button>
                         </nav>
                     </header>
+                    
+                    <${SafePreviewUI}
+                        process_waiting_for_permission=${status.process_waiting_for_permission}
+                        risky_file_source=${notebook.metadata?.risky_file_source}
+                        restart=${restart}
+                        warn_about_untrusted_code=${warn_about_untrusted_code}
+                    />
                     
                     <${RecordingUI} 
                         notebook_name=${notebook.shortpath}
@@ -1529,14 +1562,15 @@ patch: ${JSON.stringify(
                             )}
                     />
                     <${EditorLaunchBackendButton} editor=${this} launch_params=${launch_params} status=${status} />
-                    <${FrontMatterInput} 
+                    <${FrontMatterInput}
+                        filename=${notebook.shortpath}
                         remote_frontmatter=${notebook.metadata?.frontmatter} 
                         set_remote_frontmatter=${(newval) =>
                             this.actions.update_notebook((nb) => {
                                 nb.metadata["frontmatter"] = newval
                             })} 
                     />
-                    ${launch_params.preamble_html ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />` : null}
+                    ${this.props.preamble_element}
                     <${Main}>
                         <${Preamble}
                             last_update_time=${this.state.last_update_time}
@@ -1552,6 +1586,8 @@ patch: ${JSON.stringify(
                             selected_cells=${this.state.selected_cells}
                             is_initializing=${this.state.initializing}
                             is_process_ready=${this.is_process_ready()}
+                            process_waiting_for_permission=${status.process_waiting_for_permission}
+                            sanitize_html=${status.sanitize_html}
                         />
                         <${DropRuler} 
                             actions=${this.actions}

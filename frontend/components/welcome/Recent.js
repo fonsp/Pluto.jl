@@ -4,27 +4,38 @@ import * as preact from "../../imports/Preact.js"
 
 import { cl } from "../../common/ClassTable.js"
 import { link_edit, link_open_path } from "./Open.js"
+import { ProcessStatus } from "../../common/ProcessStatus.js"
 
 /**
  * @typedef CombinedNotebook
  * @type {{
- *    path: String,
+ *    path: string,
  *    transitioning: Boolean,
- *    notebook_id: String?,
+ *    entry?: import("./Welcome.js").NotebookListEntry,
  * }}
  */
 
 /**
- *
  * @param {string} path
- * @param {string?} notebook_id
  * @returns {CombinedNotebook}
  */
-const entry = (path, notebook_id = null) => {
+const entry_notrunning = (path) => {
     return {
         transitioning: false, // between running and being shut down
-        notebook_id: notebook_id, // null means that it is not running
+        entry: undefined, // undefined means that it is not running
         path: path,
+    }
+}
+
+/**
+ * @param {import("./Welcome.js").NotebookListEntry} entry
+ * @returns {CombinedNotebook}
+ */
+const entry_running = (entry) => {
+    return {
+        transitioning: false, // between running and being shut down
+        entry,
+        path: entry.path,
     }
 }
 
@@ -68,7 +79,7 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
     useEffect(() => {
         if (client != null && connected) {
             client.send("get_all_notebooks", {}, {}).then(({ message }) => {
-                const running = /** @type {Array<import("./Welcome.js").NotebookListEntry>} */ (message.notebooks).map((nb) => entry(nb.path, nb.notebook_id))
+                const running = /** @type {Array<import("./Welcome.js").NotebookListEntry>} */ (message.notebooks).map((nb) => entry_running(nb))
 
                 const recent_notebooks = get_stored_recent_notebooks()
 
@@ -100,48 +111,48 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
                 // try to find a matching notebook in the remote list
                 let running_version = null
 
-                if (nb.notebook_id) {
+                if (nb.entry != null) {
                     // match notebook_ids to handle a path change
-                    running_version = new_running.find((rnb) => rnb.notebook_id == nb.notebook_id)
+                    running_version = new_running.find((rnb) => rnb.notebook_id === nb.entry?.notebook_id)
                 } else {
                     // match paths to handle a notebook bootup
-                    running_version = new_running.find((rnb) => rnb.path == nb.path)
+                    running_version = new_running.find((rnb) => rnb.path === nb.path)
                 }
 
                 if (running_version == null) {
-                    return entry(nb.path)
+                    return entry_notrunning(nb.path)
                 } else {
-                    const new_notebook = entry(running_version.path, running_version.notebook_id)
+                    const new_notebook = entry_running(running_version)
                     rendered_and_running.push(running_version)
                     return new_notebook
                 }
             })
 
-            const not_rendered_but_running = new_running.filter((rnb) => !rendered_and_running.includes(rnb)).map((rnb) => entry(rnb.path, rnb.notebook_id))
+            const not_rendered_but_running = new_running.filter((rnb) => !rendered_and_running.includes(rnb)).map(entry_running)
 
             set_combined_notebooks([...not_rendered_but_running, ...new_combined_notebooks])
         }
     }, [remote_notebooks])
 
-    const on_session_click = (nb) => {
+    const on_session_click = (/** @type {CombinedNotebook} */ nb) => {
         if (nb.transitioning) {
             return
         }
-        const running = nb.notebook_id != null
+        const running = nb.entry != null
         if (running) {
             if (client == null) return
-            if (confirm("Shut down notebook process?")) {
+            if (confirm(nb.entry?.process_status === ProcessStatus.waiting_for_permission ? "Close notebook session?" : "Shut down notebook process?")) {
                 set_notebook_state(nb.path, {
                     running: false,
                     transitioning: true,
                 })
-                client.send("shutdown_notebook", { keep_in_session: false }, { notebook_id: nb.notebook_id }, false)
+                client.send("shutdown_notebook", { keep_in_session: false }, { notebook_id: nb.entry?.notebook_id }, false)
             }
         } else {
             set_notebook_state(nb.path, {
                 transitioning: true,
             })
-            fetch(link_open_path(nb.path), {
+            fetch(link_open_path(nb.path) + "&execution_allowed=true", {
                 method: "GET",
             })
                 .then((r) => {
@@ -170,9 +181,9 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
 
     let recents =
         combined_notebooks == null
-            ? html`<li><em>Loading...</em></li>`
+            ? html`<li class="not_yet_ready"><em>Loading...</em></li>`
             : combined_notebooks.map((nb) => {
-                  const running = nb.notebook_id != null
+                  const running = nb.entry != null
                   return html`<li
                       key=${nb.path}
                       class=${cl({
@@ -181,11 +192,18 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
                           transitioning: nb.transitioning,
                       })}
                   >
-                      <button onclick=${() => on_session_click(nb)} title=${running ? "Shut down notebook" : "Start notebook in background"}>
+                      <button
+                          onclick=${() => on_session_click(nb)}
+                          title=${running
+                              ? nb.entry?.process_status === ProcessStatus.waiting_for_permission
+                                  ? "Stop session"
+                                  : "Shut down notebook"
+                              : "Start notebook in background"}
+                      >
                           <span class="ionicon"></span>
                       </button>
                       <a
-                          href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path)}
+                          href=${running ? link_edit(nb.entry?.notebook_id) : link_open_path(nb.path)}
                           title=${nb.path}
                           onClick=${(e) => {
                               if (!running) {
@@ -203,7 +221,7 @@ export const Recent = ({ client, connected, remote_notebooks, CustomRecent, on_s
     if (CustomRecent == null) {
         return html`
             <h2>My work</h2>
-            <ul id="recent" class="show-scrollbar">
+            <ul id="recent" class="show_scrollbar">
                 <li class="new">
                     <a
                         href="new"
@@ -225,5 +243,5 @@ const get_stored_recent_notebooks = () => {
     const storedString = localStorage.getItem("recent notebooks")
     const storedData = storedString != null ? JSON.parse(storedString) : []
     const storedList = storedData instanceof Array ? storedData : []
-    return storedList.map((path) => entry(path))
+    return storedList.map(entry_notrunning)
 }

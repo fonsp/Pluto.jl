@@ -19,15 +19,8 @@ import * as desktop from "../DesktopInterface.js"
 export const Open = ({ client, connected, CustomPicker, show_samples, on_start_navigation }) => {
     const on_open_path = async (new_path) => {
         const processed = await guess_notebook_location(new_path)
-        if (processed.type === "path") {
-            on_start_navigation(processed.path_or_url)
-            window.location.href = link_open_path(processed.path_or_url)
-        } else {
-            if (confirm("Are you sure? This will download and run the file at\n\n" + processed.path_or_url)) {
-                on_start_navigation(processed.path_or_url)
-                window.location.href = link_open_url(processed.path_or_url)
-            }
-        }
+        on_start_navigation(processed.path_or_url)
+        window.location.href = (processed.type === "path" ? link_open_path : link_open_url)(processed.path_or_url)
     }
 
     const picker = CustomPicker ?? {
@@ -79,7 +72,6 @@ export const Open = ({ client, connected, CustomPicker, show_samples, on_start_n
         </div>`
 }
 
-// /open will execute a script from your hard drive, so we include a token in the URL to prevent a mean person from getting a bad file on your computer _using another hypothetical intrusion_, and executing it using Pluto
-export const link_open_path = (path) => "open?" + new URLSearchParams({ path: path }).toString()
+export const link_open_path = (path, execution_allowed = false) => "open?" + new URLSearchParams({ path: path }).toString()
 export const link_open_url = (url) => "open?" + new URLSearchParams({ url: url }).toString()
 export const link_edit = (notebook_id) => "edit?id=" + notebook_id
