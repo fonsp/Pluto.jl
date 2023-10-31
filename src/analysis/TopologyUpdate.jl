@@ -11,9 +11,7 @@ function updated_topology(old_topology::NotebookTopology, notebook::Notebook, ce
 		old_code = old_topology.codes[cell]
 		if old_code.code !== cell.code
 			new_code = updated_codes[cell] = ExprAnalysisCache(notebook, cell)
-			new_symstate = new_code.parsedcode |>
-				ExpressionExplorer.try_compute_symbolreferences
-			new_reactive_node = ReactiveNode(new_symstate)
+			new_reactive_node = compute_reactive_node(new_code.parsedcode)
 
 			updated_nodes[cell] = new_reactive_node
 		elseif old_code.forced_expr_id !== nothing

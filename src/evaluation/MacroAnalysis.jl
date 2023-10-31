@@ -112,8 +112,8 @@ function resolve_topology(
 		result = macroexpand_cell(cell)
 		if result isa Success
 			(expr, computer_id) = result.result
-			expanded_node = ExpressionExplorer.try_compute_symbolreferences(expr) |> ReactiveNode
-			function_wrapped = ExpressionExplorer.can_be_function_wrapped(expr)
+			expanded_node = ExpressionExplorer.compute_reactive_node(expr)
+			function_wrapped = ExpressionExplorerExtras.can_be_function_wrapped(expr)
 			Success((expanded_node, function_wrapped, computer_id))
 		else
 			result
@@ -185,7 +185,7 @@ So, the resulting reactive nodes may not be absolutely accurate. If you can run 
 """
 function static_macroexpand(topology::NotebookTopology, cell::Cell)
 	new_node = ExpressionExplorer.maybe_macroexpand(topology.codes[cell].parsedcode; recursive=true) |>
-		ExpressionExplorer.try_compute_symbolreferences |> ReactiveNode
+		ExpressionExplorer.compute_reactive_node
 	union!(new_node.macrocalls, topology.nodes[cell].macrocalls)
 
 	new_node
