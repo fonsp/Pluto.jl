@@ -610,7 +610,7 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
             js_init_set?.delete(container)
             invalidate_scripts.current?.()
         }
-    }, [body, persist_js_state, last_run_timestamp, pluto_actions, sanitize_html])
+    }, [body, last_run_timestamp, pluto_actions, sanitize_html])
 
     return html`<div class="raw-html-wrapper ${className}" ref=${container_ref}></div>`
 }
