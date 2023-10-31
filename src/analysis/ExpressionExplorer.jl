@@ -307,7 +307,7 @@ function macro_has_special_heuristic_inside(; symstate::SymbolsState, expr::Expr
         cell_order = Pluto.ImmutableVector([fake_cell]),
     )
 
-    return Pluto.cell_precedence_heuristic(fake_topology, fake_cell) < 9
+    return Pluto.cell_precedence_heuristic(fake_topology, fake_cell) < Pluto.DEFAULT_PRECEDENCE_HEURISTIC
 end
 # Having written this... I know I said I was lazy... I was wrong
 end
