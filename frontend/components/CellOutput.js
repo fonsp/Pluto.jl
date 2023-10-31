@@ -116,7 +116,21 @@ export let PlutoImage = ({ body, mime }) => {
     return html`<img ref=${imgref} type=${mime} src=${""} />`
 }
 
+/**
+ * @param {{
+ *  mime: string,
+ * body: any,
+ * cell_id: string,
+ * persist_js_state: boolean | string,
+ * last_run_timestamp: number,
+ * sanitize_html?: boolean | string,
+ * }} args
+ */
 export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last_run_timestamp, sanitize_html = true }) => {
+    // These two arguments might have been passed as strings if OutputBody was used as the custom HTML element <pluto-display>, with string attributes as arguments.
+    sanitize_html = sanitize_html !== "false" && sanitize_html !== false
+    persist_js_state = persist_js_state === "true" || persist_js_state === true
+
     switch (mime) {
         case "image/png":
         case "image/jpg":
