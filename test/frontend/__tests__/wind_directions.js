@@ -27,6 +27,8 @@ describe("wind_directions", () => {
         await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
 
         await importNotebook(page, "wind_directions.jl", { permissionToRunCode: true })
+        await page.waitForTimeout(1000)
+        await waitForPlutoToCalmDown(page)
     })
     beforeEach(async () => {})
     afterEach(async () => {
