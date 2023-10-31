@@ -1,7 +1,12 @@
 using ExpressionExplorer
 
+const ReactiveNode_from_expr = ExpressionExplorer.compute_reactive_node
+
 module ExpressionExplorerExtras
+import ..Pluto
+import ..PlutoRunner
 using ExpressionExplorer
+using ExpressionExplorer: ScopeState
 
 struct PlutoConfiguration <: ExpressionExplorer.AbstractExpressionExplorerConfiguration
 end
@@ -50,13 +55,13 @@ function macro_has_special_heuristic_inside(; symstate::SymbolsState, expr::Expr
     # Also, because I'm lazy and don't want to copy any code, imma use cell_precedence_heuristic here.
     # Sad part is, that this will also include other symbols used in this macro... but come'on
     local fake_cell = Pluto.Cell()
-    local fake_reactive_node = Pluto.ReactiveNode(symstate)
+    local fake_reactive_node = ReactiveNode(symstate)
     local fake_expranalysiscache = Pluto.ExprAnalysisCache(
         parsedcode = expr,
         module_usings_imports = ExpressionExplorer.compute_usings_imports(expr),
     )
     local fake_topology = Pluto.NotebookTopology(
-        nodes = Pluto.ImmutableDefaultDict(Pluto.ReactiveNode, Dict(fake_cell => fake_reactive_node)),
+        nodes = Pluto.ImmutableDefaultDict(ReactiveNode, Dict(fake_cell => fake_reactive_node)),
         codes = Pluto.ImmutableDefaultDict(Pluto.ExprAnalysisCache, Dict(fake_cell => fake_expranalysiscache)),
         cell_order = Pluto.ImmutableVector([fake_cell]),
     )
@@ -72,8 +77,8 @@ If the macro is **known to Pluto**, expand or 'mock expand' it, if not, return t
 """
 function maybe_macroexpand_pluto(ex::Expr; recursive::Bool=false, expand_bind::Bool=true)
     result::Expr = if ex.head === :macrocall
-        funcname = split_funcname(ex.args[1])
-        funcname_joined = join_funcname_parts(funcname)
+        funcname = ExpressionExplorer.split_funcname(ex.args[1])
+        funcname_joined = ExpressionExplorer.join_funcname_parts(funcname)
 
         if funcname_joined ∈ (expand_bind ? can_macroexpand : can_macroexpand_no_bind)
             macroexpand(PlutoRunner, ex; recursive=false)::Expr
