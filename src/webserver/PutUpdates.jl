@@ -1,4 +1,20 @@
 
+function serialize_message_to_stream(io::IO, message::UpdateMessage)
+    to_send = Dict(:type => message.type, :message => message.message)
+    if message.notebook !== nothing
+        to_send[:notebook_id] = message.notebook.notebook_id
+    end
+    if message.cell !== nothing
+        to_send[:cell_id] = message.cell.cell_id
+    end
+    if message.initiator !== nothing
+        to_send[:initiator_id] = message.initiator.client_id
+        to_send[:request_id] = message.initiator.request_id
+    end
+
+    pack(io, to_send)
+end
+
 function serialize_message_to_stream(io::IO, message::UpdateMessage, recipient::ClientSession)
     to_send = Dict{Symbol,Any}(
         :type => message.type, 
@@ -23,6 +39,10 @@ function serialize_message(message::UpdateMessage)
     io = IOBuffer()
     serialize_message_to_stream(io, message)
     take!(io)
+end
+
+function serialize_message(message::UpdateMessage, recipient::ClientSession)
+    sprint(serialize_message_to_stream, message, recipient)
 end
 
 "Send `messages` to all clients connected to the `notebook`."
