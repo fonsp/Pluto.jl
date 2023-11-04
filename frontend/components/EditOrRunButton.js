@@ -1,59 +1,81 @@
-import { BinderPhase } from "../common/Binder.js"
-import { html, useEffect, useState, useRef } from "../imports/Preact.js"
+import _ from "../imports/lodash.js"
+import { BackendLaunchPhase } from "../common/Binder.js"
+import { html, useEffect, useState, useRef, useLayoutEffect } from "../imports/Preact.js"
 
-export const BinderButton = ({ binder_phase, start_binder, notebookfile }) => {
-    const [popupOpen, setPopupOpen] = useState(false)
-    const [showCopyPopup, setShowCopyPopup] = useState(false)
-    const notebookfile_ref = useRef("")
-    notebookfile_ref.current = notebookfile
+import { has_ctrl_or_cmd_pressed } from "../common/KeyboardShortcuts.js"
+import { useDialog } from "../common/useDialog.js"
 
-    useEffect(() => {
-        const handlekeyup = (e) => {
-            e.key === "Escape" && setPopupOpen(false)
-        }
-        const handleclick = (e) => {
-            if (popupOpen && !e.composedPath().find((el) => el.id === "binder_help_text")) {
-                setPopupOpen(false)
-                // Avoid activating whatever was below
-                e.stopPropagation()
-                e.preventDefault()
-            }
-        }
-        document.body.addEventListener("keyup", handlekeyup)
-        document.body.addEventListener("click", handleclick)
-
-        return () => {
-            document.body.removeEventListener("keyup", handlekeyup)
-            document.body.removeEventListener("click", handleclick)
-        }
-    }, [popupOpen])
-    const show = binder_phase === BinderPhase.wait_for_user
+export const RunLocalButton = ({ show, start_local }) => {
     //@ts-ignore
-    // allow user-written JS to start the binder
-    window.start_binder = show ? start_binder : () => {}
-    if (!show) return null
-    const show_binder = binder_phase != null
-    const recommend_download = notebookfile_ref.current.startsWith("data:")
-    return html` <div id="launch_binder">
-        <span
-            id="binder_launch_help"
+    window.open_edit_or_run_popup = () => {
+        start_local()
+    }
+
+    return html`<div class="edit_or_run">
+        <button
             onClick=${(e) => {
                 e.stopPropagation()
                 e.preventDefault()
-                setPopupOpen(!popupOpen)
+                start_local()
             }}
-            class="explain_binder"
-            ><b>Edit</b> or <b>run</b> this notebook</span
         >
-        ${popupOpen &&
-        html`<div id="binder_help_text">
-            <span onClick=${() => setPopupOpen(false)} class="close"></span>
-            ${show_binder
+            <b>Edit</b> or <b>run</b> this notebook
+        </button>
+    </div>`
+}
+
+/**
+ * @param {{
+ *  notebook: import("./Editor.js").NotebookData,
+ *  notebookfile: string?,
+ *  start_binder: () => Promise<void>,
+ *  offer_binder: boolean,
+ * }} props
+ * */
+export const BinderButton = ({ offer_binder, start_binder, notebookfile, notebook }) => {
+    const [dialog_ref, openModal, closeModal, toggleModal] = useDialog({ light_dismiss: true })
+
+    const [showCopyPopup, setShowCopyPopup] = useState(false)
+    const notebookfile_ref = useRef("")
+    notebookfile_ref.current = notebookfile ?? ""
+
+    //@ts-ignore
+    window.open_edit_or_run_popup = openModal
+
+    useEffect(() => {
+        //@ts-ignore
+        // allow user-written JS to start the binder
+        window.start_binder = offer_binder ? start_binder : null
+        return () => {
+            //@ts-ignore
+            window.start_binder = null
+        }
+    }, [start_binder, offer_binder])
+
+    const recommend_download = notebookfile_ref.current.startsWith("data:")
+    const runtime_str = expected_runtime_str(notebook)
+
+    return html`<div class="edit_or_run">
+        <button
+            onClick=${(e) => {
+                toggleModal()
+                e.stopPropagation()
+                e.preventDefault()
+            }}
+        >
+            <b>Edit</b> or <b>run</b> this notebook
+        </button>
+        <dialog ref=${dialog_ref} class="binder_help_text">
+            <span onClick=${closeModal} class="close"></span>
+            ${offer_binder
                 ? html`
                       <p style="text-align: center;">
                           ${`To be able to edit code and run cells, you need to run the notebook yourself. `}
                           <b>Where would you like to run the notebook?</b>
                       </p>
+                      ${runtime_str == null
+                          ? null
+                          : html` <div class="expected_runtime_box">${`This notebook takes about `}<span>${runtime_str}</span>${` to run.`}</div>`}
                       <h2 style="margin-top: 3em;">In the cloud <em>(experimental)</em></h2>
                       <div style="padding: 0 2rem;">
                           <button onClick=${start_binder}>
@@ -121,6 +143,35 @@ export const BinderButton = ({ binder_phase, start_binder, notebookfile }) => {
                           `}
                 </li>
             </ol>
-        </div>`}
+        </dialog>
     </div>`
+}
+
+const expected_runtime = (/** @type {import("./Editor.js").NotebookData} */ notebook) => {
+    return ((notebook.nbpkg?.install_time_ns ?? NaN) + _.sum(Object.values(notebook.cell_results).map((c) => c.runtime ?? 0))) / 1e9
+}
+
+const runtime_overhead = 15 // seconds
+const runtime_multiplier = 1.5
+
+const expected_runtime_str = (/** @type {import("./Editor.js").NotebookData} */ notebook) => {
+    const ex = expected_runtime(notebook)
+    if (isNaN(ex)) {
+        return null
+    }
+
+    const sec = _.round(runtime_overhead + ex * runtime_multiplier, -1)
+    return pretty_long_time(sec)
+}
+
+export const pretty_long_time = (/** @type {number} */ sec) => {
+    const min = sec / 60
+    const sec_r = Math.ceil(sec)
+    const min_r = Math.round(min)
+
+    if (sec < 60) {
+        return `${sec_r} second${sec_r > 1 ? "s" : ""}`
+    } else {
+        return `${min_r} minute${min_r > 1 ? "s" : ""}`
+    }
 }

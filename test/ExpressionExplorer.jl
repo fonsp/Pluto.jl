@@ -1,6 +1,7 @@
 using Test
+import Pluto: PlutoRunner
 
-#= 
+#=
 `@test_broken` means that the test doesn't pass right now, but we want it to pass. Feel free to try to fix it and open a PR!
 Some of these @test_broken lines are commented out to prevent printing to the terminal, but we still want them fixed.
 
@@ -17,8 +18,44 @@ Some of these @test_broken lines are commented out to prevent printing to the te
 -fons =#
 
 @testset "Explore Expressions" begin
+    let
+        EE = Pluto.ExpressionExplorer
+        scopestate = EE.ScopeState()
+
+        @inferred EE.explore_assignment!(:(f(x) = x), scopestate)
+        @inferred EE.explore_modifiers!(:(1 + 1), scopestate)
+        @inferred EE.explore_dotprefixed_modifiers!(:([1] .+ [1]), scopestate)
+        @inferred EE.explore_inner_scoped(:(let x = 1 end), scopestate)
+        @inferred EE.explore_filter!(:(filter(true, a)), scopestate)
+        @inferred EE.explore_generator!(:((x for x in a)), scopestate)
+        @inferred EE.explore_macrocall!(:(@time 1), scopestate)
+        @inferred EE.explore_call!(:(f(x)), scopestate)
+        @inferred EE.explore_struct!(:(struct A end), scopestate)
+        @inferred EE.explore_abstract!(:(abstract type A end), scopestate)
+        @inferred EE.explore_function_macro!(:(function f(x); x; end), scopestate)
+        @inferred EE.explore_try!(:(try nothing catch end), scopestate)
+        @inferred EE.explore_anonymous_function!(:(x -> x), scopestate)
+        @inferred EE.explore_global!(:(global x = 1), scopestate)
+        @inferred EE.explore_local!(:(local x = 1), scopestate)
+        @inferred EE.explore_tuple!(:((a, b)), scopestate)
+        @inferred EE.explore_broadcast!(:(func.(a)), scopestate)
+        @inferred EE.explore_load!(:(using Foo), scopestate)
+        let
+            @inferred EE.explore_interpolations!(:(quote 1 end), scopestate)
+            @inferred EE.explore_quote!(:(quote 1 end), scopestate)
+        end
+        @inferred EE.explore_module!(:(module A end), scopestate)
+        @inferred EE.explore_fallback!(:(1 + 1), scopestate)
+        @inferred EE.explore!(:(1 + 1), scopestate)
+
+        @inferred EE.split_funcname(:(Base.Submodule.f))
+        @inferred EE.maybe_macroexpand(:(@time 1))
+    end
+
     @testset "Basics" begin
+        # Note that Meta.parse(x) is not always an Expr.
         @test testee(:(a), [:a], [], [], [])
+        @test testee(Expr(:toplevel, :a), [:a], [], [], [])
         @test testee(:(1 + 1), [], [], [:+], [])
         @test testee(:(sqrt(1)), [], [], [:sqrt], [])
         @test testee(:(x = 3), [], [:x], [], [])
@@ -46,19 +83,34 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:([a..., b]), [:a, :b], [], [], [])
         @test testee(:(struct a; b; c; end), [], [:a], [], [
             :a => ([], [], [], [])
-            ])
+        ])
+        @test testee(:(abstract type a end), [], [:a], [], [
+            :a => ([], [], [], [])
+        ])
         @test testee(:(let struct a; b; c; end end), [], [:a], [], [
             :a => ([], [], [], [])
-            ])
+        ])
+        @test testee(:(let abstract type a end end), [], [:a], [], [
+            :a => ([], [], [], [])
+        ])
 
         @test testee(:(module a; f(x) = x; z = r end), [], [:a], [], [])
     end
     @testset "Types" begin
         @test testee(:(x::Foo = 3), [:Foo], [:x], [], [])
         @test testee(:(x::Foo), [:x, :Foo], [], [], [])
-        @test testee(:(a::Foo, b::String = 1, "2"), [:Foo, :String], [:a, :b], [], [])
+        @test testee(quote
+            a::Foo, b::String = 1, "2"
+        end, [:Foo, :String], [:a, :b], [], [])
         @test testee(:(Foo[]), [:Foo], [], [], [])
         @test testee(:(x isa Foo), [:x, :Foo], [], [:isa], [])
+
+        @test testee(quote
+            (x[])::Int = 1
+        end, [:Int, :x], [], [], [])
+        @test testee(quote
+            (x[])::Int, y = 1, 2
+        end, [:Int, :x], [:y], [], [])
 
         @test testee(:(A{B} = B), [], [:A], [], [])
         @test testee(:(A{T} = Union{T,Int}), [:Int, :Union], [:A], [], [])
@@ -71,7 +123,7 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(abstract type a{T} <: b end), [], [:a], [], [:a => ([:b], [], [], [])])
         @test testee(:(abstract type a{T} <: b{T} end), [], [:a], [], [:a => ([:b], [], [], [])])
         @test_nowarn testee(macroexpand(Main, :(@enum a b c)), [], [], [], []; verbose=false)
-        
+
         e = :(struct a end) # needs to be on its own line to create LineNumberNode
         @test testee(e, [], [:a], [], [:a => ([], [], [], [])])
         @test testee(:(struct a <: b; c; d::Foo; end), [], [:a], [], [:a => ([:b, :Foo], [], [], [])])
@@ -82,6 +134,18 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(struct a{A,B<:C{A}}; i::A; j::B end), [], [:a], [], [:a => ([:C], [], [], [])])
         @test testee(:(struct a{A,B<:C{<:A}} <: D{A,B}; i::A; j::B end), [], [:a], [], [:a => ([:C, :D], [], [], [])])
         @test testee(:(struct a{A,DD<:B.C{D.E{A}}} <: K.A{A} i::A; j::DD; k::C end), [], [:a], [], [:a => ([:B, :C, :D, :K], [], [], [])])
+        @test testee(:(struct a; x; a(t::T) where {T} = new(t); end), [], [:a], [], [:a => ([], [], [[:new]], [])])
+        @test testee(:(struct a; x; y; a(t::T) where {T} = new(t, T); end), [], [:a], [], [:a => ([], [], [[:new]], [])])
+        @test testee(:(struct a; f() = a() end), [], [:a], [], [:a => ([], [], [], [])])
+
+        @test testee(:(abstract type a <: b end), [], [:a], [], [:a => ([:b], [], [], [])])
+        @test testee(:(abstract type a{T,S} end), [], [:a], [], [:a => ([], [], [], [])])
+        @test testee(:(abstract type a{T} <: b end), [], [:a], [], [:a => ([:b], [], [], [])])
+        @test testee(:(abstract type a{T} <: b{T} end), [], [:a], [], [:a => ([:b], [], [], [])])
+        @test testee(:(abstract type a end), [], [:a], [], [:a => ([], [], [], [])])
+        @test testee(:(abstract type a{A,B<:C{A}} end), [], [:a], [], [:a => ([:C], [], [], [])])
+        @test testee(:(abstract type a{A,B<:C{<:A}} <: D{A,B} end), [], [:a], [], [:a => ([:C, :D], [], [], [])])
+        @test testee(:(abstract type a{A,DD<:B.C{D.E{A}}} <: K.A{A} end), [], [:a], [], [:a => ([:B, :D, :K], [], [], [])])
         # @test_broken testee(:(struct a; c; a(x=y) = new(x,z); end), [], [:a], [], [:a => ([:y, :z], [], [], [])], verbose=false)
     end
     @testset "Assignment operator & modifiers" begin
@@ -94,7 +158,7 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(a[b,c,:] = d), [:a, :b, :c, :d, :(:)], [], [], [])
         @test testee(:(a.b = c), [:a, :c], [], [], [])
         @test testee(:(f(a, b=c, d=e; f=g)), [:a, :c, :e, :g], [], [:f], [])
-        
+
         @test testee(:(a += 1), [:a], [:a], [:+], [])
         @test testee(:(a >>>= 1), [:a], [:a], [:>>>], [])
         @test testee(:(a ⊻= 1), [:a], [:a], [:⊻], [])
@@ -102,23 +166,83 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(x = let a = 1; a += b end), [:b], [:x], [:+], [])
         @test testee(:(_ = a + 1), [:a], [], [:+], [])
         @test testee(:(a = _ + 1), [], [:a], [:+], [])
+
+        @test testee(:(f()[] = 1), [], [], [:f], [])
+        @test testee(:(x[f()] = 1), [:x], [], [:f], [])
+    end
+    @testset "Multiple assignments" begin
+        # Note that using the shorthand syntax :(a = 1, b = 2) to create an expression
+        # will automatically return a :tuple Expr and not a multiple assignment
+        # we use quotes instead of this syntax to be sure of what is tested since quotes
+        # would behave the same way as Meta.parse() which Pluto uses to evaluate cell code.
+        ex = quote
+            a, b = 1, 2
+        end
+        @test Meta.isexpr(ex.args[2], :(=))
+
+        @test testee(quote
+            a, b = 1, 2
+        end, [], [:a, :b], [], [])
+        @test testee(quote
+            a, _, c, __ = 1, 2, 3, _d
+        end, [:_d], [:a, :c], [], [])
+        @test testee(quote
+            (a, b) = 1, 2
+        end, [], [:a, :b], [], [])
+        @test testee(quote
+            a = (b, c)
+        end, [:b, :c], [:a], [], [])
+        @test testee(quote
+            a, (b, c) = [e,[f,g]]
+        end, [:e, :f, :g], [:a, :b, :c], [], [])
+        @test testee(quote
+            a, (b, c) = [e,[f,g]]
+        end, [:e, :f, :g], [:a, :b, :c], [], [])
+        @test testee(quote
+            (x, y), a, (b, c) = z, e, (f, g)
+        end, [:z, :e, :f, :g], [:x, :y, :a, :b, :c], [], [])
+        @test testee(quote
+            (x[i], y.r), a, (b, c) = z, e, (f, g)
+        end, [:x, :i, :y, :z, :e, :f, :g], [:a, :b, :c], [], [])
+        @test testee(quote
+            (a[i], b.r) = (c.d, 2)
+        end, [:a, :b, :i, :c], [], [], [])
+        @test testee(quote
+            a, b... = 0:5
+        end, [],[:a, :b], [[:(:)]], [])
+        @test testee(quote
+            a[x], x = 1, 2
+        end, [:a], [:x], [], [])
+        @test testee(quote
+            x, a[x] = 1, 2
+        end, [:a], [:x], [], [])
+        @test testee(quote
+            f, a[f()] = g
+        end, [:g, :a], [:f], [], [])
+        @test testee(quote
+            a[f()], f = g
+        end, [:g, :a], [:f], [], [])
+        @test testee(quote (; a, b) = x end, [:x], [:a, :b], [], [])
+        @test testee(quote a = (b, c) end, [:b, :c], [:a], [], [])
+
+        @test testee(:(const a, b = 1, 2), [], [:a, :b], [], [])
     end
     @testset "Tuples" begin
+        ex = :(1, 2, a, b, c)
+        @test Meta.isexpr(ex, :tuple)
+
         @test testee(:((a, b,)), [:a,:b], [], [], [])
+        @test testee(:((a, b, c, 1, 2, 3, :d, f()..., let y = 3 end)), [:a, :b, :c], [], [:f], [])
+
         @test testee(:((a = b, c = 2, d = 123,)), [:b], [], [], [])
+        @test testee(:((a = b, c, d, f()..., let x = (;a = e) end...)), [:b, :c, :d, :e], [], [:f], [])
         @test testee(:((a = b,)), [:b], [], [], [])
-        @test testee(:(a, b = 1, 2), [], [:a, :b], [], [])
-        @test testee(:(a, _, c, __ = 1, 2, 3, _d), [:_d], [:a, :c], [], [])
-        @test testee(:(const a, b = 1, 2), [], [:a, :b], [], [])
-        @test testee(:((a, b) = 1, 2), [], [:a, :b], [], [])
-        @test testee(:(a = b, c), [:b, :c], [:a], [], [])
-        @test testee(:(a, b = c), [:c], [:a, :b], [], [])
-        @test testee(:(a = (b, c)), [:b, :c], [:a], [], [])
-        @test testee(:(a, (b, c) = [e,[f,g]]), [:e, :f, :g], [:a, :b, :c], [], [])
-        @test testee(:((x, y), a, (b, c) = z, e, (f, g)), [:z, :e, :f, :g], [:x, :y, :a, :b, :c], [], [])
-        @test testee(:((x[i], y.r), a, (b, c) = z, e, (f, g)), [:x, :i, :y, :z, :e, :f, :g], [:a, :b, :c], [], [])
-        @test testee(:((a[i], b.r) = (c.d, 2)), [:a, :b, :i, :c], [], [], [])
-        @test testee(:((; a, b) = x), [:x], [:a, :b], [], [])
+        @test testee(:(a = b, c), [:b, :c], [], [], [])
+        @test testee(:(a, b = c), [:a, :c], [], [], [])
+
+        # Invalid named tuples but still parses just fine
+        @test testee(:((a, b = 1, 2)), [:a], [], [], [])
+        @test testee(:((a, b) = 1, 2), [], [], [], [])
     end
     @testset "Broadcasting" begin
         @test testee(:(a .= b), [:b, :a], [], [], []) # modifies elements, doesn't set `a`
@@ -136,13 +260,21 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(for k in 1:2, r in 3:4; global z = k + r; end), [], [:z], [:+, :(:)], [])
         @test testee(:(while k < 2; r = w; global z = k + r; end), [:k, :w], [:z], [:+, :(<)], [])
     end
-    @testset "`try` & `catch`" begin
+    @testset "`try` & `catch` & `else` & `finally`" begin
         @test testee(:(try a = b + 1 catch; end), [:b], [], [:+], [])
         @test testee(:(try a() catch e; e end), [], [], [:a], [])
         @test testee(:(try a() catch; e end), [:e], [], [:a], [])
         @test testee(:(try a + 1 catch a; a end), [:a], [], [:+], [])
         @test testee(:(try 1 catch e; e finally a end), [:a], [], [], [])
         @test testee(:(try 1 finally a end), [:a], [], [], [])
+
+        # try catch else was introduced in 1.8
+        @static if VERSION >= v"1.8.0"
+            @test testee(Meta.parse("try 1 catch else x = 1; x finally a; end"), [:a], [], [], [])
+            @test testee(Meta.parse("try 1 catch else x = j; x finally a; end"), [:a, :j], [], [], [])
+            @test testee(Meta.parse("try x = 2 catch else x finally a; end"), [:a, :x], [], [], [])
+            @test testee(Meta.parse("try x = 2 catch else x end"), [:x], [], [], [])
+        end
     end
     @testset "Comprehensions" begin
         @test testee(:([sqrt(s) for s in 1:n]), [:n], [], [:sqrt, :(:)], [])
@@ -208,6 +340,12 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(f(x, y=a + 1) = x * y * z), [], [], [], [
             :f => ([:z, :a], [], [:*, :+], [])
         ])
+        @test testee(:(f(x, y...) = y),[],[],[],[
+            :f => ([], [], [], [])
+        ])
+        @test testee(:(f((x, y...), z) = y),[],[],[],[
+            :f => ([], [], [], [])
+        ])
         @test testee(:(begin f() = 1; f end), [], [], [], [
             :f => ([], [], [], [])
         ])
@@ -225,6 +363,9 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         ])
         @test testee(:((x;p) -> f(x+p)), [], [], [], [
             :anon => ([], [], [:f, :+], [])
+        ])
+        @test testee(:(() -> Date), [], [], [], [
+            :anon => ([:Date], [], [], [])
         ])
         @test testee(:(begin x; p end -> f(x+p)), [], [], [], [
             :anon => ([], [], [:f, :+], [])
@@ -270,6 +411,8 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(funcs[i](b)), [:funcs, :i, :b], [], [], [])
         @test testee(:(f(a)(b)), [:a, :b], [], [:f], [])
         @test testee(:(f(a).b()), [:a], [], [:f], [])
+        @test testee(:(f(a...)),[:a],[],[:f],[])
+        @test testee(:(f(a, b...)),[:a, :b],[],[:f],[])
 
         @test testee(:(a.b(c)), [:a, :c], [], [[:a,:b]], [])
         @test testee(:(a.b.c(d)), [:a, :d], [], [[:a,:b,:c]], [])
@@ -365,17 +508,18 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         ])
     end
     @testset "Scope modifiers" begin
-        @test testee(:(let global a, b = 1, 2 end), [], [:a, :b], [], [])
-        @test_broken testee(:(let global a = b = 1 end), [], [:a], [], []; verbose=false)
-        @test testee(:(let global k = 3 end), [], [:k], [], [])
-        @test_broken testee(:(let global k = r end), [], [:k], [], []; verbose=false)
-        @test testee(:(let global k = 3; k end), [], [:k], [], [])
-        @test testee(:(let global k += 3 end), [:k], [:k], [:+], [])
-        @test testee(:(let global k; k = 4 end), [], [:k], [], [])
-        @test testee(:(let global k; b = 5 end), [], [], [], [])
-        @test testee(:(let global x, y, z; b = 5; x = 1; (y,z) = 3 end), [], [:x, :y, :z], [], [])
-        @test testee(:(let global x, z; b = 5; x = 1; end), [], [:x], [], [])
+        @test testee(:(let; global a, b = 1, 2 end), [], [:a, :b], [], [])
+        @test_broken testee(:(let; global a = b = 1 end), [], [:a], [], []; verbose=false)
+        @test testee(:(let; global k = 3 end), [], [:k], [], [])
+        @test_broken testee(:(let; global k = r end), [], [:k], [], []; verbose=false)
+        @test testee(:(let; global k = 3; k end), [], [:k], [], [])
+        @test testee(:(let; global k += 3 end), [:k], [:k], [:+], [])
+        @test testee(:(let; global k; k = 4 end), [], [:k], [], [])
+        @test testee(:(let; global k; b = 5 end), [], [], [], [])
+        @test testee(:(let; global x, y, z; b = 5; x = 1; (y,z) = 3 end), [], [:x, :y, :z], [], [])
+        @test testee(:(let; global x, z; b = 5; x = 1; end), [], [:x], [], [])
         @test testee(:(let a = 1, b = 2; show(a + b) end), [], [], [:show, :+], [])
+        @test_broken testee(:(let a = 1; global a = 2; end), [], [:a], [], []; verbose=false)
 
         @test testee(:(begin local a, b = 1, 2 end), [], [], [], [])
         @test testee(:(begin local a = b = 1 end), [], [:b], [], [])
@@ -394,7 +538,7 @@ Some of these @test_broken lines are commented out to prevent printing to the te
             :f => ([], [:k], [], [])
         ])
         @test testee(:((begin x = 1 end, y)), [:y], [:x], [], [])
-        @test testee(:(x = let global a += 1 end), [:a], [:x, :a], [:+], [])
+        @test testee(:(x = let; global a += 1 end), [:a], [:x, :a], [:+], [])
     end
     @testset "`import` & `using`" begin
         @test testee(:(using Plots), [], [:Plots], [], [])
@@ -587,6 +731,36 @@ Some of these @test_broken lines are commented out to prevent printing to the te
             references=[:x],
         )
     end
+    @testset "Special reactivity rules" begin
+        @test testee(
+            :(BenchmarkTools.generate_benchmark_definition(Main, Symbol[], Any[], Symbol[], (), $(Expr(:copyast, QuoteNode(:(f(x, y, z))))), $(Expr(:copyast, QuoteNode(:()))), $(Expr(:copyast, QuoteNode(nothing))), BenchmarkTools.parameters())),
+            [:Main, :BenchmarkTools, :Any, :Symbol, :x, :y, :z], [], [[:BenchmarkTools, :generate_benchmark_definition], [:BenchmarkTools, :parameters], :f], []
+        )
+        @test testee(
+            :(BenchmarkTools.generate_benchmark_definition(Main, Symbol[], Any[], Symbol[], (), $(Expr(:copyast, QuoteNode(:(f(x, y, z))))), $(Expr(:copyast, QuoteNode(:(x = A + B)))), $(Expr(:copyast, QuoteNode(nothing))), BenchmarkTools.parameters())),
+            [:Main, :BenchmarkTools, :Any, :Symbol, :y, :z, :A, :B], [], [[:BenchmarkTools, :generate_benchmark_definition], [:BenchmarkTools, :parameters], :f, :+], []
+        )
+        @test testee(
+            :(Base.macroexpand(Main, $(QuoteNode(:(@enum a b c))))),
+            [:Main, :Base], [], [[:Base, :macroexpand]], [], [Symbol("@enum")]
+        )
+    end
+    @testset "Invalid code sometimes generated by macros" begin
+        @test testee(
+            :(f(; $(:(x = true)))),
+            [], [], [:f], []
+        )
+        @test testee(
+            :(f(a, b, c; y, z = a, $(:(x = true)))),
+            [:a, :b, :c, :y], [], [:f], []
+        )
+        @test testee(
+            :(f(a, b, c; y, z = a, $(:(x = true))) = nothing),
+            [], [], [], [
+                :f => ([:nothing], [], [], [])
+            ]
+        )
+    end
     @testset "Extracting `using` and `import`" begin
         expr = quote
             using A
@@ -620,8 +794,25 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test ExpressionExplorer.external_package_names(:(using Plots, Something.Else, .LocalModule)) == Set([:Plots, :Something])
         @test ExpressionExplorer.external_package_names(:(import Plots.A: b, c)) == Set([:Plots])
 
-        if VERSION >= v"1.6.0"
-            @test ExpressionExplorer.external_package_names(Meta.parse("import Foo as Bar, Baz.Naz as Jazz")) == Set([:Foo, :Baz])
-        end
+        @test ExpressionExplorer.external_package_names(Meta.parse("import Foo as Bar, Baz.Naz as Jazz")) == Set([:Foo, :Baz])
+    end
+
+    @testset "ReactiveNode" begin
+        rn = Pluto.ReactiveNode_from_expr(quote
+            () -> Date
+        end)
+        @test :Date ∈ rn.references
+    end
+end
+
+@testset "UTF-8 to Codemirror UTF-16 byte mapping" begin
+    # range ends are non inclusives
+    tests = [
+        (" aaaa", (2, 4), (1, 3)), # cm is zero based
+        (" 🍕🍕", (2, 6), (1, 3)), # a 🍕 is two UTF16 codeunits
+        (" 🍕🍕", (6, 10), (3, 5)), # a 🍕 is two UTF16 codeunits
+    ]
+    for (s, (start_byte, end_byte), (from, to)) in tests
+        @test PlutoRunner.map_byte_range_to_utf16_codepoints(s, start_byte, end_byte) == (from, to)
     end
 end

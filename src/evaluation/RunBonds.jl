@@ -1,45 +1,73 @@
-function set_bond_values_reactive(; session::ServerSession, notebook::Notebook, bound_sym_names::AbstractVector{Symbol}, is_first_values::AbstractVector{Bool}=[true for x in bound_sym_names], kwargs...)::Union{Task,TopologicalOrder}
+function set_bond_values_reactive(;
+    session::ServerSession, notebook::Notebook,
+    bound_sym_names::AbstractVector{Symbol},
+    is_first_values::AbstractVector{Bool}=[false for x in bound_sym_names],
+    initiator=nothing,
+    kwargs...
+)::Union{Task,TopologicalOrder}
     # filter out the bonds that don't need to be set
-    to_set = filter(zip(bound_sym_names, is_first_values) |> collect) do (bound_sym, is_first_value)
-        new_value = notebook.bonds[bound_sym].value
+    syms_to_set = first.(
+        Iterators.filter(zip(bound_sym_names, is_first_values) |> collect) do (bound_sym, is_first_value)
+            new_value = notebook.bonds[bound_sym].value
 
-        variable_exists = is_assigned_anywhere(notebook, notebook.topology, bound_sym)
-        if !variable_exists
-            # a bond was set while the cell is in limbo state
-            # we don't need to do anything
-            return false
+            variable_exists = is_assigned_anywhere(notebook, notebook.topology, bound_sym)
+            if !variable_exists
+                # a bond was set while the cell is in limbo state
+                # we don't need to do anything
+                return false
+            end
+
+            # TODO: Not checking for any dependents now
+            # any_dependents = is_referenced_anywhere(notebook, notebook.topology, bound_sym)
+
+            # fix for https://github.com/fonsp/Pluto.jl/issues/275
+            # if `Base.get` was defined to give an initial value (read more about this in the Interactivity sample notebook), then we want to skip the first value sent back from the bond. (if `Base.get` was not defined, then the variable has value `missing`)
+            # Check if the variable does not already have that value.
+            # because if the initial value is already set, then we don't want to run dependent cells again.
+            eq_tester = :(try !ismissing($bound_sym) && ($bound_sym == Main.PlutoRunner.transform_bond_value($(QuoteNode(bound_sym)), $(new_value))) === true catch; false end) # not just a === comparison because JS might send back the same value but with a different type (Float64 becomes Int64 in JS when it's an integer. The `=== true` check handles cases like `[missing] == [123]`, which returns `missing`, not `true` or `false`.)
+            if is_first_value && will_run_code(notebook) && WorkspaceManager.eval_fetch_in_workspace((session, notebook), eq_tester)
+                return false
+            end
+            return true
         end
+    )::Vector{Symbol}
 
-        # TODO: Not checking for any dependents now
-        # any_dependents = is_referenced_anywhere(notebook, notebook.topology, bound_sym)
-
-        # fix for https://github.com/fonsp/Pluto.jl/issues/275
-        # if `Base.get` was defined to give an initial value (read more about this in the Interactivity sample notebook), then we want to skip the first value sent back from the bond. (if `Base.get` was not defined, then the variable has value `missing`)
-        # Check if the variable does not already have that value.
-        # because if the initial value is already set, then we don't want to run dependent cells again.
-        eq_tester = :(try !ismissing($bound_sym) && ($bound_sym == Main.PlutoRunner.transform_bond_value($(QuoteNode(bound_sym)), $(new_value))) === true catch; false end) # not just a === comparison because JS might send back the same value but with a different type (Float64 becomes Int64 in JS when it's an integer. The `=== true` check handles cases like `[missing] == [123]`, which returns `missing`, not `true` or `false`.)
-        if is_first_value && WorkspaceManager.eval_fetch_in_workspace((session, notebook), eq_tester)
-            return false
-        end
-        return true
-    end .|> first
-
-    if isempty(to_set)
+    if isempty(syms_to_set) || !will_run_code(notebook)
+        send_notebook_changes!(ClientRequest(; session, notebook, initiator))
         return TopologicalOrder(notebook.topology, Cell[], Dict{Cell, ReactivityError}())
     end
 
-    new_values = [notebook.bonds[bound_sym].value for bound_sym in to_set]
-    
-    function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Notebook}, old_workspace_name, new_workspace_name, to_delete_vars::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}; to_run::AbstractVector{Cell})
-        to_delete_vars = Set([to_delete_vars..., to_set...]) # also delete the bound symbols
-        WorkspaceManager.move_vars((session, notebook), old_workspace_name, new_workspace_name, to_delete_vars, methods_to_delete, to_reimport)
-        for (bound_sym, new_value) in zip(to_set, new_values)
-            WorkspaceManager.eval_in_workspace((session, notebook), :($(bound_sym) = Main.PlutoRunner.transform_bond_value($(QuoteNode(bound_sym)), $(new_value))))
-        end
-    end
-    to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}(to_set))
+    new_values = Any[notebook.bonds[bound_sym].value for bound_sym in syms_to_set]
+    bond_value_pairs = zip(syms_to_set, new_values)
 
-    run_reactive_async!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, user_requested_run=false, run_async=false, kwargs...)
+    syms_to_set_set = Set{Symbol}(syms_to_set)
+    function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Notebook}, old_workspace_name, new_workspace_name, to_delete_vars::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}, invalidated_cell_uuids::Set{UUID}; to_run::AbstractVector{Cell})
+        to_delete_vars = union(to_delete_vars, syms_to_set_set) # also delete the bound symbols
+        WorkspaceManager.move_vars(
+            (session, notebook),
+            old_workspace_name,
+            new_workspace_name,
+            to_delete_vars,
+            methods_to_delete,
+            to_reimport,
+            invalidated_cell_uuids,
+            syms_to_set_set,
+        )
+        set_bond_value_pairs!(session, notebook, zip(syms_to_set, new_values))
+    end
+    to_reeval = where_referenced(notebook, notebook.topology, syms_to_set_set)
+
+    run_reactive_async!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, save=false, user_requested_run=false, run_async=false, bond_value_pairs, kwargs...)
+end
+
+"""
+Returns the names of all defined bonds
+"""
+function get_bond_names(session::ServerSession, notebook::Notebook)
+    cells_bond_names = map(notebook.cell_order) do cell_id
+        WorkspaceManager.get_bond_names((session,notebook), cell_id)
+    end
+    union!(Set{Symbol}(), cells_bond_names...)
 end
 
 """

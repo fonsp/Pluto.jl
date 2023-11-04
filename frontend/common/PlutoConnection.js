@@ -7,6 +7,7 @@ import { alert, confirm } from "./alert_confirm.js"
 
 // https://github.com/denysdovhan/wtfjs/issues/61
 const different_Infinity_because_js_is_yuck = 2147483646
+import { with_query_params } from "./URLTools.js"
 
 const reconnect_after_close_delay = 500
 const retry_after_connect_failure_delay = 5000
@@ -80,11 +81,11 @@ const socket_is_alright_with_grace_period = (socket) =>
         }
     })
 
-const try_close_socket_connection = (socket) => {
+const try_close_socket_connection = (/** @type {WebSocket} */ socket) => {
     socket.onopen = () => {
         try_close_socket_connection(socket)
     }
-    socket.onmessage = socket.onclose = socket.onerror = undefined
+    socket.onmessage = socket.onclose = socket.onerror = null
     try {
         socket.close(1000, "byebye")
     } catch (ex) {}
@@ -96,7 +97,7 @@ const try_close_socket_connection = (socket) => {
  * @param {string} address The WebSocket URL
  * @param {{on_message: Function, on_socket_close:Function}} callbacks
  * @param {number} timeout_s Timeout for creating the websocket connection (seconds)
- * @return {Promise<WebsocketConnection>}
+ * @returns {Promise<WebsocketConnection>}
  */
 const create_ws_connection = (address, { on_message, on_socket_close }, timeout_s = 30) => {
     return new Promise((resolve, reject) => {
@@ -242,8 +243,8 @@ let next_tick_promise = () => {
  * I need to put it here so other code,
  * like running cells, will also wait for the updates to complete.
  * I SHALL MAKE IT MORE COMPLEX! (https://www.youtube.com/watch?v=aO3JgPUJ6iQ&t=195s)
- * @param {Function} send
- * @returns
+ * @param {import("./PlutoConnectionSendFn").SendFn} send
+ * @returns {import("./PlutoConnectionSendFn").SendFn}
  */
 const batched_updates = (send) => {
     let current_combined_updates_promise = null
@@ -278,10 +279,14 @@ const batched_updates = (send) => {
     return batched
 }
 
-export const ws_address_from_base = (base_url) => {
+export const ws_address_from_base = (/** @type {string | URL} */ base_url) => {
     const ws_url = new URL("./", base_url)
     ws_url.protocol = ws_url.protocol.replace("http", "ws")
-    return String(ws_url)
+
+    // if the original URL had a secret in the URL, we can also add it here:
+    const ws_url_with_secret = with_query_params(ws_url, { secret: new URL(base_url).searchParams.get("secret") })
+
+    return ws_url_with_secret
 }
 
 const default_ws_address = () => ws_address_from_base(window.location.href)
@@ -289,14 +294,15 @@ const default_ws_address = () => ws_address_from_base(window.location.href)
 /**
  * @typedef PlutoConnection
  * @type {{
- *  session_options: Object,
- *  send: () => void,
+ *  session_options: Record<string,any>,
+ *  send: import("./PlutoConnectionSendFn").SendFn,
  *  kill: () => void,
  *  version_info: {
  *      julia: string,
  *      pluto: string,
  *      dismiss_update_notification: boolean,
  *  },
+ *  notebook_exists: boolean,
  * }}
  */
 
@@ -313,7 +319,7 @@ const default_ws_address = () => ws_address_from_base(window.location.href)
  * @param {{
  *  on_unrequested_update: (message: PlutoMessage, by_me: boolean) => void,
  *  on_reconnect: () => boolean,
- *  on_connection_status: (connection_status: boolean) => void,
+ *  on_connection_status: (connection_status: boolean, hopeless: boolean) => void,
  *  connect_metadata?: Object,
  *  ws_address?: String,
  * }} options
@@ -335,21 +341,18 @@ export const create_pluto_connection = async ({
             pluto: "unknown",
             dismiss_update_notification: false,
         },
+        notebook_exists: true,
         kill: null,
     } // same
 
     const client_id = get_unique_short_id()
     const sent_requests = new Map()
 
-    /**
-     * Send a message to the Pluto backend, and return a promise that resolves when the backend sends a response. Not all messages receive a response.
-     * @param {string} message_type
-     * @param {Object} body
-     * @param {{notebook_id?: string, cell_id?: string}} metadata
-     * @param {boolean} no_broadcast if false, the message will be emitteed to on_update
-     * @returns {(undefined|Promise<Object>)}
-     */
+    /** @type {import("./PlutoConnectionSendFn").SendFn} */
     const send = async (message_type, body = {}, metadata = {}, no_broadcast = true) => {
+        if (ws_connection == null) {
+            throw new Error("No connection established yet")
+        }
         const request_id = get_unique_short_id()
 
         const message = {
@@ -418,7 +421,7 @@ export const create_pluto_connection = async ({
                     on_unrequested_update(update, by_me)
                 },
                 on_socket_close: async () => {
-                    on_connection_status(false)
+                    on_connection_status(false, false)
 
                     console.log(`Starting new websocket`, new Date().toLocaleTimeString())
                     await Promises.delay(reconnect_after_close_delay)
@@ -427,7 +430,7 @@ export const create_pluto_connection = async ({
                     console.log(`Starting state sync`, new Date().toLocaleTimeString())
                     const accept = on_reconnect()
                     console.log(`State sync ${accept ? "" : "not "}successful`, new Date().toLocaleTimeString())
-                    on_connection_status(accept)
+                    on_connection_status(accept, false)
                     if (!accept) {
                         alert("Connection out of sync 😥\n\nRefresh the page to continue")
                     }
@@ -438,8 +441,12 @@ export const create_pluto_connection = async ({
             console.log("Hello?")
             const u = await send("connect", {}, connect_metadata)
             console.log("Hello!")
+            client.kill = () => {
+                if (ws_connection) ws_connection.socket.close()
+            }
             client.session_options = u.message.options
             client.version_info = u.message.version_info
+            client.notebook_exists = u.message.notebook_exists
 
             console.log("Client object: ", client)
 
@@ -448,10 +455,10 @@ export const create_pluto_connection = async ({
                 if (await confirm("A new server was started - this notebook session is no longer running.\n\nWould you like to go back to the main menu?")) {
                     window.location.href = "./"
                 }
-                on_connection_status(false)
+                on_connection_status(false, true)
                 return {}
             }
-            on_connection_status(true)
+            on_connection_status(true, false)
 
             const ping = () => {
                 send("ping", {}, {})
@@ -459,7 +466,7 @@ export const create_pluto_connection = async ({
                         // Ping faster than timeout?
                         setTimeout(ping, 28 * 1000)
                     })
-                    .catch()
+                    .catch(() => undefined)
             }
             ping()
 
@@ -473,18 +480,4 @@ export const create_pluto_connection = async ({
     await connect()
 
     return client
-}
-
-export const fetch_pluto_releases = async () => {
-    let response = await fetch("https://api.github.com/repos/fonsp/Pluto.jl/releases", {
-        method: "GET",
-        mode: "cors",
-        cache: "no-cache",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        redirect: "follow",
-        referrerPolicy: "no-referrer",
-    })
-    return (await response.json()).reverse()
 }

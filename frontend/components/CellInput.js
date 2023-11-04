@@ -1,11 +1,12 @@
 import { html, useState, useEffect, useLayoutEffect, useRef, useContext, useMemo } from "../imports/Preact.js"
+import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 import _ from "../imports/lodash.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
-import { PlutoContext } from "../common/PlutoContext.js"
+import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { get_selected_doc_from_state } from "./CellInput/LiveDocsFromCursor.js"
-import { go_to_definition_plugin, ScopeStateField, UsedVariablesFacet } from "./CellInput/go_to_definition_plugin.js"
-import { detect_deserializer } from "../common/Serialization.js"
+import { go_to_definition_plugin, GlobalDefinitionsFacet } from "./CellInput/go_to_definition_plugin.js"
+// import { debug_syntax_plugin } from "./CellInput/debug_syntax_plugin.js"
 
 import {
     EditorState,
@@ -33,7 +34,6 @@ import {
     closeBracketsKeymap,
     searchKeymap,
     foldKeymap,
-    commentKeymap,
     syntaxTree,
     Decoration,
     ViewUpdate,
@@ -43,9 +43,17 @@ import {
     StateField,
     StateEffect,
     autocomplete,
+    htmlLanguage,
+    markdownLanguage,
+    javascriptLanguage,
+    pythonLanguage,
+    syntaxHighlighting,
+    cssLanguage,
+    setDiagnostics,
 } from "../imports/CodemirrorPlutoSetup.js"
 
-import { markdown, html as htmlLang, javascript, sqlLang, python, julia_andrey } from "./CellInput/mixedParsers.js"
+import { markdown, html as htmlLang, javascript, sqlLang, python, julia_mixed } from "./CellInput/mixedParsers.js"
+import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
 import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"
@@ -53,54 +61,255 @@ import { cell_movement_plugin, prevent_holding_a_key_from_doing_things_across_ce
 import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
 import { cl } from "../common/ClassTable.js"
+import { HighlightLineFacet, HighlightRangeFacet, highlightLinePlugin, highlightRangePlugin } from "./CellInput/highlight_line.js"
+import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
+import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
+import { mod_d_command } from "./CellInput/mod_d_command.js"
+import { open_bottom_right_panel } from "./BottomRightPanel.js"
+import { timeout_promise } from "../common/PlutoConnection.js"
 
-export const pluto_syntax_colors = HighlightStyle.define([
-    /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
-    // Symbol
-    { tag: tags.literal, color: "#5e7ad3", fontWeight: 700 },
-    { tag: tags.macroName, color: "#5668a4", fontWeight: 700 },
-    // `nothing` I guess... Any others?
-    { tag: tags.standard(tags.variableName), color: "#5e7ad3", fontWeight: 700 },
+export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 
-    { tag: tags.bool, color: "#5e7ad3", fontWeight: 700 },
+if (ENABLE_CM_MIXED_PARSER) {
+    console.log(`YOU ENABLED THE CODEMIRROR MIXED LANGUAGE PARSER
+Thanks! Awesome!
+Please let us know if you find any bugs...
+If enough people do this, we can make it the default parser.
+`)
+}
 
-    { tag: tags.keyword, color: "#fc6" },
-    { tag: tags.comment, color: "#e96ba8", fontStyle: "italic" },
-    { tag: tags.atom, color: "#815ba4" },
-    { tag: tags.number, color: "#815ba4" },
-    { tag: tags.bracket, color: "#48b685" },
-    { tag: tags.keyword, color: "#ef6155" },
-    { tag: tags.string, color: "#da5616" },
-    { tag: tags.variableName, color: "#5668a4", fontWeight: 700 },
-    // { tag: tags.variable2, color: "#06b6ef" },
-    { tag: tags.definition(tags.variableName), color: "#f99b15" },
-    { tag: tags.bracket, color: "#41323f" },
-    { tag: tags.brace, color: "#41323f" },
-    { tag: tags.tagName, color: "#ef6155" },
-    { tag: tags.link, color: "#815ba4" },
-    { tag: tags.invalid, color: "#000", background: "#ef6155" },
-    // Object.keys(tags).map((x) => ({ tag: x, color: x })),
-    // Markdown
-    { tag: tags.heading, color: "#081e87", fontWeight: 500 },
-    { tag: tags.heading1, color: "#081e87", fontWeight: 500, fontSize: "1.5em" },
-    { tag: tags.heading2, color: "#081e87", fontWeight: 500, fontSize: "1.4em" },
-    { tag: tags.heading3, color: "#081e87", fontWeight: 500, fontSize: "1.25em" },
-    { tag: tags.heading4, color: "#081e87", fontWeight: 500, fontSize: "1.1em" },
-    { tag: tags.heading5, color: "#081e87", fontWeight: 500, fontSize: "1em" },
-    { tag: tags.heading6, color: "#081e87", fontWeight: "bold", fontSize: "0.8em" },
-    { tag: tags.url, color: "#48b685", textDecoration: "underline" },
-    { tag: tags.quote, color: "#444", fontStyle: "italic" },
-    { tag: tags.literal, color: "#232227", fontWeight: 700 },
-    // HTML
-    { tag: tags.tagName, color: "#01654f", fontWeight: 600 },
-    { tag: tags.attributeName, color: "#01654f", fontWeight: 400 },
-    { tag: tags.attributeValue, color: "#01654f", fontWeight: 600 },
-    { tag: tags.angleBracket, color: "#01654f", fontWeight: 600 },
-    { tag: tags.content, color: "#232227", fontWeight: 400 },
-    { tag: tags.documentMeta, color: "#232227", fontStyle: "italic" },
-    // CSS
-    { tag: tags.className, color: "grey", fontWeight: "bold" },
-])
+// Added this so we can have people test the mixed parser, because I LIKE IT SO MUCH - DRAL
+// @ts-ignore
+window.PLUTO_TOGGLE_CM_MIXED_PARSER = () => {
+    window.localStorage.setItem("ENABLE_CM_MIXED_PARSER", String(!ENABLE_CM_MIXED_PARSER))
+    window.location.reload()
+}
+
+export const pluto_syntax_colors = HighlightStyle.define(
+    [
+        /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
+        // Symbol
+        // { tag: tags.controlKeyword, color: "var(--cm-keyword-color)", fontWeight: 700 },
+
+        { tag: tags.propertyName, color: "var(--cm-property-color)" },
+        { tag: tags.unit, color: "var(--cm-tag-color)" },
+        { tag: tags.literal, color: "var(--cm-builtin-color)", fontWeight: 700 },
+        { tag: tags.macroName, color: "var(--cm-macro-color)", fontWeight: 700 },
+
+        // I (ab)use `special(brace)` for interpolations.
+        // lang-javascript does the same so I figure it is "best practice" 😅
+        { tag: tags.special(tags.brace), color: "var(--cm-macro-color)", fontWeight: 700 },
+
+        // `nothing` I guess... Any others?
+        {
+            tag: tags.standard(tags.variableName),
+            color: "var(--cm-builtin-color)",
+            fontWeight: 700,
+        },
+
+        { tag: tags.bool, color: "var(--cm-builtin-color)", fontWeight: 700 },
+
+        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
+        { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
+        { tag: tags.atom, color: "var(--cm-atom-color)" },
+        { tag: tags.number, color: "var(--cm-number-color)" },
+        // { tag: tags.property, color: "#48b685" },
+        // { tag: tags.attribute, color: "#48b685" },
+        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
+        { tag: tags.string, color: "var(--cm-string-color)" },
+        { tag: tags.variableName, color: "var(--cm-var-color)", fontWeight: 700 },
+        // { tag: tags.variable2, color: "#06b6ef" },
+        { tag: tags.typeName, color: "var(--cm-type-color)", fontStyle: "italic" },
+        { tag: tags.typeOperator, color: "var(--cm-type-color)", fontStyle: "italic" },
+        { tag: tags.bracket, color: "var(--cm-bracket-color)" },
+        { tag: tags.brace, color: "var(--cm-bracket-color)" },
+        { tag: tags.tagName, color: "var(--cm-tag-color)" },
+        { tag: tags.link, color: "var(--cm-link-color)" },
+        {
+            tag: tags.invalid,
+            color: "var(--cm-error-color)",
+            background: "var(--cm-error-bg-color)",
+        },
+    ],
+    {
+        all: { color: `var(--cm-editor-text-color)` },
+        scope: julia_andrey().language,
+    }
+)
+
+export const pluto_syntax_colors_javascript = HighlightStyle.define(
+    [
+        // SAME AS JULIA:
+        { tag: tags.propertyName, color: "var(--cm-property-color)" },
+        { tag: tags.unit, color: "var(--cm-tag-color)" },
+        { tag: tags.literal, color: "var(--cm-builtin-color)", fontWeight: 700 },
+        { tag: tags.macroName, color: "var(--cm-macro-color)", fontWeight: 700 },
+
+        // `nothing` I guess... Any others?
+        {
+            tag: tags.standard(tags.variableName),
+            color: "var(--cm-builtin-color)",
+            fontWeight: 700,
+        },
+
+        { tag: tags.bool, color: "var(--cm-builtin-color)", fontWeight: 700 },
+
+        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
+        { tag: tags.atom, color: "var(--cm-atom-color)" },
+        { tag: tags.number, color: "var(--cm-number-color)" },
+        // { tag: tags.property, color: "#48b685" },
+        // { tag: tags.attribute, color: "#48b685" },
+        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
+        { tag: tags.string, color: "var(--cm-string-color)" },
+        { tag: tags.variableName, color: "var(--cm-var-color)", fontWeight: 700 },
+        // { tag: tags.variable2, color: "#06b6ef" },
+        { tag: tags.typeName, color: "var(--cm-type-color)", fontStyle: "italic" },
+        { tag: tags.typeOperator, color: "var(--cm-type-color)", fontStyle: "italic" },
+        { tag: tags.bracket, color: "var(--cm-bracket-color)" },
+        { tag: tags.brace, color: "var(--cm-bracket-color)" },
+        { tag: tags.tagName, color: "var(--cm-tag-color)" },
+        { tag: tags.link, color: "var(--cm-link-color)" },
+        {
+            tag: tags.invalid,
+            color: "var(--cm-error-color)",
+            background: "var(--cm-error-bg-color)",
+        },
+
+        // JAVASCRIPT SPECIFIC
+        { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic", filter: "none" },
+    ],
+    {
+        scope: javascriptLanguage,
+        all: {
+            color: `var(--cm-editor-text-color)`,
+            filter: `contrast(0.5)`,
+        },
+    }
+)
+
+export const pluto_syntax_colors_python = HighlightStyle.define(
+    [
+        // SAME AS JULIA:
+        { tag: tags.propertyName, color: "var(--cm-property-color)" },
+        { tag: tags.unit, color: "var(--cm-tag-color)" },
+        { tag: tags.literal, color: "var(--cm-builtin-color)", fontWeight: 700 },
+        { tag: tags.macroName, color: "var(--cm-macro-color)", fontWeight: 700 },
+
+        // `nothing` I guess... Any others?
+        {
+            tag: tags.standard(tags.variableName),
+            color: "var(--cm-builtin-color)",
+            fontWeight: 700,
+        },
+
+        { tag: tags.bool, color: "var(--cm-builtin-color)", fontWeight: 700 },
+
+        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
+        { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
+        { tag: tags.atom, color: "var(--cm-atom-color)" },
+        { tag: tags.number, color: "var(--cm-number-color)" },
+        // { tag: tags.property, color: "#48b685" },
+        // { tag: tags.attribute, color: "#48b685" },
+        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
+        { tag: tags.string, color: "var(--cm-string-color)" },
+        { tag: tags.variableName, color: "var(--cm-var-color)", fontWeight: 700 },
+        // { tag: tags.variable2, color: "#06b6ef" },
+        { tag: tags.typeName, color: "var(--cm-type-color)", fontStyle: "italic" },
+        { tag: tags.typeOperator, color: "var(--cm-type-color)", fontStyle: "italic" },
+        { tag: tags.bracket, color: "var(--cm-bracket-color)" },
+        { tag: tags.brace, color: "var(--cm-bracket-color)" },
+        { tag: tags.tagName, color: "var(--cm-tag-color)" },
+        { tag: tags.link, color: "var(--cm-link-color)" },
+        {
+            tag: tags.invalid,
+            color: "var(--cm-error-color)",
+            background: "var(--cm-error-bg-color)",
+        },
+
+        // PYTHON SPECIFIC
+    ],
+    {
+        scope: pythonLanguage,
+        all: {
+            color: "var(--cm-editor-text-color)",
+            filter: `contrast(0.5)`,
+        },
+    }
+)
+
+export const pluto_syntax_colors_css = HighlightStyle.define(
+    [
+        { tag: tags.propertyName, color: "var(--cm-css-accent-color)", fontWeight: 700 },
+        { tag: tags.variableName, color: "var(--cm-css-accent-color)", fontWeight: 700 },
+        { tag: tags.definitionOperator, color: "var(--cm-css-color)" },
+        { tag: tags.keyword, color: "var(--cm-css-color)" },
+        { tag: tags.modifier, color: "var(--cm-css-accent-color)" },
+        { tag: tags.punctuation, opacity: 0.5 },
+        { tag: tags.literal, color: "var(--cm-css-color)" },
+        // { tag: tags.unit, color: "var(--cm-css-accent-color)" },
+        { tag: tags.tagName, color: "var(--cm-css-color)", fontWeight: 700 },
+        { tag: tags.className, color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)" },
+        { tag: tags.constant(tags.className), color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)" },
+
+        // Comment from julia
+        { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
+    ],
+    {
+        scope: cssLanguage,
+        all: { color: "var(--cm-css-color)" },
+    }
+)
+
+export const pluto_syntax_colors_html = HighlightStyle.define(
+    [
+        { tag: tags.tagName, color: "var(--cm-html-accent-color)", fontWeight: 600 },
+        { tag: tags.attributeName, color: "var(--cm-html-accent-color)", fontWeight: 600 },
+        { tag: tags.attributeValue, color: "var(--cm-html-accent-color)" },
+        { tag: tags.angleBracket, color: "var(--cm-html-accent-color)", fontWeight: 600, opacity: 0.7 },
+        { tag: tags.content, color: "var(--cm-html-color)", fontWeight: 400 },
+        { tag: tags.documentMeta, color: "var(--cm-html-accent-color)" },
+        { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
+    ],
+    {
+        scope: htmlLanguage,
+        all: {
+            color: "var(--cm-html-color)",
+        },
+    }
+)
+
+// https://github.com/codemirror/lang-markdown/blob/main/src/markdown.ts
+export const pluto_syntax_colors_markdown = HighlightStyle.define(
+    [
+        { tag: tags.content, color: "var(--cm-md-color)" },
+        { tag: tags.quote, color: "var(--cm-md-color)" },
+        { tag: tags.link, textDecoration: "underline" },
+        { tag: tags.url, color: "var(--cm-md-color)", textDecoration: "none" },
+        { tag: tags.emphasis, fontStyle: "italic" },
+        { tag: tags.strong, fontWeight: "bolder" },
+
+        { tag: tags.heading, color: "var(--cm-md-color)", fontWeight: 700 },
+        {
+            tag: tags.comment,
+            color: "var(--cm-comment-color)",
+            fontStyle: "italic",
+        },
+        {
+            // These are all the things you won't see in the result:
+            // `-` bullet points, the `#` for headers, the `>` with quoteblocks.
+            tag: tags.processingInstruction,
+            color: "var(--cm-md-accent-color) !important",
+            opacity: "0.5",
+        },
+        { tag: tags.monospace, color: "var(--cm-md-accent-color)" },
+    ],
+    {
+        scope: markdownLanguage,
+        all: {
+            color: "var(--cm-md-color)",
+        },
+    }
+)
 
 const getValue6 = (/** @type {EditorView} */ cm) => cm.state.doc.toString()
 const setValue6 = (/** @type {EditorView} */ cm, value) =>
@@ -113,7 +322,7 @@ const replaceRange6 = (/** @type {EditorView} */ cm, text, from, to) =>
     })
 
 // Compartments: https://codemirror.net/6/examples/config/
-let useCompartment = (/** @type {import("../imports/Preact.js").Ref<EditorView>} */ codemirror_ref, value) => {
+let useCompartment = (/** @type {import("../imports/Preact.js").Ref<EditorView?>} */ codemirror_ref, value) => {
     let compartment = useRef(new Compartment())
     let initial_value = useRef(compartment.current.of(value))
 
@@ -138,7 +347,8 @@ let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPluto
  *  remote_code: string,
  *  scroll_into_view_after_creation: boolean,
  *  cell_dependencies: import("./Editor.js").CellDependencyData,
- *  variables_in_all_notebook: { [variable_name: string]: string },
+ *  nbpkg: import("./Editor.js").NotebookPkgData?,
+ *  global_definition_locations: { [variable_name: string]: string },
  *  [key: string]: any,
  * }} props
  */
@@ -156,23 +366,40 @@ export const CellInput = ({
     on_change,
     on_update_doc_query,
     on_focus_neighbor,
+    on_line_heights,
     nbpkg,
     cell_id,
     notebook_id,
-    running_disabled,
-    cell_dependencies,
-    variables_in_all_notebook,
+    any_logs,
+    show_logs,
+    set_show_logs,
+    set_cell_disabled,
+    cm_highlighted_line,
+    cm_highlighted_range,
+    metadata,
+    global_definition_locations,
+    cm_diagnostics,
 }) => {
-    let pluto_actions = useContext(PlutoContext)
+    let pluto_actions = useContext(PlutoActionsContext)
+    const { disabled: running_disabled, skip_as_script } = metadata
+    let [error, set_error] = useState(null)
+    if (error) {
+        const to_throw = error
+        set_error(null)
+        throw to_throw
+    }
 
-    const newcm_ref = useRef(/** @type {EditorView} */ (null))
-    const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))
-    const remote_code_ref = useRef(null)
-    const on_change_ref = useRef(null)
-    on_change_ref.current = on_change
+    const notebook_id_ref = useRef(notebook_id)
+    notebook_id_ref.current = notebook_id
+
+    const newcm_ref = useRef(/** @type {EditorView?} */ (null))
+    const dom_node_ref = useRef(/** @type {HTMLElement?} */ (null))
+    const remote_code_ref = useRef(/** @type {string?} */ (null))
 
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
-    let used_variables_compartment = useCompartment(newcm_ref, UsedVariablesFacet.of(variables_in_all_notebook))
+    let global_definitions_compartment = useCompartment(newcm_ref, GlobalDefinitionsFacet.of(global_definition_locations))
+    let highlighted_line_compartment = useCompartment(newcm_ref, HighlightLineFacet.of(cm_highlighted_line))
+    let highlighted_range_compartment = useCompartment(newcm_ref, HighlightRangeFacet.of(cm_highlighted_range))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
 
     let on_change_compartment = useCompartment(
@@ -188,6 +415,8 @@ export const CellInput = ({
     )
 
     useLayoutEffect(() => {
+        if (dom_node_ref.current == null) return
+
         const keyMapSubmit = () => {
             on_submit()
             return true
@@ -208,8 +437,11 @@ export const CellInput = ({
 
         let select_autocomplete_command = autocomplete.completionKeymap.find((keybinding) => keybinding.key === "Enter")
         let keyMapTab = (/** @type {EditorView} */ cm) => {
+            if (cm.state.readOnly) {
+                return false
+            }
             // This will return true if the autocomplete select popup is open
-            if (select_autocomplete_command.run(cm)) {
+            if (select_autocomplete_command?.run?.(cm)) {
                 return true
             }
 
@@ -226,7 +458,7 @@ export const CellInput = ({
             }
         }
         const keyMapMD = () => {
-            const cm = newcm_ref.current
+            const cm = /** @type{EditorView} */ (newcm_ref.current)
             const value = getValue6(cm)
             const trimmed = value.trim()
             const offset = value.length - value.trimStart().length
@@ -269,7 +501,11 @@ export const CellInput = ({
                 cm.dispatch({
                     changes: [
                         { from: 0, to: 0, insert: prefix },
-                        { from: cm.state.doc.length, to: cm.state.doc.length, insert: suffix },
+                        {
+                            from: cm.state.doc.length,
+                            to: cm.state.doc.length,
+                            insert: suffix,
+                        },
                     ],
                     selection:
                         selection.from === 0
@@ -292,11 +528,12 @@ export const CellInput = ({
                 on_delete()
                 return true
             }
+            return false
         }
 
         const keyMapBackspace = (/** @type {EditorView} */ cm) => {
             if (cm.state.facet(EditorState.readOnly)) {
-                return
+                return false
             }
 
             // Previously this was a very elaborate timed implementation......
@@ -308,6 +545,7 @@ export const CellInput = ({
                 on_delete()
                 return true
             }
+            return false
         }
 
         const plutoKeyMaps = [
@@ -324,9 +562,11 @@ export const CellInput = ({
             { key: "Ctrl-Delete", run: keyMapDelete },
             { key: "Backspace", run: keyMapBackspace },
             { key: "Ctrl-Backspace", run: keyMapBackspace },
+
+            mod_d_command,
         ]
 
-        let DOCS_UPDATER_VERBOSE = true
+        let DOCS_UPDATER_VERBOSE = false
         const docs_updater = EditorView.updateListener.of((update) => {
             if (!update.view.hasFocus) {
                 return
@@ -334,30 +574,32 @@ export const CellInput = ({
 
             if (update.docChanged || update.selectionSet) {
                 let state = update.state
-                DOCS_UPDATER_VERBOSE && console.groupCollapsed("Selection")
-                let result = get_selected_doc_from_state(state, DOCS_UPDATER_VERBOSE)
-                DOCS_UPDATER_VERBOSE && console.log("Result:", result)
-                DOCS_UPDATER_VERBOSE && console.groupEnd()
-
-                if (result != null) {
-                    on_update_doc_query(result)
+                DOCS_UPDATER_VERBOSE && console.groupCollapsed("Live docs updater")
+                try {
+                    let result = get_selected_doc_from_state(state, DOCS_UPDATER_VERBOSE)
+                    if (result != null) {
+                        on_update_doc_query(result)
+                    }
+                } finally {
+                    DOCS_UPDATER_VERBOSE && console.groupEnd()
                 }
             }
         })
 
-        // TODO remove me
-        //@ts-ignore
-        window.tags = tags
+        const usesDarkTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         const newcm = (newcm_ref.current = new EditorView({
-            /** Migration #0: New */
             state: EditorState.create({
                 doc: local_code,
-
                 extensions: [
+                    EditorView.theme({}, { dark: usesDarkTheme }),
                     // Compartments coming from react state/props
                     nbpkg_compartment,
-                    used_variables_compartment,
+                    highlighted_line_compartment,
+                    highlighted_range_compartment,
+                    global_definitions_compartment,
                     editable_compartment,
+                    highlightLinePlugin(),
+                    highlightRangePlugin(),
 
                     // This is waaaay in front of the keys it is supposed to override,
                     // Which is necessary because it needs to run before *any* keymap,
@@ -366,9 +608,14 @@ export const CellInput = ({
                     // TODO Use https://codemirror.net/6/docs/ref/#state.Prec when added to pluto-codemirror-setup
                     prevent_holding_a_key_from_doing_things_across_cells,
 
-                    pkgBubblePlugin({ pluto_actions, notebook_id }),
+                    pkgBubblePlugin({ pluto_actions, notebook_id_ref }),
                     ScopeStateField,
-                    pluto_syntax_colors,
+                    syntaxHighlighting(pluto_syntax_colors),
+                    syntaxHighlighting(pluto_syntax_colors_html),
+                    syntaxHighlighting(pluto_syntax_colors_markdown),
+                    syntaxHighlighting(pluto_syntax_colors_javascript),
+                    syntaxHighlighting(pluto_syntax_colors_python),
+                    syntaxHighlighting(pluto_syntax_colors_css),
                     lineNumbers(),
                     highlightSpecialChars(),
                     history(),
@@ -377,7 +624,6 @@ export const CellInput = ({
                     // Multiple cursors with `alt` instead of the default `ctrl` (which we use for go to definition)
                     EditorView.clickAddsSelectionRange.of((event) => event.altKey && !event.shiftKey),
                     indentOnInput(),
-                    defaultHighlightStyle.fallback,
                     // Experimental: Also add closing brackets for tripple string
                     // TODO also add closing string when typing a string macro
                     EditorState.languageData.of((state, pos, side) => {
@@ -393,38 +639,65 @@ export const CellInput = ({
                     // Remove selection on blur
                     EditorView.domEventHandlers({
                         blur: (event, view) => {
-                            view.dispatch({
-                                selection: {
-                                    anchor: view.state.selection.main.head,
-                                    head: view.state.selection.main.head,
-                                },
-                            })
-                            set_cm_forced_focus(null)
+                            // it turns out that this condition is true *exactly* if and only if the blur event was triggered by blurring the window
+                            let caused_by_window_blur = document.activeElement === view.contentDOM
+
+                            if (!caused_by_window_blur) {
+                                // then it's caused by focusing something other than this cell in the editor.
+                                // in this case, we want to collapse the selection into a single point, for aesthetic reasons.
+                                setTimeout(() => {
+                                    view.dispatch({
+                                        selection: {
+                                            anchor: view.state.selection.main.head,
+                                        },
+                                        scrollIntoView: false,
+                                    })
+                                    // and blur the DOM again (because the previous transaction might have re-focused it)
+                                    view.contentDOM.blur()
+                                }, 0)
+
+                                set_cm_forced_focus(null)
+                            }
                         },
                     }),
                     pluto_paste_plugin({
-                        pluto_actions: pluto_actions,
-                        cell_id: cell_id,
+                        pluto_actions,
+                        cell_id,
                     }),
                     // Update live docs when in a cell that starts with `?`
                     EditorView.updateListener.of((update) => {
                         if (!update.docChanged) return
                         if (update.state.doc.length > 0 && update.state.sliceDoc(0, 1) === "?") {
-                            window.dispatchEvent(new CustomEvent("open_live_docs"))
+                            open_bottom_right_panel("docs")
                         }
                     }),
                     EditorState.tabSize.of(4),
                     indentUnit.of("\t"),
-                    julia_andrey(),
-                    markdown(),
-                    htmlLang(), //Provides tag closing!,
-                    javascript(),
-                    python(),
-                    sqlLang,
+                    ...(ENABLE_CM_MIXED_PARSER
+                        ? [
+                              julia_mixed(),
+                              markdown({
+                                  defaultCodeLanguage: julia_mixed(),
+                              }),
+                              htmlLang(), //Provides tag closing!,
+                              javascript(),
+                              python(),
+                              sqlLang,
+                          ]
+                        : [
+                              //
+                              julia_andrey(),
+                          ]),
                     go_to_definition_plugin,
                     pluto_autocomplete({
                         request_autocomplete: async ({ text }) => {
-                            let { message } = await pluto_actions.send("complete", { query: text }, { notebook_id: notebook_id })
+                            let response = await timeout_promise(
+                                pluto_actions.send("complete", { query: text }, { notebook_id: notebook_id_ref.current }),
+                                5000
+                            ).catch(console.warn)
+                            if (!response) return null
+
+                            let { message } = response
                             return {
                                 start: utf8index_to_ut16index(text, message.start),
                                 stop: utf8index_to_ut16index(text, message.stop),
@@ -437,17 +710,42 @@ export const CellInput = ({
                     // I put plutoKeyMaps separately because I want make sure we have
                     // higher priority 😈
                     keymap.of(plutoKeyMaps),
+                    keymap.of(commentKeymap),
                     // Before default keymaps (because we override some of them)
                     // but after the autocomplete plugin, because we don't want to move cell when scrolling through autocomplete
-                    cell_movement_plugin({ focus_on_neighbor: ({ cell_delta, line, character }) => on_focus_neighbor(cell_id, cell_delta, line, character) }),
-                    keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, ...foldKeymap, ...commentKeymap]),
+                    cell_movement_plugin({
+                        focus_on_neighbor: ({ cell_delta, line, character }) => on_focus_neighbor(cell_id, cell_delta, line, character),
+                    }),
+                    keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, ...foldKeymap]),
                     placeholder("Enter cell code..."),
 
                     EditorView.lineWrapping,
-                    // Disabled awesome_line_wrapping because it still fails in a lot of cases
-                    // awesome_line_wrapping,
+                    // Wowww this has been enabled for some time now... wonder if there are issues about this yet ;) - DRAL
+                    awesome_line_wrapping,
+
+                    // Reset diagnostics on change
+                    EditorView.updateListener.of((update) => {
+                        if (!update.docChanged) return
+                        update.view.dispatch(setDiagnostics(update.state, []))
+                    }),
 
                     on_change_compartment,
+
+                    // This is my weird-ass extension that checks the AST and shows you where
+                    // there're missing nodes.. I'm not sure if it's a good idea to have it
+                    // show_missing_syntax_plugin(),
+
+                    // Enable this plugin if you want to see the lezer tree,
+                    // and possible lezer errors and maybe more debug info in the console:
+                    // debug_syntax_plugin,
+                    // Handle errors hopefully?
+                    EditorView.exceptionSink.of((exception) => {
+                        set_error(exception)
+                        console.error("EditorView exception!", exception)
+                        // alert(
+                        //     `We ran into an issue! We have lost your cursor 😞😓😿\n If this appears again, please press F12, then click the "Console" tab,  eport an issue at https://github.com/fonsp/Pluto.jl/issues`
+                        // )
+                    }),
                 ],
             }),
             parent: dom_node_ref.current,
@@ -463,6 +761,7 @@ export const CellInput = ({
         if (focus_after_creation) {
             setTimeout(() => {
                 let view = newcm_ref.current
+                if (view == null) return
                 view.dom.scrollIntoView({
                     behavior: "smooth",
                     block: "nearest",
@@ -476,7 +775,32 @@ export const CellInput = ({
                 view.focus()
             })
         }
+
+        // @ts-ignore
+        const lines_wrapper_dom_node = dom_node_ref.current.querySelector("div.cm-content")
+        if (lines_wrapper_dom_node) {
+            const lines_wrapper_resize_observer = new ResizeObserver(() => {
+                const line_nodes = lines_wrapper_dom_node.children
+                const tops = _.map(line_nodes, (c) => /** @type{HTMLElement} */ (c).offsetTop)
+                const diffs = tops.slice(1).map((y, i) => y - tops[i])
+                const heights = [...diffs, 15]
+                on_line_heights(heights)
+            })
+
+            lines_wrapper_resize_observer.observe(lines_wrapper_dom_node)
+            return () => {
+                lines_wrapper_resize_observer.unobserve(lines_wrapper_dom_node)
+            }
+        }
     }, [])
+
+    useEffect(() => {
+        if (newcm_ref.current == null) return
+        const cm = newcm_ref.current
+        const diagnostics = cm_diagnostics
+
+        cm.dispatch(setDiagnostics(cm.state, diagnostics))
+    }, [cm_diagnostics])
 
     // Effect to apply "remote_code" to the cell when it changes...
     // ideally this won't be necessary as we'll have actual multiplayer,
@@ -498,6 +822,7 @@ export const CellInput = ({
 
     useEffect(() => {
         const cm = newcm_ref.current
+        if (cm == null) return
         if (cm_forced_focus == null) {
             cm.dispatch({
                 selection: {
@@ -530,36 +855,70 @@ export const CellInput = ({
                 // block: "center",
             })
 
-            newcm_ref.current.focus()
-            newcm_ref.current.dispatch({
+            cm.focus()
+            cm.dispatch({
+                scrollIntoView: true,
                 selection: new_selection,
+                effects: [
+                    EditorView.scrollIntoView(EditorSelection.range(new_selection.anchor, new_selection.head), {
+                        yMargin: 80,
+                    }),
+                ],
             })
         }
     }, [cm_forced_focus])
 
     return html`
         <pluto-input ref=${dom_node_ref} class="CodeMirror" translate=${false}>
-            <${InputContextMenu} on_delete=${on_delete} cell_id=${cell_id} run_cell=${on_submit} running_disabled=${running_disabled} />
+            <${InputContextMenu}
+                on_delete=${on_delete}
+                cell_id=${cell_id}
+                run_cell=${on_submit}
+                skip_as_script=${skip_as_script}
+                running_disabled=${running_disabled}
+                any_logs=${any_logs}
+                show_logs=${show_logs}
+                set_show_logs=${set_show_logs}
+                set_cell_disabled=${set_cell_disabled}
+            />
         </pluto-input>
     `
 }
 
-const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled }) => {
+const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, running_disabled, any_logs, show_logs, set_show_logs, set_cell_disabled }) => {
     const timeout = useRef(null)
-    let pluto_actions = useContext(PlutoContext)
+    let pluto_actions = useContext(PlutoActionsContext)
     const [open, setOpen] = useState(false)
     const mouseenter = () => {
-        clearTimeout(timeout.current)
+        if (timeout.current) clearTimeout(timeout.current)
+    }
+    const toggle_skip_as_script = async (e) => {
+        const new_val = !skip_as_script
+        e.preventDefault()
+        // e.stopPropagation()
+        await pluto_actions.update_notebook((notebook) => {
+            notebook.cell_inputs[cell_id].metadata["skip_as_script"] = new_val
+        })
     }
     const toggle_running_disabled = async (e) => {
         const new_val = !running_disabled
-        e.preventDefault()
-        e.stopPropagation()
-        await pluto_actions.update_notebook((notebook) => {
-            notebook.cell_inputs[cell_id].running_disabled = new_val
-        })
-        // we also 'run' the cell if it is disabled, this will make the backend propage the disabled state to dependent cells
-        await run_cell()
+        await set_cell_disabled(new_val)
+    }
+    const toggle_logs = () => set_show_logs(!show_logs)
+
+    const is_copy_output_supported = () => {
+        let notebook = /** @type{import("./Editor.js").NotebookData?} */ (pluto_actions.get_notebook())
+        let cell_result = notebook?.cell_results?.[cell_id]
+        return !!cell_result && !cell_result.errored && !cell_result.queued && cell_result.output.mime === "text/plain" && cell_result.output.body
+    }
+
+    const copy_output = () => {
+        let notebook = /** @type{import("./Editor.js").NotebookData?} */ (pluto_actions.get_notebook())
+        let cell_output = notebook?.cell_results?.[cell_id]?.output.body ?? ""
+        cell_output &&
+            navigator.clipboard.writeText(cell_output).catch((err) => {
+                alert(`Error copying cell output`)
+            })
     }
 
     return html` <button
@@ -574,15 +933,35 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled }) =>
         <span class="icon"></span>
         ${open
             ? html`<ul onMouseenter=${mouseenter}>
-                  <li onClick=${on_delete} title="Delete"><span class="delete_icon" />Delete cell</li>
+                  <li onClick=${on_delete} title="Delete"><span class="delete ctx_icon" />Delete cell</li>
                   <li
                       onClick=${toggle_running_disabled}
                       title=${running_disabled ? "Enable and run the cell" : "Disable this cell, and all cells that depend on it"}
                   >
-                      ${running_disabled ? html`<span class="enable_cell_icon" />` : html`<span class="disable_cell_icon" />`}
+                      ${running_disabled ? html`<span class="enable_cell ctx_icon" />` : html`<span class="disable_cell ctx_icon" />`}
                       ${running_disabled ? html`<b>Enable cell</b>` : html`Disable cell`}
                   </li>
-                  <li class="coming_soon" title=""><span class="bandage_icon" /><em>Coming soon…</em></li>
+                  ${any_logs
+                      ? html`<li title="" onClick=${toggle_logs}>
+                            ${show_logs
+                                ? html`<span class="hide_logs ctx_icon" /><span>Hide logs</span>`
+                                : html`<span class="show_logs ctx_icon" /><span>Show logs</span>`}
+                        </li>`
+                      : null}
+                  ${is_copy_output_supported()
+                      ? html`<li title="Copy the output of this cell to the clipboard." onClick=${copy_output}>
+                            <span class="copy_output ctx_icon" />Copy output
+                        </li>`
+                      : null}
+                  <li
+                      onClick=${toggle_skip_as_script}
+                      title=${skip_as_script
+                          ? "This cell is currently stored in the notebook file as a Julia comment. Click here to disable."
+                          : "Store this code in the notebook file as a Julia comment. This way, it will not run when the notebook runs as a script outside of Pluto."}
+                  >
+                      ${skip_as_script ? html`<span class="skip_as_script ctx_icon" />` : html`<span class="run_as_script ctx_icon" />`}
+                      ${skip_as_script ? html`<b>Enable in file</b>` : html`Disable in file`}
+                  </li>
               </ul>`
             : html``}
     </button>`

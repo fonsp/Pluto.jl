@@ -8,11 +8,11 @@
 
 pluto-tree,
 pluto-tree-pair {
-    font-family: JuliaMono, monospace;
+    font-family: var(--julia-mono-font-stack);
     font-size: 0.75rem;
 }
 pluto-tree {
-    color: hsl(0, 0%, 25%, 0.7);
+    color: var(--pluto-tree-color);
     white-space: pre;
     cursor: pointer;
 }
@@ -21,12 +21,13 @@ pluto-tree,
 pluto-tree-items {
     display: inline-flex;
     flex-direction: column;
-    align-items: baseline;
+    align-items: flex-start;
 }
 pluto-tree.collapsed,
 pluto-tree.collapsed pluto-tree,
 pluto-tree.collapsed pluto-tree-items {
     flex-direction: row;
+    align-items: baseline;
 }
 
 pluto-tree-items {
@@ -50,6 +51,7 @@ pluto-tree > pluto-tree-prefix::before {
     opacity: 0.5;
     cursor: pointer;
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-down-outline.svg");
+    filter: var(--image-filters);
 }
 
 pluto-tree.collapsed pluto-tree > pluto-tree-prefix::before {
@@ -62,7 +64,7 @@ pluto-tree.collapsed > pluto-tree-prefix::before {
 
 pluto-tree p-r > p-v {
     display: inline-flex;
-    color: hsl(0, 0%, 25%, 1);
+    color: var(--pluto-output-color);
 }
 
 pluto-tree.collapsed pluto-tree-items.Array > p-r > p-k,
@@ -184,6 +186,7 @@ pluto-tree-more::before {
     height: 1em;
     width: 1em;
     opacity: 0.5;
+    filter: var(--image-filters);
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ellipsis-vertical.svg");
 }
 
@@ -242,7 +245,7 @@ jlerror {
 }
 
 jlerror > header {
-    color: #330000;
+    color: var(--jlerror-header-color);
 }
 jlerror > header > p {
     margin-block-end: 0.2em;
@@ -251,17 +254,18 @@ jlerror > header > p:first-child {
     font-weight: bold;
 }
 jlerror > section > ol > li > mark {
-    background: #f3f2f1;
+    background: var(--jlerror-mark-bg-color);
     border-radius: 6px;
-    font-family: JuliaMono, monospace;
+    color: var(--jlerror-mark-color);
+    font-family: var(--julia-mono-font-stack);
     font-variant-ligatures: none;
 }
 jlerror > section > ol > li > em > a {
-    background: #f5efd9;
+    background: var(--jlerror-a-bg-color);
     border-radius: 4px;
     padding: 1px 7px;
     text-decoration: none;
-    border-left: 3px solid #9a7575;
+    border-left: 3px solid var(--jlerror-a-border-left-color);
 }
 jlerror > section > ol > li > span {
     opacity: 0.8;
@@ -274,19 +278,19 @@ table.pluto-table {
 
 table.pluto-table td {
     max-width: 300px;
-    overflow: hidden;
+    overflow: auto;
 }
 
 table.pluto-table .schema-types {
-    color: rgba(0, 0, 0, 0.4);
-    font-family: "JuliaMono", monospace;
+    color: var(--pluto-schema-types-color);
+    font-family: var(--julia-mono-font-stack);
     font-size: 0.75rem;
     opacity: 0;
 }
 
 table.pluto-table .schema-types th {
-    border-bottom: 1px solid rgba(0, 0, 0, 0.2);
-    background-color: white;
+    border-bottom: 1px solid var(--pluto-schema-types-border-color);
+    background-color: var(--main-bg-color);
     height: 2rem;
 }
 
@@ -306,7 +310,7 @@ table.pluto-table .schema-types th:first-child {
 
 table.pluto-table .schema-names th,
 table.pluto-table .schema-types th:first-child {
-    background-color: white;
+    background-color: var(--main-bg-color);
     position: sticky;
     top: calc(0.25rem - var(--pluto-cell-spacing));
     height: 2rem;
@@ -318,7 +322,7 @@ table.pluto-table thead:hover .schema-names th {
 }
 
 table.pluto-table tbody th:first-child {
-    background-color: white;
+    background-color: var(--main-bg-color);
     position: sticky;
     left: -10px; /* padding-left of pluto-output*/
 }
@@ -334,4 +338,21 @@ table.pluto-table .pluto-tree-more-td pluto-tree-more {
     left: 0;
     top: 2rem;
     max-width: 650px;
+}
+
+table.pluto-table tr.empty div {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    font-size: 1.5rem;
+    flex-flow: column nowrap;
+}
+table.pluto-table tr.empty small {
+    font-size: 0.5rem;
+}
+
+pluto-tree.collapsed p-v > pre {
+    max-height: 2em;
+    overflow-y: hidden;
 }

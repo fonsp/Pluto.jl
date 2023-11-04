@@ -27,4 +27,7 @@ if (Blob.prototype.arrayBuffer == null) {
     }
 }
 
-import "https://cdn.jsdelivr.net/npm/smoothscroll-polyfill@0.4.4/dist/smoothscroll.min.js"
+//@ts-ignore
+import { polyfill as scroll_polyfill } from "https://esm.sh/seamless-scroll-polyfill@2.1.8/lib/polyfill.js?pin=v113&target=es2020"
+
+scroll_polyfill()

@@ -1,7 +1,9 @@
 // import Generators_input from "https://unpkg.com/@observablehq/stdlib@3.3.1/src/generators/input.js"
 // import Generators_input from "https://unpkg.com/@observablehq/stdlib@3.3.1/src/generators/input.js"
 
+import { open_pluto_popup } from "../components/Popup.js"
 import _ from "../imports/lodash.js"
+import { html } from "../imports/Preact.js"
 import observablehq from "./SetupCellEnvironment.js"
 
 /**
@@ -10,7 +12,7 @@ import observablehq from "./SetupCellEnvironment.js"
  * @param {Element} input
  * @returns {any}
  */
-function get_input_value(input) {
+export function get_input_value(input) {
     if (input instanceof HTMLInputElement) {
         switch (input.type) {
             case "range":
@@ -22,7 +24,7 @@ function get_input_value(input) {
             case "checkbox":
                 return input.checked
             case "file":
-                return input.multiple ? input.files : input.files[0]
+                return input.multiple ? input.files : input.files?.[0]
             default:
                 return input.value
         }
@@ -39,7 +41,7 @@ function get_input_value(input) {
  * @param {Element} input
  * @returns {string}
  */
-function eventof(input) {
+export function eventof(input) {
     //@ts-ignore
     switch (input.type) {
         case "button":
@@ -77,7 +79,10 @@ function input_generator(input) {
  * @param {Element} input
  * @param {any} new_value
  */
-const set_input_value = (input, new_value) => {
+export const set_input_value = (input, new_value) => {
+    if (input instanceof HTMLInputElement && input.type === "file") {
+        return
+    }
     if (new_value == null) {
         //@ts-ignore
         input.value = new_value
@@ -122,10 +127,14 @@ const set_input_value = (input, new_value) => {
     }
 }
 
-export const set_bound_elements_to_their_value = (node, bond_values) => {
-    for (let bond_node of node.querySelectorAll("bond")) {
+/**
+ * @param {NodeListOf<Element>} bond_nodes
+ * @param {import("../components/Editor.js").BondValuesDict} bond_values
+ */
+export const set_bound_elements_to_their_value = (bond_nodes, bond_values) => {
+    bond_nodes.forEach((bond_node) => {
         let bond_name = bond_node.getAttribute("def")
-        if (bond_node.firstElementChild != null && bond_values[bond_name] != null) {
+        if (bond_name != null && bond_node.firstElementChild != null && bond_values[bond_name] != null) {
             let val = bond_values[bond_name].value
             try {
                 set_input_value(bond_node.firstElementChild, val)
@@ -133,49 +142,86 @@ export const set_bound_elements_to_their_value = (node, bond_values) => {
                 console.error(`Error while setting input value`, bond_node.firstElementChild, `to value`, val, `: `, error)
             }
         }
-    }
+    })
 }
 
 /**
- * @param {Element} node
- * @param {(name: string, value: any) => Promise} on_bond_change
- * @param {{[name: string]: any}} known_values Object of variable names that already have a value in the state, which we may not want to send the initial bond value for. When reloading the page, bonds are set to their values from the state, and we don't want to trigger a change event for those.
+ * @param {NodeListOf<Element>} bond_nodes
+ * @param {Promise<void>} invalidation
  */
-export const add_bonds_listener = (node, on_bond_change, known_values) => {
+export const add_bonds_disabled_message_handler = (bond_nodes, invalidation) => {
+    bond_nodes.forEach((bond_node) => {
+        const listener = (e) => {
+            if (e.target.closest(".bonds_disabled:where(.offer_binder, .offer_local)")) {
+                open_pluto_popup({
+                    type: "info",
+                    source_element: e.target,
+                    body: html`${`You are viewing a static document. `}
+                        <a
+                            href="#"
+                            onClick=${(e) => {
+                                //@ts-ignore
+                                window.open_edit_or_run_popup()
+                                e.preventDefault()
+                                window.dispatchEvent(new CustomEvent("close pluto popup"))
+                            }}
+                            >Run this notebook</a
+                        >
+                        ${` to enable interactivity.`}`,
+                })
+            }
+        }
+        bond_node.addEventListener("click", listener)
+        invalidation.then(() => {
+            bond_node.removeEventListener("click", listener)
+        })
+    })
+}
+
+/**
+ * @param {NodeListOf<Element>} bond_nodes
+ * @param {(name: string, value: any) => Promise} on_bond_change
+ * @param {import("../components/Editor.js").BondValuesDict} known_values Object of variable names that already have a value in the state, which we may not want to send the initial bond value for. When reloading the page, bonds are set to their values from the state, and we don't want to trigger a change event for those.
+ * @param {Promise<void>} invalidation
+ */
+export const add_bonds_listener = (bond_nodes, on_bond_change, known_values, invalidation) => {
     // the <bond> node will be invalidated when the cell re-evaluates. when this happens, we need to stop processing input events
     let node_is_invalidated = false
 
-    node.querySelectorAll("bond").forEach(async (bond_node) => {
-        const name = bond_node.getAttribute("def")
-        const initial_value = get_input_value(bond_node.firstElementChild)
-
-        let skip_initialize = Object.keys(known_values).includes(name) && _.isEqual(known_values[name]?.value, initial_value)
-        // Initialize the bond. This will send the data to the backend for the first time. If it's already there, and the value is the same, cells won't rerun.
-        const init_promise = skip_initialize ? null : on_bond_change(name, initial_value).catch(console.error)
-
-        // see the docs on Generators.input from observablehq/stdlib
-        let skippped_first = false
-        for (let val of input_generator(bond_node.firstElementChild)) {
-            if (node_is_invalidated) break
-
-            if (skippped_first === false) {
-                skippped_first = true
-                continue
-            }
-            // wait for a new input value. If a value is ready, then this promise resolves immediately
-            const to_send = await transformed_val(await val)
-
-            // send to the Pluto back-end (have a look at set_bond in Editor.js)
-            // await the setter to avoid collisions
-            //TODO : get this from state
-            await init_promise
-            await on_bond_change(name, to_send).catch(console.error)
-        }
+    invalidation.then(() => {
+        node_is_invalidated = true
     })
 
-    return function dispose_bond_listener() {
-        node_is_invalidated = true
-    }
+    bond_nodes.forEach(async (bond_node) => {
+        const name = bond_node.getAttribute("def")
+        const bound_element_node = bond_node.firstElementChild
+        if (name != null && bound_element_node != null) {
+            const initial_value = get_input_value(bound_element_node)
+
+            let skip_initialize = Object.keys(known_values).includes(name) && _.isEqual(known_values[name]?.value, initial_value)
+            // Initialize the bond. This will send the data to the backend for the first time. If it's already there, and the value is the same, cells won't rerun.
+            const init_promise = skip_initialize ? null : on_bond_change(name, initial_value).catch(console.error)
+
+            // see the docs on Generators.input from observablehq/stdlib
+            let skippped_first = false
+            for (let val of input_generator(bound_element_node)) {
+                if (node_is_invalidated) break
+
+                if (skippped_first === false) {
+                    skippped_first = true
+                    continue
+                }
+                // wait for a new input value. If a value is ready, then this promise resolves immediately
+                const to_send = await transformed_val(await val)
+
+                // send to the Pluto back-end (have a look at set_bond in Editor.js)
+                // await the setter to avoid collisions
+                //TODO : get this from state
+                await init_promise
+                await on_bond_change(name, to_send).catch(console.error)
+            }
+        }
+    })
 }
 
 /**

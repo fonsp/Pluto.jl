@@ -15,14 +15,22 @@ import {
 } from "../../imports/CodemirrorPlutoSetup.js"
 import { get_selected_doc_from_state } from "./LiveDocsFromCursor.js"
 import { cl } from "../../common/ClassTable.js"
+import { ScopeStateField } from "./scopestate_statefield.js"
+import { open_bottom_right_panel } from "../BottomRightPanel.js"
 
-let { autocompletion, completionKeymap } = autocomplete
+let { autocompletion, completionKeymap, completionStatus, acceptCompletion } = autocomplete
 
-// These should be imported from  @codemirror/autocomplete
+// Option.source is now the source, we find to find the corresponding ActiveResult
+// https://github.com/codemirror/autocomplete/commit/6d9f24115e9357dc31bc265cd3da7ce2287fdcbd
+const getActiveResult = (view, source) =>
+    view.state.field(completionState).active.find(a => a.source == source)
+
+// These should be imported from  @codemirror/autocomplete, but they are not exported.
 let completionState = autocompletion()[0]
-let acceptCompletion = (/** @type {EditorView} */ view, option) => {
+let applyCompletion = (/** @type {EditorView} */ view, option) => {
     let apply = option.completion.apply || option.completion.label
-    let result = option.source
+    let result = getActiveResult(view, option.source)
+    if (!result?.from) return
     if (typeof apply == "string") {
         view.dispatch({
             changes: { from: result.from, to: result.to, insert: apply },
@@ -63,7 +71,11 @@ const tabCompletionState = StateField.define({
 /** @param {EditorView} cm */
 const tab_completion_command = (cm) => {
     // This will return true if the autocomplete select popup is open
-    if (autocomplete.acceptCompletion(cm)) {
+    // To test the exception sink, uncomment these lines:
+    // if (Math.random() > 0.7) {
+    //     throw "LETS CRASH THIS"
+    // }
+    if (acceptCompletion(cm)) {
         return true
     }
 
@@ -85,15 +97,16 @@ const tab_completion_command = (cm) => {
 let open_docs_if_autocomplete_is_open_command = (cm) => {
     let autocompletion_open = cm.state.field(completionState, false)?.open ?? false
     if (autocompletion_open) {
-        window.dispatchEvent(new CustomEvent("open_live_docs"))
+        open_bottom_right_panel("docs")
         return true
     }
+    return false
 }
 
 /** @param {EditorView} cm */
 let complete_and_also_type = (cm) => {
     // Possibly autocomplete
-    autocomplete.acceptCompletion(cm)
+    acceptCompletion(cm)
     // And then do nothing, in the hopes that codemirror will add whatever we typed
     return false
 }
@@ -120,11 +133,21 @@ let update_docs_from_autocomplete_selection = (on_update_doc_query) => {
         let text_to_apply = selected_option.completion.apply ?? selected_option.completion.label
         if (typeof text_to_apply !== "string") return
 
+        const active_result = getActiveResult(update.view, selected_option.source)
+        if (!active_result?.from) return // not an ActiveResult instance
+
+        const from = active_result.from,
+              to = Math.min(active_result.to, update.state.doc.length)
+
         // Apply completion to state, which will yield us a `Transaction`.
         // The nice thing about this is that we can use the resulting state from the transaction,
         // without updating the actual state of the editor.
         let result_transaction = update.state.update({
-            changes: { from: selected_option.source.from, to: selected_option.source.to, insert: text_to_apply },
+            changes: {
+                from,
+                to,
+                insert: text_to_apply,
+            },
         })
 
         // So we can use `get_selected_doc_from_state` on our virtual state
@@ -135,16 +158,31 @@ let update_docs_from_autocomplete_selection = (on_update_doc_query) => {
     })
 }
 
-let match_unicode_complete = (ctx) => ctx.matchBefore(/\\[^\s"'.`]*/)
+/** Are we matching something like `\lambd...`? */
+let match_latex_complete = (ctx) => ctx.matchBefore(/\\[^\s"'.`]*/)
+/** Are we matching something like `:writing_a_symbo...`? */
 let match_symbol_complete = (ctx) => ctx.matchBefore(/\.\:[^\s"'`()\[\].]*/)
+/** Are we matching exactly `~/`? */
 let match_expanduser_complete = (ctx) => ctx.matchBefore(/~\//)
+/** Are we matching inside a string */
+function match_string_complete(ctx) {
+    const tree = syntaxTree(ctx.state)
+    const node = tree.resolve(ctx.pos)
+    if (node == null || (node.name !== "TripleString" && node.name !== "String")) {
+        return false
+    }
+    return true
+}
 
-let unfiltered_julia_generator = (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (ctx) => {
-    let unicode_match = match_unicode_complete(ctx) || match_expanduser_complete(ctx)
-    if (unicode_match == null) return null
-
+/** Use the completion results from the Julia server to create CM completion objects, but only for path completions (TODO: broken) and latex completions. */
+let julia_special_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (ctx) => {
     let to_complete = ctx.state.sliceDoc(0, ctx.pos)
-    let { start, stop, results } = await request_autocomplete({ text: to_complete })
+
+    let found = await request_autocomplete({ text: to_complete })
+    if (!found) return null
+    let { start, stop, results } = found
+
+    let should_apply_unicode_completion = !match_string_complete(ctx)
 
     return {
         from: start,
@@ -152,11 +190,11 @@ let unfiltered_julia_generator = (/** @type {PlutoRequestAutocomplete} */ reques
         // This is an important one when you not only complete, but also replace something.
         // @codemirror/autocomplete automatically filters out results otherwise >:(
         filter: false,
-        // TODO Add "detail" that shows the unicode character
-        // TODO Add "apply" with the unicode character so it autocompletes that immediately
-        options: results.map(([text], i) => {
+        options: results.map(([text, _, __, ___, ____, detail]) => {
             return {
                 label: text,
+                apply: detail && should_apply_unicode_completion ? detail : text,
+                detail: detail ?? undefined,
             }
         }),
         // TODO Do something docs_prefix ish when we also have the apply text
@@ -167,7 +205,27 @@ let override_text_to_apply_in_field_expression = (text) => {
     return !/^[@a-zA-Z_][a-zA-Z0-9!_]*\"?$/.test(text) ? (text === ":" ? `:(${text})` : `:${text}`) : null
 }
 
-const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (ctx) => {
+/**
+ * @param {Map<String,import("./scopestate_statefield.js").Definition>} definitions
+ * @param {Set<String>} proposed
+ * @param {number} context_pos
+ */
+const generate_scopestate_completions = function* (definitions, proposed, context_pos) {
+    let i = 0
+    for (let [name, { valid_from }] of definitions.entries()) {
+        if (!proposed.has(name) && valid_from < context_pos) {
+            yield {
+                label: name,
+                type: "c_Any",
+                boost: 99 - i,
+            }
+            i += 1
+        }
+    }
+}
+
+/** Use the completion results from the Julia server to create CM completion objects. */
+const julia_code_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (ctx) => {
     let to_complete = ctx.state.sliceDoc(0, ctx.pos)
 
     // Another rough hack... If it detects a `.:`, we want to cut out the `:` so we get all results from julia,
@@ -177,12 +235,17 @@ const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ reque
         to_complete = to_complete.slice(0, is_symbol_completion.from + 1) + to_complete.slice(is_symbol_completion.from + 2)
     }
 
-    let { start, stop, results } = await request_autocomplete({ text: to_complete })
+    let found = await request_autocomplete({ text: to_complete })
+    if (!found) return null
+    let { start, stop, results } = found
 
     if (is_symbol_completion) {
         // If this is a symbol completion thing, we need to add the `:` back in by moving the end a bit furher
         stop = stop + 1
     }
+
+    const definitions = ctx.state.field(ScopeStateField).definitions
+    const proposed = new Set()
 
     let to_complete_onto = to_complete.slice(0, start)
     let is_field_expression = to_complete_onto.slice(-1) === "."
@@ -201,16 +264,20 @@ const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ reque
                 // (quick) fix for identifiers that need to be escaped
                 // Ideally this is done with Meta.isoperator on the julia side
                 let text_to_apply = is_field_expression ? override_text_to_apply_in_field_expression(text) ?? text : text
+
+                if (definitions.has(text)) proposed.add(text)
+
                 return {
                     label: text,
                     apply: text_to_apply,
-                    type: cl({
-                        c_notexported: !is_exported,
-                        [`c_${type_description}`]: type_description != null,
-                        [`completion_${completion_type}`]: completion_type != null,
-                        c_from_notebook: is_from_notebook,
-                    }),
-                    boost: 99 - i / results.length,
+                    type:
+                        cl({
+                            c_notexported: !is_exported,
+                            [`c_${type_description}`]: type_description != null,
+                            [`completion_${completion_type}`]: completion_type != null,
+                            c_from_notebook: is_from_notebook,
+                        }) ?? undefined,
+                    boost: 50 - i / results.length,
                 }
             }),
             // This is a small thing that I really want:
@@ -221,7 +288,7 @@ const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ reque
             ...results
                 .filter(([text]) => is_field_expression && override_text_to_apply_in_field_expression(text) != null)
                 .map(([text, type_description, is_exported], i) => {
-                    let text_to_apply = override_text_to_apply_in_field_expression(text)
+                    let text_to_apply = override_text_to_apply_in_field_expression(text) ?? ""
 
                     return {
                         label: text_to_apply,
@@ -232,16 +299,74 @@ const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ reque
                         is_not_exported: !is_exported,
                     }
                 }),
+
+            ...Array.from(generate_scopestate_completions(definitions, proposed, ctx.pos)),
         ],
+    }
+}
+
+const pluto_completion_fetcher = (request_autocomplete) => {
+    const unicode_completions = julia_special_completions_to_cm(request_autocomplete)
+    const code_completions = julia_code_completions_to_cm(request_autocomplete)
+
+    return (ctx) => {
+        let unicode_match = match_latex_complete(ctx) || match_expanduser_complete(ctx)
+        if (unicode_match === null) {
+            return code_completions(ctx)
+        } else {
+            return unicode_completions(ctx)
+        }
+    }
+}
+
+const complete_anyword = async (ctx) => {
+    const results_from_cm = await autocomplete.completeAnyWord(ctx)
+    if (results_from_cm === null) return null
+
+    return {
+        from: results_from_cm.from,
+        options: results_from_cm.options.map(({ label }, i) => ({
+            // See https://github.com/codemirror/codemirror.next/issues/788 about `type: null`
+            label,
+            apply: label,
+            type: undefined,
+            boost: 0 - i,
+        })),
+    }
+}
+
+const local_variables_completion = (ctx) => {
+    let scopestate = ctx.state.field(ScopeStateField)
+    let unicode = ctx.tokenBefore(["Identifier"])
+
+    if (unicode === null) return null
+
+    let { from, to, text } = unicode
+
+    return {
+        from,
+        to,
+        options: scopestate.locals
+            .filter(
+                ({ validity, name }) =>
+                    name.startsWith(text) /** <- NOTE: A smarter matching strategy can be used here */ && from > validity.from && to <= validity.to
+            )
+            .map(({ name }, i) => ({
+                // See https://github.com/codemirror/codemirror.next/issues/788 about `type: null`
+                label: name,
+                apply: name,
+                type: undefined,
+                boost: 99 - i,
+            })),
     }
 }
 
 /**
  * @typedef PlutoAutocompleteResults
- * @type {{ start: number, stop: number, results: Array<[string, (string | null), boolean, boolean, (string | null)]> }}
+ * @type {{ start: number, stop: number, results: Array<[string, (string | null), boolean, boolean, (string | null), (string | null)]> }}
  *
  * @typedef PlutoRequestAutocomplete
- * @type {(options: { text: string }) => Promise<PlutoAutocompleteResults>}
+ * @type {(options: { text: string }) => Promise<PlutoAutocompleteResults?>}
  */
 
 /**
@@ -254,19 +379,20 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
     let last_result = null
     /**
      * To make stuff a bit easier, we let all the generators fetch all the time and run their logic, but just do one request.
-     * Previously I had checks to make sure when `unicode_hint_generator` matches it wouldn't fetch in `juliahints_cool_generator`..
+     * Previously I had checks to make sure when `unicode_hint_generator` matches it wouldn't fetch in `julia_code_completions_to_cm`..
      * but that became cumbersome with `expanduser` autocomplete.. also because THERE MIGHT be a case where
      * `~/` actually needs a different completion? Idk, I decided to put this "memoize last" thing here deal with it.
      * @type {PlutoRequestAutocomplete}
      **/
     let memoize_last_request_autocomplete = async (options) => {
         if (_.isEqual(options, last_query)) {
-            return await last_result
-        } else {
-            last_query = options
-            last_result = request_autocomplete(options)
-            return await last_result
+            let result = await last_result
+            if (result != null) return result
         }
+
+        last_query = options
+        last_result = request_autocomplete(options)
+        return await last_result
     }
 
     return [
@@ -274,13 +400,16 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
         autocompletion({
             activateOnTyping: false,
             override: [
-                unfiltered_julia_generator(memoize_last_request_autocomplete),
-                juliahints_cool_generator(memoize_last_request_autocomplete),
-                // TODO completion for local variables
+                pluto_completion_fetcher(memoize_last_request_autocomplete),
+                // julia_special_completions_to_cm(memoize_last_request_autocomplete),
+                // julia_code_completions_to_cm(memoize_last_request_autocomplete),
+                complete_anyword,
+                // TODO: Disabled because of performance problems, see https://github.com/fonsp/Pluto.jl/pull/1925. Remove `complete_anyword` once fixed. See https://github.com/fonsp/Pluto.jl/pull/2013
+                // local_variables_completion,
             ],
             defaultKeymap: false, // We add these manually later, so we can override them if necessary
             maxRenderedOptions: 512, // fons's magic number
-            optionClass: (c) => c.type,
+            optionClass: (c) => c.type ?? "",
         }),
 
         // If there is just one autocomplete result, apply it directly
@@ -290,8 +419,14 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
             let autocompletion_state = update.state.field(completionState, false)
             let is_tab_completion = update.state.field(tabCompletionState, false)
 
-            if (autocompletion_state?.open != null && is_tab_completion && autocompletion_state.open.options.length === 1) {
-                acceptCompletion(update.view, autocompletion_state.open.options[0])
+            if (
+                autocompletion_state?.open != null &&
+                is_tab_completion &&
+                completionStatus(update.state) === "active" &&
+                autocompletion_state.open.options.length === 1
+            ) {
+                // We can't use `acceptCompletion` here because that function has a minimum delay of 75ms between creating the completion options and applying one.
+                applyCompletion(update.view, autocompletion_state.open.options[0])
             }
         }),
 

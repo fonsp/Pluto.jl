@@ -2,15 +2,17 @@
     "compilerOptions": {
         "target": "ES2021",
         "module": "ES2020",
-        "lib": ["ES2021", "DOM", "WebWorker"],
+        "lib": ["ES2021", "DOM", "WebWorker", "DOM.Iterable"],
         "allowJs": true,
         "checkJs": true,
         "noEmit": true,
         "strict": false,
         "noImplicitThis": true,
         "alwaysStrict": true,
-        "esModuleInterop": true
+        "esModuleInterop": true,
+        "strictNullChecks": true,
+        "skipDefaultLibCheck": true
     },
-    "include": ["frontend/**/*.js", "node_modules/**/*.js"],
-    "exclude": []
+    "include": ["frontend/**/*.js", "node_modules/**/*.js", "frontend/Desktop.d.ts"],
+    "exclude": ["frontend/components/CellInput/tests/"]
 }

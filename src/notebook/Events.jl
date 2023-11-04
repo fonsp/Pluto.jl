@@ -9,41 +9,48 @@ the FileSaveEvent may be triggered whenever pluto wants to make sure the file is
 which may be more often than the file is actually changed. Deduplicate on your own if
 you care about this.
 
-To use that, we assume you are running Pluto through a julia script and
-opening it as 
-
-julia > pluto_server_session = Pluto.ServerSession(;
-    secret = secret,
-    options = pluto_server_options,
-)
-
 Define your function to handle the events using multiple dispatch:
 
 First assign a handler for all the types you will not use, using the supertype:
 
-julia >    function myfn(a::PlutoEvent)
-        nothing
-    end
+```julia-repl
+julia> function myfn(a::PlutoEvent)
+            nothing
+        end
+```
+
 
 And then create a special function for each event you want to handle specially
 
-julia >    function myfn(a::FileSaveEvent)
-        HTTP.post("https://my.service.com/count_saves")
-    end
+```julia-repl
+julia> function myfn(a::FileSaveEvent)
+            HTTP.post("https://my.service.com/count_saves")
+        end
+```
 
-Finally, assign the listener to your session
+Finally, pass the listener to Pluto's configurations with a keyword argument
 
-julia > pluto_server_session.event_listener = yourfunction
+```julia-repl
+julia> Pluto.run(; on_event = myfn)
+```
 """
 abstract type PlutoEvent end
 
 function try_event_call(session, event::PlutoEvent)
     return try
-        session.event_listener(event)
+        session.options.server.on_event(event)
     catch e
-        @warn "Couldn't run event listener" event exception=(e, catch_backtrace())
+        # Do not print all the event; it's too big!
+        @warn "Couldn't run event listener" event_type=typeof(event) exception=(e, catch_backtrace())
         nothing
     end
+end
+
+
+# Triggered when the web server gets started
+struct ServerStartEvent <: PlutoEvent
+    address::String
+    port::UInt16
 end
 
 # Triggered when a notebook is saved
@@ -77,14 +84,19 @@ FileEditEvent(notebook::Notebook) = begin
     FileEditEvent(notebook, file_contents, notebook.path)
 end
 
-# Triggered when we open a new notebook
+# Triggered when we create a new notebook
 struct NewNotebookEvent <: PlutoEvent
+end
+
+# Triggered when we open any notebook
+struct OpenNotebookEvent <: PlutoEvent
     notebook::Notebook
 end
 
-# Triggered when a user opens a notebook
-struct OpenNotebookEvent <: PlutoEvent
+# Triggered when Pluto completes an evaluation loop
+struct NotebookExecutionDoneEvent <: PlutoEvent
     notebook::Notebook
+    user_requested_run::Bool
 end
 
 # This will be fired ONLY if URL params don't match anything else.

@@ -1,5 +1,44 @@
 import Base64: base64decode
 
+# from https://github.com/JuliaLang/julia/pull/36425
+function detectwsl()
+    Sys.islinux() &&
+    isfile("/proc/sys/kernel/osrelease") &&
+    occursin(r"Microsoft|WSL"i, read("/proc/sys/kernel/osrelease", String))
+end
+
+"""
+    maybe_convert_path_to_wsl(path)
+    
+Return the WSL path if the system is using the Windows Subsystem for Linux (WSL) and return `path` otherwise.
+WSL mounts the windows drive to /mnt/ and provides a utility tool to convert windows
+paths into WSL paths. This function will try to use this tool to automagically
+convert paths pasted from windows (with the right click -> copy as path functionality)
+into paths Pluto can understand.
+
+Example:
+$(raw"C:\Users\pankg\OneDrive\Desktop\pluto\bakery_pnl_ready2.jl")
+→
+"/mnt/c/Users/pankg/OneDrive/Desktop/pluto/bakery_pnl_ready2.jl"
+
+but "/mnt/c/Users/pankg/OneDrive/Desktop/pluto/bakery_pnl_ready2.jl" stays the same
+
+"""
+function maybe_convert_path_to_wsl(path)
+    try
+        isfile(path) && return path
+        if detectwsl()
+            # wslpath utility prints path to stderr if it fails to convert
+            # (it used to fail for WSL-valid paths)
+             !isnothing(match(r"^/mnt/\w+/", path)) && return path
+            return readchomp(pipeline(`wslpath -u $(path)`; stderr=devnull))
+        end
+    catch e
+        return path
+    end
+    return path
+end
+
 const adjectives = [
 	"groundbreaking"
 	"revolutionary"
@@ -44,13 +83,20 @@ const nouns = [
 	"conjecture"
 ]
 
+"""
+Generate a filename like `"Cute discovery"`. Does not end with `.jl`.
+"""
 function cutename()
     titlecase(rand(adjectives)) * " " * rand(nouns)
 end
 
 function new_notebooks_directory()
     try
-        path = joinpath(first(DEPOT_PATH), "pluto_notebooks")
+        path = get(
+			ENV,
+			"JULIA_PLUTO_NEW_NOTEBOOKS_DIR",
+			joinpath(first(DEPOT_PATH), "pluto_notebooks")
+		)
         if !isdir(path)
             mkdir(path)
         end
@@ -78,6 +124,9 @@ const pluto_file_extensions = [
 
 endswith_pluto_file_extension(s) = any(endswith(s, e) for e in pluto_file_extensions)
 
+"""
+Extract the Julia notebook file contents from a Pluto-exported HTML file.
+"""
 function embedded_notebookfile(html_contents::AbstractString)::String
 	if !occursin("</html>", html_contents)
 		throw(ArgumentError("Pass the contents of a Pluto-exported HTML file as argument."))

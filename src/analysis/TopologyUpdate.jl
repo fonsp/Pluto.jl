@@ -6,7 +6,7 @@ function updated_topology(old_topology::NotebookTopology, notebook::Notebook, ce
 	
 	updated_codes = Dict{Cell,ExprAnalysisCache}()
 	updated_nodes = Dict{Cell,ReactiveNode}()
-	unresolved_cells = copy(old_topology.unresolved_cells)
+	
 	for cell in cells
 		old_code = old_topology.codes[cell]
 		if old_code.code !== cell.code
@@ -20,24 +20,71 @@ function updated_topology(old_topology::NotebookTopology, notebook::Notebook, ce
 			# reset computer code
 			updated_codes[cell] = ExprAnalysisCache(old_code; forced_expr_id=nothing, function_wrapped=false)
 		end
-
-		new_reactive_node = get(updated_nodes, cell, old_topology.nodes[cell])
-		if !isempty(new_reactive_node.macrocalls)
-			# The unresolved cells are the cells for wich we cannot create
-			# a ReactiveNode yet, because they contains macrocalls.
-			push!(unresolved_cells, cell) 
-		else
-			pop!(unresolved_cells, cell, nothing)
-		end
 	end
-	new_codes = merge(old_topology.codes, updated_codes)
-	new_nodes = merge(old_topology.nodes, updated_nodes)
-
-	for removed_cell in setdiff(keys(old_topology.nodes), notebook.cells)
-		delete!(new_nodes, removed_cell)
-		delete!(new_codes, removed_cell)
-		delete!(unresolved_cells, removed_cell)
+	
+	
+	old_cells = all_cells(old_topology)
+	removed_cells = setdiff(old_cells, notebook.cells)
+	if isempty(removed_cells)
+		# We can keep identity
+		new_codes = merge(old_topology.codes, updated_codes)
+		new_nodes = merge(old_topology.nodes, updated_nodes)
+	else
+		new_codes = merge(setdiffkeys(old_topology.codes, removed_cells), updated_codes)
+		new_nodes = merge(setdiffkeys(old_topology.nodes, removed_cells), updated_nodes)
 	end
 
-	NotebookTopology(nodes=new_nodes, codes=new_codes, unresolved_cells=unresolved_cells)
+	new_unresolved_set = setdiff!(
+		union!(
+			Set{Cell}(),
+			# all cells that were unresolved before, and did not change code...
+			Iterators.filter(old_topology.unresolved_cells) do c
+				!haskey(updated_nodes, c)
+			end,
+			# ...plus all cells that changed, and now use a macrocall...
+			Iterators.filter(cells) do c
+				!isempty(new_nodes[c].macrocalls)
+			end,
+		),
+		# ...minus cells that were removed.
+		removed_cells,
+	)
+
+	new_disabled_set = setdiff!(
+		union!(
+			Set{Cell}(),
+			# all cells that were disabled before...
+			old_topology.disabled_cells,
+			# ...plus all cells that changed...
+			cells,
+		),
+		# ...minus cells that changed and are not disabled.
+		Iterators.filter(!is_disabled, cells),
+	)
+
+	unresolved_cells = if new_unresolved_set == old_topology.unresolved_cells
+		old_topology.unresolved_cells
+	else
+		ImmutableSet(new_unresolved_set; skip_copy=true)
+	end
+
+	disabled_cells = if new_disabled_set == old_topology.disabled_cells
+		old_topology.disabled_cells
+	else
+		ImmutableSet(new_disabled_set; skip_copy=true)
+	end
+
+	cell_order = if old_cells == notebook.cells
+		old_topology.cell_order
+	else
+		ImmutableVector(notebook.cells) # makes a copy
+	end
+	
+	NotebookTopology(;
+		nodes=new_nodes,
+		codes=new_codes,
+		unresolved_cells, 
+        disabled_cells,
+		cell_order,
+	)
 end
