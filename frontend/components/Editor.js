@@ -39,7 +39,7 @@ import { get_environment } from "../common/Environment.js"
 import { ProcessStatus } from "../common/ProcessStatus.js"
 import { SafePreviewUI } from "./SafePreviewUI.js"
 
-const default_path = "..."
+export const default_path = ""
 import { alert, confirm } from "../common/alert_confirm.js"
 
 const DEBUG_DIFFING = false
@@ -325,7 +325,7 @@ export class Editor extends Component {
         const { launch_params, initial_notebook_state } = this.props
 
         this.state = {
-            notebook: /** @type {NotebookData} */ initial_notebook(),
+            notebook: /** @type {NotebookData} */ initial_notebook_state,
             cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ vscode.load_cell_inputs_from_vscode_state(),
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ ([]),
