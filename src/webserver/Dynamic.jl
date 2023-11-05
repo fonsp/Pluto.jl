@@ -179,36 +179,6 @@ const current_state_for_clients_lock = ReentrantLock()
 """
 Update the local state of all clients connected to this notebook.
 """
-function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing)
-    notebook_dict = notebook_to_js(🙋.notebook)
-    # @info "Connected clients" length(🙋.session.connected_clients) Set(c -> c.stream for c in 🙋.session.connected_clients)
-    for (_, client) in 🙋.session.connected_clients
-        if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == 🙋.notebook.notebook_id
-            current_dict = get(current_state_for_clients, client, :empty)
-            patches = Firebasey.diff(current_dict, notebook_dict)
-            patches_as_dicts::Array{Dict} = patches
-            current_state_for_clients[client] = deep_enough_copy(notebook_dict)
-
-            # Make sure we do send a confirmation to the client who made the request, even without changes
-            is_response = 🙋.initiator !== nothing && client == 🙋.initiator.client
-            # @info "Responding" is_response (🙋.initiator !== nothing) (commentary === nothing)    
-
-            if !skip_send && (!isempty(patches) || is_response)
-                response = Dict(
-                    :patches => patches_as_dicts,
-                    :response => is_response ? commentary : nothing
-                )
-                push!(outbox, (client, UpdateMessage(:notebook_diff, response, 🙋.notebook, nothing, 🙋.initiator)))
-            end
-            end
-        end
-
-    for (client, msg) in outbox
-        putclientupdates!(client, msg)
-    end
-    try_event_call(🙋.session, FileEditEvent(🙋.notebook))
-end
-
 
 function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, skip_send::Bool=false)
     outbox = Set{Tuple{ClientSession,UpdateMessage}}()
