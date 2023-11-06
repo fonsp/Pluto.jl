@@ -341,7 +341,7 @@ function get_module_names(workspace_module, module_ex::Expr)
 end
 
 function collect_soft_definitions(workspace_module, modules::Set{Expr})
-  mapreduce(module_ex -> get_module_names(workspace_module, module_ex), union!, modules; init=Set{Symbol}())
+    mapreduce(module_ex -> get_module_names(workspace_module, module_ex), union!, modules; init=Set{Symbol}())
 end
 
 

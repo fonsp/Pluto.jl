@@ -1,6 +1,6 @@
 using ExpressionExplorer
 
-const ReactiveNode_from_expr = ExpressionExplorer.compute_reactive_node
+@deprecate ReactiveNode_from_expr(args...; kwargs...) ExpressionExplorer.compute_reactive_node(args...; kwargs...)
 
 module ExpressionExplorerExtras
 import ..Pluto
@@ -106,26 +106,9 @@ maybe_macroexpand_pluto(ex::Any; kwargs...) = ex
 
 
 
-###
-# UTILITY FUNCTIONS
-###
+###############
 
 
-
-
-Base.@kwdef struct UsingsImports
-    usings::Set{Expr} = Set{Expr}()
-    imports::Set{Expr} = Set{Expr}()
-end
-
-is_implicit_using(ex::Expr) = Meta.isexpr(ex, :using) && length(ex.args) >= 1 && !Meta.isexpr(ex.args[1], :(:))
-function transform_dot_notation(ex::Expr)
-    if Meta.isexpr(ex, :(.))
-        Expr(:block, ex.args[end])
-    else
-        ex
-    end
-end
 
 function collect_implicit_usings(ex::Expr)
     if is_implicit_using(ex)
@@ -136,113 +119,18 @@ function collect_implicit_usings(ex::Expr)
 end
 
 collect_implicit_usings(usings::Set{Expr}) = mapreduce(collect_implicit_usings, union!, usings; init = Set{Expr}())
-collect_implicit_usings(usings_imports::UsingsImports) = collect_implicit_usings(usings_imports.usings)
+collect_implicit_usings(usings_imports::ExpressionExplorer.UsingsImports) = collect_implicit_usings(usings_imports.usings)
 
-# Performance analysis: https://gist.github.com/fonsp/280f6e883f419fb3a59231b2b1b95cab
-"Preallocated version of [`compute_usings_imports`](@ref)."
-function compute_usings_imports!(out::UsingsImports, ex::Any)
-    if isa(ex, Expr)
-        if ex.head == :using
-            push!(out.usings, ex)
-        elseif ex.head == :import
-            push!(out.imports, ex)
-        elseif ex.head != :quote
-            for a in ex.args
-                compute_usings_imports!(out, a)
-            end
-        end
-    end
-    out
-end
 
-"""
-Given `:(using Plots, Something.Else, .LocalModule)`, return `Set([:Plots, :Something])`.
-"""
-function external_package_names(ex::Expr)::Set{Symbol}
-    @assert ex.head == :import || ex.head == :using
-    if Meta.isexpr(ex.args[1], :(:))
-        external_package_names(Expr(ex.head, ex.args[1].args[1]))
+is_implicit_using(ex::Expr) = Meta.isexpr(ex, :using) && length(ex.args) >= 1 && !Meta.isexpr(ex.args[1], :(:))
+
+function transform_dot_notation(ex::Expr)
+    if Meta.isexpr(ex, :(.))
+        Expr(:block, ex.args[end])
     else
-        out = Set{Symbol}()
-        for a in ex.args
-            if Meta.isexpr(a, :as)
-                a = a.args[1]
-            end
-            if Meta.isexpr(a, :(.))
-                if a.args[1] != :(.)
-                    push!(out, a.args[1])
-                end
-            end
-        end
-        out
+        ex
     end
 end
 
-function external_package_names(x::UsingsImports)::Set{Symbol}
-    union!(Set{Symbol}(), Iterators.map(external_package_names, x.usings)..., Iterators.map(external_package_names, x.imports)...)
-end
-
-"Get the sets of `using Module` and `import Module` subexpressions that are contained in this expression."
-compute_usings_imports(ex) = compute_usings_imports!(UsingsImports(), ex)
-
-"Return whether the expression is of the form `Expr(:toplevel, LineNumberNode(..), any)`."
-function is_toplevel_expr(ex::Expr)::Bool
-    Meta.isexpr(ex, :toplevel, 2) && (ex.args[1] isa LineNumberNode)
-end
-
-is_toplevel_expr(::Any)::Bool = false
-
-"If the expression is a (simple) assignemnt at its root, return the assignee as `Symbol`, return `nothing` otherwise."
-function get_rootassignee(ex::Expr, recurse::Bool = true)::Union{Symbol,Nothing}
-    if is_toplevel_expr(ex) && recurse
-        get_rootassignee(ex.args[2], false)
-    elseif Meta.isexpr(ex, :macrocall, 3)
-        rooter_assignee = get_rootassignee(ex.args[3], true)
-        if rooter_assignee !== nothing
-            Symbol(string(ex.args[1]) * " " * string(rooter_assignee))
-        else
-            nothing
-        end
-    elseif Meta.isexpr(ex, :const, 1)
-        rooter_assignee = get_rootassignee(ex.args[1], false)
-        if rooter_assignee !== nothing
-            Symbol("const " * string(rooter_assignee))
-        else
-            nothing
-        end
-    elseif ex.head == :(=) && ex.args[1] isa Symbol
-        ex.args[1]
-    else
-        nothing
-    end
-end
-
-get_rootassignee(ex::Any, recuse::Bool = true)::Union{Symbol,Nothing} = nothing
-
-"Is this code simple enough that we can wrap it inside a function to boost performance? Look for [`PlutoRunner.Computer`](@ref) to learn more."
-function can_be_function_wrapped(x::Expr)
-    if x.head === :global || # better safe than sorry
-       x.head === :using ||
-       x.head === :import ||
-       x.head === :module ||
-       x.head === :incomplete ||
-       # Only bail on named functions, but anonymous functions (args[1].head == :tuple) are fine.
-       # TODO Named functions INSIDE other functions should be fine too
-       (x.head === :function && !Meta.isexpr(x.args[1], :tuple)) ||
-       x.head === :macro ||
-       # Cells containing macrocalls will actually be function wrapped using the expanded version of the expression
-       # See https://github.com/fonsp/Pluto.jl/pull/1597
-       x.head === :macrocall ||
-       x.head === :struct ||
-       x.head === :abstract ||
-       (x.head === :(=) && is_function_assignment(x)) || # f(x) = ...
-       (x.head === :call && (x.args[1] === :eval || x.args[1] === :include))
-        false
-    else
-        all(can_be_function_wrapped, x.args)
-    end
-
-end
-can_be_function_wrapped(x::Any) = true
 
 end

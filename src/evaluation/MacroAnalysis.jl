@@ -30,7 +30,7 @@ function with_new_soft_definitions(topology::NotebookTopology, cell::Cell, soft_
 	)
 end
 
-collect_implicit_usings(topology::NotebookTopology, cell::Cell) = ExpressionExplorer.collect_implicit_usings(topology.codes[cell].module_usings_imports)
+collect_implicit_usings(topology::NotebookTopology, cell::Cell) = ExpressionExplorerExtras.collect_implicit_usings(topology.codes[cell].module_usings_imports)
 
 function cells_with_deleted_macros(old_topology::NotebookTopology, new_topology::NotebookTopology)
     old_macros = mapreduce(c -> defined_macros(old_topology, c), union!, all_cells(old_topology); init=Set{Symbol}())
@@ -113,7 +113,7 @@ function resolve_topology(
 		if result isa Success
 			(expr, computer_id) = result.result
 			expanded_node = ExpressionExplorer.compute_reactive_node(expr; configuration=ExpressionExplorerExtras.PlutoConfiguration())
-			function_wrapped = ExpressionExplorerExtras.can_be_function_wrapped(expr)
+			function_wrapped = ExpressionExplorer.can_be_function_wrapped(expr)
 			Success((expanded_node, function_wrapped, computer_id))
 		else
 			result
