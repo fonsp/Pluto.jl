@@ -199,7 +199,7 @@ const create_vscode_connection = (address, { on_message, on_socket_close }, time
                         const message = unpack(new Uint8Array(buffer))
 
                         try {
-                            window.DEBUG && console.info("message received!", message)
+                            console.info("message received!", message)
                             on_message(message)
                         } catch (process_err) {
                             console.error("Failed to process message from websocket", process_err, { message })
@@ -217,7 +217,7 @@ const create_vscode_connection = (address, { on_message, on_socket_close }, time
         })
 
         const send_encoded = async (message) => {
-            window.DEBUG && console.log("Sending message!", message)
+            console.log("Sending message!", message)
             const encoded = pack(message)
             await vscode_api.postMessage({ type: "ws_proxy", base64_encoded: await base64_arraybuffer(encoded) })
         }
@@ -332,7 +332,9 @@ export const create_pluto_connection = async ({
     connect_metadata = {},
     ws_address = default_ws_address(),
 }) => {
-    let ws_connection = null // will be defined later i promise
+    let ws_connection = /** @type {WebsocketConnection?} */ (null) // will be defined later i promise
+
+    /** @type {PlutoConnection} */
     const client = {
         send: null,
         session_options: null,
