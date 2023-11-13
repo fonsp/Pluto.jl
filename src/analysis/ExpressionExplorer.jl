@@ -117,7 +117,7 @@ function collect_implicit_usings(ex::Expr)
     end
 end
 
-collect_implicit_usings(usings::Set{Expr}) = mapreduce(collect_implicit_usings, union!, usings; init = Set{Expr}())
+collect_implicit_usings(usings::Union{AbstractSet{Expr},AbstractVector{Expr}}) = mapreduce(collect_implicit_usings, union!, usings; init = Set{Expr}())
 collect_implicit_usings(usings_imports::ExpressionExplorer.UsingsImports) = collect_implicit_usings(usings_imports.usings)
 
 
