@@ -74,4 +74,44 @@ using Test
 
         @test transform(connections) == transform(wanted_connections)
     end
+    
+    
+        
+    @testset "can_be_function_wrapped" begin
+
+        c = ExpressionExplorerExtras.can_be_function_wrapped
+
+
+        @test c(quote
+            a = b + C
+            if d
+                for i = 1:10
+                    while Y
+                    end
+                end
+            end
+        end)
+
+
+        @test c(quote
+            map(1:10) do i
+                i + 1
+            end
+        end)
+
+
+        @test !c(quote
+            function x(x)
+                X
+            end
+        end)
+
+        @test !c(quote
+            if false
+                using Asdf
+            end
+        end)
+
+
+    end
 end

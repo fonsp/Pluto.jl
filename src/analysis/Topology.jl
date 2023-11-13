@@ -15,7 +15,7 @@ ExprAnalysisCache(notebook, cell::Cell) = let
         code=cell.code,
         parsedcode=parsedcode,
         module_usings_imports=ExpressionExplorer.compute_usings_imports(parsedcode),
-        function_wrapped=ExpressionExplorer.can_be_function_wrapped(parsedcode),
+        function_wrapped=ExpressionExplorerExtras.can_be_function_wrapped(parsedcode),
     )
 end
 

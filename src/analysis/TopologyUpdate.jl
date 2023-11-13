@@ -1,6 +1,6 @@
 import .ExpressionExplorer
 import .ExpressionExplorerExtras
-import .ExpressionExplorer: join_funcname_parts, SymbolsState, FunctionNameSignaturePair
+import .ExpressionExplorer: SymbolsState, FunctionNameSignaturePair
 
 "Return a copy of `old_topology`, but with recomputed results from `cells` taken into account."
 function updated_topology(old_topology::NotebookTopology, notebook::Notebook, cells)

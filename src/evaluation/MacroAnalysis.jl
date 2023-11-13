@@ -113,7 +113,7 @@ function resolve_topology(
 		if result isa Success
 			(expr, computer_id) = result.result
 			expanded_node = ExpressionExplorer.compute_reactive_node(expr; configuration=ExpressionExplorerExtras.PlutoConfiguration())
-			function_wrapped = ExpressionExplorer.can_be_function_wrapped(expr)
+			function_wrapped = ExpressionExplorerExtras.can_be_function_wrapped(expr)
 			Success((expanded_node, function_wrapped, computer_id))
 		else
 			result

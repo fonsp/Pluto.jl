@@ -688,7 +688,7 @@ function move_vars(
     old_workspace_name::Symbol,
     new_workspace_name::Symbol,
     vars_to_delete::Set{Symbol},
-    methods_to_delete::Set{Tuple{UUID,Vector{Symbol}}},
+    methods_to_delete::Set{Tuple{UUID,Tuple{Vararg{Symbol}}}},
     module_imports_to_move::Set{Expr},
     invalidated_cell_uuids::Set{UUID},
     keep_registered::Set{Symbol},

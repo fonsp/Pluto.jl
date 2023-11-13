@@ -37,7 +37,7 @@ function ExpressionExplorer.explore_macrocall!(ex::Expr, scopestate::ScopeState{
     end
 
     # Some macros can be expanded on the server process
-    if ExpressionExplorer.join_funcname_parts(macro_name) ∈ can_macroexpand
+    if macro_name.joined ∈ can_macroexpand
         new_ex = maybe_macroexpand_pluto(ex)
         union!(symstate, ExpressionExplorer.explore!(new_ex, scopestate))
     end
@@ -78,9 +78,8 @@ If the macro is **known to Pluto**, expand or 'mock expand' it, if not, return t
 function maybe_macroexpand_pluto(ex::Expr; recursive::Bool=false, expand_bind::Bool=true)
     result::Expr = if ex.head === :macrocall
         funcname = ExpressionExplorer.split_funcname(ex.args[1])
-        funcname_joined = ExpressionExplorer.join_funcname_parts(funcname)
 
-        if funcname_joined ∈ (expand_bind ? can_macroexpand : can_macroexpand_no_bind)
+        if funcname.joined ∈ (expand_bind ? can_macroexpand : can_macroexpand_no_bind)
             macroexpand(PlutoRunner, ex; recursive=false)::Expr
         else
             ex
@@ -132,5 +131,43 @@ function transform_dot_notation(ex::Expr)
     end
 end
 
+
+
+###############
+
+
+"""
+```julia
+can_be_function_wrapped(ex)::Bool
+```
+
+Is this code simple enough that we can wrap it inside a function, and run the function in global scope instead of running the code directly? Look for `Pluto.PlutoRunner.Computer` to learn more.
+"""
+function can_be_function_wrapped(x::Expr)
+    if x.head === :global || # better safe than sorry
+       x.head === :using ||
+       x.head === :import ||
+       x.head === :export ||
+       x.head === :public || # Julia 1.11
+       x.head === :module ||
+       x.head === :incomplete ||
+       # Only bail on named functions, but anonymous functions (args[1].head == :tuple) are fine.
+       # TODO Named functions INSIDE other functions should be fine too
+       (x.head === :function && !Meta.isexpr(x.args[1], :tuple)) ||
+       x.head === :macro ||
+       # Cells containing macrocalls will actually be function wrapped using the expanded version of the expression
+       # See https://github.com/fonsp/Pluto.jl/pull/1597
+       x.head === :macrocall ||
+       x.head === :struct ||
+       x.head === :abstract ||
+       (x.head === :(=) && ExpressionExplorer.is_function_assignment(x)) || # f(x) = ...
+       (x.head === :call && (x.args[1] === :eval || x.args[1] === :include))
+        false
+    else
+        all(can_be_function_wrapped, x.args)
+    end
+end
+
+can_be_function_wrapped(x::Any) = true
 
 end
