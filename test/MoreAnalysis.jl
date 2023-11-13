@@ -1,4 +1,4 @@
-import Pluto: Pluto, Cell
+import Pluto: Pluto, Cell, ExpressionExplorerExtras
 import Pluto.MoreAnalysis
 
 using Test
