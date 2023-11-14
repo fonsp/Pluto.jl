@@ -5,6 +5,12 @@
 <p align="center"><a href="https://www.youtube.com/watch?v=HiI4jgDyDhY">🌐 Pluto – one year later (25 min) at <b>Juliacon 2021</b> 🌐</a></p>
 
 <br>
+<p align="center"><a href="https://www.youtube.com/watch?v=Rg3r3gG4nQo">🪐 Pluto – reactive and reproducible (25 min) at <b>JupyterCon 2023</b> 🪐</a></p>
+
+<br>
+
+
+
 
 
 <h1><img alt="Pluto.jl" src="https://raw.githubusercontent.com/fonsp/Pluto.jl/dd0ead4caa2d29a3a2cfa1196d31e3114782d363/frontend/img/logo_white_contour.svg" width=300 height=74 ></h1>
