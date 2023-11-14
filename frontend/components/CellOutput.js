@@ -493,7 +493,7 @@ let declarative_shadow_dom_polyfill = (template) => {
     }
 }
 
-export let RawHTMLContainer = ({ body, className = "", persist_js_state = false, last_run_timestamp, sanitize_html = true }) => {
+export let RawHTMLContainer = ({ body, className = "", persist_js_state = false, last_run_timestamp, sanitize_html = true, sanitize_html_message = true }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     let pluto_bonds = useContext(PlutoBondsContext)
     let js_init_set = useContext(PlutoJSInitializingContext)
@@ -525,13 +525,14 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
         let html_content_to_set = sanitize_html
             ? DOMPurify.sanitize(body, {
                   FORBID_TAGS: ["style"],
+                  ADD_ATTR: ["target"],
               })
             : body
 
         // Actually "load" the html
         container.innerHTML = html_content_to_set
 
-        if (html_content_to_set !== body) {
+        if (sanitize_html_message && html_content_to_set !== body) {
             // DOMPurify also resolves HTML entities, which can give a false positive. To fix this, we use DOMParser to parse both strings, and we compare the innerHTML of the resulting documents.
             const parser = new DOMParser()
             const p1 = parser.parseFromString(body, "text/html")

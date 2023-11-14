@@ -1,6 +1,6 @@
 import { html, useRef, useState, useContext } from "../imports/Preact.js"
 
-import { OutputBody, PlutoImage, RawHTMLContainer } from "./CellOutput.js"
+import { OutputBody, PlutoImage } from "./CellOutput.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 
 // this is different from OutputBody because:
@@ -24,7 +24,7 @@ export const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state, saniti
         case "text/plain":
             return html`<pre class="no-block">${body}</pre>`
         case "application/vnd.pluto.tree+object":
-            return html`<${TreeView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`
+            return html`<${TreeView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} sanitize_html=${sanitize_html} />`
             break
         default:
             return OutputBody({ mime, body, cell_id, persist_js_state, sanitize_html, last_run_timestamp: null })

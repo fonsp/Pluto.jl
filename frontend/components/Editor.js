@@ -29,7 +29,6 @@ import { slider_server_actions, nothing_actions } from "../common/SliderServerCl
 import { ProgressBar } from "./ProgressBar.js"
 import { NonCellOutput } from "./NonCellOutput.js"
 import { IsolatedCell } from "./Cell.js"
-import { RawHTMLContainer } from "./CellOutput.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
 import { HijackExternalLinksToOpenInNewTab } from "./HackySideStuff/HijackExternalLinksToOpenInNewTab.js"
 import { FrontMatterInput } from "./FrontmatterInput.js"
@@ -1629,6 +1628,7 @@ patch: ${JSON.stringify(
                         backend_launch_phase=${this.state.backend_launch_phase}
                         backend_launch_logs=${this.state.backend_launch_logs}
                         notebook=${this.state.notebook}
+                        sanitize_html=${status.sanitize_html}
                     />
                     <${Popup} 
                         notebook=${this.state.notebook}
