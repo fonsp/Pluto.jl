@@ -1465,6 +1465,7 @@ patch: ${JSON.stringify(
                     <header id="pluto-nav" className=${export_menu_open ? "show_export" : ""}>
                         <${ExportBanner}
                             notebook_id=${this.state.notebook.notebook_id}
+                            notebook_shortpath=${this.state.notebook.shortpath}
                             notebookfile_url=${this.export_url("notebookfile")}
                             notebookexport_url=${this.export_url("notebookexport")}
                             open=${export_menu_open}
