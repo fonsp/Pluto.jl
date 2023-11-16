@@ -26,7 +26,6 @@ function pretransform_pluto(ex)
         if maybe_expanded === ex
             # we were not able to expand statically
             for arg in ex.args[begin+1:end]
-                # TODO: test nested macrocalls
                 arg_transformed = pretransform_pluto(arg)
                 macro_arg_symstate = ExpressionExplorer.compute_symbols_state(arg_transformed)
                 
