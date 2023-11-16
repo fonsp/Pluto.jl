@@ -77,19 +77,13 @@ This helps with things like a Pkg.activate() that's in a macro, so Pluto still u
 function macro_has_special_heuristic_inside(; symstate::SymbolsState, expr::Expr)::Bool
     # Also, because I'm lazy and don't want to copy any code, imma use cell_precedence_heuristic here.
     # Sad part is, that this will also include other symbols used in this macro... but come'on
-    local fake_cell = Pluto.Cell()
-    local fake_reactive_node = ReactiveNode(symstate)
-    local fake_expranalysiscache = Pluto.ExprAnalysisCache(
+    node = ReactiveNode(symstate)
+    code = Pluto.ExprAnalysisCache(
         parsedcode = expr,
         module_usings_imports = ExpressionExplorer.compute_usings_imports(expr),
     )
-    local fake_topology = Pluto.NotebookTopology(
-        nodes = Pluto.ImmutableDefaultDict(ReactiveNode, Dict(fake_cell => fake_reactive_node)),
-        codes = Pluto.ImmutableDefaultDict(Pluto.ExprAnalysisCache, Dict(fake_cell => fake_expranalysiscache)),
-        cell_order = Pluto.ImmutableVector([fake_cell]),
-    )
 
-    return Pluto.cell_precedence_heuristic(fake_topology, fake_cell) < Pluto.DEFAULT_PRECEDENCE_HEURISTIC
+    return Pluto.cell_precedence_heuristic(node, code) < Pluto.DEFAULT_PRECEDENCE_HEURISTIC
 end
 
 const can_macroexpand_no_bind = Set(Symbol.(["@md_str", "Markdown.@md_str", "@gensym", "Base.@gensym", "@enum", "Base.@enum", "@assert", "Base.@assert", "@cmd"]))

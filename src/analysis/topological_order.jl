@@ -237,39 +237,43 @@ function cycle_is_among_functions(topology::NotebookTopology, cycle::AbstractVec
 end
 
 
+function cell_precedence_heuristic(topology::NotebookTopology, cell::Cell)
+	cell_precedence_heuristic(topology.nodes[cell], topology.codes[cell])
+end
+
+
 """Assigns a number to a cell - cells with a lower number might run first. 
 
 This is used to treat reactive dependencies between cells that cannot be found using static code anylsis."""
-function cell_precedence_heuristic(topology::NotebookTopology, cell::Cell)::Real
-	top = topology.nodes[cell]
-	if :Pkg ∈ top.definitions
+function cell_precedence_heuristic(node::ReactiveNode, code::ExprAnalysisCache)::Real
+	if :Pkg ∈ node.definitions
 		1
-	elseif :DrWatson ∈ top.definitions
+	elseif :DrWatson ∈ node.definitions
 		2
-	elseif Symbol("Pkg.API.activate") ∈ top.references || 
-		Symbol("Pkg.activate") ∈ top.references ||
-		Symbol("@pkg_str") ∈ top.references ||
+	elseif Symbol("Pkg.API.activate") ∈ node.references || 
+		Symbol("Pkg.activate") ∈ node.references ||
+		Symbol("@pkg_str") ∈ node.references ||
 		# https://juliadynamics.github.io/DrWatson.jl/dev/project/#DrWatson.quickactivate
-		Symbol("quickactivate") ∈ top.references ||
-		Symbol("@quickactivate") ∈ top.references ||
-		Symbol("DrWatson.@quickactivate") ∈ top.references ||
-		Symbol("DrWatson.quickactivate") ∈ top.references
+		Symbol("quickactivate") ∈ node.references ||
+		Symbol("@quickactivate") ∈ node.references ||
+		Symbol("DrWatson.@quickactivate") ∈ node.references ||
+		Symbol("DrWatson.quickactivate") ∈ node.references
 		3
-	elseif Symbol("Pkg.API.add") ∈ top.references ||
-		Symbol("Pkg.add") ∈ top.references ||
-		Symbol("Pkg.API.develop") ∈ top.references ||
-		Symbol("Pkg.develop") ∈ top.references
+	elseif Symbol("Pkg.API.add") ∈ node.references ||
+		Symbol("Pkg.add") ∈ node.references ||
+		Symbol("Pkg.API.develop") ∈ node.references ||
+		Symbol("Pkg.develop") ∈ node.references
 		4
-	elseif :LOAD_PATH ∈ top.references
+	elseif :LOAD_PATH ∈ node.references
 		# https://github.com/fonsp/Pluto.jl/issues/323
 		5
-	elseif :Revise ∈ top.definitions
+	elseif :Revise ∈ node.definitions
 		# Load Revise before other packages so that it can properly `revise` them.
 		6
-	elseif !isempty(topology.codes[cell].module_usings_imports.usings)
+	elseif !isempty(code.module_usings_imports.usings)
 		# always do `using X` before other cells, because we don't (yet) know which cells depend on it (we only know it with `import X` and `import X: y, z`)
 		7
-	elseif :include ∈ top.references
+	elseif :include ∈ node.references
 		# https://github.com/fonsp/Pluto.jl/issues/193
 		# because we don't (yet) know which cells depend on it
 		8
