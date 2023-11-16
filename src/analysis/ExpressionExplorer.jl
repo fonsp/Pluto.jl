@@ -19,8 +19,6 @@ In those cases, we want most accurate result possible. Our extra needs are:
 3. If a macrocall argument contains other macrocalls, we need these nested macrocalls to be visible. We do this by placing the macrocall in a block, and creating new macrocall expressions with the nested macrocall names, but without arguments.
 """
 function pretransform_pluto(ex)
-    # TODO: maybe don't go inside module, quote
-    
     if Meta.isexpr(ex, :macrocall)
         to_add = Expr[]
         
@@ -61,6 +59,8 @@ function pretransform_pluto(ex)
                 Expr(:macrocall, ex.args[1]),
             )
         end
+    elseif Meta.isexpr(ex, :module)
+        ex
     elseif ex isa Expr
         # recurse
         Expr(ex.head, (pretransform_pluto(a) for a in ex.args)...)

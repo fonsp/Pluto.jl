@@ -170,6 +170,19 @@ end
     @test t(:(@aa @assert @bb(Pkg.activate())), [:Pkg], [], [[:Pkg,:activate], [:throw], [:AssertionError]], [], [Symbol("@aa"), Symbol("@assert"), Symbol("@bb")])
     @test t(:(@aa @bb(Xxx.xxxxxxxx())), [], [], [], [], [Symbol("@aa"), Symbol("@bb")])
     
+    @test t(:(include()), [], [], [[:include]], [], [])
+    @test t(:(:(include())), [], [], [], [], [])
+    @test t(:(:($(include()))), [], [], [[:include]], [], [])
+    @test t(:(@xx include()), [], [], [[:include]], [], [Symbol("@xx")])
+    @test t(quote
+        module A
+        include()
+        Pkg.activate()
+        @xoxo asdf
+        end
+    end, [], [:A], [], [], [])
+    
+    
     @test t(:(@aa @bb(using Zozo)), [], [:Zozo], [], [], [Symbol("@aa"), Symbol("@bb")])
     @test t(:(@aa(using Zozo)), [], [:Zozo], [], [], [Symbol("@aa")])
     @test t(:(using Zozo), [], [:Zozo], [], [], [])
