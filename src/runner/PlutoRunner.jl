@@ -341,7 +341,7 @@ function get_module_names(workspace_module, module_ex::Expr)
 end
 
 function collect_soft_definitions(workspace_module, modules::Set{Expr})
-  mapreduce(module_ex -> get_module_names(workspace_module, module_ex), union!, modules; init=Set{Symbol}())
+    mapreduce(module_ex -> get_module_names(workspace_module, module_ex), union!, modules; init=Set{Symbol}())
 end
 
 
@@ -688,7 +688,7 @@ function move_vars(
     old_workspace_name::Symbol,
     new_workspace_name::Symbol,
     vars_to_delete::Set{Symbol},
-    methods_to_delete::Set{Tuple{UUID,Vector{Symbol}}},
+    methods_to_delete::Set{Tuple{UUID,Tuple{Vararg{Symbol}}}},
     module_imports_to_move::Set{Expr},
     invalidated_cell_uuids::Set{UUID},
     keep_registered::Set{Symbol},
@@ -829,7 +829,7 @@ end
 #     try_delete_toplevel_methods(workspace, [name])
 # end
 
-function try_delete_toplevel_methods(workspace::Module, (cell_id, name_parts)::Tuple{UUID,Vector{Symbol}})::Bool
+function try_delete_toplevel_methods(workspace::Module, (cell_id, name_parts)::Tuple{UUID,Tuple{Vararg{Symbol}}})::Bool
     try
         val = workspace
         for name in name_parts

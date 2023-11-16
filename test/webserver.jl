@@ -49,6 +49,19 @@ using Pluto.WorkspaceManager: WorkspaceManager, poll
     close(server)
 end
 
+@testset "UTF-8 to Codemirror UTF-16 byte mapping" begin
+    # range ends are non inclusives
+    tests = [
+        (" aaaa", (2, 4), (1, 3)), # cm is zero based
+        (" 🍕🍕", (2, 6), (1, 3)), # a 🍕 is two UTF16 codeunits
+        (" 🍕🍕", (6, 10), (3, 5)), # a 🍕 is two UTF16 codeunits
+    ]
+    for (s, (start_byte, end_byte), (from, to)) in tests
+        @test PlutoRunner.map_byte_range_to_utf16_codepoints(s, start_byte, end_byte) == (from, to)
+    end
+end
+
+
 @testset "Exports" begin
     port, socket = 
         @inferred Pluto.port_serversocket(Sockets.ip"0.0.0.0", nothing, 5543) 
