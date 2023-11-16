@@ -19,37 +19,48 @@ In those cases, we want most accurate result possible. Our extra needs are:
 3. If a macrocall argument contains other macrocalls, we need these nested macrocalls to be visible. We do this by placing the macrocall in a block, and creating new macrocall expressions with the nested macrocall names, but without arguments.
 """
 function pretransform_pluto(ex)
+    # TODO: maybe don't go inside module, quote
+    
     if Meta.isexpr(ex, :macrocall)
         to_add = Expr[]
-
-        for arg in ex.args[begin+1:end]
-            # TODO: test nested macrocalls
-            arg_transformed = pretransform_pluto(arg)
-            macro_arg_symstate = ExpressionExplorer.compute_symbols_state(arg_transformed)
-            
-            # When this macro has something special inside like `Pkg.activate()`, we're going to make sure that ExpressionExplorer treats it as normal code, not inside a macrocall. (so these heuristics trigger later)
-            if arg isa Expr && macro_has_special_heuristic_inside(symstate = macro_arg_symstate, expr = arg)
-                # then the whole argument expression should be added
-                # TODO: should we add arg or pretransform_pluto(arg)?
-                push!(to_add, arg)
-            else
-                for fn in macro_arg_symstate.macrocalls
-                    push!(to_add, Expr(:macrocall, fn))
-                    # fn is a FunctionName
-                    # normally this would not be a legal expression, but ExpressionExplorer handles it correctly so it's all cool
+        
+        maybe_expanded = maybe_macroexpand_pluto(ex)
+        if maybe_expanded === ex
+            # we were not able to expand statically
+            for arg in ex.args[begin+1:end]
+                # TODO: test nested macrocalls
+                arg_transformed = pretransform_pluto(arg)
+                macro_arg_symstate = ExpressionExplorer.compute_symbols_state(arg_transformed)
+                
+                # When this macro has something special inside like `Pkg.activate()`, we're going to make sure that ExpressionExplorer treats it as normal code, not inside a macrocall. (so these heuristics trigger later)
+                if arg isa Expr && macro_has_special_heuristic_inside(symstate = macro_arg_symstate, expr = arg_transformed)
+                    # then the whole argument expression should be added
+                    push!(to_add, arg_transformed)
+                else
+                    for fn in macro_arg_symstate.macrocalls
+                        push!(to_add, Expr(:macrocall, fn))
+                        # fn is a FunctionName
+                        # normally this would not be a legal expression, but ExpressionExplorer handles it correctly so it's all cool
+                    end
                 end
             end
+            
+            Expr(
+                :block,
+                # the original expression, not expanded. ExpressionExplorer will just explore the name of the macro, and nothing else.
+                ex, 
+                # any expressions that we need to sneakily add
+                to_add...
+            )
+        else
+            Expr(
+                :block,
+                # We were able to expand the macro, so let's recurse on the result.
+                pretransform_pluto(maybe_expanded), 
+                # the name of the macro that got expanded
+                Expr(:macrocall, ex.args[1]),
+            )
         end
-        
-        Expr(
-            :block,
-            # the original expression, macroexpanded if possible
-            maybe_macroexpand_pluto(ex), 
-            # the name of the macro that might have gotten expanded
-            Expr(:macrocall, ex.args[1]),
-            # any expressions that we need to sneakily add
-            to_add...
-        )
     elseif ex isa Expr
         # recurse
         Expr(ex.head, (pretransform_pluto(a) for a in ex.args)...)
