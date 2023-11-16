@@ -48,7 +48,6 @@ include("./evaluation/Tokens.jl")
 include("./evaluation/Throttled.jl")
 include("./runner/PlutoRunner.jl")
 include("./analysis/ExpressionExplorer.jl")
-include("./analysis/FunctionDependencies.jl")
 include("./packages/PkgCompat.jl")
 include("./webserver/Status.jl")
 
