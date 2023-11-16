@@ -40,6 +40,11 @@ const PLUTO_VERSION = VersionNumber(Pkg.TOML.parsefile(joinpath(ROOT_DIR, "Proje
 const PLUTO_VERSION_STR = 'v' * string(PLUTO_VERSION)
 const JULIA_VERSION_STR = 'v' * string(VERSION)
 
+include("./analysis/PlutoReactiveCore.jl")
+
+import .PlutoReactiveCore: TopologicalOrder, NotebookTopology, updated_topology, ExprAnalysisCache, ImmutableVector, DefaultDict, ExpressionExplorerExtras
+using ExpressionExplorer
+
 include("./notebook/path helpers.jl")
 include("./notebook/Export.jl")
 include("./Configuration.jl")
@@ -47,15 +52,10 @@ include("./Configuration.jl")
 include("./evaluation/Tokens.jl")
 include("./evaluation/Throttled.jl")
 include("./runner/PlutoRunner.jl")
-include("./analysis/ExpressionExplorer.jl")
 include("./packages/PkgCompat.jl")
 include("./webserver/Status.jl")
 
 include("./notebook/Cell.jl")
-include("./analysis/data structures.jl")
-include("./analysis/Topology.jl")
-include("./analysis/Errors.jl")
-include("./analysis/TopologicalOrder.jl")
 include("./notebook/Notebook.jl")
 include("./notebook/saving and loading.jl")
 include("./notebook/frontmatter.jl")
@@ -64,9 +64,7 @@ include("./webserver/Session.jl")
 include("./webserver/PutUpdates.jl")
 
 include("./analysis/Parse.jl")
-include("./analysis/topological_order.jl")
 include("./analysis/is_just_text.jl")
-include("./analysis/TopologyUpdate.jl")
 include("./analysis/DependencyCache.jl")
 include("./analysis/MoreAnalysis.jl")
 

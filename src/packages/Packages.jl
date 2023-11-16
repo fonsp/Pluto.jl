@@ -1,5 +1,5 @@
 
-import .ExpressionExplorer: external_package_names
+import ExpressionExplorer: external_package_names
 import .PkgCompat
 import .PkgCompat: select, is_stdlib
 import Logging

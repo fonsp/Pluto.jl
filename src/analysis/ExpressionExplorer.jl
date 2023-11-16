@@ -3,8 +3,8 @@ using ExpressionExplorer
 @deprecate ReactiveNode_from_expr(args...; kwargs...) ExpressionExplorer.compute_reactive_node(args...; kwargs...)
 
 module ExpressionExplorerExtras
-import ..Pluto
-import ..PlutoRunner
+import ..PlutoReactiveCore
+import ...PlutoRunner
 using ExpressionExplorer
 using ExpressionExplorer: ScopeState
 
@@ -78,12 +78,12 @@ function macro_has_special_heuristic_inside(; symstate::SymbolsState, expr::Expr
     # Also, because I'm lazy and don't want to copy any code, imma use cell_precedence_heuristic here.
     # Sad part is, that this will also include other symbols used in this macro... but come'on
     node = ReactiveNode(symstate)
-    code = Pluto.ExprAnalysisCache(
+    code = PlutoReactiveCore.ExprAnalysisCache(
         parsedcode = expr,
         module_usings_imports = ExpressionExplorer.compute_usings_imports(expr),
     )
 
-    return Pluto.cell_precedence_heuristic(node, code) < Pluto.DEFAULT_PRECEDENCE_HEURISTIC
+    return PlutoReactiveCore.cell_precedence_heuristic(node, code) < PlutoReactiveCore.DEFAULT_PRECEDENCE_HEURISTIC
 end
 
 const can_macroexpand_no_bind = Set(Symbol.(["@md_str", "Markdown.@md_str", "@gensym", "Base.@gensym", "@enum", "Base.@enum", "@assert", "Base.@assert", "@cmd"]))

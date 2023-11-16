@@ -1,4 +1,4 @@
-import .ExpressionExplorer
+import ExpressionExplorer
 import Markdown
 
 "Generate a file name to be given to the parser (will show up in stack traces)."

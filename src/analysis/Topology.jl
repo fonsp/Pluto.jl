@@ -1,4 +1,4 @@
-import .ExpressionExplorer: UsingsImports, SymbolsState
+import ExpressionExplorer: UsingsImports, SymbolsState
 
 "A container for the result of parsing the cell code, with some extra metadata."
 Base.@kwdef struct ExprAnalysisCache
@@ -6,11 +6,10 @@ Base.@kwdef struct ExprAnalysisCache
     parsedcode::Expr=Expr(:toplevel, LineNumberNode(1), Expr(:block))
     module_usings_imports::UsingsImports = UsingsImports()
     function_wrapped::Bool=false
-    forced_expr_id::Union{PlutoRunner.ObjectID,Nothing}=nothing
+    forced_expr_id::Union{UInt,Nothing}=nothing
 end
 
-ExprAnalysisCache(notebook, cell::Cell) = let
-    parsedcode=parse_custom(notebook, cell)
+function ExprAnalysisCache(cell::Cell, parsedcode)
     ExprAnalysisCache(
         code=cell.code,
         parsedcode=parsedcode,

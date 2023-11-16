@@ -1,6 +1,6 @@
 import REPL: ends_with_semicolon
 import .Configuration
-import .ExpressionExplorer: is_joined_funcname
+import ExpressionExplorer: is_joined_funcname
 
 Base.push!(x::Set{Cell}) = x
 
@@ -345,6 +345,22 @@ function clear_output!(cell::Cell)
 	cell.runtime = nothing
 	cell.errored = false
 	cell.running = cell.queued = false
+end
+
+
+"Send `error` to the frontend without backtrace. Runtime errors are handled by `WorkspaceManager.eval_format_fetch_in_workspace` - this function is for Reactivity errors."
+function relay_reactivity_error!(cell::Cell, error::Exception)
+	body, mime = PlutoRunner.format_output(CapturedException(error, []))
+	cell.output = CellOutput(
+		body=body,
+		mime=mime,
+		rootassignee=nothing,
+		last_run_timestamp=time(),
+		persist_js_state=false,
+	)
+	cell.published_objects = Dict{String,Any}()
+	cell.runtime = nothing
+	cell.errored = true
 end
 
 will_run_code(notebook::Notebook) = notebook.process_status ∈ (ProcessStatus.ready, ProcessStatus.starting)

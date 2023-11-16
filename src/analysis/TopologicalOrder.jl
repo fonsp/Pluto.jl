@@ -1,4 +1,4 @@
-import .ExpressionExplorer: SymbolsState, FunctionName
+import ExpressionExplorer: SymbolsState, FunctionName
 
 "Information container about the cells to run in a reactive call and any cells that will err."
 Base.@kwdef struct TopologicalOrder

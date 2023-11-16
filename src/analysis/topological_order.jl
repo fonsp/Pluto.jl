@@ -5,8 +5,6 @@ struct Cycle <: ChildExplorationResult
 	cycled_cells::Vector{Cell}
 end
 
-@deprecate topological_order(::Notebook, topology::NotebookTopology, args...; kwargs...) topological_order(topology, args...; kwargs...)
-
 """
 Return a `TopologicalOrder` that lists the cells to be evaluated in a single reactive run, in topological order. Includes the given roots.
 
@@ -136,14 +134,6 @@ function topological_order(topology::NotebookTopology, roots::AbstractVector{Cel
 	TopologicalOrder(topology, setdiff(ordered, keys(errable)), errable)
 end
 
-function topological_order(notebook::Notebook)
-	cached = notebook._cached_topological_order
-	if cached === nothing || cached.input_topology !== notebook.topology
-		topological_order(notebook.topology, all_cells(notebook.topology))
-	else
-		cached
-	end
-end
 
 Base.collect(notebook_topo_order::TopologicalOrder) = union(notebook_topo_order.runnable, keys(notebook_topo_order.errable))
 
@@ -162,7 +152,6 @@ function where_referenced(topology::NotebookTopology, to_compare::Set{Symbol})::
 		!disjoint(to_compare, topology.nodes[cell].references)
 	end
 end
-where_referenced(::Notebook, args...) = where_referenced(args...)
 
 "Returns whether or not the edge between two cells is composed only of \"soft\"-definitions"
 function is_soft_edge(topology::NotebookTopology, parent_cell::Cell, child_cell::Cell)
@@ -203,22 +192,8 @@ function where_assigned(topology::NotebookTopology, to_compare::Set{Symbol})::Ve
 		)
 	end
 end
-where_assigned(::Notebook, args...) = where_assigned(args...)
 
 
-"Return whether any cell references the given symbol. Used for the @bind mechanism."
-function is_referenced_anywhere(notebook::Notebook, topology::NotebookTopology, sym::Symbol)::Bool
-	any(notebook.cells) do cell
-		sym ∈ topology.nodes[cell].references
-	end
-end
-
-"Return whether any cell defines the given symbol. Used for the @bind mechanism."
-function is_assigned_anywhere(notebook::Notebook, topology::NotebookTopology, sym::Symbol)::Bool
-	any(notebook.cells) do cell
-		sym ∈ topology.nodes[cell].definitions
-	end
-end
 
 function cyclic_variables(topology::NotebookTopology, cycle::AbstractVector{Cell})::Set{Symbol}
 	referenced_during_cycle = union!(Set{Symbol}(), (topology.nodes[c].references for c in cycle)...)
@@ -235,7 +210,6 @@ function cycle_is_among_functions(topology::NotebookTopology, cycle::AbstractVec
 		for s in cyclics
 	)
 end
-
 
 function cell_precedence_heuristic(topology::NotebookTopology, cell::Cell)
 	cell_precedence_heuristic(topology.nodes[cell], topology.codes[cell])

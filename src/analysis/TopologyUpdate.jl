@@ -1,17 +1,20 @@
-import .ExpressionExplorer
+import ExpressionExplorer
 import .ExpressionExplorerExtras
-import .ExpressionExplorer: SymbolsState, FunctionNameSignaturePair
+import ExpressionExplorer: SymbolsState, FunctionNameSignaturePair
 
 "Return a copy of `old_topology`, but with recomputed results from `cells` taken into account."
-function updated_topology(old_topology::NotebookTopology, notebook::Notebook, cells)
+function updated_topology(old_topology::NotebookTopology, all_cells, updated_cells, get_parsedcode)
 	
 	updated_codes = Dict{Cell,ExprAnalysisCache}()
 	updated_nodes = Dict{Cell,ReactiveNode}()
 	
-	for cell in cells
+	for (cell, parsedcode) in zip(updated_cells, updated_cells_parsedcode)
+		# TODO this needs to be extracted somehow
 		old_code = old_topology.codes[cell]
+		(; parsedcode, needs_update) = get_parsedcode(cell; old_code)
+		
 		if old_code.code !== cell.code
-			new_code = updated_codes[cell] = ExprAnalysisCache(notebook, cell)
+			new_code = updated_codes[cell] = ExprAnalysisCache(cell, parsedcode)
 			new_reactive_node = ExpressionExplorer.compute_reactive_node(ExpressionExplorerExtras.pretransform_pluto(new_code.parsedcode))
 
 			updated_nodes[cell] = new_reactive_node
@@ -23,7 +26,7 @@ function updated_topology(old_topology::NotebookTopology, notebook::Notebook, ce
 	
 	
 	old_cells = all_cells(old_topology)
-	removed_cells = setdiff(old_cells, notebook.cells)
+	removed_cells = setdiff(old_cells, all_cells)
 	if isempty(removed_cells)
 		# We can keep identity
 		new_codes = merge(old_topology.codes, updated_codes)
@@ -41,7 +44,7 @@ function updated_topology(old_topology::NotebookTopology, notebook::Notebook, ce
 				!haskey(updated_nodes, c)
 			end,
 			# ...plus all cells that changed, and now use a macrocall...
-			Iterators.filter(cells) do c
+			Iterators.filter(updated_cells) do c
 				!isempty(new_nodes[c].macrocalls)
 			end,
 		),
@@ -55,10 +58,10 @@ function updated_topology(old_topology::NotebookTopology, notebook::Notebook, ce
 			# all cells that were disabled before...
 			old_topology.disabled_cells,
 			# ...plus all cells that changed...
-			cells,
+			updated_cells,
 		),
 		# ...minus cells that changed and are not disabled.
-		Iterators.filter(!is_disabled, cells),
+		Iterators.filter(!is_disabled, updated_cells),
 	)
 
 	unresolved_cells = if new_unresolved_set == old_topology.unresolved_cells
@@ -73,10 +76,10 @@ function updated_topology(old_topology::NotebookTopology, notebook::Notebook, ce
 		ImmutableSet(new_disabled_set; skip_copy=true)
 	end
 
-	cell_order = if old_cells == notebook.cells
+	cell_order = if old_cells == all_cells
 		old_topology.cell_order
 	else
-		ImmutableVector(notebook.cells) # makes a copy
+		ImmutableVector(all_cells) # makes a copy
 	end
 	
 	NotebookTopology(;
