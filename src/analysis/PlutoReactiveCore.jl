@@ -4,12 +4,12 @@ using ExpressionExplorer
 
 const Cell = Base.UUID
 
-include("./data structures.jl")
-include("./ExpressionExplorer.jl")
-include("./Topology.jl")
-include("./Errors.jl")
-include("./TopologicalOrder.jl")
-include("./topological_order.jl")
-include("./TopologyUpdate.jl")
+include("./PlutoReactiveCore/data structures.jl")
+include("./PlutoReactiveCore/ExpressionExplorer.jl")
+include("./PlutoReactiveCore/Topology.jl")
+include("./PlutoReactiveCore/Errors.jl")
+include("./PlutoReactiveCore/TopologicalOrder.jl")
+include("./PlutoReactiveCore/topological_order.jl")
+include("./PlutoReactiveCore/TopologyUpdate.jl")
 
 end
