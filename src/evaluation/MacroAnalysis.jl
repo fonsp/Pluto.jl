@@ -105,14 +105,14 @@ function resolve_topology(
 	end
 
 	function analyze_macrocell(cell::Cell)
-		if unresolved_topology.nodes[cell].macrocalls ⊆ ExpressionExplorer.can_macroexpand
+		if unresolved_topology.nodes[cell].macrocalls ⊆ ExpressionExplorerExtras.can_macroexpand
 			return Skipped()
 		end
 
 		result = macroexpand_cell(cell)
 		if result isa Success
 			(expr, computer_id) = result.result
-			expanded_node = ExpressionExplorer.compute_reactive_node(expr; configuration=ExpressionExplorerExtras.PlutoConfiguration())
+			expanded_node = ExpressionExplorer.compute_reactive_node(ExpressionExplorerExtras.pretransform_pluto(expr))
 			function_wrapped = ExpressionExplorerExtras.can_be_function_wrapped(expr)
 			Success((expanded_node, function_wrapped, computer_id))
 		else
@@ -185,9 +185,12 @@ So, the resulting reactive nodes may not be absolutely accurate. If you can run 
 """
 function static_macroexpand(topology::NotebookTopology, cell::Cell)
 	new_node = ExpressionExplorer.compute_reactive_node(
-			ExpressionExplorerExtras.maybe_macroexpand_pluto(topology.codes[cell].parsedcode; recursive=true); 
-			configuration=ExpressionExplorerExtras.PlutoConfiguration()
+		ExpressionExplorerExtras.pretransform_pluto(
+			ExpressionExplorerExtras.maybe_macroexpand_pluto(
+				topology.codes[cell].parsedcode; recursive=true
+			)
 		)
+	)
 	union!(new_node.macrocalls, topology.nodes[cell].macrocalls)
 
 	new_node

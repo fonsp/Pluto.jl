@@ -8,41 +8,65 @@ import ..PlutoRunner
 using ExpressionExplorer
 using ExpressionExplorer: ScopeState
 
-struct PlutoConfiguration <: ExpressionExplorer.AbstractExpressionExplorerConfiguration
-end
 
+"""
+ExpressionExplorer does not explore inside macro calls, i.e. the arguments of a macrocall (like `a+b` in `@time a+b`) are ignored.
+Normally, you would macroexpand an expression before giving it to ExpressionExplorer, but in Pluto we sometimes need to explore expressions *before* executing code.
 
-function ExpressionExplorer.explore_macrocall!(ex::Expr, scopestate::ScopeState{PlutoConfiguration})
-    # Early stopping, this expression will have to be re-explored once
-    # the macro is expanded in the notebook process.
-    macro_name = ExpressionExplorer.split_funcname(ex.args[1])
-    symstate = SymbolsState(macrocalls = Set{FunctionName}([macro_name]))
-
-    # Because it sure wouldn't break anything,
-    # I'm also going to blatantly assume that any macros referenced in here...
-    # will end up in the code after the macroexpansion 🤷‍♀️
-    # "You should make a new function for that" they said, knowing I would take the lazy route.
-    for arg in ex.args[begin+1:end]
-        macro_symstate = ExpressionExplorer.explore!(arg, ScopeState(scopestate.configuration))
-
-        # Also, when this macro has something special inside like `Pkg.activate()`,
-        # we're going to treat it as normal code (so these heuristics trigger later)
-        # (Might want to also not let this to @eval macro, as an extra escape hatch if you
-        #    really don't want pluto to see your Pkg.activate() call)
-        if arg isa Expr && macro_has_special_heuristic_inside(symstate = macro_symstate, expr = arg)
-            union!(symstate, macro_symstate)
+In those cases, we want most accurate result possible. Our extra needs are:
+1. Macros included in Julia base, Markdown and `@bind` can be expanded statically. (See `maybe_macroexpand_pluto`.)
+2. If a macrocall argument contains a "special heuristic" like `Pkg.activate()` or `using Something`, we need to surface this to be visible to ExpressionExplorer and Pluto. We do this by placing the macrocall in a block, and copying the argument after to the macrocall.
+3. If a macrocall argument contains other macrocalls, we need these nested macrocalls to be visible. We do this by placing the macrocall in a block, and creating new macrocall expressions with the nested macrocall names, but without arguments.
+"""
+function pretransform_pluto(ex)
+    if Meta.isexpr(ex, :macrocall)
+        to_add = Expr[]
+        
+        maybe_expanded = maybe_macroexpand_pluto(ex)
+        if maybe_expanded === ex
+            # we were not able to expand statically
+            for arg in ex.args[begin+1:end]
+                # TODO: test nested macrocalls
+                arg_transformed = pretransform_pluto(arg)
+                macro_arg_symstate = ExpressionExplorer.compute_symbols_state(arg_transformed)
+                
+                # When this macro has something special inside like `Pkg.activate()`, we're going to make sure that ExpressionExplorer treats it as normal code, not inside a macrocall. (so these heuristics trigger later)
+                if arg isa Expr && macro_has_special_heuristic_inside(symstate = macro_arg_symstate, expr = arg_transformed)
+                    # then the whole argument expression should be added
+                    push!(to_add, arg_transformed)
+                else
+                    for fn in macro_arg_symstate.macrocalls
+                        push!(to_add, Expr(:macrocall, fn))
+                        # fn is a FunctionName
+                        # normally this would not be a legal expression, but ExpressionExplorer handles it correctly so it's all cool
+                    end
+                end
+            end
+            
+            Expr(
+                :block,
+                # the original expression, not expanded. ExpressionExplorer will just explore the name of the macro, and nothing else.
+                ex, 
+                # any expressions that we need to sneakily add
+                to_add...
+            )
         else
-            union!(symstate, SymbolsState(macrocalls = macro_symstate.macrocalls))
+            Expr(
+                :block,
+                # We were able to expand the macro, so let's recurse on the result.
+                pretransform_pluto(maybe_expanded), 
+                # the name of the macro that got expanded
+                Expr(:macrocall, ex.args[1]),
+            )
         end
+    elseif Meta.isexpr(ex, :module)
+        ex
+    elseif ex isa Expr
+        # recurse
+        Expr(ex.head, (pretransform_pluto(a) for a in ex.args)...)
+    else
+        ex
     end
-
-    # Some macros can be expanded on the server process
-    if macro_name.joined ∈ can_macroexpand
-        new_ex = maybe_macroexpand_pluto(ex)
-        union!(symstate, ExpressionExplorer.explore!(new_ex, scopestate))
-    end
-
-    return symstate
 end
 
 

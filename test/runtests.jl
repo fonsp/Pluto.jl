@@ -48,6 +48,7 @@ verify_no_running_processes()
 verify_no_running_processes()
 
 print_timeroutput()
+@timeit_include("ExpressionExplorer.jl")
 
 # TODO: test PlutoRunner functions like:
 # - from_this_notebook
