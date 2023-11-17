@@ -137,8 +137,9 @@ function collect_implicit_usings(usings_imports::ExpressionExplorer.UsingsImport
             continue
         end
 
-        mapreduce(transform_dot_notation, push!,
-                  using_.args; init=implicit_usings)
+        for arg in using_.args
+            push!(implicit_usings, transform_dot_notation(arg))
+        end
     end
     implicit_usings
 end
