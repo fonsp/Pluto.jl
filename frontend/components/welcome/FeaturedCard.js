@@ -60,6 +60,7 @@ export const FeaturedCard = ({ entry, source_manifest, direct_html_links, disabl
                 : html`
                       <div class="author">
                           <a href=${author.url}> <img src=${author.image ?? transparent_svg} /><span>${author.name}</span></a>
+                          ${author.has_coauthors ? html`<span>...</span>` : null}
                       </div>
                   `}
             <h3><a href=${href} title=${entry?.frontmatter?.title}>${entry?.frontmatter?.title ?? entry.id}</a></h3>
@@ -74,9 +75,13 @@ export const FeaturedCard = ({ entry, source_manifest, direct_html_links, disabl
  * name: string?,
  * url: string?,
  * image: string?,
+ * has_coauthors?: boolean,
  * }}
  */
 
+/**
+ * @returns {AuthorInfo?}
+ */
 const author_info = (frontmatter) =>
     author_info_item(frontmatter.author) ??
     author_info_item({
@@ -90,9 +95,11 @@ const author_info = (frontmatter) =>
  */
 const author_info_item = (x) => {
     if (x instanceof Array) {
-        return author_info_item(x[0])
-    } else if (x == null) {
-        return null
+        const first = author_info_item(x[0])
+        if (first?.name) {
+            const has_coauthors = x.length > 1
+            return { ...first, has_coauthors }
+        }
     } else if (typeof x === "string") {
         return {
             name: x,
@@ -111,7 +118,6 @@ const author_info_item = (x) => {
             url,
             image,
         }
-    } else {
-        return null
     }
+    return null
 }
