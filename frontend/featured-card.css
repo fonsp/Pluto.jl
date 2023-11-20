@@ -63,6 +63,7 @@ featured-card .author {
     display: flex;
     align-items: center;
     gap: 0.4ch;
+    margin-left: 0.3rem;
 }
 
 featured-card .author img {
@@ -76,13 +77,6 @@ featured-card .author img {
     background: #b6b6b6;
     display: inline-block;
     overflow: hidden;
-}
-
-featured-card .author a {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 0.4ch;
 }
 
 featured-card h3 a {

@@ -59,8 +59,11 @@ export const FeaturedCard = ({ entry, source_manifest, direct_html_links, disabl
                 ? null
                 : html`
                       <div class="author">
-                          <a href=${author.url}> <img src=${author.image ?? transparent_svg} /><span>${author.name}</span></a>
-                          ${author.has_coauthors ? html`<span>...</span>` : null}
+                          <img src=${author.image ?? transparent_svg} />
+                          <span>
+                              <a href=${author.url}>${author.name}</a>
+                              ${author.has_coauthors ? html` and others` : null}
+                          </span>
                       </div>
                   `}
             <h3><a href=${href} title=${entry?.frontmatter?.title}>${entry?.frontmatter?.title ?? entry.id}</a></h3>
