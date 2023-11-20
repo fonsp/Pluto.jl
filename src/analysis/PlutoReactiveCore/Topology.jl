@@ -25,29 +25,29 @@ function ExprAnalysisCache(old_cache::ExprAnalysisCache; new_properties...)
 end
 
 "The (information needed to create the) dependency graph of a notebook. Cells are linked by the names of globals that they define and reference. 🕸"
-Base.@kwdef struct NotebookTopology
-    nodes::ImmutableDefaultDict{Cell,ReactiveNode}=ImmutableDefaultDict{Cell,ReactiveNode}(ReactiveNode)
-    codes::ImmutableDefaultDict{Cell,ExprAnalysisCache}=ImmutableDefaultDict{Cell,ExprAnalysisCache}(ExprAnalysisCache)
-    cell_order::ImmutableVector{Cell}=ImmutableVector{Cell}()
+Base.@kwdef struct NotebookTopology{C <: AbstractCell}
+    nodes::ImmutableDefaultDict{C,ReactiveNode}=ImmutableDefaultDict{C,ReactiveNode}(ReactiveNode)
+    codes::ImmutableDefaultDict{C,ExprAnalysisCache}=ImmutableDefaultDict{C,ExprAnalysisCache}(ExprAnalysisCache)
+    cell_order::ImmutableVector{C}=ImmutableVector{C}()
 
-    unresolved_cells::ImmutableSet{Cell} = ImmutableSet{Cell}()
-    disabled_cells::ImmutableSet{Cell} = ImmutableSet{Cell}()
+    unresolved_cells::ImmutableSet{C} = ImmutableSet{C}()
+    disabled_cells::ImmutableSet{C} = ImmutableSet{C}()
 end
 
 # BIG TODO HERE: CELL ORDER
 all_cells(topology::NotebookTopology) = topology.cell_order.c
 
 is_resolved(topology::NotebookTopology) = isempty(topology.unresolved_cells)
-is_resolved(topology::NotebookTopology, c::Cell) = c in topology.unresolved_cells
+is_resolved(topology::NotebookTopology, c::AbstractCell) = c in topology.unresolved_cells
 
-is_disabled(topology::NotebookTopology, c::Cell) = c in topology.disabled_cells
+is_disabled(topology::NotebookTopology, c::AbstractCell) = c in topology.disabled_cells
 
-function set_unresolved(topology::NotebookTopology, unresolved_cells::Vector{Cell})
-    codes = Dict{Cell,ExprAnalysisCache}(
+function set_unresolved(topology::NotebookTopology{C}, unresolved_cells::Vector{C}) where C
+    codes = Dict{C,ExprAnalysisCache}(
         cell => ExprAnalysisCache(topology.codes[cell]; function_wrapped=false, forced_expr_id=nothing)
         for cell in unresolved_cells
     )
-    NotebookTopology(
+    NotebookTopology{C}(
         nodes=topology.nodes,
         codes=merge(topology.codes, codes),
         unresolved_cells=union(topology.unresolved_cells, unresolved_cells),

@@ -2,7 +2,7 @@ module PlutoReactiveCore
 
 using ExpressionExplorer
 
-const Cell = Base.UUID
+abstract type AbstractCell end
 
 include("./PlutoReactiveCore/data structures.jl")
 include("./PlutoReactiveCore/ExpressionExplorer.jl")

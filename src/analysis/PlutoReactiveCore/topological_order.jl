@@ -2,7 +2,7 @@ abstract type ChildExplorationResult end
 
 struct Ok <: ChildExplorationResult end
 struct Cycle <: ChildExplorationResult
-	cycled_cells::Vector{Cell}
+	cycled_cells::Vector{<:AbstractCell}
 end
 
 """
@@ -23,7 +23,7 @@ Return a `TopologicalOrder` that lists the cells to be evaluated in a single rea
 
   In other words, if there is a set of fellow assigners that can only be reached **partially** by the roots, then this set blocks the search, and cells that depend on the set are not found.
 """
-function topological_order(topology::NotebookTopology, roots::AbstractVector{Cell}; 
+function topological_order(topology::NotebookTopology{C}, roots::AbstractVector{C}; 
 	allow_multiple_defs::Bool=false,
 	skip_at_partial_multiple_defs::Bool=false,
 )::TopologicalOrder
@@ -32,12 +32,12 @@ function topological_order(topology::NotebookTopology, roots::AbstractVector{Cel
 		@assert allow_multiple_defs
 	end
 
-	entries = Cell[]
-	exits = Cell[]
-	errable = Dict{Cell,ReactivityError}()
+	entries = C[]
+	exits = C[]
+	errable = Dict{C,ReactivityError}()
 
 	# https://xkcd.com/2407/
-	function bfs(cell::Cell)::ChildExplorationResult
+	function bfs(cell::C)::ChildExplorationResult
 		if cell in exits
 			return Ok()
 		elseif haskey(errable, cell)
@@ -83,7 +83,7 @@ function topological_order(topology::NotebookTopology, roots::AbstractVector{Cel
 				referencers
 			end
 		else
-			Cell[]
+			C[]
 		end
 		
 		for c in to_search_next
@@ -142,7 +142,7 @@ function disjoint(a, b)
 end
 
 "Return the cells that reference any of the symbols defined by the given cell. Non-recursive: only direct dependencies are found."
-function where_referenced(topology::NotebookTopology, myself::Cell)::Vector{Cell}
+function where_referenced(topology::NotebookTopology{C}, myself::C)::Vector{C} where C <: AbstractCell
 	to_compare = union(topology.nodes[myself].definitions, topology.nodes[myself].soft_definitions, topology.nodes[myself].funcdefs_without_signatures)
 	where_referenced(topology, to_compare)
 end
