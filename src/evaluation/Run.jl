@@ -2,8 +2,6 @@ import REPL: ends_with_semicolon
 import .Configuration
 import .ExpressionExplorer: is_joined_funcname
 
-Base.push!(x::Set{Cell}) = x
-
 """
 Run given cells and all the cells that depend on them, based on the topology information before and after the changes.
 """
@@ -77,31 +75,18 @@ function run_reactive_core!(
     roots = vcat(roots, removed_cells)
 
     # by setting the reactive node and expression caches of deleted cells to "empty", we are essentially pretending that those cells still exist, but now have empty code. this makes our algorithm simpler.
-    new_topology = NotebookTopology(
-        nodes = merge(
-            new_topology.nodes,
-            Dict(cell => ReactiveNode() for cell in removed_cells),
-        ),
-        codes = merge(
-            new_topology.codes,
-            Dict(cell => ExprAnalysisCache() for cell in removed_cells)
-        ),
-        unresolved_cells = new_topology.unresolved_cells,
-        cell_order = new_topology.cell_order,
-        disabled_cells=new_topology.disabled_cells,
-    )
-	
-	
+    new_topology = exclude_roots(new_topology, removed_cells)
+
     # find (indirectly) deactivated cells and update their status
     indirectly_deactivated = collect(topological_order(new_topology, collect(new_topology.disabled_cells); allow_multiple_defs=true, skip_at_partial_multiple_defs=true))
-	
+
     for cell in indirectly_deactivated
         cell.running = false
         cell.queued = false
         cell.depends_on_disabled_cells = true
     end
 
-	new_topology = exclude_roots(new_topology, indirectly_deactivated)
+    new_topology = exclude_roots(new_topology, indirectly_deactivated)
 
     # save the old topological order - we'll delete variables assigned from its
     # and re-evalutate its cells unless the cells have already run previously in the reactive run
@@ -110,13 +95,13 @@ function run_reactive_core!(
     old_runnable = setdiff(old_order.runnable, already_run, indirectly_deactivated)
     to_delete_vars = union!(Set{Symbol}(), defined_variables(old_topology, old_runnable)...)
     to_delete_funcs = union!(Set{Tuple{UUID,FunctionName}}(), defined_functions(old_topology, old_runnable)...)
-	
-	
-	new_roots = setdiff(union(roots, keys(old_order.errable)), indirectly_deactivated)
+
+
+    new_roots = setdiff(union(roots, keys(old_order.errable)), indirectly_deactivated)
     # get the new topological order
     new_order = topological_order(new_topology, new_roots)
     new_runnable = setdiff(new_order.runnable, already_run)
-    to_run = setdiff(union(new_runnable, old_runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
+    to_run = setdiff!(union(new_runnable, old_runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
 
 
     # change the bar on the sides of cells to "queued"
@@ -159,9 +144,15 @@ function run_reactive_core!(
 
     cells_to_macro_invalidate = Set{UUID}(c.cell_id for c in cells_with_deleted_macros(old_topology, new_topology))
 
-    to_reimport = union!(Set{Expr}(), (
-			new_topology.codes[c].module_usings_imports.usings for c in notebook.cells if c ∉ to_run
-		)...)
+    to_reimport = reduce(all_cells(new_topology); init=Set{Expr}()) do to_reimport, c
+        c ∈ to_run && return to_reimport
+        usings_imports = new_topology.codes[c].module_usings_imports
+        for (using_, isglobal) in zip(usings_imports.usings, usings_imports.usings_isglobal)
+            isglobal || continue
+            push!(to_reimport, using_)
+        end
+        to_reimport
+    end
 
     if will_run_code(notebook)
 		to_delete_funcs_simple = Set{Tuple{UUID,Tuple{Vararg{Symbol}}}}((id, name.parts) for (id,name) in to_delete_funcs)

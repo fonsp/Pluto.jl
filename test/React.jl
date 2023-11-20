@@ -1522,6 +1522,31 @@ import Pluto.Configuration: Options, EvaluationOptions
         WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
     end
 
+    @testset "Using package from module" begin
+        notebook = Notebook([
+            Cell("""module A
+                        using Dates
+                    end"""),
+            Cell(""),
+            Cell("December"),
+        ])
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test notebook.cells[begin] |> noerror
+        @test occursinerror("UndefVarError", notebook.cells[end])
+
+        setcode!(notebook.cells[2], "using Dates")
+
+        update_run!(🍭, notebook, [notebook.cells[2]])
+
+        @test notebook.cells[1] |> noerror
+        @test notebook.cells[2] |> noerror
+        @test notebook.cells[3] |> noerror
+
+        WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
+    end
+
     @testset "Function wrapping" begin
         notebook = Notebook([
             Cell("false && jlaksdfjalskdfj"),

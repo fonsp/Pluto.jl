@@ -1683,7 +1683,7 @@ const integrations = Integration[
         code = quote
             @assert v"1.0.0" <= AbstractPlutoDingetjes.MY_VERSION < v"2.0.0"
             
-            supported!(xs...) = push!(supported_integration_features, xs...)
+            supported!(xs...) = append!(supported_integration_features, xs)
             
             # don't need feature checks for these because they existed in every version of AbstractPlutoDingetjes:
             supported!(
