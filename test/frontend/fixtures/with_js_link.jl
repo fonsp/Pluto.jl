@@ -17,6 +17,89 @@ begin
 	using HypertextLiteral
 end
 
+# ╔═╡ 37aacc7f-61fd-4c4b-b24d-42361d508e8d
+@htl("""
+<script>
+const sqrt_from_julia = $(AbstractPlutoDingetjes.Display.with_js_link(sqrt))
+
+// I can now call sqrt_from_julia like a JavaScript function. It returns a Promise:
+const result = await sqrt_from_julia(9.0)
+console.log(result)
+
+</script>
+""")
+
+# ╔═╡ b3186d7b-8fd7-4575-bccf-8e89ce611010
+md"""
+# Benchmark
+
+We call the `next` function from JavaScript in a loop until `max` is reached, to calculate the time of each round trip.
+"""
+
+# ╔═╡ 82c7a083-c84d-4924-bad2-776d3cdad797
+next(x) = x + 1;
+
+# ╔═╡ e8abaff9-f629-47c6-8009-066bcdf67693
+max = 250;
+
+# ╔═╡ bf9861e0-be91-4041-aa61-8ac2ef6cb719
+@htl("""
+<div>
+<p><input type="submit" value="start"></p>
+<p>Current value: </p><input disabled type="number" value="0"></p>
+<p>Past values: <input disabled style="width: 100%; font-size: .4em;"></p>
+<p>Time per round trip: <input disabled ></p>
+<script>
+	const f_from_julia = $(AbstractPlutoDingetjes.Display.with_js_link(next))
+
+	const div = currentScript.closest("div")
+	const [submit,output,log,timer_log] = div.querySelectorAll("input")
+
+	const max = $max
+
+	submit.addEventListener("click", () => {
+		output.value = 0
+		log.value = "0"
+		timer_log.value = "running..."
+		let start_time = performance.now()
+		
+		let next = async () => {
+			let val = await f_from_julia(output.valueAsNumber)
+			
+			output.valueAsNumber = val
+			log.value += `,\${val}`
+			if(output.valueAsNumber < max) {
+				await next()
+			} else {
+				let end_time = performance.now()
+				let dt = (end_time - start_time) / max
+				timer_log.value = `\${_.round(dt, 4)} ms`
+			}
+		}
+
+		next()
+	})
+	
+</script>
+</div>
+""")
+
+# ╔═╡ ebf79ee4-2590-4b5a-a957-213ed03a5921
+md"""
+# Concurrency
+"""
+
+# ╔═╡ f9ff5f6b-7525-4928-a19c-2d0bf56fd952
+
+
+# ╔═╡ 2417de50-e6e4-4c99-8836-ee8ff04d586a
+1 + 1
+
+# ╔═╡ 663e5a70-4d07-4d6a-8725-dc9a2b26b65d
+md"""
+# Tests
+"""
+
 # ╔═╡ 3d836ff3-995e-4353-807e-bf2cd78920e2
 some_global = rand(200)
 
@@ -53,7 +136,29 @@ end
 
 # ╔═╡ 4b80dda0-74b6-4a0e-a50e-61c5380111a4
 function_evaluator(123) do input
-	sqrt(parse(Float64, input))
+	num = parse(Float64, input)
+	sqrt(num)
+end
+
+# ╔═╡ a399cb12-39d4-43c0-a0a7-05cb683dffbd
+function_evaluator(123) do input
+	@info "start"
+	sleep(5)
+	@warn "end"
+	uppercase(input)
+end
+
+# ╔═╡ 2bff3975-5918-40fe-9761-eb7b47f16df2
+function_evaluator(123) do input
+	@info "start"
+	sleep(5)
+	@warn "end"
+	uppercase(input)
+end
+
+# ╔═╡ abb24301-357c-40f0-832e-86f26404d3d9
+function_evaluator("THIS IN LOWERCASE") do input
+	"you should see $(lowercase(input))"
 end
 
 # ╔═╡ 33a2293c-6202-47ca-80d1-4a9e261cae7f
@@ -121,6 +226,18 @@ end
 # ╔═╡ Cell order:
 # ╠═b0f2a778-885f-11ee-3d28-939ca4069ee8
 # ╠═4b80dda0-74b6-4a0e-a50e-61c5380111a4
+# ╠═37aacc7f-61fd-4c4b-b24d-42361d508e8d
+# ╟─b3186d7b-8fd7-4575-bccf-8e89ce611010
+# ╠═82c7a083-c84d-4924-bad2-776d3cdad797
+# ╠═e8abaff9-f629-47c6-8009-066bcdf67693
+# ╟─bf9861e0-be91-4041-aa61-8ac2ef6cb719
+# ╟─ebf79ee4-2590-4b5a-a957-213ed03a5921
+# ╠═f9ff5f6b-7525-4928-a19c-2d0bf56fd952
+# ╠═a399cb12-39d4-43c0-a0a7-05cb683dffbd
+# ╠═2bff3975-5918-40fe-9761-eb7b47f16df2
+# ╠═2417de50-e6e4-4c99-8836-ee8ff04d586a
+# ╟─663e5a70-4d07-4d6a-8725-dc9a2b26b65d
+# ╠═abb24301-357c-40f0-832e-86f26404d3d9
 # ╠═33a2293c-6202-47ca-80d1-4a9e261cae7f
 # ╠═480aea45-da00-4e89-b43a-38e4d1827ec2
 # ╠═b310dd30-dddd-4b75-81d2-aaf35c9dd1d3
