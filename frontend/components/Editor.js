@@ -643,9 +643,9 @@ export class Editor extends Component {
                 this.client.send(
                     "reshow_cell",
                     {
-                        objectid: objectid,
-                        dim: dim,
-                        cell_id: cell_id,
+                        objectid,
+                        dim,
+                        cell_id,
                     },
                     { notebook_id: this.state.notebook.notebook_id },
                     false
