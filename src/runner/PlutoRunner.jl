@@ -2515,13 +2515,24 @@ function core_with_js_link(io, callback)
     write(io, "/* See the documentation for AbstractPlutoDingetjes.Display.with_js_link */ _internal_getJSLinkResponse(\"$(_cell_id)\", \"$(link_id)\")")
 end
 
-function evaluate_js_link(cell_id::UUID, link_id::String, input::Any)
+function evaluate_js_link(notebook_id::UUID, cell_id::UUID, link_id::String, input::Any)
     links = get(() -> Dict{String,Any}(), cell_js_links, cell_id)
     callback = get(links, link_id, nothing)
     if callback === nothing
         @error "🚨 AbstractPlutoDingetjes: JS link not found." link_id
     else
-        result = callback(input)
+        logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
+        
+        result = with_logger_and_io_to_logs(logger; capture_stdout=true, stdio_loglevel=stdout_log_level) do
+            try
+                result = callback(input)
+                assertpackable(result)
+                result
+            catch ex
+                @error "🚨 AbstractPlutoDingetjes.Display.with_js_link: Exception while evaluating Julia callback." input exception=(ex, catch_backtrace())
+            end
+        end
+
         assertpackable(result)
         
         result

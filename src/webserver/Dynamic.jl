@@ -533,6 +533,7 @@ responses[:request_js_link_response] = function response_request_js_link_respons
         (🙋.session, 🙋.notebook), 
         quote
             PlutoRunner.evaluate_js_link(
+                $(🙋.notebook.notebook_id),
                 $(UUID(🙋.body["cell_id"])),
                 $(🙋.body["link_id"]),
                 $(🙋.body["input"]),
