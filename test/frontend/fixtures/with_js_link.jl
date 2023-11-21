@@ -163,8 +163,8 @@ end
 
 # ╔═╡ 33a2293c-6202-47ca-80d1-4a9e261cae7f
 function_evaluator(4) do input
-	@info "You should see this log $(input)"
-	println("You should see this print $(input)")
+	@info "you should see this log $(input)"
+	println("(not currently supported) you should see this print $(input)")
 	
 	rand(parse(Int, input))
 end

@@ -2523,7 +2523,7 @@ function evaluate_js_link(notebook_id::UUID, cell_id::UUID, link_id::String, inp
     else
         logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
         
-        result = with_logger_and_io_to_logs(logger; capture_stdout=true, stdio_loglevel=stdout_log_level) do
+        result = with_logger_and_io_to_logs(logger; capture_stdout=false, stdio_loglevel=stdout_log_level) do
             try
                 result = callback(input)
                 assertpackable(result)

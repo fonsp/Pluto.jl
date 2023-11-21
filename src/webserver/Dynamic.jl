@@ -528,20 +528,22 @@ end
 responses[:request_js_link_response] = function response_request_js_link_response(🙋::ClientRequest)
     require_notebook(🙋)
     @assert will_run_code(🙋.notebook)
-
-    result = WorkspaceManager.eval_fetch_in_workspace(
-        (🙋.session, 🙋.notebook), 
-        quote
-            PlutoRunner.evaluate_js_link(
-                $(🙋.notebook.notebook_id),
-                $(UUID(🙋.body["cell_id"])),
-                $(🙋.body["link_id"]),
-                $(🙋.body["input"]),
-            )
-        end
-    )
     
-    putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🐤, result, nothing, nothing, 🙋.initiator))
+    @asynclog begin
+        result = WorkspaceManager.eval_fetch_in_workspace(
+            (🙋.session, 🙋.notebook), 
+            quote
+                PlutoRunner.evaluate_js_link(
+                    $(🙋.notebook.notebook_id),
+                    $(UUID(🙋.body["cell_id"])),
+                    $(🙋.body["link_id"]),
+                    $(🙋.body["input"]),
+                )
+            end
+        )
+        
+        putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🐤, result, nothing, nothing, 🙋.initiator))
+    end
 end
 
 responses[:nbpkg_available_versions] = function response_nbpkg_available_versions(🙋::ClientRequest)
