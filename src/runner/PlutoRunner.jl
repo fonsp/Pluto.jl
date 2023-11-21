@@ -541,6 +541,9 @@ function run_expression(
 
     # reset registered bonds
     cell_registered_bond_names[cell_id] = Set{Symbol}()
+    
+    # reset JS links
+    cell_js_links[cell_id] = Dict{String,Any}()
 
     # If the cell contains macro calls, we want those macro calls to preserve their identity,
     # so we macroexpand this earlier (during expression explorer stuff), and then we find it here.
@@ -990,6 +993,7 @@ const default_iocontext = IOContext(devnull,
     :is_pluto => true, 
     :pluto_supported_integration_features => supported_integration_features,
     :pluto_published_to_js => (io, x) -> core_published_to_js(io, x),
+    :pluto_with_js_link => (io, callback) -> core_with_js_link(io, callback),
 )
 
 const default_stdout_iocontext = IOContext(devnull, 
@@ -1702,6 +1706,9 @@ const integrations = Integration[
                 supported!(AbstractPlutoDingetjes.Display)
                 if isdefined(AbstractPlutoDingetjes.Display, :published_to_js)
                     supported!(AbstractPlutoDingetjes.Display.published_to_js)
+                end
+                if isdefined(AbstractPlutoDingetjes.Display, :with_js_link)
+                    supported!(AbstractPlutoDingetjes.Display.with_js_link)
                 end
             end
 
@@ -2484,6 +2491,41 @@ pluto_showable(::MIME"application/vnd.pluto.divelement+object", ::DivElement) = 
 
 function Base.show(io::IO, m::MIME"text/html", e::DivElement)
     Base.show(io, m, embed_display(e))
+end
+
+
+###
+# JS LINK
+###
+
+const cell_js_links = Dict{UUID,Dict{String,Any}}()
+
+function core_with_js_link(io, callback)
+    
+    _notebook_id = get(io, :pluto_notebook_id, notebook_id[])::UUID
+    _cell_id = get(io, :pluto_cell_id, currently_running_cell_id[])::UUID
+    
+    # TODO is this okay? prob not
+    # link_id = objectid2str(callback)
+    link_id = String(rand('a':'z', 16))
+    
+    links = get!(() -> Dict{String,Any}(), cell_js_links, _cell_id)
+    links[link_id] = callback
+    
+    write(io, "/* See the documentation for AbstractPlutoDingetjes.Display.with_js_link */ _internal_getJSLinkResponse(\"$(_cell_id)\", \"$(link_id)\")")
+end
+
+function evaluate_js_link(cell_id::UUID, link_id::String, input::Any)
+    links = get(() -> Dict{String,Any}(), cell_js_links, cell_id)
+    callback = get(links, link_id, nothing)
+    if callback === nothing
+        @error "🚨 AbstractPlutoDingetjes: JS link not found." link_id
+    else
+        result = callback(input)
+        assertpackable(result)
+        
+        result
+    end
 end
 
 ###

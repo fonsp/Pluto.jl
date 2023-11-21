@@ -525,6 +525,24 @@ responses[:reshow_cell] = function response_reshow_cell(🙋::ClientRequest)
     send_notebook_changes!(🙋 |> without_initiator)
 end
 
+responses[:request_js_link_response] = function response_request_js_link_response(🙋::ClientRequest)
+    require_notebook(🙋)
+    @assert will_run_code(🙋.notebook)
+
+    result = WorkspaceManager.eval_fetch_in_workspace(
+        (🙋.session, 🙋.notebook), 
+        quote
+            PlutoRunner.evaluate_js_link(
+                $(UUID(🙋.body["cell_id"])),
+                $(🙋.body["link_id"]),
+                $(🙋.body["input"]),
+            )
+        end
+    )
+    
+    putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🐤, result, nothing, nothing, 🙋.initiator))
+end
+
 responses[:nbpkg_available_versions] = function response_nbpkg_available_versions(🙋::ClientRequest)
     # require_notebook(🙋)
     all_versions = PkgCompat.package_versions(🙋.body["package_name"])
