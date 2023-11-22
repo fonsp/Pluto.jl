@@ -142,6 +142,7 @@ export const Notebook = ({
     disable_input,
     process_waiting_for_permission,
     sanitize_html = true,
+    client_id,
 }) => {
     let pluto_actions = useContext(PlutoActionsContext)
 

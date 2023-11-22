@@ -133,11 +133,11 @@ export const Cell = ({
     const [key, setKey] = useState(0)
     const cell_key = useMemo(() => cell_id + key, [cell_id, key])
 
-    const [, resetError] = useErrorBoundary((error) => {
-        console.log(`An error occured in the CodeMirror code, resetting CellInput component. See error below:\n\n${error}\n\n -------------- `)
-        setKey(key + 1)
-        resetError()
-    })
+    // const [, resetError] = useErrorBoundary((error) => {
+    //     console.log(`An error occured in the CodeMirror code, resetting CellInput component. See error below:\n\n${error}\n\n -------------- `)
+    //     setKey(key + 1)
+    //     resetError()
+    // })
 
     const remount = useMemo(() => () => setKey(key + 1))
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace

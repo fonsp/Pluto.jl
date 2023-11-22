@@ -1618,7 +1618,7 @@ patch: ${JSON.stringify(
                             last_hot_reload_time=${notebook.last_hot_reload_time}
                             connected=${this.state.connected}
                         />
-                        <${MultiplayerPanel} users=${notebook.users}/>
+                        <${MultiplayerPanel} users=${notebook.users} client_id=${this.client_id} />
                         <${Notebook}
                             notebook=${notebook}
                             client_id=${this.client_id}
