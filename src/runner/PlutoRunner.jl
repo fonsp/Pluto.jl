@@ -341,7 +341,7 @@ function get_module_names(workspace_module, module_ex::Expr)
 end
 
 function collect_soft_definitions(workspace_module, modules::Set{Expr})
-  mapreduce(module_ex -> get_module_names(workspace_module, module_ex), union!, modules; init=Set{Symbol}())
+    mapreduce(module_ex -> get_module_names(workspace_module, module_ex), union!, modules; init=Set{Symbol}())
 end
 
 
@@ -688,7 +688,7 @@ function move_vars(
     old_workspace_name::Symbol,
     new_workspace_name::Symbol,
     vars_to_delete::Set{Symbol},
-    methods_to_delete::Set{Tuple{UUID,Vector{Symbol}}},
+    methods_to_delete::Set{Tuple{UUID,Tuple{Vararg{Symbol}}}},
     module_imports_to_move::Set{Expr},
     invalidated_cell_uuids::Set{UUID},
     keep_registered::Set{Symbol},
@@ -829,7 +829,7 @@ end
 #     try_delete_toplevel_methods(workspace, [name])
 # end
 
-function try_delete_toplevel_methods(workspace::Module, (cell_id, name_parts)::Tuple{UUID,Vector{Symbol}})::Bool
+function try_delete_toplevel_methods(workspace::Module, (cell_id, name_parts)::Tuple{UUID,Tuple{Vararg{Symbol}}})::Bool
     try
         val = workspace
         for name in name_parts
@@ -1683,7 +1683,7 @@ const integrations = Integration[
         code = quote
             @assert v"1.0.0" <= AbstractPlutoDingetjes.MY_VERSION < v"2.0.0"
             
-            supported!(xs...) = push!(supported_integration_features, xs...)
+            supported!(xs...) = append!(supported_integration_features, xs)
             
             # don't need feature checks for these because they existed in every version of AbstractPlutoDingetjes:
             supported!(
@@ -2401,6 +2401,7 @@ function Base.show(io::IO, m::MIME"text/html", e::EmbeddableDisplay)
         const display = create_new ? currentScript.previousElementSibling : this;
         
         display.persist_js_state = true;
+        display.sanitize_html = false;
         display.body = body;
         if(create_new) {
             // only set the mime if necessary, it triggers a second preact update

@@ -21,9 +21,18 @@ export const open_bottom_right_panel = (/** @type {PanelTabName} */ tab) => wind
  * connected: boolean,
  * backend_launch_phase: number?,
  * backend_launch_logs: string?,
+ * sanitize_html?: boolean,
  * }} props
  */
-export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, notebook, connected, backend_launch_phase, backend_launch_logs }) => {
+export let BottomRightPanel = ({
+    desired_doc_query,
+    on_update_doc_query,
+    notebook,
+    connected,
+    backend_launch_phase,
+    backend_launch_logs,
+    sanitize_html = true,
+}) => {
     let container_ref = useRef()
 
     const focus_docs_on_open_ref = useRef(false)
@@ -94,7 +103,9 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
                             "helpbox-process": true,
                             "active": open_tab === "process",
                             "busy": show_business_outline,
+                            "something_is_happening": busy || !connected,
                         })}
+                        id="process-status-tab-button"
                         onClick=${() => {
                             set_open_tab(open_tab === "process" ? null : "process")
                         }}
@@ -123,6 +134,7 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
                           desired_doc_query=${desired_doc_query}
                           on_update_doc_query=${on_update_doc_query}
                           notebook=${notebook}
+                          sanitize_html=${sanitize_html}
                       />`
                     : open_tab === "process"
                     ? html`<${ProcessTab}

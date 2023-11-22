@@ -1,5 +1,7 @@
 import { html, Component, useRef, useLayoutEffect, useContext } from "../imports/Preact.js"
 
+import DOMPurify from "../imports/DOMPurify.js"
+
 import { ErrorMessage, ParseError } from "./ErrorMessage.js"
 import { TreeView, TableView, DivElement } from "./TreeView.js"
 
@@ -24,6 +26,7 @@ import { pluto_syntax_colors, ENABLE_CM_MIXED_PARSER } from "./CellInput.js"
 import hljs from "../imports/highlightjs.js"
 import { julia_mixed } from "./CellInput/mixedParsers.js"
 import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
+import { SafePreviewSanitizeMessage } from "./SafePreviewUI.js"
 
 export class CellOutput extends Component {
     constructor() {
@@ -50,8 +53,8 @@ export class CellOutput extends Component {
         })
     }
 
-    shouldComponentUpdate({ last_run_timestamp }) {
-        return last_run_timestamp !== this.props.last_run_timestamp
+    shouldComponentUpdate({ last_run_timestamp, sanitize_html }) {
+        return last_run_timestamp !== this.props.last_run_timestamp || sanitize_html !== this.props.sanitize_html
     }
 
     componentDidMount() {
@@ -113,7 +116,21 @@ export let PlutoImage = ({ body, mime }) => {
     return html`<img ref=${imgref} type=${mime} src=${""} />`
 }
 
-export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last_run_timestamp }) => {
+/**
+ * @param {{
+ *  mime: string,
+ * body: any,
+ * cell_id: string,
+ * persist_js_state: boolean | string,
+ * last_run_timestamp: number,
+ * sanitize_html?: boolean | string,
+ * }} args
+ */
+export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last_run_timestamp, sanitize_html = true }) => {
+    // These two arguments might have been passed as strings if OutputBody was used as the custom HTML element <pluto-display>, with string attributes as arguments.
+    sanitize_html = sanitize_html !== "false" && sanitize_html !== false
+    persist_js_state = persist_js_state === "true" || persist_js_state === true
+
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -130,23 +147,24 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
             // NOTE: Jupyter doesn't do this, jupyter renders everything directly in pages DOM.
             //                                                                   -DRAL
             if (body.startsWith("<!DOCTYPE") || body.startsWith("<html")) {
-                return html`<${IframeContainer} body=${body} />`
+                return sanitize_html ? null : html`<${IframeContainer} body=${body} />`
             } else {
                 return html`<${RawHTMLContainer}
                     cell_id=${cell_id}
                     body=${body}
                     persist_js_state=${persist_js_state}
                     last_run_timestamp=${last_run_timestamp}
+                    sanitize_html=${sanitize_html}
                 />`
             }
             break
         case "application/vnd.pluto.tree+object":
             return html`<div>
-                <${TreeView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />
+                <${TreeView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} sanitize_html=${sanitize_html} />
             </div>`
             break
         case "application/vnd.pluto.table+object":
-            return html`<${TableView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`
+            return html`<${TableView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} sanitize_html=${sanitize_html} />`
             break
         case "application/vnd.pluto.parseerror+object":
             return html`<div><${ParseError} cell_id=${cell_id} ...${body} /></div>`
@@ -155,7 +173,7 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
             return html`<div><${ErrorMessage} cell_id=${cell_id} ...${body} /></div>`
             break
         case "application/vnd.pluto.divelement+object":
-            return DivElement({ cell_id, ...body, persist_js_state })
+            return DivElement({ cell_id, ...body, persist_js_state, sanitize_html })
             break
         case "text/plain":
             if (body) {
@@ -177,7 +195,7 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
     }
 }
 
-register(OutputBody, "pluto-display", ["mime", "body", "cell_id", "persist_js_state", "last_run_timestamp"])
+register(OutputBody, "pluto-display", ["mime", "body", "cell_id", "persist_js_state", "last_run_timestamp", "sanitize_html"])
 
 let IframeContainer = ({ body }) => {
     let iframeref = useRef()
@@ -327,8 +345,14 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
 
             if (script_el == undefined) {
                 script_el = document.createElement("script")
+                script_el.referrerPolicy = node.referrerPolicy
+                script_el.crossOrigin = node.crossOrigin
+                script_el.integrity = node.integrity
+                script_el.noModule = node.noModule
+                script_el.nonce = node.nonce
+                script_el.type = node.type
                 script_el.src = node.src
-                script_el.type = node.type === "module" ? "module" : "text/javascript"
+                // Not copying defer or async because this script is not included in the initial HTML document, so it has no effect.
                 // @ts-ignore
                 script_el.pluto_is_loading_me = true
             }
@@ -469,7 +493,7 @@ let declarative_shadow_dom_polyfill = (template) => {
     }
 }
 
-export let RawHTMLContainer = ({ body, className = "", persist_js_state = false, last_run_timestamp }) => {
+export let RawHTMLContainer = ({ body, className = "", persist_js_state = false, last_run_timestamp, sanitize_html = true, sanitize_html_message = true }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     let pluto_bonds = useContext(PlutoBondsContext)
     let js_init_set = useContext(PlutoJSInitializingContext)
@@ -481,7 +505,7 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
 
     useLayoutEffect(() => {
         if (container_ref.current && pluto_bonds) set_bound_elements_to_their_value(container_ref.current.querySelectorAll("bond"), pluto_bonds)
-    }, [body, persist_js_state, pluto_actions, pluto_bonds])
+    }, [body, persist_js_state, pluto_actions, pluto_bonds, sanitize_html])
 
     useLayoutEffect(() => {
         const container = container_ref.current
@@ -498,8 +522,31 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
         // @ts-ignore
         dump.append(...container.childNodes)
 
+        let html_content_to_set = sanitize_html
+            ? DOMPurify.sanitize(body, {
+                  FORBID_TAGS: ["style"],
+                  ADD_ATTR: ["target"],
+              })
+            : body
+
         // Actually "load" the html
-        container.innerHTML = body
+        container.innerHTML = html_content_to_set
+
+        if (sanitize_html_message && html_content_to_set !== body) {
+            // DOMPurify also resolves HTML entities, which can give a false positive. To fix this, we use DOMParser to parse both strings, and we compare the innerHTML of the resulting documents.
+            const parser = new DOMParser()
+            const p1 = parser.parseFromString(body, "text/html")
+            const p2 = parser.parseFromString(html_content_to_set, "text/html")
+
+            if (p2.documentElement.innerHTML !== p1.documentElement.innerHTML) {
+                console.info("HTML sanitized", { body, html_content_to_set })
+                let info_element = document.createElement("div")
+                info_element.innerHTML = SafePreviewSanitizeMessage
+                container.prepend(info_element)
+            }
+        }
+
+        if (sanitize_html) return
 
         let scripts_in_shadowroots = Array.from(container.querySelectorAll("template[shadowroot]")).flatMap((template) => {
             // @ts-ignore
@@ -564,7 +611,7 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
             js_init_set?.delete(container)
             invalidate_scripts.current?.()
         }
-    }, [body, persist_js_state, last_run_timestamp, pluto_actions])
+    }, [body, last_run_timestamp, pluto_actions, sanitize_html])
 
     return html`<div class="raw-html-wrapper ${className}" ref=${container_ref}></div>`
 }

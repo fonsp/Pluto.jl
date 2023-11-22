@@ -69,7 +69,7 @@ import {
     linter,
     setDiagnostics,
     //@ts-ignore
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@1b869d8/dist/index.es.min.js"
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@1234.1.0/dist/index.es.min.js"
 
 export {
     linter,

@@ -23,6 +23,7 @@ Base.@kwdef mutable struct Workspace
     module_name::Symbol
     dowork_token::Token=Token()
     nbpkg_was_active::Bool=false
+    has_executed_effectful_code::Bool=false
     is_offline_renderer::Bool=false
     original_LOAD_PATH::Vector{String}=String[]
     original_ACTIVE_PROJECT::Union{Nothing,String}=nothing
@@ -55,8 +56,7 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
         Malt.InProcessWorker
     elseif something(
         session.options.evaluation.workspace_use_distributed_stdlib, 
-        true
-        # VERSION < v"1.8.0-0"
+        Sys.iswindows() ? false : true
     )
         Malt.DistributedStdlibWorker
     else
@@ -124,7 +124,7 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
     
     # TODO: precompile 1+1 with display
     # sleep(3)
-    eval_format_fetch_in_workspace(workspace, Expr(:toplevel, LineNumberNode(-1), :(1+1)), uuid1())
+    eval_format_fetch_in_workspace(workspace, Expr(:toplevel, LineNumberNode(-1), :(1+1)), uuid1(); code_is_effectful=false)
     
     Status.report_business_finished!(init_status, Symbol(4))
     Status.report_business_finished!(workspace_business, :init_process)
@@ -410,7 +410,8 @@ function eval_format_fetch_in_workspace(
     forced_expr_id::Union{PlutoRunner.ObjectID,Nothing}=nothing,
     known_published_objects::Vector{String}=String[],
     user_requested_run::Bool=true,
-    capture_stdout::Bool=true
+    capture_stdout::Bool=true,
+    code_is_effectful::Bool=true,
 )::PlutoRunner.FormattedCellResult
 
     workspace = get_workspace(session_notebook)
@@ -425,6 +426,7 @@ function eval_format_fetch_in_workspace(
 
     # A try block (on this process) to catch an InterruptException
     take!(workspace.dowork_token)
+    workspace.has_executed_effectful_code |= code_is_effectful
     early_result = try
         Malt.remote_eval_wait(workspace.worker, quote
             PlutoRunner.run_expression(
@@ -549,7 +551,7 @@ function move_vars(
     old_workspace_name::Symbol,
     new_workspace_name::Union{Nothing,Symbol},
     to_delete::Set{Symbol},
-    methods_to_delete::Set{Tuple{UUID,FunctionName}},
+    methods_to_delete::Set{Tuple{UUID,Tuple{Vararg{Symbol}}}},
     module_imports_to_move::Set{Expr},
     invalidated_cell_uuids::Set{UUID},
     keep_registered::Set{Symbol}=Set{Symbol}();
@@ -572,7 +574,7 @@ function move_vars(
     end)
 end
 
-function move_vars(session_notebook::Union{SN,Workspace}, to_delete::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,FunctionName}}, module_imports_to_move::Set{Expr}, invalidated_cell_uuids::Set{UUID}; kwargs...)
+function move_vars(session_notebook::Union{SN,Workspace}, to_delete::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,Tuple{Vararg{Symbol}}}}, module_imports_to_move::Set{Expr}, invalidated_cell_uuids::Set{UUID}; kwargs...)
     move_vars(session_notebook, bump_workspace_module(session_notebook)..., to_delete, methods_to_delete, module_imports_to_move, invalidated_cell_uuids; kwargs...)
 end
 

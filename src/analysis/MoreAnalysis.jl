@@ -3,12 +3,12 @@ module MoreAnalysis
 export bound_variable_connections_graph
 
 import ..Pluto
-import ..Pluto: Cell, Notebook, NotebookTopology, ExpressionExplorer
+import ..Pluto: Cell, Notebook, NotebookTopology, ExpressionExplorer, ExpressionExplorerExtras
 
 "Find all subexpressions of the form `@bind symbol something`, and extract the `symbol`s."
 function find_bound_variables(expr)
 	found = Set{Symbol}()
-	_find_bound_variables!(found, ExpressionExplorer.maybe_macroexpand(expr; recursive=true, expand_bind=false))
+	_find_bound_variables!(found, ExpressionExplorerExtras.maybe_macroexpand_pluto(expr; recursive=true, expand_bind=false))
 	found
 end
 

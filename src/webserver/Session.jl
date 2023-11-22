@@ -83,7 +83,8 @@ function clientupdate_notebook_list(notebooks; initiator::Union{Initiator,Nothin
                     :notebook_id => notebook.notebook_id,
                     :path => notebook.path,
                     :in_temp_dir => startswith(notebook.path, new_notebooks_directory()),
-                    :shortpath => basename(notebook.path)
+                    :shortpath => basename(notebook.path),
+                    :process_status => notebook.process_status,
                 ) for notebook in values(notebooks)
             ]
         ), nothing, nothing, initiator)

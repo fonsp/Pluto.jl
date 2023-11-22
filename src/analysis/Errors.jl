@@ -1,5 +1,5 @@
 import Base: showerror
-import .ExpressionExplorer: FunctionName, join_funcname_parts
+import .ExpressionExplorer: FunctionName
 
 abstract type ReactivityError <: Exception end
 

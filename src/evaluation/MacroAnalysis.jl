@@ -30,7 +30,8 @@ function with_new_soft_definitions(topology::NotebookTopology, cell::Cell, soft_
 	)
 end
 
-collect_implicit_usings(topology::NotebookTopology, cell::Cell) = ExpressionExplorer.collect_implicit_usings(topology.codes[cell].module_usings_imports)
+collect_implicit_usings(topology::NotebookTopology, cell::Cell) =
+    ExpressionExplorerExtras.collect_implicit_usings(topology.codes[cell].module_usings_imports)
 
 function cells_with_deleted_macros(old_topology::NotebookTopology, new_topology::NotebookTopology)
     old_macros = mapreduce(c -> defined_macros(old_topology, c), union!, all_cells(old_topology); init=Set{Symbol}())
@@ -105,15 +106,15 @@ function resolve_topology(
 	end
 
 	function analyze_macrocell(cell::Cell)
-		if unresolved_topology.nodes[cell].macrocalls ⊆ ExpressionExplorer.can_macroexpand
+		if unresolved_topology.nodes[cell].macrocalls ⊆ ExpressionExplorerExtras.can_macroexpand
 			return Skipped()
 		end
 
 		result = macroexpand_cell(cell)
 		if result isa Success
 			(expr, computer_id) = result.result
-			expanded_node = ExpressionExplorer.try_compute_symbolreferences(expr) |> ReactiveNode
-			function_wrapped = ExpressionExplorer.can_be_function_wrapped(expr)
+			expanded_node = ExpressionExplorer.compute_reactive_node(ExpressionExplorerExtras.pretransform_pluto(expr))
+			function_wrapped = ExpressionExplorerExtras.can_be_function_wrapped(expr)
 			Success((expanded_node, function_wrapped, computer_id))
 		else
 			result
@@ -184,8 +185,13 @@ end
 So, the resulting reactive nodes may not be absolutely accurate. If you can run code in a session, use `resolve_topology` instead.
 """
 function static_macroexpand(topology::NotebookTopology, cell::Cell)
-	new_node = ExpressionExplorer.maybe_macroexpand(topology.codes[cell].parsedcode; recursive=true) |>
-		ExpressionExplorer.try_compute_symbolreferences |> ReactiveNode
+	new_node = ExpressionExplorer.compute_reactive_node(
+		ExpressionExplorerExtras.pretransform_pluto(
+			ExpressionExplorerExtras.maybe_macroexpand_pluto(
+				topology.codes[cell].parsedcode; recursive=true
+			)
+		)
+	)
 	union!(new_node.macrocalls, topology.nodes[cell].macrocalls)
 
 	new_node
