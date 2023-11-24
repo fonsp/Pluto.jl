@@ -5,7 +5,7 @@ import { PlutoActionsContext } from "../common/PlutoContext.js"
 
 // TODO: investigate why effect is bad with low throttle rate?
 // ....  update notebook should be pretty fast.
-const CURSOR_THROTTLE_RATE = 100
+const CURSOR_THROTTLE_RATE = 75
 const DEFAULT_CURSOR_COLOR = "#eeeeee"
 
 const mouse_data_to_point = ({relative_to_cell, relative_x, relative_y}) => {
@@ -86,13 +86,13 @@ const Cursor = ({ mouse: point, color }) => {
     <div
       ref=${r}
       style=${{
-        position: "fixed",
+        position: "absolute",
         top: -10,
         left: -10,
         width: 20,
         height: 20,
         borderRadius: 10,
-        border: "solid 4px " + hexToRGBA(color , 0.5),
+        border: "solid 4px " + hexToRGBA(color, 0.5),
         backgroundColor: color,
         "-webkit-background-clip": "padding-box", /* for Safari */
         backgroundClip: "padding-box", /* for IE9+, Firefox 4+, Opera, Chrome */
@@ -109,7 +109,7 @@ const usePassiveDocumentEventListener = (event_name, handler_fn, deps) => {
 }
 
 export const MultiplayerPanel = ({ users, client_id }) => {
-    if (!users || Object.keys(users).length == 1) return
+    if (!users || Object.keys(users).every(user_id => user_id == client_id)) return
     const { update_notebook } = useContext(PlutoActionsContext)
 
     usePassiveDocumentEventListener("mousemove", _.throttle((event) => {
@@ -128,15 +128,11 @@ export const MultiplayerPanel = ({ users, client_id }) => {
     usePassiveDocumentEventListener("blur", hide_mouse_for_client, [hide_mouse_for_client])
 
     return html`
-        <div className="pluto-multiplayer">
-            <ul>
-                ${Object.entries(users).map(
-                    ([clientID, { name, mouse, color, focused_cell }]) =>
-                        html`<li key=${clientID} style=${`color: ${color};`}>${name} - ${focused_cell}
-                            ${client_id == clientID || !mouse ? null : html`<${Cursor} mouse=${mouse_data_to_point(mouse)} color=${color} />`}
-                    </li>`
-                )}
-            </ul>
-        </div>
+        <pluto-cursor-list>
+        ${Object.entries(users).map(
+            ([clientID, { name, mouse, color, focused_cell }]) =>
+                    client_id == clientID || !mouse ? null : html`<${Cursor} key=${clientID} mouse=${mouse_data_to_point(mouse)} color=${color} />`
+        )}
+        </pluto-cursor-list>
     `
 }

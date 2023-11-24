@@ -430,8 +430,6 @@ export const CellInput = ({
         throw to_throw
     }
 
-    console.log(users)
-
     const notebook_id_ref = useRef(notebook_id)
     notebook_id_ref.current = notebook_id
 
