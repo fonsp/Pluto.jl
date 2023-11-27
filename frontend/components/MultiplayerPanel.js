@@ -5,7 +5,7 @@ import { PlutoActionsContext } from "../common/PlutoContext.js"
 
 // TODO: investigate why effect is bad with low throttle rate?
 // ....  update notebook should be pretty fast.
-const CURSOR_THROTTLE_RATE = 75
+const CURSOR_THROTTLE_RATE = 80
 const DEFAULT_CURSOR_COLOR = "#eeeeee"
 
 const mouse_data_to_point = ({relative_to_cell, relative_x, relative_y}) => {
@@ -54,7 +54,7 @@ const usePerfectCursor = (cb, point) => {
 
     useLayoutEffect(() => {
         if (point) pc.addPoint(point)
-        return pc.dispose()
+        return () => pc.dispose()
     }, [pc])
 
     const onPointChange = useCallback(
@@ -83,42 +83,76 @@ const Cursor = ({ mouse: point, color }) => {
     color = color ?? DEFAULT_CURSOR_COLOR
 
     return html`
-    <div
+    <svg
       ref=${r}
+      version="1.1"
+      viewBox="0 0 8.2089 8.2089"
+      xmlns="http://www.w3.org/2000/svg"
       style=${{
         position: "absolute",
-        top: -10,
-        left: -10,
+        top: -6,
+        left: -6,
         width: 20,
         height: 20,
-        borderRadius: 10,
-        border: "solid 4px " + hexToRGBA(color, 0.5),
-        backgroundColor: color,
-        "-webkit-background-clip": "padding-box", /* for Safari */
-        backgroundClip: "padding-box", /* for IE9+, Firefox 4+, Opera, Chrome */
-      }}
-    ></div>
-    `
+        filter: `drop-shadow(2px 2px 2px ${hexToRGBA(color, 0.6)})`,
+      }}>
+     <g transform="translate(-66.531 -43.399)">
+        <path
+            fill=${color}
+            d="m66.531 43.399 2.6474 8.2089s0.84672-2.7549 1.8267-3.7348 3.7348-1.8267 3.7348-1.8267z" />
+     </g>
+    </svg>`
 }
 
 const usePassiveDocumentEventListener = (event_name, handler_fn, deps) => {
     useEffect(() => {
-        document.addEventListener(event_name, handler_fn)
-        return () => window.removeEventListener(event_name, handler_fn)
+        document.addEventListener(event_name, handler_fn, { passive: true })
+        return () => document.removeEventListener(event_name, handler_fn)
     }, deps)
 }
 
-export const MultiplayerPanel = ({ users, client_id }) => {
-    if (!users || Object.keys(users).every(user_id => user_id == client_id)) return
+const useMousePositionWithScroll = () => {
+  const [{pageX, pageY, scrollX, scrollY}, setState] = useState({})
+
+  usePassiveDocumentEventListener("mousemove", ({pageX,pageY}) => {
+      setState({ 
+          pageX,
+          pageY,
+          scrollX: window.scrollX,
+          scrollY: window.scrollY,
+      })
+  }, [])
+
+    usePassiveDocumentEventListener("scrollend", () => {
+        const { scrollX: newScrollX, scrollY: newScrollY } = window
+        const dX = newScrollX - scrollX
+        const dY = newScrollY - scrollY
+        setState({
+            pageX: pageX + dX,
+            pageY: pageY + dY,
+            scrollX: newScrollX,
+            scrollY: newScrollY,
+        })
+    }, [pageX, pageY, scrollX, scrollY])
+
+    return { pageX, pageY }
+}
+
+const MyCursorSyncer = ({ client_id }) => {
     const { update_notebook } = useContext(PlutoActionsContext)
 
-    usePassiveDocumentEventListener("mousemove", _.throttle((event) => {
+    const update_mouse_position = useCallback(_.throttle((event) => {
         update_notebook(notebook => {
             if (!(client_id in notebook.users)) return
             notebook.users[client_id].mouse = update_mouse_data(event.pageX, event.pageY)
         })
-    }, CURSOR_THROTTLE_RATE), [client_id])
+    }, CURSOR_THROTTLE_RATE), [client_id, update_notebook])
 
+    const mouseData = useMousePositionWithScroll()
+    useEffect(
+        () => update_mouse_position(mouseData),
+        [mouseData, update_mouse_position],
+    )
 
     const hide_mouse_for_client = useCallback(() => update_notebook(notebook => {
         if (!(client_id in notebook.users)) return
@@ -127,7 +161,14 @@ export const MultiplayerPanel = ({ users, client_id }) => {
 
     usePassiveDocumentEventListener("blur", hide_mouse_for_client, [hide_mouse_for_client])
 
+    return null
+}
+
+export const MultiplayerPanel = ({ users, client_id }) => {
+    if (!users || !Object.keys(users).some(user_id => user_id != client_id)) return
+
     return html`
+        <${MyCursorSyncer} client_id=${client_id} />
         <pluto-cursor-list>
         ${Object.entries(users).map(
             ([clientID, { name, mouse, color, focused_cell }]) =>

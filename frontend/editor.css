@@ -3601,7 +3601,7 @@ pluto-cell.hooked_up pluto-output {
 }
 
 pluto-cursor-list {
-    position: fixed;
+    position: absolute;
     top: 0;
     left: 0;
     z-index: 1000;
