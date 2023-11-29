@@ -96,7 +96,7 @@ featured-card p {
     margin: 0.3rem 0.8rem;
     /* padding-top: 0; */
     /* margin-block: 0; */
-    color: #838383;
+    color: var(--index-light-text-color);
     -webkit-line-clamp: 4;
     display: inline-block;
     display: -webkit-inline-box;
