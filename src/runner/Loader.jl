@@ -2,7 +2,8 @@
 # 
 # This is difficult because PlutoRunner uses standard libraries and packages that are not necessarily available in the standard environment. 
 # 
-# Our solution is to create a temporary environment just for loading PlutoRunner. This environment is stored in `.julia/environments/__pluto_book_v*_*/`, and used by all notebook launches. Reusing the environment means extra speed.
+# Our solution is to create a temporary environment just for loading PlutoRunner. This environment is stored in a scratchspace parameterized by the Pluto version and julia version,
+# and used by all notebook launches. Reusing the environment means extra speed.
 
 
 begin
