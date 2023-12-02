@@ -4,32 +4,32 @@
 # 
 # Our solution is to create a temporary environment just for loading PlutoRunner. This environment is stored in `.julia/environments/__pluto_book_v*_*/`, and used by all notebook launches. Reusing the environment means extra speed.
 
+
 begin
-    pushfirst!(LOAD_PATH, "@stdlib")    
+    pushfirst!(LOAD_PATH, "@stdlib")
     import Pkg
     popfirst!(LOAD_PATH)
-
-
-    # Path to our notebook boot package environment
-    local runner_env_dir = mkpath(joinpath(Pkg.envdir(Pkg.depots()[1]), "__pluto_boot_v3_" * string(VERSION)))
 
     local original_LP = LOAD_PATH
     local original_AP = Base.ACTIVE_PROJECT[]
 
     local new_LP = ["@", "@stdlib"]
-    local new_AP = runner_env_dir
+    local new_AP = mktempdir()
 
     try
-        
         # Activate the environment
         copy!(LOAD_PATH, new_LP)
         Base.ACTIVE_PROJECT[] = new_AP
-        
+
         # Set up our notebook boot package environment by adding a single package:
-        Pkg.develop([Pkg.PackageSpec(; 
-            path=joinpath(@__DIR__, "PlutoRunner"),
-        )]; io=devnull)
-        
+        path = joinpath(@__DIR__, "PlutoRunner")
+        try
+            Pkg.develop([Pkg.PackageSpec(; path)]; io=devnull)
+        catch
+            # if it failed, do it again without suppressing io
+            Pkg.develop([Pkg.PackageSpec(; path)])
+        end
+
         # Resolve
         try
             Pkg.resolve(; io=devnull) # supress IO
@@ -38,25 +38,26 @@ begin
             try
                 Pkg.resolve()
             catch e
-                @error "Failed to resolve notebook boot environment" exception=(e, catch_backtrace())
+                @error "Failed to resolve notebook boot environment" exception = (e, catch_backtrace())
             end
         end
-        
+
         # Instantiate
         try
             # we don't suppress IO for this one because it can take very long, and that would be a frustrating experience without IO
             # precompilation switched off because of https://github.com/fonsp/Pluto.jl/issues/875
-            Pkg.instantiate(; update_registry=false, allow_autoprecomp=false) 
+            Pkg.instantiate(; update_registry=false, allow_autoprecomp=false)
         catch e
-            @error "Failed to instantiate notebook boot environment" exception=(e, catch_backtrace())
+            @error "Failed to instantiate notebook boot environment" exception = (e, catch_backtrace())
         end
-        
+
         # Import PlutoRunner into Main
         import PlutoRunner
-        
+
     finally
         # Reset the pkg environment
         copy!(LOAD_PATH, original_LP)
         Base.ACTIVE_PROJECT[] = original_AP
+        rm(new_AP; recursive=true)
     end
 end
