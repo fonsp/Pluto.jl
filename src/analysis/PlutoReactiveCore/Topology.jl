@@ -18,6 +18,15 @@ function ExprAnalysisCache(cell::Cell, parsedcode)
     )
 end
 
+function ExprAnalysisCache(code_str::String, parsedcode::Expr)
+    ExprAnalysisCache(;
+        code=code_str,
+        parsedcode,
+        module_usings_imports=ExpressionExplorer.compute_usings_imports(parsedcode),
+        function_wrapped=ExpressionExplorerExtras.can_be_function_wrapped(parsedcode),
+    )
+end
+
 function ExprAnalysisCache(old_cache::ExprAnalysisCache; new_properties...)
     properties = Dict{Symbol,Any}(field => getproperty(old_cache, field) for field in fieldnames(ExprAnalysisCache))
     merge!(properties, Dict{Symbol,Any}(new_properties))
@@ -42,7 +51,7 @@ is_resolved(topology::NotebookTopology, c::AbstractCell) = c in topology.unresol
 
 is_disabled(topology::NotebookTopology, c::AbstractCell) = c in topology.disabled_cells
 
-function set_unresolved(topology::NotebookTopology{C}, unresolved_cells::Vector{C}) where C
+function set_unresolved(topology::NotebookTopology{C}, unresolved_cells::Vector{C}) where C <: AbstractCell
     codes = Dict{C,ExprAnalysisCache}(
         cell => ExprAnalysisCache(topology.codes[cell]; function_wrapped=false, forced_expr_id=nothing)
         for cell in unresolved_cells
@@ -63,11 +72,11 @@ end
 Returns a new topology as if `topology` was created with all code for `roots_to_exclude`
 being empty, preserving disabled cells and cell order.
 """
-function exclude_roots(topology::NotebookTopology, cells::Vector{Cell})
-    NotebookTopology(
+function exclude_roots(topology::NotebookTopology{C}, cells::Vector{C}) where C <: AbstractCell
+    NotebookTopology{C}(
         nodes=setdiffkeys(topology.nodes, cells),
         codes=setdiffkeys(topology.codes, cells),
-        unresolved_cells=ImmutableSet{Cell}(setdiff(topology.unresolved_cells.c, cells); skip_copy=true),
+        unresolved_cells=ImmutableSet{C}(setdiff(topology.unresolved_cells.c, cells); skip_copy=true),
         cell_order=topology.cell_order,
         disabled_cells=topology.disabled_cells,
     )

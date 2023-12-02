@@ -2,15 +2,19 @@ import ExpressionExplorer
 import .ExpressionExplorerExtras
 import ExpressionExplorer: SymbolsState, FunctionNameSignaturePair
 
+
 "Return a copy of `old_topology`, but with recomputed results from `cells` taken into account."
-function updated_topology(old_topology::NotebookTopology, all_cells, updated_cells, get_parsedcode)
+function updated_topology(old_topology::NotebookTopology{C}, all_cells, updated_cells, get_code_str::Function, get_code_expr::Function) where C <: AbstractCell
 	
-	updated_codes = Dict{Cell,ExprAnalysisCache}()
-	updated_nodes = Dict{Cell,ReactiveNode}()
+	updated_codes = Dict{C,ExprAnalysisCache}()
+	updated_nodes = Dict{C,ReactiveNode}()
 	
-	for (cell, parsedcode) in zip(updated_cells, updated_cells_parsedcode)
+	for cell in updated_cells
 		# TODO this needs to be extracted somehow
+
 		old_code = old_topology.codes[cell]
+		new_code = get_code_str(cell)
+		new_parsedcode = get_code_str(cell)
 		(; parsedcode, needs_update) = get_parsedcode(cell; old_code)
 		
 		if old_code.code !== cell.code
@@ -38,7 +42,7 @@ function updated_topology(old_topology::NotebookTopology, all_cells, updated_cel
 
 	new_unresolved_set = setdiff!(
 		union!(
-			Set{Cell}(),
+			Set{C}(),
 			# all cells that were unresolved before, and did not change code...
 			Iterators.filter(old_topology.unresolved_cells) do c
 				!haskey(updated_nodes, c)
@@ -54,7 +58,7 @@ function updated_topology(old_topology::NotebookTopology, all_cells, updated_cel
 
 	new_disabled_set = setdiff!(
 		union!(
-			Set{Cell}(),
+			Set{C}(),
 			# all cells that were disabled before...
 			old_topology.disabled_cells,
 			# ...plus all cells that changed...
@@ -82,7 +86,7 @@ function updated_topology(old_topology::NotebookTopology, all_cells, updated_cel
 		ImmutableVector(all_cells) # makes a copy
 	end
 	
-	NotebookTopology(;
+	NotebookTopology{C}(;
 		nodes=new_nodes,
 		codes=new_codes,
 		unresolved_cells, 

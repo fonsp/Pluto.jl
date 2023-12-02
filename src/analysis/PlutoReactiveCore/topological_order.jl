@@ -1,8 +1,8 @@
 abstract type ChildExplorationResult end
 
 struct Ok <: ChildExplorationResult end
-struct Cycle <: ChildExplorationResult
-	cycled_cells::Vector{<:AbstractCell}
+struct Cycle{C <: AbstractCell} <: ChildExplorationResult
+	cycled_cells::Vector{C}
 end
 
 """
@@ -26,7 +26,7 @@ Return a `TopologicalOrder` that lists the cells to be evaluated in a single rea
 function topological_order(topology::NotebookTopology{C}, roots::AbstractVector{C}; 
 	allow_multiple_defs::Bool=false,
 	skip_at_partial_multiple_defs::Bool=false,
-)::TopologicalOrder
+)::TopologicalOrder{C} where C <: AbstractCell
 
 	if skip_at_partial_multiple_defs
 		@assert allow_multiple_defs
@@ -147,14 +147,14 @@ function where_referenced(topology::NotebookTopology{C}, myself::C)::Vector{C} w
 	where_referenced(topology, to_compare)
 end
 "Return the cells that reference any of the given symbols. Non-recursive: only direct dependencies are found."
-function where_referenced(topology::NotebookTopology, to_compare::Set{Symbol})::Vector{Cell}
+function where_referenced(topology::NotebookTopology{C}, to_compare::Set{Symbol})::Vector{C} where C <: AbstractCell
 	return filter(all_cells(topology)) do cell
 		!disjoint(to_compare, topology.nodes[cell].references)
 	end
 end
 
 "Returns whether or not the edge between two cells is composed only of \"soft\"-definitions"
-function is_soft_edge(topology::NotebookTopology, parent_cell::Cell, child_cell::Cell)
+function is_soft_edge(topology::NotebookTopology{C}, parent_cell::C, child_cell::C) where C <: AbstractCell
 	hard_definitions = union(topology.nodes[parent_cell].definitions, topology.nodes[parent_cell].funcdefs_without_signatures)
 	soft_definitions = topology.nodes[parent_cell].soft_definitions
 
@@ -165,11 +165,11 @@ end
 
 
 "Return the cells that also assign to any variable or method defined by the given cell. If more than one cell is returned (besides the given cell), then all of them should throw a `MultipleDefinitionsError`. Non-recursive: only direct dependencies are found."
-function where_assigned(topology::NotebookTopology, myself::Cell)::Vector{Cell}
+function where_assigned(topology::NotebookTopology{C}, myself::C)::Vector{C}
 	where_assigned(topology, topology.nodes[myself])
 end
 
-function where_assigned(topology::NotebookTopology, self::ReactiveNode)::Vector{Cell}
+function where_assigned(topology::NotebookTopology{C}, self::ReactiveNode)::Vector{C} where C
 	return filter(all_cells(topology)) do cell
 		other = topology.nodes[cell]
 		!(
@@ -183,7 +183,7 @@ function where_assigned(topology::NotebookTopology, self::ReactiveNode)::Vector{
 	end
 end
 
-function where_assigned(topology::NotebookTopology, to_compare::Set{Symbol})::Vector{Cell}
+function where_assigned(topology::NotebookTopology{C}, to_compare::Set{Symbol})::Vector{C} where C
 	filter(all_cells(topology)) do cell
 		other = topology.nodes[cell]
 		!(
@@ -195,14 +195,14 @@ end
 
 
 
-function cyclic_variables(topology::NotebookTopology, cycle::AbstractVector{Cell})::Set{Symbol}
+function cyclic_variables(topology::NotebookTopology, cycle)::Set{Symbol}
 	referenced_during_cycle = union!(Set{Symbol}(), (topology.nodes[c].references for c in cycle)...)
 	assigned_during_cycle = union!(Set{Symbol}(), (topology.nodes[c].definitions ∪ topology.nodes[c].soft_definitions ∪ topology.nodes[c].funcdefs_without_signatures for c in cycle)...)
 	
 	referenced_during_cycle ∩ assigned_during_cycle
 end
 
-function cycle_is_among_functions(topology::NotebookTopology, cycle::AbstractVector{Cell})::Bool
+function cycle_is_among_functions(topology::NotebookTopology, cycle)::Bool
 	cyclics = cyclic_variables(topology, cycle)
 	
 	all(
@@ -211,7 +211,7 @@ function cycle_is_among_functions(topology::NotebookTopology, cycle::AbstractVec
 	)
 end
 
-function cell_precedence_heuristic(topology::NotebookTopology, cell::Cell)
+function cell_precedence_heuristic(topology::NotebookTopology{C}, cell::C) where C <: AbstractCell
 	cell_precedence_heuristic(topology.nodes[cell], topology.codes[cell])
 end
 
