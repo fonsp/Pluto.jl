@@ -13,8 +13,11 @@ begin
     local original_LP = LOAD_PATH
     local original_AP = Base.ACTIVE_PROJECT[]
 
+    # Path to our notebook boot package environment
+    local runner_env_dir = pluto_boot_environment_path
+
     local new_LP = ["@", "@stdlib"]
-    local new_AP = mktempdir()
+    local new_AP = runner_env_dir
 
     try
         # Activate the environment
@@ -58,6 +61,5 @@ begin
         # Reset the pkg environment
         copy!(LOAD_PATH, original_LP)
         Base.ACTIVE_PROJECT[] = original_AP
-        rm(new_AP; recursive=true)
     end
 end
