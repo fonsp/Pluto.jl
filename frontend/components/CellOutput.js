@@ -247,7 +247,7 @@ let IframeContainer = ({ body }) => {
  *
  * @param {{ code: string, environment: { [name: string]: any } }} options
  */
-let execute_dynamic_function = async ({ environment, code }) => {
+export let execute_dynamic_function = async ({ environment, code }) => {
     // single line so that we don't affect line numbers in the stack trace
     const wrapped_code = `"use strict"; return (async () => {${code}})()`
 

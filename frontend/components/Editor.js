@@ -238,6 +238,7 @@ const first_true_key = (obj) => {
  *  cell_dependencies: { [uuid: string]: CellDependencyData },
  *  cell_order: Array<string>,
  *  cell_execution_order: Array<string>,
+ *  inline_widgets: Object,
  *  published_objects: { [objectid: string]: any},
  *  bonds: BondValuesDict,
  *  nbpkg: NotebookPkgData?,

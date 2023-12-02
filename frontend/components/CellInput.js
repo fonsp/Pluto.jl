@@ -56,6 +56,7 @@ import { markdown, html as htmlLang, javascript, sqlLang, python, julia_mixed } 
 import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
+import { InlineWidgetsFacet, inlineWidgetsPlugin } from "./CellInput/inline_widgets.js"
 import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"
 import { cell_movement_plugin, prevent_holding_a_key_from_doing_things_across_cells } from "./CellInput/cell_movement_plugin.js"
 import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
@@ -311,12 +312,13 @@ export const pluto_syntax_colors_markdown = HighlightStyle.define(
     }
 )
 
-const getValue6 = (/** @type {EditorView} */ cm) => cm.state.doc.toString()
-const setValue6 = (/** @type {EditorView} */ cm, value) =>
+export const getValue6 = (/** @type {EditorView} */ cm) => cm.state.doc.toString()
+export const getRange6 = (/** @type {EditorView} */ cm, from, to) => cm.state.doc.sliceString(from, to)
+export const setValue6 = (/** @type {EditorView} */ cm, value) =>
     cm.dispatch({
         changes: { from: 0, to: cm.state.doc.length, insert: value },
     })
-const replaceRange6 = (/** @type {EditorView} */ cm, text, from, to) =>
+export const replaceRange6 = (/** @type {EditorView} */ cm, text, from, to) =>
     cm.dispatch({
         changes: { from, to, insert: text },
     })
@@ -368,6 +370,7 @@ export const CellInput = ({
     on_focus_neighbor,
     on_line_heights,
     nbpkg,
+    inline_widgets,
     cell_id,
     notebook_id,
     any_logs,
@@ -397,6 +400,7 @@ export const CellInput = ({
     const remote_code_ref = useRef(/** @type {string?} */ (null))
 
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
+    let inlinewidgets_compartment = useCompartment(newcm_ref, InlineWidgetsFacet.of(inline_widgets))
     let global_definitions_compartment = useCompartment(newcm_ref, GlobalDefinitionsFacet.of(global_definition_locations))
     let highlighted_line_compartment = useCompartment(newcm_ref, HighlightLineFacet.of(cm_highlighted_line))
     let highlighted_range_compartment = useCompartment(newcm_ref, HighlightRangeFacet.of(cm_highlighted_range))
@@ -586,6 +590,11 @@ export const CellInput = ({
             }
         })
 
+        const on_submit_debounced = _.throttle(on_submit, 1000, { leading: false })
+
+        // TODO remove me
+        //@ts-ignore
+        window.tags = tags
         const usesDarkTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         const newcm = (newcm_ref.current = new EditorView({
             state: EditorState.create({
@@ -594,6 +603,7 @@ export const CellInput = ({
                     EditorView.theme({}, { dark: usesDarkTheme }),
                     // Compartments coming from react state/props
                     nbpkg_compartment,
+                    inlinewidgets_compartment,
                     highlighted_line_compartment,
                     highlighted_range_compartment,
                     global_definitions_compartment,
@@ -607,6 +617,8 @@ export const CellInput = ({
                     // keymap handlers at that point, which is likely before this extension.
                     // TODO Use https://codemirror.net/6/docs/ref/#state.Prec when added to pluto-codemirror-setup
                     prevent_holding_a_key_from_doing_things_across_cells,
+
+                    inlineWidgetsPlugin({ pluto_actions, on_submit_debounced, notebook_id }),
 
                     pkgBubblePlugin({ pluto_actions, notebook_id_ref }),
                     ScopeStateField,

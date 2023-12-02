@@ -61,6 +61,7 @@ Base.@kwdef mutable struct Notebook
     last_hot_reload_time::Float64=zero(time())
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
+    inline_widgets::Dict{Symbol,String}=Dict{Symbol,String}()
 
     metadata::Dict{String, Any}=copy(DEFAULT_NOTEBOOK_METADATA)
 end

@@ -116,6 +116,7 @@ export const Cell = ({
     process_waiting_for_permission,
     sanitize_html = true,
     nbpkg,
+    inline_widgets,
     global_definition_locations,
 }) => {
     const { show_logs, disabled: running_disabled, skip_as_script } = metadata
@@ -341,6 +342,7 @@ export const Cell = ({
                 on_focus_neighbor=${on_focus_neighbor}
                 on_line_heights=${set_line_heights}
                 nbpkg=${nbpkg}
+                inline_widgets=${inline_widgets}
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
                 metadata=${metadata}

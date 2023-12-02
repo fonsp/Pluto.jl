@@ -289,6 +289,9 @@ function run_single!(
 		capture_stdout,
 	)
 	set_output!(cell, run, expr_cache; persist_js_state=!user_requested_run)
+	if session_notebook isa Tuple && run.new_inline_widgets !== nothing
+		session_notebook[2].inline_widgets = run.new_inline_widgets
+	end
 	if session_notebook isa Tuple && run.process_exited
 		session_notebook[2].process_status = ProcessStatus.no_process
 	end

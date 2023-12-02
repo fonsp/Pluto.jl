@@ -33,7 +33,7 @@ import Dates: DateTime
 import Logging
 import REPL
 
-export @bind
+export @bind, @coolbind
 
 # This is not a struct to make it easier to pass these objects between processes.
 const MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
@@ -627,7 +627,6 @@ function run_expression(
     
     currently_running_cell_id[] = old_currently_running_cell_id
     
-
     if (result isa CapturedException) && (result.ex isa InterruptException)
         throw(result.ex)
     end
@@ -890,7 +889,11 @@ const table_column_display_limit_increase = 30
 const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 
 # This is not a struct to make it easier to pass these objects between processes.
-const FormattedCellResult = NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
+const FormattedCellResult =
+    NamedTuple{
+        (:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :new_inline_widgets, :has_pluto_hook_features),
+        Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Union{Nothing,Dict{Symbol,Any}},Bool}
+    }
 
 function formatted_result_of(
     notebook_id::UUID, 
@@ -931,6 +934,13 @@ function formatted_result_of(
         ("", MIME"text/plain"())
     end
 
+    new_inline_widgets = if _inline_widgets_changed[]
+        _inline_widgets_changed[] = false
+        _inline_widgets
+    else
+        nothing
+    end
+
     published_objects = get(cell_published_objects, cell_id, Dict{String,Any}())
 
     for k in known_published_objects
@@ -946,6 +956,7 @@ function formatted_result_of(
         process_exited = false,
         runtime = get(cell_runtimes, cell_id, nothing),
         published_objects,
+        new_inline_widgets,
         has_pluto_hook_features,
     )
 end
@@ -2292,6 +2303,13 @@ macro bind(def, element)
 end
 
 """
+An identity macro used to trigger inline widgets
+"""
+macro coolbind(ex)
+    ex |> esc
+end
+
+"""
 Will be inserted in saved notebooks that use the @bind macro, make sure that they still contain legal syntax when executed as a vanilla Julia script. Overloading `Base.get` for custom UI objects gives bound variables a sensible value.
 """
 const fake_bind = """macro bind(def, element)
@@ -2485,6 +2503,23 @@ pluto_showable(::MIME"application/vnd.pluto.divelement+object", ::DivElement) = 
 function Base.show(io::IO, m::MIME"text/html", e::DivElement)
     Base.show(io, m, embed_display(e))
 end
+
+
+const _inline_widgets_changed = Ref{Bool}(false)
+const _inline_widgets = Dict{Symbol,String}()
+
+
+function register_inline_widget(symbol::Symbol, js::String)
+    _inline_widgets[symbol] = js
+    _inline_widgets_changed[] = true
+end
+
+
+function _get_inline_widgets()
+    _inline_widgets_changed[] = false
+    _inline_widgets
+end
+
 
 ###
 # LOGGING

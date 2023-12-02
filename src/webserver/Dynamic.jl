@@ -149,6 +149,10 @@ function notebook_to_js(notebook::Notebook)
                 "value" => bondvalue.value, 
             )
         for (key, bondvalue) in notebook.bonds),
+        "inline_widgets" => Dict{String,String}(
+            String(s) => r
+            for (s, r) in notebook.inline_widgets
+        ),
         "metadata" => notebook.metadata,
         "nbpkg" => let
             ctx = notebook.nbpkg_ctx

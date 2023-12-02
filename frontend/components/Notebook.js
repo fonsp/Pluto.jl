@@ -40,6 +40,7 @@ let CellMemo = ({
     show_logs,
     set_show_logs,
     nbpkg,
+    inline_widgets,
     global_definition_locations,
 }) => {
     const { body, last_run_timestamp, mime, persist_js_state, rootassignee } = cell_result?.output || {}
@@ -61,6 +62,7 @@ let CellMemo = ({
                 process_waiting_for_permission=${process_waiting_for_permission}
                 sanitize_html=${sanitize_html}
                 nbpkg=${nbpkg}
+                inline_widgets=${inline_widgets}
                 global_definition_locations=${global_definition_locations}
             />
         `
@@ -94,6 +96,8 @@ let CellMemo = ({
         process_waiting_for_permission,
         sanitize_html,
         ...nbpkg_fingerprint(nbpkg),
+        ...Object.keys(inline_widgets),
+        ...Object.values(inline_widgets),
         global_definition_locations,
     ])
 }
@@ -191,6 +195,7 @@ export const Notebook = ({
                         process_waiting_for_permission=${process_waiting_for_permission}
                         sanitize_html=${sanitize_html}
                         nbpkg=${notebook.nbpkg}
+                        inline_widgets=${notebook.inline_widgets}
                         global_definition_locations=${global_definition_locations}
                     />`
                 )}

@@ -360,6 +360,7 @@ function workspace_exception_result(ex::Union{Base.IOError, Malt.TerminatedWorke
         errored=true,
         interrupted=true,
         process_exited=true && !workspace.discarded, # don't report a process exit if the workspace was discarded on purpose
+        new_inline_widgets=nothing,
         runtime=nothing,
         published_objects=Dict{String,Any}(),
         has_pluto_hook_features=false,
@@ -376,6 +377,17 @@ function workspace_exception_result(ex::Exception, workspace::Workspace)
             errored=true,
             interrupted=true,
             process_exited=false,
+            new_inline_widgets=nothing,
+            runtime=nothing,
+            published_objects=Dict{String,Any}(),
+        )
+    elseif ex isa Distributed.ProcessExitedException
+        (
+            output_formatted=PlutoRunner.format_output(CapturedException(exs, [])),
+            errored=true,
+            interrupted=true,
+            process_exited=true && !workspace.discarded, # don't report a process exit if the workspace was discarded on purpose
+            new_inline_widgets=nothing,
             runtime=nothing,
             published_objects=Dict{String,Any}(),
             has_pluto_hook_features=false,
@@ -387,6 +399,7 @@ function workspace_exception_result(ex::Exception, workspace::Workspace)
             errored=true,
             interrupted=true,
             process_exited=!Malt.isrunning(workspace.worker) && !workspace.discarded, # don't report a process exit if the workspace was discarded on purpose
+            new_inline_widgets=nothing,
             runtime=nothing,
             published_objects=Dict{String,Any}(),
             has_pluto_hook_features=false,
@@ -413,7 +426,6 @@ function eval_format_fetch_in_workspace(
     capture_stdout::Bool=true,
     code_is_effectful::Bool=true,
 )::PlutoRunner.FormattedCellResult
-
     workspace = get_workspace(session_notebook)
     is_on_this_process = workspace.worker isa Malt.InProcessWorker
 

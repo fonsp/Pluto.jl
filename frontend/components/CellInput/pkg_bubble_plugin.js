@@ -255,6 +255,11 @@ export const pkgBubblePlugin = ({ pluto_actions, notebook_id_ref }) =>
                 this.decorations = ds
             }
 
+            // {
+            //     "installed_packages": ["PKg"],
+
+            // }
+
             /**
              * @param {EditorView} view
              */
