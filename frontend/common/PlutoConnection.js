@@ -441,7 +441,9 @@ export const create_pluto_connection = async ({
 
             // let's say hello
             console.log("Hello?")
-            const u = await send("connect", {}, connect_metadata)
+            const u = await send("connect", {}, connect_metadata).catch((error) => {
+                console.error("Failed to connect:", error)
+            })
             console.log("Hello!")
             client.kill = () => {
                 if (ws_connection) ws_connection.socket.close()
