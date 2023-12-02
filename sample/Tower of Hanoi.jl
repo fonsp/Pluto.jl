@@ -165,7 +165,7 @@ This is where we can check a solution. We start with a function that takes our r
 function run_solution(solver::Function, start = starting_stacks)
 	moves = solver(deepcopy(start)) #apply the solver
 	
-	all_states = Array{Any,1}(undef, length(moves) + 1)
+	all_states = Vector{Any}(undef, length(moves) + 1)
 	all_states[1] = start
 	
 	for (i, m) in enumerate(moves)

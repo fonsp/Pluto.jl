@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.11.14
+# v0.19.9
 
 using Markdown
 using InteractiveUtils
@@ -7,8 +7,9 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
-        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
     end
 end
@@ -58,7 +59,7 @@ Our cats have some neighbors. Let's involve them in the story too!"
 neighbors = [cat, friend, "Smerfetka", "Latte"]
 
 # ╔═╡ 19ff8d36-9547-11ea-0e08-e5cdd8338673
-md"Now, if you're like my grandma, you're feeding the entire neigborhood by yourself. Let's see how many cans of cat food you need to prepare."
+md"Now, if you're like my grandma, you're feeding the entire neighborhood by yourself. Let's see how many cans of cat food you need to prepare."
 
 # ╔═╡ 270ac49e-9549-11ea-3ffd-71ddaee9f134
 md"But what does `confusing_function` do? If you ever need help, click on 📚 **Live docs** in the lower right, and then place your cursor on the code you need help with. 

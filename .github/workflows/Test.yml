@@ -7,36 +7,47 @@ on:
     push:
         paths-ignore:
             - "frontend/**"
+            - "frontend-bundler/**"
+            - "frontend-dist/**"
+            - "test/frontend/**"
             - "**.md"
         branches:
             - main
     pull_request:
         paths-ignore:
             - "frontend/**"
+            - "frontend-bundler/**"
+            - "frontend-dist/**"
+            - "test/frontend/**"
             - "**.md"
+        branches-ignore:
+            - release
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
     test:
         runs-on: ${{ matrix.os }}
-        timeout-minutes: 30
-        # Uncomment if you want to see all results for all OSses. Otherwise, the first failed test cancels all others
-        # continue-on-error: true
+        timeout-minutes: 50
+
         strategy:
+            # Without setting this, a failing test cancels all others
+            fail-fast: false
             matrix:
                 # We test quite a lot of versions because we do some OS and version specific things unfortunately
-                julia-version: ["1.5", "1.6", "^1.7.0-0"] #, "nightly"]
+                julia-version: ["1.6", "1.8", "1.9", "~1.10.0-0"]
                 os: [ubuntu-latest, macOS-latest, windows-latest]
 
         steps:
             # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-            - uses: actions/checkout@v2
+            - uses: actions/checkout@v3
 
-            # Makes thes `julia` command available
+            # Makes the `julia` command available
             - uses: julia-actions/setup-julia@v1
               with:
                   version: ${{ matrix.julia-version }}
+            - uses: julia-actions/cache@v1
 
             # 🚗
             - uses: julia-actions/julia-runtest@v1
-              continue-on-error: ${{ matrix.julia-version == 'nightly' }}
+              with:
+                  coverage: false

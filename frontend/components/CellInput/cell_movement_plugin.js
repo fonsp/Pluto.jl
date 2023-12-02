@@ -1,7 +1,7 @@
-import { EditorView, autocompletion, EditorState, keymap } from "../../imports/CodemirrorPlutoSetup.js"
+import { EditorView, autocomplete, EditorState, keymap } from "../../imports/CodemirrorPlutoSetup.js"
 
 // Why am I like this?
-let completionState = autocompletion()[0]
+let completionState = autocomplete.autocompletion()[0]
 
 /**
  * Cell movement plugin!
@@ -120,7 +120,7 @@ let cell_movement_keys = ({ focus_on_neighbor }) => {
 // Because we need some extra info about the key, namely if it is on repeat or not,
 // we can't use a keymap (keymaps don't give us the event with `repeat` property),
 // so we use a custom keydown event handler.
-let dont_accidentally_remove_cells_plugin = EditorView.domEventHandlers({
+export let prevent_holding_a_key_from_doing_things_across_cells = EditorView.domEventHandlers({
     keydown: (event, view) => {
         // TODO We could also require a re-press after a force focus, because
         // .... currently if you delete another cell, but keep holding down the backspace (or delete),
@@ -175,4 +175,4 @@ let dont_accidentally_remove_cells_plugin = EditorView.domEventHandlers({
  * @param {object} options
  * @param {FocusOnNeighborFunction} options.focus_on_neighbor
  */
-export let cell_movement_plugin = ({ focus_on_neighbor }) => [dont_accidentally_remove_cells_plugin, cell_movement_keys({ focus_on_neighbor })]
+export let cell_movement_plugin = ({ focus_on_neighbor }) => cell_movement_keys({ focus_on_neighbor })

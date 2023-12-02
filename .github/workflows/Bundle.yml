@@ -1,0 +1,78 @@
+name: Bundle Web Assets
+
+on:
+    push:
+        branches:
+            - main
+    workflow_dispatch:
+    pull_request:
+        paths-ignore:
+            - "**.md"
+            - "**.jl"
+        branches-ignore:
+            - release
+
+concurrency:
+    group: bundle-${{ github.ref }}
+    cancel-in-progress: false
+
+jobs:
+    trigger:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+              # We use that PAT token instead of GITHUB_TOKEN because we are triggering another github action on the 'release' event.
+              # Triggering a workflow from a workflow is only allowed if the relaying event is signed with a PAT.
+              # See https://docs.github.com/en/actions/reference/events-that-trigger-workflows#triggering-new-workflows-using-a-personal-access-token
+              with:
+                token: ${{ secrets.PAT_TOKEN }}
+              if: github.event_name != 'pull_request'
+              
+            - uses: fregante/setup-git-user@v1
+              if: github.event_name != 'pull_request'
+              
+            # Ignore the build changes from previous run.
+            # This "just" hard resets to the latest commit on main.
+            # The previous bundle commit will still exist, but will be "dangling", unless we made a tag for it.
+            # Github will eventually clean dangling commits, which is fine because again, the ones with a tag will stay around.
+            - name: Make Sure Release Is Reset To Main
+              if: github.event_name != 'pull_request'
+              run: |
+                  git checkout -b release
+                  git reset --hard $GITHUB_SHA
+
+            # if this is a PR. then just checkout without fanciness
+            - uses: actions/checkout@v3
+              if: github.event_name == 'pull_request'
+
+            # Do the actual bundling
+            - uses: actions/setup-node@v3
+              with:
+                  node-version: 17.x
+                  cache: "npm"
+                  cache-dependency-path: frontend-bundler/package-lock.json
+
+            - run: npm install
+              working-directory: frontend-bundler
+            
+            - name: The Actual Build (try 3 times)
+              working-directory: frontend-bundler
+              run: |
+                (npm run build) || (npm run build) || (npm run build)
+                
+            - name: Check for corrupt files
+              working-directory: frontend-dist
+              run: |
+                if [[ $(find . -empty) ]]; then
+                    exit 1
+                fi
+
+            # Push the rebuild frontend-dist to the release branch.
+            # Needs to be `add --force` because frontend-dist is normally gitignored.
+            # Also needs `push --force` because we reset to main (which doesn't contain the previous frontend-dist)
+            - name: Force push frontend-dist changes
+              if: github.event_name != 'pull_request'
+              run: |
+                  git add frontend-dist --force
+                  git commit -m "$GITHUB_WORKFLOW" -m "Built from hash $GITHUB_SHA"
+                  git push origin release --force

@@ -114,8 +114,11 @@ function inline_decorations(view, { pluto_actions, notebook_id, on_submit_deboun
         syntaxTree(view.state).iterate({
             from,
             to,
-            enter: (type, from, to, getNode) => {
-                // console.log("enter", { name: type.name, content: view.state.doc.sliceString(from, to) })
+            enter: (type) => {
+                const {from, to} = type
+                // console.log("enter", {
+                //     name: type.name,
+                //     content: view.state.doc.sliceString(from, to) })
 
                 if (is_first_after_call) {
                     first_argument_range = { from, to }
@@ -138,6 +141,7 @@ function inline_decorations(view, { pluto_actions, notebook_id, on_submit_deboun
 
                     if (macro_name === "@coolbind") {
                         is_inside_coolbind_call = true
+                        console.log({ is_inside_coolbind_call })
                     }
                 }
 
@@ -157,7 +161,7 @@ function inline_decorations(view, { pluto_actions, notebook_id, on_submit_deboun
                 //     is_inside_coolbind_call = false
                 // }
 
-                // console.log("Leaving ", type.name)
+                console.log("Leaving ", type.name)
                 if (type.name === "MacroExpression") {
                     // is_inside_coolbind_call = false
                     is_call_inside_coolbind = false
@@ -233,7 +237,6 @@ function inline_decorations(view, { pluto_actions, notebook_id, on_submit_deboun
 export const InlineWidgetsFacet = Facet.define({
     combine: (values) => values[0],
     compare: (a, b) => {
-        console.log("comparing ", a, b)
         return _.isEqual(a, b)
     },
 })

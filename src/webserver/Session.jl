@@ -10,10 +10,11 @@ mutable struct ClientSession
     stream::Any
     connected_notebook::Union{Notebook,Nothing}
     pendingupdates::Channel
+    simulated_lag::Float64
 end
 
-ClientSession(id::Symbol, stream) = let
-    ClientSession(id, stream, nothing, Channel(1024))
+ClientSession(id::Symbol, stream, simulated_lag=0.0) = let
+    ClientSession(id, stream, nothing, Channel(1024), simulated_lag)
 end
 
 "A combination of _client ID_ and a _request ID_. The front-end generates a unqique ID for every request that it sends. The back-end (the stuff you are currently reading) can respond to a specific request. In that case, the response does not go through the normal message handlers in the front-end, but it flies directly to the place where the message was sent. (It resolves the promise returned by `send(...)`.)"
@@ -49,6 +50,15 @@ Base.@kwdef mutable struct ServerSession
     options::Configuration.Options = Configuration.Options()
 end
 
+function save_notebook(session::ServerSession, notebook::Notebook)
+    
+    # Notify event_listener from here
+    try_event_call(session, FileSaveEvent(notebook))
+    if !session.options.server.disable_writing_notebook_files
+        save_notebook(notebook, notebook.path)
+    end
+end
+
 ###
 # UPDATE MESSAGE
 ###
@@ -72,7 +82,8 @@ function clientupdate_notebook_list(notebooks; initiator::Union{Initiator,Nothin
                     :notebook_id => notebook.notebook_id,
                     :path => notebook.path,
                     :in_temp_dir => startswith(notebook.path, new_notebooks_directory()),
-                    :shortpath => basename(notebook.path)
+                    :shortpath => basename(notebook.path),
+                    :process_status => notebook.process_status,
                 ) for notebook in values(notebooks)
             ]
         ), nothing, nothing, initiator)

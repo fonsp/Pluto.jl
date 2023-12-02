@@ -1,6 +1,7 @@
 // import Library from "https://unpkg.com/@observablehq/stdlib@3.3.1/src/library.js?module"
 
 export let make_library = () => {
+    // @ts-ignore
     let library = new window.observablehq.Library()
     return {
         DOM: library.DOM,

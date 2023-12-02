@@ -1,5 +1,3 @@
-import { in_textarea_or_input } from "./KeyboardShortcuts.js"
-
 /**
  * Serialize an array of cells into a string form (similar to the .jl file).
  *
@@ -53,9 +51,9 @@ export function deserialize_repl(repl_session) {
         .filter((s) => s !== "")
 }
 
-export const detect_deserializer = (topaste, check_in_textarea_or_input = true) =>
+export const detect_deserializer = (/** @type {string} */ topaste) =>
     topaste.trim().startsWith(JULIA_REPL_PROMPT)
         ? deserialize_repl
-        : (check_in_textarea_or_input && !in_textarea_or_input()) || topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length
+        : topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length
         ? deserialize_cells
         : null

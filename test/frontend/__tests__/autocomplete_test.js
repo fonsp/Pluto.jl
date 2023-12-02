@@ -1,6 +1,14 @@
 import puppeteer from "puppeteer"
-import { lastElement, saveScreenshot, getTestScreenshotPath, setupPage } from "../helpers/common"
-import { getCellIds, importNotebook, waitForCellOutput, getPlutoUrl, prewarmPluto, writeSingleLineInPlutoInput, waitForNoUpdateOngoing } from "../helpers/pluto"
+import { lastElement, saveScreenshot, createPage, waitForContentToBecome } from "../helpers/common"
+import {
+    getCellIds,
+    importNotebook,
+    waitForCellOutput,
+    getPlutoUrl,
+    writeSingleLineInPlutoInput,
+    shutdownCurrentNotebook,
+    setupPlutoBrowser,
+} from "../helpers/pluto"
 
 describe("PlutoAutocomplete", () => {
     /**
@@ -13,26 +21,15 @@ describe("PlutoAutocomplete", () => {
     /** @type {puppeteer.Page} */
     let page = null
     beforeAll(async () => {
-        browser = await puppeteer.launch({
-            headless: process.env.HEADLESS !== "false",
-            args: ["--no-sandbox", "--disable-setuid-sandbox"],
-            devtools: false,
-        })
-
-        let page = await browser.newPage()
-        setupPage(page)
-        await prewarmPluto(browser, page)
-        await page.close()
+        browser = await setupPlutoBrowser()
     })
     beforeEach(async () => {
-        page = await browser.newPage()
-        setupPage(page)
+        page = await createPage(browser)
         await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
     })
     afterEach(async () => {
-        await saveScreenshot(page, getTestScreenshotPath())
-        // @ts-ignore
-        await page.evaluate(() => window.shutdownNotebook?.())
+        await saveScreenshot(page)
+        await shutdownCurrentNotebook(page)
         await page.close()
         page = null
     })
@@ -43,7 +40,6 @@ describe("PlutoAutocomplete", () => {
 
     it("should get the correct autocomplete suggestions", async () => {
         await importNotebook(page, "autocomplete_notebook.jl")
-        await waitForNoUpdateOngoing(page, { polling: 100 })
         const importedCellIds = await getCellIds(page)
         await Promise.all(importedCellIds.map((cellId) => waitForCellOutput(page, cellId)))
 
@@ -85,13 +81,7 @@ describe("PlutoAutocomplete", () => {
 
         // Trigger autocomplete
         await page.keyboard.press("Tab")
-        await page.waitForTimeout(5000)
 
-        // Get suggestions
-        const autocompletedInput = await page.evaluate(
-            (selector) => document.querySelector(selector).textContent.trim(),
-            `pluto-cell[id="${lastPlutoCellId}"] pluto-input .CodeMirror-line`
-        )
-        expect(autocompletedInput).toEqual("my_subtract")
+        expect(await waitForContentToBecome(page, `pluto-cell[id="${lastPlutoCellId}"] pluto-input .CodeMirror-line`, "my_subtract")).toBe("my_subtract")
     })
 })

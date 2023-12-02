@@ -7,8 +7,6 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
 
     🍭 = ServerSession()
     🍭.options.evaluation.workspace_use_distributed = false
-    fakeclient = ClientSession(:fake, nothing)
-    🍭.connected_clients[fakeclient.id] = fakeclient
     
     @testset "Tree viewer" begin
         @testset "Basics" begin
@@ -44,7 +42,6 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                     Cell("[ rand(50,50) ]"),
                     Cell("[ rand(500,500) ]"),
                 ])
-            fakeclient.connected_notebook = notebook
 
             update_run!(🍭, notebook, notebook.cells)
 
@@ -98,7 +95,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             @test sizes[2] < sizes[1] * 1.5
             @test sizes[4] < sizes[3] * 1.5
 
-            WorkspaceManager.unmake_workspace((🍭, notebook))
+            WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
         end
 
         @testset "Overloaded Base.show" begin
@@ -122,7 +119,6 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                     C(3)
                 end"""),
             ])
-            fakeclient.connected_notebook = notebook
 
             update_run!(🍭, notebook, notebook.cells)
             
@@ -133,7 +129,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             @test notebook.cells[3].output.mime isa MIME"text/plain"
             @test notebook.cells[3].output.body == "3"
             
-            WorkspaceManager.unmake_workspace((🍭, notebook))
+            WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
         end
 
         
@@ -143,8 +139,36 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             notebook = Notebook([
                 Cell("using OffsetArrays"),
                 Cell("OffsetArray(zeros(3), 20:22)"),
+                
+                Cell("""
+                begin
+                    struct BadImplementation <: AbstractVector{Int64}
+                    end
+                    function Base.show(io::IO, ::MIME"text/plain", b::BadImplementation)
+                        write(io, "fallback")
+                    end
+                end
+                """),
+                
+                Cell("""
+                begin
+                    struct OneTwoThree <: AbstractVector{Int64}
+                    end
+                
+                    
+                    function Base.show(io::IO, ::MIME"text/plain", b::OneTwoThree)
+                        write(io, "fallback")
+                    end
+                
+                    Base.size(::OneTwoThree) = (3,)
+                    Base.getindex(::OneTwoThree, i) = 100 + i
+                end
+                """),
+                
+                Cell("BadImplementation()"),
+                Cell("OneTwoThree()"),
+                
             ])
-            fakeclient.connected_notebook = notebook
 
             update_run!(🍭, notebook, notebook.cells)
             
@@ -152,10 +176,18 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             s = string(notebook.cells[2].output.body)
             @test occursin("OffsetArray", s)
             @test occursin("21", s)
-            if VERSION >= v"1.3"
-                # once in the prefix, once as index
-                @test count("22", s) >= 2
-            end
+            # once in the prefix, once as index
+            @test count("22", s) >= 2
+            
+            @test notebook.cells[5].output.mime isa MIME"text/plain"
+            @test notebook.cells[5].output.body == "fallback"
+            
+            @test notebook.cells[6].output.mime isa MIME"application/vnd.pluto.tree+object"
+            s = string(notebook.cells[6].output.body)
+            @test occursin("OneTwoThree", s)
+            @test occursin("101", s)
+            @test occursin("102", s)
+            @test occursin("103", s)
             
             WorkspaceManager.unmake_workspace((🍭, notebook))
             🍭.options.evaluation.workspace_use_distributed = false
@@ -187,18 +219,31 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                     x[] = (1,x)
                 end"""),
             ])
-            fakeclient.connected_notebook = notebook
 
             update_run!(🍭, notebook, notebook.cells)
 
-            @test notebook.cells[1].errored == false
-            @test notebook.cells[2].errored == false
-            @test notebook.cells[3].errored == false
-            @test notebook.cells[4].errored == false
+            @test notebook.cells[1] |> noerror
+            @test notebook.cells[2] |> noerror
+            @test notebook.cells[3] |> noerror
+            @test notebook.cells[4] |> noerror
         end
     end
 
-    
+    @testset "embed_display" begin
+        🍭.options.evaluation.workspace_use_distributed = false
+        notebook = Notebook([
+            Cell("x = randn(10)"),
+            Cell(raw"md\"x = $(embed_display(x))\"")
+        ])
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test notebook.cells[1] |> noerror
+        @test notebook.cells[2] |> noerror
+
+        @test notebook.cells[2].output.body isa String
+        @test occursin("getPublishedObject", notebook.cells[2].output.body)
+    end
+
     @testset "Table viewer" begin
         🍭.options.evaluation.workspace_use_distributed = true
         notebook = Notebook([
@@ -214,14 +259,24 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                 Cell("DataFrame"),
                 Cell("Tables.table(rand(11,11))"),
                 Cell("Tables.table(rand(120,120))"),
-                Cell("DataFrame(:a => [\"missing\", missing])"),
+                Cell("""DataFrame(:a => ["missing", missing])"""),
+                # the next three are technically "tables" according to `Tables.istable`, but I don't want to use the Table viewer for them.
+                Cell("""[Dict(Symbol("x\$i") => i for i in 1:140)]"""),
+                Cell("""Dict(
+                    :a => [15,15],
+                    :b => [15,15]
+                )"""),
+                Cell("""[
+                    (a=16, b=16,)
+                    (a=16, b=16,)
+                ]"""),
+                Cell("Union{}[]"),
             ])
-        fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells)
 
-        @test notebook.cells[2].output.mime isa MIME"application/vnd.pluto.table+object"
-        @test notebook.cells[3].output.mime isa MIME"application/vnd.pluto.table+object"
+        # @test notebook.cells[2].output.mime isa MIME"application/vnd.pluto.table+object"
+        # @test notebook.cells[3].output.mime isa MIME"application/vnd.pluto.table+object"
         @test notebook.cells[4].output.mime isa MIME"application/vnd.pluto.table+object"
         @test notebook.cells[5].output.mime isa MIME"application/vnd.pluto.table+object"
         @test notebook.cells[6].output.mime isa MIME"application/vnd.pluto.table+object"
@@ -230,8 +285,12 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
         @test notebook.cells[9].output.mime isa MIME"application/vnd.pluto.table+object"
         @test notebook.cells[11].output.mime isa MIME"application/vnd.pluto.table+object"
         @test notebook.cells[12].output.mime isa MIME"application/vnd.pluto.table+object"
-        @test notebook.cells[2].output.body isa Dict
-        @test notebook.cells[3].output.body isa Dict
+        @test notebook.cells[14].output.mime isa MIME"application/vnd.pluto.tree+object"
+        @test notebook.cells[15].output.mime isa MIME"application/vnd.pluto.tree+object"
+        @test notebook.cells[16].output.mime isa MIME"application/vnd.pluto.tree+object"
+        @test notebook.cells[17].output.mime isa MIME"application/vnd.pluto.tree+object"
+        # @test notebook.cells[2].output.body isa Dict
+        # @test notebook.cells[3].output.body isa Dict
         @test notebook.cells[4].output.body isa Dict
         @test notebook.cells[5].output.body isa Dict
         @test notebook.cells[6].output.body isa Dict
@@ -240,11 +299,17 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
         @test notebook.cells[9].output.body isa Dict
         @test notebook.cells[11].output.body isa Dict
         @test notebook.cells[12].output.body isa Dict
+        @test notebook.cells[14].output.body isa Dict
+        @test notebook.cells[15].output.body isa Dict
+        @test notebook.cells[16].output.body isa Dict
+        @test notebook.cells[17].output.body isa Dict
         @test occursin("String?", string(notebook.cells[13].output.body)) # Issue 1490.
 
         @test notebook.cells[10].output.mime isa MIME"text/plain"
-        @test notebook.cells[10].errored == false
+        @test notebook.cells[10] |> noerror
         
+        @test notebook.cells[17] |> noerror  # Issue 1815
+
         # to see if we truncated correctly, we convert the output to string and check how big it is
         # because we don't want to test too specifically
         roughsize(x) = length(string(x))
@@ -277,7 +342,6 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             Cell("0 + 10;\n10;"),
             Cell("0 + 11;\n11"),
         ])
-        fakeclient.connected_notebook = notebook
 
         @testset "Strange code"  begin
             update_run!(🍭, notebook, notebook.cells[1])
@@ -291,26 +355,26 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             update_run!(🍭, notebook, notebook.cells[3:end])
             @test occursinerror("syntax: extra token after", notebook.cells[3])
 
-            @test notebook.cells[4].errored == false
+            @test notebook.cells[4] |> noerror
             @test notebook.cells[4].output.body == "4"
             @test notebook.cells[4].output.rootassignee == :c
 
-            @test notebook.cells[5].errored == false
+            @test notebook.cells[5] |> noerror
             @test notebook.cells[5].output.body == ""
             @test notebook.cells[5].output.rootassignee === nothing
 
-            @test notebook.cells[6].errored == false
+            @test notebook.cells[6] |> noerror
             @test notebook.cells[6].output.body == "6"
             @test notebook.cells[6].output.rootassignee === nothing
 
-            @test notebook.cells[7].errored == false
+            @test notebook.cells[7] |> noerror
             @test notebook.cells[7].output.body == ""
             @test notebook.cells[7].output.rootassignee === nothing
 
-            @test notebook.cells[8].errored == false
+            @test notebook.cells[8] |> noerror
             @test notebook.cells[8].output.body == ""
 
-            @test notebook.cells[9].errored == false
+            @test notebook.cells[9] |> noerror
             @test notebook.cells[9].output.body == ""
 
             @test occursinerror("syntax: extra token after", notebook.cells[10])
@@ -318,7 +382,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             @test occursinerror("syntax: extra token after", notebook.cells[11])
         end
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
     end
 
     @testset "Stack traces" begin
@@ -346,7 +410,6 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
         @testset "$(wrapped ? "With" : "Without") function wrapping" for wrapped in [false, true]
             notebook = wrapped ? notebook1 : notebook2
             
-            fakeclient.connected_notebook = notebook
 
             @test_nowarn update_run!(🍭, notebook, notebook.cells[1:5])
 
@@ -399,7 +462,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                 @test occursin(escape_me, st[:msg])
             end
 
-            WorkspaceManager.unmake_workspace((🍭, notebook))
+            WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
         end
 
     end

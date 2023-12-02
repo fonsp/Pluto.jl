@@ -1,16 +1,13 @@
 import puppeteer from "puppeteer"
-import { waitForContent, lastElement, saveScreenshot, getTestScreenshotPath, waitForContentToBecome, setupPage, paste, countCells } from "../helpers/common"
+import { saveScreenshot, waitForContentToBecome, createPage, paste } from "../helpers/common"
 import {
     createNewNotebook,
-    getCellIds,
-    waitForCellOutput,
     waitForNoUpdateOngoing,
     getPlutoUrl,
-    prewarmPluto,
-    waitForCellOutputToChange,
-    keyboardPressInPlutoInput,
-    writeSingleLineInPlutoInput,
-    manuallyEnterCells,
+    shutdownCurrentNotebook,
+    setupPlutoBrowser,
+    waitForPlutoToCalmDown,
+    runAllChanged,
 } from "../helpers/pluto"
 
 describe("JavaScript API", () => {
@@ -24,28 +21,16 @@ describe("JavaScript API", () => {
     /** @type {puppeteer.Page} */
     let page = null
     beforeAll(async () => {
-        browser = await puppeteer.launch({
-            headless: process.env.HEADLESS !== "false",
-            args: ["--no-sandbox", "--disable-setuid-sandbox"],
-            devtools: false,
-        })
-
-        let page = await browser.newPage()
-        setupPage(page)
-        await prewarmPluto(browser, page)
-        await page.close()
+        browser = await setupPlutoBrowser()
     })
     beforeEach(async () => {
-        page = await browser.newPage()
-        setupPage(page)
+        page = await createPage(browser)
         await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
         await createNewNotebook(page)
-        await page.waitForSelector("pluto-input", { visible: true })
     })
     afterEach(async () => {
-        await saveScreenshot(page, getTestScreenshotPath())
-        // @ts-ignore
-        await page.evaluate(() => window.shutdownNotebook?.())
+        await saveScreenshot(page)
+        await shutdownCurrentNotebook(page)
         await page.close()
         page = null
     })
@@ -56,55 +41,55 @@ describe("JavaScript API", () => {
 
     it("⭐️ If you return an HTML node, it will be displayed.", async () => {
         const expected = "Success"
-        paste(
+        await paste(
             page,
-            `html"""<script>
+            `# ╔═╡ 90cfa9a0-114d-49bf-8dea-e97d58fa2442
+      html"""<script>
     const div = document.createElement("div")
     div.innerHTML = "${expected}"
     return div;
 </script>"""
         `
         )
-        await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
-        await page.click(`.runallchanged`)
-        await waitForNoUpdateOngoing(page, { polling: 100 })
+        await runAllChanged(page)
+        await waitForPlutoToCalmDown(page, { polling: 100 })
         const initialLastCellContent = await waitForContentToBecome(page, `pluto-cell:last-child pluto-output`, expected)
         expect(initialLastCellContent).toBe(expected)
     })
 
     it("⭐️ The observablehq/stdlib library is pre-imported, you can use DOM, html, Promises, etc.", async () => {
         const expected = "Success"
-        paste(
+        await paste(
             page,
-            `html"""<script>
+            `# ╔═╡ 90cfa9a0-114d-49bf-8dea-e97d58fa2442
+      html"""<script>
     return html\`<span>${expected}\</span>\`;
 </script>"""
         `
         )
-        await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
-        await page.click(`.runallchanged`)
-        await waitForNoUpdateOngoing(page, { polling: 100 })
+        await runAllChanged(page)
+        await waitForPlutoToCalmDown(page, { polling: 100 })
         let initialLastCellContent = await waitForContentToBecome(page, `pluto-cell:last-child pluto-output`, expected)
         expect(initialLastCellContent).toBe(expected)
 
-        paste(
+        await paste(
             page,
-            `html"""<script>
+            `# ╔═╡ 90cfa9a0-114d-49bf-8dea-e97d58fa2442
+      html"""<script>
             const span = DOM.element("span");
             span.innerHTML = "${expected}"
             return span
 </script>"""
         `
         )
-        await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
-        await page.click(`.runallchanged`)
-        await waitForNoUpdateOngoing(page, { polling: 100 })
+        await runAllChanged(page)
+        await waitForPlutoToCalmDown(page, { polling: 100 })
         initialLastCellContent = await waitForContentToBecome(page, `pluto-cell:last-child pluto-output`, expected)
         expect(initialLastCellContent).toBe(expected)
     })
 
     it("⭐️ When a cell re-runs reactively, this will be set to the previous output", async () => {
-        paste(
+        await paste(
             page,
             `   
                 # ╔═╡ 90cfa9a0-114d-49bf-8dea-e97d58fa2442
@@ -125,9 +110,8 @@ describe("JavaScript API", () => {
                 v
         `
         )
-        await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
-        await page.click(`.runallchanged`)
-        await waitForNoUpdateOngoing(page, { polling: 100 })
+        await runAllChanged(page)
+        await waitForPlutoToCalmDown(page, { polling: 100 })
         await waitForContentToBecome(page, `pluto-cell:nth-child(2) pluto-output`, "emitter")
         page.waitForTimeout(2000)
 

@@ -1,153 +1,172 @@
-import { syntaxTree, Facet, ViewPlugin, Decoration } from "../../imports/CodemirrorPlutoSetup.js"
+import { Facet, ViewPlugin, Decoration, EditorView } from "../../imports/CodemirrorPlutoSetup.js"
 import { ctrl_or_cmd_name, has_ctrl_or_cmd_pressed } from "../../common/KeyboardShortcuts.js"
 import _ from "../../imports/lodash.js"
+import { ScopeStateField } from "./scopestate_statefield.js"
 
-let node_is_variable_usage = (node) => {
-    let parent = node.parent
-
-    if (parent == null) return false
-    if (parent.name === "VariableDeclarator") return false
-    if (parent.name === "Symbol") return false
-
-    // If we are the first child of a FieldExpression, we are the usage
-    if (parent.name === "FieldExpression" || parent.name === "MacroFieldExpression") {
-        let firstchild = parent.firstChild
-        if (node.from === firstchild?.from && node.to === firstchild?.to) {
-            return true
-        } else {
-            return false
-        }
-    }
-
-    // Ignore left side of an assigment
-    // TODO Tuple assignment
-    if (parent.name === "AssignmentExpression") {
-        let firstchild = parent?.firstChild
-        if (node.from === firstchild?.from && node.to === firstchild?.to) {
-            return false
-        }
-    }
-
-    // If we are the name of a macro of function definition, we are not usage
-    if (parent.name === "MacroDefinition" || parent.name === "FunctionDefinition") {
-        let function_name = parent?.firstChild?.nextSibling
-        if (node.from === function_name?.from && node.to === function_name?.to) {
-            return false
-        }
-    }
-
-    if (parent.name === "ArgumentList") {
-        if (parent.parent.name === "MacroDefinition" || parent.parent.name === "FunctionDefinition") {
-            return false
-        }
-    }
-
-    if (parent.name === "TypedExpression") return node_is_variable_usage(parent)
-    if (parent.name === "NamedField") return node_is_variable_usage(parent)
-    if (parent.name === "BareTupleExpression") return node_is_variable_usage(parent)
-    if (parent.name === "MacroIdentifier") return node_is_variable_usage(parent)
-
-    return true
-}
-
-let get_variable_marks = (state, { used_variables }) => {
-    let tree = syntaxTree(state)
-    let variable_nodes = new Set()
-    tree.iterate({
-        enter: (type, from, to, getNode) => {
-            if (type.name === "Identifier") {
-                let node = getNode()
-
-                if (node_is_variable_usage(node)) {
-                    variable_nodes.add(node)
-                }
-            }
-        },
-    })
-
-    let variables_with_origin_cell = Object.entries(used_variables || {})
-        .filter(([name, usage]) => usage.length > 0)
-        .map(([name, usage]) => name)
-
+/**
+ * @param {any} state
+ * @param {{
+ *  scopestate: import("./scopestate_statefield.js").ScopeState,
+ *  global_definitions: { [key: string]: string }
+ * }} context
+ */
+let get_variable_marks = (state, { scopestate, global_definitions }) => {
     return Decoration.set(
-        Array.from(variable_nodes)
-            .map((variable_node) => {
-                let text = state.doc.sliceString(variable_node.from, variable_node.to)
-
-                if (variables_with_origin_cell.includes(text)) {
+        filter_non_null(
+            scopestate.usages.map(({ definition, usage, name }) => {
+                if (definition == null) {
+                    // TODO variables_with_origin_cell should be notebook wide, not just in the current cell
+                    // .... Because now it will only show variables after it has run once
+                    if (global_definitions[name]) {
+                        return Decoration.mark({
+                            tagName: "a",
+                            attributes: {
+                                "title": `${ctrl_or_cmd_name}-Click to jump to the definition of ${name}.`,
+                                "data-pluto-variable": name,
+                                "href": `#${name}`,
+                            },
+                        }).range(usage.from, usage.to)
+                    } else {
+                        // This could be used to trigger @edit when clicked, to open
+                        // in whatever editor the person wants to use.
+                        // return Decoration.mark({
+                        //     tagName: "a",
+                        //     attributes: {
+                        //         "title": `${ctrl_or_cmd_name}-Click to jump to the definition of ${text}.`,
+                        //         "data-external-variable": text,
+                        //         "href": `#`,
+                        //     },
+                        // }).range(usage.from, usage.to)
+                        return null
+                    }
+                } else {
+                    // Could be used to select the definition of a variable inside the current cell
                     return Decoration.mark({
                         tagName: "a",
                         attributes: {
-                            "title": `${ctrl_or_cmd_name}-Click to jump to the definition of ${text}.`,
-                            "data-pluto-variable": text,
-                            "href": `#${text}`,
+                            "title": `${ctrl_or_cmd_name}-Click to jump to the definition of ${name}.`,
+                            "data-cell-variable": name,
+                            "data-cell-variable-from": `${definition.from}`,
+                            "data-cell-variable-to": `${definition.to}`,
+                            "href": `#`,
                         },
-                    }).range(variable_node.from, variable_node.to)
-                } else {
-                    return null
+                    }).range(usage.from, usage.to)
                 }
             })
-            .filter((x) => x != null)
+        ),
+        true
     )
 }
 
-export const UsedVariablesFacet = Facet.define({
+/**
+ *
+ * @argument {Array<T?>} xs
+ * @template T
+ * @return {Array<T>}
+ */
+const filter_non_null = (xs) => /** @type {Array<T>} */ (xs.filter((x) => x != null))
+
+/**
+ * @type {Facet<{ [variable_name: string]: string }, { [variable_name: string]: string }>}
+ */
+export const GlobalDefinitionsFacet = Facet.define({
     combine: (values) => values[0],
     compare: _.isEqual,
 })
 
 export const go_to_definition_plugin = ViewPlugin.fromClass(
     class {
+        /**
+         * @param {EditorView} view
+         */
         constructor(view) {
-            let used_variables = view.state.facet(UsedVariablesFacet)
-            this.decorations = get_variable_marks(view.state, { used_variables })
-            this.used_variables = view.state.facet(UsedVariablesFacet)
+            let global_definitions = view.state.facet(GlobalDefinitionsFacet)
+            this.decorations = get_variable_marks(view.state, {
+                scopestate: view.state.field(ScopeStateField),
+                global_definitions,
+            })
         }
 
         update(update) {
-            // My best take on getting this to update when UsedVariablesFacet does 🤷‍♀️
-            let used_variables = update.state.facet(UsedVariablesFacet)
-            if (update.docChanged || update.viewportChanged || used_variables !== this.used_variables)
-                this.decorations = get_variable_marks(update.state, { used_variables })
-            this.used_variables = used_variables
+            // My best take on getting this to update when GlobalDefinitionsFacet does 🤷‍♀️
+            let global_definitions = update.state.facet(GlobalDefinitionsFacet)
+            if (update.docChanged || update.viewportChanged || global_definitions !== update.startState.facet(GlobalDefinitionsFacet)) {
+                this.decorations = get_variable_marks(update.state, {
+                    scopestate: update.state.field(ScopeStateField),
+                    global_definitions,
+                })
+            }
         }
     },
     {
         decorations: (v) => v.decorations,
 
         eventHandlers: {
-            pointerdown: (event, view) => {
-                if (has_ctrl_or_cmd_pressed(event) && event.which === 1 && event.target instanceof Element) {
+            click: (event, view) => {
+                if (event.target instanceof Element) {
                     let pluto_variable = event.target.closest("[data-pluto-variable]")
-                    if (!pluto_variable) return
+                    if (pluto_variable) {
+                        let variable = pluto_variable.getAttribute("data-pluto-variable")
+                        if (variable == null) {
+                            return false
+                        }
 
-                    let variable = pluto_variable.getAttribute("data-pluto-variable")
+                        if (!(has_ctrl_or_cmd_pressed(event) || view.state.readOnly)) {
+                            return false
+                        }
 
-                    event.preventDefault()
-                    let scrollto_selector = `[id='${encodeURI(variable)}']`
-                    document.querySelector(scrollto_selector).scrollIntoView({
-                        behavior: "smooth",
-                        block: "center",
-                    })
+                        event.preventDefault()
+                        let scrollto_selector = `[id='${encodeURI(variable)}']`
+                        document.querySelector(scrollto_selector)?.scrollIntoView({
+                            behavior: "smooth",
+                            block: "center",
+                        })
 
-                    // TODO Something fancy where it counts going to definition as a page in history,
-                    // .... so pressing/swiping back will go back to where you clicked on the definition.
-                    // window.history.replaceState({ scrollTop: document.documentElement.scrollTop }, null)
-                    // window.history.pushState({ scrollTo: scrollto_selector }, null)
+                        // TODO Something fancy where it counts going to definition as a page in history,
+                        // .... so pressing/swiping back will go back to where you clicked on the definition.
+                        // window.history.replaceState({ scrollTop: document.documentElement.scrollTop }, null)
+                        // window.history.pushState({ scrollTo: scrollto_selector }, null)
 
-                    let used_variables = view.state.facet(UsedVariablesFacet)
+                        let global_definitions = view.state.facet(GlobalDefinitionsFacet)
 
-                    // TODO Something fancy where we actually emit the identifier we are looking for,
-                    // .... and the cell then selects exactly that definition (using lezer and cool stuff)
-                    if (used_variables[variable].length > 0) {
-                        window.dispatchEvent(
-                            new CustomEvent("cell_focus", {
-                                detail: {
-                                    cell_id: used_variables[variable][0],
-                                    line: 0, // 1-based to 0-based index
-                                },
-                            })
-                        )
+                        // TODO Something fancy where we actually emit the identifier we are looking for,
+                        // .... and the cell then selects exactly that definition (using lezer and cool stuff)
+                        if (global_definitions[variable]) {
+                            window.dispatchEvent(
+                                new CustomEvent("cell_focus", {
+                                    detail: {
+                                        cell_id: global_definitions[variable],
+                                        line: 0, // 1-based to 0-based index
+                                        definition_of: variable,
+                                    },
+                                })
+                            )
+                            return true
+                        }
+                    }
+
+                    let cell_variable = event.target.closest("[data-cell-variable]")
+                    if (cell_variable) {
+                        let variable_name = cell_variable.getAttribute("data-cell-variable")
+                        let variable_from = Number(cell_variable.getAttribute("data-cell-variable-from"))
+                        let variable_to = Number(cell_variable.getAttribute("data-cell-variable-to"))
+
+                        if (variable_name == null || variable_from == null || variable_to == null) {
+                            return false
+                        }
+
+                        if (!(has_ctrl_or_cmd_pressed(event) || view.state.readOnly)) {
+                            return false
+                        }
+
+                        event.preventDefault()
+
+                        view.dispatch({
+                            scrollIntoView: true,
+                            selection: { anchor: variable_from, head: variable_to },
+                        })
+                        view.focus()
+                        return true
                     }
                 }
             },

@@ -1,151 +1,5 @@
 import { EditorState, syntaxTree } from "../../imports/CodemirrorPlutoSetup.js"
-
-let get_variables_from_assignment = (cursor) => {
-    if (cursor.name === "Identifier") {
-        return [cursor.node]
-    }
-    // `function f(x...)` => ["x"]
-    // `x... = 10` => ["x"]
-    if (cursor.name === "SpreadExpression") {
-        if (cursor.firstChild()) {
-            try {
-                return get_variables_from_assignment(cursor)
-            } finally {
-                cursor.parent()
-            }
-        }
-    }
-    // `function f(x = 10)` => ["x"]
-    // First need to go into NamedArgument, then need to go into NamedField.
-    if (cursor.name === "NamedArgument" || cursor.name === "NamedField") {
-        if (cursor.firstChild()) {
-            try {
-                return get_variables_from_assignment(cursor)
-            } finally {
-                cursor.parent()
-            }
-        }
-    }
-    // `function f(x::Any)` => ["x"]
-    // `x::Any = 10` => ["x"]
-    if (cursor.name === "TypedExpression") {
-        if (cursor.firstChild()) {
-            try {
-                return get_variables_from_assignment(cursor)
-            } finally {
-                cursor.parent()
-            }
-        }
-    }
-    // `function f( (x,y) )` => ["x", "y"]
-    // `(x, y) = arr` => ["x", "y"]
-    // `x,y = arr` => ["x", "y"]
-    if (cursor.name === "TupleExpression" || cursor.name === "BareTupleExpression") {
-        let variables = []
-        if (cursor.firstChild()) {
-            do {
-                variables.push(...get_variables_from_assignment(cursor))
-            } while (cursor.nextSibling())
-            cursor.parent()
-        }
-        return variables
-    }
-    return []
-}
-
-/**
- * @param {import("../../imports/CodemirrorPlutoSetup.js").TreeCursor} cursor
- */
-let get_local_variables = (cursor) => {
-    let local_variables = []
-    do {
-        if (cursor.name === "DoClause" && cursor.firstChild()) {
-            // It's not yet possible to be SURE that we have the arguments, because of the way @lezer/julia works...
-            // But imma do my best, and soon contribute to @lezer/julia
-
-            cursor.nextSibling() // We are now supposed to be in the argumentlist..
-            // Problem is: we might also be in the first statement of the function...
-            // So we'll make sure that we have something that is valid as arguments,
-            // but then still someone MIGHT have a plain identifier in the first statement.
-            // @ts-ignore
-            local_variables.push(...get_variables_from_assignment(cursor))
-            cursor.parent()
-            continue
-        }
-
-        if (cursor.name === "FunctionDefinition" && cursor.firstChild()) {
-            // Find ArgumentList
-            do {
-                // @ts-ignore
-                if (cursor.name !== "ArgumentList") continue
-                // Cycle through arguments
-                if (cursor.firstChild()) {
-                    do {
-                        local_variables.push(...get_variables_from_assignment(cursor))
-                    } while (cursor.nextSibling())
-                    cursor.parent()
-                }
-            } while (cursor.nextSibling())
-            cursor.parent()
-            continue
-        }
-
-        if (cursor.name === "LetStatement" && cursor.firstChild()) {
-            do {
-                // @ts-ignore
-                if (cursor.name === "VariableDeclaration" && cursor.firstChild()) {
-                    local_variables.push(...get_variables_from_assignment(cursor))
-                    cursor.parent()
-                }
-            } while (cursor.nextSibling())
-            cursor.parent()
-            continue
-        }
-
-        // When in a block-ish node (FunctionDefinition, but later also begin, let, if, etc)
-        // we go backwards from where we are, collecting any assignment-like nodes.
-        // Later we could even go into begin blocks, but that would be a bit more complicated.
-        let parent = cursor.node.parent
-        do {
-            if (cursor.name === "LocalStatement" || cursor.name === "ConstStatement" || cursor.name === "GlobalStatement") {
-                if (cursor.firstChild()) {
-                    do {
-                        // @ts-ignore
-                        if (cursor.name === "VariableDeclaration" && cursor.firstChild()) {
-                            local_variables.push(...get_variables_from_assignment(cursor))
-                            cursor.parent()
-                        }
-                    } while (cursor.nextSibling())
-                    cursor.parent()
-                }
-            }
-
-            if (cursor.name === "AssignmentExpression" && cursor.firstChild()) {
-                local_variables.push(...get_variables_from_assignment(cursor))
-                cursor.parent()
-            }
-            if (cursor.name === "ForBinding" && cursor.firstChild()) {
-                local_variables.push(...get_variables_from_assignment(cursor))
-                cursor.parent()
-            }
-            if (cursor.name === "ArrayComprehensionExpression" && cursor.firstChild()) {
-                cursor.nextSibling()
-                // @ts-ignore
-                if (cursor.name === "ForClause" && cursor.firstChild()) {
-                    do {
-                        if (cursor.name === "ForBinding" && cursor.firstChild()) {
-                            local_variables.push(...get_variables_from_assignment(cursor))
-                            cursor.parent()
-                        }
-                    } while (cursor.nextSibling())
-                    cursor.parent()
-                }
-                cursor.parent()
-            }
-        } while (cursor.prevSibling())
-    } while (cursor.parent())
-    return local_variables
-}
+import { ScopeStateField } from "./scopestate_statefield.js"
 
 let get_root_variable_from_expression = (cursor) => {
     if (cursor.name === "SubscriptExpression") {
@@ -170,9 +24,24 @@ let VALID_DOCS_TYPES = [
     "MacroFieldExpression",
     "MacroIdentifier",
     "Operator",
+    "Definition",
     "ParameterizedIdentifier",
 ]
-let keywords_that_have_docs_and_are_cool = ["import", "export", "try", "catch", "finally", "quote", "do", "struct", "mutable"]
+let keywords_that_have_docs_and_are_cool = [
+    "import",
+    "export",
+    "try",
+    "catch",
+    "finally",
+    "quote",
+    "do",
+    "struct",
+    "mutable",
+    "module",
+    "baremodule",
+    "if",
+    "let",
+]
 
 let is_docs_searchable = (/** @type {import("../../imports/CodemirrorPlutoSetup.js").TreeCursor} */ cursor) => {
     if (keywords_that_have_docs_and_are_cool.includes(cursor.name)) {
@@ -186,6 +55,9 @@ let is_docs_searchable = (/** @type {import("../../imports/CodemirrorPlutoSetup.
                 }
                 // This is for the VERY specific case like `Vector{Int}(1,2,3,4) which I want to yield `Vector{Int}`
                 if (cursor.name === "TypeArgumentList") {
+                    continue
+                }
+                if (cursor.name === "FieldName" || cursor.name === "MacroName" || cursor.name === "MacroFieldName") {
                     continue
                 }
                 if (!is_docs_searchable(cursor)) {
@@ -205,6 +77,8 @@ let is_docs_searchable = (/** @type {import("../../imports/CodemirrorPlutoSetup.
 export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verbose = false) => {
     let selection = state.selection.main
 
+    let scopestate = state.field(ScopeStateField)
+
     if (selection.from === selection.to) {
         // If the cell starts with a questionmark, we interpret it as a
         // docs query, so I'm gonna spit out exactly what the user typed.
@@ -217,9 +91,6 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
         let cursor = tree.cursor()
         verbose && console.log(`Full tree:`, cursor.toString())
         cursor.moveTo(selection.to, -1)
-
-        let local_variables = get_local_variables(cursor.node.cursor).map((node) => state.doc.sliceString(node.from, node.to))
-        verbose && console.log(`local_variables:`, local_variables)
 
         let iterations = 0
 
@@ -239,7 +110,7 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                 iterations = iterations + 1
 
                 // Collect parents in a list so I can compare them easily
-                let parent_cursor = cursor.node.cursor
+                let parent_cursor = cursor.node.cursor()
                 let parents = []
                 while (parent_cursor.parent()) {
                     parents.push(parent_cursor.name)
@@ -262,6 +133,15 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                         // We're inside a `... = ...` inside the struct
                     } else if (parents.includes("TypedExpression") && parents.indexOf("TypedExpression") < index_of_struct_in_parents) {
                         // We're inside a `x::X` inside the struct
+                    } else if (parents.includes("SubtypedExpression") && parents.indexOf("SubtypedExpression") < index_of_struct_in_parents) {
+                        // We're inside `Real` in `struct MyNumber<:Real`
+                        while (parent?.name !== "SubtypedExpression") {
+                            parent = parent.parent
+                        }
+                        const type_node = parent.lastChild
+                        if (type_node.from <= cursor.from && type_node.to >= cursor.to) {
+                            return state.doc.sliceString(type_node.from, type_node.to)
+                        }
                     } else if (cursor.name === "struct" || cursor.name === "mutable") {
                         cursor.parent()
                         cursor.firstChild()
@@ -275,6 +155,10 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                     } else {
                         return undefined
                     }
+                }
+
+                if (cursor.name === "AbstractDefinition") {
+                    return "abstract type"
                 }
 
                 // `callee(...)` should yield "callee"
@@ -301,7 +185,7 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                 }
 
                 // `html"asd"` should yield "html"
-                if (cursor.name === "Identifier" && parent.name === "PrefixedString") {
+                if (cursor.name === "Identifier" && parent.name === "Prefix") {
                     continue
                 }
                 if (cursor.name === "PrefixedString") {
@@ -360,7 +244,8 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                 if (
                     cursor.name === "Identifier" &&
                     parent.name === "ArgumentList" &&
-                    (parent.parent.name === "FunctionAssignmentExpression" || parent.parent.name === "FunctionDefinition")
+                    (parent.parent.parent.name === "FunctionAssignmentExpression" ||
+                        parent.parent.name === "FunctionDefinition")
                 ) {
                     continue
                 }
@@ -412,6 +297,7 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
 
                 if (VALID_DOCS_TYPES.includes(cursor.name) || keywords_that_have_docs_and_are_cool.includes(cursor.name)) {
                     if (!is_docs_searchable(cursor)) {
+                        console.log("NOT DOCS SEARCHABLE")
                         return undefined
                     }
 
@@ -421,8 +307,11 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                     if (root_variable_node == null) {
                         return state.doc.sliceString(cursor.from, cursor.to)
                     }
-                    let root_variable_name = state.doc.sliceString(root_variable_node.from, root_variable_node.to)
-                    if (!local_variables.includes(root_variable_name)) {
+
+                    // We have do find the current usage of the variable, and make sure it has no definition inside this cell
+                    let usage = scopestate.usages.find((x) => x.usage.from === root_variable_node.from && x.usage.to === root_variable_node.to)
+                    // If we can't find the usage... we just assume it can be docs showed I guess
+                    if (usage?.definition == null) {
                         return state.doc.sliceString(cursor.from, cursor.to)
                     }
                 }

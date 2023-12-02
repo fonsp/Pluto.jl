@@ -3,7 +3,7 @@ import msgpack from "../imports/msgpack-lite.js"
 
 // based on https://github.com/kawanet/msgpack-lite/blob/5b71d82cad4b96289a466a6403d2faaa3e254167/lib/ext-packer.js
 const codec = msgpack.createCodec()
-const packTypedArray = (x) => new Uint8Array(x.buffer)
+const packTypedArray = (x) => new Uint8Array(x.buffer, x.byteOffset, x.byteLength)
 codec.addExtPacker(0x11, Int8Array, packTypedArray)
 codec.addExtPacker(0x12, Uint8Array, packTypedArray)
 codec.addExtPacker(0x13, Int16Array, packTypedArray)
@@ -22,7 +22,7 @@ codec.addExtPacker(0x12, DataView, packTypedArray)
 // But it does throw when I create a custom @bind that has a Date value...
 // For decoding I now also use a "Invalid Date", but the code in https://stackoverflow.com/a/55338384/2681964 did work in Safari.
 // Also there is no way now to send an "Invalid Date", so it just does nothing
-codec.addExtPacker(0x0d, Date, (d) => new BigInt64Array([BigInt(d)]))
+codec.addExtPacker(0x0d, Date, (d) => new BigInt64Array([BigInt(+d)]))
 codec.addExtUnpacker(0x0d, (uintarray) => {
     if ("getBigInt64" in DataView.prototype) {
         let dataview = new DataView(uintarray.buffer, uintarray.byteOffset, uintarray.byteLength)

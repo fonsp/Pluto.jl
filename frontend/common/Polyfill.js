@@ -26,3 +26,8 @@ if (Blob.prototype.arrayBuffer == null) {
         return new Response(this).arrayBuffer()
     }
 }
+
+//@ts-ignore
+import { polyfill as scroll_polyfill } from "https://esm.sh/seamless-scroll-polyfill@2.1.8/lib/polyfill.js?pin=v113&target=es2020"
+
+scroll_polyfill()
