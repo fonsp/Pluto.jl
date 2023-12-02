@@ -99,6 +99,7 @@
 
         /*header*/
         --restart-recc-header-color: rgba(114, 192, 255, 0.56);
+        --restart-recc-accent-color: rgba(114, 192, 255);
         --restart-req-header-color: rgba(170, 41, 32, 0.56);
         --dead-process-header-color: rgb(230 88 46 / 38%);
         --loading-header-color: hsla(290, 10%, 80%, 0.5);
@@ -111,7 +112,7 @@
 
         /*saveall container*/
         --overlay-button-bg: #ffffff;
-        --overlay-button-border: #f3f2f2;
+        --overlay-button-border: hsl(0 4% 91% / 1);
         --overlay-button-border-save: #f3f2f2;
 
         /*input_context_menu*/
@@ -214,6 +215,7 @@
 
         /* Landing colors */
         --index-text-color: hsl(0, 0, 60);
+        --index-light-text-color: #838383;
         --index-clickable-text-color: hsl(0, 0, 30);
         --docs-binding-bg: #8383830a;
         --index-card-bg: white;

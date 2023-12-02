@@ -96,6 +96,7 @@
 
         /*header*/
         --restart-recc-header-color: rgb(44 106 157 / 56%);
+        --restart-recc-accent-color: rgb(44 106 157);
         --restart-req-header-color: rgb(145 66 60 / 56%);
         --dead-process-header-color: rgba(250, 75, 21, 0.473);
         --loading-header-color: hsl(0deg 0% 20% / 50%);
@@ -211,6 +212,7 @@
 
         /* Landing colors */
         --index-text-color: rgb(199, 199, 199);
+        --index-light-text-color: rgb(199, 199, 199);
         --index-clickable-text-color: rgb(235, 235, 235);
         --index-card-bg: #313131;
         --welcome-mywork-bg: var(--header-bg-color);

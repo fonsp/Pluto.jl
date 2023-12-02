@@ -10,7 +10,7 @@ if get(ENV, "PLUTO_TEST_ONLY_COMPILETIMES", nothing) == "true"
 end
 @timeit_include("Events.jl")
 verify_no_running_processes()
-@timeit_include("WorkspaceManager.jl")
+@timeit_include("Configuration.jl")
 verify_no_running_processes()
 @timeit_include("packages/Basic.jl")
 verify_no_running_processes()
@@ -30,13 +30,12 @@ verify_no_running_processes()
 verify_no_running_processes()
 @timeit_include("Notebook.jl")
 verify_no_running_processes()
-@timeit_include("Configuration.jl")
+@timeit_include("WorkspaceManager.jl")
 verify_no_running_processes()
 
 # tests that don't start new processes:
 @timeit_include("ReloadFromFile.jl")
 @timeit_include("packages/PkgCompat.jl")
-@timeit_include("ExpressionExplorer.jl")
 @timeit_include("MethodSignatures.jl")
 @timeit_include("MoreAnalysis.jl")
 @timeit_include("Analysis.jl")
@@ -49,6 +48,7 @@ verify_no_running_processes()
 verify_no_running_processes()
 
 print_timeroutput()
+@timeit_include("ExpressionExplorer.jl")
 
 # TODO: test PlutoRunner functions like:
 # - from_this_notebook

@@ -101,8 +101,8 @@ function notebook_to_js(notebook::Notebook)
     Dict{String,Any}(
         "notebook_id" => notebook.notebook_id,
         "path" => notebook.path,
-        "in_temp_dir" => startswith(notebook.path, new_notebooks_directory()),
         "shortpath" => basename(notebook.path),
+        "in_temp_dir" => startswith(notebook.path, new_notebooks_directory()),
         "process_status" => notebook.process_status,
         "last_save_time" => notebook.last_save_time,
         "last_hot_reload_time" => notebook.last_hot_reload_time,
@@ -133,7 +133,7 @@ function notebook_to_js(notebook::Notebook)
                 "cell_id" => cell.cell_id,
                 "depends_on_disabled_cells" => cell.depends_on_disabled_cells,
                 "output" => FirebaseyUtils.ImmutableMarker(cell.output),
-                "published_object_keys" => keys(cell.published_objects),
+                "published_object_keys" => collect(keys(cell.published_objects)),
                 "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,
@@ -154,9 +154,10 @@ function notebook_to_js(notebook::Notebook)
             ctx = notebook.nbpkg_ctx
             Dict{String,Any}(
                 "enabled" => ctx !== nothing,
+                "waiting_for_permission" => notebook.process_status === ProcessStatus.waiting_for_permission,
+                "waiting_for_permission_but_probably_disabled" => notebook.process_status === ProcessStatus.waiting_for_permission && !use_plutopkg(notebook.topology),
                 "restart_recommended_msg" => notebook.nbpkg_restart_recommended_msg,
                 "restart_required_msg" => notebook.nbpkg_restart_required_msg,
-                # TODO: cache this
                 "installed_versions" => ctx === nothing ? Dict{String,String}() : notebook.nbpkg_installed_versions_cache,
                 "terminal_outputs" => notebook.nbpkg_terminal_outputs,
                 "install_time_ns" => notebook.nbpkg_install_time_ns,
@@ -187,7 +188,7 @@ function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, sk
             if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == 🙋.notebook.notebook_id
                 current_dict = get(current_state_for_clients, client, :empty)
                 patches = Firebasey.diff(current_dict, notebook_dict)
-                patches_as_dicts::Array{Dict} = Firebasey._convert(Array{Dict}, patches)
+                patches_as_dicts = Firebasey._convert(Vector{Dict}, patches)
                 current_state_for_clients[client] = deep_enough_copy(notebook_dict)
 
                 # Make sure we do send a confirmation to the client who made the request, even without changes
@@ -248,6 +249,18 @@ const effects_of_changed_state = Dict(
 
         @info "Process status set by client" newstatus
     end,
+    # "execution_allowed" => function(; request::ClientRequest, patch::Firebasey.ReplacePatch)
+    #     Firebasey.applypatch!(request.notebook, patch)
+    #     newstatus = patch.value
+
+    #     @info "execution_allowed set by client" newstatus
+    #     if newstatus
+    #         @info "lets run some cells!"
+    #         update_save_run!(request.session, request.notebook, notebook.cells; 
+    #             run_async=true, save=true
+    #         )
+    #     end
+    # end,
     "in_temp_dir" => function(; _...) no_changes end,
     "cell_inputs" => Dict(
         Wildcard() => function(cell_id, rest...; request::ClientRequest, patch::Firebasey.JSONPatch)
@@ -435,10 +448,14 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
         putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:run_feedback, response, 🙋.notebook, nothing, 🙋.initiator))
     end
     
-    # save=true fixes the issue where "Submit all changes" or `Ctrl+S` has no effect.
+    wfp = 🙋.notebook.process_status == ProcessStatus.waiting_for_permission
+
     update_save_run!(🙋.session, 🙋.notebook, cells; 
         run_async=true, save=true, 
-        auto_solve_multiple_defs=true, on_auto_solve_multiple_defs
+        auto_solve_multiple_defs=true, on_auto_solve_multiple_defs,
+        # special case: just render md cells in "Safe preview" mode
+        prerender_text=wfp,
+        clear_not_prerenderable_cells=wfp,
     )
 end
 
@@ -474,8 +491,10 @@ responses[:restart_process] = function response_restart_process(🙋::ClientRequ
     
     if 🙋.notebook.process_status != ProcessStatus.waiting_to_restart
         🙋.notebook.process_status = ProcessStatus.waiting_to_restart
+        🙋.session.options.evaluation.run_notebook_on_load && _report_business_cells_planned!(🙋.notebook)
         send_notebook_changes!(🙋 |> without_initiator)
 
+        # TODO skip necessary?
         SessionActions.shutdown(🙋.session, 🙋.notebook; keep_in_session=true, async=true)
 
         🙋.notebook.process_status = ProcessStatus.starting
@@ -488,6 +507,8 @@ end
 
 responses[:reshow_cell] = function response_reshow_cell(🙋::ClientRequest)
     require_notebook(🙋)
+    @assert will_run_code(🙋.notebook)
+
     cell = let
         cell_id = UUID(🙋.body["cell_id"])
         🙋.notebook.cells_dict[cell_id]

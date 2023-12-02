@@ -1,3 +1,4 @@
+import puppeteer from "puppeteer"
 import path from "path";
 import mkdirp from "mkdirp";
 import * as process from "process";
@@ -187,6 +188,7 @@ const blocked_domains = ["cdn.jsdelivr.net", "unpkg.com", "cdn.skypack.dev", "es
 const hide_warning = url => url.includes("mathjax")
 
 export const createPage = async (browser) => {
+    /** @type {puppeteer.Page} */
   const page = await browser.newPage()
   
   failOnError(page);
@@ -198,7 +200,7 @@ export const createPage = async (browser) => {
     page.on("request", (request) => {
       if(blocked_domains.some(domain => request.url().includes(domain))) {
         if(!hide_warning(request.url()))
-          console.error(`Blocking request to ${request.url()}`)
+          console.info(`Blocking request to ${request.url()}`)
         request.abort();
       } else {
         request.continue();
@@ -209,7 +211,7 @@ export const createPage = async (browser) => {
   return page
 };
 
-let testname = () => expect.getState().currentTestName.replace(/ /g, "_");
+let testname = () => expect.getState()?.currentTestName?.replace(/ /g, "_") ?? "unnkown";
 
 export const lastElement = (arr) => arr[arr.length - 1];
 

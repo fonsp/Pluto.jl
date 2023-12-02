@@ -4,7 +4,7 @@ import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
 import { empty_notebook_state, set_disable_ui_css } from "../editor.js"
-import { create_pluto_connection } from "../common/PlutoConnection.js"
+import { create_pluto_connection, ws_address_from_base } from "../common/PlutoConnection.js"
 import { init_feedback } from "../common/Feedback.js"
 import { serialize_cells, deserialize_cells, detect_deserializer } from "../common/Serialization.js"
 
@@ -18,7 +18,7 @@ import { RecentlyDisabledInfo, UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
 import { Scroller } from "./Scroller.js"
 import { ExportBanner } from "./ExportBanner.js"
-import { Popup } from "./Popup.js"
+import { open_pluto_popup, Popup } from "./Popup.js"
 
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
@@ -29,12 +29,13 @@ import { slider_server_actions, nothing_actions } from "../common/SliderServerCl
 import { ProgressBar } from "./ProgressBar.js"
 import { NonCellOutput } from "./NonCellOutput.js"
 import { IsolatedCell } from "./Cell.js"
-import { RawHTMLContainer } from "./CellOutput.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
 import { HijackExternalLinksToOpenInNewTab } from "./HackySideStuff/HijackExternalLinksToOpenInNewTab.js"
 import { FrontMatterInput } from "./FrontmatterInput.js"
 import { EditorLaunchBackendButton } from "./Editor/LaunchBackendButton.js"
 import { get_environment } from "../common/Environment.js"
+import { ProcessStatus } from "../common/ProcessStatus.js"
+import { SafePreviewUI } from "./SafePreviewUI.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -64,13 +65,6 @@ const Main = ({ children }) => {
     return html`<main>${children}</main>`
 }
 
-const ProcessStatus = {
-    ready: "ready",
-    starting: "starting",
-    no_process: "no_process",
-    waiting_to_restart: "waiting_to_restart",
-}
-
 /**
  * Map of status => Bool. In order of decreasing priority.
  */
@@ -82,11 +76,12 @@ const statusmap = (/** @type {EditorState} */ state, /** @type {LaunchParameters
             state.backend_launch_phase < BackendLaunchPhase.ready) ||
         state.initializing ||
         state.moving_file,
+    process_waiting_for_permission: state.notebook.process_status === ProcessStatus.waiting_for_permission && !state.initializing,
     process_restarting: state.notebook.process_status === ProcessStatus.waiting_to_restart,
     process_dead: state.notebook.process_status === ProcessStatus.no_process || state.notebook.process_status === ProcessStatus.waiting_to_restart,
     nbpkg_restart_required: state.notebook.nbpkg?.restart_required_msg != null,
     nbpkg_restart_recommended: state.notebook.nbpkg?.restart_recommended_msg != null,
-    nbpkg_disabled: state.notebook.nbpkg?.enabled === false,
+    nbpkg_disabled: state.notebook.nbpkg?.enabled === false || state.notebook.nbpkg?.waiting_for_permission_but_probably_disabled === true,
     static_preview: state.static_preview,
     bonds_disabled: !(state.connected || state.initializing || launch_params.slider_server_url != null),
     offer_binder: state.backend_launch_phase === BackendLaunchPhase.wait_for_user && launch_params.binder_url != null,
@@ -98,6 +93,7 @@ const statusmap = (/** @type {EditorState} */ state, /** @type {LaunchParameters
     recording_waiting_to_start: state.recording_waiting_to_start,
     is_recording: state.is_recording,
     isolated_cell_view: launch_params.isolated_cell_ids != null && launch_params.isolated_cell_ids.length > 0,
+    sanitize_html: state.notebook.process_status === ProcessStatus.waiting_for_permission,
 })
 
 const first_true_key = (obj) => {
@@ -185,6 +181,8 @@ const first_true_key = (obj) => {
  * @typedef NotebookPkgData
  * @type {{
  *  enabled: boolean,
+ *  waiting_for_permission: boolean?,
+ *  waiting_for_permission_but_probably_disabled: boolean?,
  *  restart_recommended_msg: string?,
  *  restart_required_msg: string?,
  *  installed_versions: { [pkg_name: string]: string },
@@ -256,6 +254,7 @@ export const url_logo_small = document.head.querySelector("link[rel='pluto-logo-
  * @type {{
  * launch_params: LaunchParameters,
  * initial_notebook_state: NotebookData,
+ * preamble_element: preact.ReactElement?,
  * }}
  */
 
@@ -336,6 +335,11 @@ export class Editor extends Component {
 
             is_recording: false,
             recording_waiting_to_start: false,
+
+            slider_server: {
+                connecting: false,
+                interactive: false,
+            },
         }
 
         this.setStatePromise = (fn) => new Promise((r) => this.setState(fn, r))
@@ -586,6 +590,14 @@ export class Editor extends Component {
             set_and_run_multiple: async (cell_ids) => {
                 // TODO: this function is called with an empty list sometimes, where?
                 if (cell_ids.length > 0) {
+                    window.dispatchEvent(
+                        new CustomEvent("set_waiting_to_run_smart", {
+                            detail: {
+                                cell_ids,
+                            },
+                        })
+                    )
+
                     await update_notebook((notebook) => {
                         for (let cell_id of cell_ids) {
                             if (this.state.cell_inputs_local[cell_id]) {
@@ -631,9 +643,9 @@ export class Editor extends Component {
                 this.client.send(
                     "reshow_cell",
                     {
-                        objectid: objectid,
-                        dim: dim,
-                        cell_id: cell_id,
+                        objectid,
+                        dim,
+                        cell_id,
                     },
                     { notebook_id: this.state.notebook.notebook_id },
                     false
@@ -835,7 +847,29 @@ patch: ${JSON.stringify(
             setTimeout(init_feedback, 2 * 1000) // 2 seconds - load feedback a little later for snappier UI
         }
 
-        const on_connection_status = (val) => this.setState({ connected: val })
+        const on_connection_status = (val, hopeless) => {
+            this.setState({ connected: val })
+            if (hopeless) {
+                // https://github.com/fonsp/Pluto.jl/issues/55
+                // https://github.com/fonsp/Pluto.jl/issues/2398
+                open_pluto_popup({
+                    type: "warn",
+                    body: html`<p>A new server was started - this notebook session is no longer running.</p>
+                        <p>Would you like to go back to the main menu?</p>
+                        <br />
+                        <a href="./">Go back</a>
+                        <br />
+                        <a
+                            href="#"
+                            onClick=${(e) => {
+                                e.preventDefault()
+                                window.dispatchEvent(new CustomEvent("close pluto popup"))
+                            }}
+                            >Stay here</a
+                        >`,
+                })
+            }
+        }
 
         const on_reconnect = () => {
             console.warn("Reconnected! Checking states")
@@ -851,7 +885,7 @@ patch: ${JSON.stringify(
         /** @type {import('../common/PlutoConnection').PlutoConnection} */
         this.client = /** @type {import('../common/PlutoConnection').PlutoConnection} */ ({})
 
-        this.connect = (ws_address = undefined) =>
+        this.connect = (/** @type {string | undefined} */ ws_address = undefined) =>
             create_pluto_connection({
                 ws_address: ws_address,
                 on_unrequested_update: on_update,
@@ -930,6 +964,10 @@ patch: ${JSON.stringify(
             // console.info("All scripts finished!")
             this.send_queued_bond_changes()
         })
+
+        // @ts-ignore This is for tests
+        document.body._js_init_set = this.js_init_set
+
         /** Is the notebook ready to execute code right now? (i.e. are no cells queued or running?) */
         this.notebook_is_idle = () => {
             return !(
@@ -1157,13 +1195,13 @@ patch: ${JSON.stringify(
             // if (e.defaultPrevented) {
             //     return
             // }
-            if (e.key.toLowerCase() === "q" && has_ctrl_or_cmd_pressed(e)) {
+            if (e.key?.toLowerCase() === "q" && has_ctrl_or_cmd_pressed(e)) {
                 // This one can't be done as cmd+q on mac, because that closes chrome - Dral
                 if (Object.values(this.state.notebook.cell_results).some((c) => c.running || c.queued)) {
                     this.actions.interrupt_remote()
                 }
                 e.preventDefault()
-            } else if (e.key.toLowerCase() === "s" && has_ctrl_or_cmd_pressed(e)) {
+            } else if (e.key?.toLowerCase() === "s" && has_ctrl_or_cmd_pressed(e)) {
                 const some_cells_ran = this.actions.set_and_run_all_changed_remote_cells()
                 if (!some_cells_ran) {
                     // all cells were in sync allready
@@ -1211,8 +1249,8 @@ patch: ${JSON.stringify(
             }
 
             if (this.state.disable_ui && this.state.backend_launch_phase === BackendLaunchPhase.wait_for_user) {
-                // const code = e.key.charCodeAt(0)
-                if (e.key === "Enter" || e.key.length === 1) {
+                // const code = e.key?.charCodeAt(0)
+                if (e.key === "Enter" || e.key?.length === 1) {
                     if (!document.body.classList.contains("wiggle_binder")) {
                         document.body.classList.add("wiggle_binder")
                         setTimeout(() => {
@@ -1228,7 +1266,8 @@ patch: ${JSON.stringify(
                 const serialized = this.serialize_selected()
                 if (serialized) {
                     navigator.clipboard.writeText(serialized).catch((err) => {
-                        alert(`Error copying cells: ${e}`)
+                        console.error("Error copying cells", e, err)
+                        alert(`Error copying cells: ${err}`)
                     })
                 }
             }
@@ -1301,7 +1340,7 @@ patch: ${JSON.stringify(
                 count_stat(`article-view`)
             }
         } else {
-            this.connect()
+            this.connect(this.props.launch_params.pluto_server_url ? ws_address_from_base(this.props.launch_params.pluto_server_url) : undefined)
         }
     }
 
@@ -1374,6 +1413,7 @@ patch: ${JSON.stringify(
                                             cell_input=${notebook.cell_inputs[cell_id]}
                                             cell_result=${this.state.notebook.cell_results[cell_id]}
                                             hidden=${!launch_params.isolated_cell_ids?.includes(cell_id)}
+                                            sanitize_html=${status.sanitize_html}
                                         />
                                     `
                                 )}
@@ -1384,19 +1424,31 @@ patch: ${JSON.stringify(
             `
         }
 
-        const restart_button = (text) => html`<a
-            href="#"
-            onClick=${() => {
-                this.client.send(
+        const warn_about_untrusted_code = this.client.session_options?.security?.warn_about_untrusted_code ?? true
+
+        const restart = async (maybe_confirm = false) => {
+            let source = notebook.metadata?.risky_file_source
+            if (
+                !warn_about_untrusted_code ||
+                !maybe_confirm ||
+                source == null ||
+                confirm(`⚠️ Danger! Are you sure that you trust this file? \n\n${source}\n\nA malicious notebook can steal passwords and data.`)
+            ) {
+                await this.actions.update_notebook((notebook) => {
+                    delete notebook.metadata.risky_file_source
+                })
+                await this.client.send(
                     "restart_process",
                     {},
                     {
                         notebook_id: notebook.notebook_id,
                     }
                 )
-            }}
-            >${text}</a
-        >`
+            }
+        }
+
+        const restart_button = (text, maybe_confirm = false) =>
+            html`<a href="#" id="restart-process-button" onClick=${() => restart(maybe_confirm)}>${text}</a>`
 
         return html`
             ${this.state.disable_ui === false && html`<${HijackExternalLinksToOpenInNewTab} />`}
@@ -1412,6 +1464,7 @@ patch: ${JSON.stringify(
                     <header id="pluto-nav" className=${export_menu_open ? "show_export" : ""}>
                         <${ExportBanner}
                             notebook_id=${this.state.notebook.notebook_id}
+                            notebook_shortpath=${this.state.notebook.shortpath}
                             notebookfile_url=${this.export_url("notebookfile")}
                             notebookexport_url=${this.export_url("notebookexport")}
                             open=${export_menu_open}
@@ -1450,7 +1503,7 @@ patch: ${JSON.stringify(
                                           on_submit=${this.submit_file_change}
                                           on_desktop_submit=${this.desktop_submit_file_change}
                                           suggest_new_file=${{
-                                              base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
+                                              base: this.client.session_options?.server?.notebook_path_suggestion ?? "",
                                               name: notebook.shortpath,
                                           }}
                                           placeholder="Save notebook..."
@@ -1458,9 +1511,6 @@ patch: ${JSON.stringify(
                                       />`)
                             }
                             <div class="flex_grow_2"></div>
-                            <button class="toggle_export" title="Export..." onClick=${() => {
-                                this.setState({ export_menu_open: !export_menu_open })
-                            }}><span></span></button>
                             <div id="process_status">${
                                 status.binder && status.loading
                                     ? "Loading binder..."
@@ -1476,10 +1526,22 @@ patch: ${JSON.stringify(
                                     ? "Process exited — restarting..."
                                     : statusval === "process_dead"
                                     ? html`${"Process exited — "}${restart_button("restart")}`
+                                    : statusval === "process_waiting_for_permission"
+                                    ? html`${restart_button("Run notebook code", true)}`
                                     : null
                             }</div>
+                            <button class="toggle_export" title="Export..." onClick=${() => {
+                                this.setState({ export_menu_open: !export_menu_open })
+                            }}><span></span></button>
                         </nav>
                     </header>
+                    
+                    <${SafePreviewUI}
+                        process_waiting_for_permission=${status.process_waiting_for_permission}
+                        risky_file_source=${notebook.metadata?.risky_file_source}
+                        restart=${restart}
+                        warn_about_untrusted_code=${warn_about_untrusted_code}
+                    />
                     
                     <${RecordingUI} 
                         notebook_name=${notebook.shortpath}
@@ -1501,14 +1563,15 @@ patch: ${JSON.stringify(
                             )}
                     />
                     <${EditorLaunchBackendButton} editor=${this} launch_params=${launch_params} status=${status} />
-                    <${FrontMatterInput} 
+                    <${FrontMatterInput}
+                        filename=${notebook.shortpath}
                         remote_frontmatter=${notebook.metadata?.frontmatter} 
                         set_remote_frontmatter=${(newval) =>
                             this.actions.update_notebook((nb) => {
                                 nb.metadata["frontmatter"] = newval
                             })} 
                     />
-                    ${launch_params.preamble_html ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />` : null}
+                    ${this.props.preamble_element}
                     <${Main}>
                         <${Preamble}
                             last_update_time=${this.state.last_update_time}
@@ -1524,6 +1587,8 @@ patch: ${JSON.stringify(
                             selected_cells=${this.state.selected_cells}
                             is_initializing=${this.state.initializing}
                             is_process_ready=${this.is_process_ready()}
+                            process_waiting_for_permission=${status.process_waiting_for_permission}
+                            sanitize_html=${status.sanitize_html}
                         />
                         <${DropRuler} 
                             actions=${this.actions}
@@ -1564,6 +1629,7 @@ patch: ${JSON.stringify(
                         backend_launch_phase=${this.state.backend_launch_phase}
                         backend_launch_logs=${this.state.backend_launch_logs}
                         notebook=${this.state.notebook}
+                        sanitize_html=${status.sanitize_html}
                     />
                     <${Popup} 
                         notebook=${this.state.notebook}

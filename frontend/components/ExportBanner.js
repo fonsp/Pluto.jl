@@ -1,4 +1,4 @@
-import { html } from "../imports/Preact.js"
+import { html, useEffect, useRef } from "../imports/Preact.js"
 
 const Circle = ({ fill }) => html`
     <svg
@@ -26,10 +26,25 @@ const Square = ({ fill }) => html`
     </svg>
 `
 
-//@ts-ignore
-window.enable_secret_pluto_recording = true
+export const WarnForVisisblePasswords = () => {
+    if (
+        Array.from(document.querySelectorAll("bond")).some((bond_el) =>
+            Array.from(bond_el.querySelectorAll(`input[type="password"]`)).some((input) => {
+                // @ts-ignore
+                if (input?.value !== "") {
+                    input.scrollIntoView()
+                    return true
+                }
+            })
+        )
+    ) {
+        alert(
+            "Warning: this notebook includes a password input with something typed in it. The contents of this password field will be included in the exported file in an unsafe way. \n\nClear the password field and export again to avoid this problem."
+        )
+    }
+}
 
-export const ExportBanner = ({ notebook_id, onClose, notebookfile_url, notebookexport_url, start_recording }) => {
+export const ExportBanner = ({ notebook_id, notebook_shortpath, open, onClose, notebookfile_url, notebookexport_url, start_recording }) => {
     // @ts-ignore
     const isDesktop = !!window.plutoDesktop
 
@@ -40,8 +55,26 @@ export const ExportBanner = ({ notebook_id, onClose, notebookfile_url, notebooke
         }
     }
 
+    let print_old_title_ref = useRef("")
+    useEffect(() => {
+        let a = () => {
+            console.log("beforeprint")
+            print_old_title_ref.current = document.title
+            document.title = notebook_shortpath.replace(/\.jl$/, "").replace(/\.plutojl$/, "")
+        }
+        let b = () => {
+            document.title = print_old_title_ref.current
+        }
+        window.addEventListener("beforeprint", a)
+        window.addEventListener("afterprint", b)
+        return () => {
+            window.removeEventListener("beforeprint", a)
+            window.removeEventListener("afterprint", b)
+        }
+    }, [notebook_shortpath])
+
     return html`
-        <aside id="export">
+        <aside id="export" inert=${!open}>
             <div id="container">
                 <div class="export_title">export</div>
                 <!-- no "download" attribute here: we want the jl contents to be shown in a new tab -->
@@ -49,7 +82,16 @@ export const ExportBanner = ({ notebook_id, onClose, notebookfile_url, notebooke
                     <header><${Triangle} fill="#a270ba" /> Notebook file</header>
                     <section>Download a copy of the <b>.jl</b> script.</section>
                 </a>
-                <a href=${notebookexport_url} target="_blank" class="export_card" download="" onClick=${(e) => exportNotebook(e, 1)}>
+                <a
+                    href=${notebookexport_url}
+                    target="_blank"
+                    class="export_card"
+                    download=""
+                    onClick=${(e) => {
+                        WarnForVisisblePasswords()
+                        exportNotebook(e, 1)
+                    }}
+                >
                     <header><${Square} fill="#E86F51" /> Static HTML</header>
                     <section>An <b>.html</b> file for your web page, or to share online.</section>
                 </a>
@@ -57,26 +99,22 @@ export const ExportBanner = ({ notebook_id, onClose, notebookfile_url, notebooke
                     <header><${Square} fill="#619b3d" /> PDF</header>
                     <section>A static <b>.pdf</b> file for print or email.</section>
                 </a>
-                ${
-                    //@ts-ignore
-                    window.enable_secret_pluto_recording
-                        ? html`
-                              <div class="export_title">record</div>
-                              <a
-                                  href="#"
-                                  onClick=${(e) => {
-                                      start_recording()
-                                      onClose()
-                                      e.preventDefault()
-                                  }}
-                                  class="export_card"
-                              >
-                                  <header><${Circle} fill="#E86F51" /> Record <em>(preview)</em></header>
-                                  <section>Capture the entire notebook, and any changes you make.</section>
-                              </a>
-                          `
-                        : null
-                }
+                ${html`
+                    <div class="export_title">record</div>
+                    <a
+                        href="#"
+                        onClick=${(e) => {
+                            WarnForVisisblePasswords()
+                            start_recording()
+                            onClose()
+                            e.preventDefault()
+                        }}
+                        class="export_card"
+                    >
+                        <header><${Circle} fill="#E86F51" /> Record <em>(preview)</em></header>
+                        <section>Capture the entire notebook, and any changes you make.</section>
+                    </a>
+                `}
                 <div class="export_small_btns">
                     <button
                         title="Edit frontmatter"
@@ -84,6 +122,17 @@ export const ExportBanner = ({ notebook_id, onClose, notebookfile_url, notebooke
                         onClick=${() => {
                             onClose()
                             window.dispatchEvent(new CustomEvent("open pluto frontmatter"))
+                        }}
+                    >
+                        <span></span>
+                    </button>
+                    <button
+                        title="Start presentation"
+                        class="toggle_presentation"
+                        onClick=${() => {
+                            onClose()
+                            // @ts-ignore
+                            window.present()
                         }}
                     >
                         <span></span>

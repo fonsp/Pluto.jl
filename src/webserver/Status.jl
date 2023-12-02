@@ -78,6 +78,10 @@ finally
     report_business_finished!(parent, args...)
 end
 
+delete_business!(business::Business, name::Symbol) = lock(business.lock) do
+    delete!(business.subtasks, name)
+end
+
 
 
 # GLOBAL

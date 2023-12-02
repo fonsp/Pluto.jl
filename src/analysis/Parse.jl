@@ -1,4 +1,5 @@
 import .ExpressionExplorer
+import Markdown
 
 "Generate a file name to be given to the parser (will show up in stack traces)."
 pluto_filename(notebook::Notebook, cell::Cell)::String = notebook.path * "#==#" * string(cell.cell_id)
@@ -19,7 +20,7 @@ function parse_custom(notebook::Notebook, cell::Cell)::Expr
     raw = if can_insert_filename
         filename = pluto_filename(notebook, cell)
         ex = Base.parse_input_line(cell.code, filename=filename)
-        if (ex isa Expr) && (ex.head == :toplevel)
+        if Meta.isexpr(ex, :toplevel)
             # if there is more than one expression:
             if count(a -> !(a isa LineNumberNode), ex.args) > 1
                 Expr(:error, "extra token after end of expression\n\nBoundaries: $(expression_boundaries(cell.code))")
@@ -100,12 +101,14 @@ Make some small adjustments to the `expr` to make it work nicely inside a timed,
 3. If `expr` is a `:(=)` expression with a curly assignment, wrap it in a `:const` to allow execution - see https://github.com/fonsp/Pluto.jl/issues/517
 """
 function preprocess_expr(expr::Expr)
-    if expr.head == :toplevel
+    if expr.head === :toplevel
 		Expr(:block, expr.args...)
-    elseif expr.head == :module
+    elseif expr.head === :module
         Expr(:toplevel, expr)
-    elseif expr.head == :(=) && (expr.args[1] isa Expr && expr.args[1].head == :curly)
+    elseif expr.head === :(=) && (expr.args[1] isa Expr && expr.args[1].head == :curly)
         Expr(:const, expr)
+    elseif expr.head === :incomplete
+        Expr(:call, :(PlutoRunner.throw_syntax_error), expr.args...)
     else
         expr
     end

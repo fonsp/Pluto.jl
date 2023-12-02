@@ -8,6 +8,7 @@ import { RunArea, useDebouncedTruth } from "./RunArea.js"
 import { cl } from "../common/ClassTable.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { open_pluto_popup } from "./Popup.js"
+import { SafePreviewOutput } from "./SafePreviewUI.js"
 
 const useCellApi = (node_ref, published_object_keys, pluto_actions) => {
     const [cell_api_ready, set_cell_api_ready] = useState(false)
@@ -96,6 +97,8 @@ const on_jump = (hasBarrier, pluto_actions, cell_id) => () => {
  *  selected: boolean,
  *  force_hide_input: boolean,
  *  focus_after_creation: boolean,
+ *  process_waiting_for_permission: boolean,
+ *  sanitize_html: boolean,
  *  [key: string]: any,
  * }} props
  * */
@@ -110,6 +113,8 @@ export const Cell = ({
     focus_after_creation,
     is_process_ready,
     disable_input,
+    process_waiting_for_permission,
+    sanitize_html = true,
     nbpkg,
     global_definition_locations,
 }) => {
@@ -134,8 +139,32 @@ export const Cell = ({
 
     const remount = useMemo(() => () => setKey(key + 1))
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
-    const [cm_forced_focus, set_cm_forced_focus] = useState(/** @type{any} */ (null))
+    const [cm_forced_focus, set_cm_forced_focus] = useState(/** @type {any} */ (null))
+    const [cm_highlighted_range, set_cm_highlighted_range] = useState(/** @type {{from, to}?} */ (null))
     const [cm_highlighted_line, set_cm_highlighted_line] = useState(null)
+    const [cm_diagnostics, set_cm_diagnostics] = useState([])
+
+    useEffect(() => {
+        const diagnosticListener = (e) => {
+            if (e.detail.cell_id === cell_id) {
+                set_cm_diagnostics(e.detail.diagnostics)
+            }
+        }
+        window.addEventListener("cell_diagnostics", diagnosticListener)
+        return () => window.removeEventListener("cell_diagnostics", diagnosticListener)
+    }, [cell_id])
+
+    useEffect(() => {
+        const highlightRangeListener = (e) => {
+            if (e.detail.cell_id == cell_id && e.detail.from != null && e.detail.to != null) {
+                set_cm_highlighted_range({ from: e.detail.from, to: e.detail.to })
+            } else {
+                set_cm_highlighted_range(null)
+            }
+        }
+        window.addEventListener("cell_highlight_range", highlightRangeListener)
+        return () => window.removeEventListener("cell_highlight_range", highlightRangeListener)
+    }, [cell_id])
 
     useEffect(() => {
         const focusListener = (e) => {
@@ -176,9 +205,11 @@ export const Cell = ({
 
     const class_code_differs = code !== (cell_input_local?.code ?? code)
     const class_code_folded = code_folded && cm_forced_focus == null
+    const no_output_yet = (output?.last_run_timestamp ?? 0) === 0
+    const code_not_trusted_yet = process_waiting_for_permission && no_output_yet
 
     // during the initial page load, force_hide_input === true, so that cell outputs render fast, and codemirrors are loaded after
-    let show_input = !force_hide_input && (errored || class_code_differs || !class_code_folded)
+    let show_input = !force_hide_input && (code_not_trusted_yet || errored || class_code_differs || !class_code_folded)
 
     const [line_heights, set_line_heights] = useState([15])
     const node_ref = useRef(null)
@@ -187,7 +218,13 @@ export const Cell = ({
     disable_input_ref.current = disable_input
     const should_set_waiting_to_run_ref = useRef(true)
     should_set_waiting_to_run_ref.current = !running_disabled && !depends_on_disabled_cells
-    const set_waiting_to_run_smart = (x) => set_waiting_to_run(x && should_set_waiting_to_run_ref.current)
+    useEffect(() => {
+        const handler = (e) => {
+            if (e.detail.cell_ids.includes(cell_id)) set_waiting_to_run(should_set_waiting_to_run_ref.current)
+        }
+        window.addEventListener("set_waiting_to_run_smart", handler)
+        return () => window.removeEventListener("set_waiting_to_run_smart", handler)
+    }, [cell_id])
 
     const cell_api_ready = useCellApi(node_ref, published_object_keys, pluto_actions)
     const on_delete = useCallback(() => {
@@ -195,10 +232,9 @@ export const Cell = ({
     }, [pluto_actions, selected, cell_id])
     const on_submit = useCallback(() => {
         if (!disable_input_ref.current) {
-            set_waiting_to_run_smart(true)
             pluto_actions.set_and_run_multiple([cell_id])
         }
-    }, [pluto_actions, set_waiting_to_run, cell_id])
+    }, [pluto_actions, cell_id])
     const on_change_cell_input = useCallback(
         (new_code) => {
             if (!disable_input_ref.current) {
@@ -218,8 +254,7 @@ export const Cell = ({
     }, [pluto_actions, cell_id, selected, code_folded])
     const on_run = useCallback(() => {
         pluto_actions.set_and_run_multiple(pluto_actions.get_selected_cells(cell_id, selected))
-        set_waiting_to_run_smart(true)
-    }, [pluto_actions, cell_id, selected, set_waiting_to_run_smart])
+    }, [pluto_actions, cell_id, selected])
     const set_show_logs = useCallback(
         (show_logs) =>
             pluto_actions.update_notebook((notebook) => {
@@ -249,6 +284,7 @@ export const Cell = ({
             ref=${node_ref}
             class=${cl({
                 queued: queued || (waiting_to_run && is_process_ready),
+                internal_test_queued: !is_process_ready && (queued || waiting_to_run),
                 running,
                 activate_animation,
                 errored,
@@ -262,6 +298,7 @@ export const Cell = ({
                 show_input,
                 shrunk: Object.values(logs).length > 0,
                 hooked_up: output?.has_pluto_hook_features ?? false,
+                no_output_yet,
             })}
             id=${cell_id}
         >
@@ -277,11 +314,15 @@ export const Cell = ({
                     pluto_actions.add_remote_cell(cell_id, "before")
                 }}
                 class="add_cell before"
-                title="Add cell"
+                title="Add cell (Ctrl + Enter)"
             >
                 <span></span>
             </button>
-            ${cell_api_ready ? html`<${CellOutput} errored=${errored} ...${output} cell_id=${cell_id} />` : html``}
+            ${code_not_trusted_yet
+                ? html`<${SafePreviewOutput} />`
+                : cell_api_ready
+                ? html`<${CellOutput} errored=${errored} ...${output} sanitize_html=${sanitize_html} cell_id=${cell_id} />`
+                : html``}
             <${CellInput}
                 local_code=${cell_input_local?.code ?? code}
                 remote_code=${code}
@@ -308,10 +349,18 @@ export const Cell = ({
                 set_show_logs=${set_show_logs}
                 set_cell_disabled=${set_cell_disabled}
                 cm_highlighted_line=${cm_highlighted_line}
-                set_cm_highlighted_line=${set_cm_highlighted_line}
+                cm_highlighted_range=${cm_highlighted_range}
+                cm_diagnostics=${cm_diagnostics}
                 onerror=${remount}
             />
-            ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${line_heights} set_cm_highlighted_line=${set_cm_highlighted_line} />` : null}
+            ${show_logs && cell_api_ready
+                ? html`<${Logs}
+                      logs=${Object.values(logs)}
+                      line_heights=${line_heights}
+                      set_cm_highlighted_line=${set_cm_highlighted_line}
+                      sanitize_html=${sanitize_html}
+                  />`
+                : null}
             <${RunArea}
                 cell_id=${cell_id}
                 running_disabled=${running_disabled}
@@ -332,7 +381,7 @@ export const Cell = ({
                     pluto_actions.add_remote_cell(cell_id, "after")
                 }}
                 class="add_cell after"
-                title="Add cell"
+                title="Add cell (Ctrl + Enter)"
             >
                 <span></span>
             </button>
@@ -377,7 +426,7 @@ export const Cell = ({
  *  [key: string]: any,
  * }} props
  * */
-export const IsolatedCell = ({ cell_input: { cell_id, metadata }, cell_result: { logs, output, published_object_keys }, hidden }) => {
+export const IsolatedCell = ({ cell_input: { cell_id, metadata }, cell_result: { logs, output, published_object_keys }, hidden }, sanitize_html = true) => {
     const node_ref = useRef(null)
     let pluto_actions = useContext(PlutoActionsContext)
     const cell_api_ready = useCellApi(node_ref, published_object_keys, pluto_actions)
@@ -385,7 +434,7 @@ export const IsolatedCell = ({ cell_input: { cell_id, metadata }, cell_result: {
 
     return html`
         <pluto-cell ref=${node_ref} id=${cell_id} class=${hidden ? "hidden-cell" : "isolated-cell"}>
-            ${cell_api_ready ? html`<${CellOutput} ...${output} cell_id=${cell_id} />` : html``}
+            ${cell_api_ready ? html`<${CellOutput} ...${output} sanitize_html=${sanitize_html} cell_id=${cell_id} />` : html``}
             ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${[15]} set_cm_highlighted_line=${() => {}} />` : null}
         </pluto-cell>
     `

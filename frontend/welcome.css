@@ -219,29 +219,6 @@ h1 {
 
 #featured p {
     max-width: 54ch;
-    color: #757575;
-}
-
-.author {
-    position: absolute;
-    top: 0.3em;
-    right: 0.3em;
-    background: var(--welcome-card-author-backdrop);
-    /* background: hsl(var(--card-color-hue) 34% 46% / 59%); */
-    backdrop-filter: blur(15px);
-    color: black;
-    border-radius: 117px;
-    /* height: 2.5em; */
-    padding: 0.3em;
-    padding-right: 0.8em;
-    display: flex;
-}
-
-.author a {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 0.4ch;
 }
 
 #github img {
@@ -257,18 +234,18 @@ a#github {
     right: 0.5rem;
 }
 
-.show-scrollbar::-webkit-scrollbar {
+.show_scrollbar::-webkit-scrollbar {
     width: 10px;
     opacity: 0.1;
 }
-.show-scrollbar::-webkit-scrollbar-track {
+.show_scrollbar::-webkit-scrollbar-track {
 }
-.show-scrollbar::-webkit-scrollbar-thumb {
+.show_scrollbar::-webkit-scrollbar-thumb {
     /* height: 11px; */
     background-color: var(--black);
     opacity: 0.6;
     border-radius: 1000px;
 }
-.show-scrollbar::-webkit-scrollbar-thumb:hover {
+.show_scrollbar::-webkit-scrollbar-thumb:hover {
     opacity: 1;
 }

@@ -180,7 +180,7 @@ export const RecordingUI = ({ notebook_name, is_recording, recording_waiting_to_
     return html`
         <div class="outline-frame recording"></div>
         ${recording_waiting_to_start
-            ? html`<div id="record-ui-container">
+            ? html`<div class="outline-frame-actions-container">
                   <div class="overlay-button">
                       <button
                           onclick=${() => {
@@ -201,7 +201,7 @@ export const RecordingUI = ({ notebook_name, is_recording, recording_waiting_to_
                   </div>
               </div>`
             : is_recording
-            ? html`<div id="record-ui-container">
+            ? html`<div class="outline-frame-actions-container">
                   <div class="overlay-button">
                       <button
                           onclick=${() => {
@@ -444,7 +444,7 @@ export const RecordingPlaybackUI = ({ launch_params, initializing, apply_noteboo
     return html`
         ${recording_url
             ? html`${!following_scroll
-                      ? html` <div id="record-ui-container">
+                      ? html` <div class="outline-frame-actions-container">
                             <div class="overlay-button playback">
                                 <button
                                     onclick=${() => {

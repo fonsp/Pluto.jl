@@ -1,18 +1,23 @@
 import { html, Component, useRef, useLayoutEffect, useState, useEffect } from "../imports/Preact.js"
 import { has_ctrl_or_cmd_pressed } from "../common/KeyboardShortcuts.js"
+import _ from "../imports/lodash.js"
 
 import "https://cdn.jsdelivr.net/gh/fonsp/rebel-tag-input@1.0.6/lib/rebel-tag-input.mjs"
 
 //@ts-ignore
 import dialogPolyfill from "https://cdn.jsdelivr.net/npm/dialog-polyfill@0.5.6/dist/dialog-polyfill.esm.min.js"
+import immer from "../imports/immer.js"
+import { useDialog } from "../common/useDialog.js"
+import { FeaturedCard } from "./welcome/FeaturedCard.js"
 
 /**
  * @param {{
+ *  filename: String,
  *  remote_frontmatter: Record<String,any>?,
  *  set_remote_frontmatter: (newval: Record<String,any>) => Promise<void>,
  * }} props
  * */
-export const FrontMatterInput = ({ remote_frontmatter, set_remote_frontmatter }) => {
+export const FrontMatterInput = ({ filename, remote_frontmatter, set_remote_frontmatter }) => {
     const [frontmatter, set_frontmatter] = useState(remote_frontmatter ?? {})
 
     useEffect(() => {
@@ -23,27 +28,38 @@ export const FrontMatterInput = ({ remote_frontmatter, set_remote_frontmatter })
     //     console.log("New frontmatter:", frontmatter)
     // }, [frontmatter])
 
-    const fm_setter = (key) => (value) => {
-        set_frontmatter((fm) => ({ ...fm, [key]: value }))
-    }
+    const fm_setter = (key) => (value) =>
+        set_frontmatter(
+            immer((fm) => {
+                _.set(fm, key, value)
+            })
+        )
 
-    const dialog_ref = useRef(/** @type {HTMLDialogElement?} */ (null))
-    useLayoutEffect(() => {
-        dialogPolyfill.registerDialog(dialog_ref.current)
-    })
-
-    //@ts-ignore
-    const open = () => dialog_ref.current.showModal()
-    //@ts-ignore
-    const close = () => dialog_ref.current.close()
+    const [dialog_ref, open, close, _toggle] = useDialog({ light_dismiss: false })
 
     const cancel = () => {
         set_frontmatter(remote_frontmatter ?? {})
         close()
     }
     const submit = () => {
-        set_remote_frontmatter(frontmatter).then(() => alert("Frontmatter synchronized ✔\n\nThese parameters will be used in future exports."))
+        set_remote_frontmatter(clean_data(frontmatter) ?? {}).then(() =>
+            alert("Frontmatter synchronized ✔\n\nThese parameters will be used in future exports.")
+        )
         close()
+    }
+
+    const clean_data = (obj) => {
+        let a = _.isPlainObject(obj)
+            ? Object.fromEntries(
+                  Object.entries(obj)
+                      .map(([key, val]) => [key, clean_data(val)])
+                      .filter(([key, val]) => val != null)
+              )
+            : _.isArray(obj)
+            ? obj.map(clean_data).filter((x) => x != null)
+            : obj
+
+        return _.isEmpty(a) ? null : a
     }
 
     useLayoutEffect(() => {
@@ -68,7 +84,54 @@ export const FrontMatterInput = ({ remote_frontmatter, set_remote_frontmatter })
         description: null,
         date: null,
         tags: [],
+        author: [{}],
         ...frontmatter,
+    }
+
+    const show_entry = ([key, value]) => !((_.isArray(value) && field_type(key) !== "tags") || _.isPlainObject(value))
+
+    const entries_input = (data, base_path) => {
+        return html`
+            ${Object.entries(data)
+                .filter(show_entry)
+                .map(([key, value]) => {
+                    let path = `${base_path}${key}`
+                    let id = `fm-${path}`
+                    return html`
+                        <label for=${id}>${key}</label>
+                        <${Input} type=${field_type(key)} id=${id} value=${value} on_value=${fm_setter(path)} />
+                        <button
+                            class="deletefield"
+                            title="Delete field"
+                            onClick=${() => {
+                                //  TODO
+                                set_frontmatter(
+                                    immer((fm) => {
+                                        _.unset(fm, path)
+                                    })
+                                )
+                            }}
+                        >
+                            ✕
+                        </button>
+                    `
+                })}
+            <button
+                class="addentry"
+                onClick=${() => {
+                    const fieldname = prompt("Field name:")
+                    if (fieldname) {
+                        set_frontmatter(
+                            immer((fm) => {
+                                _.set(fm, `${base_path}${fieldname}`, null)
+                            })
+                        )
+                    }
+                }}
+            >
+                Add entry +
+            </button>
+        `
     }
 
     return html`<dialog ref=${dialog_ref} class="pluto-frontmatter">
@@ -77,34 +140,48 @@ export const FrontMatterInput = ({ remote_frontmatter, set_remote_frontmatter })
             If you are publishing this notebook on the web, you can set the parameters below to provide HTML metadata. This is useful for search engines and
             social media.
         </p>
+        <div class="card-preview">
+            <h2>Preview</h2>
+            <${FeaturedCard}
+                entry=${
+                    /** @type {import("./welcome/Featured.js").SourceManifestNotebookEntry} */ ({
+                        id: filename.replace(/\.jl$/, ""),
+                        hash: "xx",
+                        frontmatter: clean_data(frontmatter) ?? {},
+                    })
+                }
+                disable_links=${true}
+            />
+        </div>
         <div class="fm-table">
-            ${Object.entries(frontmatter_with_defaults).map(([key, value]) => {
-                let id = `fm-${key}`
-                return html`
-                    <label for=${id}>${key}</label>
-                    <${Input} type=${field_type(key)} id=${id} value=${value} on_value=${fm_setter(key)} />
-                    <button
-                        class="deletefield"
-                        title="Delete field"
-                        onClick=${() => {
-                            set_frontmatter((fm) => Object.fromEntries(Object.entries(fm).filter(([k]) => k !== key)))
-                        }}
-                    >
-                        ✕
-                    </button>
-                `
-            })}
-            <button
-                class="addentry"
-                onClick=${() => {
-                    const fieldname = prompt("Field name:")
-                    if (fieldname) {
-                        set_frontmatter((fm) => ({ ...fm, [fieldname]: null }))
-                    }
-                }}
-            >
-                Add entry +
-            </button>
+            ${entries_input(frontmatter_with_defaults, ``)}
+            ${!_.isArray(frontmatter_with_defaults.author)
+                ? null
+                : frontmatter_with_defaults.author.map((author, i) => {
+                      let author_with_defaults = {
+                          name: null,
+                          url: null,
+                          ...author,
+                      }
+
+                      return html`
+                          <fieldset class="fm-table">
+                              <legend>Author ${i + 1}</legend>
+
+                              ${entries_input(author_with_defaults, `author[${i}].`)}
+                          </fieldset>
+                      `
+                  })}
+            ${!_.isArray(frontmatter_with_defaults.author)
+                ? null
+                : html`<button
+                      class="addentry"
+                      onClick=${() => {
+                          set_frontmatter((fm) => ({ ...fm, author: [...(fm?.author ?? []), {}] }))
+                      }}
+                  >
+                      Add author +
+                  </button>`}
         </div>
 
         <div class="final"><button onClick=${cancel}>Cancel</button><button onClick=${submit}>Save</button></div>
@@ -143,11 +220,13 @@ const Input = ({ value, on_value, type, id }) => {
         }
     }, [input_ref.current])
 
+    const placeholder = type === "url" ? "https://..." : undefined
+
     return type === "tags"
         ? html`<rbl-tag-input id=${id} ref=${input_ref} />`
         : type === "license"
         ? LicenseInput({ ref: input_ref, id })
-        : html`<input type=${type} id=${id} ref=${input_ref} />`
+        : html`<input type=${type} id=${id} ref=${input_ref} placeholder=${placeholder} />`
 }
 
 // https://choosealicense.com/licenses/
