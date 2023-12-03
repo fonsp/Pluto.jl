@@ -14,7 +14,8 @@ begin
     local original_LP = LOAD_PATH
     local original_AP = Base.ACTIVE_PROJECT[]
 
-    # Path to our notebook boot package environment
+    # Path to our notebook boot package environment which is set by WorkspaceManager
+    # when spawning the process.
     local runner_env_dir = pluto_boot_environment_path
 
     local new_LP = ["@", "@stdlib"]
