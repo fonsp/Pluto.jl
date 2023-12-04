@@ -46,7 +46,7 @@ include("./Configuration.jl")
 
 include("./evaluation/Tokens.jl")
 include("./evaluation/Throttled.jl")
-include("./runner/PlutoRunner.jl")
+include("./runner/PlutoRunner/src/PlutoRunner.jl")
 include("./analysis/ExpressionExplorer.jl")
 include("./packages/PkgCompat.jl")
 include("./webserver/Status.jl")
@@ -98,7 +98,12 @@ export activate_notebook_environment
 
 include("./precompile.jl")
 
+const pluto_boot_environment_path = Ref{String}()
+
 function __init__()
+    pluto_boot_environment_name = "pluto-boot-environment-$(VERSION)-$(PLUTO_VERSION)"
+    pluto_boot_environment_path[] = Scratch.@get_scratch!(pluto_boot_environment_name)
+
     # Print a welcome banner
     if (get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") != "0" &&
         get(ENV, "CI", "🍄") != "true" && isinteractive())
