@@ -69,7 +69,6 @@ pluto-editor {
 
 main {
     flex: 1;
-
     max-width: calc(700px + 25px + 6px); /* 700px + both paddings */
     padding-top: 0px;
     padding-bottom: 4rem;
@@ -286,6 +285,7 @@ pluto-output hr {
     border-top: 3px solid var(--rule-color);
     margin-left: 0;
     margin-right: 0;
+    break-after: page;
 }
 
 pluto-output blockquote {
@@ -1109,7 +1109,6 @@ pluto-cell {
     min-height: calc(23px + 1px + 1px);
     margin-top: var(--pluto-cell-spacing);
     position: relative;
-    break-inside: avoid;
 }
 
 pluto-output {
