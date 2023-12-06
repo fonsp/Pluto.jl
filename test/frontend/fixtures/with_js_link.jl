@@ -29,6 +29,45 @@ console.log(result)
 </script>
 """)
 
+# ╔═╡ 30d7c350-f792-47e9-873a-01adf909bc84
+md"""
+If you change `String` to `AbstractString` here then you get some back logs:
+"""
+
+# ╔═╡ 75752f77-1e3f-4997-869b-8bee2c12a2cb
+function cool(x::String)
+	uppercase(x)
+end
+
+# ╔═╡ 3098e16a-4730-4564-a484-02a6b0278930
+# function cool()
+# end
+
+# ╔═╡ 37fc039e-7a4d-4d2d-80f3-d409a9ee096d
+# ╠═╡ disabled = true
+#=╠═╡
+let
+	function f(x)
+		cool(x)
+	end
+	@htl("""
+	<script>
+	const sqrt_from_julia = $(AbstractPlutoDingetjes.Display.with_js_link(f))
+	
+	let id = setInterval(async () => {
+		console.log(await sqrt_from_julia("hello"))
+	}, 50)
+	
+	invalidation.then(() => clearInterval(id))
+	
+	</script>
+	""")
+end
+  ╠═╡ =#
+
+# ╔═╡ 977c59f7-9f3a-40ae-981d-2a8a48e08349
+
+
 # ╔═╡ b3186d7b-8fd7-4575-bccf-8e89ce611010
 md"""
 # Benchmark
@@ -89,7 +128,7 @@ md"""
 # Concurrency
 """
 
-# ╔═╡ f9ff5f6b-7525-4928-a19c-2d0bf56fd952
+# ╔═╡ c79cfb05-bf14-479f-8a31-d1e4fcce79cb
 
 
 # ╔═╡ 2417de50-e6e4-4c99-8836-ee8ff04d586a
@@ -99,6 +138,14 @@ md"""
 md"""
 # Tests
 """
+
+# ╔═╡ 1d32fd55-9ca0-45c8-97f5-23cb29eaa8b3
+md"""
+Test a closure
+"""
+
+# ╔═╡ 5f3c590e-07f2-4dea-b6d1-e9d90f501fda
+some_other_global = rand(100)
 
 # ╔═╡ 3d836ff3-995e-4353-807e-bf2cd78920e2
 some_global = rand(200)
@@ -140,20 +187,45 @@ function_evaluator(123) do input
 	sqrt(num)
 end
 
+# ╔═╡ f9ff5f6b-7525-4928-a19c-2d0bf56fd952
+function_evaluator(123) do input
+	sqrt(-1)
+end
+
 # ╔═╡ a399cb12-39d4-43c0-a0a7-05cb683dffbd
 function_evaluator(123) do input
-	@info "start"
+	# @info "start"
 	sleep(5)
-	@warn "end"
+	# @warn "end"
 	uppercase(input)
+	
 end
 
 # ╔═╡ 2bff3975-5918-40fe-9761-eb7b47f16df2
 function_evaluator(123) do input
-	@info "start"
+	# @info "start"
 	sleep(5)
-	@warn "end"
+	# @warn "end"
 	uppercase(input)
+end
+
+# ╔═╡ 2b5cc4b1-ca57-4cb6-a42a-dcb331ed2c26
+let
+	thing = function_evaluator("1") do str
+		some_other_global[1:parse(Int,str)]
+	end
+	if false
+		fff() = 123
+	end
+	thing
+end
+
+# ╔═╡ 85e9daf1-d8e3-4fc0-8acd-10d863e724d0
+let
+	x = rand(100)
+	function_evaluator("1") do str
+		x[parse(Int,str)]
+	end
 end
 
 # ╔═╡ abb24301-357c-40f0-832e-86f26404d3d9
@@ -227,16 +299,26 @@ end
 # ╠═b0f2a778-885f-11ee-3d28-939ca4069ee8
 # ╠═4b80dda0-74b6-4a0e-a50e-61c5380111a4
 # ╠═37aacc7f-61fd-4c4b-b24d-42361d508e8d
+# ╟─30d7c350-f792-47e9-873a-01adf909bc84
+# ╠═75752f77-1e3f-4997-869b-8bee2c12a2cb
+# ╠═3098e16a-4730-4564-a484-02a6b0278930
+# ╠═37fc039e-7a4d-4d2d-80f3-d409a9ee096d
+# ╠═977c59f7-9f3a-40ae-981d-2a8a48e08349
 # ╟─b3186d7b-8fd7-4575-bccf-8e89ce611010
 # ╠═82c7a083-c84d-4924-bad2-776d3cdad797
 # ╠═e8abaff9-f629-47c6-8009-066bcdf67693
 # ╟─bf9861e0-be91-4041-aa61-8ac2ef6cb719
 # ╟─ebf79ee4-2590-4b5a-a957-213ed03a5921
+# ╠═c79cfb05-bf14-479f-8a31-d1e4fcce79cb
 # ╠═f9ff5f6b-7525-4928-a19c-2d0bf56fd952
 # ╠═a399cb12-39d4-43c0-a0a7-05cb683dffbd
 # ╠═2bff3975-5918-40fe-9761-eb7b47f16df2
 # ╠═2417de50-e6e4-4c99-8836-ee8ff04d586a
 # ╟─663e5a70-4d07-4d6a-8725-dc9a2b26b65d
+# ╟─1d32fd55-9ca0-45c8-97f5-23cb29eaa8b3
+# ╠═5f3c590e-07f2-4dea-b6d1-e9d90f501fda
+# ╠═2b5cc4b1-ca57-4cb6-a42a-dcb331ed2c26
+# ╠═85e9daf1-d8e3-4fc0-8acd-10d863e724d0
 # ╠═abb24301-357c-40f0-832e-86f26404d3d9
 # ╠═33a2293c-6202-47ca-80d1-4a9e261cae7f
 # ╠═480aea45-da00-4e89-b43a-38e4d1827ec2

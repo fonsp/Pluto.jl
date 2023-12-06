@@ -543,7 +543,17 @@ function run_expression(
     cell_registered_bond_names[cell_id] = Set{Symbol}()
     
     # reset JS links
-    cell_js_links[cell_id] = Dict{String,Any}()
+    begin
+        # cancel old links
+        old_links = get!(() -> Dict{String,JSLink}(), cell_js_links, cell_id)
+        for (name, link) in old_links
+            c = link.on_cancellation
+            c === nothing || c()
+        end
+
+        # clear
+        cell_js_links[cell_id] = Dict{String,JSLink}()
+    end
 
     # If the cell contains macro calls, we want those macro calls to preserve their identity,
     # so we macroexpand this earlier (during expression explorer stuff), and then we find it here.
@@ -810,7 +820,7 @@ function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
     # we define `Base.isodd(n::Integer) = rand(Bool)`, which overrides the existing method `Base.isodd(n::Integer)`
     # calling `Base.delete_method` on this method won't bring back the old method, because our new method still exists in the method table, and it has a world age which is newer than the original. (our method has a deleted_world value set, which disables it)
     #
-    # To solve this, we iterate again, and _re-enable any methods that were hidden in this way_, by adding them again to the method table with an even newer`primary_world`.
+    # To solve this, we iterate again, and _re-enable any methods that were hidden in this way_, by adding them again to the method table with an even newer `primary_world`.
     if !isempty(deleted_sigs)
         to_insert = Method[]
         Base.visit(methods_table) do method
@@ -993,7 +1003,7 @@ const default_iocontext = IOContext(devnull,
     :is_pluto => true, 
     :pluto_supported_integration_features => supported_integration_features,
     :pluto_published_to_js => (io, x) -> core_published_to_js(io, x),
-    :pluto_with_js_link => (io, callback) -> core_with_js_link(io, callback),
+    :pluto_with_js_link => (io, callback, on_cancellation) -> core_with_js_link(io, callback, on_cancellation),
 )
 
 const default_stdout_iocontext = IOContext(devnull, 
@@ -2498,9 +2508,15 @@ end
 # JS LINK
 ###
 
-const cell_js_links = Dict{UUID,Dict{String,Any}}()
+struct JSLink
+    callback::Function
+    on_cancellation::Union{Nothing,Function}
+    cancelled_ref::Ref{Bool}
+end
 
-function core_with_js_link(io, callback)
+const cell_js_links = Dict{UUID,Dict{String,JSLink}}()
+
+function core_with_js_link(io, callback, on_cancellation)
     
     _notebook_id = get(io, :pluto_notebook_id, notebook_id[])::UUID
     _cell_id = get(io, :pluto_cell_id, currently_running_cell_id[])::UUID
@@ -2509,23 +2525,27 @@ function core_with_js_link(io, callback)
     # link_id = objectid2str(callback)
     link_id = String(rand('a':'z', 16))
     
-    links = get!(() -> Dict{String,Any}(), cell_js_links, _cell_id)
-    links[link_id] = callback
+    links = get!(() -> Dict{String,JSLink}(), cell_js_links, _cell_id)
+    links[link_id] = JSLink(callback, on_cancellation, Ref(false))
     
     write(io, "/* See the documentation for AbstractPlutoDingetjes.Display.with_js_link */ _internal_getJSLinkResponse(\"$(_cell_id)\", \"$(link_id)\")")
 end
 
 function evaluate_js_link(notebook_id::UUID, cell_id::UUID, link_id::String, input::Any)
-    links = get(() -> Dict{String,Any}(), cell_js_links, cell_id)
-    callback = get(links, link_id, nothing)
-    if callback === nothing
+    links = get(() -> Dict{String,JSLink}(), cell_js_links, cell_id)
+    link = get(links, link_id, nothing)
+    if link === nothing
+        # TODO log to notebook
         @error "🚨 AbstractPlutoDingetjes: JS link not found." link_id
+    elseif link.cancelled_ref[]
+        # TODO log to notebook
+        @error "🚨 AbstractPlutoDingetjes: JS link has already been invalidated." link_id
     else
         logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
         
         result = with_logger_and_io_to_logs(logger; capture_stdout=false, stdio_loglevel=stdout_log_level) do
             try
-                result = callback(input)
+                result = link.callback(input)
                 assertpackable(result)
                 result
             catch ex
