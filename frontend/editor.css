@@ -52,7 +52,6 @@ html {
 
 body {
     margin: 0px;
-    padding: 0px;
     overflow-anchor: none;
     overflow-x: hidden;
     position: relative;
@@ -70,7 +69,6 @@ pluto-editor {
 
 main {
     flex: 1;
-
     max-width: calc(700px + 25px + 6px); /* 700px + both paddings */
     padding-top: 0px;
     padding-bottom: 4rem;
@@ -85,8 +83,7 @@ body:not(.disable_ui) main {
 }
 
 body:not(.disable_ui) {
-    overscroll-behavior-x: contain;
-    background: white;
+    overscroll-behavior: contain;
 }
 
 /* | main=25px+700px+6px=731px | pluto-helpbox=350px - 500px | */
@@ -288,6 +285,7 @@ pluto-output hr {
     border-top: 3px solid var(--rule-color);
     margin-left: 0;
     margin-right: 0;
+    break-after: page;
 }
 
 pluto-output blockquote {
@@ -1111,7 +1109,6 @@ pluto-cell {
     min-height: calc(23px + 1px + 1px);
     margin-top: var(--pluto-cell-spacing);
     position: relative;
-    break-inside: avoid;
 }
 
 pluto-output {

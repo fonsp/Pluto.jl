@@ -1,4 +1,4 @@
-import { html } from "../imports/Preact.js"
+import { html, useEffect, useRef } from "../imports/Preact.js"
 
 const Circle = ({ fill }) => html`
     <svg
@@ -44,7 +44,7 @@ export const WarnForVisisblePasswords = () => {
     }
 }
 
-export const ExportBanner = ({ notebook_id, open, onClose, notebookfile_url, notebookexport_url, start_recording }) => {
+export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebookfile_url, notebookexport_url, start_recording }) => {
     // @ts-ignore
     const isDesktop = !!window.plutoDesktop
 
@@ -54,6 +54,25 @@ export const ExportBanner = ({ notebook_id, open, onClose, notebookfile_url, not
             window.plutoDesktop?.fileSystem.exportNotebook(notebook_id, type)
         }
     }
+
+    //
+    let print_old_title_ref = useRef("")
+    useEffect(() => {
+        let a = () => {
+            console.log("beforeprint")
+            print_old_title_ref.current = document.title
+            document.title = print_title.replace(/\.jl$/, "").replace(/\.plutojl$/, "")
+        }
+        let b = () => {
+            document.title = print_old_title_ref.current
+        }
+        window.addEventListener("beforeprint", a)
+        window.addEventListener("afterprint", b)
+        return () => {
+            window.removeEventListener("beforeprint", a)
+            window.removeEventListener("afterprint", b)
+        }
+    }, [print_title])
 
     return html`
         <aside id="export" inert=${!open}>

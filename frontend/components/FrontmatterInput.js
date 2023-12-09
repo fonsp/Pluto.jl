@@ -35,7 +35,7 @@ export const FrontMatterInput = ({ filename, remote_frontmatter, set_remote_fron
             })
         )
 
-    const [dialog_ref, open, close, _toggle] = useDialog({ light_dismiss: false })
+    const [dialog_ref, open, close, _toggle] = useDialog()
 
     const cancel = () => {
         set_frontmatter(remote_frontmatter ?? {})

@@ -10,18 +10,7 @@ export const base64_arraybuffer = async (/** @type {BufferSource} */ data) => {
         reader.readAsDataURL(new Blob([data]))
     })
 
-    return base64url.substring(base64url.indexOf(",") + 1)
-}
-
-export const decode_base64_to_arraybuffer = async (/** @type {string} */ data) => {
-    let r = await fetch(`data:;base64,${data}`)
-    return await r.arrayBuffer()
-}
-
-export const hash_arraybuffer = async (/** @type {BufferSource} */ data) => {
-    // @ts-ignore
-    const hashed_buffer = await window.crypto.subtle.digest("SHA-256", data)
-    return await base64_arraybuffer(hashed_buffer)
+    return base64url.substring(base64url.indexOf(',')+1)
 }
 
 /** Encode a buffer using the `base64url` encoding, which uses URL-safe special characters, see https://en.wikipedia.org/wiki/Base64#Variants_summary_table */
