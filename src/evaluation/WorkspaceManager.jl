@@ -34,6 +34,7 @@ const SN = Tuple{ServerSession, Notebook}
 "These expressions get evaluated whenever a new `Workspace` process is created."
 process_preamble() = quote
     Base.exit_on_sigint(false)
+    const pluto_boot_environment_path = $(Pluto.pluto_boot_environment_path[])
     include($(project_relative_path(joinpath("src", "runner"), "Loader.jl")))
     ENV["GKSwstype"] = "nul"
     ENV["JULIA_REVISE_WORKER_ONLY"] = "1"
@@ -551,7 +552,7 @@ function move_vars(
     old_workspace_name::Symbol,
     new_workspace_name::Union{Nothing,Symbol},
     to_delete::Set{Symbol},
-    methods_to_delete::Set{Tuple{UUID,FunctionName}},
+    methods_to_delete::Set{Tuple{UUID,Tuple{Vararg{Symbol}}}},
     module_imports_to_move::Set{Expr},
     invalidated_cell_uuids::Set{UUID},
     keep_registered::Set{Symbol}=Set{Symbol}();
@@ -574,7 +575,7 @@ function move_vars(
     end)
 end
 
-function move_vars(session_notebook::Union{SN,Workspace}, to_delete::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,FunctionName}}, module_imports_to_move::Set{Expr}, invalidated_cell_uuids::Set{UUID}; kwargs...)
+function move_vars(session_notebook::Union{SN,Workspace}, to_delete::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,Tuple{Vararg{Symbol}}}}, module_imports_to_move::Set{Expr}, invalidated_cell_uuids::Set{UUID}; kwargs...)
     move_vars(session_notebook, bump_workspace_module(session_notebook)..., to_delete, methods_to_delete, module_imports_to_move, invalidated_cell_uuids; kwargs...)
 end
 

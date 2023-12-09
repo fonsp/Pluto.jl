@@ -341,7 +341,7 @@ function get_module_names(workspace_module, module_ex::Expr)
 end
 
 function collect_soft_definitions(workspace_module, modules::Set{Expr})
-  mapreduce(module_ex -> get_module_names(workspace_module, module_ex), union!, modules; init=Set{Symbol}())
+    mapreduce(module_ex -> get_module_names(workspace_module, module_ex), union!, modules; init=Set{Symbol}())
 end
 
 
@@ -688,7 +688,7 @@ function move_vars(
     old_workspace_name::Symbol,
     new_workspace_name::Symbol,
     vars_to_delete::Set{Symbol},
-    methods_to_delete::Set{Tuple{UUID,Vector{Symbol}}},
+    methods_to_delete::Set{Tuple{UUID,Tuple{Vararg{Symbol}}}},
     module_imports_to_move::Set{Expr},
     invalidated_cell_uuids::Set{UUID},
     keep_registered::Set{Symbol},
@@ -829,7 +829,7 @@ end
 #     try_delete_toplevel_methods(workspace, [name])
 # end
 
-function try_delete_toplevel_methods(workspace::Module, (cell_id, name_parts)::Tuple{UUID,Vector{Symbol}})::Bool
+function try_delete_toplevel_methods(workspace::Module, (cell_id, name_parts)::Tuple{UUID,Tuple{Vararg{Symbol}}})::Bool
     try
         val = workspace
         for name in name_parts
@@ -1683,7 +1683,7 @@ const integrations = Integration[
         code = quote
             @assert v"1.0.0" <= AbstractPlutoDingetjes.MY_VERSION < v"2.0.0"
             
-            supported!(xs...) = push!(supported_integration_features, xs...)
+            supported!(xs...) = append!(supported_integration_features, xs)
             
             # don't need feature checks for these because they existed in every version of AbstractPlutoDingetjes:
             supported!(
@@ -2627,8 +2627,8 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     # Redirect both the `stdout` and `stderr` streams to a single `Pipe` object.
     pipe = Pipe()
     Base.link_pipe!(pipe; reader_supports_async = true, writer_supports_async = true)
-    pe_stdout = IOContext(pipe.in, default_stdout_iocontext)
-    pe_stderr = IOContext(pipe.in, default_stdout_iocontext)
+    pe_stdout = pipe.in
+    pe_stderr = pipe.in
     redirect_stdout(pe_stdout)
     redirect_stderr(pe_stderr)
 
@@ -2661,7 +2661,7 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     end
 
     # To make the `display` function work.
-    redirect_display = TextDisplay(pe_stdout)
+    redirect_display = TextDisplay(IOContext(pe_stdout, default_stdout_iocontext))
     pushdisplay(redirect_display)
 
     # Run the function `f`, capturing all output that it might have generated.

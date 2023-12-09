@@ -1,5 +1,4 @@
 import UUIDs: UUID, uuid1
-import .ExpressionExplorer: SymbolsState, UsingsImports
 
 const METADATA_DISABLED_KEY = "disabled"
 const METADATA_SHOW_LOGS_KEY = "show_logs"

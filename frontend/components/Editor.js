@@ -670,9 +670,9 @@ export class Editor extends Component {
                 this.client.send(
                     "reshow_cell",
                     {
-                        objectid: objectid,
-                        dim: dim,
-                        cell_id: cell_id,
+                        objectid,
+                        dim,
+                        cell_id,
                     },
                     { notebook_id: this.state.notebook.notebook_id },
                     false
@@ -1293,7 +1293,8 @@ patch: ${JSON.stringify(
                 const serialized = this.serialize_selected()
                 if (serialized) {
                     navigator.clipboard.writeText(serialized).catch((err) => {
-                        alert(`Error copying cells: ${e}`)
+                        console.error("Error copying cells", e, err)
+                        alert(`Error copying cells: ${err}`)
                     })
                 }
             }
@@ -1490,6 +1491,11 @@ patch: ${JSON.stringify(
                     <header id="pluto-nav" className=${export_menu_open ? "show_export" : ""}>
                         <${ExportBanner}
                             notebook_id=${this.state.notebook.notebook_id}
+                            print_title=${
+                                this.state.notebook.metadata?.frontmatter?.title ??
+                                new URLSearchParams(window.location.search).get("name") ??
+                                this.state.notebook.shortpath
+                            }
                             notebookfile_url=${this.export_url("notebookfile")}
                             notebookexport_url=${this.export_url("notebookexport")}
                             open=${export_menu_open}
@@ -1656,6 +1662,7 @@ patch: ${JSON.stringify(
                         backend_launch_phase=${this.state.backend_launch_phase}
                         backend_launch_logs=${this.state.backend_launch_logs}
                         notebook=${this.state.notebook}
+                        sanitize_html=${status.sanitize_html}
                     />
                     <${Popup} 
                         notebook=${this.state.notebook}
