@@ -193,7 +193,7 @@ const create_vscode_connection = (address, { on_message, on_socket_close }, time
                     const raw = event.data // The json-encoded data that the extension sent
                     if (raw.type === "ws_proxy") {
                         const buffer = await base64_arraybuffer(raw.base64_encoded)
-                        const message = unpack(new Uint8Array(buffer))
+                        const message = buffer
                         try {
                             console.info("message received!", message)
                             on_message(message)
