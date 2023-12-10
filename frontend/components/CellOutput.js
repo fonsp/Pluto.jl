@@ -28,11 +28,6 @@ import { julia_mixed } from "./CellInput/mixedParsers.js"
 import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
 import { SafePreviewSanitizeMessage } from "./SafePreviewUI.js"
 
-const prettyAssignee = assignee =>
-        assignee && assignee.startsWith("const ") ?
-        html`<span style="color: var(--cm-keyword-color)">const</span> ${assignee.slice(6,)}` :
-        assignee
-
 export class CellOutput extends Component {
     constructor() {
         super()
@@ -78,7 +73,6 @@ export class CellOutput extends Component {
                 this.props.mime !== "application/vnd.pluto.table+object" &&
                 this.props.mime !== "text/plain")
         const allow_translate = !this.props.errored && rich_output
-        console.log({ro: this.props.rootassignee})
         return html`
             <pluto-output
                 class=${cl({
@@ -88,7 +82,7 @@ export class CellOutput extends Component {
                 translate=${allow_translate}
                 mime=${this.props.mime}
             >
-                <assignee translate=${false}>${prettyAssignee(this.props.rootassignee)}</assignee>
+                <assignee translate=${false}>${this.props.rootassignee}</assignee>
                 <${OutputBody} ...${this.props} />
             </pluto-output>
         `
@@ -122,21 +116,7 @@ export let PlutoImage = ({ body, mime }) => {
     return html`<img ref=${imgref} type=${mime} src=${""} />`
 }
 
-/**
- * @param {{
- *  mime: string,
- * body: any,
- * cell_id: string,
- * persist_js_state: boolean | string,
- * last_run_timestamp: number,
- * sanitize_html?: boolean | string,
- * }} args
- */
 export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last_run_timestamp, sanitize_html = true }) => {
-    // These two arguments might have been passed as strings if OutputBody was used as the custom HTML element <pluto-display>, with string attributes as arguments.
-    sanitize_html = sanitize_html !== "false" && sanitize_html !== false
-    persist_js_state = persist_js_state === "true" || persist_js_state === true
-
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -351,14 +331,8 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
 
             if (script_el == undefined) {
                 script_el = document.createElement("script")
-                script_el.referrerPolicy = node.referrerPolicy
-                script_el.crossOrigin = node.crossOrigin
-                script_el.integrity = node.integrity
-                script_el.noModule = node.noModule
-                script_el.nonce = node.nonce
-                script_el.type = node.type
                 script_el.src = node.src
-                // Not copying defer or async because this script is not included in the initial HTML document, so it has no effect.
+                script_el.type = node.type === "module" ? "module" : "text/javascript"
                 // @ts-ignore
                 script_el.pluto_is_loading_me = true
             }
@@ -499,7 +473,7 @@ let declarative_shadow_dom_polyfill = (template) => {
     }
 }
 
-export let RawHTMLContainer = ({ body, className = "", persist_js_state = false, last_run_timestamp, sanitize_html = true, sanitize_html_message = true }) => {
+export let RawHTMLContainer = ({ body, className = "", persist_js_state = false, last_run_timestamp, sanitize_html = true }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     let pluto_bonds = useContext(PlutoBondsContext)
     let js_init_set = useContext(PlutoJSInitializingContext)
@@ -531,14 +505,13 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
         let html_content_to_set = sanitize_html
             ? DOMPurify.sanitize(body, {
                   FORBID_TAGS: ["style"],
-                  ADD_ATTR: ["target"],
               })
             : body
 
         // Actually "load" the html
         container.innerHTML = html_content_to_set
 
-        if (sanitize_html_message && html_content_to_set !== body) {
+        if (html_content_to_set !== body) {
             // DOMPurify also resolves HTML entities, which can give a false positive. To fix this, we use DOMParser to parse both strings, and we compare the innerHTML of the resulting documents.
             const parser = new DOMParser()
             const p1 = parser.parseFromString(body, "text/html")
@@ -617,7 +590,7 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
             js_init_set?.delete(container)
             invalidate_scripts.current?.()
         }
-    }, [body, last_run_timestamp, pluto_actions, sanitize_html])
+    }, [body, persist_js_state, last_run_timestamp, pluto_actions, sanitize_html])
 
     return html`<div class="raw-html-wrapper ${className}" ref=${container_ref}></div>`
 }

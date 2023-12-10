@@ -33,7 +33,7 @@ export const RunLocalButton = ({ show, start_local }) => {
  * }} props
  * */
 export const BinderButton = ({ offer_binder, start_binder, notebookfile, notebook }) => {
-    const [dialog_ref, openModal, closeModal, toggleModal] = useDialog()
+    const [dialog_ref, openModal, closeModal, toggleModal] = useDialog({ light_dismiss: true })
 
     const [showCopyPopup, setShowCopyPopup] = useState(false)
     const notebookfile_ref = useRef("")

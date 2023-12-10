@@ -1,13 +1,10 @@
 import { Promises } from "../common/SetupCellEnvironment.js"
 import { pack, unpack } from "./MsgPack.js"
-import { base64_arraybuffer, decode_base64_to_arraybuffer } from "./PlutoHash.js"
+import { with_query_params } from "./URLTools.js"
+import { base64_arraybuffer } from "./PlutoHash.js"
 import "./Polyfill.js"
 import { available as vscode_available, api as vscode_api } from "./VSCodeApi.js"
 import { alert, confirm } from "./alert_confirm.js"
-
-// https://github.com/denysdovhan/wtfjs/issues/61
-const different_Infinity_because_js_is_yuck = 2147483646
-import { with_query_params } from "./URLTools.js"
 
 const reconnect_after_close_delay = 500
 const retry_after_connect_failure_delay = 5000
@@ -195,9 +192,8 @@ const create_vscode_connection = (address, { on_message, on_socket_close }, time
                 try {
                     const raw = event.data // The json-encoded data that the extension sent
                     if (raw.type === "ws_proxy") {
-                        const buffer = await decode_base64_to_arraybuffer(raw.base64_encoded)
+                        const buffer = await base64_arraybuffer(raw.base64_encoded)
                         const message = unpack(new Uint8Array(buffer))
-
                         try {
                             console.info("message received!", message)
                             on_message(message)
@@ -209,21 +205,17 @@ const create_vscode_connection = (address, { on_message, on_socket_close }, time
                     }
                 } catch (unpack_err) {
                     console.error("Failed to unpack message from websocket", unpack_err, { event })
-
                     // prettier-ignore
                     alert(`Something went wrong! You might need to refresh the page.\n\nPlease open an issue on https://github.com/fonsp/Pluto.jl with this info:\n\nFailed to unpack message\n${unpack_err}\n\n${JSON.stringify(event)}`)
                 }
             })
         })
-
         const send_encoded = async (message) => {
             console.log("Sending message!", message)
             const encoded = pack(message)
             await vscode_api.postMessage({ type: "ws_proxy", base64_encoded: await base64_arraybuffer(encoded) })
         }
-
         let last_task = Promise.resolve()
-
         resolve({
             socket: {},
             send: send_encoded,
@@ -404,13 +396,8 @@ export const create_pluto_connection = async ({
         try {
             ws_connection = await (vscode_available ? create_vscode_connection : create_ws_connection)(String(ws_address), {
                 on_message: (update) => {
-                    const for_me = update.recipient_id === client_id
-                    const by_me = update.initiator_id === client_id
+                    const by_me = update.initiator_id == client_id
                     const request_id = update.request_id
-
-                    if (!for_me) {
-                        return
-                    }
 
                     if (by_me && request_id) {
                         const request = sent_requests.get(request_id)
@@ -441,9 +428,7 @@ export const create_pluto_connection = async ({
 
             // let's say hello
             console.log("Hello?")
-            const u = await send("connect", {}, connect_metadata).catch((error) => {
-                console.error("Failed to connect:", error)
-            })
+            const u = await send("connect", {}, connect_metadata)
             console.log("Hello!")
             client.kill = () => {
                 if (ws_connection) ws_connection.socket.close()
@@ -455,10 +440,6 @@ export const create_pluto_connection = async ({
             console.log("Client object: ", client)
 
             if (connect_metadata.notebook_id != null && !u.message.notebook_exists) {
-                // https://github.com/fonsp/Pluto.jl/issues/55
-                if (await confirm("A new server was started - this notebook session is no longer running.\n\nWould you like to go back to the main menu?")) {
-                    window.location.href = "./"
-                }
                 on_connection_status(false, true)
                 return {}
             }

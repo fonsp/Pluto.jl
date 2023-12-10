@@ -9,22 +9,17 @@ const str_to_degree = (s) => ([...s].reduce((a, b) => a + b.charCodeAt(0), 0) * 
 
 /**
  * @param {{
- *  source_manifest?: import("./Featured.js").SourceManifest,
  *  entry: import("./Featured.js").SourceManifestNotebookEntry,
+ *  source_url?: string,
  *  direct_html_links: boolean,
- *  disable_links: boolean,
  * }} props
  */
-export const FeaturedCard = ({ entry, source_manifest, direct_html_links, disable_links }) => {
+export const FeaturedCard = ({ entry, source_url, direct_html_links }) => {
     const title = entry.frontmatter?.title
-
-    const { source_url } = source_manifest ?? {}
 
     const u = (/** @type {string | null | undefined} */ x) =>
         source_url == null
-            ? _.isEmpty(x)
-                ? null
-                : x
+            ? x
             : x == null
             ? null
             : // URLs are relative to the source URL...
@@ -35,19 +30,15 @@ export const FeaturedCard = ({ entry, source_manifest, direct_html_links, disabl
               ).href
 
     // `direct_html_links` means that we will navigate you directly to the exported HTML file. Otherwise, we use our local editor, with the exported state as parameters. This lets users run the featured notebooks locally.
-    const href = disable_links
-        ? "#"
-        : direct_html_links
+    const href = direct_html_links
         ? u(entry.html_path)
         : with_query_params(`edit`, {
               statefile: u(entry.statefile_path),
               notebookfile: u(entry.notebookfile_path),
               notebookfile_integrity: `sha256-${base64url_to_base64(entry.hash)}`,
               disable_ui: `true`,
-              name: title == null ? null : `sample ${title}`,
               pluto_server_url: `.`,
-              // Little monkey patch because we don't want to use the slider server when for the CDN source, only for the featured.plutojl.org source. But both sources have the same pluto_export.json so this is easiest.
-              slider_server_url: source_url?.includes("cdn.jsdelivr.net/gh/JuliaPluto/featured") ? null : u(source_manifest?.slider_server_url),
+              name: title == null ? null : `sample ${title}`,
           })
 
     const author = author_info(entry.frontmatter)
@@ -59,11 +50,7 @@ export const FeaturedCard = ({ entry, source_manifest, direct_html_links, disabl
                 ? null
                 : html`
                       <div class="author">
-                          <img src=${author.image ?? transparent_svg} />
-                          <span>
-                              <a href=${author.url}>${author.name}</a>
-                              ${author.has_coauthors ? html` and others` : null}
-                          </span>
+                          <a href=${author.url}> <img src=${author.image ?? transparent_svg} /><span>${author.name}</span></a>
                       </div>
                   `}
             <h3><a href=${href} title=${entry?.frontmatter?.title}>${entry?.frontmatter?.title ?? entry.id}</a></h3>
@@ -78,13 +65,9 @@ export const FeaturedCard = ({ entry, source_manifest, direct_html_links, disabl
  * name: string?,
  * url: string?,
  * image: string?,
- * has_coauthors?: boolean,
  * }}
  */
 
-/**
- * @returns {AuthorInfo?}
- */
 const author_info = (frontmatter) =>
     author_info_item(frontmatter.author) ??
     author_info_item({
@@ -98,11 +81,9 @@ const author_info = (frontmatter) =>
  */
 const author_info_item = (x) => {
     if (x instanceof Array) {
-        const first = author_info_item(x[0])
-        if (first?.name) {
-            const has_coauthors = x.length > 1
-            return { ...first, has_coauthors }
-        }
+        return author_info_item(x[0])
+    } else if (x == null) {
+        return null
     } else if (typeof x === "string") {
         return {
             name: x,
@@ -112,7 +93,7 @@ const author_info_item = (x) => {
     } else if (x instanceof Object) {
         let { name, image, url } = x
 
-        if (image == null && !_.isEmpty(url)) {
+        if (image == null && url != null) {
             image = url + ".png?size=48"
         }
 
@@ -121,6 +102,7 @@ const author_info_item = (x) => {
             url,
             image,
         }
+    } else {
+        return null
     }
-    return null
 }

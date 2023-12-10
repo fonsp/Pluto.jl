@@ -223,16 +223,6 @@ function match_block(node) {
         return match_try_node(node)
     }
 
-    if (node.name === "module" || node.name === "baremodule") {
-        let possibly_end = node.parent.lastChild
-        let did_match = possibly_end.name === "end"
-        if (!did_match) return null
-
-        return [
-            { from: node.from, to: node.to },
-            { from: possibly_end.from, to: possibly_end.to },
-        ]
-    }
 
     return null
 }

@@ -39,9 +39,11 @@ import { get_environment } from "../common/Environment.js"
 import { ProcessStatus } from "../common/ProcessStatus.js"
 import { SafePreviewUI } from "./SafePreviewUI.js"
 
-export const default_path = ""
 import { alert, confirm } from "../common/alert_confirm.js"
+// This is imported asynchronously - uncomment for development
+// import environment from "../common/Environment.js"
 
+export const default_path = ""
 const DEBUG_DIFFING = false
 
 // Be sure to keep this in sync with DEFAULT_CELL_METADATA in Cell.jl
@@ -249,31 +251,6 @@ const first_true_key = (obj) => {
 
 const url_logo_big = document.head.querySelector("link[rel='pluto-logo-big']")?.getAttribute("href") ?? ""
 export const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']")?.getAttribute("href") ?? ""
-
-const url_params = new URLSearchParams(window.location.search)
-const launch_params = {
-    //@ts-ignore
-    notebook_id: (vscode_available ? null : url_params.get("id")) ?? window.pluto_notebook_id,
-    //@ts-ignore
-    statefile: url_params.get("statefile") ?? window.pluto_statefile,
-    //@ts-ignore
-    notebookfile: url_params.get("notebookfile") ?? window.pluto_notebookfile,
-    //@ts-ignore
-    disable_ui: !!(url_params.get("disable_ui") ?? window.pluto_disable_ui),
-    //@ts-ignore
-    preamble_html: url_params.get("preamble_html") ?? window.pluto_preamble_html,
-    //@ts-ignore
-    isolated_cell_ids: url_params.has("isolated_cell_id") ? url_params.getAll("isolated_cell_id") : window.pluto_isolated_cell_ids,
-    //@ts-ignore
-    binder_url: url_params.get("binder_url") ?? window.pluto_binder_url,
-    //@ts-ignore
-    slider_server_url: url_params.get("slider_server_url") ?? window.pluto_slider_server_url,
-    //@ts-ignore
-    recording_url: url_params.get("recording_url") ?? window.pluto_recording_url,
-    //@ts-ignore
-    recording_audio_url: url_params.get("recording_audio_url") ?? window.pluto_recording_audio_url,
-}
-console.log("Launch parameters: ", launch_params)
 
 /**
  * @typedef EditorProps
@@ -670,9 +647,9 @@ export class Editor extends Component {
                 this.client.send(
                     "reshow_cell",
                     {
-                        objectid,
-                        dim,
-                        cell_id,
+                        objectid: objectid,
+                        dim: dim,
+                        cell_id: cell_id,
                     },
                     { notebook_id: this.state.notebook.notebook_id },
                     false
@@ -1293,8 +1270,7 @@ patch: ${JSON.stringify(
                 const serialized = this.serialize_selected()
                 if (serialized) {
                     navigator.clipboard.writeText(serialized).catch((err) => {
-                        console.error("Error copying cells", e, err)
-                        alert(`Error copying cells: ${err}`)
+                        alert(`Error copying cells: ${e}`)
                     })
                 }
             }
@@ -1662,7 +1638,6 @@ patch: ${JSON.stringify(
                         backend_launch_phase=${this.state.backend_launch_phase}
                         backend_launch_logs=${this.state.backend_launch_logs}
                         notebook=${this.state.notebook}
-                        sanitize_html=${status.sanitize_html}
                     />
                     <${Popup} 
                         notebook=${this.state.notebook}
