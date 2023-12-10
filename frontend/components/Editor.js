@@ -1270,7 +1270,8 @@ patch: ${JSON.stringify(
                 const serialized = this.serialize_selected()
                 if (serialized) {
                     navigator.clipboard.writeText(serialized).catch((err) => {
-                        alert(`Error copying cells: ${e}`)
+                        console.error("Error copying cells", e, err)
+                        alert(`Error copying cells: ${err}`)
                     })
                 }
             }
@@ -1638,6 +1639,7 @@ patch: ${JSON.stringify(
                         backend_launch_phase=${this.state.backend_launch_phase}
                         backend_launch_logs=${this.state.backend_launch_logs}
                         notebook=${this.state.notebook}
+                        sanitize_html=${status.sanitize_html}
                     />
                     <${Popup} 
                         notebook=${this.state.notebook}

@@ -12,9 +12,10 @@ import { cl } from "../common/ClassTable.js"
  * desired_doc_query: string?,
  * on_update_doc_query: (query: string) => void,
  * notebook: import("./Editor.js").NotebookData,
+ * sanitize_html?: boolean,
  * }} props
  */
-export let LiveDocsTab = ({ focus_on_open, desired_doc_query, on_update_doc_query, notebook }) => {
+export let LiveDocsTab = ({ focus_on_open, desired_doc_query, on_update_doc_query, notebook, sanitize_html = true }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     let live_doc_search_ref = useRef(/** @type {HTMLInputElement?} */ (null))
 
@@ -22,7 +23,7 @@ export let LiveDocsTab = ({ focus_on_open, desired_doc_query, on_update_doc_quer
     let [state, set_state] = useState({
         shown_query: null,
         searched_query: null,
-        body: "<p>Welcome to the <b>Live docs</b>! Keep this little window open while you work on the notebook, and you will get documentation of everything you type!</p><p>You can also type a query above.</p><hr><p><em>Still stuck? Here are <a href='https://julialang.org/about/help/' target='_blank'>some tips</a>.</em></p>",
+        body: `<p>Welcome to the <b>Live docs</b>! Keep this little window open while you work on the notebook, and you will get documentation of everything you type!</p><p>You can also type a query above.</p><hr><p><em>Still stuck? Here are <a target="_blank" href="https://julialang.org/about/help/">some tips</a>.</em></p>`,
         loading: false,
     })
     let update_state = (mutation) => set_state(immer((state) => mutation(state)))
@@ -74,7 +75,10 @@ export let LiveDocsTab = ({ focus_on_open, desired_doc_query, on_update_doc_quer
         })
     }
 
-    let docs_element = useMemo(() => html`<${RawHTMLContainer} body=${without_workspace_stuff(state.body)} />`, [state.body])
+    let docs_element = useMemo(
+        () => html`<${RawHTMLContainer} body=${without_workspace_stuff(state.body)} sanitize_html=${sanitize_html} sanitize_html_message=${false} />`,
+        [state.body, sanitize_html]
+    )
     let no_docs_found = state.loading === false && state.searched_query !== "" && state.searched_query !== state.shown_query
 
     return html`

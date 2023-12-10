@@ -179,7 +179,6 @@ const current_state_for_clients_lock = ReentrantLock()
 """
 Update the local state of all clients connected to this notebook.
 """
-
 function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, skip_send::Bool=false)
     outbox = Set{Tuple{ClientSession,UpdateMessage}}()
     
@@ -303,7 +302,6 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
         patches = (Base.convert(Firebasey.JSONPatch, update) for update in 🙋.body["updates"])
 
         if length(patches) == 0
-            # @info "Empty patches"
             send_notebook_changes!(🙋)
             return nothing
         end
