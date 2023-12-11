@@ -762,6 +762,20 @@ import Malt
         end
     end
 
+    @testset "Inherit load path" begin
+        notebook = Notebook([
+            Cell("import Pkg; Pkg.activate()"),
+            Cell("LOAD_PATH[begin]"),
+            Cell("LOAD_PATH[end]"),
+        ])
+        🍭 = ServerSession()
+        update_run!(🍭, notebook, notebook.cells)
+        @test isnothing(notebook.nbpkg_ctx)
+        @test strip(notebook.cells[2].output.body, '"') == LOAD_PATH[begin]
+        @test strip(notebook.cells[3].output.body, '"') == LOAD_PATH[end]
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
+
     Pkg.Registry.rm(pluto_test_registry_spec)
     # Pkg.Registry.add("General")
 end
