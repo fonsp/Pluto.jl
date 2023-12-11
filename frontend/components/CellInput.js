@@ -865,6 +865,7 @@ export const CellInput = ({
                     EditorView.scrollIntoView(EditorSelection.range(new_selection.anchor, new_selection.head), {
                         yMargin: 80,
                     }),
+                    LastFocusWasForcedEffect.of(true),
                 ],
             })
         }
