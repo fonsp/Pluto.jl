@@ -1,3 +1,5 @@
 // @ts-ignore
-export default AnsiUp = window.AnsiUp
+const AnsiUp = window?.AnsiUp ?? {}
+
+export default AnsiUp
 // export default window.AnsiUp

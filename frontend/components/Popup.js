@@ -1,13 +1,10 @@
-import { html, useState, useRef, useLayoutEffect, useEffect, useMemo, useContext } from "../imports/Preact.js"
-import immer from "../imports/immer.js"
-import observablehq from "../common/SetupCellEnvironment.js"
+import { html, useState, useRef, useEffect, useContext } from "../imports/Preact.js"
 import { cl } from "../common/ClassTable.js"
 
-import { RawHTMLContainer, highlight } from "./CellOutput.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { package_status, nbpkg_fingerprint_without_terminal } from "./PkgStatusMark.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
-import { prettytime, useDebouncedTruth } from "./RunArea.js"
+import { useDebouncedTruth } from "./RunArea.js"
 import { time_estimate, usePackageTimingData } from "../common/InstallTimeEstimate.js"
 import { pretty_long_time } from "./EditOrRunButton.js"
 
