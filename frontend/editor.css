@@ -3134,10 +3134,6 @@ nav#slide_controls > button.next > span::after {
 }
 
 button.floating_back_button {
-    display: none;
-}
-
-.static_preview.offer_local button.floating_back_button {
     display: flex;
     position: fixed;
     z-index: 1000;

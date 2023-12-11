@@ -117,6 +117,7 @@ export const Cell = ({
     sanitize_html = true,
     nbpkg,
     global_definition_locations,
+    is_first_cell,
 }) => {
     const { show_logs, disabled: running_disabled, skip_as_script } = metadata
     let pluto_actions = useContext(PlutoActionsContext)
@@ -303,21 +304,22 @@ export const Cell = ({
             id=${cell_id}
         >
             ${variables.map((name) => html`<span id=${encodeURI(name)} />`)}
-            <pluto-shoulder draggable="true" title="Drag to move cell">
-                <button onClick=${on_code_fold} class="foldcode" title="Show/hide code">
-                    <span></span>
-                </button>
-            </pluto-shoulder>
-            <pluto-trafficlight></pluto-trafficlight>
             <button
                 onClick=${() => {
                     pluto_actions.add_remote_cell(cell_id, "before")
                 }}
                 class="add_cell before"
                 title="Add cell (Ctrl + Enter)"
+                tabindex=${is_first_cell ? undefined : "-1"}
             >
                 <span></span>
             </button>
+            <pluto-shoulder draggable="true" title="Drag to move cell">
+                <button onClick=${on_code_fold} class="foldcode" title="Show/hide code">
+                    <span></span>
+                </button>
+            </pluto-shoulder>
+            <pluto-trafficlight></pluto-trafficlight>
             ${code_not_trusted_yet
                 ? html`<${SafePreviewOutput} />`
                 : cell_api_ready
