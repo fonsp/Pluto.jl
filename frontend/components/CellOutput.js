@@ -28,10 +28,8 @@ import { julia_mixed } from "./CellInput/mixedParsers.js"
 import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
 import { SafePreviewSanitizeMessage } from "./SafePreviewUI.js"
 
-const prettyAssignee = assignee =>
-        assignee && assignee.startsWith("const ") ?
-        html`<span style="color: var(--cm-keyword-color)">const</span> ${assignee.slice(6,)}` :
-        assignee
+const prettyAssignee = (assignee) =>
+    assignee && assignee.startsWith("const ") ? html`<span style="color: var(--cm-keyword-color)">const</span> ${assignee.slice(6)}` : assignee
 
 export class CellOutput extends Component {
     constructor() {
@@ -78,7 +76,6 @@ export class CellOutput extends Component {
                 this.props.mime !== "application/vnd.pluto.table+object" &&
                 this.props.mime !== "text/plain")
         const allow_translate = !this.props.errored && rich_output
-        console.log({ro: this.props.rootassignee})
         return html`
             <pluto-output
                 class=${cl({

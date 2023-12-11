@@ -278,11 +278,5 @@ export const pkgBubblePlugin = ({ pluto_actions, notebook_id_ref }) =>
         },
         {
             decorations: (v) => v.decorations,
-
-            eventHandlers: {
-                pointerdown: (e, view) => {
-                    let target = e.target
-                },
-            },
         }
     )
