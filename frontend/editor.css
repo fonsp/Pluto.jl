@@ -1573,10 +1573,13 @@ pluto-input > button > span {
     button.toggle_export,
     button.start_stop_recording,
     pluto-cell:hover > button,
+    pluto-cell:focus-within > button,
     pluto-cell:hover > pluto-input > button,
+    pluto-cell:focus-within > pluto-input > button,
     pluto-cell > pluto-runarea > button,
-    pluto-cell:hover > pluto-shoulder > button {
-        opacity: 0.4;
+    pluto-cell:hover > pluto-shoulder > button,
+    pluto-cell:focus-within > pluto-shoulder > button {
+        opacity: 0.6;
         transition: opacity 0.25s ease-in-out;
     }
     .export_small_btns button:hover,
@@ -1595,22 +1598,25 @@ pluto-input > button > span {
 }
 
 @media screen and (pointer: coarse) {
-    pluto-cell > button,
-    pluto-cell > pluto-runarea {
-        opacity: 0;
-        /* to make it feel smooth: */
-        transition: opacity 0.25s ease-in-out;
-    }
+    pluto-cell > button.add_cell,
     pluto-input > button,
     pluto-shoulder > button {
         opacity: 0.25;
         transition: opacity 0.25s ease-in-out;
     }
-    pluto-cell:focus-within > button,
+    pluto-cell:not(:first-of-type, :last-of-type) > button.add_cell {
+        /* because there are two overlapping buttons */
+        opacity: 0.125;
+    }
+    /* pluto-cell:first-of-type > button.add_cell.before,
+    pluto-cell:last-of-type > button.add_cell.after {
+        opacity: 0.25;
+    } */
+    pluto-cell:focus-within > button.add_cell,
     pluto-cell:focus-within > pluto-input > button,
     pluto-cell:focus-within > pluto-runarea,
     pluto-cell:focus-within > pluto-shoulder > button {
-        opacity: 0.25;
+        opacity: 0.6;
         transition: opacity 0.25s ease-in-out;
     }
     pluto-cell > pluto-input > button:focus-within,
