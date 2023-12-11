@@ -22,8 +22,7 @@ let { autocompletion, completionKeymap, completionStatus, acceptCompletion } = a
 
 // Option.source is now the source, we find to find the corresponding ActiveResult
 // https://github.com/codemirror/autocomplete/commit/6d9f24115e9357dc31bc265cd3da7ce2287fdcbd
-const getActiveResult = (view, source) =>
-    view.state.field(completionState).active.find(a => a.source == source)
+const getActiveResult = (view, source) => view.state.field(completionState).active.find((a) => a.source == source)
 
 // These should be imported from  @codemirror/autocomplete, but they are not exported.
 let completionState = autocompletion()[0]
@@ -77,6 +76,9 @@ const tab_completion_command = (cm) => {
     // }
     if (acceptCompletion(cm)) {
         return true
+    }
+    if (cm.state.readOnly) {
+        return false
     }
 
     let selection = cm.state.selection.main
@@ -137,7 +139,7 @@ let update_docs_from_autocomplete_selection = (on_update_doc_query) => {
         if (!active_result?.from) return // not an ActiveResult instance
 
         const from = active_result.from,
-              to = Math.min(active_result.to, update.state.doc.length)
+            to = Math.min(active_result.to, update.state.doc.length)
 
         // Apply completion to state, which will yield us a `Transaction`.
         // The nice thing about this is that we can use the resulting state from the transaction,
