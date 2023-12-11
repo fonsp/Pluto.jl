@@ -67,6 +67,7 @@ import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
 import { mod_d_command } from "./CellInput/mod_d_command.js"
 import { open_bottom_right_panel } from "./BottomRightPanel.js"
 import { timeout_promise } from "../common/PlutoConnection.js"
+import { LastFocusWasForcedEffect, tab_help_plugin } from "./CellInput/tab_help_plugin.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 
@@ -636,6 +637,7 @@ export const CellInput = ({
                     highlightSelectionMatches(),
                     bracketMatching(),
                     docs_updater,
+                    tab_help_plugin,
                     // Remove selection on blur
                     EditorView.domEventHandlers({
                         blur: (event, view) => {
