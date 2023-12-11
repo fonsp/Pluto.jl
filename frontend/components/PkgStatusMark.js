@@ -1,6 +1,6 @@
+import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import _ from "../imports/lodash.js"
 import { html, useEffect, useState } from "../imports/Preact.js"
-import { open_pluto_popup } from "./Popup.js"
 
 export const nbpkg_fingerprint = (nbpkg) => (nbpkg == null ? [null] : Object.entries(nbpkg).flat())
 

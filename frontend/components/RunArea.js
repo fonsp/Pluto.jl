@@ -3,7 +3,7 @@ import { html, useContext, useEffect, useMemo, useState } from "../imports/Preac
 
 import { in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
-import { open_pluto_popup } from "./Popup.js"
+import { open_pluto_popup } from "../common/open_pluto_popup.js"
 
 export const RunArea = ({
     runtime,

@@ -1,6 +1,6 @@
+import { open_pluto_popup } from "../../common/open_pluto_popup.js"
 import { ViewPlugin, StateEffect, StateField } from "../../imports/CodemirrorPlutoSetup.js"
 import _ from "../../imports/lodash.js"
-import { open_pluto_popup } from "../Popup.js"
 import { html } from "../../imports/Preact.js"
 
 /** @type {any} */

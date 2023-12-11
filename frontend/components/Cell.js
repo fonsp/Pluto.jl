@@ -7,7 +7,7 @@ import { Logs } from "./Logs.js"
 import { RunArea, useDebouncedTruth } from "./RunArea.js"
 import { cl } from "../common/ClassTable.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
-import { open_pluto_popup } from "./Popup.js"
+import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import { SafePreviewOutput } from "./SafePreviewUI.js"
 
 const useCellApi = (node_ref, published_object_keys, pluto_actions) => {
