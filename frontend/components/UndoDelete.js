@@ -1,7 +1,7 @@
 import { html, useState, useEffect } from "../imports/Preact.js"
 import { cl } from "../common/ClassTable.js"
-import { open_pluto_popup } from "./Popup.js"
 import { scroll_cell_into_view } from "./Scroller.js"
+import { open_pluto_popup } from "../common/open_pluto_popup.js"
 
 export const UndoDelete = ({ recently_deleted, on_click }) => {
     const [hidden, set_hidden] = useState(true)
