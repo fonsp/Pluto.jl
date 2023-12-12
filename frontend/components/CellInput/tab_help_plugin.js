@@ -63,7 +63,7 @@ export const tab_help_plugin = ViewPlugin.define(
                         open_pluto_popup({
                             type: "info",
                             source_element: view.dom,
-                            body: html`Press <kbd>Esc</kbd> and then <kbd>Tab</kbd> to continue navigation.`,
+                            body: html`Press <kbd>Esc</kbd> and then <kbd>Tab</kbd> to continue navigation. <em style="font-size: .6em;">skkrt!</em>`,
                         })
                         this.setready(false)
                     }
