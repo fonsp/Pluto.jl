@@ -775,6 +775,7 @@ export const CellInput = ({
                         anchor: view.state.doc.length,
                         head: view.state.doc.length,
                     },
+                    effects: [LastFocusWasForcedEffect.of(true)],
                 })
                 view.focus()
             })
