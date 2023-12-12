@@ -1,3 +1,4 @@
+import { useEventListener } from "../common/useEventListener.js"
 import { html, useEffect, useRef } from "../imports/Preact.js"
 import { link_edit } from "./welcome/Open.js"
 
@@ -86,18 +87,10 @@ export const PasteHandler = ({ on_start_navigation }) => {
         }
     }
 
-    useEffect(() => {
-        document.addEventListener("paste", processFile)
-        document.addEventListener("drop", processFile)
-        document.addEventListener("dragstart", processFile)
-        document.addEventListener("dragover", processFile)
-        return () => {
-            document.removeEventListener("paste", processFile)
-            document.removeEventListener("drop", processFile)
-            document.removeEventListener("dragstart", processFile)
-            document.removeEventListener("dragover", processFile)
-        }
-    })
+    useEventListener(document, "paste", processFile, [processFile])
+    useEventListener(document, "drop", processFile, [processFile])
+    useEventListener(document, "dragstart", processFile, [processFile])
+    useEventListener(document, "dragover", processFile, [processFile])
 
     return html`<span />`
 }
