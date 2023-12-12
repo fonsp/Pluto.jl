@@ -103,11 +103,13 @@ const on_jump = (hasBarrier, pluto_actions, cell_id) => () => {
  * }} props
  * */
 export const Cell = ({
-    cell_input: { cell_id, code, code_folded, metadata },
+    cell_input: { cell_id, code, code_folded, metadata, cm_updates, code_text, start_version, last_run_version },
     cell_result: { queued, running, runtime, errored, output, logs, published_object_keys, depends_on_disabled_cells, depends_on_skipped_cells },
     cell_dependencies,
     cell_input_local,
     notebook_id,
+    client_id,
+    users,
     selected,
     force_hide_input,
     focus_after_creation,
@@ -132,11 +134,11 @@ export const Cell = ({
     const [key, setKey] = useState(0)
     const cell_key = useMemo(() => cell_id + key, [cell_id, key])
 
-    const [, resetError] = useErrorBoundary((error) => {
-        console.log(`An error occured in the CodeMirror code, resetting CellInput component. See error below:\n\n${error}\n\n -------------- `)
-        setKey(key + 1)
-        resetError()
-    })
+    // const [, resetError] = useErrorBoundary((error) => {
+    //     console.log(`An error occured in the CodeMirror code, resetting CellInput component. See error below:\n\n${error}\n\n -------------- `)
+    //     setKey(key + 1)
+    //     resetError()
+    // })
 
     const remount = useMemo(() => () => setKey(key + 1))
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
@@ -169,6 +171,7 @@ export const Cell = ({
 
     useEffect(() => {
         const focusListener = (e) => {
+            // TODO: dispatch selected here
             if (e.detail.cell_id === cell_id) {
                 if (e.detail.line != null) {
                     const ch = e.detail.ch
@@ -204,7 +207,7 @@ export const Cell = ({
     // We then toggle animation visibility using opacity. This saves a bunch of repaints.
     const activate_animation = useDebouncedTruth(running || queued || waiting_to_run)
 
-    const class_code_differs = code !== (cell_input_local?.code ?? code)
+    const class_code_differs = useMemo(() => (cell_input_local ? cell_input_local.code != code : code_text != code), [cell_input_local?.code, code, code_text])
     const class_code_folded = code_folded && cm_forced_focus == null
     const no_output_yet = (output?.last_run_timestamp ?? 0) === 0
     const code_not_trusted_yet = process_waiting_for_permission && no_output_yet
@@ -326,6 +329,10 @@ export const Cell = ({
                 ? html`<${CellOutput} errored=${errored} ...${output} sanitize_html=${sanitize_html} cell_id=${cell_id} />`
                 : html``}
             <${CellInput}
+                cm_updates=${cm_updates}
+                code_text=${code_text}
+                start_version=${start_version}
+                last_run_version=${last_run_version}
                 local_code=${cell_input_local?.code ?? code}
                 remote_code=${code}
                 cell_dependencies=${cell_dependencies}
@@ -345,6 +352,8 @@ export const Cell = ({
                 nbpkg=${nbpkg}
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
+                client_id=${client_id}
+                users=${users}
                 metadata=${metadata}
                 any_logs=${any_logs}
                 show_logs=${show_logs}

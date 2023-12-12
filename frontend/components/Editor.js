@@ -11,6 +11,7 @@ import { serialize_cells, deserialize_cells, detect_deserializer } from "../comm
 import { FilePicker } from "./FilePicker.js"
 import { Preamble } from "./Preamble.js"
 import { NotebookMemo as Notebook } from "./Notebook.js"
+import { MultiplayerPanel } from "./MultiplayerPanel.js"
 import { BottomRightPanel } from "./BottomRightPanel.js"
 import { DropRuler } from "./DropRuler.js"
 import { SelectionArea } from "./SelectionArea.js"
@@ -88,8 +89,10 @@ const statusmap = (/** @type {EditorState} */ state, /** @type {LaunchParameters
     offer_binder: state.backend_launch_phase === BackendLaunchPhase.wait_for_user && launch_params.binder_url != null,
     offer_local: state.backend_launch_phase === BackendLaunchPhase.wait_for_user && launch_params.pluto_server_url != null,
     binder: launch_params.binder_url != null && state.backend_launch_phase != null,
-    code_differs: state.notebook.cell_order.some(
-        (cell_id) => state.cell_inputs_local[cell_id] != null && state.notebook.cell_inputs[cell_id].code !== state.cell_inputs_local[cell_id].code
+    code_differs: state.notebook.cell_order.some((cell_id) =>
+        state.cell_inputs_local[cell_id]
+            ? state.notebook.cell_inputs[cell_id].code !== state.cell_inputs_local[cell_id].code
+            : state.notebook.cell_inputs[cell_id].code !== state.notebook.cell_inputs[cell_id].code_text
     ),
     recording_waiting_to_start: state.recording_waiting_to_start,
     is_recording: state.is_recording,
@@ -119,6 +122,10 @@ const first_true_key = (obj) => {
  *  code: string,
  *  code_folded: boolean,
  *  metadata: CellMetaData,
+ *  cm_updates: Array<import("./CellInput.js").TextUpdate>
+ *  last_run_version: Number,
+ *  code_text: String,
+ *  start_version: Number,
  * }}
  */
 
@@ -301,6 +308,8 @@ export class Editor extends Component {
 
         this.state = {
             notebook: /** @type {NotebookData} */ initial_notebook_state,
+            /** @type Map<string,EditorView> */
+            cell_views: new Map(),
             cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ ([]),
@@ -349,6 +358,12 @@ export class Editor extends Component {
         this.real_actions = {
             get_notebook: () => this?.state?.notebook || {},
             send: (message_type, ...args) => this.client.send(message_type, ...args),
+            register_cell_view: (cell_id, view) => {
+                this.state.cell_views.set(cell_id, view)
+            },
+            unregister_cell_view: (cell_id) => {
+                this.state.cell_views.delete(cell_id)
+            },
             get_published_object: (objectid) => this.state.notebook.published_objects[objectid],
             //@ts-ignore
             update_notebook: (...args) => this.update_notebook(...args),
@@ -384,6 +399,10 @@ export class Editor extends Component {
                 let new_cells = new_codes.map((code) => ({
                     cell_id: uuidv4(),
                     code: code,
+                    code_text: code,
+                    cm_updates: [],
+                    start_version: 0,
+                    last_run_version: 0,
                     code_folded: false,
                     metadata: {
                         ...DEFAULT_CELL_METADATA,
@@ -432,7 +451,9 @@ export class Editor extends Component {
                         notebook.cell_inputs[cell.cell_id] = {
                             ...cell,
                             // Fill the cell with empty code remotely, so it doesn't run unsafe code
-                            code: "",
+                            start_version: 1,
+                            last_run_version: 0,
+                            cm_updates: [{ specs: [{ from: 0, insert: cell.code }], document_length: 0, client_id: "slkqjdsql" }],
                             metadata: {
                                 ...DEFAULT_CELL_METADATA,
                             },
@@ -470,6 +491,10 @@ export class Editor extends Component {
                     return {
                         cell_id: uuidv4(),
                         code: code,
+                        code_text: code,
+                        last_run_version: 0,
+                        start_version: 0,
+                        cm_updates: [],
                         code_folded: false,
                         metadata: {
                             ...DEFAULT_CELL_METADATA,
@@ -530,6 +555,10 @@ export class Editor extends Component {
                     notebook.cell_inputs[id] = {
                         cell_id: id,
                         code,
+                        code_text: code,
+                        last_run_version: 0,
+                        start_version: 0,
+                        cm_updates: [],
                         code_folded: false,
                         metadata: { ...DEFAULT_CELL_METADATA },
                     }
@@ -599,13 +628,14 @@ export class Editor extends Component {
                         })
                     )
 
-                    await update_notebook((notebook) => {
-                        for (let cell_id of cell_ids) {
-                            if (this.state.cell_inputs_local[cell_id]) {
-                                notebook.cell_inputs[cell_id].code = this.state.cell_inputs_local[cell_id].code
-                            }
-                        }
-                    })
+                    // await update_notebook((notebook) => {
+                    //     for (let cell_id of cell_ids) {
+                    //         if (this.state.cell_inputs_local[cell_id]) {
+                    //             notebook.cell_inputs[cell_id].code = this.state.cell_inputs_local[cell_id].code
+                    //         }
+                    //     }
+                    // })
+
                     // This is a "dirty" trick, as this should actually be stored in some shared request_status => status state
                     // But for now... this is fine 😼
                     await this.setStatePromise(
@@ -661,6 +691,7 @@ export class Editor extends Component {
             },
         }
         this.actions = { ...this.real_actions }
+        window.pluto_actions = this.actions
 
         const apply_notebook_patches = (patches, /** @type {NotebookData?} */ old_state = null, get_reverse_patches = false) =>
             new Promise((resolve) => {
@@ -845,6 +876,13 @@ patch: ${JSON.stringify(
             this.client.send("complete", { query: "sq" }, { notebook_id: this.state.notebook.notebook_id })
             this.client.send("complete", { query: "\\sq" }, { notebook_id: this.state.notebook.notebook_id })
 
+            const users = this.actions.get_notebook().users
+            const names = ["Mars", "Earth", "Moon", "Sun"]
+            const colors = ["#ffc09f", "#a0ced9", "#adf7b6", "#fcf5c7"]
+            this.actions.update_notebook((nb) => {
+                nb.users[this.client_id] = { name: names[Object.keys(users).length], color: colors[Object.keys(users).length] }
+            })
+
             setTimeout(init_feedback, 2 * 1000) // 2 seconds - load feedback a little later for snappier UI
         }
 
@@ -883,6 +921,7 @@ patch: ${JSON.stringify(
                 ? `./${u}?id=${this.state.notebook.notebook_id}`
                 : `${this.state.binder_session_url}${u}?id=${this.state.notebook.notebook_id}&token=${this.state.binder_session_token}`
 
+        this.client_id = Math.random().toString(36).slice(2)
         /** @type {import('../common/PlutoConnection').PlutoConnection} */
         this.client = /** @type {import('../common/PlutoConnection').PlutoConnection} */ ({})
 
@@ -1594,8 +1633,10 @@ patch: ${JSON.stringify(
                             last_hot_reload_time=${notebook.last_hot_reload_time}
                             connected=${this.state.connected}
                         />
+                        <${MultiplayerPanel} users=${notebook.users} client_id=${this.client_id} />
                         <${Notebook}
                             notebook=${notebook}
+                            client_id=${this.client_id}
                             cell_inputs_local=${this.state.cell_inputs_local}
                             disable_input=${this.state.disable_ui || !this.state.connected /* && this.state.backend_launch_phase == null*/}
                             last_created_cell=${this.state.last_created_cell}

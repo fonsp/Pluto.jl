@@ -29,6 +29,8 @@ let CellMemo = ({
     cell_input,
     cell_input_local,
     notebook_id,
+    client_id,
+    users,
     cell_dependencies,
     selected,
     focus_after_creation,
@@ -45,7 +47,7 @@ let CellMemo = ({
 }) => {
     const { body, last_run_timestamp, mime, persist_js_state, rootassignee } = cell_result?.output || {}
     const { queued, running, runtime, errored, depends_on_disabled_cells, logs, depends_on_skipped_cells } = cell_result || {}
-    const { cell_id, code, code_folded, metadata } = cell_input || {}
+    const { cell_id, code, code_folded, metadata, cm_updates, last_run_version } = cell_input || {}
     return useMemo(() => {
         return html`
             <${Cell}
@@ -54,6 +56,8 @@ let CellMemo = ({
                 cell_input=${cell_input}
                 cell_input_local=${cell_input_local}
                 notebook_id=${notebook_id}
+                client_id=${client_id}
+                users=${users}
                 selected=${selected}
                 force_hide_input=${force_hide_input}
                 focus_after_creation=${focus_after_creation}
@@ -73,6 +77,8 @@ let CellMemo = ({
         ...Object.values(metadata),
         depends_on_disabled_cells,
         depends_on_skipped_cells,
+        cm_updates?.length,
+        last_run_version,
         queued,
         running,
         runtime,
@@ -87,6 +93,8 @@ let CellMemo = ({
         code_folded,
         cell_input_local,
         notebook_id,
+        client_id,
+        users,
         cell_dependencies,
         selected,
         force_hide_input,
@@ -137,6 +145,7 @@ export const Notebook = ({
     disable_input,
     process_waiting_for_permission,
     sanitize_html = true,
+    client_id,
 }) => {
     let pluto_actions = useContext(PlutoActionsContext)
 
@@ -186,6 +195,8 @@ export const Notebook = ({
                         cell_dependencies=${notebook?.cell_dependencies?.[cell_id] ?? {}}
                         cell_input_local=${cell_inputs_local[cell_id]}
                         notebook_id=${notebook.notebook_id}
+                        client_id=${client_id}
+                        users=${notebook.users}
                         selected=${selected_cells.includes(cell_id)}
                         focus_after_creation=${last_created_cell === cell_id}
                         force_hide_input=${false}
