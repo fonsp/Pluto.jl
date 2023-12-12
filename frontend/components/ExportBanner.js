@@ -1,3 +1,4 @@
+import { useEventListener } from "../common/useEventListener.js"
 import { html, useEffect, useLayoutEffect, useRef } from "../imports/Preact.js"
 
 const Circle = ({ fill }) => html`
@@ -74,7 +75,7 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
         }
     }, [print_title])
 
-    const element_ref = useRef(null)
+    const element_ref = useRef(/** @type {HTMLDialogElement?} */ (null))
 
     useLayoutEffect(() => {
         if (open) {
@@ -82,7 +83,9 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
         } else {
             element_ref.current?.close()
         }
-    })
+    }, [open, element_ref.current])
+
+    useEventListener(element_ref.current, "close", onClose)
 
     return html`
         <dialog id="export" inert=${!open} ref=${element_ref}>
@@ -126,32 +129,32 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
                         <section>Capture the entire notebook, and any changes you make.</section>
                     </a>
                 `}
-                <div class="export_small_btns">
-                    <button
-                        title="Edit frontmatter"
-                        class="toggle_frontmatter_edit"
-                        onClick=${() => {
-                            onClose()
-                            window.dispatchEvent(new CustomEvent("open pluto frontmatter"))
-                        }}
-                    >
-                        <span></span>
-                    </button>
-                    <button
-                        title="Start presentation"
-                        class="toggle_presentation"
-                        onClick=${() => {
-                            onClose()
-                            // @ts-ignore
-                            window.present()
-                        }}
-                    >
-                        <span></span>
-                    </button>
-                    <button title="Close" class="toggle_export" onClick=${() => onClose()}>
-                        <span></span>
-                    </button>
-                </div>
+            </div>
+            <div class="export_small_btns">
+                <button
+                    title="Edit frontmatter"
+                    class="toggle_frontmatter_edit"
+                    onClick=${() => {
+                        onClose()
+                        window.dispatchEvent(new CustomEvent("open pluto frontmatter"))
+                    }}
+                >
+                    <span></span>
+                </button>
+                <button
+                    title="Start presentation"
+                    class="toggle_presentation"
+                    onClick=${() => {
+                        onClose()
+                        // @ts-ignore
+                        window.present()
+                    }}
+                >
+                    <span></span>
+                </button>
+                <button title="Close" class="toggle_export" onClick=${() => onClose()}>
+                    <span></span>
+                </button>
             </div>
         </dialog>
     `
