@@ -5,6 +5,7 @@ import { LiveDocsTab } from "./LiveDocsTab.js"
 import { is_finished, ProcessTab, total_done, total_tasks, useStatusItem } from "./ProcessTab.js"
 import { useMyClockIsAheadBy } from "../common/clock sync.js"
 import { BackendLaunchPhase } from "../common/Binder.js"
+import { useEventListener } from "../common/useEventListener.js"
 
 /**
  * @typedef PanelTabName
@@ -40,8 +41,10 @@ export let BottomRightPanel = ({
     const hidden = open_tab == null
 
     // Open panel when "open_bottom_right_panel" event is triggered
-    useEffect(() => {
-        let handler = (/** @type {CustomEvent} */ e) => {
+    useEventListener(
+        window,
+        "open_bottom_right_panel",
+        (/** @type {CustomEvent} */ e) => {
             console.log(e.detail)
             // https://github.com/fonsp/Pluto.jl/issues/321
             focus_docs_on_open_ref.current = false
@@ -49,10 +52,9 @@ export let BottomRightPanel = ({
             if (window.getComputedStyle(container_ref.current).display === "none") {
                 alert("This browser window is too small to show docs.\n\nMake the window bigger, or try zooming out.")
             }
-        }
-        window.addEventListener("open_bottom_right_panel", handler)
-        return () => window.removeEventListener("open_bottom_right_panel", handler)
-    }, [])
+        },
+        [set_open_tab]
+    )
 
     const status = useWithBackendStatus(notebook, backend_launch_phase)
 

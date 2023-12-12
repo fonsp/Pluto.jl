@@ -1,4 +1,4 @@
-import { html, useState, useRef, useEffect, useContext } from "../imports/Preact.js"
+import { html, useState, useRef, useEffect, useContext, useCallback } from "../imports/Preact.js"
 import { cl } from "../common/ClassTable.js"
 
 import { PlutoActionsContext } from "../common/PlutoContext.js"
@@ -7,6 +7,7 @@ import { PkgTerminalView } from "./PkgTerminalView.js"
 import { useDebouncedTruth } from "./RunArea.js"
 import { time_estimate, usePackageTimingData } from "../common/InstallTimeEstimate.js"
 import { pretty_long_time } from "./EditOrRunButton.js"
+import { useEventListener } from "../common/useEventListener.js"
 
 // This funny thing is a way to tell parcel to bundle these files..
 // Eventually I'll write a plugin that is able to parse html`...`, but this is it for now.
@@ -32,14 +33,6 @@ export const help_circle_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/
  * @property {Boolean} [big]
  */
 
-export const open_pluto_popup = (/** @type{PkgPopupDetails | MiscPopupDetails} */ detail) => {
-    window.dispatchEvent(
-        new CustomEvent("open pluto popup", {
-            detail,
-        })
-    )
-}
-
 export const Popup = ({ notebook, disable_input }) => {
     const [recent_event, set_recent_event] = useState(/** @type{(PkgPopupDetails | MiscPopupDetails)?} */ (null))
     const recent_event_ref = useRef(/** @type{(PkgPopupDetails | MiscPopupDetails)?} */ (null))
@@ -47,52 +40,52 @@ export const Popup = ({ notebook, disable_input }) => {
     const recent_source_element_ref = useRef(/** @type{HTMLElement?} */ (null))
     const pos_ref = useRef("")
 
-    const open = (/** @type {CustomEvent} */ e) => {
-        const el = e.detail.source_element
-        recent_source_element_ref.current = el
+    const open = useCallback(
+        (/** @type {CustomEvent} */ e) => {
+            const el = e.detail.source_element
+            recent_source_element_ref.current = el
 
-        if (el == null) {
-            pos_ref.current = `top: 20%; left: 50%; transform: translate(-50%, -50%); position: fixed;`
-        } else {
-            const elb = el.getBoundingClientRect()
-            const bodyb = document.body.getBoundingClientRect()
+            if (el == null) {
+                pos_ref.current = `top: 20%; left: 50%; transform: translate(-50%, -50%); position: fixed;`
+            } else {
+                const elb = el.getBoundingClientRect()
+                const bodyb = document.body.getBoundingClientRect()
 
-            pos_ref.current = `top: ${0.5 * (elb.top + elb.bottom) - bodyb.top}px; left: min(max(0px,100vw - 251px - 30px), ${elb.right - bodyb.left}px);`
-        }
+                pos_ref.current = `top: ${0.5 * (elb.top + elb.bottom) - bodyb.top}px; left: min(max(0px,100vw - 251px - 30px), ${elb.right - bodyb.left}px);`
+            }
 
-        set_recent_event(e.detail)
-    }
+            set_recent_event(e.detail)
+        },
+        [set_recent_event]
+    )
 
-    const close = () => {
+    const close = useCallback(() => {
         set_recent_event(null)
-    }
+    }, [set_recent_event])
 
-    useEffect(() => {
-        const onpointerdown = (e) => {
+    useEventListener(window, "open pluto popup", open, [open])
+    useEventListener(window, "close pluto popup", close, [close])
+    useEventListener(
+        window,
+        "pointerdown",
+        (e) => {
             if (recent_event_ref.current == null) return
             if (e.target == null) return
             if (e.target.closest("pluto-popup") != null) return
             if (recent_source_element_ref.current != null && recent_source_element_ref.current.contains(e.target)) return
 
             close()
-        }
-        const onkeydown = (e) => {
-            if (e.key === "Escape") {
-                close()
-            }
-        }
-        window.addEventListener("open pluto popup", open)
-        window.addEventListener("close pluto popup", close)
-        window.addEventListener("pointerdown", onpointerdown)
-        document.addEventListener("keydown", onkeydown)
-
-        return () => {
-            window.removeEventListener("open pluto popup", open)
-            window.removeEventListener("close pluto popup", close)
-            window.removeEventListener("pointerdown", onpointerdown)
-            document.removeEventListener("keydown", onkeydown)
-        }
-    }, [])
+        },
+        [close]
+    )
+    useEventListener(
+        window,
+        "keydown",
+        (e) => {
+            if (e.key === "Escape") close()
+        },
+        [close]
+    )
 
     const type = recent_event?.type
     return html`<pluto-popup

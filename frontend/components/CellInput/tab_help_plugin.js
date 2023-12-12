@@ -56,10 +56,8 @@ export const tab_help_plugin = ViewPlugin.define(
                 this.setready(false)
             },
             keydown: function (event, view) {
-                console.error(event.key, view.state.field(TabHelp), view.state.field(LastFocusWasForced))
                 if (event.key == "Tab") {
                     if (view.state.field(TabHelp) && !view.state.field(LastFocusWasForced) && !view.state.readOnly) {
-                        console.log(123)
                         open_pluto_popup({
                             type: "info",
                             source_element: view.dom,

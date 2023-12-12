@@ -1,14 +1,14 @@
-import { html, Component, useRef, useLayoutEffect, useState, useEffect } from "../imports/Preact.js"
+import { html, useRef, useLayoutEffect, useState, useEffect, useCallback } from "../imports/Preact.js"
 import { has_ctrl_or_cmd_pressed } from "../common/KeyboardShortcuts.js"
 import _ from "../imports/lodash.js"
 
 import "https://cdn.jsdelivr.net/gh/fonsp/rebel-tag-input@1.0.6/lib/rebel-tag-input.mjs"
 
 //@ts-ignore
-import dialogPolyfill from "https://cdn.jsdelivr.net/npm/dialog-polyfill@0.5.6/dist/dialog-polyfill.esm.min.js"
 import immer from "../imports/immer.js"
 import { useDialog } from "../common/useDialog.js"
 import { FeaturedCard } from "./welcome/FeaturedCard.js"
+import { useEventListener } from "../common/useEventListener.js"
 
 /**
  * @param {{
@@ -24,10 +24,6 @@ export const FrontMatterInput = ({ filename, remote_frontmatter, set_remote_fron
         set_frontmatter(remote_frontmatter ?? {})
     }, [remote_frontmatter])
 
-    // useEffect(() => {
-    //     console.log("New frontmatter:", frontmatter)
-    // }, [frontmatter])
-
     const fm_setter = (key) => (value) =>
         set_frontmatter(
             immer((fm) => {
@@ -41,43 +37,23 @@ export const FrontMatterInput = ({ filename, remote_frontmatter, set_remote_fron
         set_frontmatter(remote_frontmatter ?? {})
         close()
     }
-    const submit = () => {
+    const submit = useCallback(() => {
         set_remote_frontmatter(clean_data(frontmatter) ?? {}).then(() =>
             alert("Frontmatter synchronized ✔\n\nThese parameters will be used in future exports.")
         )
         close()
-    }
+    }, [clean_data, set_remote_frontmatter, frontmatter, close])
 
-    const clean_data = (obj) => {
-        let a = _.isPlainObject(obj)
-            ? Object.fromEntries(
-                  Object.entries(obj)
-                      .map(([key, val]) => [key, clean_data(val)])
-                      .filter(([key, val]) => val != null)
-              )
-            : _.isArray(obj)
-            ? obj.map(clean_data).filter((x) => x != null)
-            : obj
+    useEventListener(window, "open pluto frontmatter", open)
 
-        return _.isEmpty(a) ? null : a
-    }
-
-    useLayoutEffect(() => {
-        window.addEventListener("open pluto frontmatter", open)
-        return () => {
-            window.removeEventListener("open pluto frontmatter", open)
-        }
-    }, [])
-
-    useLayoutEffect(() => {
-        const listener = (e) => {
+    useEventListener(
+        window,
+        "keydown",
+        (e) => {
             if (dialog_ref.current != null) if (dialog_ref.current.contains(e.target)) if (e.key === "Enter" && has_ctrl_or_cmd_pressed(e)) submit()
-        }
-        window.addEventListener("keydown", listener)
-        return () => {
-            window.removeEventListener("keydown", listener)
-        }
-    }, [])
+        },
+        [dialog_ref, submit]
+    )
 
     const frontmatter_with_defaults = {
         title: null,
@@ -186,6 +162,20 @@ export const FrontMatterInput = ({ filename, remote_frontmatter, set_remote_fron
 
         <div class="final"><button onClick=${cancel}>Cancel</button><button onClick=${submit}>Save</button></div>
     </dialog>`
+}
+
+const clean_data = (obj) => {
+    let a = _.isPlainObject(obj)
+        ? Object.fromEntries(
+              Object.entries(obj)
+                  .map(([key, val]) => [key, clean_data(val)])
+                  .filter(([key, val]) => val != null)
+          )
+        : _.isArray(obj)
+        ? obj.map(clean_data).filter((x) => x != null)
+        : obj
+
+    return _.isEmpty(a) ? null : a
 }
 
 const special_field_names = ["tags", "date", "license", "url", "color"]
