@@ -57,22 +57,24 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
 
     //
     let print_old_title_ref = useRef("")
-    useEffect(() => {
-        let a = () => {
+    useEventListener(
+        window,
+        "beforeprint",
+        () => {
             console.log("beforeprint")
             print_old_title_ref.current = document.title
             document.title = print_title.replace(/\.jl$/, "").replace(/\.plutojl$/, "")
-        }
-        let b = () => {
+        },
+        [print_title]
+    )
+    useEventListener(
+        window,
+        "afterprint",
+        () => {
             document.title = print_old_title_ref.current
-        }
-        window.addEventListener("beforeprint", a)
-        window.addEventListener("afterprint", b)
-        return () => {
-            window.removeEventListener("beforeprint", a)
-            window.removeEventListener("afterprint", b)
-        }
-    }, [print_title])
+        },
+        [print_title]
+    )
 
     return html`
         <aside id="export" inert=${!open}>
