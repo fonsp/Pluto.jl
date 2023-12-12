@@ -87,7 +87,14 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
         }
     }, [open, element_ref.current])
 
-    useEventListener(element_ref.current, "close", onClose)
+    useEventListener(
+        element_ref.current,
+        "focusout",
+        () => {
+            if (!element_ref.current?.matches(":focus-within")) onClose()
+        },
+        [onClose]
+    )
 
     return html`
         <dialog id="export" inert=${!open} ref=${element_ref}>
