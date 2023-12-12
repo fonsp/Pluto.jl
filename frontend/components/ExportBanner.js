@@ -1,4 +1,4 @@
-import { html, useEffect, useRef } from "../imports/Preact.js"
+import { html, useEffect, useLayoutEffect, useRef } from "../imports/Preact.js"
 
 const Circle = ({ fill }) => html`
     <svg
@@ -74,8 +74,18 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
         }
     }, [print_title])
 
+    const element_ref = useRef(null)
+
+    useLayoutEffect(() => {
+        if (open) {
+            element_ref.current?.show()
+        } else {
+            element_ref.current?.close()
+        }
+    })
+
     return html`
-        <aside id="export" inert=${!open}>
+        <dialog id="export" inert=${!open} ref=${element_ref}>
             <div id="container">
                 <div class="export_title">export</div>
                 <!-- no "download" attribute here: we want the jl contents to be shown in a new tab -->
@@ -143,6 +153,6 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
                     </button>
                 </div>
             </div>
-        </aside>
+        </dialog>
     `
 }
