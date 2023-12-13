@@ -34,8 +34,10 @@ const LastFocusWasForced = StateField.define({
 export const tab_help_plugin = ViewPlugin.define(
     (view) => ({
         setready: (x) =>
-            view.dispatch({
-                effects: [TabHelpEffect.of(x)],
+            requestIdleCallback(() => {
+                view.dispatch({
+                    effects: [TabHelpEffect.of(x)],
+                })
             }),
     }),
     {
@@ -47,8 +49,10 @@ export const tab_help_plugin = ViewPlugin.define(
             },
             blur: function (event, view) {
                 this.setready(false)
-                view.dispatch({
-                    effects: [LastFocusWasForcedEffect.of(false)],
+                requestIdleCallback(() => {
+                    view.dispatch({
+                        effects: [LastFocusWasForcedEffect.of(false)],
+                    })
                 })
             },
             click: function (event, view) {
