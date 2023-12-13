@@ -1,4 +1,4 @@
-import { html, useState, useRef, useEffect, useContext, useCallback } from "../imports/Preact.js"
+import { html, useState, useRef, useEffect, useContext, useCallback, useLayoutEffect } from "../imports/Preact.js"
 import { cl } from "../common/ClassTable.js"
 
 import { PlutoActionsContext } from "../common/PlutoContext.js"
@@ -21,6 +21,7 @@ export const help_circle_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/
  * @property {"nbpkg"} type
  * @property {HTMLElement} [source_element]
  * @property {Boolean} [big]
+ * @property {Boolean} [should_focus] Should the popup receive keyboard focus after opening? Rule of thumb: yes if the popup opens on a click, no if it opens spontaneously.
  * @property {string} package_name
  * @property {boolean} is_disable_pkg
  */
@@ -31,6 +32,7 @@ export const help_circle_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/
  * @property {import("../imports/Preact.js").ReactElement} body
  * @property {HTMLElement?} [source_element]
  * @property {Boolean} [big]
+ * @property {Boolean} [should_focus] Should the popup receive keyboard focus after opening? Rule of thumb: yes if the popup opens on a click, no if it opens spontaneously.
  */
 
 export const Popup = ({ notebook, disable_input }) => {
@@ -87,26 +89,75 @@ export const Popup = ({ notebook, disable_input }) => {
         [close]
     )
 
+    // focus the popup when it opens
+    const element_focused_before_popup = useRef(/** @type {any} */ (null))
+    useLayoutEffect(() => {
+        if (recent_event != null) {
+            console.log(recent_event)
+            if (recent_event.should_focus === true) {
+                console.log(element_ref.current?.querySelector("a") ?? element_ref.current)
+                requestAnimationFrame(() => {
+                    element_focused_before_popup.current = document.activeElement
+                    ;(element_ref.current?.querySelector("a") ?? element_ref.current)?.focus?.()
+                })
+            } else {
+                element_focused_before_popup.current = null
+            }
+        }
+    }, [recent_event != null])
+
+    const element_ref = useRef(/** @type {HTMLElement?} */ (null))
+
+    // if the popup was focused on opening:
+    // when the popup loses focus (and the focus did not move to the source element):
+    // 1. close the popup
+    // 2. return focus to the element that was focused before the popup opened
+    useEventListener(
+        element_ref.current,
+        "focusout",
+        (e) => {
+            if (recent_event_ref.current != null && recent_event_ref.current.should_focus === true) {
+                if (element_ref.current?.matches(":focus-within")) return
+                if (
+                    recent_source_element_ref.current != null &&
+                    (recent_source_element_ref.current.contains(e.relatedTarget) || recent_source_element_ref.current.matches(":focus-within"))
+                )
+                    return
+                close()
+                e.preventDefault()
+                element_focused_before_popup.current?.focus?.()
+            }
+        },
+        [close]
+    )
+
     const type = recent_event?.type
     return html`<pluto-popup
-        class=${cl({
-            visible: recent_event != null,
-            [type ?? ""]: type != null,
-            big: recent_event?.big === true,
-        })}
-        style="${pos_ref.current}"
-    >
-        ${type === "nbpkg"
-            ? html`<${PkgPopup}
-                  notebook=${notebook}
-                  disable_input=${disable_input}
-                  recent_event=${recent_event}
-                  clear_recent_event=${() => set_recent_event(null)}
-              />`
-            : type === "info" || type === "warn"
-            ? html`<div>${recent_event?.body}</div>`
-            : null}
-    </pluto-popup>`
+            class=${cl({
+                visible: recent_event != null,
+                [type ?? ""]: type != null,
+                big: recent_event?.big === true,
+            })}
+            style="${pos_ref.current}"
+            ref=${element_ref}
+            tabindex=${
+                "0" /* this makes the popup itself focusable (not just its buttons), just like a <dialog> element. It also makes the `.matches(":focus-within")` trick work. */
+            }
+        >
+            ${type === "nbpkg"
+                ? html`<${PkgPopup}
+                      notebook=${notebook}
+                      disable_input=${disable_input}
+                      recent_event=${recent_event}
+                      clear_recent_event=${() => set_recent_event(null)}
+                  />`
+                : type === "info" || type === "warn"
+                ? html`<div>${recent_event?.body}</div>`
+                : null}
+        </pluto-popup>
+        <div tabindex="0">
+            <!-- We need this dummy tabindexable element here so that the element_focused_before_popup mechanism works on static exports. When tabbing out of the popup, focus would otherwise leave the page altogether because it's the last focusable element in DOM. -->
+        </div>`
 }
 
 /**
@@ -187,26 +238,27 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event, disable_input })
               </div>`
             : null}
         <div class="pkg-buttons">
-            <a
-                class="pkg-update"
-                target="_blank"
-                title="Update packages"
-                style=${(!!showupdate ? "" : "opacity: .4;") +
-                (recent_event?.is_disable_pkg || disable_input || notebook.nbpkg?.waiting_for_permission ? "display: none;" : "")}
-                href="#"
-                onClick=${(e) => {
-                    if (busy) {
-                        alert("Pkg is currently busy with other packages... come back later!")
-                    } else {
-                        if (confirm("Would you like to check for updates and install them? A backup of the notebook file will be created.")) {
-                            console.warn("Pkg.updating!")
-                            pluto_actions.send("pkg_update", {}, { notebook_id: notebook.notebook_id })
-                        }
-                    }
-                    e.preventDefault()
-                }}
-                ><img alt="⬆️" src=${arrow_up_circle_icon} width="17"
-            /></a>
+            ${recent_event?.is_disable_pkg || disable_input || notebook.nbpkg?.waiting_for_permission
+                ? null
+                : html`<a
+                      class="pkg-update"
+                      target="_blank"
+                      title="Update packages"
+                      style=${!!showupdate ? "" : "opacity: .4;"}
+                      href="#"
+                      onClick=${(e) => {
+                          if (busy) {
+                              alert("Pkg is currently busy with other packages... come back later!")
+                          } else {
+                              if (confirm("Would you like to check for updates and install them? A backup of the notebook file will be created.")) {
+                                  console.warn("Pkg.updating!")
+                                  pluto_actions.send("pkg_update", {}, { notebook_id: notebook.notebook_id })
+                              }
+                          }
+                          e.preventDefault()
+                      }}
+                      ><img alt="⬆️" src=${arrow_up_circle_icon} width="17"
+                  /></a>`}
             <a
                 class="toggle-terminal"
                 target="_blank"
