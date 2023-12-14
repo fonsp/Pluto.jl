@@ -55,7 +55,7 @@ featured-card .author {
     background: var(--welcome-card-author-backdrop);
     /* background: hsl(var(--card-color-hue) 34% 46% / 59%); */
     backdrop-filter: blur(15px);
-    color: var(--index-text-color);
+    color: var(--index-light-text-color);
     border-radius: 117px;
     /* height: 2.5em; */
     padding: 0.3em;
@@ -77,6 +77,7 @@ featured-card .author img {
     background: #b6b6b6;
     display: inline-block;
     overflow: hidden;
+    flex: 0 0 auto;
 }
 
 featured-card h3 a {
