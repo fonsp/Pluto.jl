@@ -139,6 +139,7 @@ export const PkgStatusMark = ({ package_name, pluto_actions, notebook_id, nbpkg 
                         source_element: event.currentTarget.parentElement,
                         package_name: package_name,
                         is_disable_pkg: false,
+                        should_focus: true,
                     })
                 }}
             >
@@ -165,6 +166,7 @@ export const PkgActivateMark = ({ package_name }) => {
                         source_element: event.currentTarget.parentElement,
                         package_name: package_name,
                         is_disable_pkg: true,
+                        should_focus: true,
                     })
                 }}
             >
