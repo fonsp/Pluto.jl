@@ -720,6 +720,11 @@ patch: ${JSON.stringify(
                                         },
                                         false
                                     )
+                                } else if (this.state.static_preview && launch_params.slider_server_url != null) {
+                                    open_pluto_popup({
+                                        type: "warn",
+                                        body: html`Something went wrong while updating the notebook state. Please refresh the page to try again.`,
+                                    })
                                 } else {
                                     console.error("Trying to recover: reloading...")
                                     window.parent.location.href = this.state.refresh_target ?? window.location.href
