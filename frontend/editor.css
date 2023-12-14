@@ -285,7 +285,6 @@ pluto-output hr {
     border-top: 3px solid var(--rule-color);
     margin-left: 0;
     margin-right: 0;
-    break-after: page;
 }
 
 pluto-output blockquote {
