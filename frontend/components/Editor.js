@@ -1227,12 +1227,13 @@ patch: ${JSON.stringify(
     ${ctrl_or_cmd_name}+Enter:   run cell and add cell below
     Delete or Backspace:   delete empty cell
 
-    PageUp or fn+Up:   select cell above
-    PageDown or fn+Down:   select cell below
+    PageUp or fn+Up:   jump to cell above
+    PageDown or fn+Down:   jump to cell below
 
     ${ctrl_or_cmd_name}+Q:   interrupt notebook
     ${ctrl_or_cmd_name}+S:   submit all changes
 
+    Select multiple cells by dragging a selection box from the space between cells.
     ${ctrl_or_cmd_name}+C:   copy selected cells
     ${ctrl_or_cmd_name}+X:   cut selected cells
     ${ctrl_or_cmd_name}+V:   paste selected cells
