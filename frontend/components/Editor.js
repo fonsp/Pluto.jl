@@ -868,6 +868,7 @@ patch: ${JSON.stringify(
                             }}
                             >Stay here</a
                         >`,
+                    should_focus: true,
                 })
             }
         }
