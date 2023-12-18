@@ -564,15 +564,21 @@ export const CellInput = ({
 
             if (all_is_selected || cm.state.doc.lines === 1) {
                 pluto_actions.move_remote_cells([cell_id], pluto_actions.get_notebook().cell_order.indexOf(cell_id) + (direction === -1 ? -1 : 2))
+
+                // workaround for https://github.com/preactjs/preact/issues/4235
+                // but the crollintoview behaviour is nice, also when the preact issue is fixed.
                 requestIdleCallback(() => {
                     cm.dispatch({
+                        // TODO: remove me after fix
                         selection: {
                             anchor: 0,
                             head: cm.state.doc.length,
                         },
 
+                        // TODO: keep me after fix
                         scrollIntoView: true,
                     })
+                    // TODO: remove me after fix
                     cm.focus()
                 })
                 return true
@@ -675,6 +681,7 @@ export const CellInput = ({
                     // Remove selection on blur
                     EditorView.domEventHandlers({
                         blur: (event, view) => {
+                            console.warn("blur")
                             // it turns out that this condition is true *exactly* if and only if the blur event was triggered by blurring the window
                             let caused_by_window_blur = document.activeElement === view.contentDOM
 
