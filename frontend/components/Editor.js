@@ -21,7 +21,15 @@ import { ExportBanner } from "./ExportBanner.js"
 import { Popup } from "./Popup.js"
 
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
-import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
+import {
+    has_ctrl_or_cmd_pressed,
+    ctrl_or_cmd_name,
+    is_mac_keyboard,
+    in_textarea_or_input,
+    and,
+    control_name,
+    alt_or_options_name,
+} from "../common/KeyboardShortcuts.js"
 import { PlutoActionsContext, PlutoBondsContext, PlutoJSInitializingContext, SetWithEmptyCallback } from "../common/PlutoContext.js"
 import { BackendLaunchPhase, count_stat } from "../common/Binder.js"
 import { setup_mathjax } from "../common/SetupMathJax.js"
@@ -1249,22 +1257,24 @@ patch: ${JSON.stringify(
                 alert(
                     `Shortcuts 🎹
 
-    Shift+Enter:   run cell
-    ${ctrl_or_cmd_name}+Enter:   run cell and add cell below
+    ⇧${and}Enter:   run cell
+    ${ctrl_or_cmd_name}${and}Enter:   run cell and add cell below
+    ${ctrl_or_cmd_name}${and}S:   submit all changes
     Delete or Backspace:   delete empty cell
 
-    PageUp or fn+Up:   jump to cell above
-    PageDown or fn+Down:   jump to cell below
+    page up or fn${and}↑:   jump to cell above
+    page down or fn${and}↓:   jump to cell below
+    ${alt_or_options_name}${and}↑:   move line/cell up
+    ${alt_or_options_name}${and}↓:   move line/cell down
 
-    ${ctrl_or_cmd_name}+Q:   interrupt notebook
-    ${ctrl_or_cmd_name}+S:   submit all changes
-
+    
     Select multiple cells by dragging a selection box from the space between cells.
-    ${ctrl_or_cmd_name}+C:   copy selected cells
-    ${ctrl_or_cmd_name}+X:   cut selected cells
-    ${ctrl_or_cmd_name}+V:   paste selected cells
-
-    Ctrl+M:   toggle markdown
+    ${ctrl_or_cmd_name}${and}C:   copy selected cells
+    ${ctrl_or_cmd_name}${and}X:   cut selected cells
+    ${ctrl_or_cmd_name}${and}V:   paste selected cells
+    
+    ${control_name}${and}M:   toggle markdown
+    ${ctrl_or_cmd_name}${and}Q:   interrupt notebook
 
     The notebook file saves every time you run a cell.`
                 )
