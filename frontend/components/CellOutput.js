@@ -87,7 +87,7 @@ export class CellOutput extends Component {
                 aria-live="polite"
                 aria-atomic="true"
                 aria-relevant="all"
-                aria-label=${this.props.rootassignee == null ? "result of unlabeled cell:" : `result of variable ${this.props.rootassignee}:`}
+                aria-label=${this.props.rootassignee == null ? "Result of unlabeled cell:" : `Result of variable ${this.props.rootassignee}:`}
             >
                 <assignee aria-hidden="true" translate=${false}>${prettyAssignee(this.props.rootassignee)}</assignee>
                 <${OutputBody} ...${this.props} />
