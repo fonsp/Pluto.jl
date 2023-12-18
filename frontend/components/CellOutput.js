@@ -84,8 +84,12 @@ export class CellOutput extends Component {
                 })}
                 translate=${allow_translate}
                 mime=${this.props.mime}
+                aria-live="polite"
+                aria-atomic="true"
+                aria-relevant="all"
+                aria-label=${this.props.rootassignee == null ? "result of unlabeled cell:" : `result of variable ${this.props.rootassignee}:`}
             >
-                <assignee translate=${false}>${prettyAssignee(this.props.rootassignee)}</assignee>
+                <assignee aria-hidden="true" translate=${false}>${prettyAssignee(this.props.rootassignee)}</assignee>
                 <${OutputBody} ...${this.props} />
             </pluto-output>
         `
