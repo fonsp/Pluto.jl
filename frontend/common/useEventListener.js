@@ -1,6 +1,11 @@
 import { useCallback, useEffect } from "../imports/Preact.js"
 
-export const useEventListener = (element, event_name, handler, deps) => {
+export const useEventListener = (
+    /** @type {Document | HTMLElement | Window | null} */ element,
+    /** @type {string} */ event_name,
+    /** @type {EventListenerOrEventListenerObject} */ handler,
+    /** @type {any[] | undefined} */ deps
+) => {
     let handler_cached = useCallback(handler, deps)
     useEffect(() => {
         if (element == null) return
