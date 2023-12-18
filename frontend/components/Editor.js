@@ -1182,9 +1182,7 @@ patch: ${JSON.stringify(
                 return this.actions.move_remote_cells(this.state.selected_cells, new_index).then(
                     // scroll into view
                     () => {
-                        document
-                            .getElementById((delta > 0 ? _.last : _.first)(this.state.selected_cells) ?? "")
-                            ?.scrollIntoView({ behavior: "instant", block: "nearest" })
+                        document.getElementById((delta > 0 ? _.last : _.first)(this.state.selected_cells) ?? "")?.scrollIntoView({ block: "nearest" })
                     }
                 )
             }
