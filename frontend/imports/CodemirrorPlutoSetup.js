@@ -12,6 +12,8 @@ import {
     defaultKeymap,
     indentMore,
     indentLess,
+    moveLineUp,
+    moveLineDown,
     tags,
     HighlightStyle,
     lineNumbers,
@@ -62,7 +64,7 @@ import {
     linter,
     setDiagnostics,
     //@ts-ignore
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@1234.1.0/dist/index.es.min.js"
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@1234.2.0/dist/index.es.min.js"
 
 export {
     linter,
@@ -79,6 +81,8 @@ export {
     defaultKeymap,
     indentMore,
     indentLess,
+    moveLineUp,
+    moveLineDown,
     tags,
     HighlightStyle,
     lineNumbers,

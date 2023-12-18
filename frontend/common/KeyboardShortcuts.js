@@ -1,6 +1,9 @@
 export let is_mac_keyboard = /Mac/.test(navigator.platform)
 
-export let ctrl_or_cmd_name = is_mac_keyboard ? "Cmd" : "Ctrl"
+export let control_name = is_mac_keyboard ? "⌃" : "Ctrl"
+export let ctrl_or_cmd_name = is_mac_keyboard ? "⌘" : "Ctrl"
+export let alt_or_options_name = is_mac_keyboard ? "⌥" : "Alt"
+export let and = is_mac_keyboard ? " " : "+"
 
 export let has_ctrl_or_cmd_pressed = (event) => event.ctrlKey || (is_mac_keyboard && event.metaKey)
 
