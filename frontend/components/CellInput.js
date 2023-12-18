@@ -50,6 +50,7 @@ import {
     syntaxHighlighting,
     cssLanguage,
     setDiagnostics,
+    moveLineUp,
 } from "../imports/CodemirrorPlutoSetup.js"
 
 import { markdown, html as htmlLang, javascript, sqlLang, python, julia_mixed } from "./CellInput/mixedParsers.js"
@@ -68,6 +69,7 @@ import { mod_d_command } from "./CellInput/mod_d_command.js"
 import { open_bottom_right_panel } from "./BottomRightPanel.js"
 import { timeout_promise } from "../common/PlutoConnection.js"
 import { LastFocusWasForcedEffect, tab_help_plugin } from "./CellInput/tab_help_plugin.js"
+import { moveLineDown } from "../imports/CodemirrorPlutoSetup.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 
@@ -551,6 +553,34 @@ export const CellInput = ({
             return false
         }
 
+        const keyMapMoveLine = (/** @type {EditorView} */ cm, direction) => {
+            if (cm.state.facet(EditorState.readOnly)) {
+                return false
+            }
+
+            const selection = cm.state.selection.main
+            const all_is_selected = selection.anchor === 0 && selection.head === cm.state.doc.length
+            console.log({ all_is_selected })
+
+            if (all_is_selected || cm.state.doc.lines === 1) {
+                pluto_actions.move_remote_cells([cell_id], pluto_actions.get_notebook().cell_order.indexOf(cell_id) + (direction === -1 ? -1 : 2))
+                requestIdleCallback(() => {
+                    cm.dispatch({
+                        selection: {
+                            anchor: 0,
+                            head: cm.state.doc.length,
+                        },
+
+                        scrollIntoView: true,
+                    })
+                    cm.focus()
+                })
+                return true
+            } else {
+                return direction === 1 ? moveLineDown(cm) : moveLineUp(cm)
+            }
+        }
+
         const plutoKeyMaps = [
             { key: "Shift-Enter", run: keyMapSubmit },
             { key: "Ctrl-Enter", mac: "Cmd-Enter", run: keyMapRun },
@@ -565,6 +595,8 @@ export const CellInput = ({
             { key: "Ctrl-Delete", run: keyMapDelete },
             { key: "Backspace", run: keyMapBackspace },
             { key: "Ctrl-Backspace", run: keyMapBackspace },
+            { key: "Alt-ArrowUp", run: (x) => keyMapMoveLine(x, -1) },
+            { key: "Alt-ArrowDown", run: (x) => keyMapMoveLine(x, 1) },
 
             mod_d_command,
         ]

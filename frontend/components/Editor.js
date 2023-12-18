@@ -328,7 +328,7 @@ export class Editor extends Component {
             export_menu_open: false,
 
             last_created_cell: null,
-            selected_cells: [],
+            selected_cells: /** @type {string[]} */ ([]),
 
             extended_components: {
                 CustomHeader: null,
@@ -517,7 +517,8 @@ export class Editor extends Component {
                 this.client.send("interrupt_all", {}, { notebook_id: this.state.notebook.notebook_id }, false)
             },
             move_remote_cells: (cell_ids, new_index) => {
-                update_notebook((notebook) => {
+                return update_notebook((notebook) => {
+                    new_index = Math.max(0, new_index)
                     let before = notebook.cell_order.slice(0, new_index).filter((x) => !cell_ids.includes(x))
                     let after = notebook.cell_order.slice(new_index, Infinity).filter((x) => !cell_ids.includes(x))
                     notebook.cell_order = [...before, ...cell_ids, ...after]
@@ -1164,6 +1165,22 @@ patch: ${JSON.stringify(
         this.run_selected = () => {
             return this.actions.set_and_run_multiple(this.state.selected_cells)
         }
+        this.move_selected = (/** @type {KeyboardEvent} */ e, /** @type {1|-1} */ delta) => {
+            if (this.state.selected_cells.length > 0) {
+                const current_indices = this.state.selected_cells.map((id) => this.state.notebook.cell_order.indexOf(id))
+                const new_index = (delta > 0 ? Math.max : Math.min)(...current_indices) + (delta === -1 ? -1 : 2)
+
+                e.preventDefault()
+                return this.actions.move_remote_cells(this.state.selected_cells, new_index).then(
+                    // scroll into view
+                    () => {
+                        document
+                            .getElementById((delta > 0 ? _.last : _.first)(this.state.selected_cells) ?? "")
+                            ?.scrollIntoView({ behavior: "instant", block: "nearest" })
+                    }
+                )
+            }
+        }
 
         this.serialize_selected = (cell_id = null) => {
             const cells_to_serialize = cell_id == null || this.state.selected_cells.includes(cell_id) ? this.state.selected_cells : [cell_id]
@@ -1221,6 +1238,10 @@ patch: ${JSON.stringify(
                 }
             } else if (e.key === "Enter" && e.shiftKey) {
                 this.run_selected()
+            } else if (e.key === "ArrowUp" && e.altKey) {
+                this.move_selected(e, -1)
+            } else if (e.key === "ArrowDown" && e.altKey) {
+                this.move_selected(e, 1)
             } else if ((e.key === "?" && has_ctrl_or_cmd_pressed(e)) || e.key === "F1") {
                 // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
                 // Also pressing "ctrl+shift" on mac causes the key to show up as "/", this madness
