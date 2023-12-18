@@ -206,7 +206,8 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event, disable_input })
 
     const [showterminal, set_showterminal] = useState(false)
 
-    const busy = recent_event != null && ((notebook.nbpkg?.busy_packages ?? []).includes(recent_event.package_name) || !(notebook.nbpkg?.instantiated ?? true))
+    const needs_first_instatiation = notebook.nbpkg?.restart_required_msg == null && !(notebook.nbpkg?.instantiated ?? true)
+    const busy = recent_event != null && ((notebook.nbpkg?.busy_packages ?? []).includes(recent_event.package_name) || needs_first_instatiation)
 
     const debounced_busy = useDebouncedTruth(busy, 2)
     useEffect(() => {
