@@ -1,5 +1,4 @@
 import { html, useState, useEffect, useLayoutEffect, useRef, useContext, useMemo } from "../imports/Preact.js"
-import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 import _ from "../imports/lodash.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
@@ -24,24 +23,14 @@ import {
     HighlightStyle,
     lineNumbers,
     highlightSpecialChars,
-    foldGutter,
     drawSelection,
     indentOnInput,
-    defaultHighlightStyle,
     closeBrackets,
     rectangularSelection,
     highlightSelectionMatches,
     closeBracketsKeymap,
-    searchKeymap,
     foldKeymap,
-    syntaxTree,
-    Decoration,
-    ViewUpdate,
-    ViewPlugin,
-    WidgetType,
     indentUnit,
-    StateField,
-    StateEffect,
     autocomplete,
     htmlLanguage,
     markdownLanguage,
@@ -69,6 +58,7 @@ import { mod_d_command } from "./CellInput/mod_d_command.js"
 import { open_bottom_right_panel } from "./BottomRightPanel.js"
 import { timeout_promise } from "../common/PlutoConnection.js"
 import { LastFocusWasForcedEffect, tab_help_plugin } from "./CellInput/tab_help_plugin.js"
+import { useEventListener } from "../common/useEventListener.js"
 import { moveLineDown } from "../imports/CodemirrorPlutoSetup.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
@@ -933,7 +923,23 @@ export const CellInput = ({
 const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, running_disabled, any_logs, show_logs, set_show_logs, set_cell_disabled }) => {
     const timeout = useRef(null)
     let pluto_actions = useContext(PlutoActionsContext)
-    const [open, setOpen] = useState(false)
+    const [open, setOpenState] = useState(false)
+    const element_ref = useRef(/** @type {HTMLButtonElement?} */ (null))
+    const prevously_focused_element_ref = useRef(/** @type {Element?} */ (null))
+    const setOpen = (val) => {
+        if (val) {
+            prevously_focused_element_ref.current = document.activeElement
+        }
+        setOpenState(val)
+    }
+    useLayoutEffect(() => {
+        if (open) {
+            element_ref.current?.querySelector("li")?.focus()
+        } else {
+            if (prevously_focused_element_ref.current instanceof HTMLElement) prevously_focused_element_ref.current?.focus()
+        }
+    }, [open])
+
     const mouseenter = () => {
         if (timeout.current) clearTimeout(timeout.current)
     }
@@ -966,20 +972,36 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
             })
     }
 
+    useEventListener(window, "keydown", (e) => {
+        if (e.key === "Escape") {
+            setOpen(false)
+        }
+    })
+
     return html` <button
         onClick=${() => setOpen(!open)}
-        onBlur=${() => setOpen(false)}
+        onfocusout=${(e) => {
+            if (
+                // the focus is not one of the <li>
+                !element_ref.current?.matches(":focus-within") ||
+                // or the focus is on the button itself
+                e.relatedTarget === element_ref.current
+            )
+                setOpen(false)
+        }}
         class=${cl({
             input_context_menu: true,
             open,
         })}
         title="Actions"
+        ref=${element_ref}
     >
         <span class="icon"></span>
         ${open
             ? html`<ul onMouseenter=${mouseenter}>
-                  <li onClick=${on_delete} title="Delete"><span class="delete ctx_icon" />Delete cell</li>
+                  <li tabindex="0" onClick=${on_delete} title="Delete"><span class="delete ctx_icon" />Delete cell</li>
                   <li
+                      tabindex="0"
                       onClick=${toggle_running_disabled}
                       title=${running_disabled ? "Enable and run the cell" : "Disable this cell, and all cells that depend on it"}
                   >
@@ -987,18 +1009,19 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
                       ${running_disabled ? html`<b>Enable cell</b>` : html`Disable cell`}
                   </li>
                   ${any_logs
-                      ? html`<li title="" onClick=${toggle_logs}>
+                      ? html`<li tabindex="0" title="" onClick=${toggle_logs}>
                             ${show_logs
                                 ? html`<span class="hide_logs ctx_icon" /><span>Hide logs</span>`
                                 : html`<span class="show_logs ctx_icon" /><span>Show logs</span>`}
                         </li>`
                       : null}
                   ${is_copy_output_supported()
-                      ? html`<li title="Copy the output of this cell to the clipboard." onClick=${copy_output}>
+                      ? html`<li tabindex="0" title="Copy the output of this cell to the clipboard." onClick=${copy_output}>
                             <span class="copy_output ctx_icon" />Copy output
                         </li>`
                       : null}
                   <li
+                      tabindex="0"
                       onClick=${toggle_skip_as_script}
                       title=${skip_as_script
                           ? "This cell is currently stored in the notebook file as a Julia comment. Click here to disable."
