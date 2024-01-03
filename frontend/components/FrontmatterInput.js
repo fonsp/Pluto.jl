@@ -79,6 +79,7 @@ export const FrontMatterInput = ({ filename, remote_frontmatter, set_remote_fron
                         <button
                             class="deletefield"
                             title="Delete field"
+                            aria-label="Delete field"
                             onClick=${() => {
                                 //  TODO
                                 set_frontmatter(
@@ -116,7 +117,7 @@ export const FrontMatterInput = ({ filename, remote_frontmatter, set_remote_fron
             If you are publishing this notebook on the web, you can set the parameters below to provide HTML metadata. This is useful for search engines and
             social media.
         </p>
-        <div class="card-preview">
+        <div class="card-preview" aria-hidden="true">
             <h2>Preview</h2>
             <${FeaturedCard}
                 entry=${
