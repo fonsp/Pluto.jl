@@ -102,7 +102,7 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
                 <div class="export_title">export</div>
                 <!-- no "download" attribute here: we want the jl contents to be shown in a new tab -->
                 <a href=${notebookfile_url} target="_blank" class="export_card" onClick=${(e) => exportNotebook(e, 0)}>
-                    <header><${Triangle} fill="#a270ba" /> Notebook file</header>
+                    <header role="none"><${Triangle} fill="#a270ba" /> Notebook file</header>
                     <section>Download a copy of the <b>.jl</b> script.</section>
                 </a>
                 <a
@@ -115,11 +115,11 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
                         exportNotebook(e, 1)
                     }}
                 >
-                    <header><${Square} fill="#E86F51" /> Static HTML</header>
+                    <header role="none"><${Square} fill="#E86F51" /> Static HTML</header>
                     <section>An <b>.html</b> file for your web page, or to share online.</section>
                 </a>
                 <a href="#" class="export_card" onClick=${() => window.print()}>
-                    <header><${Square} fill="#619b3d" /> PDF</header>
+                    <header role="none"><${Square} fill="#619b3d" /> PDF</header>
                     <section>A static <b>.pdf</b> file for print or email.</section>
                 </a>
                 ${html`
@@ -134,7 +134,7 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
                         }}
                         class="export_card"
                     >
-                        <header><${Circle} fill="#E86F51" /> Record <em>(preview)</em></header>
+                        <header role="none"><${Circle} fill="#E86F51" /> Record <em>(preview)</em></header>
                         <section>Capture the entire notebook, and any changes you make.</section>
                     </a>
                 `}
