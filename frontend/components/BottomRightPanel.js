@@ -123,6 +123,7 @@ export let BottomRightPanel = ({
                         ? null
                         : html`<button
                               class="helpbox-close"
+                              title="Close panel"
                               onClick=${() => {
                                   set_open_tab(null)
                               }}
