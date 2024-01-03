@@ -34,7 +34,9 @@ const prettyAssignee = (assignee) =>
 export class CellOutput extends Component {
     constructor() {
         super()
-        this.state = {}
+        this.state = {
+            output_changed_once: false,
+        }
 
         this.old_height = 0
         // @ts-ignore Is there a way to use the latest DOM spec?
@@ -58,6 +60,12 @@ export class CellOutput extends Component {
 
     shouldComponentUpdate({ last_run_timestamp, sanitize_html }) {
         return last_run_timestamp !== this.props.last_run_timestamp || sanitize_html !== this.props.sanitize_html
+    }
+
+    componentDidUpdate(old_props) {
+        if (this.props.last_run_timestamp !== old_props.last_run_timestamp) {
+            this.setState({ output_changed_once: true })
+        }
     }
 
     componentDidMount() {
@@ -84,8 +92,12 @@ export class CellOutput extends Component {
                 })}
                 translate=${allow_translate}
                 mime=${this.props.mime}
+                aria-live=${this.state.output_changed_once ? "polite" : "off"}
+                aria-atomic="true"
+                aria-relevant="all"
+                aria-label=${this.props.rootassignee == null ? "Result of unlabeled cell:" : `Result of variable ${this.props.rootassignee}:`}
             >
-                <assignee translate=${false}>${prettyAssignee(this.props.rootassignee)}</assignee>
+                <assignee aria-hidden="true" translate=${false}>${prettyAssignee(this.props.rootassignee)}</assignee>
                 <${OutputBody} ...${this.props} />
             </pluto-output>
         `
