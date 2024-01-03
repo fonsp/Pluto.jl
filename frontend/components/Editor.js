@@ -235,6 +235,7 @@ const first_true_key = (obj) => {
 /**
  * @typedef NotebookData
  * @type {{
+ *  pluto_version?: string,
  *  notebook_id: string,
  *  path: string,
  *  shortpath: string,
@@ -946,7 +947,7 @@ patch: ${JSON.stringify(
             if (!this.state.static_preview && document.visibilityState === "visible") {
                 // view stats on https://stats.plutojl.org/
                 //@ts-ignore
-                count_stat(`editing/${window?.version_info?.pluto ?? "unknown"}${window.plutoDesktop ? "-desktop" : ""}`)
+                count_stat(`editing/${window?.version_info?.pluto ?? this.state.notebook.pluto_version ?? "unknown"}${window.plutoDesktop ? "-desktop" : ""}`)
             }
         }, 1000 * 15 * 60)
         setInterval(() => {
@@ -1366,18 +1367,22 @@ patch: ${JSON.stringify(
     }
 
     componentDidMount() {
+        const lp = this.props.launch_params
         if (this.state.static_preview) {
             this.setState({
                 initializing: false,
             })
+
             // view stats on https://stats.plutojl.org/
-            if (this.state.pluto_server_url != null) {
-                count_stat(`article-view`)
-            } else {
-                count_stat(`article-view`)
-            }
+            count_stat(
+                lp.pluto_server_url != null
+                    ? // record which featured notebook was viewed, e.g. basic/Markdown.jl
+                      `featured-view${lp.notebookfile != null ? new URL(lp.notebookfile).pathname : ""}`
+                    : // @ts-ignore
+                      `article-view/${window?.version_info?.pluto ?? this.state.notebook.pluto_version ?? "unknown"}`
+            )
         } else {
-            this.connect(this.props.launch_params.pluto_server_url ? ws_address_from_base(this.props.launch_params.pluto_server_url) : undefined)
+            this.connect(lp.pluto_server_url ? ws_address_from_base(lp.pluto_server_url) : undefined)
         }
     }
 
