@@ -111,13 +111,26 @@ end
 const can_macroexpand_no_bind = Set(Symbol.(["@md_str", "Markdown.@md_str", "@gensym", "Base.@gensym", "@enum", "Base.@enum", "@assert", "Base.@assert", "@cmd"]))
 const can_macroexpand = can_macroexpand_no_bind ∪ Set(Symbol.(["@bind", "PlutoRunner.@bind"]))
 
+const plutorunner_id = Base.PkgId(Base.UUID("dc6b355a-2368-4481-ae6d-ae0351418d79"), "PlutoRunner")
+const pluto_id = Base.PkgId(Base.UUID("c3e4b0f8-55cb-11ea-2926-15256bba5781"), "Pluto")
 const found_plutorunner = Ref{Union{Nothing,Module}}(nothing)
+
 function get_plutorunner()
     fpr = found_plutorunner[]
     if fpr === nothing
-        if isdefined(Main, :PlutoRunner) && Main.PlutoRunner isa Module
+        # lets try really hard to find it!
+        if haskey(Base.loaded_modules, plutorunner_id)
+            @info "yayy"
+            found_plutorunner[] = Base.loaded_modules[plutorunner_id]
+        elseif haskey(Base.loaded_modules, pluto_id)
+            @info "woohooo"
+            found_plutorunner[] = Base.loaded_modules[pluto_id].PlutoRunner
+        elseif isdefined(Main, :PlutoRunner) && Main.PlutoRunner isa Module
+            @info "joepie"
             found_plutorunner[] = Main.PlutoRunner
         else
+            @info "shit"
+            
             Fake.PlutoRunner # (the fake one)
         end
     else
