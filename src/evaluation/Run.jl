@@ -494,8 +494,8 @@ function cells_to_disable_to_resolve_multiple_defs(old::NotebookTopology, new::N
 	for cell in cells
 		new_node = new.nodes[cell]
 		
-		fellow_assigners_old = filter!(c -> !is_disabled(old, c), PlutoReactiveCore.where_assigned(old, new_node))
-		fellow_assigners_new = filter!(c -> !is_disabled(new, c), PlutoReactiveCore.where_assigned(new, new_node))
+		fellow_assigners_old = filter!(c -> !PlutoReactiveCore.is_disabled(old, c), PlutoReactiveCore.where_assigned(old, new_node))
+		fellow_assigners_new = filter!(c -> !PlutoReactiveCore.is_disabled(new, c), PlutoReactiveCore.where_assigned(new, new_node))
 		
 		if length(fellow_assigners_new) > length(fellow_assigners_old)
 			other_definers = setdiff(fellow_assigners_new, (cell,))

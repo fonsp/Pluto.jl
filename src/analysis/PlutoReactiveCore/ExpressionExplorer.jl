@@ -8,26 +8,17 @@ using ExpressionExplorer
 using ExpressionExplorer: ScopeState
 
 module Fake
-
-# this one is fake
-module PlutoRunner
-
-using Markdown
-using InteractiveUtils
-
-# this one is fake
-macro bind(def, element)    
-    quote
-        global $(esc(def)) = element
+    module PlutoRunner
+        using Markdown
+        using InteractiveUtils
+        macro bind(def, element)    
+            quote
+                global $(esc(def)) = element
+            end
+        end
     end
+    import .PlutoRunner
 end
-# fake
-end
-
-import .PlutoRunner
-
-end
-
 import .Fake
 
 
