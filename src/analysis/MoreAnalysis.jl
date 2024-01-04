@@ -39,7 +39,7 @@ end
 
 function _downstream_recursive!(found::Set{Cell}, notebook::Notebook, topology::NotebookTopology, from::Vector{Cell})::Nothing
     for cell in from
-        one_down = Pluto.where_referenced(notebook, topology, cell)
+        one_down = PlutoReactiveCore.where_referenced(notebook, topology, cell)
         for next in one_down
             if next ∉ found
                 push!(found, next)
@@ -62,7 +62,7 @@ end
 function _upstream_recursive!(found::Set{Cell}, notebook::Notebook, topology::NotebookTopology, from::Vector{Cell})::Nothing
     for cell in from
         references = topology.nodes[cell].references
-        for upstream in Pluto.where_assigned(topology, references)
+        for upstream in PlutoReactiveCore..where_assigned(topology, references)
             if upstream ∉ found
                 push!(found, upstream)
                 _upstream_recursive!(found, notebook, topology, Cell[upstream])
