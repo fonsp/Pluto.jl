@@ -7,6 +7,7 @@ import ..PlutoReactiveCore
 using ExpressionExplorer
 using ExpressionExplorer: ScopeState
 
+module Fake
 
 # this one is fake
 module PlutoRunner
@@ -14,31 +15,20 @@ module PlutoRunner
 using Markdown
 using InteractiveUtils
 
-# this is fake
-load_integrations_if_needed() = nothing
-# dont look at this
-const initial_value_getter_ref = Ref{Function}(element -> missing)
-struct GiveMeCellID end
-
 # this one is fake
 macro bind(def, element)    
-	if def isa Symbol
-		quote
-            # fake fake super fake alert
-			$(load_integrations_if_needed)()
-			local el = $(esc(element))
-			global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : $(initial_value_getter_ref)[](el)
-			PlutoRunner.create_bond(el, $(Meta.quot(def)), $(GiveMeCellID()))
-		end
-	else
-        # not real
-		:(throw(ArgumentError("""\nMacro example usage: \n\n\t@bind my_number html"<input type='range'>"\n\n""")))
-	end
+    quote
+        global $(esc(def)) = element
+    end
 end
 # fake
 end
 
 import .PlutoRunner
+
+end
+
+import .Fake
 
 
 """
@@ -121,6 +111,20 @@ end
 const can_macroexpand_no_bind = Set(Symbol.(["@md_str", "Markdown.@md_str", "@gensym", "Base.@gensym", "@enum", "Base.@enum", "@assert", "Base.@assert", "@cmd"]))
 const can_macroexpand = can_macroexpand_no_bind ∪ Set(Symbol.(["@bind", "PlutoRunner.@bind"]))
 
+const found_plutorunner = Ref{Union{Nothing,Module}}(nothing)
+function get_plutorunner()
+    fpr = found_plutorunner[]
+    if fpr === nothing
+        if isdefined(Main, :PlutoRunner) && Main.PlutoRunner isa Module
+            found_plutorunner[] = Main.PlutoRunner
+        else
+            Fake.PlutoRunner # (the fake one)
+        end
+    else
+        fpr
+    end
+end
+
 """
 If the macro is **known to Pluto**, expand or 'mock expand' it, if not, return the expression. Macros from external packages are not expanded, this is done later in the pipeline. See https://github.com/fonsp/Pluto.jl/pull/1032
 """
@@ -129,7 +133,7 @@ function maybe_macroexpand_pluto(ex::Expr; recursive::Bool=false, expand_bind::B
         funcname = ExpressionExplorer.split_funcname(ex.args[1])
 
         if funcname.joined ∈ (expand_bind ? can_macroexpand : can_macroexpand_no_bind)
-            macroexpand(PlutoRunner, ex; recursive=false)::Expr
+            macroexpand(get_plutorunner(), ex; recursive=false)::Expr
         else
             ex
         end
