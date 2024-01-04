@@ -124,19 +124,19 @@ maybe_macroexpand_pluto(ex::Any; kwargs...) = ex
 
 ###############
 
+function collect_implicit_usings(usings_imports::ExpressionExplorer.UsingsImports)
+    implicit_usings = Set{Expr}()
+    for (using_, isglobal) in zip(usings_imports.usings, usings_imports.usings_isglobal)
+        if !(isglobal && is_implicit_using(using_))
+            continue
+        end
 
-
-function collect_implicit_usings(ex::Expr)
-    if is_implicit_using(ex)
-        Set{Expr}(Iterators.map(transform_dot_notation, ex.args))
-    else
-        return Set{Expr}()
+        for arg in using_.args
+            push!(implicit_usings, transform_dot_notation(arg))
+        end
     end
+    implicit_usings
 end
-
-collect_implicit_usings(usings::Union{AbstractSet{Expr},AbstractVector{Expr}}) = mapreduce(collect_implicit_usings, union!, usings; init = Set{Expr}())
-collect_implicit_usings(usings_imports::ExpressionExplorer.UsingsImports) = collect_implicit_usings(usings_imports.usings)
-
 
 is_implicit_using(ex::Expr) = Meta.isexpr(ex, :using) && length(ex.args) >= 1 && !Meta.isexpr(ex.args[1], :(:))
 

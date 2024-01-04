@@ -115,7 +115,7 @@ and add the Pluto package:
 
 ```julia
 julia> ]
-(v1.7) pkg> add Pluto
+(v1.10) pkg> add Pluto
 ```
 
 _Press `Ctrl+C` to return to the `julia>` prompt._

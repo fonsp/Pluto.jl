@@ -116,7 +116,7 @@ function topological_order(topology::NotebookTopology{C}, roots::AbstractVector{
 					pop!(entries)
 				end
 
-				continue # the cycle was created by us so we can keep exploring other childs
+				continue # the cycle was created by us so we can keep exploring other children
 			end
 		end
 		push!(exits, cell)

@@ -30,7 +30,8 @@ function with_new_soft_definitions(topology::NotebookTopology, cell::Cell, soft_
 	)
 end
 
-collect_implicit_usings(topology::NotebookTopology, cell::Cell) = ExpressionExplorerExtras.collect_implicit_usings(topology.codes[cell].module_usings_imports)
+collect_implicit_usings(topology::NotebookTopology, cell::Cell) =
+    ExpressionExplorerExtras.collect_implicit_usings(topology.codes[cell].module_usings_imports)
 
 function cells_with_deleted_macros(old_topology::NotebookTopology, new_topology::NotebookTopology)
     old_macros = mapreduce(c -> defined_macros(old_topology, c), union!, all_cells(old_topology); init=Set{Symbol}())
