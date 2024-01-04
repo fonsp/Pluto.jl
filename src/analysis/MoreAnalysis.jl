@@ -3,7 +3,22 @@ module MoreAnalysis
 export bound_variable_connections_graph
 
 import ..Pluto
-import ..Pluto: Cell, Notebook, NotebookTopology, ExpressionExplorer, ExpressionExplorerExtras
+import ..Pluto: Cell, Notebook, NotebookTopology, ExpressionExplorer, ExpressionExplorerExtras, PlutoReactiveCore
+
+
+"Return whether any cell references the given symbol. Used for the @bind mechanism."
+function is_referenced_anywhere(notebook::Notebook, topology::NotebookTopology, sym::Symbol)::Bool
+	any(notebook.cells) do cell
+		sym ∈ topology.nodes[cell].references
+	end
+end
+
+"Return whether any cell defines the given symbol. Used for the @bind mechanism."
+function is_assigned_anywhere(notebook::Notebook, topology::NotebookTopology, sym::Symbol)::Bool
+	any(notebook.cells) do cell
+		sym ∈ topology.nodes[cell].definitions
+	end
+end
 
 "Find all subexpressions of the form `@bind symbol something`, and extract the `symbol`s."
 function find_bound_variables(expr)
@@ -39,7 +54,7 @@ end
 
 function _downstream_recursive!(found::Set{Cell}, notebook::Notebook, topology::NotebookTopology, from::Vector{Cell})::Nothing
     for cell in from
-        one_down = PlutoReactiveCore.where_referenced(notebook, topology, cell)
+        one_down = PlutoReactiveCore.where_referenced(topology, cell)
         for next in one_down
             if next ∉ found
                 push!(found, next)
@@ -62,7 +77,7 @@ end
 function _upstream_recursive!(found::Set{Cell}, notebook::Notebook, topology::NotebookTopology, from::Vector{Cell})::Nothing
     for cell in from
         references = topology.nodes[cell].references
-        for upstream in PlutoReactiveCore..where_assigned(topology, references)
+        for upstream in PlutoReactiveCore.where_assigned(topology, references)
             if upstream ∉ found
                 push!(found, upstream)
                 _upstream_recursive!(found, notebook, topology, Cell[upstream])

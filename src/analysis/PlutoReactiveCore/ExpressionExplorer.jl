@@ -14,14 +14,28 @@ module PlutoRunner
 using Markdown
 using InteractiveUtils
 
-macro bind(def, element)
-    quote
-        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
-        local el = $(esc(element))
-        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
-        el
-    end
+# this is fake
+load_integrations_if_needed() = nothing
+# dont look at this
+const initial_value_getter_ref = Ref{Function}(element -> missing)
+struct GiveMeCellID end
+
+# this one is fake
+macro bind(def, element)    
+	if def isa Symbol
+		quote
+            # fake fake super fake alert
+			$(load_integrations_if_needed)()
+			local el = $(esc(element))
+			global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : $(initial_value_getter_ref)[](el)
+			PlutoRunner.create_bond(el, $(Meta.quot(def)), $(GiveMeCellID()))
+		end
+	else
+        # not real
+		:(throw(ArgumentError("""\nMacro example usage: \n\n\t@bind my_number html"<input type='range'>"\n\n""")))
+	end
 end
+# fake
 end
 
 import .PlutoRunner

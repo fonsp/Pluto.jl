@@ -42,7 +42,7 @@ const JULIA_VERSION_STR = "v$(string(VERSION))"
 
 include("./analysis/PlutoReactiveCore.jl")
 
-import .PlutoReactiveCore: TopologicalOrder, NotebookTopology, ExprAnalysisCache, ImmutableVector, ExpressionExplorerExtras, topological_order, all_cells
+import .PlutoReactiveCore: TopologicalOrder, NotebookTopology, ExprAnalysisCache, ImmutableVector, ExpressionExplorerExtras, topological_order, all_cells, disjoint
 using ExpressionExplorer
 
 include("./notebook/path helpers.jl")

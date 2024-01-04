@@ -198,7 +198,7 @@ function run_reactive_core!(
 
         # Also set unresolved the downstream cells using the defined macros
         if !isempty(defined_macros_in_cell)
-            new_topology = set_unresolved(new_topology, PlutoReactiveCore.where_referenced(notebook, new_topology, defined_macros_in_cell))
+            new_topology = PlutoReactiveCore.set_unresolved(new_topology, PlutoReactiveCore.where_referenced(new_topology, defined_macros_in_cell))
         end
 
         implicit_usings = collect_implicit_usings(new_topology, cell)
