@@ -117,6 +117,7 @@ function Base.getproperty(notebook::Notebook, property::Symbol)
     end
 end
 
+PlutoReactiveCore.topological_order(notebook::Notebook) = topological_order(notebook.topology)
 
 emptynotebook(args...) = Notebook([Cell()], args...)
 

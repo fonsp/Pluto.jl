@@ -4,7 +4,12 @@ import ExpressionExplorer: SymbolsState, FunctionNameSignaturePair
 
 
 "Return a copy of `old_topology`, but with recomputed results from `cells` taken into account."
-function updated_topology(old_topology::NotebookTopology{C}, all_cells, updated_cells, get_code_str::Function, get_code_expr::Function) where C <: AbstractCell
+function updated_topology(
+	old_topology::NotebookTopology{C}, notebook_cells, updated_cells; 
+	get_code_str::Function, 
+	get_code_expr::Function, 
+	get_cell_disabled::Function=c->false,
+) where C <: AbstractCell
 	
 	updated_codes = Dict{C,ExprAnalysisCache}()
 	updated_nodes = Dict{C,ReactiveNode}()
@@ -17,7 +22,7 @@ function updated_topology(old_topology::NotebookTopology{C}, all_cells, updated_
 		
 		if old_code.code !== new_code_str
 			parsedcode = get_code_expr(cell)
-			new_code = updated_codes[cell] = ExprAnalysisCache(cell, parsedcode)
+			new_code = updated_codes[cell] = ExprAnalysisCache(new_code_str, parsedcode)
 			new_reactive_node = ExpressionExplorer.compute_reactive_node(ExpressionExplorerExtras.pretransform_pluto(new_code.parsedcode))
 
 			updated_nodes[cell] = new_reactive_node
@@ -29,7 +34,7 @@ function updated_topology(old_topology::NotebookTopology{C}, all_cells, updated_
 	
 	
 	old_cells = all_cells(old_topology)
-	removed_cells = setdiff(old_cells, all_cells)
+	removed_cells = setdiff(old_cells, notebook_cells)
 	if isempty(removed_cells)
 		# We can keep identity
 		new_codes = merge(old_topology.codes, updated_codes)
@@ -64,7 +69,7 @@ function updated_topology(old_topology::NotebookTopology{C}, all_cells, updated_
 			updated_cells,
 		),
 		# ...minus cells that changed and are not disabled.
-		Iterators.filter(!is_disabled, updated_cells),
+		Iterators.filter(!get_cell_disabled, updated_cells),
 	)
 
 	unresolved_cells = if new_unresolved_set == old_topology.unresolved_cells
@@ -79,10 +84,10 @@ function updated_topology(old_topology::NotebookTopology{C}, all_cells, updated_
 		ImmutableSet(new_disabled_set; skip_copy=true)
 	end
 
-	cell_order = if old_cells == all_cells
+	cell_order = if old_cells == notebook_cells
 		old_topology.cell_order
 	else
-		ImmutableVector(all_cells) # makes a copy
+		ImmutableVector(notebook_cells) # makes a copy
 	end
 	
 	NotebookTopology{C}(;

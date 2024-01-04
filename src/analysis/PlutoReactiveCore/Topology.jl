@@ -9,15 +9,6 @@ Base.@kwdef struct ExprAnalysisCache
     forced_expr_id::Union{UInt,Nothing}=nothing
 end
 
-# function ExprAnalysisCache(cell::Cell, parsedcode)
-#     ExprAnalysisCache(
-#         code=cell.code,
-#         parsedcode=parsedcode,
-#         module_usings_imports=ExpressionExplorer.compute_usings_imports(parsedcode),
-#         function_wrapped=ExpressionExplorerExtras.can_be_function_wrapped(parsedcode),
-#     )
-# end
-
 function ExprAnalysisCache(code_str::String, parsedcode::Expr)
     ExprAnalysisCache(;
         code=code_str,

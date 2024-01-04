@@ -1,4 +1,4 @@
-import Pluto: ImmutableVector, ImmutableSet, ImmutableDefaultDict, setdiffkeys
+import Pluto.PlutoReactiveCore: ImmutableVector, ImmutableSet, ImmutableDefaultDict, setdiffkeys
 
 @testset "ImmutableCollections" begin
     

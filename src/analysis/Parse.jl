@@ -124,8 +124,9 @@ function updated_topology(old_topology::NotebookTopology{Cell}, notebook::Notebo
     PlutoReactiveCore.updated_topology(
         old_topology, 
         notebook.cells, 
-        updated_cells, 
+        updated_cells;
         get_code_str,
-        get_code_expr
+        get_code_expr,
+        get_cell_disabled=is_disabled,
     )
 end

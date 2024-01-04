@@ -134,6 +134,7 @@ function topological_order(topology::NotebookTopology{C}, roots::AbstractVector{
 	TopologicalOrder(topology, setdiff(ordered, keys(errable)), errable)
 end
 
+topological_order(topology::NotebookTopology; kwargs...) = topological_order(topology, all_cells(topology); kwargs...)
 
 Base.collect(notebook_topo_order::TopologicalOrder) = union(notebook_topo_order.runnable, keys(notebook_topo_order.errable))
 
