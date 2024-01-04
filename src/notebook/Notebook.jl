@@ -87,7 +87,7 @@ end
 _collect_cells(cells_dict::Dict{UUID,Cell}, cells_order::Vector{UUID}) = 
     map(i -> cells_dict[i], cells_order)
 _initial_topology(cells_dict::Dict{UUID,Cell}, cells_order::Vector{UUID}) =
-    NotebookTopology(;
+    NotebookTopology{Cell}(;
         cell_order=ImmutableVector(_collect_cells(cells_dict, cells_order)),
     )
 

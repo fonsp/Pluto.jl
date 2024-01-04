@@ -165,7 +165,7 @@ end
 
 
 "Return the cells that also assign to any variable or method defined by the given cell. If more than one cell is returned (besides the given cell), then all of them should throw a `MultipleDefinitionsError`. Non-recursive: only direct dependencies are found."
-function where_assigned(topology::NotebookTopology{C}, myself::C)::Vector{C}
+function where_assigned(topology::NotebookTopology{C}, myself::C)::Vector{C} where C
 	where_assigned(topology, topology.nodes[myself])
 end
 

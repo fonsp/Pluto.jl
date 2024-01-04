@@ -13,11 +13,10 @@ function updated_topology(old_topology::NotebookTopology{C}, all_cells, updated_
 		# TODO this needs to be extracted somehow
 
 		old_code = old_topology.codes[cell]
-		new_code = get_code_str(cell)
-		new_parsedcode = get_code_str(cell)
-		(; parsedcode, needs_update) = get_parsedcode(cell; old_code)
+		new_code_str = get_code_str(cell)
 		
-		if old_code.code !== cell.code
+		if old_code.code !== new_code_str
+			parsedcode = get_code_expr(cell)
 			new_code = updated_codes[cell] = ExprAnalysisCache(cell, parsedcode)
 			new_reactive_node = ExpressionExplorer.compute_reactive_node(ExpressionExplorerExtras.pretransform_pluto(new_code.parsedcode))
 
