@@ -110,10 +110,10 @@ function get_plutorunner()
     fpr = found_plutorunner[]
     if fpr === nothing
         # lets try really hard to find it!
-        if haskey(Base.loaded_modules, plutorunner_id)
-            found_plutorunner[] = Base.loaded_modules[plutorunner_id]
-        elseif haskey(Base.loaded_modules, pluto_id)
+        if haskey(Base.loaded_modules, pluto_id)
             found_plutorunner[] = Base.loaded_modules[pluto_id].PlutoRunner
+        elseif haskey(Base.loaded_modules, plutorunner_id)
+            found_plutorunner[] = Base.loaded_modules[plutorunner_id]
         elseif isdefined(Main, :PlutoRunner) && Main.PlutoRunner isa Module
             found_plutorunner[] = Main.PlutoRunner
         else
