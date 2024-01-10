@@ -14,12 +14,13 @@ using Configurations # https://github.com/Roger-luo/Configurations.jl
 
 import ..Pluto: tamepath
 
-safepwd() = try
-    pwd()
-catch e
-    @warn "pwd() failure" exception=(e, catch_backtrace())
-    homedir()
-end
+safepwd() =
+    try
+        pwd()
+    catch e
+        @warn "pwd() failure" exception = (e, catch_backtrace())
+        homedir()
+    end
 
 # Using a ref to avoid fixing the pwd() output during the compilation phase. We don't want this value to be baked into the sysimage, because it depends on the `pwd()`. We do want to cache it, because the pwd might change while Pluto is running.
 const pwd_ref = Ref{String}()
@@ -56,7 +57,8 @@ const INIT_WITH_FILE_VIEWER_DEFAULT = false
 const SIMULATED_LAG_DEFAULT = 0.0
 const SIMULATED_PKG_LAG_DEFAULT = 0.0
 const INJECTED_JAVASCRIPT_DATA_URL_DEFAULT = "data:text/javascript;base64,"
-const ON_EVENT_DEFAULT = function(a) #= @info "$(typeof(a))" =# end
+const ON_EVENT_DEFAULT = function (a) end #= @info "$(typeof(a))" =#
+const JULIA_SIZE_HEAP_HINT = "1G"
 
 """
     ServerOptions([; kwargs...])
@@ -105,6 +107,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
     simulated_pkg_lag::Real = SIMULATED_PKG_LAG_DEFAULT
     injected_javascript_data_url::String = INJECTED_JAVASCRIPT_DATA_URL_DEFAULT
     on_event::Function = ON_EVENT_DEFAULT
+    heap_size_hint::String = JULIA_SIZE_HEAP_HINT
 end
 
 const REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT = true
@@ -192,7 +195,7 @@ function roughly_the_number_of_physical_cpu_cores()
     # https://gist.github.com/fonsp/738fe244719cae820245aa479e7b4a8d
     threads = Sys.CPU_THREADS
     num_threads_is_maybe_doubled_for_marketing = Sys.ARCH === :x86_64
-    
+
     if threads == 1
         1
     elseif threads == 2 || threads == 3
@@ -211,8 +214,8 @@ function default_number_of_threads()
     env_value = get(ENV, "JULIA_NUM_THREADS", "")
 
     all(isspace, env_value) ?
-        roughly_the_number_of_physical_cpu_cores() :
-        env_value
+    roughly_the_number_of_physical_cpu_cores() :
+    env_value
 end
 
 """
@@ -261,6 +264,7 @@ These options will be passed as command line argument to newly launched processe
     history_file::Union{Nothing,String} = HISTORY_FILE_DEFAULT
 
     threads::Union{Nothing,String,Int} = default_number_of_threads()
+    heap_size_hint::String = JULIA_SIZE_HEAP_HINT
 end
 
 """
@@ -276,53 +280,48 @@ Collection of all settings that configure a Pluto session.
 end
 
 function from_flat_kwargs(;
-        root_url::Union{Nothing,String} = ROOT_URL_DEFAULT,
-        base_url::String = BASE_URL_DEFAULT,
-        host::String = HOST_DEFAULT,
-        port::Union{Nothing,Integer} = PORT_DEFAULT,
-        port_hint::Integer = PORT_HINT_DEFAULT,
-        launch_browser::Bool = LAUNCH_BROWSER_DEFAULT,
-        dismiss_update_notification::Bool = DISMISS_UPDATE_NOTIFICATION_DEFAULT,
-        show_file_system::Bool = SHOW_FILE_SYSTEM_DEFAULT,
-        notebook_path_suggestion::String = notebook_path_suggestion(),
-        disable_writing_notebook_files::Bool = DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT,
-        auto_reload_from_file::Bool = AUTO_RELOAD_FROM_FILE_DEFAULT,
-        auto_reload_from_file_cooldown::Real = AUTO_RELOAD_FROM_FILE_COOLDOWN_DEFAULT,
-        auto_reload_from_file_ignore_pkg::Bool = AUTO_RELOAD_FROM_FILE_IGNORE_PKG_DEFAULT,
-        notebook::Union{Nothing,String,Vector{<:String}} = NOTEBOOK_DEFAULT,
-        init_with_file_viewer::Bool = INIT_WITH_FILE_VIEWER_DEFAULT,
-        simulated_lag::Real = SIMULATED_LAG_DEFAULT,
-        simulated_pkg_lag::Real = SIMULATED_PKG_LAG_DEFAULT,
-        injected_javascript_data_url::String = INJECTED_JAVASCRIPT_DATA_URL_DEFAULT,
-        on_event::Function = ON_EVENT_DEFAULT,
-
-        require_secret_for_open_links::Bool = REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT,
-        require_secret_for_access::Bool = REQUIRE_SECRET_FOR_ACCESS_DEFAULT,
-        warn_about_untrusted_code::Bool = WARN_ABOUT_UNTRUSTED_CODE_DEFAULT,
-
-        run_notebook_on_load::Bool = RUN_NOTEBOOK_ON_LOAD_DEFAULT,
-        workspace_use_distributed::Bool = WORKSPACE_USE_DISTRIBUTED_DEFAULT,
-        workspace_use_distributed_stdlib::Union{Bool,Nothing} = WORKSPACE_USE_DISTRIBUTED_STDLIB_DEFAULT,
-        lazy_workspace_creation::Bool = LAZY_WORKSPACE_CREATION_DEFAULT,
-        capture_stdout::Bool = CAPTURE_STDOUT_DEFAULT,
-        workspace_custom_startup_expr::Union{Nothing,String} = WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT,
-
-        compile::Union{Nothing,String} = COMPILE_DEFAULT,
-        pkgimages::Union{Nothing,String} = PKGIMAGES_DEFAULT,
-        compiled_modules::Union{Nothing,String} = COMPILED_MODULES_DEFAULT,
-        sysimage::Union{Nothing,String} = SYSIMAGE_DEFAULT,
-        sysimage_native_code::Union{Nothing,String} = SYSIMAGE_NATIVE_CODE_DEFAULT,
-        banner::Union{Nothing,String} = BANNER_DEFAULT,
-        depwarn::Union{Nothing,String} = DEPWARN_DEFAULT,
-        optimize::Union{Nothing,Int} = OPTIMIZE_DEFAULT,
-        min_optlevel::Union{Nothing,Int} = MIN_OPTLEVEL_DEFAULT,
-        inline::Union{Nothing,String} = INLINE_DEFAULT,
-        check_bounds::Union{Nothing,String} = CHECK_BOUNDS_DEFAULT,
-        math_mode::Union{Nothing,String} = MATH_MODE_DEFAULT,
-        startup_file::Union{Nothing,String} = STARTUP_FILE_DEFAULT,
-        history_file::Union{Nothing,String} = HISTORY_FILE_DEFAULT,
-        threads::Union{Nothing,String,Int} = default_number_of_threads(),
-    )
+    root_url::Union{Nothing,String}=ROOT_URL_DEFAULT,
+    base_url::String=BASE_URL_DEFAULT,
+    host::String=HOST_DEFAULT,
+    port::Union{Nothing,Integer}=PORT_DEFAULT,
+    port_hint::Integer=PORT_HINT_DEFAULT,
+    launch_browser::Bool=LAUNCH_BROWSER_DEFAULT,
+    dismiss_update_notification::Bool=DISMISS_UPDATE_NOTIFICATION_DEFAULT,
+    show_file_system::Bool=SHOW_FILE_SYSTEM_DEFAULT,
+    notebook_path_suggestion::String=notebook_path_suggestion(),
+    disable_writing_notebook_files::Bool=DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT,
+    auto_reload_from_file::Bool=AUTO_RELOAD_FROM_FILE_DEFAULT,
+    auto_reload_from_file_cooldown::Real=AUTO_RELOAD_FROM_FILE_COOLDOWN_DEFAULT,
+    auto_reload_from_file_ignore_pkg::Bool=AUTO_RELOAD_FROM_FILE_IGNORE_PKG_DEFAULT,
+    notebook::Union{Nothing,String,Vector{<:String}}=NOTEBOOK_DEFAULT,
+    init_with_file_viewer::Bool=INIT_WITH_FILE_VIEWER_DEFAULT,
+    simulated_lag::Real=SIMULATED_LAG_DEFAULT,
+    simulated_pkg_lag::Real=SIMULATED_PKG_LAG_DEFAULT,
+    injected_javascript_data_url::String=INJECTED_JAVASCRIPT_DATA_URL_DEFAULT,
+    on_event::Function=ON_EVENT_DEFAULT, require_secret_for_open_links::Bool=REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT,
+    require_secret_for_access::Bool=REQUIRE_SECRET_FOR_ACCESS_DEFAULT,
+    warn_about_untrusted_code::Bool=WARN_ABOUT_UNTRUSTED_CODE_DEFAULT, run_notebook_on_load::Bool=RUN_NOTEBOOK_ON_LOAD_DEFAULT,
+    workspace_use_distributed::Bool=WORKSPACE_USE_DISTRIBUTED_DEFAULT,
+    workspace_use_distributed_stdlib::Union{Bool,Nothing}=WORKSPACE_USE_DISTRIBUTED_STDLIB_DEFAULT,
+    lazy_workspace_creation::Bool=LAZY_WORKSPACE_CREATION_DEFAULT,
+    capture_stdout::Bool=CAPTURE_STDOUT_DEFAULT,
+    workspace_custom_startup_expr::Union{Nothing,String}=WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT, compile::Union{Nothing,String}=COMPILE_DEFAULT,
+    pkgimages::Union{Nothing,String}=PKGIMAGES_DEFAULT,
+    compiled_modules::Union{Nothing,String}=COMPILED_MODULES_DEFAULT,
+    sysimage::Union{Nothing,String}=SYSIMAGE_DEFAULT,
+    sysimage_native_code::Union{Nothing,String}=SYSIMAGE_NATIVE_CODE_DEFAULT,
+    banner::Union{Nothing,String}=BANNER_DEFAULT,
+    depwarn::Union{Nothing,String}=DEPWARN_DEFAULT,
+    optimize::Union{Nothing,Int}=OPTIMIZE_DEFAULT,
+    min_optlevel::Union{Nothing,Int}=MIN_OPTLEVEL_DEFAULT,
+    inline::Union{Nothing,String}=INLINE_DEFAULT,
+    check_bounds::Union{Nothing,String}=CHECK_BOUNDS_DEFAULT,
+    math_mode::Union{Nothing,String}=MATH_MODE_DEFAULT,
+    startup_file::Union{Nothing,String}=STARTUP_FILE_DEFAULT,
+    history_file::Union{Nothing,String}=HISTORY_FILE_DEFAULT,
+    threads::Union{Nothing,String,Int}=default_number_of_threads(),
+    heap_size_hint::String=JULIA_SIZE_HEAP_HINT,
+)
     server = ServerOptions(;
         root_url,
         base_url,
@@ -343,6 +342,7 @@ function from_flat_kwargs(;
         simulated_pkg_lag,
         injected_javascript_data_url,
         on_event,
+        heap_size_hint,
     )
     security = SecurityOptions(;
         require_secret_for_open_links,
@@ -373,6 +373,7 @@ function from_flat_kwargs(;
         startup_file,
         history_file,
         threads,
+        heap_size_hint,
     )
     return Options(; server, security, evaluation, compiler)
 end
