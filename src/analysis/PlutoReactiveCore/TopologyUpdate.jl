@@ -3,7 +3,22 @@ import .ExpressionExplorerExtras
 import ExpressionExplorer: SymbolsState, FunctionNameSignaturePair
 
 
-"Return a copy of `old_topology`, but with recomputed results from `cells` taken into account."
+"""
+```julia
+function updated_topology(
+	old_topology::NotebookTopology{C}, notebook_cells::Iterable{C}, updated_cells::Iterable{C}; 
+	get_code_str::Function, 
+	get_code_expr::Function, 
+	get_cell_disabled::Function=c->false,
+) where C <: AbstractCell
+```
+
+Return a copy of `old_topology`, but with new reactivity information from `updated_cells` taken into account. This function is used when cell code changes.
+
+`notebook_cells` should contain all cells in the reactive document.
+
+The functions `get_code_str` and `get_code_expr` should return the code string and parsed expression for a given cell. `get_cell_disabled` should return `true` if a cell is disabled, defaults to `false`.
+"""
 function updated_topology(
 	old_topology::NotebookTopology{C}, notebook_cells, updated_cells; 
 	get_code_str::Function, 

@@ -106,6 +106,9 @@ const plutorunner_id = Base.PkgId(Base.UUID("dc6b355a-2368-4481-ae6d-ae0351418d7
 const pluto_id = Base.PkgId(Base.UUID("c3e4b0f8-55cb-11ea-2926-15256bba5781"), "Pluto")
 const found_plutorunner = Ref{Union{Nothing,Module}}(nothing)
 
+"""
+Find the module `PlutoRunner`, if it is currently loaded. We use `PlutoRunner` to macroexpand `@bind`. If not found, the fallback is `Fake.PlutoRunner`.
+"""
 function get_plutorunner()
     fpr = found_plutorunner[]
     if fpr === nothing
@@ -117,7 +120,8 @@ function get_plutorunner()
         elseif isdefined(Main, :PlutoRunner) && Main.PlutoRunner isa Module
             found_plutorunner[] = Main.PlutoRunner
         else
-            Fake.PlutoRunner # (the fake one)
+            # not found
+            Fake.PlutoRunner
         end
     else
         fpr
