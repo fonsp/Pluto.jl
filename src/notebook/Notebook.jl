@@ -119,6 +119,10 @@ end
 
 PlutoReactiveCore.topological_order(notebook::Notebook) = topological_order(notebook.topology)
 
+@deprecate 
+PlutoReactiveCore.where_referenced(notebook::Notebook, topology::NotebookTopology, something) = PlutoReactiveCore.where_referenced(topology, something)
+PlutoReactiveCore.where_assigned(notebook::Notebook, topology::NotebookTopology, something) = PlutoReactiveCore.where_assigned(topology, something)
+
 emptynotebook(args...) = Notebook([Cell()], args...)
 
 function sample_notebook(name::String)
