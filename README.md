@@ -103,7 +103,6 @@ _([video](https://www.youtube.com/watch?v=rpB6zQNsbQU)) Grant Sanderson ([3Blue1
 For one tasty notebook 🥞 you will need:
 
 - [**Julia** v1.6 or above](https://julialang.org/downloads/#current_stable_release)
-- **Linux**, **MacOS** or **Windows**, _Linux and MacOS will work best_
 - Mozilla **Firefox** or Google **Chrome**
 
 ### Installation
