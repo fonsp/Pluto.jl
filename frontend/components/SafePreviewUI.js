@@ -1,6 +1,6 @@
+import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import _ from "../imports/lodash.js"
 import { html } from "../imports/Preact.js"
-import { open_pluto_popup } from "./Popup.js"
 
 export const SafePreviewUI = ({ process_waiting_for_permission, risky_file_source, restart, warn_about_untrusted_code }) => {
     return html`
@@ -15,6 +15,7 @@ export const SafePreviewUI = ({ process_waiting_for_permission, risky_file_sourc
                                   open_pluto_popup({
                                       type: "info",
                                       big: true,
+                                      should_focus: true,
                                       body: html`
                                           <h1>Safe preview</h1>
                                           <p>You are reading and editing this file without running Julia code.</p>

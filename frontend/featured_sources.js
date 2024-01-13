@@ -3,7 +3,8 @@ export default {
     sources: [
         {
             url: "https://featured.plutojl.org/pluto_export.json",
-            valid_until: "2024-10",
+            // this is one month before the expiry date of our domain registration at njal.la
+            valid_until: "2025-10",
             id: "featured pluto",
         },
         {

@@ -18,8 +18,12 @@ pluto-runarea,
 
 /* These next rules only apply to @media print, i.e. the PDF export. We want to hide these items in the PDF, but not in a static HTML. */
 @media print {
+    .pluto-frontmatter,
     .edit_or_run,
+    .loading-bar,
     .floating_back_button,
+    .outline-frame,
+    .outline-frame-actions-container,
     pkg-status-mark,
     .MJX_ToolTip,
     .MJX_HoverRegion,
@@ -43,7 +47,9 @@ pluto-runarea,
         break-inside: auto;
     }
 
-    pluto-output hr {
+    /* When printing, hr should act like a page break */
+    pluto-output > div > div.markdown > hr,
+    pluto-output > div > div > hr {
         height: 0;
         margin: 0;
         visibility: hidden;

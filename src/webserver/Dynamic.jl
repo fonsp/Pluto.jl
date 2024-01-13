@@ -99,6 +99,7 @@ Firebasey.use_triple_equals_for_arrays[] = true
 
 function notebook_to_js(notebook::Notebook)
     Dict{String,Any}(
+        "pluto_version" => PLUTO_VERSION_STR,
         "notebook_id" => notebook.notebook_id,
         "path" => notebook.path,
         "shortpath" => basename(notebook.path),

@@ -1,4 +1,5 @@
-import { html, useEffect, useRef } from "../imports/Preact.js"
+import { useEventListener } from "../common/useEventListener.js"
+import { html, useLayoutEffect, useRef } from "../imports/Preact.js"
 
 const Circle = ({ fill }) => html`
     <svg
@@ -57,30 +58,51 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
 
     //
     let print_old_title_ref = useRef("")
-    useEffect(() => {
-        let a = () => {
+    useEventListener(
+        window,
+        "beforeprint",
+        () => {
             console.log("beforeprint")
             print_old_title_ref.current = document.title
             document.title = print_title.replace(/\.jl$/, "").replace(/\.plutojl$/, "")
-        }
-        let b = () => {
+        },
+        [print_title]
+    )
+    useEventListener(
+        window,
+        "afterprint",
+        () => {
             document.title = print_old_title_ref.current
+        },
+        [print_title]
+    )
+
+    const element_ref = useRef(/** @type {HTMLDialogElement?} */ (null))
+
+    useLayoutEffect(() => {
+        if (open) {
+            element_ref.current?.show()
+        } else {
+            element_ref.current?.close()
         }
-        window.addEventListener("beforeprint", a)
-        window.addEventListener("afterprint", b)
-        return () => {
-            window.removeEventListener("beforeprint", a)
-            window.removeEventListener("afterprint", b)
-        }
-    }, [print_title])
+    }, [open, element_ref.current])
+
+    useEventListener(
+        element_ref.current,
+        "focusout",
+        () => {
+            if (!element_ref.current?.matches(":focus-within")) onClose()
+        },
+        [onClose]
+    )
 
     return html`
-        <aside id="export" inert=${!open}>
+        <dialog id="export" inert=${!open} ref=${element_ref}>
             <div id="container">
                 <div class="export_title">export</div>
                 <!-- no "download" attribute here: we want the jl contents to be shown in a new tab -->
                 <a href=${notebookfile_url} target="_blank" class="export_card" onClick=${(e) => exportNotebook(e, 0)}>
-                    <header><${Triangle} fill="#a270ba" /> Notebook file</header>
+                    <header role="none"><${Triangle} fill="#a270ba" /> Notebook file</header>
                     <section>Download a copy of the <b>.jl</b> script.</section>
                 </a>
                 <a
@@ -93,11 +115,11 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
                         exportNotebook(e, 1)
                     }}
                 >
-                    <header><${Square} fill="#E86F51" /> Static HTML</header>
+                    <header role="none"><${Square} fill="#E86F51" /> Static HTML</header>
                     <section>An <b>.html</b> file for your web page, or to share online.</section>
                 </a>
                 <a href="#" class="export_card" onClick=${() => window.print()}>
-                    <header><${Square} fill="#619b3d" /> PDF</header>
+                    <header role="none"><${Square} fill="#619b3d" /> PDF</header>
                     <section>A static <b>.pdf</b> file for print or email.</section>
                 </a>
                 ${html`
@@ -112,37 +134,37 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
                         }}
                         class="export_card"
                     >
-                        <header><${Circle} fill="#E86F51" /> Record <em>(preview)</em></header>
+                        <header role="none"><${Circle} fill="#E86F51" /> Record <em>(preview)</em></header>
                         <section>Capture the entire notebook, and any changes you make.</section>
                     </a>
                 `}
-                <div class="export_small_btns">
-                    <button
-                        title="Edit frontmatter"
-                        class="toggle_frontmatter_edit"
-                        onClick=${() => {
-                            onClose()
-                            window.dispatchEvent(new CustomEvent("open pluto frontmatter"))
-                        }}
-                    >
-                        <span></span>
-                    </button>
-                    <button
-                        title="Start presentation"
-                        class="toggle_presentation"
-                        onClick=${() => {
-                            onClose()
-                            // @ts-ignore
-                            window.present()
-                        }}
-                    >
-                        <span></span>
-                    </button>
-                    <button title="Close" class="toggle_export" onClick=${() => onClose()}>
-                        <span></span>
-                    </button>
-                </div>
             </div>
-        </aside>
+            <div class="export_small_btns">
+                <button
+                    title="Edit frontmatter"
+                    class="toggle_frontmatter_edit"
+                    onClick=${() => {
+                        onClose()
+                        window.dispatchEvent(new CustomEvent("open pluto frontmatter"))
+                    }}
+                >
+                    <span></span>
+                </button>
+                <button
+                    title="Start presentation"
+                    class="toggle_presentation"
+                    onClick=${() => {
+                        onClose()
+                        // @ts-ignore
+                        window.present()
+                    }}
+                >
+                    <span></span>
+                </button>
+                <button title="Close" class="toggle_export" onClick=${() => onClose()}>
+                    <span></span>
+                </button>
+            </div>
+        </dialog>
     `
 }
