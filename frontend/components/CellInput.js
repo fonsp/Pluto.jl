@@ -1,5 +1,4 @@
 import { html, useState, useEffect, useLayoutEffect, useRef, useContext, useMemo } from "../imports/Preact.js"
-import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 import _ from "../imports/lodash.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
@@ -24,24 +23,14 @@ import {
     HighlightStyle,
     lineNumbers,
     highlightSpecialChars,
-    foldGutter,
     drawSelection,
     indentOnInput,
-    defaultHighlightStyle,
     closeBrackets,
     rectangularSelection,
     highlightSelectionMatches,
     closeBracketsKeymap,
-    searchKeymap,
     foldKeymap,
-    syntaxTree,
-    Decoration,
-    ViewUpdate,
-    ViewPlugin,
-    WidgetType,
     indentUnit,
-    StateField,
-    StateEffect,
     autocomplete,
     htmlLanguage,
     markdownLanguage,
@@ -50,6 +39,7 @@ import {
     syntaxHighlighting,
     cssLanguage,
     setDiagnostics,
+    moveLineUp,
 } from "../imports/CodemirrorPlutoSetup.js"
 
 import { markdown, html as htmlLang, javascript, sqlLang, python, julia_mixed } from "./CellInput/mixedParsers.js"
@@ -67,6 +57,9 @@ import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
 import { mod_d_command } from "./CellInput/mod_d_command.js"
 import { open_bottom_right_panel } from "./BottomRightPanel.js"
 import { timeout_promise } from "../common/PlutoConnection.js"
+import { LastFocusWasForcedEffect, tab_help_plugin } from "./CellInput/tab_help_plugin.js"
+import { useEventListener } from "../common/useEventListener.js"
+import { moveLineDown } from "../imports/CodemirrorPlutoSetup.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 
@@ -437,6 +430,8 @@ export const CellInput = ({
 
         let select_autocomplete_command = autocomplete.completionKeymap.find((keybinding) => keybinding.key === "Enter")
         let keyMapTab = (/** @type {EditorView} */ cm) => {
+            // I think this only gets called when we are not in an autocomplete situation, otherwise `tab_completion_command` is called. I think it only happens when you have a selection.
+
             if (cm.state.readOnly) {
                 return false
             }
@@ -548,6 +543,40 @@ export const CellInput = ({
             return false
         }
 
+        const keyMapMoveLine = (/** @type {EditorView} */ cm, direction) => {
+            if (cm.state.facet(EditorState.readOnly)) {
+                return false
+            }
+
+            const selection = cm.state.selection.main
+            const all_is_selected = selection.anchor === 0 && selection.head === cm.state.doc.length
+            console.log({ all_is_selected })
+
+            if (all_is_selected || cm.state.doc.lines === 1) {
+                pluto_actions.move_remote_cells([cell_id], pluto_actions.get_notebook().cell_order.indexOf(cell_id) + (direction === -1 ? -1 : 2))
+
+                // workaround for https://github.com/preactjs/preact/issues/4235
+                // but the crollintoview behaviour is nice, also when the preact issue is fixed.
+                requestIdleCallback(() => {
+                    cm.dispatch({
+                        // TODO: remove me after fix
+                        selection: {
+                            anchor: 0,
+                            head: cm.state.doc.length,
+                        },
+
+                        // TODO: keep me after fix
+                        scrollIntoView: true,
+                    })
+                    // TODO: remove me after fix
+                    cm.focus()
+                })
+                return true
+            } else {
+                return direction === 1 ? moveLineDown(cm) : moveLineUp(cm)
+            }
+        }
+
         const plutoKeyMaps = [
             { key: "Shift-Enter", run: keyMapSubmit },
             { key: "Ctrl-Enter", mac: "Cmd-Enter", run: keyMapRun },
@@ -562,6 +591,8 @@ export const CellInput = ({
             { key: "Ctrl-Delete", run: keyMapDelete },
             { key: "Backspace", run: keyMapBackspace },
             { key: "Ctrl-Backspace", run: keyMapBackspace },
+            { key: "Alt-ArrowUp", run: (x) => keyMapMoveLine(x, -1) },
+            { key: "Alt-ArrowDown", run: (x) => keyMapMoveLine(x, 1) },
 
             mod_d_command,
         ]
@@ -636,9 +667,11 @@ export const CellInput = ({
                     highlightSelectionMatches(),
                     bracketMatching(),
                     docs_updater,
+                    tab_help_plugin,
                     // Remove selection on blur
                     EditorView.domEventHandlers({
                         blur: (event, view) => {
+                            console.warn("blur")
                             // it turns out that this condition is true *exactly* if and only if the blur event was triggered by blurring the window
                             let caused_by_window_blur = document.activeElement === view.contentDOM
 
@@ -771,6 +804,7 @@ export const CellInput = ({
                         anchor: view.state.doc.length,
                         head: view.state.doc.length,
                     },
+                    effects: [LastFocusWasForcedEffect.of(true)],
                 })
                 view.focus()
             })
@@ -863,6 +897,7 @@ export const CellInput = ({
                     EditorView.scrollIntoView(EditorSelection.range(new_selection.anchor, new_selection.head), {
                         yMargin: 80,
                     }),
+                    LastFocusWasForcedEffect.of(true),
                 ],
             })
         }
@@ -888,7 +923,23 @@ export const CellInput = ({
 const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, running_disabled, any_logs, show_logs, set_show_logs, set_cell_disabled }) => {
     const timeout = useRef(null)
     let pluto_actions = useContext(PlutoActionsContext)
-    const [open, setOpen] = useState(false)
+    const [open, setOpenState] = useState(false)
+    const element_ref = useRef(/** @type {HTMLButtonElement?} */ (null))
+    const prevously_focused_element_ref = useRef(/** @type {Element?} */ (null))
+    const setOpen = (val) => {
+        if (val) {
+            prevously_focused_element_ref.current = document.activeElement
+        }
+        setOpenState(val)
+    }
+    useLayoutEffect(() => {
+        if (open) {
+            element_ref.current?.querySelector("li")?.focus()
+        } else {
+            if (prevously_focused_element_ref.current instanceof HTMLElement) prevously_focused_element_ref.current?.focus()
+        }
+    }, [open])
+
     const mouseenter = () => {
         if (timeout.current) clearTimeout(timeout.current)
     }
@@ -921,20 +972,36 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
             })
     }
 
+    useEventListener(window, "keydown", (e) => {
+        if (e.key === "Escape") {
+            setOpen(false)
+        }
+    })
+
     return html` <button
         onClick=${() => setOpen(!open)}
-        onBlur=${() => setOpen(false)}
+        onfocusout=${(e) => {
+            if (
+                // the focus is not one of the <li>
+                !element_ref.current?.matches(":focus-within") ||
+                // or the focus is on the button itself
+                e.relatedTarget === element_ref.current
+            )
+                setOpen(false)
+        }}
         class=${cl({
             input_context_menu: true,
             open,
         })}
         title="Actions"
+        ref=${element_ref}
     >
         <span class="icon"></span>
         ${open
             ? html`<ul onMouseenter=${mouseenter}>
-                  <li onClick=${on_delete} title="Delete"><span class="delete ctx_icon" />Delete cell</li>
+                  <li tabindex="0" onClick=${on_delete} title="Delete"><span class="delete ctx_icon" />Delete cell</li>
                   <li
+                      tabindex="0"
                       onClick=${toggle_running_disabled}
                       title=${running_disabled ? "Enable and run the cell" : "Disable this cell, and all cells that depend on it"}
                   >
@@ -942,18 +1009,19 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
                       ${running_disabled ? html`<b>Enable cell</b>` : html`Disable cell`}
                   </li>
                   ${any_logs
-                      ? html`<li title="" onClick=${toggle_logs}>
+                      ? html`<li tabindex="0" title="" onClick=${toggle_logs}>
                             ${show_logs
                                 ? html`<span class="hide_logs ctx_icon" /><span>Hide logs</span>`
                                 : html`<span class="show_logs ctx_icon" /><span>Show logs</span>`}
                         </li>`
                       : null}
                   ${is_copy_output_supported()
-                      ? html`<li title="Copy the output of this cell to the clipboard." onClick=${copy_output}>
+                      ? html`<li tabindex="0" title="Copy the output of this cell to the clipboard." onClick=${copy_output}>
                             <span class="copy_output ctx_icon" />Copy output
                         </li>`
                       : null}
                   <li
+                      tabindex="0"
                       onClick=${toggle_skip_as_script}
                       title=${skip_as_script
                           ? "This cell is currently stored in the notebook file as a Julia comment. Click here to disable."

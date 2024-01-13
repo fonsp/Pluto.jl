@@ -160,11 +160,12 @@ body.wiggle_binder .edit_or_run > button {
 
 .binder_help_text .close {
     position: absolute;
-    top: 12px;
-    right: 12px;
-    width: 24px;
-    height: 24px;
-    background-size: 24px 24px;
+    --size: 32px;
+    top: 5px;
+    right: 5px;
+    width: var(--size);
+    height: var(--size);
+    background-size: var(--size) var(--size);
     cursor: pointer;
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-outline.svg");
 }

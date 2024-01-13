@@ -1,6 +1,6 @@
+import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import _ from "../imports/lodash.js"
 import { html, useEffect, useState } from "../imports/Preact.js"
-import { open_pluto_popup } from "./Popup.js"
 
 export const nbpkg_fingerprint = (nbpkg) => (nbpkg == null ? [null] : Object.entries(nbpkg).flat())
 
@@ -139,6 +139,7 @@ export const PkgStatusMark = ({ package_name, pluto_actions, notebook_id, nbpkg 
                         source_element: event.currentTarget.parentElement,
                         package_name: package_name,
                         is_disable_pkg: false,
+                        should_focus: true,
                     })
                 }}
             >
@@ -165,6 +166,7 @@ export const PkgActivateMark = ({ package_name }) => {
                         source_element: event.currentTarget.parentElement,
                         package_name: package_name,
                         is_disable_pkg: true,
+                        should_focus: true,
                     })
                 }}
             >

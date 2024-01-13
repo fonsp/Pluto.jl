@@ -1,3 +1,4 @@
+import { useEventListener } from "../common/useEventListener.js"
 import { html, useEffect, useRef, useState } from "../imports/Preact.js"
 /**
  * Sometimes, we want to render HTML outside of the Cell Output,
@@ -20,17 +21,18 @@ import { html, useEffect, useRef, useState } from "../imports/Preact.js"
 export const NonCellOutput = ({ environment_component, notebook_id }) => {
     const surely_the_latest_updated_set = useRef()
     const [component_set, update_component_set] = useState({})
-    useEffect(() => {
-        const hn = (e) => {
+    useEventListener(
+        document,
+        "eexperimental_add_node_non_cell_output",
+        (e) => {
             try {
                 const { name, node, order } = e.detail
                 surely_the_latest_updated_set.current = { ...surely_the_latest_updated_set.current, [name]: { node, order } }
                 update_component_set(surely_the_latest_updated_set.current)
             } catch (e) {}
-        }
-        document.addEventListener("experimental_add_node_non_cell_output", hn)
-        return () => document.removeEventListener("experimental_add_node_non_cell_output", hn)
-    }, [surely_the_latest_updated_set])
+        },
+        [surely_the_latest_updated_set, update_component_set]
+    )
 
     let components = Object.values(component_set)
     components.sort(({ order: o1 }, { order: o2 }) => o1 - o2)

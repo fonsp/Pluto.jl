@@ -18,10 +18,18 @@ import { RecentlyDisabledInfo, UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
 import { Scroller } from "./Scroller.js"
 import { ExportBanner } from "./ExportBanner.js"
-import { open_pluto_popup, Popup } from "./Popup.js"
+import { Popup } from "./Popup.js"
 
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
-import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
+import {
+    has_ctrl_or_cmd_pressed,
+    ctrl_or_cmd_name,
+    is_mac_keyboard,
+    in_textarea_or_input,
+    and,
+    control_name,
+    alt_or_options_name,
+} from "../common/KeyboardShortcuts.js"
 import { PlutoActionsContext, PlutoBondsContext, PlutoJSInitializingContext, SetWithEmptyCallback } from "../common/PlutoContext.js"
 import { BackendLaunchPhase, count_stat } from "../common/Binder.js"
 import { setup_mathjax } from "../common/SetupMathJax.js"
@@ -36,6 +44,7 @@ import { EditorLaunchBackendButton } from "./Editor/LaunchBackendButton.js"
 import { get_environment } from "../common/Environment.js"
 import { ProcessStatus } from "../common/ProcessStatus.js"
 import { SafePreviewUI } from "./SafePreviewUI.js"
+import { open_pluto_popup } from "../common/open_pluto_popup.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -226,6 +235,7 @@ const first_true_key = (obj) => {
 /**
  * @typedef NotebookData
  * @type {{
+ *  pluto_version?: string,
  *  notebook_id: string,
  *  path: string,
  *  shortpath: string,
@@ -327,7 +337,7 @@ export class Editor extends Component {
             export_menu_open: false,
 
             last_created_cell: null,
-            selected_cells: [],
+            selected_cells: /** @type {string[]} */ ([]),
 
             extended_components: {
                 CustomHeader: null,
@@ -516,7 +526,8 @@ export class Editor extends Component {
                 this.client.send("interrupt_all", {}, { notebook_id: this.state.notebook.notebook_id }, false)
             },
             move_remote_cells: (cell_ids, new_index) => {
-                update_notebook((notebook) => {
+                return update_notebook((notebook) => {
+                    new_index = Math.max(0, new_index)
                     let before = notebook.cell_order.slice(0, new_index).filter((x) => !cell_ids.includes(x))
                     let after = notebook.cell_order.slice(new_index, Infinity).filter((x) => !cell_ids.includes(x))
                     notebook.cell_order = [...before, ...cell_ids, ...after]
@@ -643,9 +654,9 @@ export class Editor extends Component {
                 this.client.send(
                     "reshow_cell",
                     {
-                        objectid: objectid,
-                        dim: dim,
-                        cell_id: cell_id,
+                        objectid,
+                        dim,
+                        cell_id,
                     },
                     { notebook_id: this.state.notebook.notebook_id },
                     false
@@ -719,6 +730,11 @@ patch: ${JSON.stringify(
                                         },
                                         false
                                     )
+                                } else if (this.state.static_preview && launch_params.slider_server_url != null) {
+                                    open_pluto_popup({
+                                        type: "warn",
+                                        body: html`Something went wrong while updating the notebook state. Please refresh the page to try again.`,
+                                    })
                                 } else {
                                     console.error("Trying to recover: reloading...")
                                     window.parent.location.href = this.state.refresh_target ?? window.location.href
@@ -867,6 +883,7 @@ patch: ${JSON.stringify(
                             }}
                             >Stay here</a
                         >`,
+                    should_focus: false,
                 })
             }
         }
@@ -930,7 +947,7 @@ patch: ${JSON.stringify(
             if (!this.state.static_preview && document.visibilityState === "visible") {
                 // view stats on https://stats.plutojl.org/
                 //@ts-ignore
-                count_stat(`editing/${window?.version_info?.pluto ?? "unknown"}${window.plutoDesktop ? "-desktop" : ""}`)
+                count_stat(`editing/${window?.version_info?.pluto ?? this.state.notebook.pluto_version ?? "unknown"}${window.plutoDesktop ? "-desktop" : ""}`)
             }
         }, 1000 * 15 * 60)
         setInterval(() => {
@@ -1157,6 +1174,20 @@ patch: ${JSON.stringify(
         this.run_selected = () => {
             return this.actions.set_and_run_multiple(this.state.selected_cells)
         }
+        this.move_selected = (/** @type {KeyboardEvent} */ e, /** @type {1|-1} */ delta) => {
+            if (this.state.selected_cells.length > 0) {
+                const current_indices = this.state.selected_cells.map((id) => this.state.notebook.cell_order.indexOf(id))
+                const new_index = (delta > 0 ? Math.max : Math.min)(...current_indices) + (delta === -1 ? -1 : 2)
+
+                e.preventDefault()
+                return this.actions.move_remote_cells(this.state.selected_cells, new_index).then(
+                    // scroll into view
+                    () => {
+                        document.getElementById((delta > 0 ? _.last : _.first)(this.state.selected_cells) ?? "")?.scrollIntoView({ block: "nearest" })
+                    }
+                )
+            }
+        }
 
         this.serialize_selected = (cell_id = null) => {
             const cells_to_serialize = cell_id == null || this.state.selected_cells.includes(cell_id) ? this.state.selected_cells : [cell_id]
@@ -1214,6 +1245,10 @@ patch: ${JSON.stringify(
                 }
             } else if (e.key === "Enter" && e.shiftKey) {
                 this.run_selected()
+            } else if (e.key === "ArrowUp" && e.altKey) {
+                this.move_selected(e, -1)
+            } else if (e.key === "ArrowDown" && e.altKey) {
+                this.move_selected(e, 1)
             } else if ((e.key === "?" && has_ctrl_or_cmd_pressed(e)) || e.key === "F1") {
                 // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
                 // Also pressing "ctrl+shift" on mac causes the key to show up as "/", this madness
@@ -1221,21 +1256,24 @@ patch: ${JSON.stringify(
                 alert(
                     `Shortcuts 🎹
 
-    Shift+Enter:   run cell
-    ${ctrl_or_cmd_name}+Enter:   run cell and add cell below
+    ⇧${and}Enter:   run cell
+    ${ctrl_or_cmd_name}${and}Enter:   run cell and add cell below
+    ${ctrl_or_cmd_name}${and}S:   submit all changes
     Delete or Backspace:   delete empty cell
 
-    PageUp or fn+Up:   select cell above
-    PageDown or fn+Down:   select cell below
+    page up or fn${and}↑:   jump to cell above
+    page down or fn${and}↓:   jump to cell below
+    ${alt_or_options_name}${and}↑:   move line/cell up
+    ${alt_or_options_name}${and}↓:   move line/cell down
 
-    ${ctrl_or_cmd_name}+Q:   interrupt notebook
-    ${ctrl_or_cmd_name}+S:   submit all changes
-
-    ${ctrl_or_cmd_name}+C:   copy selected cells
-    ${ctrl_or_cmd_name}+X:   cut selected cells
-    ${ctrl_or_cmd_name}+V:   paste selected cells
-
-    Ctrl+M:   toggle markdown
+    
+    Select multiple cells by dragging a selection box from the space between cells.
+    ${ctrl_or_cmd_name}${and}C:   copy selected cells
+    ${ctrl_or_cmd_name}${and}X:   cut selected cells
+    ${ctrl_or_cmd_name}${and}V:   paste selected cells
+    
+    ${control_name}${and}M:   toggle markdown
+    ${ctrl_or_cmd_name}${and}Q:   interrupt notebook
 
     The notebook file saves every time you run a cell.`
                 )
@@ -1329,18 +1367,22 @@ patch: ${JSON.stringify(
     }
 
     componentDidMount() {
+        const lp = this.props.launch_params
         if (this.state.static_preview) {
             this.setState({
                 initializing: false,
             })
+
             // view stats on https://stats.plutojl.org/
-            if (this.state.pluto_server_url != null) {
-                count_stat(`article-view`)
-            } else {
-                count_stat(`article-view`)
-            }
+            count_stat(
+                lp.pluto_server_url != null
+                    ? // record which featured notebook was viewed, e.g. basic/Markdown.jl
+                      `featured-view${lp.notebookfile != null ? new URL(lp.notebookfile).pathname : ""}`
+                    : // @ts-ignore
+                      `article-view/${window?.version_info?.pluto ?? this.state.notebook.pluto_version ?? "unknown"}`
+            )
         } else {
-            this.connect(this.props.launch_params.pluto_server_url ? ws_address_from_base(this.props.launch_params.pluto_server_url) : undefined)
+            this.connect(lp.pluto_server_url ? ws_address_from_base(lp.pluto_server_url) : undefined)
         }
     }
 
@@ -1456,15 +1498,29 @@ patch: ${JSON.stringify(
             <${PlutoActionsContext.Provider} value=${this.actions}>
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                     <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
-                    <button title="Go back" onClick=${() => {
-                        history.back()
-                    }} class="floating_back_button"><span></span></button>
+                    ${
+                        status.static_preview && status.offer_local
+                            ? html`<button
+                                  title="Go back"
+                                  onClick=${() => {
+                                      history.back()
+                                  }}
+                                  class="floating_back_button"
+                              >
+                                  <span></span>
+                              </button>`
+                            : null
+                    }
                     <${Scroller} active=${this.state.scroller} />
                     <${ProgressBar} notebook=${this.state.notebook} backend_launch_phase=${this.state.backend_launch_phase} status=${status}/>
                     <header id="pluto-nav" className=${export_menu_open ? "show_export" : ""}>
                         <${ExportBanner}
                             notebook_id=${this.state.notebook.notebook_id}
-                            notebook_shortpath=${this.state.notebook.shortpath}
+                            print_title=${
+                                this.state.notebook.metadata?.frontmatter?.title ??
+                                new URLSearchParams(window.location.search).get("name") ??
+                                this.state.notebook.shortpath
+                            }
                             notebookfile_url=${this.export_url("notebookfile")}
                             notebookexport_url=${this.export_url("notebookexport")}
                             open=${export_menu_open}

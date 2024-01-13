@@ -215,6 +215,7 @@
 
         /* Landing colors */
         --index-text-color: hsl(0, 0, 60);
+        --index-light-text-color: #838383;
         --index-clickable-text-color: hsl(0, 0, 30);
         --docs-binding-bg: #8383830a;
         --index-card-bg: white;
