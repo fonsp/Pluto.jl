@@ -69,7 +69,6 @@ pluto-editor {
 
 main {
     flex: 1;
-
     max-width: calc(700px + 25px + 6px); /* 700px + both paddings */
     padding-top: 0px;
     padding-bottom: 4rem;
@@ -489,16 +488,24 @@ header#pluto-nav.show_export {
     transform: translateY(130px);
 }
 
-aside#export {
+dialog#export {
     position: absolute;
+    display: block;
     top: 0;
     width: 100%;
     height: 130px;
     background: var(--export-bg-color);
     color: var(--export-color);
     transform: translateY(-100%);
+    /* overlay: none !important; */
+    overflow: visible;
+    margin: 0;
+    padding: 0;
+    max-width: none;
+    max-height: none;
+    border: none;
 }
-aside#export::before {
+dialog#export::before {
     content: "";
     position: absolute;
     bottom: 100%;
@@ -507,7 +514,7 @@ aside#export::before {
     height: 100px;
     background: inherit;
 }
-aside#export div#container {
+dialog#export div#container {
     flex-direction: row;
     display: flex;
     max-width: 1000px;
@@ -515,11 +522,11 @@ aside#export div#container {
     margin: 0 auto;
     position: relative;
 }
-header aside#export div#container {
+header dialog#export div#container {
     /* to prevent the div from taking up horizontal page when the export pane is closed. On small screen this causes overscroll on the right. */
     overflow-x: hidden;
 }
-header.show_export aside#export div#container {
+header.show_export dialog#export div#container {
     overflow-x: auto;
 }
 a.export_card {
@@ -562,7 +569,7 @@ a.export_card section {
     /* font-size: 14px; */
     padding: 3px;
 }
-aside#export .export_small_btns {
+dialog#export .export_small_btns {
     display: flex;
     flex-direction: row;
     padding: 0.9em;
@@ -727,15 +734,15 @@ nav#at_the_top button.toggle_export span {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/share-outline.svg");
     filter: var(--image-filters);
 }
-aside#export button.toggle_export span {
+dialog#export button.toggle_export span {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-outline.svg");
     filter: invert(1);
 }
-aside#export button.toggle_frontmatter_edit span {
+dialog#export button.toggle_frontmatter_edit span {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/newspaper-outline.svg");
     filter: invert(1);
 }
-aside#export button.toggle_presentation span {
+dialog#export button.toggle_presentation span {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/easel-outline.svg");
     filter: invert(1);
 }
@@ -1109,7 +1116,6 @@ pluto-cell {
     min-height: calc(23px + 1px + 1px);
     margin-top: var(--pluto-cell-spacing);
     position: relative;
-    break-inside: avoid;
 }
 
 pluto-output {
@@ -1574,10 +1580,13 @@ pluto-input > button > span {
     button.toggle_export,
     button.start_stop_recording,
     pluto-cell:hover > button,
+    pluto-cell:focus-within > button,
     pluto-cell:hover > pluto-input > button,
+    pluto-cell:focus-within > pluto-input > button,
     pluto-cell > pluto-runarea > button,
-    pluto-cell:hover > pluto-shoulder > button {
-        opacity: 0.4;
+    pluto-cell:hover > pluto-shoulder > button,
+    pluto-cell:focus-within > pluto-shoulder > button {
+        opacity: 0.6;
         transition: opacity 0.25s ease-in-out;
     }
     .export_small_btns button:hover,
@@ -1596,22 +1605,25 @@ pluto-input > button > span {
 }
 
 @media screen and (pointer: coarse) {
-    pluto-cell > button,
-    pluto-cell > pluto-runarea {
-        opacity: 0;
-        /* to make it feel smooth: */
-        transition: opacity 0.25s ease-in-out;
-    }
+    pluto-cell > button.add_cell,
     pluto-input > button,
     pluto-shoulder > button {
         opacity: 0.25;
         transition: opacity 0.25s ease-in-out;
     }
-    pluto-cell:focus-within > button,
+    pluto-cell:not(:first-of-type, :last-of-type) > button.add_cell {
+        /* because there are two overlapping buttons */
+        opacity: 0.125;
+    }
+    /* pluto-cell:first-of-type > button.add_cell.before,
+    pluto-cell:last-of-type > button.add_cell.after {
+        opacity: 0.25;
+    } */
+    pluto-cell:focus-within > button.add_cell,
     pluto-cell:focus-within > pluto-input > button,
     pluto-cell:focus-within > pluto-runarea,
     pluto-cell:focus-within > pluto-shoulder > button {
-        opacity: 0.25;
+        opacity: 0.6;
         transition: opacity 0.25s ease-in-out;
     }
     pluto-cell > pluto-input > button:focus-within,
@@ -3135,10 +3147,6 @@ nav#slide_controls > button.next > span::after {
 }
 
 button.floating_back_button {
-    display: none;
-}
-
-.static_preview.offer_local button.floating_back_button {
     display: flex;
     position: fixed;
     z-index: 1000;

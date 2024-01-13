@@ -13,7 +13,7 @@ function open_in_default_browser(url::AbstractString)::Bool
             Base.run(`powershell.exe Start "'$url'"`)
             true
         elseif Sys.islinux()
-            Base.run(`xdg-open $url`)
+            Base.run(`xdg-open $url`, devnull, devnull, devnull)
             true
         else
             false
@@ -331,7 +331,7 @@ precompile(run, (ServerSession, HTTP.Handlers.Router{Symbol("##001")}))
 function pretty_address(session::ServerSession, hostIP, port)
     root = if session.options.server.root_url !== nothing
         @assert endswith(session.options.server.root_url, "/")
-        session.options.server.root_url
+        replace(session.options.server.root_url, "{PORT}" => string(Int(port)))
     elseif haskey(ENV, "JH_APP_URL")
         "$(ENV["JH_APP_URL"])proxy/$(Int(port))/"
     else

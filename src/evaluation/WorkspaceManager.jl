@@ -34,6 +34,7 @@ const SN = Tuple{ServerSession, Notebook}
 "These expressions get evaluated whenever a new `Workspace` process is created."
 process_preamble() = quote
     Base.exit_on_sigint(false)
+    const pluto_boot_environment_path = $(Pluto.pluto_boot_environment_path[])
     include($(project_relative_path(joinpath("src", "runner"), "Loader.jl")))
     ENV["GKSwstype"] = "nul"
     ENV["JULIA_REVISE_WORKER_ONLY"] = "1"
