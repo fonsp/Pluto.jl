@@ -119,9 +119,16 @@ end
 
 PlutoReactiveCore.topological_order(notebook::Notebook) = topological_order(notebook.topology)
 
-@deprecate 
-PlutoReactiveCore.where_referenced(notebook::Notebook, topology::NotebookTopology, something) PlutoReactiveCore.where_referenced(topology, something)
-PlutoReactiveCore.where_assigned(notebook::Notebook, topology::NotebookTopology, something) PlutoReactiveCore.where_assigned(topology, something)
+function PlutoReactiveCore.where_referenced(notebook::Notebook, topology::NotebookTopology, something)
+    # can't use @deprecate on an overload
+    @warn "Deprecated, drop the notebook argument"
+    PlutoReactiveCore.where_referenced(topology, something)
+end
+function PlutoReactiveCore.where_assigned(notebook::Notebook, topology::NotebookTopology, something)
+    # can't use @deprecate on an overload
+    @warn "Deprecated, drop the notebook argument"
+    PlutoReactiveCore.where_assigned(topology, something)
+end
 
 emptynotebook(args...) = Notebook([Cell()], args...)
 
