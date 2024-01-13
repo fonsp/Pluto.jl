@@ -391,7 +391,9 @@ export const create_pluto_connection = async ({
                 console.warn("Error while setting binder url:", error)
             }
         }
-        update_url_with_binder_token()
+        if (!vscode_available) {
+            update_url_with_binder_token()
+        }
 
         try {
             ws_connection = await (vscode_available ? create_vscode_connection : create_ws_connection)(String(ws_address), {
