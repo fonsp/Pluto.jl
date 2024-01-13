@@ -1,13 +1,23 @@
-const md_and_friends = [Symbol("@md_str"), Symbol("@html_str"), :getindex]
+const md_and_friends = [
+	# Text
+	Symbol("@md_str"),
+	Symbol("@html_str"),
+	:getindex,
+]
 
 """Does the cell only contain md"..." and html"..."?
 
 This is used to run these cells first."""
 function is_just_text(topology::NotebookTopology, cell::Cell)::Bool
 	# https://github.com/fonsp/Pluto.jl/issues/209
-	isempty(topology.nodes[cell].definitions) && isempty(topology.nodes[cell].funcdefs_with_signatures) && 
-		topology.nodes[cell].references ⊆ md_and_friends &&
-		no_loops(ExpressionExplorer.maybe_macroexpand(topology.codes[cell].parsedcode; recursive=true))
+        node = topology.nodes[cell]
+	((isempty(node.definitions) &&
+		isempty(node.funcdefs_with_signatures) &&
+		node.references ⊆ md_and_friends) ||
+	 (length(node.references) == 2 &&
+		:PlutoRunner in node.references &&
+		Symbol("PlutoRunner.throw_syntax_error") in node.references)) &&
+		no_loops(ExpressionExplorerExtras.maybe_macroexpand_pluto(topology.codes[cell].parsedcode; recursive=true))
 end
 
 function no_loops(ex::Expr)

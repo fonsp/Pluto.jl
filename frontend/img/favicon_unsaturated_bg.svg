@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="64px" height="64px" viewBox="0 0 171 171" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;">
+    <g id="Layer-1" serif:id="Layer 1" transform="matrix(1,0,0,1,-614.733,-339.436)">
+        <g transform="matrix(1.36912,0,0,1.14015,583.759,327.006)">
+            <path d="M146.848,38.142C146.848,23.107 136.683,10.901 124.163,10.901L45.308,10.901C32.788,10.901 22.623,23.107 22.623,38.142L22.623,132.833C22.623,147.867 32.788,160.073 45.308,160.073L124.163,160.073C136.683,160.073 146.848,147.867 146.848,132.833L146.848,38.142Z" style="fill:rgb(245,243,213);"/>
+        </g>
+        <g transform="matrix(0.483616,0,0,0.483616,448.339,267.753)">
+            <g id="Layer-11" serif:id="Layer 1">
+                <g id="g51">
+                    <circle id="circle18" cx="519.903" cy="381.451" r="46.772" style="fill:rgb(214,102,97);stroke:rgb(201,61,57);stroke-width:8.5px;"/>
+                    <circle id="circle22" cx="519.903" cy="324.064" r="46.772" style="fill:rgb(170,125,192);stroke:rgb(148,91,176);stroke-width:8.5px;"/>
+                    <circle id="circle20" cx="519.903" cy="266.676" r="46.772" style="fill:rgb(107,171,91);stroke:rgb(59,151,46);stroke-width:8.5px;"/>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

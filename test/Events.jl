@@ -9,23 +9,20 @@ import UUIDs: UUID
 
     events = []
     function test_listener(a::PlutoEvent)
-        @info "this run!"
+        # @info "this run!"
         push!(events, typeof(a))
     end
-    🍭 = ServerSession(; event_listener = test_listener)
+    🍭 = ServerSession()
+    🍭.options.server.on_event = test_listener
     🍭.options.evaluation.workspace_use_distributed = false
 
-    fakeclient = ClientSession(:fake, nothing)
-    🍭.connected_clients[fakeclient.id] = fakeclient
     notebook = Notebook([
         Cell("[1,1,[1]]"),
         Cell("Dict(:a => [:b, :c])"),
     ])
 
-    fakeclient.connected_notebook = notebook
-
     update_run!(🍭, notebook, notebook.cells)
-    WorkspaceManager.unmake_workspace((🍭, notebook))
+    WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
     @test_broken events[1:3] == ["NewNotebookEvent", "OpenNotebookEvent" , "FileSaveEvent"]
 
 # Pluto.CustomLaunchEvent: Gets fired

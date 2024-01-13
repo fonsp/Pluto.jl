@@ -23,17 +23,11 @@ jobs:
                   # See https://docs.github.com/en/actions/reference/events-that-trigger-workflows#triggering-new-workflows-using-a-personal-access-token
                   token: ${{ secrets.PAT_TOKEN }}
                   changelog: |
-                    ## {{ package }} {{ version }}
-                    
-                    > Try this release in your browser! _(Available 30 minutes after the release)_
+                    > **Try this release in your browser!** _(Available 30 minutes after the release)_
                     > 
                     > <a href="https://binder.plutojl.org/{{ version }}/"><img alt="Binder logo" src="https://mybinder.org/badge_logo.svg"></a>
-
-                    **Generate your own binder links using [pluto-on-binder.glitch.me](https://pluto-on-binder.glitch.me/)!**
-
-                    {% if previous_release %}
-                    [Diff since {{ previous_release }}]({{ compare_url }})
-                    {% endif %}
+                    >
+                    > Generate your own binder links using [pluto-on-binder.glitch.me](https://pluto-on-binder.glitch.me/)!
 
                     {% if custom %}
                     {{ custom }}
@@ -51,4 +45,20 @@ jobs:
                     {% for issue in issues %}
                     - {{ issue.title }} (#{{ issue.number }})
                     {% endfor %}
+                    {% endif %}
+                    
+                    # New features
+                    *(TODO)*
+
+                    # Performance improvements
+                    *(TODO)*
+
+                    # Fixes
+                    *(TODO)*
+
+                    # Internal changes
+                    *(TODO)*
+
+                    {% if previous_release %}
+                    [Diff since {{ previous_release }}]({{ compare_url }})
                     {% endif %}

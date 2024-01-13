@@ -1,5 +1,13 @@
 ### A Pluto.jl notebook ###
-# v0.17.3
+# v0.19.9
+
+#> [frontmatter]
+#> author_url = "https://github.com/JuliaPluto"
+#> image = "https://upload.wikimedia.org/wikipedia/commons/9/99/Unofficial_JavaScript_logo_2.svg"
+#> tags = ["javascript", "web", "classic"]
+#> author_name = "Pluto.jl"
+#> description = "Use HTML, CSS and JavaScript to make your own interactive visualizations!"
+#> license = "Unlicense"
 
 using Markdown
 using InteractiveUtils
@@ -53,7 +61,7 @@ This document assumes that you have used HTML, CSS and JavaScript before in anot
 <style>
 
 	article.learning {
-		background: #fde6ea9c;
+		background: #f996a84f;
 		padding: 1em;
 		border-radius: 5px;
 	}
@@ -136,6 +144,7 @@ currentScript.previousElementSibling.innerText = "Hello from JavaScript!"
 .blue-background {
 	padding: .5em;
 	background: lightblue;
+	color: black;
 }
 </style>
 
@@ -284,18 +293,12 @@ my_data = [
 		.join("text")
 		.attr("x", d => d.coordinate[0])
 		.attr("y", d => d.coordinate[1])
+		.style("fill", "red")
 		.text(d => d.name)
 
 	return svg
 	</script>
 """)
-
-# ╔═╡ 7d9d6c28-131a-4b2a-84f8-5c085f387e85
-md"""
-#### Future: directly embedding data
-
-In the future, you will be able to embed data directly into JavaScript, using Pluto's built-in, optimized data transfer. See [the Pull Request](https://github.com/fonsp/Pluto.jl/pull/1124) for more info.
-"""
 
 # ╔═╡ 0866afc2-fd42-42b7-a572-9d824cf8b83b
 md"""
@@ -323,12 +326,12 @@ ClickCounter(text="Click") = @htl("""
 <script>
 
 	// Select elements relative to `currentScript`
-	var span = currentScript.parentElement
-	var button = span.querySelector("button")
+	const span = currentScript.parentElement
+	const button = span.querySelector("button")
 
 	// we wrapped the button in a `span` to hide its default behaviour from Pluto
 
-	var count = 0
+	let count = 0
 
 	button.addEventListener("click", (e) => {
 		count += 1
@@ -425,9 +428,9 @@ Let's look at the "wrapper span strategy" again.
 	<button id="second">Julians!</button>
 	
 	<script>
-		var wrapper_span = currentScript.parentElement
+		const wrapper_span = currentScript.parentElement
 		// we can now use querySelector to select anything we want
-		var first_button = wrapper_span.querySelector("button#first")
+		const first_button = wrapper_span.querySelector("button#first")
 
 		console.log(first_button)
 	</script>
@@ -443,7 +446,7 @@ md"""
 In the example above, it would have been easier to just select the button directly, using:
 ```javascript
 // ⛔ do no use:
-var first_button = document.body.querySelector("button#first")
+const first_button = document.body.querySelector("button#first")
 ```
 
 However, this becomes a problem when **combining using the widget multiple times in the same notebook**, since all selectors will point to the first instance. 
@@ -457,27 +460,29 @@ md"""
 
 To use external javascript dependencies, you can load them from a CDN, such as:
 - [jsdelivr.com](https://www.jsdelivr.com/)
-- [skypack.dev](https://www.skypack.dev/)
+- [esm.sh](https://esm.sh)
 
 Just like when writing a browser app, there are two ways to import JS dependencies: a `<script>` tag, and the more modern ES6 import.
 
 ### Loading method 1: ES6 imports
 
-We recommend that you use an [**ES6 import**](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules) if the library supports it.
+We recommend that you use an [**ES6 import**](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules) if the library supports it. (If it does not, you might be able to still get it using [esm.sh](https://esm.sh) or [skypack.dev](https://www.skypack.dev)!)
 
 
 ##### Awkward note about syntax
 
 Normally, you can import libraries inside JS using the import syntax:
 ```javascript
-import confetti from 'https://cdn.skypack.dev/canvas-confetti'
+// ⛔ do no use:
+import confetti from "https://esm.sh/canvas-confetti@1.4.0"
 import { html, render, useEffect } from "https://cdn.jsdelivr.net/npm/htm@3.0.4/preact/standalone.mjs"
 ```
 
 In Pluto, this is [currently not yet supported](https://github.com/fonsp/Pluto.jl/issues/992), and you need to use a different syntax as workaround:
 ```javascript
-const { default: confetti } = await import("https://cdn.skypack.dev/canvas-confetti@1")
-const { html, render, useEffect } = await import( "https://cdn.jsdelivr.net/npm/htm@3.0.4/preact/standalone.mjs")
+// ✔ use:
+const { default: confetti } = await import("https://esm.sh/canvas-confetti@1.4.0")
+const { html, render, useEffect } = await import("https://cdn.jsdelivr.net/npm/htm@3.0.4/preact/standalone.mjs")
 ```
 """
 
@@ -493,6 +498,22 @@ md"""
 ```
 
 will work as expected. The execution of other script tags within the same cell is delayed until a `src` script finished loading, and Pluto will make sure that every source file is only loaded once.
+"""
+
+# ╔═╡ 80511436-e41f-4913-8a30-d9e113cfaf71
+md"""
+### Pinning versions
+
+When using a CDN almost **never** want to use an unpinned import. Always version your CDN imports!
+```js
+// ⛔ do no use:
+"https://esm.sh/canvas-confetti"
+"https://cdn.jsdelivr.net/npm/htm/preact/standalone.mjs"
+
+// ✔ use:
+"https://esm.sh/canvas-confetti@1.4.0"
+"https://cdn.jsdelivr.net/npm/htm@3.0.4/preact/standalone.mjs"
+```
 """
 
 # ╔═╡ 8388a833-d535-4cbd-a27b-de323cea60e8
@@ -526,6 +547,9 @@ md"""
 ### Example: 
 (Though using `HypertextLiteral.jl` would make more sense for this purpose.)
 """
+
+# ╔═╡ fc8984c8-4668-418a-b258-a1718809470c
+
 
 # ╔═╡ 846354c8-ba3b-4be7-926c-d3c9cc9add5f
 films = [
@@ -730,6 +754,39 @@ state = Dict(
 	
 """)
 
+# ╔═╡ 7d9d6c28-131a-4b2a-84f8-5c085f387e85
+md"""
+## Embedding Julia data directly into JavaScript!
+
+You can use `Main.PlutoRunner.publish_to_js` to embed data directly into JavaScript, using Pluto's built-in, optimized data transfer. See [the Pull Request](https://github.com/fonsp/Pluto.jl/pull/1124) for more info.
+
+Example usage:
+
+```julia
+let
+	x = rand(UInt8, 10_000)
+	
+	d = Dict(
+		"some_raw_data" => x,
+		"wow" => 1000,
+	)
+	
+	@htl(\"\"\"
+	<script>
+		
+	const d = $(Main.PlutoRunner.publish_to_js(d))
+	console.log(d)
+	
+	</script>
+	\"\"\")
+end
+```
+
+In this example, the `const d` is populated from a hook into Pluto's data transfer. For large amounts of typed vector data (e.g. `Vector{UInt8}` or `Vector{Float64}`), this is *much* more efficient than interpolating the data directly with HypertextLiteral using `$(d)`, which would use a JSON-like string serialization.
+
+**Note:** this API is still *experimental*, and might change in the future.
+"""
+
 # ╔═╡ da7091f5-8ba2-498b-aa8d-bbf3b4505b81
 md"""
 # Appendix
@@ -763,7 +820,7 @@ details(md"""
 	<style>
 
 		article.learning {
-			background: #fde6ea9c;
+			background: #fde6ea4c;
 			padding: 1em;
 			border-radius: 5px;
 		}
@@ -815,6 +872,7 @@ details(md"""
 		.join("text")
 		.attr("x", d => d.coordinate[0])
 		.attr("y", d => d.coordinate[1])
+		.style("fill", "red")
 		.text(d => d.name)
 
 	return svg
@@ -831,12 +889,12 @@ details(md"""
 <script>
 
 	// Select elements relative to `currentScript`
-	var div = currentScript.parentElement
-	var button = div.querySelector("button")
+	const div = currentScript.parentElement
+	const button = div.querySelector("button")
 
 	// we wrapped the button in a `div` to hide its default behaviour from Pluto
 
-	var count = 0
+	let count = 0
 
 	button.addEventListener("click", (e) => {
 		count += 1
@@ -1042,7 +1100,7 @@ PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 
 [compat]
 HypertextLiteral = "~0.9.3"
-PlutoUI = "~0.7.22"
+PlutoUI = "~0.7.34"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -1051,9 +1109,9 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 [[AbstractPlutoDingetjes]]
 deps = ["Pkg"]
-git-tree-sha1 = "abb72771fd8895a7ebd83d5632dc4b989b022b5b"
+git-tree-sha1 = "8eaf9f1b4921132a4cff3f36a1d9ba923b14a481"
 uuid = "6e696c72-6542-2067-7265-42206c756150"
-version = "1.1.2"
+version = "1.1.4"
 
 [[ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
@@ -1064,13 +1122,32 @@ uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
 [[Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
+[[ColorTypes]]
+deps = ["FixedPointNumbers", "Random"]
+git-tree-sha1 = "eb7f0f8307f71fac7c606984ea5fb2817275d6e4"
+uuid = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
+version = "0.11.4"
+
+[[CompilerSupportLibraries_jll]]
+deps = ["Artifacts", "Libdl"]
+uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
+
 [[Dates]]
 deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 
 [[Downloads]]
-deps = ["ArgTools", "LibCURL", "NetworkOptions"]
+deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
 uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
+
+[[FileWatching]]
+uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
+
+[[FixedPointNumbers]]
+deps = ["Statistics"]
+git-tree-sha1 = "335bfdceacc84c5cdf16aadc768aa5ddfc5383cc"
+uuid = "53c48c17-4a7d-5ca2-90c5-79b7896eea93"
+version = "0.8.4"
 
 [[Hyperscript]]
 deps = ["Test"]
@@ -1079,9 +1156,10 @@ uuid = "47d2ed2b-36de-50cf-bf87-49c2cf4b8b91"
 version = "0.0.4"
 
 [[HypertextLiteral]]
-git-tree-sha1 = "2b078b5a615c6c0396c77810d92ee8c6f470d238"
+deps = ["Tricks"]
+git-tree-sha1 = "c47c5fa4c5308f27ccaac35504858d8914e102f9"
 uuid = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
-version = "0.9.3"
+version = "0.9.4"
 
 [[IOCapture]]
 deps = ["Logging", "Random"]
@@ -1095,9 +1173,9 @@ uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 
 [[JSON]]
 deps = ["Dates", "Mmap", "Parsers", "Unicode"]
-git-tree-sha1 = "8076680b162ada2a031f707ac7b4953e30667a37"
+git-tree-sha1 = "3c837543ddb02250ef42f4738347454f95079d4e"
 uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
-version = "0.21.2"
+version = "0.21.3"
 
 [[LibCURL]]
 deps = ["LibCURL_jll", "MozillaCACerts_jll"]
@@ -1117,6 +1195,10 @@ uuid = "29816b5a-b9ab-546f-933c-edad1886dfa8"
 
 [[Libdl]]
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+
+[[LinearAlgebra]]
+deps = ["Libdl", "libblastrampoline_jll"]
+uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [[Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
@@ -1138,21 +1220,25 @@ uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
 [[NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 
+[[OpenBLAS_jll]]
+deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
+uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
+
 [[Parsers]]
 deps = ["Dates"]
-git-tree-sha1 = "ae4bbcadb2906ccc085cf52ac286dc1377dceccc"
+git-tree-sha1 = "0044b23da09b5608b4ecacb4e5e6c6332f833a7e"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "2.1.2"
+version = "2.3.2"
 
 [[Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
 [[PlutoUI]]
-deps = ["AbstractPlutoDingetjes", "Base64", "Dates", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "UUIDs"]
-git-tree-sha1 = "565564f615ba8c4e4f40f5d29784aa50a8f7bbaf"
+deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "UUIDs"]
+git-tree-sha1 = "8d1f54886b9037091edf146b517989fc4a09efec"
 uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-version = "0.7.22"
+version = "0.7.39"
 
 [[Printf]]
 deps = ["Unicode"]
@@ -1163,7 +1249,7 @@ deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
 uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 
 [[Random]]
-deps = ["Serialization"]
+deps = ["SHA", "Serialization"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [[Reexport]]
@@ -1180,6 +1266,14 @@ uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 [[Sockets]]
 uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
 
+[[SparseArrays]]
+deps = ["LinearAlgebra", "Random"]
+uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+
+[[Statistics]]
+deps = ["LinearAlgebra", "SparseArrays"]
+uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+
 [[TOML]]
 deps = ["Dates"]
 uuid = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
@@ -1192,6 +1286,11 @@ uuid = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
+[[Tricks]]
+git-tree-sha1 = "6bac775f2d42a611cdfcd1fb217ee719630c4175"
+uuid = "410a4b4d-49e4-4fbc-ab6d-cb71b17b3775"
+version = "0.1.6"
+
 [[UUIDs]]
 deps = ["Random", "SHA"]
 uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
@@ -1202,6 +1301,10 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 [[Zlib_jll]]
 deps = ["Libdl"]
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
+
+[[libblastrampoline_jll]]
+deps = ["Artifacts", "Libdl", "OpenBLAS_jll"]
+uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
 
 [[nghttp2_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -1249,7 +1352,6 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╠═00d97588-d591-4dad-9f7d-223c237deefd
 # ╠═21f57310-9ceb-423c-a9ce-5beb1060a5a3
 # ╟─94561cb1-2325-49b6-8b22-943923fdd91b
-# ╟─7d9d6c28-131a-4b2a-84f8-5c085f387e85
 # ╟─0866afc2-fd42-42b7-a572-9d824cf8b83b
 # ╟─75e1a973-7ef0-4ac5-b3e2-5edb63577927
 # ╠═e8d8a60e-489b-467a-b49c-1fa844807751
@@ -1264,11 +1366,13 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╟─f18b98f7-1e0f-4273-896f-8a667d15605b
 # ╟─d83d57e2-4787-4b8d-8669-64ed73d79e73
 # ╟─077c95cf-2a1b-459f-830e-c29c11a2c5cc
+# ╟─80511436-e41f-4913-8a30-d9e113cfaf71
 # ╟─8388a833-d535-4cbd-a27b-de323cea60e8
 # ╟─4cf27df3-6a69-402e-a71c-26538b2a52e7
 # ╟─5721ad33-a51a-4a91-adb2-0915ea0efa13
 # ╠═c857bb4b-4cf4-426e-b340-592cf7700434
 # ╟─d121e085-c69b-490f-b315-c11a9abd57a6
+# ╟─fc8984c8-4668-418a-b258-a1718809470c
 # ╠═846354c8-ba3b-4be7-926c-d3c9cc9add5f
 # ╟─a33c7d7a-8071-448e-abd6-4e38b5444a3a
 # ╠═91f3dab8-5521-44a0-9890-8d988a994076
@@ -1287,6 +1391,7 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╠═9e37c18c-3ebb-443a-9663-bb4064391d6e
 # ╟─05d28aa2-9622-4e62-ab39-ca4c7dde6eb4
 # ╠═3266f9e6-42ad-4103-8db3-b87d2c315290
+# ╟─7d9d6c28-131a-4b2a-84f8-5c085f387e85
 # ╟─ebec177c-4c33-45a4-bdbd-f16944631aff
 # ╟─da7091f5-8ba2-498b-aa8d-bbf3b4505b81
 # ╠═64cbf19c-a4e3-4cdb-b4ec-1fbe24be55ad

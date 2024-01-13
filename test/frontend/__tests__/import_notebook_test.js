@@ -1,6 +1,16 @@
 import puppeteer from "puppeteer"
-import { lastElement, saveScreenshot, getTestScreenshotPath, setupPage } from "../helpers/common"
-import { getCellIds, waitForCellOutput, importNotebook, getPlutoUrl, prewarmPluto, writeSingleLineInPlutoInput } from "../helpers/pluto"
+import { lastElement, saveScreenshot, createPage } from "../helpers/common"
+import {
+    getCellIds,
+    waitForCellOutput,
+    importNotebook,
+    getPlutoUrl,
+    prewarmPluto,
+    writeSingleLineInPlutoInput,
+    shutdownCurrentNotebook,
+    setupPlutoBrowser,
+    runAllChanged,
+} from "../helpers/pluto"
 
 describe("PlutoImportNotebook", () => {
     /**
@@ -13,26 +23,15 @@ describe("PlutoImportNotebook", () => {
     /** @type {puppeteer.Page} */
     let page = null
     beforeAll(async () => {
-        browser = await puppeteer.launch({
-            headless: process.env.HEADLESS !== "false",
-            args: ["--no-sandbox", "--disable-setuid-sandbox"],
-            devtools: false,
-        })
-
-        let page = await browser.newPage()
-        setupPage(page)
-        await prewarmPluto(browser, page)
-        await page.close()
+        browser = await setupPlutoBrowser()
     })
     beforeEach(async () => {
-        page = await browser.newPage()
-        setupPage(page)
+        page = await createPage(browser)
         await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
     })
     afterEach(async () => {
-        await saveScreenshot(page, getTestScreenshotPath())
-        // @ts-ignore
-        await page.evaluate(() => window.shutdownNotebook?.())
+        await saveScreenshot(page)
+        await shutdownCurrentNotebook(page)
         await page.close()
         page = null
     })
@@ -63,11 +62,7 @@ describe("PlutoImportNotebook", () => {
         // Use the previously defined sum function in the new cell
         lastPlutoCellId = lastElement(await getCellIds(page))
         await writeSingleLineInPlutoInput(page, `pluto-cell[id="${lastPlutoCellId}"] pluto-input`, "sum(2, 3)")
-
-        // Run cells
-
-        await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
-        await page.click(".runallchanged")
+        await runAllChanged(page)
         const lastCellContent = await waitForCellOutput(page, lastPlutoCellId)
         expect(lastCellContent).toBe("5")
     })

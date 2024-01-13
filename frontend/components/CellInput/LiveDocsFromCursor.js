@@ -1,5 +1,5 @@
 import { EditorState, syntaxTree } from "../../imports/CodemirrorPlutoSetup.js"
-import { ScopeStateField } from "./go_to_definition_plugin.js"
+import { ScopeStateField } from "./scopestate_statefield.js"
 
 let get_root_variable_from_expression = (cursor) => {
     if (cursor.name === "SubscriptExpression") {
@@ -24,9 +24,24 @@ let VALID_DOCS_TYPES = [
     "MacroFieldExpression",
     "MacroIdentifier",
     "Operator",
+    "Definition",
     "ParameterizedIdentifier",
 ]
-let keywords_that_have_docs_and_are_cool = ["import", "export", "try", "catch", "finally", "quote", "do", "struct", "mutable"]
+let keywords_that_have_docs_and_are_cool = [
+    "import",
+    "export",
+    "try",
+    "catch",
+    "finally",
+    "quote",
+    "do",
+    "struct",
+    "mutable",
+    "module",
+    "baremodule",
+    "if",
+    "let",
+]
 
 let is_docs_searchable = (/** @type {import("../../imports/CodemirrorPlutoSetup.js").TreeCursor} */ cursor) => {
     if (keywords_that_have_docs_and_are_cool.includes(cursor.name)) {
@@ -40,6 +55,9 @@ let is_docs_searchable = (/** @type {import("../../imports/CodemirrorPlutoSetup.
                 }
                 // This is for the VERY specific case like `Vector{Int}(1,2,3,4) which I want to yield `Vector{Int}`
                 if (cursor.name === "TypeArgumentList") {
+                    continue
+                }
+                if (cursor.name === "FieldName" || cursor.name === "MacroName" || cursor.name === "MacroFieldName") {
                     continue
                 }
                 if (!is_docs_searchable(cursor)) {
@@ -92,7 +110,7 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                 iterations = iterations + 1
 
                 // Collect parents in a list so I can compare them easily
-                let parent_cursor = cursor.node.cursor
+                let parent_cursor = cursor.node.cursor()
                 let parents = []
                 while (parent_cursor.parent()) {
                     parents.push(parent_cursor.name)
@@ -115,6 +133,15 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                         // We're inside a `... = ...` inside the struct
                     } else if (parents.includes("TypedExpression") && parents.indexOf("TypedExpression") < index_of_struct_in_parents) {
                         // We're inside a `x::X` inside the struct
+                    } else if (parents.includes("SubtypedExpression") && parents.indexOf("SubtypedExpression") < index_of_struct_in_parents) {
+                        // We're inside `Real` in `struct MyNumber<:Real`
+                        while (parent?.name !== "SubtypedExpression") {
+                            parent = parent.parent
+                        }
+                        const type_node = parent.lastChild
+                        if (type_node.from <= cursor.from && type_node.to >= cursor.to) {
+                            return state.doc.sliceString(type_node.from, type_node.to)
+                        }
                     } else if (cursor.name === "struct" || cursor.name === "mutable") {
                         cursor.parent()
                         cursor.firstChild()
@@ -158,7 +185,7 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                 }
 
                 // `html"asd"` should yield "html"
-                if (cursor.name === "Identifier" && parent.name === "PrefixedString") {
+                if (cursor.name === "Identifier" && parent.name === "Prefix") {
                     continue
                 }
                 if (cursor.name === "PrefixedString") {
@@ -217,7 +244,8 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                 if (
                     cursor.name === "Identifier" &&
                     parent.name === "ArgumentList" &&
-                    (parent.parent.name === "FunctionAssignmentExpression" || parent.parent.name === "FunctionDefinition")
+                    (parent.parent.parent.name === "FunctionAssignmentExpression" ||
+                        parent.parent.name === "FunctionDefinition")
                 ) {
                     continue
                 }
@@ -269,6 +297,7 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
 
                 if (VALID_DOCS_TYPES.includes(cursor.name) || keywords_that_have_docs_and_are_cool.includes(cursor.name)) {
                     if (!is_docs_searchable(cursor)) {
+                        console.log("NOT DOCS SEARCHABLE")
                         return undefined
                     }
 
@@ -280,7 +309,7 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                     }
 
                     // We have do find the current usage of the variable, and make sure it has no definition inside this cell
-                    let usage = Array.from(scopestate.usages).find((x) => x.usage.from === root_variable_node.from && x.usage.to === root_variable_node.to)
+                    let usage = scopestate.usages.find((x) => x.usage.from === root_variable_node.from && x.usage.to === root_variable_node.to)
                     // If we can't find the usage... we just assume it can be docs showed I guess
                     if (usage?.definition == null) {
                         return state.doc.sliceString(cursor.from, cursor.to)

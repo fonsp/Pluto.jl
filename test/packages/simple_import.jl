@@ -7,7 +7,7 @@ using InteractiveUtils
 # ╔═╡ c581d17a-c965-11eb-1607-bbeb44933d25
 # This file imports an outdated version of PlutoPkgTestA: 0.2.2 (which is stored in the embedded Manifest file).
 
-# It is generated on Julia 1.5 (our oldest supported Julia version, Manifest.toml is not backwards-compatible):
+# It is generated on Julia 1.5 (our oldest supported Julia version (at the time of writing), Manifest.toml is not backwards-compatible):
 
 # 1. add our test registry: 
 #   pkg> registry add https://github.com/JuliaPluto/PlutoPkgTestRegistry

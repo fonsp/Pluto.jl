@@ -14,7 +14,7 @@ export let pluto_paste_plugin = ({ pluto_actions, cell_id }) => {
             event.stopPropagation()
 
             const topaste = event.clipboardData.getData("text/plain")
-            const deserializer = detect_deserializer(topaste, false)
+            const deserializer = detect_deserializer(topaste)
             if (deserializer == null) {
                 return false
             }

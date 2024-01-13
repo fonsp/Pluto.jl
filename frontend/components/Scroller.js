@@ -1,3 +1,4 @@
+import { useEventListener } from "../common/useEventListener.js"
 import { useEffect, useRef, useState } from "../imports/Preact.js"
 
 /**
@@ -9,17 +10,11 @@ import { useEffect, useRef, useState } from "../imports/Preact.js"
 export const Scroller = ({ active }) => {
     const pointer = useRef()
 
-    useEffect(() => {
-        const handler = (e) => {
-            pointer.current = { x: e.clientX, y: e.clientY }
-        }
-        document.addEventListener("pointermove", handler)
-        document.addEventListener("dragover", handler)
-        return () => {
-            document.removeEventListener("pointermove", handler)
-            document.removeEventListener("dragover", handler)
-        }
-    }, [])
+    const onmove = (e) => {
+        pointer.current = { x: e.clientX, y: e.clientY }
+    }
+    useEventListener(window, "pointermove", onmove, [])
+    useEventListener(window, "dragover", onmove, [])
 
     useEffect(() => {
         if (active.up || active.down) {
@@ -51,4 +46,11 @@ export const Scroller = ({ active }) => {
     }, [active.up, active.down])
 
     return null
+}
+
+export const scroll_cell_into_view = (/** @type {string} */ cell_id) => {
+    document.getElementById(cell_id)?.scrollIntoView({
+        block: "center",
+        behavior: "smooth",
+    })
 }

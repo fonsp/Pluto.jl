@@ -7,9 +7,6 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
     🍭 = ServerSession()
     🍭.options.evaluation.workspace_use_distributed = false
 
-    fakeclient = ClientSession(:fake, nothing)
-    🍭.connected_clients[fakeclient.id] = fakeclient
-
     notebook = Notebook([
                 Cell("x = 1"), # prerequisite of test cell
                 Cell("f(x) = x + y"), # depends on test cell
@@ -23,7 +20,6 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
                 Cell("g(6) + g(6,6)"),
                 Cell("using Dates"),
             ])
-    fakeclient.connected_notebook = notebook
     update_run!(🍭, notebook, notebook.cells)
     state = Pluto.notebook_to_js(notebook)
 

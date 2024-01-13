@@ -1,4 +1,20 @@
 
+function serialize_message_to_stream(io::IO, message::UpdateMessage)
+    to_send = Dict(:type => message.type, :message => message.message)
+    if message.notebook !== nothing
+        to_send[:notebook_id] = message.notebook.notebook_id
+    end
+    if message.cell !== nothing
+        to_send[:cell_id] = message.cell.cell_id
+    end
+    if message.initiator !== nothing
+        to_send[:initiator_id] = message.initiator.client_id
+        to_send[:request_id] = message.initiator.request_id
+    end
+
+    pack(io, to_send)
+end
+
 function serialize_message_to_stream(io::IO, message::UpdateMessage, recipient::ClientSession)
     to_send = Dict{Symbol,Any}(
         :type => message.type, 
@@ -17,6 +33,12 @@ function serialize_message_to_stream(io::IO, message::UpdateMessage, recipient::
     end
 
     pack(io, to_send)
+end
+
+function serialize_message(message::UpdateMessage)
+    io = IOBuffer()
+    serialize_message_to_stream(io, message)
+    take!(io)
 end
 
 function serialize_message(message::UpdateMessage, recipient::ClientSession)
@@ -69,18 +91,34 @@ end
 # https://github.com/JuliaWeb/HTTP.jl/issues/382
 const flushtoken = Token()
 
+function send_message(stream::HTTP.WebSocket, msg)
+    HTTP.send(stream, serialize_message(msg))
+end
+function send_message(stream::IO, msg)
+    write(stream, serialize_message(msg))
+end
+
+function is_stream_open(stream::HTTP.WebSocket)
+    !HTTP.WebSockets.isclosed(stream)
+end
+function is_stream_open(io::IO)
+    isopen(io)
+end
+
 function flushclient(client::ClientSession)
     take!(flushtoken)
     while isready(client.pendingupdates)
         next_to_send = take!(client.pendingupdates)
-        
+
         try
             if client.stream !== nothing
-                if isopen(client.stream)
-                    if client.stream isa HTTP.WebSockets.WebSocket
-                        client.stream.frame_type = HTTP.WebSockets.WS_BINARY
+                if is_stream_open(client.stream)
+                    let
+                        lag = client.simulated_lag
+                        (lag > 0) && sleep(lag * (0.5 + rand())) # sleep(0) would yield to the process manager which we dont want
                     end
-                    write(client.stream, serialize_message(next_to_send, client))
+
+                    send_message(client.stream, next_to_send)
                 else
                     put!(flushtoken)
                     return false
