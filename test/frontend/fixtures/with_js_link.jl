@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.32
+# v0.19.36
 
 using Markdown
 using InteractiveUtils
@@ -10,6 +10,7 @@ begin
 	Pkg.activate(temp=true)
 	Pkg.add([
 		Pkg.PackageSpec(name="AbstractPlutoDingetjes", rev="Display.with_js_link")
+		# Pkg.PackageSpec(path="/Users/fons/Documents/AbstractPlutoDingetjes.jl/")
 		Pkg.PackageSpec(name="HypertextLiteral")
 	])
 
@@ -128,9 +129,6 @@ md"""
 # Concurrency
 """
 
-# ╔═╡ c79cfb05-bf14-479f-8a31-d1e4fcce79cb
-
-
 # ╔═╡ 2417de50-e6e4-4c99-8836-ee8ff04d586a
 1 + 1
 
@@ -148,12 +146,15 @@ Test a closure
 some_other_global = rand(100)
 
 # ╔═╡ 3d836ff3-995e-4353-807e-bf2cd78920e2
-some_global = rand(200)
+some_global = 51:81
+
+# ╔═╡ 2461d75e-81dc-4e00-99e3-bbc44000579f
+AbstractPlutoDingetjes.Display.with_js_link(x -> x)
 
 # ╔═╡ 12e64b86-3866-4e21-9af5-0e546452b4e1
-function function_evaluator(f::Function, default="")
+function function_evaluator(f::Function, default=""; id=string(f))
 	@htl("""
-	<div>
+	<div class="function_evaluator" id=$(id)>
 		<p>Input:<br>
 		<input>&nbsp;<input type="submit"></p>
 		
@@ -163,6 +164,7 @@ function function_evaluator(f::Function, default="")
 		let sqrt_with_julia = $(AbstractPlutoDingetjes.Display.with_js_link(f))
 	
 		let wrapper = currentScript.closest("div")
+		wrapper.setAttribute("cellid", currentScript.closest("pluto-cell").id)
 	
 		let input = wrapper.querySelector("input")
 		let submit = wrapper.querySelector("input[type='submit']")
@@ -182,18 +184,13 @@ function function_evaluator(f::Function, default="")
 end
 
 # ╔═╡ 4b80dda0-74b6-4a0e-a50e-61c5380111a4
-function_evaluator(123) do input
+function_evaluator(900; id="sqrt") do input
 	num = parse(Float64, input)
 	sqrt(num)
 end
 
-# ╔═╡ f9ff5f6b-7525-4928-a19c-2d0bf56fd952
-function_evaluator(123) do input
-	sqrt(-1)
-end
-
 # ╔═╡ a399cb12-39d4-43c0-a0a7-05cb683dffbd
-function_evaluator(123) do input
+function_evaluator(123; id="c1") do input
 	# @info "start"
 	sleep(5)
 	# @warn "end"
@@ -202,7 +199,7 @@ function_evaluator(123) do input
 end
 
 # ╔═╡ 2bff3975-5918-40fe-9761-eb7b47f16df2
-function_evaluator(123) do input
+function_evaluator(123; id="c2") do input
 	# @info "start"
 	sleep(5)
 	# @warn "end"
@@ -234,7 +231,7 @@ function_evaluator("THIS IN LOWERCASE") do input
 end
 
 # ╔═╡ 33a2293c-6202-47ca-80d1-4a9e261cae7f
-function_evaluator(4) do input
+function_evaluator(4; id="logs1") do input
 	@info "you should see this log $(input)"
 	println("(not currently supported) you should see this print $(input)")
 	
@@ -242,10 +239,10 @@ function_evaluator(4) do input
 end
 
 # ╔═╡ 480aea45-da00-4e89-b43a-38e4d1827ec2
-function_evaluator(4) do input
+function_evaluator("coOL") do input
 	@warn("You should see the following error:")
 	
-	error("You should see this error $(input)")
+	error("You should see this error $(uppercase(input))")
 end
 
 # ╔═╡ b310dd30-dddd-4b75-81d2-aaf35c9dd1d3
@@ -256,7 +253,7 @@ function_evaluator(4) do input
 end
 
 # ╔═╡ 58999fba-6631-4482-a811-12bf2412d65e
-function_evaluator(4) do input
+function_evaluator(4; id="globals") do input
 	some_global[parse(Int, input)]
 end
 
@@ -309,8 +306,6 @@ end
 # ╠═e8abaff9-f629-47c6-8009-066bcdf67693
 # ╟─bf9861e0-be91-4041-aa61-8ac2ef6cb719
 # ╟─ebf79ee4-2590-4b5a-a957-213ed03a5921
-# ╠═c79cfb05-bf14-479f-8a31-d1e4fcce79cb
-# ╠═f9ff5f6b-7525-4928-a19c-2d0bf56fd952
 # ╠═a399cb12-39d4-43c0-a0a7-05cb683dffbd
 # ╠═2bff3975-5918-40fe-9761-eb7b47f16df2
 # ╠═2417de50-e6e4-4c99-8836-ee8ff04d586a
@@ -325,6 +320,7 @@ end
 # ╠═b310dd30-dddd-4b75-81d2-aaf35c9dd1d3
 # ╠═3d836ff3-995e-4353-807e-bf2cd78920e2
 # ╠═58999fba-6631-4482-a811-12bf2412d65e
+# ╠═2461d75e-81dc-4e00-99e3-bbc44000579f
 # ╠═12e64b86-3866-4e21-9af5-0e546452b4e1
 # ╟─9e5c0f8d-6ac1-4aee-a00d-938f17eec146
 # ╠═306d03da-cd50-4b0c-a5dd-7ec1a278cde1

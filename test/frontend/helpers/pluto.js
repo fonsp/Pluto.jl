@@ -192,6 +192,22 @@ export const waitForNoUpdateOngoing = async (page, options = {}) => {
     )
 }
 
+export const getLogs = async (page, cellid) => {
+    return await page.evaluate((cellid) => {
+        const logs = document.querySelector(`pluto-cell[id="${cellid}"] pluto-logs`)
+        return Array.from(logs.children).map((el) => ({
+            class: el.className.trim(),
+            description: el.querySelector("pluto-log-dot > pre").textContent,
+            kwargs: Object.fromEntries(
+                Array.from(el.querySelectorAll("pluto-log-dot-kwarg")).map((x) => [
+                    x.querySelector("pluto-key").textContent,
+                    x.querySelector("pluto-value").textContent,
+                ])
+            ),
+        }))
+    }, cellid)
+}
+
 /**
  * @param {Page} page
  */

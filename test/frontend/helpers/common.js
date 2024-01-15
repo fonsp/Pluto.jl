@@ -66,7 +66,7 @@ const with_connections_debug = (page, action) => {
 export const getTextContent = (page, selector) => {
   // https://developer.mozilla.org/en-US/docs/Web/API/Node/textContent#differences_from_innertext
   return page.evaluate(
-    (selector) => document.querySelector(selector).innerText,
+    (selector) => document.querySelector(selector).textContent,
     selector
   );
 };
@@ -127,18 +127,23 @@ export const waitForContentToChange = async (
   return getTextContent(page, selector);
 };
 
-export const waitForContentToBecome = async (page, selector, targetContent) => {
+export const waitForContentToBecome = async (/** @type {puppeteer.Page} */ page, /** @type {string} */ selector, /** @type {string} */ targetContent) => {
   await page.waitForSelector(selector, { visible: true });
-  await page.waitForFunction(
+  try{
+    await page.waitForFunction(
     (selector, targetContent) => {
       const element = document.querySelector(selector);
       // https://developer.mozilla.org/en-US/docs/Web/API/Node/textContent#differences_from_innertext
-      return element !== null && element.innerText === targetContent;
+      return element !== null && element.textContent === targetContent;
     },
     { polling: 100 },
     selector,
     targetContent
   );
+  } catch(e) {
+    console.log("Failed! Current content:", await getTextContent(page, selector))
+    throw(e)
+  }
   return getTextContent(page, selector);
 };
 
