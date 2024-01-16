@@ -55,13 +55,11 @@ describe("with_js_link", () => {
         await expect_ev_output("sqrt", "5")
     })
 
-    // TODO test concurrency
-
-    // TODO closure
-
     // TODO test refresh
 
     // TODO RERUN cELL
+
+    // TODO invalidation
 
     it("LOGS AND ERRORS", async () => {
         //////
@@ -93,6 +91,16 @@ describe("with_js_link", () => {
         expect(logs3[1].kwargs.input).toEqual('"coOL"')
         expect(logs3[1].kwargs.exception).toContain("You should see this error COOL")
     })
+    it("LOGS AND ERRORS 3: assertpackable", async () => {
+        const logs = await getLogs(page, "b310dd30-dddd-4b75-81d2-aaf35c9dd1d3")
+        expect(logs.length).toEqual(2)
+        expect(logs[0]).toEqual({ class: "Warn", description: "You should see the assertpackable fail after this log", kwargs: {} })
+        expect(logs[1].class).toEqual("Error")
+        expect(logs[1].description).toContain("with_js_link")
+        expect(logs[1].kwargs.input).toEqual('"4"')
+        expect(logs[1].kwargs.exception).toContain("Only simple objects can be shared with JS")
+    })
+
     it("globals", async () => {
         await expect_ev_output("globals", "54")
     })
@@ -118,5 +126,19 @@ describe("with_js_link", () => {
 
         await expect_ev_output(`length[cellid="40031867-ee3c-4aa9-884f-b76b5a9c4dec"]`, "3")
         await expect_ev_output(`length[cellid="7f6ada79-8e3b-40b7-b477-ce05ae79a668"]`, "7")
+    })
+
+    it("concurrency", async () => {
+        await expect_ev_output("c1", "C1")
+        await expect_ev_output("c2", "C2")
+
+        await submit_ev_input("c1", "cc1")
+        await submit_ev_input("c2", "cc2")
+
+        await page.waitForTimeout(4000)
+
+        // they should run in parallel: after 4 seconds both should be finished
+        expect(await page.evaluate((s) => document.querySelector(s).textContent, ev_output_sel("c1"))).toBe("CC1")
+        expect(await page.evaluate((s) => document.querySelector(s).textContent, ev_output_sel("c2"))).toBe("CC2")
     })
 })

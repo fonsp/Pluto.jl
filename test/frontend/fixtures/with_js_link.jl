@@ -190,18 +190,18 @@ function_evaluator(900; id="sqrt") do input
 end
 
 # ╔═╡ a399cb12-39d4-43c0-a0a7-05cb683dffbd
-function_evaluator(123; id="c1") do input
+function_evaluator("c1"; id="c1") do input
 	# @info "start"
-	sleep(5)
+	sleep(3)
 	# @warn "end"
 	uppercase(input)
 	
 end
 
 # ╔═╡ 2bff3975-5918-40fe-9761-eb7b47f16df2
-function_evaluator(123; id="c2") do input
+function_evaluator("c2"; id="c2") do input
 	# @info "start"
-	sleep(5)
+	sleep(3)
 	# @warn "end"
 	uppercase(input)
 end
