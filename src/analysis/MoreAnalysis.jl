@@ -3,7 +3,7 @@ module MoreAnalysis
 export bound_variable_connections_graph
 
 import ..Pluto
-import ..Pluto: Cell, Notebook, NotebookTopology, ExpressionExplorer, ExpressionExplorerExtras, PlutoReactiveCore
+import ..Pluto: Cell, Notebook, NotebookTopology, ExpressionExplorer, ExpressionExplorerExtras, PlutoDependencyExplorer
 
 
 "Return whether any cell references the given symbol. Used for the @bind mechanism."
@@ -54,7 +54,7 @@ end
 
 function _downstream_recursive!(found::Set{Cell}, notebook::Notebook, topology::NotebookTopology, from::Vector{Cell})::Nothing
     for cell in from
-        one_down = PlutoReactiveCore.where_referenced(topology, cell)
+        one_down = PlutoDependencyExplorer.where_referenced(topology, cell)
         for next in one_down
             if next ∉ found
                 push!(found, next)
@@ -77,7 +77,7 @@ end
 function _upstream_recursive!(found::Set{Cell}, notebook::Notebook, topology::NotebookTopology, from::Vector{Cell})::Nothing
     for cell in from
         references = topology.nodes[cell].references
-        for upstream in PlutoReactiveCore.where_assigned(topology, references)
+        for upstream in PlutoDependencyExplorer.where_assigned(topology, references)
             if upstream ∉ found
                 push!(found, upstream)
                 _upstream_recursive!(found, notebook, topology, Cell[upstream])

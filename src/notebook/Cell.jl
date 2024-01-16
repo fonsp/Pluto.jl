@@ -33,7 +33,7 @@ struct CellDependencies{T} # T == Cell, but this has to be parametric to avoid a
 end
 
 "The building block of a `Notebook`. Contains code, output, reactivity data, mitochondria and ribosomes."
-Base.@kwdef mutable struct Cell <: PlutoReactiveCore.AbstractCell
+Base.@kwdef mutable struct Cell <: PlutoDependencyExplorer.AbstractCell
     "Because Cells can be reordered, they get a UUID. The JavaScript frontend indexes cells using the UUID."
     cell_id::UUID=uuid1()
 

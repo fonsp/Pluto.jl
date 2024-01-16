@@ -9,7 +9,7 @@ function downstream_cells_map(cell::Cell, topology::NotebookTopology)::Dict{Symb
         node.definitions ∪ node.funcdefs_without_signatures
     end
     return Dict{Symbol,Vector{Cell}}(
-        sym => PlutoReactiveCore.where_referenced(topology, Set([sym]))
+        sym => PlutoDependencyExplorer.where_referenced(topology, Set([sym]))
         for sym in defined_symbols
     )
 end
@@ -24,7 +24,7 @@ Note that only direct dependencies are given here, not indirect dependencies.
 function upstream_cells_map(cell::Cell, topology::NotebookTopology)::Dict{Symbol,Vector{Cell}}
     referenced_symbols = topology.nodes[cell].references
     return Dict{Symbol,Vector{Cell}}(
-        sym => PlutoReactiveCore.where_assigned(topology, Set([sym]))
+        sym => PlutoDependencyExplorer.where_assigned(topology, Set([sym]))
         for sym in referenced_symbols
     )
 end
@@ -35,7 +35,7 @@ function update_dependency_cache!(cell::Cell, topology::NotebookTopology)
     cell.cell_dependencies = CellDependencies(
         downstream_cells_map(cell, topology), 
         upstream_cells_map(cell, topology), 
-        PlutoReactiveCore.cell_precedence_heuristic(topology, cell),
+        PlutoDependencyExplorer.cell_precedence_heuristic(topology, cell),
     )
 end
 

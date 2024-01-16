@@ -121,7 +121,7 @@ preprocess_expr(val::Any) = val
 function updated_topology(old_topology::NotebookTopology{Cell}, notebook::Notebook, updated_cells)
     get_code_str(cell::Cell) = cell.code
     get_code_expr(cell::Cell) = parse_custom(notebook, cell)
-    PlutoReactiveCore.updated_topology(
+    PlutoDependencyExplorer.updated_topology(
         old_topology, 
         notebook.cells, 
         updated_cells;

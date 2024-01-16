@@ -34,7 +34,7 @@ function set_bond_values_reactive(;
 
     if isempty(syms_to_set) || !will_run_code(notebook)
         send_notebook_changes!(ClientRequest(; session, notebook, initiator))
-        return TopologicalOrder(notebook.topology, Cell[], Dict{Cell,PlutoReactiveCore.ReactivityError}())
+        return TopologicalOrder(notebook.topology, Cell[], Dict{Cell,PlutoDependencyExplorer.ReactivityError}())
     end
 
     new_values = Any[notebook.bonds[bound_sym].value for bound_sym in syms_to_set]
@@ -55,7 +55,7 @@ function set_bond_values_reactive(;
         )
         set_bond_value_pairs!(session, notebook, zip(syms_to_set, new_values))
     end
-    to_reeval = PlutoReactiveCore.where_referenced(notebook.topology, syms_to_set_set)
+    to_reeval = PlutoDependencyExplorer.where_referenced(notebook.topology, syms_to_set_set)
 
     run_reactive_async!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, save=false, user_requested_run=false, run_async=false, bond_value_pairs, kwargs...)
 end

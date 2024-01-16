@@ -40,9 +40,9 @@ const PLUTO_VERSION = VersionNumber(Pkg.TOML.parsefile(joinpath(ROOT_DIR, "Proje
 const PLUTO_VERSION_STR = "v$(string(PLUTO_VERSION))"
 const JULIA_VERSION_STR = "v$(string(VERSION))"
 
-include("./analysis/PlutoReactiveCore.jl")
+include("./analysis/PlutoDependencyExplorer.jl")
 
-import .PlutoReactiveCore: TopologicalOrder, NotebookTopology, ExprAnalysisCache, ImmutableVector, ExpressionExplorerExtras, topological_order, all_cells, disjoint, where_assigned, where_referenced
+import .PlutoDependencyExplorer: TopologicalOrder, NotebookTopology, ExprAnalysisCache, ImmutableVector, ExpressionExplorerExtras, topological_order, all_cells, disjoint, where_assigned, where_referenced
 using ExpressionExplorer
 
 include("./notebook/path helpers.jl")

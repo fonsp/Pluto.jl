@@ -117,17 +117,17 @@ function Base.getproperty(notebook::Notebook, property::Symbol)
     end
 end
 
-PlutoReactiveCore.topological_order(notebook::Notebook) = topological_order(notebook.topology)
+PlutoDependencyExplorer.topological_order(notebook::Notebook) = topological_order(notebook.topology)
 
-function PlutoReactiveCore.where_referenced(notebook::Notebook, topology::NotebookTopology, something)
+function PlutoDependencyExplorer.where_referenced(notebook::Notebook, topology::NotebookTopology, something)
     # can't use @deprecate on an overload
     @warn "Deprecated, drop the notebook argument"
-    PlutoReactiveCore.where_referenced(topology, something)
+    PlutoDependencyExplorer.where_referenced(topology, something)
 end
-function PlutoReactiveCore.where_assigned(notebook::Notebook, topology::NotebookTopology, something)
+function PlutoDependencyExplorer.where_assigned(notebook::Notebook, topology::NotebookTopology, something)
     # can't use @deprecate on an overload
     @warn "Deprecated, drop the notebook argument"
-    PlutoReactiveCore.where_assigned(topology, something)
+    PlutoDependencyExplorer.where_assigned(topology, something)
 end
 
 emptynotebook(args...) = Notebook([Cell()], args...)

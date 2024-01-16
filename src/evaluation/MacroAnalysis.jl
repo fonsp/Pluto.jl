@@ -38,7 +38,7 @@ function cells_with_deleted_macros(old_topology::NotebookTopology, new_topology:
     new_macros = mapreduce(c -> defined_macros(new_topology, c), union!, all_cells(new_topology); init=Set{Symbol}())
     removed_macros = setdiff(old_macros, new_macros)
 
-    PlutoReactiveCore.where_referenced(old_topology, removed_macros)
+    PlutoDependencyExplorer.where_referenced(old_topology, removed_macros)
 end
 
 "Returns the set of macros names defined by this cell"
@@ -169,7 +169,7 @@ function resolve_topology(
 		# then they must equal, and we can skip creating a new one to preserve identity:
 		unresolved_topology.unresolved_cells
 	else
-		PlutoReactiveCore.ImmutableSet(still_unresolved_nodes; skip_copy=true)
+		PlutoDependencyExplorer.ImmutableSet(still_unresolved_nodes; skip_copy=true)
 	end
 
 	NotebookTopology(;
