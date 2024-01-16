@@ -434,8 +434,8 @@ function update_save_run!(
 		old = notebook.topology
 		to_remove = setdiff(to_run_online, setup_cells)
 		notebook.topology = NotebookTopology(
-			nodes=setdiffkeys(old.nodes, to_remove),
-			codes=setdiffkeys(old.codes, to_remove),
+			nodes=PlutoDependencyExplorer.setdiffkeys(old.nodes, to_remove),
+			codes=PlutoDependencyExplorer.setdiffkeys(old.codes, to_remove),
 			unresolved_cells=setdiff(old.unresolved_cells, to_remove),
 			cell_order=old.cell_order,
 			disabled_cells=setdiff(old.disabled_cells, to_remove),
