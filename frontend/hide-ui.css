@@ -62,6 +62,9 @@ pluto-runarea,
     pluto-cell:first-of-type pluto-output h1 {
         break-before: avoid;
     }
+    pluto-output :is(.admonition, .pluto-docs-binding, blockquote) h1 {
+        break-before: avoid;
+    }
 
     /* pluto-cell:has(h1) + pluto-cell {
         break-inside: auto;
