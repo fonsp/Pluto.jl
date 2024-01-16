@@ -1,4 +1,4 @@
-import .ExpressionExplorer: UsingsImports, SymbolsState
+import ExpressionExplorer: UsingsImports, SymbolsState
 
 "A container for the result of parsing the cell code, with some extra metadata."
 Base.@kwdef struct ExprAnalysisCache
@@ -6,14 +6,13 @@ Base.@kwdef struct ExprAnalysisCache
     parsedcode::Expr=Expr(:toplevel, LineNumberNode(1), Expr(:block))
     module_usings_imports::UsingsImports = UsingsImports()
     function_wrapped::Bool=false
-    forced_expr_id::Union{PlutoRunner.ObjectID,Nothing}=nothing
+    forced_expr_id::Union{UInt,Nothing}=nothing
 end
 
-ExprAnalysisCache(notebook, cell::Cell) = let
-    parsedcode=parse_custom(notebook, cell)
-    ExprAnalysisCache(
-        code=cell.code,
-        parsedcode=parsedcode,
+function ExprAnalysisCache(code_str::String, parsedcode::Expr)
+    ExprAnalysisCache(;
+        code=code_str,
+        parsedcode,
         module_usings_imports=ExpressionExplorer.compute_usings_imports(parsedcode),
         function_wrapped=ExpressionExplorerExtras.can_be_function_wrapped(parsedcode),
     )
@@ -26,29 +25,29 @@ function ExprAnalysisCache(old_cache::ExprAnalysisCache; new_properties...)
 end
 
 "The (information needed to create the) dependency graph of a notebook. Cells are linked by the names of globals that they define and reference. 🕸"
-Base.@kwdef struct NotebookTopology
-    nodes::ImmutableDefaultDict{Cell,ReactiveNode}=ImmutableDefaultDict{Cell,ReactiveNode}(ReactiveNode)
-    codes::ImmutableDefaultDict{Cell,ExprAnalysisCache}=ImmutableDefaultDict{Cell,ExprAnalysisCache}(ExprAnalysisCache)
-    cell_order::ImmutableVector{Cell}=ImmutableVector{Cell}()
+Base.@kwdef struct NotebookTopology{C <: AbstractCell}
+    nodes::ImmutableDefaultDict{C,ReactiveNode}=ImmutableDefaultDict{C,ReactiveNode}(ReactiveNode)
+    codes::ImmutableDefaultDict{C,ExprAnalysisCache}=ImmutableDefaultDict{C,ExprAnalysisCache}(ExprAnalysisCache)
+    cell_order::ImmutableVector{C}=ImmutableVector{C}()
 
-    unresolved_cells::ImmutableSet{Cell} = ImmutableSet{Cell}()
-    disabled_cells::ImmutableSet{Cell} = ImmutableSet{Cell}()
+    unresolved_cells::ImmutableSet{C} = ImmutableSet{C}()
+    disabled_cells::ImmutableSet{C} = ImmutableSet{C}()
 end
 
 # BIG TODO HERE: CELL ORDER
 all_cells(topology::NotebookTopology) = topology.cell_order.c
 
 is_resolved(topology::NotebookTopology) = isempty(topology.unresolved_cells)
-is_resolved(topology::NotebookTopology, c::Cell) = c in topology.unresolved_cells
+is_resolved(topology::NotebookTopology, c::AbstractCell) = c in topology.unresolved_cells
 
-is_disabled(topology::NotebookTopology, c::Cell) = c in topology.disabled_cells
+is_disabled(topology::NotebookTopology, c::AbstractCell) = c in topology.disabled_cells
 
-function set_unresolved(topology::NotebookTopology, unresolved_cells::Vector{Cell})
-    codes = Dict{Cell,ExprAnalysisCache}(
+function set_unresolved(topology::NotebookTopology{C}, unresolved_cells::Vector{C}) where C <: AbstractCell
+    codes = Dict{C,ExprAnalysisCache}(
         cell => ExprAnalysisCache(topology.codes[cell]; function_wrapped=false, forced_expr_id=nothing)
         for cell in unresolved_cells
     )
-    NotebookTopology(
+    NotebookTopology{C}(
         nodes=topology.nodes,
         codes=merge(topology.codes, codes),
         unresolved_cells=union(topology.unresolved_cells, unresolved_cells),
@@ -64,11 +63,11 @@ end
 Returns a new topology as if `topology` was created with all code for `roots_to_exclude`
 being empty, preserving disabled cells and cell order.
 """
-function exclude_roots(topology::NotebookTopology, cells::Vector{Cell})
-    NotebookTopology(
+function exclude_roots(topology::NotebookTopology{C}, cells::Vector{C}) where C <: AbstractCell
+    NotebookTopology{C}(
         nodes=setdiffkeys(topology.nodes, cells),
         codes=setdiffkeys(topology.codes, cells),
-        unresolved_cells=ImmutableSet{Cell}(setdiff(topology.unresolved_cells.c, cells); skip_copy=true),
+        unresolved_cells=ImmutableSet{C}(setdiff(topology.unresolved_cells.c, cells); skip_copy=true),
         cell_order=topology.cell_order,
         disabled_cells=topology.disabled_cells,
     )

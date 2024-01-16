@@ -3,10 +3,23 @@ using ExpressionExplorer
 @deprecate ReactiveNode_from_expr(args...; kwargs...) ExpressionExplorer.compute_reactive_node(args...; kwargs...)
 
 module ExpressionExplorerExtras
-import ..Pluto
-import ..PlutoRunner
+import ..PlutoDependencyExplorer
 using ExpressionExplorer
 using ExpressionExplorer: ScopeState
+
+module Fake
+    module PlutoRunner
+        using Markdown
+        using InteractiveUtils
+        macro bind(def, element)    
+            quote
+                global $(esc(def)) = element
+            end
+        end
+    end
+    import .PlutoRunner
+end
+import .Fake
 
 
 """
@@ -78,16 +91,42 @@ function macro_has_special_heuristic_inside(; symstate::SymbolsState, expr::Expr
     # Also, because I'm lazy and don't want to copy any code, imma use cell_precedence_heuristic here.
     # Sad part is, that this will also include other symbols used in this macro... but come'on
     node = ReactiveNode(symstate)
-    code = Pluto.ExprAnalysisCache(
+    code = PlutoDependencyExplorer.ExprAnalysisCache(
         parsedcode = expr,
         module_usings_imports = ExpressionExplorer.compute_usings_imports(expr),
     )
 
-    return Pluto.cell_precedence_heuristic(node, code) < Pluto.DEFAULT_PRECEDENCE_HEURISTIC
+    return PlutoDependencyExplorer.cell_precedence_heuristic(node, code) < PlutoDependencyExplorer.DEFAULT_PRECEDENCE_HEURISTIC
 end
 
 const can_macroexpand_no_bind = Set(Symbol.(["@md_str", "Markdown.@md_str", "@gensym", "Base.@gensym", "@enum", "Base.@enum", "@assert", "Base.@assert", "@cmd"]))
 const can_macroexpand = can_macroexpand_no_bind ∪ Set(Symbol.(["@bind", "PlutoRunner.@bind"]))
+
+const plutorunner_id = Base.PkgId(Base.UUID("dc6b355a-2368-4481-ae6d-ae0351418d79"), "PlutoRunner")
+const pluto_id = Base.PkgId(Base.UUID("c3e4b0f8-55cb-11ea-2926-15256bba5781"), "Pluto")
+const found_plutorunner = Ref{Union{Nothing,Module}}(nothing)
+
+"""
+Find the module `PlutoRunner`, if it is currently loaded. We use `PlutoRunner` to macroexpand `@bind`. If not found, the fallback is `Fake.PlutoRunner`.
+"""
+function get_plutorunner()
+    fpr = found_plutorunner[]
+    if fpr === nothing
+        # lets try really hard to find it!
+        if haskey(Base.loaded_modules, pluto_id)
+            found_plutorunner[] = Base.loaded_modules[pluto_id].PlutoRunner
+        elseif haskey(Base.loaded_modules, plutorunner_id)
+            found_plutorunner[] = Base.loaded_modules[plutorunner_id]
+        elseif isdefined(Main, :PlutoRunner) && Main.PlutoRunner isa Module
+            found_plutorunner[] = Main.PlutoRunner
+        else
+            # not found
+            Fake.PlutoRunner
+        end
+    else
+        fpr
+    end
+end
 
 """
 If the macro is **known to Pluto**, expand or 'mock expand' it, if not, return the expression. Macros from external packages are not expanded, this is done later in the pipeline. See https://github.com/fonsp/Pluto.jl/pull/1032
@@ -97,7 +136,7 @@ function maybe_macroexpand_pluto(ex::Expr; recursive::Bool=false, expand_bind::B
         funcname = ExpressionExplorer.split_funcname(ex.args[1])
 
         if funcname.joined ∈ (expand_bind ? can_macroexpand : can_macroexpand_no_bind)
-            macroexpand(PlutoRunner, ex; recursive=false)::Expr
+            macroexpand(get_plutorunner(), ex; recursive=false)::Expr
         else
             ex
         end
