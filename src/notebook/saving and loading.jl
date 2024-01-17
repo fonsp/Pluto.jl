@@ -357,7 +357,7 @@ function load_notebook(path::String; disable_writing_notebook_files::Bool=false)
     update_dependency_cache!(loaded)
 
     disable_writing_notebook_files || save_notebook(loaded)
-    loaded.topology = NotebookTopology(; cell_order=ImmutableVector(loaded.cells))
+    loaded.topology = NotebookTopology{Cell}(; cell_order=ImmutableVector(loaded.cells))
 
     disable_writing_notebook_files || if only_versions_or_lineorder_differ(path, backup_path)
         rm(backup_path)
