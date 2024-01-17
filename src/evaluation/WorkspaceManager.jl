@@ -56,7 +56,7 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
     WorkerType = if is_offline_renderer || !session.options.evaluation.workspace_use_distributed
         Malt.InProcessWorker
     elseif something(
-        session.options.evaluation.workspace_use_distributed_stdlib, 
+        session.options.evaluation.workspace_use_distributed_stdlib,
         Sys.iswindows() ? false : true
     )
         Malt.DistributedStdlibWorker
@@ -558,7 +558,7 @@ function move_vars(
     cells_to_js_link_invalidate::Set{UUID},
     keep_registered::Set{Symbol}=Set{Symbol}();
     kwargs...
-    )
+)
 
     workspace = get_workspace(session_notebook)
     new_workspace_name = something(new_workspace_name, workspace.module_name)
@@ -578,20 +578,20 @@ function move_vars(
 end
 
 function move_vars(
-    session_notebook::Union{SN,Workspace}, 
-    to_delete::Set{Symbol}, 
-    methods_to_delete::Set{Tuple{UUID,Tuple{Vararg{Symbol}}}}, 
-    module_imports_to_move::Set{Expr}, 
+    session_notebook::Union{SN,Workspace},
+    to_delete::Set{Symbol},
+    methods_to_delete::Set{Tuple{UUID,Tuple{Vararg{Symbol}}}},
+    module_imports_to_move::Set{Expr},
     cells_to_macro_invalidate::Set{UUID},
-    cells_to_js_link_invalidate::Set{UUID}; 
+    cells_to_js_link_invalidate::Set{UUID};
     kwargs...
 )
     move_vars(
-        session_notebook, 
-        bump_workspace_module(session_notebook)..., 
-        to_delete, 
-        methods_to_delete, 
-        module_imports_to_move, 
+        session_notebook,
+        bump_workspace_module(session_notebook)...,
+        to_delete,
+        methods_to_delete,
+        module_imports_to_move,
         cells_to_macro_invalidate;
         cells_to_js_link_invalidate;
         kwargs...

@@ -145,14 +145,14 @@ function run_reactive_core!(
     cells_to_macro_invalidate = Set{UUID}(c.cell_id for c in cells_with_deleted_macros(old_topology, new_topology))
 	cells_to_js_link_invalidate = Set{UUID}(c.cell_id for c in union!(Set{Cell}(), to_run, new_order.errable, indirectly_deactivated))
 
-    to_reimport = reduce(all_cells(new_topology); init=Set{Expr}()) do to_reimport, c
-        c ∈ to_run && return to_reimport
+    module_imports_to_move = reduce(all_cells(new_topology); init=Set{Expr}()) do module_imports_to_move, c
+        c ∈ to_run && return module_imports_to_move
         usings_imports = new_topology.codes[c].module_usings_imports
         for (using_, isglobal) in zip(usings_imports.usings, usings_imports.usings_isglobal)
             isglobal || continue
-            push!(to_reimport, using_)
+            push!(module_imports_to_move, using_)
         end
-        to_reimport
+        module_imports_to_move
     end
 
     if will_run_code(notebook)
