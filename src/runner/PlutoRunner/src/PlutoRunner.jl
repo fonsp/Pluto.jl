@@ -541,19 +541,9 @@ function run_expression(
 
     # reset registered bonds
     cell_registered_bond_names[cell_id] = Set{Symbol}()
-    
-    # reset JS links
-    begin
-        # cancel old links
-        old_links = get!(() -> Dict{String,JSLink}(), cell_js_links, cell_id)
-        for (name, link) in old_links
-            c = link.on_cancellation
-            c === nothing || c()
-        end
 
-        # clear
-        cell_js_links[cell_id] = Dict{String,JSLink}()
-    end
+    # reset JS links
+    unregister_js_link(cell_id)
 
     # If the cell contains macro calls, we want those macro calls to preserve their identity,
     # so we macroexpand this earlier (during expression explorer stuff), and then we find it here.
@@ -2518,7 +2508,6 @@ const cell_js_links = Dict{UUID,Dict{String,JSLink}}()
 
 function core_with_js_link(io, callback, on_cancellation)
     
-    _notebook_id = get(io, :pluto_notebook_id, notebook_id[])::UUID
     _cell_id = get(io, :pluto_cell_id, currently_running_cell_id[])::UUID
     
     # TODO is this okay? prob not
@@ -2531,15 +2520,31 @@ function core_with_js_link(io, callback, on_cancellation)
     write(io, "/* See the documentation for AbstractPlutoDingetjes.Display.with_js_link */ _internal_getJSLinkResponse(\"$(_cell_id)\", \"$(link_id)\")")
 end
 
+function unregister_js_link(cell_id::UUID)
+    # cancel old links
+    old_links = get!(() -> Dict{String,JSLink}(), cell_js_links, cell_id)
+    for (name, link) in old_links
+        c = link.on_cancellation
+        c === nothing || c()
+    end
+
+    # clear
+    cell_js_links[cell_id] = Dict{String,JSLink}()
+end
+
 function evaluate_js_link(notebook_id::UUID, cell_id::UUID, link_id::String, input::Any)
     links = get(() -> Dict{String,JSLink}(), cell_js_links, cell_id)
     link = get(links, link_id, nothing)
     if link === nothing
         # TODO log to notebook
         @error "🚨 AbstractPlutoDingetjes: JS link not found." link_id
+        
+        (false, "link not found")
     elseif link.cancelled_ref[]
         # TODO log to notebook
         @error "🚨 AbstractPlutoDingetjes: JS link has already been invalidated." link_id
+        
+        (false, "link has been invalidated")
     else
         logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
         
@@ -2555,7 +2560,7 @@ function evaluate_js_link(notebook_id::UUID, cell_id::UUID, link_id::String, inp
 
         assertpackable(result)
         
-        result
+        (true, result)
     end
 end
 
