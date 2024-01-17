@@ -144,19 +144,19 @@ function run_reactive_core!(
 
     cells_to_macro_invalidate = Set{UUID}(c.cell_id for c in cells_with_deleted_macros(old_topology, new_topology))
 
-    to_reimport = reduce(all_cells(new_topology); init=Set{Expr}()) do to_reimport, c
-        c ∈ to_run && return to_reimport
+    module_imports_to_move = reduce(all_cells(new_topology); init=Set{Expr}()) do module_imports_to_move, c
+        c ∈ to_run && return module_imports_to_move
         usings_imports = new_topology.codes[c].module_usings_imports
         for (using_, isglobal) in zip(usings_imports.usings, usings_imports.usings_isglobal)
             isglobal || continue
-            push!(to_reimport, using_)
+            push!(module_imports_to_move, using_)
         end
-        to_reimport
+        module_imports_to_move
     end
 
     if will_run_code(notebook)
 		to_delete_funcs_simple = Set{Tuple{UUID,Tuple{Vararg{Symbol}}}}((id, name.parts) for (id,name) in to_delete_funcs)
-        deletion_hook((session, notebook), old_workspace_name, nothing, to_delete_vars, to_delete_funcs_simple, to_reimport, cells_to_macro_invalidate; to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
+        deletion_hook((session, notebook), old_workspace_name, nothing, to_delete_vars, to_delete_funcs_simple, module_imports_to_move, cells_to_macro_invalidate; to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
     end
 
 	foreach(v -> delete!(notebook.bonds, v), to_delete_vars)
