@@ -554,7 +554,8 @@ function move_vars(
     to_delete::Set{Symbol},
     methods_to_delete::Set{Tuple{UUID,Tuple{Vararg{Symbol}}}},
     module_imports_to_move::Set{Expr},
-    invalidated_cell_uuids::Set{UUID},
+    cells_to_macro_invalidate::Set{UUID},
+    cells_to_js_link_invalidate::Set{UUID},
     keep_registered::Set{Symbol}=Set{Symbol}();
     kwargs...
     )
@@ -569,14 +570,32 @@ function move_vars(
             $to_delete,
             $methods_to_delete,
             $module_imports_to_move,
-            $invalidated_cell_uuids,
+            $cells_to_macro_invalidate,
+            $cells_to_js_link_invalidate,
             $keep_registered,
         )
     end)
 end
 
-function move_vars(session_notebook::Union{SN,Workspace}, to_delete::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,Tuple{Vararg{Symbol}}}}, module_imports_to_move::Set{Expr}, invalidated_cell_uuids::Set{UUID}; kwargs...)
-    move_vars(session_notebook, bump_workspace_module(session_notebook)..., to_delete, methods_to_delete, module_imports_to_move, invalidated_cell_uuids; kwargs...)
+function move_vars(
+    session_notebook::Union{SN,Workspace}, 
+    to_delete::Set{Symbol}, 
+    methods_to_delete::Set{Tuple{UUID,Tuple{Vararg{Symbol}}}}, 
+    module_imports_to_move::Set{Expr}, 
+    cells_to_macro_invalidate::Set{UUID},
+    cells_to_js_link_invalidate::Set{UUID}; 
+    kwargs...
+)
+    move_vars(
+        session_notebook, 
+        bump_workspace_module(session_notebook)..., 
+        to_delete, 
+        methods_to_delete, 
+        module_imports_to_move, 
+        cells_to_macro_invalidate;
+        cells_to_js_link_invalidate;
+        kwargs...
+    )
 end
 
 # TODO: delete me

@@ -273,7 +273,7 @@ end
 function try_macroexpand(mod::Module, notebook_id::UUID, cell_id::UUID, expr; capture_stdout::Bool=true)
     # Remove the precvious cached expansion, so when we error somewhere before we update,
     # the old one won't linger around and get run accidentally.
-    pop!(cell_expanded_exprs, cell_id, nothing)
+    delete!(cell_expanded_exprs, cell_id)
 
     # Remove toplevel block, as that screws with the computer and everything
     expr_not_toplevel = if Meta.isexpr(expr, (:toplevel, :block))
@@ -693,7 +693,8 @@ function move_vars(
     vars_to_delete::Set{Symbol},
     methods_to_delete::Set{Tuple{UUID,Tuple{Vararg{Symbol}}}},
     module_imports_to_move::Set{Expr},
-    invalidated_cell_uuids::Set{UUID},
+    cells_to_macro_invalidate::Set{UUID},
+    cells_to_js_link_invalidate::Set{UUID},
     keep_registered::Set{Symbol},
 )
     old_workspace = getfield(Main, old_workspace_name)
@@ -701,10 +702,11 @@ function move_vars(
 
     do_reimports(new_workspace, module_imports_to_move)
 
-    for uuid in invalidated_cell_uuids
-        pop!(cell_expanded_exprs, uuid, nothing)
+    for cell_id in cells_to_macro_invalidate
+        delete!(cell_expanded_exprs, cell_id)
     end
-
+    foreach(unregister_js_link, cells_to_js_link_invalidate)
+    
     # TODO: delete
     Core.eval(new_workspace, :(import ..($(old_workspace_name))))
 
