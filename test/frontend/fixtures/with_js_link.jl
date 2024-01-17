@@ -18,6 +18,9 @@ begin
 	using HypertextLiteral
 end
 
+# ╔═╡ 5e42ea32-a1ce-49db-b55f-5e252c8c3f57
+using Dates
+
 # ╔═╡ 37aacc7f-61fd-4c4b-b24d-42361d508e8d
 @htl("""
 <script>
@@ -129,8 +132,19 @@ md"""
 # Concurrency
 """
 
-# ╔═╡ 2417de50-e6e4-4c99-8836-ee8ff04d586a
-1 + 1
+# ╔═╡ 60444c4c-5705-4b92-8eac-2c102f14f395
+
+
+# ╔═╡ 07c832c1-fd8f-44de-bdfa-389048c1e4e9
+md"""
+## With a function in the closure
+"""
+
+# ╔═╡ 10d80b00-f7ab-4bd7-9ea7-cca98c089e9c
+coolthing(x) = x * x
+
+# ╔═╡ bf7a885e-4d0a-408d-b6d5-d3289d794240
+
 
 # ╔═╡ 663e5a70-4d07-4d6a-8725-dc9a2b26b65d
 md"""
@@ -191,19 +205,32 @@ end
 
 # ╔═╡ a399cb12-39d4-43c0-a0a7-05cb683dffbd
 function_evaluator("c1"; id="c1") do input
-	# @info "start"
+	@info "start" Dates.now()
 	sleep(3)
-	# @warn "end"
+	# peakflops(3000)
+
+	
+	@warn "end" Dates.now()
 	uppercase(input)
 	
 end
 
 # ╔═╡ 2bff3975-5918-40fe-9761-eb7b47f16df2
 function_evaluator("c2"; id="c2") do input
-	# @info "start"
+	@info "start" Dates.now()
 	sleep(3)
-	# @warn "end"
+	# peakflops(3000)
+
+	@warn "end" Dates.now()
 	uppercase(input)
+end
+
+# ╔═╡ 53e60352-3a56-4b5c-9568-1ac58b758497
+function_evaluator("hello") do str
+	# sleep(5)
+	result = coolthing(str)
+	@info result
+	result
 end
 
 # ╔═╡ 2b5cc4b1-ca57-4cb6-a42a-dcb331ed2c26
@@ -307,8 +334,13 @@ end
 # ╟─bf9861e0-be91-4041-aa61-8ac2ef6cb719
 # ╟─ebf79ee4-2590-4b5a-a957-213ed03a5921
 # ╠═a399cb12-39d4-43c0-a0a7-05cb683dffbd
+# ╠═5e42ea32-a1ce-49db-b55f-5e252c8c3f57
+# ╠═60444c4c-5705-4b92-8eac-2c102f14f395
 # ╠═2bff3975-5918-40fe-9761-eb7b47f16df2
-# ╠═2417de50-e6e4-4c99-8836-ee8ff04d586a
+# ╟─07c832c1-fd8f-44de-bdfa-389048c1e4e9
+# ╠═10d80b00-f7ab-4bd7-9ea7-cca98c089e9c
+# ╠═53e60352-3a56-4b5c-9568-1ac58b758497
+# ╠═bf7a885e-4d0a-408d-b6d5-d3289d794240
 # ╟─663e5a70-4d07-4d6a-8725-dc9a2b26b65d
 # ╟─1d32fd55-9ca0-45c8-97f5-23cb29eaa8b3
 # ╠═5f3c590e-07f2-4dea-b6d1-e9d90f501fda
