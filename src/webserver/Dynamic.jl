@@ -529,8 +529,8 @@ end
 responses[:request_js_link_response] = function response_request_js_link_response(🙋::ClientRequest)
     require_notebook(🙋)
     @assert will_run_code(🙋.notebook)
-    
-    @asynclog begin
+
+    withtoken(🙋.notebook.executetoken) do
         result = WorkspaceManager.eval_fetch_in_workspace(
             (🙋.session, 🙋.notebook), 
             quote
