@@ -137,8 +137,16 @@ describe("with_js_link", () => {
 
         await page.waitForTimeout(4000)
 
-        // they should run in parallel: after 4 seconds both should be finished
+        // they dont run in parallel so right now only cc1 should be finished
         expect(await page.evaluate((s) => document.querySelector(s).textContent, ev_output_sel("c1"))).toBe("CC1")
-        expect(await page.evaluate((s) => document.querySelector(s).textContent, ev_output_sel("c2"))).toBe("CC2")
+        expect(await page.evaluate((s) => document.querySelector(s).textContent, ev_output_sel("c2"))).toBe("C2")
+
+        await expect_ev_output("c1", "CC1")
+        await expect_ev_output("c2", "CC2")
+
+        // NOT
+        // they should run in parallel: after 4 seconds both should be finished
+        // expect(await page.evaluate((s) => document.querySelector(s).textContent, ev_output_sel("c1"))).toBe("CC1")
+        // expect(await page.evaluate((s) => document.querySelector(s).textContent, ev_output_sel("c2"))).toBe("CC2")
     })
 })
