@@ -99,6 +99,8 @@ function generate_html(;
 
     cdnified = cdnified_editor_html(; version, pluto_cdn_root)
     
+    length(statefile_js) > 32000000 && @error "Statefile embedded in HTML is very large. The file can be opened with Chrome and Safari, but probably not with Firefox. If you are using PlutoSliderServer to generate this file, then we recommend the setting `baked_statefile=false`. If you are not using PlutoSliderServer, then consider reducing the size of figures and output in the notebook." length(statefile_js)
+    
     parameters = """
     <script data-pluto-file="launch-parameters">
     window.pluto_notebook_id = $(notebook_id_js);
