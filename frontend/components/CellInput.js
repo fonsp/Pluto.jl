@@ -671,7 +671,6 @@ export const CellInput = ({
                     // Remove selection on blur
                     EditorView.domEventHandlers({
                         blur: (event, view) => {
-                            console.warn("blur")
                             // it turns out that this condition is true *exactly* if and only if the blur event was triggered by blurring the window
                             let caused_by_window_blur = document.activeElement === view.contentDOM
 
