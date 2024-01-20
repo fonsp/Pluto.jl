@@ -404,7 +404,7 @@ import Malt
             Cell("using DrWatson"),
         ])
 
-        notebook.topology = Pluto.updated_topology(Pluto.NotebookTopology(cell_order=Pluto.ImmutableVector(notebook.cells)), notebook, notebook.cells) |> Pluto.static_resolve_topology
+        notebook.topology = Pluto.updated_topology(Pluto.NotebookTopology{Cell}(cell_order=Pluto.ImmutableVector(notebook.cells)), notebook, notebook.cells) |> Pluto.static_resolve_topology
 
         @test !Pluto.use_plutopkg(notebook.topology)
         order = collect(Pluto.topological_order(notebook))

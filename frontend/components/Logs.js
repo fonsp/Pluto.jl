@@ -122,6 +122,10 @@ const Dot = ({ set_cm_highlighted_line, msg, kwargs, y, level, sanitize_html }) 
     const mimepair_output = (pair) =>
         html`<${SimpleOutputBody} cell_id=${"adsf"} mime=${pair[1]} body=${pair[0]} persist_js_state=${false} sanitize_html=${sanitize_html} />`
 
+    useEffect(() => {
+        return () => set_cm_highlighted_line(null)
+    }, [])
+
     return html`<pluto-log-dot-positioner
         class=${cl({ [level]: true })}
         onMouseenter=${() => is_progress || set_cm_highlighted_line(y + 1)}

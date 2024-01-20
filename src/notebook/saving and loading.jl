@@ -159,7 +159,13 @@ function _notebook_metadata!(@nospecialize(io::IO))
     firstline = String(readline(io))::String
 
     if firstline != _notebook_header
-        error("File is not a Pluto.jl notebook")
+        error(
+            if occursin("<!DOCTYPE", firstline) || occursin("<html", firstline)
+                """File is an HTML file, not a notebook file. Open the file directly, and click the "Edit or run" button to get the notebook file."""
+            else
+                "File is not a Pluto.jl notebook."
+            end
+        )
     end
 
     file_VERSION_STR = readline(io)[3:end]
@@ -357,7 +363,7 @@ function load_notebook(path::String; disable_writing_notebook_files::Bool=false)
     update_dependency_cache!(loaded)
 
     disable_writing_notebook_files || save_notebook(loaded)
-    loaded.topology = NotebookTopology(; cell_order=ImmutableVector(loaded.cells))
+    loaded.topology = NotebookTopology{Cell}(; cell_order=ImmutableVector(loaded.cells))
 
     disable_writing_notebook_files || if only_versions_or_lineorder_differ(path, backup_path)
         rm(backup_path)
