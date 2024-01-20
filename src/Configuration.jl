@@ -402,11 +402,16 @@ end
 
 function _convert_to_flags(options::CompilerOptions)::Vector{String}
     option_list = String[]
+    exclude_list = Symbol[]
+
+    if VERSION ≥ v"1.9"
+      append!(exclude_list, :heap_size_hint)
+    end
 
     for name in fieldnames(CompilerOptions)
         flagname = string("--", replace(String(name), "_" => "-"))
         value = getfield(options, name)
-        if value !== nothing
+        if value !== nothing && value ∉ exclude_list
             push!(option_list, string(flagname, "=", value))
         end
     end
