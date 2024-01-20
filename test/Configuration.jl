@@ -45,10 +45,10 @@ end
 
 @testset "flag conversion" begin
     @test _convert_to_flags(Configuration.CompilerOptions(threads="123")) ==
-        ["--startup-file=no", "--history-file=no", "--threads=123"]
+        ["--heap-size-hint=1G", "--startup-file=no", "--history-file=no", "--threads=123"]
 
     @test _convert_to_flags(Configuration.CompilerOptions(threads=123)) ==
-        ["--startup-file=no", "--history-file=no", "--threads=123"]
+        ["--heap-size-hint=1G", "--startup-file=no", "--history-file=no", "--threads=123"]
 
     @test _convert_to_flags(Configuration.CompilerOptions()) ⊇
         ["--startup-file=no", "--history-file=no"]
