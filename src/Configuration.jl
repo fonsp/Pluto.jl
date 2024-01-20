@@ -187,7 +187,7 @@ const CHECK_BOUNDS_DEFAULT = nothing
 const MATH_MODE_DEFAULT = nothing
 const STARTUP_FILE_DEFAULT = "no"
 const HISTORY_FILE_DEFAULT = "no"
-const HEAP_SIZE_HINT_DEFAULT = "1G"
+const HEAP_SIZE_HINT_DEFAULT = "2G"
 
 function roughly_the_number_of_physical_cpu_cores()
     # https://gist.github.com/fonsp/738fe244719cae820245aa479e7b4a8d
@@ -234,7 +234,7 @@ These options will be passed as command line argument to newly launched processe
 - `inline::Union{Nothing,String} = $INLINE_DEFAULT`
 - `check_bounds::Union{Nothing,String} = $CHECK_BOUNDS_DEFAULT`
 - `math_mode::Union{Nothing,String} = $MATH_MODE_DEFAULT`
-- `heap_size_hint`::Union{Nothing,String} = $HEAP_SIZE_HINT_DEFAULT
+- `heap_size_hint::Union{Nothing,String} = $HEAP_SIZE_HINT_DEFAULT`
 - `startup_file::Union{Nothing,String} = "$STARTUP_FILE_DEFAULT"` By default, the startup file isn't loaded in notebooks.
 - `history_file::Union{Nothing,String} = "$HISTORY_FILE_DEFAULT"` By default, the history isn't loaded in notebooks.
 - `threads::Union{Nothing,String,Int} = default_number_of_threads()`
