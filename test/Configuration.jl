@@ -44,11 +44,13 @@ end
 end
 
 @testset "flag conversion" begin
-    @test _convert_to_flags(Configuration.CompilerOptions(threads="123")) ==
-        ["--heap-size-hint=1G", "--startup-file=no", "--history-file=no", "--threads=123"]
+    reference_flags = ["--startup-file=no", "--history-file=no", "--threads=123"]
+    if VERSION ≥ v"1.9"
+        pushfirst!(reference_flags, "--heap-size-hint=2G")
+    end
 
-    @test _convert_to_flags(Configuration.CompilerOptions(threads=123)) ==
-        ["--heap-size-hint=1G", "--startup-file=no", "--history-file=no", "--threads=123"]
+    @test _convert_to_flags(Configuration.CompilerOptions(threads="123")) == reference_flags
+    @test _convert_to_flags(Configuration.CompilerOptions(threads=123)) == reference_flags
 
     @test _convert_to_flags(Configuration.CompilerOptions()) ⊇
         ["--startup-file=no", "--history-file=no"]
