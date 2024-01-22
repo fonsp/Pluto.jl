@@ -47,3 +47,8 @@ function stoplistening(listener::IOListener)
         trigger(listener)
     end
 end
+
+freeze_loading_spinners(s::AbstractString) = _replaceall(s, '◑' => '◐', '◒' => '◐', '◓' => '◐')
+
+_replaceall(s, p) = replace(s, p)
+_replaceall(s, p, ps...) = @static VERSION >= v"1.7" ? replace(s, p, ps...) : _replaceall(replace(s, p), ps...)
