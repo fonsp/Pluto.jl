@@ -2006,6 +2006,12 @@ pkg-terminal pre {
     margin: 0;
 }
 
+pkg-terminal .make-me-spin {
+    display: inline-block;
+    animation: identifier-spin 1s linear infinite;
+    transform-origin: 50% 59%;
+}
+
 pkg-popup pkg-terminal {
     display: none;
 }

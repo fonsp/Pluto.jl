@@ -1,12 +1,14 @@
 import AnsiUp from "../imports/AnsiUp.js"
 import { html, Component, useState, useEffect, useRef, useLayoutEffect } from "../imports/Preact.js"
 
+const make_spinner_spin = (original_html) => original_html.replaceAll("◐", `<span class="make-me-spin">◐</span>`)
+
 const TerminalViewAnsiUp = ({ value }) => {
     const node_ref = useRef(/** @type {HTMLElement?} */ (null))
 
     useEffect(() => {
         if (!node_ref.current) return
-        node_ref.current.innerHTML = new AnsiUp().ansi_to_html(value)
+        node_ref.current.innerHTML = make_spinner_spin(new AnsiUp().ansi_to_html(value))
         const parent = node_ref.current.parentElement
         if (parent) parent.scrollTop = 1e5
     }, [node_ref.current, value])
