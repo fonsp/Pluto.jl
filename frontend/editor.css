@@ -2010,6 +2010,7 @@ pkg-terminal .make-me-spin {
     display: inline-block;
     animation: identifier-spin 1s linear infinite;
     transform-origin: 50% 59%;
+    animation-delay: var(--animation-delay);
 }
 
 pkg-popup pkg-terminal {
