@@ -2699,4 +2699,6 @@ function setup_plutologger(notebook_id::UUID, log_channel::Channel{Any})
     pluto_log_channels[notebook_id] = log_channel
 end
 
+include("./precompile.jl")
+
 end

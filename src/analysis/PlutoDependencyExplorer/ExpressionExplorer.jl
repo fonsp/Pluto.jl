@@ -136,7 +136,12 @@ function maybe_macroexpand_pluto(ex::Expr; recursive::Bool=false, expand_bind::B
         funcname = ExpressionExplorer.split_funcname(ex.args[1])
 
         if funcname.joined ∈ (expand_bind ? can_macroexpand : can_macroexpand_no_bind)
-            macroexpand(get_plutorunner(), ex; recursive=false)::Expr
+            try
+                macroexpand(get_plutorunner(), ex; recursive=false)::Expr
+            catch e
+                @debug "Could not macroexpand" ex exception=(e, catch_backtrace())
+                ex
+            end
         else
             ex
         end
