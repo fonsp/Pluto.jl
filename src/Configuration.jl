@@ -404,7 +404,7 @@ function _convert_to_flags(options::CompilerOptions)::Vector{String}
     option_list = String[]
     exclude_list = Symbol[]
 
-    if VERSION ≥ v"1.9"
+    if VERSION < v"1.9"
       append!(exclude_list, [:heap_size_hint])
     end
 
