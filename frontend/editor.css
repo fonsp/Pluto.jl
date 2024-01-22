@@ -34,10 +34,10 @@
     --pluto-operator-ligatures: none;
     --julia-mono-font-stack: JuliaMono, Menlo, "Roboto Mono", "Lucida Sans Typewriter", "Source Code Pro", monospace;
     --sans-serif-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
-    --lato-ui-font-stack: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, Helvetica, Arial, "Apple Color Emoji",
-        "Segoe UI Emoji", "Segoe UI Symbol", system-ui, sans-serif;
-    --system-ui-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, Helvetica, Arial, "Apple Color Emoji",
-        "Segoe UI Emoji", "Segoe UI Symbol", system-ui, sans-serif;
+    --lato-ui-font-stack: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, "Apple Color Emoji", "Segoe UI Emoji",
+        "Segoe UI Symbol", system-ui, sans-serif;
+    --system-ui-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, "Apple Color Emoji", "Segoe UI Emoji",
+        "Segoe UI Symbol", system-ui, sans-serif;
     color-scheme: light dark;
 }
 
@@ -2410,7 +2410,7 @@ pluto-helpbox.hidden > section {
 /* see https://github.com/JuliaDocs/Documenter.jl for author information */
 
 .helpbox-docs {
-    font-family: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+    font-family: var(--lato-ui-font-stack);
     line-height: 1.5;
     font-size: 0.9rem;
 }
