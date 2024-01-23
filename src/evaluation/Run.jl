@@ -1,6 +1,6 @@
 import REPL: ends_with_semicolon
 import .Configuration
-import .ExpressionExplorer: is_joined_funcname
+import ExpressionExplorer: is_joined_funcname
 
 """
 Run given cells and all the cells that depend on them, based on the topology information before and after the changes.
@@ -60,7 +60,7 @@ function run_reactive_core!(
 	Status.report_business_started!(run_status, :resolve_topology)
 	cell_status = Status.report_business_planned!(run_status, :evaluate)
 	
-    if !is_resolved(new_topology)
+    if !PlutoDependencyExplorer.is_resolved(new_topology)
         unresolved_topology = new_topology
         new_topology = notebook.topology = resolve_topology(session, notebook, unresolved_topology, old_workspace_name; current_roots = setdiff(roots, already_run))
 
@@ -75,7 +75,7 @@ function run_reactive_core!(
     roots = vcat(roots, removed_cells)
 
     # by setting the reactive node and expression caches of deleted cells to "empty", we are essentially pretending that those cells still exist, but now have empty code. this makes our algorithm simpler.
-    new_topology = exclude_roots(new_topology, removed_cells)
+    new_topology = PlutoDependencyExplorer.exclude_roots(new_topology, removed_cells)
 
     # find (indirectly) deactivated cells and update their status
     indirectly_deactivated = collect(topological_order(new_topology, collect(new_topology.disabled_cells); allow_multiple_defs=true, skip_at_partial_multiple_defs=true))
@@ -86,7 +86,7 @@ function run_reactive_core!(
         cell.depends_on_disabled_cells = true
     end
 
-    new_topology = exclude_roots(new_topology, indirectly_deactivated)
+    new_topology = PlutoDependencyExplorer.exclude_roots(new_topology, indirectly_deactivated)
 
     # save the old topological order - we'll delete variables assigned from its
     # and re-evalutate its cells unless the cells have already run previously in the reactive run
@@ -144,19 +144,19 @@ function run_reactive_core!(
 
     cells_to_macro_invalidate = Set{UUID}(c.cell_id for c in cells_with_deleted_macros(old_topology, new_topology))
 
-    to_reimport = reduce(all_cells(new_topology); init=Set{Expr}()) do to_reimport, c
-        c ∈ to_run && return to_reimport
+    module_imports_to_move = reduce(all_cells(new_topology); init=Set{Expr}()) do module_imports_to_move, c
+        c ∈ to_run && return module_imports_to_move
         usings_imports = new_topology.codes[c].module_usings_imports
         for (using_, isglobal) in zip(usings_imports.usings, usings_imports.usings_isglobal)
             isglobal || continue
-            push!(to_reimport, using_)
+            push!(module_imports_to_move, using_)
         end
-        to_reimport
+        module_imports_to_move
     end
 
     if will_run_code(notebook)
 		to_delete_funcs_simple = Set{Tuple{UUID,Tuple{Vararg{Symbol}}}}((id, name.parts) for (id,name) in to_delete_funcs)
-        deletion_hook((session, notebook), old_workspace_name, nothing, to_delete_vars, to_delete_funcs_simple, to_reimport, cells_to_macro_invalidate; to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
+        deletion_hook((session, notebook), old_workspace_name, nothing, to_delete_vars, to_delete_funcs_simple, module_imports_to_move, cells_to_macro_invalidate; to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
     end
 
 	foreach(v -> delete!(notebook.bonds, v), to_delete_vars)
@@ -198,11 +198,11 @@ function run_reactive_core!(
 
         # Also set unresolved the downstream cells using the defined macros
         if !isempty(defined_macros_in_cell)
-            new_topology = set_unresolved(new_topology, where_referenced(notebook, new_topology, defined_macros_in_cell))
+            new_topology = PlutoDependencyExplorer.set_unresolved(new_topology, PlutoDependencyExplorer.where_referenced(new_topology, defined_macros_in_cell))
         end
 
         implicit_usings = collect_implicit_usings(new_topology, cell)
-        if !is_resolved(new_topology) && can_help_resolve_cells(new_topology, cell)
+        if !PlutoDependencyExplorer.is_resolved(new_topology) && can_help_resolve_cells(new_topology, cell)
             notebook.topology = new_new_topology = resolve_topology(session, notebook, new_topology, old_workspace_name)
 
             if !isempty(implicit_usings)
@@ -338,6 +338,22 @@ function clear_output!(cell::Cell)
 	cell.running = cell.queued = false
 end
 
+
+"Send `error` to the frontend without backtrace. Runtime errors are handled by `WorkspaceManager.eval_format_fetch_in_workspace` - this function is for Reactivity errors."
+function relay_reactivity_error!(cell::Cell, error::Exception)
+	body, mime = PlutoRunner.format_output(CapturedException(error, []))
+	cell.output = CellOutput(
+		body=body,
+		mime=mime,
+		rootassignee=nothing,
+		last_run_timestamp=time(),
+		persist_js_state=false,
+	)
+	cell.published_objects = Dict{String,Any}()
+	cell.runtime = nothing
+	cell.errored = true
+end
+
 will_run_code(notebook::Notebook) = notebook.process_status ∈ (ProcessStatus.ready, ProcessStatus.starting)
 will_run_pkg(notebook::Notebook) = notebook.process_status !== ProcessStatus.waiting_for_permission
 
@@ -411,15 +427,15 @@ function update_save_run!(
 	if !session.options.evaluation.run_notebook_on_load && prerender_text
 		# these cells do something like settings up an environment, we should always run them
 		setup_cells = filter(notebook.cells) do c
-			cell_precedence_heuristic(notebook.topology, c) < DEFAULT_PRECEDENCE_HEURISTIC
+			PlutoDependencyExplorer.cell_precedence_heuristic(notebook.topology, c) < DEFAULT_PRECEDENCE_HEURISTIC
 		end
 		
 		# for the remaining cells, clear their topology info so that they won't run as dependencies
 		old = notebook.topology
 		to_remove = setdiff(to_run_online, setup_cells)
 		notebook.topology = NotebookTopology(
-			nodes=setdiffkeys(old.nodes, to_remove),
-			codes=setdiffkeys(old.codes, to_remove),
+			nodes=PlutoDependencyExplorer.setdiffkeys(old.nodes, to_remove),
+			codes=PlutoDependencyExplorer.setdiffkeys(old.codes, to_remove),
 			unresolved_cells=setdiff(old.unresolved_cells, to_remove),
 			cell_order=old.cell_order,
 			disabled_cells=setdiff(old.disabled_cells, to_remove),
@@ -478,8 +494,8 @@ function cells_to_disable_to_resolve_multiple_defs(old::NotebookTopology, new::N
 	for cell in cells
 		new_node = new.nodes[cell]
 		
-		fellow_assigners_old = filter!(c -> !is_disabled(old, c), where_assigned(old, new_node))
-		fellow_assigners_new = filter!(c -> !is_disabled(new, c), where_assigned(new, new_node))
+		fellow_assigners_old = filter!(c -> !PlutoDependencyExplorer.is_disabled(old, c), PlutoDependencyExplorer.where_assigned(old, new_node))
+		fellow_assigners_new = filter!(c -> !PlutoDependencyExplorer.is_disabled(new, c), PlutoDependencyExplorer.where_assigned(new, new_node))
 		
 		if length(fellow_assigners_new) > length(fellow_assigners_old)
 			other_definers = setdiff(fellow_assigners_new, (cell,))

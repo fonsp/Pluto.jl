@@ -1,5 +1,5 @@
 
-import .ExpressionExplorer: external_package_names
+import ExpressionExplorer: external_package_names
 import .PkgCompat
 import .PkgCompat: select, is_stdlib
 import Logging
@@ -112,7 +112,7 @@ function sync_nbpkg_core(
         iolistener = let
             busy_packages = notebook.nbpkg_ctx_instantiated ? added : new_packages
             report_to = ["nbpkg_sync", busy_packages...]
-            IOListener(callback=(s -> on_terminal_output(report_to, s)))
+            IOListener(callback=(s -> on_terminal_output(report_to, freeze_loading_spinners(s))))
         end
         cleanup[] = () -> stoplistening(iolistener)
 
@@ -553,7 +553,7 @@ function update_nbpkg_core(
         iolistener = let
             # we don't know which packages will be updated, so we send terminal output to all installed packages
             report_to = ["nbpkg_update", old_packages...]
-            IOListener(callback=(s -> on_terminal_output(report_to, s)))
+            IOListener(callback=(s -> on_terminal_output(report_to, freeze_loading_spinners(s))))
         end
         cleanup[] = () -> stoplistening(iolistener)
         

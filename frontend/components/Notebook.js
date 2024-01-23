@@ -1,5 +1,5 @@
 import { PlutoActionsContext } from "../common/PlutoContext.js"
-import { html, useContext, useEffect, useMemo, useRef, useState } from "../imports/Preact.js"
+import { html, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "../imports/Preact.js"
 
 import { Cell } from "./Cell.js"
 import { nbpkg_fingerprint } from "./PkgStatusMark.js"
@@ -166,6 +166,20 @@ export const Notebook = ({
             ),
         [notebook?.cell_dependencies]
     )
+
+    useLayoutEffect(() => {
+        let oldhash = window.location.hash
+        if (oldhash.length > 1) {
+            let go = () => {
+                window.location.hash = "#"
+                window.location.hash = oldhash
+            }
+            go()
+            // Scrolling there might trigger some codemirrors to render and change height, so let's do it again.
+            requestIdleCallback(go)
+        }
+    }, [cell_outputs_delayed])
+
     return html`
         <pluto-notebook id=${notebook.notebook_id}>
             ${notebook.cell_order
