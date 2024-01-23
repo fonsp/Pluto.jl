@@ -854,6 +854,22 @@ nav#at_the_top > #process_status:empty {
     display: none;
 }
 
+.statefile-fetch-progress {
+    /* width: 200px;
+    height: 27px;
+    background: white;
+    border: 5px solid #d1d9e4;
+    border-radius: 6px; */
+    --w: min(80vw, 300px);
+    position: fixed;
+    left: calc(50vw - 0.5 * var(--w));
+    top: 0;
+    z-index: 300000;
+    /* box-sizing: content-box; */
+    /* height: 2rem; */
+    width: var(--w);
+}
+
 loading-bar {
     height: 6px;
     width: 10vw;

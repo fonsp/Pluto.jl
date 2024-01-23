@@ -38,25 +38,6 @@ export const read_Uint8Array_with_progress = async (response, on_progress) => {
 export const FetchProgress = ({ progress }) =>
     progress == null || progress === 1
         ? null
-        : html`<div
-              style="
-              width: 200px;
-              height: 27px;
-              background: white;
-              border: 5px solid #d1d9e4;
-              border-radius: 6px;
-              position: fixed;
-              left: calc(50vw - 100px);
-              top: calc(50vh - 50px);
-              z-index: 300;
-              box-sizing: content-box;
-"
-          >
-              <div
-                  style=${{
-                      height: "100%",
-                      width: progress * 200 + "px",
-                      background: "rgb(117 135 177)",
-                  }}
-              ></div>
-          </div>`
+        : html`<progress class="statefile-fetch-progress" max="100" value=${progress === "indeterminate" ? undefined : Math.round(progress * 100)}>
+              ${progress === "indeterminate" ? null : Math.round(progress * 100)}%
+          </progress>`
