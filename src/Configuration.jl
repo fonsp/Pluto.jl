@@ -187,7 +187,7 @@ const CHECK_BOUNDS_DEFAULT = nothing
 const MATH_MODE_DEFAULT = nothing
 const STARTUP_FILE_DEFAULT = "no"
 const HISTORY_FILE_DEFAULT = "no"
-const HEAP_SIZE_HINT_DEFAULT = "2G"
+const HEAP_SIZE_HINT_DEFAULT = nothing
 
 function roughly_the_number_of_physical_cpu_cores()
     # https://gist.github.com/fonsp/738fe244719cae820245aa479e7b4a8d
