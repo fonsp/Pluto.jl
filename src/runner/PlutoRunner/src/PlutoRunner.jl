@@ -1249,7 +1249,7 @@ function format_output(binding::Base.Docs.Binding; context=default_iocontext)
     try
         ("""
         <div class="pluto-docs-binding">
-        <span>$(binding.var)</span>
+        <span id="$(binding.var)">$(binding.var)</span>
         $(repr(MIME"text/html"(), Base.Docs.doc(binding)))
         </div>
         """, MIME"text/html"()) 
