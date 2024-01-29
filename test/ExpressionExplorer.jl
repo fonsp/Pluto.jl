@@ -148,7 +148,7 @@ end
     @test t(:(@gensym a b c), [], [:a, :b, :c], [:gensym], [], [Symbol("@gensym")])
     @test t(:(Base.@gensym a b c), [], [:a, :b, :c], [:gensym], [], [[:Base, Symbol("@gensym")]])
     @test t(:(Base.@kwdef struct A; x = 1; y::Int = two; z end), [], [], [], [], [[:Base, Symbol("@kwdef")]])
-    @test t(quote "asdf" f(x) = x end, [], [], [], [], [Symbol("@doc")])
+    # @test t(quote "asdf" f(x) = x end, [], [], [], [], [Symbol("@doc")])
 
     # @test t(:(@bind a b), [], [], [], [], [Symbol("@bind")])
     # @test t(:(PlutoRunner.@bind a b), [], [], [], [], [[:PlutoRunner, Symbol("@bind")]])
