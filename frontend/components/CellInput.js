@@ -557,7 +557,6 @@ export const CellInput = ({
 
             const selection = cm.state.selection.main
             const all_is_selected = selection.anchor === 0 && selection.head === cm.state.doc.length
-            console.log({ all_is_selected })
 
             if (all_is_selected || cm.state.doc.lines === 1) {
                 pluto_actions.move_remote_cells([cell_id], pluto_actions.get_notebook().cell_order.indexOf(cell_id) + (direction === -1 ? -1 : 2))
