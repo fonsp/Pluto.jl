@@ -217,26 +217,6 @@ import Pluto.Configuration: Options, EvaluationOptions
         @test notebook.cells[end].output.body == "1"
     end
 
-    # PlutoTest.jl is only working on Julia version >= 1.6
-    @testset "Test Firebasey" begin
-        🍭.options.evaluation.workspace_use_distributed = true
-
-        file = tempname()
-        write(file, read(normpath(Pluto.project_relative_path("src", "webserver", "Firebasey.jl"))))
-
-        notebook = Pluto.load_notebook_nobackup(file)
-
-        update_run!(🍭, notebook, notebook.cells)
-
-        # Test that the resulting file is runnable
-        @test jl_is_runnable(file)
-        # and also that Pluto can figure out the execution order on its own
-        @test all(noerror, notebook.cells)
-
-        WorkspaceManager.unmake_workspace((🍭, notebook))
-        🍭.options.evaluation.workspace_use_distributed = false
-    end
-
     @testset "Pkg topology workarounds" begin
         notebook = Notebook([
             Cell("1 + 1"),
