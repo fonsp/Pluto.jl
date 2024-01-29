@@ -62,6 +62,7 @@ import { useEventListener } from "../common/useEventListener.js"
 import { moveLineDown } from "../imports/CodemirrorPlutoSetup.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
+export const ENABLE_CM_SPELLCHECK = window.localStorage.getItem("ENABLE_CM_SPELLCHECK") === "true"
 
 if (ENABLE_CM_MIXED_PARSER) {
     console.log(`YOU ENABLED THE CODEMIRROR MIXED LANGUAGE PARSER
@@ -73,8 +74,14 @@ If enough people do this, we can make it the default parser.
 
 // Added this so we can have people test the mixed parser, because I LIKE IT SO MUCH - DRAL
 // @ts-ignore
-window.PLUTO_TOGGLE_CM_MIXED_PARSER = () => {
-    window.localStorage.setItem("ENABLE_CM_MIXED_PARSER", String(!ENABLE_CM_MIXED_PARSER))
+window.PLUTO_TOGGLE_CM_MIXED_PARSER = (val = !ENABLE_CM_MIXED_PARSER) => {
+    window.localStorage.setItem("ENABLE_CM_MIXED_PARSER", String(val))
+    window.location.reload()
+}
+
+// @ts-ignore
+window.PLUTO_TOGGLE_CM_SPELLCHECK = (val = !ENABLE_CM_SPELLCHECK) => {
+    window.localStorage.setItem("ENABLE_CM_SPELLCHECK", String(val))
     window.location.reload()
 }
 
@@ -550,7 +557,6 @@ export const CellInput = ({
 
             const selection = cm.state.selection.main
             const all_is_selected = selection.anchor === 0 && selection.head === cm.state.doc.length
-            console.log({ all_is_selected })
 
             if (all_is_selected || cm.state.doc.lines === 1) {
                 pluto_actions.move_remote_cells([cell_id], pluto_actions.get_notebook().cell_order.indexOf(cell_id) + (direction === -1 ? -1 : 2))
@@ -671,7 +677,6 @@ export const CellInput = ({
                     // Remove selection on blur
                     EditorView.domEventHandlers({
                         blur: (event, view) => {
-                            console.warn("blur")
                             // it turns out that this condition is true *exactly* if and only if the blur event was triggered by blurring the window
                             let caused_by_window_blur = document.activeElement === view.contentDOM
 
@@ -751,6 +756,8 @@ export const CellInput = ({
                     }),
                     keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, ...foldKeymap]),
                     placeholder("Enter cell code..."),
+
+                    EditorView.contentAttributes.of({ spellcheck: String(ENABLE_CM_SPELLCHECK) }),
 
                     EditorView.lineWrapping,
                     // Wowww this has been enabled for some time now... wonder if there are issues about this yet ;) - DRAL

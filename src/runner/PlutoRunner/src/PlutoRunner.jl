@@ -690,7 +690,7 @@ function move_vars(
     vars_to_delete::Set{Symbol},
     methods_to_delete::Set{Tuple{UUID,Tuple{Vararg{Symbol}}}},
     module_imports_to_move::Set{Expr},
-    invalidated_cell_uuids::Set{UUID},
+    cells_to_macro_invalidate::Set{UUID},
     keep_registered::Set{Symbol},
 )
     old_workspace = getfield(Main, old_workspace_name)
@@ -698,8 +698,8 @@ function move_vars(
 
     do_reimports(new_workspace, module_imports_to_move)
 
-    for uuid in invalidated_cell_uuids
-        pop!(cell_expanded_exprs, uuid, nothing)
+    for cell_id in cells_to_macro_invalidate
+        delete!(cell_expanded_exprs, cell_id)
     end
 
     # TODO: delete
@@ -1249,7 +1249,7 @@ function format_output(binding::Base.Docs.Binding; context=default_iocontext)
     try
         ("""
         <div class="pluto-docs-binding">
-        <span>$(binding.var)</span>
+        <span id="$(binding.var)">$(binding.var)</span>
         $(repr(MIME"text/html"(), Base.Docs.doc(binding)))
         </div>
         """, MIME"text/html"()) 
@@ -2698,5 +2698,7 @@ end
 function setup_plutologger(notebook_id::UUID, log_channel::Channel{Any})
     pluto_log_channels[notebook_id] = log_channel
 end
+
+include("./precompile.jl")
 
 end
