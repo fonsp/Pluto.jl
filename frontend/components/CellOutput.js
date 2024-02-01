@@ -164,13 +164,51 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
             if (body.startsWith("<!DOCTYPE") || body.startsWith("<html")) {
                 return sanitize_html ? null : html`<${IframeContainer} body=${body} />`
             } else {
-                return html`<${RawHTMLContainer}
-                    cell_id=${cell_id}
-                    body=${body}
-                    persist_js_state=${persist_js_state}
-                    last_run_timestamp=${last_run_timestamp}
-                    sanitize_html=${sanitize_html}
-                />`
+                let copyCodeButton = html``
+                if (body.startsWith('<div class="markdown"><pre><code class="language-')) {
+                    function extractCode(inputString) {
+                        console.log(inputString)
+                        const contentMatch = inputString.match(/<div class="markdown"><pre><code class="language-(.*?)">([\s\S]*?)<\/code><\/pre>\n<\/div>/)
+
+                        if (contentMatch) {
+                            const content = contentMatch[2].trim()
+                            console.log(content)
+                            return content
+                        } else {
+                            return null
+                        }
+                    }
+
+                    const copyToClipboard = () => {
+                        
+                        var txt = document.createElement("textarea")
+                        txt.innerHTML = body
+                        navigator.clipboard.writeText(extractCode(txt.value))
+                        console.log(extractCode(txt.value))
+                    }
+
+                    const buttonStyle = {
+                        position: "absolute",
+                        top: 10,
+                        right: 20,
+                        cursor: "pointer",
+                    }
+
+                    copyCodeButton = html`<button style=${buttonStyle} onClick=${copyToClipboard}>
+                        <img src="https://unpkg.com/ionicons@7.1.0/dist/svg/copy-outline.svg" width="10" height="10" alt="Copy to Clipboard" />
+                    </button>`
+                }
+
+                return html`<div>
+                    ${copyCodeButton}
+                    <${RawHTMLContainer}
+                        cell_id=${cell_id}
+                        body=${body}
+                        persist_js_state=${persist_js_state}
+                        last_run_timestamp=${last_run_timestamp}
+                        sanitize_html=${sanitize_html}
+                    />
+                </div>`
             }
             break
         case "application/vnd.pluto.tree+object":
