@@ -99,7 +99,7 @@ function macro_has_special_heuristic_inside(; symstate::SymbolsState, expr::Expr
     return PlutoDependencyExplorer.cell_precedence_heuristic(node, code) < PlutoDependencyExplorer.DEFAULT_PRECEDENCE_HEURISTIC
 end
 
-const can_macroexpand_no_bind = Set(Symbol.(["@md_str", "Markdown.@md_str", "@gensym", "Base.@gensym", "@enum", "Base.@enum", "@assert", "Base.@assert", "@cmd"]))
+const can_macroexpand_no_bind = Set(Symbol.(["@md_str", "Markdown.@md_str", "@gensym", "Base.@gensym", "@enum", "Base.@enum", "@assert", "Base.@assert", "@cmd", "Base.@cmd", "@doc", "Base.@doc", "Core.@doc"])) 
 const can_macroexpand = can_macroexpand_no_bind ∪ Set(Symbol.(["@bind", "PlutoRunner.@bind"]))
 
 const plutorunner_id = Base.PkgId(Base.UUID("dc6b355a-2368-4481-ae6d-ae0351418d79"), "PlutoRunner")
