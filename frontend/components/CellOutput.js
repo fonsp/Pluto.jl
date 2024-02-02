@@ -183,15 +183,8 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
                         navigator.clipboard.writeText(extractCode(txt.value))
                     }
 
-                    const buttonStyle = {
-                        position: "absolute",
-                        top: 10,
-                        right: 20,
-                        cursor: "pointer",
-                    }
-
-                    copyCodeButton = html`<button style=${buttonStyle} onClick=${copyToClipboard}>
-                        <img src="https://unpkg.com/ionicons@7.1.0/dist/svg/copy-outline.svg" width="10" height="10" alt="Copy to Clipboard" />
+                    copyCodeButton = html`<button class="markdown-code-block-copy-code-button" onClick=${copyToClipboard}>
+                        <img src="https://unpkg.com/ionicons@7.1.0/dist/svg/copy-outline.svg" alt="Copy to Clipboard" />
                     </button>`
                 }
 

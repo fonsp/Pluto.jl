@@ -3597,3 +3597,22 @@ pluto-cell.hooked_up pluto-output {
     justify-content: flex-end;
     gap: 0.5em;
 }
+
+/*  Styles for mark down copy Button*/
+.markdown-code-block-copy-code-button {
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    cursor: pointer;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+}
+
+.markdown-code-block-copy-code-button > img {
+    width: 14px;
+    height: 14px;
+}
