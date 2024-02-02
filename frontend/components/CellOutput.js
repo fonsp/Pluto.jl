@@ -167,12 +167,10 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
                 let copyCodeButton = html``
                 if (body.startsWith('<div class="markdown"><pre><code class="language-')) {
                     function extractCode(inputString) {
-                        console.log(inputString)
                         const contentMatch = inputString.match(/<div class="markdown"><pre><code class="language-(.*?)">([\s\S]*?)<\/code><\/pre>\n<\/div>/)
 
                         if (contentMatch) {
                             const content = contentMatch[2].trim()
-                            console.log(content)
                             return content
                         } else {
                             return null
@@ -180,11 +178,9 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
                     }
 
                     const copyToClipboard = () => {
-                        
                         var txt = document.createElement("textarea")
                         txt.innerHTML = body
                         navigator.clipboard.writeText(extractCode(txt.value))
-                        console.log(extractCode(txt.value))
                     }
 
                     const buttonStyle = {
