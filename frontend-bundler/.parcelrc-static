@@ -1,0 +1,18 @@
+{
+    "extends": "@parcel/config-default",
+    "resolvers": [
+        "parcel-resolver-like-a-browser",
+        "..."
+    ],
+    "reporters": [
+        "...",
+        "parcel-reporter-bundle-manifest"
+    ],
+    "transformers": {
+        "*.svg": [
+            "...",
+            "@parcel/transformer-inline"
+        ],
+        ".html": ["..."]
+    }
+}
