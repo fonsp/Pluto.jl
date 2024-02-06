@@ -7,5 +7,12 @@
     "reporters": [
         "...",
         "parcel-reporter-bundle-manifest"
-    ]
+    ],
+    "transformers": {
+        "*.svg": [
+            "...",
+            "@parcel/transformer-inline"
+        ],
+        ".html": ["..."]
+    }
 }

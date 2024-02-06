@@ -2,7 +2,7 @@ import Pkg
 using Base64
 using HypertextLiteral
 import URIs
-
+using MIMEs: mime_from_path
 const default_binder_url = "https://mybinder.org/v2/gh/fonsp/pluto-on-binder/v$(string(PLUTO_VERSION))"
 
 const cdn_version_override = nothing
@@ -12,11 +12,16 @@ if cdn_version_override !== nothing
     @warn "Reminder to fonsi: Using a development version of Pluto for CDN assets. The binder button might not work. You should not see this on a released version of Pluto." cdn_version_override
 end
 
-cdnified_editor_html(; kwargs...) = cdnified_html("editor.html"; kwargs...)
+cdnified_editor_html(; kwargs...) = cdnified_html("editor2.html"; kwargs...)
+
+function file2base64dataurl(path::AbstractString)
+    string("data:", mime_from_path(path), ";base64,", base64encode(read(path)))
+end
 
 function cdnified_html(filename::AbstractString;
         version::Union{Nothing,VersionNumber,AbstractString}=nothing, 
         pluto_cdn_root::Union{Nothing,AbstractString}=nothing,
+        base64assets::Bool=true,
     )
     should_use_bundled_cdn = version ∈ (nothing, PLUTO_VERSION) && pluto_cdn_root === nothing
     
@@ -30,9 +35,14 @@ function cdnified_html(filename::AbstractString;
                 @debug "Using CDN for Pluto assets:" cdn_root
 
                 replace_with_cdn(original) do url
+                    @info "$url"
+                    contains(string(url), "escape_txt_for_html") && return url
                     # Because parcel creates filenames with a hash in them, we can check if the file exists locally to make sure that everything is in order.
                     @assert isfile(project_relative_path("frontend-dist", url)) "Could not find the file $(project_relative_path("frontend-dist", url)) locally, that's a bad sign."
-                    
+                    #= @info "let's see it $url, $should_use_bundled_cdn "
+                    if base64assets
+                        return file2base64dataurl(project_relative_path("frontend-dist", url))
+                    end =#
                     URIs.resolvereference(cdn_root, url) |> string
                 end
             catch e
@@ -46,7 +56,9 @@ function cdnified_html(filename::AbstractString;
             cdn_root = something(pluto_cdn_root, "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@$(something(cdn_version_override, string(something(version, PLUTO_VERSION))))/frontend/")
 
             @debug "Using CDN for Pluto assets:" cdn_root
-    
+            if base64assets
+                @warn("Trying to use bundled assets for $filename. It's impossible to base64 include Pluto in unbundled mode. If you _really_ need this contact us.")
+            end
             replace_with_cdn(original) do url
                 URIs.resolvereference(cdn_root, url) |> string
             end
@@ -119,6 +131,7 @@ end
 
 function replace_at_least_once(s, pair)
     from, to = pair
+    @info "replacing once at least once" s from to
     @assert occursin(from, s)
     replace(s, pair)
 end
@@ -204,7 +217,7 @@ function replace_with_cdn(cdnify::Function, s::String, idx::Integer=1)
 		s
 	else
 		url = only(next_match.captures)
-		if occursin("//", url) || url ∈ dont_cdnify
+		if occursin("//", url) || url ∈ dont_cdnify || occursin("data:", url)
 			# skip this one
 			replace_with_cdn(cdnify, s, nextind(s, next_match.offset))
 		else
