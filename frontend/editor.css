@@ -1687,7 +1687,8 @@ pluto-cell > button.add_cell > span::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/add-outline.svg");
     filter: var(--image-filters);
 }
-pluto-input > button.input_context_menu ul {
+
+pluto-input > .input_context_menu ul {
     left: 100%;
     top: -8px;
     margin: 0;
@@ -1700,33 +1701,45 @@ pluto-input > button.input_context_menu ul {
     background-color: var(--input-context-menu-bg-color);
 }
 @media screen and (min-width: 921px) {
-    pluto-input > button.input_context_menu ul {
+    pluto-input > .input_context_menu ul {
         left: calc(100% - 3px);
     }
 }
 @media screen and (max-width: 920px) {
-    pluto-input > button.input_context_menu {
-        z-index: 31;
+    pluto-input > .input_context_menu {
+        z-index: 1400;
     }
-    pluto-input > button.input_context_menu ul {
+    pluto-input > .input_context_menu ul {
         right: 0px;
         left: unset;
+        z-index: 1401;
     }
 }
-.input_context_menu li {
+
+pluto-input > .input_context_menu li {
+    list-style: none;
+    margin-block-end: 0px;
+    display: flex;
+    align-items: stretch;
+    flex-direction: column;
+}
+pluto-input > .input_context_menu li button {
     font-family: "Roboto Mono", system-ui;
     font-size: 0.8rem;
     margin-block-end: 0px;
     letter-spacing: -0.02em;
     color: var(--input-context-menu-li-color);
     position: relative;
-    list-style: none;
     padding: 8px;
     height: 32px;
     display: flex;
     align-items: center;
     justify-content: flex-start;
     border-radius: 2px;
+    cursor: pointer;
+
+    background: none;
+    border: none;
 }
 .input_context_menu li:last-child {
     border-bottom-left-radius: 6px;
@@ -1802,11 +1815,11 @@ pluto-input > button.input_context_menu {
     padding: 5px;
 }
 
-pluto-input > button.input_context_menu.open {
+pluto-input > .input_context_menu.open {
     opacity: 1;
 }
 
-pluto-input > button.input_context_menu > span.icon::after {
+pluto-input > .input_context_menu span.icon::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ellipsis-horizontal-circle-outline.svg");
     filter: var(--image-filters);
 }
