@@ -2,6 +2,10 @@ using Test
 import Pluto: Configuration, Notebook, ServerSession, ClientSession, update_run!, Cell, WorkspaceManager
 import Pluto.Configuration: Options, EvaluationOptions
 
+### MORE TESTS ARE IN PLUTODEPENDENCYEXPLORER.jL
+# The tests on the Pluto side are tests that rely more heavily on what Pluto implements on top of PlutoDependencyExplorer.
+# The tests in PlutoDependencyExplorer are focus in *reactive ordering*.
+
 @testset "Reactivity" begin
     🍭 = ServerSession()
     🍭.options.evaluation.workspace_use_distributed = false
