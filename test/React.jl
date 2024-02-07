@@ -1162,6 +1162,10 @@ import Pluto.Configuration: Options, EvaluationOptions
 
         Cell("using Dates"),
         Cell("year(DateTime(31))"),
+        
+        Cell("Base.tan(::Missing) = 32"),
+        Cell("Base.tan(missing)"),
+        Cell("tan(missing)"),
     ])
 
     @testset "Changing functions" begin
@@ -1307,6 +1311,22 @@ import Pluto.Configuration: Options, EvaluationOptions
         setcode!(notebook.cells[30], "")
         update_run!(🍭, notebook, notebook.cells[30:31])
         @test occursinerror("UndefVarError", notebook.cells[31])
+        
+        update_run!(🍭, notebook, notebook.cells[32:34])
+        @test notebook.cells[32] |> noerror
+        @test notebook.cells[33] |> noerror
+        @test notebook.cells[34] |> noerror
+        @test notebook.cells[33].output.body == "32"
+        @test notebook.cells[34].output.body == "32"
+        
+        setcode!(notebook.cells[31], "")
+        update_run!(🍭, notebook, notebook.cells[32])
+
+        @test notebook.cells[32] |> noerror
+        @test notebook.cells[33] |> noerror
+        @test notebook.cells[34] |> noerror
+        @test notebook.cells[33].output.body == "missing"
+        @test notebook.cells[34].output.body == "missing"
     end
     WorkspaceManager.unmake_workspace((🍭, notebook); verbose=false)
 
