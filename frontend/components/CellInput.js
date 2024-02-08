@@ -931,9 +931,12 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
     const timeout = useRef(null)
     let pluto_actions = useContext(PlutoActionsContext)
     const [open, setOpenState] = useState(false)
-    const element_ref = useRef(/** @type {HTMLButtonElement?} */ (null))
+    const button_ref = useRef(/** @type {HTMLButtonElement?} */ (null))
+    const list_ref = useRef(/** @type {HTMLButtonElement?} */ (null))
+
     const prevously_focused_element_ref = useRef(/** @type {Element?} */ (null))
     const setOpen = (val) => {
+        console.error("setOpen", val)
         if (val) {
             prevously_focused_element_ref.current = document.activeElement
         }
@@ -941,8 +944,10 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
     }
     useLayoutEffect(() => {
         if (open) {
-            element_ref.current?.querySelector("li")?.focus()
+            list_ref.current?.querySelector("button")?.focus()
+            console.log("forcing focus", list_ref.current?.querySelector("button"))
         } else {
+            console.log("restoring focus", prevously_focused_element_ref.current)
             if (prevously_focused_element_ref.current instanceof HTMLElement) prevously_focused_element_ref.current?.focus()
         }
     }, [open])
@@ -985,59 +990,93 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
         }
     })
 
-    return html` <button
-        onClick=${() => setOpen(!open)}
-        onfocusout=${(e) => {
-            if (
-                // the focus is not one of the <li>
-                !element_ref.current?.matches(":focus-within") ||
-                // or the focus is on the button itself
-                e.relatedTarget === element_ref.current
-            )
-                setOpen(false)
-        }}
-        class=${cl({
-            input_context_menu: true,
-            open,
-        })}
-        title="Actions"
-        ref=${element_ref}
-    >
-        <span class="icon"></span>
-        ${open
-            ? html`<ul onMouseenter=${mouseenter}>
-                  <li tabindex="0" onClick=${on_delete} title="Delete"><span class="delete ctx_icon" />Delete cell</li>
-                  <li
-                      tabindex="0"
-                      onClick=${toggle_running_disabled}
-                      title=${running_disabled ? "Enable and run the cell" : "Disable this cell, and all cells that depend on it"}
-                  >
-                      ${running_disabled ? html`<span class="enable_cell ctx_icon" />` : html`<span class="disable_cell ctx_icon" />`}
-                      ${running_disabled ? html`<b>Enable cell</b>` : html`Disable cell`}
-                  </li>
-                  ${any_logs
-                      ? html`<li tabindex="0" title="" onClick=${toggle_logs}>
-                            ${show_logs
-                                ? html`<span class="hide_logs ctx_icon" /><span>Hide logs</span>`
-                                : html`<span class="show_logs ctx_icon" /><span>Show logs</span>`}
-                        </li>`
-                      : null}
-                  ${is_copy_output_supported()
-                      ? html`<li tabindex="0" title="Copy the output of this cell to the clipboard." onClick=${copy_output}>
-                            <span class="copy_output ctx_icon" />Copy output
-                        </li>`
-                      : null}
-                  <li
-                      tabindex="0"
-                      onClick=${toggle_skip_as_script}
-                      title=${skip_as_script
-                          ? "This cell is currently stored in the notebook file as a Julia comment. Click here to disable."
-                          : "Store this code in the notebook file as a Julia comment. This way, it will not run when the notebook runs as a script outside of Pluto."}
-                  >
-                      ${skip_as_script ? html`<span class="skip_as_script ctx_icon" />` : html`<span class="run_as_script ctx_icon" />`}
-                      ${skip_as_script ? html`<b>Enable in file</b>` : html`Disable in file`}
-                  </li>
-              </ul>`
-            : html``}
-    </button>`
+    return html`
+        <button
+            onClick=${(e) => {
+                setOpen(!open)
+            }}
+            class=${cl({
+                input_context_menu: true,
+                open,
+            })}
+            title="Actions"
+            ref=${button_ref}
+        >
+            <span class="icon"></span>
+        </button>
+        <div
+            class=${cl({
+                input_context_menu: true,
+                open,
+            })}
+            ref=${list_ref}
+            onfocusout=${(e) => {
+                const li_focused = list_ref.current?.matches(":focus-within") || list_ref.current?.contains(e.relatedTarget)
+
+                if (
+                    !li_focused ||
+                    // or the focus is on the list itself
+                    e.relatedTarget === list_ref.current
+                )
+                    setOpen(false)
+            }}
+        >
+            ${open
+                ? html`<ul onMouseenter=${mouseenter}>
+                      <${InputContextMenuItem} tag="delete" contents="Delete cell" title="Delete cell" onClick=${on_delete} setOpen=${setOpen} />
+
+                      <${InputContextMenuItem}
+                          title=${running_disabled ? "Enable and run the cell" : "Disable this cell, and all cells that depend on it"}
+                          tag=${running_disabled ? "enable_cell" : "disable_cell"}
+                          contents=${running_disabled ? html`<b>Enable cell</b>` : html`Disable cell`}
+                          onClick=${toggle_running_disabled}
+                          setOpen=${setOpen}
+                      />
+                      ${any_logs
+                          ? html`<${InputContextMenuItem}
+                                title=${show_logs ? "Show cell logs" : "Hide cell logs"}
+                                tag=${show_logs ? "hide_logs" : "show_logs"}
+                                contents=${show_logs ? "Hide logs" : "Show logs"}
+                                onClick=${toggle_logs}
+                                setOpen=${setOpen}
+                            />`
+                          : null}
+                      ${is_copy_output_supported()
+                          ? html`<${InputContextMenuItem}
+                                tag="copy_output"
+                                contents="Copy output"
+                                title="Copy the output of this cell to the clipboard."
+                                onClick=${copy_output}
+                                setOpen=${setOpen}
+                            />`
+                          : null}
+
+                      <${InputContextMenuItem}
+                          title=${skip_as_script
+                              ? "This cell is currently stored in the notebook file as a Julia comment. Click here to disable."
+                              : "Store this code in the notebook file as a Julia comment. This way, it will not run when the notebook runs as a script outside of Pluto."}
+                          tag=${skip_as_script ? "run_as_script" : "skip_as_script"}
+                          contents=${skip_as_script ? html`<b>Enable in file</b>` : html`Disable in file`}
+                          onClick=${toggle_skip_as_script}
+                          setOpen=${setOpen}
+                      />
+                  </ul>`
+                : html``}
+        </div>
+    `
 }
+
+const InputContextMenuItem = ({ contents, title, onClick, setOpen, tag }) =>
+    html`<li>
+        <button
+            tabindex="0"
+            title=${title}
+            onClick=${(e) => {
+                setOpen(false)
+                onClick(e)
+            }}
+            class=${tag}
+        >
+            <span class=${`${tag} ctx_icon`} />${contents}
+        </button>
+    </li>`

@@ -8,7 +8,14 @@ export const setup_mathjax = () => {
     }
     setup_done = true
 
-    const deprecated = () => console.warn("Pluto uses MathJax 3, but a MathJax 2 function was called.")
+    const deprecated = () =>
+        console.error(
+            "Pluto.jl: Pluto loads MathJax 3 globally, but a MathJax 2 function was called. The two version can not be used together on the same web page."
+        )
+    const twowasloaded = () =>
+        console.error(
+            "Pluto.jl: MathJax 2 is already loaded in this page, but Pluto wants to load MathJax 3. Packages that import MathJax 2 in their html display will break Pluto's ability to render latex."
+        )
 
     // @ts-ignore
     window.MathJax = {
@@ -69,6 +76,12 @@ export const setup_mathjax = () => {
         () => {
             console.log("Loading mathjax!!")
             const script = document.head.querySelector("#MathJax-script")
+            script?.addEventListener("load", () => {
+                console.log("MathJax loaded!")
+                if (window["MathJax"]?.version !== "3.2.2") {
+                    twowasloaded()
+                }
+            })
             script.setAttribute("src", script.getAttribute("not-the-src-yet"))
         },
         { timeout: 2000 }
