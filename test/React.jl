@@ -1319,7 +1319,7 @@ import Pluto.Configuration: Options, EvaluationOptions
         @test notebook.cells[33].output.body == "32"
         @test notebook.cells[34].output.body == "32"
         
-        setcode!(notebook.cells[31], "")
+        setcode!(notebook.cells[32], "")
         update_run!(🍭, notebook, notebook.cells[32])
 
         @test notebook.cells[32] |> noerror
