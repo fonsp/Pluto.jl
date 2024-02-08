@@ -178,7 +178,7 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
                     }
 
                     const copyToClipboard = () => {
-                        var txt = document.createElement("textarea")
+                        const txt = document.createElement("textarea")
                         txt.innerHTML = body
                         navigator.clipboard.writeText(extractCode(txt.value))
                     }
