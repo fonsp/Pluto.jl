@@ -164,16 +164,14 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
             if (body.startsWith("<!DOCTYPE") || body.startsWith("<html")) {
                 return sanitize_html ? null : html`<${IframeContainer} body=${body} />`
             } else {
-                return html`<div>
-                    ${generateCopyCodeButton(body)}
+                return html`
                     <${RawHTMLContainer}
                         cell_id=${cell_id}
                         body=${body}
                         persist_js_state=${persist_js_state}
                         last_run_timestamp=${last_run_timestamp}
                         sanitize_html=${sanitize_html}
-                    />
-                </div>`
+                    />`
             }
             break
         case "application/vnd.pluto.tree+object":
@@ -631,7 +629,12 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
         }
     }, [body, last_run_timestamp, pluto_actions, sanitize_html])
 
-    return html`<div class="raw-html-wrapper ${className}" ref=${container_ref}></div>`
+    return html`
+        <div>
+            ${generateCopyCodeButton(body)}
+            <div class="raw-html-wrapper ${className}" ref=${container_ref}></div>
+        </div>
+    `
 }
 
 // https://github.com/fonsp/Pluto.jl/issues/1692
