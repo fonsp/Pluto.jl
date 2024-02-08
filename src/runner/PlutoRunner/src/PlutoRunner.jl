@@ -785,6 +785,13 @@ function delete_method_doc(m::Method)
     end
 end
 
+
+if VERSION < v"1.7.0-0"
+    @eval macro atomic(ex)
+        esc(ex)
+    end
+end
+
 """
 Delete all methods of `f` that were defined in this notebook, and leave the ones defined in other packages, base, etc. ✂
 
@@ -807,7 +814,7 @@ function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
     # we define `Base.isodd(n::Integer) = rand(Bool)`, which overrides the existing method `Base.isodd(n::Integer)`
     # calling `Base.delete_method` on this method won't bring back the old method, because our new method still exists in the method table, and it has a world age which is newer than the original. (our method has a deleted_world value set, which disables it)
     #
-    # To solve this, we iterate again, and _re-enable any methods that were hidden in this way_, by adding them again to the method table with an even newer`primary_world`.
+    # To solve this, we iterate again, and _re-enable any methods that were hidden in this way_, by adding them again to the method table with an even newer `primary_world`.
     if !isempty(deleted_sigs)
         to_insert = Method[]
         Base.visit(methods_table) do method
@@ -817,8 +824,13 @@ function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
         end
         # separate loop to avoid visiting the recently added method
         for method in Iterators.reverse(to_insert)
-            setfield!(method, primary_world, one(typeof(alive_world_val))) # `1` will tell Julia to increment the world counter and set it as this function's world
-            setfield!(method, deleted_world, alive_world_val) # set the `deleted_world` property back to the 'alive' value (for Julia v1.6 and up)
+            if VERSION >= v"1.11.0-0"
+                @atomic method.primary_world = one(typeof(alive_world_val)) # `1` will tell Julia to increment the world counter and set it as this function's world
+                @atomic method.deleted_world = alive_world_val # set the `deleted_world` property back to the 'alive' value (for Julia v1.6 and up)
+            else
+                method.primary_world = one(typeof(alive_world_val))
+                method.deleted_world = alive_world_val
+            end
             ccall(:jl_method_table_insert, Cvoid, (Any, Any, Ptr{Cvoid}), methods_table, method, C_NULL) # i dont like doing this either!
         end
     end
