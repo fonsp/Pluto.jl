@@ -281,6 +281,18 @@ table.pluto-table td {
     overflow: auto;
 }
 
+@supports (-moz-appearance: none) {
+    table.pluto-table td {
+        max-width: unset;
+        overflow: visible;
+    }
+
+    table.pluto-table td > div {
+        max-width: 300px;
+        overflow: auto;
+    }
+}
+
 table.pluto-table .schema-types {
     color: var(--pluto-schema-types-color);
     font-family: var(--julia-mono-font-stack);
