@@ -617,6 +617,18 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
                 } catch (err) {
                     console.warn("Highlighting failed", err)
                 }
+
+                // Find code blocks and add a copy button:
+                try {
+                    if (container.firstElementChild?.matches("div.markdown")) {
+                        container.querySelectorAll("pre > code").forEach((code_element) => {
+                            const pre = code_element.parentElement
+                            generateCopyCodeButton(pre)
+                        })
+                    }
+                } catch (err) {
+                    console.warn("Adding markdown code copy button failed", err)
+                }
             } finally {
                 js_init_set?.delete(container)
             }
@@ -628,10 +640,7 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
         }
     }, [body, last_run_timestamp, pluto_actions, sanitize_html])
 
-    return html`<div>
-        ${generateCopyCodeButton(body)}
-        <div class="raw-html-wrapper ${className}" ref=${container_ref}></div>
-    </div> `
+    return html`<div class="raw-html-wrapper ${className}" ref=${container_ref}></div>`
 }
 
 // https://github.com/fonsp/Pluto.jl/issues/1692
@@ -689,35 +698,41 @@ export let highlight = (code_element, language) => {
 
 /**
  * Generates a copy button for Markdown code blocks and copies them into the clipboard.
- * @param {string} body - The Markdown content.
+ * @param {HTMLElement | null} pre - The <pre> element containing the code block.
  */
-export const generateCopyCodeButton = (body) => {
-    let copyCodeButton = html``
-
-    if (body.startsWith('<div class="markdown"><pre><code class="language-')) {
-        const extractCode = (inputString) => {
-            const contentMatch = inputString.match(/<div class="markdown"><pre><code class="language-(.*?)">([\s\S]*?)<\/code><\/pre>\n<\/div>/)
-
-            if (contentMatch) {
-                const content = contentMatch[2].trim()
-                return content
-            } else {
-                return null
-            }
-        }
-
-        const copyToClipboard = () => {
-            const txt = document.createElement("textarea")
-            txt.innerHTML = body
-            navigator.clipboard.writeText(extractCode(txt.value))
-        }
-
-        copyCodeButton = html`
-            <button class="markdown-code-block-copy-code-button" onClick=${copyToClipboard}>
-                <img src="https://unpkg.com/ionicons@7.1.0/dist/svg/copy-outline.svg" alt="Copy to Clipboard" />
-            </button>
-        `
+export const generateCopyCodeButton = (pre) => {
+    if (!pre) {
+        console.error('Error: pre is null.');
+        return;
     }
 
-    return copyCodeButton
+    const copyToClipboard = () => {
+        const range = document.createRange()
+        range.selectNode(pre)
+        const txt = range.startContainer.textContent || ''
+        navigator.clipboard
+            .writeText(txt)
+            .then(() => {
+                console.log("Code copied to clipboard:\n" + txt)
+            })
+            .catch((error) => {
+                console.error("Error copying code to clipboard:", error)
+            })
+    }
+
+    // create copy button
+    const copyCodeButton = document.createElement("button")
+    copyCodeButton.className = "markdown-code-block-copy-code-button"
+    copyCodeButton.addEventListener("click", copyToClipboard)
+
+    // Create copy button image
+    const copyImg = document.createElement("img")
+    copyImg.src = "https://unpkg.com/ionicons@7.1.0/dist/svg/copy-outline.svg"
+    copyImg.alt = "Copy to Clipboard"
+
+    // Append image to button
+    copyCodeButton.appendChild(copyImg)
+
+    // Append copy button to the code block element
+    pre.appendChild(copyCodeButton)
 }
