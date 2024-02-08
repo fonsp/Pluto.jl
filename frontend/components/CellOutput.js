@@ -164,32 +164,8 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
             if (body.startsWith("<!DOCTYPE") || body.startsWith("<html")) {
                 return sanitize_html ? null : html`<${IframeContainer} body=${body} />`
             } else {
-                let copyCodeButton = html``
-                if (body.startsWith('<div class="markdown"><pre><code class="language-')) {
-                    function extractCode(inputString) {
-                        const contentMatch = inputString.match(/<div class="markdown"><pre><code class="language-(.*?)">([\s\S]*?)<\/code><\/pre>\n<\/div>/)
-
-                        if (contentMatch) {
-                            const content = contentMatch[2].trim()
-                            return content
-                        } else {
-                            return null
-                        }
-                    }
-
-                    const copyToClipboard = () => {
-                        const txt = document.createElement("textarea")
-                        txt.innerHTML = body
-                        navigator.clipboard.writeText(extractCode(txt.value))
-                    }
-
-                    copyCodeButton = html`<button class="markdown-code-block-copy-code-button" onClick=${copyToClipboard}>
-                        <img src="https://unpkg.com/ionicons@7.1.0/dist/svg/copy-outline.svg" alt="Copy to Clipboard" />
-                    </button>`
-                }
-
                 return html`<div>
-                    ${copyCodeButton}
+                    ${generateCopyCodeButton(body)}
                     <${RawHTMLContainer}
                         cell_id=${cell_id}
                         body=${body}
@@ -709,4 +685,39 @@ export let highlight = (code_element, language) => {
             hljs.highlightElement(code_element)
         }
     }
+}
+
+/**
+ * Generates a copy button for Markdown code blocks and copies them into the clipboard.
+ * @param {string} body - The Markdown content.
+ */
+export const generateCopyCodeButton = (body) => {
+    let copyCodeButton = html``
+
+    if (body.startsWith('<div class="markdown"><pre><code class="language-')) {
+        const extractCode = (inputString) => {
+            const contentMatch = inputString.match(/<div class="markdown"><pre><code class="language-(.*?)">([\s\S]*?)<\/code><\/pre>\n<\/div>/)
+
+            if (contentMatch) {
+                const content = contentMatch[2].trim()
+                return content
+            } else {
+                return null
+            }
+        }
+
+        const copyToClipboard = () => {
+            const txt = document.createElement("textarea")
+            txt.innerHTML = body
+            navigator.clipboard.writeText(extractCode(txt.value))
+        }
+
+        copyCodeButton = html`
+            <button class="markdown-code-block-copy-code-button" onClick=${copyToClipboard}>
+                <img src="https://unpkg.com/ionicons@7.1.0/dist/svg/copy-outline.svg" alt="Copy to Clipboard" />
+            </button>
+        `
+    }
+
+    return copyCodeButton
 }
