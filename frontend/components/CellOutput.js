@@ -698,11 +698,11 @@ export let highlight = (code_element, language) => {
 
 /**
  * Copies the contents of an HTML Element into the clipboard
- * @param {HTMLElement | null} ele - The code block.
+ * @param {HTMLElement | null} ele - The HTML Element.
  */
 export const copyToClipboard = (ele) => {
     if (!ele) {
-        console.error('Error: pre is null.');
+        console.error('Error: The element is null.');
         return;
     }
 
