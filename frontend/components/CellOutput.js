@@ -698,16 +698,11 @@ export let highlight = (code_element, language) => {
 
 /**
  * Copies the contents of an HTML Element into the clipboard
- * @param {HTMLElement | null} ele - The HTML Element.
  */
-export const copyToClipboard = (ele) => {
-    if (!ele) {
-        console.error('Error: The element is null.');
-        return;
-    }
-
+export const copyToClipboard = (e) => {
+    const el = e.target.parentNode.parentNode.closest("pre")
     const range = document.createRange()
-    range.selectNode(ele)
+    range.selectNode(el)
     const txt = range.startContainer.textContent || ''
     navigator.clipboard
         .writeText(txt)
@@ -732,7 +727,7 @@ export const generateCopyCodeButton = (pre) => {
     // create copy button
     const copyCodeButton = document.createElement("button")
     copyCodeButton.className = "markdown-code-block-copy-code-button"
-    copyCodeButton.addEventListener("click", () => copyToClipboard(pre))
+    copyCodeButton.addEventListener("click", copyToClipboard)
 
     // Create copy button image
     const copyImg = document.createElement("img")
