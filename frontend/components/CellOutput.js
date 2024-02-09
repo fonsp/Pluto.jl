@@ -697,6 +697,29 @@ export let highlight = (code_element, language) => {
 }
 
 /**
+ * Copies the contents of an HTML Element into the clipboard
+ * @param {HTMLElement | null} ele - The code block.
+ */
+export const copyToClipboard = (ele) => {
+    if (!ele) {
+        console.error('Error: pre is null.');
+        return;
+    }
+
+    const range = document.createRange()
+    range.selectNode(ele)
+    const txt = range.startContainer.textContent || ''
+    navigator.clipboard
+        .writeText(txt)
+        .then(() => {
+            console.log("Code copied to clipboard:\n" + txt)
+        })
+        .catch((error) => {
+            console.error("Error copying code to clipboard:", error)
+        })
+}
+
+/**
  * Generates a copy button for Markdown code blocks and copies them into the clipboard.
  * @param {HTMLElement | null} pre - The <pre> element containing the code block.
  */
@@ -706,28 +729,14 @@ export const generateCopyCodeButton = (pre) => {
         return;
     }
 
-    const copyToClipboard = () => {
-        const range = document.createRange()
-        range.selectNode(pre)
-        const txt = range.startContainer.textContent || ''
-        navigator.clipboard
-            .writeText(txt)
-            .then(() => {
-                console.log("Code copied to clipboard:\n" + txt)
-            })
-            .catch((error) => {
-                console.error("Error copying code to clipboard:", error)
-            })
-    }
-
     // create copy button
     const copyCodeButton = document.createElement("button")
     copyCodeButton.className = "markdown-code-block-copy-code-button"
-    copyCodeButton.addEventListener("click", copyToClipboard)
+    copyCodeButton.addEventListener("click", () => copyToClipboard(pre))
 
     // Create copy button image
     const copyImg = document.createElement("img")
-    copyImg.src = "https://unpkg.com/ionicons@7.1.0/dist/svg/copy-outline.svg"
+    copyImg.src = new URL("https://unpkg.com/ionicons@7.1.0/dist/svg/copy-outline.svg", import.meta.url).toString()
     copyImg.alt = "Copy to Clipboard"
 
     // Append image to button
