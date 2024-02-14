@@ -143,7 +143,7 @@ function resolve_topology(
 				Failure(ErrorException("shutdown"))
 			end
 		catch error
-			@error "Macro call expansion failed with a non-macroexpand error" error
+			@error "Macro call expansion failed with a non-macroexpand error" exception=(error,catch_backtrace()) cell.code
 			Failure(error)
 		end
 		if result isa Success
