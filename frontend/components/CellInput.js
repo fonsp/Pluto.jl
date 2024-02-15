@@ -936,7 +936,6 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
 
     const prevously_focused_element_ref = useRef(/** @type {Element?} */ (null))
     const setOpen = (val) => {
-        console.error("setOpen", val)
         if (val) {
             prevously_focused_element_ref.current = document.activeElement
         }
