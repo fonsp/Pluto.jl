@@ -1,25 +1,38 @@
+import { cl } from "../common/ClassTable.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { EditorState, EditorView, julia_andrey, lineNumbers, syntaxHighlighting } from "../imports/CodemirrorPlutoSetup.js"
 import { html, useContext, useEffect, useLayoutEffect, useRef, useState } from "../imports/Preact.js"
 import { pluto_syntax_colors } from "./CellInput.js"
+import { highlight } from "./CellOutput.js"
 import { Editor } from "./Editor.js"
 
-const StackFrameFilename = ({ frame, cell_id }) => {
-    const sep_index = frame.file.indexOf("#==#")
+const extract_cell_id = (/** @type {string} */ file) => {
+    const sep_index = file.indexOf("#==#")
     if (sep_index != -1) {
-        const frame_cell_id = frame.file.substr(sep_index + 4, 36)
+        return file.substr(sep_index + 4, 36)
+    } else {
+        return null
+    }
+}
+
+const focus_line = (cell_id, line) =>
+    window.dispatchEvent(
+        new CustomEvent("cell_focus", {
+            detail: {
+                cell_id: cell_id,
+                line: line,
+            },
+        })
+    )
+
+const StackFrameFilename = ({ frame, cell_id }) => {
+    const frame_cell_id = extract_cell_id(frame.file)
+    if (frame_cell_id != null) {
         const a = html`<a
             internal-file=${frame.file}
-            href="#"
+            href=${`#${frame_cell_id}`}
             onclick=${(e) => {
-                window.dispatchEvent(
-                    new CustomEvent("cell_focus", {
-                        detail: {
-                            cell_id: frame_cell_id,
-                            line: frame.line - 1, // 1-based to 0-based index
-                        },
-                    })
-                )
+                focus_line(frame_cell_id, frame.line - 1)
                 e.preventDefault()
             }}
         >
@@ -38,6 +51,56 @@ const Funccall = ({ frame }) => {
     } else {
         return html`<mark><strong>${frame.call}</strong></mark>`
     }
+}
+
+const LinePreview = ({ frame }) => {
+    let pluto_actions = useContext(PlutoActionsContext)
+    let cell_id = extract_cell_id(frame.file)
+    if (cell_id) {
+        let code = /** @type{import("./Editor.js").NotebookData?} */ (pluto_actions.get_notebook())?.cell_inputs[cell_id]?.code
+
+        console.log(code)
+        if (code) {
+            const lines = code.split("\n")
+            console.log(frame.line)
+
+            return html`<a
+                onclick=${(e) => {
+                    focus_line(cell_id, frame.line - 1)
+                    e.preventDefault()
+                }}
+                href=${`#${cell_id}`}
+                class="frame-line-preview"
+                ><div>
+                    <pre>
+${lines.map((line, i) =>
+                            frame.line - 3 <= i && i <= frame.line + 1
+                                ? html`<${JuliaHighlightedLine} code=${line} frameLine=${i === frame.line - 1 && lines.length > 1} />`
+                                : null
+                        )}</pre
+                    >
+                </div></a
+            >`
+        }
+    }
+}
+
+const JuliaHighlightedLine = ({ code, frameLine }) => {
+    const code_ref = useRef(/** @type {HTMLPreElement?} */ (null))
+    useLayoutEffect(() => {
+        if (code_ref.current) {
+            code_ref.current.innerText = code
+            highlight(code_ref.current, "julia")
+        }
+    }, [code_ref.current, code])
+
+    return html`<code
+        ref=${code_ref}
+        class=${cl({
+            "language-julia": true,
+            "frame-line": frameLine,
+        })}
+    ></code>`
 }
 
 const insert_commas_and_and = (/** @type {any[]} */ xs) => xs.flatMap((x, i) => (i === xs.length - 1 ? [x] : i === xs.length - 2 ? [x, " and "] : [x, ", "]))
@@ -59,6 +122,7 @@ export const ParseError = ({ cell_id, diagnostics }) => {
         <jlerror>
             <header><p>Syntax error</p></header>
             <section>
+                <div class="stacktrace-header">Syntax errors</div>
                 <ol>
                     ${diagnostics.map(
                         ({ message, from, to, line }) =>
@@ -69,8 +133,10 @@ export const ParseError = ({ cell_id, diagnostics }) => {
                                 onmouseleave=${() =>
                                     window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from: null, to: null } }))}
                             >
-                                ${message}<span>@</span>
-                                <${StackFrameFilename} frame=${{ file: "#==#" + cell_id, line }} cell_id=${cell_id} />
+                                <div class="classical-frame">
+                                    ${message}<span>@</span>
+                                    <${StackFrameFilename} frame=${{ file: "#==#" + cell_id, line }} cell_id=${cell_id} />
+                                </div>
                             </li>`
                     )}
                 </ol>
@@ -227,15 +293,23 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
         ${stacktrace.length == 0 || !(matched_rewriter.show_stacktrace?.() ?? true)
             ? null
             : html`<section>
+                  <div class="stacktrace-header">Stack trace</div>
+                  <p>Here is what happened:</p>
+
                   <ol>
-                      ${stacktrace.map(
-                          (frame) =>
-                              html`<li>
+                      ${stacktrace.map((frame) => {
+                          const frame_cell_id = extract_cell_id(frame.file)
+                          const from_this_notebook = frame_cell_id != null
+                          const from_this_cell = cell_id === frame_cell_id
+                          return html`<li class=${cl({ from_this_notebook, from_this_cell })}>
+                              ${from_this_notebook ? html`<${LinePreview} frame=${frame} />` : null}
+                              <div class="classical-frame">
                                   <${Funccall} frame=${frame} />
                                   <span>@</span>
                                   <${StackFrameFilename} frame=${frame} cell_id=${cell_id} />
-                              </li>`
-                      )}
+                              </div>
+                          </li>`
+                      })}
                   </ol>
               </section>`}
     </jlerror>`

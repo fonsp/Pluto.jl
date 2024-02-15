@@ -253,23 +253,77 @@ jlerror > header > p {
 jlerror > header > p:first-child {
     font-weight: bold;
 }
-jlerror > section > ol > li > mark {
+jlerror .stacktrace-header {
+    font-family: var(--system-ui-font-stack);
+    font-size: 1.9rem;
+    font-weight: 700;
+}
+jlerror > section {
+    padding: 1em;
+    background-color: var(--code-section-bg-color);
+    border: 3px solid var(--pkg-terminal-border-color);
+    border-radius: 0.6em;
+    margin: 1em 0;
+}
+jlerror > section > ol {
+    line-height: 1.6;
+}
+jlerror > section > ol > li.from_this_notebook {
+    --bg: #e1efff;
+    background: var(--bg);
+    outline: 3px solid var(--bg);
+    padding: 0.4em 0.2em;
+    border-radius: 0.6em;
+}
+jlerror > section .classical-frame > mark {
     background: var(--jlerror-mark-bg-color);
     border-radius: 6px;
     color: var(--jlerror-mark-color);
     font-family: var(--julia-mono-font-stack);
     font-variant-ligatures: none;
 }
-jlerror > section > ol > li > em > a {
+jlerror > section .classical-frame > em > a {
     background: var(--jlerror-a-bg-color);
     border-radius: 4px;
     padding: 1px 7px;
     text-decoration: none;
     border-left: 3px solid var(--jlerror-a-border-left-color);
 }
-jlerror > section > ol > li > span {
+jlerror > section .classical-frame > span {
     opacity: 0.8;
     padding: 0px 1em;
+}
+
+jlerror li::marker {
+    background: red;
+    border: 3px solid red;
+    /* font-size: 0.7rem; */
+    font-weight: 900;
+    color: var(--pluto-logs-key-color);
+}
+
+jlerror li.from_this_notebook .classical-frame {
+    opacity: 0.4;
+}
+
+jlerror li a.frame-line-preview {
+    display: block;
+    text-decoration: none;
+    border: 3px solid var(--cm-clickable-underline);
+    --br: 0.6em;
+    border-radius: var(--br);
+}
+jlerror li .frame-line-preview pre:not(.asdfdsaf) {
+    background-color: var(--code-background);
+    padding: 0 1em;
+    border-radius: var(--br);
+}
+
+jlerror li .frame-line-preview pre > code.frame-line {
+    background: var(--cm-highlighted);
+}
+jlerror li .frame-line-preview pre > code:not(.frame-line) {
+    opacity: 0.7;
 }
 
 table.pluto-table {

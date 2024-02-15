@@ -1328,7 +1328,7 @@ pluto-input .cm-editor .cm-line {
 
 pluto-input .cm-editor span.cm-highlighted-range,
 pluto-input .cm-editor .cm-line.cm-highlighted-line {
-    background-color: #bdbdbd68;
+    background-color: var(--cm-highlighted);
     border-radius: 3px;
 }
 
@@ -3280,7 +3280,7 @@ Based on "Paraíso (Light)" by Jan T. Sott:
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete li.c_from_notebook .cm-completionLabel {
     font-weight: bold;
     text-decoration: underline;
-    text-decoration-color: #ced2ef;
+    text-decoration-color: var(--cm-clickable-underline);
     text-decoration-thickness: 3px;
     text-decoration-skip-ink: none;
 }
