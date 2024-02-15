@@ -465,6 +465,59 @@ pluto-output mjx-assistive-mml {
     overflow: hidden;
 }
 
+pluto-output details {
+    border: 1px solid var(--rule-color);
+    border-radius: 4px;
+    padding: 0.5em 0.5em 0;
+    margin-block-start: 0;
+    margin-block-end: var(--pluto-cell-spacing);
+}
+
+pluto-output details:first-child {
+    margin-block-start: 0;
+}
+
+pluto-output details:last-child {
+    margin-block-end: 0;
+}
+
+pluto-output details summary {
+	cursor: pointer;
+    font-family: var(--system-ui-font-stack);
+    font-weight: bold;
+    border-radius: 3px;
+    padding: 0.5em;
+    margin: -0.5em -0.5em 0;
+    transition: color .25s ease-in-out, background-color .25s ease-in-out;
+    /* Border may have transparency, let's not change the border with a background-color */
+    background-clip: padding-box;
+}
+
+pluto-output details summary:hover {
+    color: var(--blockquote-color);
+    background-color: var(--blockquote-bg);
+}
+
+pluto-output details[open] {
+    padding: 0.5em;
+}
+
+pluto-output details[open] summary {
+    border-bottom: 1px solid var(--rule-color);
+    border-bottom-right-radius: 0;
+    border-bottom-left-radius: 0;
+    margin-bottom: 0.5em;
+}
+
+pluto-output details plutoui-detail {
+    display: block;
+    margin-block-end: var(--pluto-cell-spacing);
+}
+
+pluto-output details plutoui-detail:last-child {
+    margin-block-end: 0;
+}
+
 /* HEADER */
 
 header#pluto-nav {
