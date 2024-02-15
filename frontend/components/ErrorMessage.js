@@ -9,6 +9,7 @@ const StackFrameFilename = ({ frame, cell_id }) => {
     if (sep_index != -1) {
         const frame_cell_id = frame.file.substr(sep_index + 4, 36)
         const a = html`<a
+            internal-file=${frame.file}
             href="#"
             onclick=${(e) => {
                 window.dispatchEvent(
@@ -58,24 +59,24 @@ export const ParseError = ({ cell_id, diagnostics }) => {
         <jlerror>
             <header><p>Syntax error</p></header>
             <section>
-              <ol>
-                  ${diagnostics.map(
-                    ({ message, from, to, line }) =>
-                        html`<li onmouseenter=${() => // NOTE: this could be moved move to `StackFrameFilename`
-                                window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from, to }}))
-                        }
-                        onmouseleave=${() =>
-                                window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from: null, to: null }}))
-                        }
-                      >
-                            ${message}<span>@</span>
-                            <${StackFrameFilename} frame=${{file: "#==#" + cell_id, line}} cell_id=${cell_id} />
-                        </li>`)
-                    }
-              </ol>
+                <ol>
+                    ${diagnostics.map(
+                        ({ message, from, to, line }) =>
+                            html`<li
+                                onmouseenter=${() =>
+                                    // NOTE: this could be moved move to `StackFrameFilename`
+                                    window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from, to } }))}
+                                onmouseleave=${() =>
+                                    window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from: null, to: null } }))}
+                            >
+                                ${message}<span>@</span>
+                                <${StackFrameFilename} frame=${{ file: "#==#" + cell_id, line }} cell_id=${cell_id} />
+                            </li>`
+                    )}
+                </ol>
             </section>
         </jlerror>
-    `;
+    `
 }
 
 export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
@@ -102,9 +103,9 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                         <a
                             href="#"
                             onClick=${(e) => {
-                            e.preventDefault()
-                            pluto_actions.split_remote_cell(cell_id, boundaries, true)
-                        }}
+                                e.preventDefault()
+                                pluto_actions.split_remote_cell(cell_id, boundaries, true)
+                            }}
                             >Split this cell into ${boundaries.length} cells</a
                         >, or
                     </p>`
@@ -221,6 +222,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
 
     const matched_rewriter = rewriters.find(({ pattern }) => pattern.test(msg)) ?? default_rewriter
 
+    console.log(stacktrace)
     return html`<jlerror>
         <header>${matched_rewriter.display(msg)}</header>
         ${stacktrace.length == 0 || !(matched_rewriter.show_stacktrace?.() ?? true)
@@ -228,14 +230,13 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
             : html`<section>
                   <ol>
                       ${stacktrace.map(
-                (frame) =>
-                    html`<li>
+                          (frame) =>
+                              html`<li>
                                   <${Funccall} frame=${frame} />
                                   <span>@</span>
                                   <${StackFrameFilename} frame=${frame} cell_id=${cell_id} />
-                                  ${frame.inlined ? html`<span>[inlined]</span>` : null}
                               </li>`
-            )}
+                      )}
                   </ol>
               </section>`}
     </jlerror>`

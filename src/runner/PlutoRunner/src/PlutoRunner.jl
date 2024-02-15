@@ -1218,6 +1218,16 @@ end
 
 const has_julia_syntax = isdefined(Base, :JuliaSyntax) && fieldcount(Base.Meta.ParseError) == 2
 
+function frame_is_from_plutorunner(frame::Base.StackTraces.StackFrame)
+    if frame.linfo isa Core.MethodInstance
+        frame.linfo.def.module === PlutoRunner
+    else
+        endswith(String(frame.file), "PlutoRunner.jl")
+    end
+end
+
+frame_is_from_usercode(frame::Base.StackTraces.StackFrame) = occursin("#==#", String(frame.file))
+
 function format_output(val::CapturedException; context=default_iocontext)
     if has_julia_syntax && val.ex isa Base.Meta.ParseError && val.ex.detail isa Base.JuliaSyntax.ParseError
         dict = convert_parse_error_to_dict(val.ex.detail)
@@ -1230,21 +1240,23 @@ function format_output(val::CapturedException; context=default_iocontext)
 
         # function_wrap_index = findfirst(f -> occursin("function_wrapped_cell", String(f.func)), stack)
 
-        function_wrap_index = findlast(f -> occursin("#==#", String(f.file)), stack)
-
-        if function_wrap_index === nothing
-            for _ in 1:2
-                until = findfirst(b -> b.func == :eval, reverse(stack))
-                stack = until === nothing ? stack : stack[1:end - until]
-            end
+        function_wrap_index = findlast(frame_is_from_usercode, stack)
+        internal_index = findfirst(frame_is_from_plutorunner, stack)
+        
+        limit = if function_wrap_index !== nothing
+            function_wrap_index
+        elseif internal_index !== nothing
+            internal_index - 1
         else
-            stack = stack[1:function_wrap_index]
+            nothing
         end
+        stack_relevant = stack[1:something(limit, end)]
 
-        pretty = map(stack) do s
+        pretty = map(stack_relevant) do s
             Dict(
                 :call => pretty_stackcall(s, s.linfo),
                 :inlined => s.inlined,
+                :from_c => s.from_c,
                 :file => basename(String(s.file)),
                 :path => String(s.file),
                 :line => s.line,
@@ -1290,7 +1302,12 @@ end
 
 function pretty_stackcall(frame::Base.StackFrame, linfo::Core.MethodInstance)
     if linfo.def isa Method
-        sprint(Base.show_tuple_as_call, linfo.def.name, linfo.specTypes)
+        @static if isdefined(Base.StackTraces, :show_spec_linfo) && hasmethod(Base.StackTraces.show_spec_linfo, Tuple{IO, Base.StackFrame})
+            sprint(Base.StackTraces.show_spec_linfo, frame; context=:backtrace => true)
+
+        else
+            split(string(frame), " at ") |> first
+        end
     else
         sprint(Base.show, linfo)
     end
