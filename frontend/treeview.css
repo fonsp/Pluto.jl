@@ -271,9 +271,6 @@ jlerror > section > ol > li > span {
     opacity: 0.8;
     padding: 0px 1em;
 }
-jlerror .frame-inlined {
-    opacity: 0.4;
-}
 
 table.pluto-table {
     table-layout: fixed;

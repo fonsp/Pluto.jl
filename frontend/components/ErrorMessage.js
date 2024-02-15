@@ -222,7 +222,6 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
 
     const matched_rewriter = rewriters.find(({ pattern }) => pattern.test(msg)) ?? default_rewriter
 
-    console.log(stacktrace)
     return html`<jlerror>
         <header>${matched_rewriter.display(msg)}</header>
         ${stacktrace.length == 0 || !(matched_rewriter.show_stacktrace?.() ?? true)
