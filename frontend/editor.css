@@ -482,7 +482,7 @@ pluto-output details:last-child {
 }
 
 pluto-output details summary {
-	cursor: pointer;
+    cursor: pointer;
     font-family: var(--system-ui-font-stack);
     font-weight: bold;
     border-radius: 3px;
