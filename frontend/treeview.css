@@ -267,9 +267,12 @@ jlerror > section {
 }
 jlerror > section > ol {
     line-height: 1.6;
+    /* transform: perspective(29rem) rotateX(-12.7deg); */
+    /* transform-origin: top; */
+    /* perspective-origin: top; */
 }
 jlerror > section > ol > li.from_this_notebook {
-    --bg: #e1efff;
+    --bg: var(--jl-info-acccolor);
     background: var(--bg);
     outline: 3px solid var(--bg);
     padding: 0.4em 0.2em;
@@ -282,12 +285,15 @@ jlerror > section .classical-frame > mark {
     font-family: var(--julia-mono-font-stack);
     font-variant-ligatures: none;
 }
-jlerror > section .classical-frame > em > a {
+jlerror > section .classical-frame > em > a[href] {
     background: var(--jlerror-a-bg-color);
     border-radius: 4px;
     padding: 1px 7px;
     text-decoration: none;
     border-left: 3px solid var(--jlerror-a-border-left-color);
+}
+jlerror > section .classical-frame > em > a[href].remote-url {
+    filter: hue-rotate(160deg);
 }
 jlerror > section .classical-frame > span {
     opacity: 0.8;
@@ -303,7 +309,7 @@ jlerror li::marker {
 }
 
 jlerror li.from_this_notebook .classical-frame {
-    opacity: 0.4;
+    /* opacity: 0.4; */
 }
 
 jlerror li a.frame-line-preview {

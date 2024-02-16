@@ -36,11 +36,13 @@ const StackFrameFilename = ({ frame, cell_id }) => {
                 e.preventDefault()
             }}
         >
-            ${frame_cell_id == cell_id ? "Local" : "Other"}: ${frame.line}
+            ${frame_cell_id == cell_id ? "This cell" : "Other cell"}: line ${frame.line}
         </a>`
         return html`<em>${a}</em>`
     } else {
-        return html`<em title=${frame.path}>${frame.file}:${frame.line}</em>`
+        return html`<em title=${frame.path}
+            ><a class="remote-url" href=${frame?.url?.startsWith?.("https") ? frame.url : null}>${frame.file}:${frame.line}</a></em
+        >`
     }
 }
 
@@ -59,7 +61,6 @@ const LinePreview = ({ frame }) => {
     if (cell_id) {
         let code = /** @type{import("./Editor.js").NotebookData?} */ (pluto_actions.get_notebook())?.cell_inputs[cell_id]?.code
 
-        console.log(code)
         if (code) {
             const lines = code.split("\n")
             console.log(frame.line)
@@ -288,28 +289,51 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
 
     const matched_rewriter = rewriters.find(({ pattern }) => pattern.test(msg)) ?? default_rewriter
 
+    const [show_more, set_show_more] = useState(false)
+    useEffect(() => {
+        set_show_more(false)
+    }, [msg, stacktrace, cell_id])
+
+    const first_stack_from_here = stacktrace.findIndex((frame) => extract_cell_id(frame.file) != null)
+
+    const limited = !show_more && first_stack_from_here != -1 && first_stack_from_here < stacktrace.length - 1
+
+    const limited_stacktrace = limited ? stacktrace.slice(0, first_stack_from_here + 1) : stacktrace
+
     return html`<jlerror>
         <header>${matched_rewriter.display(msg)}</header>
         ${stacktrace.length == 0 || !(matched_rewriter.show_stacktrace?.() ?? true)
             ? null
             : html`<section>
                   <div class="stacktrace-header">Stack trace</div>
-                  <p>Here is what happened:</p>
+                  <p>Here is what happened, the most recent locations are first:</p>
 
                   <ol>
-                      ${stacktrace.map((frame) => {
+                      ${limited_stacktrace.map((frame) => {
                           const frame_cell_id = extract_cell_id(frame.file)
                           const from_this_notebook = frame_cell_id != null
                           const from_this_cell = cell_id === frame_cell_id
                           return html`<li class=${cl({ from_this_notebook, from_this_cell })}>
-                              ${from_this_notebook ? html`<${LinePreview} frame=${frame} />` : null}
                               <div class="classical-frame">
                                   <${Funccall} frame=${frame} />
                                   <span>@</span>
                                   <${StackFrameFilename} frame=${frame} cell_id=${cell_id} />
                               </div>
+                              ${from_this_notebook ? html`<${LinePreview} frame=${frame} />` : null}
                           </li>`
                       })}
+                      ${limited
+                          ? html`<li>
+                                <a
+                                    href="#"
+                                    onClick=${(e) => {
+                                        set_show_more(true)
+                                        e.preventDefault()
+                                    }}
+                                    >Show more...</a
+                                >
+                            </li>`
+                          : null}
                   </ol>
               </section>`}
     </jlerror>`

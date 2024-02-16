@@ -3399,7 +3399,15 @@ pluto-cell.code_differs .cm-editor .cm-gutters {
 }
 pluto-input:focus-within .cm-editor .cm-lineNumbers .cm-gutterElement::after {
     color: transparent;
-} */
+}
+ */
+
+pluto-cell.errored .cm-editor .cm-lineNumbers .cm-gutterElement {
+    color: var(--cm-line-numbers-color);
+}
+pluto-cell.errored .cm-editor .cm-lineNumbers .cm-gutterElement::after {
+    color: transparent;
+}
 /* Case 2: Print */
 @media print {
     .cm-editor .cm-lineNumbers .cm-gutterElement {
