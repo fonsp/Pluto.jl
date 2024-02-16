@@ -159,7 +159,7 @@ These options are not intended to be changed during normal use.
 
 - `run_notebook_on_load::Bool = $RUN_NOTEBOOK_ON_LOAD_DEFAULT` When running a notebook (not in Safe mode), should all cells evaluate immediately? Warning: this is only for internal testing, and using it will lead to unexpected behaviour and hard-to-reproduce notebooks. It's not the Pluto way!
 - `workspace_use_distributed::Bool = $WORKSPACE_USE_DISTRIBUTED_DEFAULT` Whether to start notebooks in a separate process.
-- `workspace_use_distributed_stdlib::Bool? = $WORKSPACE_USE_DISTRIBUTED_STDLIB_DEFAULT` Should we use the Distributed stdlib to run processes? Distributed will be replaced by Malt.jl, you can use this option to already get the old behaviour. `nothing` means: determine automatically (which is currently the same as `true`).
+- `workspace_use_distributed_stdlib::Bool? = $WORKSPACE_USE_DISTRIBUTED_STDLIB_DEFAULT` Should we use the Distributed stdlib to run processes? Distributed will be replaced by Malt.jl, you can use this option to already get the old behaviour. `nothing` means: determine automatically (which is currently `false`).
 - `lazy_workspace_creation::Bool = $LAZY_WORKSPACE_CREATION_DEFAULT`
 - `capture_stdout::Bool = $CAPTURE_STDOUT_DEFAULT`
 - `workspace_custom_startup_expr::Union{Nothing,String} = $WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT` An expression to be evaluated in the workspace process before running notebook code.
@@ -187,6 +187,7 @@ const CHECK_BOUNDS_DEFAULT = nothing
 const MATH_MODE_DEFAULT = nothing
 const STARTUP_FILE_DEFAULT = "no"
 const HISTORY_FILE_DEFAULT = "no"
+const HEAP_SIZE_HINT_DEFAULT = nothing
 
 function roughly_the_number_of_physical_cpu_cores()
     # https://gist.github.com/fonsp/738fe244719cae820245aa479e7b4a8d
@@ -233,6 +234,7 @@ These options will be passed as command line argument to newly launched processe
 - `inline::Union{Nothing,String} = $INLINE_DEFAULT`
 - `check_bounds::Union{Nothing,String} = $CHECK_BOUNDS_DEFAULT`
 - `math_mode::Union{Nothing,String} = $MATH_MODE_DEFAULT`
+- `heap_size_hint::Union{Nothing,String} = $HEAP_SIZE_HINT_DEFAULT`
 - `startup_file::Union{Nothing,String} = "$STARTUP_FILE_DEFAULT"` By default, the startup file isn't loaded in notebooks.
 - `history_file::Union{Nothing,String} = "$HISTORY_FILE_DEFAULT"` By default, the history isn't loaded in notebooks.
 - `threads::Union{Nothing,String,Int} = default_number_of_threads()`
@@ -253,6 +255,7 @@ These options will be passed as command line argument to newly launched processe
     inline::Union{Nothing,String} = INLINE_DEFAULT
     check_bounds::Union{Nothing,String} = CHECK_BOUNDS_DEFAULT
     math_mode::Union{Nothing,String} = MATH_MODE_DEFAULT
+    heap_size_hint::Union{Nothing,String} = HEAP_SIZE_HINT_DEFAULT
 
     # notebook specified options
     # the followings are different from
@@ -319,6 +322,7 @@ function from_flat_kwargs(;
         inline::Union{Nothing,String} = INLINE_DEFAULT,
         check_bounds::Union{Nothing,String} = CHECK_BOUNDS_DEFAULT,
         math_mode::Union{Nothing,String} = MATH_MODE_DEFAULT,
+        heap_size_hint::Union{Nothing,String} = HEAP_SIZE_HINT_DEFAULT,
         startup_file::Union{Nothing,String} = STARTUP_FILE_DEFAULT,
         history_file::Union{Nothing,String} = HISTORY_FILE_DEFAULT,
         threads::Union{Nothing,String,Int} = default_number_of_threads(),
@@ -370,6 +374,7 @@ function from_flat_kwargs(;
         inline,
         check_bounds,
         math_mode,
+        heap_size_hint,
         startup_file,
         history_file,
         threads,
@@ -397,11 +402,16 @@ end
 
 function _convert_to_flags(options::CompilerOptions)::Vector{String}
     option_list = String[]
+    exclude_list = String[]
+
+    if VERSION < v"1.9"
+      push!(exclude_list, "--heap-size-hint")
+    end
 
     for name in fieldnames(CompilerOptions)
         flagname = string("--", replace(String(name), "_" => "-"))
         value = getfield(options, name)
-        if value !== nothing
+        if value !== nothing && flagname ∉ exclude_list
             push!(option_list, string(flagname, "=", value))
         end
     end

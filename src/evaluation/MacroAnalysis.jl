@@ -30,14 +30,15 @@ function with_new_soft_definitions(topology::NotebookTopology, cell::Cell, soft_
 	)
 end
 
-collect_implicit_usings(topology::NotebookTopology, cell::Cell) = ExpressionExplorer.collect_implicit_usings(topology.codes[cell].module_usings_imports)
+collect_implicit_usings(topology::NotebookTopology, cell::Cell) =
+    ExpressionExplorerExtras.collect_implicit_usings(topology.codes[cell].module_usings_imports)
 
 function cells_with_deleted_macros(old_topology::NotebookTopology, new_topology::NotebookTopology)
     old_macros = mapreduce(c -> defined_macros(old_topology, c), union!, all_cells(old_topology); init=Set{Symbol}())
     new_macros = mapreduce(c -> defined_macros(new_topology, c), union!, all_cells(new_topology); init=Set{Symbol}())
     removed_macros = setdiff(old_macros, new_macros)
 
-    where_referenced(old_topology, removed_macros)
+    PlutoDependencyExplorer.where_referenced(old_topology, removed_macros)
 end
 
 "Returns the set of macros names defined by this cell"
@@ -105,15 +106,15 @@ function resolve_topology(
 	end
 
 	function analyze_macrocell(cell::Cell)
-		if unresolved_topology.nodes[cell].macrocalls ⊆ ExpressionExplorer.can_macroexpand
+		if unresolved_topology.nodes[cell].macrocalls ⊆ ExpressionExplorerExtras.can_macroexpand
 			return Skipped()
 		end
 
 		result = macroexpand_cell(cell)
 		if result isa Success
 			(expr, computer_id) = result.result
-			expanded_node = ExpressionExplorer.try_compute_symbolreferences(expr) |> ReactiveNode
-			function_wrapped = ExpressionExplorer.can_be_function_wrapped(expr)
+			expanded_node = ExpressionExplorer.compute_reactive_node(ExpressionExplorerExtras.pretransform_pluto(expr))
+			function_wrapped = ExpressionExplorerExtras.can_be_function_wrapped(expr)
 			Success((expanded_node, function_wrapped, computer_id))
 		else
 			result
@@ -142,7 +143,7 @@ function resolve_topology(
 				Failure(ErrorException("shutdown"))
 			end
 		catch error
-			@error "Macro call expansion failed with a non-macroexpand error" error
+			@error "Macro call expansion failed with a non-macroexpand error" exception=(error,catch_backtrace()) cell.code
 			Failure(error)
 		end
 		if result isa Success
@@ -168,7 +169,7 @@ function resolve_topology(
 		# then they must equal, and we can skip creating a new one to preserve identity:
 		unresolved_topology.unresolved_cells
 	else
-		ImmutableSet(still_unresolved_nodes; skip_copy=true)
+		PlutoDependencyExplorer.ImmutableSet(still_unresolved_nodes; skip_copy=true)
 	end
 
 	NotebookTopology(;
@@ -184,8 +185,13 @@ end
 So, the resulting reactive nodes may not be absolutely accurate. If you can run code in a session, use `resolve_topology` instead.
 """
 function static_macroexpand(topology::NotebookTopology, cell::Cell)
-	new_node = ExpressionExplorer.maybe_macroexpand(topology.codes[cell].parsedcode; recursive=true) |>
-		ExpressionExplorer.try_compute_symbolreferences |> ReactiveNode
+	new_node = ExpressionExplorer.compute_reactive_node(
+		ExpressionExplorerExtras.pretransform_pluto(
+			ExpressionExplorerExtras.maybe_macroexpand_pluto(
+				topology.codes[cell].parsedcode; recursive=true
+			)
+		)
+	)
 	union!(new_node.macrocalls, topology.nodes[cell].macrocalls)
 
 	new_node

@@ -10,7 +10,7 @@ one
 """
 
 # ╔═╡ ef63b97e-700d-11ee-2997-7bf929019c2d
-html"""
+[[html"""
 <div class="zo">
 i should not be red
 </div>
@@ -31,7 +31,7 @@ return html`<div style="color: red;">DANGER</div>`
 	color: red;
 }
 </style>
-"""
+"""]]
 
 # ╔═╡ 99e2bfea-4e5d-4d94-bd96-77be7b04811d
 html"three"

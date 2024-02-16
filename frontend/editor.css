@@ -34,10 +34,10 @@
     --pluto-operator-ligatures: none;
     --julia-mono-font-stack: JuliaMono, Menlo, "Roboto Mono", "Lucida Sans Typewriter", "Source Code Pro", monospace;
     --sans-serif-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
-    --lato-ui-font-stack: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, Helvetica, Arial, "Apple Color Emoji",
-        "Segoe UI Emoji", "Segoe UI Symbol", system-ui, sans-serif;
-    --system-ui-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, Helvetica, Arial, "Apple Color Emoji",
-        "Segoe UI Emoji", "Segoe UI Symbol", system-ui, sans-serif;
+    --lato-ui-font-stack: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, "Apple Color Emoji", "Segoe UI Emoji",
+        "Segoe UI Symbol", system-ui, sans-serif;
+    --system-ui-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, "Apple Color Emoji", "Segoe UI Emoji",
+        "Segoe UI Symbol", system-ui, sans-serif;
     color-scheme: light dark;
 }
 
@@ -69,7 +69,6 @@ pluto-editor {
 
 main {
     flex: 1;
-
     max-width: calc(700px + 25px + 6px); /* 700px + both paddings */
     padding-top: 0px;
     padding-bottom: 4rem;
@@ -489,16 +488,24 @@ header#pluto-nav.show_export {
     transform: translateY(130px);
 }
 
-aside#export {
+dialog#export {
     position: absolute;
+    display: block;
     top: 0;
     width: 100%;
     height: 130px;
     background: var(--export-bg-color);
     color: var(--export-color);
     transform: translateY(-100%);
+    /* overlay: none !important; */
+    overflow: visible;
+    margin: 0;
+    padding: 0;
+    max-width: none;
+    max-height: none;
+    border: none;
 }
-aside#export::before {
+dialog#export::before {
     content: "";
     position: absolute;
     bottom: 100%;
@@ -507,7 +514,7 @@ aside#export::before {
     height: 100px;
     background: inherit;
 }
-aside#export div#container {
+dialog#export div#container {
     flex-direction: row;
     display: flex;
     max-width: 1000px;
@@ -515,11 +522,11 @@ aside#export div#container {
     margin: 0 auto;
     position: relative;
 }
-header aside#export div#container {
+header dialog#export div#container {
     /* to prevent the div from taking up horizontal page when the export pane is closed. On small screen this causes overscroll on the right. */
     overflow-x: hidden;
 }
-header.show_export aside#export div#container {
+header.show_export dialog#export div#container {
     overflow-x: auto;
 }
 a.export_card {
@@ -562,7 +569,7 @@ a.export_card section {
     /* font-size: 14px; */
     padding: 3px;
 }
-aside#export .export_small_btns {
+dialog#export .export_small_btns {
     display: flex;
     flex-direction: row;
     padding: 0.9em;
@@ -745,15 +752,15 @@ nav#at_the_top button.toggle_export span {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/share-outline.svg");
     filter: var(--image-filters);
 }
-aside#export button.toggle_export span {
+dialog#export button.toggle_export span {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-outline.svg");
     filter: invert(1);
 }
-aside#export button.toggle_frontmatter_edit span {
+dialog#export button.toggle_frontmatter_edit span {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/newspaper-outline.svg");
     filter: invert(1);
 }
-aside#export button.toggle_presentation span {
+dialog#export button.toggle_presentation span {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/easel-outline.svg");
     filter: invert(1);
 }
@@ -863,6 +870,22 @@ nav#at_the_top > #process_status {
 
 nav#at_the_top > #process_status:empty {
     display: none;
+}
+
+.statefile-fetch-progress {
+    /* width: 200px;
+    height: 27px;
+    background: white;
+    border: 5px solid #d1d9e4;
+    border-radius: 6px; */
+    --w: min(80vw, 300px);
+    position: fixed;
+    left: calc(50vw - 0.5 * var(--w));
+    top: 0;
+    z-index: 300000;
+    /* box-sizing: content-box; */
+    /* height: 2rem; */
+    width: var(--w);
 }
 
 loading-bar {
@@ -1127,7 +1150,6 @@ pluto-cell {
     min-height: calc(23px + 1px + 1px);
     margin-top: var(--pluto-cell-spacing);
     position: relative;
-    break-inside: avoid;
 }
 
 pluto-output {
@@ -1592,10 +1614,13 @@ pluto-input > button > span {
     button.toggle_export,
     button.start_stop_recording,
     pluto-cell:hover > button,
+    pluto-cell:focus-within > button,
     pluto-cell:hover > pluto-input > button,
+    pluto-cell:focus-within > pluto-input > button,
     pluto-cell > pluto-runarea > button,
-    pluto-cell:hover > pluto-shoulder > button {
-        opacity: 0.4;
+    pluto-cell:hover > pluto-shoulder > button,
+    pluto-cell:focus-within > pluto-shoulder > button {
+        opacity: 0.6;
         transition: opacity 0.25s ease-in-out;
     }
     .export_small_btns button:hover,
@@ -1614,22 +1639,25 @@ pluto-input > button > span {
 }
 
 @media screen and (pointer: coarse) {
-    pluto-cell > button,
-    pluto-cell > pluto-runarea {
-        opacity: 0;
-        /* to make it feel smooth: */
-        transition: opacity 0.25s ease-in-out;
-    }
+    pluto-cell > button.add_cell,
     pluto-input > button,
     pluto-shoulder > button {
         opacity: 0.25;
         transition: opacity 0.25s ease-in-out;
     }
-    pluto-cell:focus-within > button,
+    pluto-cell:not(:first-of-type, :last-of-type) > button.add_cell {
+        /* because there are two overlapping buttons */
+        opacity: 0.125;
+    }
+    /* pluto-cell:first-of-type > button.add_cell.before,
+    pluto-cell:last-of-type > button.add_cell.after {
+        opacity: 0.25;
+    } */
+    pluto-cell:focus-within > button.add_cell,
     pluto-cell:focus-within > pluto-input > button,
     pluto-cell:focus-within > pluto-runarea,
     pluto-cell:focus-within > pluto-shoulder > button {
-        opacity: 0.25;
+        opacity: 0.6;
         transition: opacity 0.25s ease-in-out;
     }
     pluto-cell > pluto-input > button:focus-within,
@@ -1677,7 +1705,8 @@ pluto-cell > button.add_cell > span::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/add-outline.svg");
     filter: var(--image-filters);
 }
-pluto-input > button.input_context_menu ul {
+
+pluto-input > .input_context_menu ul {
     left: 100%;
     top: -8px;
     margin: 0;
@@ -1690,33 +1719,45 @@ pluto-input > button.input_context_menu ul {
     background-color: var(--input-context-menu-bg-color);
 }
 @media screen and (min-width: 921px) {
-    pluto-input > button.input_context_menu ul {
+    pluto-input > .input_context_menu ul {
         left: calc(100% - 3px);
     }
 }
 @media screen and (max-width: 920px) {
-    pluto-input > button.input_context_menu {
-        z-index: 31;
+    pluto-input > .input_context_menu {
+        z-index: 1400;
     }
-    pluto-input > button.input_context_menu ul {
+    pluto-input > .input_context_menu ul {
         right: 0px;
         left: unset;
+        z-index: 1401;
     }
 }
-.input_context_menu li {
+
+pluto-input > .input_context_menu li {
+    list-style: none;
+    margin-block-end: 0px;
+    display: flex;
+    align-items: stretch;
+    flex-direction: column;
+}
+pluto-input > .input_context_menu li button {
     font-family: "Roboto Mono", system-ui;
     font-size: 0.8rem;
     margin-block-end: 0px;
     letter-spacing: -0.02em;
     color: var(--input-context-menu-li-color);
     position: relative;
-    list-style: none;
     padding: 8px;
     height: 32px;
     display: flex;
     align-items: center;
     justify-content: flex-start;
     border-radius: 2px;
+    cursor: pointer;
+
+    background: none;
+    border: none;
 }
 .input_context_menu li:last-child {
     border-bottom-left-radius: 6px;
@@ -1792,11 +1833,11 @@ pluto-input > button.input_context_menu {
     padding: 5px;
 }
 
-pluto-input > button.input_context_menu.open {
+pluto-input > .input_context_menu.open {
     opacity: 1;
 }
 
-pluto-input > button.input_context_menu > span.icon::after {
+pluto-input > .input_context_menu span.icon::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ellipsis-horizontal-circle-outline.svg");
     filter: var(--image-filters);
 }
@@ -2010,6 +2051,13 @@ pkg-terminal pre {
     font-size: 0.6rem;
     font-family: "Space Mono", monospace;
     margin: 0;
+}
+
+pkg-terminal .make-me-spin {
+    display: inline-block;
+    animation: identifier-spin 1s linear infinite;
+    transform-origin: 50% 59%;
+    animation-delay: var(--animation-delay);
 }
 
 pkg-popup pkg-terminal {
@@ -2416,7 +2464,7 @@ pluto-helpbox.hidden > section {
 /* see https://github.com/JuliaDocs/Documenter.jl for author information */
 
 .helpbox-docs {
-    font-family: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+    font-family: var(--lato-ui-font-stack);
     line-height: 1.5;
     font-size: 0.9rem;
 }
@@ -3154,10 +3202,6 @@ nav#slide_controls > button.next > span::after {
 }
 
 button.floating_back_button {
-    display: none;
-}
-
-.static_preview.offer_local button.floating_back_button {
     display: flex;
     position: fixed;
     z-index: 1000;

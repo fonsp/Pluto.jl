@@ -200,7 +200,7 @@ Hello
         let cell_contents = await getAllCellOutputs(page)
 
         expect(cell_contents[0]).toBe("one")
-        expect(cell_contents[1]).toBe("Scripts and styles not rendered in Safe preview\ni should not be red\ntwo\nsafe")
+        expect(cell_contents[1]).toBe("Scripts and styles not rendered in Safe preview\n\ni should not be red\n\n\n\ntwo\n\n\nsafe")
         expect(cell_contents[2]).toBe("three")
         expect(cell_contents[3]).toBe("Code not executed in Safe preview")
         expect(cell_contents[4]).toBe("Code not executed in Safe preview")
@@ -234,7 +234,7 @@ Hello
         cell_contents = await getAllCellOutputs(page)
 
         expect(cell_contents[0]).toBe("one")
-        expect(cell_contents[1]).toBe("i should not be red\ntwo\nsafe\nDANGER")
+        expect(cell_contents[1]).toBe("\ni should not be red\n\ntwo\nsafe\nDANGER")
         expect(cell_contents[2]).toBe("three")
         expect(cell_contents[3]).toBe("123")
         expect(cell_contents[4]).toBe("")

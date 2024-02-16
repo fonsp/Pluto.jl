@@ -5,6 +5,7 @@ import { LiveDocsTab } from "./LiveDocsTab.js"
 import { is_finished, ProcessTab, total_done, total_tasks, useStatusItem } from "./ProcessTab.js"
 import { useMyClockIsAheadBy } from "../common/clock sync.js"
 import { BackendLaunchPhase } from "../common/Binder.js"
+import { useEventListener } from "../common/useEventListener.js"
 
 /**
  * @typedef PanelTabName
@@ -21,9 +22,18 @@ export const open_bottom_right_panel = (/** @type {PanelTabName} */ tab) => wind
  * connected: boolean,
  * backend_launch_phase: number?,
  * backend_launch_logs: string?,
+ * sanitize_html?: boolean,
  * }} props
  */
-export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, notebook, connected, backend_launch_phase, backend_launch_logs }) => {
+export let BottomRightPanel = ({
+    desired_doc_query,
+    on_update_doc_query,
+    notebook,
+    connected,
+    backend_launch_phase,
+    backend_launch_logs,
+    sanitize_html = true,
+}) => {
     let container_ref = useRef()
 
     const focus_docs_on_open_ref = useRef(false)
@@ -31,8 +41,10 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
     const hidden = open_tab == null
 
     // Open panel when "open_bottom_right_panel" event is triggered
-    useEffect(() => {
-        let handler = (/** @type {CustomEvent} */ e) => {
+    useEventListener(
+        window,
+        "open_bottom_right_panel",
+        (/** @type {CustomEvent} */ e) => {
             console.log(e.detail)
             // https://github.com/fonsp/Pluto.jl/issues/321
             focus_docs_on_open_ref.current = false
@@ -40,10 +52,9 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
             if (window.getComputedStyle(container_ref.current).display === "none") {
                 alert("This browser window is too small to show docs.\n\nMake the window bigger, or try zooming out.")
             }
-        }
-        window.addEventListener("open_bottom_right_panel", handler)
-        return () => window.removeEventListener("open_bottom_right_panel", handler)
-    }, [])
+        },
+        [set_open_tab]
+    )
 
     const status = useWithBackendStatus(notebook, backend_launch_phase)
 
@@ -112,6 +123,7 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
                         ? null
                         : html`<button
                               class="helpbox-close"
+                              title="Close panel"
                               onClick=${() => {
                                   set_open_tab(null)
                               }}
@@ -125,6 +137,7 @@ export let BottomRightPanel = ({ desired_doc_query, on_update_doc_query, noteboo
                           desired_doc_query=${desired_doc_query}
                           on_update_doc_query=${on_update_doc_query}
                           notebook=${notebook}
+                          sanitize_html=${sanitize_html}
                       />`
                     : open_tab === "process"
                     ? html`<${ProcessTab}

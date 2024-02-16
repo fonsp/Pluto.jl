@@ -28,10 +28,15 @@ import { julia_mixed } from "./CellInput/mixedParsers.js"
 import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
 import { SafePreviewSanitizeMessage } from "./SafePreviewUI.js"
 
+const prettyAssignee = (assignee) =>
+    assignee && assignee.startsWith("const ") ? html`<span style="color: var(--cm-keyword-color)">const</span> ${assignee.slice(6)}` : assignee
+
 export class CellOutput extends Component {
     constructor() {
         super()
-        this.state = {}
+        this.state = {
+            output_changed_once: false,
+        }
 
         this.old_height = 0
         // @ts-ignore Is there a way to use the latest DOM spec?
@@ -55,6 +60,12 @@ export class CellOutput extends Component {
 
     shouldComponentUpdate({ last_run_timestamp, sanitize_html }) {
         return last_run_timestamp !== this.props.last_run_timestamp || sanitize_html !== this.props.sanitize_html
+    }
+
+    componentDidUpdate(old_props) {
+        if (this.props.last_run_timestamp !== old_props.last_run_timestamp) {
+            this.setState({ output_changed_once: true })
+        }
     }
 
     componentDidMount() {
@@ -81,8 +92,12 @@ export class CellOutput extends Component {
                 })}
                 translate=${allow_translate}
                 mime=${this.props.mime}
+                aria-live=${this.state.output_changed_once ? "polite" : "off"}
+                aria-atomic="true"
+                aria-relevant="all"
+                aria-label=${this.props.rootassignee == null ? "Result of unlabeled cell:" : `Result of variable ${this.props.rootassignee}:`}
             >
-                <assignee translate=${false}>${this.props.rootassignee}</assignee>
+                <assignee aria-hidden="true" translate=${false}>${prettyAssignee(this.props.rootassignee)}</assignee>
                 <${OutputBody} ...${this.props} />
             </pluto-output>
         `
@@ -116,7 +131,21 @@ export let PlutoImage = ({ body, mime }) => {
     return html`<img ref=${imgref} type=${mime} src=${""} />`
 }
 
+/**
+ * @param {{
+ *  mime: string,
+ * body: any,
+ * cell_id: string,
+ * persist_js_state: boolean | string,
+ * last_run_timestamp: number,
+ * sanitize_html?: boolean | string,
+ * }} args
+ */
 export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last_run_timestamp, sanitize_html = true }) => {
+    // These two arguments might have been passed as strings if OutputBody was used as the custom HTML element <pluto-display>, with string attributes as arguments.
+    sanitize_html = sanitize_html !== "false" && sanitize_html !== false
+    persist_js_state = persist_js_state === "true" || persist_js_state === true
+
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -479,7 +508,7 @@ let declarative_shadow_dom_polyfill = (template) => {
     }
 }
 
-export let RawHTMLContainer = ({ body, className = "", persist_js_state = false, last_run_timestamp, sanitize_html = true }) => {
+export let RawHTMLContainer = ({ body, className = "", persist_js_state = false, last_run_timestamp, sanitize_html = true, sanitize_html_message = true }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     let pluto_bonds = useContext(PlutoBondsContext)
     let js_init_set = useContext(PlutoJSInitializingContext)
@@ -511,13 +540,14 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
         let html_content_to_set = sanitize_html
             ? DOMPurify.sanitize(body, {
                   FORBID_TAGS: ["style"],
+                  ADD_ATTR: ["target"],
               })
             : body
 
         // Actually "load" the html
         container.innerHTML = html_content_to_set
 
-        if (html_content_to_set !== body) {
+        if (sanitize_html_message && html_content_to_set !== body) {
             // DOMPurify also resolves HTML entities, which can give a false positive. To fix this, we use DOMParser to parse both strings, and we compare the innerHTML of the resulting documents.
             const parser = new DOMParser()
             const p1 = parser.parseFromString(body, "text/html")
@@ -596,7 +626,7 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
             js_init_set?.delete(container)
             invalidate_scripts.current?.()
         }
-    }, [body, persist_js_state, last_run_timestamp, pluto_actions, sanitize_html])
+    }, [body, last_run_timestamp, pluto_actions, sanitize_html])
 
     return html`<div class="raw-html-wrapper ${className}" ref=${container_ref}></div>`
 }

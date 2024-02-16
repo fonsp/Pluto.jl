@@ -17,7 +17,7 @@ function is_just_text(topology::NotebookTopology, cell::Cell)::Bool
 	 (length(node.references) == 2 &&
 		:PlutoRunner in node.references &&
 		Symbol("PlutoRunner.throw_syntax_error") in node.references)) &&
-		no_loops(ExpressionExplorer.maybe_macroexpand(topology.codes[cell].parsedcode; recursive=true))
+		no_loops(ExpressionExplorerExtras.maybe_macroexpand_pluto(topology.codes[cell].parsedcode; recursive=true))
 end
 
 function no_loops(ex::Expr)

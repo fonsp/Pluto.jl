@@ -1,5 +1,5 @@
 import { PlutoActionsContext } from "../common/PlutoContext.js"
-import { html, useContext, useEffect, useMemo, useRef, useState } from "../imports/Preact.js"
+import { html, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "../imports/Preact.js"
 
 import { Cell } from "./Cell.js"
 import { nbpkg_fingerprint } from "./PkgStatusMark.js"
@@ -41,6 +41,7 @@ let CellMemo = ({
     set_show_logs,
     nbpkg,
     global_definition_locations,
+    is_first_cell,
 }) => {
     const { body, last_run_timestamp, mime, persist_js_state, rootassignee } = cell_result?.output || {}
     const { queued, running, runtime, errored, depends_on_disabled_cells, logs, depends_on_skipped_cells } = cell_result || {}
@@ -62,6 +63,7 @@ let CellMemo = ({
                 sanitize_html=${sanitize_html}
                 nbpkg=${nbpkg}
                 global_definition_locations=${global_definition_locations}
+                is_first_cell=${is_first_cell}
             />
         `
     }, [
@@ -95,6 +97,7 @@ let CellMemo = ({
         sanitize_html,
         ...nbpkg_fingerprint(nbpkg),
         global_definition_locations,
+        is_first_cell,
     ])
 }
 
@@ -163,6 +166,20 @@ export const Notebook = ({
             ),
         [notebook?.cell_dependencies]
     )
+
+    useLayoutEffect(() => {
+        let oldhash = window.location.hash
+        if (oldhash.length > 1) {
+            let go = () => {
+                window.location.hash = "#"
+                window.location.hash = oldhash
+            }
+            go()
+            // Scrolling there might trigger some codemirrors to render and change height, so let's do it again.
+            requestIdleCallback(go)
+        }
+    }, [cell_outputs_delayed])
+
     return html`
         <pluto-notebook id=${notebook.notebook_id}>
             ${notebook.cell_order
@@ -192,6 +209,7 @@ export const Notebook = ({
                         sanitize_html=${sanitize_html}
                         nbpkg=${notebook.nbpkg}
                         global_definition_locations=${global_definition_locations}
+                        is_first_cell=${i === 0}
                     />`
                 )}
             ${cell_outputs_delayed && notebook.cell_order.length >= render_cell_outputs_minimum

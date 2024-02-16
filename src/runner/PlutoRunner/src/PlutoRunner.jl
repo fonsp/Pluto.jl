@@ -341,7 +341,7 @@ function get_module_names(workspace_module, module_ex::Expr)
 end
 
 function collect_soft_definitions(workspace_module, modules::Set{Expr})
-  mapreduce(module_ex -> get_module_names(workspace_module, module_ex), union!, modules; init=Set{Symbol}())
+    mapreduce(module_ex -> get_module_names(workspace_module, module_ex), union!, modules; init=Set{Symbol}())
 end
 
 
@@ -688,9 +688,9 @@ function move_vars(
     old_workspace_name::Symbol,
     new_workspace_name::Symbol,
     vars_to_delete::Set{Symbol},
-    methods_to_delete::Set{Tuple{UUID,Vector{Symbol}}},
+    methods_to_delete::Set{Tuple{UUID,Tuple{Vararg{Symbol}}}},
     module_imports_to_move::Set{Expr},
-    invalidated_cell_uuids::Set{UUID},
+    cells_to_macro_invalidate::Set{UUID},
     keep_registered::Set{Symbol},
 )
     old_workspace = getfield(Main, old_workspace_name)
@@ -698,8 +698,8 @@ function move_vars(
 
     do_reimports(new_workspace, module_imports_to_move)
 
-    for uuid in invalidated_cell_uuids
-        pop!(cell_expanded_exprs, uuid, nothing)
+    for cell_id in cells_to_macro_invalidate
+        delete!(cell_expanded_exprs, cell_id)
     end
 
     # TODO: delete
@@ -785,6 +785,13 @@ function delete_method_doc(m::Method)
     end
 end
 
+
+if VERSION < v"1.7.0-0"
+    @eval macro atomic(ex)
+        esc(ex)
+    end
+end
+
 """
 Delete all methods of `f` that were defined in this notebook, and leave the ones defined in other packages, base, etc. ✂
 
@@ -807,7 +814,7 @@ function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
     # we define `Base.isodd(n::Integer) = rand(Bool)`, which overrides the existing method `Base.isodd(n::Integer)`
     # calling `Base.delete_method` on this method won't bring back the old method, because our new method still exists in the method table, and it has a world age which is newer than the original. (our method has a deleted_world value set, which disables it)
     #
-    # To solve this, we iterate again, and _re-enable any methods that were hidden in this way_, by adding them again to the method table with an even newer`primary_world`.
+    # To solve this, we iterate again, and _re-enable any methods that were hidden in this way_, by adding them again to the method table with an even newer `primary_world`.
     if !isempty(deleted_sigs)
         to_insert = Method[]
         Base.visit(methods_table) do method
@@ -817,8 +824,13 @@ function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
         end
         # separate loop to avoid visiting the recently added method
         for method in Iterators.reverse(to_insert)
-            setfield!(method, primary_world, one(typeof(alive_world_val))) # `1` will tell Julia to increment the world counter and set it as this function's world
-            setfield!(method, deleted_world, alive_world_val) # set the `deleted_world` property back to the 'alive' value (for Julia v1.6 and up)
+            if VERSION >= v"1.11.0-0"
+                @atomic method.primary_world = one(typeof(alive_world_val)) # `1` will tell Julia to increment the world counter and set it as this function's world
+                @atomic method.deleted_world = alive_world_val # set the `deleted_world` property back to the 'alive' value (for Julia v1.6 and up)
+            else
+                method.primary_world = one(typeof(alive_world_val))
+                method.deleted_world = alive_world_val
+            end
             ccall(:jl_method_table_insert, Cvoid, (Any, Any, Ptr{Cvoid}), methods_table, method, C_NULL) # i dont like doing this either!
         end
     end
@@ -829,7 +841,7 @@ end
 #     try_delete_toplevel_methods(workspace, [name])
 # end
 
-function try_delete_toplevel_methods(workspace::Module, (cell_id, name_parts)::Tuple{UUID,Vector{Symbol}})::Bool
+function try_delete_toplevel_methods(workspace::Module, (cell_id, name_parts)::Tuple{UUID,Tuple{Vararg{Symbol}}})::Bool
     try
         val = workspace
         for name in name_parts
@@ -1206,6 +1218,16 @@ end
 
 const has_julia_syntax = isdefined(Base, :JuliaSyntax) && fieldcount(Base.Meta.ParseError) == 2
 
+function frame_is_from_plutorunner(frame::Base.StackTraces.StackFrame)
+    if frame.linfo isa Core.MethodInstance
+        frame.linfo.def.module === PlutoRunner
+    else
+        endswith(String(frame.file), "PlutoRunner.jl")
+    end
+end
+
+frame_is_from_usercode(frame::Base.StackTraces.StackFrame) = occursin("#==#", String(frame.file))
+
 function format_output(val::CapturedException; context=default_iocontext)
     if has_julia_syntax && val.ex isa Base.Meta.ParseError && val.ex.detail isa Base.JuliaSyntax.ParseError
         dict = convert_parse_error_to_dict(val.ex.detail)
@@ -1218,21 +1240,23 @@ function format_output(val::CapturedException; context=default_iocontext)
 
         # function_wrap_index = findfirst(f -> occursin("function_wrapped_cell", String(f.func)), stack)
 
-        function_wrap_index = findlast(f -> occursin("#==#", String(f.file)), stack)
-
-        if function_wrap_index === nothing
-            for _ in 1:2
-                until = findfirst(b -> b.func == :eval, reverse(stack))
-                stack = until === nothing ? stack : stack[1:end - until]
-            end
+        function_wrap_index = findlast(frame_is_from_usercode, stack)
+        internal_index = findfirst(frame_is_from_plutorunner, stack)
+        
+        limit = if function_wrap_index !== nothing
+            function_wrap_index
+        elseif internal_index !== nothing
+            internal_index - 1
         else
-            stack = stack[1:function_wrap_index]
+            nothing
         end
+        stack_relevant = stack[1:something(limit, end)]
 
-        pretty = map(stack) do s
+        pretty = map(stack_relevant) do s
             Dict(
                 :call => pretty_stackcall(s, s.linfo),
                 :inlined => s.inlined,
+                :from_c => s.from_c,
                 :file => basename(String(s.file)),
                 :path => String(s.file),
                 :line => s.line,
@@ -1249,7 +1273,7 @@ function format_output(binding::Base.Docs.Binding; context=default_iocontext)
     try
         ("""
         <div class="pluto-docs-binding">
-        <span>$(binding.var)</span>
+        <span id="$(binding.var)">$(binding.var)</span>
         $(repr(MIME"text/html"(), Base.Docs.doc(binding)))
         </div>
         """, MIME"text/html"()) 
@@ -1278,7 +1302,12 @@ end
 
 function pretty_stackcall(frame::Base.StackFrame, linfo::Core.MethodInstance)
     if linfo.def isa Method
-        sprint(Base.show_tuple_as_call, linfo.def.name, linfo.specTypes)
+        @static if isdefined(Base.StackTraces, :show_spec_linfo) && hasmethod(Base.StackTraces.show_spec_linfo, Tuple{IO, Base.StackFrame})
+            sprint(Base.StackTraces.show_spec_linfo, frame; context=:backtrace => true)
+
+        else
+            split(string(frame), " at ") |> first
+        end
     else
         sprint(Base.show, linfo)
     end
@@ -1683,7 +1712,7 @@ const integrations = Integration[
         code = quote
             @assert v"1.0.0" <= AbstractPlutoDingetjes.MY_VERSION < v"2.0.0"
             
-            supported!(xs...) = push!(supported_integration_features, xs...)
+            supported!(xs...) = append!(supported_integration_features, xs)
             
             # don't need feature checks for these because they existed in every version of AbstractPlutoDingetjes:
             supported!(
@@ -2627,8 +2656,8 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     # Redirect both the `stdout` and `stderr` streams to a single `Pipe` object.
     pipe = Pipe()
     Base.link_pipe!(pipe; reader_supports_async = true, writer_supports_async = true)
-    pe_stdout = IOContext(pipe.in, default_stdout_iocontext)
-    pe_stderr = IOContext(pipe.in, default_stdout_iocontext)
+    pe_stdout = pipe.in
+    pe_stderr = pipe.in
     redirect_stdout(pe_stdout)
     redirect_stderr(pe_stderr)
 
@@ -2661,7 +2690,7 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     end
 
     # To make the `display` function work.
-    redirect_display = TextDisplay(pe_stdout)
+    redirect_display = TextDisplay(IOContext(pe_stdout, default_stdout_iocontext))
     pushdisplay(redirect_display)
 
     # Run the function `f`, capturing all output that it might have generated.
@@ -2698,5 +2727,7 @@ end
 function setup_plutologger(notebook_id::UUID, log_channel::Channel{Any})
     pluto_log_channels[notebook_id] = log_channel
 end
+
+include("./precompile.jl")
 
 end

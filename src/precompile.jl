@@ -1,18 +1,6 @@
 using PrecompileTools: PrecompileTools
 
-const __TEST_NOTEBOOK_ID = uuid1()
-
 PrecompileTools.@compile_workload begin
-    let
-        channel = Channel{Any}(10)
-        Pluto.PlutoRunner.setup_plutologger(
-            __TEST_NOTEBOOK_ID,
-            channel,
-        )
-    end
-    expr = Expr(:toplevel, :(1 + 1))
-    Pluto.PlutoRunner.run_expression(Module(), expr, __TEST_NOTEBOOK_ID, uuid1(), nothing);
-
     nb = Pluto.Notebook([
         Pluto.Cell("""md"Hello *world*" """)
         Pluto.Cell("""[f(x)]""")

@@ -37,8 +37,11 @@ import Scratch
 
 include_dependency("../Project.toml")
 const PLUTO_VERSION = VersionNumber(Pkg.TOML.parsefile(joinpath(ROOT_DIR, "Project.toml"))["version"])
-const PLUTO_VERSION_STR = 'v' * string(PLUTO_VERSION)
-const JULIA_VERSION_STR = 'v' * string(VERSION)
+const PLUTO_VERSION_STR = "v$(string(PLUTO_VERSION))"
+const JULIA_VERSION_STR = "v$(string(VERSION))"
+
+import PlutoDependencyExplorer: PlutoDependencyExplorer, TopologicalOrder, NotebookTopology, ExprAnalysisCache, ImmutableVector, ExpressionExplorerExtras, topological_order, all_cells, disjoint, where_assigned, where_referenced
+using ExpressionExplorer
 
 include("./notebook/path helpers.jl")
 include("./notebook/Export.jl")
@@ -46,18 +49,11 @@ include("./Configuration.jl")
 
 include("./evaluation/Tokens.jl")
 include("./evaluation/Throttled.jl")
-include("./runner/PlutoRunner.jl")
-include("./analysis/ExpressionExplorer.jl")
-include("./analysis/FunctionDependencies.jl")
-include("./analysis/ReactiveNode.jl")
+include("./runner/PlutoRunner/src/PlutoRunner.jl")
 include("./packages/PkgCompat.jl")
 include("./webserver/Status.jl")
 
 include("./notebook/Cell.jl")
-include("./analysis/data structures.jl")
-include("./analysis/Topology.jl")
-include("./analysis/Errors.jl")
-include("./analysis/TopologicalOrder.jl")
 include("./notebook/Notebook.jl")
 include("./notebook/saving and loading.jl")
 include("./notebook/frontmatter.jl")
@@ -66,9 +62,7 @@ include("./webserver/Session.jl")
 include("./webserver/PutUpdates.jl")
 
 include("./analysis/Parse.jl")
-include("./analysis/topological_order.jl")
 include("./analysis/is_just_text.jl")
-include("./analysis/TopologyUpdate.jl")
 include("./analysis/DependencyCache.jl")
 include("./analysis/MoreAnalysis.jl")
 
@@ -100,7 +94,12 @@ export activate_notebook_environment
 
 include("./precompile.jl")
 
+const pluto_boot_environment_path = Ref{String}()
+
 function __init__()
+    pluto_boot_environment_name = "pluto-boot-environment-$(VERSION)-$(PLUTO_VERSION)"
+    pluto_boot_environment_path[] = Scratch.@get_scratch!(pluto_boot_environment_name)
+
     # Print a welcome banner
     if (get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") != "0" &&
         get(ENV, "CI", "🍄") != "true" && isinteractive())
