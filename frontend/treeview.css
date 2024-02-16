@@ -331,6 +331,10 @@ jlerror li .frame-line-preview pre > code.frame-line {
 jlerror li .frame-line-preview pre > code:not(.frame-line) {
     opacity: 0.7;
 }
+jlerror li .frame-line-preview pre > code::before {
+    content: var(--before-content);
+    color: var(--cm-line-numbers-color);
+}
 
 table.pluto-table {
     table-layout: fixed;

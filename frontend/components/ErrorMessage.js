@@ -55,7 +55,7 @@ const Funccall = ({ frame }) => {
     }
 }
 
-const LinePreview = ({ frame }) => {
+const LinePreview = ({ frame, num_context_lines = 2 }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     let cell_id = extract_cell_id(frame.file)
     if (cell_id) {
@@ -75,8 +75,12 @@ const LinePreview = ({ frame }) => {
                 ><div>
                     <pre>
 ${lines.map((line, i) =>
-                            frame.line - 3 <= i && i <= frame.line + 1
-                                ? html`<${JuliaHighlightedLine} code=${line} frameLine=${i === frame.line - 1 && lines.length > 1} />`
+                            frame.line - 1 - num_context_lines <= i && i <= frame.line - 1 + num_context_lines
+                                ? html`<${JuliaHighlightedLine}
+                                      code=${line}
+                                      i=${i}
+                                      frameLine=${i === frame.line - 1 && num_context_lines > 0 && lines.length > 1}
+                                  />`
                                 : null
                         )}</pre
                     >
@@ -86,7 +90,7 @@ ${lines.map((line, i) =>
     }
 }
 
-const JuliaHighlightedLine = ({ code, frameLine }) => {
+const JuliaHighlightedLine = ({ code, frameLine, i }) => {
     const code_ref = useRef(/** @type {HTMLPreElement?} */ (null))
     useLayoutEffect(() => {
         if (code_ref.current) {
@@ -97,6 +101,7 @@ const JuliaHighlightedLine = ({ code, frameLine }) => {
 
     return html`<code
         ref=${code_ref}
+        style=${`--before-content: "${i + 1}";`}
         class=${cl({
             "language-julia": true,
             "frame-line": frameLine,
@@ -319,7 +324,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                                   <span>@</span>
                                   <${StackFrameFilename} frame=${frame} cell_id=${cell_id} />
                               </div>
-                              ${from_this_notebook ? html`<${LinePreview} frame=${frame} />` : null}
+                              ${from_this_notebook ? html`<${LinePreview} frame=${frame} num_context_lines=${from_this_cell ? 1 : 2} />` : null}
                           </li>`
                       })}
                       ${limited
