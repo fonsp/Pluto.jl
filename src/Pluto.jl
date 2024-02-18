@@ -92,7 +92,7 @@ export reset_notebook_environment
 export update_notebook_environment
 export activate_notebook_environment
 
-include("./precompile.jl")
+# include("./precompile.jl")
 
 const pluto_boot_environment_path = Ref{String}()
 

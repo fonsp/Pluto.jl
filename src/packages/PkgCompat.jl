@@ -179,8 +179,6 @@ function refresh_registry_cache()
 	_parsed_registries[] = _get_registries()
 end
 
-# Initial fill of registry cache
-__init__() = refresh_registry_cache()
 
 # ⚠️✅ Internal API with fallback
 const _updated_registries_compat = @static if isdefined(Pkg, :UPDATED_REGISTRY_THIS_SESSION) && Pkg.UPDATED_REGISTRY_THIS_SESSION isa Ref{Bool}
@@ -267,7 +265,13 @@ end
 # ⚠️ Internal API with fallback
 is_stdlib(package_name::AbstractString) = package_name ∈ _stdlibs()
 
-global_ctx = PkgContext()
+
+
+# Initial fill of registry cache
+function    __init__()
+    refresh_registry_cache()
+    global global_ctx=PkgContext()
+end
 
 ###
 # Package names
