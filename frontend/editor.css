@@ -509,15 +509,6 @@ pluto-output details[open] summary {
     margin-bottom: 0.5em;
 }
 
-pluto-output details plutoui-detail {
-    display: block;
-    margin-block-end: var(--pluto-cell-spacing);
-}
-
-pluto-output details plutoui-detail:last-child {
-    margin-block-end: 0;
-}
-
 /* HEADER */
 
 header#pluto-nav {
