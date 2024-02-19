@@ -1,3 +1,4 @@
+//@ts-ignore
 import dialogPolyfill from "https://cdn.jsdelivr.net/npm/dialog-polyfill@0.5.6/dist/dialog-polyfill.esm.min.js"
 
 import { useEventListener } from "../common/useEventListener.js"
