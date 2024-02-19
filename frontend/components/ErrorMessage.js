@@ -26,6 +26,8 @@ const focus_line = (cell_id, line) =>
     )
 
 const StackFrameFilename = ({ frame, cell_id }) => {
+    if (ignore_location(frame)) return null
+
     const frame_cell_id = extract_cell_id(frame.file)
     if (frame_cell_id != null) {
         const a = html`<a
@@ -36,7 +38,7 @@ const StackFrameFilename = ({ frame, cell_id }) => {
                 e.preventDefault()
             }}
         >
-            ${frame_cell_id == cell_id ? "This cell" : "Other cell"}: line ${frame.line}
+            ${frame_cell_id == cell_id ? "This cell" : "Other cell"}: line ${frame.line}
         </a>`
         return html`<em>${a}</em>`
     } else {
@@ -46,13 +48,20 @@ const StackFrameFilename = ({ frame, cell_id }) => {
     }
 }
 
+const ignore_funccall = (frame) => frame.call === "top-level scope"
+const ignore_location = (frame) => frame.file === "none"
+
 const Funccall = ({ frame }) => {
+    if (ignore_funccall(frame)) return null
+
     const bracket_index = frame.call.indexOf("(")
-    if (bracket_index != -1) {
-        return html`<mark><strong>${frame.call.substr(0, bracket_index)}</strong>${frame.call.substr(bracket_index)}</mark>`
-    } else {
-        return html`<mark><strong>${frame.call}</strong></mark>`
-    }
+
+    let inner =
+        bracket_index != -1
+            ? html`<strong>${frame.call.substr(0, bracket_index)}</strong>${frame.call.substr(bracket_index)}`
+            : html`<strong>${frame.call}</strong>`
+
+    return html`<mark>${inner}</mark><span>@</span>`
 }
 
 const LinePreview = ({ frame, num_context_lines = 2 }) => {
@@ -63,8 +72,6 @@ const LinePreview = ({ frame, num_context_lines = 2 }) => {
 
         if (code) {
             const lines = code.split("\n")
-            console.log(frame.line)
-
             return html`<a
                 onclick=${(e) => {
                     focus_line(cell_id, frame.line - 1)
@@ -76,11 +83,7 @@ const LinePreview = ({ frame, num_context_lines = 2 }) => {
                     <pre>
 ${lines.map((line, i) =>
                             frame.line - 1 - num_context_lines <= i && i <= frame.line - 1 + num_context_lines
-                                ? html`<${JuliaHighlightedLine}
-                                      code=${line}
-                                      i=${i}
-                                      frameLine=${i === frame.line - 1 && num_context_lines > 0 && lines.length > 1}
-                                  />`
+                                ? html`<${JuliaHighlightedLine} code=${line} i=${i} frameLine=${i === frame.line - 1} />`
                                 : null
                         )}</pre
                     >
@@ -128,11 +131,12 @@ export const ParseError = ({ cell_id, diagnostics }) => {
         <jlerror>
             <header><p>Syntax error</p></header>
             <section>
-                <div class="stacktrace-header">Syntax errors</div>
+                <div class="stacktrace-header"><secret-h1>Syntax errors</secret-h1></div>
                 <ol>
                     ${diagnostics.map(
                         ({ message, from, to, line }) =>
                             html`<li
+                                class="from_this_notebook from_this_cell"
                                 onmouseenter=${() =>
                                     // NOTE: this could be moved move to `StackFrameFilename`
                                     window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from, to } }))}
@@ -192,6 +196,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                         <p>${begin_hint}</p>`
                 }
             },
+            show_stacktrace: () => false,
         },
         {
             pattern: /LoadError: cannot assign a value to variable workspace#\d+\..+ from module workspace#\d+/,
@@ -256,6 +261,10 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
             show_stacktrace: () => false,
         },
         {
+            pattern: /^\s*$/,
+            display: () => default_rewriter.display("Error"),
+        },
+        {
             pattern: /^UndefVarError: (.*) not defined\.?$/,
             display: (/** @type{string} */ x) => {
                 const notebook = /** @type{import("./Editor.js").NotebookData?} */ (pluto_actions.get_notebook())
@@ -263,7 +272,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
 
                 // Verify that the UndefVarError is indeed about a variable from an upstream cell.
                 const match = x.match(/UndefVarError: (.*) not defined/)
-                let sym = match?.[1] ?? ""
+                let sym = (match?.[1] ?? "").replaceAll("`", "")
                 const undefvar_is_from_upstream = Object.values(notebook?.cell_dependencies ?? {}).some((map) =>
                     Object.keys(map.downstream_cells_map).includes(sym)
                 )
@@ -303,15 +312,19 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
 
     const limited = !show_more && first_stack_from_here != -1 && first_stack_from_here < stacktrace.length - 1
 
-    const limited_stacktrace = limited ? stacktrace.slice(0, first_stack_from_here + 1) : stacktrace
+    const limited_stacktrace = (limited ? stacktrace.slice(0, first_stack_from_here + 1) : stacktrace).filter(
+        (frame) => !(ignore_location(frame) && ignore_funccall(frame))
+    )
 
     return html`<jlerror>
         <header>${matched_rewriter.display(msg)}</header>
         ${stacktrace.length == 0 || !(matched_rewriter.show_stacktrace?.() ?? true)
             ? null
             : html`<section>
-                  <div class="stacktrace-header">Stack trace</div>
-                  <p>Here is what happened, the most recent locations are first:</p>
+                  <div class="stacktrace-header">
+                      <secret-h1>Stack trace</secret-h1>
+                      <p>Here is what happened, the most recent locations are first:</p>
+                  </div>
 
                   <ol>
                       ${limited_stacktrace.map((frame) => {
@@ -321,7 +334,6 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                           return html`<li class=${cl({ from_this_notebook, from_this_cell })}>
                               <div class="classical-frame">
                                   <${Funccall} frame=${frame} />
-                                  <span>@</span>
                                   <${StackFrameFilename} frame=${frame} cell_id=${cell_id} />
                               </div>
                               ${from_this_notebook ? html`<${LinePreview} frame=${frame} num_context_lines=${from_this_cell ? 1 : 2} />` : null}

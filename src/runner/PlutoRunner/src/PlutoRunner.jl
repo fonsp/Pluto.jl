@@ -1271,6 +1271,7 @@ function format_output(val::CapturedException; context=default_iocontext)
                 :path => String(s.file),
                 :line => s.line,
                 :url => frame_url(s),
+                :linfo_type => string(typeof(s.linfo)),
             )
         end
     else
