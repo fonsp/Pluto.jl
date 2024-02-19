@@ -9,7 +9,7 @@ import { Editor } from "./Editor.js"
 const extract_cell_id = (/** @type {string} */ file) => {
     const sep_index = file.indexOf("#==#")
     if (sep_index != -1) {
-        return file.substr(sep_index + 4, 36)
+        return file.substring(sep_index + 4, sep_index + 4 + 36)
     } else {
         return null
     }
