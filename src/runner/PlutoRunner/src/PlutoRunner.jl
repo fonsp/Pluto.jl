@@ -1228,6 +1228,16 @@ end
 
 frame_is_from_usercode(frame::Base.StackTraces.StackFrame) = occursin("#==#", String(frame.file))
 
+function frame_url(frame::Base.StackTraces.StackFrame)
+    if frame.linfo isa Core.MethodInstance
+        Base.url(frame.linfo.def)
+    elseif frame.linfo isa Method
+        Base.url(frame.linfo)
+    else
+        nothing
+    end
+end
+
 function format_output(val::CapturedException; context=default_iocontext)
     if has_julia_syntax && val.ex isa Base.Meta.ParseError && val.ex.detail isa Base.JuliaSyntax.ParseError
         dict = convert_parse_error_to_dict(val.ex.detail)
@@ -1260,6 +1270,8 @@ function format_output(val::CapturedException; context=default_iocontext)
                 :file => basename(String(s.file)),
                 :path => String(s.file),
                 :line => s.line,
+                :url => frame_url(s),
+                :linfo_type => string(typeof(s.linfo)),
             )
         end
     else
