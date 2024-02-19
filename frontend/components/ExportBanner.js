@@ -1,3 +1,5 @@
+import dialogPolyfill from "https://cdn.jsdelivr.net/npm/dialog-polyfill@0.5.6/dist/dialog-polyfill.esm.min.js"
+
 import { useEventListener } from "../common/useEventListener.js"
 import { html, useLayoutEffect, useRef } from "../imports/Preact.js"
 
@@ -80,10 +82,16 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
     const element_ref = useRef(/** @type {HTMLDialogElement?} */ (null))
 
     useLayoutEffect(() => {
+        if (element_ref.current != null && typeof HTMLDialogElement !== "function") dialogPolyfill.registerDialog(element_ref.current)
+    }, [element_ref.current])
+
+    useLayoutEffect(() => {
+        // Closing doesn't play well if the browser is old and the dialog not open
+        // https://github.com/GoogleChrome/dialog-polyfill/issues/149
         if (open) {
-            element_ref.current?.show()
+            element_ref.current?.open === false && element_ref.current?.show?.()
         } else {
-            element_ref.current?.close()
+            element_ref.current?.open && element_ref.current?.close?.()
         }
     }, [open, element_ref.current])
 
@@ -97,7 +105,7 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
     )
 
     return html`
-        <dialog id="export" inert=${!open} ref=${element_ref}>
+        <dialog id="export" inert=${!open} open=${open} ref=${element_ref}>
             <div id="container">
                 <div class="export_title">export</div>
                 <!-- no "download" attribute here: we want the jl contents to be shown in a new tab -->
