@@ -183,6 +183,7 @@
         --cm-line-numbers-color: #8d86875e;
         --cm-selection-background: hsl(215deg 64% 59% / 48%);
         --cm-selection-background-blurred: hsl(215deg 0% 59% / 48%);
+        --cm-highlighted: #cbceb629;
 
         /* code highlighting */
         --cm-editor-text-color: #ffe9fc;
@@ -206,6 +207,7 @@
         --cm-matchingBracket-color: white;
         --cm-matchingBracket-bg-color: #c58c237a;
         --cm-placeholder-text-color: rgb(255 255 255 / 20%);
+        --cm-clickable-underline: #5d5f70;
 
         /*autocomplete menu*/
         --autocomplete-menu-bg-color: var(--input-context-menu-bg-color);

@@ -3285,13 +3285,6 @@ Based on "Paraíso (Light)" by Jan T. Sott:
     text-decoration-skip-ink: none;
 }
 
-@media (prefers-color-scheme: dark) {
-    [data-pluto-variable],
-    [data-pluto-variable]:hover {
-        text-decoration-color: #5d5f70;
-    }
-}
-
 body.disable_ui [data-pluto-variable],
 body.disable_ui [data-cell-variable] {
     cursor: pointer;
