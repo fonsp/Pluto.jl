@@ -107,7 +107,7 @@ function preprocess_expr(expr::Expr)
         Expr(:toplevel, expr)
     elseif expr.head === :(=) && (expr.args[1] isa Expr && expr.args[1].head == :curly)
         Expr(:const, expr)
-    elseif expr.head === :incomplete
+    elseif expr.head === :incomplete || expr.head === :error
         Expr(:call, :(PlutoRunner.throw_syntax_error), expr.args...)
     else
         expr
