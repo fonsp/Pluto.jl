@@ -76,6 +76,7 @@ export const setup_mathjax = () => {
         () => {
             console.log("Loading mathjax!!")
             const src = new URL("https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg-full.js", import.meta.url)
+            const integrity = "sha384-4kE/rQ11E8xT9QgrCBTyvenkuPfQo8rXYQvJZuMgxyPOoUfpatjQPlgdv6V5yhUK"
             const script = document.head.querySelector("#MathJax-script")
             if (!script) return
             script.addEventListener("load", () => {
@@ -85,6 +86,7 @@ export const setup_mathjax = () => {
                 }
             })
             script.setAttribute("crossorigin", "anonymous")
+            if (!import.meta.url.startsWith("file:///")) script.setAttribute("integrity", integrity)
             script.setAttribute("src", src.toString())
         },
         { timeout: 2000 }
