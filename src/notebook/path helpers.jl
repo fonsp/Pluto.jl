@@ -187,7 +187,7 @@ function tryexpanduser(path)
 	end
 end
 
-tamepath = abspath ∘ tryexpanduser
+const tamepath = abspath ∘ tryexpanduser
 
 "Block until reading the file two times in a row gave the same result."
 function wait_until_file_unchanged(filename::String, timeout::Real, last_contents::String="")::Nothing

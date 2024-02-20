@@ -213,7 +213,7 @@ export const Notebook = ({
                     />`
                 )}
             ${cell_outputs_delayed && notebook.cell_order.length >= render_cell_outputs_minimum
-                ? html`<div style="font-family: system-ui; font-style: italic; text-align: center; padding: 5rem 1rem;">Loading...</div>`
+                ? html`<div style="font-family: system-ui; font-style: italic; text-align: center; padding: 5rem 1rem;">Loading more cells...</div>`
                 : null}
         </pluto-notebook>
     `
