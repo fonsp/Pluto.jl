@@ -48,6 +48,8 @@ const StackFrameFilename = ({ frame, cell_id }) => {
     }
 }
 
+const at = html`<span> @ </span>`
+
 const ignore_funccall = (frame) => frame.call === "top-level scope"
 const ignore_location = (frame) => frame.file === "none"
 
@@ -61,7 +63,7 @@ const Funccall = ({ frame }) => {
             ? html`<strong>${frame.call.substr(0, bracket_index)}</strong>${frame.call.substr(bracket_index)}`
             : html`<strong>${frame.call}</strong>`
 
-    return html`<mark>${inner}</mark><span>@</span>`
+    return html`<mark>${inner}</mark>${at}`
 }
 
 const LinePreview = ({ frame, num_context_lines = 2 }) => {
@@ -144,8 +146,7 @@ export const ParseError = ({ cell_id, diagnostics }) => {
                                     window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from: null, to: null } }))}
                             >
                                 <div class="classical-frame">
-                                    ${message}<span>@</span>
-                                    <${StackFrameFilename} frame=${{ file: "#==#" + cell_id, line }} cell_id=${cell_id} />
+                                    ${message}${at}<${StackFrameFilename} frame=${{ file: "#==#" + cell_id, line }} cell_id=${cell_id} />
                                 </div>
                             </li>`
                     )}

@@ -250,6 +250,7 @@ jlerror {
     border: 3px solid var(--pkg-terminal-border-color);
     border-radius: 0.6em;
     margin: 1em 0;
+    overflow-wrap: break-word;
 }
 
 jlerror > header {
@@ -311,7 +312,7 @@ jlerror > section li.from_this_notebook:not(.from_this_cell) .classical-frame > 
 }
 jlerror > section .classical-frame > span {
     opacity: 0.4;
-    padding: 0px 1em;
+    padding: 0px 0.2em;
 }
 
 jlerror li::marker {
