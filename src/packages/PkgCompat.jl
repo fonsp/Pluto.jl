@@ -8,10 +8,10 @@ import Pkg.Types: VersionRange
 import RegistryInstances
 import ..Pluto
 
-@static if VERSION>v"1.10"
-    const REPLMode = Base.get_extension(Pkg, :REPLExt)
-else
+@static if VERSION<v"1.11"
     const REPLMode=Pkg.REPLMode
+else
+    const REPLMode = Base.get_extension(Pkg, :REPLExt)
 end
 
 # Should be in Base
