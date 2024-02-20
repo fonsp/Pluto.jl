@@ -1210,9 +1210,22 @@ function convert_parse_error_to_dict(ex)
    )
 end
 
+"""
+*Internal* wrapper for syntax errors which have diagnostics.
+Thrown through PlutoRunner.throw_syntax_error
+"""
+struct PrettySyntaxError <: Exception
+    ex::Any
+end
+
 function throw_syntax_error(@nospecialize(syntax_err))
     syntax_err isa String && (syntax_err = "syntax: $syntax_err")
     syntax_err isa Exception || (syntax_err = ErrorException(syntax_err))
+
+    if has_julia_syntax && syntax_err isa Base.Meta.ParseError && syntax_err.detail isa Base.JuliaSyntax.ParseError
+        syntax_err = PrettySyntaxError(syntax_err)
+    end
+
     throw(syntax_err)
 end
 
@@ -1239,8 +1252,8 @@ function frame_url(frame::Base.StackTraces.StackFrame)
 end
 
 function format_output(val::CapturedException; context=default_iocontext)
-    if has_julia_syntax && val.ex isa Base.Meta.ParseError && val.ex.detail isa Base.JuliaSyntax.ParseError
-        dict = convert_parse_error_to_dict(val.ex.detail)
+    if has_julia_syntax && val.ex isa PrettySyntaxError
+        dict = convert_parse_error_to_dict(val.ex.ex.detail)
         return dict, MIME"application/vnd.pluto.parseerror+object"()
     end
 
