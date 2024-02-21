@@ -944,10 +944,9 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
     useLayoutEffect(() => {
         if (open) {
             list_ref.current?.querySelector("button")?.focus()
-            console.log("forcing focus", list_ref.current?.querySelector("button"))
         } else {
-            console.log("restoring focus", prevously_focused_element_ref.current)
-            if (prevously_focused_element_ref.current instanceof HTMLElement) prevously_focused_element_ref.current?.focus()
+            let e = prevously_focused_element_ref.current
+            if (e instanceof HTMLElement) e.focus()
         }
     }, [open])
 
