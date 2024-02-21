@@ -421,7 +421,7 @@ function _convert_to_flags(options::CompilerOptions)::Vector{String}
 
     for name in fieldnames(CompilerOptions)
         flagname = string("--", replace(String(name), "_" => "-"))
-        flagname = startwith(flagname, "--code-coverage") : "--code-coverage" : flagname
+        flagname = startswith(flagname, "--code-coverage") ? "--code-coverage" : flagname
         value = getfield(options, name)
         if value !== nothing && flagname ∉ exclude_list
             push!(option_list, string(flagname, "=", value))
