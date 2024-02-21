@@ -259,7 +259,11 @@ end
     sn = (🍭, nb)
 
     function coverage_data(nb)
-        str(x) = strip(x, '"') |> String
+        function str(x) 
+            s = strip(x, '"')
+            # Deal with Windows paths
+            out = replace(s, "\\\\" => "\\") |> String
+        end
         (;
             code_coverage = parse(Int, nb.cells[2].output.body),
             tracked_path = nb.cells[3].output.body |> str,
