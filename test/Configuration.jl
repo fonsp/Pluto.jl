@@ -294,22 +294,25 @@ end
     @test nd.output_code_coverage  == ""
     Pluto.WorkspaceManager.unmake_workspace(sn)
 
-    filepath = @__FILE__
-    🍭.options.compiler.code_coverage_track = "@$filepath"
-    Pluto.update_run!(🍭, nb, nb.cells)
-    nd = coverage_data(nb)
-    @test nd.code_coverage == 3 # 3 is `@<path>`
-    @test nd.tracked_path == filepath
-    @test nd.output_code_coverage  == ""
-    Pluto.WorkspaceManager.unmake_workspace(sn)
+    if VERSION >= v"1.8"
+        # This option with path was only introduced in v1.8
+        filepath = @__FILE__
+        🍭.options.compiler.code_coverage_track = "@$filepath"
+        Pluto.update_run!(🍭, nb, nb.cells)
+        nd = coverage_data(nb)
+        @test nd.code_coverage == 3 # 3 is `@<path>`
+        @test nd.tracked_path == filepath
+        @test nd.output_code_coverage  == ""
+        Pluto.WorkspaceManager.unmake_workspace(sn)
+    end
 
     🍭.options.compiler.code_coverage_file = "coverage.info"
+        🍭.options.compiler.code_coverage_track = "user"
     Pluto.update_run!(🍭, nb, nb.cells)
     nd = coverage_data(nb)
+    @test nd.code_coverage == 1
+    @test nd.tracked_path == ""
     @test endswith(nd.output_code_coverage , "coverage.info")
-    # These are the same as the previous test, just testing that passing both track and file works
-    @test nd.code_coverage == 3 # 3 is `@<path>`
-    @test nd.tracked_path == filepath
     Pluto.WorkspaceManager.unmake_workspace(sn)
 end
 

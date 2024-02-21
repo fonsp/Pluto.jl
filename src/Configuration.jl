@@ -236,7 +236,7 @@ These options will be passed as command line argument to newly launched processe
 - `inline::Union{Nothing,String} = $INLINE_DEFAULT`
 - `check_bounds::Union{Nothing,String} = $CHECK_BOUNDS_DEFAULT`
 - `math_mode::Union{Nothing,String} = $MATH_MODE_DEFAULT`
-- `code_coverage_track::Union{Nothing,String} = "$CODE_COVERAGE_TRACK_DEFAULT"`. This specifies for which files code coverage is tracked. It corresponds to the `--code-coverage[={none*|user|all}]` or `--code-coverage=@<path>` command line option.
+- `code_coverage_track::Union{Nothing,String} = "$CODE_COVERAGE_TRACK_DEFAULT"`. This specifies for which files code coverage is tracked. It corresponds to the `--code-coverage[={none*|user|all}]` (or `--code-coverage=@<path>` for julia 1.8 and above) command line option.
 - `code_coverage_file::Union{Nothing,String} = "$CODE_COVERAGE_FILE_DEFAULT"`. This specifies the file where code coverage is recorded if provided. It corresponds to the `--code-coverage=filename` command line option.
 - `heap_size_hint::Union{Nothing,String} = $HEAP_SIZE_HINT_DEFAULT`
 - `startup_file::Union{Nothing,String} = "$STARTUP_FILE_DEFAULT"` By default, the startup file isn't loaded in notebooks.
