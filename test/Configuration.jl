@@ -253,7 +253,9 @@ end
     nb = Pluto.Notebook([
         Pluto.Cell("str(x) = x == C_NULL ? nothing : unsafe_string(x)")
         Pluto.Cell("Base.JLOptions().code_coverage")
-        Pluto.Cell("Base.JLOptions().tracked_path |> str")
+        Pluto.Cell("let opt = Base.JLOptions()
+        hasproperty(opt, :tracked_path) ? opt.tracked_path |> str : nothing
+        end")
         Pluto.Cell("Base.JLOptions().output_code_coverage |> str")
     ])
     sn = (🍭, nb)
