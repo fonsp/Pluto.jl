@@ -246,4 +246,67 @@ end
     Pluto.WorkspaceManager.unmake_workspace((🍭, nb))
 end
 
+@testset "Code Coverage" begin
+    options = Pluto.Configuration.from_flat_kwargs(; launch_browser=false)
+
+    🍭 = ServerSession(; options)
+    nb = Pluto.Notebook([
+        Pluto.Cell("str(x) = x == C_NULL ? nothing : unsafe_string(x)")
+        Pluto.Cell("Base.JLOptions().code_coverage")
+        Pluto.Cell("Base.JLOptions().tracked_path |> str")
+        Pluto.Cell("Base.JLOptions().output_code_coverage |> str")
+    ])
+    sn = (🍭, nb)
+
+    function coverage_data(nb)
+        str(x) = strip(x, '"') |> String
+        (;
+            code_coverage = parse(Int, nb.cells[2].output.body),
+            tracked_path = nb.cells[3].output.body |> str,
+            output_code_coverage = nb.cells[4].output.body |> str,
+        )
+    end
+    # Tests inspired by https://github.com/JuliaLang/julia/blob/4e7294423f4462244617af6f9eea425bd06a78a6/test/cmdlineargs.jl#L459
+    Pluto.update_run!(🍭, nb, nb.cells)
+    nd = coverage_data(nb)
+    @test nd.code_coverage == 0 # Defaults to 0, `none`
+    @test nd.tracked_path == ""
+    @test nd.output_code_coverage == ""
+    Pluto.WorkspaceManager.unmake_workspace(sn)
+
+    🍭.options.compiler.code_coverage_track = "user"
+    Pluto.update_run!(🍭, nb, nb.cells)
+    nd = coverage_data(nb)
+    @test nd.code_coverage == 1 # 1 is `user`
+    @test nd.tracked_path == ""
+    @test nd.output_code_coverage  == ""
+    Pluto.WorkspaceManager.unmake_workspace(sn)
+
+    🍭.options.compiler.code_coverage_track = "all"
+    Pluto.update_run!(🍭, nb, nb.cells)
+    nd = coverage_data(nb)
+    @test nd.code_coverage == 2 # 2 is `all`
+    @test nd.tracked_path == ""
+    @test nd.output_code_coverage  == ""
+    Pluto.WorkspaceManager.unmake_workspace(sn)
+
+    filepath = @__FILE__
+    🍭.options.compiler.code_coverage_track = "@$filepath"
+    Pluto.update_run!(🍭, nb, nb.cells)
+    nd = coverage_data(nb)
+    @test nd.code_coverage == 3 # 3 is `@<path>`
+    @test nd.tracked_path == filepath
+    @test nd.output_code_coverage  == ""
+    Pluto.WorkspaceManager.unmake_workspace(sn)
+
+    🍭.options.compiler.code_coverage_file = "coverage.info"
+    Pluto.update_run!(🍭, nb, nb.cells)
+    nd = coverage_data(nb)
+    @test endswith(nd.output_code_coverage , "coverage.info")
+    # These are the same as the previous test, just testing that passing both track and file works
+    @test nd.code_coverage == 3 # 3 is `@<path>`
+    @test nd.tracked_path == filepath
+    Pluto.WorkspaceManager.unmake_workspace(sn)
+end
+
 end
