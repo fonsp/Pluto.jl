@@ -488,7 +488,7 @@ pluto-output details summary {
     border-radius: 3px;
     padding: 0.5em;
     margin: -0.5em -0.5em 0;
-    transition: color .25s ease-in-out, background-color .25s ease-in-out;
+    transition: color 0.25s ease-in-out, background-color 0.25s ease-in-out;
     /* Border may have transparency, let's not change the border with a background-color */
     background-clip: padding-box;
 }
@@ -1372,7 +1372,7 @@ pluto-input .cm-editor .cm-line {
 
 pluto-input .cm-editor span.cm-highlighted-range,
 pluto-input .cm-editor .cm-line.cm-highlighted-line {
-    background-color: #bdbdbd68;
+    background-color: var(--cm-highlighted);
     border-radius: 3px;
 }
 
@@ -1733,27 +1733,33 @@ pluto-cell > button.add_cell > span::after {
 }
 
 pluto-input > .input_context_menu ul {
-    left: 100%;
-    top: -8px;
     margin: 0;
     padding: 0px;
     border-radius: 6px;
     display: grid;
     grid-template-columns: max-content;
-    position: absolute;
     border: 1px solid var(--input-context-menu-border-color);
     background-color: var(--input-context-menu-bg-color);
 }
+
+pluto-input {
+    position: relative;
+}
+pluto-input > div.input_context_menu {
+    left: 100%;
+    top: -8px;
+    position: absolute;
+}
 @media screen and (min-width: 921px) {
-    pluto-input > .input_context_menu ul {
+    pluto-input > div.input_context_menu {
         left: calc(100% - 3px);
     }
 }
 @media screen and (max-width: 920px) {
-    pluto-input > .input_context_menu {
+    pluto-input > div.input_context_menu {
         z-index: 1400;
     }
-    pluto-input > .input_context_menu ul {
+    pluto-input > div.input_context_menu {
         right: 0px;
         left: unset;
         z-index: 1401;
@@ -3324,16 +3330,9 @@ Based on "Paraíso (Light)" by Jan T. Sott:
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete li.c_from_notebook .cm-completionLabel {
     font-weight: bold;
     text-decoration: underline;
-    text-decoration-color: #ced2ef;
+    text-decoration-color: var(--cm-clickable-underline);
     text-decoration-thickness: 3px;
     text-decoration-skip-ink: none;
-}
-
-@media (prefers-color-scheme: dark) {
-    [data-pluto-variable],
-    [data-pluto-variable]:hover {
-        text-decoration-color: #5d5f70;
-    }
 }
 
 body.disable_ui [data-pluto-variable],
@@ -3443,7 +3442,15 @@ pluto-cell.code_differs .cm-editor .cm-gutters {
 }
 pluto-input:focus-within .cm-editor .cm-lineNumbers .cm-gutterElement::after {
     color: transparent;
-} */
+}
+ */
+
+pluto-cell.errored .cm-editor .cm-lineNumbers .cm-gutterElement {
+    color: var(--cm-line-numbers-color);
+}
+pluto-cell.errored .cm-editor .cm-lineNumbers .cm-gutterElement::after {
+    color: transparent;
+}
 /* Case 2: Print */
 @media print {
     .cm-editor .cm-lineNumbers .cm-gutterElement {

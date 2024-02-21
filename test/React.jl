@@ -1024,16 +1024,26 @@ import Pluto.Configuration: Options, EvaluationOptions
         notebook = Notebook(Cell.([
             "begin",
             "\n\nend",
+            "throw(Meta.parse(\"begin\"; raise=false).args[end])",
         ]))
         update_run!(🍭, notebook, notebook.cells)
         @test Pluto.is_just_text(notebook.topology, notebook.cells[1])
         @test Pluto.is_just_text(notebook.topology, notebook.cells[2])
         @static if VERSION >= v"1.10.0-DEV.1548" # ~JuliaSyntax PR Pluto.jl#2526 julia#46372
+            @test notebook.cells[1].errored
+            @test notebook.cells[2].errored
+            @test notebook.cells[3].errored
+
             @test haskey(notebook.cells[1].output.body, :source)
             @test haskey(notebook.cells[1].output.body, :diagnostics)
 
             @test haskey(notebook.cells[2].output.body, :source)
             @test haskey(notebook.cells[2].output.body, :diagnostics)
+
+            # not literal syntax error
+            @test haskey(notebook.cells[3].output.body, :msg)
+            @test !haskey(notebook.cells[3].output.body, :source)
+            @test !haskey(notebook.cells[3].output.body, :diagnostics)
         else
             @test !occursinerror("(incomplete ", notebook.cells[1])
             @test !occursinerror("(incomplete ", notebook.cells[2])
