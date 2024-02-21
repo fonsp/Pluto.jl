@@ -188,6 +188,8 @@ const MATH_MODE_DEFAULT = nothing
 const STARTUP_FILE_DEFAULT = "no"
 const HISTORY_FILE_DEFAULT = "no"
 const HEAP_SIZE_HINT_DEFAULT = nothing
+const CODE_COVERAGE_MODE_DEFAULT = nothing
+const CODE_COVERAGE_FILE_DEFAULT = nothing
 
 function roughly_the_number_of_physical_cpu_cores()
     # https://gist.github.com/fonsp/738fe244719cae820245aa479e7b4a8d
@@ -256,6 +258,9 @@ These options will be passed as command line argument to newly launched processe
     check_bounds::Union{Nothing,String} = CHECK_BOUNDS_DEFAULT
     math_mode::Union{Nothing,String} = MATH_MODE_DEFAULT
     heap_size_hint::Union{Nothing,String} = HEAP_SIZE_HINT_DEFAULT
+
+    code_coverage_mode::Union{String, Nothing} = CODE_COVERAGE_MODE_DEFAULT
+    code_coverage_file::Union{String, Nothing} = CODE_COVERAGE_FILE_DEFAULT
 
     # notebook specified options
     # the followings are different from
@@ -326,6 +331,8 @@ function from_flat_kwargs(;
         startup_file::Union{Nothing,String} = STARTUP_FILE_DEFAULT,
         history_file::Union{Nothing,String} = HISTORY_FILE_DEFAULT,
         threads::Union{Nothing,String,Int} = default_number_of_threads(),
+        code_coverage_mode::Union{String, Nothing} = CODE_COVERAGE_MODE_DEFAULT,
+        code_coverage_file::Union{String, Nothing} = CODE_COVERAGE_FILE_DEFAULT,
     )
     server = ServerOptions(;
         root_url,
@@ -378,6 +385,8 @@ function from_flat_kwargs(;
         startup_file,
         history_file,
         threads,
+        code_coverage_mode,
+        code_coverage_file,
     )
     return Options(; server, security, evaluation, compiler)
 end
@@ -410,6 +419,7 @@ function _convert_to_flags(options::CompilerOptions)::Vector{String}
 
     for name in fieldnames(CompilerOptions)
         flagname = string("--", replace(String(name), "_" => "-"))
+        flagname = startwith(flagname, "--code-coverage") : "--code-coverage" : flagname
         value = getfield(options, name)
         if value !== nothing && flagname ∉ exclude_list
             push!(option_list, string(flagname, "=", value))
