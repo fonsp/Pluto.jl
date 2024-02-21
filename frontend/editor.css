@@ -488,7 +488,7 @@ pluto-output details summary {
     border-radius: 3px;
     padding: 0.5em;
     margin: -0.5em -0.5em 0;
-    transition: color .25s ease-in-out, background-color .25s ease-in-out;
+    transition: color 0.25s ease-in-out, background-color 0.25s ease-in-out;
     /* Border may have transparency, let's not change the border with a background-color */
     background-clip: padding-box;
 }
@@ -1733,27 +1733,33 @@ pluto-cell > button.add_cell > span::after {
 }
 
 pluto-input > .input_context_menu ul {
-    left: 100%;
-    top: -8px;
     margin: 0;
     padding: 0px;
     border-radius: 6px;
     display: grid;
     grid-template-columns: max-content;
-    position: absolute;
     border: 1px solid var(--input-context-menu-border-color);
     background-color: var(--input-context-menu-bg-color);
 }
+
+pluto-input {
+    position: relative;
+}
+pluto-input > div.input_context_menu {
+    left: 100%;
+    top: -8px;
+    position: absolute;
+}
 @media screen and (min-width: 921px) {
-    pluto-input > .input_context_menu ul {
+    pluto-input > div.input_context_menu {
         left: calc(100% - 3px);
     }
 }
 @media screen and (max-width: 920px) {
-    pluto-input > .input_context_menu {
+    pluto-input > div.input_context_menu {
         z-index: 1400;
     }
-    pluto-input > .input_context_menu ul {
+    pluto-input > div.input_context_menu {
         right: 0px;
         left: unset;
         z-index: 1401;
