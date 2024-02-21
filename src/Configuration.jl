@@ -330,11 +330,11 @@ function from_flat_kwargs(;
         check_bounds::Union{Nothing,String} = CHECK_BOUNDS_DEFAULT,
         math_mode::Union{Nothing,String} = MATH_MODE_DEFAULT,
         heap_size_hint::Union{Nothing,String} = HEAP_SIZE_HINT_DEFAULT,
+        code_coverage_track::Union{String, Nothing} = CODE_COVERAGE_TRACK_DEFAULT,
+        code_coverage_file::Union{String, Nothing} = CODE_COVERAGE_FILE_DEFAULT,
         startup_file::Union{Nothing,String} = STARTUP_FILE_DEFAULT,
         history_file::Union{Nothing,String} = HISTORY_FILE_DEFAULT,
         threads::Union{Nothing,String,Int} = default_number_of_threads(),
-        code_coverage_track::Union{String, Nothing} = CODE_COVERAGE_TRACK_DEFAULT,
-        code_coverage_file::Union{String, Nothing} = CODE_COVERAGE_FILE_DEFAULT,
     )
     server = ServerOptions(;
         root_url,
@@ -384,11 +384,11 @@ function from_flat_kwargs(;
         check_bounds,
         math_mode,
         heap_size_hint,
+        code_coverage_track,
+        code_coverage_file,
         startup_file,
         history_file,
         threads,
-        code_coverage_track,
-        code_coverage_file,
     )
     return Options(; server, security, evaluation, compiler)
 end
