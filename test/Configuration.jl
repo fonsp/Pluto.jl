@@ -309,7 +309,7 @@ end
     end
 
     🍭.options.compiler.code_coverage_file = "coverage.info"
-        🍭.options.compiler.code_coverage_track = "user"
+    🍭.options.compiler.code_coverage_track = "user"
     Pluto.update_run!(🍭, nb, nb.cells)
     nd = coverage_data(nb)
     @test nd.code_coverage == 1
