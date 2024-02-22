@@ -2792,8 +2792,8 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     # Redirect both the `stdout` and `stderr` streams to a single `Pipe` object.
     pipe = Pipe()
     Base.link_pipe!(pipe; reader_supports_async = true, writer_supports_async = true)
-    pe_stdout = pipe.in
-    pe_stderr = pipe.in
+    pe_stdout = IOContext(pipe.in, default_stdout_iocontext)
+    pe_stderr = IOContext(pipe.in, default_stdout_iocontext)
     redirect_stdout(pe_stdout)
     redirect_stderr(pe_stderr)
 
@@ -2826,7 +2826,7 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     end
 
     # To make the `display` function work.
-    redirect_display = TextDisplay(IOContext(pe_stdout, default_stdout_iocontext))
+    redirect_display = TextDisplay(pe_stdout)
     pushdisplay(redirect_display)
 
     # Run the function `f`, capturing all output that it might have generated.
