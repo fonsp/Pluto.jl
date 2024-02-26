@@ -216,7 +216,7 @@ export const createPage = async (browser) => {
   return page
 };
 
-let testname = () => expect.getState()?.currentTestName?.replace(/ /g, "_") ?? "unnkown";
+let testname = () => expect.getState()?.currentTestName?.replace(/[ \:]/g, "_") ?? "unnkown";
 
 export const lastElement = (arr) => arr[arr.length - 1];
 
