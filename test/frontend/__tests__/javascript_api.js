@@ -53,7 +53,7 @@ describe("JavaScript API", () => {
         )
         await runAllChanged(page)
         await waitForPlutoToCalmDown(page, { polling: 100 })
-        const initialLastCellContent = await waitForContentToBecome(page, `pluto-cell:last-child pluto-output`, expected)
+        const initialLastCellContent = await waitForContentToBecome(page, `pluto-cell:last-child pluto-output:first-child`, expected)
         expect(initialLastCellContent).toBe(expected)
     })
 
@@ -84,7 +84,7 @@ describe("JavaScript API", () => {
         )
         await runAllChanged(page)
         await waitForPlutoToCalmDown(page, { polling: 100 })
-        initialLastCellContent = await waitForContentToBecome(page, `pluto-cell:last-child pluto-output`, expected)
+        initialLastCellContent = await waitForContentToBecome(page, `pluto-cell:last-child pluto-output:first-child`, expected)
         expect(initialLastCellContent).toBe(expected)
     })
 
