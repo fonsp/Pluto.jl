@@ -143,7 +143,7 @@ function run_reactive_core!(
     to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_errable)...)
 	
     cells_to_macro_invalidate = Set{UUID}(c.cell_id for c in cells_with_deleted_macros(old_topology, new_topology))
-	cells_to_js_link_invalidate = Set{UUID}(c.cell_id for c in union!(Set{Cell}(), to_run, new_order.errable, indirectly_deactivated))
+	cells_to_js_link_invalidate = Set{UUID}(c.cell_id for c in union!(Set{Cell}(), to_run, new_errable, indirectly_deactivated))
 
     module_imports_to_move = reduce(all_cells(new_topology); init=Set{Expr}()) do module_imports_to_move, c
         c ∈ to_run && return module_imports_to_move
