@@ -3006,7 +3006,6 @@ pluto-log-dot-positioner {
     --accent-color: var(--pluto-logs-info-accent-color);
     --icon-image: unset;
     background: var(--bg-color);
-    color: var(--accent-color);
     margin: 2px;
     border-radius: 6px;
     /* border: 2px solid var(--accent-color); */
@@ -3016,8 +3015,8 @@ pluto-log-dot-positioner {
     background-size: 200% 100%;
 }
 
-pluto-log-dot-positioner:last-child {
-    /* border-bottom: none; */
+pluto-log-dot > pre {
+    color: var(--accent-color);
 }
 
 pluto-log-truncated {
