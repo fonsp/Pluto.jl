@@ -592,7 +592,7 @@ function move_vars(
         to_delete,
         methods_to_delete,
         module_imports_to_move,
-        cells_to_macro_invalidate;
+        cells_to_macro_invalidate,
         cells_to_js_link_invalidate;
         kwargs...
     )
