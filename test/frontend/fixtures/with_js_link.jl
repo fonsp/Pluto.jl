@@ -171,6 +171,13 @@ md"""
 coolthing(x) = x
 
 # ╔═╡ bf7a885e-4d0a-408d-b6d5-d3289d794240
+try
+	sqrt(-1)
+catch e
+	sprint(showerror, e)
+end
+
+# ╔═╡ 0eff37d6-9cd5-42bb-b274-de364ca7ed53
 
 
 # ╔═╡ 663e5a70-4d07-4d6a-8725-dc9a2b26b65d
@@ -185,11 +192,6 @@ Test a closure
 
 # ╔═╡ 5f3c590e-07f2-4dea-b6d1-e9d90f501fda
 some_other_global = rand(100)
-
-# ╔═╡ a1724e17-8312-4e24-a2b1-1ba84e2ecc95
-
-error(123)
-
 
 # ╔═╡ 3d836ff3-995e-4353-807e-bf2cd78920e2
 some_global = 51:81
@@ -375,6 +377,7 @@ end
 # ╠═10d80b00-f7ab-4bd7-9ea7-cca98c089e9c
 # ╠═53e60352-3a56-4b5c-9568-1ac58b758497
 # ╠═bf7a885e-4d0a-408d-b6d5-d3289d794240
+# ╠═0eff37d6-9cd5-42bb-b274-de364ca7ed53
 # ╟─663e5a70-4d07-4d6a-8725-dc9a2b26b65d
 # ╟─1d32fd55-9ca0-45c8-97f5-23cb29eaa8b3
 # ╠═5f3c590e-07f2-4dea-b6d1-e9d90f501fda
@@ -383,7 +386,6 @@ end
 # ╠═abb24301-357c-40f0-832e-86f26404d3d9
 # ╠═33a2293c-6202-47ca-80d1-4a9e261cae7f
 # ╠═480aea45-da00-4e89-b43a-38e4d1827ec2
-# ╠═a1724e17-8312-4e24-a2b1-1ba84e2ecc95
 # ╠═b310dd30-dddd-4b75-81d2-aaf35c9dd1d3
 # ╠═3d836ff3-995e-4353-807e-bf2cd78920e2
 # ╠═58999fba-6631-4482-a811-12bf2412d65e

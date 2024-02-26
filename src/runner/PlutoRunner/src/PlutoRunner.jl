@@ -2608,15 +2608,13 @@ function evaluate_js_link(notebook_id::UUID, cell_id::UUID, link_id::String, inp
             try
                 result = link.callback(input)
                 assertpackable(result)
-                result
+                
+                (true, result)
             catch ex
                 @error "🚨 AbstractPlutoDingetjes.Display.with_js_link: Exception while evaluating Julia callback." input exception=(ex, catch_backtrace())
+                (false, "exception in Julia callback:\n\n$(ex)")
             end
         end
-
-        assertpackable(result)
-        
-        (true, result)
     end
 end
 
