@@ -1,6 +1,15 @@
 import puppeteer from "puppeteer"
 import { saveScreenshot, createPage, waitForContentToBecome, getTextContent } from "../helpers/common"
-import { importNotebook, getPlutoUrl, shutdownCurrentNotebook, setupPlutoBrowser, getLogs, getLogSelector } from "../helpers/pluto"
+import {
+    importNotebook,
+    getPlutoUrl,
+    shutdownCurrentNotebook,
+    setupPlutoBrowser,
+    getLogs,
+    getLogSelector,
+    writeSingleLineInPlutoInput,
+    runAllChanged,
+} from "../helpers/pluto"
 
 describe("with_js_link", () => {
     /**
@@ -148,5 +157,29 @@ describe("with_js_link", () => {
         // they should run in parallel: after 4 seconds both should be finished
         expect(await page.evaluate((s) => document.querySelector(s).textContent, ev_output_sel("c1"))).toBe("CC1")
         expect(await page.evaluate((s) => document.querySelector(s).textContent, ev_output_sel("c2"))).toBe("CC2")
+    })
+
+    const expect_jslog = async (expected) => {
+        expect(await waitForContentToBecome(page, "#checkme", expected)).toBe(expected)
+    }
+    it("js errors", async () => {
+        await expect_jslog("\nhello!")
+        await page.click("#jslogbtn")
+        await expect_jslog("\nhello!\nyay KRATJE")
+
+        const yolotriggerid = "8782cc14-eb1a-48a8-a114-2f71f77be275"
+        await writeSingleLineInPlutoInput(page, `pluto-cell[id="${yolotriggerid}"] pluto-input`, 'yolotrigger = "krat"')
+        await runAllChanged(page)
+
+        await expect_jslog("\nhello!\nyay KRATJE\nhello!")
+        await page.click("#jslogbtn")
+        await expect_jslog(`\nhello!\nyay KRATJE\nhello!\nexception in Julia callback:\n\nErrorException("bad")`)
+
+        await page.click("#jslogbtn")
+        await page.waitForTimeout(500)
+
+        await page.click(`pluto-cell[id="${yolotriggerid}}"] .runcell`)
+
+        await expect_jslog(`\nhello!\nyay KRATJE\nhello!\nexception in Julia callback:\n\nErrorException("bad")\nhello!\nnee link not found`)
     })
 })

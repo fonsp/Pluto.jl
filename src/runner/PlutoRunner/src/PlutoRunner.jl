@@ -2580,6 +2580,9 @@ function unregister_js_link(cell_id::UUID)
     # cancel old links
     old_links = get!(() -> Dict{String,JSLink}(), cell_js_links, cell_id)
     for (name, link) in old_links
+        link.cancelled_ref[] = true
+    end
+    for (name, link) in old_links
         c = link.on_cancellation
         c === nothing || c()
     end

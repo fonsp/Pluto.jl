@@ -329,6 +329,42 @@ let
 	HTML(html_repr)
 end
 
+# ╔═╡ 8782cc14-eb1a-48a8-a114-2f71f77be275
+yolotrigger = "krat"
+
+# ╔═╡ 3c5c1325-ad3e-4c54-8d29-c17939bb8529
+function useme(x)
+	length(x) > 5 ? uppercase(x) : error("bad")
+end
+
+# ╔═╡ 6c5f79b9-598d-41ad-800d-0a9ff63d6f6c
+@htl("""
+<input type=submit id=jslogbtn>
+<script id="yolo">
+	const btn = currentScript.parentElement.querySelector("input")
+	const pre = this ?? document.createElement("pre")
+	pre.id = "checkme"
+	let log = (t) => {
+		pre.innerText = pre.innerText + "\\n" + t
+	}
+	let logyay = x => log("yay " + x)
+	let lognee = x => log("nee " + x)
+	log("hello!")
+
+	
+	
+const f = $(AbstractPlutoDingetjes.Display.with_js_link(useme))
+
+btn.addEventListener("click", () => {
+		setTimeout(async () => {
+			f($yolotrigger).then(logyay).catch(lognee)
+		}, 2000)
+})
+	
+return pre
+</script>
+""")
+
 # ╔═╡ Cell order:
 # ╠═b0f2a778-885f-11ee-3d28-939ca4069ee8
 # ╠═4b80dda0-74b6-4a0e-a50e-61c5380111a4
@@ -372,3 +408,6 @@ end
 # ╠═7f6ada79-8e3b-40b7-b477-ce05ae79a668
 # ╟─f344c4cb-8226-4145-ab92-a37542f697dd
 # ╠═8bbd32f8-56f7-4f29-aea8-6906416f6cfd
+# ╠═8782cc14-eb1a-48a8-a114-2f71f77be275
+# ╠═3c5c1325-ad3e-4c54-8d29-c17939bb8529
+# ╠═6c5f79b9-598d-41ad-800d-0a9ff63d6f6c
