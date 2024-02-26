@@ -4,6 +4,16 @@
 using Markdown
 using InteractiveUtils
 
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
+        el
+    end
+end
+
 # ╔═╡ b0f2a778-885f-11ee-3d28-939ca4069ee8
 begin
 	import Pkg
@@ -135,13 +145,30 @@ md"""
 # ╔═╡ 60444c4c-5705-4b92-8eac-2c102f14f395
 
 
+# ╔═╡ 5fe4fc2e-a502-4b05-bc97-6b6c3525d7d3
+md"""
+# Not a background task
+
+JS link calculations are not background tasks – they run in sequence will all other computations in the notebook. If a Julia calculation is requested with a JS link, this task will be added to the notebook's execution queue. This means:
+- JS link calculations **do not run in parallel** to other computations in the notebook.
+- If something else is running in the notebook, like running cells, then the JS link requests will wait for other computations to finish before executing.
+- Vice versa, if your JS link requests take a long time to execute, then all other activity in the notebook (like `@bind`) is blocked.
+
+!!! warning "Don't make too many requests!"
+	If you make too many requests from JS, then the notebook becomes almost unusable. As a developer using this API, you need to take care to keep your users' notebooks responsive.
+
+	The JS link request returns a `Promise` that resolves to the response. Consider keeping track of whether you are currently requesting something from Julia, and avoid making more requests in the meantime.
+
+	It can also help to use **throttling** or **debouncing** to reduce the number of requests that you make.
+"""
+
 # ╔═╡ 07c832c1-fd8f-44de-bdfa-389048c1e4e9
 md"""
 ## With a function in the closure
 """
 
 # ╔═╡ 10d80b00-f7ab-4bd7-9ea7-cca98c089e9c
-coolthing(x) = x * x
+coolthing(x) = x
 
 # ╔═╡ bf7a885e-4d0a-408d-b6d5-d3289d794240
 
@@ -158,6 +185,11 @@ Test a closure
 
 # ╔═╡ 5f3c590e-07f2-4dea-b6d1-e9d90f501fda
 some_other_global = rand(100)
+
+# ╔═╡ a1724e17-8312-4e24-a2b1-1ba84e2ecc95
+
+error(123)
+
 
 # ╔═╡ 3d836ff3-995e-4353-807e-bf2cd78920e2
 some_global = 51:81
@@ -186,6 +218,7 @@ function function_evaluator(f::Function, default=""; id=string(f))
 	
 		submit.addEventListener("click", async () => {
 			let result = await sqrt_with_julia(input.value)
+			console.log({result})
 			output.innerText = result
 		})
 
@@ -227,7 +260,7 @@ end
 
 # ╔═╡ 53e60352-3a56-4b5c-9568-1ac58b758497
 function_evaluator("hello") do str
-	# sleep(5)
+	sleep(5)
 	result = coolthing(str)
 	@info result
 	result
@@ -267,7 +300,7 @@ end
 
 # ╔═╡ 480aea45-da00-4e89-b43a-38e4d1827ec2
 function_evaluator("coOL") do input
-	@warn("You should see the following error:")
+	@warn("You should see the following error:", [1,2,"asdf"])
 	
 	error("You should see this error $(uppercase(input))")
 end
@@ -337,6 +370,7 @@ end
 # ╠═5e42ea32-a1ce-49db-b55f-5e252c8c3f57
 # ╠═60444c4c-5705-4b92-8eac-2c102f14f395
 # ╠═2bff3975-5918-40fe-9761-eb7b47f16df2
+# ╟─5fe4fc2e-a502-4b05-bc97-6b6c3525d7d3
 # ╟─07c832c1-fd8f-44de-bdfa-389048c1e4e9
 # ╠═10d80b00-f7ab-4bd7-9ea7-cca98c089e9c
 # ╠═53e60352-3a56-4b5c-9568-1ac58b758497
@@ -349,6 +383,7 @@ end
 # ╠═abb24301-357c-40f0-832e-86f26404d3d9
 # ╠═33a2293c-6202-47ca-80d1-4a9e261cae7f
 # ╠═480aea45-da00-4e89-b43a-38e4d1827ec2
+# ╠═a1724e17-8312-4e24-a2b1-1ba84e2ecc95
 # ╠═b310dd30-dddd-4b75-81d2-aaf35c9dd1d3
 # ╠═3d836ff3-995e-4353-807e-bf2cd78920e2
 # ╠═58999fba-6631-4482-a811-12bf2412d65e
