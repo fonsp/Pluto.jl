@@ -540,7 +540,7 @@ dialog#export {
     height: 130px;
     background: var(--export-bg-color);
     color: var(--export-color);
-    transform: translateY(-100%);
+    transform: translateY(calc(-100% - 1px));
     /* overlay: none !important; */
     overflow: visible;
     margin: 0;
