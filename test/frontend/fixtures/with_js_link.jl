@@ -60,23 +60,25 @@ end
 # ╔═╡ 37fc039e-7a4d-4d2d-80f3-d409a9ee096d
 # ╠═╡ disabled = true
 #=╠═╡
-let
-	function f(x)
-		cool(x)
-	end
-	@htl("""
-	<script>
-	const sqrt_from_julia = $(AbstractPlutoDingetjes.Display.with_js_link(f))
+# let
+# 	function f(x)
+# 		cool(x)
+# 	end
+# 	@htl("""
+# 	<script>
+# 	const sqrt_from_julia = $(AbstractPlutoDingetjes.Display.with_js_link(f))
 	
-	let id = setInterval(async () => {
-		console.log(await sqrt_from_julia("hello"))
-	}, 50)
+# 	let id = setInterval(async () => {
+# 		console.log(await sqrt_from_julia("hello"))
+# 	}, 500)
 	
-	invalidation.then(() => clearInterval(id))
+# 	invalidation.then(() => setTimeout(() => {
+# 		clearInterval(id)
+# 	}, 1000))
 	
-	</script>
-	""")
-end
+# 	</script>
+# 	""")
+# end
   ╠═╡ =#
 
 # ╔═╡ 977c59f7-9f3a-40ae-981d-2a8a48e08349
@@ -146,7 +148,7 @@ md"""
 
 
 # ╔═╡ 5fe4fc2e-a502-4b05-bc97-6b6c3525d7d3
-md"""
+this_is_not_true = md"""
 # Not a background task
 
 JS link calculations are not background tasks – they run in sequence will all other computations in the notebook. If a Julia calculation is requested with a JS link, this task will be added to the notebook's execution queue. This means:
