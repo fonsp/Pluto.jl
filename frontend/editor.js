@@ -122,8 +122,10 @@ const get_statefile =
     // @ts-ignore
     window?.pluto_injected_environment?.custom_get_statefile?.(read_Uint8Array_with_progress, without_path_entries, unpack) ??
     (async (launch_params, set_statefile_download_progress) => {
+        set_statefile_download_progress("indeterminate")
         const r = await fetch(new Request(launch_params.statefile, { integrity: launch_params.statefile_integrity ?? undefined }))
-        const data = await read_Uint8Array_with_progress(r, set_statefile_download_progress)
+        set_statefile_download_progress(0.2)
+        const data = await read_Uint8Array_with_progress(r, (x) => set_statefile_download_progress(x * 0.8 + 0.2))
         const state = without_path_entries(unpack(data))
         return state
     })

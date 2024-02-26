@@ -521,7 +521,7 @@ responses[:reshow_cell] = function response_reshow_cell(🙋::ClientRequest)
         collect(keys(cell.published_objects)),
         (parse(PlutoRunner.ObjectID, 🙋.body["objectid"], base=16), convert(Int64, 🙋.body["dim"])),
     )
-    set_output!(cell, run, ExprAnalysisCache(🙋.notebook, cell); persist_js_state=true)
+    set_output!(cell, run, ExprAnalysisCache(🙋.notebook.topology.codes[cell]); persist_js_state=true)
     # send to all clients, why not
     send_notebook_changes!(🙋 |> without_initiator)
 end

@@ -188,7 +188,7 @@ export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
                           ${row === "more"
                               ? html`<td class="pluto-tree-more-td" colspan=${maxcolspan}>${more(1)}</td>`
                               : html`<th>${row[0]}</th>
-                                    ${row[1].map((x) => html`<td>${x === "more" ? null : mimepair_output(x)}</td>`)}`}
+                                    ${row[1].map((x) => html`<td><div>${x === "more" ? null : mimepair_output(x)}</div></td>`)}`}
                       </tr>`
               )
             : html`<${EmptyRows} colspan=${maxcolspan} />`}
