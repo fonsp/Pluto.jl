@@ -1350,7 +1350,7 @@ end
 function show_richest_withreturned(context::IOContext, @nospecialize(args))
     buffer = IOBuffer(; sizehint=0)
     val = show_richest(IOContext(buffer, context), args)
-    return (resize!(buffer.data, buffer.size), val)
+    return (take!(buffer), val)
 end
 
 "Super important thing don't change."
