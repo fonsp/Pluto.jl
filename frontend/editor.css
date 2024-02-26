@@ -1744,11 +1744,13 @@ pluto-input > .input_context_menu ul {
 
 pluto-input {
     position: relative;
+    display: block;
 }
 pluto-input > div.input_context_menu {
     left: 100%;
     top: -8px;
     position: absolute;
+    z-index: 1400;
 }
 @media screen and (min-width: 921px) {
     pluto-input > div.input_context_menu {
@@ -1756,9 +1758,6 @@ pluto-input > div.input_context_menu {
     }
 }
 @media screen and (max-width: 920px) {
-    pluto-input > div.input_context_menu {
-        z-index: 1400;
-    }
     pluto-input > div.input_context_menu {
         right: 0px;
         left: unset;
