@@ -38,11 +38,14 @@ export const start_local = async ({ setStatePromise, connect, launch_params }) =
 
         open_response = await fetch(
             with_token(
-                with_query_params(new URL("notebookupload", binder_session_url), {
-                    name: new URLSearchParams(window.location.search).get("name"),
-                    clear_frontmatter: "yesplease",
-                    execution_allowed: "yepperz",
-                })
+                with_query_params(
+                    new URL(with_query_params("notebookupload", Object.fromEntries(binder_session_url.searchParams.entries())), binder_session_url),
+                    {
+                        name: new URLSearchParams(window.location.search).get("name"),
+                        clear_frontmatter: "yesplease",
+                        execution_allowed: "yepperz",
+                    }
+                )
             ),
             {
                 method: "POST",
@@ -60,7 +63,9 @@ export const start_local = async ({ setStatePromise, connect, launch_params }) =
         const edit_url = with_query_params(new URL("edit", binder_session_url), { id: new_notebook_id })
         console.info("notebook_id:", new_notebook_id)
 
-        window.history.replaceState({}, "", edit_url)
+        if (!window.plutoDesktop) {
+            window.history.replaceState({}, "", edit_url)
+        }
 
         await setStatePromise(
             immer((/** @type {import("../components/Editor.js").EditorState} */ state) => {
