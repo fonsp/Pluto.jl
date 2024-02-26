@@ -48,9 +48,14 @@ end
 
 function expecterror(err, cell; strict=true)
     cell.errored || return false
-    io = IOBuffer()
-    showerror(io, err)
-    msg = String(take!(io))
+    msg = sprint(showerror, err)
+
+    # UndefVarError(:x, #undef)
+    if err isa UndefVarError && !isdefined(err, :scope) && VERSION > v"1.10"
+        strict = false
+        msg = first(split(msg, '\n'; limit=2))
+    end
+
     if strict
         return cell.output.body[:msg] == msg
     else

@@ -61,7 +61,7 @@ In the example below, changing the parameter `A` and running the first cell will
 
 Pluto uses syntax analysis to understand which packages are being used in a notebook, and it **automatically manages a package environment** for your notebook. You no longer need to install packages, you can directly import any registered package like `Plots` or `DataFrames` and use it.
 
-To ensure reproducibility, the information to exactly reproduce the package environment is **stored in your notebook file**. When someone else opens your notebook with Pluto, the exact same package environment will be used, and packages will work on their computer, automatically! _[more info](https://github.com/fonsp/Pluto.jl/wiki/%F0%9F%8E%81-Package-management)_
+To ensure reproducibility, the information to exactly reproduce the package environment is **stored in your notebook file**. When someone else opens your notebook with Pluto, the exact same package environment will be used, and packages will work on their computer, automatically! _[more info](https://plutojl.org/pkg/)_
 
 <img alt="package manager screencap" src="https://user-images.githubusercontent.com/6933510/134823403-fbb79d7f-dd3e-4712-b5d5-b48ad0770f13.gif" width="50%">
 
@@ -103,7 +103,6 @@ _([video](https://www.youtube.com/watch?v=rpB6zQNsbQU)) Grant Sanderson ([3Blue1
 For one tasty notebook 🥞 you will need:
 
 - [**Julia** v1.6 or above](https://julialang.org/downloads/#current_stable_release)
-- **Linux**, **MacOS** or **Windows**, _Linux and MacOS will work best_
 - Mozilla **Firefox** or Google **Chrome**
 
 ### Installation

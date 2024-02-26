@@ -56,8 +56,8 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
     WorkerType = if is_offline_renderer || !session.options.evaluation.workspace_use_distributed
         Malt.InProcessWorker
     elseif something(
-        session.options.evaluation.workspace_use_distributed_stdlib,
-        Sys.iswindows() ? false : true
+        session.options.evaluation.workspace_use_distributed_stdlib, 
+        false
     )
         Malt.DistributedStdlibWorker
     else

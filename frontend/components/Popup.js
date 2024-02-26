@@ -272,9 +272,7 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event, disable_input })
                 }}
                 ><img alt="📄" src=${document_text_icon} width="17"
             /></a>
-            <a class="help" target="_blank" title="Go to help page" href="https://github.com/fonsp/Pluto.jl/wiki/%F0%9F%8E%81-Package-management"
-                ><img alt="❔" src=${help_circle_icon} width="17"
-            /></a>
+            <a class="help" target="_blank" title="Go to help page" href="https://plutojl.org/pkg/"><img alt="❔" src=${help_circle_icon} width="17" /></a>
         </div>
         <${PkgTerminalView} value=${terminal_value ?? "Loading..."} />
     </pkg-popup>`

@@ -11,9 +11,9 @@ const init_firebase = async () => {
         firebase_load_promise = async(async () => {
             let [{ initializeApp }, firestore_module] = await Promise.all([
                 // @ts-ignore
-                import("https://www.gstatic.com/firebasejs/9.3.0/firebase-app.js"),
+                import("https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"),
                 // @ts-ignore
-                import("https://www.gstatic.com/firebasejs/9.3.0/firebase-firestore.js"),
+                import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"),
             ])
             let { getFirestore, addDoc, doc, collection } = firestore_module
 
@@ -28,10 +28,11 @@ const init_firebase = async () => {
             let feedback_db = collection(db, "feedback")
 
             let add_feedback = async (feedback) => {
-                await addDoc(feedback_db, feedback)
+                let docref = await addDoc(feedback_db, feedback)
+                console.debug("Firestore doc created ", docref.id, docref)
             }
 
-            console.log("🔥base loaded")
+            console.log("🔥base loaded", { initializeApp, firestore_module, app, db, feedback_db, add_feedback })
 
             // @ts-ignore
             return add_feedback
@@ -44,6 +45,7 @@ export const init_feedback = async () => {
     try {
         // Only load firebase when the feedback form is touched
         const feedbackform = document.querySelector("form#feedback")
+        if (feedbackform == null) return
         feedbackform.addEventListener("submit", (e) => {
             const email = prompt("Would you like us to contact you?\n\nEmail: (leave blank to stay anonymous 👀)")
 
@@ -51,12 +53,13 @@ export const init_feedback = async () => {
 
             async(async () => {
                 try {
+                    const feedback = String(new FormData(e.target).get("opinion"))
+                    if (feedback.length < 4) return
+
                     let add_feedback = await init_firebase()
                     await timeout_promise(
                         add_feedback({
-                            // @ts-ignore
-                            feedback: new FormData(e.target).get("opinion"),
-                            // @ts-ignore
+                            feedback,
                             timestamp: Date.now(),
                             email: email ? email : "",
                         }),

@@ -788,6 +788,13 @@ function delete_method_doc(m::Method)
     end
 end
 
+
+if VERSION < v"1.7.0-0"
+    @eval macro atomic(ex)
+        esc(ex)
+    end
+end
+
 """
 Delete all methods of `f` that were defined in this notebook, and leave the ones defined in other packages, base, etc. ✂
 
@@ -820,8 +827,13 @@ function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
         end
         # separate loop to avoid visiting the recently added method
         for method in Iterators.reverse(to_insert)
-            setfield!(method, primary_world, one(typeof(alive_world_val))) # `1` will tell Julia to increment the world counter and set it as this function's world
-            setfield!(method, deleted_world, alive_world_val) # set the `deleted_world` property back to the 'alive' value (for Julia v1.6 and up)
+            if VERSION >= v"1.11.0-0"
+                @atomic method.primary_world = one(typeof(alive_world_val)) # `1` will tell Julia to increment the world counter and set it as this function's world
+                @atomic method.deleted_world = alive_world_val # set the `deleted_world` property back to the 'alive' value (for Julia v1.6 and up)
+            else
+                method.primary_world = one(typeof(alive_world_val))
+                method.deleted_world = alive_world_val
+            end
             ccall(:jl_method_table_insert, Cvoid, (Any, Any, Ptr{Cvoid}), methods_table, method, C_NULL) # i dont like doing this either!
         end
     end
@@ -1202,17 +1214,50 @@ function convert_parse_error_to_dict(ex)
    )
 end
 
+"""
+*Internal* wrapper for syntax errors which have diagnostics.
+Thrown through PlutoRunner.throw_syntax_error
+"""
+struct PrettySyntaxError <: Exception
+    ex::Any
+end
+
 function throw_syntax_error(@nospecialize(syntax_err))
     syntax_err isa String && (syntax_err = "syntax: $syntax_err")
     syntax_err isa Exception || (syntax_err = ErrorException(syntax_err))
+
+    if has_julia_syntax && syntax_err isa Base.Meta.ParseError && syntax_err.detail isa Base.JuliaSyntax.ParseError
+        syntax_err = PrettySyntaxError(syntax_err)
+    end
+
     throw(syntax_err)
 end
 
 const has_julia_syntax = isdefined(Base, :JuliaSyntax) && fieldcount(Base.Meta.ParseError) == 2
 
+function frame_is_from_plutorunner(frame::Base.StackTraces.StackFrame)
+    if frame.linfo isa Core.MethodInstance
+        frame.linfo.def.module === PlutoRunner
+    else
+        endswith(String(frame.file), "PlutoRunner.jl")
+    end
+end
+
+frame_is_from_usercode(frame::Base.StackTraces.StackFrame) = occursin("#==#", String(frame.file))
+
+function frame_url(frame::Base.StackTraces.StackFrame)
+    if frame.linfo isa Core.MethodInstance
+        Base.url(frame.linfo.def)
+    elseif frame.linfo isa Method
+        Base.url(frame.linfo)
+    else
+        nothing
+    end
+end
+
 function format_output(val::CapturedException; context=default_iocontext)
-    if has_julia_syntax && val.ex isa Base.Meta.ParseError && val.ex.detail isa Base.JuliaSyntax.ParseError
-        dict = convert_parse_error_to_dict(val.ex.detail)
+    if has_julia_syntax && val.ex isa PrettySyntaxError
+        dict = convert_parse_error_to_dict(val.ex.ex.detail)
         return dict, MIME"application/vnd.pluto.parseerror+object"()
     end
 
@@ -1222,24 +1267,28 @@ function format_output(val::CapturedException; context=default_iocontext)
 
         # function_wrap_index = findfirst(f -> occursin("function_wrapped_cell", String(f.func)), stack)
 
-        function_wrap_index = findlast(f -> occursin("#==#", String(f.file)), stack)
-
-        if function_wrap_index === nothing
-            for _ in 1:2
-                until = findfirst(b -> b.func == :eval, reverse(stack))
-                stack = until === nothing ? stack : stack[1:end - until]
-            end
+        function_wrap_index = findlast(frame_is_from_usercode, stack)
+        internal_index = findfirst(frame_is_from_plutorunner, stack)
+        
+        limit = if function_wrap_index !== nothing
+            function_wrap_index
+        elseif internal_index !== nothing
+            internal_index - 1
         else
-            stack = stack[1:function_wrap_index]
+            nothing
         end
+        stack_relevant = stack[1:something(limit, end)]
 
-        pretty = map(stack) do s
+        pretty = map(stack_relevant) do s
             Dict(
                 :call => pretty_stackcall(s, s.linfo),
                 :inlined => s.inlined,
+                :from_c => s.from_c,
                 :file => basename(String(s.file)),
                 :path => String(s.file),
                 :line => s.line,
+                :url => frame_url(s),
+                :linfo_type => string(typeof(s.linfo)),
             )
         end
     else
@@ -1253,7 +1302,7 @@ function format_output(binding::Base.Docs.Binding; context=default_iocontext)
     try
         ("""
         <div class="pluto-docs-binding">
-        <span>$(binding.var)</span>
+        <span id="$(binding.var)">$(binding.var)</span>
         $(repr(MIME"text/html"(), Base.Docs.doc(binding)))
         </div>
         """, MIME"text/html"()) 
@@ -1282,7 +1331,12 @@ end
 
 function pretty_stackcall(frame::Base.StackFrame, linfo::Core.MethodInstance)
     if linfo.def isa Method
-        sprint(Base.show_tuple_as_call, linfo.def.name, linfo.specTypes)
+        @static if isdefined(Base.StackTraces, :show_spec_linfo) && hasmethod(Base.StackTraces.show_spec_linfo, Tuple{IO, Base.StackFrame})
+            sprint(Base.StackTraces.show_spec_linfo, frame; context=:backtrace => true)
+
+        else
+            split(string(frame), " at ") |> first
+        end
     else
         sprint(Base.show, linfo)
     end
@@ -2776,5 +2830,7 @@ end
 function setup_plutologger(notebook_id::UUID, log_channel::Channel{Any})
     pluto_log_channels[notebook_id] = log_channel
 end
+
+include("./precompile.jl")
 
 end
