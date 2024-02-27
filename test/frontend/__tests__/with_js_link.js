@@ -169,21 +169,21 @@ describe("with_js_link", () => {
         await page.waitForTimeout(500)
         await page.click("#jslogbtn")
         await page.waitForTimeout(100)
-        await expect_jslog("hello!")
-        await expect_jslog("hello!yay KRATJE")
-        await expect_jslog("hello!yay KRATJEyay KRATJE")
+        await expect_jslog("hello!clickclick")
+        await expect_jslog("hello!clickclickyay KRATJE")
+        await expect_jslog("hello!clickclickyay KRATJEyay KRATJE")
 
         const yolotriggerid = "8782cc14-eb1a-48a8-a114-2f71f77be275"
         await page.click(`pluto-cell[id="${yolotriggerid}"] pluto-output input[type="button"]`)
-        await expect_jslog("hello!yay KRATJEyay KRATJEhello!")
+        await expect_jslog("hello!clickclickyay KRATJEyay KRATJEhello!")
         await page.click("#jslogbtn")
-        await expect_jslog(`hello!yay KRATJEyay KRATJEhello!exception in Julia callback:ErrorException("bad")`)
+        await expect_jslog(`hello!clickclickyay KRATJEyay KRATJEhello!clicknee exception in Julia callback:ErrorException("bad")`)
 
         await page.click("#jslogbtn")
         await page.waitForTimeout(500)
 
         await page.click(`pluto-cell[id="${yolotriggerid}}"] .runcell`)
 
-        await expect_jslog(`hello!yay KRATJEyay KRATJEhello!exception in Julia callback:ErrorException("bad")hello!nee link not found`)
+        await expect_jslog(`hello!clickclickyay KRATJEyay KRATJEhello!clicknee exception in Julia callback:ErrorException("bad")hello!clicknee link not found`)
     })
 })

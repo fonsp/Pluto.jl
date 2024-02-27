@@ -371,6 +371,7 @@ end
 const f = $(AbstractPlutoDingetjes.Display.with_js_link(useme))
 
 btn.addEventListener("click", () => {
+	log("click")
 		setTimeout(async () => {
 			f($name).then(logyay).catch(lognee)
 		}, 2000)
