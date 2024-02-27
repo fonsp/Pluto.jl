@@ -330,7 +330,7 @@ let
 end
 
 # ╔═╡ 8782cc14-eb1a-48a8-a114-2f71f77be275
-yolotrigger = "krat"
+yolotrigger = "kratje"
 
 # ╔═╡ 3c5c1325-ad3e-4c54-8d29-c17939bb8529
 function useme(x)
