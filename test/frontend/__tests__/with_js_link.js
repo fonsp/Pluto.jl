@@ -9,6 +9,7 @@ import {
     getLogSelector,
     writeSingleLineInPlutoInput,
     runAllChanged,
+    waitForPlutoToCalmDown,
 } from "../helpers/pluto"
 
 describe("with_js_link", () => {
@@ -163,8 +164,9 @@ describe("with_js_link", () => {
         expect(await waitForContentToBecome(page, "#checkme", expected)).toBe(expected)
     }
     it("js errors", async () => {
-        await expect_jslog("hello!")
+        await waitForPlutoToCalmDown(page)
         await page.waitForTimeout(100)
+        await expect_jslog("hello!")
         await page.click("#jslogbtn")
         await page.waitForTimeout(500)
         await page.click("#jslogbtn")
@@ -182,7 +184,7 @@ describe("with_js_link", () => {
         await page.click("#jslogbtn")
         await page.waitForTimeout(500)
 
-        await page.click(`pluto-cell[id="${yolotriggerid}}"] .runcell`)
+        await page.click(`pluto-cell[id="${yolotriggerid}"] .runcell`)
 
         await expect_jslog(`hello!clickclickyay KRATJEyay KRATJEhello!clicknee exception in Julia callback:ErrorException("bad")hello!clicknee link not found`)
     })

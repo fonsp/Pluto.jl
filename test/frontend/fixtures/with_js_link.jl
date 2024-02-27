@@ -364,7 +364,6 @@ end
 	}
 	let logyay = x => log("yay " + x)
 	let lognee = x => log("nee " + x)
-	log("hello!")
 
 	
 	
@@ -376,6 +375,9 @@ btn.addEventListener("click", () => {
 			f($name).then(logyay).catch(lognee)
 		}, 2000)
 })
+
+		
+	log("hello!")
 	
 return pre
 </script>
