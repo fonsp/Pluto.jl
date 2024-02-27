@@ -5,6 +5,7 @@ using Pluto: ServerSession, ClientSession, SessionActions
 using Pluto.Configuration
 using Pluto.Configuration: notebook_path_suggestion, from_flat_kwargs, _convert_to_flags
 using Pluto.WorkspaceManager: poll
+using LibGit2
 import URIs
 
 @testset "Configurations" begin
@@ -54,6 +55,9 @@ end
 
     @test _convert_to_flags(Configuration.CompilerOptions(compile="min")) ⊇
     ["--compile=min", "--startup-file=no", "--history-file=no"]
+
+    @test _convert_to_flags(Configuration.CompilerOptions(; code_coverage_file = "coverage.info", code_coverage_track = "user")) ⊇
+    ["--code-coverage=coverage.info", "--code-coverage=user"]
 end
 
 @testset "Authentication" begin
@@ -247,75 +251,50 @@ end
 end
 
 @testset "Code Coverage" begin
-    options = Pluto.Configuration.from_flat_kwargs(; launch_browser=false)
+    mktempdir() do path
+        cd(path) do
+            # We develop Example.jl in this folder
+            example_path = joinpath(path, "Example")
+            LibGit2.clone("https://github.com/JuliaLang/Example.jl", example_path)
+            example_src = joinpath(example_path, "src")
+            readdir(example_src)
 
-    🍭 = ServerSession(; options)
-    nb = Pluto.Notebook([
-        Pluto.Cell("str(x) = x == C_NULL ? nothing : unsafe_string(x)")
-        Pluto.Cell("Base.JLOptions().code_coverage")
-        Pluto.Cell("let opt = Base.JLOptions()
-        hasproperty(opt, :tracked_path) ? opt.tracked_path |> str : nothing
-        end")
-        Pluto.Cell("Base.JLOptions().output_code_coverage |> str")
-    ])
-    sn = (🍭, nb)
+            options = Pluto.Configuration.from_flat_kwargs(; launch_browser=false)
+            🍭 = ServerSession(; options)
+            🍭.options.compiler.code_coverage_track = "user"
+            if VERSION >= v"1.8"
+                # We change to track only this directory
+                🍭.options.compiler.code_coverage_track = "@$(path)"
+            end
 
-    function coverage_data(nb)
-        function str(x) 
-            s = strip(x, '"')
-            # Deal with Windows paths
-            out = replace(s, "\\\\" => "\\") |> String
+            nb = Pluto.Notebook([
+                Pluto.Cell("""import Pkg; Pkg.activate(raw"$(example_path)")""")
+                Pluto.Cell("using Example")
+                Pluto.Cell("""hello("Pluto")""")
+                Pluto.Cell("domath(5)")
+            ])
+            sn = (🍭, nb)
+
+            Pluto.update_run!(🍭, nb, nb.cells)
+            Pluto.WorkspaceManager.unmake_workspace(sn) # We need to close the workspace for coverage files to be generated
+
+            # We test that a .cov file was created for Example.jl. If coverage does not tracks any hit in the file, no .cov will be generated
+            @test any(endswith(".cov"), readdir(example_src))
+
+            # We clean the coverage files in the Pluto folder for julia < v1.8
+            if VERSION < v"1.8"
+                for (root, dirs, files) in walkdir(normpath(@__DIR__, ".."))
+                    for f in files
+                        if endswith(f, ".cov")
+                            path = joinpath(root, f)
+                            @info "Removing coverage file at $path"
+                            rm(path)
+                        end
+                    end
+                end
+            end
         end
-        (;
-            code_coverage = parse(Int, nb.cells[2].output.body),
-            tracked_path = nb.cells[3].output.body |> str,
-            output_code_coverage = nb.cells[4].output.body |> str,
-        )
     end
-    # Tests inspired by https://github.com/JuliaLang/julia/blob/4e7294423f4462244617af6f9eea425bd06a78a6/test/cmdlineargs.jl#L459
-    Pluto.update_run!(🍭, nb, nb.cells)
-    nd = coverage_data(nb)
-    @test nd.code_coverage == 0 # Defaults to 0, `none`
-    @test nd.tracked_path == ""
-    @test nd.output_code_coverage == ""
-    Pluto.WorkspaceManager.unmake_workspace(sn)
-
-    🍭.options.compiler.code_coverage_track = "user"
-    Pluto.update_run!(🍭, nb, nb.cells)
-    nd = coverage_data(nb)
-    @test nd.code_coverage == 1 # 1 is `user`
-    @test nd.tracked_path == ""
-    @test nd.output_code_coverage  == ""
-    Pluto.WorkspaceManager.unmake_workspace(sn)
-
-    🍭.options.compiler.code_coverage_track = "all"
-    Pluto.update_run!(🍭, nb, nb.cells)
-    nd = coverage_data(nb)
-    @test nd.code_coverage == 2 # 2 is `all`
-    @test nd.tracked_path == ""
-    @test nd.output_code_coverage  == ""
-    Pluto.WorkspaceManager.unmake_workspace(sn)
-
-    if VERSION >= v"1.8"
-        # This option with path was only introduced in v1.8
-        filepath = @__FILE__
-        🍭.options.compiler.code_coverage_track = "@$filepath"
-        Pluto.update_run!(🍭, nb, nb.cells)
-        nd = coverage_data(nb)
-        @test nd.code_coverage == 3 # 3 is `@<path>`
-        @test nd.tracked_path == filepath
-        @test nd.output_code_coverage  == ""
-        Pluto.WorkspaceManager.unmake_workspace(sn)
-    end
-
-    🍭.options.compiler.code_coverage_file = "coverage.info"
-    🍭.options.compiler.code_coverage_track = "user"
-    Pluto.update_run!(🍭, nb, nb.cells)
-    nd = coverage_data(nb)
-    @test nd.code_coverage == 1
-    @test nd.tracked_path == ""
-    @test endswith(nd.output_code_coverage , "coverage.info")
-    Pluto.WorkspaceManager.unmake_workspace(sn)
 end
 
 end
