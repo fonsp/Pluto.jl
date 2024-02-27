@@ -4,6 +4,16 @@
 using Markdown
 using InteractiveUtils
 
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
+        el
+    end
+end
+
 # ╔═╡ b0f2a778-885f-11ee-3d28-939ca4069ee8
 begin
 	import Pkg
@@ -12,9 +22,11 @@ begin
 		Pkg.PackageSpec(name="AbstractPlutoDingetjes", rev="Display.with_js_link")
 		# Pkg.PackageSpec(path="/Users/fons/Documents/AbstractPlutoDingetjes.jl/")
 		Pkg.PackageSpec(name="HypertextLiteral")
+		Pkg.PackageSpec(name="PlutoUI")
 	])
 
 	using AbstractPlutoDingetjes
+	using PlutoUI
 	using HypertextLiteral
 end
 
@@ -330,7 +342,10 @@ let
 end
 
 # ╔═╡ 8782cc14-eb1a-48a8-a114-2f71f77be275
-yolotrigger = "kratje"
+@bind yolotrigger CounterButton()
+
+# ╔═╡ e5df2451-f4b9-4511-b25f-1a5e463f3eb2
+name = yolotrigger > 0 ? "krat" : "kratje"
 
 # ╔═╡ 3c5c1325-ad3e-4c54-8d29-c17939bb8529
 function useme(x)
@@ -357,7 +372,7 @@ const f = $(AbstractPlutoDingetjes.Display.with_js_link(useme))
 
 btn.addEventListener("click", () => {
 		setTimeout(async () => {
-			f($yolotrigger).then(logyay).catch(lognee)
+			f($name).then(logyay).catch(lognee)
 		}, 2000)
 })
 	
@@ -409,5 +424,6 @@ return pre
 # ╟─f344c4cb-8226-4145-ab92-a37542f697dd
 # ╠═8bbd32f8-56f7-4f29-aea8-6906416f6cfd
 # ╠═8782cc14-eb1a-48a8-a114-2f71f77be275
+# ╠═e5df2451-f4b9-4511-b25f-1a5e463f3eb2
 # ╠═3c5c1325-ad3e-4c54-8d29-c17939bb8529
 # ╠═6c5f79b9-598d-41ad-800d-0a9ff63d6f6c

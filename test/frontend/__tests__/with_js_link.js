@@ -168,9 +168,7 @@ describe("with_js_link", () => {
         await expect_jslog("hello!yay KRATJE")
 
         const yolotriggerid = "8782cc14-eb1a-48a8-a114-2f71f77be275"
-        await writeSingleLineInPlutoInput(page, `pluto-cell[id="${yolotriggerid}"] pluto-input`, 'yolotrigger = "krat"')
-        await runAllChanged(page)
-
+        await page.click(`pluto-cell[id="${yolotriggerid}"] pluto-output input[type="button"]`)
         await expect_jslog("hello!yay KRATJEhello!")
         await page.click("#jslogbtn")
         await expect_jslog(`hello!yay KRATJEhello!exception in Julia callback:ErrorException("bad")`)
