@@ -69,7 +69,7 @@ describe("JavaScript API", () => {
         )
         await runAllChanged(page)
         await waitForPlutoToCalmDown(page, { polling: 100 })
-        let initialLastCellContent = await waitForContentToBecome(page, `pluto-cell:last-child pluto-output`, expected)
+        let initialLastCellContent = await waitForContentToBecome(page, `pluto-cell:last-child pluto-output span`, expected)
         expect(initialLastCellContent).toBe(expected)
 
         await paste(
