@@ -256,16 +256,18 @@ end
             # We develop Example.jl in this folder
             example_path = joinpath(path, "Example")
             LibGit2.clone("https://github.com/JuliaLang/Example.jl", example_path)
-            example_src = joinpath(example_path, "src")
-            readdir(example_src)
+            example_src = joinpath(example_path, "src", "Example.jl")
 
             options = Pluto.Configuration.from_flat_kwargs(; launch_browser=false)
             🍭 = ServerSession(; options)
             🍭.options.compiler.code_coverage_track = "user"
+            🍭.options.compiler.code_coverage_file = "coverage.info"
             if VERSION >= v"1.8"
                 # We change to track only this directory
                 🍭.options.compiler.code_coverage_track = "@$(path)"
             end
+
+            covfile = joinpath(path, "coverage.info")
 
             nb = Pluto.Notebook([
                 Pluto.Cell("""import Pkg; Pkg.activate(raw"$(example_path)")""")
@@ -278,21 +280,7 @@ end
             Pluto.update_run!(🍭, nb, nb.cells)
             Pluto.WorkspaceManager.unmake_workspace(sn) # We need to close the workspace for coverage files to be generated
 
-            # We test that a .cov file was created for Example.jl. If coverage does not tracks any hit in the file, no .cov will be generated
-            @test any(endswith(".cov"), readdir(example_src))
-
-            # We clean the coverage files in the Pluto folder for julia < v1.8
-            if VERSION < v"1.8"
-                for (root, dirs, files) in walkdir(normpath(@__DIR__, ".."))
-                    for f in files
-                        if endswith(f, ".cov")
-                            path = joinpath(root, f)
-                            @info "Removing coverage file at $path"
-                            rm(path)
-                        end
-                    end
-                end
-            end
+            @test contains(read(covfile, String), example_src)
         end
     end
 end
