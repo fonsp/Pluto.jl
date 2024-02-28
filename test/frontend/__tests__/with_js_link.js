@@ -180,7 +180,7 @@ describe("with_js_link", () => {
 
         const yolotriggerid = "8782cc14-eb1a-48a8-a114-2f71f77be275"
         await page.click(`pluto-cell[id="${yolotriggerid}"] pluto-output input[type="button"]`)
-        await expect_jslog("hello!clickclickyay KRATJEyay KRATJEhello!")
+        await expect_jslog(`${prefix}hello!`)
         await page.click("#jslogbtn")
         await expect_jslog(`${prefix}hello!clicknee exception in Julia callback:ErrorException("bad")`)
 
