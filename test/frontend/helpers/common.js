@@ -66,7 +66,7 @@ const with_connections_debug = (page, action) => {
 export const getTextContent = (page, selector) => {
   // https://developer.mozilla.org/en-US/docs/Web/API/Node/textContent#differences_from_innertext
   return page.evaluate(
-    (selector) => document.querySelector(selector).textContent,
+    (selector) => document.querySelector(selector)?.textContent,
     selector
   );
 };
@@ -141,7 +141,7 @@ export const waitForContentToBecome = async (/** @type {puppeteer.Page} */ page,
     targetContent
   );
   } catch(e) {
-    console.log("Failed! Current content:", await getTextContent(page, selector))
+    console.error("Failed! Current content:", JSON.stringify(await getTextContent(page, selector)), JSON.stringify(targetContent))
     throw(e)
   }
   return getTextContent(page, selector);
@@ -216,7 +216,7 @@ export const createPage = async (browser) => {
   return page
 };
 
-let testname = () => expect.getState()?.currentTestName?.replace(/ /g, "_") ?? "unnkown";
+let testname = () => expect.getState()?.currentTestName?.replace(/[ \:]/g, "_") ?? "unnkown";
 
 export const lastElement = (arr) => arr[arr.length - 1];
 

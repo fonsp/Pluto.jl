@@ -22,9 +22,11 @@ begin
 		Pkg.PackageSpec(name="AbstractPlutoDingetjes", rev="Display.with_js_link")
 		# Pkg.PackageSpec(path="/Users/fons/Documents/AbstractPlutoDingetjes.jl/")
 		Pkg.PackageSpec(name="HypertextLiteral")
+		Pkg.PackageSpec(name="PlutoUI")
 	])
 
 	using AbstractPlutoDingetjes
+	using PlutoUI
 	using HypertextLiteral
 end
 
@@ -60,23 +62,25 @@ end
 # ╔═╡ 37fc039e-7a4d-4d2d-80f3-d409a9ee096d
 # ╠═╡ disabled = true
 #=╠═╡
-let
-	function f(x)
-		cool(x)
-	end
-	@htl("""
-	<script>
-	const sqrt_from_julia = $(AbstractPlutoDingetjes.Display.with_js_link(f))
+# let
+# 	function f(x)
+# 		cool(x)
+# 	end
+# 	@htl("""
+# 	<script>
+# 	const sqrt_from_julia = $(AbstractPlutoDingetjes.Display.with_js_link(f))
 	
-	let id = setInterval(async () => {
-		console.log(await sqrt_from_julia("hello"))
-	}, 50)
+# 	let id = setInterval(async () => {
+# 		console.log(await sqrt_from_julia("hello"))
+# 	}, 500)
 	
-	invalidation.then(() => clearInterval(id))
+# 	invalidation.then(() => setTimeout(() => {
+# 		clearInterval(id)
+# 	}, 1000))
 	
-	</script>
-	""")
-end
+# 	</script>
+# 	""")
+# end
   ╠═╡ =#
 
 # ╔═╡ 977c59f7-9f3a-40ae-981d-2a8a48e08349
@@ -144,23 +148,6 @@ md"""
 
 # ╔═╡ 60444c4c-5705-4b92-8eac-2c102f14f395
 
-
-# ╔═╡ 5fe4fc2e-a502-4b05-bc97-6b6c3525d7d3
-md"""
-# Not a background task
-
-JS link calculations are not background tasks – they run in sequence will all other computations in the notebook. If a Julia calculation is requested with a JS link, this task will be added to the notebook's execution queue. This means:
-- JS link calculations **do not run in parallel** to other computations in the notebook.
-- If something else is running in the notebook, like running cells, then the JS link requests will wait for other computations to finish before executing.
-- Vice versa, if your JS link requests take a long time to execute, then all other activity in the notebook (like `@bind`) is blocked.
-
-!!! warning "Don't make too many requests!"
-	If you make too many requests from JS, then the notebook becomes almost unusable. As a developer using this API, you need to take care to keep your users' notebooks responsive.
-
-	The JS link request returns a `Promise` that resolves to the response. Consider keeping track of whether you are currently requesting something from Julia, and avoid making more requests in the meantime.
-
-	It can also help to use **throttling** or **debouncing** to reduce the number of requests that you make.
-"""
 
 # ╔═╡ 07c832c1-fd8f-44de-bdfa-389048c1e4e9
 md"""
@@ -302,7 +289,7 @@ end
 
 # ╔═╡ 480aea45-da00-4e89-b43a-38e4d1827ec2
 function_evaluator("coOL") do input
-	@warn("You should see the following error:", [1,2,"asdf"])
+	@warn("You should see the following error:")
 	
 	error("You should see this error $(uppercase(input))")
 end
@@ -354,6 +341,48 @@ let
 	HTML(html_repr)
 end
 
+# ╔═╡ 8782cc14-eb1a-48a8-a114-2f71f77be275
+@bind yolotrigger CounterButton()
+
+# ╔═╡ e5df2451-f4b9-4511-b25f-1a5e463f3eb2
+name = yolotrigger > 0 ? "krat" : "kratje"
+
+# ╔═╡ 3c5c1325-ad3e-4c54-8d29-c17939bb8529
+function useme(x)
+	length(x) > 5 ? uppercase(x) : error("bad")
+end
+
+# ╔═╡ 6c5f79b9-598d-41ad-800d-0a9ff63d6f6c
+@htl("""
+<input type=submit id=jslogbtn>
+<script id="yolo">
+	const btn = currentScript.parentElement.querySelector("input")
+	const pre = this ?? document.createElement("pre")
+	pre.id = "checkme"
+	let log = (t) => {
+		pre.innerText = pre.innerText + "\\n" + t
+	}
+	let logyay = x => log("yay " + x)
+	let lognee = x => log("nee " + x)
+
+	
+	
+const f = $(AbstractPlutoDingetjes.Display.with_js_link(useme))
+
+btn.addEventListener("click", () => {
+	log("click")
+		setTimeout(async () => {
+			f($name).then(logyay).catch(lognee)
+		}, 2000)
+})
+
+		
+	log("hello!")
+	
+return pre
+</script>
+""")
+
 # ╔═╡ Cell order:
 # ╠═b0f2a778-885f-11ee-3d28-939ca4069ee8
 # ╠═4b80dda0-74b6-4a0e-a50e-61c5380111a4
@@ -372,7 +401,6 @@ end
 # ╠═5e42ea32-a1ce-49db-b55f-5e252c8c3f57
 # ╠═60444c4c-5705-4b92-8eac-2c102f14f395
 # ╠═2bff3975-5918-40fe-9761-eb7b47f16df2
-# ╟─5fe4fc2e-a502-4b05-bc97-6b6c3525d7d3
 # ╟─07c832c1-fd8f-44de-bdfa-389048c1e4e9
 # ╠═10d80b00-f7ab-4bd7-9ea7-cca98c089e9c
 # ╠═53e60352-3a56-4b5c-9568-1ac58b758497
@@ -398,3 +426,7 @@ end
 # ╠═7f6ada79-8e3b-40b7-b477-ce05ae79a668
 # ╟─f344c4cb-8226-4145-ab92-a37542f697dd
 # ╠═8bbd32f8-56f7-4f29-aea8-6906416f6cfd
+# ╠═8782cc14-eb1a-48a8-a114-2f71f77be275
+# ╠═e5df2451-f4b9-4511-b25f-1a5e463f3eb2
+# ╠═3c5c1325-ad3e-4c54-8d29-c17939bb8529
+# ╠═6c5f79b9-598d-41ad-800d-0a9ff63d6f6c

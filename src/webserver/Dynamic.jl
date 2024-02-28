@@ -530,7 +530,7 @@ responses[:request_js_link_response] = function response_request_js_link_respons
     require_notebook(🙋)
     @assert will_run_code(🙋.notebook)
 
-    withtoken(🙋.notebook.executetoken) do
+    Threads.@spawn try
         result = WorkspaceManager.eval_fetch_in_workspace(
             (🙋.session, 🙋.notebook), 
             quote
@@ -544,6 +544,8 @@ responses[:request_js_link_response] = function response_request_js_link_respons
         )
         
         putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🐤, result, nothing, nothing, 🙋.initiator))
+    catch ex
+        @error "Error in request_js_link_response" exception=(ex, stacktrace(catch_backtrace()))
     end
 end
 

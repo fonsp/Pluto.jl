@@ -1,6 +1,16 @@
 import puppeteer from "puppeteer"
 import { saveScreenshot, createPage, waitForContentToBecome, getTextContent } from "../helpers/common"
-import { importNotebook, getPlutoUrl, shutdownCurrentNotebook, setupPlutoBrowser, getLogs, getLogSelector } from "../helpers/pluto"
+import {
+    importNotebook,
+    getPlutoUrl,
+    shutdownCurrentNotebook,
+    setupPlutoBrowser,
+    getLogs,
+    getLogSelector,
+    writeSingleLineInPlutoInput,
+    runAllChanged,
+    waitForPlutoToCalmDown,
+} from "../helpers/pluto"
 
 describe("with_js_link", () => {
     /**
@@ -137,16 +147,48 @@ describe("with_js_link", () => {
 
         await page.waitForTimeout(4000)
 
-        // they dont run in parallel so right now only cc1 should be finished
-        expect(await page.evaluate((s) => document.querySelector(s).textContent, ev_output_sel("c1"))).toBe("CC1")
-        expect(await page.evaluate((s) => document.querySelector(s).textContent, ev_output_sel("c2"))).toBe("C2")
-
-        await expect_ev_output("c1", "CC1")
-        await expect_ev_output("c2", "CC2")
-
         // NOT
-        // they should run in parallel: after 4 seconds both should be finished
+        // they dont run in parallel so right now only cc1 should be finished
         // expect(await page.evaluate((s) => document.querySelector(s).textContent, ev_output_sel("c1"))).toBe("CC1")
-        // expect(await page.evaluate((s) => document.querySelector(s).textContent, ev_output_sel("c2"))).toBe("CC2")
+        // expect(await page.evaluate((s) => document.querySelector(s).textContent, ev_output_sel("c2"))).toBe("C2")
+
+        // await expect_ev_output("c1", "CC1")
+        // await expect_ev_output("c2", "CC2")
+
+        // they should run in parallel: after 4 seconds both should be finished
+        expect(await page.evaluate((s) => document.querySelector(s).textContent, ev_output_sel("c1"))).toBe("CC1")
+        expect(await page.evaluate((s) => document.querySelector(s).textContent, ev_output_sel("c2"))).toBe("CC2")
+    })
+
+    const expect_jslog = async (expected) => {
+        expect(await waitForContentToBecome(page, "#checkme", expected)).toBe(expected)
+    }
+    it("js errors", async () => {
+        await waitForPlutoToCalmDown(page)
+        await page.waitForTimeout(100)
+        await expect_jslog("hello!")
+        await page.click("#jslogbtn")
+        await page.waitForTimeout(500)
+        await page.click("#jslogbtn")
+        await page.waitForTimeout(100)
+
+        // We clicked twice, but sometimes it only registers one click for some reason. I don't care, so let's check for either.
+        let prefix = await Promise.race([
+            waitForContentToBecome(page, "#checkme", "hello!clickyay KRATJE"),
+            waitForContentToBecome(page, "#checkme", "hello!clickclickyay KRATJEyay KRATJE"),
+        ])
+
+        const yolotriggerid = "8782cc14-eb1a-48a8-a114-2f71f77be275"
+        await page.click(`pluto-cell[id="${yolotriggerid}"] pluto-output input[type="button"]`)
+        await expect_jslog(`${prefix}hello!`)
+        await page.click("#jslogbtn")
+        await expect_jslog(`${prefix}hello!clicknee exception in Julia callback:ErrorException("bad")`)
+
+        await page.click("#jslogbtn")
+        await page.waitForTimeout(500)
+
+        await page.click(`pluto-cell[id="${yolotriggerid}"] .runcell`)
+
+        await expect_jslog(`${prefix}hello!clicknee exception in Julia callback:ErrorException("bad")clickhello!nee link not found`)
     })
 })

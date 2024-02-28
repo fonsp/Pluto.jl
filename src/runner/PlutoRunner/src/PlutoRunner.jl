@@ -694,6 +694,7 @@ function move_vars(
     methods_to_delete::Set{Tuple{UUID,Tuple{Vararg{Symbol}}}},
     module_imports_to_move::Set{Expr},
     cells_to_macro_invalidate::Set{UUID},
+    cells_to_js_link_invalidate::Set{UUID},
     keep_registered::Set{Symbol},
 )
     old_workspace = getfield(Main, old_workspace_name)
@@ -704,7 +705,8 @@ function move_vars(
     for cell_id in cells_to_macro_invalidate
         delete!(cell_expanded_exprs, cell_id)
     end
-
+    foreach(unregister_js_link, cells_to_js_link_invalidate)
+    
     # TODO: delete
     Core.eval(new_workspace, :(import ..($(old_workspace_name))))
 
@@ -2577,6 +2579,9 @@ end
 function unregister_js_link(cell_id::UUID)
     # cancel old links
     old_links = get!(() -> Dict{String,JSLink}(), cell_js_links, cell_id)
+    for (name, link) in old_links
+        link.cancelled_ref[] = true
+    end
     for (name, link) in old_links
         c = link.on_cancellation
         c === nothing || c()
