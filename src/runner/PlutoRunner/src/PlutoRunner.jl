@@ -283,14 +283,9 @@ function try_macroexpand(mod::Module, notebook_id::UUID, cell_id::UUID, expr; ca
         Expr(:block, expr)
     end
 
-    logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
-    if logger.workspace_count < moduleworkspace_count[]
-        logger = pluto_cell_loggers[cell_id] = PlutoCellLogger(notebook_id, cell_id)
-    end
+    capture_logger = CaptureLogger(nothing, get_cell_logger(notebook_id, cell_id), Dict[])
 
-    capture_logger = CaptureLogger(nothing, logger, Dict[])
-
-    expanded_expr, elapsed_ns = with_logger_and_io_to_logs(capture_logger; capture_stdout, stdio_loglevel=stdout_log_level) do
+    expanded_expr, elapsed_ns = with_logger_and_io_to_logs(capture_logger; capture_stdout) do
         elapsed_ns = time_ns()
         expanded_expr = macroexpand(mod, expr_not_toplevel)::Expr
         elapsed_ns = time_ns() - elapsed_ns
@@ -531,10 +526,7 @@ function run_expression(
     old_currently_running_cell_id = currently_running_cell_id[]
     currently_running_cell_id[] = cell_id
 
-    logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
-    if logger.workspace_count < moduleworkspace_count[]
-        logger = pluto_cell_loggers[cell_id] = PlutoCellLogger(notebook_id, cell_id)
-    end
+    logger = get_cell_logger(notebook_id, cell_id)
 
     # reset published objects
     cell_published_objects[cell_id] = Dict{String,Any}()
@@ -596,7 +588,7 @@ function run_expression(
         throw("Expression still contains macro calls!!")
     end
 
-    result, runtime = with_logger_and_io_to_logs(logger; capture_stdout, stdio_loglevel=stdout_log_level) do # about 200ns + 3ms overhead
+    result, runtime = with_logger_and_io_to_logs(logger; capture_stdout) do # about 200ns + 3ms overhead
         if function_wrapped_info === nothing
             toplevel_expr = Expr(:toplevel, expr)
             wrapped = timed_expr(toplevel_expr)
@@ -934,8 +926,7 @@ function formatted_result_of(
     errored = ans isa CapturedException
 
     output_formatted = if (!ends_with_semicolon || errored)
-        logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
-        with_logger_and_io_to_logs(logger; capture_stdout, stdio_loglevel=stdout_log_level) do
+        with_logger_and_io_to_logs(get_cell_logger(notebook_id, cell_id); capture_stdout) do
             format_output(ans; context=IOContext(
             default_iocontext, 
             :extra_items=>extra_items, 
@@ -2566,8 +2557,6 @@ function core_with_js_link(io, callback, on_cancellation)
     
     _cell_id = get(io, :pluto_cell_id, currently_running_cell_id[])::UUID
     
-    # TODO is this okay? prob not
-    # link_id = objectid2str(callback)
     link_id = String(rand('a':'z', 16))
     
     links = get!(() -> Dict{String,JSLink}(), cell_js_links, _cell_id)
@@ -2594,20 +2583,17 @@ end
 function evaluate_js_link(notebook_id::UUID, cell_id::UUID, link_id::String, input::Any)
     links = get(() -> Dict{String,JSLink}(), cell_js_links, cell_id)
     link = get(links, link_id, nothing)
-    if link === nothing
-        # TODO log to notebook
-        @error "🚨 AbstractPlutoDingetjes: JS link not found." link_id
-        
-        (false, "link not found")
-    elseif link.cancelled_ref[]
-        # TODO log to notebook
-        @error "🚨 AbstractPlutoDingetjes: JS link has already been invalidated." link_id
-        
-        (false, "link has been invalidated")
-    else
-        logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
-        
-        result = with_logger_and_io_to_logs(logger; capture_stdout=false, stdio_loglevel=stdout_log_level) do
+    
+    with_logger_and_io_to_logs(get_cell_logger(notebook_id, cell_id); capture_stdout=false) do
+        if link === nothing
+            @warn "🚨 AbstractPlutoDingetjes: JS link not found." link_id
+            
+            (false, "link not found")
+        elseif link.cancelled_ref[]
+            @warn "🚨 AbstractPlutoDingetjes: JS link has already been invalidated." link_id
+            
+            (false, "link has been invalidated")
+        else
             try
                 result = link.callback(input)
                 assertpackable(result)
@@ -2661,6 +2647,14 @@ end
 
 const pluto_cell_loggers = Dict{UUID,PlutoCellLogger}() # One logger per cell
 const pluto_log_channels = Dict{UUID,Channel{Any}}() # One channel per notebook
+
+function get_cell_logger(notebook_id, cell_id)
+    logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
+    if logger.workspace_count < moduleworkspace_count[]
+        logger = pluto_cell_loggers[cell_id] = PlutoCellLogger(notebook_id, cell_id)
+    end
+    logger
+end
 
 function Logging.shouldlog(logger::PlutoCellLogger, level, _module, _...)
     # Accept logs
@@ -2824,7 +2818,7 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     result
 end
 
-function with_logger_and_io_to_logs(f, logger; capture_stdout=true, stdio_loglevel=Logging.LogLevel(1))
+function with_logger_and_io_to_logs(f, logger; capture_stdout=true, stdio_loglevel=stdout_log_level)
     Logging.with_logger(logger) do
         with_io_to_logs(f; enabled=capture_stdout, loglevel=stdio_loglevel)
     end
