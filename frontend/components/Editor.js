@@ -662,6 +662,19 @@ export class Editor extends Component {
                     false
                 )
             },
+            request_js_link_response: (cell_id, link_id, input) => {
+                return this.client
+                    .send(
+                        "request_js_link_response",
+                        {
+                            cell_id,
+                            link_id,
+                            input,
+                        },
+                        { notebook_id: this.state.notebook.notebook_id }
+                    )
+                    .then((r) => r.message)
+            },
             /** This actions avoids pushing selected cells all the way down, which is too heavy to handle! */
             get_selected_cells: (cell_id, /** @type {boolean} */ allow_other_selected_cells) =>
                 allow_other_selected_cells ? this.state.selected_cells : [cell_id],
