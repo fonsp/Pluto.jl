@@ -141,7 +141,7 @@ export const waitForContentToBecome = async (/** @type {puppeteer.Page} */ page,
     targetContent
   );
   } catch(e) {
-    console.error("Failed! Current content:", JSON.stringify(await getTextContent(page, selector)), JSON.stringify(targetContent))
+    console.error("Failed! Current content: ", JSON.stringify(await getTextContent(page, selector)), "Expected content: ", JSON.stringify(targetContent))
     throw(e)
   }
   return getTextContent(page, selector);
