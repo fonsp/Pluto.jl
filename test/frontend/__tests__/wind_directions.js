@@ -95,14 +95,14 @@ describe("wind_directions", () => {
             ).toBe(expected)
         }
 
-        await expect_chosen_directions('chosen_directions_copy\n"North"')
+        await expect_chosen_directions('chosen_directions_copyString1"North"')
 
         expect(await page.evaluate((sel) => document.querySelector(sel).checked, checkbox_selector(0))).toBe(true)
 
         await page.click(checkbox_selector(2))
         await waitForPlutoToCalmDown(page)
 
-        await expect_chosen_directions('chosen_directions_copy\n"North"\n"South"')
+        await expect_chosen_directions('chosen_directions_copyString1"North"2"South"')
 
         expect(await page.evaluate((sel) => document.querySelector(sel).checked, checkbox_selector(0))).toBe(true)
         expect(await page.evaluate((sel) => document.querySelector(sel).checked, checkbox_selector(1))).toBe(false)

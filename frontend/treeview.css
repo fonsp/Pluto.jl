@@ -341,6 +341,7 @@ jlerror li .frame-line-preview pre:not(.asdfdsaf) {
     border-radius: var(--br);
     overflow: hidden;
     position: relative;
+    display: block;
 }
 
 jlerror li:not(.from_this_cell) .frame-line-preview pre::after {
@@ -353,6 +354,9 @@ jlerror li:not(.from_this_cell) .frame-line-preview pre::after {
     opacity: 0.6;
 }
 
+jlerror li .frame-line-preview pre > code {
+    padding: 0;
+}
 jlerror li .frame-line-preview pre > code:not(:only-child).frame-line {
     background: var(--cm-highlighted);
 }
