@@ -283,14 +283,9 @@ function try_macroexpand(mod::Module, notebook_id::UUID, cell_id::UUID, expr; ca
         Expr(:block, expr)
     end
 
-    logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
-    if logger.workspace_count < moduleworkspace_count[]
-        logger = pluto_cell_loggers[cell_id] = PlutoCellLogger(notebook_id, cell_id)
-    end
+    capture_logger = CaptureLogger(nothing, get_cell_logger(notebook_id, cell_id), Dict[])
 
-    capture_logger = CaptureLogger(nothing, logger, Dict[])
-
-    expanded_expr, elapsed_ns = with_logger_and_io_to_logs(capture_logger; capture_stdout, stdio_loglevel=stdout_log_level) do
+    expanded_expr, elapsed_ns = with_logger_and_io_to_logs(capture_logger; capture_stdout) do
         elapsed_ns = time_ns()
         expanded_expr = macroexpand(mod, expr_not_toplevel)::Expr
         elapsed_ns = time_ns() - elapsed_ns
@@ -531,16 +526,16 @@ function run_expression(
     old_currently_running_cell_id = currently_running_cell_id[]
     currently_running_cell_id[] = cell_id
 
-    logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
-    if logger.workspace_count < moduleworkspace_count[]
-        logger = pluto_cell_loggers[cell_id] = PlutoCellLogger(notebook_id, cell_id)
-    end
+    logger = get_cell_logger(notebook_id, cell_id)
 
     # reset published objects
     cell_published_objects[cell_id] = Dict{String,Any}()
 
     # reset registered bonds
     cell_registered_bond_names[cell_id] = Set{Symbol}()
+
+    # reset JS links
+    unregister_js_link(cell_id)
 
     # If the cell contains macro calls, we want those macro calls to preserve their identity,
     # so we macroexpand this earlier (during expression explorer stuff), and then we find it here.
@@ -593,7 +588,7 @@ function run_expression(
         throw("Expression still contains macro calls!!")
     end
 
-    result, runtime = with_logger_and_io_to_logs(logger; capture_stdout, stdio_loglevel=stdout_log_level) do # about 200ns + 3ms overhead
+    result, runtime = with_logger_and_io_to_logs(logger; capture_stdout) do # about 200ns + 3ms overhead
         if function_wrapped_info === nothing
             toplevel_expr = Expr(:toplevel, expr)
             wrapped = timed_expr(toplevel_expr)
@@ -691,6 +686,7 @@ function move_vars(
     methods_to_delete::Set{Tuple{UUID,Tuple{Vararg{Symbol}}}},
     module_imports_to_move::Set{Expr},
     cells_to_macro_invalidate::Set{UUID},
+    cells_to_js_link_invalidate::Set{UUID},
     keep_registered::Set{Symbol},
 )
     old_workspace = getfield(Main, old_workspace_name)
@@ -701,7 +697,8 @@ function move_vars(
     for cell_id in cells_to_macro_invalidate
         delete!(cell_expanded_exprs, cell_id)
     end
-
+    foreach(unregister_js_link, cells_to_js_link_invalidate)
+    
     # TODO: delete
     Core.eval(new_workspace, :(import ..($(old_workspace_name))))
 
@@ -929,8 +926,7 @@ function formatted_result_of(
     errored = ans isa CapturedException
 
     output_formatted = if (!ends_with_semicolon || errored)
-        logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
-        with_logger_and_io_to_logs(logger; capture_stdout, stdio_loglevel=stdout_log_level) do
+        with_logger_and_io_to_logs(get_cell_logger(notebook_id, cell_id); capture_stdout) do
             format_output(ans; context=IOContext(
             default_iocontext, 
             :extra_items=>extra_items, 
@@ -1002,6 +998,7 @@ const default_iocontext = IOContext(devnull,
     :is_pluto => true, 
     :pluto_supported_integration_features => supported_integration_features,
     :pluto_published_to_js => (io, x) -> core_published_to_js(io, x),
+    :pluto_with_js_link => (io, callback, on_cancellation) -> core_with_js_link(io, callback, on_cancellation),
 )
 
 const default_stdout_iocontext = IOContext(devnull, 
@@ -1210,9 +1207,22 @@ function convert_parse_error_to_dict(ex)
    )
 end
 
+"""
+*Internal* wrapper for syntax errors which have diagnostics.
+Thrown through PlutoRunner.throw_syntax_error
+"""
+struct PrettySyntaxError <: Exception
+    ex::Any
+end
+
 function throw_syntax_error(@nospecialize(syntax_err))
     syntax_err isa String && (syntax_err = "syntax: $syntax_err")
     syntax_err isa Exception || (syntax_err = ErrorException(syntax_err))
+
+    if has_julia_syntax && syntax_err isa Base.Meta.ParseError && syntax_err.detail isa Base.JuliaSyntax.ParseError
+        syntax_err = PrettySyntaxError(syntax_err)
+    end
+
     throw(syntax_err)
 end
 
@@ -1239,8 +1249,8 @@ function frame_url(frame::Base.StackTraces.StackFrame)
 end
 
 function format_output(val::CapturedException; context=default_iocontext)
-    if has_julia_syntax && val.ex isa Base.Meta.ParseError && val.ex.detail isa Base.JuliaSyntax.ParseError
-        dict = convert_parse_error_to_dict(val.ex.detail)
+    if has_julia_syntax && val.ex isa PrettySyntaxError
+        dict = convert_parse_error_to_dict(val.ex.ex.detail)
         return dict, MIME"application/vnd.pluto.parseerror+object"()
     end
 
@@ -1337,7 +1347,7 @@ end
 function show_richest_withreturned(context::IOContext, @nospecialize(args))
     buffer = IOBuffer(; sizehint=0)
     val = show_richest(IOContext(buffer, context), args)
-    return (resize!(buffer.data, buffer.size), val)
+    return (take!(buffer), val)
 end
 
 "Super important thing don't change."
@@ -1743,6 +1753,9 @@ const integrations = Integration[
                 supported!(AbstractPlutoDingetjes.Display)
                 if isdefined(AbstractPlutoDingetjes.Display, :published_to_js)
                     supported!(AbstractPlutoDingetjes.Display.published_to_js)
+                end
+                if isdefined(AbstractPlutoDingetjes.Display, :with_js_link)
+                    supported!(AbstractPlutoDingetjes.Display.with_js_link)
                 end
             end
 
@@ -2527,6 +2540,73 @@ function Base.show(io::IO, m::MIME"text/html", e::DivElement)
     Base.show(io, m, embed_display(e))
 end
 
+
+###
+# JS LINK
+###
+
+struct JSLink
+    callback::Function
+    on_cancellation::Union{Nothing,Function}
+    cancelled_ref::Ref{Bool}
+end
+
+const cell_js_links = Dict{UUID,Dict{String,JSLink}}()
+
+function core_with_js_link(io, callback, on_cancellation)
+    
+    _cell_id = get(io, :pluto_cell_id, currently_running_cell_id[])::UUID
+    
+    link_id = String(rand('a':'z', 16))
+    
+    links = get!(() -> Dict{String,JSLink}(), cell_js_links, _cell_id)
+    links[link_id] = JSLink(callback, on_cancellation, Ref(false))
+    
+    write(io, "/* See the documentation for AbstractPlutoDingetjes.Display.with_js_link */ _internal_getJSLinkResponse(\"$(_cell_id)\", \"$(link_id)\")")
+end
+
+function unregister_js_link(cell_id::UUID)
+    # cancel old links
+    old_links = get!(() -> Dict{String,JSLink}(), cell_js_links, cell_id)
+    for (name, link) in old_links
+        link.cancelled_ref[] = true
+    end
+    for (name, link) in old_links
+        c = link.on_cancellation
+        c === nothing || c()
+    end
+
+    # clear
+    cell_js_links[cell_id] = Dict{String,JSLink}()
+end
+
+function evaluate_js_link(notebook_id::UUID, cell_id::UUID, link_id::String, input::Any)
+    links = get(() -> Dict{String,JSLink}(), cell_js_links, cell_id)
+    link = get(links, link_id, nothing)
+    
+    with_logger_and_io_to_logs(get_cell_logger(notebook_id, cell_id); capture_stdout=false) do
+        if link === nothing
+            @warn "🚨 AbstractPlutoDingetjes: JS link not found." link_id
+            
+            (false, "link not found")
+        elseif link.cancelled_ref[]
+            @warn "🚨 AbstractPlutoDingetjes: JS link has already been invalidated." link_id
+            
+            (false, "link has been invalidated")
+        else
+            try
+                result = link.callback(input)
+                assertpackable(result)
+                
+                (true, result)
+            catch ex
+                @error "🚨 AbstractPlutoDingetjes.Display.with_js_link: Exception while evaluating Julia callback." input exception=(ex, catch_backtrace())
+                (false, "exception in Julia callback:\n\n$(ex)")
+            end
+        end
+    end
+end
+
 ###
 # LOGGING
 ###
@@ -2567,6 +2647,14 @@ end
 
 const pluto_cell_loggers = Dict{UUID,PlutoCellLogger}() # One logger per cell
 const pluto_log_channels = Dict{UUID,Channel{Any}}() # One channel per notebook
+
+function get_cell_logger(notebook_id, cell_id)
+    logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
+    if logger.workspace_count < moduleworkspace_count[]
+        logger = pluto_cell_loggers[cell_id] = PlutoCellLogger(notebook_id, cell_id)
+    end
+    logger
+end
 
 function Logging.shouldlog(logger::PlutoCellLogger, level, _module, _...)
     # Accept logs
@@ -2730,7 +2818,7 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     result
 end
 
-function with_logger_and_io_to_logs(f, logger; capture_stdout=true, stdio_loglevel=Logging.LogLevel(1))
+function with_logger_and_io_to_logs(f, logger; capture_stdout=true, stdio_loglevel=stdout_log_level)
     Logging.with_logger(logger) do
         with_io_to_logs(f; enabled=capture_stdout, loglevel=stdio_loglevel)
     end

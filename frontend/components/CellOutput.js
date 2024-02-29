@@ -410,6 +410,11 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                                 // @ts-ignore
                                 getPublishedObject: (id) => cell.getPublishedObject(id),
 
+                                _internal_getJSLinkResponse: (cell_id, link_id) => (input) =>
+                                    pluto_actions.request_js_link_response(cell_id, link_id, input).then(([success, result]) => {
+                                        if (success) return result
+                                        throw result
+                                    }),
                                 getBoundElementValueLikePluto: get_input_value,
                                 setBoundElementValueLikePluto: set_input_value,
                                 getBoundElementEventNameLikePluto: eventof,

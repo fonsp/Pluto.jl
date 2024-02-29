@@ -488,7 +488,7 @@ pluto-output details summary {
     border-radius: 3px;
     padding: 0.5em;
     margin: -0.5em -0.5em 0;
-    transition: color .25s ease-in-out, background-color .25s ease-in-out;
+    transition: color 0.25s ease-in-out, background-color 0.25s ease-in-out;
     /* Border may have transparency, let's not change the border with a background-color */
     background-clip: padding-box;
 }
@@ -540,7 +540,7 @@ dialog#export {
     height: 130px;
     background: var(--export-bg-color);
     color: var(--export-color);
-    transform: translateY(-100%);
+    transform: translateY(calc(-100% - 1px));
     /* overlay: none !important; */
     overflow: visible;
     margin: 0;
@@ -1733,27 +1733,32 @@ pluto-cell > button.add_cell > span::after {
 }
 
 pluto-input > .input_context_menu ul {
-    left: 100%;
-    top: -8px;
     margin: 0;
     padding: 0px;
     border-radius: 6px;
     display: grid;
     grid-template-columns: max-content;
-    position: absolute;
     border: 1px solid var(--input-context-menu-border-color);
     background-color: var(--input-context-menu-bg-color);
 }
+
+pluto-input {
+    position: relative;
+    display: block;
+}
+pluto-input > div.input_context_menu {
+    left: 100%;
+    top: -8px;
+    position: absolute;
+    z-index: 1400;
+}
 @media screen and (min-width: 921px) {
-    pluto-input > .input_context_menu ul {
+    pluto-input > div.input_context_menu {
         left: calc(100% - 3px);
     }
 }
 @media screen and (max-width: 920px) {
-    pluto-input > .input_context_menu {
-        z-index: 1400;
-    }
-    pluto-input > .input_context_menu ul {
+    pluto-input > div.input_context_menu {
         right: 0px;
         left: unset;
         z-index: 1401;
@@ -3001,7 +3006,6 @@ pluto-log-dot-positioner {
     --accent-color: var(--pluto-logs-info-accent-color);
     --icon-image: unset;
     background: var(--bg-color);
-    color: var(--accent-color);
     margin: 2px;
     border-radius: 6px;
     /* border: 2px solid var(--accent-color); */
@@ -3011,8 +3015,8 @@ pluto-log-dot-positioner {
     background-size: 200% 100%;
 }
 
-pluto-log-dot-positioner:last-child {
-    /* border-bottom: none; */
+pluto-log-dot > pre {
+    color: var(--accent-color);
 }
 
 pluto-log-truncated {

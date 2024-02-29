@@ -662,6 +662,19 @@ export class Editor extends Component {
                     false
                 )
             },
+            request_js_link_response: (cell_id, link_id, input) => {
+                return this.client
+                    .send(
+                        "request_js_link_response",
+                        {
+                            cell_id,
+                            link_id,
+                            input,
+                        },
+                        { notebook_id: this.state.notebook.notebook_id }
+                    )
+                    .then((r) => r.message)
+            },
             /** This actions avoids pushing selected cells all the way down, which is too heavy to handle! */
             get_selected_cells: (cell_id, /** @type {boolean} */ allow_other_selected_cells) =>
                 allow_other_selected_cells ? this.state.selected_cells : [cell_id],
@@ -1538,9 +1551,7 @@ patch: ${JSON.stringify(
                         }
                         <nav id="at_the_top">
                             <a href=${
-                                this.state.static_preview || this.state.binder_session_url != null
-                                    ? `${this.state.binder_session_url}?token=${this.state.binder_session_token}`
-                                    : "./"
+                                this.state.binder_session_url != null ? `${this.state.binder_session_url}?token=${this.state.binder_session_token}` : "./"
                             }>
                                 <h1><img id="logo-big" src=${url_logo_big} alt="Pluto.jl" /><img id="logo-small" src=${url_logo_small} /></h1>
                             </a>
