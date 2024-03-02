@@ -45,7 +45,7 @@ describe("JavaScript API", () => {
             page,
             `# ╔═╡ 90cfa9a0-114d-49bf-8dea-e97d58fa2442
       html"""<script>
-    const div = document.createElement("div")
+    const div = document.createElement("find-me")
     div.innerHTML = "${expected}"
     return div;
 </script>"""
@@ -53,7 +53,7 @@ describe("JavaScript API", () => {
         )
         await runAllChanged(page)
         await waitForPlutoToCalmDown(page, { polling: 100 })
-        const initialLastCellContent = await waitForContentToBecome(page, `pluto-cell:last-child pluto-output`, expected)
+        const initialLastCellContent = await waitForContentToBecome(page, `pluto-cell:last-child pluto-output find-me`, expected)
         expect(initialLastCellContent).toBe(expected)
     })
 
@@ -69,7 +69,7 @@ describe("JavaScript API", () => {
         )
         await runAllChanged(page)
         await waitForPlutoToCalmDown(page, { polling: 100 })
-        let initialLastCellContent = await waitForContentToBecome(page, `pluto-cell:last-child pluto-output`, expected)
+        let initialLastCellContent = await waitForContentToBecome(page, `pluto-cell:last-child pluto-output span`, expected)
         expect(initialLastCellContent).toBe(expected)
 
         await paste(
@@ -84,7 +84,7 @@ describe("JavaScript API", () => {
         )
         await runAllChanged(page)
         await waitForPlutoToCalmDown(page, { polling: 100 })
-        initialLastCellContent = await waitForContentToBecome(page, `pluto-cell:last-child pluto-output`, expected)
+        initialLastCellContent = await waitForContentToBecome(page, `pluto-cell:last-child pluto-output span`, expected)
         expect(initialLastCellContent).toBe(expected)
     })
 

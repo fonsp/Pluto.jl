@@ -540,7 +540,7 @@ dialog#export {
     height: 130px;
     background: var(--export-bg-color);
     color: var(--export-color);
-    transform: translateY(-100%);
+    transform: translateY(calc(-100% - 1px));
     /* overlay: none !important; */
     overflow: visible;
     margin: 0;
@@ -1744,11 +1744,13 @@ pluto-input > .input_context_menu ul {
 
 pluto-input {
     position: relative;
+    display: block;
 }
 pluto-input > div.input_context_menu {
     left: 100%;
     top: -8px;
     position: absolute;
+    z-index: 1400;
 }
 @media screen and (min-width: 921px) {
     pluto-input > div.input_context_menu {
@@ -1756,9 +1758,6 @@ pluto-input > div.input_context_menu {
     }
 }
 @media screen and (max-width: 920px) {
-    pluto-input > div.input_context_menu {
-        z-index: 1400;
-    }
     pluto-input > div.input_context_menu {
         right: 0px;
         left: unset;
@@ -3007,7 +3006,6 @@ pluto-log-dot-positioner {
     --accent-color: var(--pluto-logs-info-accent-color);
     --icon-image: unset;
     background: var(--bg-color);
-    color: var(--accent-color);
     margin: 2px;
     border-radius: 6px;
     /* border: 2px solid var(--accent-color); */
@@ -3017,8 +3015,8 @@ pluto-log-dot-positioner {
     background-size: 200% 100%;
 }
 
-pluto-log-dot-positioner:last-child {
-    /* border-bottom: none; */
+pluto-log-dot > pre {
+    color: var(--accent-color);
 }
 
 pluto-log-truncated {
