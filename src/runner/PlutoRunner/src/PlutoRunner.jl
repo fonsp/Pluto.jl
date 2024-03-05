@@ -807,28 +807,33 @@ function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
         end
     end
 
-    # if `f` is an extension to an external function, and we defined a method that overrides a method, for example,
-    # we define `Base.isodd(n::Integer) = rand(Bool)`, which overrides the existing method `Base.isodd(n::Integer)`
-    # calling `Base.delete_method` on this method won't bring back the old method, because our new method still exists in the method table, and it has a world age which is newer than the original. (our method has a deleted_world value set, which disables it)
-    #
-    # To solve this, we iterate again, and _re-enable any methods that were hidden in this way_, by adding them again to the method table with an even newer `primary_world`.
-    if !isempty(deleted_sigs)
-        to_insert = Method[]
-        Base.visit(methods_table) do method
-            if !isfromcell(method, cell_id) && method.sig ∈ deleted_sigs
-                push!(to_insert, method)
+    
+    if VERSION < v"1.12.0-0"
+        # not necessary in Julia after https://github.com/JuliaLang/julia/pull/53415 💛
+            
+        # if `f` is an extension to an external function, and we defined a method that overrides a method, for example,
+        # we define `Base.isodd(n::Integer) = rand(Bool)`, which overrides the existing method `Base.isodd(n::Integer)`
+        # calling `Base.delete_method` on this method won't bring back the old method, because our new method still exists in the method table, and it has a world age which is newer than the original. (our method has a deleted_world value set, which disables it)
+        #
+        # To solve this, we iterate again, and _re-enable any methods that were hidden in this way_, by adding them again to the method table with an even newer `primary_world`.
+        if !isempty(deleted_sigs)
+            to_insert = Method[]
+            Base.visit(methods_table) do method
+                if !isfromcell(method, cell_id) && method.sig ∈ deleted_sigs
+                    push!(to_insert, method)
+                end
             end
-        end
-        # separate loop to avoid visiting the recently added method
-        for method in Iterators.reverse(to_insert)
-            if VERSION >= v"1.11.0-0"
-                @atomic method.primary_world = one(typeof(alive_world_val)) # `1` will tell Julia to increment the world counter and set it as this function's world
-                @atomic method.deleted_world = alive_world_val # set the `deleted_world` property back to the 'alive' value (for Julia v1.6 and up)
-            else
-                method.primary_world = one(typeof(alive_world_val))
-                method.deleted_world = alive_world_val
+            # separate loop to avoid visiting the recently added method
+            for method in Iterators.reverse(to_insert)
+                if VERSION >= v"1.11.0-0"
+                    @atomic method.primary_world = one(typeof(alive_world_val)) # `1` will tell Julia to increment the world counter and set it as this function's world
+                    @atomic method.deleted_world = alive_world_val # set the `deleted_world` property back to the 'alive' value (for Julia v1.6 and up)
+                else
+                    method.primary_world = one(typeof(alive_world_val))
+                    method.deleted_world = alive_world_val
+                end
+                ccall(:jl_method_table_insert, Cvoid, (Any, Any, Ptr{Cvoid}), methods_table, method, C_NULL) # i dont like doing this either!
             end
-            ccall(:jl_method_table_insert, Cvoid, (Any, Any, Ptr{Cvoid}), methods_table, method, C_NULL) # i dont like doing this either!
         end
     end
     return !isempty(methods(f).ms)
