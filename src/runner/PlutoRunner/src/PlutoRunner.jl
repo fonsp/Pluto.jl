@@ -800,7 +800,7 @@ function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
     methods_table = typeof(f).name.mt
     deleted_sigs = Set{Type}()
     Base.visit(methods_table) do method # iterates through all methods of `f`, including overridden ones
-        if isfromcell(method, cell_id) && getfield(method, deleted_world) == alive_world_val
+        if isfromcell(method, cell_id) && method.deleted_world == alive_world_val
             Base.delete_method(method)
             delete_method_doc(method)
             push!(deleted_sigs, method.sig)
@@ -856,10 +856,7 @@ function try_delete_toplevel_methods(workspace::Module, (cell_id, name_parts)::T
     end
 end
 
-# these deal with some inconsistencies in Julia's internal (undocumented!) variable names
-const primary_world = filter(in(fieldnames(Method)), [:primary_world, :min_world]) |> first # Julia v1.3 and v1.0 resp.
-const deleted_world = filter(in(fieldnames(Method)), [:deleted_world, :max_world]) |> first # Julia v1.3 and v1.0 resp.
-const alive_world_val = getfield(methods(Base.sqrt).ms[1], deleted_world) # typemax(UInt) in Julia v1.3, Int(-1) in Julia 1.0
+const alive_world_val = methods(Base.sqrt).ms[1].deleted_world # typemax(UInt) in Julia v1.3, Int(-1) in Julia 1.0
 
 
 
