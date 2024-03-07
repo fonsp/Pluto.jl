@@ -262,7 +262,7 @@ const julia_code_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ re
         //      If we backspace however, to `Math.a`, `a` does no longer match! So it will re-query this function.
         // span: RegExp(`^${_.escapeRegExp(ctx.state.sliceDoc(start, stop))}[^\\s"'()\\[\\].{}]*`),
         options: [
-            ...results.map(([text, type_description, is_exported, is_from_notebook, completion_type], i) => {
+            ...results.map(([text, value_type, is_exported, is_from_notebook, completion_type], i) => {
                 // (quick) fix for identifiers that need to be escaped
                 // Ideally this is done with Meta.isoperator on the julia side
                 let text_to_apply =
@@ -276,7 +276,7 @@ const julia_code_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ re
                     type:
                         cl({
                             c_notexported: !is_exported,
-                            [`c_${type_description}`]: type_description != null,
+                            [`c_${value_type}`]: value_type != null,
                             [`completion_${completion_type}`]: completion_type != null,
                             c_from_notebook: is_from_notebook,
                         }) ?? undefined,
@@ -290,13 +290,13 @@ const julia_code_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ re
             //      `Meta.isoperator` thing mentioned above
             ...results
                 .filter(([text]) => is_field_expression && override_text_to_apply_in_field_expression(text) != null)
-                .map(([text, type_description, is_exported], i) => {
+                .map(([text, value_type, is_exported], i) => {
                     let text_to_apply = override_text_to_apply_in_field_expression(text) ?? ""
 
                     return {
                         label: text_to_apply,
                         apply: text_to_apply,
-                        type: (is_exported ? "" : "c_notexported ") + (type_description == null ? "" : "c_" + type_description),
+                        type: (is_exported ? "" : "c_notexported ") + (value_type == null ? "" : "c_" + value_type),
                         boost: -99 - i / results.length, // Display below all normal results
                         // Non-standard
                         is_not_exported: !is_exported,
@@ -404,8 +404,6 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
             activateOnTyping: false,
             override: [
                 pluto_completion_fetcher(memoize_last_request_autocomplete),
-                // julia_special_completions_to_cm(memoize_last_request_autocomplete),
-                // julia_code_completions_to_cm(memoize_last_request_autocomplete),
                 complete_anyword,
                 // TODO: Disabled because of performance problems, see https://github.com/fonsp/Pluto.jl/pull/1925. Remove `complete_anyword` once fixed. See https://github.com/fonsp/Pluto.jl/pull/2013
                 // local_variables_completion,
