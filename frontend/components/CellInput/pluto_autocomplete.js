@@ -313,6 +313,7 @@ const pluto_completion_fetcher = (request_autocomplete) => {
     const code_completions = julia_code_completions_to_cm(request_autocomplete)
 
     return (ctx) => {
+        if (ctx.tokenBefore(["Number"]) != null) return null
         let unicode_match = match_latex_complete(ctx) || match_expanduser_complete(ctx)
         if (unicode_match === null) {
             return code_completions(ctx)
@@ -325,6 +326,9 @@ const pluto_completion_fetcher = (request_autocomplete) => {
 const complete_anyword = async (ctx) => {
     const results_from_cm = await autocomplete.completeAnyWord(ctx)
     if (results_from_cm === null) return null
+
+    const last_token = ctx.tokenBefore(["Identifier", "Number"])
+    if (last_token == null || last_token.type?.name === "Number") return null
 
     return {
         from: results_from_cm.from,
