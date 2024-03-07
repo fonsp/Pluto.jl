@@ -26,7 +26,7 @@ import InteractiveUtils
 using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
 import Base64
-import FuzzyCompletions: Completion, BslashCompletion, ModuleCompletion, PropertyCompletion, FieldCompletion, PathCompletion, DictCompletion, completions, completion_text, score
+import FuzzyCompletions: FuzzyCompletions, Completion, BslashCompletion, ModuleCompletion, PropertyCompletion, FieldCompletion, PathCompletion, DictCompletion, completions, completion_text, score
 import Base: show, istextmime
 import UUIDs: UUID, uuid4
 import Dates: DateTime
@@ -1930,12 +1930,12 @@ completed_object_description(x::Module) = "Module"
 completed_object_description(x::AbstractArray) = "Array"
 completed_object_description(x::Any) = "Any"
 
-completion_description(c::ModuleCompletion) = try
+completion_value_type(c::ModuleCompletion) = try
     completed_object_description(getfield(c.parent, Symbol(c.mod)))
 catch
     nothing
 end
-completion_description(::Completion) = nothing
+completion_value_type(::Completion) = nothing
 
 completion_detail(::Completion) = nothing
 completion_detail(completion::BslashCompletion) =
@@ -1999,38 +1999,49 @@ completion_from_notebook(c::ModuleCompletion) =
     !startswith(c.mod, "#")
 completion_from_notebook(c::Completion) = false
 
-only_special_completion_types(::PathCompletion) = :path
-only_special_completion_types(::DictCompletion) = :dict
-only_special_completion_types(::Completion) = nothing
+completion_type(::FuzzyCompletions.PathCompletion) = :path
+completion_type(::FuzzyCompletions.DictCompletion) = :dict
+completion_type(::FuzzyCompletions.MethodCompletion) = :method
+completion_type(::FuzzyCompletions.ModuleCompletion) = :module
+completion_type(::FuzzyCompletions.BslashCompletion) = :bslash
+completion_type(::FuzzyCompletions.FieldCompletion) = :field
+completion_type(::FuzzyCompletions.KeywordArgumentCompletion) = :keyword_argument
+completion_type(::FuzzyCompletions.KeywordCompletion) = :keyword
+completion_type(::FuzzyCompletions.PropertyCompletion) = :property
+completion_type(::FuzzyCompletions.Text) = :text
+
+completion_type(::Completion) = nothing
 
 "You say Linear, I say Algebra!"
 function completion_fetcher(query, pos, workspace::Module)
     results, loc, found = completions(query, pos, workspace)
-    if endswith(query, '.')
+    partial = query[1:pos]
+    if endswith(partial, '.')
         filter!(is_dot_completion, results)
         # we are autocompleting a module, and we want to see its fields alphabetically
         sort!(results; by=(r -> completion_text(r)))
-    elseif endswith(query, '/')
+    elseif endswith(partial, '/')
         filter!(is_path_completion, results)
         sort!(results; by=(r -> completion_text(r)))
-    elseif endswith(query, '[')
+    elseif endswith(partial, '[')
         filter!(is_dict_completion, results)
         sort!(results; by=(r -> completion_text(r)))
     else
         isenough(x) = x ≥ 0
-        filter!(isenough ∘ score, results) # too many candiates otherwise
+        filter!(r -> isenough(score(r)) && !is_path_completion(r), results) # too many candiates otherwise
     end
 
     exported = completions_exported(results)
-    smooshed_together = [
-        (completion_text(result),
-         completion_description(result),
-         rexported,
-         completion_from_notebook(result),
-         only_special_completion_types(result),
-         completion_detail(result))
-        for (result, rexported) in zip(results, exported)
-    ]
+    smooshed_together = map(zip(results, exported)) do (result, rexported)
+        (
+            completion_text(result),
+            completion_value_type(result),
+            rexported,
+            completion_from_notebook(result),
+            completion_type(result),
+            completion_detail(result),
+        )
+    end
 
     p = if endswith(query, '.')
         sortperm(smooshed_together; alg=MergeSort, by=basic_completion_priority)
