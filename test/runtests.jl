@@ -51,12 +51,3 @@ verify_no_running_processes()
 print_timeroutput()
 @timeit_include("ExpressionExplorer.jl")
 
-# TODO: test PlutoRunner functions like:
-# - from_this_notebook
-
-# TODO: test include() inside notebooks
-
-# TODO: test async execution order
-# TODO: test @bind
-
-# TODO: test if notebooks are saved correctly after edits
