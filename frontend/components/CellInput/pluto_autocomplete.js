@@ -265,7 +265,8 @@ const julia_code_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ re
             ...results.map(([text, type_description, is_exported, is_from_notebook, completion_type], i) => {
                 // (quick) fix for identifiers that need to be escaped
                 // Ideally this is done with Meta.isoperator on the julia side
-                let text_to_apply = is_field_expression ? override_text_to_apply_in_field_expression(text) ?? text : text
+                let text_to_apply =
+                    completion_type === "method" ? to_complete : is_field_expression ? override_text_to_apply_in_field_expression(text) ?? text : text
 
                 if (definitions.has(text)) proposed.add(text)
 
