@@ -17,6 +17,7 @@ import { get_selected_doc_from_state } from "./LiveDocsFromCursor.js"
 import { cl } from "../../common/ClassTable.js"
 import { ScopeStateField } from "./scopestate_statefield.js"
 import { open_bottom_right_panel } from "../BottomRightPanel.js"
+import { ENABLE_CM_AUTOCOMPLETE_ON_TYPE } from "../CellInput.js"
 
 let { autocompletion, completionKeymap, completionStatus, acceptCompletion } = autocomplete
 
@@ -405,7 +406,7 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
     return [
         tabCompletionState,
         autocompletion({
-            activateOnTyping: false,
+            activateOnTyping: ENABLE_CM_AUTOCOMPLETE_ON_TYPE,
             override: [
                 pluto_completion_fetcher(memoize_last_request_autocomplete),
                 complete_anyword,
