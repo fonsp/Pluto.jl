@@ -19,8 +19,7 @@ begin
 	import Pkg
 	Pkg.activate(temp=true)
 	Pkg.add([
-		Pkg.PackageSpec(name="AbstractPlutoDingetjes", rev="Display.with_js_link")
-		# Pkg.PackageSpec(path="/Users/fons/Documents/AbstractPlutoDingetjes.jl/")
+		Pkg.PackageSpec(name="AbstractPlutoDingetjes")
 		Pkg.PackageSpec(name="HypertextLiteral")
 		Pkg.PackageSpec(name="PlutoUI")
 	])
