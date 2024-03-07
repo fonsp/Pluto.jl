@@ -2178,7 +2178,7 @@ function improve_docs!(doc_md::Markdown.MD, query::Symbol, binding::Docs.Binding
 
         perm = sortperm(suggestions_scores; rev=true)
         permute!(suggestions, perm)
-        links = map(s -> Suggestion(s, symbol), @view(suggestions[begin:min(end,DOC_SUGGESTION_LIMIT)]))
+        links = map(s -> Suggestion(string(s), symbol), Iterators.take(suggestions, DOC_SUGGESTION_LIMIT))
 
         if length(links) > 0
             push!(doc_md.content,
