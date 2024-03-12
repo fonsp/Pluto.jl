@@ -83,11 +83,15 @@ const tab_completion_command = (cm) => {
     }
 
     let selection = cm.state.selection.main
-    let last_char = cm.state.sliceDoc(selection.from - 1, selection.from)
-
     if (!selection.empty) return false
+
+    let last_char = cm.state.sliceDoc(selection.from - 1, selection.from)
+    let last_line = cm.state.sliceDoc(cm.state.doc.lineAt(selection.from).from, selection.from)
+
     // Some exceptions for when to trigger tab autocomplete
-    if (/^(\t| |\n|\=|\)|)$/.test(last_char)) return false
+    if ("\t \n=".includes(last_char)) return false
+    // ?([1,2], 3)<TAB> should trigger autocomplete
+    if (last_char === ")" && !last_line.includes("?")) return false
 
     cm.dispatch({
         effects: TabCompletionEffect.of(10),
