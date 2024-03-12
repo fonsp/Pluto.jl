@@ -33,9 +33,9 @@ using ..OperationalTransform: ChangeSpec, Update, Insertion, Deletion, Replaceme
 
 function retain!(ranges,n)
     if !isempty(ranges) && last(ranges).type == Retain
-        ranges[end] = Range(Retain, ranges[end].length + n, nothing)
+        ranges[end] = retain(ranges[end].length + n)
     else
-        push!(ranges, Range(Retain, n, nothing))
+        push!(ranges, retain(n))
     end
     ranges
 end
@@ -47,6 +47,10 @@ struct Range
     length::UInt32
     insert::Union{Nothing,String} # for inserts
 end
+
+retain(l) = Range(Retain, l, nothing)
+insert(s) = Range(Insert, 0, s)
+delete(l) = Range(Delete, l, nothing)
 
 function make_specs(ranges::Vector{Range})
     specs = ChangeSpec[]
@@ -77,24 +81,24 @@ function ranges(update::Update)
         from = offset + spec.from
 
         if from != current_pos
-            push!(ranges, Range(Retain, from - current_pos, nothing))
+            push!(ranges, retain(from - current_pos))
             current_pos = from
         end
 
         if spec isa Deletion
             to = offset + spec.to
-            push!(ranges, Range(Delete, to - from, nothing))
+            push!(ranges, delete(to - from))
             offset -= to - from
             current_pos -= to - from - 1
         elseif spec isa Insertion
-            push!(ranges, Range(Insert, 0, spec.insert))
+            push!(ranges, insert(0, spec.insert))
             offset += sizeof(spec.insert)
             current_pos += sizeof(spec.insert) - 1
         elseif spec isa Replacement
             to = offset + spec.to
             push!(ranges,
-                Range(Delete, to - from, nothing),
-                Range(Insert, 0, spec.insert))
+                delete(to - from),
+                insert(spec.insert))
             offset -= to - from
             offset += sizeof(spec.insert)
             current_pos += to - from
@@ -204,7 +208,7 @@ function transform(a, b, priority)
             if peek_type(itA) == Delete
                 # our delete either makes their delete redundant or removes their retain
             elseif peek_type(itB) == Delete
-                push!(out, Range(Delete, ℓ, nothing))
+                push!(out, delete(ℓ))
             else
                 # ca and cb are Retain
                 retain!(out, ℓ)
@@ -233,12 +237,9 @@ function rebase(updates, over)
     map(updates) do update
         updateChanges = transform(update, changes)
         changes = transform(changes, update, :right)
+        effects = transform_effects(update.effects, changes),
 
-        Update(
-            changes,
-            effects: transform_effects(update.effects, changes),
-            update.client_id,
-        )
+        Update(changes, effects, update.client_id)
     end
 end
 
@@ -265,28 +266,48 @@ function apply(s::String, ranges::Vector{Range})
     join(out)
 end
 
+#=
 
-text = "i like pizza"
+pos is 1 indexed
 
-changesA = [
-    Replacement(0,1,"you")
-]
-changesC = [ # you like pizza
-    Replacement(3,3," don't"),
-]
-changesB = [
-    Replacement(7,9,"me"),
-    Replacement(11,12,"e"),
-]
+if we have a delete
 
-updateA = Update(changesA, sizeof(text), "clientA", [])
-updateC = Update(changesC,sizeof(text)+2,"clientC",[])
-updateB = Update(changesB, sizeof(text), "clientB", [])
+ok|
+retain(1), delete(1)
 
-rA = ranges(updateA)
-rB = ranges(updateB)
+o|
+=#
+function transform_position(ops::Vector{Range}, pos)
+    # offset is current position in delta.
+    offset = 0
+    for op in ops
+        offset >= pos && return pos
 
-rC = ranges(updateC)
+        if op.type == Insert
+            # in case of insert, position is reduced from
+            # the length of the insert.
+            # BUT, if the position will be within the inserted
+            # range. We put it at offset (our current position in delta).
+            #
+            # Consider
+            # hello|
+            # retain(3), insert("lo ge"), retain(2) -> "hello gello"
+            #
+            # hel|lo gello
+            #   ^offset
+            pos = max(pos - op.length, offset)
+        elseif op.type == Retain
+            # does not affect position
+            offset += op.length
+        elseif op.type == Insert
+            # affects both position and offset in delta
+            pos += op.length
+            offset += op.length
+        end
+    end
+
+    pos
+end
 
 export apply, ranges, Range, Delete, Retain, Insert, transform
 

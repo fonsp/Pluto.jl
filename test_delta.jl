@@ -16,7 +16,7 @@ for i in inserts
 end
 
 old_updates = updates[1:4]
-new_updates = updates[5:9]
+new_updates = updates[5:end]
 
 r_old = map(Delta.ranges, old_updates)
 r_new = map(Delta.ranges, new_updates)
@@ -29,6 +29,17 @@ r_new_new = map(r_new) do r
 end
 
 new_text = foldl(Delta.apply, r_old;init=text)
+new_text_ot = String(foldl(OT.apply, old_updates; init=OT.Text(text)))
+
+dumb_text = join(map(u -> join(map(c -> c.insert, u.specs)), updates))
+real_text_with = String(foldl(OT.apply, updates; init=OT.Text(text)))
+text_with_new1 = foldl(Delta.apply, r_new; init=new_text)
+text_with_new2 = foldl(Delta.apply, r_new_new; init=new_text)
+
 @show new_text
-@show foldl(Delta.apply, r_new;init=new_text)
-foldl(Delta.apply, r_new_new;init=new_text)
+@show new_text_ot
+
+@show dumb_text == real_text_with == text_with_new1
+@show real_text_with
+@show text_with_new1
+@show text_with_new2

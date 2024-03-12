@@ -316,7 +316,7 @@ const effects_of_changed_state = Dict(
 
 responses[:update_notebook] = function response_update_notebook(🙋::ClientRequest)
     require_notebook(🙋)
-    try
+    @time try
         notebook = 🙋.notebook
         patches = (Base.convert(Firebasey.JSONPatch, update) for update in 🙋.body["updates"])
 
@@ -484,6 +484,7 @@ responses[:push_updates] = function response_push_updates(🙋::ClientRequest)
         if current_version != version
             # Client synced version is out of date, transform updates over past changes
             updates_to_transform = @view cell.cm_updates[version+1:end]
+
             # @assert !any(up->up.client_id==first(updates).client_id,updates_to_transform)
             # updates_to_transform = map(Delta.ranges, updates_to_transform)
 
