@@ -34,9 +34,10 @@ MsgPack.msgpack_type(::Type{Configuration.SecurityOptions}) = MsgPack.StructType
 MsgPack.msgpack_type(::Type{OperationalTransform.SelectionRange}) = MsgPack.StructType()
 MsgPack.msgpack_type(::Type{OperationalTransform.EditorSelection}) = MsgPack.StructType()
 MsgPack.msgpack_type(::Type{OperationalTransform.Update}) = MsgPack.StructType()
-MsgPack.msgpack_type(::Type{OperationalTransform.Insertion}) = MsgPack.StructType()
-MsgPack.msgpack_type(::Type{OperationalTransform.Deletion}) = MsgPack.StructType()
-MsgPack.msgpack_type(::Type{OperationalTransform.Replacement}) = MsgPack.StructType()
+
+MsgPack.msgpack_type(::Type{OperationalTransform.Range}) = MsgPack.MapType()
+MsgPack.to_msgpack(m::M, r::OperationalTransform.Range) where {M<:MsgPack.AbstractMsgPackType} =
+    MsgPack.to_msgpack(m, OperationalTransform.to_obj(r))
 
 # Unwrap SendOnlyOnceMarker and send only the resulting value
 MsgPack.msgpack_type(::Type{FirebaseyUtils.SendOnlyOnceMarker{T}}) where T = MsgPack.msgpack_type(T)

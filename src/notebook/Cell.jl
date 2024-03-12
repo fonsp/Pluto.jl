@@ -40,12 +40,12 @@ Base.@kwdef mutable struct Cell
     cell_id::UUID=uuid1()
 
     code::String=""
+    initial_code::String=""
     code_folded::Bool=false
 
     last_run_version::Int=0
 
-    code_text::OT.Text=OT.Text(code)
-    cm_updates::Vector{OT.Update}=Vector{OT.Update}()
+    cm_updates::Vector{OT.Update}=OT.initial_updates(code)
     cm_token::Token=Token()
 
     output::CellOutput=CellOutput()

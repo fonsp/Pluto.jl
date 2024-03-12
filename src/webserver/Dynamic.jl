@@ -114,9 +114,9 @@ function notebook_to_js(notebook::Notebook)
 
                 "cm_updates" => FirebaseyUtils.AppendonlyMarker(cell.cm_updates),
                 "code" => cell.code,
+                "initial_code" => cell.initial_code,
                 "last_run_version" => cell.last_run_version,
 
-                "code_text" => FirebaseyUtils.SendOnlyOnceMarker(String(cell.code_text)),
                 "start_version" => FirebaseyUtils.SendOnlyOnceMarker(length(cell.cm_updates)),
             )
         for (id, cell) in notebook.cells_dict),
@@ -485,37 +485,31 @@ responses[:push_updates] = function response_push_updates(🙋::ClientRequest)
             # Client synced version is out of date, transform updates over past changes
             updates_to_transform = @view cell.cm_updates[version+1:end]
 
-            # @assert !any(up->up.client_id==first(updates).client_id,updates_to_transform)
-            # updates_to_transform = map(Delta.ranges, updates_to_transform)
+            if !isempty(updates_to_transform)
+                if !any(up->up.client_id==first(updates).client_id,updates_to_transform)
+                    return send_notebook_changes!(🙋; commentary=:👎)
+                end
 
-            # new_changes = map(change_ranges) do cu
-            #     for tu in updates_to_transform
-            #         cu = Delta.transform(tu,cu,:left)
-            #     end
-            #     cu
-            # end
-            # new_text = foldl(Delta.apply, new_changes; init=string(cell.code_text))
-            @warn "Wrong version" current_version version
-            send_notebook_changes!(🙋; commentary=updates_to_transform)
-            return
-        end
+                ops_to_transform = mapfoldl(r -> r.ops, OT.Pinot.compose, updates_to_transform)
 
-        text = cell.code_text
-        for update in updates
-            try
-                text = OT.apply(text, update)
-            catch ex
-                if ex isa OT.InvalidDocumentLengthError
-                    @error "Invalid document length" updates update exception=(ex,catch_backtrace())
-                    send_notebook_changes!(🙋; commentary=:👎)
-                    return
-                else
-                    rethrow()
+                updates = map(updates) do cu
+                    cu_ops = OT.Pinot.transform(ops_to_transform,cu.ops,OT.Pinot.Left)
+                    OT.Update(cu_ops, cu.document_length,
+                              cu.client_id, cu.effects)
                 end
             end
         end
+
+        text = try
+            mapfoldl(u -> u.ops, OT.Pinot.apply, updates; init=cell.code)
+        catch err
+            @warn "error" exception=(err, catch_backtrace()) cell.code updates
+            rethrow()
+        end
         append!(cell.cm_updates, updates)
-        cell.code_text = text
+
+        @show text
+        cell.code = text
 
         @info "Cell updates" updates n=length(cell.cm_updates) code=String(text)
 
@@ -535,7 +529,6 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
         #       we are currently using the latest available version which may
         #       have been submitted by someone else.
         withtoken(cell.cm_token) do
-            cell.code = String(cell.code_text)
             cell.last_run_version = length(cell.cm_updates)
         end
     end

@@ -51,10 +51,7 @@ include("./analysis/ExpressionExplorer.jl")
 include("./packages/PkgCompat.jl")
 include("./webserver/Status.jl")
 
-module OperationalTransform
-include("./notebook/OperationalTransform.jl")
-end
-include("./collab/OperationalTransform.jl")
+include("./notebook/OperationalTransform_pinot.jl")
 
 include("./notebook/Cell.jl")
 include("./analysis/data structures.jl")

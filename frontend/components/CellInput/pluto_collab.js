@@ -26,19 +26,25 @@ import { ReactWidget } from "./ReactWidget.js"
  * @returns {Promise<any>}
  */
 function pushUpdates(push_updates, version, fullUpdates) {
-    const changes_to_specs = (cs) => {
-        const specs = []
+    const changes_to_delta = (cs) => {
+        const ops = []
+        let current_offset = 0 
         cs.iterChanges((fromA, toA, fromB, toB, insert) => {
             const insertText = insert.sliceString(0, insert.length, "\n")
-            if (fromB == toB) {
-                specs.push({ from: fromA, to: toA }) // delete
-            } else if (fromA == toA) {
-                specs.push({ from: fromA, insert: insertText }) // insert
-            } else {
-                specs.push({ from: fromA, to: toA, insert: insertText }) // replace
+            if (current_offset < fromA) {
+                ops.push({ retain: fromA - current_offset })
             }
+            if (fromB == toB) {
+                ops.push({ delete: toA - fromA })
+            } else if (fromA == toA) {
+                ops.push({ insert: insertText })
+            } else {
+                ops.push({ delete: toA - fromA })
+                ops.push({ insert: insertText })
+            }
+            current_offset = toA
         }, false)
-        return specs
+        return ops
     }
 
     // Strip off transaction data
@@ -46,10 +52,29 @@ function pushUpdates(push_updates, version, fullUpdates) {
         client_id: u.clientID,
         document_length: u.changes.desc.length,
         effects: u.effects.map((effect) => effect.value.selection.toJSON()),
-        specs: changes_to_specs(u.changes),
+        ops: changes_to_delta(u.changes),
     }))
     return push_updates({ version, updates })
 }
+
+const delta_to_specs = (ops) => {
+    const specs = []
+
+    let current_offset = 0
+    for (const op of ops) {
+        if (typeof op.retain === "number") {
+            current_offset += op.retain
+        } else if (typeof op.delete === "number") {
+            specs.push({ from: current_offset, to: current_offset + op.delete })
+        } else {
+            specs.push({ from: current_offset, insert: op.insert })
+        }
+    }
+    console.log({ specs, ops})
+
+    return specs
+}
+window.delta_to_specs = delta_to_specs
 
 const DEBUG_COLLAB = false
 
@@ -238,7 +263,7 @@ export const pluto_collab = (startVersion, { subscribe_to_updates, push_updates,
              */
             syncNewUpdates(newUpdates) {
                 const updates = newUpdates.map((u) => ({
-                    changes: ChangeSet.of(u.specs, u.document_length, "\n"),
+                    changes: ChangeSet.of(delta_to_specs(u.ops), u.document_length, "\n"),
                     effects: u.effects.map((selection) => CaretEffect.of({ selection: EditorSelection.fromJSON(selection), clientID: u.client_id })),
                     clientID: u.client_id,
                 }))
