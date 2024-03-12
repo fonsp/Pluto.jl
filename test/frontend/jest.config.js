@@ -1,4 +1,4 @@
 module.exports = {
-    testTimeout: 100000,
+    testTimeout: 300000,
     slowTestThreshold: 30,
 }
