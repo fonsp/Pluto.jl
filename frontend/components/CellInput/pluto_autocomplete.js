@@ -240,6 +240,9 @@ const julia_code_completions_to_cm =
         // no path autocompletions
         if (ctx.tokenBefore(["String"]) != null) return null
 
+        const globals = ctx.state.facet(GlobalDefinitionsFacet)
+        const is_already_a_global = (text) => text != null && Object.keys(globals).includes(text)
+
         let found = await request_autocomplete({ text: to_complete })
         if (!found) return null
         let { start, stop, results } = found
@@ -259,7 +262,8 @@ const julia_code_completions_to_cm =
             from: start,
             to: stop,
 
-            validFor: /\w*$/,
+            // see `is_wc_cat_id_start` in Julia's source for a complete list
+            validFor: /[\p{L}\p{Nl}\p{Sc}\d_]*$/u,
 
             // This tells codemirror to not query this function again as long as the string
             // we are completing has the same prefix as we complete now, and there is no weird characters (subjective)
@@ -268,26 +272,28 @@ const julia_code_completions_to_cm =
             //      If we backspace however, to `Math.a`, `a` does no longer match! So it will re-query this function.
             // span: RegExp(`^${_.escapeRegExp(ctx.state.sliceDoc(start, stop))}[^\\s"'()\\[\\].{}]*`),
             options: [
-                ...results.map(([text, value_type, is_exported, is_from_notebook, completion_type, _ignored], i) => {
-                    // (quick) fix for identifiers that need to be escaped
-                    // Ideally this is done with Meta.isoperator on the julia side
-                    let text_to_apply =
-                        completion_type === "method" ? to_complete : is_field_expression ? override_text_to_apply_in_field_expression(text) ?? text : text
+                ...results
+                    .filter(([text, _1, _2, is_from_notebook]) => !(is_from_notebook && is_already_a_global(text)))
+                    .map(([text, value_type, is_exported, is_from_notebook, completion_type, _ignored], i) => {
+                        // (quick) fix for identifiers that need to be escaped
+                        // Ideally this is done with Meta.isoperator on the julia side
+                        let text_to_apply =
+                            completion_type === "method" ? to_complete : is_field_expression ? override_text_to_apply_in_field_expression(text) ?? text : text
 
-                    return {
-                        label: text,
-                        apply: text_to_apply,
-                        type: is_from_notebook
-                            ? from_notebook_type
-                            : cl({
-                                  c_notexported: !is_exported,
-                                  [`c_${value_type}`]: value_type != null,
-                                  [`completion_${completion_type}`]: completion_type != null,
-                              }) ?? undefined,
-                        section: section_regular,
-                        // boost: 50 - i / results.length,
-                    }
-                }),
+                        return {
+                            label: text,
+                            apply: text_to_apply,
+                            type:
+                                cl({
+                                    c_notexported: !is_exported,
+                                    [`c_${value_type}`]: value_type != null,
+                                    [`completion_${completion_type}`]: completion_type != null,
+                                    c_from_notebook: is_from_notebook,
+                                }) ?? undefined,
+                            section: section_regular,
+                            // boost: 50 - i / results.length,
+                        }
+                    }),
                 // This is a small thing that I really want:
                 // You want to see what fancy symbols a module has? Pluto will show these at the very end of the list,
                 // for Base there is no way you're going to find them! With this you can type `.:` and see all the fancy symbols.
@@ -351,6 +357,10 @@ const from_notebook_type = "c_from_notebook completion_module c_Any"
 
 const global_variables_completion = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
     const globals = ctx.state.facet(GlobalDefinitionsFacet)
+
+    // see `is_wc_cat_id_start` in Julia's source for a complete list
+    const there_is_a_dot_before = ctx.matchBefore(/\.[\p{L}\p{Nl}\p{Sc}\d_]*$/u)
+    if (there_is_a_dot_before) return null
 
     return await autocomplete.completeFromList(
         Object.keys(globals).map((label) => {
