@@ -18,6 +18,7 @@ import { cl } from "../../common/ClassTable.js"
 import { ScopeStateField } from "./scopestate_statefield.js"
 import { open_bottom_right_panel } from "../BottomRightPanel.js"
 import { ENABLE_CM_AUTOCOMPLETE_ON_TYPE } from "../CellInput.js"
+import { GlobalDefinitionsFacet } from "./go_to_definition_plugin.js"
 
 let { autocompletion, completionKeymap, completionStatus, acceptCompletion } = autocomplete
 
@@ -347,7 +348,24 @@ const complete_anyword = async (ctx) => {
     }
 }
 
-const local_variables_completion = (ctx) => {
+const from_notebook_type = "c_from_notebook completion_module c_Any"
+
+const global_variables_completion = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
+    const globals = ctx.state.facet(GlobalDefinitionsFacet)
+
+    return await autocomplete.completeFromList(
+        Object.keys(globals).map((label) => {
+            return {
+                label,
+                apply: label,
+                type: from_notebook_type,
+                section: section_regular,
+            }
+        })
+    )(ctx)
+}
+
+const local_variables_completion = (/** @type {autocomplete.CompletionContext} */ ctx) => {
     let scopestate = ctx.state.field(ScopeStateField)
     let unicode = ctx.tokenBefore(["Identifier"])
 
@@ -412,6 +430,7 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
         autocompletion({
             activateOnTyping: ENABLE_CM_AUTOCOMPLETE_ON_TYPE,
             override: [
+                global_variables_completion,
                 pluto_completion_fetcher(memoize_last_request_autocomplete),
                 complete_anyword,
                 // TODO: Disabled because of performance problems, see https://github.com/fonsp/Pluto.jl/pull/1925. Remove `complete_anyword` once fixed. See https://github.com/fonsp/Pluto.jl/pull/2013
