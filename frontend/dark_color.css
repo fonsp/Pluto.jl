@@ -138,7 +138,7 @@
         /* jlerror */
         --jlerror-header-color: #d9baba;
         --jlerror-mark-bg-color: rgb(0 0 0 / 18%);
-        --jlerror-a-bg-color: rgba(82, 58, 58, 0.5);
+        --jlerror-a-bg-color: rgba(82, 58, 58, 1);
         --jlerror-a-border-left-color: #704141;
         --jlerror-mark-color: #b1a9a9;
 
@@ -183,6 +183,7 @@
         --cm-line-numbers-color: #8d86875e;
         --cm-selection-background: hsl(215deg 64% 59% / 48%);
         --cm-selection-background-blurred: hsl(215deg 0% 59% / 48%);
+        --cm-highlighted: #cbceb629;
 
         /* code highlighting */
         --cm-editor-text-color: #ffe9fc;
@@ -206,12 +207,14 @@
         --cm-matchingBracket-color: white;
         --cm-matchingBracket-bg-color: #c58c237a;
         --cm-placeholder-text-color: rgb(255 255 255 / 20%);
+        --cm-clickable-underline: #5d5f70;
 
         /*autocomplete menu*/
         --autocomplete-menu-bg-color: var(--input-context-menu-bg-color);
 
         /* Landing colors */
         --index-text-color: rgb(199, 199, 199);
+        --index-light-text-color: rgb(199, 199, 199);
         --index-clickable-text-color: rgb(235, 235, 235);
         --index-card-bg: #313131;
         --welcome-mywork-bg: var(--header-bg-color);

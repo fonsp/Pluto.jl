@@ -44,8 +44,8 @@ Base.@kwdef mutable struct Notebook
     # per notebook compiler options
     # nothing means to use global session compiler options
     compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
-    # nbpkg_ctx::Union{Nothing,PkgContext}=nothing
-    nbpkg_ctx::Union{Nothing,PkgContext}=PkgCompat.create_empty_ctx()
+    nbpkg_ctx::Union{Nothing,PkgContext}=nothing
+    # nbpkg_ctx::Union{Nothing,PkgContext}=PkgCompat.create_empty_ctx()
     nbpkg_ctx_instantiated::Bool=false
     nbpkg_restart_recommended_msg::Union{Nothing,String}=nothing
     nbpkg_restart_required_msg::Union{Nothing,String}=nothing
@@ -90,7 +90,7 @@ end
 _collect_cells(cells_dict::Dict{UUID,Cell}, cells_order::Vector{UUID}) = 
     map(i -> cells_dict[i], cells_order)
 _initial_topology(cells_dict::Dict{UUID,Cell}, cells_order::Vector{UUID}) =
-    NotebookTopology(;
+    NotebookTopology{Cell}(;
         cell_order=ImmutableVector(_collect_cells(cells_dict, cells_order)),
     )
 
@@ -120,6 +120,18 @@ function Base.getproperty(notebook::Notebook, property::Symbol)
     end
 end
 
+PlutoDependencyExplorer.topological_order(notebook::Notebook) = topological_order(notebook.topology)
+
+function PlutoDependencyExplorer.where_referenced(notebook::Notebook, topology::NotebookTopology, something)
+    # can't use @deprecate on an overload
+    @warn "Deprecated, drop the notebook argument"
+    PlutoDependencyExplorer.where_referenced(topology, something)
+end
+function PlutoDependencyExplorer.where_assigned(notebook::Notebook, topology::NotebookTopology, something)
+    # can't use @deprecate on an overload
+    @warn "Deprecated, drop the notebook argument"
+    PlutoDependencyExplorer.where_assigned(topology, something)
+end
 
 emptynotebook(args...) = Notebook([Cell()], args...)
 

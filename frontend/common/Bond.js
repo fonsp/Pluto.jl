@@ -1,7 +1,7 @@
 // import Generators_input from "https://unpkg.com/@observablehq/stdlib@3.3.1/src/generators/input.js"
 // import Generators_input from "https://unpkg.com/@observablehq/stdlib@3.3.1/src/generators/input.js"
 
-import { open_pluto_popup } from "../components/Popup.js"
+import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import _ from "../imports/lodash.js"
 import { html } from "../imports/Preact.js"
 import observablehq from "./SetupCellEnvironment.js"

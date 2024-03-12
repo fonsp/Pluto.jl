@@ -28,10 +28,15 @@ import { julia_mixed } from "./CellInput/mixedParsers.js"
 import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
 import { SafePreviewSanitizeMessage } from "./SafePreviewUI.js"
 
+const prettyAssignee = (assignee) =>
+    assignee && assignee.startsWith("const ") ? html`<span style="color: var(--cm-keyword-color)">const</span> ${assignee.slice(6)}` : assignee
+
 export class CellOutput extends Component {
     constructor() {
         super()
-        this.state = {}
+        this.state = {
+            output_changed_once: false,
+        }
 
         this.old_height = 0
         // @ts-ignore Is there a way to use the latest DOM spec?
@@ -55,6 +60,12 @@ export class CellOutput extends Component {
 
     shouldComponentUpdate({ last_run_timestamp, sanitize_html }) {
         return last_run_timestamp !== this.props.last_run_timestamp || sanitize_html !== this.props.sanitize_html
+    }
+
+    componentDidUpdate(old_props) {
+        if (this.props.last_run_timestamp !== old_props.last_run_timestamp) {
+            this.setState({ output_changed_once: true })
+        }
     }
 
     componentDidMount() {
@@ -81,8 +92,12 @@ export class CellOutput extends Component {
                 })}
                 translate=${allow_translate}
                 mime=${this.props.mime}
+                aria-live=${this.state.output_changed_once ? "polite" : "off"}
+                aria-atomic="true"
+                aria-relevant="all"
+                aria-label=${this.props.rootassignee == null ? "Result of unlabeled cell:" : `Result of variable ${this.props.rootassignee}:`}
             >
-                <assignee translate=${false}>${this.props.rootassignee}</assignee>
+                <assignee aria-hidden="true" translate=${false}>${prettyAssignee(this.props.rootassignee)}</assignee>
                 <${OutputBody} ...${this.props} />
             </pluto-output>
         `
@@ -395,6 +410,11 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                                 // @ts-ignore
                                 getPublishedObject: (id) => cell.getPublishedObject(id),
 
+                                _internal_getJSLinkResponse: (cell_id, link_id) => (input) =>
+                                    pluto_actions.request_js_link_response(cell_id, link_id, input).then(([success, result]) => {
+                                        if (success) return result
+                                        throw result
+                                    }),
                                 getBoundElementValueLikePluto: get_input_value,
                                 setBoundElementValueLikePluto: set_input_value,
                                 getBoundElementEventNameLikePluto: eventof,

@@ -2,8 +2,9 @@ import _ from "../imports/lodash.js"
 import { cl } from "../common/ClassTable.js"
 import { html, useState, useEffect, useLayoutEffect, useRef, useMemo } from "../imports/Preact.js"
 import { SimpleOutputBody } from "./TreeView.js"
-import { help_circle_icon, open_pluto_popup } from "./Popup.js"
+import { help_circle_icon } from "./Popup.js"
 import AnsiUp from "../imports/AnsiUp.js"
+import { open_pluto_popup } from "../common/open_pluto_popup.js"
 
 const LOGS_VISIBLE_START = 60
 const LOGS_VISIBLE_END = 20
@@ -120,6 +121,10 @@ const Dot = ({ set_cm_highlighted_line, msg, kwargs, y, level, sanitize_html }) 
 
     const mimepair_output = (pair) =>
         html`<${SimpleOutputBody} cell_id=${"adsf"} mime=${pair[1]} body=${pair[0]} persist_js_state=${false} sanitize_html=${sanitize_html} />`
+
+    useEffect(() => {
+        return () => set_cm_highlighted_line(null)
+    }, [])
 
     return html`<pluto-log-dot-positioner
         class=${cl({ [level]: true })}

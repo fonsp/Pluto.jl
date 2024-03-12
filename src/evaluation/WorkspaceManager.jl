@@ -34,6 +34,7 @@ const SN = Tuple{ServerSession, Notebook}
 "These expressions get evaluated whenever a new `Workspace` process is created."
 process_preamble() = quote
     Base.exit_on_sigint(false)
+    const pluto_boot_environment_path = $(Pluto.pluto_boot_environment_path[])
     include($(project_relative_path(joinpath("src", "runner"), "Loader.jl")))
     ENV["GKSwstype"] = "nul"
     ENV["JULIA_REVISE_WORKER_ONLY"] = "1"
@@ -56,7 +57,7 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
         Malt.InProcessWorker
     elseif something(
         session.options.evaluation.workspace_use_distributed_stdlib, 
-        Sys.iswindows() ? false : true
+        false
     )
         Malt.DistributedStdlibWorker
     else
@@ -553,10 +554,11 @@ function move_vars(
     to_delete::Set{Symbol},
     methods_to_delete::Set{Tuple{UUID,Tuple{Vararg{Symbol}}}},
     module_imports_to_move::Set{Expr},
-    invalidated_cell_uuids::Set{UUID},
+    cells_to_macro_invalidate::Set{UUID},
+    cells_to_js_link_invalidate::Set{UUID},
     keep_registered::Set{Symbol}=Set{Symbol}();
     kwargs...
-    )
+)
 
     workspace = get_workspace(session_notebook)
     new_workspace_name = something(new_workspace_name, workspace.module_name)
@@ -568,14 +570,32 @@ function move_vars(
             $to_delete,
             $methods_to_delete,
             $module_imports_to_move,
-            $invalidated_cell_uuids,
+            $cells_to_macro_invalidate,
+            $cells_to_js_link_invalidate,
             $keep_registered,
         )
     end)
 end
 
-function move_vars(session_notebook::Union{SN,Workspace}, to_delete::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,Tuple{Vararg{Symbol}}}}, module_imports_to_move::Set{Expr}, invalidated_cell_uuids::Set{UUID}; kwargs...)
-    move_vars(session_notebook, bump_workspace_module(session_notebook)..., to_delete, methods_to_delete, module_imports_to_move, invalidated_cell_uuids; kwargs...)
+function move_vars(
+    session_notebook::Union{SN,Workspace},
+    to_delete::Set{Symbol},
+    methods_to_delete::Set{Tuple{UUID,Tuple{Vararg{Symbol}}}},
+    module_imports_to_move::Set{Expr},
+    cells_to_macro_invalidate::Set{UUID},
+    cells_to_js_link_invalidate::Set{UUID};
+    kwargs...
+)
+    move_vars(
+        session_notebook,
+        bump_workspace_module(session_notebook)...,
+        to_delete,
+        methods_to_delete,
+        module_imports_to_move,
+        cells_to_macro_invalidate,
+        cells_to_js_link_invalidate;
+        kwargs...
+    )
 end
 
 # TODO: delete me

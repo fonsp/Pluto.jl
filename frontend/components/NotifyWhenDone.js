@@ -4,6 +4,7 @@ import { cl } from "../common/ClassTable.js"
 import { is_finished, total_done } from "./ProcessTab.js"
 import { useDelayedTruth } from "./BottomRightPanel.js"
 import { url_logo_small } from "./Editor.js"
+import { open_pluto_popup } from "../common/open_pluto_popup.js"
 
 /**
  * @param {{
@@ -71,8 +72,18 @@ export let NotifyWhenDone = ({ status }) => {
                         if (e.target.checked) {
                             Notification.requestPermission().then((r) => {
                                 console.log(r)
-                                setEnabled(r === "granted")
-                                e.target.checked = r === "granted"
+                                const granted = r === "granted"
+                                setEnabled(granted)
+                                e.target.checked = granted
+
+                                if (!granted)
+                                    open_pluto_popup({
+                                        type: "warn",
+                                        body: html`
+                                            Pluto needs permission to show notifications. <strong>Enable notifications</strong> in your browser settings to use
+                                            this feature.
+                                        `,
+                                    })
                             })
                         } else {
                             setEnabled(false)

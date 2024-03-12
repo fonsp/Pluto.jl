@@ -283,14 +283,9 @@ function try_macroexpand(mod::Module, notebook_id::UUID, cell_id::UUID, expr; ca
         Expr(:block, expr)
     end
 
-    logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
-    if logger.workspace_count < moduleworkspace_count[]
-        logger = pluto_cell_loggers[cell_id] = PlutoCellLogger(notebook_id, cell_id)
-    end
+    capture_logger = CaptureLogger(nothing, get_cell_logger(notebook_id, cell_id), Dict[])
 
-    capture_logger = CaptureLogger(nothing, logger, Dict[])
-
-    expanded_expr, elapsed_ns = with_logger_and_io_to_logs(capture_logger; capture_stdout, stdio_loglevel=stdout_log_level) do
+    expanded_expr, elapsed_ns = with_logger_and_io_to_logs(capture_logger; capture_stdout) do
         elapsed_ns = time_ns()
         expanded_expr = macroexpand(mod, expr_not_toplevel)::Expr
         elapsed_ns = time_ns() - elapsed_ns
@@ -531,16 +526,16 @@ function run_expression(
     old_currently_running_cell_id = currently_running_cell_id[]
     currently_running_cell_id[] = cell_id
 
-    logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
-    if logger.workspace_count < moduleworkspace_count[]
-        logger = pluto_cell_loggers[cell_id] = PlutoCellLogger(notebook_id, cell_id)
-    end
+    logger = get_cell_logger(notebook_id, cell_id)
 
     # reset published objects
     cell_published_objects[cell_id] = Dict{String,Any}()
 
     # reset registered bonds
     cell_registered_bond_names[cell_id] = Set{Symbol}()
+
+    # reset JS links
+    unregister_js_link(cell_id)
 
     # If the cell contains macro calls, we want those macro calls to preserve their identity,
     # so we macroexpand this earlier (during expression explorer stuff), and then we find it here.
@@ -593,7 +588,7 @@ function run_expression(
         throw("Expression still contains macro calls!!")
     end
 
-    result, runtime = with_logger_and_io_to_logs(logger; capture_stdout, stdio_loglevel=stdout_log_level) do # about 200ns + 3ms overhead
+    result, runtime = with_logger_and_io_to_logs(logger; capture_stdout) do # about 200ns + 3ms overhead
         if function_wrapped_info === nothing
             toplevel_expr = Expr(:toplevel, expr)
             wrapped = timed_expr(toplevel_expr)
@@ -690,7 +685,8 @@ function move_vars(
     vars_to_delete::Set{Symbol},
     methods_to_delete::Set{Tuple{UUID,Tuple{Vararg{Symbol}}}},
     module_imports_to_move::Set{Expr},
-    invalidated_cell_uuids::Set{UUID},
+    cells_to_macro_invalidate::Set{UUID},
+    cells_to_js_link_invalidate::Set{UUID},
     keep_registered::Set{Symbol},
 )
     old_workspace = getfield(Main, old_workspace_name)
@@ -698,10 +694,11 @@ function move_vars(
 
     do_reimports(new_workspace, module_imports_to_move)
 
-    for uuid in invalidated_cell_uuids
-        pop!(cell_expanded_exprs, uuid, nothing)
+    for cell_id in cells_to_macro_invalidate
+        delete!(cell_expanded_exprs, cell_id)
     end
-
+    foreach(unregister_js_link, cells_to_js_link_invalidate)
+    
     # TODO: delete
     Core.eval(new_workspace, :(import ..($(old_workspace_name))))
 
@@ -785,6 +782,13 @@ function delete_method_doc(m::Method)
     end
 end
 
+
+if VERSION < v"1.7.0-0"
+    @eval macro atomic(ex)
+        esc(ex)
+    end
+end
+
 """
 Delete all methods of `f` that were defined in this notebook, and leave the ones defined in other packages, base, etc. ✂
 
@@ -796,7 +800,7 @@ function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
     methods_table = typeof(f).name.mt
     deleted_sigs = Set{Type}()
     Base.visit(methods_table) do method # iterates through all methods of `f`, including overridden ones
-        if isfromcell(method, cell_id) && getfield(method, deleted_world) == alive_world_val
+        if isfromcell(method, cell_id) && method.deleted_world == alive_world_val
             Base.delete_method(method)
             delete_method_doc(method)
             push!(deleted_sigs, method.sig)
@@ -807,7 +811,7 @@ function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
     # we define `Base.isodd(n::Integer) = rand(Bool)`, which overrides the existing method `Base.isodd(n::Integer)`
     # calling `Base.delete_method` on this method won't bring back the old method, because our new method still exists in the method table, and it has a world age which is newer than the original. (our method has a deleted_world value set, which disables it)
     #
-    # To solve this, we iterate again, and _re-enable any methods that were hidden in this way_, by adding them again to the method table with an even newer`primary_world`.
+    # To solve this, we iterate again, and _re-enable any methods that were hidden in this way_, by adding them again to the method table with an even newer `primary_world`.
     if !isempty(deleted_sigs)
         to_insert = Method[]
         Base.visit(methods_table) do method
@@ -817,8 +821,13 @@ function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
         end
         # separate loop to avoid visiting the recently added method
         for method in Iterators.reverse(to_insert)
-            setfield!(method, primary_world, one(typeof(alive_world_val))) # `1` will tell Julia to increment the world counter and set it as this function's world
-            setfield!(method, deleted_world, alive_world_val) # set the `deleted_world` property back to the 'alive' value (for Julia v1.6 and up)
+            if VERSION >= v"1.11.0-0"
+                @atomic method.primary_world = one(typeof(alive_world_val)) # `1` will tell Julia to increment the world counter and set it as this function's world
+                @atomic method.deleted_world = alive_world_val # set the `deleted_world` property back to the 'alive' value (for Julia v1.6 and up)
+            else
+                method.primary_world = one(typeof(alive_world_val))
+                method.deleted_world = alive_world_val
+            end
             ccall(:jl_method_table_insert, Cvoid, (Any, Any, Ptr{Cvoid}), methods_table, method, C_NULL) # i dont like doing this either!
         end
     end
@@ -847,10 +856,7 @@ function try_delete_toplevel_methods(workspace::Module, (cell_id, name_parts)::T
     end
 end
 
-# these deal with some inconsistencies in Julia's internal (undocumented!) variable names
-const primary_world = filter(in(fieldnames(Method)), [:primary_world, :min_world]) |> first # Julia v1.3 and v1.0 resp.
-const deleted_world = filter(in(fieldnames(Method)), [:deleted_world, :max_world]) |> first # Julia v1.3 and v1.0 resp.
-const alive_world_val = getfield(methods(Base.sqrt).ms[1], deleted_world) # typemax(UInt) in Julia v1.3, Int(-1) in Julia 1.0
+const alive_world_val = methods(Base.sqrt).ms[1].deleted_world # typemax(UInt) in Julia v1.3, Int(-1) in Julia 1.0
 
 
 
@@ -917,8 +923,7 @@ function formatted_result_of(
     errored = ans isa CapturedException
 
     output_formatted = if (!ends_with_semicolon || errored)
-        logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
-        with_logger_and_io_to_logs(logger; capture_stdout, stdio_loglevel=stdout_log_level) do
+        with_logger_and_io_to_logs(get_cell_logger(notebook_id, cell_id); capture_stdout) do
             format_output(ans; context=IOContext(
             default_iocontext, 
             :extra_items=>extra_items, 
@@ -990,6 +995,7 @@ const default_iocontext = IOContext(devnull,
     :is_pluto => true, 
     :pluto_supported_integration_features => supported_integration_features,
     :pluto_published_to_js => (io, x) -> core_published_to_js(io, x),
+    :pluto_with_js_link => (io, callback, on_cancellation) -> core_with_js_link(io, callback, on_cancellation),
 )
 
 const default_stdout_iocontext = IOContext(devnull, 
@@ -1198,17 +1204,50 @@ function convert_parse_error_to_dict(ex)
    )
 end
 
+"""
+*Internal* wrapper for syntax errors which have diagnostics.
+Thrown through PlutoRunner.throw_syntax_error
+"""
+struct PrettySyntaxError <: Exception
+    ex::Any
+end
+
 function throw_syntax_error(@nospecialize(syntax_err))
     syntax_err isa String && (syntax_err = "syntax: $syntax_err")
     syntax_err isa Exception || (syntax_err = ErrorException(syntax_err))
+
+    if has_julia_syntax && syntax_err isa Base.Meta.ParseError && syntax_err.detail isa Base.JuliaSyntax.ParseError
+        syntax_err = PrettySyntaxError(syntax_err)
+    end
+
     throw(syntax_err)
 end
 
 const has_julia_syntax = isdefined(Base, :JuliaSyntax) && fieldcount(Base.Meta.ParseError) == 2
 
+function frame_is_from_plutorunner(frame::Base.StackTraces.StackFrame)
+    if frame.linfo isa Core.MethodInstance
+        frame.linfo.def.module === PlutoRunner
+    else
+        endswith(String(frame.file), "PlutoRunner.jl")
+    end
+end
+
+frame_is_from_usercode(frame::Base.StackTraces.StackFrame) = occursin("#==#", String(frame.file))
+
+function frame_url(frame::Base.StackTraces.StackFrame)
+    if frame.linfo isa Core.MethodInstance
+        Base.url(frame.linfo.def)
+    elseif frame.linfo isa Method
+        Base.url(frame.linfo)
+    else
+        nothing
+    end
+end
+
 function format_output(val::CapturedException; context=default_iocontext)
-    if has_julia_syntax && val.ex isa Base.Meta.ParseError && val.ex.detail isa Base.JuliaSyntax.ParseError
-        dict = convert_parse_error_to_dict(val.ex.detail)
+    if has_julia_syntax && val.ex isa PrettySyntaxError
+        dict = convert_parse_error_to_dict(val.ex.ex.detail)
         return dict, MIME"application/vnd.pluto.parseerror+object"()
     end
 
@@ -1218,24 +1257,28 @@ function format_output(val::CapturedException; context=default_iocontext)
 
         # function_wrap_index = findfirst(f -> occursin("function_wrapped_cell", String(f.func)), stack)
 
-        function_wrap_index = findlast(f -> occursin("#==#", String(f.file)), stack)
-
-        if function_wrap_index === nothing
-            for _ in 1:2
-                until = findfirst(b -> b.func == :eval, reverse(stack))
-                stack = until === nothing ? stack : stack[1:end - until]
-            end
+        function_wrap_index = findlast(frame_is_from_usercode, stack)
+        internal_index = findfirst(frame_is_from_plutorunner, stack)
+        
+        limit = if function_wrap_index !== nothing
+            function_wrap_index
+        elseif internal_index !== nothing
+            internal_index - 1
         else
-            stack = stack[1:function_wrap_index]
+            nothing
         end
+        stack_relevant = stack[1:something(limit, end)]
 
-        pretty = map(stack) do s
+        pretty = map(stack_relevant) do s
             Dict(
                 :call => pretty_stackcall(s, s.linfo),
                 :inlined => s.inlined,
+                :from_c => s.from_c,
                 :file => basename(String(s.file)),
                 :path => String(s.file),
                 :line => s.line,
+                :url => frame_url(s),
+                :linfo_type => string(typeof(s.linfo)),
             )
         end
     else
@@ -1249,7 +1292,7 @@ function format_output(binding::Base.Docs.Binding; context=default_iocontext)
     try
         ("""
         <div class="pluto-docs-binding">
-        <span>$(binding.var)</span>
+        <span id="$(binding.var)">$(binding.var)</span>
         $(repr(MIME"text/html"(), Base.Docs.doc(binding)))
         </div>
         """, MIME"text/html"()) 
@@ -1278,7 +1321,12 @@ end
 
 function pretty_stackcall(frame::Base.StackFrame, linfo::Core.MethodInstance)
     if linfo.def isa Method
-        sprint(Base.show_tuple_as_call, linfo.def.name, linfo.specTypes)
+        @static if isdefined(Base.StackTraces, :show_spec_linfo) && hasmethod(Base.StackTraces.show_spec_linfo, Tuple{IO, Base.StackFrame})
+            sprint(Base.StackTraces.show_spec_linfo, frame; context=:backtrace => true)
+
+        else
+            split(string(frame), " at ") |> first
+        end
     else
         sprint(Base.show, linfo)
     end
@@ -1296,7 +1344,7 @@ end
 function show_richest_withreturned(context::IOContext, @nospecialize(args))
     buffer = IOBuffer(; sizehint=0)
     val = show_richest(IOContext(buffer, context), args)
-    return (resize!(buffer.data, buffer.size), val)
+    return (take!(buffer), val)
 end
 
 "Super important thing don't change."
@@ -1702,6 +1750,9 @@ const integrations = Integration[
                 supported!(AbstractPlutoDingetjes.Display)
                 if isdefined(AbstractPlutoDingetjes.Display, :published_to_js)
                     supported!(AbstractPlutoDingetjes.Display.published_to_js)
+                end
+                if isdefined(AbstractPlutoDingetjes.Display, :with_js_link)
+                    supported!(AbstractPlutoDingetjes.Display.with_js_link)
                 end
             end
 
@@ -2127,7 +2178,7 @@ function improve_docs!(doc_md::Markdown.MD, query::Symbol, binding::Docs.Binding
 
         perm = sortperm(suggestions_scores; rev=true)
         permute!(suggestions, perm)
-        links = map(s -> Suggestion(s, symbol), @view(suggestions[begin:min(end,DOC_SUGGESTION_LIMIT)]))
+        links = map(s -> Suggestion(string(s), symbol), Iterators.take(suggestions, DOC_SUGGESTION_LIMIT))
 
         if length(links) > 0
             push!(doc_md.content,
@@ -2486,6 +2537,73 @@ function Base.show(io::IO, m::MIME"text/html", e::DivElement)
     Base.show(io, m, embed_display(e))
 end
 
+
+###
+# JS LINK
+###
+
+struct JSLink
+    callback::Function
+    on_cancellation::Union{Nothing,Function}
+    cancelled_ref::Ref{Bool}
+end
+
+const cell_js_links = Dict{UUID,Dict{String,JSLink}}()
+
+function core_with_js_link(io, callback, on_cancellation)
+    
+    _cell_id = get(io, :pluto_cell_id, currently_running_cell_id[])::UUID
+    
+    link_id = String(rand('a':'z', 16))
+    
+    links = get!(() -> Dict{String,JSLink}(), cell_js_links, _cell_id)
+    links[link_id] = JSLink(callback, on_cancellation, Ref(false))
+    
+    write(io, "/* See the documentation for AbstractPlutoDingetjes.Display.with_js_link */ _internal_getJSLinkResponse(\"$(_cell_id)\", \"$(link_id)\")")
+end
+
+function unregister_js_link(cell_id::UUID)
+    # cancel old links
+    old_links = get!(() -> Dict{String,JSLink}(), cell_js_links, cell_id)
+    for (name, link) in old_links
+        link.cancelled_ref[] = true
+    end
+    for (name, link) in old_links
+        c = link.on_cancellation
+        c === nothing || c()
+    end
+
+    # clear
+    cell_js_links[cell_id] = Dict{String,JSLink}()
+end
+
+function evaluate_js_link(notebook_id::UUID, cell_id::UUID, link_id::String, input::Any)
+    links = get(() -> Dict{String,JSLink}(), cell_js_links, cell_id)
+    link = get(links, link_id, nothing)
+    
+    with_logger_and_io_to_logs(get_cell_logger(notebook_id, cell_id); capture_stdout=false) do
+        if link === nothing
+            @warn "🚨 AbstractPlutoDingetjes: JS link not found." link_id
+            
+            (false, "link not found")
+        elseif link.cancelled_ref[]
+            @warn "🚨 AbstractPlutoDingetjes: JS link has already been invalidated." link_id
+            
+            (false, "link has been invalidated")
+        else
+            try
+                result = link.callback(input)
+                assertpackable(result)
+                
+                (true, result)
+            catch ex
+                @error "🚨 AbstractPlutoDingetjes.Display.with_js_link: Exception while evaluating Julia callback." input exception=(ex, catch_backtrace())
+                (false, "exception in Julia callback:\n\n$(ex)")
+            end
+        end
+    end
+end
+
 ###
 # LOGGING
 ###
@@ -2526,6 +2644,14 @@ end
 
 const pluto_cell_loggers = Dict{UUID,PlutoCellLogger}() # One logger per cell
 const pluto_log_channels = Dict{UUID,Channel{Any}}() # One channel per notebook
+
+function get_cell_logger(notebook_id, cell_id)
+    logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
+    if logger.workspace_count < moduleworkspace_count[]
+        logger = pluto_cell_loggers[cell_id] = PlutoCellLogger(notebook_id, cell_id)
+    end
+    logger
+end
 
 function Logging.shouldlog(logger::PlutoCellLogger, level, _module, _...)
     # Accept logs
@@ -2627,8 +2753,8 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     # Redirect both the `stdout` and `stderr` streams to a single `Pipe` object.
     pipe = Pipe()
     Base.link_pipe!(pipe; reader_supports_async = true, writer_supports_async = true)
-    pe_stdout = IOContext(pipe.in, default_stdout_iocontext)
-    pe_stderr = IOContext(pipe.in, default_stdout_iocontext)
+    pe_stdout = pipe.in
+    pe_stderr = pipe.in
     redirect_stdout(pe_stdout)
     redirect_stderr(pe_stderr)
 
@@ -2661,7 +2787,7 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     end
 
     # To make the `display` function work.
-    redirect_display = TextDisplay(pe_stdout)
+    redirect_display = TextDisplay(IOContext(pe_stdout, default_stdout_iocontext))
     pushdisplay(redirect_display)
 
     # Run the function `f`, capturing all output that it might have generated.
@@ -2689,7 +2815,7 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     result
 end
 
-function with_logger_and_io_to_logs(f, logger; capture_stdout=true, stdio_loglevel=Logging.LogLevel(1))
+function with_logger_and_io_to_logs(f, logger; capture_stdout=true, stdio_loglevel=stdout_log_level)
     Logging.with_logger(logger) do
         with_io_to_logs(f; enabled=capture_stdout, loglevel=stdio_loglevel)
     end
@@ -2698,5 +2824,7 @@ end
 function setup_plutologger(notebook_id::UUID, log_channel::Channel{Any})
     pluto_log_channels[notebook_id] = log_channel
 end
+
+include("./precompile.jl")
 
 end

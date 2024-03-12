@@ -13,7 +13,7 @@ function open_in_default_browser(url::AbstractString)::Bool
             Base.run(`powershell.exe Start "'$url'"`)
             true
         elseif Sys.islinux()
-            Base.run(`xdg-open $url`)
+            Base.run(`xdg-open $url`, devnull, devnull, devnull)
             true
         else
             false

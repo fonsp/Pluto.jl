@@ -190,6 +190,8 @@ const StatusItem = ({ status_tree, path, my_clock_is_ahead_by, nbpkg, backend_la
         }
     }
 
+    const can_open = Object.values(mystatus.subtasks).length > 0
+
     return path.length === 0
         ? inner
         : html`<pl-status
@@ -199,8 +201,9 @@ const StatusItem = ({ status_tree, path, my_clock_is_ahead_by, nbpkg, backend_la
                   finished,
                   busy,
                   is_open,
-                  can_open: Object.values(mystatus.subtasks).length > 0,
+                  can_open,
               })}
+              aria-expanded=${can_open ? is_open : undefined}
           >
               <div
                   onClick=${(e) => {

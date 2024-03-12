@@ -186,6 +186,7 @@
         --cm-line-numbers-color: #8d86875e;
         --cm-selection-background: hsl(214deg 100% 73% / 48%);
         --cm-selection-background-blurred: hsl(214deg 0% 73% / 48%);
+        --cm-highlighted: #cbceb668;
 
         /* code highlighting */
         --cm-editor-text-color: #41323f;
@@ -209,12 +210,14 @@
         --cm-matchingBracket-color: black;
         --cm-matchingBracket-bg-color: #1b4bbb21;
         --cm-placeholder-text-color: rgba(0, 0, 0, 0.2);
+        --cm-clickable-underline: #ced2ef;
 
         /*autocomplete menu*/
         --autocomplete-menu-bg-color: white;
 
         /* Landing colors */
         --index-text-color: hsl(0, 0, 60);
+        --index-light-text-color: #838383;
         --index-clickable-text-color: hsl(0, 0, 30);
         --docs-binding-bg: #8383830a;
         --index-card-bg: white;

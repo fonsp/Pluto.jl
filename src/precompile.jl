@@ -1,18 +1,6 @@
 using PrecompileTools: PrecompileTools
 
-const __TEST_NOTEBOOK_ID = uuid1()
-
 PrecompileTools.@compile_workload begin
-    let
-        channel = Channel{Any}(10)
-        Pluto.PlutoRunner.setup_plutologger(
-            __TEST_NOTEBOOK_ID,
-            channel,
-        )
-    end
-    expr = Expr(:toplevel, :(1 + 1))
-    Pluto.PlutoRunner.run_expression(Module(), expr, __TEST_NOTEBOOK_ID, uuid1(), nothing);
-
     nb = Pluto.Notebook([
         Pluto.Cell("""md"Hello *world*" """)
         Pluto.Cell("""[f(x)]""")
@@ -48,13 +36,13 @@ PrecompileTools.@compile_workload begin
         Pluto.topological_order(topology, topology.cell_order)
     end
 
-    let
-        io = IOBuffer()
-        # Notebook file format.
-        Pluto.save_notebook(io, nb)
-        seekstart(io)
-        Pluto.load_notebook_nobackup(io, "whatever.jl")
-    end
+    # let
+    #     io = IOBuffer()
+    #     # Notebook file format.
+    #     Pluto.save_notebook(io, nb)
+    #     seekstart(io)
+    #     Pluto.load_notebook_nobackup(io, "whatever.jl")
+    # end
 
     let
         state1 = Pluto.notebook_to_js(nb)

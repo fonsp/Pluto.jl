@@ -1,8 +1,9 @@
 import { html } from "../imports/Preact.js"
 
-export const read_Uint8Array_with_progress = async (response, on_progress) => {
-    if (response.headers.has("Content-Length")) {
-        const length = response.headers.get("Content-Length")
+export const read_Uint8Array_with_progress = async (/** @type {Response} */ response, on_progress) => {
+    if (response.body != null) {
+        const length_str = response.headers.get("Content-Length")
+        const length = length_str == null ? null : Number(length_str)
 
         const reader = response.body.getReader()
 
@@ -18,7 +19,14 @@ export const read_Uint8Array_with_progress = async (response, on_progress) => {
             chunks.push(value)
             receivedLength += value.length
 
-            on_progress(Math.min(1, receivedLength / length))
+            if (length != null) {
+                on_progress(Math.min(1, receivedLength / length))
+            } else {
+                // fake progress: 50% at 1MB, 67% at 2MB, 75% at 3MB, etc.
+                const z = 1e6
+                on_progress(1.0 - z / (receivedLength - z))
+            }
+            console.log({ receivedLength })
         }
 
         on_progress(1)
@@ -38,25 +46,6 @@ export const read_Uint8Array_with_progress = async (response, on_progress) => {
 export const FetchProgress = ({ progress }) =>
     progress == null || progress === 1
         ? null
-        : html`<div
-              style="
-              width: 200px;
-              height: 27px;
-              background: white;
-              border: 5px solid #d1d9e4;
-              border-radius: 6px;
-              position: fixed;
-              left: calc(50vw - 100px);
-              top: calc(50vh - 50px);
-              z-index: 300;
-              box-sizing: content-box;
-"
-          >
-              <div
-                  style=${{
-                      height: "100%",
-                      width: progress * 200 + "px",
-                      background: "rgb(117 135 177)",
-                  }}
-              ></div>
-          </div>`
+        : html`<progress class="statefile-fetch-progress" max="100" value=${progress === "indeterminate" ? undefined : Math.round(progress * 100)}>
+              ${progress === "indeterminate" ? null : Math.round(progress * 100)}%
+          </progress>`

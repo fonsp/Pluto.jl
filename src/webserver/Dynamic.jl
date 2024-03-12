@@ -99,6 +99,7 @@ Firebasey.use_triple_equals_for_arrays[] = true
 
 function notebook_to_js(notebook::Notebook)
     Dict{String,Any}(
+        "pluto_version" => PLUTO_VERSION_STR,
         "notebook_id" => notebook.notebook_id,
         "path" => notebook.path,
         "shortpath" => basename(notebook.path),
@@ -621,9 +622,32 @@ responses[:reshow_cell] = function response_reshow_cell(🙋::ClientRequest)
         collect(keys(cell.published_objects)),
         (parse(PlutoRunner.ObjectID, 🙋.body["objectid"], base=16), convert(Int64, 🙋.body["dim"])),
     )
-    set_output!(cell, run, ExprAnalysisCache(🙋.notebook, cell); persist_js_state=true)
+    set_output!(cell, run, ExprAnalysisCache(🙋.notebook.topology.codes[cell]); persist_js_state=true)
     # send to all clients, why not
     send_notebook_changes!(🙋 |> without_initiator)
+end
+
+responses[:request_js_link_response] = function response_request_js_link_response(🙋::ClientRequest)
+    require_notebook(🙋)
+    @assert will_run_code(🙋.notebook)
+
+    Threads.@spawn try
+        result = WorkspaceManager.eval_fetch_in_workspace(
+            (🙋.session, 🙋.notebook), 
+            quote
+                PlutoRunner.evaluate_js_link(
+                    $(🙋.notebook.notebook_id),
+                    $(UUID(🙋.body["cell_id"])),
+                    $(🙋.body["link_id"]),
+                    $(🙋.body["input"]),
+                )
+            end
+        )
+        
+        putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🐤, result, nothing, nothing, 🙋.initiator))
+    catch ex
+        @error "Error in request_js_link_response" exception=(ex, stacktrace(catch_backtrace()))
+    end
 end
 
 responses[:nbpkg_available_versions] = function response_nbpkg_available_versions(🙋::ClientRequest)

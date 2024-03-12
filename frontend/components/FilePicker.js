@@ -16,6 +16,7 @@ import {
     StateEffect,
 } from "../imports/CodemirrorPlutoSetup.js"
 import { guess_notebook_location } from "../common/NotebookLocationFromURL.js"
+import { tab_help_plugin } from "./CellInput/tab_help_plugin.js"
 
 let { autocompletion, completionKeymap } = autocomplete
 
@@ -248,6 +249,7 @@ export const FilePicker = ({ value, suggest_new_file, button_label, placeholder,
                     keymap.of(completionKeymap),
 
                     Placeholder(placeholder),
+                    tab_help_plugin,
                 ],
             }),
         })

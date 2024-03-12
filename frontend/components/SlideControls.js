@@ -1,5 +1,4 @@
 import { html, useRef, useState, useLayoutEffect, useEffect } from "../imports/Preact.js"
-import { open_pluto_popup } from "./Popup.js"
 
 export const SlideControls = () => {
     const button_prev_ref = useRef(/** @type {HTMLButtonElement?} */ (null))
