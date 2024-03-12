@@ -167,11 +167,11 @@ let update_docs_from_autocomplete_selection = (on_update_doc_query) => {
 }
 
 /** Are we matching something like `\lambd...`? */
-let match_latex_complete = (ctx) => ctx.matchBefore(/\\[^\s"'.`]*/)
+let match_latex_complete = (/** @type {autocomplete.CompletionContext} */ ctx) => ctx.matchBefore(/\\[^\s"'.`]*/)
 /** Are we matching something like `:writing_a_symbo...`? */
-let match_symbol_complete = (ctx) => ctx.matchBefore(/\.\:[^\s"'`()\[\].]*/)
+let match_symbol_complete = (/** @type {autocomplete.CompletionContext} */ ctx) => ctx.matchBefore(/\.\:[^\s"'`()\[\].]*/)
 /** Are we matching exactly `~/`? */
-let match_expanduser_complete = (ctx) => ctx.matchBefore(/~\//)
+let match_expanduser_complete = (/** @type {autocomplete.CompletionContext} */ ctx) => ctx.matchBefore(/~\//)
 /** Are we matching inside a string */
 function match_string_complete(ctx) {
     const tree = syntaxTree(ctx.state)
@@ -318,7 +318,7 @@ const pluto_completion_fetcher = (request_autocomplete) => {
     const unicode_completions = julia_special_completions_to_cm(request_autocomplete)
     const code_completions = julia_code_completions_to_cm(request_autocomplete)
 
-    return (ctx) => {
+    return (/** @type {autocomplete.CompletionContext} */ ctx) => {
         if (ctx.tokenBefore(["Number"]) != null) return null
         let unicode_match = match_latex_complete(ctx) || match_expanduser_complete(ctx)
         if (unicode_match === null) {
@@ -329,7 +329,7 @@ const pluto_completion_fetcher = (request_autocomplete) => {
     }
 }
 
-const complete_anyword = async (ctx) => {
+const complete_anyword = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
     const results_from_cm = await autocomplete.completeAnyWord(ctx)
     if (results_from_cm === null) return null
 
