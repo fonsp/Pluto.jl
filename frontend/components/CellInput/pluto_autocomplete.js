@@ -1,7 +1,5 @@
 import _ from "../../imports/lodash.js"
 
-import { utf8index_to_ut16index } from "../../common/UnicodeTools.js"
-
 import {
     EditorState,
     EditorSelection,
