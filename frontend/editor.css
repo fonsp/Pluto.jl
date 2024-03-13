@@ -3677,6 +3677,8 @@ pluto-cell.hooked_up pluto-output {
     float: right;
     top: -20px;
     right: -8px;
+    border: none;
+    background: none;
 }
 
 .markdown-code-block-copy-code-button::before,
@@ -3699,3 +3701,9 @@ pluto-cell.hooked_up pluto-output {
     background-image: url('https://unpkg.com/ionicons@7.1.0/dist/svg/checkmark-outline.svg');
 }
 
+/* Invert markdown copy button on theme toggle */
+@media (prefers-color-scheme: dark) {
+    #copy-to-clipboard-btn {
+      filter: invert(1);
+    }
+  }
