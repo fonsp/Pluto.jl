@@ -729,9 +729,18 @@ export const generateCopyCodeButton = (pre) => {
 
     // create copy button
     const copyCodeButton = document.createElement("button")
-    copyCodeButton.className = "markdown-code-block-copy-code-button"
-    copyCodeButton.addEventListener("click", copyToClipboard)
+    copyCodeButton.className = "markdown-code-block-button"
+    copyCodeButton.classList.add('markdown-code-block-copy-code-button')
+    copyCodeButton.addEventListener("click", function(e) {
+        copyToClipboard(e);
+        copyCodeButton.classList.add('markdown-code-block-copied-code-button');
+        setTimeout(function() {
+            copyCodeButton.classList.remove('markdown-code-block-copied-code-button');
+            copyCodeButton.classList.add('markdown-code-block-copy-code-button');
+        }, 2000);
+    });
 
     // Append copy button to the code block element
     pre.appendChild(copyCodeButton)
 }
+

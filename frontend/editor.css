@@ -3665,8 +3665,8 @@ pluto-cell.hooked_up pluto-output {
 }
 
 /*  Styles for markdown copy Button*/
-.markdown-code-block-copy-code-button {
-    position: relative; /* Change to relative */
+.markdown-code-block-button {
+    position: relative;
     cursor: pointer;
     width: 20px;
     height: 20px;
@@ -3679,14 +3679,23 @@ pluto-cell.hooked_up pluto-output {
     right: -8px;
 }
 
-.markdown-code-block-copy-code-button::before {
+.markdown-code-block-copy-code-button::before,
+.markdown-code-block-copied-code-button::before {
     content: '';
     position: absolute;
     top: 0;
     right: 0;
     width: 14px;
     height: 14px;
-    background-image: url('https://unpkg.com/ionicons@7.1.0/dist/svg/copy-outline.svg');
     background-size: contain;
     background-repeat: no-repeat;
 }
+
+.markdown-code-block-copy-code-button::before {
+    background-image: url('https://unpkg.com/ionicons@7.1.0/dist/svg/copy-outline.svg');
+}
+
+.markdown-code-block-copied-code-button::before {
+    background-image: url('https://unpkg.com/ionicons@7.1.0/dist/svg/checkmark-outline.svg');
+}
+
