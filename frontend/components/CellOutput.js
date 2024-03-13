@@ -705,10 +705,8 @@ export let highlight = (code_element, language) => {
  * Copies the contents of an HTML Element into the clipboard
  */
 export const copyToClipboard = (e) => {
-    const el = e.target.parentNode.parentNode.closest("pre")
-    const range = document.createRange()
-    range.selectNode(el)
-    const txt = range.startContainer.textContent || ''
+    const el = e.target.parentNode.closest("pre")
+    const txt = el.textContent || '';
     navigator.clipboard
         .writeText(txt)
         .then(() => {
@@ -733,14 +731,6 @@ export const generateCopyCodeButton = (pre) => {
     const copyCodeButton = document.createElement("button")
     copyCodeButton.className = "markdown-code-block-copy-code-button"
     copyCodeButton.addEventListener("click", copyToClipboard)
-
-    // Create copy button image
-    const copyImg = document.createElement("img")
-    copyImg.src = new URL("https://unpkg.com/ionicons@7.1.0/dist/svg/copy-outline.svg", import.meta.url).toString()
-    copyImg.alt = "Copy to Clipboard"
-
-    // Append image to button
-    copyCodeButton.appendChild(copyImg)
 
     // Append copy button to the code block element
     pre.appendChild(copyCodeButton)

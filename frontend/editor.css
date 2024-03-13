@@ -3664,11 +3664,9 @@ pluto-cell.hooked_up pluto-output {
     gap: 0.5em;
 }
 
-/*  Styles for mark down copy Button*/
+/*  Styles for markdown copy Button*/
 .markdown-code-block-copy-code-button {
-    position: absolute;
-    top: 10px;
-    right: 20px;
+    position: relative; /* Change to relative */
     cursor: pointer;
     width: 20px;
     height: 20px;
@@ -3676,9 +3674,19 @@ pluto-cell.hooked_up pluto-output {
     justify-content: center;
     align-items: center;
     padding: 0;
+    float: right;
+    top: -20px;
+    right: -8px;
 }
 
-.markdown-code-block-copy-code-button > img {
+.markdown-code-block-copy-code-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
     width: 14px;
     height: 14px;
+    background-image: url('https://unpkg.com/ionicons@7.1.0/dist/svg/copy-outline.svg');
+    background-size: contain;
+    background-repeat: no-repeat;
 }
