@@ -1,7 +1,5 @@
 import _ from "../../imports/lodash.js"
 
-import { utf8index_to_ut16index } from "../../common/UnicodeTools.js"
-
 import {
     EditorState,
     EditorSelection,
@@ -17,6 +15,8 @@ import { get_selected_doc_from_state } from "./LiveDocsFromCursor.js"
 import { cl } from "../../common/ClassTable.js"
 import { ScopeStateField } from "./scopestate_statefield.js"
 import { open_bottom_right_panel } from "../BottomRightPanel.js"
+import { ENABLE_CM_AUTOCOMPLETE_ON_TYPE } from "../CellInput.js"
+import { GlobalDefinitionsFacet } from "./go_to_definition_plugin.js"
 
 let { autocompletion, completionKeymap, completionStatus, acceptCompletion } = autocomplete
 
@@ -82,11 +82,15 @@ const tab_completion_command = (cm) => {
     }
 
     let selection = cm.state.selection.main
-    let last_char = cm.state.sliceDoc(selection.from - 1, selection.from)
-
     if (!selection.empty) return false
+
+    let last_char = cm.state.sliceDoc(selection.from - 1, selection.from)
+    let last_line = cm.state.sliceDoc(cm.state.doc.lineAt(selection.from).from, selection.from)
+
     // Some exceptions for when to trigger tab autocomplete
-    if (/^(\t| |\n|\=|\)|)$/.test(last_char)) return false
+    if ("\t \n=".includes(last_char)) return false
+    // ?([1,2], 3)<TAB> should trigger autocomplete
+    if (last_char === ")" && !last_line.includes("?")) return false
 
     cm.dispatch({
         effects: TabCompletionEffect.of(10),
@@ -161,11 +165,11 @@ let update_docs_from_autocomplete_selection = (on_update_doc_query) => {
 }
 
 /** Are we matching something like `\lambd...`? */
-let match_latex_complete = (ctx) => ctx.matchBefore(/\\[^\s"'.`]*/)
+let match_latex_complete = (/** @type {autocomplete.CompletionContext} */ ctx) => ctx.matchBefore(/\\[^\s"'.`]*/)
 /** Are we matching something like `:writing_a_symbo...`? */
-let match_symbol_complete = (ctx) => ctx.matchBefore(/\.\:[^\s"'`()\[\].]*/)
+let match_symbol_complete = (/** @type {autocomplete.CompletionContext} */ ctx) => ctx.matchBefore(/\.\:[^\s"'`()\[\].]*/)
 /** Are we matching exactly `~/`? */
-let match_expanduser_complete = (ctx) => ctx.matchBefore(/~\//)
+let match_expanduser_complete = (/** @type {autocomplete.CompletionContext} */ ctx) => ctx.matchBefore(/~\//)
 /** Are we matching inside a string */
 function match_string_complete(ctx) {
     const tree = syntaxTree(ctx.state)
@@ -177,141 +181,147 @@ function match_string_complete(ctx) {
 }
 
 /** Use the completion results from the Julia server to create CM completion objects, but only for path completions (TODO: broken) and latex completions. */
-let julia_special_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (ctx) => {
-    let to_complete = ctx.state.sliceDoc(0, ctx.pos)
+let julia_special_completions_to_cm =
+    (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (/** @type {autocomplete.CompletionContext} */ ctx) => {
+        let to_complete = ctx.state.sliceDoc(0, ctx.pos)
 
-    let found = await request_autocomplete({ text: to_complete })
-    if (!found) return null
-    let { start, stop, results } = found
+        let found = await request_autocomplete({ text: to_complete })
+        if (!found) return null
+        let { start, stop, results } = found
 
-    let should_apply_unicode_completion = !match_string_complete(ctx)
+        let should_apply_unicode_completion = !match_string_complete(ctx)
 
-    return {
-        from: start,
-        to: stop,
-        // This is an important one when you not only complete, but also replace something.
-        // @codemirror/autocomplete automatically filters out results otherwise >:(
-        filter: false,
-        options: results.map(([text, _, __, ___, ____, detail]) => {
-            return {
-                label: text,
-                apply: detail && should_apply_unicode_completion ? detail : text,
-                detail: detail ?? undefined,
-            }
-        }),
-        // TODO Do something docs_prefix ish when we also have the apply text
+        return {
+            from: start,
+            to: stop,
+            // This is an important one when you not only complete, but also replace something.
+            // @codemirror/autocomplete automatically filters out results otherwise >:(
+            filter: false,
+            options: results.map(([text, _, __, ___, ____, detail]) => {
+                return {
+                    label: text,
+                    apply: detail && should_apply_unicode_completion ? detail : text,
+                    detail: detail ?? undefined,
+                }
+            }),
+            // TODO Do something docs_prefix ish when we also have the apply text
+        }
     }
-}
 
 let override_text_to_apply_in_field_expression = (text) => {
     return !/^[@a-zA-Z_][a-zA-Z0-9!_]*\"?$/.test(text) ? (text === ":" ? `:(${text})` : `:${text}`) : null
 }
 
-/**
- * @param {Map<String,import("./scopestate_statefield.js").Definition>} definitions
- * @param {Set<String>} proposed
- * @param {number} context_pos
- */
-const generate_scopestate_completions = function* (definitions, proposed, context_pos) {
-    let i = 0
-    for (let [name, { valid_from }] of definitions.entries()) {
-        if (!proposed.has(name) && valid_from < context_pos) {
-            yield {
-                label: name,
-                type: "c_Any",
-                boost: 99 - i,
-            }
-            i += 1
-        }
-    }
+const section_regular = {
+    name: "Suggestions",
+    header: () => document.createElement("div"),
+    rank: 0,
+}
+
+const section_operators = {
+    name: "Operators",
+    rank: 1,
 }
 
 /** Use the completion results from the Julia server to create CM completion objects. */
-const julia_code_completions_to_cm = (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (ctx) => {
-    let to_complete = ctx.state.sliceDoc(0, ctx.pos)
+const julia_code_completions_to_cm =
+    (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (/** @type {autocomplete.CompletionContext} */ ctx) => {
+        let to_complete = /** @type {String} */ (ctx.state.sliceDoc(0, ctx.pos))
 
-    // Another rough hack... If it detects a `.:`, we want to cut out the `:` so we get all results from julia,
-    // but then codemirror will put the `:` back in filtering
-    let is_symbol_completion = match_symbol_complete(ctx)
-    if (is_symbol_completion) {
-        to_complete = to_complete.slice(0, is_symbol_completion.from + 1) + to_complete.slice(is_symbol_completion.from + 2)
+        // Another rough hack... If it detects a `.:`, we want to cut out the `:` so we get all results from julia,
+        // but then codemirror will put the `:` back in filtering
+        let is_symbol_completion = match_symbol_complete(ctx)
+        if (is_symbol_completion) {
+            to_complete = to_complete.slice(0, is_symbol_completion.from + 1) + to_complete.slice(is_symbol_completion.from + 2)
+        }
+
+        // no path autocompletions
+        if (ctx.tokenBefore(["String"]) != null) return null
+
+        const globals = ctx.state.facet(GlobalDefinitionsFacet)
+        const is_already_a_global = (text) => text != null && Object.keys(globals).includes(text)
+
+        let found = await request_autocomplete({ text: to_complete })
+        if (!found) return null
+        let { start, stop, results } = found
+
+        if (is_symbol_completion) {
+            // If this is a symbol completion thing, we need to add the `:` back in by moving the end a bit furher
+            stop = stop + 1
+        }
+
+        // const definitions = ctx.state.field(ScopeStateField).definitions
+        // console.debug({ definitions })
+        // const proposed = new Set()
+
+        let to_complete_onto = to_complete.slice(0, start)
+        let is_field_expression = to_complete_onto.slice(-1) === "."
+        return {
+            from: start,
+            to: stop,
+
+            // see `is_wc_cat_id_start` in Julia's source for a complete list
+            validFor: /[\p{L}\p{Nl}\p{Sc}\d_]*$/u,
+
+            // This tells codemirror to not query this function again as long as the string
+            // we are completing has the same prefix as we complete now, and there is no weird characters (subjective)
+            // e.g. Base.ab<TAB>, will create a regex like /^ab[^weird]*$/, so when now typing `s`,
+            //      we'll get `Base.abs`, it finds the `abs` matching our span, and it will filter the existing results.
+            //      If we backspace however, to `Math.a`, `a` does no longer match! So it will re-query this function.
+            // span: RegExp(`^${_.escapeRegExp(ctx.state.sliceDoc(start, stop))}[^\\s"'()\\[\\].{}]*`),
+            options: [
+                ...results
+                    .filter(([text, _1, _2, is_from_notebook]) => !(is_from_notebook && is_already_a_global(text)))
+                    .map(([text, value_type, is_exported, is_from_notebook, completion_type, _ignored], i) => {
+                        // (quick) fix for identifiers that need to be escaped
+                        // Ideally this is done with Meta.isoperator on the julia side
+                        let text_to_apply =
+                            completion_type === "method" ? to_complete : is_field_expression ? override_text_to_apply_in_field_expression(text) ?? text : text
+
+                        return {
+                            label: text,
+                            apply: text_to_apply,
+                            type:
+                                cl({
+                                    c_notexported: !is_exported,
+                                    [`c_${value_type}`]: value_type != null,
+                                    [`completion_${completion_type}`]: completion_type != null,
+                                    c_from_notebook: is_from_notebook,
+                                }) ?? undefined,
+                            section: section_regular,
+                            // boost: 50 - i / results.length,
+                        }
+                    }),
+                // This is a small thing that I really want:
+                // You want to see what fancy symbols a module has? Pluto will show these at the very end of the list,
+                // for Base there is no way you're going to find them! With this you can type `.:` and see all the fancy symbols.
+                // TODO This whole block shouldn't use `override_text_to_apply_in_field_expression` but the same
+                //      `Meta.isoperator` thing mentioned above
+                ...results
+                    .filter(([text]) => is_field_expression && override_text_to_apply_in_field_expression(text) != null)
+                    .map(([text, value_type, is_exported], i) => {
+                        let text_to_apply = override_text_to_apply_in_field_expression(text) ?? ""
+
+                        return {
+                            label: text_to_apply,
+                            apply: text_to_apply,
+                            type: (is_exported ? "" : "c_notexported ") + (value_type == null ? "" : "c_" + value_type),
+                            // boost: -99 - i / results.length, // Display below all normal results
+                            section: section_operators,
+                            // Non-standard
+                            is_not_exported: !is_exported,
+                        }
+                    }),
+            ],
+        }
     }
-
-    let found = await request_autocomplete({ text: to_complete })
-    if (!found) return null
-    let { start, stop, results } = found
-
-    if (is_symbol_completion) {
-        // If this is a symbol completion thing, we need to add the `:` back in by moving the end a bit furher
-        stop = stop + 1
-    }
-
-    const definitions = ctx.state.field(ScopeStateField).definitions
-    const proposed = new Set()
-
-    let to_complete_onto = to_complete.slice(0, start)
-    let is_field_expression = to_complete_onto.slice(-1) === "."
-    return {
-        from: start,
-        to: stop,
-
-        // This tells codemirror to not query this function again as long as the string
-        // we are completing has the same prefix as we complete now, and there is no weird characters (subjective)
-        // e.g. Base.ab<TAB>, will create a regex like /^ab[^weird]*$/, so when now typing `s`,
-        //      we'll get `Base.abs`, it finds the `abs` matching our span, and it will filter the existing results.
-        //      If we backspace however, to `Math.a`, `a` does no longer match! So it will re-query this function.
-        // span: RegExp(`^${_.escapeRegExp(ctx.state.sliceDoc(start, stop))}[^\\s"'()\\[\\].{}]*`),
-        options: [
-            ...results.map(([text, type_description, is_exported, is_from_notebook, completion_type], i) => {
-                // (quick) fix for identifiers that need to be escaped
-                // Ideally this is done with Meta.isoperator on the julia side
-                let text_to_apply = is_field_expression ? override_text_to_apply_in_field_expression(text) ?? text : text
-
-                if (definitions.has(text)) proposed.add(text)
-
-                return {
-                    label: text,
-                    apply: text_to_apply,
-                    type:
-                        cl({
-                            c_notexported: !is_exported,
-                            [`c_${type_description}`]: type_description != null,
-                            [`completion_${completion_type}`]: completion_type != null,
-                            c_from_notebook: is_from_notebook,
-                        }) ?? undefined,
-                    boost: 50 - i / results.length,
-                }
-            }),
-            // This is a small thing that I really want:
-            // You want to see what fancy symbols a module has? Pluto will show these at the very end of the list,
-            // for Base there is no way you're going to find them! With this you can type `.:` and see all the fancy symbols.
-            // TODO This whole block shouldn't use `override_text_to_apply_in_field_expression` but the same
-            //      `Meta.isoperator` thing mentioned above
-            ...results
-                .filter(([text]) => is_field_expression && override_text_to_apply_in_field_expression(text) != null)
-                .map(([text, type_description, is_exported], i) => {
-                    let text_to_apply = override_text_to_apply_in_field_expression(text) ?? ""
-
-                    return {
-                        label: text_to_apply,
-                        apply: text_to_apply,
-                        type: (is_exported ? "" : "c_notexported ") + (type_description == null ? "" : "c_" + type_description),
-                        boost: -99 - i / results.length, // Display below all normal results
-                        // Non-standard
-                        is_not_exported: !is_exported,
-                    }
-                }),
-
-            ...Array.from(generate_scopestate_completions(definitions, proposed, ctx.pos)),
-        ],
-    }
-}
 
 const pluto_completion_fetcher = (request_autocomplete) => {
     const unicode_completions = julia_special_completions_to_cm(request_autocomplete)
     const code_completions = julia_code_completions_to_cm(request_autocomplete)
 
-    return (ctx) => {
+    return (/** @type {autocomplete.CompletionContext} */ ctx) => {
+        if (ctx.tokenBefore(["Number"]) != null) return null
         let unicode_match = match_latex_complete(ctx) || match_expanduser_complete(ctx)
         if (unicode_match === null) {
             return code_completions(ctx)
@@ -321,9 +331,12 @@ const pluto_completion_fetcher = (request_autocomplete) => {
     }
 }
 
-const complete_anyword = async (ctx) => {
+const complete_anyword = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
     const results_from_cm = await autocomplete.completeAnyWord(ctx)
     if (results_from_cm === null) return null
+
+    const last_token = ctx.tokenBefore(["Identifier", "Number"])
+    if (last_token == null || last_token.type?.name === "Number") return null
 
     return {
         from: results_from_cm.from,
@@ -332,12 +345,34 @@ const complete_anyword = async (ctx) => {
             label,
             apply: label,
             type: undefined,
-            boost: 0 - i,
+            section: section_regular,
+            // boost: 0 - i,
         })),
     }
 }
 
-const local_variables_completion = (ctx) => {
+const from_notebook_type = "c_from_notebook completion_module c_Any"
+
+const global_variables_completion = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
+    const globals = ctx.state.facet(GlobalDefinitionsFacet)
+
+    // see `is_wc_cat_id_start` in Julia's source for a complete list
+    const there_is_a_dot_before = ctx.matchBefore(/\.[\p{L}\p{Nl}\p{Sc}\d_]*$/u)
+    if (there_is_a_dot_before) return null
+
+    return await autocomplete.completeFromList(
+        Object.keys(globals).map((label) => {
+            return {
+                label,
+                apply: label,
+                type: from_notebook_type,
+                section: section_regular,
+            }
+        })
+    )(ctx)
+}
+
+const local_variables_completion = (/** @type {autocomplete.CompletionContext} */ ctx) => {
     let scopestate = ctx.state.field(ScopeStateField)
     let unicode = ctx.tokenBefore(["Identifier"])
 
@@ -400,11 +435,10 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
     return [
         tabCompletionState,
         autocompletion({
-            activateOnTyping: false,
+            activateOnTyping: ENABLE_CM_AUTOCOMPLETE_ON_TYPE,
             override: [
+                global_variables_completion,
                 pluto_completion_fetcher(memoize_last_request_autocomplete),
-                // julia_special_completions_to_cm(memoize_last_request_autocomplete),
-                // julia_code_completions_to_cm(memoize_last_request_autocomplete),
                 complete_anyword,
                 // TODO: Disabled because of performance problems, see https://github.com/fonsp/Pluto.jl/pull/1925. Remove `complete_anyword` once fixed. See https://github.com/fonsp/Pluto.jl/pull/2013
                 // local_variables_completion,
