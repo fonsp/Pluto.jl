@@ -18,65 +18,65 @@ import {
 import { html } from "../../imports/Preact.js"
 import { ReactWidget } from "./ReactWidget.js"
 
+const delta_to_specs = (ops) => {
+    const specs = []
+
+    let current_offset = 0 // <- offset in text before
+    for (const op of ops) {
+        if (typeof op.retain === "number") {
+            current_offset += op.retain
+        } else if (typeof op.delete === "number") {
+            specs.push({ from: current_offset, to: current_offset + op.delete })
+            current_offset += op.delete
+        } else {
+            specs.push({ from: current_offset, insert: op.insert })
+        }
+    }
+
+    return specs
+}
+
+const changeset_to_delta = (cs) => {
+    const ops = []
+    let current_offset = 0 
+    cs.iterChanges((fromA, toA, fromB, toB, insert) => {
+        const insertText = insert.sliceString(0, insert.length, "\n")
+        if (current_offset < fromA) {
+            ops.push({ retain: fromA - current_offset })
+        }
+        if (fromB == toB) {
+            ops.push({ delete: toA - fromA })
+        } else if (fromA == toA) {
+            ops.push({ insert: insertText })
+        } else {
+            ops.push({ delete: toA - fromA })
+            ops.push({ insert: insertText })
+        }
+        current_offset = toA
+    }, false)
+    return ops
+}
+
 /**
- *
  * @param {Function} push_updates
  * @param {Number} version
  * @param {Array<any>} fullUpdates
  * @returns {Promise<any>}
  */
 function pushUpdates(push_updates, version, fullUpdates) {
-    const changes_to_delta = (cs) => {
-        const ops = []
-        let current_offset = 0 
-        cs.iterChanges((fromA, toA, fromB, toB, insert) => {
-            const insertText = insert.sliceString(0, insert.length, "\n")
-            if (current_offset < fromA) {
-                ops.push({ retain: fromA - current_offset })
-            }
-            if (fromB == toB) {
-                ops.push({ delete: toA - fromA })
-            } else if (fromA == toA) {
-                ops.push({ insert: insertText })
-            } else {
-                ops.push({ delete: toA - fromA })
-                ops.push({ insert: insertText })
-            }
-            current_offset = toA
-        }, false)
-        return ops
-    }
-
     // Strip off transaction data
     const updates = fullUpdates.map((u) => ({
         client_id: u.clientID,
         document_length: u.changes.desc.length,
-        effects: u.effects.map((effect) => effect.value.selection.toJSON()),
-        ops: changes_to_delta(u.changes),
+        effects: ENABLE_EFFECTS ? u.effects.map((effect) => effect.value.selection.toJSON()) : undefined,
+        ops: changeset_to_delta(u.changes),
     }))
     return push_updates({ version, updates })
 }
 
-const delta_to_specs = (ops) => {
-    const specs = []
-
-    let current_offset = 0
-    for (const op of ops) {
-        if (typeof op.retain === "number") {
-            current_offset += op.retain
-        } else if (typeof op.delete === "number") {
-            specs.push({ from: current_offset, to: current_offset + op.delete })
-        } else {
-            specs.push({ from: current_offset, insert: op.insert })
-        }
-    }
-    console.log({ specs, ops})
-
-    return specs
-}
-window.delta_to_specs = delta_to_specs
-
 const DEBUG_COLLAB = false
+// set to true for cursor sharing (TODO: on the backend)
+const ENABLE_EFFECTS = false
 
 /**
  * @typedef CarretEffectValue
@@ -264,7 +264,9 @@ export const pluto_collab = (startVersion, { subscribe_to_updates, push_updates,
             syncNewUpdates(newUpdates) {
                 const updates = newUpdates.map((u) => ({
                     changes: ChangeSet.of(delta_to_specs(u.ops), u.document_length, "\n"),
-                    effects: u.effects.map((selection) => CaretEffect.of({ selection: EditorSelection.fromJSON(selection), clientID: u.client_id })),
+                    effects:
+                        ENABLE_EFFECTS ?
+                            u.effects.map((selection) => CaretEffect.of({ selection: EditorSelection.fromJSON(selection), clientID: u.client_id })) : undefined,
                     clientID: u.client_id,
                 }))
 

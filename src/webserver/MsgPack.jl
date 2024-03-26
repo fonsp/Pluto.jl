@@ -31,13 +31,11 @@ MsgPack.msgpack_type(::Type{Configuration.CompilerOptions}) = MsgPack.StructType
 MsgPack.msgpack_type(::Type{Configuration.ServerOptions}) = MsgPack.StructType()
 MsgPack.msgpack_type(::Type{Configuration.SecurityOptions}) = MsgPack.StructType()
 
-MsgPack.msgpack_type(::Type{OperationalTransform.SelectionRange}) = MsgPack.StructType()
-MsgPack.msgpack_type(::Type{OperationalTransform.EditorSelection}) = MsgPack.StructType()
-MsgPack.msgpack_type(::Type{OperationalTransform.Update}) = MsgPack.StructType()
-
-MsgPack.msgpack_type(::Type{OperationalTransform.Range}) = MsgPack.MapType()
-MsgPack.to_msgpack(m::M, r::OperationalTransform.Range) where {M<:MsgPack.AbstractMsgPackType} =
-    MsgPack.to_msgpack(m, OperationalTransform.to_obj(r))
+# Handle OT.Update here instead of notebook_to_js since we use AppendOnlyMarker which needs
+# to keep identity.
+MsgPack.msgpack_type(::Type{OT.Update}) = MsgPack.MapType()
+MsgPack.to_msgpack(m::M, r::OT.Update) where {M<:MsgPack.AbstractMsgPackType} =
+    MsgPack.to_msgpack(m, OT.to_dict(r))
 
 # Unwrap SendOnlyOnceMarker and send only the resulting value
 MsgPack.msgpack_type(::Type{FirebaseyUtils.SendOnlyOnceMarker{T}}) where T = MsgPack.msgpack_type(T)

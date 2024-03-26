@@ -377,7 +377,7 @@ function eventEmitter() {
 
 /**
  * @param {{
- *  code_text: string,
+ *  code: string,
  *  cm_updates: Array<TextUpdate>,
  *  last_run_version: Number,
  *  local_code: string,
@@ -391,7 +391,7 @@ function eventEmitter() {
  */
 export const CellInput = ({
     cm_updates,
-    code_text,
+    code,
     start_version,
     last_run_version,
 
@@ -676,7 +676,7 @@ export const CellInput = ({
         const usesDarkTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         const newcm = (newcm_ref.current = new EditorView({
             state: EditorState.create({
-                doc: code_text,
+                doc: code,
                 extensions: [
                     EditorView.theme({}, { dark: usesDarkTheme }),
                     // Compartments coming from react state/props

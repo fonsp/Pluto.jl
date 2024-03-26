@@ -98,6 +98,7 @@ const statusmap = (/** @type {EditorState} */ state, /** @type {LaunchParameters
     offer_local: state.backend_launch_phase === BackendLaunchPhase.wait_for_user && launch_params.pluto_server_url != null,
     binder: launch_params.binder_url != null && state.backend_launch_phase != null,
     code_differs: state.notebook.cell_order.some((cell_id) =>
+        // TODO
         state.cell_inputs_local[cell_id]
             ? state.notebook.cell_inputs[cell_id].code !== state.cell_inputs_local[cell_id].code
             : state.notebook.cell_inputs[cell_id].code !== state.notebook.cell_inputs[cell_id].code_text
@@ -132,7 +133,7 @@ const first_true_key = (obj) => {
  *  metadata: CellMetaData,
  *  cm_updates: Array<import("./CellInput.js").TextUpdate>
  *  last_run_version: Number,
- *  code_text: String,
+ *  code: String,
  *  start_version: Number,
  * }}
  */
@@ -408,7 +409,6 @@ export class Editor extends Component {
                 let new_cells = new_codes.map((code) => ({
                     cell_id: uuidv4(),
                     code: code,
-                    code_text: code,
                     cm_updates: [],
                     start_version: 0,
                     last_run_version: 0,
@@ -499,8 +499,7 @@ export class Editor extends Component {
                 const cells_to_add = parts.map((code) => {
                     return {
                         cell_id: uuidv4(),
-                        code: code,
-                        code_text: code,
+                        code,
                         last_run_version: 0,
                         start_version: 0,
                         cm_updates: [],
@@ -565,7 +564,6 @@ export class Editor extends Component {
                     notebook.cell_inputs[id] = {
                         cell_id: id,
                         code,
-                        code_text: code,
                         last_run_version: 0,
                         start_version: 0,
                         cm_updates: [],

@@ -317,7 +317,7 @@ const effects_of_changed_state = Dict(
 
 responses[:update_notebook] = function response_update_notebook(🙋::ClientRequest)
     require_notebook(🙋)
-    @time try
+    try
         notebook = 🙋.notebook
         patches = (Base.convert(Firebasey.JSONPatch, update) for update in 🙋.body["updates"])
 
@@ -339,7 +339,7 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
 
         for patch in patches
             (mutator, matches, rest) = trigger_resolver(effects_of_changed_state, patch.path)
-            
+
             current_changes = if isempty(rest) && applicable(mutator, matches...)
                 mutator(matches...; request=🙋, patch)
             else
@@ -471,41 +471,16 @@ responses[:push_updates] = function response_push_updates(🙋::ClientRequest)
         return
     end
 
-    updates = [
-        Base.convert(OT.Update, update)
-        for update in 🙋.body["updates"]
-    ]
-    version = 🙋.body["version"]
-
     withtoken(cell.cm_token) do
+        updates = map(OT.from_dict, 🙋.body["updates"])
+        version = 🙋.body["version"]
+
         current_version = length(cell.cm_updates)
-        # change_ranges = map(Delta.ranges, updates)
 
-        @info "syncing" version current_version
-
-        # Refuse client changes if it is not up to date.
-        if current_version != version
-            # Client synced version is out of date, transform updates over past changes
-            updates_to_transform = @view cell.cm_updates[version+1:end]
-
-            if !isempty(updates_to_transform)
-                if !any(up->up.client_id==first(updates).client_id,updates_to_transform)
-                    @error "syncing my own updates, weird..."
-                    return send_notebook_changes!(🙋; commentary=:👎)
-                end
-
-                ops_to_transform = mapfoldl(r -> r.ops, OT.Pinot.compose, updates_to_transform)
-
-                updates = map(updates) do cu
-                    cu_ops = OT.Pinot.transform(ops_to_transform,cu.ops,OT.Pinot.Left)
-                    OT.Update(cu_ops, cu.document_length,
-                              cu.client_id, cu.effects)
-                end
-            end
-        end
+        updates_to_transform = @view cell.cm_updates[version+1:end]
+        updates = OT.rebase(updates_to_transform, updates)
 
         text = try
-            # mapfoldl(u -> u.ops, OT.Pinot.apply, updates; init=cell.code)
             OT.apply(cell.code, updates)
         catch err
             @warn "error" exception=(err, catch_backtrace()) cell.code updates

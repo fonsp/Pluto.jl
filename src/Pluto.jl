@@ -53,7 +53,8 @@ include("./runner/PlutoRunner/src/PlutoRunner.jl")
 include("./packages/PkgCompat.jl")
 include("./webserver/Status.jl")
 
-include("./notebook/OperationalTransform_pinot.jl")
+include("./notebook/OperationalTransform.jl")
+const OT = OperationalTransform
 
 include("./notebook/Cell.jl")
 include("./notebook/Notebook.jl")
