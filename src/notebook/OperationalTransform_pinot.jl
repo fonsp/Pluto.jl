@@ -1,7 +1,7 @@
 module OperationalTransform
 
 import Pinot
-import Pinot: Range, to_obj
+using Pinot: Range, to_obj
 
 struct SelectionRange
     head::Int
@@ -36,6 +36,13 @@ function Base.convert(::Type{Update}, data::Dict)
     return Update(ranges, data["document_length"], data["client_id"], effects)
 end
 
+function apply(text, updates)
+    for update in updates
+        text = Pinot.apply(text, update.ops)
+    end
+    text
+end
+
 function to_dict(update::Update)
     Dict{String,Any}(
         "ops" => Pinot.to_obj(update.ops),
@@ -46,7 +53,7 @@ function to_dict(update::Update)
 end
 
 function initial_updates(code)
-    Pinot.Range[Pinot.insert(code)]
+    Update[Update(Pinot.Range[Pinot.insert(code)], 0, "pluto_init", [])]
 end
 
 end # module OperationalTransform

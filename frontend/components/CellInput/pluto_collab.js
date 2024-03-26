@@ -301,9 +301,9 @@ export const pluto_collab = (startVersion, { subscribe_to_updates, push_updates,
     return [
         collab({ clientID: client_id, startVersion, sharedEffects: (tr) => tr.effects.filter((effect) => effect.is(CaretEffect) || effect.is(RunEffect)) }),
         plugin,
-        cursorPlugin,
+        // cursorPlugin,
         // tooltips(),
-        CaretField(client_id, cell_id),
-        CursorField(client_id, cell_id),
+        // CaretField(client_id, cell_id),
+        // CursorField(client_id, cell_id),
     ]
 }

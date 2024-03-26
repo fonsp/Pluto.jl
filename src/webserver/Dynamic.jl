@@ -465,21 +465,23 @@ responses[:push_updates] = function response_push_updates(🙋::ClientRequest)
         🙋.notebook.cells_dict[cell_id]
     end
 
-    updates = [
-        Base.convert(OT.Update, update)
-        for update in 🙋.body["updates"]
-    ]
-    version = 🙋.body["version"]
-
     if !isready(cell.cm_token)
         @debug "Cell is buzy, bailing out..."
         send_notebook_changes!(🙋; commentary=:👎)
         return
     end
 
+    updates = [
+        Base.convert(OT.Update, update)
+        for update in 🙋.body["updates"]
+    ]
+    version = 🙋.body["version"]
+
     withtoken(cell.cm_token) do
         current_version = length(cell.cm_updates)
         # change_ranges = map(Delta.ranges, updates)
+
+        @info "syncing" version current_version
 
         # Refuse client changes if it is not up to date.
         if current_version != version
@@ -488,6 +490,7 @@ responses[:push_updates] = function response_push_updates(🙋::ClientRequest)
 
             if !isempty(updates_to_transform)
                 if !any(up->up.client_id==first(updates).client_id,updates_to_transform)
+                    @error "syncing my own updates, weird..."
                     return send_notebook_changes!(🙋; commentary=:👎)
                 end
 
@@ -502,7 +505,8 @@ responses[:push_updates] = function response_push_updates(🙋::ClientRequest)
         end
 
         text = try
-            mapfoldl(u -> u.ops, OT.Pinot.apply, updates; init=cell.code)
+            # mapfoldl(u -> u.ops, OT.Pinot.apply, updates; init=cell.code)
+            OT.apply(cell.code, updates)
         catch err
             @warn "error" exception=(err, catch_backtrace()) cell.code updates
             rethrow()
