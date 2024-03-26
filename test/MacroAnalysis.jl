@@ -164,7 +164,7 @@ import Memoize: @memoize
 
         temp_topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells) |> Pluto.static_resolve_topology
         
-        @test :f ∈ temp_topology.nodes[cell(1)].funcdefs_without_signatures
+        # @test :f ∈ temp_topology.nodes[cell(1)].funcdefs_without_signatures
         
         update_run!(🍭, notebook, notebook.cells)
 

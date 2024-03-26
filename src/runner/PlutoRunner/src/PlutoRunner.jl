@@ -26,7 +26,7 @@ import InteractiveUtils
 using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
 import Base64
-import FuzzyCompletions: Completion, BslashCompletion, ModuleCompletion, PropertyCompletion, FieldCompletion, PathCompletion, DictCompletion, completions, completion_text, score
+import FuzzyCompletions: FuzzyCompletions, Completion, BslashCompletion, ModuleCompletion, PropertyCompletion, FieldCompletion, PathCompletion, DictCompletion, completions, completion_text, score
 import Base: show, istextmime
 import UUIDs: UUID, uuid4
 import Dates: DateTime
@@ -800,35 +800,40 @@ function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
     methods_table = typeof(f).name.mt
     deleted_sigs = Set{Type}()
     Base.visit(methods_table) do method # iterates through all methods of `f`, including overridden ones
-        if isfromcell(method, cell_id) && getfield(method, deleted_world) == alive_world_val
+        if isfromcell(method, cell_id) && method.deleted_world == alive_world_val
             Base.delete_method(method)
             delete_method_doc(method)
             push!(deleted_sigs, method.sig)
         end
     end
 
-    # if `f` is an extension to an external function, and we defined a method that overrides a method, for example,
-    # we define `Base.isodd(n::Integer) = rand(Bool)`, which overrides the existing method `Base.isodd(n::Integer)`
-    # calling `Base.delete_method` on this method won't bring back the old method, because our new method still exists in the method table, and it has a world age which is newer than the original. (our method has a deleted_world value set, which disables it)
-    #
-    # To solve this, we iterate again, and _re-enable any methods that were hidden in this way_, by adding them again to the method table with an even newer `primary_world`.
-    if !isempty(deleted_sigs)
-        to_insert = Method[]
-        Base.visit(methods_table) do method
-            if !isfromcell(method, cell_id) && method.sig ∈ deleted_sigs
-                push!(to_insert, method)
+    
+    if VERSION < v"1.12.0-0"
+        # not necessary in Julia after https://github.com/JuliaLang/julia/pull/53415 💛
+            
+        # if `f` is an extension to an external function, and we defined a method that overrides a method, for example,
+        # we define `Base.isodd(n::Integer) = rand(Bool)`, which overrides the existing method `Base.isodd(n::Integer)`
+        # calling `Base.delete_method` on this method won't bring back the old method, because our new method still exists in the method table, and it has a world age which is newer than the original. (our method has a deleted_world value set, which disables it)
+        #
+        # To solve this, we iterate again, and _re-enable any methods that were hidden in this way_, by adding them again to the method table with an even newer `primary_world`.
+        if !isempty(deleted_sigs)
+            to_insert = Method[]
+            Base.visit(methods_table) do method
+                if !isfromcell(method, cell_id) && method.sig ∈ deleted_sigs
+                    push!(to_insert, method)
+                end
             end
-        end
-        # separate loop to avoid visiting the recently added method
-        for method in Iterators.reverse(to_insert)
-            if VERSION >= v"1.11.0-0"
-                @atomic method.primary_world = one(typeof(alive_world_val)) # `1` will tell Julia to increment the world counter and set it as this function's world
-                @atomic method.deleted_world = alive_world_val # set the `deleted_world` property back to the 'alive' value (for Julia v1.6 and up)
-            else
-                method.primary_world = one(typeof(alive_world_val))
-                method.deleted_world = alive_world_val
+            # separate loop to avoid visiting the recently added method
+            for method in Iterators.reverse(to_insert)
+                if VERSION >= v"1.11.0-0"
+                    @atomic method.primary_world = one(typeof(alive_world_val)) # `1` will tell Julia to increment the world counter and set it as this function's world
+                    @atomic method.deleted_world = alive_world_val # set the `deleted_world` property back to the 'alive' value (for Julia v1.6 and up)
+                else
+                    method.primary_world = one(typeof(alive_world_val))
+                    method.deleted_world = alive_world_val
+                end
+                ccall(:jl_method_table_insert, Cvoid, (Any, Any, Ptr{Cvoid}), methods_table, method, C_NULL) # i dont like doing this either!
             end
-            ccall(:jl_method_table_insert, Cvoid, (Any, Any, Ptr{Cvoid}), methods_table, method, C_NULL) # i dont like doing this either!
         end
     end
     return !isempty(methods(f).ms)
@@ -856,10 +861,7 @@ function try_delete_toplevel_methods(workspace::Module, (cell_id, name_parts)::T
     end
 end
 
-# these deal with some inconsistencies in Julia's internal (undocumented!) variable names
-const primary_world = filter(in(fieldnames(Method)), [:primary_world, :min_world]) |> first # Julia v1.3 and v1.0 resp.
-const deleted_world = filter(in(fieldnames(Method)), [:deleted_world, :max_world]) |> first # Julia v1.3 and v1.0 resp.
-const alive_world_val = getfield(methods(Base.sqrt).ms[1], deleted_world) # typemax(UInt) in Julia v1.3, Int(-1) in Julia 1.0
+const alive_world_val = methods(Base.sqrt).ms[1].deleted_world # typemax(UInt) in Julia v1.3, Int(-1) in Julia 1.0
 
 
 
@@ -1933,12 +1935,12 @@ completed_object_description(x::Module) = "Module"
 completed_object_description(x::AbstractArray) = "Array"
 completed_object_description(x::Any) = "Any"
 
-completion_description(c::ModuleCompletion) = try
+completion_value_type(c::ModuleCompletion) = try
     completed_object_description(getfield(c.parent, Symbol(c.mod)))
 catch
     nothing
 end
-completion_description(::Completion) = nothing
+completion_value_type(::Completion) = nothing
 
 completion_detail(::Completion) = nothing
 completion_detail(completion::BslashCompletion) =
@@ -2002,38 +2004,49 @@ completion_from_notebook(c::ModuleCompletion) =
     !startswith(c.mod, "#")
 completion_from_notebook(c::Completion) = false
 
-only_special_completion_types(::PathCompletion) = :path
-only_special_completion_types(::DictCompletion) = :dict
-only_special_completion_types(::Completion) = nothing
+completion_type(::FuzzyCompletions.PathCompletion) = :path
+completion_type(::FuzzyCompletions.DictCompletion) = :dict
+completion_type(::FuzzyCompletions.MethodCompletion) = :method
+completion_type(::FuzzyCompletions.ModuleCompletion) = :module
+completion_type(::FuzzyCompletions.BslashCompletion) = :bslash
+completion_type(::FuzzyCompletions.FieldCompletion) = :field
+completion_type(::FuzzyCompletions.KeywordArgumentCompletion) = :keyword_argument
+completion_type(::FuzzyCompletions.KeywordCompletion) = :keyword
+completion_type(::FuzzyCompletions.PropertyCompletion) = :property
+completion_type(::FuzzyCompletions.Text) = :text
+
+completion_type(::Completion) = nothing
 
 "You say Linear, I say Algebra!"
 function completion_fetcher(query, pos, workspace::Module)
     results, loc, found = completions(query, pos, workspace)
-    if endswith(query, '.')
+    partial = query[1:pos]
+    if endswith(partial, '.')
         filter!(is_dot_completion, results)
         # we are autocompleting a module, and we want to see its fields alphabetically
         sort!(results; by=(r -> completion_text(r)))
-    elseif endswith(query, '/')
+    elseif endswith(partial, '/')
         filter!(is_path_completion, results)
         sort!(results; by=(r -> completion_text(r)))
-    elseif endswith(query, '[')
+    elseif endswith(partial, '[')
         filter!(is_dict_completion, results)
         sort!(results; by=(r -> completion_text(r)))
     else
         isenough(x) = x ≥ 0
-        filter!(isenough ∘ score, results) # too many candiates otherwise
+        filter!(r -> isenough(score(r)) && !is_path_completion(r), results) # too many candiates otherwise
     end
 
     exported = completions_exported(results)
-    smooshed_together = [
-        (completion_text(result),
-         completion_description(result),
-         rexported,
-         completion_from_notebook(result),
-         only_special_completion_types(result),
-         completion_detail(result))
-        for (result, rexported) in zip(results, exported)
-    ]
+    smooshed_together = map(zip(results, exported)) do (result, rexported)
+        (
+            completion_text(result),
+            completion_value_type(result),
+            rexported,
+            completion_from_notebook(result),
+            completion_type(result),
+            completion_detail(result),
+        )
+    end
 
     p = if endswith(query, '.')
         sortperm(smooshed_together; alg=MergeSort, by=basic_completion_priority)
@@ -2181,7 +2194,7 @@ function improve_docs!(doc_md::Markdown.MD, query::Symbol, binding::Docs.Binding
 
         perm = sortperm(suggestions_scores; rev=true)
         permute!(suggestions, perm)
-        links = map(s -> Suggestion(s, symbol), @view(suggestions[begin:min(end,DOC_SUGGESTION_LIMIT)]))
+        links = map(s -> Suggestion(string(s), symbol), Iterators.take(suggestions, DOC_SUGGESTION_LIMIT))
 
         if length(links) > 0
             push!(doc_md.content,

@@ -63,7 +63,7 @@ end
 @testset "Authentication" begin
     basic_nb_path = Pluto.project_relative_path("sample", "Basic.jl")
 
-    port = 1238
+    port = 23832
     options = Pluto.Configuration.from_flat_kwargs(; port, launch_browser=false, workspace_use_distributed=false)
     🍭 = Pluto.ServerSession(; options)
     host = 🍭.options.server.host

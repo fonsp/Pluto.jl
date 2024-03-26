@@ -36,13 +36,13 @@ PrecompileTools.@compile_workload begin
         Pluto.topological_order(topology, topology.cell_order)
     end
 
-    let
-        io = IOBuffer()
-        # Notebook file format.
-        Pluto.save_notebook(io, nb)
-        seekstart(io)
-        Pluto.load_notebook_nobackup(io, "whatever.jl")
-    end
+    # let
+    #     io = IOBuffer()
+    #     # Notebook file format.
+    #     Pluto.save_notebook(io, nb)
+    #     seekstart(io)
+    #     Pluto.load_notebook_nobackup(io, "whatever.jl")
+    # end
 
     let
         state1 = Pluto.notebook_to_js(nb)
