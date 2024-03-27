@@ -1985,12 +1985,15 @@ function is_pluto_controlled(m::Module)
 end
 
 function completions_exported(cs::Vector{<:Completion})
-    completed_modules = (c.parent for c in cs if c isa ModuleCompletion)
-    completed_modules_exports = Dict(m => string.(names(m, all=is_pluto_workspace(m), imported=true)) for m in completed_modules)
+    completed_modules = Set{Module}(c.parent for c in cs if c isa ModuleCompletion)
+    completed_modules_exports = Dict(
+		m => Set(names(m, all=is_pluto_workspace(m), imported=true))
+		for m in completed_modules
+	)
 
     map(cs) do c
         if c isa ModuleCompletion
-            c.mod ∈ completed_modules_exports[c.parent]
+            Symbol(c.mod) ∈ completed_modules_exports[c.parent]
         else
             true
         end
