@@ -375,6 +375,7 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 		end
 	catch e
 		bt = catch_backtrace()
+		Status.report_business_finished!(notebook.status_tree, :pkg, false)
 		old_packages = try String.(keys(PkgCompat.project(notebook.nbpkg_ctx).dependencies)); catch; ["unknown"] end
 		new_packages = try String.(external_package_names(new_topology)); catch; ["unknown"] end
 		@warn """

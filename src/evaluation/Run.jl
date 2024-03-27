@@ -193,7 +193,7 @@ function run_reactive_core!(
         end
 
         cell.running = false
-		Status.report_business_finished!(cell_status, Symbol(i))
+		Status.report_business_finished!(cell_status, Symbol(i), !run.errored)
 
         defined_macros_in_cell = defined_macros(new_topology, cell) |> Set{Symbol}
 
