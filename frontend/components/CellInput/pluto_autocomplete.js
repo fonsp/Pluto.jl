@@ -209,7 +209,7 @@ let julia_special_completions_to_cm =
     }
 
 let override_text_to_apply_in_field_expression = (text) => {
-    return !/^[@a-zA-Z_][a-zA-Z0-9!_]*\"?$/.test(text) ? (text === ":" ? `:(${text})` : `:${text}`) : null
+    return !/^[@\p{L}\p{Sc}\d_][\p{L}\p{Nl}\p{Sc}\d_!]*\"?$/.test(text) ? (text === ":" ? `:(${text})` : `:${text}`) : null
 }
 
 const section_regular = {
@@ -261,7 +261,7 @@ const julia_code_completions_to_cm =
             to: stop,
 
             // see `is_wc_cat_id_start` in Julia's source for a complete list
-            validFor: /[\p{L}\p{Nl}\p{Sc}\d_]*$/u,
+            validFor: /[\p{L}\p{Nl}\p{Sc}\d_!]*$/u,
 
             // This tells codemirror to not query this function again as long as the string
             // we are completing has the same prefix as we complete now, and there is no weird characters (subjective)
@@ -357,7 +357,7 @@ const global_variables_completion = async (/** @type {autocomplete.CompletionCon
     const globals = ctx.state.facet(GlobalDefinitionsFacet)
 
     // see `is_wc_cat_id_start` in Julia's source for a complete list
-    const there_is_a_dot_before = ctx.matchBefore(/\.[\p{L}\p{Nl}\p{Sc}\d_]*$/u)
+    const there_is_a_dot_before = ctx.matchBefore(/\.[\p{L}\p{Nl}\p{Sc}\d_!]*$/u)
     if (there_is_a_dot_before) return null
 
     return await autocomplete.completeFromList(
