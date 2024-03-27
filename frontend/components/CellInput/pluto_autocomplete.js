@@ -284,8 +284,8 @@ const julia_code_completions_to_cm =
                             type:
                                 cl({
                                     c_notexported: !is_exported,
-                                    [`c_${value_type}`]: value_type != null,
-                                    [`completion_${completion_type}`]: completion_type != null,
+                                    [`c_${value_type}`]: true,
+                                    [`completion_${completion_type}`]: true,
                                     c_from_notebook: is_from_notebook,
                                 }) ?? undefined,
                             section: section_regular,
@@ -399,8 +399,19 @@ const local_variables_completion = (/** @type {autocomplete.CompletionContext} *
 }
 
 /**
+ *
+ * @typedef PlutoAutocompleteResult
+ * @type {[
+ * text: string,
+ * value_type: string,
+ * is_exported: boolean,
+ * is_from_notebook: boolean,
+ * completion_type: string,
+ * special_symbol: string | null,
+ * ]}
+ *
  * @typedef PlutoAutocompleteResults
- * @type {{ start: number, stop: number, results: Array<[string, (string | null), boolean, boolean, (string | null), (string | null)]> }}
+ * @type {{ start: number, stop: number, results: Array<PlutoAutocompleteResult> }}
  *
  * @typedef PlutoRequestAutocomplete
  * @type {(options: { text: string }) => Promise<PlutoAutocompleteResults?>}
