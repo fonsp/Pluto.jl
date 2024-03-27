@@ -1318,7 +1318,7 @@ patch: ${JSON.stringify(
                 if (serialized) {
                     navigator.clipboard.writeText(serialized).catch((err) => {
                         console.error("Error copying cells", e, err)
-                        alert(`Error copying cells: ${err}`)
+                        alert(`Error copying cells: ${err?.message ?? err}`)
                     })
                 }
             }
