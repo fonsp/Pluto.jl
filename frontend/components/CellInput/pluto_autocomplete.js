@@ -197,11 +197,11 @@ let julia_special_completions_to_cm =
             // This is an important one when you not only complete, but also replace something.
             // @codemirror/autocomplete automatically filters out results otherwise >:(
             filter: false,
-            options: results.map(([text, _, __, ___, ____, detail]) => {
+            options: results.map(([text, _, __, ___, ____, special_symbol]) => {
                 return {
                     label: text,
-                    apply: detail && should_apply_unicode_completion ? detail : text,
-                    detail: detail ?? undefined,
+                    apply: special_symbol != null && should_apply_unicode_completion ? special_symbol : text,
+                    detail: special_symbol ?? undefined,
                 }
             }),
             // TODO Do something docs_prefix ish when we also have the apply text
