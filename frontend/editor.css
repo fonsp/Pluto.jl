@@ -3478,6 +3478,14 @@ pluto-cell.errored .cm-editor .cm-lineNumbers .cm-gutterElement::after {
     color: var(--cm-keyword-color);
 }
 
+li.completion_keyword_argument .cm-completionLabel {
+    font-style: italic;
+    font-weight: bold;
+}
+.cm-completionIcon-completion_keyword_argument::before {
+    color: var(--cm-number-color);
+}
+
 .cm-completionIcon-c_Any::before,
 pluto-output > assignee,
 pluto-popup code.auto_disabled_variable {
