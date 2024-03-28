@@ -197,11 +197,11 @@ let julia_special_completions_to_cm =
             // This is an important one when you not only complete, but also replace something.
             // @codemirror/autocomplete automatically filters out results otherwise >:(
             filter: false,
-            options: results.map(([text, _, __, ___, ____, detail]) => {
+            options: results.map(([text, _, __, ___, ____, special_symbol]) => {
                 return {
                     label: text,
-                    apply: detail && should_apply_unicode_completion ? detail : text,
-                    detail: detail ?? undefined,
+                    apply: special_symbol != null && should_apply_unicode_completion ? special_symbol : text,
+                    detail: special_symbol ?? undefined,
                 }
             }),
             // TODO Do something docs_prefix ish when we also have the apply text
@@ -284,8 +284,8 @@ const julia_code_completions_to_cm =
                             type:
                                 cl({
                                     c_notexported: !is_exported,
-                                    [`c_${value_type}`]: value_type != null,
-                                    [`completion_${completion_type}`]: completion_type != null,
+                                    [`c_${value_type}`]: true,
+                                    [`completion_${completion_type}`]: true,
                                     c_from_notebook: is_from_notebook,
                                 }) ?? undefined,
                             section: section_regular,
@@ -399,8 +399,19 @@ const local_variables_completion = (/** @type {autocomplete.CompletionContext} *
 }
 
 /**
+ *
+ * @typedef PlutoAutocompleteResult
+ * @type {[
+ * text: string,
+ * value_type: string,
+ * is_exported: boolean,
+ * is_from_notebook: boolean,
+ * completion_type: string,
+ * special_symbol: string | null,
+ * ]}
+ *
  * @typedef PlutoAutocompleteResults
- * @type {{ start: number, stop: number, results: Array<[string, (string | null), boolean, boolean, (string | null), (string | null)]> }}
+ * @type {{ start: number, stop: number, results: Array<PlutoAutocompleteResult> }}
  *
  * @typedef PlutoRequestAutocomplete
  * @type {(options: { text: string }) => Promise<PlutoAutocompleteResults?>}
