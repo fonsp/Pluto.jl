@@ -55,5 +55,5 @@ jobs:
             - uses: actions/upload-artifact@v4
               if: failure()
               with:
-                  name: test-snapshots
+                  name: test-snapshots-${{ matrix.julia-version }}-${{ matrix.os }}
                   path: ${{ github.workspace }}/test/snapshots/*.html
