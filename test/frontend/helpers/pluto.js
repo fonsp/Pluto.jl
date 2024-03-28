@@ -134,23 +134,51 @@ export const restartProcess = async (page) => {
     await page.waitForSelector(`#process-status-tab-button.something_is_happening`)
 }
 
+/**
+ * @param {Page} page
+ * @param {boolean} iWantBusiness
+ */
 const waitForPlutoBusy = async (page, iWantBusiness, options) => {
     await page.waitForTimeout(1)
-    await page.waitForFunction(
-        (iWantBusiness) => {
-            let quiet = //@ts-ignore
-                (document?.body?._update_is_ongoing ?? false) === false &&
-                //@ts-ignore
-                (document?.body?._js_init_set?.size ?? 0) === 0 &&
-                document?.body?.classList?.contains("loading") === false &&
-                document?.querySelector(`#process-status-tab-button.something_is_happening`) == null &&
-                document?.querySelector(`pluto-cell.running, pluto-cell.queued, pluto-cell.internal_test_queued`) == null
+    try {
+        await page.waitForFunction(
+            (iWantBusiness) => {
+                const quiet_vals = [
+                    // @ts-ignore
+                    document?.body?._update_is_ongoing,
+                    // @ts-ignore
+                    document?.body?._js_init_set?.size,
+                    document?.body?.classList?.contains("loading"),
+                    document?.querySelector(`#process-status-tab-button.something_is_happening`)?.id,
+                    document?.querySelector(`pluto-cell.running, pluto-cell.queued, pluto-cell.internal_test_queued`)?.id,
+                ]
 
-            return iWantBusiness ? !quiet : quiet
-        },
-        options,
-        iWantBusiness
-    )
+                let quiet =
+                    (quiet_vals[0] ?? false) === false &&
+                    (quiet_vals[1] ?? 0) === 0 &&
+                    quiet_vals[2] === false &&
+                    quiet_vals[3] == null &&
+                    quiet_vals[4] == null
+
+                window["quiet_vals"] = quiet_vals
+
+                return iWantBusiness ? !quiet : quiet
+            },
+            options,
+            iWantBusiness
+        )
+    } catch (e) {
+        console.error(
+            "waitForPlutoBusy failed\n",
+            JSON.parse(
+                await page.evaluate(() => {
+                    return JSON.stringify(window["quiet_vals"])
+                })
+            )
+        )
+
+        throw e
+    }
     await page.waitForTimeout(1)
 }
 
