@@ -595,7 +595,7 @@ import Memoize: @memoize
 
         @test cell(1) |> noerror
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
         🍭.options.evaluation.workspace_use_distributed = false
     end
 
@@ -677,7 +677,7 @@ import Memoize: @memoize
         @test cell(1) |> noerror
         @test cell(2) |> noerror
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
         
         🍭.options.evaluation.workspace_use_distributed = false
     end

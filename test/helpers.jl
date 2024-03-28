@@ -154,3 +154,19 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
     name="PlutoPkgTestRegistry",
 )
 
+const snapshots_dir = joinpath(@__DIR__, "snapshots")
+
+isdir(snapshots_dir) && rm(snapshots_dir; force=true, recursive=true)
+mkdir(snapshots_dir)
+
+function cleanup(session, notebook)
+    testset_stack = get(task_local_storage(), :__BASETESTNEXT__, Test.AbstractTestSet[])
+    name = join((t.description for t in testset_stack), " – ")
+    
+    path = Pluto.numbered_until_new(joinpath(snapshots_dir, name); suffix=".html", create_file=true)
+    
+    write(path, Pluto.generate_html(notebook))
+    
+    WorkspaceManager.unmake_workspace((session, notebook))
+end
+
