@@ -56,4 +56,4 @@ jobs:
               if: failure()
               with:
                   name: test-snapshots
-                  path: ${{ github.workspace }}/test/snapshots/*.png
+                  path: ${{ github.workspace }}/test/snapshots/*.html
