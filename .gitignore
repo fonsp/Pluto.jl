@@ -10,6 +10,7 @@ test/frontend/artifacts/*
 .DS_Store
 
 frontend-dist
+frontend-dist-static
 node_modules
 .parcel-cache
 frontend/dist
