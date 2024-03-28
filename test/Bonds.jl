@@ -352,7 +352,7 @@ import Malt
         @test noerror(notebook.cells[36])
         @test notebook.cells[37].output.body == "\"xx\""
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
         🍭.options.evaluation.workspace_use_distributed = false
         
         
@@ -488,7 +488,7 @@ import Malt
         
         
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
 
     end
 end

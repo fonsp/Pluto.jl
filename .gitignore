@@ -19,3 +19,5 @@ frontend/package-lock.json
 
 # PProf
 profile.pb.gz
+
+test/snapshots

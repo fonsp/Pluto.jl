@@ -457,7 +457,7 @@ end
         @testset "$(name)" for (name, nb) in nbs
             if name ∉ expect_error
                 @test nb_is_runnable(🍭, nb)
-                WorkspaceManager.unmake_workspace((🍭, nb))
+                cleanup(🍭, nb)
             end
         end
     end

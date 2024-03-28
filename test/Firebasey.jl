@@ -16,5 +16,5 @@ import Pluto: ServerSession, update_run!, WorkspaceManager
     # and also that Pluto can figure out the execution order on its own
     @test all(noerror, notebook.cells)
 
-    WorkspaceManager.unmake_workspace((🍭, notebook))
+    cleanup(🍭, notebook)
 end

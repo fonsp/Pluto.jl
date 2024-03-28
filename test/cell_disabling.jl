@@ -236,7 +236,7 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook, set_disa
     update_run!(🍭, notebook, c([12]))
     @test c(14).output.body == "3"
     
-    WorkspaceManager.unmake_workspace((🍭, notebook))
+    cleanup(🍭, notebook)
 end
 
 
@@ -343,7 +343,7 @@ end
     update_run!(🍭, notebook, notebook.cells)
     @test get_disabled_cells(notebook) == []
 
-    WorkspaceManager.unmake_workspace((🍭, notebook))
+    cleanup(🍭, notebook)
 end
 
 @testset "Disabled cells should stay in the topology (#2676)" begin
@@ -386,5 +386,5 @@ end
     notebook2 = Pluto.load_notebook_nobackup(io, "mynotebook.jl")
     @test length(notebook2.cells) == length(notebook.cells)
 
-    WorkspaceManager.unmake_workspace((🍭, notebook))
+    cleanup(🍭, notebook)
 end

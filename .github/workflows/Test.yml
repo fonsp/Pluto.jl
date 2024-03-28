@@ -51,3 +51,9 @@ jobs:
             - uses: julia-actions/julia-runtest@v1
               with:
                   coverage: false
+
+            - uses: actions/upload-artifact@v4
+              if: failure()
+              with:
+                  name: test-snapshots-${{ matrix.julia-version }}-${{ matrix.os }}
+                  path: ${{ github.workspace }}/test/snapshots/*.html
