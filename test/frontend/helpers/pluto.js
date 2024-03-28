@@ -140,8 +140,8 @@ export const restartProcess = async (page) => {
  */
 const waitForPlutoBusy = async (page, iWantBusiness, options) => {
     await page.waitForTimeout(1)
-    await page
-        .waitForFunction(
+    try {
+        await page.waitForFunction(
             (iWantBusiness) => {
                 const quiet_vals = [
                     // @ts-ignore
@@ -167,18 +167,18 @@ const waitForPlutoBusy = async (page, iWantBusiness, options) => {
             options,
             iWantBusiness
         )
-        .catch(async (e) => {
-            console.error(
-                "waitForPlutoBusy failed\n",
-                JSON.parse(
-                    await page.evaluate(() => {
-                        return JSON.stringify(window["quiet_vals"])
-                    })
-                )
+    } catch (e) {
+        console.error(
+            "waitForPlutoBusy failed\n",
+            JSON.parse(
+                await page.evaluate(() => {
+                    return JSON.stringify(window["quiet_vals"])
+                })
             )
+        )
 
-            return Promise.reject(e)
-        })
+        throw e
+    }
     await page.waitForTimeout(1)
 }
 
