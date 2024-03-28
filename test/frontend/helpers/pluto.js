@@ -215,7 +215,7 @@ export const waitForNoUpdateOngoing = async (page, options = {}) => {
     return await page.waitForFunction(
         () =>
             //@ts-ignore
-            document.body?._update_is_ongoing === false,
+            (document.body?._update_is_ongoing ?? false) === true,
         options
     )
 }

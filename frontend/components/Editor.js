@@ -1103,6 +1103,9 @@ patch: ${JSON.stringify(
                     ])
                 } finally {
                     this.pending_local_updates--
+                    // this property is used to tell our frontend tests that the updates are done
+                    //@ts-ignore
+                    document.body._update_is_ongoing = this.pending_local_updates > 0
                 }
             })
             last_update_notebook_task = new_task.catch(console.error)
@@ -1414,10 +1417,6 @@ patch: ${JSON.stringify(
         if (old_state?.notebook?.shortpath !== new_state.notebook.shortpath) {
             document.title = "🎈 " + new_state.notebook.shortpath + " — Pluto.jl"
         }
-
-        // this property is used to tell our frontend tests that the updates are done
-        //@ts-ignore
-        document.body._update_is_ongoing = this.pending_local_updates > 0
 
         this.send_queued_bond_changes()
 
