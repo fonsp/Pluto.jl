@@ -23,7 +23,7 @@ jobs:
 
         steps:
             # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-            - uses: actions/checkout@v3
+            - uses: actions/checkout@v4
 
             # Makes thes `julia` command available
             - uses: julia-actions/setup-julia@v1
@@ -34,7 +34,7 @@ jobs:
               run: |
                   julia --project=$GITHUB_WORKSPACE -e "using Pkg; Pkg.instantiate()"
 
-            - uses: actions/setup-node@v3
+            - uses: actions/setup-node@v4
               with:
                   node-version: "18.x"
 
@@ -83,7 +83,7 @@ jobs:
                   PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
                   PUPPETEER_EXECUTABLE_PATH: "/usr/bin/google-chrome-stable"
 
-            - uses: actions/upload-artifact@v3
+            - uses: actions/upload-artifact@v4
               if: failure()
               with:
                   name: test-screenshot-artifacts
