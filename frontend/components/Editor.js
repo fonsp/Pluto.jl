@@ -918,7 +918,7 @@ patch: ${JSON.stringify(
 
         this.connect = (/** @type {string | undefined} */ ws_address = undefined) =>
             create_pluto_connection({
-                ws_address: ws_address,
+                ws_address: ws_address ?? ws_address_from_base(this.props.launch_params.pluto_server_url ?? window.location.href),
                 on_unrequested_update: on_update,
                 on_connection_status: on_connection_status,
                 on_reconnect: on_reconnect,
@@ -1399,7 +1399,7 @@ patch: ${JSON.stringify(
                       `article-view/${window?.version_info?.pluto ?? this.state.notebook.pluto_version ?? "unknown"}`
             )
         } else {
-            this.connect(lp.pluto_server_url ? ws_address_from_base(lp.pluto_server_url) : undefined)
+            this.connect()
         }
     }
 
