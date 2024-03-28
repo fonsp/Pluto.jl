@@ -3,6 +3,7 @@ import { has_ctrl_or_cmd_pressed } from "../common/KeyboardShortcuts.js"
 import _ from "../imports/lodash.js"
 
 import "https://cdn.jsdelivr.net/gh/fonsp/rebel-tag-input@1.0.6/lib/rebel-tag-input.mjs"
+import "https://esm.sh/bcp47-picker@1.0.16?pin=v134&target=es2020"
 
 //@ts-ignore
 import immer from "../imports/immer.js"
@@ -179,7 +180,7 @@ const clean_data = (obj) => {
     return _.isEmpty(a) ? null : a
 }
 
-const special_field_names = ["tags", "date", "license", "url", "color"]
+const special_field_names = ["tags", "date", "language", "license", "url", "color"]
 
 const field_type = (name) => {
     for (const t of special_field_names) {
@@ -195,8 +196,12 @@ const Input = ({ value, on_value, type, id }) => {
 
     useLayoutEffect(() => {
         if (!input_ref.current) return
-        input_ref.current.value = value
-    }, [input_ref.current, value])
+        if (type === "language") {
+            input_ref.current.setAttribute("value", value)
+        } else {
+            input_ref.current.value = value
+        }
+    }, [input_ref.current, value, type])
 
     useLayoutEffect(() => {
         if (!input_ref.current) return
@@ -205,11 +210,12 @@ const Input = ({ value, on_value, type, id }) => {
             on_value(input_ref.current.value)
         }
 
-        input_ref.current.addEventListener("input", listener)
+        let event_name = type === "language" ? "change" : "input"
+        input_ref.current.addEventListener(event_name, listener)
         return () => {
-            input_ref.current?.removeEventListener("input", listener)
+            input_ref.current?.removeEventListener(event_name, listener)
         }
-    }, [input_ref.current])
+    }, [input_ref.current, type])
 
     const placeholder = type === "url" ? "https://..." : undefined
 
@@ -217,6 +223,8 @@ const Input = ({ value, on_value, type, id }) => {
         ? html`<rbl-tag-input id=${id} ref=${input_ref} />`
         : type === "license"
         ? LicenseInput({ ref: input_ref, id })
+        : type === "language"
+        ? LanguageInput({ ref: input_ref, id })
         : html`<input type=${type} id=${id} ref=${input_ref} placeholder=${placeholder} />`
 }
 
@@ -235,4 +243,8 @@ const LicenseInput = ({ ref, id }) => {
         <input ref=${ref} id=${id} type="text" list="oss-licenses" />
         <datalist id="oss-licenses">${licenses.map((name) => html`<option>${name}</option>`)}</datalist>
     `
+}
+
+const LanguageInput = ({ ref, id }) => {
+    return html`<bcp47-picker ref=${ref} id=${id}></bcp47-picker>`
 }
