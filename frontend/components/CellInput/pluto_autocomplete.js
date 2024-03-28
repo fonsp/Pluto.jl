@@ -289,6 +289,7 @@ const julia_code_completions_to_cm =
                                     c_from_notebook: is_from_notebook,
                                 }) ?? undefined,
                             section: section_regular,
+                            boost: completion_type === "keyword_argument" ? 1 : undefined,
                             // boost: 50 - i / results.length,
                         }
                     }),

@@ -2019,7 +2019,14 @@ completion_type(::Completion) = nothing
 
 "You say Linear, I say Algebra!"
 function completion_fetcher(query, pos, workspace::Module)
-    results, loc, found = FuzzyCompletions.completions(query, pos, workspace)
+    results, loc, found = FuzzyCompletions.completions(
+        query, pos, workspace;
+        enable_questionmark_methods=false,
+        enable_expanduser=false,
+        enable_path=false,
+        enable_methods=false,
+        enable_packages=false,
+    )
     partial = query[1:pos]
     if endswith(partial, '.')
         filter!(is_dot_completion, results)
@@ -2033,7 +2040,7 @@ function completion_fetcher(query, pos, workspace::Module)
         sort!(results; by=(r -> completion_text(r)))
     else
         isenough(x) = x ≥ 0
-        filter!(r -> isenough(score(r)) && !is_path_completion(r), results) # too many candiates otherwise
+        filter!(r -> is_kwarg_completion(r) || isenough(score(r)) && !is_path_completion(r), results) # too many candiates otherwise
     end
 
     exported = completions_exported(results)
@@ -2063,11 +2070,14 @@ end
 is_dot_completion(::Union{ModuleCompletion,PropertyCompletion,FieldCompletion}) = true
 is_dot_completion(::Completion)                                                 = false
 
-is_path_completion(::Union{PathCompletion}) = true
-is_path_completion(::Completion)            = false
+is_path_completion(::PathCompletion) = true
+is_path_completion(::Completion)     = false
 
-is_dict_completion(::Union{DictCompletion}) = true
-is_dict_completion(::Completion)            = false
+is_dict_completion(::DictCompletion) = true
+is_dict_completion(::Completion)     = false
+
+is_kwarg_completion(::FuzzyCompletions.KeywordArgumentCompletion) = true
+is_kwarg_completion(::Completion)                                 = false
 
 
 """
