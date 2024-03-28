@@ -161,7 +161,7 @@ mkdir(snapshots_dir)
 
 function cleanup(session, notebook)
     testset_stack = get(task_local_storage(), :__BASETESTNEXT__, Test.AbstractTestSet[])
-    name = join((t.description for t in testset_stack), " – ")
+    name = replace(join((t.description for t in testset_stack), " – "), r"[\:\?\r\n<>\|\*]" => "-")
     
     path = Pluto.numbered_until_new(joinpath(snapshots_dir, name); suffix=".html", create_file=true)
     
