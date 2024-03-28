@@ -145,6 +145,7 @@ const first_true_key = (obj) => {
  * @typedef StatusEntryData
  * @type {{
  *   name: string,
+ *   success?: boolean,
  *   started_at: number?,
  *   finished_at: number?,
  *   timing?: "remote" | "local",

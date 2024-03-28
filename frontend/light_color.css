@@ -80,7 +80,6 @@
         --pluto-logs-progress-fill: #ffffff;
         --pluto-logs-progress-bg: #e7e7e7;
         --pluto-logs-progress-border: hsl(210deg 16% 74%);
-
         --pluto-logs-info-color: white;
         --pluto-logs-info-accent-color: inherit;
         --pluto-logs-warn-color: rgb(236 234 213);
@@ -157,11 +156,11 @@
         --helpbox-text-color: black;
         --code-section-bg-color: whitesmoke;
         --code-section-bg-color: #f3f3f3;
-
         --process-item-bg: #f2f2f2;
         --process-busy: #ffcd70;
         --process-finished: hsl(126deg 30% 60%);
         --process-undefined: rgb(151, 151, 151);
+        --process-failed: hsl(0deg 72.62% 64.6%);
         --process-notify-bg: hsl(44.86deg 50% 94%);
 
         /*footer*/

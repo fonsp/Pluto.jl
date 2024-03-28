@@ -2626,6 +2626,9 @@ pl-status.busy {
 pl-status.finished {
     --status-color: var(--process-finished);
 }
+pl-status.failed {
+    --status-color: var(--process-failed);
+}
 
 pl-status.can_open {
     cursor: auto;
@@ -2726,6 +2729,9 @@ pl-status .status-time {
 }
 .discrete-progress-bar > div.busy {
     background: var(--process-busy);
+}
+.discrete-progress-bar > div.failed {
+    background: var(--process-failed);
 }
 
 .discrete-progress-bar.mid {

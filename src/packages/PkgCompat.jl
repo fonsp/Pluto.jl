@@ -12,7 +12,7 @@ import ..Pluto
 
 
 @static if isdefined(Pkg,:REPLMode) && isdefined(Pkg.REPLMode,:complete_remote_package)
-    const REPLMode=Pkg.REPLMode
+    const REPLMode = Pkg.REPLMode
 else
     const REPLMode = Base.get_extension(Pkg, :REPLExt)
 end
