@@ -622,6 +622,18 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
                 } catch (err) {
                     console.warn("Highlighting failed", err)
                 }
+
+                // Find code blocks and add a copy button:
+                try {
+                    if (container.firstElementChild?.matches("div.markdown")) {
+                        container.querySelectorAll("pre > code").forEach((code_element) => {
+                            const pre = code_element.parentElement
+                            generateCopyCodeButton(pre)
+                        })
+                    }
+                } catch (err) {
+                    console.warn("Adding markdown code copy button failed", err)
+                }
             } finally {
                 js_init_set?.delete(container)
             }
@@ -687,4 +699,49 @@ export let highlight = (code_element, language) => {
             hljs.highlightElement(code_element)
         }
     }
+}
+
+/**
+ * Copies the contents of an HTML Element into the clipboard
+ */
+export const copyToClipboard = (e) => {
+    const el = e.target.parentNode.closest("pre")
+    const txt = el.textContent || '';
+    navigator.clipboard
+        .writeText(txt)
+        .then(() => {
+            console.log("Code copied to clipboard:\n" + txt)
+        })
+        .catch((error) => {
+            console.error("Error copying code to clipboard:", error)
+        })
+}
+
+/**
+ * Generates a copy button for Markdown code blocks and copies them into the clipboard.
+ * @param {HTMLElement | null} pre - The <pre> element containing the code block.
+ */
+export const generateCopyCodeButton = (pre) => {
+    if (!pre) {
+        console.error('Error: pre is null.');
+        return;
+    }
+
+    // create copy button
+    const copyCodeButton = document.createElement("button")
+    copyCodeButton.title="Copy to Clipboard"
+    copyCodeButton.id="copy-to-clipboard-btn"
+    copyCodeButton.className = "markdown-code-block-button"
+    copyCodeButton.classList.add('markdown-code-block-copy-code-button')
+    copyCodeButton.addEventListener("click", function(e) {
+        copyToClipboard(e);
+        copyCodeButton.classList.add('markdown-code-block-copied-code-button');
+        setTimeout(function() {
+            copyCodeButton.classList.remove('markdown-code-block-copied-code-button');
+            copyCodeButton.classList.add('markdown-code-block-copy-code-button');
+        }, 2000);
+    });
+
+    // Append copy button to the code block element
+    pre.appendChild(copyCodeButton)
 }
