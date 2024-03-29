@@ -209,7 +209,7 @@ let julia_special_completions_to_cm =
     }
 
 let override_text_to_apply_in_field_expression = (text) => {
-    return !/^[@\p{L}\p{Sc}\d_][\p{L}\p{Nl}\p{Sc}\d_!]*\"?$/.test(text) ? (text === ":" ? `:(${text})` : `:${text}`) : null
+    return !/^[@\p{L}\p{Sc}\d_][\p{L}\p{Nl}\p{Sc}\d_!]*"?$/u.test(text) ? (text === ":" ? `:(${text})` : `:${text}`) : null
 }
 
 const section_regular = {
