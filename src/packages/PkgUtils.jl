@@ -105,9 +105,8 @@ function update_notebook_environment(path::String; kwargs...)
     )
 end
 
-function has_notebook_environment(path::String)
-    load_notebook(path).nbpkg_ctx !== nothing
-end
+has_notebook_environment(path::String) = has_notebook_environment(load_notebook(path))
+has_notebook_environment(notebook::Notebook) = notebook.nbpkg_ctx !== nothing
 
 function activate_notebook_environment(path::String; show_help::Bool=true)
     notebook_ref = Ref(load_notebook(path))
