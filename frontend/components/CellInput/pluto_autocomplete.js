@@ -223,6 +223,8 @@ const section_operators = {
     rank: 1,
 }
 
+const field_rank_heuristic = (text) => (/^\p{Ll}/u.test(text) ? 3 : /^\p{Lu}/u.test(text) ? 2 : 1)
+
 /** Use the completion results from the Julia server to create CM completion objects. */
 const julia_code_completions_to_cm =
     (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (/** @type {autocomplete.CompletionContext} */ ctx) => {
@@ -255,7 +257,9 @@ const julia_code_completions_to_cm =
         // const proposed = new Set()
 
         let to_complete_onto = to_complete.slice(0, start)
-        let is_field_expression = to_complete_onto.slice(-1) === "."
+        let is_field_expression = to_complete_onto.endsWith(".")
+        let is_listing_all_fields_of_a_module = is_field_expression && start === stop
+
         return {
             from: start,
             to: stop,
@@ -289,7 +293,14 @@ const julia_code_completions_to_cm =
                                     c_from_notebook: is_from_notebook,
                                 }) ?? undefined,
                             section: section_regular,
-                            boost: completion_type === "keyword_argument" ? 1 : undefined,
+                            boost:
+                                completion_type === "keyword_argument"
+                                    ? 1
+                                    : is_listing_all_fields_of_a_module
+                                    ? is_exported
+                                        ? field_rank_heuristic(text_to_apply)
+                                        : undefined
+                                    : undefined,
                             // boost: 50 - i / results.length,
                         }
                     }),
