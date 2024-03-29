@@ -424,13 +424,12 @@ const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} *
 
             if (data != null) {
                 const { latex, emoji } = data
-                console.log({ latex })
-                found = [false, true].map((apply_unicode_completion) =>
-                    [false, true].flatMap((is_emoji) =>
+                found = [true, false].map((is_inside_string) =>
+                    [true, false].flatMap((is_emoji) =>
                         Object.entries(is_emoji ? emoji : latex).map(([label, value]) => {
                             return {
                                 label,
-                                apply: value != null && apply_unicode_completion ? value : label,
+                                apply: value != null && (!is_inside_string || is_emoji) ? value : label,
                                 detail: value ?? undefined,
                             }
                         })
@@ -438,7 +437,6 @@ const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} *
                 )
             }
         }
-        console.log({ found })
         return found
     }
 
@@ -447,9 +445,9 @@ const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} *
 
         const result = await get_special_symbols()
 
-        let should_apply_unicode_completion = !match_string_complete(ctx)
+        let is_inside_string = !match_string_complete(ctx)
 
-        return await autocomplete.completeFromList(should_apply_unicode_completion ? result[1] : result[0])(ctx)
+        return await autocomplete.completeFromList(is_inside_string ? result[0] : result[1])(ctx)
     }
 }
 
