@@ -409,6 +409,8 @@ const local_variables_completion = (/** @type {autocomplete.CompletionContext} *
             })),
     }
 }
+const special_latex_examples = ["\\sqrt", "\\pi", "\\approx"]
+const special_emoji_examples = ["🐶", "🐱", "🐭", "🐰", "🐼", "🐨", "🐸", "🐔", "🐧"]
 
 const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} */ request_special_symbols) => {
     let found = null
@@ -429,6 +431,7 @@ const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} *
                                 label,
                                 apply: value != null && (!is_inside_string || is_emoji) ? value : label,
                                 detail: value ?? undefined,
+                                boost: label === "\\in" ? 3 : special_latex_examples.includes(label) ? 2 : special_emoji_examples.includes(value) ? 1 : 0,
                             }
                         })
                     )
