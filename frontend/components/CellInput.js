@@ -424,12 +424,14 @@ export const CellInput = ({
     useLayoutEffect(() => {
         if (dom_node_ref.current == null) return
 
-        const keyMapSubmit = () => {
+        const keyMapSubmit = (/** @type {EditorView} */ cm) => {
+            autocomplete.closeCompletion(cm)
             on_submit()
             return true
         }
         let run = async (fn) => await fn()
         const keyMapRun = (/** @type {EditorView} */ cm) => {
+            autocomplete.closeCompletion(cm)
             run(async () => {
                 // we await to prevent an out-of-sync issue
                 await on_add_after()
