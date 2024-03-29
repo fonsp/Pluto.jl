@@ -26,7 +26,7 @@ jobs:
         with:
           node-version: "21.x"
 
-      - run: npm install typescript@5.4.5 -g
+      - run: npm install typescript@5.4.3 -g
       
       - run: npm install
         working-directory: frontend
