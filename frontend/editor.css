@@ -3472,6 +3472,10 @@ pluto-cell.errored .cm-editor .cm-lineNumbers .cm-gutterElement::after {
     color: var(--cm-string-color);
 }
 
+.cm-completionIcon-completion_property::before {
+    color: var(--cm-property-color);
+}
+
 .cm-completionIcon-completion_keyword::before {
     color: var(--cm-keyword-color);
 }
@@ -3493,6 +3497,9 @@ pluto-popup code.auto_disabled_variable {
 
 .cm-completionIcon-c_Function::before {
     color: var(--cm-function-color);
+}
+.cm-completionIcon-c_Macro::before {
+    color: var(--cm-macro-color);
 }
 
 .cm-completionIcon-c_Array::before {

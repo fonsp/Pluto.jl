@@ -194,7 +194,7 @@ const section_operators = {
     rank: 1,
 }
 
-const field_rank_heuristic = (text) => (/^\p{Ll}/u.test(text) ? 3 : /^\p{Lu}/u.test(text) ? 2 : 1)
+const field_rank_heuristic = (text, is_exported) => is_exported * 3 + (/^\p{Ll}/u.test(text) ? 2 : /^\p{Lu}/u.test(text) ? 1 : 0)
 
 const julia_commit_characters = [".", ",", "(", "[", "{"]
 const endswith_keyword_regex =
@@ -266,6 +266,8 @@ const julia_code_completions_to_cm =
                         let text_to_apply =
                             completion_type === "method" ? to_complete : is_field_expression ? override_text_to_apply_in_field_expression(text) ?? text : text
 
+                        value_type = value_type === "Function" && text.startsWith("@") ? "Macro" : value_type
+
                         return {
                             label: text,
                             apply: text_to_apply,
@@ -277,14 +279,9 @@ const julia_code_completions_to_cm =
                                     c_from_notebook: is_from_notebook,
                                 }) ?? undefined,
                             section: section_regular,
+                            // detail: completion_type,
                             boost:
-                                completion_type === "keyword_argument"
-                                    ? 1
-                                    : is_listing_all_fields_of_a_module
-                                    ? is_exported
-                                        ? field_rank_heuristic(text_to_apply)
-                                        : undefined
-                                    : undefined,
+                                completion_type === "keyword_argument" ? 7 : is_field_expression ? field_rank_heuristic(text_to_apply, is_exported) : undefined,
                             // boost: 50 - i / results.length,
                         }
                     }),
@@ -434,6 +431,7 @@ const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} *
                                 label,
                                 apply: value != null && (!is_inside_string || is_emoji) ? value : label,
                                 detail: value ?? undefined,
+                                type: "c_special_symbol",
                                 boost: label === "\\in" ? 3 : special_latex_examples.includes(label) ? 2 : special_emoji_examples.includes(value) ? 1 : 0,
                             }
                         })
