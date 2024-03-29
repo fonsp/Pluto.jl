@@ -1359,9 +1359,6 @@ pluto-input .cm-editor {
     scroll-margin-block: 20vh;
     min-height: 25px;
 }
-pluto-notebook.animations_enabled pluto-input .cm-editor {
-    transition: border-color 0.15s ease-in-out;
-}
 pluto-input:focus-within .cm-editor {
     /* z-index increased by 1 to make sure that the autocomplete window shows above all other editors, see https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context */
     z-index: 21;
@@ -1525,7 +1522,6 @@ body:not(.___) pluto-cell.code_folded > pluto-trafficlight {
 @media screen and (any-pointer: fine) {
     body:not(.disable_ui) pluto-cell:hover > pluto-trafficlight {
         background: var(--normal-cell-color);
-        transition: background 0.05s ease-in;
     }
 }
 
