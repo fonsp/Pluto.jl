@@ -166,11 +166,9 @@ let update_docs_from_autocomplete_selection = (on_update_doc_query) => {
 }
 
 /** Are we matching something like `\lambd...`? */
-let match_latex_complete = (/** @type {autocomplete.CompletionContext} */ ctx) => ctx.matchBefore(/\\[^\s"'.`]*/)
+let match_special_symbol_complete = (/** @type {autocomplete.CompletionContext} */ ctx) => ctx.matchBefore(/\\[\d\w_:]*/)
 /** Are we matching something like `:writing_a_symbo...`? */
 let match_symbol_complete = (/** @type {autocomplete.CompletionContext} */ ctx) => ctx.matchBefore(/\.\:[^\s"'`()\[\].]*/)
-/** Are we matching exactly `~/`? */
-let match_expanduser_complete = (/** @type {autocomplete.CompletionContext} */ ctx) => ctx.matchBefore(/~\//)
 /** Are we matching inside a string */
 function match_string_complete(ctx) {
     const tree = syntaxTree(ctx.state)
@@ -239,11 +237,7 @@ const julia_code_completions_to_cm =
             from: start,
             to: stop,
 
-            // This tells codemirror to not query this function again as long as the string
-            // we are completing has the same prefix as we complete now, and there is no weird characters (subjective)
-            // e.g. Base.ab<TAB>, will create a regex like /^ab[^weird]*$/, so when now typing `s`,
-            //      we'll get `Base.abs`, it finds the `abs` matching our span, and it will filter the existing results.
-            //      If we backspace however, to `Math.a`, `a` does no longer match! So it will re-query this function.
+            // This tells codemirror to not query this function again as long as the string matches the regex.
 
             // see `is_wc_cat_id_start` in Julia's source for a complete list
             validFor: /[\p{L}\p{Nl}\p{Sc}\d_!]*$/u,
@@ -310,18 +304,17 @@ const pluto_completion_fetcher = (request_autocomplete) => {
 
     return (/** @type {autocomplete.CompletionContext} */ ctx) => {
         if (writing_variable_name(ctx)) return null
+        if (match_special_symbol_complete(ctx)) return null
         if (ctx.tokenBefore(["Number"]) != null) return null
-        let unicode_match = match_latex_complete(ctx) || match_expanduser_complete(ctx)
-        if (unicode_match === null) {
-            return code_completions(ctx)
-        } else {
-            return null
-        }
+        return code_completions(ctx)
     }
 }
 
 const complete_anyword = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
     if (writing_variable_name(ctx)) return null
+    if (match_special_symbol_complete(ctx)) return null
+    if (ctx.tokenBefore(["Number"]) != null) return null
+
     const results_from_cm = await autocomplete.completeAnyWord(ctx)
     if (results_from_cm === null) return null
 
@@ -355,12 +348,17 @@ const writing_variable_name = (/** @type {autocomplete.CompletionContext} */ ctx
 
     let inside_do_argument_expression = ctx.matchBefore(/do [\(\), \p{L}\p{Nl}\p{Sc}\d_!]*$/u)
 
-    return after_keyword || inside_do_argument_expression
+    let just_finished_a_keyword = ctx.matchBefore(/(catch|local|module|abstract type|struct|macro|const|for|function|let|do)$/u)
+
+    return after_keyword || inside_do_argument_expression || just_finished_a_keyword
 }
 
 /** @returns {Promise<autocomplete.CompletionResult?>} */
 const global_variables_completion = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
     if (writing_variable_name(ctx)) return null
+    if (match_special_symbol_complete(ctx)) return null
+    if (ctx.tokenBefore(["Number"]) != null) return null
+
     const globals = ctx.state.facet(GlobalDefinitionsFacet)
 
     // see `is_wc_cat_id_start` in Julia's source for a complete list
@@ -442,11 +440,12 @@ const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} *
 
     return async (/** @type {autocomplete.CompletionContext} */ ctx) => {
         if (writing_variable_name(ctx)) return null
+        if (!match_special_symbol_complete(ctx)) return null
+        if (ctx.tokenBefore(["Number"]) != null) return null
 
         const result = await get_special_symbols()
 
-        let is_inside_string = !match_string_complete(ctx)
-
+        let is_inside_string = match_string_complete(ctx)
         return await autocomplete.completeFromList(is_inside_string ? result[0] : result[1])(ctx)
     }
 }
@@ -505,7 +504,6 @@ export let pluto_autocomplete = ({ request_autocomplete, request_special_symbols
         autocompletion({
             activateOnTyping: ENABLE_CM_AUTOCOMPLETE_ON_TYPE,
             override: [
-                // writing_variable_name,
                 global_variables_completion,
                 special_symbols_completion(request_special_symbols),
                 pluto_completion_fetcher(memoize_last_request_autocomplete),
