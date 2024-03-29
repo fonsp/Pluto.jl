@@ -1,3 +1,4 @@
+import { cl } from "../common/ClassTable.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { html, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "../imports/Preact.js"
 
@@ -159,6 +160,7 @@ export const Notebook = ({
             }, render_cell_outputs_delay(notebook.cell_order.length))
         }
     }, [cell_outputs_delayed, notebook.cell_order.length])
+
     let global_definition_locations = useMemo(
         () =>
             Object.fromEntries(
@@ -180,8 +182,17 @@ export const Notebook = ({
         }
     }, [cell_outputs_delayed])
 
+    const [animations_enabled, set_animations_enabled] = useState(false)
+    useLayoutEffect(() => {
+        if (!cell_outputs_delayed) {
+            setTimeout(() => {
+                set_animations_enabled(true)
+            }, 1000)
+        }
+    }, [cell_outputs_delayed])
+
     return html`
-        <pluto-notebook id=${notebook.notebook_id}>
+        <pluto-notebook id=${notebook.notebook_id} class=${cl({ animations_enabled })}>
             ${notebook.cell_order
                 .filter((_, i) => !(cell_outputs_delayed && i > render_cell_outputs_minimum))
                 .map(

@@ -1354,11 +1354,13 @@ pluto-input .cm-editor {
     border-bottom-right-radius: 4px;
     border: 1px solid var(--normal-cell-color);
     border-left: none;
-    transition: border-color 0.15s ease-in-out;
 
     /* Make sure that scrolling an editor into view gives some breathing room */
     scroll-margin-block: 20vh;
     min-height: 25px;
+}
+pluto-notebook.animations_enabled pluto-input .cm-editor {
+    transition: border-color 0.15s ease-in-out;
 }
 pluto-input:focus-within .cm-editor {
     /* z-index increased by 1 to make sure that the autocomplete window shows above all other editors, see https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context */
