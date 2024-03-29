@@ -197,10 +197,22 @@ const section_operators = {
 const field_rank_heuristic = (text) => (/^\p{Ll}/u.test(text) ? 3 : /^\p{Lu}/u.test(text) ? 2 : 1)
 
 const julia_commit_characters = [".", ",", "(", "[", "{"]
+const endswith_keyword_regex =
+    /(baremodule|begin|break|catch|const|continue|do|else|elseif|end|export|false|finally|for|function|global|if|import|let|local|macro|module|quote|return|struct|true|try|using|while)$/
+
+const validFor = (text) => {
+    let expected_char = /[\p{L}\p{Nl}\p{Sc}\d_!]*$/u.test(text)
+
+    return expected_char && !endswith_keyword_regex.test(text)
+}
 
 /** Use the completion results from the Julia server to create CM completion objects. */
 const julia_code_completions_to_cm =
     (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (/** @type {autocomplete.CompletionContext} */ ctx) => {
+        if (writing_variable_name_or_keyword(ctx)) return null
+        if (match_special_symbol_complete(ctx)) return null
+        if (ctx.tokenBefore(["Number"]) != null) return null
+
         let to_complete = /** @type {String} */ (ctx.state.sliceDoc(0, ctx.pos))
 
         // Another rough hack... If it detects a `.:`, we want to cut out the `:` so we get all results from julia,
@@ -240,7 +252,8 @@ const julia_code_completions_to_cm =
             // This tells codemirror to not query this function again as long as the string matches the regex.
 
             // see `is_wc_cat_id_start` in Julia's source for a complete list
-            validFor: /[\p{L}\p{Nl}\p{Sc}\d_!]*$/u,
+            // validFor: /[\p{L}\p{Nl}\p{Sc}\d_!]*$/u,
+            validFor,
 
             commitCharacters: julia_commit_characters,
 
@@ -299,19 +312,8 @@ const julia_code_completions_to_cm =
         }
     }
 
-const pluto_completion_fetcher = (request_autocomplete) => {
-    const code_completions = julia_code_completions_to_cm(request_autocomplete)
-
-    return (/** @type {autocomplete.CompletionContext} */ ctx) => {
-        if (writing_variable_name(ctx)) return null
-        if (match_special_symbol_complete(ctx)) return null
-        if (ctx.tokenBefore(["Number"]) != null) return null
-        return code_completions(ctx)
-    }
-}
-
 const complete_anyword = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
-    if (writing_variable_name(ctx)) return null
+    if (writing_variable_name_or_keyword(ctx)) return null
     if (match_special_symbol_complete(ctx)) return null
     if (ctx.tokenBefore(["Number"]) != null) return null
 
@@ -343,19 +345,19 @@ const from_notebook_type = "c_from_notebook completion_module c_Any"
  *
  * E.g. `const hel<TAB>` should not autocomplete.
  */
-const writing_variable_name = (/** @type {autocomplete.CompletionContext} */ ctx) => {
+const writing_variable_name_or_keyword = (/** @type {autocomplete.CompletionContext} */ ctx) => {
+    let just_finished_a_keyword = ctx.matchBefore(endswith_keyword_regex)
+
     let after_keyword = ctx.matchBefore(/(catch|local|module|abstract type|struct|macro|const|for|function|let|do) [@\p{L}\p{Nl}\p{Sc}\d_!]*$/u)
 
     let inside_do_argument_expression = ctx.matchBefore(/do [\(\), \p{L}\p{Nl}\p{Sc}\d_!]*$/u)
 
-    let just_finished_a_keyword = ctx.matchBefore(/(catch|local|module|abstract type|struct|macro|const|for|function|let|do)$/u)
-
-    return after_keyword || inside_do_argument_expression || just_finished_a_keyword
+    return just_finished_a_keyword || after_keyword || inside_do_argument_expression
 }
 
 /** @returns {Promise<autocomplete.CompletionResult?>} */
 const global_variables_completion = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
-    if (writing_variable_name(ctx)) return null
+    if (writing_variable_name_or_keyword(ctx)) return null
     if (match_special_symbol_complete(ctx)) return null
     if (ctx.tokenBefore(["Number"]) != null) return null
 
@@ -379,6 +381,7 @@ const global_variables_completion = async (/** @type {autocomplete.CompletionCon
         ? null
         : {
               ...from_cm,
+              validFor,
               commitCharacters: julia_commit_characters,
           }
 }
@@ -442,7 +445,7 @@ const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} *
     }
 
     return async (/** @type {autocomplete.CompletionContext} */ ctx) => {
-        if (writing_variable_name(ctx)) return null
+        if (writing_variable_name_or_keyword(ctx)) return null
         if (!match_special_symbol_complete(ctx)) return null
         if (ctx.tokenBefore(["Number"]) != null) return null
 
@@ -509,7 +512,7 @@ export let pluto_autocomplete = ({ request_autocomplete, request_special_symbols
             override: [
                 global_variables_completion,
                 special_symbols_completion(request_special_symbols),
-                pluto_completion_fetcher(memoize_last_request_autocomplete),
+                julia_code_completions_to_cm(memoize_last_request_autocomplete),
                 complete_anyword,
                 // TODO: Disabled because of performance problems, see https://github.com/fonsp/Pluto.jl/pull/1925. Remove `complete_anyword` once fixed. See https://github.com/fonsp/Pluto.jl/pull/2013
                 // local_variables_completion,
