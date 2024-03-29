@@ -352,8 +352,6 @@ const writing_variable_name_or_keyword = (/** @type {autocomplete.CompletionCont
 
     let inside_do_argument_expression = ctx.matchBefore(/do [\(\), \p{L}\p{Nl}\p{Sc}\d_!]*$/u)
 
-    console.log({ after_keyword, inside_do_argument_expression })
-
     return just_finished_a_keyword || after_keyword || inside_do_argument_expression
 }
 
