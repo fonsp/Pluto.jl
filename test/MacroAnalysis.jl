@@ -200,7 +200,6 @@ import Memoize: @memoize
 
         # Checks that no fancy type is part of the serialized expression
         @test Set([Nothing, Symbol, QuoteNode]) == types
-        cleanup(🍭, notebook)
     end
 
     @testset "Macrodef cells not root of run" begin
