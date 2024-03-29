@@ -10,6 +10,7 @@ import {
     syntaxTree,
     StateField,
     StateEffect,
+    Transaction,
 } from "../../imports/CodemirrorPlutoSetup.js"
 import { get_selected_doc_from_state } from "./LiveDocsFromCursor.js"
 import { cl } from "../../common/ClassTable.js"
@@ -25,7 +26,7 @@ let { autocompletion, completionKeymap, completionStatus, acceptCompletion } = a
 const getActiveResult = (view, source) => view.state.field(completionState).active.find((a) => a.source == source)
 
 // These should be imported from  @codemirror/autocomplete, but they are not exported.
-let completionState = autocompletion()[0]
+let completionState = autocompletion()[1]
 let applyCompletion = (/** @type {EditorView} */ view, option) => {
     let apply = option.completion.apply || option.completion.label
     let result = getActiveResult(view, option.source)
@@ -48,7 +49,7 @@ const tabCompletionState = StateField.define({
         return false
     },
 
-    update(value, tr) {
+    update(value, /** @type {Transaction} */ tr) {
         // Tab was pressed
         for (let effect of tr.effects) {
             if (effect.is(TabCompletionEffect)) return true

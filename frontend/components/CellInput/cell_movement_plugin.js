@@ -1,8 +1,5 @@
 import { EditorView, autocomplete, EditorState, keymap } from "../../imports/CodemirrorPlutoSetup.js"
 
-// Why am I like this?
-let completionState = autocomplete.autocompletion()[0]
-
 /**
  * Cell movement plugin!
  *
@@ -148,8 +145,8 @@ export let prevent_holding_a_key_from_doing_things_across_cells = EditorView.dom
 
         // Because of the "hacky" way this works, we need to check if autocompletion is open...
         // else we'll block the ability to press ArrowDown for autocomplete....
-        // Adopted from https://github.com/codemirror/autocomplete/blob/a53f7ff19dc3a0412f3ce6e2751b08b610e1d762/src/view.ts#L15
-        let autocompletion_open = view.state.field(completionState, false)?.open ?? false
+
+        let autocompletion_open = autocomplete.completionStatus(view.state) === "active"
 
         // If we have a cursor instead of a multicharacter selection:
         if (event.key === "ArrowUp" && !autocompletion_open) {

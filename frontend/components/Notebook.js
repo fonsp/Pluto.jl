@@ -159,6 +159,7 @@ export const Notebook = ({
             }, render_cell_outputs_delay(notebook.cell_order.length))
         }
     }, [cell_outputs_delayed, notebook.cell_order.length])
+
     let global_definition_locations = useMemo(
         () =>
             Object.fromEntries(
