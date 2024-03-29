@@ -751,6 +751,7 @@ export const CellInput = ({
                                 results: message.results,
                             }
                         },
+                        request_special_symbols: () => pluto_actions.send("complete_symbols").then(({ message }) => message),
                         on_update_doc_query: on_update_doc_query,
                     }),
 
