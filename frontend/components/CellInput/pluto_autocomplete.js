@@ -181,34 +181,6 @@ function match_string_complete(ctx) {
     return true
 }
 
-/** Use the completion results from the Julia server to create CM completion objects, but only for path completions (TODO: broken) and latex completions. */
-let julia_special_completions_to_cm =
-    (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (/** @type {autocomplete.CompletionContext} */ ctx) => {
-        let to_complete = ctx.state.sliceDoc(0, ctx.pos)
-
-        let found = await request_autocomplete({ text: to_complete })
-        if (!found) return null
-        let { start, stop, results } = found
-
-        let should_apply_unicode_completion = !match_string_complete(ctx)
-
-        return {
-            from: start,
-            to: stop,
-            // This is an important one when you not only complete, but also replace something.
-            // @codemirror/autocomplete automatically filters out results otherwise >:(
-            filter: false,
-            options: results.map(([text, _, __, ___, ____, special_symbol]) => {
-                return {
-                    label: text,
-                    apply: special_symbol != null && should_apply_unicode_completion ? special_symbol : text,
-                    detail: special_symbol ?? undefined,
-                }
-            }),
-            // TODO Do something docs_prefix ish when we also have the apply text
-        }
-    }
-
 let override_text_to_apply_in_field_expression = (text) => {
     return !/^[@\p{L}\p{Sc}\d_][\p{L}\p{Nl}\p{Sc}\d_!]*"?$/u.test(text) ? (text === ":" ? `:(${text})` : `:${text}`) : null
 }
@@ -334,7 +306,6 @@ const julia_code_completions_to_cm =
     }
 
 const pluto_completion_fetcher = (request_autocomplete) => {
-    const unicode_completions = julia_special_completions_to_cm(request_autocomplete)
     const code_completions = julia_code_completions_to_cm(request_autocomplete)
 
     return (/** @type {autocomplete.CompletionContext} */ ctx) => {
@@ -344,7 +315,7 @@ const pluto_completion_fetcher = (request_autocomplete) => {
         if (unicode_match === null) {
             return code_completions(ctx)
         } else {
-            return unicode_completions(ctx)
+            return null
         }
     }
 }
@@ -441,6 +412,47 @@ const local_variables_completion = (/** @type {autocomplete.CompletionContext} *
     }
 }
 
+const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} */ request_special_symbols) => {
+    let found = null
+
+    const get_special_symbols = async () => {
+        if (found == null) {
+            let data = await request_special_symbols().catch((e) => {
+                console.warn("Failed to fetch special symbols", e)
+                return null
+            })
+
+            if (data != null) {
+                const { latex, emoji } = data
+                console.log({ latex })
+                found = [false, true].map((apply_unicode_completion) =>
+                    [false, true].flatMap((is_emoji) =>
+                        Object.entries(is_emoji ? emoji : latex).map(([label, value]) => {
+                            return {
+                                label,
+                                apply: value != null && apply_unicode_completion ? value : label,
+                                detail: value ?? undefined,
+                            }
+                        })
+                    )
+                )
+            }
+        }
+        console.log({ found })
+        return found
+    }
+
+    return async (/** @type {autocomplete.CompletionContext} */ ctx) => {
+        if (writing_variable_name(ctx)) return null
+
+        const result = await get_special_symbols()
+
+        let should_apply_unicode_completion = !match_string_complete(ctx)
+
+        return await autocomplete.completeFromList(should_apply_unicode_completion ? result[1] : result[0])(ctx)
+    }
+}
+
 /**
  *
  * @typedef PlutoAutocompleteResult
@@ -458,14 +470,18 @@ const local_variables_completion = (/** @type {autocomplete.CompletionContext} *
  *
  * @typedef PlutoRequestAutocomplete
  * @type {(options: { text: string }) => Promise<PlutoAutocompleteResults?>}
+ *
+ * @typedef SpecialSymbols
+ * @type {{emoji: Record<string, string>, latex: Record<string, string>}}
  */
 
 /**
  * @param {object} props
  * @param {PlutoRequestAutocomplete} props.request_autocomplete
+ * @param {() => Promise<SpecialSymbols?>} props.request_special_symbols
  * @param {(query: string) => void} props.on_update_doc_query
  */
-export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) => {
+export let pluto_autocomplete = ({ request_autocomplete, request_special_symbols, on_update_doc_query }) => {
     let last_query = null
     let last_result = null
     /**
