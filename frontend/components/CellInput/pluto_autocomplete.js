@@ -226,6 +226,8 @@ const section_operators = {
 
 const field_rank_heuristic = (text) => (/^\p{Ll}/u.test(text) ? 3 : /^\p{Lu}/u.test(text) ? 2 : 1)
 
+const julia_commit_characters = [".", ",", "(", "[", "{"]
+
 /** Use the completion results from the Julia server to create CM completion objects. */
 const julia_code_completions_to_cm =
     (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (/** @type {autocomplete.CompletionContext} */ ctx) => {
@@ -265,15 +267,17 @@ const julia_code_completions_to_cm =
             from: start,
             to: stop,
 
-            // see `is_wc_cat_id_start` in Julia's source for a complete list
-            validFor: /[\p{L}\p{Nl}\p{Sc}\d_!]*$/u,
-
             // This tells codemirror to not query this function again as long as the string
             // we are completing has the same prefix as we complete now, and there is no weird characters (subjective)
             // e.g. Base.ab<TAB>, will create a regex like /^ab[^weird]*$/, so when now typing `s`,
             //      we'll get `Base.abs`, it finds the `abs` matching our span, and it will filter the existing results.
             //      If we backspace however, to `Math.a`, `a` does no longer match! So it will re-query this function.
-            // span: RegExp(`^${_.escapeRegExp(ctx.state.sliceDoc(start, stop))}[^\\s"'()\\[\\].{}]*`),
+
+            // see `is_wc_cat_id_start` in Julia's source for a complete list
+            validFor: /[\p{L}\p{Nl}\p{Sc}\d_!]*$/u,
+
+            commitCharacters: julia_commit_characters,
+
             options: [
                 ...results
                     .filter(([text, _1, _2, is_from_notebook]) => !(is_from_notebook && is_already_a_global(text)))
@@ -355,6 +359,8 @@ const complete_anyword = async (/** @type {autocomplete.CompletionContext} */ ct
 
     return {
         from: results_from_cm.from,
+        commitCharacters: julia_commit_characters,
+
         options: results_from_cm.options.map(({ label }, i) => ({
             // See https://github.com/codemirror/codemirror.next/issues/788 about `type: null`
             label,
@@ -381,6 +387,7 @@ const writing_variable_name = (/** @type {autocomplete.CompletionContext} */ ctx
     return after_keyword || inside_do_argument_expression
 }
 
+/** @returns {Promise<autocomplete.CompletionResult?>} */
 const global_variables_completion = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
     if (writing_variable_name(ctx)) return null
     const globals = ctx.state.facet(GlobalDefinitionsFacet)
@@ -389,7 +396,7 @@ const global_variables_completion = async (/** @type {autocomplete.CompletionCon
     const there_is_a_dot_before = ctx.matchBefore(/\.[\p{L}\p{Nl}\p{Sc}\d_!]*$/u)
     if (there_is_a_dot_before) return null
 
-    return await autocomplete.completeFromList(
+    const from_cm = await autocomplete.completeFromList(
         Object.keys(globals).map((label) => {
             return {
                 label,
@@ -399,6 +406,12 @@ const global_variables_completion = async (/** @type {autocomplete.CompletionCon
             }
         })
     )(ctx)
+    return from_cm == null
+        ? null
+        : {
+              ...from_cm,
+              commitCharacters: julia_commit_characters,
+          }
 }
 
 const local_variables_completion = (/** @type {autocomplete.CompletionContext} */ ctx) => {
@@ -412,6 +425,7 @@ const local_variables_completion = (/** @type {autocomplete.CompletionContext} *
     return {
         from,
         to,
+        commitCharacters: julia_commit_characters,
         options: scopestate.locals
             .filter(
                 ({ validity, name }) =>
