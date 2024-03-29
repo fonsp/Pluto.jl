@@ -149,7 +149,6 @@ const waitForPlutoBusy = async (page, iWantBusiness, options) => {
                     // @ts-ignore
                     document?.body?._js_init_set?.size,
                     document?.body?.classList?.contains("loading"),
-                    document.querySelector(`pluto-notebook:not(.animations_enabled)`),
                     document?.querySelector(`#process-status-tab-button.something_is_happening`)?.id,
                     document?.querySelector(`pluto-cell.running, pluto-cell.queued, pluto-cell.internal_test_queued`)?.id,
                 ]
@@ -159,8 +158,7 @@ const waitForPlutoBusy = async (page, iWantBusiness, options) => {
                     (quiet_vals[1] ?? 0) === 0 &&
                     quiet_vals[2] === false &&
                     quiet_vals[3] == null &&
-                    quiet_vals[4] == null &&
-                    quiet_vals[5] == null
+                    quiet_vals[4] == null
 
                 window["quiet_vals"] = quiet_vals
 
