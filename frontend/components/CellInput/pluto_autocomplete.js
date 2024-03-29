@@ -211,7 +211,7 @@ const julia_code_completions_to_cm =
     (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (/** @type {autocomplete.CompletionContext} */ ctx) => {
         if (writing_variable_name_or_keyword(ctx)) return null
         if (match_special_symbol_complete(ctx)) return null
-        if (ctx.tokenBefore(["Number"]) != null) return null
+        if (ctx.tokenBefore(["Number", "Comment", "String", "TripleString"]) != null) return null
 
         let to_complete = /** @type {String} */ (ctx.state.sliceDoc(0, ctx.pos))
 
@@ -312,7 +312,7 @@ const julia_code_completions_to_cm =
 const complete_anyword = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
     if (writing_variable_name_or_keyword(ctx)) return null
     if (match_special_symbol_complete(ctx)) return null
-    if (ctx.tokenBefore(["Number"]) != null) return null
+    if (ctx.tokenBefore(["Number", "Comment", "String", "TripleString"]) != null) return null
 
     const results_from_cm = await autocomplete.completeAnyWord(ctx)
     if (results_from_cm === null) return null
@@ -356,7 +356,7 @@ const writing_variable_name_or_keyword = (/** @type {autocomplete.CompletionCont
 const global_variables_completion = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
     if (writing_variable_name_or_keyword(ctx)) return null
     if (match_special_symbol_complete(ctx)) return null
-    if (ctx.tokenBefore(["Number"]) != null) return null
+    if (ctx.tokenBefore(["Number", "Comment", "String", "TripleString"]) != null) return null
 
     const globals = ctx.state.facet(GlobalDefinitionsFacet)
 
@@ -445,7 +445,7 @@ const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} *
     return async (/** @type {autocomplete.CompletionContext} */ ctx) => {
         if (writing_variable_name_or_keyword(ctx)) return null
         if (!match_special_symbol_complete(ctx)) return null
-        if (ctx.tokenBefore(["Number"]) != null) return null
+        if (ctx.tokenBefore(["Number", "Comment", "String", "TripleString"]) != null) return null
 
         const result = await get_special_symbols()
 
