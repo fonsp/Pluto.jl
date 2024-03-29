@@ -322,6 +322,7 @@ const pluto_completion_fetcher = (request_autocomplete) => {
     const code_completions = julia_code_completions_to_cm(request_autocomplete)
 
     return (/** @type {autocomplete.CompletionContext} */ ctx) => {
+        if (writing_variable_name(ctx)) return null
         if (ctx.tokenBefore(["Number"]) != null) return null
         let unicode_match = match_latex_complete(ctx) || match_expanduser_complete(ctx)
         if (unicode_match === null) {
@@ -333,6 +334,7 @@ const pluto_completion_fetcher = (request_autocomplete) => {
 }
 
 const complete_anyword = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
+    if (writing_variable_name(ctx)) return null
     const results_from_cm = await autocomplete.completeAnyWord(ctx)
     if (results_from_cm === null) return null
 
@@ -354,7 +356,29 @@ const complete_anyword = async (/** @type {autocomplete.CompletionContext} */ ct
 
 const from_notebook_type = "c_from_notebook completion_module c_Any"
 
+/**
+ * Are we currently writing a variable name? In that case we don't want autocomplete.
+ *
+ * E.g. `const hel<TAB>` should not autocomplete.
+ */
+const writing_variable_name = (/** @type {autocomplete.CompletionContext} */ ctx) => {
+    const tree = syntaxTree(ctx.state)
+    const node = tree.resolve(ctx.pos)
+
+    console.log(node.type, node)
+    console.log(ctx.tokenBefore(["kw"]))
+
+    let con = ctx.matchBefore(/(catch|local|module|abstract type|struct|macro|const|for|function|let|do) [@\p{L}\p{Nl}\p{Sc}\d_!]*$/u)
+
+    let doc = ctx.matchBefore(/do [\(\), \p{L}\p{Nl}\p{Sc}\d_!]*$/u)
+
+    console.log({ doc, con })
+
+    return con || doc
+}
+
 const global_variables_completion = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
+    if (writing_variable_name(ctx)) return null
     const globals = ctx.state.facet(GlobalDefinitionsFacet)
 
     // see `is_wc_cat_id_start` in Julia's source for a complete list
@@ -449,6 +473,7 @@ export let pluto_autocomplete = ({ request_autocomplete, on_update_doc_query }) 
         autocompletion({
             activateOnTyping: ENABLE_CM_AUTOCOMPLETE_ON_TYPE,
             override: [
+                // writing_variable_name,
                 global_variables_completion,
                 pluto_completion_fetcher(memoize_last_request_autocomplete),
                 complete_anyword,
