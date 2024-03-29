@@ -362,19 +362,11 @@ const from_notebook_type = "c_from_notebook completion_module c_Any"
  * E.g. `const hel<TAB>` should not autocomplete.
  */
 const writing_variable_name = (/** @type {autocomplete.CompletionContext} */ ctx) => {
-    const tree = syntaxTree(ctx.state)
-    const node = tree.resolve(ctx.pos)
+    let after_keyword = ctx.matchBefore(/(catch|local|module|abstract type|struct|macro|const|for|function|let|do) [@\p{L}\p{Nl}\p{Sc}\d_!]*$/u)
 
-    console.log(node.type, node)
-    console.log(ctx.tokenBefore(["kw"]))
+    let inside_do_argument_expression = ctx.matchBefore(/do [\(\), \p{L}\p{Nl}\p{Sc}\d_!]*$/u)
 
-    let con = ctx.matchBefore(/(catch|local|module|abstract type|struct|macro|const|for|function|let|do) [@\p{L}\p{Nl}\p{Sc}\d_!]*$/u)
-
-    let doc = ctx.matchBefore(/do [\(\), \p{L}\p{Nl}\p{Sc}\d_!]*$/u)
-
-    console.log({ doc, con })
-
-    return con || doc
+    return after_keyword || inside_do_argument_expression
 }
 
 const global_variables_completion = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
