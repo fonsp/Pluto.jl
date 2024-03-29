@@ -1320,10 +1320,14 @@ patch: ${JSON.stringify(
             if (!in_textarea_or_input()) {
                 const serialized = this.serialize_selected()
                 if (serialized) {
-                    navigator.clipboard.writeText(serialized).catch((err) => {
-                        console.error("Error copying cells", e, err)
-                        alert(`Error copying cells: ${err?.message ?? err}`)
-                    })
+                    e.preventDefault()
+                    // wait one frame to get transient user activation
+                    requestAnimationFrame(() =>
+                        navigator.clipboard.writeText(serialized).catch((err) => {
+                            console.error("Error copying cells", e, err, navigator.userActivation)
+                            alert(`Error copying cells: ${err?.message ?? err}`)
+                        })
+                    )
                 }
             }
         })
