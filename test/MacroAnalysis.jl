@@ -27,6 +27,8 @@ import Memoize: @memoize
 
         @test cell(3) |> noerror
         @test :Fruit ∈ notebook.topology.nodes[cell(3)].references
+        
+        cleanup(🍭, notebook)
     end
 
     @testset "User defined macro 1" begin
@@ -48,6 +50,8 @@ import Memoize: @memoize
         # Works on second time because of old workspace
         @test :x ∈ notebook.topology.nodes[cell(2)].definitions
         @test Symbol("@my_assign") ∈ notebook.topology.nodes[cell(2)].references
+        
+        cleanup(🍭, notebook)
     end
     
     @testset "User defined macro 2" begin
@@ -77,6 +81,8 @@ import Memoize: @memoize
         @test cell(1) |> noerror
         @test cell(2) |> noerror
         @test cell(3) |> noerror
+        
+        cleanup(🍭, notebook)
     end
 
     @testset "User defined macro 3" begin
@@ -100,6 +106,8 @@ import Memoize: @memoize
         update_run!(🍭, notebook, cell(1))
 
         @test cell(2) |> noerror
+        
+        cleanup(🍭, notebook)
     end
 
     @testset "User defined macro 4" begin
@@ -114,6 +122,7 @@ import Memoize: @memoize
         update_run!(🍭, notebook, notebook.cells)
 
         @test Symbol("@my_assign") ∈ notebook.topology.nodes[cell(2)].references
+        cleanup(🍭, notebook)
     end
 
     @testset "User defined macro 5" begin
@@ -130,6 +139,7 @@ import Memoize: @memoize
         @test :a ∉ references(2)
         @test :b ∉ references(2)
         @test :c ∉ references(2)
+        cleanup(🍭, notebook)
     end
 
     @testset "User defined macro 6" begin
@@ -150,6 +160,7 @@ import Memoize: @memoize
 
         @test [Symbol("@my_macro"), :x, :y] ⊆ notebook.topology.nodes[cell(2)].references
         @test cell(3).output.body == "3"
+        cleanup(🍭, notebook)
     end
 
     @testset "Function docs" begin
@@ -170,6 +181,7 @@ import Memoize: @memoize
 
         @test :f ∈ notebook.topology.nodes[cell(1)].funcdefs_without_signatures
         @test :f ∈ notebook.topology.nodes[cell(2)].references
+        cleanup(🍭, notebook)
     end
 
     @testset "Expr sanitization" begin
@@ -188,6 +200,7 @@ import Memoize: @memoize
 
         # Checks that no fancy type is part of the serialized expression
         @test Set([Nothing, Symbol, QuoteNode]) == types
+        cleanup(🍭, notebook)
     end
 
     @testset "Macrodef cells not root of run" begin
@@ -215,6 +228,7 @@ import Memoize: @memoize
 
         @test cell(2).output.body == "true"
         @test all(noerror, notebook.cells)
+        cleanup(🍭, notebook)
     end
 
     @testset "Reverse order" begin
@@ -242,6 +256,7 @@ import Memoize: @memoize
         @test cell(2) |> noerror
         @test cell(3) |> noerror
         @test cell(1).output.body == "\"yay\""
+        cleanup(🍭, notebook)
     end
 
     @testset "@a defines @b" begin
@@ -276,6 +291,7 @@ import Memoize: @memoize
         @test cell(3) |> noerror
         @test cell(4) |> noerror
         @test cell(1).output.body == "42"
+        cleanup(🍭, notebook)
     end
 
     @testset "Removing macros undefvar errors dependent cells" begin
@@ -297,6 +313,7 @@ import Memoize: @memoize
         @test notebook.cells[end].errored
 
         @test expecterror(UndefVarError(Symbol("@m")), notebook.cells[end]; strict=VERSION >= v"1.7")
+        cleanup(🍭, notebook)
     end
 
     @testset "Redefines macro with new SymbolsState" begin
@@ -346,6 +363,7 @@ import Memoize: @memoize
         # See Run.jl#resolve_topology.
         @test cell(4).output.body == "42"
         @test cell(3).errored == true
+        cleanup(🍭, notebook)
     end
 
     @testset "Reactive macro update does not invalidate the macro calls" begin
@@ -382,6 +400,7 @@ import Memoize: @memoize
         @test cell(4).output.body != "42"
         @test cell(4).errored == true
         @test cell(5) |> noerror
+        cleanup(🍭, notebook)
     end
 
     @testset "Explicitely running macrocalls updates the reactive node" begin
@@ -413,6 +432,7 @@ import Memoize: @memoize
 
         @test cell(4).errored == true
         @test cell(5) |> noerror
+        cleanup(🍭, notebook)
     end
 
     @testset "Implicitely running macrocalls updates the reactive node" begin
@@ -451,6 +471,7 @@ import Memoize: @memoize
         # an explicit run of @b() must be done.
         @test cell(4).output.body == output_1
         @test cell(5).errored == true
+        cleanup(🍭, notebook)
     end
 
     @testset "Weird behavior" begin
@@ -478,6 +499,7 @@ import Memoize: @memoize
 
         @test cell(3) |> noerror
         @test cell(3).output.body == "1234"
+        cleanup(🍭, notebook)
     end
 
 
@@ -494,6 +516,7 @@ import Memoize: @memoize
         # x ("@b(x)") was run. Should it? Maybe set a higher precedence to cells that define
         # macros inside the notebook.
         @test_broken noerror(notebook.cells[1]; verbose=false)
+        cleanup(🍭, notebook)
     end
 
     @testset "@a defines @b initial loading" begin
@@ -517,6 +540,7 @@ import Memoize: @memoize
         @test cell(3) |> noerror
         @test cell(4) |> noerror
         @test cell(1).output.body == "42"
+        cleanup(🍭, notebook)
     end
 
     @testset "Macro with long compile time gets function wrapped" begin
@@ -563,6 +587,7 @@ import Memoize: @memoize
 
         @test cell(1) |> noerror
         @test output_3 != cell(1).output.body
+        cleanup(🍭, notebook)
     end
 
     @testset "Macro Prefix" begin
@@ -624,6 +649,7 @@ import Memoize: @memoize
 
         @test cell(1) |> noerror
         @test cell(2) |> noerror
+        cleanup(🍭, notebook)
     end
 
     @testset "Package macro 2" begin
@@ -703,6 +729,7 @@ import Memoize: @memoize
         module_from_cell3 = cell(3).output.body
 
         @test module_from_cell2 == module_from_cell3
+        cleanup(🍭, notebook)
     end
 
     @testset "Definitions" begin
@@ -729,6 +756,7 @@ import Memoize: @memoize
 
         @test ":world" == cell(3).output.body
         @test ":world" == cell(4).output.body
+        cleanup(🍭, notebook)
     end
 
     @testset "Is just text macros" begin
@@ -743,6 +771,7 @@ import Memoize: @memoize
         update_run!(🍭, notebook, notebook.cells)
 
         @test isempty(notebook.topology.unresolved_cells)
+        cleanup(🍭, notebook)
     end
 
     @testset "Macros using import" begin
@@ -761,6 +790,7 @@ import Memoize: @memoize
 
         @test :option_type ∈ notebook.topology.nodes[cell(1)].references
         @test cell(1) |> noerror
+        cleanup(🍭, notebook)
     end
 
     @testset "GlobalRefs in macros should be respected" begin
@@ -785,6 +815,7 @@ import Memoize: @memoize
 
         @test all(cell.([1,2,3]) .|> noerror)
         @test cell(3).output.body == "20"
+        cleanup(🍭, notebook)
     end
 
     @testset "GlobalRefs shouldn't break unreached undefined references" begin
@@ -810,6 +841,7 @@ import Memoize: @memoize
 
         @test all(cell.([1,2]) .|> noerror)
         @test cell(2).output.body == ":this_should_be_returned"
+        cleanup(🍭, notebook)
     end
 
     @testset "Doc strings" begin
@@ -882,6 +914,7 @@ import Memoize: @memoize
         update_run!(🍭, notebook, bool)
         @test !occursin("An empty conjugate", bool.output.body)
         @test occursin("complex conjugate", bool.output.body)
+        cleanup(🍭, notebook)
     end
 
     @testset "Delete methods from macros" begin
@@ -926,5 +959,6 @@ import Memoize: @memoize
         @test expecterror(UndefVarError(:custom_func), cell(4))
         @test :memoized_func ∉ notebook.topology.nodes[cell(5)].funcdefs_without_signatures
         @test expecterror(UndefVarError(:memoized_func), cell(6))
+        cleanup(🍭, notebook)
     end
 end
