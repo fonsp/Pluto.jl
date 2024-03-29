@@ -509,6 +509,7 @@ export let pluto_autocomplete = ({ request_autocomplete, request_special_symbols
             override: [
                 // writing_variable_name,
                 global_variables_completion,
+                special_symbols_completion(request_special_symbols),
                 pluto_completion_fetcher(memoize_last_request_autocomplete),
                 complete_anyword,
                 // TODO: Disabled because of performance problems, see https://github.com/fonsp/Pluto.jl/pull/1925. Remove `complete_anyword` once fixed. See https://github.com/fonsp/Pluto.jl/pull/2013
