@@ -6,7 +6,7 @@ Note that only direct dependents are given here, not indirect dependents.
 """
 function downstream_cells_map(cell::Cell, topology::NotebookTopology)::Dict{Symbol,Vector{Cell}}
     defined_symbols = let node = topology.nodes[cell]
-        node.definitions ∪ node.funcdefs_without_signatures
+        node.definitions ∪ Iterators.filter(!_is_anon_function_name, node.funcdefs_without_signatures)
     end
     return Dict{Symbol,Vector{Cell}}(
         sym => PlutoDependencyExplorer.where_referenced(topology, Set([sym]))
@@ -14,6 +14,8 @@ function downstream_cells_map(cell::Cell, topology::NotebookTopology)::Dict{Symb
     )
 end
 @deprecate downstream_cells_map(cell::Cell, notebook::Notebook) downstream_cells_map(cell, notebook.topology)
+
+_is_anon_function_name(s::Symbol) = startswith(String(s), "__ExprExpl_anon__")
 
 """
 Gets a dictionary of all symbols and the respective cells on which the given cell depends.
