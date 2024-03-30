@@ -21,12 +21,7 @@ import { GlobalDefinitionsFacet } from "./go_to_definition_plugin.js"
 
 let { autocompletion, completionKeymap, completionStatus, acceptCompletion } = autocomplete
 
-// Option.source is now the source, we find to find the corresponding ActiveResult
-// https://github.com/codemirror/autocomplete/commit/6d9f24115e9357dc31bc265cd3da7ce2287fdcbd
-const getActiveResult = (view, source) => view.state.field(completionState).active.find((a) => a.source == source)
-
 // These should be imported from  @codemirror/autocomplete, but they are not exported.
-let completionState = autocompletion()[1]
 let applyCompletion = (/** @type {EditorView} */ view, option) => {
     let apply = option.completion.apply || option.completion.label
     let result = getActiveResult(view, option.source)
@@ -41,6 +36,7 @@ let applyCompletion = (/** @type {EditorView} */ view, option) => {
         apply(view, option.completion, result.from, result.to)
     }
 }
+const completionState = autocompletion()[1]
 
 /** @type {any} */
 const TabCompletionEffect = StateEffect.define()
@@ -54,14 +50,16 @@ const tabCompletionState = StateField.define({
         for (let effect of tr.effects) {
             if (effect.is(TabCompletionEffect)) return true
         }
+        if (!value) return false
+
+        let previous_selected = autocomplete.selectedCompletion(tr.startState)
+        let current_selected = autocomplete.selectedCompletion(tr.state)
+
         // Autocomplete window was closed
-        if (tr.startState.field(completionState, false)?.open != null && tr.state.field(completionState, false)?.open == null) {
+        if (previous_selected != null && current_selected == null) {
             return false
         }
-        if (
-            tr.startState.field(completionState, false).open != null &&
-            tr.startState.field(completionState, false) !== tr.state.field(completionState, false)
-        ) {
+        if (previous_selected != null && previous_selected !== current_selected) {
             return false
         }
         return value
@@ -102,8 +100,7 @@ const tab_completion_command = (cm) => {
 // Remove this if we find that people actually need the `?` in their queries, but I very much doubt it.
 // (Also because the ternary operator does require a space before the ?, thanks Julia!)
 let open_docs_if_autocomplete_is_open_command = (cm) => {
-    let autocompletion_open = cm.state.field(completionState, false)?.open ?? false
-    if (autocompletion_open) {
+    if (autocomplete.completionStatus(cm.state) != null) {
         open_bottom_right_panel("docs")
         return true
     }
@@ -140,7 +137,9 @@ let update_docs_from_autocomplete_selection = (on_update_doc_query) => {
         let text_to_apply = selected_option.completion.apply ?? selected_option.completion.label
         if (typeof text_to_apply !== "string") return
 
-        const active_result = getActiveResult(update.view, selected_option.source)
+        // Option.source is now the source, we find to find the corresponding ActiveResult
+        // https://github.com/codemirror/autocomplete/commit/6d9f24115e9357dc31bc265cd3da7ce2287fdcbd
+        const active_result = update.view.state.field(completionState).active.find((a) => a.source == selected_option.source)
         if (!active_result?.from) return // not an ActiveResult instance
 
         const from = active_result.from,
