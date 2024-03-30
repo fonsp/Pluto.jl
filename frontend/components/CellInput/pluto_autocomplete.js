@@ -1,17 +1,6 @@
 import _ from "../../imports/lodash.js"
 
-import {
-    EditorState,
-    EditorSelection,
-    EditorView,
-    keymap,
-    indentMore,
-    autocomplete,
-    syntaxTree,
-    StateField,
-    StateEffect,
-    Transaction,
-} from "../../imports/CodemirrorPlutoSetup.js"
+import { EditorView, keymap, autocomplete, syntaxTree, StateField, StateEffect, Transaction } from "../../imports/CodemirrorPlutoSetup.js"
 import { get_selected_doc_from_state } from "./LiveDocsFromCursor.js"
 import { cl } from "../../common/ClassTable.js"
 import { ScopeStateField } from "./scopestate_statefield.js"
@@ -22,20 +11,6 @@ import { GlobalDefinitionsFacet } from "./go_to_definition_plugin.js"
 let { autocompletion, completionKeymap, completionStatus, acceptCompletion } = autocomplete
 
 // These should be imported from  @codemirror/autocomplete, but they are not exported.
-let applyCompletion = (/** @type {EditorView} */ view, option) => {
-    let apply = option.completion.apply || option.completion.label
-    let result = getActiveResult(view, option.source)
-    if (!result?.from) return
-    if (typeof apply == "string") {
-        view.dispatch({
-            changes: { from: result.from, to: result.to, insert: apply },
-            selection: { anchor: result.from + apply.length },
-            userEvent: "input.complete",
-        })
-    } else {
-        apply(view, option.completion, result.from, result.to)
-    }
-}
 const completionState = autocompletion()[1]
 
 /** @type {any} */
@@ -444,7 +419,7 @@ const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} *
     return async (/** @type {autocomplete.CompletionContext} */ ctx) => {
         if (writing_variable_name_or_keyword(ctx)) return null
         if (!match_special_symbol_complete(ctx)) return null
-        if (ctx.tokenBefore(["Number", "Comment", "String", "TripleString"]) != null) return null
+        if (ctx.tokenBefore(["Number", "Comment"]) != null) return null
 
         const result = await get_special_symbols()
 
@@ -452,6 +427,21 @@ const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} *
         return await autocomplete.completeFromList(is_inside_string ? result[0] : result[1])(ctx)
     }
 }
+
+const continue_completing_path = EditorView.updateListener.of((update) => {
+    for (let transaction of update.transactions) {
+        let picked_completion = transaction.annotation(autocomplete.pickedCompletion)
+        if (picked_completion) {
+            if (
+                typeof picked_completion.apply === "string" &&
+                picked_completion.apply.endsWith("/") &&
+                picked_completion.type?.match(/(^| )completion_path( |$)/)
+            ) {
+                autocomplete.startCompletion(update.view)
+            }
+        }
+    }
+})
 
 /**
  *
@@ -519,38 +509,7 @@ export let pluto_autocomplete = ({ request_autocomplete, request_special_symbols
             optionClass: (c) => c.type ?? "",
         }),
 
-        // If there is just one autocomplete result, apply it directly
-        EditorView.updateListener.of((update) => {
-            // AGAIN, can't use this here again, because the currentCompletions *do not contain all the info to apply the completion*
-            // let open_completions = autocomplete.currentCompletions(update.state)
-            let autocompletion_state = update.state.field(completionState, false)
-            let is_tab_completion = update.state.field(tabCompletionState, false)
-
-            if (
-                autocompletion_state?.open != null &&
-                is_tab_completion &&
-                completionStatus(update.state) === "active" &&
-                autocompletion_state.open.options.length === 1
-            ) {
-                // We can't use `acceptCompletion` here because that function has a minimum delay of 75ms between creating the completion options and applying one.
-                applyCompletion(update.view, autocompletion_state.open.options[0])
-            }
-        }),
-
-        EditorView.updateListener.of((update) => {
-            for (let transaction of update.transactions) {
-                let picked_completion = transaction.annotation(autocomplete.pickedCompletion)
-                if (picked_completion) {
-                    if (
-                        typeof picked_completion.apply === "string" &&
-                        picked_completion.apply.endsWith("/") &&
-                        picked_completion.type?.match(/(^| )completion_path( |$)/)
-                    ) {
-                        autocomplete.startCompletion(update.view)
-                    }
-                }
-            }
-        }),
+        // continue_completing_path,
 
         update_docs_from_autocomplete_selection(on_update_doc_query),
 
