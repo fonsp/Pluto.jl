@@ -4,14 +4,14 @@ import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
 import { empty_notebook_state, set_disable_ui_css } from "../editor.js"
-import { create_pluto_connection } from "../common/PlutoConnection.js"
+import { create_pluto_connection, ws_address_from_base } from "../common/PlutoConnection.js"
 import { init_feedback } from "../common/Feedback.js"
 import { serialize_cells, deserialize_cells, detect_deserializer } from "../common/Serialization.js"
 
 import { FilePicker } from "./FilePicker.js"
 import { Preamble } from "./Preamble.js"
 import { NotebookMemo as Notebook } from "./Notebook.js"
-import { LiveDocs } from "./LiveDocs.js"
+import { BottomRightPanel } from "./BottomRightPanel.js"
 import { DropRuler } from "./DropRuler.js"
 import { SelectionArea } from "./SelectionArea.js"
 import { RecentlyDisabledInfo, UndoDelete } from "./UndoDelete.js"
@@ -21,7 +21,15 @@ import { ExportBanner } from "./ExportBanner.js"
 import { Popup } from "./Popup.js"
 
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
-import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
+import {
+    has_ctrl_or_cmd_pressed,
+    ctrl_or_cmd_name,
+    is_mac_keyboard,
+    in_textarea_or_input,
+    and,
+    control_name,
+    alt_or_options_name,
+} from "../common/KeyboardShortcuts.js"
 import { PlutoActionsContext, PlutoBondsContext, PlutoJSInitializingContext, SetWithEmptyCallback } from "../common/PlutoContext.js"
 import { BackendLaunchPhase, count_stat } from "../common/Binder.js"
 import { setup_mathjax } from "../common/SetupMathJax.js"
@@ -29,12 +37,14 @@ import { slider_server_actions, nothing_actions } from "../common/SliderServerCl
 import { ProgressBar } from "./ProgressBar.js"
 import { NonCellOutput } from "./NonCellOutput.js"
 import { IsolatedCell } from "./Cell.js"
-import { RawHTMLContainer } from "./CellOutput.js"
 import { RecordingPlaybackUI, RecordingUI } from "./RecordingUI.js"
 import { HijackExternalLinksToOpenInNewTab } from "./HackySideStuff/HijackExternalLinksToOpenInNewTab.js"
 import { FrontMatterInput } from "./FrontmatterInput.js"
 import { EditorLaunchBackendButton } from "./Editor/LaunchBackendButton.js"
 import { get_environment } from "../common/Environment.js"
+import { ProcessStatus } from "../common/ProcessStatus.js"
+import { SafePreviewUI } from "./SafePreviewUI.js"
+import { open_pluto_popup } from "../common/open_pluto_popup.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -64,13 +74,6 @@ const Main = ({ children }) => {
     return html`<main>${children}</main>`
 }
 
-const ProcessStatus = {
-    ready: "ready",
-    starting: "starting",
-    no_process: "no_process",
-    waiting_to_restart: "waiting_to_restart",
-}
-
 /**
  * Map of status => Bool. In order of decreasing priority.
  */
@@ -82,11 +85,12 @@ const statusmap = (/** @type {EditorState} */ state, /** @type {LaunchParameters
             state.backend_launch_phase < BackendLaunchPhase.ready) ||
         state.initializing ||
         state.moving_file,
+    process_waiting_for_permission: state.notebook.process_status === ProcessStatus.waiting_for_permission && !state.initializing,
     process_restarting: state.notebook.process_status === ProcessStatus.waiting_to_restart,
     process_dead: state.notebook.process_status === ProcessStatus.no_process || state.notebook.process_status === ProcessStatus.waiting_to_restart,
     nbpkg_restart_required: state.notebook.nbpkg?.restart_required_msg != null,
     nbpkg_restart_recommended: state.notebook.nbpkg?.restart_recommended_msg != null,
-    nbpkg_disabled: state.notebook.nbpkg?.enabled === false,
+    nbpkg_disabled: state.notebook.nbpkg?.enabled === false || state.notebook.nbpkg?.waiting_for_permission_but_probably_disabled === true,
     static_preview: state.static_preview,
     bonds_disabled: !(state.connected || state.initializing || launch_params.slider_server_url != null),
     offer_binder: state.backend_launch_phase === BackendLaunchPhase.wait_for_user && launch_params.binder_url != null,
@@ -98,6 +102,7 @@ const statusmap = (/** @type {EditorState} */ state, /** @type {LaunchParameters
     recording_waiting_to_start: state.recording_waiting_to_start,
     is_recording: state.is_recording,
     isolated_cell_view: launch_params.isolated_cell_ids != null && launch_params.isolated_cell_ids.length > 0,
+    sanitize_html: state.notebook.process_status === ProcessStatus.waiting_for_permission,
 })
 
 const first_true_key = (obj) => {
@@ -133,6 +138,18 @@ const first_true_key = (obj) => {
  *   file: string,
  *   line: number,
  *   kwargs: Object,
+ * }}
+ */
+
+/**
+ * @typedef StatusEntryData
+ * @type {{
+ *   name: string,
+ *   success?: boolean,
+ *   started_at: number?,
+ *   finished_at: number?,
+ *   timing?: "remote" | "local",
+ *   subtasks: Record<string,StatusEntryData>,
  * }}
  */
 
@@ -174,6 +191,8 @@ const first_true_key = (obj) => {
  * @typedef NotebookPkgData
  * @type {{
  *  enabled: boolean,
+ *  waiting_for_permission: boolean?,
+ *  waiting_for_permission_but_probably_disabled: boolean?,
  *  restart_recommended_msg: string?,
  *  restart_required_msg: string?,
  *  installed_versions: { [pkg_name: string]: string },
@@ -217,6 +236,7 @@ const first_true_key = (obj) => {
 /**
  * @typedef NotebookData
  * @type {{
+ *  pluto_version?: string,
  *  notebook_id: string,
  *  path: string,
  *  shortpath: string,
@@ -233,17 +253,19 @@ const first_true_key = (obj) => {
  *  bonds: BondValuesDict,
  *  nbpkg: NotebookPkgData?,
  *  metadata: object,
+ *  status_tree: StatusEntryData?,
  * }}
  */
 
 const url_logo_big = document.head.querySelector("link[rel='pluto-logo-big']")?.getAttribute("href") ?? ""
-const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']")?.getAttribute("href") ?? ""
+export const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']")?.getAttribute("href") ?? ""
 
 /**
  * @typedef EditorProps
  * @type {{
  * launch_params: LaunchParameters,
  * initial_notebook_state: NotebookData,
+ * preamble_element: preact.ReactElement?,
  * }}
  */
 
@@ -251,15 +273,17 @@ const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']
  * @typedef EditorState
  * @type {{
  * notebook: NotebookData,
- * cell_inputs_local: { [uuid: string]: CellInputData },
+ * cell_inputs_local: { [uuid: string]: { code: String } },
  * desired_doc_query: ?String,
  * recently_deleted: ?Array<{ index: number, cell: CellInputData }>,
  * last_update_time: number,
  * disable_ui: boolean,
  * static_preview: boolean,
  * backend_launch_phase: ?number,
+ * backend_launch_logs: ?string,
  * binder_session_url: ?string,
  * binder_session_token: ?string,
+ * refresh_target: ?string,
  * connected: boolean,
  * initializing: boolean,
  * moving_file: boolean,
@@ -299,8 +323,10 @@ export class Editor extends Component {
                 launch_params.notebookfile != null && (launch_params.binder_url != null || launch_params.pluto_server_url != null)
                     ? BackendLaunchPhase.wait_for_user
                     : null,
+            backend_launch_logs: null,
             binder_session_url: null,
             binder_session_token: null,
+            refresh_target: null,
             connected: false,
             initializing: true,
 
@@ -312,7 +338,7 @@ export class Editor extends Component {
             export_menu_open: false,
 
             last_created_cell: null,
-            selected_cells: [],
+            selected_cells: /** @type {string[]} */ ([]),
 
             extended_components: {
                 CustomHeader: null,
@@ -320,6 +346,11 @@ export class Editor extends Component {
 
             is_recording: false,
             recording_waiting_to_start: false,
+
+            slider_server: {
+                connecting: false,
+                interactive: false,
+            },
         }
 
         this.setStatePromise = (fn) => new Promise((r) => this.setState(fn, r))
@@ -334,7 +365,7 @@ export class Editor extends Component {
             set_doc_query: (query) => this.setState({ desired_doc_query: query }),
             set_local_cell: (cell_id, new_val) => {
                 return this.setStatePromise(
-                    immer((state) => {
+                    immer((/** @type {EditorState} */ state) => {
                         state.cell_inputs_local[cell_id] = {
                             code: new_val,
                         }
@@ -359,12 +390,14 @@ export class Editor extends Component {
             },
             add_deserialized_cells: async (data, index_or_id, deserializer = deserialize_cells) => {
                 let new_codes = deserializer(data)
-                /** @type {Array<CellInputData>} */
-                /** Create copies of the cells with fresh ids */
+                /** @type {Array<CellInputData>} Create copies of the cells with fresh ids */
                 let new_cells = new_codes.map((code) => ({
                     cell_id: uuidv4(),
                     code: code,
                     code_folded: false,
+                    metadata: {
+                        ...DEFAULT_CELL_METADATA,
+                    },
                 }))
 
                 let index
@@ -389,7 +422,7 @@ export class Editor extends Component {
                  * See ** 1 **
                  */
                 this.setState(
-                    immer((state) => {
+                    immer((/** @type {EditorState} */ state) => {
                         // Deselect everything first, to clean things up
                         state.selected_cells = []
 
@@ -427,10 +460,8 @@ export class Editor extends Component {
                 const new_code = `${block_start}\n\t${cell.code.replace(/\n/g, "\n\t")}\n${block_end}`
 
                 await this.setStatePromise(
-                    immer((state) => {
+                    immer((/** @type {EditorState} */ state) => {
                         state.cell_inputs_local[cell_id] = {
-                            ...cell,
-                            ...state.cell_inputs_local[cell_id],
                             code: new_code,
                         }
                     })
@@ -457,7 +488,7 @@ export class Editor extends Component {
                 })
 
                 this.setState(
-                    immer((state) => {
+                    immer((/** @type {EditorState} */ state) => {
                         for (let cell of cells_to_add) {
                             state.cell_inputs_local[cell.cell_id] = cell
                         }
@@ -496,7 +527,8 @@ export class Editor extends Component {
                 this.client.send("interrupt_all", {}, { notebook_id: this.state.notebook.notebook_id }, false)
             },
             move_remote_cells: (cell_ids, new_index) => {
-                update_notebook((notebook) => {
+                return update_notebook((notebook) => {
+                    new_index = Math.max(0, new_index)
                     let before = notebook.cell_order.slice(0, new_index).filter((x) => !cell_ids.includes(x))
                     let after = notebook.cell_order.slice(new_index, Infinity).filter((x) => !cell_ids.includes(x))
                     notebook.cell_order = [...before, ...cell_ids, ...after]
@@ -570,6 +602,14 @@ export class Editor extends Component {
             set_and_run_multiple: async (cell_ids) => {
                 // TODO: this function is called with an empty list sometimes, where?
                 if (cell_ids.length > 0) {
+                    window.dispatchEvent(
+                        new CustomEvent("set_waiting_to_run_smart", {
+                            detail: {
+                                cell_ids,
+                            },
+                        })
+                    )
+
                     await update_notebook((notebook) => {
                         for (let cell_id of cell_ids) {
                             if (this.state.cell_inputs_local[cell_id]) {
@@ -580,7 +620,7 @@ export class Editor extends Component {
                     // This is a "dirty" trick, as this should actually be stored in some shared request_status => status state
                     // But for now... this is fine 😼
                     await this.setStatePromise(
-                        immer((state) => {
+                        immer((/** @type {EditorState} */ state) => {
                             for (let cell_id of cell_ids) {
                                 if (state.notebook.cell_results[cell_id] != null) {
                                     state.notebook.cell_results[cell_id].queued = this.is_process_ready()
@@ -615,13 +655,26 @@ export class Editor extends Component {
                 this.client.send(
                     "reshow_cell",
                     {
-                        objectid: objectid,
-                        dim: dim,
-                        cell_id: cell_id,
+                        objectid,
+                        dim,
+                        cell_id,
                     },
                     { notebook_id: this.state.notebook.notebook_id },
                     false
                 )
+            },
+            request_js_link_response: (cell_id, link_id, input) => {
+                return this.client
+                    .send(
+                        "request_js_link_response",
+                        {
+                            cell_id,
+                            link_id,
+                            input,
+                        },
+                        { notebook_id: this.state.notebook.notebook_id }
+                    )
+                    .then((r) => r.message)
             },
             /** This actions avoids pushing selected cells all the way down, which is too heavy to handle! */
             get_selected_cells: (cell_id, /** @type {boolean} */ allow_other_selected_cells) =>
@@ -636,10 +689,12 @@ export class Editor extends Component {
         const apply_notebook_patches = (patches, /** @type {NotebookData?} */ old_state = null, get_reverse_patches = false) =>
             new Promise((resolve) => {
                 if (patches.length !== 0) {
-                    let copy_of_patches,
+                    const should_ignore_patch_error = (/** @type {string} */ failing_path) => failing_path.startsWith("status_tree")
+
+                    let _copy_of_patches,
                         reverse_of_patches = []
                     this.setState(
-                        immer((state) => {
+                        immer((/** @type {EditorState} */ state) => {
                             let new_notebook
                             try {
                                 // To test this, uncomment the lines below:
@@ -648,7 +703,7 @@ export class Editor extends Component {
                                 // }
 
                                 if (get_reverse_patches) {
-                                    ;[new_notebook, copy_of_patches, reverse_of_patches] = produceWithPatches(old_state ?? state.notebook, (state) => {
+                                    ;[new_notebook, _copy_of_patches, reverse_of_patches] = produceWithPatches(old_state ?? state.notebook, (state) => {
                                         applyPatches(state, patches)
                                     })
                                     // TODO: why was `new_notebook` not updated?
@@ -656,14 +711,13 @@ export class Editor extends Component {
                                 }
                                 new_notebook = applyPatches(old_state ?? state.notebook, patches)
                             } catch (exception) {
+                                /** @type {String} Example: `"a.b[2].c"` */
                                 const failing_path = String(exception).match(".*'(.*)'.*")?.[1].replace(/\//gi, ".") ?? exception
                                 const path_value = _.get(this.state.notebook, failing_path, "Not Found")
                                 console.log(String(exception).match(".*'(.*)'.*")?.[1].replace(/\//gi, ".") ?? exception, failing_path, typeof failing_path)
-                                // The alert below is not catastrophic: the editor will try to recover.
-                                // Deactivating to be user-friendly!
-                                // alert(`Ooopsiee.`)
+                                const ignore = should_ignore_patch_error(failing_path)
 
-                                console.error(
+                                ;(ignore ? console.log : console.error)(
                                     `#######################**************************########################
 PlutoError: StateOutOfSync: Failed to apply patches.
 Please report this: https://github.com/fonsp/Pluto.jl/issues adding the info below:
@@ -677,15 +731,28 @@ patch: ${JSON.stringify(
 #######################**************************########################`,
                                     exception
                                 )
-                                console.log("Trying to recover: Refetching notebook...")
-                                this.client.send(
-                                    "reset_shared_state",
-                                    {},
-                                    {
-                                        notebook_id: this.state.notebook.notebook_id,
-                                    },
-                                    false
-                                )
+
+                                if (ignore) {
+                                    console.info("Safe to ignore this patch failure...")
+                                } else if (this.state.connected) {
+                                    console.error("Trying to recover: Refetching notebook...")
+                                    this.client.send(
+                                        "reset_shared_state",
+                                        {},
+                                        {
+                                            notebook_id: this.state.notebook.notebook_id,
+                                        },
+                                        false
+                                    )
+                                } else if (this.state.static_preview && launch_params.slider_server_url != null) {
+                                    open_pluto_popup({
+                                        type: "warn",
+                                        body: html`Something went wrong while updating the notebook state. Please refresh the page to try again.`,
+                                    })
+                                } else {
+                                    console.error("Trying to recover: reloading...")
+                                    window.parent.location.href = this.state.refresh_target ?? window.location.href
+                                }
                                 return
                             }
 
@@ -810,7 +877,30 @@ patch: ${JSON.stringify(
             setTimeout(init_feedback, 2 * 1000) // 2 seconds - load feedback a little later for snappier UI
         }
 
-        const on_connection_status = (val) => this.setState({ connected: val })
+        const on_connection_status = (val, hopeless) => {
+            this.setState({ connected: val })
+            if (hopeless) {
+                // https://github.com/fonsp/Pluto.jl/issues/55
+                // https://github.com/fonsp/Pluto.jl/issues/2398
+                open_pluto_popup({
+                    type: "warn",
+                    body: html`<p>A new server was started - this notebook session is no longer running.</p>
+                        <p>Would you like to go back to the main menu?</p>
+                        <br />
+                        <a href="./">Go back</a>
+                        <br />
+                        <a
+                            href="#"
+                            onClick=${(e) => {
+                                e.preventDefault()
+                                window.dispatchEvent(new CustomEvent("close pluto popup"))
+                            }}
+                            >Stay here</a
+                        >`,
+                    should_focus: false,
+                })
+            }
+        }
 
         const on_reconnect = () => {
             console.warn("Reconnected! Checking states")
@@ -826,7 +916,7 @@ patch: ${JSON.stringify(
         /** @type {import('../common/PlutoConnection').PlutoConnection} */
         this.client = /** @type {import('../common/PlutoConnection').PlutoConnection} */ ({})
 
-        this.connect = (ws_address = undefined) =>
+        this.connect = (/** @type {string | undefined} */ ws_address = undefined) =>
             create_pluto_connection({
                 ws_address: ws_address,
                 on_unrequested_update: on_update,
@@ -871,7 +961,7 @@ patch: ${JSON.stringify(
             if (!this.state.static_preview && document.visibilityState === "visible") {
                 // view stats on https://stats.plutojl.org/
                 //@ts-ignore
-                count_stat(`editing/${window?.version_info?.pluto ?? "unknown"}${window.plutoDesktop ? "-desktop" : ""}`)
+                count_stat(`editing/${window?.version_info?.pluto ?? this.state.notebook.pluto_version ?? "unknown"}${window.plutoDesktop ? "-desktop" : ""}`)
             }
         }, 1000 * 15 * 60)
         setInterval(() => {
@@ -905,6 +995,10 @@ patch: ${JSON.stringify(
             // console.info("All scripts finished!")
             this.send_queued_bond_changes()
         })
+
+        // @ts-ignore This is for tests
+        document.body._js_init_set = this.js_init_set
+
         /** Is the notebook ready to execute code right now? (i.e. are no cells queued or running?) */
         this.notebook_is_idle = () => {
             return !(
@@ -1009,6 +1103,9 @@ patch: ${JSON.stringify(
                     ])
                 } finally {
                     this.pending_local_updates--
+                    // this property is used to tell our frontend tests that the updates are done
+                    //@ts-ignore
+                    document.body._update_is_ongoing = this.pending_local_updates > 0
                 }
             })
             last_update_notebook_task = new_task.catch(console.error)
@@ -1070,7 +1167,7 @@ patch: ${JSON.stringify(
             window.plutoDesktop?.ipcRenderer.once("PLUTO-MOVE-NOTEBOOK", async (/** @type {string?} */ loc) => {
                 if (!!loc)
                     await this.setStatePromise(
-                        immer((state) => {
+                        immer((/** @type {EditorState} */ state) => {
                             state.notebook.in_temp_dir = false
                             state.notebook.path = loc
                         })
@@ -1094,6 +1191,20 @@ patch: ${JSON.stringify(
         this.run_selected = () => {
             return this.actions.set_and_run_multiple(this.state.selected_cells)
         }
+        this.move_selected = (/** @type {KeyboardEvent} */ e, /** @type {1|-1} */ delta) => {
+            if (this.state.selected_cells.length > 0) {
+                const current_indices = this.state.selected_cells.map((id) => this.state.notebook.cell_order.indexOf(id))
+                const new_index = (delta > 0 ? Math.max : Math.min)(...current_indices) + (delta === -1 ? -1 : 2)
+
+                e.preventDefault()
+                return this.actions.move_remote_cells(this.state.selected_cells, new_index).then(
+                    // scroll into view
+                    () => {
+                        document.getElementById((delta > 0 ? _.last : _.first)(this.state.selected_cells) ?? "")?.scrollIntoView({ block: "nearest" })
+                    }
+                )
+            }
+        }
 
         this.serialize_selected = (cell_id = null) => {
             const cells_to_serialize = cell_id == null || this.state.selected_cells.includes(cell_id) ? this.state.selected_cells : [cell_id]
@@ -1111,7 +1222,7 @@ patch: ${JSON.stringify(
         const set_ctrl_down = (value) => {
             if (value !== ctrl_down_last_val.current) {
                 ctrl_down_last_val.current = value
-                document.body.querySelectorAll("pluto-variable-link").forEach((el) => {
+                document.body.querySelectorAll("[data-pluto-variable], [data-cell-variable]").forEach((el) => {
                     el.setAttribute("data-ctrl-down", value ? "true" : "false")
                 })
             }
@@ -1132,13 +1243,13 @@ patch: ${JSON.stringify(
             // if (e.defaultPrevented) {
             //     return
             // }
-            if (e.key.toLowerCase() === "q" && has_ctrl_or_cmd_pressed(e)) {
+            if (e.key?.toLowerCase() === "q" && has_ctrl_or_cmd_pressed(e)) {
                 // This one can't be done as cmd+q on mac, because that closes chrome - Dral
                 if (Object.values(this.state.notebook.cell_results).some((c) => c.running || c.queued)) {
                     this.actions.interrupt_remote()
                 }
                 e.preventDefault()
-            } else if (e.key.toLowerCase() === "s" && has_ctrl_or_cmd_pressed(e)) {
+            } else if (e.key?.toLowerCase() === "s" && has_ctrl_or_cmd_pressed(e)) {
                 const some_cells_ran = this.actions.set_and_run_all_changed_remote_cells()
                 if (!some_cells_ran) {
                     // all cells were in sync allready
@@ -1151,6 +1262,10 @@ patch: ${JSON.stringify(
                 }
             } else if (e.key === "Enter" && e.shiftKey) {
                 this.run_selected()
+            } else if (e.key === "ArrowUp" && e.altKey) {
+                this.move_selected(e, -1)
+            } else if (e.key === "ArrowDown" && e.altKey) {
+                this.move_selected(e, 1)
             } else if ((e.key === "?" && has_ctrl_or_cmd_pressed(e)) || e.key === "F1") {
                 // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
                 // Also pressing "ctrl+shift" on mac causes the key to show up as "/", this madness
@@ -1158,21 +1273,24 @@ patch: ${JSON.stringify(
                 alert(
                     `Shortcuts 🎹
 
-    Shift+Enter:   run cell
-    ${ctrl_or_cmd_name}+Enter:   run cell and add cell below
+    ⇧${and}Enter:   run cell
+    ${ctrl_or_cmd_name}${and}Enter:   run cell and add cell below
+    ${ctrl_or_cmd_name}${and}S:   submit all changes
     Delete or Backspace:   delete empty cell
 
-    PageUp or fn+Up:   select cell above
-    PageDown or fn+Down:   select cell below
+    page up or fn${and}↑:   jump to cell above
+    page down or fn${and}↓:   jump to cell below
+    ${alt_or_options_name}${and}↑:   move line/cell up
+    ${alt_or_options_name}${and}↓:   move line/cell down
 
-    ${ctrl_or_cmd_name}+Q:   interrupt notebook
-    ${ctrl_or_cmd_name}+S:   submit all changes
-
-    ${ctrl_or_cmd_name}+C:   copy selected cells
-    ${ctrl_or_cmd_name}+X:   cut selected cells
-    ${ctrl_or_cmd_name}+V:   paste selected cells
-
-    Ctrl+M:   toggle markdown
+    
+    Select multiple cells by dragging a selection box from the space between cells.
+    ${ctrl_or_cmd_name}${and}C:   copy selected cells
+    ${ctrl_or_cmd_name}${and}X:   cut selected cells
+    ${ctrl_or_cmd_name}${and}V:   paste selected cells
+    
+    ${control_name}${and}M:   toggle markdown
+    ${ctrl_or_cmd_name}${and}Q:   interrupt notebook
 
     The notebook file saves every time you run a cell.`
                 )
@@ -1186,8 +1304,8 @@ patch: ${JSON.stringify(
             }
 
             if (this.state.disable_ui && this.state.backend_launch_phase === BackendLaunchPhase.wait_for_user) {
-                // const code = e.key.charCodeAt(0)
-                if (e.key === "Enter" || e.key.length === 1) {
+                // const code = e.key?.charCodeAt(0)
+                if (e.key === "Enter" || e.key?.length === 1) {
                     if (!document.body.classList.contains("wiggle_binder")) {
                         document.body.classList.add("wiggle_binder")
                         setTimeout(() => {
@@ -1202,9 +1320,14 @@ patch: ${JSON.stringify(
             if (!in_textarea_or_input()) {
                 const serialized = this.serialize_selected()
                 if (serialized) {
-                    navigator.clipboard.writeText(serialized).catch((err) => {
-                        alert(`Error copying cells: ${e}`)
-                    })
+                    e.preventDefault()
+                    // wait one frame to get transient user activation
+                    requestAnimationFrame(() =>
+                        navigator.clipboard.writeText(serialized).catch((err) => {
+                            console.error("Error copying cells", e, err, navigator.userActivation)
+                            alert(`Error copying cells: ${err?.message ?? err}`)
+                        })
+                    )
                 }
             }
         })
@@ -1265,24 +1388,30 @@ patch: ${JSON.stringify(
     }
 
     componentDidMount() {
+        const lp = this.props.launch_params
         if (this.state.static_preview) {
             this.setState({
                 initializing: false,
             })
+
             // view stats on https://stats.plutojl.org/
-            if (this.state.pluto_server_url != null) {
-                count_stat(`article-view`)
-            } else {
-                count_stat(`article-view`)
-            }
+            count_stat(
+                lp.pluto_server_url != null
+                    ? // record which featured notebook was viewed, e.g. basic/Markdown.jl
+                      `featured-view${lp.notebookfile != null ? new URL(lp.notebookfile).pathname : ""}`
+                    : // @ts-ignore
+                      `article-view/${window?.version_info?.pluto ?? this.state.notebook.pluto_version ?? "unknown"}`
+            )
         } else {
-            this.connect()
+            this.connect(lp.pluto_server_url ? ws_address_from_base(lp.pluto_server_url) : undefined)
         }
     }
 
     componentDidUpdate(old_props, old_state) {
         //@ts-ignore
         window.editor_state = this.state
+        //@ts-ignore
+        window.editor_state_set = this.setStatePromise
 
         const new_state = this.state
 
@@ -1292,10 +1421,6 @@ patch: ${JSON.stringify(
         if (old_state?.notebook?.shortpath !== new_state.notebook.shortpath) {
             document.title = "🎈 " + new_state.notebook.shortpath + " — Pluto.jl"
         }
-
-        // this property is used to tell our frontend tests that the updates are done
-        //@ts-ignore
-        document.body._update_is_ongoing = this.pending_local_updates > 0
 
         this.send_queued_bond_changes()
 
@@ -1347,6 +1472,7 @@ patch: ${JSON.stringify(
                                             cell_input=${notebook.cell_inputs[cell_id]}
                                             cell_result=${this.state.notebook.cell_results[cell_id]}
                                             hidden=${!launch_params.isolated_cell_ids?.includes(cell_id)}
+                                            sanitize_html=${status.sanitize_html}
                                         />
                                     `
                                 )}
@@ -1357,19 +1483,31 @@ patch: ${JSON.stringify(
             `
         }
 
-        const restart_button = (text) => html`<a
-            href="#"
-            onClick=${() => {
-                this.client.send(
+        const warn_about_untrusted_code = this.client.session_options?.security?.warn_about_untrusted_code ?? true
+
+        const restart = async (maybe_confirm = false) => {
+            let source = notebook.metadata?.risky_file_source
+            if (
+                !warn_about_untrusted_code ||
+                !maybe_confirm ||
+                source == null ||
+                confirm(`⚠️ Danger! Are you sure that you trust this file? \n\n${source}\n\nA malicious notebook can steal passwords and data.`)
+            ) {
+                await this.actions.update_notebook((notebook) => {
+                    delete notebook.metadata.risky_file_source
+                })
+                await this.client.send(
                     "restart_process",
                     {},
                     {
                         notebook_id: notebook.notebook_id,
                     }
                 )
-            }}
-            >${text}</a
-        >`
+            }
+        }
+
+        const restart_button = (text, maybe_confirm = false) =>
+            html`<a href="#" id="restart-process-button" onClick=${() => restart(maybe_confirm)}>${text}</a>`
 
         return html`
             ${this.state.disable_ui === false && html`<${HijackExternalLinksToOpenInNewTab} />`}
@@ -1377,14 +1515,29 @@ patch: ${JSON.stringify(
             <${PlutoActionsContext.Provider} value=${this.actions}>
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                     <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
-                    <button title="Go back" onClick=${() => {
-                        history.back()
-                    }} class="floating_back_button"><span></span></button>
+                    ${
+                        status.static_preview && status.offer_local
+                            ? html`<button
+                                  title="Go back"
+                                  onClick=${() => {
+                                      history.back()
+                                  }}
+                                  class="floating_back_button"
+                              >
+                                  <span></span>
+                              </button>`
+                            : null
+                    }
                     <${Scroller} active=${this.state.scroller} />
                     <${ProgressBar} notebook=${this.state.notebook} backend_launch_phase=${this.state.backend_launch_phase} status=${status}/>
                     <header id="pluto-nav" className=${export_menu_open ? "show_export" : ""}>
                         <${ExportBanner}
                             notebook_id=${this.state.notebook.notebook_id}
+                            print_title=${
+                                this.state.notebook.metadata?.frontmatter?.title ??
+                                new URLSearchParams(window.location.search).get("name") ??
+                                this.state.notebook.shortpath
+                            }
                             notebookfile_url=${this.export_url("notebookfile")}
                             notebookexport_url=${this.export_url("notebookexport")}
                             open=${export_menu_open}
@@ -1402,9 +1555,7 @@ patch: ${JSON.stringify(
                         }
                         <nav id="at_the_top">
                             <a href=${
-                                this.state.static_preview || this.state.binder_session_url != null
-                                    ? `${this.state.binder_session_url}?token=${this.state.binder_session_token}`
-                                    : "./"
+                                this.state.binder_session_url != null ? `${this.state.binder_session_url}?token=${this.state.binder_session_token}` : "./"
                             }>
                                 <h1><img id="logo-big" src=${url_logo_big} alt="Pluto.jl" /><img id="logo-small" src=${url_logo_small} /></h1>
                             </a>
@@ -1423,7 +1574,7 @@ patch: ${JSON.stringify(
                                           on_submit=${this.submit_file_change}
                                           on_desktop_submit=${this.desktop_submit_file_change}
                                           suggest_new_file=${{
-                                              base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
+                                              base: this.client.session_options?.server?.notebook_path_suggestion ?? "",
                                               name: notebook.shortpath,
                                           }}
                                           placeholder="Save notebook..."
@@ -1431,9 +1582,6 @@ patch: ${JSON.stringify(
                                       />`)
                             }
                             <div class="flex_grow_2"></div>
-                            <button class="toggle_export" title="Export..." onClick=${() => {
-                                this.setState({ export_menu_open: !export_menu_open })
-                            }}><span></span></button>
                             <div id="process_status">${
                                 status.binder && status.loading
                                     ? "Loading binder..."
@@ -1449,10 +1597,22 @@ patch: ${JSON.stringify(
                                     ? "Process exited — restarting..."
                                     : statusval === "process_dead"
                                     ? html`${"Process exited — "}${restart_button("restart")}`
+                                    : statusval === "process_waiting_for_permission"
+                                    ? html`${restart_button("Run notebook code", true)}`
                                     : null
                             }</div>
+                            <button class="toggle_export" title="Export..." onClick=${() => {
+                                this.setState({ export_menu_open: !export_menu_open })
+                            }}><span></span></button>
                         </nav>
                     </header>
+                    
+                    <${SafePreviewUI}
+                        process_waiting_for_permission=${status.process_waiting_for_permission}
+                        risky_file_source=${notebook.metadata?.risky_file_source}
+                        restart=${restart}
+                        warn_about_untrusted_code=${warn_about_untrusted_code}
+                    />
                     
                     <${RecordingUI} 
                         notebook_name=${notebook.shortpath}
@@ -1468,20 +1628,21 @@ patch: ${JSON.stringify(
                         apply_notebook_patches=${this.apply_notebook_patches}
                         reset_notebook_state=${() =>
                             this.setStatePromise(
-                                immer((state) => {
+                                immer((/** @type {EditorState} */ state) => {
                                     state.notebook = this.props.initial_notebook_state
                                 })
                             )}
                     />
                     <${EditorLaunchBackendButton} editor=${this} launch_params=${launch_params} status=${status} />
-                    <${FrontMatterInput} 
+                    <${FrontMatterInput}
+                        filename=${notebook.shortpath}
                         remote_frontmatter=${notebook.metadata?.frontmatter} 
                         set_remote_frontmatter=${(newval) =>
                             this.actions.update_notebook((nb) => {
                                 nb.metadata["frontmatter"] = newval
                             })} 
                     />
-                    ${launch_params.preamble_html ? html`<${RawHTMLContainer} body=${launch_params.preamble_html} className=${"preamble"} />` : null}
+                    ${this.props.preamble_element}
                     <${Main}>
                         <${Preamble}
                             last_update_time=${this.state.last_update_time}
@@ -1497,6 +1658,8 @@ patch: ${JSON.stringify(
                             selected_cells=${this.state.selected_cells}
                             is_initializing=${this.state.initializing}
                             is_process_ready=${this.is_process_ready()}
+                            process_waiting_for_permission=${status.process_waiting_for_permission}
+                            sanitize_html=${status.sanitize_html}
                         />
                         <${DropRuler} 
                             actions=${this.actions}
@@ -1530,10 +1693,14 @@ patch: ${JSON.stringify(
                             notebook_id=${this.state.notebook.notebook_id} 
                             environment_component=${this.state.extended_components.NonCellOutputComponents} />
                     </${Main}>
-                    <${LiveDocs}
+                    <${BottomRightPanel}
                         desired_doc_query=${this.state.desired_doc_query}
                         on_update_doc_query=${this.actions.set_doc_query}
+                        connected=${this.state.connected}
+                        backend_launch_phase=${this.state.backend_launch_phase}
+                        backend_launch_logs=${this.state.backend_launch_logs}
                         notebook=${this.state.notebook}
+                        sanitize_html=${status.sanitize_html}
                     />
                     <${Popup} 
                         notebook=${this.state.notebook}
@@ -1562,7 +1729,7 @@ patch: ${JSON.stringify(
                             <a href="https://github.com/fonsp/Pluto.jl/wiki" target="_blank">FAQ</a>
                             <span style="flex: 1"></span>
                             <form id="feedback" action="#" method="post">
-                                <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl" target="_blank">Pluto.jl</a> better?</label>
+                                <label for="opinion">🙋 How can we make <a href="https://plutojl.org/" target="_blank">Pluto.jl</a> better?</label>
                                 <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
                                 <button>Send</button>
                             </form>

@@ -102,6 +102,7 @@ body.wiggle_binder .edit_or_run > button {
     font-style: normal;
     color: black;
     font-weight: 900;
+    height: 2.2em;
 }
 
 .edit_or_run > button {
@@ -132,18 +133,17 @@ body.wiggle_binder .edit_or_run > button {
 .binder_help_text {
     --width: min(85vw, 570px);
     position: fixed;
-    top: 5rem;
     max-height: calc(100vh - 4rem);
     overflow: auto;
     width: var(--width);
     padding: 16px;
     border-radius: 8px;
-    left: calc(50vw - var(--width) / 2);
     background-color: white;
     color: black;
     color-scheme: light;
     box-shadow: 0px 0px 0px 100vmax #0000004a;
     font-family: var(--sans-serif-font-stack);
+    border: 0;
 }
 .binder_help_text a {
     color: black;
@@ -160,11 +160,12 @@ body.wiggle_binder .edit_or_run > button {
 
 .binder_help_text .close {
     position: absolute;
-    top: 12px;
-    right: 12px;
-    width: 24px;
-    height: 24px;
-    background-size: 24px 24px;
+    --size: 32px;
+    top: 5px;
+    right: 5px;
+    width: var(--size);
+    height: var(--size);
+    background-size: var(--size) var(--size);
     cursor: pointer;
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-outline.svg");
 }

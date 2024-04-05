@@ -1,8 +1,6 @@
 import REPL: ends_with_semicolon
 import .Configuration
-import .ExpressionExplorer: is_joined_funcname
-
-Base.push!(x::Set{Cell}) = x
+import ExpressionExplorer: is_joined_funcname
 
 """
 Run given cells and all the cells that depend on them, based on the topology information before and after the changes.
@@ -55,10 +53,14 @@ function run_reactive_core!(
 )::TopologicalOrder
     @assert !isready(notebook.executetoken) "run_reactive_core!() was called with a free notebook.executetoken."
     @assert will_run_code(notebook)
-
+	
     old_workspace_name, _ = WorkspaceManager.bump_workspace_module((session, notebook))
-
-    if !is_resolved(new_topology)
+	
+	run_status = Status.report_business_started!(notebook.status_tree, :run)
+	Status.report_business_started!(run_status, :resolve_topology)
+	cell_status = Status.report_business_planned!(run_status, :evaluate)
+	
+    if !PlutoDependencyExplorer.is_resolved(new_topology)
         unresolved_topology = new_topology
         new_topology = notebook.topology = resolve_topology(session, notebook, unresolved_topology, old_workspace_name; current_roots = setdiff(roots, already_run))
 
@@ -73,31 +75,18 @@ function run_reactive_core!(
     roots = vcat(roots, removed_cells)
 
     # by setting the reactive node and expression caches of deleted cells to "empty", we are essentially pretending that those cells still exist, but now have empty code. this makes our algorithm simpler.
-    new_topology = NotebookTopology(
-        nodes = merge(
-            new_topology.nodes,
-            Dict(cell => ReactiveNode() for cell in removed_cells),
-        ),
-        codes = merge(
-            new_topology.codes,
-            Dict(cell => ExprAnalysisCache() for cell in removed_cells)
-        ),
-        unresolved_cells = new_topology.unresolved_cells,
-        cell_order = new_topology.cell_order,
-        disabled_cells=new_topology.disabled_cells,
-    )
-	
-	
+    new_topology = PlutoDependencyExplorer.exclude_roots(new_topology, removed_cells)
+
     # find (indirectly) deactivated cells and update their status
     indirectly_deactivated = collect(topological_order(new_topology, collect(new_topology.disabled_cells); allow_multiple_defs=true, skip_at_partial_multiple_defs=true))
-	
+
     for cell in indirectly_deactivated
         cell.running = false
         cell.queued = false
         cell.depends_on_disabled_cells = true
     end
-	
-	new_topology = setdiff(new_topology, indirectly_deactivated)
+
+    new_topology = PlutoDependencyExplorer.exclude_roots(new_topology, indirectly_deactivated)
 
     # save the old topological order - we'll delete variables assigned from its
     # and re-evalutate its cells unless the cells have already run previously in the reactive run
@@ -106,13 +95,13 @@ function run_reactive_core!(
     old_runnable = setdiff(old_order.runnable, already_run, indirectly_deactivated)
     to_delete_vars = union!(Set{Symbol}(), defined_variables(old_topology, old_runnable)...)
     to_delete_funcs = union!(Set{Tuple{UUID,FunctionName}}(), defined_functions(old_topology, old_runnable)...)
-	
-	
-	new_roots = setdiff(union(roots, keys(old_order.errable)), indirectly_deactivated)
+
+
+    new_roots = setdiff(union(roots, keys(old_order.errable)), indirectly_deactivated)
     # get the new topological order
     new_order = topological_order(new_topology, new_roots)
     new_runnable = setdiff(new_order.runnable, already_run)
-    to_run = setdiff(union(new_runnable, old_runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
+    to_run = setdiff!(union(new_runnable, old_runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
 
 
     # change the bar on the sides of cells to "queued"
@@ -128,15 +117,21 @@ function run_reactive_core!(
         relay_reactivity_error!(cell, error)
     end
 
-	# Save the notebook. This is the only time that we save the notebook, so any state changes that influence the file contents (like `depends_on_disabled_cells`) should be behind this point.
+	# Save the notebook. In most cases, this is the only time that we save the notebook, so any state changes that influence the file contents (like `depends_on_disabled_cells`) should be behind this point. (More saves might happen if a macro expansion or package using happens.)
 	save && save_notebook(session, notebook)
 
     # Send intermediate updates to the clients at most 20 times / second during a reactive run. (The effective speed of a slider is still unbounded, because the last update is not throttled.)
     # flush_send_notebook_changes_throttled, 
     send_notebook_changes_throttled, flush_notebook_changes = throttled(1.0 / 20) do
-        send_notebook_changes!(ClientRequest(session = session, notebook = notebook))
+        send_notebook_changes!(ClientRequest(; session, notebook))
     end
     send_notebook_changes_throttled()
+	
+	Status.report_business_finished!(run_status, :resolve_topology)
+	Status.report_business_started!(cell_status)
+	for i in eachindex(to_run)
+		Status.report_business_planned!(cell_status, Symbol(i))
+	end
 
     # delete new variables that will be defined by a cell unless this cell has already run in the current reactive run
     to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_runnable)...)
@@ -146,27 +141,39 @@ function run_reactive_core!(
     new_errable = keys(new_order.errable)
     to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_errable)...)
     to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_errable)...)
+	
+    cells_to_macro_invalidate = Set{UUID}(c.cell_id for c in cells_with_deleted_macros(old_topology, new_topology))
+	cells_to_js_link_invalidate = Set{UUID}(c.cell_id for c in union!(Set{Cell}(), to_run, new_errable, indirectly_deactivated))
 
-    cells_to_macro_invalidate = map(c -> c.cell_id, cells_with_deleted_macros(old_topology, new_topology)) |> Set{UUID}
-
-    to_reimport = union!(Set{Expr}(), map(c -> new_topology.codes[c].module_usings_imports.usings, setdiff(notebook.cells, to_run))...)
-    if will_run_code(notebook)
-        deletion_hook((session, notebook), old_workspace_name, nothing, to_delete_vars, to_delete_funcs, to_reimport, cells_to_macro_invalidate; to_run = to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
+    module_imports_to_move = reduce(all_cells(new_topology); init=Set{Expr}()) do module_imports_to_move, c
+        c ∈ to_run && return module_imports_to_move
+        usings_imports = new_topology.codes[c].module_usings_imports
+        for (using_, isglobal) in zip(usings_imports.usings, usings_imports.usings_isglobal)
+            isglobal || continue
+            push!(module_imports_to_move, using_)
+        end
+        module_imports_to_move
     end
 
-    delete!.([notebook.bonds], to_delete_vars)
+    if will_run_code(notebook)
+		to_delete_funcs_simple = Set{Tuple{UUID,Tuple{Vararg{Symbol}}}}((id, name.parts) for (id,name) in to_delete_funcs)
+        deletion_hook((session, notebook), old_workspace_name, nothing, to_delete_vars, to_delete_funcs_simple, module_imports_to_move, cells_to_macro_invalidate, cells_to_js_link_invalidate; to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
+    end
+
+	foreach(v -> delete!(notebook.bonds, v), to_delete_vars)
 
     local any_interrupted = false
     for (i, cell) in enumerate(to_run)
+		Status.report_business_started!(cell_status, Symbol(i))
 
         cell.queued = false
         cell.running = true
         # Important to not use empty! here because AppendonlyMarker requires a new array identity.
         # Eventually we could even make AppendonlyArray to enforce this but idk if it's worth it. yadiyadi.
-        cell.logs = []
+        cell.logs = Vector{Dict{String,Any}}()
         send_notebook_changes_throttled()
 
-        if any_interrupted || notebook.wants_to_interrupt || !will_run_code(notebook)
+        if (skip = any_interrupted || notebook.wants_to_interrupt || !will_run_code(notebook))
             relay_reactivity_error!(cell, InterruptException())
         else
             run = run_single!(
@@ -186,16 +193,17 @@ function run_reactive_core!(
         end
 
         cell.running = false
+		Status.report_business_finished!(cell_status, Symbol(i), !skip && !run.errored)
 
         defined_macros_in_cell = defined_macros(new_topology, cell) |> Set{Symbol}
 
         # Also set unresolved the downstream cells using the defined macros
         if !isempty(defined_macros_in_cell)
-            new_topology = set_unresolved(new_topology, where_referenced(notebook, new_topology, defined_macros_in_cell))
+            new_topology = PlutoDependencyExplorer.set_unresolved(new_topology, PlutoDependencyExplorer.where_referenced(new_topology, defined_macros_in_cell))
         end
 
         implicit_usings = collect_implicit_usings(new_topology, cell)
-        if !is_resolved(new_topology) && can_help_resolve_cells(new_topology, cell)
+        if !PlutoDependencyExplorer.is_resolved(new_topology) && can_help_resolve_cells(new_topology, cell)
             notebook.topology = new_new_topology = resolve_topology(session, notebook, new_topology, old_workspace_name)
 
             if !isempty(implicit_usings)
@@ -205,7 +213,7 @@ function run_reactive_core!(
 
             # update cache and save notebook because the dependencies might have changed after expanding macros
             update_dependency_cache!(notebook)
-            save_notebook(session, notebook)
+            save && save_notebook(session, notebook)
 
             return run_reactive_core!(session, notebook, new_topology, new_new_topology, to_run; save, deletion_hook, user_requested_run, already_run = to_run[1:i])
         elseif !isempty(implicit_usings)
@@ -214,7 +222,7 @@ function run_reactive_core!(
 
             # update cache and save notebook because the dependencies might have changed after expanding macros
             update_dependency_cache!(notebook)
-            save_notebook(session, notebook)
+            save && save_notebook(session, notebook)
 
             return run_reactive_core!(session, notebook, new_topology, new_new_topology, to_run; save, deletion_hook, user_requested_run, already_run = to_run[1:i])
         end
@@ -222,6 +230,7 @@ function run_reactive_core!(
 
     notebook.wants_to_interrupt = false
     flush_notebook_changes()
+	Status.report_business_finished!(run_status)
     return new_order
 end
 
@@ -321,7 +330,33 @@ function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache; persist_js_
 	cell.running = cell.queued = false
 end
 
-will_run_code(notebook::Notebook) = notebook.process_status != ProcessStatus.no_process && notebook.process_status != ProcessStatus.waiting_to_restart
+function clear_output!(cell::Cell)
+	cell.output = CellOutput()
+	cell.published_objects = Dict{String,Any}()
+	
+	cell.runtime = nothing
+	cell.errored = false
+	cell.running = cell.queued = false
+end
+
+
+"Send `error` to the frontend without backtrace. Runtime errors are handled by `WorkspaceManager.eval_format_fetch_in_workspace` - this function is for Reactivity errors."
+function relay_reactivity_error!(cell::Cell, error::Exception)
+	body, mime = PlutoRunner.format_output(CapturedException(error, []))
+	cell.output = CellOutput(
+		body=body,
+		mime=mime,
+		rootassignee=nothing,
+		last_run_timestamp=time(),
+		persist_js_state=false,
+	)
+	cell.published_objects = Dict{String,Any}()
+	cell.runtime = nothing
+	cell.errored = true
+end
+
+will_run_code(notebook::Notebook) = notebook.process_status ∈ (ProcessStatus.ready, ProcessStatus.starting)
+will_run_pkg(notebook::Notebook) = notebook.process_status !== ProcessStatus.waiting_for_permission
 
 
 "Do all the things!"
@@ -332,8 +367,9 @@ function update_save_run!(
 	save::Bool=true, 
 	run_async::Bool=false, 
 	prerender_text::Bool=false, 
+	clear_not_prerenderable_cells::Bool=false, 
 	auto_solve_multiple_defs::Bool=false,
-	on_auto_solve_multiple_defs::Union{Nothing,Function}=nothing,
+	on_auto_solve_multiple_defs::Function=identity,
 	kwargs...
 )
 	old = notebook.topology
@@ -354,16 +390,15 @@ function update_save_run!(
 			new = notebook.topology = updated_topology(new, notebook, to_disable)
 		end
 		
-		isnothing(on_auto_solve_multiple_defs) || on_auto_solve_multiple_defs(to_disable_dict)
+		on_auto_solve_multiple_defs(to_disable_dict)
 	end
 
 	update_dependency_cache!(notebook)
 	save && save_notebook(session, notebook)
 
 	# _assume `prerender_text == false` if you want to skip some details_
-	to_run_online = if !prerender_text
-		cells
-	else
+	to_run_online = cells
+	if prerender_text
 		# this code block will run cells that only contain text offline, i.e. on the server process, before doing anything else
 		# this makes the notebook load a lot faster - the front-end does not have to wait for each output, and perform costly reflows whenever one updates
 		# "A Workspace on the main process, used to prerender markdown before starting a notebook process for speedy UI."
@@ -376,28 +411,32 @@ function update_save_run!(
 			is_offline_renderer=true,
 		)
 
-		to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)
+		to_run_offline = filter(c -> !c.running && is_just_text(new, c), cells)
 		for cell in to_run_offline
 			run_single!(offline_workspace, cell, new.nodes[cell], new.codes[cell])
 		end
 
 		cd(original_pwd)
-		setdiff(cells, to_run_offline)
+		to_run_online = setdiff(cells, to_run_offline)
+		
+		clear_not_prerenderable_cells && foreach(clear_output!, to_run_online)
+		
+		send_notebook_changes!(ClientRequest(; session, notebook))
 	end
-	
-	# this setting is not officially supported (default is `false`), so you can skip this block when reading the code
+
+	# this setting is not officially supported (default is `true`), so you can skip this block when reading the code
 	if !session.options.evaluation.run_notebook_on_load && prerender_text
 		# these cells do something like settings up an environment, we should always run them
 		setup_cells = filter(notebook.cells) do c
-			cell_precedence_heuristic(notebook.topology, c) < DEFAULT_PRECEDENCE_HEURISTIC
+			PlutoDependencyExplorer.cell_precedence_heuristic(notebook.topology, c) < DEFAULT_PRECEDENCE_HEURISTIC
 		end
 		
 		# for the remaining cells, clear their topology info so that they won't run as dependencies
 		old = notebook.topology
 		to_remove = setdiff(to_run_online, setup_cells)
 		notebook.topology = NotebookTopology(
-			nodes=setdiffkeys(old.nodes, to_remove),
-			codes=setdiffkeys(old.codes, to_remove),
+			nodes=PlutoDependencyExplorer.setdiffkeys(old.nodes, to_remove),
+			codes=PlutoDependencyExplorer.setdiffkeys(old.codes, to_remove),
 			unresolved_cells=setdiff(old.unresolved_cells, to_remove),
 			cell_order=old.cell_order,
 			disabled_cells=setdiff(old.disabled_cells, to_remove),
@@ -409,8 +448,28 @@ function update_save_run!(
 
 	maybe_async(run_async) do
         topological_order = withtoken(notebook.executetoken) do
-            sync_nbpkg(session, notebook, old, new; save=(save && !session.options.server.disable_writing_notebook_files), take_token=false)
-            if !(isempty(to_run_online) && session.options.evaluation.lazy_workspace_creation) && will_run_code(notebook)
+			run_code = !(
+				isempty(to_run_online) && 
+				session.options.evaluation.lazy_workspace_creation
+			) && will_run_code(notebook)
+			
+			if run_code
+				# this will trigger the notebook process to start. @async makes it run in the background, so that sync_nbpkg (below) can start running in parallel.
+				# Some notes:
+				# - @async is enough, we don't need multithreading because the notebook runs in a separate process.
+				# - sync_nbpkg manages the notebook package environment using Pkg on this server process. This means that sync_nbpkg does not need the notebook process at all, and it can run in parallel, before it has even started.
+				@async WorkspaceManager.get_workspace((session, notebook))
+			end
+			
+			if will_run_pkg(notebook)
+				# downloading and precompiling packages from the General registry is also arbitrary code execution
+				sync_nbpkg(session, notebook, old, new; 
+					save=(save && !session.options.server.disable_writing_notebook_files), 
+					take_token=false
+				)
+			end
+			
+            if run_code
                 # not async because that would be double async
                 run_reactive_core!(session, notebook, old, new, to_run_online; save, kwargs...)
                 # run_reactive_async!(session, notebook, old, new, to_run_online; deletion_hook=deletion_hook, run_async=false, kwargs...)
@@ -436,8 +495,8 @@ function cells_to_disable_to_resolve_multiple_defs(old::NotebookTopology, new::N
 	for cell in cells
 		new_node = new.nodes[cell]
 		
-		fellow_assigners_old = filter!(c -> !is_disabled(old, c), where_assigned(old, new_node))
-		fellow_assigners_new = filter!(c -> !is_disabled(new, c), where_assigned(new, new_node))
+		fellow_assigners_old = filter!(c -> !PlutoDependencyExplorer.is_disabled(old, c), PlutoDependencyExplorer.where_assigned(old, new_node))
+		fellow_assigners_new = filter!(c -> !PlutoDependencyExplorer.is_disabled(new, c), PlutoDependencyExplorer.where_assigned(new, new_node))
 		
 		if length(fellow_assigners_new) > length(fellow_assigners_old)
 			other_definers = setdiff(fellow_assigners_new, (cell,))
@@ -491,6 +550,7 @@ function notebook_differences(from::Notebook, to::Notebook)
 			end
 		end,
 		
+		folded_changed = any(from_cells[id].code_folded != to_cells[id].code_folded for id in keys(from_cells) if haskey(to_cells, id)),
 		order_changed = from.cell_order != to.cell_order,
 		nbpkg_changed = !is_nbpkg_equal(from.nbpkg_ctx, to.nbpkg_ctx),
 	)
@@ -522,16 +582,17 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 	# @show added removed changed
 	
 	cells_changed = !(isempty(added) && isempty(removed) && isempty(changed))
+	folded_changed = d.folded_changed
 	order_changed = d.order_changed
 	nbpkg_changed = d.nbpkg_changed
 		
-	something_changed = cells_changed || order_changed || (include_nbpg && nbpkg_changed)
-	
+	something_changed = cells_changed || folded_changed || order_changed || (include_nbpg && nbpkg_changed)
+
 	if something_changed
 		@info "Reloading notebook from file and applying changes!"
 		notebook.last_hot_reload_time = time()
 	end
-
+	
 	for c in added
 		notebook.cells_dict[c] = just_loaded.cells_dict[c]
 	end
@@ -546,10 +607,10 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 	for c in keys(notebook.cells_dict) ∩ keys(just_loaded.cells_dict)
 		notebook.cells_dict[c].code_folded = just_loaded.cells_dict[c].code_folded
 	end
-	
+
 	notebook.cell_order = just_loaded.cell_order
 	notebook.metadata = just_loaded.metadata
-	
+
 	if include_nbpg && nbpkg_changed
 		@info "nbpkgs not equal" (notebook.nbpkg_ctx isa Nothing) (just_loaded.nbpkg_ctx isa Nothing)
 		
@@ -566,11 +627,11 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 		end
 		notebook.nbpkg_restart_required_msg = "Yes, because the file was changed externally and the embedded Pkg changed."
 	end
-	
+
 	if something_changed
-		update_save_run!(session, notebook, Cell[notebook.cells_dict[c] for c in union(added, changed)]; kwargs...) # this will also update nbpkg
+		update_save_run!(session, notebook, Cell[notebook.cells_dict[c] for c in union(added, changed)]; kwargs...) # this will also update nbpkg if needed
 	end
-	
+
 	return true
 end
 
@@ -582,5 +643,16 @@ function update_skipped_cells_dependency!(notebook::Notebook, topology::Notebook
     end
     for cell in indirectly_skipped
         cell.depends_on_skipped_cells = true
+    end
+end
+
+function update_disabled_cells_dependency!(notebook::Notebook, topology::NotebookTopology=notebook.topology)
+    disabled_cells = filter(is_disabled, notebook.cells)
+    indirectly_disabled = collect(topological_order(topology, disabled_cells))
+    for cell in notebook.cells
+        cell.depends_on_disabled_cells = false
+    end
+    for cell in indirectly_disabled
+        cell.depends_on_disabled_cells = true
     end
 end

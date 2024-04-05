@@ -1,6 +1,6 @@
+import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import _ from "../imports/lodash.js"
 import { html, useEffect, useState } from "../imports/Preact.js"
-import { open_pluto_popup } from "./Popup.js"
 
 export const nbpkg_fingerprint = (nbpkg) => (nbpkg == null ? [null] : Object.entries(nbpkg).flat())
 
@@ -42,7 +42,8 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
     let hint = html`error`
     let offer_update = false
     const chosen_version = nbpkg?.installed_versions[package_name] ?? null
-    const busy = (nbpkg?.busy_packages ?? []).includes(package_name) || !(nbpkg?.instantiated ?? true)
+    const nbpkg_waiting_for_permission = nbpkg?.waiting_for_permission ?? false
+    const busy = !nbpkg_waiting_for_permission && ((nbpkg?.busy_packages ?? []).includes(package_name) || !(nbpkg?.instantiated ?? true))
 
     if (is_disable_pkg) {
         const f_name = package_name
@@ -55,7 +56,12 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
             hint_raw = `${package_name} is part of Julia's pre-installed 'standard library'.`
             hint = html`<b>${package_name}</b> is part of Julia's pre-installed <em>standard library</em>.`
         } else {
-            if (busy) {
+            if (nbpkg_waiting_for_permission) {
+                status = "will_be_installed"
+                hint_raw = `${package_name} (v${_.last(available_versions)}) will be installed when you run this notebook.`
+                hint = html`<header><b>${package_name}</b> <pkg-version>v${_.last(available_versions)}</pkg-version></header>
+                    will be installed when you run this notebook.`
+            } else if (busy) {
                 status = "busy"
                 hint_raw = `${package_name} (v${chosen_version}) is installing...`
                 hint = html`<header><b>${package_name}</b> <pkg-version>v${chosen_version}</pkg-version></header>
@@ -88,6 +94,7 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
 }
 
 /**
+ * The little icon that appears inline next to a package import in code (e.g. `using PlutoUI ✅`)
  * @param {{
  *  package_name: string,
  *  pluto_actions: any,
@@ -132,6 +139,7 @@ export const PkgStatusMark = ({ package_name, pluto_actions, notebook_id, nbpkg 
                         source_element: event.currentTarget.parentElement,
                         package_name: package_name,
                         is_disable_pkg: false,
+                        should_focus: true,
                     })
                 }}
             >
@@ -158,6 +166,7 @@ export const PkgActivateMark = ({ package_name }) => {
                         source_element: event.currentTarget.parentElement,
                         package_name: package_name,
                         is_disable_pkg: true,
+                        should_focus: true,
                     })
                 }}
             >

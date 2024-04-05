@@ -16,6 +16,7 @@ import {
     StateEffect,
 } from "../imports/CodemirrorPlutoSetup.js"
 import { guess_notebook_location } from "../common/NotebookLocationFromURL.js"
+import { tab_help_plugin } from "./CellInput/tab_help_plugin.js"
 
 let { autocompletion, completionKeymap } = autocomplete
 
@@ -32,20 +33,18 @@ const assert_not_null = (x) => {
 }
 
 const set_cm_value = (/** @type{EditorView} */ cm, /** @type {string} */ value, scroll = true) => {
+    let had_focus_before = cm.hasFocus
+
     cm.dispatch({
         changes: { from: 0, to: cm.state.doc.length, insert: value },
         selection: EditorSelection.cursor(value.length),
-        // effects: scroll ? EditorView.scrollIntoView(value.length,) : undefined,
+        // a long path like /Users/fons/Documents/article-test-1/asdfasdfasdfsadf.jl does not fit in the little box, so we scroll it to the left so that you can see the filename easily.
+        scrollIntoView: scroll,
     })
 
-    // a long path like /Users/fons/Documents/article-test-1/asdfasdfasdfsadf.jl does not fit in the little box, so we scroll it to the left so that you can see the filename easily.
-    if (scroll) {
-        // We do a manual `scrollLeft` instead of `EditorView.scrollIntoView(value.length)` because `scrollIntoView` will also scroll the page *vertically* to move the filepicker into view. We only want to scroll the internal overflow box *horizontally* to the left, without affecting the vertical page scroll position.
-        cm.scrollDOM.scrollLeft = 100000
-        setTimeout(() => {
-            // TODO: do we need this?
-            cm.scrollDOM.scrollLeft = 100000
-        }, 100)
+    if (!had_focus_before) {
+        // and blur the DOM again (because the previous transaction might have re-focused it)
+        cm.contentDOM.blur()
     }
 }
 
@@ -104,7 +103,7 @@ export const FilePicker = ({ value, suggest_new_file, button_label, placeholder,
                 } else await on_submit(current_cm.state.doc.toString())
                 current_cm.dom.blur()
             } catch (error) {
-                set_cm_value(current_cm, value, true)
+                set_cm_value(current_cm, forced_value.current, true)
                 current_cm.dom.blur()
             }
         })
@@ -145,7 +144,7 @@ export const FilePicker = ({ value, suggest_new_file, button_label, placeholder,
                         blur: (event, cm) => {
                             setTimeout(() => {
                                 if (!cm.hasFocus) {
-                                    set_cm_value(cm, value, true)
+                                    set_cm_value(cm, forced_value.current, true)
                                 }
                             }, 200)
                         },
@@ -223,9 +222,9 @@ export const FilePicker = ({ value, suggest_new_file, button_label, placeholder,
                             run: (cm) => {
                                 assert_not_null(close_autocomplete_command).run(cm)
                                 cm.dispatch({
-                                    changes: { from: 0, to: cm.state.doc.length, insert: value },
+                                    changes: { from: 0, to: cm.state.doc.length, insert: forced_value.current },
                                     selection: EditorSelection.cursor(value.length),
-                                    effects: EditorView.scrollIntoView(value.length),
+                                    effects: EditorView.scrollIntoView(forced_value.current.length),
                                 })
                                 // @ts-ignore
                                 document.activeElement.blur()
@@ -250,6 +249,7 @@ export const FilePicker = ({ value, suggest_new_file, button_label, placeholder,
                     keymap.of(completionKeymap),
 
                     Placeholder(placeholder),
+                    tab_help_plugin,
                 ],
             }),
         })

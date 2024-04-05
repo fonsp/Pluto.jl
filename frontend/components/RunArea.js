@@ -3,7 +3,7 @@ import { html, useContext, useEffect, useMemo, useState } from "../imports/Preac
 
 import { in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
-import { open_pluto_popup } from "./Popup.js"
+import { open_pluto_popup } from "../common/open_pluto_popup.js"
 
 export const RunArea = ({
     runtime,
@@ -33,10 +33,10 @@ export const RunArea = ({
     }
 
     const titlemap = {
-        interrupt: "Interrupt",
+        interrupt: "Interrupt (Ctrl + Q)",
         save: "Save code without running",
         jump: "This cell depends on a disabled cell",
-        run: "Run cell",
+        run: "Run cell (Shift + Enter)",
     }
 
     const on_double_click = (/** @type {MouseEvent} */ e) => {
@@ -71,7 +71,7 @@ export const RunArea = ({
     `
 }
 
-const prettytime = (time_ns) => {
+export const prettytime = (time_ns) => {
     if (time_ns == null) {
         return "---"
     }

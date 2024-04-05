@@ -8,6 +8,7 @@ using InteractiveUtils
 begin
 	import Pkg
 	Pkg.activate(joinpath(@__DIR__))
+    Pkg.resolve()
     Pkg.instantiate()
 
 	# Pkg.status()

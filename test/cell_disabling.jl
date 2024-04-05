@@ -1,6 +1,6 @@
 using Test
 using Pluto
-using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook, set_disabled, is_disabled
+using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook, set_disabled, is_disabled, WorkspaceManager
 
 
 
@@ -236,6 +236,7 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook, set_disa
     update_run!(🍭, notebook, c([12]))
     @test c(14).output.body == "3"
     
+    cleanup(🍭, notebook)
 end
 
 
@@ -342,4 +343,48 @@ end
     update_run!(🍭, notebook, notebook.cells)
     @test get_disabled_cells(notebook) == []
 
+    cleanup(🍭, notebook)
+end
+
+@testset "Disabled cells should stay in the topology (#2676)" begin
+    🍭 = ServerSession()
+    notebook = Notebook(Cell.([
+        "using Dates",
+        "b = 2; December",
+        "b",
+    ]))
+
+    disabled_cell = notebook.cells[end]
+    Pluto.set_disabled(disabled_cell, true)
+    @test is_disabled(disabled_cell)
+
+    old_topo = notebook.topology
+    @test count(Pluto.is_disabled, notebook.cells) == 1
+    order = update_run!(🍭, notebook, notebook.cells)
+
+    # Disabled
+    @test length(order.input_topology.disabled_cells) == 1
+    @test disabled_cell ∈ order.input_topology.disabled_cells
+    runned_cells = collect(order)
+    @test length(runned_cells) == 2
+    @test disabled_cell ∉ runned_cells
+
+    topo = notebook.topology
+    @test old_topo !== topo # topology was updated
+
+    order = Pluto.topological_order(notebook)
+
+    @test length(order.input_topology.disabled_cells) == 1
+    @test disabled_cell ∈ order.input_topology.disabled_cells
+    saved_cells = collect(order)
+    @test length(saved_cells) == length(notebook.cells)
+    @test issetequal(saved_cells, notebook.cells)
+
+    io = IOBuffer()
+    Pluto.save_notebook(io, notebook)
+    seekstart(io)
+    notebook2 = Pluto.load_notebook_nobackup(io, "mynotebook.jl")
+    @test length(notebook2.cells) == length(notebook.cells)
+
+    cleanup(🍭, notebook)
 end

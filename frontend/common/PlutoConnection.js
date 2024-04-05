@@ -265,7 +265,7 @@ const default_ws_address = () => ws_address_from_base(window.location.href)
  * @param {{
  *  on_unrequested_update: (message: PlutoMessage, by_me: boolean) => void,
  *  on_reconnect: () => boolean,
- *  on_connection_status: (connection_status: boolean) => void,
+ *  on_connection_status: (connection_status: boolean, hopeless: boolean) => void,
  *  connect_metadata?: Object,
  *  ws_address?: String,
  * }} options
@@ -364,7 +364,7 @@ export const create_pluto_connection = async ({
                     on_unrequested_update(update, by_me)
                 },
                 on_socket_close: async () => {
-                    on_connection_status(false)
+                    on_connection_status(false, false)
 
                     console.log(`Starting new websocket`, new Date().toLocaleTimeString())
                     await Promises.delay(reconnect_after_close_delay)
@@ -373,7 +373,7 @@ export const create_pluto_connection = async ({
                     console.log(`Starting state sync`, new Date().toLocaleTimeString())
                     const accept = on_reconnect()
                     console.log(`State sync ${accept ? "" : "not "}successful`, new Date().toLocaleTimeString())
-                    on_connection_status(accept)
+                    on_connection_status(accept, false)
                     if (!accept) {
                         alert("Connection out of sync 😥\n\nRefresh the page to continue")
                     }
@@ -394,14 +394,10 @@ export const create_pluto_connection = async ({
             console.log("Client object: ", client)
 
             if (connect_metadata.notebook_id != null && !u.message.notebook_exists) {
-                // https://github.com/fonsp/Pluto.jl/issues/55
-                if (confirm("A new server was started - this notebook session is no longer running.\n\nWould you like to go back to the main menu?")) {
-                    window.location.href = "./"
-                }
-                on_connection_status(false)
+                on_connection_status(false, true)
                 return {}
             }
-            on_connection_status(true)
+            on_connection_status(true, false)
 
             const ping = () => {
                 send("ping", {}, {})
@@ -409,7 +405,7 @@ export const create_pluto_connection = async ({
                         // Ping faster than timeout?
                         setTimeout(ping, 28 * 1000)
                     })
-                    .catch()
+                    .catch(() => undefined)
             }
             ping()
 

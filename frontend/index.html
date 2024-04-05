@@ -3,50 +3,50 @@
 
 <head>
     <meta name="viewport" content="width=device-width" />
-    <title>Pluto.jl</title>
     <meta charset="utf-8" />
-    <script>
-        console.log("Pluto.jl, by Fons van der Plas (https://github.com/fonsp) and Mikołaj Bochenski (https://github.com/malyvsen) 🌈");
-    </script>
+
+    <meta name="pluto-insertion-spot-meta">
+
+    <title>Pluto.jl</title>
     <meta name="author" content="Fons van der Plas; Mikołaj Bochenski" />
+    <meta name="description" content="Pluto.jl notebooks" />
+
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="white">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#2a2928">
     <meta name="color-scheme" content="light dark">
+
     <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
     <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="96x96" href="img/favicon-96x96.png">
-    <meta name="description" content="Pluto.jl notebooks" />
+    <link rel="pluto-logo-big" href="./img/logo.svg" />
+    <link rel="pluto-logo-small" href="./img/favicon_unsaturated.svg" />
 
     <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.20/lodash.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/@observablehq/stdlib@3.3.1/dist/stdlib.js" defer></script>
 
-    <link rel="pluto-logo-big" href="./img/logo.svg" />
 
     <link rel="stylesheet" href="welcome.css">
     <link rel="stylesheet" href="index.css">
 
+    <meta name="pluto-insertion-spot-parameters">
     <script src="index.js" type="module" defer></script>
     <script src="warn_old_browsers.js"></script>
+
     <link rel="prefetch" as="stylesheet" type="text/html" href="editor.css">
     <link rel="prefetch" as="script" type="text/javascript" href="editor.js">
     <link rel="prerender" href="editor.html">
 </head>
 
-<!-- <body class="loading nosessions"> -->
-
 <body class="nosessions">
     <loading-bar></loading-bar>
-    <!-- <header>
-        <div>
-            <span class="pluto-logo"><img src="img/favicon_unsaturated_bg.svg"> Pluto.jl</span>
-        </div>
-    </header> -->
     <div id="app">
-        <section id="title"><h1>welcome to <img src="img/logo.svg"></h1></section>
+        <section id="title">
+            <h1>welcome to <img src="img/logo.svg"></h1>
+        </section>
         <section id="mywork">
             <div>
                 <h2>My work</h2>
-                <ul id="recent">
+                <ul id="recent" class="not_yet_ready">
                     <li class="new"><a href="new"><button><span class="ionicon"></span></button>Create a <strong>new notebook</strong></a></li>
                     <li><em>Loading...</em></li>
                 </ul>

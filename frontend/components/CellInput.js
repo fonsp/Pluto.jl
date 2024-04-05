@@ -1,11 +1,11 @@
 import { html, useState, useEffect, useLayoutEffect, useRef, useContext, useMemo } from "../imports/Preact.js"
-import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 import _ from "../imports/lodash.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { get_selected_doc_from_state } from "./CellInput/LiveDocsFromCursor.js"
 import { go_to_definition_plugin, GlobalDefinitionsFacet } from "./CellInput/go_to_definition_plugin.js"
+// import { debug_syntax_plugin } from "./CellInput/debug_syntax_plugin.js"
 
 import {
     EditorState,
@@ -23,24 +23,14 @@ import {
     HighlightStyle,
     lineNumbers,
     highlightSpecialChars,
-    foldGutter,
     drawSelection,
     indentOnInput,
-    defaultHighlightStyle,
     closeBrackets,
     rectangularSelection,
     highlightSelectionMatches,
     closeBracketsKeymap,
-    searchKeymap,
     foldKeymap,
-    syntaxTree,
-    Decoration,
-    ViewUpdate,
-    ViewPlugin,
-    WidgetType,
     indentUnit,
-    StateField,
-    StateEffect,
     autocomplete,
     htmlLanguage,
     markdownLanguage,
@@ -48,6 +38,8 @@ import {
     pythonLanguage,
     syntaxHighlighting,
     cssLanguage,
+    setDiagnostics,
+    moveLineUp,
 } from "../imports/CodemirrorPlutoSetup.js"
 
 import { markdown, html as htmlLang, javascript, sqlLang, python, julia_mixed } from "./CellInput/mixedParsers.js"
@@ -59,12 +51,19 @@ import { cell_movement_plugin, prevent_holding_a_key_from_doing_things_across_ce
 import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
 import { cl } from "../common/ClassTable.js"
-import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_line.js"
+import { HighlightLineFacet, HighlightRangeFacet, highlightLinePlugin, highlightRangePlugin } from "./CellInput/highlight_line.js"
 import { commentKeymap } from "./CellInput/comment_mixed_parsers.js"
 import { ScopeStateField } from "./CellInput/scopestate_statefield.js"
 import { mod_d_command } from "./CellInput/mod_d_command.js"
+import { open_bottom_right_panel } from "./BottomRightPanel.js"
+import { timeout_promise } from "../common/PlutoConnection.js"
+import { LastFocusWasForcedEffect, tab_help_plugin } from "./CellInput/tab_help_plugin.js"
+import { useEventListener } from "../common/useEventListener.js"
+import { moveLineDown } from "../imports/CodemirrorPlutoSetup.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
+export const ENABLE_CM_SPELLCHECK = window.localStorage.getItem("ENABLE_CM_SPELLCHECK") === "true"
+export const ENABLE_CM_AUTOCOMPLETE_ON_TYPE = window.localStorage.getItem("ENABLE_CM_AUTOCOMPLETE_ON_TYPE") === "true"
 
 if (ENABLE_CM_MIXED_PARSER) {
     console.log(`YOU ENABLED THE CODEMIRROR MIXED LANGUAGE PARSER
@@ -76,8 +75,20 @@ If enough people do this, we can make it the default parser.
 
 // Added this so we can have people test the mixed parser, because I LIKE IT SO MUCH - DRAL
 // @ts-ignore
-window.PLUTO_TOGGLE_CM_MIXED_PARSER = () => {
-    window.localStorage.setItem("ENABLE_CM_MIXED_PARSER", String(!ENABLE_CM_MIXED_PARSER))
+window.PLUTO_TOGGLE_CM_MIXED_PARSER = (val = !ENABLE_CM_MIXED_PARSER) => {
+    window.localStorage.setItem("ENABLE_CM_MIXED_PARSER", String(val))
+    window.location.reload()
+}
+
+// @ts-ignore
+window.PLUTO_TOGGLE_CM_SPELLCHECK = (val = !ENABLE_CM_SPELLCHECK) => {
+    window.localStorage.setItem("ENABLE_CM_SPELLCHECK", String(val))
+    window.location.reload()
+}
+
+// @ts-ignore
+window.PLUTO_TOGGLE_CM_AUTOCOMPLETE_ON_TYPE = (val = !ENABLE_CM_AUTOCOMPLETE_ON_TYPE) => {
+    window.localStorage.setItem("ENABLE_CM_AUTOCOMPLETE_ON_TYPE", String(val))
     window.location.reload()
 }
 
@@ -371,8 +382,10 @@ export const CellInput = ({
     set_show_logs,
     set_cell_disabled,
     cm_highlighted_line,
+    cm_highlighted_range,
     metadata,
     global_definition_locations,
+    cm_diagnostics,
 }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     const { disabled: running_disabled, skip_as_script } = metadata
@@ -382,6 +395,10 @@ export const CellInput = ({
         set_error(null)
         throw to_throw
     }
+
+    const notebook_id_ref = useRef(notebook_id)
+    notebook_id_ref.current = notebook_id
+
     const newcm_ref = useRef(/** @type {EditorView?} */ (null))
     const dom_node_ref = useRef(/** @type {HTMLElement?} */ (null))
     const remote_code_ref = useRef(/** @type {string?} */ (null))
@@ -389,6 +406,7 @@ export const CellInput = ({
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
     let global_definitions_compartment = useCompartment(newcm_ref, GlobalDefinitionsFacet.of(global_definition_locations))
     let highlighted_line_compartment = useCompartment(newcm_ref, HighlightLineFacet.of(cm_highlighted_line))
+    let highlighted_range_compartment = useCompartment(newcm_ref, HighlightRangeFacet.of(cm_highlighted_range))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
 
     let on_change_compartment = useCompartment(
@@ -406,12 +424,14 @@ export const CellInput = ({
     useLayoutEffect(() => {
         if (dom_node_ref.current == null) return
 
-        const keyMapSubmit = () => {
+        const keyMapSubmit = (/** @type {EditorView} */ cm) => {
+            autocomplete.closeCompletion(cm)
             on_submit()
             return true
         }
         let run = async (fn) => await fn()
         const keyMapRun = (/** @type {EditorView} */ cm) => {
+            autocomplete.closeCompletion(cm)
             run(async () => {
                 // we await to prevent an out-of-sync issue
                 await on_add_after()
@@ -426,6 +446,8 @@ export const CellInput = ({
 
         let select_autocomplete_command = autocomplete.completionKeymap.find((keybinding) => keybinding.key === "Enter")
         let keyMapTab = (/** @type {EditorView} */ cm) => {
+            // I think this only gets called when we are not in an autocomplete situation, otherwise `tab_completion_command` is called. I think it only happens when you have a selection.
+
             if (cm.state.readOnly) {
                 return false
             }
@@ -537,6 +559,39 @@ export const CellInput = ({
             return false
         }
 
+        const keyMapMoveLine = (/** @type {EditorView} */ cm, direction) => {
+            if (cm.state.facet(EditorState.readOnly)) {
+                return false
+            }
+
+            const selection = cm.state.selection.main
+            const all_is_selected = selection.anchor === 0 && selection.head === cm.state.doc.length
+
+            if (all_is_selected || cm.state.doc.lines === 1) {
+                pluto_actions.move_remote_cells([cell_id], pluto_actions.get_notebook().cell_order.indexOf(cell_id) + (direction === -1 ? -1 : 2))
+
+                // workaround for https://github.com/preactjs/preact/issues/4235
+                // but the crollintoview behaviour is nice, also when the preact issue is fixed.
+                requestIdleCallback(() => {
+                    cm.dispatch({
+                        // TODO: remove me after fix
+                        selection: {
+                            anchor: 0,
+                            head: cm.state.doc.length,
+                        },
+
+                        // TODO: keep me after fix
+                        scrollIntoView: true,
+                    })
+                    // TODO: remove me after fix
+                    cm.focus()
+                })
+                return true
+            } else {
+                return direction === 1 ? moveLineDown(cm) : moveLineUp(cm)
+            }
+        }
+
         const plutoKeyMaps = [
             { key: "Shift-Enter", run: keyMapSubmit },
             { key: "Ctrl-Enter", mac: "Cmd-Enter", run: keyMapRun },
@@ -551,6 +606,8 @@ export const CellInput = ({
             { key: "Ctrl-Delete", run: keyMapDelete },
             { key: "Backspace", run: keyMapBackspace },
             { key: "Ctrl-Backspace", run: keyMapBackspace },
+            { key: "Alt-ArrowUp", run: (x) => keyMapMoveLine(x, -1) },
+            { key: "Alt-ArrowDown", run: (x) => keyMapMoveLine(x, 1) },
 
             mod_d_command,
         ]
@@ -575,9 +632,6 @@ export const CellInput = ({
             }
         })
 
-        // TODO remove me
-        //@ts-ignore
-        window.tags = tags
         const usesDarkTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         const newcm = (newcm_ref.current = new EditorView({
             state: EditorState.create({
@@ -587,9 +641,11 @@ export const CellInput = ({
                     // Compartments coming from react state/props
                     nbpkg_compartment,
                     highlighted_line_compartment,
+                    highlighted_range_compartment,
                     global_definitions_compartment,
                     editable_compartment,
                     highlightLinePlugin(),
+                    highlightRangePlugin(),
 
                     // This is waaaay in front of the keys it is supposed to override,
                     // Which is necessary because it needs to run before *any* keymap,
@@ -598,7 +654,7 @@ export const CellInput = ({
                     // TODO Use https://codemirror.net/6/docs/ref/#state.Prec when added to pluto-codemirror-setup
                     prevent_holding_a_key_from_doing_things_across_cells,
 
-                    pkgBubblePlugin({ pluto_actions, notebook_id }),
+                    pkgBubblePlugin({ pluto_actions, notebook_id_ref }),
                     ScopeStateField,
                     syntaxHighlighting(pluto_syntax_colors),
                     syntaxHighlighting(pluto_syntax_colors_html),
@@ -626,27 +682,40 @@ export const CellInput = ({
                     highlightSelectionMatches(),
                     bracketMatching(),
                     docs_updater,
+                    tab_help_plugin,
                     // Remove selection on blur
                     EditorView.domEventHandlers({
                         blur: (event, view) => {
-                            view.dispatch({
-                                selection: {
-                                    anchor: view.state.selection.main.head,
-                                    head: view.state.selection.main.head,
-                                },
-                            })
-                            set_cm_forced_focus(null)
+                            // it turns out that this condition is true *exactly* if and only if the blur event was triggered by blurring the window
+                            let caused_by_window_blur = document.activeElement === view.contentDOM
+
+                            if (!caused_by_window_blur) {
+                                // then it's caused by focusing something other than this cell in the editor.
+                                // in this case, we want to collapse the selection into a single point, for aesthetic reasons.
+                                setTimeout(() => {
+                                    view.dispatch({
+                                        selection: {
+                                            anchor: view.state.selection.main.head,
+                                        },
+                                        scrollIntoView: false,
+                                    })
+                                    // and blur the DOM again (because the previous transaction might have re-focused it)
+                                    view.contentDOM.blur()
+                                }, 0)
+
+                                set_cm_forced_focus(null)
+                            }
                         },
                     }),
                     pluto_paste_plugin({
-                        pluto_actions: pluto_actions,
-                        cell_id: cell_id,
+                        pluto_actions,
+                        cell_id,
                     }),
                     // Update live docs when in a cell that starts with `?`
                     EditorView.updateListener.of((update) => {
                         if (!update.docChanged) return
                         if (update.state.doc.length > 0 && update.state.sliceDoc(0, 1) === "?") {
-                            window.dispatchEvent(new CustomEvent("open_live_docs"))
+                            open_bottom_right_panel("docs")
                         }
                     }),
                     EditorState.tabSize.of(4),
@@ -669,13 +738,20 @@ export const CellInput = ({
                     go_to_definition_plugin,
                     pluto_autocomplete({
                         request_autocomplete: async ({ text }) => {
-                            let { message } = await pluto_actions.send("complete", { query: text }, { notebook_id: notebook_id })
+                            let response = await timeout_promise(
+                                pluto_actions.send("complete", { query: text }, { notebook_id: notebook_id_ref.current }),
+                                5000
+                            ).catch(console.warn)
+                            if (!response) return null
+
+                            let { message } = response
                             return {
                                 start: utf8index_to_ut16index(text, message.start),
                                 stop: utf8index_to_ut16index(text, message.stop),
                                 results: message.results,
                             }
                         },
+                        request_special_symbols: () => pluto_actions.send("complete_symbols").then(({ message }) => message),
                         on_update_doc_query: on_update_doc_query,
                     }),
 
@@ -691,9 +767,17 @@ export const CellInput = ({
                     keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, ...foldKeymap]),
                     placeholder("Enter cell code..."),
 
+                    EditorView.contentAttributes.of({ spellcheck: String(ENABLE_CM_SPELLCHECK) }),
+
                     EditorView.lineWrapping,
                     // Wowww this has been enabled for some time now... wonder if there are issues about this yet ;) - DRAL
                     awesome_line_wrapping,
+
+                    // Reset diagnostics on change
+                    EditorView.updateListener.of((update) => {
+                        if (!update.docChanged) return
+                        update.view.dispatch(setDiagnostics(update.state, []))
+                    }),
 
                     on_change_compartment,
 
@@ -737,6 +821,7 @@ export const CellInput = ({
                         anchor: view.state.doc.length,
                         head: view.state.doc.length,
                     },
+                    effects: [LastFocusWasForcedEffect.of(true)],
                 })
                 view.focus()
             })
@@ -759,6 +844,14 @@ export const CellInput = ({
             }
         }
     }, [])
+
+    useEffect(() => {
+        if (newcm_ref.current == null) return
+        const cm = newcm_ref.current
+        const diagnostics = cm_diagnostics
+
+        cm.dispatch(setDiagnostics(cm.state, diagnostics))
+    }, [cm_diagnostics])
 
     // Effect to apply "remote_code" to the cell when it changes...
     // ideally this won't be necessary as we'll have actual multiplayer,
@@ -821,6 +914,7 @@ export const CellInput = ({
                     EditorView.scrollIntoView(EditorSelection.range(new_selection.anchor, new_selection.head), {
                         yMargin: 80,
                     }),
+                    LastFocusWasForcedEffect.of(true),
                 ],
             })
         }
@@ -846,7 +940,26 @@ export const CellInput = ({
 const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, running_disabled, any_logs, show_logs, set_show_logs, set_cell_disabled }) => {
     const timeout = useRef(null)
     let pluto_actions = useContext(PlutoActionsContext)
-    const [open, setOpen] = useState(false)
+    const [open, setOpenState] = useState(false)
+    const button_ref = useRef(/** @type {HTMLButtonElement?} */ (null))
+    const list_ref = useRef(/** @type {HTMLButtonElement?} */ (null))
+
+    const prevously_focused_element_ref = useRef(/** @type {Element?} */ (null))
+    const setOpen = (val) => {
+        if (val) {
+            prevously_focused_element_ref.current = document.activeElement
+        }
+        setOpenState(val)
+    }
+    useLayoutEffect(() => {
+        if (open) {
+            list_ref.current?.querySelector("button")?.focus()
+        } else {
+            let e = prevously_focused_element_ref.current
+            if (e instanceof HTMLElement) e.focus()
+        }
+    }, [open])
+
     const mouseenter = () => {
         if (timeout.current) clearTimeout(timeout.current)
     }
@@ -879,48 +992,99 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
             })
     }
 
-    return html` <button
-        onClick=${() => setOpen(!open)}
-        onBlur=${() => setOpen(false)}
-        class=${cl({
-            input_context_menu: true,
-            open,
-        })}
-        title="Actions"
-    >
-        <span class="icon"></span>
-        ${open
-            ? html`<ul onMouseenter=${mouseenter}>
-                  <li onClick=${on_delete} title="Delete"><span class="delete ctx_icon" />Delete cell</li>
-                  <li
-                      onClick=${toggle_running_disabled}
-                      title=${running_disabled ? "Enable and run the cell" : "Disable this cell, and all cells that depend on it"}
-                  >
-                      ${running_disabled ? html`<span class="enable_cell ctx_icon" />` : html`<span class="disable_cell ctx_icon" />`}
-                      ${running_disabled ? html`<b>Enable cell</b>` : html`Disable cell`}
-                  </li>
-                  ${any_logs
-                      ? html`<li title="" onClick=${toggle_logs}>
-                            ${show_logs
-                                ? html`<span class="hide_logs ctx_icon" /><span>Hide logs</span>`
-                                : html`<span class="show_logs ctx_icon" /><span>Show logs</span>`}
-                        </li>`
-                      : null}
-                  ${is_copy_output_supported()
-                      ? html`<li title="Copy the output of this cell to the clipboard." onClick=${copy_output}>
-                            <span class="copy_output ctx_icon" />Copy output
-                        </li>`
-                      : null}
-                  <li
-                      onClick=${toggle_skip_as_script}
-                      title=${skip_as_script
-                          ? "This cell is currently stored in the notebook file as a Julia comment. Click here to disable."
-                          : "Store this code in the notebook file as a Julia comment. This way, it will not run when the notebook runs as a script outside of Pluto."}
-                  >
-                      ${skip_as_script ? html`<span class="skip_as_script ctx_icon" />` : html`<span class="run_as_script ctx_icon" />`}
-                      ${skip_as_script ? html`<b>Enable in file</b>` : html`Disable in file`}
-                  </li>
-              </ul>`
-            : html``}
-    </button>`
+    useEventListener(window, "keydown", (e) => {
+        if (e.key === "Escape") {
+            setOpen(false)
+        }
+    })
+
+    return html`
+        <button
+            onClick=${(e) => {
+                setOpen(!open)
+            }}
+            class=${cl({
+                input_context_menu: true,
+                open,
+            })}
+            title="Actions"
+            ref=${button_ref}
+        >
+            <span class="icon"></span>
+        </button>
+        <div
+            class=${cl({
+                input_context_menu: true,
+                open,
+            })}
+            ref=${list_ref}
+            onfocusout=${(e) => {
+                const li_focused = list_ref.current?.matches(":focus-within") || list_ref.current?.contains(e.relatedTarget)
+
+                if (
+                    !li_focused ||
+                    // or the focus is on the list itself
+                    e.relatedTarget === list_ref.current
+                )
+                    setOpen(false)
+            }}
+        >
+            ${open
+                ? html`<ul onMouseenter=${mouseenter}>
+                      <${InputContextMenuItem} tag="delete" contents="Delete cell" title="Delete cell" onClick=${on_delete} setOpen=${setOpen} />
+
+                      <${InputContextMenuItem}
+                          title=${running_disabled ? "Enable and run the cell" : "Disable this cell, and all cells that depend on it"}
+                          tag=${running_disabled ? "enable_cell" : "disable_cell"}
+                          contents=${running_disabled ? html`<b>Enable cell</b>` : html`Disable cell`}
+                          onClick=${toggle_running_disabled}
+                          setOpen=${setOpen}
+                      />
+                      ${any_logs
+                          ? html`<${InputContextMenuItem}
+                                title=${show_logs ? "Show cell logs" : "Hide cell logs"}
+                                tag=${show_logs ? "hide_logs" : "show_logs"}
+                                contents=${show_logs ? "Hide logs" : "Show logs"}
+                                onClick=${toggle_logs}
+                                setOpen=${setOpen}
+                            />`
+                          : null}
+                      ${is_copy_output_supported()
+                          ? html`<${InputContextMenuItem}
+                                tag="copy_output"
+                                contents="Copy output"
+                                title="Copy the output of this cell to the clipboard."
+                                onClick=${copy_output}
+                                setOpen=${setOpen}
+                            />`
+                          : null}
+
+                      <${InputContextMenuItem}
+                          title=${skip_as_script
+                              ? "This cell is currently stored in the notebook file as a Julia comment. Click here to disable."
+                              : "Store this code in the notebook file as a Julia comment. This way, it will not run when the notebook runs as a script outside of Pluto."}
+                          tag=${skip_as_script ? "run_as_script" : "skip_as_script"}
+                          contents=${skip_as_script ? html`<b>Enable in file</b>` : html`Disable in file`}
+                          onClick=${toggle_skip_as_script}
+                          setOpen=${setOpen}
+                      />
+                  </ul>`
+                : html``}
+        </div>
+    `
 }
+
+const InputContextMenuItem = ({ contents, title, onClick, setOpen, tag }) =>
+    html`<li>
+        <button
+            tabindex="0"
+            title=${title}
+            onClick=${(e) => {
+                setOpen(false)
+                onClick(e)
+            }}
+            class=${tag}
+        >
+            <span class=${`${tag} ctx_icon`} />${contents}
+        </button>
+    </li>`

@@ -6,14 +6,16 @@ Note that only direct dependents are given here, not indirect dependents.
 """
 function downstream_cells_map(cell::Cell, topology::NotebookTopology)::Dict{Symbol,Vector{Cell}}
     defined_symbols = let node = topology.nodes[cell]
-        node.definitions ∪ node.funcdefs_without_signatures
+        node.definitions ∪ Iterators.filter(!_is_anon_function_name, node.funcdefs_without_signatures)
     end
     return Dict{Symbol,Vector{Cell}}(
-        sym => where_referenced(topology, Set([sym]))
+        sym => PlutoDependencyExplorer.where_referenced(topology, Set([sym]))
         for sym in defined_symbols
     )
 end
 @deprecate downstream_cells_map(cell::Cell, notebook::Notebook) downstream_cells_map(cell, notebook.topology)
+
+_is_anon_function_name(s::Symbol) = startswith(String(s), "__ExprExpl_anon__")
 
 """
 Gets a dictionary of all symbols and the respective cells on which the given cell depends.
@@ -24,7 +26,7 @@ Note that only direct dependencies are given here, not indirect dependencies.
 function upstream_cells_map(cell::Cell, topology::NotebookTopology)::Dict{Symbol,Vector{Cell}}
     referenced_symbols = topology.nodes[cell].references
     return Dict{Symbol,Vector{Cell}}(
-        sym => where_assigned(topology, Set([sym]) )
+        sym => PlutoDependencyExplorer.where_assigned(topology, Set([sym]))
         for sym in referenced_symbols
     )
 end
@@ -35,7 +37,7 @@ function update_dependency_cache!(cell::Cell, topology::NotebookTopology)
     cell.cell_dependencies = CellDependencies(
         downstream_cells_map(cell, topology), 
         upstream_cells_map(cell, topology), 
-        cell_precedence_heuristic(topology, cell),
+        PlutoDependencyExplorer.cell_precedence_heuristic(topology, cell),
     )
 end
 

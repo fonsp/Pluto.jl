@@ -247,11 +247,11 @@ export const NotebookpackagesFacet = Facet.define({
     compare: _.isEqual,
 })
 
-export const pkgBubblePlugin = ({ pluto_actions, notebook_id }) =>
+export const pkgBubblePlugin = ({ pluto_actions, notebook_id_ref }) =>
     ViewPlugin.fromClass(
         class {
             update_decos(view) {
-                const ds = pkg_decorations(view, { pluto_actions, notebook_id, nbpkg: view.state.facet(NotebookpackagesFacet) })
+                const ds = pkg_decorations(view, { pluto_actions, notebook_id: notebook_id_ref.current, nbpkg: view.state.facet(NotebookpackagesFacet) })
                 this.decorations = ds
             }
 
@@ -278,11 +278,5 @@ export const pkgBubblePlugin = ({ pluto_actions, notebook_id }) =>
         },
         {
             decorations: (v) => v.decorations,
-
-            eventHandlers: {
-                pointerdown: (e, view) => {
-                    let target = e.target
-                },
-            },
         }
     )

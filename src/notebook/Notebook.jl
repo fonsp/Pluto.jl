@@ -1,10 +1,9 @@
 import UUIDs: UUID, uuid1
-import .ExpressionExplorer: SymbolsState, FunctionNameSignaturePair, FunctionName
 import .Configuration
 import .PkgCompat: PkgCompat, PkgContext
 import Pkg
 import TOML
-
+import .Status
 
 const DEFAULT_NOTEBOOK_METADATA = Dict{String, Any}()
 
@@ -20,6 +19,7 @@ const ProcessStatus = (
     starting="starting",
     no_process="no_process",
     waiting_to_restart="waiting_to_restart",
+    waiting_for_permission="waiting_for_permission",
 )
 
 "Like a [`Diary`](@ref) but more serious. 📓"
@@ -44,8 +44,8 @@ Base.@kwdef mutable struct Notebook
     # per notebook compiler options
     # nothing means to use global session compiler options
     compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
-    # nbpkg_ctx::Union{Nothing,PkgContext}=nothing
-    nbpkg_ctx::Union{Nothing,PkgContext}=PkgCompat.create_empty_ctx()
+    nbpkg_ctx::Union{Nothing,PkgContext}=nothing
+    # nbpkg_ctx::Union{Nothing,PkgContext}=PkgCompat.create_empty_ctx()
     nbpkg_ctx_instantiated::Bool=false
     nbpkg_restart_recommended_msg::Union{Nothing,String}=nothing
     nbpkg_restart_required_msg::Union{Nothing,String}=nothing
@@ -55,19 +55,39 @@ Base.@kwdef mutable struct Notebook
     nbpkg_installed_versions_cache::Dict{String,String}=Dict{String,String}()
 
     process_status::String=ProcessStatus.starting
+    status_tree::Status.Business=_initial_nb_status()
     wants_to_interrupt::Bool=false
-    last_save_time::typeof(time())=time()
-    last_hot_reload_time::typeof(time())=zero(time())
+    last_save_time::Float64=time()
+    last_hot_reload_time::Float64=zero(time())
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
 
     metadata::Dict{String, Any}=copy(DEFAULT_NOTEBOOK_METADATA)
 end
 
+function _initial_nb_status()
+    b = Status.Business(name=:notebook, started_at=time())
+    Status.report_business_planned!(b, :workspace)
+    Status.report_business_planned!(b, :pkg)
+    Status.report_business_planned!(b, :run)
+    return b
+end
+
+function _report_business_cells_planned!(notebook::Notebook)
+    run_status = Status.report_business_planned!(notebook.status_tree, :run)
+    Status.report_business_planned!(run_status, :resolve_topology)
+    cell_status = Status.report_business_planned!(run_status, :evaluate)
+    for (i,c) in enumerate(notebook.cells)
+        c.running = true
+        c.queued = true
+        Status.report_business_planned!(cell_status, Symbol(i))
+    end
+end
+
 _collect_cells(cells_dict::Dict{UUID,Cell}, cells_order::Vector{UUID}) = 
     map(i -> cells_dict[i], cells_order)
 _initial_topology(cells_dict::Dict{UUID,Cell}, cells_order::Vector{UUID}) =
-    NotebookTopology(;
+    NotebookTopology{Cell}(;
         cell_order=ImmutableVector(_collect_cells(cells_dict, cells_order)),
     )
 
@@ -97,6 +117,18 @@ function Base.getproperty(notebook::Notebook, property::Symbol)
     end
 end
 
+PlutoDependencyExplorer.topological_order(notebook::Notebook) = topological_order(notebook.topology)
+
+function PlutoDependencyExplorer.where_referenced(notebook::Notebook, topology::NotebookTopology, something)
+    # can't use @deprecate on an overload
+    @warn "Deprecated, drop the notebook argument"
+    PlutoDependencyExplorer.where_referenced(topology, something)
+end
+function PlutoDependencyExplorer.where_assigned(notebook::Notebook, topology::NotebookTopology, something)
+    # can't use @deprecate on an overload
+    @warn "Deprecated, drop the notebook argument"
+    PlutoDependencyExplorer.where_assigned(topology, something)
+end
 
 emptynotebook(args...) = Notebook([Cell()], args...)
 

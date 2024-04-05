@@ -23,6 +23,8 @@
 @import url("./light_color.css");
 @import url("./dark_color.css");
 
+@import url("./featured-card.css");
+
 /* VARIABLES */
 
 :root {
@@ -32,10 +34,10 @@
     --pluto-operator-ligatures: none;
     --julia-mono-font-stack: JuliaMono, Menlo, "Roboto Mono", "Lucida Sans Typewriter", "Source Code Pro", monospace;
     --sans-serif-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
-    --lato-ui-font-stack: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, Helvetica, Arial, "Apple Color Emoji",
-        "Segoe UI Emoji", "Segoe UI Symbol", system-ui, sans-serif;
-    --system-ui-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, Helvetica, Arial, "Apple Color Emoji",
-        "Segoe UI Emoji", "Segoe UI Symbol", system-ui, sans-serif;
+    --lato-ui-font-stack: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, "Apple Color Emoji", "Segoe UI Emoji",
+        "Segoe UI Symbol", system-ui, sans-serif;
+    --system-ui-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, "Apple Color Emoji", "Segoe UI Emoji",
+        "Segoe UI Symbol", system-ui, sans-serif;
     color-scheme: light dark;
 }
 
@@ -67,13 +69,11 @@ pluto-editor {
 
 main {
     flex: 1;
-
     max-width: calc(700px + 25px + 6px); /* 700px + both paddings */
     padding-top: 0px;
     padding-bottom: 4rem;
     padding-left: 25px;
     padding-right: 6px;
-    align-content: center;
     width: 100%;
 }
 
@@ -192,6 +192,11 @@ pluto-output p {
     line-height: 1.45em;
 }
 
+/* This allows a linebreak in Markdown using backslash with smaller spacing compared to paragraph in firefox */
+pluto-output br {
+    margin-block-end: 0;
+}
+
 pluto-output p:first-child {
     margin-block-start: 0px;
 }
@@ -247,7 +252,7 @@ pluto-output pre > code {
 }
 
 pluto-output.rich_output code {
-    padding: 3px;
+    padding: 0.18em;
     border-radius: 8px;
     background-color: var(--pluto-output-bg-color);
 }
@@ -322,6 +327,7 @@ pluto-output div.admonition .admonition-title ~ * {
 
 pluto-output div.admonition {
     padding-left: 0.5rem;
+    padding-right: 0.5rem;
     background: var(--jl-message-color);
     border: 5px solid var(--jl-message-accent-color);
 }
@@ -329,6 +335,7 @@ pluto-output div.admonition .admonition-title {
     background: var(--jl-message-accent-color);
     margin: -1px; /* Fixes a rendering glitch in Chrome */
     margin-left: -0.55rem;
+    margin-right: -0.55rem;
 }
 pluto-output div.admonition.note,
 pluto-output div.admonition.info,
@@ -452,6 +459,55 @@ pluto-output mjx-assistive-mml {
     height: 1px;
 }
 
+/* Avoid scrollbar in cells that contain just a h3 element, like the h3 headers in https://computationalthinking.mit.edu/Fall22/images_abstractions/transformations_and_autodiff/ */
+.raw-html-wrapper > div.markdown {
+    overflow: hidden;
+}
+
+pluto-output details {
+    border: 1px solid var(--rule-color);
+    border-radius: 4px;
+    padding: 0.5em 0.5em 0;
+    margin-block-start: 0;
+    margin-block-end: var(--pluto-cell-spacing);
+}
+
+pluto-output details:first-child {
+    margin-block-start: 0;
+}
+
+pluto-output details:last-child {
+    margin-block-end: 0;
+}
+
+pluto-output details summary {
+    cursor: pointer;
+    font-family: var(--system-ui-font-stack);
+    font-weight: bold;
+    border-radius: 3px;
+    padding: 0.5em;
+    margin: -0.5em -0.5em 0;
+    transition: color 0.25s ease-in-out, background-color 0.25s ease-in-out;
+    /* Border may have transparency, let's not change the border with a background-color */
+    background-clip: padding-box;
+}
+
+pluto-output details summary:hover {
+    color: var(--blockquote-color);
+    background-color: var(--blockquote-bg);
+}
+
+pluto-output details[open] {
+    padding: 0.5em;
+}
+
+pluto-output details[open] summary {
+    border-bottom: 1px solid var(--rule-color);
+    border-bottom-right-radius: 0;
+    border-bottom-left-radius: 0;
+    margin-bottom: 0.5em;
+}
+
 /* HEADER */
 
 header#pluto-nav {
@@ -475,16 +531,24 @@ header#pluto-nav.show_export {
     transform: translateY(130px);
 }
 
-aside#export {
+dialog#export {
     position: absolute;
+    display: block;
     top: 0;
     width: 100%;
     height: 130px;
     background: var(--export-bg-color);
     color: var(--export-color);
-    transform: translateY(-100%);
+    transform: translateY(calc(-100% - 1px));
+    /* overlay: none !important; */
+    overflow: visible;
+    margin: 0;
+    padding: 0;
+    max-width: none;
+    max-height: none;
+    border: none;
 }
-aside#export::before {
+dialog#export::before {
     content: "";
     position: absolute;
     bottom: 100%;
@@ -493,18 +557,19 @@ aside#export::before {
     height: 100px;
     background: inherit;
 }
-aside#export div#container {
+dialog#export div#container {
     flex-direction: row;
     display: flex;
     max-width: 1000px;
-    padding-right: 20px;
+    padding-right: 10em;
     margin: 0 auto;
+    position: relative;
 }
-header aside#export div#container {
+header dialog#export div#container {
     /* to prevent the div from taking up horizontal page when the export pane is closed. On small screen this causes overscroll on the right. */
     overflow-x: hidden;
 }
-header.show_export aside#export div#container {
+header.show_export dialog#export div#container {
     overflow-x: auto;
 }
 a.export_card {
@@ -547,11 +612,15 @@ a.export_card section {
     /* font-size: 14px; */
     padding: 3px;
 }
-aside#export .export_small_btns {
-    margin-left: auto;
-    height: 60px;
+dialog#export .export_small_btns {
     display: flex;
     flex-direction: row;
+    padding: 0.9em;
+    border-radius: 0.9em;
+    position: absolute;
+    right: 0.8em;
+    top: 0em;
+    background: var(--export-bg-color);
 }
 body.static_preview button.toggle_export {
     display: none;
@@ -591,17 +660,18 @@ nav#at_the_top > a {
     /* margin-right: 5rem; */
 }
 
-nav#at_the_top img {
-    height: 39px;
-    margin-bottom: -8px;
-    filter: var(--image-filters);
-}
-
 nav#at_the_top h1 {
     font-weight: 700;
     font-size: 1.8rem;
     display: inline;
     border-bottom: none;
+}
+
+nav#at_the_top img#logo-small,
+nav#at_the_top img#logo-big {
+    height: 39px;
+    margin-bottom: -8px;
+    filter: var(--image-filters);
 }
 
 nav#at_the_top img#logo-small {
@@ -704,15 +774,19 @@ nav#at_the_top button.start_stop_recording.stop span {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/stop-circle-outline.svg");
 }
 nav#at_the_top button.toggle_export span {
-    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/shapes-outline.svg");
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/share-outline.svg");
     filter: var(--image-filters);
 }
-aside#export button.toggle_export span {
+dialog#export button.toggle_export span {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-outline.svg");
     filter: invert(1);
 }
-aside#export button.toggle_frontmatter_edit span {
+dialog#export button.toggle_frontmatter_edit span {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/newspaper-outline.svg");
+    filter: invert(1);
+}
+dialog#export button.toggle_presentation span {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/easel-outline.svg");
     filter: invert(1);
 }
 nav#at_the_top:after {
@@ -776,6 +850,7 @@ body.binder header#pluto-nav > nav#at_the_top > pluto-filepicker > a {
 body.nbpkg_restart_recommended header#pluto-nav,
 body.nbpkg_restart_required header#pluto-nav,
 body.binder.loading header#pluto-nav,
+body.process_waiting_for_permission header#pluto-nav,
 body.process_dead header#pluto-nav,
 body.disconnected header#pluto-nav {
     position: sticky;
@@ -792,6 +867,9 @@ body.nbpkg_restart_required header#pluto-nav {
 }
 body.process_dead header#pluto-nav {
     background-color: var(--dead-process-header-color);
+}
+body.process_waiting_for_permission header#pluto-nav {
+    background-color: var(--restart-recc-header-color);
 }
 body.loading header#pluto-nav {
     background-color: var(--loading-header-color);
@@ -817,6 +895,22 @@ nav#at_the_top > #process_status {
 
 nav#at_the_top > #process_status:empty {
     display: none;
+}
+
+.statefile-fetch-progress {
+    /* width: 200px;
+    height: 27px;
+    background: white;
+    border: 5px solid #d1d9e4;
+    border-radius: 6px; */
+    --w: min(80vw, 300px);
+    position: fixed;
+    left: calc(50vw - 0.5 * var(--w));
+    top: 0;
+    z-index: 300000;
+    /* box-sizing: content-box; */
+    /* height: 2rem; */
+    width: var(--w);
 }
 
 loading-bar {
@@ -857,7 +951,7 @@ body.binder.loading #binder_spinners {
 }
 
 .outline-frame {
-    z-index: 9990;
+    z-index: 1500;
     pointer-events: none;
     position: fixed;
     top: 0px;
@@ -866,6 +960,10 @@ body.binder.loading #binder_spinners {
     height: 100vh;
     /* outline: red inset 15px; */
     box-sizing: border-box;
+}
+
+body.process_waiting_for_permission .outline-frame.safe-preview {
+    border-bottom: 12px solid var(--restart-recc-header-color);
 }
 
 body.recording_waiting_to_start .outline-frame.recording {
@@ -888,36 +986,47 @@ body.is_recording header#pluto-nav {
     display: none;
 }
 
-#record-ui-container {
+.outline-frame-actions-container {
     position: fixed;
     top: 3px;
-    z-index: 9999;
+    z-index: 1501;
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
 }
 
-#record-ui-container > .overlay-button {
+.outline-frame-actions-container.safe-preview {
+    top: auto;
+    bottom: 4px;
+}
+
+.outline-frame-actions-container > .overlay-button {
     /* background: pink; */
     border-color: #e86f6c;
     margin: 0 3px;
 }
-#record-ui-container > .overlay-button.record-no-audio {
+.outline-frame-actions-container > .overlay-button.record-no-audio {
     border-color: #dcc6c6;
 }
-#record-ui-container > .overlay-button.playback {
+.outline-frame-actions-container > .overlay-button.playback {
     border-color: #c6c6dc;
 }
-#record-ui-container span.stop-recording-icon::after {
+span.pluto-icon.stop-recording-icon::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/stop-circle-outline.svg");
 }
-#record-ui-container span.microphone-icon::after {
+span.pluto-icon.microphone-icon::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/mic-outline.svg");
 }
-#record-ui-container span.mute-icon::after {
+span.pluto-icon.info-icon::after {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/information-circle-outline.svg");
+}
+span.pluto-icon.offline-icon::after {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/cloud-offline-outline.svg");
+}
+span.pluto-icon.mute-icon::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/mic-off-outline.svg");
 }
-#record-ui-container span.follow-recording-icon::after {
+span.pluto-icon.follow-recording-icon::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-undo-outline.svg");
 }
 
@@ -925,10 +1034,44 @@ div.recording-playback {
     width: min(500px, 90vw);
     position: fixed;
     bottom: 16px;
-    z-index: 9999;
+    z-index: 1501;
 }
 div.recording-playback audio {
     width: 100%;
+}
+
+.safe-preview-info {
+    color: var(--black);
+    font-family: var(--system-ui-font-stack);
+    font-weight: 700;
+    background: var(--white);
+    border: 3px solid var(--restart-recc-accent-color);
+    padding: 0.3em 0.8em;
+    border-radius: 0.8em;
+}
+.safe-preview-info > span {
+    display: flex;
+    /* flex-direction: row; */
+}
+.safe-preview-info button {
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.safe-preview-output {
+    color: var(--helpbox-header-color);
+    font-family: var(--system-ui-font-stack);
+    font-weight: 700;
+    opacity: 0.5;
+    font-size: 0.8rem;
+    padding: 0.2em 0.4em;
+    background: var(--restart-recc-header-color);
+    border-radius: 0.4em;
+    display: inline-flex;
+    margin: 0.7em 0;
+    gap: 0.3em;
+    align-items: baseline;
 }
 
 /* PREAMBLE */
@@ -992,14 +1135,14 @@ main > preamble #saveall-container.saved > span {
     opacity: 0.5;
 }
 
-.overlay-button span.pluto-icon::after {
+span.pluto-icon::after {
     content: "";
     display: inline-block;
-    padding-right: 20px;
-    /* width: 17px; */
-    height: 18px;
-    margin-bottom: -5px;
-    background-size: 17px 17px;
+    padding-right: 1.5em;
+    height: 1.3em;
+    margin-bottom: -0.3em;
+    transform: translateY(-0.1em);
+    background-size: 1.3em;
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sync-circle-outline.svg");
     background-repeat: no-repeat;
     background-position-x: right;
@@ -1032,7 +1175,6 @@ pluto-cell {
     min-height: calc(23px + 1px + 1px);
     margin-top: var(--pluto-cell-spacing);
     position: relative;
-    break-inside: avoid;
 }
 
 pluto-output {
@@ -1212,7 +1354,6 @@ pluto-input .cm-editor {
     border-bottom-right-radius: 4px;
     border: 1px solid var(--normal-cell-color);
     border-left: none;
-    transition: border-color 0.15s ease-in-out;
 
     /* Make sure that scrolling an editor into view gives some breathing room */
     scroll-margin-block: 20vh;
@@ -1227,13 +1368,17 @@ pluto-input .cm-editor .cm-line {
     transition: background-color 0.15s ease-in-out;
 }
 
+pluto-input .cm-editor span.cm-highlighted-range,
 pluto-input .cm-editor .cm-line.cm-highlighted-line {
-    background-color: #bdbdbd68;
+    background-color: var(--cm-highlighted);
     border-radius: 3px;
 }
 
 pluto-cell:not(.show_input) > pluto-input {
     display: none;
+}
+pluto-cell.code_folded.show_input > pluto-input:not(:focus-within) {
+    opacity: 0.4;
 }
 
 pluto-cell.code_differs > pluto-input > .cm-editor {
@@ -1377,7 +1522,6 @@ body:not(.___) pluto-cell.code_folded > pluto-trafficlight {
 @media screen and (any-pointer: fine) {
     body:not(.disable_ui) pluto-cell:hover > pluto-trafficlight {
         background: var(--normal-cell-color);
-        transition: background 0.05s ease-in;
     }
 }
 
@@ -1493,10 +1637,13 @@ pluto-input > button > span {
     button.toggle_export,
     button.start_stop_recording,
     pluto-cell:hover > button,
+    pluto-cell:focus-within > button,
     pluto-cell:hover > pluto-input > button,
+    pluto-cell:focus-within > pluto-input > button,
     pluto-cell > pluto-runarea > button,
-    pluto-cell:hover > pluto-shoulder > button {
-        opacity: 0.4;
+    pluto-cell:hover > pluto-shoulder > button,
+    pluto-cell:focus-within > pluto-shoulder > button {
+        opacity: 0.6;
         transition: opacity 0.25s ease-in-out;
     }
     .export_small_btns button:hover,
@@ -1514,23 +1661,26 @@ pluto-input > button > span {
     }
 }
 
-@media screen and (any-pointer: coarse) {
-    pluto-cell > button,
-    pluto-cell > pluto-runarea {
-        opacity: 0;
-        /* to make it feel smooth: */
-        transition: opacity 0.25s ease-in-out;
-    }
+@media screen and (pointer: coarse) {
+    pluto-cell > button.add_cell,
     pluto-input > button,
     pluto-shoulder > button {
         opacity: 0.25;
         transition: opacity 0.25s ease-in-out;
     }
-    pluto-cell:focus-within > button,
+    pluto-cell:not(:first-of-type, :last-of-type) > button.add_cell {
+        /* because there are two overlapping buttons */
+        opacity: 0.125;
+    }
+    /* pluto-cell:first-of-type > button.add_cell.before,
+    pluto-cell:last-of-type > button.add_cell.after {
+        opacity: 0.25;
+    } */
+    pluto-cell:focus-within > button.add_cell,
     pluto-cell:focus-within > pluto-input > button,
     pluto-cell:focus-within > pluto-runarea,
     pluto-cell:focus-within > pluto-shoulder > button {
-        opacity: 0.25;
+        opacity: 0.6;
         transition: opacity 0.25s ease-in-out;
     }
     pluto-cell > pluto-input > button:focus-within,
@@ -1578,46 +1728,64 @@ pluto-cell > button.add_cell > span::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/add-outline.svg");
     filter: var(--image-filters);
 }
-pluto-input > button.input_context_menu ul {
-    left: 100%;
-    top: -8px;
+
+pluto-input > .input_context_menu ul {
     margin: 0;
     padding: 0px;
     border-radius: 6px;
     display: grid;
     grid-template-columns: max-content;
-    position: absolute;
     border: 1px solid var(--input-context-menu-border-color);
     background-color: var(--input-context-menu-bg-color);
 }
+
+pluto-input {
+    position: relative;
+    display: block;
+}
+pluto-input > div.input_context_menu {
+    left: 100%;
+    top: -8px;
+    position: absolute;
+    z-index: 1400;
+}
 @media screen and (min-width: 921px) {
-    pluto-input > button.input_context_menu ul {
+    pluto-input > div.input_context_menu {
         left: calc(100% - 3px);
     }
 }
 @media screen and (max-width: 920px) {
-    pluto-input > button.input_context_menu {
-        z-index: 31;
-    }
-    pluto-input > button.input_context_menu ul {
+    pluto-input > div.input_context_menu {
         right: 0px;
         left: unset;
+        z-index: 1401;
     }
 }
-.input_context_menu li {
+
+pluto-input > .input_context_menu li {
+    list-style: none;
+    margin-block-end: 0px;
+    display: flex;
+    align-items: stretch;
+    flex-direction: column;
+}
+pluto-input > .input_context_menu li button {
     font-family: "Roboto Mono", system-ui;
     font-size: 0.8rem;
     margin-block-end: 0px;
     letter-spacing: -0.02em;
     color: var(--input-context-menu-li-color);
     position: relative;
-    list-style: none;
     padding: 8px;
     height: 32px;
     display: flex;
     align-items: center;
     justify-content: flex-start;
     border-radius: 2px;
+    cursor: pointer;
+
+    background: none;
+    border: none;
 }
 .input_context_menu li:last-child {
     border-bottom-left-radius: 6px;
@@ -1663,11 +1831,6 @@ pluto-input > button.input_context_menu ul {
 .ctx_icon.hide_logs {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-text-outline.svg");
 }
-
-.ctx_icon.bandage {
-    filter: var(--image-filters) opacity(0.3);
-    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/bandage-outline.svg");
-}
 .ctx_icon.enable_cell {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg");
 }
@@ -1698,26 +1861,25 @@ pluto-input > button.input_context_menu {
     padding: 5px;
 }
 
-pluto-input > button.input_context_menu.open {
+pluto-input > .input_context_menu.open {
     opacity: 1;
 }
 
-pluto-input > button.input_context_menu > span.icon::after {
+pluto-input > .input_context_menu span.icon::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ellipsis-horizontal-circle-outline.svg");
     filter: var(--image-filters);
 }
 
 /* PKG UI */
 
-body.nbpkg_disabled pkg-status-mark:not(.disable_pkg) {
-    display: none;
-}
-
 pkg-status-mark {
     width: 1em;
     height: 1em;
     margin: 0px 0.6em 0px 0.2em;
     display: inline-block;
+}
+body.nbpkg_disabled pkg-status-mark:not(.disable_pkg) {
+    display: none;
 }
 
 pkg-status-mark > button {
@@ -1775,17 +1937,18 @@ pkg-status-mark.disable_pkg > button > span::after {
 pluto-popup {
     display: block;
     position: absolute;
-    z-index: 70;
+    z-index: 1800;
     /* left: 1.5em; */
     /* top: calc((1.5em - 200px) * 0.5); */
-    width: min(90vw, 251px);
+    --max-size: 251px;
+    width: min(90vw, var(--max-size));
     /* min-height: 80px; */
     margin-left: 0.4rem;
     margin-top: 0px;
     margin-top: -1rem;
     /* margin-top: calc(0.5 * (1rem - 80px)); */
     overflow-wrap: break-word;
-    font-family: var(--lato-ui-font-stack);
+    font-family: var(--system-ui-font-stack);
     opacity: 0;
     transform: scale(0.2);
     transform-origin: left;
@@ -1800,6 +1963,10 @@ pluto-popup.visible {
     pointer-events: initial;
 }
 
+pluto-popup.big {
+    --max-size: 25em;
+}
+
 pluto-popup > * {
     display: block;
     background: var(--overlay-button-bg);
@@ -1809,6 +1976,22 @@ pluto-popup > * {
     padding: 8px;
     /* Slightly changes the layout of the three pkg buttons... in just the way that we want it! */
     position: absolute;
+    max-width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+pluto-popup > div > *:first-child {
+    margin-block-start: 0;
+}
+
+pluto-popup h1 {
+    font-size: 1.6em;
+}
+
+pluto-popup.warn > * {
+    background: var(--pluto-logs-warn-color);
+    border-color: var(--pluto-logs-warn-accent-color);
 }
 
 pluto-popup code.auto_disabled_variable {
@@ -1863,6 +2046,14 @@ pkg-popup .toggle-terminal {
     right: 20px;
 }
 
+.pkg-time-estimate {
+    font-size: 0.8em;
+    margin: 0.5em 0em;
+    padding: 0.5em 0.5em;
+    background: var(--pluto-logs-info-color);
+    border-radius: 0.5em;
+}
+
 pkg-terminal {
     display: block;
     /* width: 20rem; */
@@ -1888,6 +2079,13 @@ pkg-terminal pre {
     font-size: 0.6rem;
     font-family: "Space Mono", monospace;
     margin: 0;
+}
+
+pkg-terminal .make-me-spin {
+    display: inline-block;
+    animation: identifier-spin 1s linear infinite;
+    transform-origin: 50% 59%;
+    animation-delay: var(--animation-delay);
 }
 
 pkg-popup pkg-terminal {
@@ -1930,6 +2128,9 @@ pluto-runarea {
     border-bottom-left-radius: 5px;
     border-bottom-right-radius: 5px;
     border-top: none;
+    /* One less than z-index for pluto-input .cm-editor.
+       Otherwise it gets on top of the tooltips */
+    z-index: 19;
 }
 
 pluto-runarea > span {
@@ -1972,6 +2173,9 @@ pluto-runarea.save > button.runcell > span::after {
 
 pluto-cell:not(.show_input) > pluto-runarea {
     display: none;
+}
+pluto-cell.code_folded.show_input > pluto-input:not(:focus-within) {
+    opacity: 0.4;
 }
 
 pluto-cell:focus-within > pluto-runarea,
@@ -2034,7 +2238,7 @@ pluto-helpbox {
     flex-direction: column;
     width: calc(100vw - 50px - (700px + 25px + 6px)); /* compat */
     width: clamp(300px, calc(100vw - 50px - (700px + 25px + 6px)), 450px);
-    height: 70vh; /* compat */
+    height: 95vh; /* compat */
     height: min(70vh, 900px);
     /* overflow: hidden; */
     background-color: var(--helpbox-bg-color);
@@ -2046,46 +2250,215 @@ pluto-helpbox {
     border-top-right-radius: 9px;
     box-shadow: 0 0 11px 0px var(--helpbox-box-shadow-color);
 }
+pluto-helpbox > section {
+    height: 100%;
+    overflow: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+}
+
 pluto-helpbox > header {
     display: flex;
-    padding: 15px;
+    padding: 0.6em;
     background-color: var(--helpbox-header-bg-color);
     color: var(--helpbox-header-color);
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--system-ui-font-stack);
     font-size: 0.9rem;
-    font-weight: 700;
-    border-top-left-radius: 6px;
-    border-top-right-radius: 6px;
+    --border-radius: 0.4em;
+    font-weight: 500;
+    border-top-left-radius: var(--border-radius);
+    border-top-right-radius: var(--border-radius);
     /* border-top: 4px solid #8a8a8a; */
+    gap: 0.5em;
 }
-pluto-helpbox > header::before {
-    content: "📖 ";
-    margin-right: 10px;
+
+pluto-helpbox > header > button.helpbox-tab-key > .tabicon {
+    /* font-size: 1em; */
+    --size: 1.1em;
+    width: var(--size);
+    height: var(--size);
+    background-size: var(--size);
+    margin-bottom: calc(-0.15 * var(--size));
+    filter: var(--image-filters);
+    margin-right: 0.6em;
+    display: inline-block;
 }
-/* pluto-helpbox.loading>header::before{
-    content: "⌛ ";
-    margin-right: 10px;
+pluto-helpbox > header > button.helpbox-docs > .tabicon {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/search.svg");
+    /* content: "📚 "; */
+}
+
+pluto-helpbox > header > button.helpbox-docs.active > .tabicon {
+    /* content: "📖 "; */
+}
+pluto-helpbox > header > button.helpbox-process > .tabicon {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/terminal.svg");
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/pulse.svg");
+    /* content: "💻 "; */
+}
+
+pluto-helpbox > header > button.helpbox-tab-key:disabled > .tabicon {
+    /* display: none; */
+    opacity: 0.5;
+}
+/* 
+button.helpbox-process.helpbox-tab-key::before {
+    content: "";
+    display: block;
+    position: absolute;
+    --offset: -5px;
+    top: var(--offset);
+    right: var(--offset);
+    left: var(--offset);
+    bottom: var(--offset);
+    background: var(--process-busy);
+    border-radius: var(--border-radius);
+    background: linear-gradient(447deg, var(--process-finished), var(--process-finished) 50%, var(--process-busy) 50%, var(--process-busy));
+    background: linear-gradient(
+        447deg,
+        var(--process-busy) 0%,
+        var(--process-busy) 25%,
+        var(--process-finished) 25%,
+        var(--process-finished) 50%,
+        var(--process-busy) 50%,
+        var(--process-busy) 75%,
+        var(--process-finished) 75%,
+        var(--process-finished) 100%
+    );
+    animation: move-bg 5s linear infinite;
+    background-size: 100px auto;
+    z-index: -1;
+    opacity: 0.6;
 } */
-pluto-helpbox.hidden > header::before {
-    content: "📚 ";
-    margin-right: 10px;
+
+/* @keyframes rotate-bg {
+    0% {
+        background: linear-gradient(
+            0deg,
+            var(--process-busy) 0%,
+            var(--process-busy) 20%,
+            var(--process-finished) 20%,
+            var(--process-finished) 40%,
+            var(--process-busy) 40%,
+            var(--process-busy) 60%,
+            var(--process-finished) 60%,
+            var(--process-finished) 80%,
+            var(--process-busy) 80%,
+            var(--process-busy)
+        );
+    }
+    100% {
+        background: linear-gradient(
+            70deg,
+            var(--process-busy) 0%,
+            var(--process-busy) 20%,
+            var(--process-finished) 20%,
+            var(--process-finished) 40%,
+            var(--process-busy) 40%,
+            var(--process-busy) 60%,
+            var(--process-finished) 60%,
+            var(--process-finished) 80%,
+            var(--process-busy) 80%,
+            var(--process-busy)
+        );
+    }
+} */
+/* 
+@keyframes move-bg {
+    0% {
+        background-position-x: 0;
+    }
+    100% {
+        background-position-x: 100px;
+    }
 }
-pluto-helpbox > header > input {
+
+button.helpbox-process.helpbox-tab-key::after {
+    content: "";
+    display: block;
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    bottom: 0;
+    border-radius: var(--border-radius);
+    border: none;
+    background: var(--helpbox-header-tab-bg-color);
+    z-index: -1;
+} */
+
+pluto-helpbox .live-docs-searchbox {
+    display: flex;
+    margin: 1em;
+}
+
+pluto-helpbox .live-docs-searchbox input {
     flex-grow: 1;
     background-color: inherit;
     color: inherit;
-    font-family: inherit;
-    font-weight: inherit;
-    font-size: inherit;
     border: none;
+    padding: 0.5em;
+    margin: auto;
+    border: 3px solid var(--helpbox-search-border-color);
+    border-radius: 0.3em;
+    background: var(--helpbox-search-bg-color);
+    font-family: var(--julia-mono-font-stack);
+    font-size: 0.9rem;
 }
-pluto-helpbox.notfound > header > input {
-    color: var(--helpbox-notfound-header-color);
+pluto-helpbox .live-docs-searchbox.notfound input {
+    color: var(--helpbox-notfound-search-color);
 }
-pluto-helpbox > header > input:focus {
+pluto-helpbox .live-docs-searchbox input:focus {
     outline: none;
 }
-pluto-helpbox > header > button {
+
+button.helpbox-tab-key {
+    padding: 0.5em 0.6em;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: inherit;
+    font-style: inherit;
+    font-size: inherit;
+    border-radius: var(--border-radius);
+    border: none;
+    background: var(--helpbox-header-tab-bg-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    /* position: relative; */
+    /* flex: 1 1 auto; */
+    /* z-index: 1; */
+    /* overflow: hidden; */
+}
+
+button.helpbox-process.busy {
+    outline: 6px solid var(--process-busy);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    button.helpbox-process.busy {
+        animation: outline-heartbeat 0.8s ease-in infinite;
+        animation-direction: alternate;
+    }
+}
+@keyframes outline-heartbeat {
+    0% {
+        outline-offset: -1px;
+        outline-width: 3px;
+    }
+    100% {
+        outline-offset: 0px;
+        outline-width: 6px;
+    }
+}
+
+button.active.helpbox-tab-key {
+    outline: 3px solid #99afb9;
+    animation: none;
+}
+
+pluto-helpbox > header > button.helpbox-close {
     border: none;
     background: none;
     cursor: pointer;
@@ -2093,8 +2466,10 @@ pluto-helpbox > header > button {
     /* for bigger hitbox */
     margin: -15px;
     border: 15px solid transparent;
+    margin-left: auto;
 }
-pluto-helpbox > header > button > span {
+
+pluto-helpbox > header > button.helpbox-close > span {
     display: block;
     content: " " !important;
     background-size: 1em 1em;
@@ -2105,7 +2480,7 @@ pluto-helpbox > header > button > span {
 }
 pluto-helpbox.hidden {
     height: initial;
-    cursor: pointer;
+    width: auto;
 }
 pluto-helpbox.hidden > section {
     display: none;
@@ -2116,54 +2491,50 @@ pluto-helpbox.hidden > section {
 /* https://docs.julialang.org/en/v1/assets/themes/documenter-light.css */
 /* see https://github.com/JuliaDocs/Documenter.jl for author information */
 
-pluto-helpbox {
-    font-family: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+.helpbox-docs {
+    font-family: var(--lato-ui-font-stack);
     line-height: 1.5;
     font-size: 0.9rem;
 }
-pluto-helpbox pre,
-pluto-helpbox code,
-pluto-helpbox .cm-line {
+.helpbox-docs pre,
+.helpbox-docs code,
+.helpbox-docs .cm-line {
     /* from https://docs.julialang.org/en/v1/assets/themes/documenter-light.css */
     font-family: "Roboto Mono", "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", "DejaVu Sans Mono", monospace;
     font-size: 0.95em;
     line-height: initial;
 }
-pluto-helpbox pre code {
+.helpbox-docs pre code {
     font-size: 1em;
 }
 
-pluto-helpbox pre code.hljs {
+.helpbox-docs pre code.hljs {
     padding: 0;
 }
 
-pluto-helpbox code .cm-editor .cm-content {
+.helpbox-docs code .cm-editor .cm-content {
     padding: 0px;
 }
 
-pluto-helpbox img {
+.helpbox-docs img {
     max-width: 100%;
 }
 
-pluto-helpbox > section {
-    height: 100%;
-    overflow: auto;
-    padding: 10px;
-}
-pluto-helpbox > section h1,
-pluto-helpbox > section h2,
-pluto-helpbox > section h3,
-pluto-helpbox > section h4,
-pluto-helpbox > section h5,
-pluto-helpbox > section h6 {
+.helpbox-docs > section h1,
+.helpbox-docs > section h2,
+.helpbox-docs > section h3,
+.helpbox-docs > section h4,
+.helpbox-docs > section h5,
+.helpbox-docs > section h6 {
     font-family: inherit;
     border-bottom: none;
     font-size: 1rem;
 }
-pluto-helpbox > section h1 {
+.helpbox-docs > section h1 {
     font-size: 1.3rem;
+    overflow-wrap: anywhere;
 }
-pluto-helpbox > section pre {
+.helpbox-docs > section pre {
     padding: 0.7rem 0.5rem;
     -webkit-overflow-scrolling: touch;
     overflow-x: auto;
@@ -2173,11 +2544,11 @@ pluto-helpbox > section pre {
     white-space: pre;
     word-wrap: normal;
 }
-/* pluto-helpbox > section code {
+/* .helpbox-docs > section code {
     background-color: whitesmoke;
     padding: 0.1em;
 } */
-pluto-helpbox > section hr {
+.helpbox-docs > section hr {
     border: none;
     border-top: 3px solid var(--rule-color);
 }
@@ -2215,6 +2586,211 @@ pluto-helpbox > section hr {
 .pluto-docs-binding h5,
 .pluto-docs-binding h6 {
     font-size: 1.1em;
+}
+
+/* PROCESS TAB */
+
+pl-status {
+    --status-color: var(--process-undefined);
+    font-family: var(--system-ui-font-stack);
+    font-size: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    border-radius: 0.2em;
+    --indent: 0.7rem;
+    margin-left: var(--indent);
+    border-left: 3px solid transparent;
+    margin-top: 0.4em;
+    overflow: hidden;
+    flex: 0 0 auto;
+}
+
+pl-status::before {
+    flex: 1 2 auto;
+    /* content: ""; */
+    display: inline-block;
+    left: 0;
+    right: 0px;
+    width: 3px;
+    height: 10px;
+    bottom: 3px;
+    top: 3px;
+    background: pink;
+}
+
+pl-status.busy {
+    --status-color: var(--process-busy);
+}
+pl-status.finished {
+    --status-color: var(--process-finished);
+}
+pl-status.failed {
+    --status-color: var(--process-failed);
+}
+
+pl-status.can_open {
+    cursor: auto;
+    border-color: #98989854;
+}
+pl-status.can_open > div {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    cursor: pointer;
+}
+pl-status.can_open.is_open {
+    border-color: var(--status-color);
+}
+
+pl-status[data-depth="0"],
+pl-status[data-depth="1"] {
+    margin-left: 0;
+}
+
+pl-status > div {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    /* margin: 0em 0em 0.4em 0; */
+    padding: 0.2em;
+    background: var(--process-item-bg);
+    border-radius: 0.4em;
+    /* flex: 1 0 auto; */
+}
+
+pl-status > div > .status-icon {
+    content: "";
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    border-radius: 50%;
+    background-color: var(--status-color);
+    /* border: 3px solid green; */
+    margin: 0em 0.5em;
+    flex: 0 0 auto;
+}
+
+pl-status.busy > div > .status-icon {
+    border: 3px solid transparent;
+    border-right-color: hsl(126deg 30% 60%);
+    border-bottom-color: hsl(126deg 30% 60%);
+    /* border-left-color: hsl(126deg 30% 60%); */
+    animation: identifier-spin 1.7s linear infinite;
+}
+
+@keyframes identifier-spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.subprogress-counter {
+    opacity: 0.5;
+    /* font-variant-numeric: tabular-nums; */
+    font-size: 0.8em;
+}
+
+pl-status .status-time {
+    margin-left: auto;
+    /* align-self: end; */
+    padding-right: 0.5em;
+    padding-left: 0.5em;
+    /* font-family: "Roboto Mono", monospace; */
+    opacity: 0.6;
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.discrete-progress-bar {
+    display: flex;
+    flex-direction: row;
+    background: var(--process-item-bg);
+    padding: 3px;
+    border-radius: 4px;
+    gap: 2px;
+    contain: strict;
+    height: 1em;
+    align-items: stretch;
+}
+
+.discrete-progress-bar > div {
+    background: var(--process-undefined);
+    flex: 1 1 auto;
+    border-radius: 2px;
+    /* margin: 0.4px; */
+}
+
+.discrete-progress-bar > div.done {
+    background: var(--process-finished);
+}
+.discrete-progress-bar > div.busy {
+    background: var(--process-busy);
+}
+.discrete-progress-bar > div.failed {
+    background: var(--process-failed);
+}
+
+.discrete-progress-bar.mid {
+    gap: 1px;
+}
+
+.discrete-progress-bar.big {
+    gap: 0px;
+}
+
+pl-status pkg-terminal {
+    margin-left: var(--indent);
+}
+
+pluto-helpbox.helpbox-process > section {
+    padding-bottom: 3.6rem; /* to make space for the notification toggle */
+}
+
+.notify-when-done {
+    position: absolute;
+    bottom: 0.3em;
+    right: 0;
+    left: 0;
+
+    font-family: var(--system-ui-font-stack);
+    font-weight: bold;
+    font-size: 0.8rem;
+    transition: opacity 0.2s;
+    display: flex;
+    justify-content: center;
+    opacity: 0;
+    user-select: none;
+}
+
+.notify-when-done.visible {
+    opacity: 1;
+}
+
+.notify-when-done.visible label {
+    cursor: pointer;
+}
+
+.notify-when-done label {
+    display: flex;
+    align-items: center;
+    background: var(--process-notify-bg);
+    padding: 0.3em 0.6em;
+    border-radius: 1000px;
+    box-shadow: 0px 3px 5px #0000003b;
+}
+
+.notify-when-done label::before {
+    content: "";
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/notifications-outline.svg");
+    background-size: contain;
+    filter: var(--image-filters);
+    margin-bottom: -0.2em;
+    margin-right: 0.3em;
 }
 
 /* FOOTER */
@@ -2291,7 +2867,7 @@ footer button {
     font-size: 0.75rem;
 }
 
-#info {
+footer #info {
     max-width: 9400px;
     margin: 0 auto;
     padding: 1rem;
@@ -2307,7 +2883,7 @@ footer button {
 /* UNDO DELETED CELL */
 
 nav#undo_delete {
-    z-index: 1000;
+    z-index: 2000;
     display: block;
     position: fixed;
     bottom: 0px;
@@ -2371,6 +2947,16 @@ pluto-logs-container:not(:empty) {
     padding: 6px;
 }
 
+pluto-logs-container > header {
+    font-family: "Roboto Mono", monospace;
+    font-size: 1.3rem;
+    padding: 0.2em;
+    padding-bottom: 0;
+    opacity: 0.6;
+    font-weight: 700;
+    /* background: #494949; */
+}
+
 pluto-logs-container pluto-progress-bars pluto-progress:not(:first-child) {
     margin-top: 10px;
 }
@@ -2423,7 +3009,6 @@ pluto-log-dot-positioner {
     --accent-color: var(--pluto-logs-info-accent-color);
     --icon-image: unset;
     background: var(--bg-color);
-    color: var(--accent-color);
     margin: 2px;
     border-radius: 6px;
     /* border: 2px solid var(--accent-color); */
@@ -2433,8 +3018,8 @@ pluto-log-dot-positioner {
     background-size: 200% 100%;
 }
 
-pluto-log-dot-positioner:last-child {
-    /* border-bottom: none; */
+pluto-log-dot > pre {
+    color: var(--accent-color);
 }
 
 pluto-log-truncated {
@@ -2503,7 +3088,7 @@ pluto-log-dot.Stdout {
     --inner: hsl(36deg 20% 37%);
     --outer: hsl(31deg 12% 28%);
     background: radial-gradient(var(--inner), var(--inner) 20%, var(--outer));
-    color: #8ed975;
+    color: #c0ffab;
     border: 6px solid #b7b7b7;
     text-shadow: 1px 1px 2px #0000005e;
     min-width: 18em;
@@ -2560,6 +3145,11 @@ a.stdout-info {
 @media (prefers-reduced-motion: no-preference) {
     pluto-log-dot.Stdout:hover::after {
         animation-play-state: running;
+    }
+}
+@media (prefers-contrast: more) {
+    pluto-log-dot.Stdout::after {
+        display: none !important;
     }
 }
 
@@ -2644,10 +3234,6 @@ nav#slide_controls > button.next > span::after {
 }
 
 button.floating_back_button {
-    display: none;
-}
-
-.static_preview.offer_local button.floating_back_button {
     display: flex;
     position: fixed;
     z-index: 1000;
@@ -2661,6 +3247,12 @@ button.floating_back_button {
     border: 1px solid var(--cm-editor-tooltip-border-color);
     box-shadow: 3px 3px 4px rgb(0 0 0 / 20%);
     border-radius: 4px;
+}
+
+.cm-tooltip-lint {
+    font-family: "JuliaMono";
+    font-size: 0.75rem;
+    z-index: 100;
 }
 
 .cm-tooltip-autocomplete {
@@ -2735,27 +3327,26 @@ Based on "Paraíso (Light)" by Jan T. Sott:
 }
 
 [data-pluto-variable],
+[data-pluto-variable]:hover,
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete li.c_from_notebook .cm-completionLabel {
     font-weight: bold;
     text-decoration: underline;
-    text-decoration-color: #ced2ef;
+    text-decoration-color: var(--cm-clickable-underline);
     text-decoration-thickness: 3px;
     text-decoration-skip-ink: none;
 }
 
-@media (prefers-color-scheme: dark) {
-    [data-pluto-variable] {
-        text-decoration-color: #5d5f70;
-    }
+body.disable_ui [data-pluto-variable],
+body.disable_ui [data-cell-variable] {
+    cursor: pointer;
 }
-
-[data-ctrl-down="true"][data-pluto-variable],
-[data-ctrl-down="true"][data-cell-variable] {
+body:not(.disable_ui) [data-ctrl-down="true"][data-pluto-variable],
+body:not(.disable_ui) [data-ctrl-down="true"][data-cell-variable] {
     text-decoration-color: #d177e6;
     cursor: pointer;
 }
-[data-ctrl-down="true"][data-pluto-variable]:hover,
-[data-ctrl-down="true"][data-pluto-variable]:hover * {
+body:not(.disable_ui) [data-ctrl-down="true"][data-pluto-variable]:hover,
+body:not(.disable_ui) [data-ctrl-down="true"][data-pluto-variable]:hover * {
     /* This basically `color: #af5bc3`, but it works for emoji too!! */
     color: transparent !important;
     text-shadow: 0 0 #af5bc3;
@@ -2794,10 +3385,10 @@ pluto-input .cm-editor .cm-content {
     padding: 2px 0px;
 }
 
-.cm-editor .cm-selectionBackground {
+.cm-editor .cm-scroller > .cm-selectionLayer .cm-selectionBackground {
     background: var(--cm-selection-background-blurred);
 }
-.cm-editor.cm-focused .cm-selectionBackground {
+.cm-editor.cm-focused .cm-scroller > .cm-selectionLayer .cm-selectionBackground {
     background: var(--cm-selection-background);
 }
 
@@ -2826,10 +3417,10 @@ pluto-cell.code_differs .cm-editor .cm-gutters {
     background-color: var(--cm-code-differs-gutters-color);
 }
 
+/* We show a small dot instead of line number, until you hover. */
 .cm-editor .cm-lineNumbers .cm-gutterElement {
     color: transparent;
 }
-
 .cm-editor .cm-lineNumbers .cm-gutterElement::after {
     content: "⋅";
     font-size: 0.75rem;
@@ -2838,13 +3429,37 @@ pluto-cell.code_differs .cm-editor .cm-gutters {
     right: 3px;
     pointer-events: none;
 }
-
 .cm-editor .cm-lineNumbers .cm-gutterElement:hover {
     color: var(--cm-line-numbers-color);
 }
-
 .cm-editor .cm-lineNumbers .cm-gutterElement:hover::after {
     color: transparent;
+}
+
+/* Disabling this feature in two cases: */
+/* Case 1: The cell input is in focus */
+/* pluto-input:focus-within .cm-editor .cm-lineNumbers .cm-gutterElement {
+    color: var(--cm-line-numbers-color);
+}
+pluto-input:focus-within .cm-editor .cm-lineNumbers .cm-gutterElement::after {
+    color: transparent;
+}
+ */
+
+pluto-cell.errored .cm-editor .cm-lineNumbers .cm-gutterElement {
+    color: var(--cm-line-numbers-color);
+}
+pluto-cell.errored .cm-editor .cm-lineNumbers .cm-gutterElement::after {
+    color: transparent;
+}
+/* Case 2: Print */
+@media print {
+    .cm-editor .cm-lineNumbers .cm-gutterElement {
+        color: var(--cm-line-numbers-color) !important;
+    }
+    .cm-editor .cm-lineNumbers .cm-gutterElement::after {
+        color: transparent !important;
+    }
 }
 
 .cm-completionIcon-c_Number::before {
@@ -2857,6 +3472,22 @@ pluto-cell.code_differs .cm-editor .cm-gutters {
     color: var(--cm-string-color);
 }
 
+.cm-completionIcon-completion_property::before {
+    color: var(--cm-property-color);
+}
+
+.cm-completionIcon-completion_keyword::before {
+    color: var(--cm-keyword-color);
+}
+
+li.completion_keyword_argument .cm-completionLabel {
+    font-style: italic;
+    font-weight: bold;
+}
+.cm-completionIcon-completion_keyword_argument::before {
+    color: var(--cm-number-color);
+}
+
 .cm-completionIcon-c_Any::before,
 pluto-output > assignee,
 pluto-popup code.auto_disabled_variable {
@@ -2866,6 +3497,9 @@ pluto-popup code.auto_disabled_variable {
 
 .cm-completionIcon-c_Function::before {
     color: var(--cm-function-color);
+}
+.cm-completionIcon-c_Macro::before {
+    color: var(--cm-macro-color);
 }
 
 .cm-completionIcon-c_Array::before {
@@ -2978,22 +3612,67 @@ pluto-cell.hooked_up pluto-output {
 .pluto-frontmatter {
     font-family: var(--system-ui-font-stack);
     width: min(31rem, 90vw);
-    color: var(--black);
+    color: var(--export-color);
+    background: var(--export-bg-color);
+    border-radius: 1em;
+    padding: 1em 1.5em;
+}
+
+.pluto-frontmatter .card-preview {
     background: var(--white);
+    padding: 1.2rem 1.1rem;
+    margin: 1rem 0;
+    box-shadow: inset 0px 0px 15px -4px #00000054;
+    border-radius: 1rem;
+}
+
+.pluto-frontmatter .card-preview > h2 {
+    margin-block-start: 0;
+    color: var(--black);
 }
 
 .pluto-frontmatter button {
     cursor: pointer;
+    background-color: var(--frontmatter-button-bg-color);
+    border-radius: 0.5em;
+    border: 2px solid var(--frontmatter-button-bg-color);
+    font-weight: 500;
+}
+
+.pluto-frontmatter button:hover {
+    border-color: var(--frontmatter-input-border-color);
+}
+
+.pluto-frontmatter input {
+    background-color: var(--frontmatter-input-bg-color);
+    border-radius: 0.5em;
+    border: 2px solid var(--frontmatter-input-border-color);
+    padding: 0.3em 0.5em;
+}
+
+.pluto-frontmatter rbl-tag-input {
+    color: var(--black);
+}
+
+.pluto-frontmatter label {
+    font-weight: 500;
 }
 
 .pluto-frontmatter .deletefield {
-    align-self: baseline;
+    color: var(--export-color);
+    background-color: transparent;
+    border-width: 0;
+    align-self: stretch;
+    margin-left: -1em;
 }
 
 .pluto-frontmatter .addentry {
     grid-column: 1/3;
     margin-top: 0.5em;
-    background-color: transparent;
+}
+
+.pluto-frontmatter fieldset {
+    grid-column: 1/4;
 }
 
 .pluto-frontmatter .final {
@@ -3001,14 +3680,4 @@ pluto-cell.hooked_up pluto-output {
     margin-top: 2rem;
     justify-content: flex-end;
     gap: 0.5em;
-}
-
-pluto-logs-container > header {
-    font-family: "Roboto Mono", monospace;
-    font-size: 1.3rem;
-    padding: 0.2em;
-    padding-bottom: 0;
-    opacity: 0.6;
-    font-weight: 700;
-    /* background: #494949; */
 }

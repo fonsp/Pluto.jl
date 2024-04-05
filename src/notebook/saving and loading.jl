@@ -57,9 +57,20 @@ function save_notebook(io::IO, notebook::Notebook)
 
     cells_ordered = collect(topological_order(notebook))
     
+    # NOTE: the notebook topological is cached on every update_dependency! call
+    # ....  so it is possible that a cell was added/removed since this last update.
+    # ....  in this case, it will not contain that cell since it is build from its
+    # ....  store notebook topology. therefore, we compute an updated topological
+    # ....  order in this unlikely case.
+    if length(cells_ordered) != length(notebook.cells_dict)
+        cells = notebook.cells
+        updated_topo = updated_topology(notebook.topology, notebook, cells)
+        cells_ordered = collect(topological_order(updated_topo, cells))
+    end
+
     for c in cells_ordered
         println(io, _cell_id_delimiter, string(c.cell_id))
-        
+
         let metadata_toml = strip(sprint(TOML.print, get_metadata_no_default(c)))
             if metadata_toml != ""
                 for line in split(metadata_toml, "\n")
@@ -67,7 +78,7 @@ function save_notebook(io::IO, notebook::Notebook)
                 end
             end
         end
-        
+
         if must_be_commented_in_file(c)
             print(io, _disabled_prefix)
             print(io, replace(c.code, _cell_id_delimiter => "# "))
@@ -130,8 +141,10 @@ end
 function save_notebook(notebook::Notebook, path::String)
     # @warn "Saving to file!!" exception=(ErrorException(""), backtrace())
     notebook.last_save_time = time()
-    write_buffered(path) do io
-        save_notebook(io, notebook)
+    Status.report_business!(notebook.status_tree, :saving) do
+        write_buffered(path) do io
+            save_notebook(io, notebook)
+        end
     end
 end
 
@@ -146,7 +159,13 @@ function _notebook_metadata!(@nospecialize(io::IO))
     firstline = String(readline(io))::String
 
     if firstline != _notebook_header
-        error("File is not a Pluto.jl notebook")
+        error(
+            if occursin("<!DOCTYPE", firstline) || occursin("<html", firstline)
+                """File is an HTML file, not a notebook file. Open the file directly, and click the "Edit or run" button to get the notebook file."""
+            else
+                "File is not a Pluto.jl notebook."
+            end
+        )
     end
 
     file_VERSION_STR = readline(io)[3:end]
@@ -338,10 +357,13 @@ function load_notebook(path::String; disable_writing_notebook_files::Bool=false)
     loaded = load_notebook_nobackup(path)
     # Analyze cells so that the initial save is in topological order
     loaded.topology = updated_topology(loaded.topology, loaded, loaded.cells) |> static_resolve_topology
+    # We update cell dependency on skip_as_script and disabled to avoid removing block comments on the file. See https://github.com/fonsp/Pluto.jl/issues/2182
+    update_disabled_cells_dependency!(loaded)
+    update_skipped_cells_dependency!(loaded)
     update_dependency_cache!(loaded)
 
     disable_writing_notebook_files || save_notebook(loaded)
-    loaded.topology = NotebookTopology(; cell_order=ImmutableVector(loaded.cells))
+    loaded.topology = NotebookTopology{Cell}(; cell_order=ImmutableVector(loaded.cells))
 
     disable_writing_notebook_files || if only_versions_or_lineorder_differ(path, backup_path)
         rm(backup_path)

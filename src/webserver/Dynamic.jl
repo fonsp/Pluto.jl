@@ -1,6 +1,7 @@
 import UUIDs: uuid1
 
 import .PkgCompat
+import .Status
 
 "Will hold all 'response handlers': functions that respond to a WebSocket request from the client."
 const responses = Dict{Symbol,Function}()
@@ -98,10 +99,11 @@ Firebasey.use_triple_equals_for_arrays[] = true
 
 function notebook_to_js(notebook::Notebook)
     Dict{String,Any}(
+        "pluto_version" => PLUTO_VERSION_STR,
         "notebook_id" => notebook.notebook_id,
         "path" => notebook.path,
-        "in_temp_dir" => startswith(notebook.path, new_notebooks_directory()),
         "shortpath" => basename(notebook.path),
+        "in_temp_dir" => startswith(notebook.path, new_notebooks_directory()),
         "process_status" => notebook.process_status,
         "last_save_time" => notebook.last_save_time,
         "last_hot_reload_time" => notebook.last_hot_reload_time,
@@ -132,7 +134,7 @@ function notebook_to_js(notebook::Notebook)
                 "cell_id" => cell.cell_id,
                 "depends_on_disabled_cells" => cell.depends_on_disabled_cells,
                 "output" => FirebaseyUtils.ImmutableMarker(cell.output),
-                "published_object_keys" => keys(cell.published_objects),
+                "published_object_keys" => collect(keys(cell.published_objects)),
                 "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,
@@ -153,9 +155,10 @@ function notebook_to_js(notebook::Notebook)
             ctx = notebook.nbpkg_ctx
             Dict{String,Any}(
                 "enabled" => ctx !== nothing,
+                "waiting_for_permission" => notebook.process_status === ProcessStatus.waiting_for_permission,
+                "waiting_for_permission_but_probably_disabled" => notebook.process_status === ProcessStatus.waiting_for_permission && !use_plutopkg(notebook.topology),
                 "restart_recommended_msg" => notebook.nbpkg_restart_recommended_msg,
                 "restart_required_msg" => notebook.nbpkg_restart_required_msg,
-                # TODO: cache this
                 "installed_versions" => ctx === nothing ? Dict{String,String}() : notebook.nbpkg_installed_versions_cache,
                 "terminal_outputs" => notebook.nbpkg_terminal_outputs,
                 "install_time_ns" => notebook.nbpkg_install_time_ns,
@@ -163,6 +166,7 @@ function notebook_to_js(notebook::Notebook)
                 "instantiated" => notebook.nbpkg_ctx_instantiated,
             )
         end,
+        "status_tree" => Status.tojs(notebook.status_tree),
         "cell_execution_order" => cell_id.(collect(topological_order(notebook))),
     )
 end
@@ -171,30 +175,39 @@ end
 For each connected client, we keep a copy of their current state. This way we know exactly which updates to send when the server-side state changes.
 """
 const current_state_for_clients = WeakKeyDict{ClientSession,Any}()
+const current_state_for_clients_lock = ReentrantLock()
 
 """
 Update the local state of all clients connected to this notebook.
 """
 function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, skip_send::Bool=false)
-    notebook_dict = notebook_to_js(🙋.notebook)
-    for (_, client) in 🙋.session.connected_clients
-        if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == 🙋.notebook.notebook_id
-            current_dict = get(current_state_for_clients, client, :empty)
-            patches = Firebasey.diff(current_dict, notebook_dict)
-            patches_as_dicts::Array{Dict} = Firebasey._convert(Array{Dict}, patches)
-            current_state_for_clients[client] = deep_enough_copy(notebook_dict)
+    outbox = Set{Tuple{ClientSession,UpdateMessage}}()
+    
+    lock(current_state_for_clients_lock) do
+        notebook_dict = notebook_to_js(🙋.notebook)
+        for (_, client) in 🙋.session.connected_clients
+            if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == 🙋.notebook.notebook_id
+                current_dict = get(current_state_for_clients, client, :empty)
+                patches = Firebasey.diff(current_dict, notebook_dict)
+                patches_as_dicts = Firebasey._convert(Vector{Dict}, patches)
+                current_state_for_clients[client] = deep_enough_copy(notebook_dict)
 
-            # Make sure we do send a confirmation to the client who made the request, even without changes
-            is_response = 🙋.initiator !== nothing && client == 🙋.initiator.client
+                # Make sure we do send a confirmation to the client who made the request, even without changes
+                is_response = 🙋.initiator !== nothing && client == 🙋.initiator.client
 
-            if !skip_send && (!isempty(patches) || is_response)
-                response = Dict(
-                    :patches => patches_as_dicts,
-                    :response => is_response ? commentary : nothing
-                )
-                putclientupdates!(client, UpdateMessage(:notebook_diff, response, 🙋.notebook, nothing, 🙋.initiator))
+                if !skip_send && (!isempty(patches) || is_response)
+                    response = Dict(
+                        :patches => patches_as_dicts,
+                        :response => is_response ? commentary : nothing
+                    )
+                    push!(outbox, (client, UpdateMessage(:notebook_diff, response, 🙋.notebook, nothing, 🙋.initiator)))
+                end
             end
         end
+    end
+    
+    for (client, msg) in outbox
+        putclientupdates!(client, msg)
     end
     try_event_call(🙋.session, FileEditEvent(🙋.notebook))
 end
@@ -237,6 +250,18 @@ const effects_of_changed_state = Dict(
 
         @info "Process status set by client" newstatus
     end,
+    # "execution_allowed" => function(; request::ClientRequest, patch::Firebasey.ReplacePatch)
+    #     Firebasey.applypatch!(request.notebook, patch)
+    #     newstatus = patch.value
+
+    #     @info "execution_allowed set by client" newstatus
+    #     if newstatus
+    #         @info "lets run some cells!"
+    #         update_save_run!(request.session, request.notebook, notebook.cells; 
+    #             run_async=true, save=true
+    #         )
+    #     end
+    # end,
     "in_temp_dir" => function(; _...) no_changes end,
     "cell_inputs" => Dict(
         Wildcard() => function(cell_id, rest...; request::ClientRequest, patch::Firebasey.JSONPatch)
@@ -357,7 +382,7 @@ function trigger_resolver(anything, path, values=[])
 end
 function trigger_resolver(resolvers::Dict, path, values=[])
 	if isempty(path)
-		throw(BoundsError("resolver path ends at Dict with keys $(keys(resolver))"))
+		throw(BoundsError("resolver path ends at Dict with keys $(keys(resolvers))"))
 	end
 	
 	segment, rest... = path
@@ -366,7 +391,7 @@ function trigger_resolver(resolvers::Dict, path, values=[])
 	elseif haskey(resolvers, Wildcard())
 		trigger_resolver(resolvers[Wildcard()], rest, (values..., segment))
     else
-        throw(BoundsError("failed to match path $(path), possible keys $(keys(resolver))"))
+        throw(BoundsError("failed to match path $(path), possible keys $(keys(resolvers))"))
 	end
 end
 
@@ -376,6 +401,10 @@ end
 ###
 # MISC RESPONSES
 ###
+
+responses[:current_time] = function response_current_time(🙋::ClientRequest)
+    putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:current_time, Dict(:time => time()), nothing, nothing, 🙋.initiator))
+end
 
 responses[:connect] = function response_connect(🙋::ClientRequest)
     putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:👋, Dict(
@@ -420,10 +449,14 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
         putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:run_feedback, response, 🙋.notebook, nothing, 🙋.initiator))
     end
     
-    # save=true fixes the issue where "Submit all changes" or `Ctrl+S` has no effect.
+    wfp = 🙋.notebook.process_status == ProcessStatus.waiting_for_permission
+
     update_save_run!(🙋.session, 🙋.notebook, cells; 
         run_async=true, save=true, 
-        auto_solve_multiple_defs=true, on_auto_solve_multiple_defs
+        auto_solve_multiple_defs=true, on_auto_solve_multiple_defs,
+        # special case: just render md cells in "Safe preview" mode
+        prerender_text=wfp,
+        clear_not_prerenderable_cells=wfp,
     )
 end
 
@@ -459,8 +492,10 @@ responses[:restart_process] = function response_restart_process(🙋::ClientRequ
     
     if 🙋.notebook.process_status != ProcessStatus.waiting_to_restart
         🙋.notebook.process_status = ProcessStatus.waiting_to_restart
+        🙋.session.options.evaluation.run_notebook_on_load && _report_business_cells_planned!(🙋.notebook)
         send_notebook_changes!(🙋 |> without_initiator)
 
+        # TODO skip necessary?
         SessionActions.shutdown(🙋.session, 🙋.notebook; keep_in_session=true, async=true)
 
         🙋.notebook.process_status = ProcessStatus.starting
@@ -473,6 +508,8 @@ end
 
 responses[:reshow_cell] = function response_reshow_cell(🙋::ClientRequest)
     require_notebook(🙋)
+    @assert will_run_code(🙋.notebook)
+
     cell = let
         cell_id = UUID(🙋.body["cell_id"])
         🙋.notebook.cells_dict[cell_id]
@@ -484,9 +521,32 @@ responses[:reshow_cell] = function response_reshow_cell(🙋::ClientRequest)
         collect(keys(cell.published_objects)),
         (parse(PlutoRunner.ObjectID, 🙋.body["objectid"], base=16), convert(Int64, 🙋.body["dim"])),
     )
-    set_output!(cell, run, ExprAnalysisCache(🙋.notebook, cell); persist_js_state=true)
+    set_output!(cell, run, ExprAnalysisCache(🙋.notebook.topology.codes[cell]); persist_js_state=true)
     # send to all clients, why not
     send_notebook_changes!(🙋 |> without_initiator)
+end
+
+responses[:request_js_link_response] = function response_request_js_link_response(🙋::ClientRequest)
+    require_notebook(🙋)
+    @assert will_run_code(🙋.notebook)
+
+    Threads.@spawn try
+        result = WorkspaceManager.eval_fetch_in_workspace(
+            (🙋.session, 🙋.notebook), 
+            quote
+                PlutoRunner.evaluate_js_link(
+                    $(🙋.notebook.notebook_id),
+                    $(UUID(🙋.body["cell_id"])),
+                    $(🙋.body["link_id"]),
+                    $(🙋.body["input"]),
+                )
+            end
+        )
+        
+        putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🐤, result, nothing, nothing, 🙋.initiator))
+    catch ex
+        @error "Error in request_js_link_response" exception=(ex, stacktrace(catch_backtrace()))
+    end
 end
 
 responses[:nbpkg_available_versions] = function response_nbpkg_available_versions(🙋::ClientRequest)

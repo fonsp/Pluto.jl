@@ -189,7 +189,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             @test occursin("102", s)
             @test occursin("103", s)
             
-            WorkspaceManager.unmake_workspace((🍭, notebook))
+            cleanup(🍭, notebook)
             🍭.options.evaluation.workspace_use_distributed = false
         end
 
@@ -227,6 +227,21 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             @test notebook.cells[3] |> noerror
             @test notebook.cells[4] |> noerror
         end
+    end
+
+    @testset "embed_display" begin
+        🍭.options.evaluation.workspace_use_distributed = false
+        notebook = Notebook([
+            Cell("x = randn(10)"),
+            Cell(raw"md\"x = $(embed_display(x))\"")
+        ])
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test notebook.cells[1] |> noerror
+        @test notebook.cells[2] |> noerror
+
+        @test notebook.cells[2].output.body isa String
+        @test occursin("getPublishedObject", notebook.cells[2].output.body)
     end
 
     @testset "Table viewer" begin
@@ -307,7 +322,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
 
         # TODO: test lazy loading more rows/cols
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
         🍭.options.evaluation.workspace_use_distributed = false
     end
 

@@ -1,3 +1,4 @@
+import puppeteer from "puppeteer"
 import path from "path";
 import mkdirp from "mkdirp";
 import * as process from "process";
@@ -65,7 +66,7 @@ const with_connections_debug = (page, action) => {
 export const getTextContent = (page, selector) => {
   // https://developer.mozilla.org/en-US/docs/Web/API/Node/textContent#differences_from_innertext
   return page.evaluate(
-    (selector) => document.querySelector(selector).innerText,
+    (selector) => document.querySelector(selector)?.textContent,
     selector
   );
 };
@@ -126,18 +127,23 @@ export const waitForContentToChange = async (
   return getTextContent(page, selector);
 };
 
-export const waitForContentToBecome = async (page, selector, targetContent) => {
+export const waitForContentToBecome = async (/** @type {puppeteer.Page} */ page, /** @type {string} */ selector, /** @type {string} */ targetContent) => {
   await page.waitForSelector(selector, { visible: true });
-  await page.waitForFunction(
+  try{
+    await page.waitForFunction(
     (selector, targetContent) => {
       const element = document.querySelector(selector);
       // https://developer.mozilla.org/en-US/docs/Web/API/Node/textContent#differences_from_innertext
-      return element !== null && element.innerText === targetContent;
+      return element !== null && element.textContent === targetContent;
     },
     { polling: 100 },
     selector,
     targetContent
   );
+  } catch(e) {
+    console.error("Failed! Current content: ", JSON.stringify(await getTextContent(page, selector)), "Expected content: ", JSON.stringify(targetContent))
+    throw(e)
+  }
   return getTextContent(page, selector);
 };
 
@@ -187,6 +193,7 @@ const blocked_domains = ["cdn.jsdelivr.net", "unpkg.com", "cdn.skypack.dev", "es
 const hide_warning = url => url.includes("mathjax")
 
 export const createPage = async (browser) => {
+    /** @type {puppeteer.Page} */
   const page = await browser.newPage()
   
   failOnError(page);
@@ -198,7 +205,7 @@ export const createPage = async (browser) => {
     page.on("request", (request) => {
       if(blocked_domains.some(domain => request.url().includes(domain))) {
         if(!hide_warning(request.url()))
-          console.error(`Blocking request to ${request.url()}`)
+          console.info(`Blocking request to ${request.url()}`)
         request.abort();
       } else {
         request.continue();
@@ -209,7 +216,7 @@ export const createPage = async (browser) => {
   return page
 };
 
-let testname = () => expect.getState().currentTestName.replace(/ /g, "_");
+let testname = () => expect.getState()?.currentTestName?.replace(/[ \:]/g, "_") ?? "unnkown";
 
 export const lastElement = (arr) => arr[arr.length - 1];
 

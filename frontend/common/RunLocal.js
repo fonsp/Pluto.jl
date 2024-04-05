@@ -18,9 +18,11 @@ export const start_local = async ({ setStatePromise, connect, launch_params }) =
         if (launch_params.pluto_server_url == null || launch_params.notebookfile == null) throw Error("Invalid launch parameters for starting locally.")
 
         await setStatePromise(
-            immer((state) => {
-                state.backend_launch_phase = BackendLaunchPhase.created
+            immer((/** @type {import("../components/Editor.js").EditorState} */ state) => {
+                state.backend_launch_phase = BackendLaunchPhase.responded
                 state.disable_ui = false
+                // Clear the Status of the process that generated the HTML
+                state.notebook.status_tree = null
             })
         )
 
@@ -39,6 +41,7 @@ export const start_local = async ({ setStatePromise, connect, launch_params }) =
                 with_query_params(new URL("notebookupload", binder_session_url), {
                     name: new URLSearchParams(window.location.search).get("name"),
                     clear_frontmatter: "yesplease",
+                    execution_allowed: "yepperz",
                 })
             ),
             {
@@ -60,7 +63,7 @@ export const start_local = async ({ setStatePromise, connect, launch_params }) =
         window.history.replaceState({}, "", edit_url)
 
         await setStatePromise(
-            immer((state) => {
+            immer((/** @type {import("../components/Editor.js").EditorState} */ state) => {
                 state.notebook.notebook_id = new_notebook_id
                 state.backend_launch_phase = BackendLaunchPhase.notebook_running
             })

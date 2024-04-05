@@ -21,12 +21,13 @@ pluto-tree,
 pluto-tree-items {
     display: inline-flex;
     flex-direction: column;
-    align-items: baseline;
+    align-items: flex-start;
 }
 pluto-tree.collapsed,
 pluto-tree.collapsed pluto-tree,
 pluto-tree.collapsed pluto-tree-items {
     flex-direction: row;
+    align-items: baseline;
 }
 
 pluto-tree-items {
@@ -242,9 +243,20 @@ jlerror {
     font-size: 0.75rem;
     font-family: "Roboto Mono", monospace;
 }
+jlerror {
+    display: block;
+    padding: 1em;
+    background-color: var(--code-section-bg-color);
+    border: 3px solid var(--pkg-terminal-border-color);
+    border-radius: 0.6em;
+    margin: 1em 0;
+    overflow-wrap: break-word;
+}
 
 jlerror > header {
     color: var(--jlerror-header-color);
+    border-left: 3px solid var(--jlerror-header-color);
+    padding: 0.7rem;
 }
 jlerror > header > p {
     margin-block-end: 0.2em;
@@ -252,23 +264,119 @@ jlerror > header > p {
 jlerror > header > p:first-child {
     font-weight: bold;
 }
-jlerror > section > ol > li > mark {
+jlerror .stacktrace-header {
+    font-family: var(--system-ui-font-stack);
+}
+jlerror .stacktrace-header > secret-h1 {
+    font-size: 1.9rem;
+    font-weight: 700;
+}
+jlerror > section {
+    border-block-start: 3px dashed var(--pkg-terminal-border-color);
+    margin-block-start: 1rem;
+    padding-block-start: 1rem;
+}
+jlerror > section > ol {
+    line-height: 1.6;
+    /* transform: perspective(29rem) rotateX(-12.7deg); */
+    /* transform-origin: top; */
+    /* perspective-origin: top; */
+}
+jlerror > section > ol > li.from_this_notebook {
+    --bg: var(--jl-info-acccolor);
+    background: var(--bg);
+    outline: 3px solid var(--bg);
+    padding: 0.4em 0.2em;
+    border-radius: 0.6em;
+}
+jlerror > section .classical-frame > mark {
     background: var(--jlerror-mark-bg-color);
     border-radius: 6px;
     color: var(--jlerror-mark-color);
     font-family: var(--julia-mono-font-stack);
     font-variant-ligatures: none;
 }
-jlerror > section > ol > li > em > a {
+jlerror > section .classical-frame > em > a[href] {
     background: var(--jlerror-a-bg-color);
     border-radius: 4px;
     padding: 1px 7px;
     text-decoration: none;
     border-left: 3px solid var(--jlerror-a-border-left-color);
+    /* font-family: var(--system-ui-font-stack); */
 }
-jlerror > section > ol > li > span {
-    opacity: 0.8;
-    padding: 0px 1em;
+jlerror > section .classical-frame > em > a[href].remote-url {
+    filter: hue-rotate(160deg);
+}
+jlerror > section li.from_this_notebook:not(.from_this_cell) .classical-frame > em > a[href] {
+    filter: hue-rotate(50deg);
+}
+jlerror > section .classical-frame > span {
+    opacity: 0.4;
+    padding: 0px 0.2em;
+}
+
+jlerror li::marker {
+    background: red;
+    border: 3px solid red;
+    /* font-size: 0.7rem; */
+    font-weight: 900;
+    color: var(--pluto-logs-key-color);
+}
+
+jlerror li.from_this_notebook .classical-frame {
+    /* opacity: 0.4; */
+}
+
+jlerror li a.frame-line-preview {
+    display: block;
+    text-decoration: none;
+    border: 3px solid var(--cm-clickable-underline);
+    --br: 0.6em;
+    border-radius: var(--br);
+    --crop: -0.5em;
+}
+jlerror li .frame-line-preview pre:not(.asdfdsaf) {
+    background-color: var(--code-background);
+    padding: 0;
+    border-radius: var(--br);
+    overflow: hidden;
+    position: relative;
+    display: block;
+}
+
+jlerror li:not(.from_this_cell) .frame-line-preview pre::after {
+    content: "cell preview";
+    display: block;
+    position: absolute;
+    bottom: 0;
+    right: 1ch;
+    font-weight: 900;
+    opacity: 0.6;
+}
+
+jlerror li .frame-line-preview pre > code {
+    padding: 0;
+}
+jlerror li .frame-line-preview pre > code:not(:only-child).frame-line {
+    background: var(--cm-highlighted);
+}
+jlerror li .frame-line-preview pre > code:not(.frame-line) {
+    opacity: 0.7;
+}
+jlerror li .frame-line-preview pre > code::before {
+    content: var(--before-content);
+    color: var(--cm-line-numbers-color);
+    margin-right: 0.7em;
+    width: 2ch;
+    display: inline-block;
+    text-align: right;
+}
+
+jlerror li .frame-line-preview pre > code:first-of-type:not(.frame-line) {
+    margin-top: var(--crop);
+}
+jlerror li .frame-line-preview pre > code:last-of-type:not(.frame-line) {
+    margin-bottom: var(--crop);
 }
 
 table.pluto-table {
@@ -277,7 +385,19 @@ table.pluto-table {
 
 table.pluto-table td {
     max-width: 300px;
-    overflow: hidden;
+    overflow: auto;
+}
+
+@supports (-moz-appearance: none) {
+    table.pluto-table td {
+        max-width: unset;
+        overflow: visible;
+    }
+
+    table.pluto-table td > div {
+        max-width: 300px;
+        overflow: auto;
+    }
 }
 
 table.pluto-table .schema-types {
@@ -337,4 +457,21 @@ table.pluto-table .pluto-tree-more-td pluto-tree-more {
     left: 0;
     top: 2rem;
     max-width: 650px;
+}
+
+table.pluto-table tr.empty div {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    font-size: 1.5rem;
+    flex-flow: column nowrap;
+}
+table.pluto-table tr.empty small {
+    font-size: 0.5rem;
+}
+
+pluto-tree.collapsed p-v > pre {
+    max-height: 2em;
+    overflow-y: hidden;
 }

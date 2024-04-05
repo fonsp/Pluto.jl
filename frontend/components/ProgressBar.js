@@ -80,10 +80,7 @@ export const ProgressBar = ({ notebook, backend_launch_phase, status }) => {
                 }
             }
         }}
-        aria-valuenow=${100 * progress}
-        aria-valuemin="0"
-        aria-valuemax="100"
-        aria-valuetext=${title}
+        aria-hidden="true"
         title=${title}
     ></loading-bar>`
 }

@@ -1,6 +1,6 @@
 import { html, useRef, useState, useContext } from "../imports/Preact.js"
 
-import { OutputBody, PlutoImage, RawHTMLContainer } from "./CellOutput.js"
+import { OutputBody, PlutoImage } from "./CellOutput.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 
 // this is different from OutputBody because:
@@ -11,7 +11,7 @@ import { PlutoActionsContext } from "../common/PlutoContext.js"
 // We use a `<pre>${body}` instead of `<pre><code>${body}`, also for some CSS reasons that I forgot
 //
 // TODO: remove this, use OutputBody instead (maybe add a `wrap_in_div` option), and fix the CSS classes so that i all looks nice again
-export const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state }) => {
+export const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state, sanitize_html = true }) => {
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -24,10 +24,10 @@ export const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state }) => {
         case "text/plain":
             return html`<pre class="no-block">${body}</pre>`
         case "application/vnd.pluto.tree+object":
-            return html`<${TreeView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`
+            return html`<${TreeView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} sanitize_html=${sanitize_html} />`
             break
         default:
-            return OutputBody({ mime, body, cell_id, persist_js_state, last_run_timestamp: null })
+            return OutputBody({ mime, body, cell_id, persist_js_state, sanitize_html, last_run_timestamp: null })
             break
     }
 }
@@ -56,7 +56,7 @@ const actions_show_more = ({ pluto_actions, cell_id, node_ref, objectid, dim }) 
     actions.reshow_cell(cell_id ?? node_ref.current.closest("pluto-cell").id, objectid, dim)
 }
 
-export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
+export const TreeView = ({ mime, body, cell_id, persist_js_state, sanitize_html = true }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     const node_ref = useRef(/** @type {HTMLElement?} */ (null))
     const onclick = (e) => {
@@ -87,7 +87,8 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
         })
     }
 
-    const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${persist_js_state} />`
+    const mimepair_output = (pair) =>
+        html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${persist_js_state} sanitize_html=${sanitize_html} />`
     const more = html`<p-r><${More} on_click_more=${on_click_more} /></p-r>`
 
     let inner = null
@@ -132,6 +133,23 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
     return html`<pluto-tree class="collapsed ${body.type}" onclick=${onclick} ref=${node_ref}>${inner}</pluto-tree>`
 }
 
+const EmptyCols = ({ colspan = 999 }) => html`<thead>
+    <tr class="empty">
+        <td colspan=${colspan}>
+            <div>⌀ <small>(This table has no columns)</small></div>
+        </td>
+    </tr>
+</thead>`
+
+const EmptyRows = ({ colspan = 999 }) => html`<tr class="empty">
+    <td colspan=${colspan}>
+        <div>
+            <div>⌀</div>
+            <small>(This table has no rows)</small>
+        </div>
+    </td>
+</tr>`
+
 export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     const node_ref = useRef(null)
@@ -148,10 +166,11 @@ export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
             })
         }}
     />`
-
+    // More than the columns, not big enough to break Firefox (https://bugzilla.mozilla.org/show_bug.cgi?id=675417)
+    const maxcolspan = 3 + (body?.schema?.names?.length ?? 1)
     const thead =
-        body.schema == null
-            ? null
+        (body?.schema?.names?.length ?? 0) === 0
+            ? html`<${EmptyCols} colspan=${maxcolspan} />`
             : html`<thead>
                   <tr class="schema-names">
                       ${["", ...body.schema.names].map((x) => html`<th>${x === "more" ? more(2) : x}</th>`)}
@@ -160,16 +179,19 @@ export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
                       ${["", ...body.schema.types].map((x) => html`<th>${x === "more" ? null : x}</th>`)}
                   </tr>
               </thead>`
+
     const tbody = html`<tbody>
-        ${body.rows.map(
-            (row) =>
-                html`<tr>
-                    ${row === "more"
-                        ? html`<td class="pluto-tree-more-td" colspan="999">${more(1)}</td>`
-                        : html`<th>${row[0]}</th>
-                              ${row[1].map((x) => html`<td>${x === "more" ? null : mimepair_output(x)}</td>`)}`}
-                </tr>`
-        )}
+        ${(body.rows?.length ?? 0) !== 0
+            ? body.rows.map(
+                  (row) =>
+                      html`<tr>
+                          ${row === "more"
+                              ? html`<td class="pluto-tree-more-td" colspan=${maxcolspan}>${more(1)}</td>`
+                              : html`<th>${row[0]}</th>
+                                    ${row[1].map((x) => html`<td><div>${x === "more" ? null : mimepair_output(x)}</div></td>`)}`}
+                      </tr>`
+              )
+            : html`<${EmptyRows} colspan=${maxcolspan} />`}
     </tbody>`
 
     return html`<table class="pluto-table" ref=${node_ref}>
@@ -177,8 +199,9 @@ export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
     </table>`
 }
 
-export let DivElement = ({ cell_id, style, classname, children, persist_js_state = false }) => {
-    const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${persist_js_state} />`
+export let DivElement = ({ cell_id, style, classname, children, persist_js_state = false, sanitize_html = true }) => {
+    const mimepair_output = (pair) =>
+        html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${persist_js_state} sanitize_html=${sanitize_html} />`
 
     return html`<div style=${style} class=${classname}>${children.map(mimepair_output)}</div>`
 }

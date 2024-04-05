@@ -1,7 +1,6 @@
 *.jl.cov
 *.jl.*.cov
 *.jl.mem
-precompile.jl
 build
 Manifest.toml
 
@@ -17,3 +16,8 @@ frontend/dist
 .net
 net
 frontend/package-lock.json
+
+# PProf
+profile.pb.gz
+
+test/snapshots

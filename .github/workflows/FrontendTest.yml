@@ -19,23 +19,24 @@ on:
 jobs:
     frontend-test:
         runs-on: "ubuntu-latest"
+        timeout-minutes: 30
 
         steps:
             # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-            - uses: actions/checkout@v2
+            - uses: actions/checkout@v4
 
             # Makes thes `julia` command available
             - uses: julia-actions/setup-julia@v1
               with:
-                  version: "1.6"
+                  version: "1.6" # our lowest supported version
 
             - name: Install Pluto.jl packages
               run: |
                   julia --project=$GITHUB_WORKSPACE -e "using Pkg; Pkg.instantiate()"
 
-            - uses: actions/setup-node@v1
+            - uses: actions/setup-node@v4
               with:
-                  node-version: "12.x"
+                  node-version: "18.x"
 
             - name: Install Chrome dependencies
               run: |
@@ -62,24 +63,27 @@ jobs:
             - name: Run tests
               working-directory: ./test/frontend
               run: |
-                  julia -e "import Pkg; Pkg.add(path=\"$GITHUB_WORKSPACE\"); Pkg.instantiate(); import Pluto; Pluto.run(port=$PLUTO_PORT, require_secret_for_access=false)" & # Run Pluto.jl server in the background
+                julia --project=$GITHUB_WORKSPACE -e 'import Pluto
+                  # Run Pluto.jl server in the background
+                  options = Pluto.Configuration.from_flat_kwargs(; 
+                    port=parse(Int, ENV["PLUTO_PORT"]), 
+                    require_secret_for_access=false,
+                    workspace_use_distributed_stdlib=false,
+                  )
+                  🍭 = Pluto.ServerSession(; options)
+                  server = Pluto.run!(🍭)
 
-                  # Wait for Pluto to initialize
-                  TIMES_TRIED=0
-                  until [ $TIMES_TRIED -eq 60 ] || $(curl --output /dev/null --silent --fail "http://localhost:$PLUTO_PORT/"); do
-                      printf '.'
-                      TIMES_TRIED=$((TIMES_TRIED+1))
-                      sleep 1
-                  done
+                  run(`npm run test`)
+                  
+                  close(server)'
 
-                  npm run test
               env:
                   PLUTO_PORT: 1235
                   PLUTO_TEST_OFFLINE: ${{ github.ref_name == 'release' }}
                   PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
                   PUPPETEER_EXECUTABLE_PATH: "/usr/bin/google-chrome-stable"
 
-            - uses: actions/upload-artifact@v2
+            - uses: actions/upload-artifact@v4
               if: failure()
               with:
                   name: test-screenshot-artifacts

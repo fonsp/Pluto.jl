@@ -2,10 +2,20 @@ module PkgCompat
 
 export package_versions, package_completions
 
+import REPL
 import Pkg
 import Pkg.Types: VersionRange
 import RegistryInstances
 import ..Pluto
+
+
+
+
+@static if isdefined(Pkg,:REPLMode) && isdefined(Pkg.REPLMode,:complete_remote_package)
+    const REPLMode = Pkg.REPLMode
+else
+    const REPLMode = Base.get_extension(Pkg, :REPLExt)
+end
 
 # Should be in Base
 flatmap(args...) = vcat(map(args...)...)
@@ -60,23 +70,42 @@ else
 	Pkg.Types.Context
 end
 
-# 🐸 "Public API", but using PkgContext
-load_ctx(env_dir)::PkgContext = PkgContext(env=Pkg.Types.EnvCache(joinpath(env_dir, "Project.toml")))
+function PkgContext!(ctx::PkgContext; kwargs...)
+    for (k, v) in kwargs
+        setfield!(ctx, k, v)
+    end
+    ctx
+end
 
 # 🐸 "Public API", but using PkgContext
-create_empty_ctx()::PkgContext = load_ctx(mktempdir())
+load_ctx(env_dir)::PkgContext = PkgContext(;env=Pkg.Types.EnvCache(joinpath(env_dir, "Project.toml")))
+
+# 🐸 "Public API", but using PkgContext
+load_ctx!(ctx::PkgContext, env_dir)::PkgContext = PkgContext!(ctx; env=Pkg.Types.EnvCache(joinpath(env_dir, "Project.toml")))
+
+# 🐸 "Public API", but using PkgContext
+load_empty_ctx!(ctx) = @static if :io ∈ fieldnames(PkgContext)
+    PkgContext!(create_empty_ctx(); io=ctx.io)
+else
+    create_empty_ctx()
+end
+
+# 🐸 "Public API", but using PkgContext
+create_empty_ctx()::PkgContext = load_ctx!(PkgContext(), mktempdir())
 
 # ⚠️ Internal API with fallback
-function load_ctx(original::PkgContext)
-	new = load_ctx(env_dir(original))
-	
+function load_ctx!(original::PkgContext)
+	original_project = deepcopy(original.env.original_project)
+	original_manifest = deepcopy(original.env.original_manifest)
+	new = load_ctx!(original, env_dir(original))
+
 	try
-		new.env.original_project = original.env.original_project
-		new.env.original_manifest = original.env.original_manifest
+		new.env.original_project = original_project
+		new.env.original_manifest = original_manifest
 	catch e
 		@warn "Pkg compat: failed to set original_project" exception=(e,catch_backtrace())
 	end
-	
+
 	new
 end
 
@@ -137,6 +166,10 @@ function withio(f::Function, ctx::PkgContext, io::IO)
     end
 end
 
+# I'm a pirate harrr 🏴‍☠️
+@static if isdefined(Pkg, :can_fancyprint)
+	Pkg.can_fancyprint(io::IOContext{IOBuffer}) = get(io, :sneaky_enable_tty, false) === true
+end
 
 ###
 # REGISTRIES
@@ -148,13 +181,14 @@ _get_registries() = RegistryInstances.reachable_registries()
 
 # (✅ "Public" API using RegistryInstances)
 "The cached output value of `_get_registries`."
-const _parsed_registries = Ref(_get_registries())
+const _parsed_registries = Ref(RegistryInstances.RegistryInstance[])
 
 # (✅ "Public" API using RegistryInstances)
 "Re-parse the installed registries from disk."
 function refresh_registry_cache()
 	_parsed_registries[] = _get_registries()
 end
+
 
 # ⚠️✅ Internal API with fallback
 const _updated_registries_compat = @static if isdefined(Pkg, :UPDATED_REGISTRY_THIS_SESSION) && Pkg.UPDATED_REGISTRY_THIS_SESSION isa Ref{Bool}
@@ -208,13 +242,12 @@ end
 # Instantiate
 ###
 
-# ⚠️✅ Internal API with fallback
-function instantiate(ctx; update_registry::Bool)
-	@static if hasmethod(Pkg.instantiate, Tuple{}, (:update_registry,))
-		Pkg.instantiate(ctx; update_registry)
-	else
-		Pkg.instantiate(ctx)
-	end
+# ⚠️ Internal API
+function instantiate(ctx; update_registry::Bool, allow_autoprecomp::Bool)
+	Pkg.instantiate(ctx; update_registry, allow_autoprecomp)
+	# Not sure how to make a fallback:
+	# - hasmethod cannot test for kwargs because instantiate takes kwargs... that are passed on somewhere else
+	# - can't catch for a CallError because the error is weird
 end
 
 
@@ -236,13 +269,19 @@ _stdlibs() = try
 catch e
 	@warn "Pkg compat: failed to load standard libraries." exception=(e,catch_backtrace())
 
-	String["CRC32c", "Future", "Sockets", "MbedTLS_jll", "Random", "ArgTools", "libLLVM_jll", "GMP_jll", "Pkg", "Serialization", "LibSSH2_jll", "SHA", "OpenBLAS_jll", "REPL", "LibUV_jll", "nghttp2_jll", "Unicode", "Profile", "SparseArrays", "LazyArtifacts", "CompilerSupportLibraries_jll", "Base64", "Artifacts", "PCRE2_jll", "Printf", "p7zip_jll", "UUIDs", "Markdown", "TOML", "OpenLibm_jll", "Test", "MPFR_jll", "Mmap", "SuiteSparse", "LibGit2", "LinearAlgebra", "Logging", "NetworkOptions", "LibGit2_jll", "LibOSXUnwind_jll", "Dates", "LibUnwind_jll", "Libdl", "LibCURL_jll", "dSFMT_jll", "Distributed", "InteractiveUtils", "Downloads", "SharedArrays", "SuiteSparse_jll", "LibCURL", "Statistics", "Zlib_jll", "FileWatching", "DelimitedFiles", "Tar", "MozillaCACerts_jll"]
+	String["ArgTools", "Artifacts", "Base64", "CRC32c", "CompilerSupportLibraries_jll", "Dates", "DelimitedFiles", "Distributed", "Downloads", "FileWatching", "Future", "GMP_jll", "InteractiveUtils", "LLD_jll", "LLVMLibUnwind_jll", "LazyArtifacts", "LibCURL", "LibCURL_jll", "LibGit2", "LibGit2_jll", "LibOSXUnwind_jll", "LibSSH2_jll", "LibUV_jll", "LibUnwind_jll", "Libdl", "LinearAlgebra", "Logging", "MPFR_jll", "Markdown", "MbedTLS_jll", "Mmap", "MozillaCACerts_jll", "NetworkOptions", "OpenBLAS_jll", "OpenLibm_jll", "PCRE2_jll", "Pkg", "Printf", "Profile", "REPL", "Random", "SHA", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "SuiteSparse", "SuiteSparse_jll", "TOML", "Tar", "Test", "UUIDs", "Unicode", "Zlib_jll", "dSFMT_jll", "libLLVM_jll", "libblastrampoline_jll", "nghttp2_jll", "p7zip_jll"]
 end
 
 # ⚠️ Internal API with fallback
 is_stdlib(package_name::AbstractString) = package_name ∈ _stdlibs()
 
-global_ctx = PkgContext()
+
+
+# Initial fill of registry cache
+function    __init__()
+    refresh_registry_cache()
+    global global_ctx=PkgContext()
+end
 
 ###
 # Package names
@@ -260,10 +299,10 @@ end
 function _registered_package_completions(partial_name::AbstractString)::Vector{String}
 	# compat
 	try
-		@static if hasmethod(Pkg.REPLMode.complete_remote_package, (String,))
-			Pkg.REPLMode.complete_remote_package(partial_name)
+		@static if hasmethod(REPLMode.complete_remote_package, (String,))
+			REPLMode.complete_remote_package(partial_name)
 		else
-			Pkg.REPLMode.complete_remote_package(partial_name, 1, length(partial_name))[1]
+			REPLMode.complete_remote_package(partial_name, 1, length(partial_name))[1]
 		end
 	catch e
 		@warn "Pkg compat: failed to autocomplete packages" exception=(e,catch_backtrace())
@@ -351,7 +390,10 @@ function dependencies(ctx)
 			Pkg.dependencies(ctx.env)
 		end
 	catch e
-		if !occursin(r"expected.*exist.*manifest", sprint(showerror, e))
+		if !any(occursin(sprint(showerror, e)), (
+			r"expected.*exist.*manifest",
+			r"no method.*project_rel_path.*Nothing\)", # https://github.com/JuliaLang/Pkg.jl/issues/3404
+		))
 			@error """
 			Pkg error: you might need to use
 
@@ -404,7 +446,7 @@ project_key_order(key::String) =
     something(findfirst(x -> x == key, _project_key_order), length(_project_key_order) + 1)
 
 # ✅ Public API
-function _modify_compat(f!::Function, ctx::PkgContext)::PkgContext
+function _modify_compat!(f!::Function, ctx::PkgContext)::PkgContext
 	project_path = project_file(ctx)
 	
 	toml = if isfile(project_path)
@@ -422,7 +464,20 @@ function _modify_compat(f!::Function, ctx::PkgContext)::PkgContext
 		Pkg.TOML.print(io, toml; sorted=true, by=(key -> (project_key_order(key), key)))
 	end)
 	
-	return load_ctx(ctx)
+	return _update_project_hash!(load_ctx!(ctx))
+end
+
+# ✅ Internal API with fallback
+"Update the project hash in the manifest file (https://github.com/JuliaLang/Pkg.jl/pull/2815)"
+function _update_project_hash!(ctx::PkgContext)
+	VERSION >= v"1.8.0" && isfile(manifest_file(ctx)) && try
+		Pkg.Operations.record_project_hash(ctx.env)
+		Pkg.Types.write_manifest(ctx.env)
+	catch e
+		@info "Failed to update project hash." exception=(e,catch_backtrace())
+	end
+	
+	ctx
 end
 
 
@@ -432,8 +487,8 @@ Add any missing [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entr
 
 The automatic compat entry is: `"~" * string(installed_version)`.
 """
-function write_auto_compat_entries(ctx::PkgContext)::PkgContext
-	_modify_compat(ctx) do compat
+function write_auto_compat_entries!(ctx::PkgContext)::PkgContext
+	_modify_compat!(ctx) do compat
 		for p in keys(project(ctx).dependencies)
 			if !haskey(compat, p)
 				m_version = get_manifest_version(ctx, p)
@@ -450,9 +505,9 @@ end
 """
 Remove all [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries from the `Project.toml`.
 """
-function clear_compat_entries(ctx::PkgContext)::PkgContext
+function clear_compat_entries!(ctx::PkgContext)::PkgContext
 	if isfile(project_file(ctx))
-		_modify_compat(empty!, ctx)
+		_modify_compat!(empty!, ctx)
 	else
 		ctx
 	end
@@ -461,11 +516,11 @@ end
 
 # ✅ Public API
 """
-Remove any automatically-generated [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries from the `Project.toml`. This will undo the effects of [`write_auto_compat_entries`](@ref) but leave other (e.g. manual) compat entries intact. Return the new `PkgContext`.
+Remove any automatically-generated [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries from the `Project.toml`. This will undo the effects of [`write_auto_compat_entries!`](@ref) but leave other (e.g. manual) compat entries intact. Return the new `PkgContext`.
 """
-function clear_auto_compat_entries(ctx::PkgContext)::PkgContext
+function clear_auto_compat_entries!(ctx::PkgContext)::PkgContext
 	if isfile(project_file(ctx))
-		_modify_compat(ctx) do compat
+		_modify_compat!(ctx) do compat
 			for p in keys(compat)
 				m_version = get_manifest_version(ctx, p)
 				if m_version !== nothing && !is_stdlib(p)
@@ -484,9 +539,9 @@ end
 """
 Remove any [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries from the `Project.toml` for standard libraries. These entries are created when an old version of Julia uses a package that later became a standard library, like https://github.com/JuliaPackaging/Artifacts.jl. Return the new `PkgContext`.
 """
-function clear_stdlib_compat_entries(ctx::PkgContext)::PkgContext
+function clear_stdlib_compat_entries!(ctx::PkgContext)::PkgContext
 	if isfile(project_file(ctx))
-		_modify_compat(ctx) do compat
+		_modify_compat!(ctx) do compat
 			for p in keys(compat)
 				if is_stdlib(p)
 					@info "Removing compat entry for stdlib" p

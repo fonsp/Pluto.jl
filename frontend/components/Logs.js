@@ -2,8 +2,9 @@ import _ from "../imports/lodash.js"
 import { cl } from "../common/ClassTable.js"
 import { html, useState, useEffect, useLayoutEffect, useRef, useMemo } from "../imports/Preact.js"
 import { SimpleOutputBody } from "./TreeView.js"
-import { help_circle_icon, open_pluto_popup } from "./Popup.js"
+import { help_circle_icon } from "./Popup.js"
 import AnsiUp from "../imports/AnsiUp.js"
+import { open_pluto_popup } from "../common/open_pluto_popup.js"
 
 const LOGS_VISIBLE_START = 60
 const LOGS_VISIBLE_END = 20
@@ -20,7 +21,7 @@ const is_stdout_log = (log) => {
     return log.level == STDOUT_LOG_LEVEL
 }
 
-export const Logs = ({ logs, line_heights, set_cm_highlighted_line }) => {
+export const Logs = ({ logs, line_heights, set_cm_highlighted_line, sanitize_html }) => {
     const progress_logs = logs.filter(is_progress_log)
     const latest_progress_logs = progress_logs.reduce((progress_logs, log) => ({ ...progress_logs, [log.id]: log }), {})
     const stdout_log = logs.reduce((stdout_log, log) => {
@@ -63,6 +64,7 @@ export const Logs = ({ logs, line_heights, set_cm_highlighted_line }) => {
         level=${log.level}
         msg=${log.msg}
         kwargs=${log.kwargs}
+        sanitize_html=${sanitize_html}
         key=${i}
         y=${is_hidden_input ? 0 : log.line - 1}
     /> `
@@ -97,9 +99,7 @@ const Progress = ({ progress }) => {
     return html`<pluto-progress-bar ref=${bar_ref}>${Math.ceil(100 * progress)}%</pluto-progress-bar>`
 }
 
-const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${"adsf"} mime=${pair[1]} body=${pair[0]} persist_js_state=${false} />`
-
-const Dot = ({ set_cm_highlighted_line, msg, kwargs, y, level }) => {
+const Dot = ({ set_cm_highlighted_line, msg, kwargs, y, level, sanitize_html }) => {
     const is_progress = is_progress_log({ level, kwargs })
     const is_stdout = level === STDOUT_LOG_LEVEL
     let progress = null
@@ -118,6 +118,13 @@ const Dot = ({ set_cm_highlighted_line, msg, kwargs, y, level }) => {
     if (is_stdout) {
         level = "Stdout"
     }
+
+    const mimepair_output = (pair) =>
+        html`<${SimpleOutputBody} cell_id=${"adsf"} mime=${pair[1]} body=${pair[0]} persist_js_state=${false} sanitize_html=${sanitize_html} />`
+
+    useEffect(() => {
+        return () => set_cm_highlighted_line(null)
+    }, [])
 
     return html`<pluto-log-dot-positioner
         class=${cl({ [level]: true })}

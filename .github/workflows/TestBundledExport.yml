@@ -1,0 +1,31 @@
+name: Test bundled HTML export
+
+on:
+    push:
+        branches:
+            - release
+
+jobs:
+    frontend-test:
+        runs-on: "ubuntu-latest"
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: julia-actions/setup-julia@v1
+              with:
+                  version: "1.8"
+
+            - name: Generate exports and check for warnings
+              run: |
+                julia --project=$GITHUB_WORKSPACE -e '
+                  import Pkg
+                  Pkg.activate(".")
+                  Pkg.instantiate()
+                  import Pluto
+                  using Test
+                  
+                  @test_logs Pluto.generate_html()
+                  @test_logs Pluto.generate_index_html()
+                  '
+

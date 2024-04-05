@@ -32,20 +32,20 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                julia-version: [1]
+                julia-version: ["1"]
                 os: [ubuntu-latest]
                 package:
                     - { user: JuliaPluto, repo: PlutoSliderServer.jl }
 
         steps:
-            - uses: actions/checkout@v2
+            - uses: actions/checkout@v4
             - uses: julia-actions/setup-julia@v1
               with:
                   version: ${{ matrix.julia-version }}
                   arch: x64
             - uses: julia-actions/julia-buildpkg@v1
             - name: Clone Downstream
-              uses: actions/checkout@v2
+              uses: actions/checkout@v4
               with:
                   repository: ${{ matrix.package.user }}/${{ matrix.package.repo }}
                   path: downstream

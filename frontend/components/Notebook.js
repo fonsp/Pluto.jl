@@ -1,5 +1,5 @@
 import { PlutoActionsContext } from "../common/PlutoContext.js"
-import { html, useContext, useEffect, useMemo, useRef, useState } from "../imports/Preact.js"
+import { html, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "../imports/Preact.js"
 
 import { Cell } from "./Cell.js"
 import { nbpkg_fingerprint } from "./PkgStatusMark.js"
@@ -35,10 +35,13 @@ let CellMemo = ({
     force_hide_input,
     is_process_ready,
     disable_input,
+    sanitize_html = true,
+    process_waiting_for_permission,
     show_logs,
     set_show_logs,
     nbpkg,
     global_definition_locations,
+    is_first_cell,
 }) => {
     const { body, last_run_timestamp, mime, persist_js_state, rootassignee } = cell_result?.output || {}
     const { queued, running, runtime, errored, depends_on_disabled_cells, logs, depends_on_skipped_cells } = cell_result || {}
@@ -56,8 +59,11 @@ let CellMemo = ({
                 focus_after_creation=${focus_after_creation}
                 is_process_ready=${is_process_ready}
                 disable_input=${disable_input}
+                process_waiting_for_permission=${process_waiting_for_permission}
+                sanitize_html=${sanitize_html}
                 nbpkg=${nbpkg}
                 global_definition_locations=${global_definition_locations}
+                is_first_cell=${is_first_cell}
             />
         `
     }, [
@@ -87,8 +93,11 @@ let CellMemo = ({
         focus_after_creation,
         is_process_ready,
         disable_input,
+        process_waiting_for_permission,
+        sanitize_html,
         ...nbpkg_fingerprint(nbpkg),
         global_definition_locations,
+        is_first_cell,
     ])
 }
 
@@ -105,7 +114,7 @@ const render_cell_outputs_minimum = 20
 /**
  * @param {{
  *  notebook: import("./Editor.js").NotebookData,
- *  cell_inputs_local: { [uuid: string]: import("./Editor.js").CellInputData },
+ *  cell_inputs_local: { [uuid: string]: { code: String } },
  *  on_update_doc_query: any,
  *  on_cell_input: any,
  *  on_focus_neighbor: any,
@@ -114,9 +123,21 @@ const render_cell_outputs_minimum = 20
  *  is_initializing: boolean,
  *  is_process_ready: boolean,
  *  disable_input: boolean,
+ *  process_waiting_for_permission: boolean,
+ *  sanitize_html: boolean,
  * }} props
  * */
-export const Notebook = ({ notebook, cell_inputs_local, last_created_cell, selected_cells, is_initializing, is_process_ready, disable_input }) => {
+export const Notebook = ({
+    notebook,
+    cell_inputs_local,
+    last_created_cell,
+    selected_cells,
+    is_initializing,
+    is_process_ready,
+    disable_input,
+    process_waiting_for_permission,
+    sanitize_html = true,
+}) => {
     let pluto_actions = useContext(PlutoActionsContext)
 
     // Add new cell when the last cell gets deleted
@@ -138,6 +159,7 @@ export const Notebook = ({ notebook, cell_inputs_local, last_created_cell, selec
             }, render_cell_outputs_delay(notebook.cell_order.length))
         }
     }, [cell_outputs_delayed, notebook.cell_order.length])
+
     let global_definition_locations = useMemo(
         () =>
             Object.fromEntries(
@@ -145,6 +167,20 @@ export const Notebook = ({ notebook, cell_inputs_local, last_created_cell, selec
             ),
         [notebook?.cell_dependencies]
     )
+
+    useLayoutEffect(() => {
+        let oldhash = window.location.hash
+        if (oldhash.length > 1) {
+            let go = () => {
+                window.location.hash = "#"
+                window.location.hash = oldhash
+            }
+            go()
+            // Scrolling there might trigger some codemirrors to render and change height, so let's do it again.
+            requestIdleCallback(go)
+        }
+    }, [cell_outputs_delayed])
+
     return html`
         <pluto-notebook id=${notebook.notebook_id}>
             ${notebook.cell_order
@@ -170,12 +206,15 @@ export const Notebook = ({ notebook, cell_inputs_local, last_created_cell, selec
                         force_hide_input=${false}
                         is_process_ready=${is_process_ready}
                         disable_input=${disable_input}
+                        process_waiting_for_permission=${process_waiting_for_permission}
+                        sanitize_html=${sanitize_html}
                         nbpkg=${notebook.nbpkg}
                         global_definition_locations=${global_definition_locations}
+                        is_first_cell=${i === 0}
                     />`
                 )}
             ${cell_outputs_delayed && notebook.cell_order.length >= render_cell_outputs_minimum
-                ? html`<div style="font-family: system-ui; font-style: italic; text-align: center; padding: 5rem 1rem;">Loading...</div>`
+                ? html`<div style="font-family: system-ui; font-style: italic; text-align: center; padding: 5rem 1rem;">Loading more cells...</div>`
                 : null}
         </pluto-notebook>
     `

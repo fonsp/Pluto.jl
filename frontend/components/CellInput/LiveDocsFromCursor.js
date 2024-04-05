@@ -133,6 +133,15 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                         // We're inside a `... = ...` inside the struct
                     } else if (parents.includes("TypedExpression") && parents.indexOf("TypedExpression") < index_of_struct_in_parents) {
                         // We're inside a `x::X` inside the struct
+                    } else if (parents.includes("SubtypedExpression") && parents.indexOf("SubtypedExpression") < index_of_struct_in_parents) {
+                        // We're inside `Real` in `struct MyNumber<:Real`
+                        while (parent?.name !== "SubtypedExpression") {
+                            parent = parent.parent
+                        }
+                        const type_node = parent.lastChild
+                        if (type_node.from <= cursor.from && type_node.to >= cursor.to) {
+                            return state.doc.sliceString(type_node.from, type_node.to)
+                        }
                     } else if (cursor.name === "struct" || cursor.name === "mutable") {
                         cursor.parent()
                         cursor.firstChild()
@@ -235,7 +244,7 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                 if (
                     cursor.name === "Identifier" &&
                     parent.name === "ArgumentList" &&
-                    (parent.parent.name === "FunctionAssignmentExpression" || parent.parent.name === "FunctionDefinition")
+                    (parent.parent.parent.name === "FunctionAssignmentExpression" || parent.parent.name === "FunctionDefinition")
                 ) {
                     continue
                 }
@@ -287,7 +296,6 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
 
                 if (VALID_DOCS_TYPES.includes(cursor.name) || keywords_that_have_docs_and_are_cool.includes(cursor.name)) {
                     if (!is_docs_searchable(cursor)) {
-                        console.log("NOT DOCS SEARCHABLE")
                         return undefined
                     }
 
