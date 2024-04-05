@@ -421,7 +421,7 @@ export const CellInput = ({
         }, [on_change])
     )
 
-    useLayoutEffect(() => {
+    useLayoutEffect(function cellinput_setup_codemirror() {
         if (dom_node_ref.current == null) return
 
         const keyMapSubmit = (/** @type {EditorView} */ cm) => {
