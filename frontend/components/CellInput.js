@@ -367,6 +367,7 @@ export const CellInput = ({
     cm_forced_focus,
     set_cm_forced_focus,
     show_input,
+    skip_static_fake = false,
     on_submit,
     on_delete,
     on_add_after,
@@ -421,13 +422,9 @@ export const CellInput = ({
         }, [on_change])
     )
 
-    const [show_static_fake, set_show_static_fake] = useState(true)
+    const [show_static_fake_state, set_show_static_fake] = useState(!skip_static_fake)
 
-    // useEffect(() => {
-    //     setTimeout(() => {
-    //         set_show_static_fake(false)
-    //     }, Math.random() * 6000)
-    // }, [])
+    const show_static_fake = cm_forced_focus != null || skip_static_fake ? false : show_static_fake_state
 
     useLayoutEffect(() => {
         if (!show_static_fake) return
@@ -948,7 +945,7 @@ export const CellInput = ({
 
     return html`
         <pluto-input ref=${dom_node_ref} class="CodeMirror" translate=${false}>
-            ${show_static_fake ? html`<${StaticCodeMirrorFaker} value=${remote_code} />` : null}
+            ${show_static_fake ? (show_input ? html`<${StaticCodeMirrorFaker} value=${remote_code} />` : null) : null}
             <${InputContextMenu}
                 on_delete=${on_delete}
                 cell_id=${cell_id}
