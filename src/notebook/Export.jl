@@ -76,9 +76,9 @@ inserted_html(original_contents::AbstractString;
     """
 )
 
-function preload_statefile_html(statefile_js::AbstractString)
+function prefetch_statefile_html(statefile_js::AbstractString)
     if length(statefile_js) < 300 && startswith(statefile_js, '"') && endswith(statefile_js, '"') && !startswith(statefile_js, "\"data:")
-        """\n<link rel="preload" href=$(statefile_js)>\n"""
+        """\n<link rel="prefetch" href=$(statefile_js)>\n"""
     else
         ""
     end
@@ -110,7 +110,7 @@ function generate_html(;
     length(statefile_js) > 32000000 && @error "Statefile embedded in HTML is very large. The file can be opened with Chrome and Safari, but probably not with Firefox. If you are using PlutoSliderServer to generate this file, then we recommend the setting `baked_statefile=false`. If you are not using PlutoSliderServer, then consider reducing the size of figures and output in the notebook." length(statefile_js)
     
     parameters = """
-    $(preload_statefile_html(statefile_js))
+    $(prefetch_statefile_html(statefile_js))
     <script data-pluto-file="launch-parameters">
     window.pluto_notebook_id = $(notebook_id_js);
     window.pluto_isolated_cell_ids = $(isolated_cell_ids_js);
