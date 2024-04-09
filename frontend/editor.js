@@ -185,6 +185,7 @@ class PlutoEditorComponent extends HTMLElement {
         const new_launch_params = Object.fromEntries(Object.entries(launch_params).map(([k, v]) => [k, from_attribute(this, k) ?? v]))
         console.log("Launch parameters: ", new_launch_params)
 
+        document.querySelector(".delete-me-when-live")?.remove()
         render(html`<${EditorLoader} launch_params=${new_launch_params} />`, this)
     }
 }
