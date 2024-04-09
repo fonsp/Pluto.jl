@@ -1117,7 +1117,7 @@ const StaticCodeMirrorFaker = ({ value }) => {
     const lines = value.split("\n").map((line, i) => html`<div class="awesome-wrapping-plugin-the-line cm-line" style="--indented: 0px;">${line}</div>`)
 
     return html`
-        <div class="cm-editor ͼ1 ͼ2 ͼ4 ͼ4z">
+        <div class="cm-editor ͼ1 ͼ2 ͼ4 ͼ4z cm-ssr-fake">
             <div tabindex="-1" class="cm-scroller">
                 <div class="cm-gutters" aria-hidden="true">
                     <div class="cm-gutter cm-lineNumbers"></div>
