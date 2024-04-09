@@ -430,15 +430,26 @@ export const CellInput = ({
         if (!show_static_fake) return
         let node = dom_node_ref.current
         if (node == null) return
-        let observer = new IntersectionObserver((e) => {
+        let observer
+
+        const show = () => {
+            set_show_static_fake(false)
+            observer.disconnect()
+            window.removeEventListener("beforeprint", show)
+        }
+
+        observer = new IntersectionObserver((e) => {
             if (e.some((e) => e.isIntersecting)) {
-                set_show_static_fake(false)
-                observer.disconnect()
+                show()
             }
         })
 
         observer.observe(node)
-        return () => observer.disconnect()
+        window.addEventListener("beforeprint", show)
+        return () => {
+            observer.disconnect()
+            window.removeEventListener("beforeprint", show)
+        }
     }, [])
 
     useLayoutEffect(() => {
