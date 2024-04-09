@@ -56,12 +56,15 @@ end
 
 const _insertion_meta = """<meta name="pluto-insertion-spot-meta">"""
 const _insertion_parameters = """<meta name="pluto-insertion-spot-parameters">"""
+const _insertion_preload = """<meta name="pluto-insertion-spot-preload">"""
 
 
 inserted_html(original_contents::AbstractString; 
     meta::AbstractString="",
     parameters::AbstractString="",
+    preload::AbstractString="",
 ) = replace_at_least_once(
+    replace_at_least_once(
     replace_at_least_once(original_contents, 
         _insertion_meta => 
         """
@@ -74,6 +77,12 @@ inserted_html(original_contents::AbstractString;
     $(parameters)
     $(_insertion_parameters)
     """
+),
+_insertion_preload => 
+"""
+$(preload)
+$(_insertion_preload)
+"""
 )
 
 function prefetch_statefile_html(statefile_js::AbstractString)
@@ -110,7 +119,6 @@ function generate_html(;
     length(statefile_js) > 32000000 && @error "Statefile embedded in HTML is very large. The file can be opened with Chrome and Safari, but probably not with Firefox. If you are using PlutoSliderServer to generate this file, then we recommend the setting `baked_statefile=false`. If you are not using PlutoSliderServer, then consider reducing the size of figures and output in the notebook." length(statefile_js)
     
     parameters = """
-    $(prefetch_statefile_html(statefile_js))
     <script data-pluto-file="launch-parameters">
     window.pluto_notebook_id = $(notebook_id_js);
     window.pluto_isolated_cell_ids = $(isolated_cell_ids_js);
@@ -123,7 +131,9 @@ function generate_html(;
     </script>
     """
     
-    inserted_html(cdnified; meta=header_html, parameters)
+    preload = prefetch_statefile_html(statefile_js)
+    
+    inserted_html(cdnified; meta=header_html, parameters, preload)
 end
 
 function replace_at_least_once(s, pair)
@@ -249,12 +259,13 @@ function generate_index_html(;
     """
     
     parameters = """
-    $(prefetch_statefile_html(featured_sources_js))
     <script data-pluto-file="launch-parameters">
     window.pluto_featured_direct_html_links = $(featured_direct_html_links ? "true" : "false");
     window.pluto_featured_sources = $(featured_sources_js);
     </script>
     """
     
-    inserted_html(cdnified; meta, parameters)
+    preload = prefetch_statefile_html(featured_sources_js)
+    
+    inserted_html(cdnified; meta, parameters, preload)
 end
