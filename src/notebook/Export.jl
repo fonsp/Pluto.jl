@@ -249,6 +249,7 @@ function generate_index_html(;
     """
     
     parameters = """
+    $(prefetch_statefile_html(featured_sources_js))
     <script data-pluto-file="launch-parameters">
     window.pluto_featured_direct_html_links = $(featured_direct_html_links ? "true" : "false");
     window.pluto_featured_sources = $(featured_sources_js);
