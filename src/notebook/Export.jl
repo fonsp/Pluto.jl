@@ -78,7 +78,7 @@ inserted_html(original_contents::AbstractString;
 
 function prefetch_statefile_html(statefile_js::AbstractString)
     if length(statefile_js) < 300 && startswith(statefile_js, '"') && endswith(statefile_js, '"') && !startswith(statefile_js, "\"data:")
-        """\n<link rel="prefetch" href=$(statefile_js)>\n"""
+        """\n<link rel="preload" as="fetch" href=$(statefile_js) crossorigin>\n"""
     else
         ""
     end
