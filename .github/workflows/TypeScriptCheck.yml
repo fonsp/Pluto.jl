@@ -20,13 +20,13 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
-          node-version: "18.x"
+          node-version: "21.x"
 
-      - run: npm install typescript@5.0.4 -g
+      - run: npm install typescript@5.4.3 -g
       
       - run: npm install
         working-directory: frontend

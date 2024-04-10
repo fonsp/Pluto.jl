@@ -145,6 +145,7 @@ const first_true_key = (obj) => {
  * @typedef StatusEntryData
  * @type {{
  *   name: string,
+ *   success?: boolean,
  *   started_at: number?,
  *   finished_at: number?,
  *   timing?: "remote" | "local",
@@ -662,6 +663,19 @@ export class Editor extends Component {
                     false
                 )
             },
+            request_js_link_response: (cell_id, link_id, input) => {
+                return this.client
+                    .send(
+                        "request_js_link_response",
+                        {
+                            cell_id,
+                            link_id,
+                            input,
+                        },
+                        { notebook_id: this.state.notebook.notebook_id }
+                    )
+                    .then((r) => r.message)
+            },
             /** This actions avoids pushing selected cells all the way down, which is too heavy to handle! */
             get_selected_cells: (cell_id, /** @type {boolean} */ allow_other_selected_cells) =>
                 allow_other_selected_cells ? this.state.selected_cells : [cell_id],
@@ -1089,6 +1103,9 @@ patch: ${JSON.stringify(
                     ])
                 } finally {
                     this.pending_local_updates--
+                    // this property is used to tell our frontend tests that the updates are done
+                    //@ts-ignore
+                    document.body._update_is_ongoing = this.pending_local_updates > 0
                 }
             })
             last_update_notebook_task = new_task.catch(console.error)
@@ -1303,10 +1320,14 @@ patch: ${JSON.stringify(
             if (!in_textarea_or_input()) {
                 const serialized = this.serialize_selected()
                 if (serialized) {
-                    navigator.clipboard.writeText(serialized).catch((err) => {
-                        console.error("Error copying cells", e, err)
-                        alert(`Error copying cells: ${err}`)
-                    })
+                    e.preventDefault()
+                    // wait one frame to get transient user activation
+                    requestAnimationFrame(() =>
+                        navigator.clipboard.writeText(serialized).catch((err) => {
+                            console.error("Error copying cells", e, err, navigator.userActivation)
+                            alert(`Error copying cells: ${err?.message ?? err}`)
+                        })
+                    )
                 }
             }
         })
@@ -1400,10 +1421,6 @@ patch: ${JSON.stringify(
         if (old_state?.notebook?.shortpath !== new_state.notebook.shortpath) {
             document.title = "🎈 " + new_state.notebook.shortpath + " — Pluto.jl"
         }
-
-        // this property is used to tell our frontend tests that the updates are done
-        //@ts-ignore
-        document.body._update_is_ongoing = this.pending_local_updates > 0
 
         this.send_queued_bond_changes()
 

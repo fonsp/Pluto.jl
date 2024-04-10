@@ -1,7 +1,7 @@
 import { cl } from "../common/ClassTable.js"
 import { html, useEffect, useRef, useState } from "../imports/Preact.js"
 
-export const DiscreteProgressBar = ({ total, done, busy }) => {
+export const DiscreteProgressBar = ({ total, done, busy, failed_indices }) => {
     total = Math.max(1, total)
 
     return html`
@@ -18,6 +18,7 @@ export const DiscreteProgressBar = ({ total, done, busy }) => {
                 return html`<div
                     class=${cl({
                         done: i < done,
+                        failed: failed_indices.includes(i),
                         busy: i >= done && i < done + busy,
                     })}
                 ></div>`

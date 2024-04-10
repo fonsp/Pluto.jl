@@ -74,7 +74,6 @@ main {
     padding-bottom: 4rem;
     padding-left: 25px;
     padding-right: 6px;
-    align-content: center;
     width: 100%;
 }
 
@@ -1373,7 +1372,6 @@ pluto-input .cm-editor {
     border-bottom-right-radius: 4px;
     border: 1px solid var(--normal-cell-color);
     border-left: none;
-    transition: border-color 0.15s ease-in-out;
 
     /* Make sure that scrolling an editor into view gives some breathing room */
     scroll-margin-block: 20vh;
@@ -1542,7 +1540,6 @@ body:not(.___) pluto-cell.code_folded > pluto-trafficlight {
 @media screen and (any-pointer: fine) {
     body:not(.disable_ui) pluto-cell:hover > pluto-trafficlight {
         background: var(--normal-cell-color);
-        transition: background 0.05s ease-in;
     }
 }
 
@@ -1762,11 +1759,13 @@ pluto-input > .input_context_menu ul {
 
 pluto-input {
     position: relative;
+    display: block;
 }
 pluto-input > div.input_context_menu {
     left: 100%;
     top: -8px;
     position: absolute;
+    z-index: 1400;
 }
 @media screen and (min-width: 921px) {
     pluto-input > div.input_context_menu {
@@ -1774,9 +1773,6 @@ pluto-input > div.input_context_menu {
     }
 }
 @media screen and (max-width: 920px) {
-    pluto-input > div.input_context_menu {
-        z-index: 1400;
-    }
     pluto-input > div.input_context_menu {
         right: 0px;
         left: unset;
@@ -2646,6 +2642,9 @@ pl-status.busy {
 pl-status.finished {
     --status-color: var(--process-finished);
 }
+pl-status.failed {
+    --status-color: var(--process-failed);
+}
 
 pl-status.can_open {
     cursor: auto;
@@ -2746,6 +2745,9 @@ pl-status .status-time {
 }
 .discrete-progress-bar > div.busy {
     background: var(--process-busy);
+}
+.discrete-progress-bar > div.failed {
+    background: var(--process-failed);
 }
 
 .discrete-progress-bar.mid {
@@ -3026,7 +3028,6 @@ pluto-log-dot-positioner {
     --accent-color: var(--pluto-logs-info-accent-color);
     --icon-image: unset;
     background: var(--bg-color);
-    color: var(--accent-color);
     margin: 2px;
     border-radius: 6px;
     /* border: 2px solid var(--accent-color); */
@@ -3036,8 +3037,8 @@ pluto-log-dot-positioner {
     background-size: 200% 100%;
 }
 
-pluto-log-dot-positioner:last-child {
-    /* border-bottom: none; */
+pluto-log-dot > pre {
+    color: var(--accent-color);
 }
 
 pluto-log-truncated {
@@ -3490,6 +3491,22 @@ pluto-cell.errored .cm-editor .cm-lineNumbers .cm-gutterElement::after {
     color: var(--cm-string-color);
 }
 
+.cm-completionIcon-completion_property::before {
+    color: var(--cm-property-color);
+}
+
+.cm-completionIcon-completion_keyword::before {
+    color: var(--cm-keyword-color);
+}
+
+li.completion_keyword_argument .cm-completionLabel {
+    font-style: italic;
+    font-weight: bold;
+}
+.cm-completionIcon-completion_keyword_argument::before {
+    color: var(--cm-number-color);
+}
+
 .cm-completionIcon-c_Any::before,
 pluto-output > assignee,
 pluto-popup code.auto_disabled_variable {
@@ -3499,6 +3516,9 @@ pluto-popup code.auto_disabled_variable {
 
 .cm-completionIcon-c_Function::before {
     color: var(--cm-function-color);
+}
+.cm-completionIcon-c_Macro::before {
+    color: var(--cm-macro-color);
 }
 
 .cm-completionIcon-c_Array::before {

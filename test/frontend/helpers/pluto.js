@@ -134,23 +134,51 @@ export const restartProcess = async (page) => {
     await page.waitForSelector(`#process-status-tab-button.something_is_happening`)
 }
 
+/**
+ * @param {Page} page
+ * @param {boolean} iWantBusiness
+ */
 const waitForPlutoBusy = async (page, iWantBusiness, options) => {
     await page.waitForTimeout(1)
-    await page.waitForFunction(
-        (iWantBusiness) => {
-            let quiet = //@ts-ignore
-                (document?.body?._update_is_ongoing ?? false) === false &&
-                //@ts-ignore
-                (document?.body?._js_init_set?.size ?? 0) === 0 &&
-                document?.body?.classList?.contains("loading") === false &&
-                document?.querySelector(`#process-status-tab-button.something_is_happening`) == null &&
-                document?.querySelector(`pluto-cell.running, pluto-cell.queued, pluto-cell.internal_test_queued`) == null
+    try {
+        await page.waitForFunction(
+            (iWantBusiness) => {
+                const quiet_vals = [
+                    // @ts-ignore
+                    document?.body?._update_is_ongoing,
+                    // @ts-ignore
+                    document?.body?._js_init_set?.size,
+                    document?.body?.classList?.contains("loading"),
+                    document?.querySelector(`#process-status-tab-button.something_is_happening`)?.id,
+                    document?.querySelector(`pluto-cell.running, pluto-cell.queued, pluto-cell.internal_test_queued`)?.id,
+                ]
 
-            return iWantBusiness ? !quiet : quiet
-        },
-        options,
-        iWantBusiness
-    )
+                let quiet =
+                    (quiet_vals[0] ?? false) === false &&
+                    (quiet_vals[1] ?? 0) === 0 &&
+                    quiet_vals[2] === false &&
+                    quiet_vals[3] == null &&
+                    quiet_vals[4] == null
+
+                window["quiet_vals"] = quiet_vals
+
+                return iWantBusiness ? !quiet : quiet
+            },
+            options,
+            iWantBusiness
+        )
+    } catch (e) {
+        console.error(
+            "waitForPlutoBusy failed\n",
+            JSON.parse(
+                await page.evaluate(() => {
+                    return JSON.stringify(window["quiet_vals"])
+                })
+            )
+        )
+
+        throw e
+    }
     await page.waitForTimeout(1)
 }
 
@@ -187,9 +215,27 @@ export const waitForNoUpdateOngoing = async (page, options = {}) => {
     return await page.waitForFunction(
         () =>
             //@ts-ignore
-            document.body?._update_is_ongoing === false,
+            (document.body?._update_is_ongoing ?? false) === false,
         options
     )
+}
+
+export const getLogSelector = (cellId) => `pluto-cell[id="${cellId}"] pluto-logs`
+
+export const getLogs = async (page, cellid) => {
+    return await page.evaluate((sel) => {
+        const logs = document.querySelector(sel)
+        return Array.from(logs.children).map((el) => ({
+            class: el.className.trim(),
+            description: el.querySelector("pluto-log-dot > pre").textContent,
+            kwargs: Object.fromEntries(
+                Array.from(el.querySelectorAll("pluto-log-dot-kwarg")).map((x) => [
+                    x.querySelector("pluto-key").textContent,
+                    x.querySelector("pluto-value").textContent,
+                ])
+            ),
+        }))
+    }, getLogSelector(cellid))
 }
 
 /**

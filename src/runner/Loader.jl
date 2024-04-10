@@ -31,7 +31,7 @@ begin
         try
             Pkg.develop([Pkg.PackageSpec(; path)]; io=devnull)
         catch
-            # if it failed, do it again without suppressing io
+            @warn "Something went wrong while initializing the notebook boot environment... Trying again and showing you the output."
             Pkg.develop([Pkg.PackageSpec(; path)])
         end
 
@@ -39,7 +39,7 @@ begin
         try
             Pkg.resolve(; io=devnull) # supress IO
         catch
-            # if it failed, do it again without suppressing io
+            @warn "Something went wrong while initializing the notebook boot environment... Trying again and showing you the output."
             try
                 Pkg.resolve()
             catch e

@@ -94,6 +94,6 @@ import Malt
         update_run!(🍭, notebook, notebook.cells[5])
         @test noerror(notebook.cells[5])
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
     end
 end

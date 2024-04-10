@@ -26,7 +26,7 @@ import InteractiveUtils
 using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
 import Base64
-import FuzzyCompletions: Completion, BslashCompletion, ModuleCompletion, PropertyCompletion, FieldCompletion, PathCompletion, DictCompletion, completions, completion_text, score
+import FuzzyCompletions: FuzzyCompletions, Completion, BslashCompletion, ModuleCompletion, PropertyCompletion, FieldCompletion, PathCompletion, DictCompletion, completion_text, score
 import Base: show, istextmime
 import UUIDs: UUID, uuid4
 import Dates: DateTime
@@ -283,14 +283,9 @@ function try_macroexpand(mod::Module, notebook_id::UUID, cell_id::UUID, expr; ca
         Expr(:block, expr)
     end
 
-    logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
-    if logger.workspace_count < moduleworkspace_count[]
-        logger = pluto_cell_loggers[cell_id] = PlutoCellLogger(notebook_id, cell_id)
-    end
+    capture_logger = CaptureLogger(nothing, get_cell_logger(notebook_id, cell_id), Dict[])
 
-    capture_logger = CaptureLogger(nothing, logger, Dict[])
-
-    expanded_expr, elapsed_ns = with_logger_and_io_to_logs(capture_logger; capture_stdout, stdio_loglevel=stdout_log_level) do
+    expanded_expr, elapsed_ns = with_logger_and_io_to_logs(capture_logger; capture_stdout) do
         elapsed_ns = time_ns()
         expanded_expr = macroexpand(mod, expr_not_toplevel)::Expr
         elapsed_ns = time_ns() - elapsed_ns
@@ -531,16 +526,16 @@ function run_expression(
     old_currently_running_cell_id = currently_running_cell_id[]
     currently_running_cell_id[] = cell_id
 
-    logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
-    if logger.workspace_count < moduleworkspace_count[]
-        logger = pluto_cell_loggers[cell_id] = PlutoCellLogger(notebook_id, cell_id)
-    end
+    logger = get_cell_logger(notebook_id, cell_id)
 
     # reset published objects
     cell_published_objects[cell_id] = Dict{String,Any}()
 
     # reset registered bonds
     cell_registered_bond_names[cell_id] = Set{Symbol}()
+
+    # reset JS links
+    unregister_js_link(cell_id)
 
     # If the cell contains macro calls, we want those macro calls to preserve their identity,
     # so we macroexpand this earlier (during expression explorer stuff), and then we find it here.
@@ -593,7 +588,7 @@ function run_expression(
         throw("Expression still contains macro calls!!")
     end
 
-    result, runtime = with_logger_and_io_to_logs(logger; capture_stdout, stdio_loglevel=stdout_log_level) do # about 200ns + 3ms overhead
+    result, runtime = with_logger_and_io_to_logs(logger; capture_stdout) do # about 200ns + 3ms overhead
         if function_wrapped_info === nothing
             toplevel_expr = Expr(:toplevel, expr)
             wrapped = timed_expr(toplevel_expr)
@@ -691,6 +686,7 @@ function move_vars(
     methods_to_delete::Set{Tuple{UUID,Tuple{Vararg{Symbol}}}},
     module_imports_to_move::Set{Expr},
     cells_to_macro_invalidate::Set{UUID},
+    cells_to_js_link_invalidate::Set{UUID},
     keep_registered::Set{Symbol},
 )
     old_workspace = getfield(Main, old_workspace_name)
@@ -701,7 +697,8 @@ function move_vars(
     for cell_id in cells_to_macro_invalidate
         delete!(cell_expanded_exprs, cell_id)
     end
-
+    foreach(unregister_js_link, cells_to_js_link_invalidate)
+    
     # TODO: delete
     Core.eval(new_workspace, :(import ..($(old_workspace_name))))
 
@@ -803,35 +800,40 @@ function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
     methods_table = typeof(f).name.mt
     deleted_sigs = Set{Type}()
     Base.visit(methods_table) do method # iterates through all methods of `f`, including overridden ones
-        if isfromcell(method, cell_id) && getfield(method, deleted_world) == alive_world_val
+        if isfromcell(method, cell_id) && method.deleted_world == alive_world_val
             Base.delete_method(method)
             delete_method_doc(method)
             push!(deleted_sigs, method.sig)
         end
     end
 
-    # if `f` is an extension to an external function, and we defined a method that overrides a method, for example,
-    # we define `Base.isodd(n::Integer) = rand(Bool)`, which overrides the existing method `Base.isodd(n::Integer)`
-    # calling `Base.delete_method` on this method won't bring back the old method, because our new method still exists in the method table, and it has a world age which is newer than the original. (our method has a deleted_world value set, which disables it)
-    #
-    # To solve this, we iterate again, and _re-enable any methods that were hidden in this way_, by adding them again to the method table with an even newer `primary_world`.
-    if !isempty(deleted_sigs)
-        to_insert = Method[]
-        Base.visit(methods_table) do method
-            if !isfromcell(method, cell_id) && method.sig ∈ deleted_sigs
-                push!(to_insert, method)
+    
+    if VERSION < v"1.12.0-0"
+        # not necessary in Julia after https://github.com/JuliaLang/julia/pull/53415 💛
+            
+        # if `f` is an extension to an external function, and we defined a method that overrides a method, for example,
+        # we define `Base.isodd(n::Integer) = rand(Bool)`, which overrides the existing method `Base.isodd(n::Integer)`
+        # calling `Base.delete_method` on this method won't bring back the old method, because our new method still exists in the method table, and it has a world age which is newer than the original. (our method has a deleted_world value set, which disables it)
+        #
+        # To solve this, we iterate again, and _re-enable any methods that were hidden in this way_, by adding them again to the method table with an even newer `primary_world`.
+        if !isempty(deleted_sigs)
+            to_insert = Method[]
+            Base.visit(methods_table) do method
+                if !isfromcell(method, cell_id) && method.sig ∈ deleted_sigs
+                    push!(to_insert, method)
+                end
             end
-        end
-        # separate loop to avoid visiting the recently added method
-        for method in Iterators.reverse(to_insert)
-            if VERSION >= v"1.11.0-0"
-                @atomic method.primary_world = one(typeof(alive_world_val)) # `1` will tell Julia to increment the world counter and set it as this function's world
-                @atomic method.deleted_world = alive_world_val # set the `deleted_world` property back to the 'alive' value (for Julia v1.6 and up)
-            else
-                method.primary_world = one(typeof(alive_world_val))
-                method.deleted_world = alive_world_val
+            # separate loop to avoid visiting the recently added method
+            for method in Iterators.reverse(to_insert)
+                if VERSION >= v"1.11.0-0"
+                    @atomic method.primary_world = one(typeof(alive_world_val)) # `1` will tell Julia to increment the world counter and set it as this function's world
+                    @atomic method.deleted_world = alive_world_val # set the `deleted_world` property back to the 'alive' value (for Julia v1.6 and up)
+                else
+                    method.primary_world = one(typeof(alive_world_val))
+                    method.deleted_world = alive_world_val
+                end
+                ccall(:jl_method_table_insert, Cvoid, (Any, Any, Ptr{Cvoid}), methods_table, method, C_NULL) # i dont like doing this either!
             end
-            ccall(:jl_method_table_insert, Cvoid, (Any, Any, Ptr{Cvoid}), methods_table, method, C_NULL) # i dont like doing this either!
         end
     end
     return !isempty(methods(f).ms)
@@ -859,10 +861,7 @@ function try_delete_toplevel_methods(workspace::Module, (cell_id, name_parts)::T
     end
 end
 
-# these deal with some inconsistencies in Julia's internal (undocumented!) variable names
-const primary_world = filter(in(fieldnames(Method)), [:primary_world, :min_world]) |> first # Julia v1.3 and v1.0 resp.
-const deleted_world = filter(in(fieldnames(Method)), [:deleted_world, :max_world]) |> first # Julia v1.3 and v1.0 resp.
-const alive_world_val = getfield(methods(Base.sqrt).ms[1], deleted_world) # typemax(UInt) in Julia v1.3, Int(-1) in Julia 1.0
+const alive_world_val = methods(Base.sqrt).ms[1].deleted_world # typemax(UInt) in Julia v1.3, Int(-1) in Julia 1.0
 
 
 
@@ -929,8 +928,7 @@ function formatted_result_of(
     errored = ans isa CapturedException
 
     output_formatted = if (!ends_with_semicolon || errored)
-        logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
-        with_logger_and_io_to_logs(logger; capture_stdout, stdio_loglevel=stdout_log_level) do
+        with_logger_and_io_to_logs(get_cell_logger(notebook_id, cell_id); capture_stdout) do
             format_output(ans; context=IOContext(
             default_iocontext, 
             :extra_items=>extra_items, 
@@ -1002,6 +1000,7 @@ const default_iocontext = IOContext(devnull,
     :is_pluto => true, 
     :pluto_supported_integration_features => supported_integration_features,
     :pluto_published_to_js => (io, x) -> core_published_to_js(io, x),
+    :pluto_with_js_link => (io, callback, on_cancellation) -> core_with_js_link(io, callback, on_cancellation),
 )
 
 const default_stdout_iocontext = IOContext(devnull, 
@@ -1350,7 +1349,7 @@ end
 function show_richest_withreturned(context::IOContext, @nospecialize(args))
     buffer = IOBuffer(; sizehint=0)
     val = show_richest(IOContext(buffer, context), args)
-    return (resize!(buffer.data, buffer.size), val)
+    return (take!(buffer), val)
 end
 
 "Super important thing don't change."
@@ -1757,6 +1756,9 @@ const integrations = Integration[
                 if isdefined(AbstractPlutoDingetjes.Display, :published_to_js)
                     supported!(AbstractPlutoDingetjes.Display.published_to_js)
                 end
+                if isdefined(AbstractPlutoDingetjes.Display, :with_js_link)
+                    supported!(AbstractPlutoDingetjes.Display.with_js_link)
+                end
             end
 
         end,
@@ -1926,22 +1928,22 @@ function basic_completion_priority((s, description, exported, from_notebook))
 	end
 end
 
-completed_object_description(x::Function) = "Function"
-completed_object_description(x::Number) = "Number"
-completed_object_description(x::AbstractString) = "String"
-completed_object_description(x::Module) = "Module"
-completed_object_description(x::AbstractArray) = "Array"
-completed_object_description(x::Any) = "Any"
+completion_value_type_inner(x::Function) = :Function
+completion_value_type_inner(x::Number) = :Number
+completion_value_type_inner(x::AbstractString) = :String
+completion_value_type_inner(x::Module) = :Module
+completion_value_type_inner(x::AbstractArray) = :Array
+completion_value_type_inner(x::Any) = :Any
 
-completion_description(c::ModuleCompletion) = try
-    completed_object_description(getfield(c.parent, Symbol(c.mod)))
+completion_value_type(c::ModuleCompletion) = try
+    completion_value_type_inner(getfield(c.parent, Symbol(c.mod)))::Symbol
 catch
-    nothing
+    :unknown
 end
-completion_description(::Completion) = nothing
+completion_value_type(::Completion) = :unknown
 
-completion_detail(::Completion) = nothing
-completion_detail(completion::BslashCompletion) =
+completion_special_symbol_value(::Completion) = nothing
+completion_special_symbol_value(completion::BslashCompletion) =
     haskey(REPL.REPLCompletions.latex_symbols, completion.bslash) ?
         REPL.REPLCompletions.latex_symbols[completion.bslash] :
     haskey(REPL.REPLCompletions.emoji_symbols, completion.bslash) ?
@@ -1983,12 +1985,15 @@ function is_pluto_controlled(m::Module)
 end
 
 function completions_exported(cs::Vector{<:Completion})
-    completed_modules = (c.parent for c in cs if c isa ModuleCompletion)
-    completed_modules_exports = Dict(m => string.(names(m, all=is_pluto_workspace(m), imported=true)) for m in completed_modules)
+    completed_modules = Set{Module}(c.parent for c in cs if c isa ModuleCompletion)
+    completed_modules_exports = Dict(
+		m => Set(names(m, all=is_pluto_workspace(m), imported=true))
+		for m in completed_modules
+	)
 
     map(cs) do c
         if c isa ModuleCompletion
-            c.mod ∈ completed_modules_exports[c.parent]
+            Symbol(c.mod) ∈ completed_modules_exports[c.parent]
         else
             true
         end
@@ -2002,38 +2007,56 @@ completion_from_notebook(c::ModuleCompletion) =
     !startswith(c.mod, "#")
 completion_from_notebook(c::Completion) = false
 
-only_special_completion_types(::PathCompletion) = :path
-only_special_completion_types(::DictCompletion) = :dict
-only_special_completion_types(::Completion) = nothing
+completion_type(::FuzzyCompletions.PathCompletion) = :path
+completion_type(::FuzzyCompletions.DictCompletion) = :dict
+completion_type(::FuzzyCompletions.MethodCompletion) = :method
+completion_type(::FuzzyCompletions.ModuleCompletion) = :module
+completion_type(::FuzzyCompletions.BslashCompletion) = :bslash
+completion_type(::FuzzyCompletions.FieldCompletion) = :field
+completion_type(::FuzzyCompletions.KeywordArgumentCompletion) = :keyword_argument
+completion_type(::FuzzyCompletions.KeywordCompletion) = :keyword
+completion_type(::FuzzyCompletions.PropertyCompletion) = :property
+completion_type(::FuzzyCompletions.Text) = :text
+
+completion_type(::Completion) = :unknown
 
 "You say Linear, I say Algebra!"
 function completion_fetcher(query, pos, workspace::Module)
-    results, loc, found = completions(query, pos, workspace)
-    if endswith(query, '.')
+    results, loc, found = FuzzyCompletions.completions(
+        query, pos, workspace;
+        enable_questionmark_methods=false,
+        enable_expanduser=false,
+        enable_path=false,
+        enable_methods=false,
+        enable_packages=false,
+    )
+    partial = query[1:pos]
+    if endswith(partial, '.')
         filter!(is_dot_completion, results)
         # we are autocompleting a module, and we want to see its fields alphabetically
         sort!(results; by=(r -> completion_text(r)))
-    elseif endswith(query, '/')
+    elseif endswith(partial, '/')
         filter!(is_path_completion, results)
         sort!(results; by=(r -> completion_text(r)))
-    elseif endswith(query, '[')
+    elseif endswith(partial, '[')
         filter!(is_dict_completion, results)
         sort!(results; by=(r -> completion_text(r)))
     else
         isenough(x) = x ≥ 0
-        filter!(isenough ∘ score, results) # too many candiates otherwise
+        filter!(r -> is_kwarg_completion(r) || isenough(score(r)) && !is_path_completion(r), results) # too many candiates otherwise
     end
 
     exported = completions_exported(results)
-    smooshed_together = [
-        (completion_text(result),
-         completion_description(result),
-         rexported,
-         completion_from_notebook(result),
-         only_special_completion_types(result),
-         completion_detail(result))
-        for (result, rexported) in zip(results, exported)
-    ]
+    smooshed_together = map(zip(results, exported)) do (result, rexported)
+        (
+            completion_text(result)::String,
+            completion_value_type(result)::Symbol,
+            rexported::Bool,
+            completion_from_notebook(result)::Bool,
+            completion_type(result)::Symbol,
+            completion_special_symbol_value(result),
+        )
+    end
 
     p = if endswith(query, '.')
         sortperm(smooshed_together; alg=MergeSort, by=basic_completion_priority)
@@ -2050,11 +2073,14 @@ end
 is_dot_completion(::Union{ModuleCompletion,PropertyCompletion,FieldCompletion}) = true
 is_dot_completion(::Completion)                                                 = false
 
-is_path_completion(::Union{PathCompletion}) = true
-is_path_completion(::Completion)            = false
+is_path_completion(::PathCompletion) = true
+is_path_completion(::Completion)     = false
 
-is_dict_completion(::Union{DictCompletion}) = true
-is_dict_completion(::Completion)            = false
+is_dict_completion(::DictCompletion) = true
+is_dict_completion(::Completion)     = false
+
+is_kwarg_completion(::FuzzyCompletions.KeywordArgumentCompletion) = true
+is_kwarg_completion(::Completion)                                 = false
 
 
 """
@@ -2181,7 +2207,7 @@ function improve_docs!(doc_md::Markdown.MD, query::Symbol, binding::Docs.Binding
 
         perm = sortperm(suggestions_scores; rev=true)
         permute!(suggestions, perm)
-        links = map(s -> Suggestion(s, symbol), @view(suggestions[begin:min(end,DOC_SUGGESTION_LIMIT)]))
+        links = map(s -> Suggestion(string(s), symbol), Iterators.take(suggestions, DOC_SUGGESTION_LIMIT))
 
         if length(links) > 0
             push!(doc_md.content,
@@ -2540,6 +2566,73 @@ function Base.show(io::IO, m::MIME"text/html", e::DivElement)
     Base.show(io, m, embed_display(e))
 end
 
+
+###
+# JS LINK
+###
+
+struct JSLink
+    callback::Function
+    on_cancellation::Union{Nothing,Function}
+    cancelled_ref::Ref{Bool}
+end
+
+const cell_js_links = Dict{UUID,Dict{String,JSLink}}()
+
+function core_with_js_link(io, callback, on_cancellation)
+    
+    _cell_id = get(io, :pluto_cell_id, currently_running_cell_id[])::UUID
+    
+    link_id = String(rand('a':'z', 16))
+    
+    links = get!(() -> Dict{String,JSLink}(), cell_js_links, _cell_id)
+    links[link_id] = JSLink(callback, on_cancellation, Ref(false))
+    
+    write(io, "/* See the documentation for AbstractPlutoDingetjes.Display.with_js_link */ _internal_getJSLinkResponse(\"$(_cell_id)\", \"$(link_id)\")")
+end
+
+function unregister_js_link(cell_id::UUID)
+    # cancel old links
+    old_links = get!(() -> Dict{String,JSLink}(), cell_js_links, cell_id)
+    for (name, link) in old_links
+        link.cancelled_ref[] = true
+    end
+    for (name, link) in old_links
+        c = link.on_cancellation
+        c === nothing || c()
+    end
+
+    # clear
+    cell_js_links[cell_id] = Dict{String,JSLink}()
+end
+
+function evaluate_js_link(notebook_id::UUID, cell_id::UUID, link_id::String, input::Any)
+    links = get(() -> Dict{String,JSLink}(), cell_js_links, cell_id)
+    link = get(links, link_id, nothing)
+    
+    with_logger_and_io_to_logs(get_cell_logger(notebook_id, cell_id); capture_stdout=false) do
+        if link === nothing
+            @warn "🚨 AbstractPlutoDingetjes: JS link not found." link_id
+            
+            (false, "link not found")
+        elseif link.cancelled_ref[]
+            @warn "🚨 AbstractPlutoDingetjes: JS link has already been invalidated." link_id
+            
+            (false, "link has been invalidated")
+        else
+            try
+                result = link.callback(input)
+                assertpackable(result)
+                
+                (true, result)
+            catch ex
+                @error "🚨 AbstractPlutoDingetjes.Display.with_js_link: Exception while evaluating Julia callback." input exception=(ex, catch_backtrace())
+                (false, "exception in Julia callback:\n\n$(ex)")
+            end
+        end
+    end
+end
+
 ###
 # LOGGING
 ###
@@ -2580,6 +2673,14 @@ end
 
 const pluto_cell_loggers = Dict{UUID,PlutoCellLogger}() # One logger per cell
 const pluto_log_channels = Dict{UUID,Channel{Any}}() # One channel per notebook
+
+function get_cell_logger(notebook_id, cell_id)
+    logger = get!(() -> PlutoCellLogger(notebook_id, cell_id), pluto_cell_loggers, cell_id)
+    if logger.workspace_count < moduleworkspace_count[]
+        logger = pluto_cell_loggers[cell_id] = PlutoCellLogger(notebook_id, cell_id)
+    end
+    logger
+end
 
 function Logging.shouldlog(logger::PlutoCellLogger, level, _module, _...)
     # Accept logs
@@ -2743,7 +2844,7 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     result
 end
 
-function with_logger_and_io_to_logs(f, logger; capture_stdout=true, stdio_loglevel=Logging.LogLevel(1))
+function with_logger_and_io_to_logs(f, logger; capture_stdout=true, stdio_loglevel=stdout_log_level)
     Logging.with_logger(logger) do
         with_io_to_logs(f; enabled=capture_stdout, loglevel=stdio_loglevel)
     end

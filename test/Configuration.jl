@@ -59,7 +59,7 @@ end
 @testset "Authentication" begin
     basic_nb_path = Pluto.project_relative_path("sample", "Basic.jl")
 
-    port = 1238
+    port = 23832
     options = Pluto.Configuration.from_flat_kwargs(; port, launch_browser=false, workspace_use_distributed=false)
     🍭 = Pluto.ServerSession(; options)
     host = 🍭.options.server.host
@@ -107,15 +107,15 @@ end
     end
     
 
-    nb = SessionActions.open(🍭, basic_nb_path; as_sample=true)
+    notebook = SessionActions.open(🍭, basic_nb_path; as_sample=true)
 
     simple_routes = [
         ("", "GET"),
-        ("edit?id=$(nb.notebook_id)", "GET"),
+        ("edit?id=$(notebook.notebook_id)", "GET"),
         ("editor.html", "GET"),
-        ("notebookfile?id=$(nb.notebook_id)", "GET"),
-        ("notebookexport?id=$(nb.notebook_id)", "GET"),
-        ("statefile?id=$(nb.notebook_id)", "GET"),
+        ("notebookfile?id=$(notebook.notebook_id)", "GET"),
+        ("notebookexport?id=$(notebook.notebook_id)", "GET"),
+        ("statefile?id=$(notebook.notebook_id)", "GET"),
     ]
 
     function tempcopy(x)
@@ -209,15 +209,15 @@ end
         @test shares_secret(r) # see reasoning in of https://github.com/fonsp/Pluto.jl/commit/20515dd46678a49ca90e042fcfa3eab1e5c8e162
         
         new_ids = collect(keys(🍭.notebooks))
-        nb = 🍭.notebooks[only(setdiff(new_ids, old_ids))]
+        notebook = 🍭.notebooks[only(setdiff(new_ids, old_ids))]
 
         if any(x -> occursin(x, suffix), ["new", "execution_allowed", "sample/Basic.jl"])
-            @test Pluto.will_run_code(nb)
-            @test Pluto.will_run_pkg(nb)
+            @test Pluto.will_run_code(notebook)
+            @test Pluto.will_run_pkg(notebook)
         else
-            @test !Pluto.will_run_code(nb)
-            @test !Pluto.will_run_pkg(nb)
-            @test nb.process_status === Pluto.ProcessStatus.waiting_for_permission
+            @test !Pluto.will_run_code(notebook)
+            @test !Pluto.will_run_pkg(notebook)
+            @test notebook.process_status === Pluto.ProcessStatus.waiting_for_permission
         end
     end
 
@@ -232,18 +232,18 @@ end
         PlutoRunner.is_mime_enabled(m::MIME"application/vnd.pluto.tree+object") = false
     """
 
-    nb = Pluto.Notebook([
+    notebook = Pluto.Notebook([
         Pluto.Cell("x = [1, 2]")
         Pluto.Cell("struct Foo; x; end")
         Pluto.Cell("Foo(x)")
     ])
 
-    Pluto.update_run!(🍭, nb, nb.cells)
-    @test nb.cells[1].output.body == repr(MIME"text/plain"(), [1,2])
-    @test nb.cells[1].output.mime isa MIME"text/plain"
-    @test nb.cells[3].output.mime isa MIME"text/plain"
+    Pluto.update_run!(🍭, notebook, notebook.cells)
+    @test notebook.cells[1].output.body == repr(MIME"text/plain"(), [1,2])
+    @test notebook.cells[1].output.mime isa MIME"text/plain"
+    @test notebook.cells[3].output.mime isa MIME"text/plain"
 
-    Pluto.WorkspaceManager.unmake_workspace((🍭, nb))
+    cleanup(🍭, notebook)
 end
 
 end

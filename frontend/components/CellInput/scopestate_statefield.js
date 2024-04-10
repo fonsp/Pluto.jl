@@ -563,13 +563,13 @@ export let explore_variable_usage = (
                 // Don't ask me why, but currently `do (x, y)` is parsed as `DoClauseArguments(ArgumentList(x, y))`
                 // while an actual argumentslist, `do x, y` is parsed as `DoClauseArguments(BareTupleExpression(x, y))`
                 let do_args_actually = do_args.firstChild
-                if (do_args_actually.name === "Identifier") {
+                if (do_args_actually?.name === "Identifier") {
                     inner_scope = scopestate_add_definition(inner_scope, doc, do_args_actually)
-                } else if (do_args_actually.name === "ArgumentList") {
+                } else if (do_args_actually?.name === "ArgumentList") {
                     for (let child of child_nodes(do_args_actually)) {
                         inner_scope = explorer_function_definition_argument(child, doc, inner_scope)
                     }
-                } else if (do_args_actually.name === "BareTupleExpression") {
+                } else if (do_args_actually?.name === "BareTupleExpression") {
                     for (let child of child_nodes(do_args_actually)) {
                         inner_scope = explorer_function_definition_argument(child, doc, inner_scope)
                     }

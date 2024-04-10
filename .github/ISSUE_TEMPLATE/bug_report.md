@@ -15,7 +15,7 @@ Thank you for reporting an issue about Pluto! Let's get it fixed!
 3. 🤕 Try to clearly explain what the problem is, it might not be obvious to others! Instead of saying: "This does not work.", try to say: "I expected ..., but instead I am seeing ..."
 
 
-🙋 But my issue is really simple, I don't want to make a screen recording / notebook!
+🙋 But my issue is really simple, I don't want to make a screen recording / notebook! And why do you need a notebook file?
 
 > **Please do it anyways!** It is really difficult to know exactly what information we will need to solve the issue, and a video recording can save a lot of follow-up questions. 
 > Similarly, a notebook file means that we can start testing the problem immediately, saving Pluto's developers a lot of time.

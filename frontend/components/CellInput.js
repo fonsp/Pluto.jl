@@ -63,6 +63,7 @@ import { moveLineDown } from "../imports/CodemirrorPlutoSetup.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 export const ENABLE_CM_SPELLCHECK = window.localStorage.getItem("ENABLE_CM_SPELLCHECK") === "true"
+export const ENABLE_CM_AUTOCOMPLETE_ON_TYPE = window.localStorage.getItem("ENABLE_CM_AUTOCOMPLETE_ON_TYPE") === "true"
 
 if (ENABLE_CM_MIXED_PARSER) {
     console.log(`YOU ENABLED THE CODEMIRROR MIXED LANGUAGE PARSER
@@ -82,6 +83,12 @@ window.PLUTO_TOGGLE_CM_MIXED_PARSER = (val = !ENABLE_CM_MIXED_PARSER) => {
 // @ts-ignore
 window.PLUTO_TOGGLE_CM_SPELLCHECK = (val = !ENABLE_CM_SPELLCHECK) => {
     window.localStorage.setItem("ENABLE_CM_SPELLCHECK", String(val))
+    window.location.reload()
+}
+
+// @ts-ignore
+window.PLUTO_TOGGLE_CM_AUTOCOMPLETE_ON_TYPE = (val = !ENABLE_CM_AUTOCOMPLETE_ON_TYPE) => {
+    window.localStorage.setItem("ENABLE_CM_AUTOCOMPLETE_ON_TYPE", String(val))
     window.location.reload()
 }
 
@@ -414,15 +421,17 @@ export const CellInput = ({
         }, [on_change])
     )
 
-    useLayoutEffect(() => {
+    useLayoutEffect(function cellinput_setup_codemirror() {
         if (dom_node_ref.current == null) return
 
-        const keyMapSubmit = () => {
+        const keyMapSubmit = (/** @type {EditorView} */ cm) => {
+            autocomplete.closeCompletion(cm)
             on_submit()
             return true
         }
         let run = async (fn) => await fn()
         const keyMapRun = (/** @type {EditorView} */ cm) => {
+            autocomplete.closeCompletion(cm)
             run(async () => {
                 // we await to prevent an out-of-sync issue
                 await on_add_after()
@@ -742,6 +751,7 @@ export const CellInput = ({
                                 results: message.results,
                             }
                         },
+                        request_special_symbols: () => pluto_actions.send("complete_symbols").then(({ message }) => message),
                         on_update_doc_query: on_update_doc_query,
                     }),
 

@@ -400,7 +400,7 @@ declare class SelectionRange {
     /**
     Compare this range to another range.
     */
-    eq(other: SelectionRange): boolean;
+    eq(other: SelectionRange, includeAssoc?: boolean): boolean;
     /**
     Return a JSON-serializable object representing the range.
     */
@@ -432,9 +432,12 @@ declare class EditorSelection {
     */
     map(change: ChangeDesc, assoc?: number): EditorSelection;
     /**
-    Compare this selection to another selection.
+    Compare this selection to another selection. By default, ranges
+    are compared only by position. When `includeAssoc` is true,
+    cursor ranges must also have the same
+    [`assoc`](https://codemirror.net/6/docs/ref/#state.SelectionRange.assoc) value.
     */
-    eq(other: EditorSelection): boolean;
+    eq(other: EditorSelection, includeAssoc?: boolean): boolean;
     /**
     Get the primary selection range. Usually, you should make sure
     your code applies to _all_ ranges, by using methods like
@@ -574,7 +577,7 @@ declare class Facet<Input, Output = readonly Input[]> implements FacetReader<Out
     tag: Output;
 }
 /**
-A facet reader can be used to fetch the value of a facet, though
+A facet reader can be used to fetch the value of a facet, through
 [`EditorState.facet`](https://codemirror.net/6/docs/ref/#state.EditorState.facet) or as a dependency
 in [`Facet.compute`](https://codemirror.net/6/docs/ref/#state.Facet.compute), but not to define new
 values for the facet.
@@ -812,7 +815,7 @@ interface TransactionSpec {
     selection?: EditorSelection | {
         anchor: number;
         head?: number;
-    };
+    } | undefined;
     /**
     Attach [state effects](https://codemirror.net/6/docs/ref/#state.StateEffect) to this transaction.
     Again, when they contain positions and this same spec makes
@@ -1568,6 +1571,10 @@ declare class RangeSet<T extends RangeValue> {
     */
     static of<T extends RangeValue>(ranges: readonly Range<T>[] | Range<T>, sort?: boolean): RangeSet<T>;
     /**
+    Join an array of range sets into a single set.
+    */
+    static join<T extends RangeValue>(sets: readonly RangeSet<T>[]): RangeSet<T>;
+    /**
     The empty set of ranges.
     */
     static empty: RangeSet<any>;
@@ -1853,6 +1860,18 @@ declare class NodeProp<T> {
     `"Expression"` group).
     */
     static group: NodeProp<readonly string[]>;
+    /**
+    Attached to nodes to indicate these should be
+    [displayed](https://codemirror.net/docs/ref/#language.syntaxTree)
+    in a bidirectional text isolate, so that direction-neutral
+    characters on their sides don't incorrectly get associated with
+    surrounding text. You'll generally want to set this for nodes
+    that contain arbitrary text, like strings and comments, and for
+    nodes that appear _inside_ arbitrary text, like HTML tags. When
+    not given a value, in a grammar declaration, defaults to
+    `"auto"`.
+    */
+    static isolate: NodeProp<"rtl" | "ltr" | "auto">;
     /**
     The hash of the [context](#lr.ContextTracker.constructor)
     that the node was parsed in, if any. Used to limit reuse of
@@ -2534,7 +2553,6 @@ declare class TreeCursor implements SyntaxNodeRef {
     private bufferNode;
     private yieldNode;
     private yieldBuf;
-    private yield;
     /**
     Move the cursor to this node's first child. When this returns
     false, the node has no child, and the cursor has not been moved.
@@ -3057,9 +3075,12 @@ interface MarkDecorationSpec {
     /**
     When using sets of decorations in
     [`bidiIsolatedRanges`](https://codemirror.net/6/docs/ref/##view.EditorView^bidiIsolatedRanges),
-    this property provides the direction of the isolates.
+    this property provides the direction of the isolates. When null
+    or not given, it indicates the range has `dir=auto`, and its
+    direction should be derived from the first strong directional
+    character in it.
     */
-    bidiIsolate?: Direction;
+    bidiIsolate?: Direction | null;
     /**
     Decoration specs allow extra properties, which can be retrieved
     through the decoration's [`spec`](https://codemirror.net/6/docs/ref/#view.Decoration.spec)
@@ -3323,6 +3344,17 @@ apply to the editor, and if it can, perform it as a side effect
 transaction) and return `true`.
 */
 type Command = (target: EditorView) => boolean;
+declare class ScrollTarget {
+    readonly range: SelectionRange;
+    readonly y: ScrollStrategy;
+    readonly x: ScrollStrategy;
+    readonly yMargin: number;
+    readonly xMargin: number;
+    readonly isSnapshot: boolean;
+    constructor(range: SelectionRange, y?: ScrollStrategy, x?: ScrollStrategy, yMargin?: number, xMargin?: number, isSnapshot?: boolean);
+    map(changes: ChangeDesc): ScrollTarget;
+    clip(state: EditorState): ScrollTarget;
+}
 /**
 This is the interface plugin objects conform to.
 */
@@ -3338,6 +3370,13 @@ interface PluginValue extends Object {
     your code in a DOM reading phase if you need to.
     */
     update?(update: ViewUpdate): void;
+    /**
+    Called when the document view is updated (due to content,
+    decoration, or viewport changes). Should not try to immediately
+    start another view update. Often useful for calling
+    [`requestMeasure`](https://codemirror.net/6/docs/ref/#view.EditorView.requestMeasure).
+    */
+    docViewUpdate?(view: EditorView): void;
     /**
     Called when the plugin is no longer going to be used. Should
     revert any changes the plugin made to the DOM.
@@ -3413,7 +3452,7 @@ interface MeasureRequest<T> {
     write?(measure: T, view: EditorView): void;
     /**
     When multiple requests with the same key are scheduled, only the
-    last one will actually be ran.
+    last one will actually be run.
     */
     key?: any;
 }
@@ -3582,6 +3621,13 @@ interface EditorViewConfig extends EditorStateConfig {
     */
     root?: Document | ShadowRoot;
     /**
+    Pass an effect created with
+    [`EditorView.scrollIntoView`](https://codemirror.net/6/docs/ref/#view.EditorView^scrollIntoView) or
+    [`EditorView.scrollSnapshot`](https://codemirror.net/6/docs/ref/#view.EditorView.scrollSnapshot)
+    here to set an initial scroll position.
+    */
+    scrollTo?: StateEffect<any>;
+    /**
     Override the way transactions are
     [dispatched](https://codemirror.net/6/docs/ref/#view.EditorView.dispatch) for this editor view.
     Your implementation, if provided, should probably call the
@@ -3719,6 +3765,7 @@ declare class EditorView {
     */
     setState(newState: EditorState): void;
     private updatePlugins;
+    private docViewUpdate;
     /**
     Get the CSS classes for the currently active editor themes.
     */
@@ -3822,6 +3869,13 @@ declare class EditorView {
     non-whitespace characters.
     */
     moveByGroup(start: SelectionRange, forward: boolean): SelectionRange;
+    /**
+    Get the cursor position visually at the start or end of a line.
+    Note that this may differ from the _logical_ position at its
+    start or end (which is simply at `line.from`/`line.to`) if text
+    at the start or end goes against the line's base text direction.
+    */
+    visualLineSide(line: Line$1, end: boolean): SelectionRange;
     /**
     Move to the next line boundary in the given direction. If
     `includeWrap` is true, line wrapping is on, and there is a
@@ -3981,14 +4035,29 @@ declare class EditorView {
         /**
         Extra vertical distance to add when moving something into
         view. Not used with the `"center"` strategy. Defaults to 5.
+        Must be less than the height of the editor.
         */
         yMargin?: number;
         /**
         Extra horizontal distance to add. Not used with the `"center"`
-        strategy. Defaults to 5.
+        strategy. Defaults to 5. Must be less than the width of the
+        editor.
         */
         xMargin?: number;
     }): StateEffect<unknown>;
+    /**
+    Return an effect that resets the editor to its current (at the
+    time this method was called) scroll position. Note that this
+    only affects the editor's own scrollable element, not parents.
+    See also
+    [`EditorViewConfig.scrollTo`](https://codemirror.net/6/docs/ref/#view.EditorViewConfig.scrollTo).
+    
+    The effect should be used with a document identical to the one
+    it was created for. Failing to do so is not an error, but may
+    not scroll to the expected position. You can
+    [map](https://codemirror.net/6/docs/ref/#state.StateEffect.map) the effect to account for changes.
+    */
+    scrollSnapshot(): StateEffect<ScrollTarget>;
     /**
     Facet to add a [style
     module](https://github.com/marijnh/style-mod#documentation) to
@@ -4031,6 +4100,23 @@ declare class EditorView {
     dispatching the custom behavior as a separate transaction.
     */
     static inputHandler: Facet<(view: EditorView, from: number, to: number, text: string, insert: () => Transaction) => boolean, readonly ((view: EditorView, from: number, to: number, text: string, insert: () => Transaction) => boolean)[]>;
+    /**
+    Scroll handlers can override how things are scrolled into view.
+    If they return `true`, no further handling happens for the
+    scrolling. If they return false, the default scroll behavior is
+    applied. Scroll handlers should never initiate editor updates.
+    */
+    static scrollHandler: Facet<(view: EditorView, range: SelectionRange, options: {
+        x: ScrollStrategy;
+        y: ScrollStrategy;
+        xMargin: number;
+        yMargin: number;
+    }) => boolean, readonly ((view: EditorView, range: SelectionRange, options: {
+        x: ScrollStrategy;
+        y: ScrollStrategy;
+        xMargin: number;
+        yMargin: number;
+    }) => boolean)[]>;
     /**
     This facet can be used to provide functions that create effects
     to be dispatched when the editor's focus state changes.
@@ -4103,6 +4189,16 @@ declare class EditorView {
     [`EditorView.atomicRanges`](https://codemirror.net/6/docs/ref/#view.EditorView^atomicRanges).
     */
     static decorations: Facet<DecorationSet | ((view: EditorView) => DecorationSet), readonly (DecorationSet | ((view: EditorView) => DecorationSet))[]>;
+    /**
+    Facet that works much like
+    [`decorations`](https://codemirror.net/6/docs/ref/#view.EditorView^decorations), but puts its
+    inputs at the very bottom of the precedence stack, meaning mark
+    decorations provided here will only be split by other, partially
+    overlapping \`outerDecorations\` ranges, and wrap around all
+    regular decorations. Use this for mark elements that should, as
+    much as possible, remain in one piece.
+    */
+    static outerDecorations: Facet<DecorationSet | ((view: EditorView) => DecorationSet), readonly (DecorationSet | ((view: EditorView) => DecorationSet))[]>;
     /**
     Used to provide ranges that should be treated as atoms as far as
     cursor motion is concerned. This causes methods like
@@ -5634,6 +5730,11 @@ interface Completion {
     */
     type?: string;
     /**
+    When this option is selected, and one of these characters is
+    typed, insert the completion before typing the character.
+    */
+    commitCharacters?: readonly string[];
+    /**
     When given, should be a number from -99 to 99 that adjusts how
     this completion is ranked compared to other completions that
     match the input as well as this one. A negative number moves it
@@ -5835,6 +5936,20 @@ interface CompletionResult {
     completion still applies in the new state.
     */
     update?: (current: CompletionResult, from: number, to: number, context: CompletionContext) => CompletionResult | null;
+    /**
+    When results contain position-dependent information in, for
+    example, `apply` methods, you can provide this method to update
+    the result for transactions that happen after the query. It is
+    not necessary to update `from` and `to`—those are tracked
+    automatically.
+    */
+    map?: (current: CompletionResult, changes: ChangeDesc) => CompletionResult | null;
+    /**
+    Set a default set of [commit
+    characters](https://codemirror.net/6/docs/ref/#autocomplete.Completion.commitCharacters) for all
+    options in this result.
+    */
+    commitCharacters?: readonly string[];
 }
 /**
 This annotation is added to transactions that are produced by
@@ -5854,6 +5969,14 @@ interface CompletionConfig {
     whenever the user types something that can be completed.
     */
     activateOnTyping?: boolean;
+    /**
+    The amount of time to wait for further typing before querying
+    completion sources via
+    [`activateOnTyping`](https://codemirror.net/6/docs/ref/#autocomplete.autocompletion^config.activateOnTyping).
+    Defaults to 100, which should be fine unless your completion
+    source is very slow and/or doesn't use `validFor`.
+    */
+    activateOnTypingDelay?: number;
     /**
     By default, when completion opens, the first option is selected
     and can be confirmed with
@@ -5920,7 +6043,7 @@ interface CompletionConfig {
     80.
     */
     addToOptions?: {
-        render: (completion: Completion, state: EditorState) => Node | null;
+        render: (completion: Completion, state: EditorState, view: EditorView) => Node | null;
         position: number;
     }[];
     /**
@@ -5942,6 +6065,13 @@ interface CompletionConfig {
     [`localeCompare`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/localeCompare).
     */
     compareCompletions?: (a: Completion, b: Completion) => number;
+    /**
+    When set to true (the default is false), turn off fuzzy matching
+    of completions and only show those that start with the text the
+    user typed. Only takes effect for results where
+    [`filter`](https://codemirror.net/6/docs/ref/#autocomplete.CompletionResult.filter) isn't false.
+    */
+    filterStrict?: boolean;
     /**
     By default, commands relating to an open completion only take
     effect 75 milliseconds after the completion opened, so that key
@@ -6268,7 +6398,7 @@ Default search-related key bindings.
  - Mod-f: [`openSearchPanel`](https://codemirror.net/6/docs/ref/#search.openSearchPanel)
  - F3, Mod-g: [`findNext`](https://codemirror.net/6/docs/ref/#search.findNext)
  - Shift-F3, Shift-Mod-g: [`findPrevious`](https://codemirror.net/6/docs/ref/#search.findPrevious)
- - Alt-g: [`gotoLine`](https://codemirror.net/6/docs/ref/#search.gotoLine)
+ - Mod-Alt-g: [`gotoLine`](https://codemirror.net/6/docs/ref/#search.gotoLine)
  - Mod-d: [`selectNextOccurrence`](https://codemirror.net/6/docs/ref/#search.selectNextOccurrence)
 */
 declare const searchKeymap: readonly KeyBinding[];
@@ -6580,7 +6710,7 @@ interface Action {
     */
     apply: (view: EditorView, from: number, to: number) => void;
 }
-type DiagnosticFilter = (diagnostics: readonly Diagnostic[]) => Diagnostic[];
+type DiagnosticFilter = (diagnostics: readonly Diagnostic[], state: EditorState) => Diagnostic[];
 interface LintConfig {
     /**
     Time to wait (in milliseconds) after a change before running
@@ -6617,9 +6747,10 @@ type LintSource = (view: EditorView) => readonly Diagnostic[] | Promise<readonly
 /**
 Given a diagnostic source, this function returns an extension that
 enables linting with that source. It will be called whenever the
-editor is idle (after its content changed).
+editor is idle (after its content changed). If `null` is given as
+source, this only configures the lint extension.
 */
-declare function linter(source: LintSource, config?: LintConfig): Extension;
+declare function linter(source: LintSource | null, config?: LintConfig): Extension;
 
 /**
 A language provider based on the [Lezer JavaScript
@@ -6629,7 +6760,7 @@ highlighting and indentation information.
 declare const javascriptLanguage: LRLanguage;
 /**
 JavaScript support. Includes [snippet](https://codemirror.net/6/docs/ref/#lang-javascript.snippets)
-completion.
+and local variable completion.
 */
 declare function javascript(config?: {
     jsx?: boolean;
@@ -6650,7 +6781,7 @@ declare function css(): LanguageSupport;
 /**
 Configuration for an [SQL Dialect](https://codemirror.net/6/docs/ref/#lang-sql.SQLDialect).
 */
-declare type SQLDialectSpec = {
+type SQLDialectSpec = {
     /**
     A space-separated list of keywords for the dialect.
     */
@@ -6748,6 +6879,20 @@ declare class SQLDialect {
     static define(spec: SQLDialectSpec): SQLDialect;
 }
 /**
+The type used to describe a level of the schema for
+[completion](https://codemirror.net/6/docs/ref/#lang-sql.SQLConfig.schema). Can be an array of
+options (columns), an object mapping table or schema names to
+deeper levels, or a `{self, children}` object that assigns a
+completion option to use for its parent property, when the default option
+(its name as label and type `"type"`) isn't suitable.
+*/
+type SQLNamespace = {
+    [name: string]: SQLNamespace;
+} | {
+    self: Completion;
+    children: SQLNamespace;
+} | readonly (Completion | string)[];
+/**
 Options used to configure an SQL extension.
 */
 interface SQLConfig {
@@ -6757,24 +6902,16 @@ interface SQLConfig {
     */
     dialect?: SQLDialect;
     /**
-    An object that maps table names, optionally prefixed with a
-    schema name (`"schema.table"`) to options (columns) that can be
-    completed for that table. Use lower-case names here.
+    You can use this to define the schemas, tables, and their fields
+    for autocompletion.
     */
-    schema?: {
-        [table: string]: readonly (string | Completion)[];
-    };
+    schema?: SQLNamespace;
     /**
-    By default, the completions for the table names will be
-    generated from the `schema` object. But if you want to
-    customize them, you can pass an array of completions through
-    this option.
+    @hide
     */
     tables?: readonly Completion[];
     /**
-    Similar to `tables`, if you want to provide completion objects
-    for your schemas rather than using the generated ones, pass them
-    here.
+    @hide
     */
     schemas?: readonly Completion[];
     /**

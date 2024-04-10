@@ -34,12 +34,12 @@ jobs:
             fail-fast: false
             matrix:
                 # We test quite a lot of versions because we do some OS and version specific things unfortunately
-                julia-version: ["1.6", "1.8", "1.10", "nightly"] # "~1.11.0-0"]
+                julia-version: ["1.6", "1.10", "~1.11.0-0"] #, "nightly"] # "~1.12.0-0"]
                 os: [ubuntu-latest, macOS-latest, windows-latest]
 
         steps:
             # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-            - uses: actions/checkout@v3
+            - uses: actions/checkout@v4
 
             # Makes the `julia` command available
             - uses: julia-actions/setup-julia@v1
@@ -51,3 +51,9 @@ jobs:
             - uses: julia-actions/julia-runtest@v1
               with:
                   coverage: false
+
+            - uses: actions/upload-artifact@v4
+              if: failure()
+              with:
+                  name: test-snapshots-${{ matrix.julia-version }}-${{ matrix.os }}
+                  path: ${{ github.workspace }}/test/snapshots/*.html
