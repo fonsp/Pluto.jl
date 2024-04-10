@@ -582,7 +582,7 @@ end
         filename = "\"some where/thing.plutostate\""
         export_html = Pluto.generate_html(nb; statefile_js=filename)
         @test occursin("""pluto_statefile = "some where/""", export_html)
-        @test occursin("""<link rel="prefetch" href="some where/""", export_html)
+        @test occursin("""<link rel="preload" as="fetch" href="some where/""", export_html)
         
         export_html = Pluto.generate_index_html()
         @test occursin("</html>", export_html)
