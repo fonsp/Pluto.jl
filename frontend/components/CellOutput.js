@@ -706,7 +706,7 @@ export let highlight = (code_element, language) => {
  */
 export const copyToClipboard = (e) => {
     const el = e.target.parentNode.closest("pre")
-    const txt = el.textContent || '';
+    const txt = el.textContent || ""
     navigator.clipboard
         .writeText(txt)
         .then(() => {
@@ -723,24 +723,24 @@ export const copyToClipboard = (e) => {
  */
 export const generateCopyCodeButton = (pre) => {
     if (!pre) {
-        console.error('Error: pre is null.');
-        return;
+        console.error("Error: pre is null.")
+        return
     }
 
     // create copy button
     const copyCodeButton = document.createElement("button")
-    copyCodeButton.title="Copy to Clipboard"
-    copyCodeButton.id="copy-to-clipboard-btn"
+    copyCodeButton.title = "Copy to Clipboard"
+    copyCodeButton.id = "copy-to-clipboard-btn"
     copyCodeButton.className = "markdown-code-block-button"
-    copyCodeButton.classList.add('markdown-code-block-copy-code-button')
-    copyCodeButton.addEventListener("click", function(e) {
-        copyToClipboard(e);
-        copyCodeButton.classList.add('markdown-code-block-copied-code-button');
-        setTimeout(function() {
-            copyCodeButton.classList.remove('markdown-code-block-copied-code-button');
-            copyCodeButton.classList.add('markdown-code-block-copy-code-button');
-        }, 2000);
-    });
+    copyCodeButton.classList.add("markdown-code-block-copy-code-button")
+    copyCodeButton.addEventListener("click", (e) => {
+        copyToClipboard(e)
+        copyCodeButton.classList.add("markdown-code-block-copied-code-button")
+        setTimeout(() => {
+            copyCodeButton.classList.remove("markdown-code-block-copied-code-button")
+            copyCodeButton.classList.add("markdown-code-block-copy-code-button")
+        }, 2000)
+    })
 
     // Append copy button to the code block element
     pre.appendChild(copyCodeButton)
