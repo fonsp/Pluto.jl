@@ -424,7 +424,7 @@ export const CellInput = ({
 
     const [show_static_fake_state, set_show_static_fake] = useState(!skip_static_fake)
 
-    const show_static_fake = cm_forced_focus != null || skip_static_fake ? false : show_static_fake_state
+    const show_static_fake = useMemo(() => focus_after_creation || cm_forced_focus != null || skip_static_fake, []) ? false : show_static_fake_state
 
     useLayoutEffect(() => {
         if (!show_static_fake) return
