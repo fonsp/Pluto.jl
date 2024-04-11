@@ -3677,25 +3677,18 @@ pluto-cell.hooked_up pluto-output {
     background: none;
 }
 
-.markdown-code-block-copy-code-button::before,
-.markdown-code-block-copied-code-button::before {
+.markdown-code-block-button::before {
     content: "";
     display: block;
     width: 14px;
     height: 14px;
+    filter: var(--image-filters);
 }
 
-.markdown-code-block-copy-code-button::before {
+.markdown-code-block-button::before {
     background-image: url("https://unpkg.com/ionicons@7.1.0/dist/svg/copy-outline.svg");
 }
 
 .markdown-code-block-copied-code-button::before {
     background-image: url("https://unpkg.com/ionicons@7.1.0/dist/svg/checkmark-outline.svg");
-}
-
-/* Invert markdown copy button on theme toggle */
-@media (prefers-color-scheme: dark) {
-    #copy-to-clipboard-btn {
-        filter: invert(1);
-    }
 }

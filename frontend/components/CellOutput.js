@@ -702,46 +702,25 @@ export let highlight = (code_element, language) => {
 }
 
 /**
- * Copies the contents of an HTML Element into the clipboard
+ * Generates a copy button for Markdown code blocks.
  */
-export const copyToClipboard = (e) => {
-    const el = e.target.parentNode.closest("pre")
-    const txt = el.textContent || ""
-    navigator.clipboard
-        .writeText(txt)
-        .then(() => {
-            console.log("Code copied to clipboard:\n" + txt)
-        })
-        .catch((error) => {
-            console.error("Error copying code to clipboard:", error)
-        })
-}
-
-/**
- * Generates a copy button for Markdown code blocks and copies them into the clipboard.
- * @param {HTMLElement | null} pre - The <pre> element containing the code block.
- */
-export const generateCopyCodeButton = (pre) => {
-    if (!pre) {
-        console.error("Error: pre is null.")
-        return
-    }
+export const generateCopyCodeButton = (/** @type {HTMLElement?} */ pre) => {
+    if (!pre) return
 
     // create copy button
-    const copyCodeButton = document.createElement("button")
-    copyCodeButton.title = "Copy to Clipboard"
-    copyCodeButton.id = "copy-to-clipboard-btn"
-    copyCodeButton.className = "markdown-code-block-button"
-    copyCodeButton.classList.add("markdown-code-block-copy-code-button")
-    copyCodeButton.addEventListener("click", (e) => {
-        copyToClipboard(e)
-        copyCodeButton.classList.add("markdown-code-block-copied-code-button")
+    const button = document.createElement("button")
+    button.title = "Copy to Clipboard"
+    button.className = "markdown-code-block-button"
+    button.addEventListener("click", (e) => {
+        const txt = pre.textContent ?? ""
+        navigator.clipboard.writeText(txt)
+
+        button.classList.add("markdown-code-block-copied-code-button")
         setTimeout(() => {
-            copyCodeButton.classList.remove("markdown-code-block-copied-code-button")
-            copyCodeButton.classList.add("markdown-code-block-copy-code-button")
+            button.classList.remove("markdown-code-block-copied-code-button")
         }, 2000)
     })
 
     // Append copy button to the code block element
-    pre.prepend(copyCodeButton)
+    pre.prepend(button)
 }
