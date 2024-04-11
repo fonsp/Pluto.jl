@@ -3668,11 +3668,9 @@ pluto-cell.hooked_up pluto-output {
 .markdown-code-block-button {
     position: relative;
     cursor: pointer;
-    width: 20px;
-    height: 20px;
-    display: flex;
     justify-content: center;
     align-items: center;
+    display: block;
     padding: 0;
     float: right;
     top: -20px;
@@ -3683,14 +3681,10 @@ pluto-cell.hooked_up pluto-output {
 
 .markdown-code-block-copy-code-button::before,
 .markdown-code-block-copied-code-button::before {
-    position: absolute;
-    top: 0;
-    right: 0;
     content: "";
+    display: block;
     width: 14px;
     height: 14px;
-    background-size: contain;
-    background-repeat: no-repeat;
 }
 
 .markdown-code-block-copy-code-button::before {
