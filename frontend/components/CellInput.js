@@ -367,6 +367,7 @@ export const CellInput = ({
     cm_forced_focus,
     set_cm_forced_focus,
     show_input,
+    skip_static_fake = false,
     on_submit,
     on_delete,
     on_add_after,
@@ -421,8 +422,41 @@ export const CellInput = ({
         }, [on_change])
     )
 
+    const [show_static_fake_state, set_show_static_fake] = useState(!skip_static_fake)
+
+    const show_static_fake = cm_forced_focus != null || skip_static_fake ? false : show_static_fake_state
+
     useLayoutEffect(() => {
+        if (!show_static_fake) return
+        let node = dom_node_ref.current
+        if (node == null) return
+        let observer
+
+        const show = () => {
+            set_show_static_fake(false)
+            observer.disconnect()
+            window.removeEventListener("beforeprint", show)
+        }
+
+        observer = new IntersectionObserver((e) => {
+            if (e.some((e) => e.isIntersecting)) {
+                show()
+            }
+        })
+
+        observer.observe(node)
+        window.addEventListener("beforeprint", show)
+        return () => {
+            observer.disconnect()
+            window.removeEventListener("beforeprint", show)
+        }
+    }, [])
+
+    useLayoutEffect(() => {
+        if (show_static_fake) return
         if (dom_node_ref.current == null) return
+
+        console.log("Rendering cell input", cell_id)
 
         const keyMapSubmit = (/** @type {EditorView} */ cm) => {
             autocomplete.closeCompletion(cm)
@@ -843,7 +877,7 @@ export const CellInput = ({
                 lines_wrapper_resize_observer.unobserve(lines_wrapper_dom_node)
             }
         }
-    }, [])
+    }, [show_static_fake])
 
     useEffect(() => {
         if (newcm_ref.current == null) return
@@ -922,6 +956,7 @@ export const CellInput = ({
 
     return html`
         <pluto-input ref=${dom_node_ref} class="CodeMirror" translate=${false}>
+            ${show_static_fake ? (show_input ? html`<${StaticCodeMirrorFaker} value=${remote_code} />` : null) : null}
             <${InputContextMenu}
                 on_delete=${on_delete}
                 cell_id=${cell_id}
@@ -1088,3 +1123,31 @@ const InputContextMenuItem = ({ contents, title, onClick, setOpen, tag }) =>
             <span class=${`${tag} ctx_icon`} />${contents}
         </button>
     </li>`
+
+const StaticCodeMirrorFaker = ({ value }) => {
+    const lines = value.split("\n").map((line, i) => html`<div class="awesome-wrapping-plugin-the-line cm-line" style="--indented: 0px;">${line}</div>`)
+
+    return html`
+        <div class="cm-editor ͼ1 ͼ2 ͼ4 ͼ4z cm-ssr-fake">
+            <div tabindex="-1" class="cm-scroller">
+                <div class="cm-gutters" aria-hidden="true">
+                    <div class="cm-gutter cm-lineNumbers"></div>
+                </div>
+                <div
+                    spellcheck="false"
+                    autocorrect="off"
+                    autocapitalize="off"
+                    translate="no"
+                    contenteditable="false"
+                    style="tab-size: 4;"
+                    class="cm-content cm-lineWrapping"
+                    role="textbox"
+                    aria-multiline="true"
+                    aria-autocomplete="list"
+                >
+                    ${lines}
+                </div>
+            </div>
+        </div>
+    `
+}

@@ -3681,3 +3681,32 @@ pluto-cell.hooked_up pluto-output {
     justify-content: flex-end;
     gap: 0.5em;
 }
+
+/*  Styles for markdown copy Button*/
+.markdown-code-block-button {
+    position: relative;
+    cursor: pointer;
+    justify-content: center;
+    align-items: center;
+    display: block;
+    padding: 0;
+    float: right;
+    border: none;
+    background: none;
+}
+
+.markdown-code-block-button::before {
+    content: "";
+    display: block;
+    width: 14px;
+    height: 14px;
+    filter: var(--image-filters);
+}
+
+.markdown-code-block-button::before {
+    background-image: url("https://unpkg.com/ionicons@7.1.0/dist/svg/copy-outline.svg");
+}
+
+.markdown-code-block-copied-code-button::before {
+    background-image: url("https://unpkg.com/ionicons@7.1.0/dist/svg/checkmark-outline.svg");
+}
