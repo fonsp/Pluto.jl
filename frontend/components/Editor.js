@@ -10,7 +10,7 @@ import { serialize_cells, deserialize_cells, detect_deserializer } from "../comm
 
 import { FilePicker } from "./FilePicker.js"
 import { Preamble } from "./Preamble.js"
-import { NotebookMemo as Notebook } from "./Notebook.js"
+import { Notebook } from "./Notebook.js"
 import { BottomRightPanel } from "./BottomRightPanel.js"
 import { DropRuler } from "./DropRuler.js"
 import { SelectionArea } from "./SelectionArea.js"
