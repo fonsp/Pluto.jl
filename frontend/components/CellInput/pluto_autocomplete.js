@@ -190,24 +190,9 @@ const validFor = (text) => {
 /** Use the completion results from the Julia server to create CM completion objects. */
 const julia_code_completions_to_cm =
     (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (/** @type {autocomplete.CompletionContext} */ ctx) => {
-        if (writing_variable_name_or_keyword(ctx)) return null
         if (match_special_symbol_complete(ctx)) return null
-        if (ctx.tokenBefore(["Number", "Comment", "String", "TripleString"]) != null) return null
-
-        // This block is to check if we have enough reason to show the automatic completions e.g. we are in an identifier, or after a `.`.
-        // Else it will show the completions always, which is just frustrating.
-        if (!ctx.explicit) {
-            let is_in_identifier = ctx.tokenBefore(["Identifier", "FieldName", "MacroIdentifier"]) != null
-            let is_dot_just_before = ctx.matchBefore(/\./) != null
-            if (is_in_identifier || is_dot_just_before) {
-                // Go do the actual completion!
-                // I could have inverted the above condition but I find that very hard to read, so here is an `else`!
-            } else {
-                // Turns out `return null` pretends like the autocomplete didn't change... when we want to actively hide it when it was visible
-                // return null
-                return { from: ctx.pos, to: ctx.pos, options: [] }
-            }
-        }
+        if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
+        if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment", "String", "TripleString"]) != null) return null
 
         let to_complete = /** @type {String} */ (ctx.state.sliceDoc(0, ctx.pos))
 
@@ -217,9 +202,6 @@ const julia_code_completions_to_cm =
         if (is_symbol_completion) {
             to_complete = to_complete.slice(0, is_symbol_completion.from + 1) + to_complete.slice(is_symbol_completion.from + 2)
         }
-
-        // no path autocompletions
-        if (ctx.tokenBefore(["String"]) != null) return null
 
         const globals = ctx.state.facet(GlobalDefinitionsFacet)
         const is_already_a_global = (text) => text != null && Object.keys(globals).includes(text)
@@ -306,9 +288,9 @@ const julia_code_completions_to_cm =
     }
 
 const complete_anyword = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
-    if (writing_variable_name_or_keyword(ctx)) return null
     if (match_special_symbol_complete(ctx)) return null
-    if (ctx.tokenBefore(["Number", "Comment", "String", "TripleString"]) != null) return null
+    if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
+    if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment", "String", "TripleString"]) != null) return null
 
     const results_from_cm = await autocomplete.completeAnyWord(ctx)
     if (results_from_cm === null) return null
@@ -350,9 +332,9 @@ const writing_variable_name_or_keyword = (/** @type {autocomplete.CompletionCont
 
 /** @returns {Promise<autocomplete.CompletionResult?>} */
 const global_variables_completion = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
-    if (writing_variable_name_or_keyword(ctx)) return null
     if (match_special_symbol_complete(ctx)) return null
-    if (ctx.tokenBefore(["Number", "Comment", "String", "TripleString"]) != null) return null
+    if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
+    if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment", "String", "TripleString"]) != null) return null
 
     const globals = ctx.state.facet(GlobalDefinitionsFacet)
 
@@ -439,9 +421,9 @@ const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} *
     }
 
     return async (/** @type {autocomplete.CompletionContext} */ ctx) => {
-        if (writing_variable_name_or_keyword(ctx)) return null
         if (!match_special_symbol_complete(ctx)) return null
-        if (ctx.tokenBefore(["Number", "Comment"]) != null) return null
+        if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
+        if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment"]) != null) return null
 
         const result = await get_special_symbols()
 
