@@ -256,6 +256,7 @@ export const runAllChanged = async (page) => {
  * @param {string} text
  */
 export const writeSingleLineInPlutoInput = async (page, plutoInputSelector, text) => {
+    await page.waitForSelector(`${plutoInputSelector} .cm-editor:not(.cm-ssr-fake)`)
     await page.type(`${plutoInputSelector} .cm-content`, text)
     // Wait for CodeMirror to process the input and display the text
     return await page.waitForFunction(
@@ -294,7 +295,7 @@ export const keyboardPressInPlutoInput = async (page, plutoInputSelector, key) =
  * @param {string} plutoInputSelector
  */
 export const clearPlutoInput = async (page, plutoInputSelector) => {
-    await page.waitForSelector(`${plutoInputSelector} .cm-editor`)
+    await page.waitForSelector(`${plutoInputSelector} .cm-editor:not(.cm-ssr-fake)`)
     if ((await page.$(`${plutoInputSelector} .cm-placeholder`)) == null) {
         await page.focus(`${plutoInputSelector} .cm-content`)
         await page.waitForTimeout(500)
@@ -318,7 +319,7 @@ export const manuallyEnterCells = async (page, cells) => {
     for (const cell of cells) {
         const plutoCellId = lastElement(await getCellIds(page))
         plutoCellIds.push(plutoCellId)
-        await page.waitForSelector(`pluto-cell[id="${plutoCellId}"] pluto-input .cm-content`)
+        await page.waitForSelector(`pluto-cell[id="${plutoCellId}"] pluto-input .cm-editor:not(.cm-ssr-fake) .cm-content`)
         await writeSingleLineInPlutoInput(page, `pluto-cell[id="${plutoCellId}"] pluto-input`, cell)
 
         await page.click(`pluto-cell[id="${plutoCellId}"] .add_cell.after`)
