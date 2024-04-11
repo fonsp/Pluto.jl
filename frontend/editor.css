@@ -3673,8 +3673,6 @@ pluto-cell.hooked_up pluto-output {
     display: block;
     padding: 0;
     float: right;
-    top: -20px;
-    right: -8px;
     border: none;
     background: none;
 }

@@ -743,5 +743,5 @@ export const generateCopyCodeButton = (pre) => {
     })
 
     // Append copy button to the code block element
-    pre.appendChild(copyCodeButton)
+    pre.prepend(copyCodeButton)
 }
