@@ -2725,7 +2725,7 @@ function Logging.handle_message(pl::PlutoCellLogger, level, msg, _module, group,
         before_published_object_keys = collect(keys(po()))
 
         # Render the log arguments:
-        msg_formatted = format_output_default(msg isa AbstractString ? Text(msg) : msg)
+        msg_formatted = format_output_default(msg isa String ? Text(msg) : msg)
         kwargs_formatted = Tuple{String,Any}[(string(k), format_log_value(v)) for (k, v) in kwargs if k != :maxlog]
 
         after_published_object_keys = collect(keys(po()))
