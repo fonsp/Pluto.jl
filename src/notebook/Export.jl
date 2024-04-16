@@ -39,10 +39,10 @@ function cdnified_html(filename::AbstractString;
                     contains(string(url), "escape_txt_for_html") && return url
                     # Because parcel creates filenames with a hash in them, we can check if the file exists locally to make sure that everything is in order.
                     @assert isfile(project_relative_path("frontend-dist", url)) "Could not find the file $(project_relative_path("frontend-dist", url)) locally, that's a bad sign."
-                    #= @info "let's see it $url, $should_use_bundled_cdn "
+                    @info "let's see it $url, $should_use_bundled_cdn "
                     if base64assets
                         return file2base64dataurl(project_relative_path("frontend-dist", url))
-                    end =#
+                    end
                     URIs.resolvereference(cdn_root, url) |> string
                 end
             catch e
@@ -131,7 +131,7 @@ function generate_html(;
         header_html::AbstractString="",
     )::String
 
-    cdnified = cdnified_editor_html(; version, pluto_cdn_root)
+    cdnified = cdnified_editor_html(; version, pluto_cdn_root, base64assets=true)
     
     (length(statefile_js) > 32000000 || length(recording_url_js) > 32000000 || length(recording_audio_url_js) > 32000000) && @error "Statefile or recording URL embedded in HTML is very large. The file can be opened with Chrome and Safari, but probably not with Firefox. If you are using PlutoSliderServer to generate this file, then we recommend the setting `baked_statefile=false`. If you are not using PlutoSliderServer, then consider reducing the size of figures and output in the notebook." length(statefile_js) length(recording_url_js) length(recording_audio_url_js)
     
