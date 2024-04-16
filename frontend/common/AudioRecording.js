@@ -1,10 +1,14 @@
 // @ts-ignore
-import vmsg from "https://cdn.jsdelivr.net/npm/vmsg@0.4.0/vmsg.js"
+import vmsg from "https://cdn.jsdelivr.net/npm/vmsg@0.4.0/vmsg.js" // when modifying, also modify the version number in all other files.
+import { get_included_external_source } from "./external_source.js"
 
 const create_recorder_mp3 = async () => {
-    const recorder = new vmsg.Recorder({
-        wasmURL: new URL("https://unpkg.com/vmsg@0.4.0/vmsg.wasm", import.meta.url),
-    })
+    // @ts-ignore
+    const wasmURL = get_included_external_source("vmsg-wasm")
+
+    if (!wasmURL) throw new Error("wasmURL not found")
+
+    const recorder = new vmsg.Recorder({ wasmURL })
 
     return {
         start: async () => {
