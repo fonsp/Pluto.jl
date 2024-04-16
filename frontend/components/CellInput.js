@@ -63,6 +63,7 @@ import { moveLineDown } from "../imports/CodemirrorPlutoSetup.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 export const ENABLE_CM_SPELLCHECK = window.localStorage.getItem("ENABLE_CM_SPELLCHECK") === "true"
+export const ENABLE_CM_AUTOCOMPLETE_ON_TYPE = window.localStorage.getItem("ENABLE_CM_AUTOCOMPLETE_ON_TYPE") === "true"
 
 if (ENABLE_CM_MIXED_PARSER) {
     console.log(`YOU ENABLED THE CODEMIRROR MIXED LANGUAGE PARSER
@@ -82,6 +83,12 @@ window.PLUTO_TOGGLE_CM_MIXED_PARSER = (val = !ENABLE_CM_MIXED_PARSER) => {
 // @ts-ignore
 window.PLUTO_TOGGLE_CM_SPELLCHECK = (val = !ENABLE_CM_SPELLCHECK) => {
     window.localStorage.setItem("ENABLE_CM_SPELLCHECK", String(val))
+    window.location.reload()
+}
+
+// @ts-ignore
+window.PLUTO_TOGGLE_CM_AUTOCOMPLETE_ON_TYPE = (val = !ENABLE_CM_AUTOCOMPLETE_ON_TYPE) => {
+    window.localStorage.setItem("ENABLE_CM_AUTOCOMPLETE_ON_TYPE", String(val))
     window.location.reload()
 }
 
@@ -360,6 +367,7 @@ export const CellInput = ({
     cm_forced_focus,
     set_cm_forced_focus,
     show_input,
+    skip_static_fake = false,
     on_submit,
     on_delete,
     on_add_after,
@@ -414,15 +422,50 @@ export const CellInput = ({
         }, [on_change])
     )
 
+    const [show_static_fake_state, set_show_static_fake] = useState(!skip_static_fake)
+
+    const show_static_fake = useMemo(() => focus_after_creation || cm_forced_focus != null || skip_static_fake, []) ? false : show_static_fake_state
+
     useLayoutEffect(() => {
+        if (!show_static_fake) return
+        let node = dom_node_ref.current
+        if (node == null) return
+        let observer
+
+        const show = () => {
+            set_show_static_fake(false)
+            observer.disconnect()
+            window.removeEventListener("beforeprint", show)
+        }
+
+        observer = new IntersectionObserver((e) => {
+            if (e.some((e) => e.isIntersecting)) {
+                show()
+            }
+        })
+
+        observer.observe(node)
+        window.addEventListener("beforeprint", show)
+        return () => {
+            observer.disconnect()
+            window.removeEventListener("beforeprint", show)
+        }
+    }, [])
+
+    useLayoutEffect(() => {
+        if (show_static_fake) return
         if (dom_node_ref.current == null) return
 
-        const keyMapSubmit = () => {
+        console.log("Rendering cell input", cell_id)
+
+        const keyMapSubmit = (/** @type {EditorView} */ cm) => {
+            autocomplete.closeCompletion(cm)
             on_submit()
             return true
         }
         let run = async (fn) => await fn()
         const keyMapRun = (/** @type {EditorView} */ cm) => {
+            autocomplete.closeCompletion(cm)
             run(async () => {
                 // we await to prevent an out-of-sync issue
                 await on_add_after()
@@ -742,6 +785,7 @@ export const CellInput = ({
                                 results: message.results,
                             }
                         },
+                        request_special_symbols: () => pluto_actions.send("complete_symbols").then(({ message }) => message),
                         on_update_doc_query: on_update_doc_query,
                     }),
 
@@ -833,7 +877,7 @@ export const CellInput = ({
                 lines_wrapper_resize_observer.unobserve(lines_wrapper_dom_node)
             }
         }
-    }, [])
+    }, [show_static_fake])
 
     useEffect(() => {
         if (newcm_ref.current == null) return
@@ -912,6 +956,7 @@ export const CellInput = ({
 
     return html`
         <pluto-input ref=${dom_node_ref} class="CodeMirror" translate=${false}>
+            ${show_static_fake ? (show_input ? html`<${StaticCodeMirrorFaker} value=${remote_code} />` : null) : null}
             <${InputContextMenu}
                 on_delete=${on_delete}
                 cell_id=${cell_id}
@@ -931,7 +976,9 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
     const timeout = useRef(null)
     let pluto_actions = useContext(PlutoActionsContext)
     const [open, setOpenState] = useState(false)
-    const element_ref = useRef(/** @type {HTMLButtonElement?} */ (null))
+    const button_ref = useRef(/** @type {HTMLButtonElement?} */ (null))
+    const list_ref = useRef(/** @type {HTMLButtonElement?} */ (null))
+
     const prevously_focused_element_ref = useRef(/** @type {Element?} */ (null))
     const setOpen = (val) => {
         if (val) {
@@ -941,9 +988,10 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
     }
     useLayoutEffect(() => {
         if (open) {
-            element_ref.current?.querySelector("li")?.focus()
+            list_ref.current?.querySelector("button")?.focus()
         } else {
-            if (prevously_focused_element_ref.current instanceof HTMLElement) prevously_focused_element_ref.current?.focus()
+            let e = prevously_focused_element_ref.current
+            if (e instanceof HTMLElement) e.focus()
         }
     }, [open])
 
@@ -985,59 +1033,121 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
         }
     })
 
-    return html` <button
-        onClick=${() => setOpen(!open)}
-        onfocusout=${(e) => {
-            if (
-                // the focus is not one of the <li>
-                !element_ref.current?.matches(":focus-within") ||
-                // or the focus is on the button itself
-                e.relatedTarget === element_ref.current
-            )
+    return html`
+        <button
+            onClick=${(e) => {
+                setOpen(!open)
+            }}
+            class=${cl({
+                input_context_menu: true,
+                open,
+            })}
+            title="Actions"
+            ref=${button_ref}
+        >
+            <span class="icon"></span>
+        </button>
+        <div
+            class=${cl({
+                input_context_menu: true,
+                open,
+            })}
+            ref=${list_ref}
+            onfocusout=${(e) => {
+                const li_focused = list_ref.current?.matches(":focus-within") || list_ref.current?.contains(e.relatedTarget)
+
+                if (
+                    !li_focused ||
+                    // or the focus is on the list itself
+                    e.relatedTarget === list_ref.current
+                )
+                    setOpen(false)
+            }}
+        >
+            ${open
+                ? html`<ul onMouseenter=${mouseenter}>
+                      <${InputContextMenuItem} tag="delete" contents="Delete cell" title="Delete cell" onClick=${on_delete} setOpen=${setOpen} />
+
+                      <${InputContextMenuItem}
+                          title=${running_disabled ? "Enable and run the cell" : "Disable this cell, and all cells that depend on it"}
+                          tag=${running_disabled ? "enable_cell" : "disable_cell"}
+                          contents=${running_disabled ? html`<b>Enable cell</b>` : html`Disable cell`}
+                          onClick=${toggle_running_disabled}
+                          setOpen=${setOpen}
+                      />
+                      ${any_logs
+                          ? html`<${InputContextMenuItem}
+                                title=${show_logs ? "Show cell logs" : "Hide cell logs"}
+                                tag=${show_logs ? "hide_logs" : "show_logs"}
+                                contents=${show_logs ? "Hide logs" : "Show logs"}
+                                onClick=${toggle_logs}
+                                setOpen=${setOpen}
+                            />`
+                          : null}
+                      ${is_copy_output_supported()
+                          ? html`<${InputContextMenuItem}
+                                tag="copy_output"
+                                contents="Copy output"
+                                title="Copy the output of this cell to the clipboard."
+                                onClick=${copy_output}
+                                setOpen=${setOpen}
+                            />`
+                          : null}
+
+                      <${InputContextMenuItem}
+                          title=${skip_as_script
+                              ? "This cell is currently stored in the notebook file as a Julia comment. Click here to disable."
+                              : "Store this code in the notebook file as a Julia comment. This way, it will not run when the notebook runs as a script outside of Pluto."}
+                          tag=${skip_as_script ? "run_as_script" : "skip_as_script"}
+                          contents=${skip_as_script ? html`<b>Enable in file</b>` : html`Disable in file`}
+                          onClick=${toggle_skip_as_script}
+                          setOpen=${setOpen}
+                      />
+                  </ul>`
+                : html``}
+        </div>
+    `
+}
+
+const InputContextMenuItem = ({ contents, title, onClick, setOpen, tag }) =>
+    html`<li>
+        <button
+            tabindex="0"
+            title=${title}
+            onClick=${(e) => {
                 setOpen(false)
-        }}
-        class=${cl({
-            input_context_menu: true,
-            open,
-        })}
-        title="Actions"
-        ref=${element_ref}
-    >
-        <span class="icon"></span>
-        ${open
-            ? html`<ul onMouseenter=${mouseenter}>
-                  <li tabindex="0" onClick=${on_delete} title="Delete"><span class="delete ctx_icon" />Delete cell</li>
-                  <li
-                      tabindex="0"
-                      onClick=${toggle_running_disabled}
-                      title=${running_disabled ? "Enable and run the cell" : "Disable this cell, and all cells that depend on it"}
-                  >
-                      ${running_disabled ? html`<span class="enable_cell ctx_icon" />` : html`<span class="disable_cell ctx_icon" />`}
-                      ${running_disabled ? html`<b>Enable cell</b>` : html`Disable cell`}
-                  </li>
-                  ${any_logs
-                      ? html`<li tabindex="0" title="" onClick=${toggle_logs}>
-                            ${show_logs
-                                ? html`<span class="hide_logs ctx_icon" /><span>Hide logs</span>`
-                                : html`<span class="show_logs ctx_icon" /><span>Show logs</span>`}
-                        </li>`
-                      : null}
-                  ${is_copy_output_supported()
-                      ? html`<li tabindex="0" title="Copy the output of this cell to the clipboard." onClick=${copy_output}>
-                            <span class="copy_output ctx_icon" />Copy output
-                        </li>`
-                      : null}
-                  <li
-                      tabindex="0"
-                      onClick=${toggle_skip_as_script}
-                      title=${skip_as_script
-                          ? "This cell is currently stored in the notebook file as a Julia comment. Click here to disable."
-                          : "Store this code in the notebook file as a Julia comment. This way, it will not run when the notebook runs as a script outside of Pluto."}
-                  >
-                      ${skip_as_script ? html`<span class="skip_as_script ctx_icon" />` : html`<span class="run_as_script ctx_icon" />`}
-                      ${skip_as_script ? html`<b>Enable in file</b>` : html`Disable in file`}
-                  </li>
-              </ul>`
-            : html``}
-    </button>`
+                onClick(e)
+            }}
+            class=${tag}
+        >
+            <span class=${`${tag} ctx_icon`} />${contents}
+        </button>
+    </li>`
+
+const StaticCodeMirrorFaker = ({ value }) => {
+    const lines = value.split("\n").map((line, i) => html`<div class="awesome-wrapping-plugin-the-line cm-line" style="--indented: 0px;">${line}</div>`)
+
+    return html`
+        <div class="cm-editor ͼ1 ͼ2 ͼ4 ͼ4z cm-ssr-fake">
+            <div tabindex="-1" class="cm-scroller">
+                <div class="cm-gutters" aria-hidden="true">
+                    <div class="cm-gutter cm-lineNumbers"></div>
+                </div>
+                <div
+                    spellcheck="false"
+                    autocorrect="off"
+                    autocapitalize="off"
+                    translate="no"
+                    contenteditable="false"
+                    style="tab-size: 4;"
+                    class="cm-content cm-lineWrapping"
+                    role="textbox"
+                    aria-multiline="true"
+                    aria-autocomplete="list"
+                >
+                    ${lines}
+                </div>
+            </div>
+        </div>
+    `
 }

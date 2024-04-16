@@ -41,7 +41,7 @@ function set_bond_values_reactive(;
     bond_value_pairs = zip(syms_to_set, new_values)
 
     syms_to_set_set = Set{Symbol}(syms_to_set)
-    function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Notebook}, old_workspace_name, new_workspace_name, to_delete_vars::Set{Symbol}, methods_to_delete, module_imports_to_move, cells_to_macro_invalidate; to_run)
+    function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Notebook}, old_workspace_name, new_workspace_name, to_delete_vars::Set{Symbol}, methods_to_delete, module_imports_to_move, cells_to_macro_invalidate, cells_to_js_link_invalidate; to_run)
         to_delete_vars = union(to_delete_vars, syms_to_set_set) # also delete the bound symbols
         WorkspaceManager.move_vars(
             (session, notebook),
@@ -51,6 +51,7 @@ function set_bond_values_reactive(;
             methods_to_delete,
             module_imports_to_move,
             cells_to_macro_invalidate,
+            cells_to_js_link_invalidate,
             syms_to_set_set,
         )
         set_bond_value_pairs!(session, notebook, zip(syms_to_set, new_values))

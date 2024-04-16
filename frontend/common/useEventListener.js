@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from "../imports/Preact.js"
 
 export const useEventListener = (
-    /** @type {Document | HTMLElement | Window | null} */ element,
+    /** @type {Document | HTMLElement | Window | EventSource | MediaQueryList | null} */ element,
     /** @type {string} */ event_name,
     /** @type {EventListenerOrEventListenerObject} */ handler,
     /** @type {any[] | undefined} */ deps

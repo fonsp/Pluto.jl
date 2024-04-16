@@ -5,7 +5,7 @@ import { Cell } from "./Cell.js"
 import { nbpkg_fingerprint } from "./PkgStatusMark.js"
 
 /** Like `useMemo`, but explain to the console what invalidated the memo. */
-const useMemoDebug = (fn, args) => {
+export const useMemoDebug = (fn, args) => {
     const last_values = useRef(args)
     return useMemo(() => {
         const new_values = args
@@ -24,7 +24,7 @@ const useMemoDebug = (fn, args) => {
     }, args)
 }
 
-let CellMemo = ({
+const CellMemo = ({
     cell_result,
     cell_input,
     cell_input_local,
@@ -159,6 +159,7 @@ export const Notebook = ({
             }, render_cell_outputs_delay(notebook.cell_order.length))
         }
     }, [cell_outputs_delayed, notebook.cell_order.length])
+
     let global_definition_locations = useMemo(
         () =>
             Object.fromEntries(
@@ -213,48 +214,8 @@ export const Notebook = ({
                     />`
                 )}
             ${cell_outputs_delayed && notebook.cell_order.length >= render_cell_outputs_minimum
-                ? html`<div style="font-family: system-ui; font-style: italic; text-align: center; padding: 5rem 1rem;">Loading...</div>`
+                ? html`<div style="font-family: system-ui; font-style: italic; text-align: center; padding: 5rem 1rem;">Loading more cells...</div>`
                 : null}
         </pluto-notebook>
     `
 }
-/* Disable this until we understand Notebook memoization better
-export const NotebookMemo = ({
-    is_initializing,
-    notebook,
-    cell_inputs_local,
-    on_update_doc_query,
-    on_cell_input,
-    on_focus_neighbor,
-    disable_input,
-    last_created_cell,
-    selected_cells,
-}) => {
-    return useMemo(() => {
-        return html`
-            <${Notebook}
-                is_initializing=${is_initializing}
-                notebook=${notebook}
-                cell_inputs_local=${cell_inputs_local}
-                on_update_doc_query=${on_update_doc_query}
-                on_cell_input=${on_cell_input}
-                on_focus_neighbor=${on_focus_neighbor}
-                disable_input=${disable_input}
-                last_created_cell=${last_created_cell}
-                selected_cells=${selected_cells}
-            />
-        `
-    }, [
-        is_initializing,
-        notebook,
-        cell_inputs_local,
-        on_update_doc_query,
-        on_cell_input,
-        on_focus_neighbor,
-        disable_input,
-        last_created_cell,
-        selected_cells,
-    ])
-}
-*/
-export const NotebookMemo = Notebook

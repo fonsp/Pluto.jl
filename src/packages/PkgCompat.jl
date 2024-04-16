@@ -2,10 +2,20 @@ module PkgCompat
 
 export package_versions, package_completions
 
+import REPL
 import Pkg
 import Pkg.Types: VersionRange
 import RegistryInstances
 import ..Pluto
+
+
+
+
+@static if isdefined(Pkg,:REPLMode) && isdefined(Pkg.REPLMode,:complete_remote_package)
+    const REPLMode = Pkg.REPLMode
+else
+    const REPLMode = Base.get_extension(Pkg, :REPLExt)
+end
 
 # Should be in Base
 flatmap(args...) = vcat(map(args...)...)
@@ -171,13 +181,14 @@ _get_registries() = RegistryInstances.reachable_registries()
 
 # (✅ "Public" API using RegistryInstances)
 "The cached output value of `_get_registries`."
-const _parsed_registries = Ref(_get_registries())
+const _parsed_registries = Ref(RegistryInstances.RegistryInstance[])
 
 # (✅ "Public" API using RegistryInstances)
 "Re-parse the installed registries from disk."
 function refresh_registry_cache()
 	_parsed_registries[] = _get_registries()
 end
+
 
 # ⚠️✅ Internal API with fallback
 const _updated_registries_compat = @static if isdefined(Pkg, :UPDATED_REGISTRY_THIS_SESSION) && Pkg.UPDATED_REGISTRY_THIS_SESSION isa Ref{Bool}
@@ -264,7 +275,13 @@ end
 # ⚠️ Internal API with fallback
 is_stdlib(package_name::AbstractString) = package_name ∈ _stdlibs()
 
-global_ctx = PkgContext()
+
+
+# Initial fill of registry cache
+function    __init__()
+    refresh_registry_cache()
+    global global_ctx=PkgContext()
+end
 
 ###
 # Package names
@@ -282,10 +299,10 @@ end
 function _registered_package_completions(partial_name::AbstractString)::Vector{String}
 	# compat
 	try
-		@static if hasmethod(Pkg.REPLMode.complete_remote_package, (String,))
-			Pkg.REPLMode.complete_remote_package(partial_name)
+		@static if hasmethod(REPLMode.complete_remote_package, (String,))
+			REPLMode.complete_remote_package(partial_name)
 		else
-			Pkg.REPLMode.complete_remote_package(partial_name, 1, length(partial_name))[1]
+			REPLMode.complete_remote_package(partial_name, 1, length(partial_name))[1]
 		end
 	catch e
 		@warn "Pkg compat: failed to autocomplete packages" exception=(e,catch_backtrace())

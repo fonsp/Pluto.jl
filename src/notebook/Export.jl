@@ -68,12 +68,15 @@ end
 
 const _insertion_meta = """<meta name="pluto-insertion-spot-meta">"""
 const _insertion_parameters = """<meta name="pluto-insertion-spot-parameters">"""
+const _insertion_preload = """<meta name="pluto-insertion-spot-preload">"""
 
 
 inserted_html(original_contents::AbstractString; 
     meta::AbstractString="",
     parameters::AbstractString="",
+    preload::AbstractString="",
 ) = replace_at_least_once(
+    replace_at_least_once(
     replace_at_least_once(original_contents, 
         _insertion_meta => 
         """
@@ -86,7 +89,21 @@ inserted_html(original_contents::AbstractString;
     $(parameters)
     $(_insertion_parameters)
     """
+),
+_insertion_preload => 
+"""
+$(preload)
+$(_insertion_preload)
+"""
 )
+
+function prefetch_statefile_html(statefile_js::AbstractString)
+    if length(statefile_js) < 300 && startswith(statefile_js, '"') && endswith(statefile_js, '"') && !startswith(statefile_js, "\"data:")
+        """\n<link rel="preload" as="fetch" href=$(statefile_js) crossorigin>\n"""
+    else
+        ""
+    end
+end
 
 """
 See [PlutoSliderServer.jl](https://github.com/JuliaPluto/PlutoSliderServer.jl) if you are interested in exporting notebooks programatically.
@@ -126,7 +143,9 @@ function generate_html(;
     </script>
     """
     
-    inserted_html(cdnified; meta=header_html, parameters)
+    preload = prefetch_statefile_html(statefile_js)
+    
+    inserted_html(cdnified; meta=header_html, parameters, preload)
 end
 
 function replace_at_least_once(s, pair)
@@ -259,5 +278,7 @@ function generate_index_html(;
     </script>
     """
     
-    inserted_html(cdnified; meta, parameters)
+    preload = prefetch_statefile_html(featured_sources_js)
+    
+    inserted_html(cdnified; meta, parameters, preload)
 end

@@ -1,7 +1,7 @@
 name = "PlutoRunner"
 uuid = "dc6b355a-2368-4481-ae6d-ae0351418d79"
 authors = ["Michiel Dral <m.c.dral@gmail.com>", "Fons van der Plas <fons@plutojl.org>", "Paul Berg <paul@plutojl.org>"]
-version = "29.12.98"
+version = "29.14.98"
 
 [deps]
 Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
@@ -18,5 +18,6 @@ Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 [compat]
-FuzzyCompletions = "0.3,0.4,0.5"
-PrecompileTools = "1"
+# these compat entries should match those for the same packages in Project.toml of Pluto.jl itself.
+FuzzyCompletions = "=0.5.4"
+PrecompileTools = "=1.2.1"
