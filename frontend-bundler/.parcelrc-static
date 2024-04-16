@@ -12,7 +12,12 @@
         "*.svg": [
             "...",
             "@parcel/transformer-inline"
-        ],
-        ".html": ["..."]
+        ]
+    },
+    "optimizers": {
+        "*.svg": [
+            "...",
+            "@parcel/optimizer-data-url"
+        ]
     }
 }
