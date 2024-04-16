@@ -9,12 +9,24 @@ import { time_estimate, usePackageTimingData } from "../common/InstallTimeEstima
 import { pretty_long_time } from "./EditOrRunButton.js"
 import { useEventListener } from "../common/useEventListener.js"
 
+const try_to_get_it = (/** @type {() => URL} */ f) => {
+    try {
+        return f()
+    } catch (e) {}
+}
+
 // This funny thing is a way to tell parcel to bundle these files..
 // Eventually I'll write a plugin that is able to parse html`...`, but this is it for now.
 // https://parceljs.org/languages/javascript/#url-dependencies
-export const arrow_up_circle_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-up-circle-outline.svg", import.meta.url)
-export const document_text_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-text-outline.svg", import.meta.url)
-export const help_circle_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/help-circle-outline.svg", import.meta.url)
+export const arrow_up_circle_icon = try_to_get_it(
+    () => new URL("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-up-circle-outline.svg", import.meta.url)
+)
+export const document_text_icon = try_to_get_it(
+    () => new URL("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-text-outline.svg", import.meta.url)
+)
+export const help_circle_icon = try_to_get_it(
+    () => new URL("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/help-circle-outline.svg", import.meta.url)
+)
 
 /**
  * @typedef PkgPopupDetails
