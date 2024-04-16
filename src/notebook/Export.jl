@@ -7,6 +7,7 @@ const default_binder_url = "https://mybinder.org/v2/gh/fonsp/pluto-on-binder/v$(
 
 const cdn_version_override = nothing
 # const cdn_version_override = "2a48ae2"
+const distdir = "frontend-dist-static"
 
 if cdn_version_override !== nothing
     @warn "Reminder to fonsi: Using a development version of Pluto for CDN assets. The binder button might not work. You should not see this on a released version of Pluto." cdn_version_override
@@ -28,7 +29,7 @@ function cdnified_html(filename::AbstractString;
     @something(
         if should_use_bundled_cdn
             try
-                original = read(project_relative_path("frontend-dist", filename), String)
+                original = read(project_relative_path(distdir, filename), String)
                 
                 cdn_root = "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@$(string(PLUTO_VERSION))/frontend-dist/"
 
@@ -38,10 +39,10 @@ function cdnified_html(filename::AbstractString;
                     @info "$url"
                     contains(string(url), "escape_txt_for_html") && return url
                     # Because parcel creates filenames with a hash in them, we can check if the file exists locally to make sure that everything is in order.
-                    @assert isfile(project_relative_path("frontend-dist", url)) "Could not find the file $(project_relative_path("frontend-dist", url)) locally, that's a bad sign."
+                    @assert isfile(project_relative_path(distdir, url)) "Could not find the file $(project_relative_path(distdir, url)) locally, that's a bad sign."
                     @info "let's see it $url, $should_use_bundled_cdn "
                     if base64assets
-                        return file2base64dataurl(project_relative_path("frontend-dist", url))
+                        return file2base64dataurl(project_relative_path(distdir, url))
                     end
                     URIs.resolvereference(cdn_root, url) |> string
                 end
