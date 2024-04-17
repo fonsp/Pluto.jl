@@ -3,8 +3,7 @@ import vmsg from "https://cdn.jsdelivr.net/npm/vmsg@0.4.0/vmsg.js" // when modif
 import { get_included_external_source } from "./external_source.js"
 
 const create_recorder_mp3 = async () => {
-    // @ts-ignore
-    const wasmURL = get_included_external_source("vmsg-wasm").href
+    const wasmURL = get_included_external_source("vmsg-wasm")?.href
 
     if (!wasmURL) throw new Error("wasmURL not found")
 

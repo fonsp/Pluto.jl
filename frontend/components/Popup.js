@@ -10,9 +10,9 @@ import { pretty_long_time } from "./EditOrRunButton.js"
 import { useEventListener } from "../common/useEventListener.js"
 import { get_included_external_source } from "../common/external_source.js"
 
-export const arrow_up_circle_icon = get_included_external_source("arrow_up_circle_icon").href
-export const document_text_icon = get_included_external_source("document_text_icon").href
-export const help_circle_icon = get_included_external_source("help_circle_icon").href
+export const arrow_up_circle_icon = get_included_external_source("arrow_up_circle_icon")?.href
+export const document_text_icon = get_included_external_source("document_text_icon")?.href
+export const help_circle_icon = get_included_external_source("help_circle_icon")?.href
 
 /**
  * @typedef PkgPopupDetails
