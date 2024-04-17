@@ -114,7 +114,7 @@ pluto-notebook {
 
 pluto-output {
     font-family: "Alegreya Sans", "Trebuchet MS", sans-serif;
-    font-size: 1em;
+    font-size: 14.5px;
     font-weight: 400;
     color: var(--pluto-output-color);
 }
