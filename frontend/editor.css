@@ -7,12 +7,13 @@
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/700.css");
 
 /* @import url("https://fonts.googleapis.com/css?family=Alegreya+Sans:400,400i,500,500i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese"); */
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/400.css");
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/500.css");
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/700.css");
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/400-italic.css");
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/500-italic.css");
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/700-italic.css");
+/* @import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/400.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/500.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/700.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/400-italic.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/500-italic.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/700-italic.css"); */
+@import url("./alegreya.css");
 
 @import url("./juliamono.css");
 @import url("./vollkorn.css");
@@ -43,7 +44,7 @@
 
 /* GENERAL PAGE LAYOUT */
 html {
-    font-size: 17px;
+    font-size: 16px;
 }
 
 * {
@@ -239,7 +240,7 @@ a:hover {
 
 pluto-output code {
     font-family: var(--julia-mono-font-stack);
-    font-size: 0.75em; /* not rem */
+    font-size: 0.9em; /* not rem */
     font-variant-ligatures: none;
 }
 
@@ -270,7 +271,7 @@ pluto-output pre {
     tab-size: 4;
     -moz-tab-size: 4; /* https://bugzilla.mozilla.org/show_bug.cgi?id=737785 */
     font-family: var(--julia-mono-font-stack);
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     font-variant-ligatures: none;
 }
 
@@ -2494,7 +2495,7 @@ pluto-helpbox.hidden > section {
 .helpbox-docs {
     font-family: var(--lato-ui-font-stack);
     line-height: 1.5;
-    font-size: 0.9rem;
+    /* font-size: 0.9rem; */
 }
 .helpbox-docs pre,
 .helpbox-docs code,
@@ -3378,7 +3379,7 @@ pluto-input .cm-editor .cm-scroller,
 .cm-editor .cm-tooltip-autocomplete .cm-completionLabel {
     font-family: var(--julia-mono-font-stack) !important;
     font-variant-ligatures: none;
-    font-size: 0.75rem;
+    font-size: 0.8rem;
 }
 
 pluto-input .cm-editor .cm-content {
