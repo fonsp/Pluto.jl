@@ -4,7 +4,7 @@ import { get_included_external_source } from "./external_source.js"
 
 const create_recorder_mp3 = async () => {
     // @ts-ignore
-    const wasmURL = get_included_external_source("vmsg-wasm")
+    const wasmURL = get_included_external_source("vmsg-wasm").href
 
     if (!wasmURL) throw new Error("wasmURL not found")
 

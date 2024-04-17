@@ -258,8 +258,8 @@ const first_true_key = (obj) => {
  * }}
  */
 
-const url_logo_big = get_included_external_source("pluto-logo-big")
-export const url_logo_small = get_included_external_source("pluto-logo-small")
+const url_logo_big = get_included_external_source("pluto-logo-big").href
+export const url_logo_small = get_included_external_source("pluto-logo-small").href
 
 /**
  * @typedef EditorProps
