@@ -113,7 +113,7 @@ pluto-notebook {
 /* (can be overriden by custom style) */
 
 pluto-output {
-    font-family: "Alegreya Sans", sans-serif;
+    font-family: "Alegreya Sans", "Trebuchet MS", sans-serif;
     font-size: 1em;
     font-weight: 400;
     color: var(--pluto-output-color);
@@ -125,7 +125,7 @@ pluto-output h3,
 pluto-output h4,
 pluto-output h5,
 pluto-output h6 {
-    font-family: "Vollkorn", serif;
+    font-family: "Vollkorn", Palatino, serif;
     font-feature-settings: "lnum", "pnum";
     font-weight: 600;
     color: var(--pluto-output-h-color);
@@ -313,7 +313,7 @@ pluto-output div.admonition {
     margin-block-end: 1em;
 }
 pluto-output div.admonition .admonition-title {
-    font-family: "Vollkorn", sans-serif;
+    font-family: "Vollkorn", Palatino, sans-serif;
     font-feature-settings: "lnum", "pnum";
     color: var(--admonition-title-color);
     font-weight: 600;
@@ -601,7 +601,7 @@ div.export_title {
 }
 a.export_card header {
     margin-block: 0px;
-    font-family: "Vollkorn", sans;
+    font-family: "Vollkorn", Palatino, sans-serif;
     /* font-family: system-ui; */
     font-feature-settings: "lnum", "pnum";
     font-size: 1rem;
