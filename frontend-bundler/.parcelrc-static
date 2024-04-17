@@ -12,10 +12,26 @@
         "*.svg": [
             "...",
             "@parcel/transformer-inline"
+        ],
+        "**/alegreya*.woff2": [
+            "...",
+            "@parcel/transformer-inline"
+        ],
+        "**/Vollkorn*.woff2": [
+            "...",
+            "@parcel/transformer-inline"
         ]
     },
     "optimizers": {
         "*.svg": [
+            "...",
+            "@parcel/optimizer-data-url"
+        ],
+        "**/alegreya*.woff2": [
+            "...",
+            "@parcel/optimizer-data-url"
+        ],
+        "**/Vollkorn*.woff2": [
             "...",
             "@parcel/optimizer-data-url"
         ]
