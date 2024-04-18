@@ -1125,7 +1125,9 @@ const InputContextMenuItem = ({ contents, title, onClick, setOpen, tag }) =>
     </li>`
 
 const StaticCodeMirrorFaker = ({ value }) => {
-    const lines = value.split("\n").map((line, i) => html`<div class="awesome-wrapping-plugin-the-line cm-line" style="--indented: 0px;">${line}</div>`)
+    const lines = value
+        .split("\n")
+        .map((line, i) => html`<div class="awesome-wrapping-plugin-the-line cm-line" style="--indented: 0px;">${line.length === 0 ? html`<br />` : line}</div>`)
 
     return html`
         <div class="cm-editor ͼ1 ͼ2 ͼ4 ͼ4z cm-ssr-fake">
