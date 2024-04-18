@@ -126,7 +126,7 @@ pluto-output h3,
 pluto-output h4,
 pluto-output h5,
 pluto-output h6 {
-    font-family: "Vollkorn", Palatino, serif;
+    font-family: "Vollkorn", Palatino, Georgia, serif;
     font-feature-settings: "lnum", "pnum";
     font-weight: 600;
     color: var(--pluto-output-h-color);
