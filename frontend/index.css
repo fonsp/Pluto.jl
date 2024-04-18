@@ -23,7 +23,7 @@ html {
     font-size: 2em;
     letter-spacing: 0.08em;
     font-weight: 500;
-    font-family: "Vollkorn", serif;
+    font-family: "Vollkorn", Palatino, serif;
     color: var(--pluto-output-h-color);
     margin: 0px;
     padding: 4rem 1rem 3rem 1rem;
