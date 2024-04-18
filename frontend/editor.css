@@ -190,7 +190,7 @@ pluto-output p {
     margin-block-start: 0px;
     margin-block-end: var(--pluto-cell-spacing);
     word-spacing: 0.053em;
-    line-height: 1.45em;
+    line-height: 1.55em;
 }
 
 /* This allows a linebreak in Markdown using backslash with smaller spacing compared to paragraph in firefox */
@@ -523,7 +523,7 @@ header#pluto-nav {
     border-bottom: solid 1px var(--header-border-color);
     font-family: "Roboto Mono", monospace;
     font-weight: 400;
-    font-size: 0.75rem;
+    font-size: 0.8rem;
 }
 
 header#pluto-nav.show_export {
@@ -594,7 +594,6 @@ div.export_title {
     /* writing-mode: sideways-lr; */
     writing-mode: vertical-lr;
     transform: rotate(180deg);
-
     margin-top: 10px;
     font-weight: 700;
     font-size: 1rem;
@@ -604,7 +603,7 @@ a.export_card header {
     font-family: "Vollkorn", Palatino, sans-serif;
     /* font-family: system-ui; */
     font-feature-settings: "lnum", "pnum";
-    font-size: 1rem;
+    font-size: 17px;
 }
 a.export_card section {
     color: var(--export-card-text-color);
