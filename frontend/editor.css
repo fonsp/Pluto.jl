@@ -7,12 +7,13 @@
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/700.css");
 
 /* @import url("https://fonts.googleapis.com/css?family=Alegreya+Sans:400,400i,500,500i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese"); */
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/400.css");
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/500.css");
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/700.css");
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/400-italic.css");
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/500-italic.css");
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/700-italic.css");
+/* @import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/400.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/500.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/700.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/400-italic.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/500-italic.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/700-italic.css"); */
+@import url("./alegreya.css");
 
 @import url("./juliamono.css");
 @import url("./vollkorn.css");
@@ -36,6 +37,7 @@
     --sans-serif-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
     --lato-ui-font-stack: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, "Apple Color Emoji", "Segoe UI Emoji",
         "Segoe UI Symbol", system-ui, sans-serif;
+    --roboto-mono-font-stack: "Roboto Mono", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", monospace;
     --system-ui-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, "Apple Color Emoji", "Segoe UI Emoji",
         "Segoe UI Symbol", system-ui, sans-serif;
     color-scheme: light dark;
@@ -43,7 +45,7 @@
 
 /* GENERAL PAGE LAYOUT */
 html {
-    font-size: 17px;
+    font-size: 16px;
 }
 
 * {
@@ -113,7 +115,7 @@ pluto-notebook {
 
 pluto-output {
     font-family: "Alegreya Sans", "Trebuchet MS", sans-serif;
-    font-size: 1em;
+    font-size: 14.5px;
     font-weight: 400;
     color: var(--pluto-output-color);
 }
@@ -124,7 +126,7 @@ pluto-output h3,
 pluto-output h4,
 pluto-output h5,
 pluto-output h6 {
-    font-family: "Vollkorn", Palatino, serif;
+    font-family: "Vollkorn", Palatino, Georgia, serif;
     font-feature-settings: "lnum", "pnum";
     font-weight: 600;
     color: var(--pluto-output-h-color);
@@ -189,7 +191,7 @@ pluto-output p {
     margin-block-start: 0px;
     margin-block-end: var(--pluto-cell-spacing);
     word-spacing: 0.053em;
-    line-height: 1.45em;
+    line-height: 1.55em;
 }
 
 /* This allows a linebreak in Markdown using backslash with smaller spacing compared to paragraph in firefox */
@@ -239,7 +241,7 @@ a:hover {
 
 pluto-output code {
     font-family: var(--julia-mono-font-stack);
-    font-size: 0.75em; /* not rem */
+    font-size: 0.9em; /* not rem */
     font-variant-ligatures: none;
 }
 
@@ -270,7 +272,7 @@ pluto-output pre {
     tab-size: 4;
     -moz-tab-size: 4; /* https://bugzilla.mozilla.org/show_bug.cgi?id=737785 */
     font-family: var(--julia-mono-font-stack);
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     font-variant-ligatures: none;
 }
 
@@ -384,7 +386,7 @@ pluto-output div.footnote p.footnote-title::after {
 }
 pluto-output a.footnote,
 pluto-output div.footnote p.footnote-title {
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--roboto-mono-font-stack);
     font-size: 0.75rem;
     font-weight: 700;
     margin-block-end: 0px;
@@ -520,9 +522,9 @@ header#pluto-nav {
     transform: translateY(0px);
     transition: background-color 0.5s ease-in-out, transform 0.25s cubic-bezier(0.18, 0.89, 0.49, 1.13);
     border-bottom: solid 1px var(--header-border-color);
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--roboto-mono-font-stack);
     font-weight: 400;
-    font-size: 0.75rem;
+    font-size: 0.8rem;
 }
 
 header#pluto-nav.show_export {
@@ -593,7 +595,6 @@ div.export_title {
     /* writing-mode: sideways-lr; */
     writing-mode: vertical-lr;
     transform: rotate(180deg);
-
     margin-top: 10px;
     font-weight: 700;
     font-size: 1rem;
@@ -603,7 +604,7 @@ a.export_card header {
     font-family: "Vollkorn", Palatino, sans-serif;
     /* font-family: system-ui; */
     font-feature-settings: "lnum", "pnum";
-    font-size: 1rem;
+    font-size: 17px;
 }
 a.export_card section {
     color: var(--export-card-text-color);
@@ -1098,7 +1099,7 @@ main > preamble {
     border: 3px solid var(--overlay-button-border);
     border-radius: 12px;
     height: 35px;
-    font-family: "Segoe UI Emoji", "Roboto Mono", monospace;
+    font-family: var(--roboto-mono-font-stack);
     font-size: 0.75rem;
     pointer-events: all;
     /* break-inside: avoid; */
@@ -1404,7 +1405,7 @@ nav#slide_controls > button {
     cursor: pointer;
     /* color: hsl(204, 86%, 35%); */
     color: var(--ui-button-color);
-    font-family: "Segoe UI Emoji", "Roboto Mono", monospace;
+    font-family: var(--roboto-mono-font-stack);
     font-size: 0.75rem;
     z-index: 30;
     /* CodeMirror is 2 */
@@ -2140,7 +2141,7 @@ pluto-runarea > span {
     left: 22px;
     width: 45px;
 
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--roboto-mono-font-stack);
     font-size: 0.6em;
     font-style: italic;
     color: var(--pluto-runarea-span-color);
@@ -2494,7 +2495,7 @@ pluto-helpbox.hidden > section {
 .helpbox-docs {
     font-family: var(--lato-ui-font-stack);
     line-height: 1.5;
-    font-size: 0.9rem;
+    /* font-size: 0.9rem; */
 }
 .helpbox-docs pre,
 .helpbox-docs code,
@@ -2697,7 +2698,7 @@ pl-status .status-time {
     /* align-self: end; */
     padding-right: 0.5em;
     padding-left: 0.5em;
-    /* font-family: "Roboto Mono", monospace; */
+    /* font-family: var(--roboto-mono-font-stack); */
     opacity: 0.6;
     font-size: 0.7rem;
     font-variant-numeric: tabular-nums;
@@ -2798,7 +2799,7 @@ pluto-helpbox.helpbox-process > section {
 footer {
     width: 100%;
     min-height: 3.5rem;
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--roboto-mono-font-stack);
     font-size: 0.75rem;
     background-color: var(--footer-bg-color);
     color: var(--footer-color);
@@ -2891,7 +2892,7 @@ nav#undo_delete {
     margin: 0.75rem;
     padding: 0.5rem;
 
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--roboto-mono-font-stack);
     font-size: 0.75rem;
 
     background-color: var(--white);
@@ -2948,7 +2949,7 @@ pluto-logs-container:not(:empty) {
 }
 
 pluto-logs-container > header {
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--roboto-mono-font-stack);
     font-size: 1.3rem;
     padding: 0.2em;
     padding-bottom: 0;
@@ -2988,7 +2989,7 @@ pluto-logs:not(:first-child):not(:empty) {
 pluto-log-dot {
     /* part 2 */
     /* box-shadow: -2px 0px 1px #00000014; */
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--roboto-mono-font-stack);
     font-size: 0.6rem;
     position: relative;
     display: flex;
@@ -3378,7 +3379,7 @@ pluto-input .cm-editor .cm-scroller,
 .cm-editor .cm-tooltip-autocomplete .cm-completionLabel {
     font-family: var(--julia-mono-font-stack) !important;
     font-variant-ligatures: none;
-    font-size: 0.75rem;
+    font-size: 0.8rem;
 }
 
 pluto-input .cm-editor .cm-content {
