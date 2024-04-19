@@ -132,6 +132,7 @@ pluto-output h6 {
     color: var(--pluto-output-h-color);
     margin-block-start: 1rem;
     margin-block-end: 0rem;
+    line-height: 1em;
 }
 
 pluto-output h1,
@@ -191,7 +192,7 @@ pluto-output p {
     margin-block-start: 0px;
     margin-block-end: var(--pluto-cell-spacing);
     word-spacing: 0.053em;
-    line-height: 1.55em;
+    line-height: 1.6em;
 }
 
 /* This allows a linebreak in Markdown using backslash with smaller spacing compared to paragraph in firefox */
