@@ -46,7 +46,7 @@ import { markdown, html as htmlLang, javascript, sqlLang, python, julia_mixed } 
 import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
-import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"
+import { awesome_line_wrapping, get_start_tabs } from "./CellInput/awesome_line_wrapping.js"
 import { cell_movement_plugin, prevent_holding_a_key_from_doing_things_across_cells } from "./CellInput/cell_movement_plugin.js"
 import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
@@ -804,7 +804,6 @@ export const CellInput = ({
                     EditorView.contentAttributes.of({ spellcheck: String(ENABLE_CM_SPELLCHECK) }),
 
                     EditorView.lineWrapping,
-                    // Wowww this has been enabled for some time now... wonder if there are issues about this yet ;) - DRAL
                     awesome_line_wrapping,
 
                     // Reset diagnostics on change
@@ -1126,7 +1125,7 @@ const InputContextMenuItem = ({ contents, title, onClick, setOpen, tag }) =>
 
 const StaticCodeMirrorFaker = ({ value }) => {
     const lines = value.split("\n").map((line, i) => {
-        const start_tabs = /^\t*/.exec(line)?.[0] ?? ""
+        const start_tabs = get_start_tabs(line)
 
         const tabbed_line =
             start_tabs.length == 0
