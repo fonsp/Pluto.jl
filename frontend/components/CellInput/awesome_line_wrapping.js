@@ -8,56 +8,7 @@ import { html } from "../../imports/Preact.js"
  * It does this by adding a line decoration that adds padding-left (as much as there is indentation),
  * and adds the same amount as negative "text-indent". The nice thing about text-indent is that it
  * applies to the initial line of a wrapped line.
- *
- * The identation decorations have to happen in a StateField (without access to the editor),
- * because they change the layout of the text :( The character width I need however, is in the editor...
- * So I do this ugly hack where I, in `character_width_listener`, I fire an effect that gets picked up
- * by another StateField (`extra_cycle_character_width`) that saves the character width into state,
- * so THEN I can add the markers in the decorations statefield.
  */
-
-/** @type {any} */
-const CharacterWidthEffect = StateEffect.define({})
-const extra_cycle_character_width = StateField.define({
-    create() {
-        return { defaultCharacterWidth: null, measuredSpaceWidth: null, measuredTabWidth: null }
-    },
-    update(value, tr) {
-        for (let effect of tr.effects) {
-            if (effect.is(CharacterWidthEffect)) return effect.value
-        }
-        return value
-    },
-})
-
-let character_width_listener = EditorView.updateListener.of((viewupdate) => {
-    let width = viewupdate.view.defaultCharacterWidth
-    let { defaultCharacterWidth, measuredSpaceWidth } = viewupdate.view.state.field(extra_cycle_character_width, false)
-
-    // I assume that codemirror will notice if text size changes,
-    // so only then I'll also re-measure the space width.
-    if (defaultCharacterWidth !== width) {
-        // Tried to adapt so it would always use the dummy line (with just spaces), but it never seems to work
-        // https://github.com/codemirror/view/blob/41eaf3e1435ec62ecb128f7e4b8d4df2a02140db/src/docview.ts#L324-L343
-        // I guess best to first fix defaultCharacterWidth in CM6,
-        // but eventually we'll need a way to actually measures the identation of the line.
-        // Hopefully this person will respond:
-        // https://discuss.codemirror.net/t/custom-dom-inline-styles/3563/10
-        let space_width
-        let tab_width
-        // @ts-ignore
-
-        viewupdate.view.dispatch({
-            effects: [
-                CharacterWidthEffect.of({
-                    defaultCharacterWidth: width,
-                    measuredSpaceWidth: space_width,
-                    measuredTabWidth: tab_width,
-                }),
-            ],
-        })
-    }
-})
 
 let ARBITRARY_INDENT_LINE_WRAP_LIMIT = 12
 let line_wrapping_decorations = StateField.define({
@@ -67,13 +18,8 @@ let line_wrapping_decorations = StateField.define({
     update(deco, tr) {
         // let tabSize = tr.state.tabSize
         let tabSize = 4
-        let previous = tr.startState.field(extra_cycle_character_width, false)
-        let previous_space_width = previous.measuredSpaceWidth ?? previous.defaultCharacterWidth
-        let { measuredSpaceWidth, defaultCharacterWidth } = tr.state.field(extra_cycle_character_width, false)
-        let space_width = measuredSpaceWidth ?? defaultCharacterWidth
 
-        if (space_width == null) return Decoration.none
-        if (!tr.docChanged && deco !== Decoration.none && previous_space_width === space_width) return deco
+        if (!tr.docChanged && deco !== Decoration.none) return deco
 
         let decorations = []
 
@@ -97,12 +43,12 @@ let line_wrapping_decorations = StateField.define({
             }
 
             const characters_to_count = Math.min(indented_tabs, ARBITRARY_INDENT_LINE_WRAP_LIMIT)
-            const offset = characters_to_count * tabSize * space_width
+            const offset = characters_to_count * tabSize
 
             const linerwapper = Decoration.line({
                 attributes: {
                     // style: rules.cssText,
-                    style: `--indented: ${offset}px;`,
+                    style: `--indented: ${offset}ch;`,
                     class: "awesome-wrapping-plugin-the-line",
                 },
             })
@@ -219,8 +165,6 @@ let dont_break_before_spaces = StateField.define({
 // console.log(`awesome_line_wrapping:`, indent_decorations)
 export let awesome_line_wrapping = [
     // dont_break_start_of_line,
-    extra_cycle_character_width,
-    character_width_listener,
     line_wrapping_decorations,
     // break_after_space,
     // dont_break_before_spaces,
