@@ -1,5 +1,5 @@
 import _ from "../../imports/lodash.js"
-import { StateEffect, StateField, EditorView, Decoration } from "../../imports/CodemirrorPlutoSetup.js"
+import { StateField, EditorView, Decoration } from "../../imports/CodemirrorPlutoSetup.js"
 import { ReactWidget } from "./ReactWidget.js"
 import { html } from "../../imports/Preact.js"
 
@@ -88,87 +88,4 @@ let line_wrapping_decorations = StateField.define({
     provide: (f) => EditorView.decorations.from(f),
 })
 
-// Add this back in
-// let dont_break_before_spaces_matcher = new MatchDecorator({
-//     regexp: /[^ \t]+[ \t]+/g,
-//     decoration: Decoration.mark({
-//         class: "indentation-so-dont-break",
-//     }),
-// })
-
-let identation_so_dont_break_marker = Decoration.mark({
-    class: "indentation-so-dont-break",
-})
-
-let dont_break_before_spaces = StateField.define({
-    create() {
-        return Decoration.none
-    },
-    update(deco, tr) {
-        let decorations = []
-        let pos = 0
-        for (const line of tr.newDoc) {
-            for (const match of /** @type{string} */ (line).matchAll(/[^ \t]+([ \t]|$)+/g)) {
-                if (match.index == null || match.index === 0) continue // Sneaky negative lookbehind
-                decorations.push(identation_so_dont_break_marker.range(pos + match.index, pos + match.index + match[0].length))
-            }
-        }
-        return Decoration.set(decorations, true)
-    },
-    provide: (f) => EditorView.decorations.from(f),
-})
-
-// let break_after_space_matcher = new MatchDecorator({
-//     regexp: /[ ](?=[^ \t])/g,
-//     decoration: Decoration.widget({
-//         widget: new ReactWidget(html` <wbr></wbr>`),
-//         block: false,
-//         side: 1,
-//     }),
-// })
-
-// let break_after_space = ViewPlugin.define(
-//     (view) => {
-//         return {
-//             decorations: break_after_space_matcher.createDeco(view),
-//             update(update) {
-//                 this.decorations = break_after_space_matcher.updateDeco(update, this.decorations)
-//             },
-//         }
-//     },
-//     {
-//         decorations: (v) => v.decorations,
-//     }
-// )
-
-// let dont_break_start_of_line_matcher = new MatchDecorator({
-//     regexp: /^[ \t]+[^ \t]/g,
-//     decoration: Decoration.mark({
-//         class: "Uhhh",
-//     }),
-// })
-
-// let dont_break_start_of_line = ViewPlugin.define(
-//     (view) => {
-//         return {
-//             decorations: dont_break_start_of_line_matcher.createDeco(view),
-//             update(update) {
-//                 this.decorations = dont_break_start_of_line_matcher.updateDeco(update, this.decorations)
-//             },
-//         }
-//     },
-//     {
-//         decorations: (v) => v.decorations,
-//     }
-// )
-
-// console.log(`awesome_line_wrapping:`, indent_decorations)
-export let awesome_line_wrapping = [
-    // dont_break_start_of_line,
-    line_wrapping_decorations,
-    // break_after_space,
-    // dont_break_before_spaces,
-]
-// export let awesome_line_wrapping = []
-// export let awesome_line_wrapping = indent_decorations
-// export let awesome_line_wrapping = [dont_break_before_spaces, break_after_space]
+export let awesome_line_wrapping = [line_wrapping_decorations]
