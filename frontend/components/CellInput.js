@@ -713,7 +713,7 @@ export const CellInput = ({
                     rectangularSelection({
                         eventFilter: (e) => e.altKey && e.shiftKey && e.button == 0,
                     }),
-                    highlightSelectionMatches(),
+                    highlightSelectionMatches({ minSelectionLength: 2 }),
                     bracketMatching(),
                     docs_updater,
                     tab_help_plugin,
@@ -1125,9 +1125,19 @@ const InputContextMenuItem = ({ contents, title, onClick, setOpen, tag }) =>
     </li>`
 
 const StaticCodeMirrorFaker = ({ value }) => {
-    const lines = value
-        .split("\n")
-        .map((line, i) => html`<div class="awesome-wrapping-plugin-the-line cm-line" style="--indented: 0px;">${line.length === 0 ? html`<br />` : line}</div>`)
+    const lines = value.split("\n").map((line, i) => {
+        const start_tabs = /^\t*/.exec(line)?.[0] ?? ""
+
+        const tabbed_line =
+            start_tabs.length == 0
+                ? line
+                : html`<span class="awesome-wrapping-plugin-the-tabs"><span class="ͼo">${start_tabs}</span></span
+                      >${line.substring(start_tabs.length)}`
+
+        return html`<div class="awesome-wrapping-plugin-the-line cm-line" style="--indented: ${4 * start_tabs.length}ch;">
+            ${line.length === 0 ? html`<br />` : tabbed_line}
+        </div>`
+    })
 
     return html`
         <div class="cm-editor ͼ1 ͼ2 ͼ4 ͼ4z cm-ssr-fake">
