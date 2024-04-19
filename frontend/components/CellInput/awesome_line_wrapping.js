@@ -30,6 +30,7 @@ export const awesome_line_wrapping = StateField.define({
             if (line.length === 0) continue
 
             const indented_tabs = get_start_tabs(line.text).length
+            if (indented_tabs === 0) continue
 
             const characters_to_count = Math.min(indented_tabs, ARBITRARY_INDENT_LINE_WRAP_LIMIT)
             const offset = characters_to_count * tabSize
