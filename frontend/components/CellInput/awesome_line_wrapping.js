@@ -18,8 +18,6 @@ export const awesome_line_wrapping = StateField.define({
         return Decoration.none
     },
     update(deco, tr) {
-        const tabSize = tr.state.tabSize
-
         if (!tr.docChanged && deco !== Decoration.none) return deco
 
         let decorations = []
@@ -27,13 +25,11 @@ export const awesome_line_wrapping = StateField.define({
         // TODO? Don't create new decorations when a line hasn't changed?
         for (let i of _.range(0, tr.state.doc.lines)) {
             let line = tr.state.doc.line(i + 1)
-            if (line.length === 0) continue
+            const num_tabs = get_start_tabs(line.text).length
+            if (num_tabs === 0) continue
 
-            const indented_tabs = get_start_tabs(line.text).length
-            if (indented_tabs === 0) continue
-
-            const characters_to_count = Math.min(indented_tabs, ARBITRARY_INDENT_LINE_WRAP_LIMIT)
-            const offset = characters_to_count * tabSize
+            const how_much_to_indent = Math.min(num_tabs, ARBITRARY_INDENT_LINE_WRAP_LIMIT)
+            const offset = how_much_to_indent * tr.state.tabSize
 
             const linerwapper = Decoration.line({
                 attributes: {
@@ -44,15 +40,15 @@ export const awesome_line_wrapping = StateField.define({
             // Need to push before the tabs one else codemirror gets madddd
             decorations.push(linerwapper.range(line.from, line.from))
 
-            if (characters_to_count > 0) {
+            if (how_much_to_indent > 0) {
                 decorations.push(
                     Decoration.mark({
                         class: "awesome-wrapping-plugin-the-tabs",
-                    }).range(line.from, line.from + characters_to_count)
+                    }).range(line.from, line.from + how_much_to_indent)
                 )
             }
-            if (indented_tabs > characters_to_count) {
-                for (let i of _.range(characters_to_count, indented_tabs)) {
+            if (num_tabs > how_much_to_indent) {
+                for (let i of _.range(how_much_to_indent, num_tabs)) {
                     decorations.push(
                         Decoration.replace({
                             widget: new ReactWidget(html`<span style=${{ opacity: 0.2 }}>⇥ </span>`),

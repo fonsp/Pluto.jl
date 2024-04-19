@@ -804,7 +804,6 @@ export const CellInput = ({
                     EditorView.contentAttributes.of({ spellcheck: String(ENABLE_CM_SPELLCHECK) }),
 
                     EditorView.lineWrapping,
-                    // Wowww this has been enabled for some time now... wonder if there are issues about this yet ;) - DRAL
                     awesome_line_wrapping,
 
                     // Reset diagnostics on change
