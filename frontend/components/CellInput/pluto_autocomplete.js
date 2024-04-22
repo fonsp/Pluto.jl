@@ -179,7 +179,7 @@ const field_rank_heuristic = (text, is_exported) => is_exported * 3 + (/^\p{Ll}/
 
 const julia_commit_characters = [".", ",", "(", "[", "{"]
 const endswith_keyword_regex =
-    /(baremodule|begin|break|catch|const|continue|do|else|elseif|end|export|false|finally|for|function|global|if|import|let|local|macro|module|quote|return|struct|true|try|using|while)$/
+    /^(.* )?(baremodule|begin|break|catch|const|continue|do|else|elseif|end|export|false|finally|for|function|global|if|import|let|local|macro|module|quote|return|struct|true|try|using|while)$/
 
 const validFor = (text) => {
     let expected_char = /[\p{L}\p{Nl}\p{Sc}\d_!]*$/u.test(text)
