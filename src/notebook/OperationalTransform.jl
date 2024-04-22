@@ -1,5 +1,5 @@
 """
-See [collab example](https://codemirror.net/examples/collab/).
+See [collab example](https://codemirror.net/examples/collab/) and [Pinot.jl](https://github.com/JuliaPluto/Pinot.jl).
 """
 module OperationalTransform
 
