@@ -622,6 +622,18 @@ export let RawHTMLContainer = ({ body, className = "", persist_js_state = false,
                 } catch (err) {
                     console.warn("Highlighting failed", err)
                 }
+
+                // Find code blocks and add a copy button:
+                try {
+                    if (container.firstElementChild?.matches("div.markdown")) {
+                        container.querySelectorAll("pre > code").forEach((code_element) => {
+                            const pre = code_element.parentElement
+                            generateCopyCodeButton(pre)
+                        })
+                    }
+                } catch (err) {
+                    console.warn("Adding markdown code copy button failed", err)
+                }
             } finally {
                 js_init_set?.delete(container)
             }
@@ -687,4 +699,28 @@ export let highlight = (code_element, language) => {
             hljs.highlightElement(code_element)
         }
     }
+}
+
+/**
+ * Generates a copy button for Markdown code blocks.
+ */
+export const generateCopyCodeButton = (/** @type {HTMLElement?} */ pre) => {
+    if (!pre) return
+
+    // create copy button
+    const button = document.createElement("button")
+    button.title = "Copy to Clipboard"
+    button.className = "markdown-code-block-button"
+    button.addEventListener("click", (e) => {
+        const txt = pre.textContent ?? ""
+        navigator.clipboard.writeText(txt)
+
+        button.classList.add("markdown-code-block-copied-code-button")
+        setTimeout(() => {
+            button.classList.remove("markdown-code-block-copied-code-button")
+        }, 2000)
+    })
+
+    // Append copy button to the code block element
+    pre.prepend(button)
 }

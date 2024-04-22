@@ -170,7 +170,9 @@ const StatusItem = ({ status_tree, path, my_clock_is_ahead_by, nbpkg, backend_la
         let busy = kids.reduce((acc, x) => acc + (is_busy(x) ? 1 : 0), 0)
         let total = kids.length
 
-        return html`<${DiscreteProgressBar} busy=${busy} done=${done} total=${total} />`
+        let failed_indices = kids.reduce((acc, x, i) => (x.success === false ? [...acc, i] : acc), [])
+
+        return html`<${DiscreteProgressBar} busy=${busy} done=${done} total=${total} failed_indices=${failed_indices} />`
     }
 
     const inner = is_open
@@ -198,6 +200,7 @@ const StatusItem = ({ status_tree, path, my_clock_is_ahead_by, nbpkg, backend_la
               data-depth=${path.length}
               class=${cl({
                   started,
+                  failed: mystatus.success === false,
                   finished,
                   busy,
                   is_open,

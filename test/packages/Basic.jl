@@ -206,7 +206,7 @@ import Malt
         @test count("PlutoPkgTestD", ptoml_contents()) == 0
 
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
     end
 
     simple_import_path = joinpath(@__DIR__, "simple_import.jl")
@@ -233,7 +233,7 @@ import Malt
 
         @test notebook.cells[2].output.body == "0.2.2"
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
     end
     
     @testset "Package added by url" begin
@@ -258,7 +258,7 @@ import Malt
 
         @test notebook.cells[2].output.body == "1.0.0"
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
     end
     
     future_notebook = read(joinpath(@__DIR__, "future_nonexisting_version.jl"), String)
@@ -283,7 +283,7 @@ import Malt
 
         @test notebook.cells[2].output.body == "0.3.1"
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
     end
 
 
@@ -337,7 +337,7 @@ import Malt
         @test notebook.nbpkg_restart_required_msg !== nothing
         @test has_embedded_pkgfiles(notebook)
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
     end
     
     pkg_cell_notebook = read(joinpath(@__DIR__, "pkg_cell.jl"), String)
@@ -392,7 +392,7 @@ import Malt
         @test notebook.nbpkg_restart_recommended_msg === nothing
         @test notebook.nbpkg_restart_required_msg === nothing
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
     end
 
     @testset "DrWatson cell" begin
@@ -443,7 +443,7 @@ import Malt
         @test notebook.nbpkg_restart_recommended_msg === nothing
         @test notebook.nbpkg_restart_required_msg === nothing
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
     end
 
     @static if VERSION < v"1.10.0-0" # see https://github.com/fonsp/Pluto.jl/pull/2626#issuecomment-1671244510
@@ -596,7 +596,7 @@ import Malt
 
             @test has_embedded_pkgfiles(notebook)
 
-            WorkspaceManager.unmake_workspace((🍭, notebook))
+            cleanup(🍭, notebook)
         end
 
     end
@@ -649,7 +649,7 @@ import Malt
         wait.(running_tasks)
         empty!(running_tasks)
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
     end
 
     @testset "PlutoRunner Syntax Error" begin
@@ -671,7 +671,7 @@ import Malt
         @test !Pluto.is_just_text(notebook.topology, notebook.cells[2]) # Not a syntax error form
         @test Pluto.is_just_text(notebook.topology, notebook.cells[3])
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
     end
 
     @testset "Precompilation" begin
@@ -758,7 +758,7 @@ import Malt
             # Running the import should not have triggered additional precompilation, everything should have been precompiled during Pkg.precompile() (in sync_nbpkg).
             @test after_sync == after_run
             
-            WorkspaceManager.unmake_workspace((🍭, notebook))
+            cleanup(🍭, notebook)
         end
     end
 
@@ -773,7 +773,7 @@ import Malt
         @test isnothing(notebook.nbpkg_ctx)
         @test notebook.cells[2].output.body == sprint(Base.show, LOAD_PATH[begin])
         @test notebook.cells[3].output.body == sprint(Base.show, LOAD_PATH[end])
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
     end
 
     Pkg.Registry.rm(pluto_test_registry_spec)

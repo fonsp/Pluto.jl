@@ -173,7 +173,7 @@ function run_reactive_core!(
         cell.logs = Vector{Dict{String,Any}}()
         send_notebook_changes_throttled()
 
-        if any_interrupted || notebook.wants_to_interrupt || !will_run_code(notebook)
+        if (skip = any_interrupted || notebook.wants_to_interrupt || !will_run_code(notebook))
             relay_reactivity_error!(cell, InterruptException())
         else
             run = run_single!(
@@ -193,7 +193,7 @@ function run_reactive_core!(
         end
 
         cell.running = false
-		Status.report_business_finished!(cell_status, Symbol(i))
+		Status.report_business_finished!(cell_status, Symbol(i), !skip && !run.errored)
 
         defined_macros_in_cell = defined_macros(new_topology, cell) |> Set{Symbol}
 

@@ -166,5 +166,5 @@ using Pluto.WorkspaceManager: poll
         end
     end
 
-    WorkspaceManager.unmake_workspace((🍭, notebook))
+    cleanup(🍭, notebook)
 end

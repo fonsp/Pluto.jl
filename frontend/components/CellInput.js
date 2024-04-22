@@ -47,7 +47,7 @@ import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { UsersFacet, pluto_collab } from "./CellInput/pluto_collab.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
-import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"
+import { awesome_line_wrapping, get_start_tabs } from "./CellInput/awesome_line_wrapping.js"
 import { cell_movement_plugin, prevent_holding_a_key_from_doing_things_across_cells } from "./CellInput/cell_movement_plugin.js"
 import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
@@ -64,6 +64,7 @@ import { moveLineDown } from "../imports/CodemirrorPlutoSetup.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 export const ENABLE_CM_SPELLCHECK = window.localStorage.getItem("ENABLE_CM_SPELLCHECK") === "true"
+export const ENABLE_CM_AUTOCOMPLETE_ON_TYPE = window.localStorage.getItem("ENABLE_CM_AUTOCOMPLETE_ON_TYPE") === "true"
 
 if (ENABLE_CM_MIXED_PARSER) {
     console.log(`YOU ENABLED THE CODEMIRROR MIXED LANGUAGE PARSER
@@ -83,6 +84,12 @@ window.PLUTO_TOGGLE_CM_MIXED_PARSER = (val = !ENABLE_CM_MIXED_PARSER) => {
 // @ts-ignore
 window.PLUTO_TOGGLE_CM_SPELLCHECK = (val = !ENABLE_CM_SPELLCHECK) => {
     window.localStorage.setItem("ENABLE_CM_SPELLCHECK", String(val))
+    window.location.reload()
+}
+
+// @ts-ignore
+window.PLUTO_TOGGLE_CM_AUTOCOMPLETE_ON_TYPE = (val = !ENABLE_CM_AUTOCOMPLETE_ON_TYPE) => {
+    window.localStorage.setItem("ENABLE_CM_AUTOCOMPLETE_ON_TYPE", String(val))
     window.location.reload()
 }
 
@@ -381,6 +388,8 @@ export const CellInput = ({
     focus_after_creation,
     cm_forced_focus,
     set_cm_forced_focus,
+    show_input,
+    skip_static_fake = false,
     on_submit,
     on_delete,
     on_add_after,
@@ -443,16 +452,52 @@ export const CellInput = ({
             pluto_actions.sync_updates(cell_id, cm_updates)
         }
     }, [cm_updates?.length, cell_id])
+    const [show_static_fake_state, set_show_static_fake] = useState(!skip_static_fake)
+
+    const show_static_fake = useMemo(() => navigator.userAgent.includes("Firefox") || focus_after_creation || cm_forced_focus != null || skip_static_fake, [])
+        ? false
+        : show_static_fake_state
 
     useLayoutEffect(() => {
+        if (!show_static_fake) return
+        let node = dom_node_ref.current
+        if (node == null) return
+        let observer
+
+        const show = () => {
+            set_show_static_fake(false)
+            observer.disconnect()
+            window.removeEventListener("beforeprint", show)
+        }
+
+        observer = new IntersectionObserver((e) => {
+            if (e.some((e) => e.isIntersecting)) {
+                show()
+            }
+        })
+
+        observer.observe(node)
+        window.addEventListener("beforeprint", show)
+        return () => {
+            observer.disconnect()
+            window.removeEventListener("beforeprint", show)
+        }
+    }, [])
+
+    useLayoutEffect(() => {
+        if (show_static_fake) return
         if (dom_node_ref.current == null) return
 
-        const keyMapSubmit = () => {
+        console.log("Rendering cell input", cell_id)
+
+        const keyMapSubmit = (/** @type {EditorView} */ cm) => {
+            autocomplete.closeCompletion(cm)
             on_submit()
             return true
         }
         let run = async (fn) => await fn()
         const keyMapRun = (/** @type {EditorView} */ cm) => {
+            autocomplete.closeCompletion(cm)
             run(async () => {
                 // we await to prevent an out-of-sync issue
                 await on_add_after()
@@ -702,7 +747,7 @@ export const CellInput = ({
                     rectangularSelection({
                         eventFilter: (e) => e.altKey && e.shiftKey && e.button == 0,
                     }),
-                    highlightSelectionMatches(),
+                    highlightSelectionMatches({ minSelectionLength: 2 }),
                     bracketMatching(),
                     docs_updater,
                     tab_help_plugin,
@@ -775,6 +820,7 @@ export const CellInput = ({
                                 results: message.results,
                             }
                         },
+                        request_special_symbols: () => pluto_actions.send("complete_symbols").then(({ message }) => message),
                         on_update_doc_query: on_update_doc_query,
                     }),
 
@@ -793,7 +839,6 @@ export const CellInput = ({
                     EditorView.contentAttributes.of({ spellcheck: String(ENABLE_CM_SPELLCHECK) }),
 
                     EditorView.lineWrapping,
-                    // Wowww this has been enabled for some time now... wonder if there are issues about this yet ;) - DRAL
                     awesome_line_wrapping,
 
                     // Reset diagnostics on change
@@ -874,7 +919,7 @@ export const CellInput = ({
                 lines_wrapper_resize_observer.unobserve(lines_wrapper_dom_node)
             }
         }
-    }, [])
+    }, [show_static_fake])
 
     useEffect(() => {
         if (newcm_ref.current == null) return
@@ -953,6 +998,7 @@ export const CellInput = ({
 
     return html`
         <pluto-input ref=${dom_node_ref} class="CodeMirror" translate=${false}>
+            ${show_static_fake ? (show_input ? html`<${StaticCodeMirrorFaker} value=${remote_code} />` : null) : null}
             <${InputContextMenu}
                 on_delete=${on_delete}
                 cell_id=${cell_id}
@@ -1119,3 +1165,43 @@ const InputContextMenuItem = ({ contents, title, onClick, setOpen, tag }) =>
             <span class=${`${tag} ctx_icon`} />${contents}
         </button>
     </li>`
+
+const StaticCodeMirrorFaker = ({ value }) => {
+    const lines = value.split("\n").map((line, i) => {
+        const start_tabs = get_start_tabs(line)
+
+        const tabbed_line =
+            start_tabs.length == 0
+                ? line
+                : html`<span class="awesome-wrapping-plugin-the-tabs"><span class="ͼo">${start_tabs}</span></span
+                      >${line.substring(start_tabs.length)}`
+
+        return html`<div class="awesome-wrapping-plugin-the-line cm-line" style="--indented: ${4 * start_tabs.length}ch;">
+            ${line.length === 0 ? html`<br />` : tabbed_line}
+        </div>`
+    })
+
+    return html`
+        <div class="cm-editor ͼ1 ͼ2 ͼ4 ͼ4z cm-ssr-fake">
+            <div tabindex="-1" class="cm-scroller">
+                <div class="cm-gutters" aria-hidden="true">
+                    <div class="cm-gutter cm-lineNumbers"></div>
+                </div>
+                <div
+                    spellcheck="false"
+                    autocorrect="off"
+                    autocapitalize="off"
+                    translate="no"
+                    contenteditable="false"
+                    style="tab-size: 4;"
+                    class="cm-content cm-lineWrapping"
+                    role="textbox"
+                    aria-multiline="true"
+                    aria-autocomplete="list"
+                >
+                    ${lines}
+                </div>
+            </div>
+        </div>
+    `
+}

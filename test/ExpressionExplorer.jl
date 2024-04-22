@@ -63,10 +63,10 @@ function testee(expr::Any, expected_references, expected_definitions, expected_f
         error("\n== The expression explorer modified the expression. Don't do that! ==\n")
     end
 
-    # Anonymous function are given a random name, which looks like anon67387237861123
+    # Anonymous function are given a random name, which looks like __ExprExpl_anon__67387237861123
     # To make testing easier, we rename all such functions to anon
     new_name(fn::FunctionName) = FunctionName(map(new_name, fn.parts)...)
-    new_name(sym::Symbol) = startswith(string(sym), "anon") ? :anon : sym
+    new_name(sym::Symbol) = startswith(string(sym), "__ExprExpl_anon__") ? :anon : sym
 
     result.assignments = Set(new_name.(result.assignments))
     result.funcdefs = let

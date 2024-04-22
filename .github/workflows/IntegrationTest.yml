@@ -38,14 +38,14 @@ jobs:
                     - { user: JuliaPluto, repo: PlutoSliderServer.jl }
 
         steps:
-            - uses: actions/checkout@v3
+            - uses: actions/checkout@v4
             - uses: julia-actions/setup-julia@v1
               with:
                   version: ${{ matrix.julia-version }}
                   arch: x64
             - uses: julia-actions/julia-buildpkg@v1
             - name: Clone Downstream
-              uses: actions/checkout@v3
+              uses: actions/checkout@v4
               with:
                   repository: ${{ matrix.package.user }}/${{ matrix.package.repo }}
                   path: downstream

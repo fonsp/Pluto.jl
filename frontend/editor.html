@@ -35,8 +35,6 @@
     <link rel="stylesheet" href="./hide-ui.css" type="text/css" media="all" data-pluto-file="hide-ui" />
     <link rel="stylesheet" href="./binder.css" type="text/css" />
     <link rel="stylesheet" href="./treeview.css" type="text/css" />
-    <link rel="preload" href="./juliamono.css" as="style" />
-    <link rel="preload" href="./vollkorn.css" as="style" />
     <link rel="stylesheet" href="./highlightjs.css" type="text/css">
 
     <meta name="pluto-insertion-spot-parameters">
@@ -45,11 +43,15 @@
 
     <!-- This script will be enabled by JS after the notebook has initialized to prevent taking up bandwidth during the initial load. -->
     <script type="text/javascript" id="MathJax-script" integrity="sha384-4kE/rQ11E8xT9QgrCBTyvenkuPfQo8rXYQvJZuMgxyPOoUfpatjQPlgdv6V5yhUK" crossorigin="anonymous" not-the-src-yet="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg-full.js" async></script>
+    
+    <meta name="pluto-insertion-spot-preload">
 </head>
 
 <body class="loading no-MαθJax">
     <div style="display: flex; min-height: 100vh;">
-        <pluto-editor class="fullscreen"></pluto-editor>
+        <pluto-editor class="fullscreen">
+            <progress style="filter: grayscale(1)" class="statefile-fetch-progress delete-me-when-live" max="100"></progress>
+        </pluto-editor>
     </div>
 </body>
 

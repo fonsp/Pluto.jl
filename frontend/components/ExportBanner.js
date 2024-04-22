@@ -64,10 +64,11 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
     useEventListener(
         window,
         "beforeprint",
-        () => {
-            console.log("beforeprint")
-            print_old_title_ref.current = document.title
-            document.title = print_title.replace(/\.jl$/, "").replace(/\.plutojl$/, "")
+        (e) => {
+            if (!e.detail?.fake) {
+                print_old_title_ref.current = document.title
+                document.title = print_title.replace(/\.jl$/, "").replace(/\.plutojl$/, "")
+            }
         },
         [print_title]
     )
