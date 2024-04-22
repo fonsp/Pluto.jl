@@ -90,18 +90,12 @@ body:not(.disable_ui) {
 /* | main=25px+700px+6px=731px | pluto-helpbox=350px - 500px | */
 /* min-width: 731px+ */
 
-/* CAN WE HAVE CONTAINER QUERIES PLESSSSS */
-@media screen and (min-width: calc(700px + 25px + 6px)) and (max-width: calc(700px + 25px + 6px + 500px)) {
-    body:not(.disable_ui) pluto-editor.fullscreen main {
-        margin-left: 0px;
-        align-self: flex-start;
-    }
-}
-@media screen and (min-width: calc(700px + 25px + 6px + 500px)) and (max-width: calc(700px + 25px + 6px + 500px + 500px)) {
-    body:not(.disable_ui) pluto-editor.fullscreen main {
-        margin-right: 500px;
-        align-self: flex-end;
-    }
+pluto-editor main {
+    align-self: flex-end;
+    margin-right: max(
+        /* First part: center it */ max(0px, (100% - (700px + 25px + 6px)) / 2),
+        /* Second part: push away from the right to take up all free space */ min((100% - (700px + 25px + 6px)), /* but don't do this more than */ 500px)
+    );
 }
 
 pluto-notebook {
