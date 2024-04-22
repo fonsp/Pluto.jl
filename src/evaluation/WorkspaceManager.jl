@@ -684,7 +684,7 @@ function interrupt_workspace(session_notebook::Union{SN,Workspace}; verbose=true
     # TODO: this will also kill "pending" evaluations, and any evaluations started within 100ms of the kill. A global "evaluation count" would fix this.
     # TODO: listen for the final words of the remote process on stdout/stderr: "Force throwing a SIGINT"
     try
-        verbose && @info "Sending interrupt to process $(workspace.worker)"
+        verbose && @info "Sending interrupt to process $(summary(workspace.worker))"
         Malt.interrupt(workspace.worker)
 
         if poll(() -> isready(workspace.dowork_token), 5.0, 5/100)
