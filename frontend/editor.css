@@ -132,7 +132,7 @@ pluto-output h6 {
     color: var(--pluto-output-h-color);
     margin-block-start: 1rem;
     margin-block-end: 0rem;
-    line-height: 1em;
+    line-height: 1.25em;
 }
 
 pluto-output h1,
