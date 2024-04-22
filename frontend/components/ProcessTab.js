@@ -171,7 +171,6 @@ const StatusItem = ({ status_tree, path, my_clock_is_ahead_by, nbpkg, backend_la
         let total = kids.length
 
         let failed_indices = kids.reduce((acc, x, i) => (x.success === false ? [...acc, i] : acc), [])
-        console.log({ kids })
 
         return html`<${DiscreteProgressBar} busy=${busy} done=${done} total=${total} failed_indices=${failed_indices} />`
     }
