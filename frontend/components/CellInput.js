@@ -342,23 +342,6 @@ let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPluto
     return line_object.from + ch_clamped
 }
 
-function eventEmitter() {
-    const events = {}
-    return {
-        subscribe: (/** @type {string} */ name, cb) => {
-            ;(events[name] || (events[name] = [])).push(cb)
-            return {
-                unsubscribe: () => {
-                    events[name] && events[name].splice(events[name].indexOf(cb), 1)
-                },
-            }
-        },
-        emit: (/** @type {string} */ name, data) => {
-            ;(events[name] || []).forEach((fn) => fn(data))
-        },
-    }
-}
-
 /**
  * @typedef UpdateSpec
  * @type {{
@@ -379,7 +362,6 @@ function eventEmitter() {
  * @param {{
  *  code: string,
  *  cm_updates: Array<TextUpdate>,
- *  last_run_version: Number,
  *  local_code: string,
  *  remote_code: string,
  *  scroll_into_view_after_creation: boolean,
@@ -392,8 +374,8 @@ function eventEmitter() {
 export const CellInput = ({
     cm_updates,
     code,
+    last_run_code,
     start_version,
-    last_run_version,
 
     disable_input,
     focus_after_creation,
@@ -433,9 +415,9 @@ export const CellInput = ({
     const notebook_id_ref = useRef(notebook_id)
     notebook_id_ref.current = notebook_id
 
-    const newcm_ref = useRef(/** @type {EditorView?} */ (null))
-    const dom_node_ref = useRef(/** @type {HTMLElement?} */ (null))
-    const remote_code_ref = useRef(/** @type {string?} */ (null))
+    const newcm_ref = useRef(/** @type {EditorView?} */(null))
+    const dom_node_ref = useRef(/** @type {HTMLElement?} */(null))
+    const remote_code_ref = useRef(/** @type {string?} */(null))
 
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
     let global_definitions_compartment = useCompartment(newcm_ref, GlobalDefinitionsFacet.of(global_definition_locations))
@@ -456,12 +438,11 @@ export const CellInput = ({
         }, [on_change])
     )
 
-    const updater = useMemo(eventEmitter, [])
     useEffect(() => {
         if (cm_updates) {
-            updater.emit("updates", cm_updates)
+            pluto_actions.sync_updates(cell_id, cm_updates)
         }
-    }, [cm_updates?.length])
+    }, [cm_updates?.length, cell_id])
 
     useLayoutEffect(() => {
         if (dom_node_ref.current == null) return
@@ -561,9 +542,9 @@ export const CellInput = ({
                     selection:
                         selection.from === 0
                             ? {
-                                  anchor: selection.from + prefix.length,
-                                  head: selection.to + prefix.length,
-                              }
+                                anchor: selection.from + prefix.length,
+                                head: selection.to + prefix.length,
+                            }
                             : undefined,
                 })
             }
@@ -765,19 +746,19 @@ export const CellInput = ({
                     indentUnit.of("\t"),
                     ...(ENABLE_CM_MIXED_PARSER
                         ? [
-                              julia_mixed(),
-                              markdown({
-                                  defaultCodeLanguage: julia_mixed(),
-                              }),
-                              htmlLang(), //Provides tag closing!,
-                              javascript(),
-                              python(),
-                              sqlLang,
-                          ]
+                            julia_mixed(),
+                            markdown({
+                                defaultCodeLanguage: julia_mixed(),
+                            }),
+                            htmlLang(), //Provides tag closing!,
+                            javascript(),
+                            python(),
+                            sqlLang,
+                        ]
                         : [
-                              //
-                              julia_andrey(),
-                          ]),
+                            //
+                            julia_andrey(),
+                        ]),
                     go_to_definition_plugin,
                     pluto_autocomplete({
                         request_autocomplete: async ({ text }) => {
@@ -824,10 +805,11 @@ export const CellInput = ({
                     on_change_compartment,
 
                     pluto_collab(start_version, {
-                        push_updates: (data) => pluto_actions.send("push_updates", { ...data, cell_id: cell_id }, { notebook_id }, false),
-                        subscribe_to_updates: (cb) => updater.subscribe("updates", cb),
-                        client_id,
+                        // push_updates: (data) => pluto_actions.send("push_updates", { ...data, cell_id: cell_id }, { notebook_id }, false),
+                        // subscribe_to_updates: (cb) => updater.subscribe("updates", cb),
+                        pluto_actions,
                         cell_id,
+                        client_id,
                     }),
 
                     // This is my weird-ass extension that checks the AST and shows you where
@@ -881,7 +863,7 @@ export const CellInput = ({
         if (lines_wrapper_dom_node) {
             const lines_wrapper_resize_observer = new ResizeObserver(() => {
                 const line_nodes = lines_wrapper_dom_node.children
-                const tops = _.map(line_nodes, (c) => /** @type{HTMLElement} */ (c).offsetTop)
+                const tops = _.map(line_nodes, (c) => /** @type{HTMLElement} */(c).offsetTop)
                 const diffs = tops.slice(1).map((y, i) => y - tops[i])
                 const heights = [...diffs, 15]
                 on_line_heights(heights)
@@ -990,10 +972,10 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
     const timeout = useRef(null)
     let pluto_actions = useContext(PlutoActionsContext)
     const [open, setOpenState] = useState(false)
-    const button_ref = useRef(/** @type {HTMLButtonElement?} */ (null))
-    const list_ref = useRef(/** @type {HTMLButtonElement?} */ (null))
+    const button_ref = useRef(/** @type {HTMLButtonElement?} */(null))
+    const list_ref = useRef(/** @type {HTMLButtonElement?} */(null))
 
-    const prevously_focused_element_ref = useRef(/** @type {Element?} */ (null))
+    const prevously_focused_element_ref = useRef(/** @type {Element?} */(null))
     const setOpen = (val) => {
         if (val) {
             prevously_focused_element_ref.current = document.activeElement
@@ -1050,12 +1032,12 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
     return html`
         <button
             onClick=${(e) => {
-                setOpen(!open)
-            }}
+            setOpen(!open)
+        }}
             class=${cl({
-                input_context_menu: true,
-                open,
-            })}
+            input_context_menu: true,
+            open,
+        })}
             title="Actions"
             ref=${button_ref}
         >
@@ -1063,23 +1045,23 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
         </button>
         <div
             class=${cl({
-                input_context_menu: true,
-                open,
-            })}
+            input_context_menu: true,
+            open,
+        })}
             ref=${list_ref}
             onfocusout=${(e) => {
-                const li_focused = list_ref.current?.matches(":focus-within") || list_ref.current?.contains(e.relatedTarget)
+            const li_focused = list_ref.current?.matches(":focus-within") || list_ref.current?.contains(e.relatedTarget)
 
-                if (
-                    !li_focused ||
-                    // or the focus is on the list itself
-                    e.relatedTarget === list_ref.current
-                )
-                    setOpen(false)
-            }}
+            if (
+                !li_focused ||
+                // or the focus is on the list itself
+                e.relatedTarget === list_ref.current
+            )
+                setOpen(false)
+        }}
         >
             ${open
-                ? html`<ul onMouseenter=${mouseenter}>
+            ? html`<ul onMouseenter=${mouseenter}>
                       <${InputContextMenuItem} tag="delete" contents="Delete cell" title="Delete cell" onClick=${on_delete} setOpen=${setOpen} />
 
                       <${InputContextMenuItem}
@@ -1090,35 +1072,35 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
                           setOpen=${setOpen}
                       />
                       ${any_logs
-                          ? html`<${InputContextMenuItem}
+                    ? html`<${InputContextMenuItem}
                                 title=${show_logs ? "Show cell logs" : "Hide cell logs"}
                                 tag=${show_logs ? "hide_logs" : "show_logs"}
                                 contents=${show_logs ? "Hide logs" : "Show logs"}
                                 onClick=${toggle_logs}
                                 setOpen=${setOpen}
                             />`
-                          : null}
+                    : null}
                       ${is_copy_output_supported()
-                          ? html`<${InputContextMenuItem}
+                    ? html`<${InputContextMenuItem}
                                 tag="copy_output"
                                 contents="Copy output"
                                 title="Copy the output of this cell to the clipboard."
                                 onClick=${copy_output}
                                 setOpen=${setOpen}
                             />`
-                          : null}
+                    : null}
 
                       <${InputContextMenuItem}
                           title=${skip_as_script
-                              ? "This cell is currently stored in the notebook file as a Julia comment. Click here to disable."
-                              : "Store this code in the notebook file as a Julia comment. This way, it will not run when the notebook runs as a script outside of Pluto."}
+                    ? "This cell is currently stored in the notebook file as a Julia comment. Click here to disable."
+                    : "Store this code in the notebook file as a Julia comment. This way, it will not run when the notebook runs as a script outside of Pluto."}
                           tag=${skip_as_script ? "run_as_script" : "skip_as_script"}
                           contents=${skip_as_script ? html`<b>Enable in file</b>` : html`Disable in file`}
                           onClick=${toggle_skip_as_script}
                           setOpen=${setOpen}
                       />
                   </ul>`
-                : html``}
+            : html``}
         </div>
     `
 }
@@ -1129,9 +1111,9 @@ const InputContextMenuItem = ({ contents, title, onClick, setOpen, tag }) =>
             tabindex="0"
             title=${title}
             onClick=${(e) => {
-                setOpen(false)
-                onClick(e)
-            }}
+            setOpen(false)
+            onClick(e)
+        }}
             class=${tag}
         >
             <span class=${`${tag} ctx_icon`} />${contents}

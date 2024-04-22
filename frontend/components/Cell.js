@@ -104,7 +104,7 @@ const on_jump = (hasBarrier, pluto_actions, cell_id) => () => {
  * }} props
  * */
 export const Cell = ({
-    cell_input: { cell_id, code, code_folded, metadata, cm_updates, start_version, last_run_version },
+    cell_input: { cell_id, code, code_folded, metadata, cm_updates, start_version, last_run_code },
     cell_result: { queued, running, runtime, errored, output, logs, published_object_keys, depends_on_disabled_cells, depends_on_skipped_cells },
     cell_dependencies,
     cell_input_local,
@@ -206,7 +206,7 @@ export const Cell = ({
     // We then toggle animation visibility using opacity. This saves a bunch of repaints.
     const activate_animation = useDebouncedTruth(running || queued || waiting_to_run)
 
-    const class_code_differs = useMemo(() => (cell_input_local ? cell_input_local.code != code : code != code), [cell_input_local?.code, code])
+    const class_code_differs = useMemo(() => (last_run_code !== code), [code, last_run_code])
     const class_code_folded = code_folded && cm_forced_focus == null
     const no_output_yet = (output?.last_run_timestamp ?? 0) === 0
     const code_not_trusted_yet = process_waiting_for_permission && no_output_yet
@@ -332,7 +332,7 @@ export const Cell = ({
                 cm_updates=${cm_updates}
                 code=${code}
                 start_version=${start_version}
-                last_run_version=${last_run_version}
+                last_run_code=${last_run_code}
                 local_code=${cell_input_local?.code ?? code}
                 remote_code=${code}
                 cell_dependencies=${cell_dependencies}

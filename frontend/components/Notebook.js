@@ -133,6 +133,7 @@ const render_cell_outputs_minimum = 20
  *  disable_input: boolean,
  *  process_waiting_for_permission: boolean,
  *  sanitize_html: boolean,
+ *  client_id: string,
  * }} props
  * */
 export const Notebook = ({

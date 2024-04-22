@@ -18,6 +18,15 @@ import {
 import { html } from "../../imports/Preact.js"
 import { ReactWidget } from "./ReactWidget.js"
 
+/**
+ * @typedef Delta
+ * @type{{insert?: string, retain?: number, delete?: number}}
+ **/
+
+/**
+ * @param {Array<Delta>} ops
+ * @returns {Array<ChangeSet>}
+ **/
 const delta_to_specs = (ops) => {
     const specs = []
 
@@ -36,9 +45,13 @@ const delta_to_specs = (ops) => {
     return specs
 }
 
+/**
+ * @param {Array<ChangeSet>} cs
+ * @returns {Array<Delta>}
+ **/
 const changeset_to_delta = (cs) => {
     const ops = []
-    let current_offset = 0 
+    let current_offset = 0
     cs.iterChanges((fromA, toA, fromB, toB, insert) => {
         const insertText = insert.sliceString(0, insert.length, "\n")
         if (current_offset < fromA) {
@@ -54,16 +67,17 @@ const changeset_to_delta = (cs) => {
         }
         current_offset = toA
     }, false)
+    console.log(ops)
     return ops
 }
 
 /**
- * @param {Function} push_updates
+ * @param {string} cell_id
  * @param {Number} version
  * @param {Array<any>} fullUpdates
- * @returns {Promise<any>}
+ * @returns {{cell_id: string, version: number, updates: Array<any>}}
  */
-function pushUpdates(push_updates, version, fullUpdates) {
+function makeUpdates(cell_id, version, fullUpdates) {
     // Strip off transaction data
     const updates = fullUpdates.map((u) => ({
         client_id: u.clientID,
@@ -71,7 +85,7 @@ function pushUpdates(push_updates, version, fullUpdates) {
         effects: ENABLE_EFFECTS ? u.effects.map((effect) => effect.value.selection.toJSON()) : undefined,
         ops: changeset_to_delta(u.changes),
     }))
-    return push_updates({ version, updates })
+    return { cell_id, version, updates }
 }
 
 const DEBUG_COLLAB = false
@@ -207,15 +221,13 @@ const CaretField = (client_id, cell_id) =>
 /**
  * @param {number} startVersion
  * @param {{
- *   get_notebook: () => Notebook,
- *   subscribe_to_updates: (cb: Function) => EventHandler,
- *   push_updates: (updates: Array<any>) => Promise<any>
  *   client_id: string,
  *   cell_id: string,
+ *   pluto_actions: any,
  * }} param1
  * @returns
  */
-export const pluto_collab = (startVersion, { subscribe_to_updates, push_updates, client_id, cell_id }) => {
+export const pluto_collab = (startVersion, { pluto_actions, cell_id, client_id }) => {
     const plugin = ViewPlugin.fromClass(
         class {
             pushing = false
@@ -225,11 +237,19 @@ export const pluto_collab = (startVersion, { subscribe_to_updates, push_updates,
              */
             constructor(view) {
                 this.view = view
-                this.handler = subscribe_to_updates((updates) => this.sync(updates))
+                // this.handler = subscribe_to_updates((updates) => this.sync(updates))
+                pluto_actions.register_collab_plugin(cell_id, this)
             }
 
             update(/** @type ViewUpdate */ update) {
-                this.push()
+                if (update.docChanged) // NOTE: remove this to have cursor sync
+                    this.push()
+            }
+
+            makeUpdate() {
+                const updates = sendableUpdates(this.view.state)
+                const version = getSyncedVersion(this.view.state)
+                return makeUpdates(cell_id, version, updates)
             }
 
             async push() {
@@ -240,7 +260,7 @@ export const pluto_collab = (startVersion, { subscribe_to_updates, push_updates,
 
                 this.pushing = true
                 const version = getSyncedVersion(this.view.state)
-                await pushUpdates(push_updates, version, updates)
+                await pluto_actions.push_updates(makeUpdates(cell_id, version, updates))
                 this.pushing = false
 
                 // Regardless of whether the push failed or new updates came in
@@ -259,7 +279,7 @@ export const pluto_collab = (startVersion, { subscribe_to_updates, push_updates,
             }
 
             /**
-             * @param {Array<any>} updates
+             * @param {Array<any>} newUpdates
              */
             syncNewUpdates(newUpdates) {
                 const updates = newUpdates.map((u) => ({
@@ -273,7 +293,6 @@ export const pluto_collab = (startVersion, { subscribe_to_updates, push_updates,
                 if (DEBUG_COLLAB && updates.length) {
                     console.log(`Syncing with ${updates.length} updates`)
                     console.log("Updates = ", updates)
-                    console.log(`Version = ${version}`)
                 }
 
                 this.view.dispatch(receiveUpdates(this.view.state, updates))
@@ -284,7 +303,7 @@ export const pluto_collab = (startVersion, { subscribe_to_updates, push_updates,
             }
 
             destroy() {
-                this.handler.unsubscribe()
+                pluto_actions.unregister_collab_plugin(cell_id)
             }
         }
     )

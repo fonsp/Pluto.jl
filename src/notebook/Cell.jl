@@ -40,7 +40,7 @@ Base.@kwdef mutable struct Cell <: PlutoDependencyExplorer.AbstractCell
     cell_id::UUID=uuid1()
 
     code::String=""
-    initial_code::String=""
+    last_run_code::String=""
     code_folded::Bool=false
 
     last_run_version::Int=0

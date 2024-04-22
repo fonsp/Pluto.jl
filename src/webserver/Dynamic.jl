@@ -115,8 +115,7 @@ function notebook_to_js(notebook::Notebook)
 
                 "cm_updates" => FirebaseyUtils.AppendonlyMarker(cell.cm_updates),
                 "code" => cell.code,
-                "initial_code" => cell.initial_code,
-                "last_run_version" => cell.last_run_version,
+                "last_run_code" => cell.last_run_code,
 
                 "start_version" => FirebaseyUtils.SendOnlyOnceMarker(length(cell.cm_updates)),
             )
@@ -453,28 +452,8 @@ responses[:reset_shared_state] = function response_reset_shared_state(🙋::Clie
     send_notebook_changes!(🙋; commentary=Dict(:from_reset =>  true))
 end
 
-responses[:push_updates] = function response_push_updates(🙋::ClientRequest)
-    require_notebook(🙋)
-    cell = let
-        cell_id = UUID(🙋.body["cell_id"])
-        if !haskey(🙋.notebook.cells_dict, cell_id)
-            # Cell has prob been deleted but client is not yet aware of it?
-            send_notebook_changes!(🙋; commentary=:👎)
-            return
-        end
-        🙋.notebook.cells_dict[cell_id]
-    end
-
-    if !isready(cell.cm_token)
-        @debug "Cell is buzy, bailing out..."
-        send_notebook_changes!(🙋; commentary=:👎)
-        return
-    end
-
+function push_update_for_cell(cell, version, updates)
     withtoken(cell.cm_token) do
-        updates = map(OT.from_dict, 🙋.body["updates"])
-        version = 🙋.body["version"]
-
         current_version = length(cell.cm_updates)
 
         updates_to_transform = @view cell.cm_updates[version+1:end]
@@ -488,13 +467,31 @@ responses[:push_updates] = function response_push_updates(🙋::ClientRequest)
         end
         append!(cell.cm_updates, updates)
 
-        @show text
         cell.code = text
 
         @info "Cell updates" updates n=length(cell.cm_updates) code=String(text)
-
-        send_notebook_changes!(🙋)
     end
+end
+
+responses[:push_updates] = function response_push_updates(🙋::ClientRequest)
+    require_notebook(🙋)
+    @sync for cell_updates in 🙋.body["cell_updates"]
+        @async begin
+            cell = let
+                cell_id = UUID(cell_updates["cell_id"])
+                if !haskey(🙋.notebook.cells_dict, cell_id)
+                    # Cell has prob been deleted but client is not yet aware of it?
+                    send_notebook_changes!(🙋; commentary=:👎)
+                    return
+                end
+                🙋.notebook.cells_dict[cell_id]
+            end
+
+            updates = cell_updates["updates"]
+            push_update_for_cell(cell, cell_updates["version"], map(OT.from_dict, updates))
+        end
+    end
+    send_notebook_changes!(🙋)
 end
 
 responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::ClientRequest)
@@ -505,11 +502,8 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
     end
 
     for cell in cells
-        # NOTE: The client version may not be up to date, is this a problem?
-        #       we are currently using the latest available version which may
-        #       have been submitted by someone else.
         withtoken(cell.cm_token) do
-            cell.last_run_version = length(cell.cm_updates)
+            cell.last_run_code = cell.code
         end
     end
     send_notebook_changes!(🙋; respond_to_request=false)

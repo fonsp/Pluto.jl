@@ -99,9 +99,7 @@ const statusmap = (/** @type {EditorState} */ state, /** @type {LaunchParameters
     binder: launch_params.binder_url != null && state.backend_launch_phase != null,
     code_differs: state.notebook.cell_order.some((cell_id) =>
         // TODO
-        state.cell_inputs_local[cell_id]
-            ? state.notebook.cell_inputs[cell_id].code !== state.cell_inputs_local[cell_id].code
-            : state.notebook.cell_inputs[cell_id].code !== state.notebook.cell_inputs[cell_id].code_text
+        state.notebook.cell_inputs[cell_id].code !== state.notebook.cell_inputs[cell_id].last_run_code
     ),
     recording_waiting_to_start: state.recording_waiting_to_start,
     is_recording: state.is_recording,
@@ -132,7 +130,7 @@ const first_true_key = (obj) => {
  *  code_folded: boolean,
  *  metadata: CellMetaData,
  *  cm_updates: Array<import("./CellInput.js").TextUpdate>
- *  last_run_version: Number,
+ *  last_run_code: String,
  *  code: String,
  *  start_version: Number,
  * }}
@@ -319,7 +317,7 @@ export class Editor extends Component {
         this.state = {
             notebook: /** @type {NotebookData} */ initial_notebook_state,
             /** @type Map<string,EditorView> */
-            cell_views: new Map(),
+            cell_collab_plugins: new Map(),
             cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ ([]),
@@ -368,11 +366,11 @@ export class Editor extends Component {
         this.real_actions = {
             get_notebook: () => this?.state?.notebook || {},
             send: (message_type, ...args) => this.client.send(message_type, ...args),
-            register_cell_view: (cell_id, view) => {
-                this.state.cell_views.set(cell_id, view)
+            register_collab_plugin: (cell_id, view) => {
+                this.state.cell_collab_plugins.set(cell_id, view)
             },
-            unregister_cell_view: (cell_id) => {
-                this.state.cell_views.delete(cell_id)
+            unregister_collab_plugin: (cell_id) => {
+                this.state.cell_collab_plugins.delete(cell_id)
             },
             get_published_object: (objectid) => this.state.notebook.published_objects[objectid],
             //@ts-ignore
@@ -619,12 +617,13 @@ export class Editor extends Component {
             set_and_run_all_changed_remote_cells: () => {
                 const changed = this.state.notebook.cell_order.filter(
                     (cell_id) =>
-                        this.state.cell_inputs_local[cell_id] != null &&
-                        this.state.notebook.cell_inputs[cell_id].code !== this.state.cell_inputs_local[cell_id]?.code
+                        this.state.notebook.cell_inputs[cell_id].last_run_code !== this.state.notebook.cell_inputs[cell_id].code
                 )
                 this.actions.set_and_run_multiple(changed)
                 return changed.length > 0
             },
+            push_updates: (updates) => this.client.send("push_updates", { cell_updates: [updates] }, { notebook_id: this.state.notebook.notebook_id }, false),
+            sync_updates: (cell_id, updates) => this.state.cell_collab_plugins.get(cell_id).sync(updates),
             set_and_run_multiple: async (cell_ids) => {
                 // TODO: this function is called with an empty list sometimes, where?
                 if (cell_ids.length > 0) {
@@ -636,13 +635,17 @@ export class Editor extends Component {
                         })
                     )
 
-                    // await update_notebook((notebook) => {
-                    //     for (let cell_id of cell_ids) {
-                    //         if (this.state.cell_inputs_local[cell_id]) {
-                    //             notebook.cell_inputs[cell_id].code = this.state.cell_inputs_local[cell_id].code
-                    //         }
-                    //     }
-                    // })
+                    const updates = []
+                    for (let cell_id of cell_ids) {
+                        const cell_plugin = this.state.cell_collab_plugins.get(cell_id)
+                        cell_plugin.pushing = true
+                        updates.push(cell_plugin.makeUpdate())
+                    }
+                    await this.client.send("push_updates", { cell_updates: updates, }, { notebook_id: this.state.notebook.notebook_id }, false)
+                    for (let cell_id of cell_ids) {
+                        const cell_plugin = this.state.cell_collab_plugins.get(cell_id)
+                        cell_plugin.pushing = false
+                    }
 
                     // This is a "dirty" trick, as this should actually be stored in some shared request_status => status state
                     // But for now... this is fine 😼
@@ -1391,7 +1394,7 @@ patch: ${JSON.stringify(
 
         window.addEventListener("beforeunload", (event) => {
             const unsaved_cells = this.state.notebook.cell_order.filter(
-                (id) => this.state.cell_inputs_local[id] && this.state.notebook.cell_inputs[id].code !== this.state.cell_inputs_local[id].code
+                (id) => this.state.notebook.cell_inputs[id].last_run_code !== this.state.notebook.cell_inputs[id].code
             )
             const first_unsaved = unsaved_cells[0]
             if (first_unsaved != null) {
