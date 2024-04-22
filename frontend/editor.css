@@ -2052,7 +2052,7 @@ pkg-popup .toggle-terminal {
     font-size: 0.8em;
     margin: 0.5em 0em;
     padding: 0.5em 0.5em;
-    background: var(--pluto-logs-info-color);
+    background: var(--pluto-logs-warn-color);
     border-radius: 0.5em;
 }
 
