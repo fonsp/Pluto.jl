@@ -49,11 +49,11 @@ function rebase(over, updates)
     for u in old_client_updates
         u_changes = Pinot.transform(changes, u.ops, Pinot.Left)
         new_length = Pinot.transform_position(changes, u.document_length)
-        if new_length != u.document_length
-            @warn "ok" new_length u.document_length changes
-        else
-            @info "herr" changes u_changes
-        end
+        # if new_length != u.document_length
+        #     @warn "ok" new_length u.document_length changes
+        # else
+        #     @info "herr" changes u_changes
+        # end
         changes = Pinot.transform(u.ops, changes, Pinot.Right)
         push!(client_updates, Update(u.client_id, new_length, u_changes))
     end
