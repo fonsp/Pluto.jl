@@ -176,8 +176,19 @@ const clean_data = (obj) => {
         ? obj.map(clean_data).filter((x) => x != null)
         : obj
 
-    return _.isEmpty(a) ? null : a
+    return !_.isNumber(a) && _.isEmpty(a) ? null : a
 }
+
+let test = clean_data({ a: 1, b: "", c: null, d: [], e: [1, "", null, 2], f: {}, g: [{}], h: [{ z: "asdf" }] })
+
+console.assert(
+    _.isEqual(test, {
+        a: 1,
+        e: [1, 2],
+        h: [{ z: "asdf" }],
+    }),
+    test
+)
 
 const special_field_names = ["tags", "date", "license", "url", "color"]
 
