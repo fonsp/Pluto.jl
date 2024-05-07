@@ -1,4 +1,5 @@
 import "https://cdn.jsdelivr.net/npm/requestidlecallback-polyfill@1.0.2/index.js"
+import { get_included_external_source } from "./external_source.js"
 
 let setup_done = false
 
@@ -75,14 +76,20 @@ export const setup_mathjax = () => {
     requestIdleCallback(
         () => {
             console.log("Loading mathjax!!")
-            const script = document.head.querySelector("#MathJax-script")
-            script?.addEventListener("load", () => {
+            const src = get_included_external_source("MathJax-script")
+            if (!src) throw new Error("Could not find mathjax source")
+
+            const script = document.createElement("script")
+            script.addEventListener("load", () => {
                 console.log("MathJax loaded!")
                 if (window["MathJax"]?.version !== "3.2.2") {
                     twowasloaded()
                 }
             })
-            script.setAttribute("src", script.getAttribute("not-the-src-yet"))
+            script.crossOrigin = src.crossOrigin
+            script.integrity = src.integrity
+            script.src = src.href
+            document.head.append(script)
         },
         { timeout: 2000 }
     )
