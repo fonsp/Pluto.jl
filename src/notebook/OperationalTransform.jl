@@ -4,6 +4,7 @@ See [collab example](https://codemirror.net/examples/collab/) and [Pinot.jl](htt
 module OperationalTransform
 
 using Pinot: Pinot, Unicode
+using Pinot: Range, retain, delete, insert
 
 struct Update
     client_id::Symbol

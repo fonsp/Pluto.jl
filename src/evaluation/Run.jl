@@ -600,7 +600,13 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 		delete!(notebook.cells_dict, c)
 	end
 	for c in changed
-		notebook.cells_dict[c].code = just_loaded.cells_dict[c].code
+		withtoken(notebook.cells_dict[c].code) do
+			cell = notebook.cells_dict[c]
+			len = OT.Unicode.utf16_ncodeunits(cell.code)
+			new_code = just_loaded.cells_dict[c].code
+			push!(cell.cm_updates, OT.Update(:watcher, len, OT.Range[OT.insert(new_code), OT.delete(cell.code)]))
+			cell.code = new_code
+		end
 		notebook.cells_dict[c].metadata = just_loaded.cells_dict[c].metadata
 	end
 
