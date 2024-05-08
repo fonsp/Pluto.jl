@@ -370,7 +370,6 @@ let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPluto
  *  code: string,
  *  cm_updates: Array<TextUpdate>,
  *  local_code: string,
- *  remote_code: string,
  *  scroll_into_view_after_creation: boolean,
  *  cell_dependencies: import("./Editor.js").CellDependencyData,
  *  nbpkg: import("./Editor.js").NotebookPkgData?,
@@ -426,7 +425,6 @@ export const CellInput = ({
 
     const newcm_ref = useRef(/** @type {EditorView?} */(null))
     const dom_node_ref = useRef(/** @type {HTMLElement?} */(null))
-    const remote_code_ref = useRef(/** @type {string?} */(null))
 
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
     let global_definitions_compartment = useCompartment(newcm_ref, GlobalDefinitionsFacet.of(global_definition_locations))
@@ -503,7 +501,7 @@ export const CellInput = ({
                 await on_add_after()
 
                 const new_value = cm.state.doc.toString()
-                if (new_value !== remote_code_ref.current) {
+                if (new_value !== last_run_code) {
                     on_submit()
                 }
             })
@@ -998,7 +996,7 @@ export const CellInput = ({
 
     return html`
         <pluto-input ref=${dom_node_ref} class="CodeMirror" translate=${false}>
-            ${show_static_fake ? (show_input ? html`<${StaticCodeMirrorFaker} value=${remote_code} />` : null) : null}
+            ${show_static_fake ? (show_input ? html`<${StaticCodeMirrorFaker} value=${last_run_code} />` : null) : null}
             <${InputContextMenu}
                 on_delete=${on_delete}
                 cell_id=${cell_id}

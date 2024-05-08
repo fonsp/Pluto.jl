@@ -243,6 +243,7 @@ function run!(session::ServerSession)
                                     client = get(session.connected_clients, client_id, nothing)
                                     if !isnothing(client) && !isnothing(client.connected_notebook) && !isnothing(client.client_id)
                                         notebook = client.connected_notebook
+                                        pop!(notebook.users_mouse_data, client.client_id, nothing)
                                         pop!(notebook.users, client.client_id, nothing)
                                         🙋 = ClientRequest(session, client.connected_notebook, nothing, nothing)
                                         send_notebook_changes!(🙋)

@@ -240,6 +240,11 @@ const first_true_key = (obj) => {
  */
 
 /**
+ * @typedef UserMouseData
+ * @type {{ relative_to_cell: string, relative_x: number, relative_y: number }}
+ **/
+
+/**
  * @typedef NotebookData
  * @type {{
  *  pluto_version?: string,
@@ -250,6 +255,8 @@ const first_true_key = (obj) => {
  *  process_status: string,
  *  last_save_time: number,
  *  last_hot_reload_time: number,
+ *  users: { [client_id: string]: { color: string, name: string } }
+ *  users_mouse_data: { [client_id: string]: UserMouseData }
  *  cell_inputs: { [uuid: string]: CellInputData },
  *  cell_results: { [uuid: string]: CellResultData },
  *  cell_dependencies: { [uuid: string]: CellDependencyData },
@@ -624,7 +631,7 @@ export class Editor extends Component {
                 return changed.length > 0
             },
             push_updates: (updates) => this.client.send("push_updates", { cell_updates: [updates] }, { notebook_id: this.state.notebook.notebook_id }, false),
-            sync_updates: (cell_id, updates) => this.state.cell_collab_plugins.get(cell_id).sync(updates),
+            sync_updates: (cell_id, updates) => this.state.cell_collab_plugins.get(cell_id)?.sync(updates),
             set_and_run_multiple: async (cell_ids) => {
                 // TODO: this function is called with an empty list sometimes, where?
                 if (cell_ids.length > 0) {
@@ -909,7 +916,7 @@ patch: ${JSON.stringify(
             const users = this.actions.get_notebook().users
             const names = ["Mars", "Earth", "Moon", "Sun"]
             const colors = ["#ffc09f", "#a0ced9", "#adf7b6", "#fcf5c7"]
-            this.actions.update_notebook((nb) => {
+            this.actions.update_notebook((/** @type {NotebookData} */nb) => {
                 nb.users[this.client_id] = { name: names[Object.keys(users).length], color: colors[Object.keys(users).length] }
             })
 
@@ -1690,7 +1697,7 @@ patch: ${JSON.stringify(
                             last_hot_reload_time=${notebook.last_hot_reload_time}
                             connected=${this.state.connected}
                         />
-                        <${MultiplayerPanel} users=${notebook.users} client_id=${this.client_id} />
+                        <${MultiplayerPanel} users=${notebook.users} client_id=${this.client_id} users_mouse_data=${notebook.users_mouse_data} />
                         <${Notebook}
                             notebook=${notebook}
                             client_id=${this.client_id}
@@ -1743,6 +1750,7 @@ patch: ${JSON.stringify(
                         backend_launch_logs=${this.state.backend_launch_logs}
                         notebook=${this.state.notebook}
                         sanitize_html=${status.sanitize_html}
+                        client_id=${this.client_id}
                     />
                     <${Popup} 
                         notebook=${this.state.notebook}

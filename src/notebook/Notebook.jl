@@ -66,6 +66,7 @@ Base.@kwdef mutable struct Notebook
 
     # stores the metadata related to each client such as name, id, color and so on
     users::Dict{String,Dict}=Dict{String,Dict}()
+    users_mouse_data::Dict{String,Dict}=Dict{String,Dict}()
 end
 
 function _initial_nb_status()

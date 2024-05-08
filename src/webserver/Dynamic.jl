@@ -174,6 +174,7 @@ function notebook_to_js(notebook::Notebook)
         "status_tree" => Status.tojs(notebook.status_tree),
         "cell_execution_order" => cell_id.(collect(topological_order(notebook))),
         "users" => notebook.users,
+        "users_mouse_data" => notebook.users_mouse_data,
     )
 end
 
@@ -312,6 +313,12 @@ const effects_of_changed_state = Dict(
             return no_changes
         end,
     ),
+    "users_mouse_data" => Dict(
+        Wildcard() => function(client_id, path...; request::ClientRequest, patch::Firebasey.JSONPatch)
+            Firebasey.applypatch!(request.notebook, patch)
+            return no_changes
+        end
+    )
 )
 
 responses[:update_notebook] = function response_update_notebook(🙋::ClientRequest)
@@ -389,7 +396,7 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
                 initiator=🙋.initiator,
             )
         end
-    
+
         send_notebook_changes!(🙋; commentary=Dict(:update_went_well => :👍))
     catch ex
         @error "Update notebook failed"  🙋.body["updates"] exception=(ex, stacktrace(catch_backtrace()))

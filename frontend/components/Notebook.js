@@ -39,8 +39,6 @@ const CellMemo = ({
     disable_input,
     sanitize_html = true,
     process_waiting_for_permission,
-    show_logs,
-    set_show_logs,
     nbpkg,
     global_definition_locations,
     is_first_cell,
@@ -212,7 +210,6 @@ export const Notebook = ({
                         cell_input_local=${cell_inputs_local[cell_id]}
                         notebook_id=${notebook.notebook_id}
                         client_id=${client_id}
-                        users=${notebook.users}
                         selected=${selected_cells.includes(cell_id)}
                         focus_after_creation=${last_created_cell === cell_id}
                         force_hide_input=${false}
