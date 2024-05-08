@@ -419,7 +419,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                                 setBoundElementValueLikePluto: set_input_value,
                                 getBoundElementEventNameLikePluto: eventof,
 
-                                getNotebookMetadataExperimental: (key) => pluto_actions.get_notebook()?.metadata[key],
+                                getNotebookMetadataExperimental: (key) => pluto_actions.get_notebook()?.metadata?.[key],
                                 setNotebookMetadataExperimental: (key, value) =>
                                     pluto_actions.update_notebook((notebook) => {
                                         notebook.metadata[key] = value
@@ -433,7 +433,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                                     ? {}
                                     : {
                                           getCellMetadataExperimental: (key, { cell_id = null } = {}) =>
-                                              pluto_actions.get_notebook()?.cell_inputs?.[cell_id ?? cell.id]?.metadata[key],
+                                              pluto_actions.get_notebook()?.cell_inputs?.[cell_id ?? cell.id]?.metadata?.[key],
                                           setCellMetadataExperimental: (key, value, { cell_id = null } = {}) =>
                                               pluto_actions.update_notebook((notebook) => {
                                                   notebook.cell_inputs[cell_id ?? cell.id].metadata[key] = value
