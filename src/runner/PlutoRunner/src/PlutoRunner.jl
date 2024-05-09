@@ -588,7 +588,7 @@ function run_expression(
         throw("Expression still contains macro calls!!")
     end
 
-    result, runtime = with_logger_and_io_to_logs(logger; capture_stdout) do # about 200ns + 3ms overhead
+    result, runtime = let
         if function_wrapped_info === nothing
             toplevel_expr = Expr(:toplevel, expr)
             wrapped = timed_expr(toplevel_expr)
