@@ -6,12 +6,13 @@ import Logging
 import LoggingExtras
 import .Configuration: CompilerOptions, _merge_notebook_compiler_options, _convert_to_flags
 
-const tiers = [
+const tiers = unique((
+    PkgCompat.PRESERVE_ALL_INSTALLED,
 	Pkg.PRESERVE_ALL,
 	Pkg.PRESERVE_DIRECT,
 	Pkg.PRESERVE_SEMVER,
 	Pkg.PRESERVE_NONE,
-]
+))
 
 const pkg_token = Token()
 
@@ -121,7 +122,7 @@ function sync_nbpkg_core(
         Status.report_business_finished!(pkg_status, :analysis)
         
         # We remember which Pkg.Types.PreserveLevel was used. If it's too low, we will recommend/require a notebook restart later.
-        local used_tier = Pkg.PRESERVE_ALL
+        local used_tier = first(tiers)
         if !can_skip
             # We have a global lock, `pkg_token`, on Pluto-managed Pkg operations, which is shared between all notebooks. If this lock is not ready right now then that means that we are going to wait at the `withtoken(pkg_token)` line below. 
             # We want to report that we are waiting, with a best guess of why.
@@ -230,12 +231,7 @@ function sync_nbpkg_core(
                             PkgCompat.clear_auto_compat_entries!(notebook.nbpkg_ctx)
 
                             try
-                                for tier in [
-                                    Pkg.PRESERVE_ALL,
-                                    Pkg.PRESERVE_DIRECT,
-                                    Pkg.PRESERVE_SEMVER,
-                                    Pkg.PRESERVE_NONE,
-                                ]
+                                for tier in tiers
                                     used_tier = tier
 
                                     try
@@ -291,10 +287,10 @@ function sync_nbpkg_core(
                         # changed_versions=Dict{String,Pair}(),
                         restart_recommended=👺 || (
                             (!isempty(to_remove) && old_manifest_keys != new_manifest_keys) ||
-                            used_tier != Pkg.PRESERVE_ALL
+                            used_tier ∉ (Pkg.PRESERVE_ALL, PkgCompat.PRESERVE_ALL_INSTALLED)
                         ),
                         restart_required=👺 || (
-                            used_tier ∈ [Pkg.PRESERVE_SEMVER, Pkg.PRESERVE_NONE]
+                            used_tier ∈ (Pkg.PRESERVE_SEMVER, Pkg.PRESERVE_NONE)
                         ),
                     )
                 end
@@ -305,7 +301,7 @@ function sync_nbpkg_core(
 
     return (
         did_something=👺 || (use_plutopkg_old != use_plutopkg_new),
-        used_tier=Pkg.PRESERVE_ALL,
+        used_tier=PkgCompat.PRESERVE_ALL_INSTALLED,
         # changed_versions=Dict{String,Pair}(),
         restart_recommended=👺 || false,
         restart_required=👺 || false,
@@ -557,9 +553,6 @@ function update_nbpkg_core(
             IOListener(callback=(s -> on_terminal_output(report_to, freeze_loading_spinners(s))))
         end
         cleanup[] = () -> stoplistening(iolistener)
-        
-        # We remember which Pkg.Types.PreserveLevel was used. If it's too low, we will recommend/require a notebook restart later.
-        local used_tier = Pkg.PRESERVE_ALL
         
         if !isready(pkg_token)
             println(iolistener.buffer, "Waiting for other notebooks to finish Pkg operations...")

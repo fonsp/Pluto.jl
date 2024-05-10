@@ -42,7 +42,7 @@ export const FeaturedCard = ({ entry, source_manifest, direct_html_links, disabl
         : with_query_params(`edit`, {
               statefile: u(entry.statefile_path),
               notebookfile: u(entry.notebookfile_path),
-              notebookfile_integrity: `sha256-${base64url_to_base64(entry.hash)}`,
+              notebookfile_integrity: entry.hash == null ? null : `sha256-${base64url_to_base64(entry.hash)}`,
               disable_ui: `true`,
               name: title == null ? null : `sample ${title}`,
               pluto_server_url: `.`,

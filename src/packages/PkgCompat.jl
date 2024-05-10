@@ -8,7 +8,7 @@ import Pkg.Types: VersionRange
 import RegistryInstances
 import ..Pluto
 
-
+const PRESERVE_ALL_INSTALLED = isdefined(Pkg, :PRESERVE_ALL_INSTALLED) ? Pkg.PRESERVE_ALL_INSTALLED : Pkg.PRESERVE_ALL
 
 
 @static if isdefined(Pkg,:REPLMode) && isdefined(Pkg.REPLMode,:complete_remote_package)
