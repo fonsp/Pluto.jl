@@ -1867,6 +1867,30 @@ pluto-input > .input_context_menu span.icon::after {
     filter: var(--image-filters);
 }
 
+pluto-input > .preview_hidden_code_info {
+    display: none;
+    position: absolute;
+    bottom: -1.1rem;
+    left: 0;
+    right: 0;
+    margin-right: auto;
+    margin-left: auto;
+    height: 1.4rem;
+    width: 19ch;
+    font-style: italic;
+    text-align: center;
+    background: var(--jl-info-color);
+    border-radius: 0.4rem;
+    font-family: var(--system-ui-font-stack);
+    font-size: 0.9rem;
+    z-index: 22;
+    pointer-events: none;
+}
+
+body:not(.process_waiting_for_permission) pluto-cell.code_folded pluto-input > .preview_hidden_code_info {
+    display: block;
+}
+
 /* PKG UI */
 
 pkg-status-mark {
