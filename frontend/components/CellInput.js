@@ -630,16 +630,8 @@ export const CellInput = ({
         }
         const keyMapFold = async (/** @type {EditorView} */ cm) => {
             console.log(cm)
-            await pluto_actions.fold_remote_cells([cell_id], true).catch(console.warn)
-            const cell = dom_node_ref.current?.closest("pluto-cell")
-            const next_cell = cell?.nextElementSibling
-            if (next_cell?.nodeName === "PLUTO-CELL") {
-                // @ts-ignore
-                next_cell?.querySelector("button.add_cell.before")?.focus?.()
-            } else {
-                // @ts-ignore
-                cell?.querySelector("button.add_cell.after")?.focus?.()
-            }
+            set_cm_forced_focus(true)
+            await pluto_actions.fold_remote_cells([cell_id]).catch(console.warn)
             return true
         }
 
@@ -659,7 +651,10 @@ export const CellInput = ({
             { key: "Ctrl-Backspace", run: keyMapBackspace },
             { key: "Alt-ArrowUp", run: (x) => keyMapMoveLine(x, -1) },
             { key: "Alt-ArrowDown", run: (x) => keyMapMoveLine(x, 1) },
-            { key: "Alt-Escape", run: keyMapFold },
+            { key: "Ctrl-k", mac: "Cmd-k", run: keyMapFold },
+            { key: "Ctrl-k", run: keyMapFold },
+            // Codemirror6 doesn't like capslock
+            { key: "Ctrl-K", run: keyMapFold },
 
             mod_d_command,
         ]
@@ -932,6 +927,7 @@ export const CellInput = ({
                     head: cm.state.selection.main.head,
                 },
             })
+        } else if (cm_forced_focus === true) {
         } else {
             let new_selection = {
                 anchor: line_and_ch_to_cm6_position(cm.state.doc, cm_forced_focus[0]),
