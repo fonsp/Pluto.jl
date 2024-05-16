@@ -1,13 +1,17 @@
 include("helpers.jl")
 
 # tests that start new processes:
+@error "yay"
 
 @timeit_include("compiletimes.jl")
+@error "yay"
+
 verify_no_running_processes()
 if get(ENV, "PLUTO_TEST_ONLY_COMPILETIMES", nothing) == "true"
     print_timeroutput()
     exit(0)
 end
+@error "yay"
 @timeit_include("Events.jl")
 verify_no_running_processes()
 @timeit_include("Configuration.jl")

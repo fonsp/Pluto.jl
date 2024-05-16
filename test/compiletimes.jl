@@ -20,6 +20,7 @@ let
     )
 end
 @timeit TOUT "PlutoRunner.run_expression" @eval Pluto.PlutoRunner.run_expression(Foo, Expr(:toplevel, :(1 + 1)), test_notebook_id, uuid1(), nothing);
+@error "yay"
 
 function wait_for_ready(notebook::Pluto.Notebook)
     while notebook.process_status != Pluto.ProcessStatus.ready
@@ -27,21 +28,27 @@ function wait_for_ready(notebook::Pluto.Notebook)
     end
 end
 
+@error "yay"
 🍭 = Pluto.ServerSession()
 🍭.options.server.disable_writing_notebook_files = true
 🍭.options.evaluation.workspace_use_distributed = false
 
 path = joinpath(pkgdir(Pluto), "sample", "Basic.jl")
+@error "yay"
 
 @timeit TOUT "SessionActions.open" nb = @eval Pluto.SessionActions.open(🍭, path; run_async=false)
+@error "yay"
 
 wait_for_ready(nb)
 
+@error "yay"
 Pluto.SessionActions.shutdown(🍭, nb; async=false)
+@error "yay"
 
 # Compile HTTP get. Use no encoding since there seem to be an issue with Accept-Encoding: gzip
 HTTP.get("http://github.com")
 
+@error "yay"
 @timeit TOUT "Pluto.run" server_task = @eval let
     port = 13435
     options = Pluto.Configuration.from_flat_kwargs(; port, launch_browser=false, workspace_use_distributed=false, require_secret_for_access=false, require_secret_for_open_links=false)
@@ -54,3 +61,4 @@ HTTP.get("http://github.com")
     HTTP.get("http://localhost:$port/edit").status == 200
     server_task
 end
+@error "yay"
