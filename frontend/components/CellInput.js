@@ -629,7 +629,6 @@ export const CellInput = ({
             }
         }
         const keyMapFold = async (/** @type {EditorView} */ cm) => {
-            console.log(cm)
             set_cm_forced_focus(true)
             await pluto_actions.fold_remote_cells([cell_id]).catch(console.warn)
             return true
