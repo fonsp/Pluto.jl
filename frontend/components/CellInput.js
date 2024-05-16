@@ -628,6 +628,20 @@ export const CellInput = ({
                 return direction === 1 ? moveLineDown(cm) : moveLineUp(cm)
             }
         }
+        const keyMapFold = async (/** @type {EditorView} */ cm) => {
+            console.log(cm)
+            await pluto_actions.fold_remote_cells([cell_id], true).catch(console.warn)
+            const cell = dom_node_ref.current?.closest("pluto-cell")
+            const next_cell = cell?.nextElementSibling
+            if (next_cell?.nodeName === "PLUTO-CELL") {
+                // @ts-ignore
+                next_cell?.querySelector("button.add_cell.before")?.focus?.()
+            } else {
+                // @ts-ignore
+                cell?.querySelector("button.add_cell.after")?.focus?.()
+            }
+            return true
+        }
 
         const plutoKeyMaps = [
             { key: "Shift-Enter", run: keyMapSubmit },
@@ -645,6 +659,7 @@ export const CellInput = ({
             { key: "Ctrl-Backspace", run: keyMapBackspace },
             { key: "Alt-ArrowUp", run: (x) => keyMapMoveLine(x, -1) },
             { key: "Alt-ArrowDown", run: (x) => keyMapMoveLine(x, 1) },
+            { key: "Alt-Escape", run: keyMapFold },
 
             mod_d_command,
         ]
@@ -1032,10 +1047,11 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
             })
     }
 
-    useEventListener(window, "keydown", (e) => {
+    useEventListener(window, "keydown", (/** @type {KeyboardEvent} */ e) => {
         if (e.key === "Escape") {
             setOpen(false)
         }
+        e.stopPropagation()
     })
 
     return html`
