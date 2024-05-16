@@ -2261,6 +2261,7 @@ pluto-helpbox > header {
     background-color: var(--helpbox-header-bg-color);
     color: var(--helpbox-header-color);
     font-family: var(--system-ui-font-stack);
+    font-variant-numeric: tabular-nums;
     font-size: 0.9rem;
     --border-radius: 0.4em;
     font-weight: 500;
@@ -2417,6 +2418,7 @@ button.helpbox-tab-key {
     font-weight: inherit;
     font-style: inherit;
     font-size: inherit;
+    font-variant: inherit;
     border-radius: var(--border-radius);
     border: none;
     background: var(--helpbox-header-tab-bg-color);
