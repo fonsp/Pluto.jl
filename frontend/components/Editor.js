@@ -583,7 +583,7 @@ export class Editor extends Component {
             fold_remote_cells: async (cell_ids, new_value) => {
                 await update_notebook((notebook) => {
                     for (let cell_id of cell_ids) {
-                        notebook.cell_inputs[cell_id].code_folded = new_value
+                        notebook.cell_inputs[cell_id].code_folded = new_value ?? !notebook.cell_inputs[cell_id].code_folded
                     }
                 })
             },
@@ -1188,6 +1188,12 @@ patch: ${JSON.stringify(
         this.run_selected = () => {
             return this.actions.set_and_run_multiple(this.state.selected_cells)
         }
+        this.fold_selected = () => {
+            if (_.isEmpty(this.state.selected_cells)) return
+            const any_unfolded = this.state.selected_cells.some((cell_id) => !this.state.notebook.cell_inputs[cell_id].code_folded)
+            const new_val = any_unfolded
+            return this.actions.fold_remote_cells(this.state.selected_cells, new_val)
+        }
         this.move_selected = (/** @type {KeyboardEvent} */ e, /** @type {1|-1} */ delta) => {
             if (this.state.selected_cells.length > 0) {
                 const current_indices = this.state.selected_cells.map((id) => this.state.notebook.cell_order.indexOf(id))
@@ -1253,6 +1259,8 @@ patch: ${JSON.stringify(
                     // TODO: let user know that the notebook autosaves
                 }
                 e.preventDefault()
+            } else if (e.key?.toLowerCase() === "k" && has_ctrl_or_cmd_pressed(e)) {
+                this.fold_selected()
             } else if (e.key === "Backspace" || e.key === "Delete") {
                 if (this.delete_selected("Delete")) {
                     e.preventDefault()
