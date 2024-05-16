@@ -155,7 +155,7 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
             }
         }
         socket.onclose = async (e) => {
-            console.error(`Socket did an oopsie - ${e.type}`, new Date().toLocaleTimeString(), "was open:", has_been_open, e)
+            console.warn(`Socket did an oopsie - ${e.type}`, new Date().toLocaleTimeString(), "was open:", has_been_open, e)
 
             if (has_been_open) {
                 on_socket_close()
