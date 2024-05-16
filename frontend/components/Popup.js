@@ -96,7 +96,9 @@ export const Popup = ({ notebook, disable_input }) => {
             if (recent_event.should_focus === true) {
                 requestAnimationFrame(() => {
                     element_focused_before_popup.current = document.activeElement
-                    ;(element_ref.current?.querySelector("a") ?? element_ref.current)?.focus?.()
+                    const el = element_ref.current?.querySelector("a") ?? element_ref.current
+                    console.log("restoring focus to", el)
+                    el?.focus?.()
                 })
             } else {
                 element_focused_before_popup.current = null
@@ -116,6 +118,8 @@ export const Popup = ({ notebook, disable_input }) => {
         (e) => {
             if (recent_event_ref.current != null && recent_event_ref.current.should_focus === true) {
                 if (element_ref.current?.matches(":focus-within")) return
+                if (element_ref.current?.contains(e.relatedTarget)) return
+
                 if (
                     recent_source_element_ref.current != null &&
                     (recent_source_element_ref.current.contains(e.relatedTarget) || recent_source_element_ref.current.matches(":focus-within"))
