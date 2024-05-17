@@ -1009,9 +1009,12 @@ export const CellInput = ({
                 set_show_logs=${set_show_logs}
                 set_cell_disabled=${set_cell_disabled}
             />
+            ${PreviewHiddenCode}
         </pluto-input>
     `
 }
+
+const PreviewHiddenCode = html`<div class="preview_hidden_code_info">👀 Reading hidden code</div>`
 
 const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, running_disabled, any_logs, show_logs, set_show_logs, set_cell_disabled }) => {
     const timeout = useRef(null)

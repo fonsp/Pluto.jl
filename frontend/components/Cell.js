@@ -208,11 +208,12 @@ export const Cell = ({
 
     const class_code_differs = useMemo(() => (last_run_code !== code), [code, last_run_code])
     const class_code_folded = code_folded && cm_forced_focus == null
+
     const no_output_yet = (output?.last_run_timestamp ?? 0) === 0
     const code_not_trusted_yet = process_waiting_for_permission && no_output_yet
 
     // during the initial page load, force_hide_input === true, so that cell outputs render fast, and codemirrors are loaded after
-    let show_input = !force_hide_input && (code_not_trusted_yet || errored || class_code_differs || !class_code_folded)
+    let show_input = !force_hide_input && (code_not_trusted_yet || errored || class_code_differs || cm_forced_focus != null || !code_folded)
 
     const [line_heights, set_line_heights] = useState([15])
     const node_ref = useRef(null)
@@ -294,7 +295,7 @@ export const Cell = ({
                 errored,
                 selected,
                 code_differs: class_code_differs,
-                code_folded: class_code_folded,
+                code_folded,
                 skip_as_script,
                 running_disabled,
                 depends_on_disabled_cells,

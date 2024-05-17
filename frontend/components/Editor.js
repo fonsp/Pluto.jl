@@ -612,13 +612,10 @@ export class Editor extends Component {
                     }
                 }
             },
-            fold_remote_cells: async (cell_ids, newFolded) => {
-                if (!newFolded && cell_ids.length > 0) {
-                    this.setState({ last_created_cell: cell_ids[cell_ids.length - 1] })
-                }
+            fold_remote_cells: async (cell_ids, new_value) => {
                 await update_notebook((notebook) => {
                     for (let cell_id of cell_ids) {
-                        notebook.cell_inputs[cell_id].code_folded = newFolded
+                        notebook.cell_inputs[cell_id].code_folded = new_value
                     }
                 })
             },
