@@ -71,7 +71,6 @@ function sync_nbpkg_core(
 
     use_plutopkg_old = notebook.nbpkg_ctx !== nothing
     use_plutopkg_new = use_plutopkg(new_topology)
-	@error "yay"
     
     if !use_plutopkg_old && use_plutopkg_new
         @debug "PlutoPkg: Started using PlutoPkg!! HELLO reproducibility!" notebook.path
@@ -96,7 +95,6 @@ function sync_nbpkg_core(
         notebook.nbpkg_install_time_ns = nothing
         notebook.nbpkg_ctx_instantiated = true
     end
-	@error "yay"
     
     (lag > 0) && sleep(lag * (0.5 + rand())) # sleep(0) would yield to the process manager which we dont want
 
@@ -104,7 +102,6 @@ function sync_nbpkg_core(
         @assert notebook.nbpkg_ctx !== nothing
         
         PkgCompat.mark_original!(notebook.nbpkg_ctx)
-        @error "yay"
 
         old_packages = String.(keys(PkgCompat.project(notebook.nbpkg_ctx).dependencies))
         new_packages = String.(external_package_names(new_topology)) # search all cells for imports and usings
@@ -112,7 +109,6 @@ function sync_nbpkg_core(
         removed = setdiff(old_packages, new_packages)
         added = setdiff(new_packages, old_packages)
         can_skip = isempty(removed) && isempty(added) && notebook.nbpkg_ctx_instantiated
-        @error "yay"
 
         iolistener = let
             busy_packages = notebook.nbpkg_ctx_instantiated ? added : new_packages
@@ -120,21 +116,18 @@ function sync_nbpkg_core(
             IOListener(callback=(s -> on_terminal_output(report_to, freeze_loading_spinners(s))))
         end
         cleanup[] = () -> stoplistening(iolistener)
-        @error "yay"
 
 
 
         Status.report_business_finished!(pkg_status, :analysis)
         
         # We remember which Pkg.Types.PreserveLevel was used. If it's too low, we will recommend/require a notebook restart later.
-	@error "yay"
     local used_tier = first(tiers)
         if !can_skip
             # We have a global lock, `pkg_token`, on Pluto-managed Pkg operations, which is shared between all notebooks. If this lock is not ready right now then that means that we are going to wait at the `withtoken(pkg_token)` line below. 
             # We want to report that we are waiting, with a best guess of why.
             wait_business = if !isready(pkg_token)
                 reg = !PkgCompat._updated_registries_compat[]
-	@error "yay"
                 
                 # Print something in the terminal logs
                 println(iolistener.buffer, "Waiting for $(reg ? "the package registry to update" : "other notebooks to finish Pkg operations")...")
@@ -152,11 +145,9 @@ function sync_nbpkg_core(
                     let # Status stuff
                         isnothing(wait_business) || Status.report_business_finished!(wait_business)
                         
-	@error "yay"
     if !notebook.nbpkg_ctx_instantiated
                             Status.report_business_planned!(pkg_status, :instantiate1)
                             Status.report_business_planned!(pkg_status, :resolve)
-	@error "yay"
     Status.report_business_planned!(pkg_status, :precompile)
                         end
                         
@@ -164,7 +155,6 @@ function sync_nbpkg_core(
                         isempty(added) || Status.report_business_planned!(pkg_status, :add)
                         if !isempty(added) || !isempty(removed)
                             Status.report_business_planned!(pkg_status, :instantiate2)
-	@error "yay"
     Status.report_business_planned!(pkg_status, :precompile)
                         end
                     end
@@ -178,7 +168,6 @@ function sync_nbpkg_core(
                     should_instantiate_initially = !notebook.nbpkg_ctx_instantiated
                     if should_instantiate_initially
                         
-	@error "yay"
     should_precompile_later = true
                         
                         # First, we instantiate. This will:
@@ -190,7 +179,6 @@ function sync_nbpkg_core(
                         Status.report_business!(pkg_status, :instantiate1) do
                             with_auto_fixes(notebook) do
                                 _instantiate(notebook, iolistener)
-	@error "yay"
 end
                         end
                         
@@ -202,7 +190,6 @@ end
                                 _resolve(notebook, iolistener)
                             end
                         end
-	@error "yay"
 end
                     
                     to_add = filter(PkgCompat.package_exists, added)
@@ -211,7 +198,6 @@ end
                     end
                     @debug "PlutoPkg:" notebook.path to_add to_remove
                     
-	@error "yay"
     if !isempty(to_remove)
                         Status.report_business_started!(pkg_status, :remove)
                         # See later comment
@@ -235,7 +221,6 @@ end
                     # TODO: instead of Pkg.PRESERVE_ALL, we actually want:
                     # "Pkg.PRESERVE_DIRECT, but preserve exact verisons of Base.loaded_modules"
                     
-	@error "yay"
     if !isempty(to_add)
                         Status.report_business_started!(pkg_status, :add)
                         start_time = time_ns()
@@ -275,7 +260,6 @@ end
                         Status.report_business_finished!(pkg_status, :add)
                         @debug "PlutoPkg: done" notebook.path 
                     end
-                    @error "yay"
 
                     should_instantiate_again = !notebook.nbpkg_ctx_instantiated || !isempty(to_add) || !isempty(to_remove)
                     
@@ -291,7 +275,6 @@ end
                             _precompile(notebook, iolistener, compiler_options)
                         end
                     end
-                    @error "yay"
 
                     stoplistening(iolistener)
     Status.report_business_finished!(pkg_status)

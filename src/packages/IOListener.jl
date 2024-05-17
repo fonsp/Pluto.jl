@@ -43,7 +43,7 @@ function stoplistening(listener::IOListener)
     @debug "stopping listener"
     if listener.running[]
         listener.running[] = false
-        trigger(listener)
+        bytesavailable(listener.buffer) > 0 && trigger(listener)
         close(listener.buffer)
     end
 end
