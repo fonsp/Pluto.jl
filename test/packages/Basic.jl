@@ -47,7 +47,7 @@ import Malt
         @test notebook.nbpkg_restart_required_msg === nothing
         @test notebook.nbpkg_ctx_instantiated
         @test notebook.nbpkg_install_time_ns > 0
-        @test notebook.nbpkg_busy_packages |> isempty
+        @test notebook.nbpkg_busy_packages == []
         last_install_time = notebook.nbpkg_install_time_ns
 
         terminals = notebook.nbpkg_terminal_outputs
@@ -79,7 +79,7 @@ import Malt
         @test notebook.nbpkg_restart_required_msg === nothing
         @test notebook.nbpkg_ctx_instantiated
         @test notebook.nbpkg_install_time_ns > last_install_time
-        @test notebook.nbpkg_busy_packages |> isempty
+        @test notebook.nbpkg_busy_packages == []
         last_install_time = notebook.nbpkg_install_time_ns
 
         @test haskey(terminals, "PlutoPkgTestB")
