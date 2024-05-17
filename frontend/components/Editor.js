@@ -1188,10 +1188,8 @@ patch: ${JSON.stringify(
         this.run_selected = () => {
             return this.actions.set_and_run_multiple(this.state.selected_cells)
         }
-        this.fold_selected = () => {
+        this.fold_selected = (new_val) => {
             if (_.isEmpty(this.state.selected_cells)) return
-            const any_unfolded = this.state.selected_cells.some((cell_id) => !this.state.notebook.cell_inputs[cell_id].code_folded)
-            const new_val = any_unfolded
             return this.actions.fold_remote_cells(this.state.selected_cells, new_val)
         }
         this.move_selected = (/** @type {KeyboardEvent} */ e, /** @type {1|-1} */ delta) => {
@@ -1259,8 +1257,8 @@ patch: ${JSON.stringify(
                     // TODO: let user know that the notebook autosaves
                 }
                 e.preventDefault()
-            } else if (e.key?.toLowerCase() === "k" && has_ctrl_or_cmd_pressed(e)) {
-                this.fold_selected()
+            } else if (["BracketLeft", "BracketRight"].includes(e.code) && (is_mac_keyboard ? e.altKey && e.metaKey : e.ctrlKey && e.shiftKey)) {
+                this.fold_selected(e.code === "BracketLeft")
             } else if (e.key === "Backspace" || e.key === "Delete") {
                 if (this.delete_selected("Delete")) {
                     e.preventDefault()

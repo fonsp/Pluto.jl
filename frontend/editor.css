@@ -1887,7 +1887,8 @@ pluto-input > .preview_hidden_code_info {
     pointer-events: none;
 }
 
-body:not(.process_waiting_for_permission) pluto-cell.code_folded pluto-input > .preview_hidden_code_info {
+body:not(.process_waiting_for_permission) pluto-cell.code_folded pluto-input > .preview_hidden_code_info,
+pluto-cell.code_folded:focus-within pluto-input > .preview_hidden_code_info {
     display: block;
 }
 

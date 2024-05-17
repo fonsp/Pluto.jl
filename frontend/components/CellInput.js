@@ -628,9 +628,9 @@ export const CellInput = ({
                 return direction === 1 ? moveLineDown(cm) : moveLineUp(cm)
             }
         }
-        const keyMapFold = (/** @type {EditorView} */ cm) => {
+        const keyMapFold = (/** @type {EditorView} */ cm, new_value) => {
             set_cm_forced_focus(true)
-            pluto_actions.fold_remote_cells([cell_id]).catch(console.warn)
+            pluto_actions.fold_remote_cells([cell_id], new_value).catch(console.warn)
             return true
         }
 
@@ -650,11 +650,8 @@ export const CellInput = ({
             { key: "Ctrl-Backspace", run: keyMapBackspace },
             { key: "Alt-ArrowUp", run: (x) => keyMapMoveLine(x, -1) },
             { key: "Alt-ArrowDown", run: (x) => keyMapMoveLine(x, 1) },
-            { key: "Ctrl-k", mac: "Cmd-k", run: keyMapFold },
-            { key: "Ctrl-k", run: keyMapFold },
-            // Codemirror6 doesn't like capslock
-            { key: "Ctrl-K", run: keyMapFold },
-
+            { key: "Ctrl-Shift-[", mac: "Cmd-Alt-[", run: (x) => keyMapFold(x, true) },
+            { key: "Ctrl-Shift-]", mac: "Cmd-Alt-]", run: (x) => keyMapFold(x, false) },
             mod_d_command,
         ]
 
