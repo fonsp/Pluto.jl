@@ -122,7 +122,7 @@ function sync_nbpkg_core(
         Status.report_business_finished!(pkg_status, :analysis)
         
         # We remember which Pkg.Types.PreserveLevel was used. If it's too low, we will recommend/require a notebook restart later.
-    local used_tier = first(tiers)
+        local used_tier = first(tiers)
         if !can_skip
             # We have a global lock, `pkg_token`, on Pluto-managed Pkg operations, which is shared between all notebooks. If this lock is not ready right now then that means that we are going to wait at the `withtoken(pkg_token)` line below. 
             # We want to report that we are waiting, with a best guess of why.
@@ -145,17 +145,17 @@ function sync_nbpkg_core(
                     let # Status stuff
                         isnothing(wait_business) || Status.report_business_finished!(wait_business)
                         
-    if !notebook.nbpkg_ctx_instantiated
+                        if !notebook.nbpkg_ctx_instantiated
                             Status.report_business_planned!(pkg_status, :instantiate1)
                             Status.report_business_planned!(pkg_status, :resolve)
-    Status.report_business_planned!(pkg_status, :precompile)
+                            Status.report_business_planned!(pkg_status, :precompile)
                         end
                         
                         isempty(removed) || Status.report_business_planned!(pkg_status, :remove)
                         isempty(added) || Status.report_business_planned!(pkg_status, :add)
                         if !isempty(added) || !isempty(removed)
                             Status.report_business_planned!(pkg_status, :instantiate2)
-    Status.report_business_planned!(pkg_status, :precompile)
+                            Status.report_business_planned!(pkg_status, :precompile)
                         end
                     end
                     
@@ -168,7 +168,7 @@ function sync_nbpkg_core(
                     should_instantiate_initially = !notebook.nbpkg_ctx_instantiated
                     if should_instantiate_initially
                         
-    should_precompile_later = true
+                        should_precompile_later = true
                         
                         # First, we instantiate. This will:
                         # - Verify that the Manifest can be parsed and is in the correct format (important for compat across Julia versions). If not, we will fix it by deleting the Manifest.
@@ -179,7 +179,7 @@ function sync_nbpkg_core(
                         Status.report_business!(pkg_status, :instantiate1) do
                             with_auto_fixes(notebook) do
                                 _instantiate(notebook, iolistener)
-end
+                            end
                         end
                         
                         # Second, we resolve. This will:
@@ -190,7 +190,7 @@ end
                                 _resolve(notebook, iolistener)
                             end
                         end
-end
+                    end
                     
                     to_add = filter(PkgCompat.package_exists, added)
                     to_remove = filter(removed) do p
@@ -198,7 +198,7 @@ end
                     end
                     @debug "PlutoPkg:" notebook.path to_add to_remove
                     
-    if !isempty(to_remove)
+                    if !isempty(to_remove)
                         Status.report_business_started!(pkg_status, :remove)
                         # See later comment
                         mkeys() = Set(filter(!is_stdlib, [m.name for m in values(PkgCompat.dependencies(notebook.nbpkg_ctx))]))
@@ -221,7 +221,7 @@ end
                     # TODO: instead of Pkg.PRESERVE_ALL, we actually want:
                     # "Pkg.PRESERVE_DIRECT, but preserve exact verisons of Base.loaded_modules"
                     
-    if !isempty(to_add)
+                    if !isempty(to_add)
                         Status.report_business_started!(pkg_status, :add)
                         start_time = time_ns()
                         with_io_setup(notebook, iolistener) do
@@ -265,21 +265,21 @@ end
                     
                     if should_instantiate_again
                         should_precompile_later = true
-    Status.report_business!(pkg_status, :instantiate2) do
-    _instantiate(notebook, iolistener)
+                        Status.report_business!(pkg_status, :instantiate2) do
+                            _instantiate(notebook, iolistener)
                         end
                     end
                     
-    if should_precompile_later
+                    if should_precompile_later
                         Status.report_business!(pkg_status, :precompile) do
                             _precompile(notebook, iolistener, compiler_options)
                         end
                     end
 
                     stoplistening(iolistener)
-    Status.report_business_finished!(pkg_status)
+                    Status.report_business_finished!(pkg_status)
 
-    return (
+                    return (
                         did_something=👺 || (
                             should_instantiate_initially || should_instantiate_again || (use_plutopkg_old != use_plutopkg_new)
                         ),
