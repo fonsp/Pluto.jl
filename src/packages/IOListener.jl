@@ -14,22 +14,16 @@ end
 
 function trigger(listener::IOListener)
     if isreadable(listener.buffer)
-        #@debug "waiting for data"
-        newdata = try
-            readavailable(listener.buffer)
-        catch e
-            @warn "Error reading buffer" e
-            UInt8[]
-        end
-
-        #@debug "making string"
+        @debug "waiting for data"
+        newdata = readavailable(listener.buffer)
+        @debug "making string"
         s = String(newdata)
-        #@debug "making ansi"
+        @debug "making ansi"
         ANSIEmulation.consume_safe!(
             listener.ansi_state, 
             s
         )
-        #@debug "building string" s listener.ansi_state
+        @debug "building string" s listener.ansi_state
         new_contents = ANSIEmulation.build_str(listener.ansi_state)
 
         listener.callback(new_contents)
@@ -46,7 +40,7 @@ function startlistening(listener::IOListener)
     end
 end
 function stoplistening(listener::IOListener)
-    #@debug "stopping listener"
+    @debug "stopping listener"
     if listener.running[]
         listener.running[] = false
         trigger(listener)
