@@ -1273,29 +1273,32 @@ patch: ${JSON.stringify(
                 // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
                 // Also pressing "ctrl+shift" on mac causes the key to show up as "/", this madness
                 // I hope we can find a better solution for this later - Dral
+
+                const fold_prefix = is_mac_keyboard ? `⌥${and}⌘` : `Ctrl${and}Shift`
+
                 alert(
-                    `Shortcuts 🎹
+                    `
+⇧${and}Enter:   run cell
+${ctrl_or_cmd_name}${and}Enter:   run cell and add cell below
+${ctrl_or_cmd_name}${and}S:   submit all changes
+Delete or Backspace:   delete empty cell
 
-    ⇧${and}Enter:   run cell
-    ${ctrl_or_cmd_name}${and}Enter:   run cell and add cell below
-    ${ctrl_or_cmd_name}${and}S:   submit all changes
-    Delete or Backspace:   delete empty cell
+PageUp or fn${and}↑:   jump to cell above
+PageDown or fn${and}↓:   jump to cell below
+${alt_or_options_name}${and}↑:   move line/cell up
+${alt_or_options_name}${and}↓:   move line/cell down
 
-    page up or fn${and}↑:   jump to cell above
-    page down or fn${and}↓:   jump to cell below
-    ${alt_or_options_name}${and}↑:   move line/cell up
-    ${alt_or_options_name}${and}↓:   move line/cell down
+${control_name}${and}M:   toggle markdown
+${fold_prefix}${and}[:   hide cell code
+${fold_prefix}${and}]:   show cell code
+${ctrl_or_cmd_name}${and}Q:   interrupt notebook
 
-    
-    Select multiple cells by dragging a selection box from the space between cells.
-    ${ctrl_or_cmd_name}${and}C:   copy selected cells
-    ${ctrl_or_cmd_name}${and}X:   cut selected cells
-    ${ctrl_or_cmd_name}${and}V:   paste selected cells
-    
-    ${control_name}${and}M:   toggle markdown
-    ${ctrl_or_cmd_name}${and}Q:   interrupt notebook
+Select multiple cells by dragging a selection box from the space between cells.
+${ctrl_or_cmd_name}${and}C:   copy selected cells
+${ctrl_or_cmd_name}${and}X:   cut selected cells
+${ctrl_or_cmd_name}${and}V:   paste selected cells
 
-    The notebook file saves every time you run a cell.`
+The notebook file saves every time you run a cell.`
                 )
                 e.preventDefault()
             } else if (e.key === "Escape") {
