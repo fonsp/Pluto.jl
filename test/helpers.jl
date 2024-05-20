@@ -34,7 +34,7 @@ end
 
 function setcode!(cell, newcode)
     len = Pluto.OT.Unicode.utf16_ncodeunits(cell.code)
-    changes = Pluto.OT.Range[OT.insert(newcode), OT.delete(cell.code)]
+    changes = Pluto.OT.Range[Pluto.OT.insert(newcode), Pluto.OT.delete(cell.code)]
     push!(cell.cm_updates, Pluto.OT.Update(:anon, len, changes))
     cell.last_run_code = cell.code = newcode
 end
