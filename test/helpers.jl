@@ -1,4 +1,16 @@
 # Collect timing and allocations information; this is printed later.
+using TimerOutputs: TimerOutput, @timeit
+const TOUT = TimerOutput()
+macro timeit_include(path::AbstractString) :(@timeit TOUT $path include($path)) end
+function print_timeroutput()
+    # Sleep to avoid old logs getting tangled up in the output.
+    sleep(6)
+    println()
+    show(TOUT; compact=true, sortby=:firstexec)
+    println()
+end
+
+@timeit TOUT "import Pluto" import Pluto
 using ExpressionExplorer
 using Sockets
 using Test
@@ -6,6 +18,7 @@ using HTTP
 import Pkg
 import Malt
 import Malt.Distributed
+import Pluto
 
 
 
@@ -21,7 +34,7 @@ end
 
 function setcode!(cell, newcode)
     len = Pluto.OT.Unicode.utf16_ncodeunits(cell.code)
-    changes = Pluto.OT.Range[Pluto.OT.insert(newcode), Pluto.OT.delete(cell.code)]
+    changes = Pluto.OT.Range[OT.insert(newcode), OT.delete(cell.code)]
     push!(cell.cm_updates, Pluto.OT.Update(:anon, len, changes))
     cell.last_run_code = cell.code = newcode
 end
