@@ -15,6 +15,7 @@ end
 function trigger(listener::IOListener)
     if isreadable(listener.buffer)
         newdata = readavailable(listener.buffer)
+        isempty(newdata) && return
         s = String(newdata)
         ANSIEmulation.consume_safe!(
             listener.ansi_state, 
@@ -42,7 +43,6 @@ function startlistening(listener::IOListener)
     end
 end
 function stoplistening(listener::IOListener)
-    @debug "stopping listener"
     if listener.running[]
         listener.running[] = false
         bytesavailable(listener.buffer) > 0 && trigger(listener)
