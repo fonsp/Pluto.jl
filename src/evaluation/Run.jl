@@ -602,10 +602,12 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 	for c in changed
 		withtoken(notebook.cells_dict[c].code) do
 			cell = notebook.cells_dict[c]
+			# setcode!(cell, newcode)
 			len = OT.Unicode.utf16_ncodeunits(cell.code)
 			new_code = just_loaded.cells_dict[c].code
-			push!(cell.cm_updates, OT.Update(:watcher, len, OT.Range[OT.insert(new_code), OT.delete(cell.code)]))
-			cell.code = new_code
+			push!(cell.cm_updates,
+			      OT.Update(:watcher, len, OT.Range[OT.insert(new_code), OT.delete(cell.code)]))
+			cell.last_run_code = cell.code = new_code
 		end
 		notebook.cells_dict[c].metadata = just_loaded.cells_dict[c].metadata
 	end
