@@ -168,7 +168,7 @@ end
 
 # I'm a pirate harrr 🏴‍☠️
 @static if isdefined(Pkg, :can_fancyprint)
-	Pkg.can_fancyprint(io::IOContext{IOBuffer}) = get(io, :sneaky_enable_tty, false) === true
+	Pkg.can_fancyprint(io::Union{IOContext{IOBuffer},IOContext{Base.BufferStream}}) = get(io, :sneaky_enable_tty, false) === true
 end
 
 ###
