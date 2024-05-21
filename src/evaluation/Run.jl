@@ -600,7 +600,7 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 		delete!(notebook.cells_dict, c)
 	end
 	for c in changed
-		withtoken(notebook.cells_dict[c].code) do
+		withtoken(notebook.cells_dict[c].cm_token) do
 			cell = notebook.cells_dict[c]
 			# setcode!(cell, newcode)
 			len = OT.Unicode.utf16_ncodeunits(cell.code)
