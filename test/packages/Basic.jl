@@ -80,6 +80,10 @@ import Malt
         @test notebook.nbpkg_ctx_instantiated
         @test notebook.nbpkg_install_time_ns > last_install_time
         @test notebook.nbpkg_busy_packages |> isempty
+        @test notebook.nbpkg_terminal_outputs["nbpkg_sync"] != ""
+        @test notebook.nbpkg_terminal_outputs["PlutoPkgTestB"] != ""
+        @test occursin("+ PlutoPkgTestB", notebook.nbpkg_terminal_outputs["PlutoPkgTestB"])
+
         last_install_time = notebook.nbpkg_install_time_ns
 
         @test haskey(terminals, "PlutoPkgTestB")
@@ -189,6 +193,11 @@ import Malt
         @test notebook.nbpkg_ctx !== nothing
         @test notebook.nbpkg_restart_recommended_msg === nothing
         @test notebook.nbpkg_restart_required_msg === nothing
+        @test notebook.nbpkg_busy_packages == []
+        @test notebook.nbpkg_terminal_outputs["nbpkg_sync"] != ""
+        @test notebook.nbpkg_terminal_outputs["Dates"] != ""
+        @test occursin("- Dates", notebook.nbpkg_terminal_outputs["Dates"])
+        @test occursin("- Dates", notebook.nbpkg_terminal_outputs["nbpkg_sync"])
 
         @test count("Dates", ptoml_contents()) == 0
 
@@ -202,6 +211,11 @@ import Malt
         @test notebook.nbpkg_restart_recommended_msg !== nothing # recommend restart
         @test notebook.nbpkg_restart_required_msg === nothing
         @test notebook.nbpkg_install_time_ns === nothing # removing a package means that we lose our estimate
+        @test notebook.nbpkg_busy_packages == []
+        @test notebook.nbpkg_terminal_outputs["nbpkg_sync"] != ""
+        @test notebook.nbpkg_terminal_outputs["PlutoPkgTestD"] != ""
+        @test occursin("- PlutoPkgTestD", notebook.nbpkg_terminal_outputs["PlutoPkgTestD"])
+        @test occursin("- PlutoPkgTestD", notebook.nbpkg_terminal_outputs["nbpkg_sync"])
 
         @test count("PlutoPkgTestD", ptoml_contents()) == 0
 
