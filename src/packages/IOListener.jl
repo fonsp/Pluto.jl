@@ -29,9 +29,15 @@ end
 function startlistening(listener::IOListener)
     if !listener.running[]
         listener.running[] = true
-        @async while listener.running[]
-            trigger(listener)
-            sleep(listener.interval)
+        @async try
+            while listener.running[]
+                trigger(listener)
+                sleep(listener.interval)
+            end
+        catch ex
+            println(stderr, "IOListener loop error")
+            showerror(stderr, ex, stacktrace(catch_backtrace()))
+            rethrow(ex)
         end
     end
 end
