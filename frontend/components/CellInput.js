@@ -628,6 +628,11 @@ export const CellInput = ({
                 return direction === 1 ? moveLineDown(cm) : moveLineUp(cm)
             }
         }
+        const keyMapFold = (/** @type {EditorView} */ cm, new_value) => {
+            set_cm_forced_focus(true)
+            pluto_actions.fold_remote_cells([cell_id], new_value)
+            return true
+        }
 
         const plutoKeyMaps = [
             { key: "Shift-Enter", run: keyMapSubmit },
@@ -645,7 +650,8 @@ export const CellInput = ({
             { key: "Ctrl-Backspace", run: keyMapBackspace },
             { key: "Alt-ArrowUp", run: (x) => keyMapMoveLine(x, -1) },
             { key: "Alt-ArrowDown", run: (x) => keyMapMoveLine(x, 1) },
-
+            { key: "Ctrl-Shift-[", mac: "Cmd-Alt-[", run: (x) => keyMapFold(x, true) },
+            { key: "Ctrl-Shift-]", mac: "Cmd-Alt-]", run: (x) => keyMapFold(x, false) },
             mod_d_command,
         ]
 
@@ -917,6 +923,7 @@ export const CellInput = ({
                     head: cm.state.selection.main.head,
                 },
             })
+        } else if (cm_forced_focus === true) {
         } else {
             let new_selection = {
                 anchor: line_and_ch_to_cm6_position(cm.state.doc, cm_forced_focus[0]),
@@ -1032,7 +1039,7 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
             })
     }
 
-    useEventListener(window, "keydown", (e) => {
+    useEventListener(window, "keydown", (/** @type {KeyboardEvent} */ e) => {
         if (e.key === "Escape") {
             setOpen(false)
         }

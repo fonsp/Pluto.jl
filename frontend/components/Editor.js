@@ -583,7 +583,7 @@ export class Editor extends Component {
             fold_remote_cells: async (cell_ids, new_value) => {
                 await update_notebook((notebook) => {
                     for (let cell_id of cell_ids) {
-                        notebook.cell_inputs[cell_id].code_folded = new_value
+                        notebook.cell_inputs[cell_id].code_folded = new_value ?? !notebook.cell_inputs[cell_id].code_folded
                     }
                 })
             },
@@ -1188,6 +1188,10 @@ patch: ${JSON.stringify(
         this.run_selected = () => {
             return this.actions.set_and_run_multiple(this.state.selected_cells)
         }
+        this.fold_selected = (new_val) => {
+            if (_.isEmpty(this.state.selected_cells)) return
+            return this.actions.fold_remote_cells(this.state.selected_cells, new_val)
+        }
         this.move_selected = (/** @type {KeyboardEvent} */ e, /** @type {1|-1} */ delta) => {
             if (this.state.selected_cells.length > 0) {
                 const current_indices = this.state.selected_cells.map((id) => this.state.notebook.cell_order.indexOf(id))
@@ -1253,6 +1257,8 @@ patch: ${JSON.stringify(
                     // TODO: let user know that the notebook autosaves
                 }
                 e.preventDefault()
+            } else if (["BracketLeft", "BracketRight"].includes(e.code) && (is_mac_keyboard ? e.altKey && e.metaKey : e.ctrlKey && e.shiftKey)) {
+                this.fold_selected(e.code === "BracketLeft")
             } else if (e.key === "Backspace" || e.key === "Delete") {
                 if (this.delete_selected("Delete")) {
                     e.preventDefault()
@@ -1267,29 +1273,32 @@ patch: ${JSON.stringify(
                 // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
                 // Also pressing "ctrl+shift" on mac causes the key to show up as "/", this madness
                 // I hope we can find a better solution for this later - Dral
+
+                const fold_prefix = is_mac_keyboard ? `⌥${and}⌘` : `Ctrl${and}Shift`
+
                 alert(
-                    `Shortcuts 🎹
+                    `
+⇧${and}Enter:   run cell
+${ctrl_or_cmd_name}${and}Enter:   run cell and add cell below
+${ctrl_or_cmd_name}${and}S:   submit all changes
+Delete or Backspace:   delete empty cell
 
-    ⇧${and}Enter:   run cell
-    ${ctrl_or_cmd_name}${and}Enter:   run cell and add cell below
-    ${ctrl_or_cmd_name}${and}S:   submit all changes
-    Delete or Backspace:   delete empty cell
+PageUp or fn${and}↑:   jump to cell above
+PageDown or fn${and}↓:   jump to cell below
+${alt_or_options_name}${and}↑:   move line/cell up
+${alt_or_options_name}${and}↓:   move line/cell down
 
-    page up or fn${and}↑:   jump to cell above
-    page down or fn${and}↓:   jump to cell below
-    ${alt_or_options_name}${and}↑:   move line/cell up
-    ${alt_or_options_name}${and}↓:   move line/cell down
+${control_name}${and}M:   toggle markdown
+${fold_prefix}${and}[:   hide cell code
+${fold_prefix}${and}]:   show cell code
+${ctrl_or_cmd_name}${and}Q:   interrupt notebook
 
-    
-    Select multiple cells by dragging a selection box from the space between cells.
-    ${ctrl_or_cmd_name}${and}C:   copy selected cells
-    ${ctrl_or_cmd_name}${and}X:   cut selected cells
-    ${ctrl_or_cmd_name}${and}V:   paste selected cells
-    
-    ${control_name}${and}M:   toggle markdown
-    ${ctrl_or_cmd_name}${and}Q:   interrupt notebook
+Select multiple cells by dragging a selection box from the space between cells.
+${ctrl_or_cmd_name}${and}C:   copy selected cells
+${ctrl_or_cmd_name}${and}X:   cut selected cells
+${ctrl_or_cmd_name}${and}V:   paste selected cells
 
-    The notebook file saves every time you run a cell.`
+The notebook file saves every time you run a cell.`
                 )
                 e.preventDefault()
             } else if (e.key === "Escape") {

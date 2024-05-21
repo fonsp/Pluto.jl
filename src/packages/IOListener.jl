@@ -2,32 +2,27 @@
 module ANSIEmulation include("./ANSIEmulation.jl") end
 
 
-"A polling system to watch for writes to an IOBuffer. Up-to-date content will be passed as string to the `callback` function."
+"A polling system to watch for writes to a `Base.BufferStream`. Up-to-date content will be passed as string to the `callback` function."
 Base.@kwdef struct IOListener
     callback::Function
     interval::Real=1.0/60
     running::Ref{Bool}=Ref(false)
 
-    buffer::IOBuffer=IOBuffer()
-    last_size::Ref{Int}=Ref(0)
+    buffer::Base.BufferStream=Base.BufferStream()
     ansi_state::ANSIEmulation.ANSITerminalState=ANSIEmulation.ANSITerminalState()
 end
 
 function trigger(listener::IOListener)
-    old_size = listener.last_size[]
-    new_size = listener.buffer.size
-    if new_size > old_size
-        # @debug "making string"
-        s = String(@view listener.buffer.data[old_size+1:new_size])
-        # @debug "making ansi"
+    if isreadable(listener.buffer)
+        newdata = readavailable(listener.buffer)
+        isempty(newdata) && return
+        s = String(newdata)
         ANSIEmulation.consume_safe!(
             listener.ansi_state, 
             s
         )
-        # @debug "building string" s listener.ansi_state
         new_contents = ANSIEmulation.build_str(listener.ansi_state)
 
-        listener.last_size[] = new_size
         listener.callback(new_contents)
     end
 end
@@ -35,16 +30,23 @@ end
 function startlistening(listener::IOListener)
     if !listener.running[]
         listener.running[] = true
-        @async while listener.running[]
-            trigger(listener)
-            sleep(listener.interval)
+        @async try
+            while listener.running[]
+                trigger(listener)
+                sleep(listener.interval)
+            end
+        catch ex
+            println(stderr, "IOListener loop error")
+            showerror(stderr, ex, stacktrace(catch_backtrace()))
+            rethrow(ex)
         end
     end
 end
 function stoplistening(listener::IOListener)
     if listener.running[]
         listener.running[] = false
-        trigger(listener)
+        bytesavailable(listener.buffer) > 0 && trigger(listener)
+        close(listener.buffer)
     end
 end
 

@@ -60,7 +60,7 @@ function sync_nbpkg_core(
     old_topology::NotebookTopology, 
     new_topology::NotebookTopology; 
     on_terminal_output::Function=((args...) -> nothing), 
-    cleanup::Ref{Function}=Ref{Function}(_default_cleanup),
+    cleanup_iolistener::Ref{Function}=Ref{Function}(_default_cleanup),
     lag::Real=0,
     compiler_options::CompilerOptions=CompilerOptions(),
 )
@@ -115,7 +115,7 @@ function sync_nbpkg_core(
             report_to = ["nbpkg_sync", busy_packages...]
             IOListener(callback=(s -> on_terminal_output(report_to, freeze_loading_spinners(s))))
         end
-        cleanup[] = () -> stoplistening(iolistener)
+        cleanup_iolistener[] = () -> stoplistening(iolistener)
 
 
 
@@ -323,7 +323,7 @@ In addition to the steps performed by [`sync_nbpkg_core`](@ref):
 function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topology::NotebookTopology; save::Bool=true, take_token::Bool=true)
     @assert will_run_pkg(notebook)
 
-    cleanup = Ref{Function}(_default_cleanup)
+    cleanup_iolistener = Ref{Function}(_default_cleanup)
 	try
         Status.report_business_started!(notebook.status_tree, :pkg)
         
@@ -346,7 +346,7 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
                 old_topology, 
                 new_topology; 
                 on_terminal_output=iocallback, 
-                cleanup,
+                cleanup_iolistener,
                 lag=session.options.server.simulated_pkg_lag,
                 compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler),
             )
@@ -401,7 +401,7 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 
 		save && save_notebook(session, notebook)
 	finally
-        cleanup[]()
+        cleanup_iolistener[]()
         Status.report_business_finished!(notebook.status_tree, :pkg)
     end
 end
@@ -541,7 +541,7 @@ function update_nbpkg_core(
     notebook::Notebook; 
     level::Pkg.UpgradeLevel=Pkg.UPLEVEL_MAJOR, 
     on_terminal_output::Function=((args...) -> nothing),
-    cleanup::Ref{Function}=Ref{Function}(default_cleanup),
+    cleanup_iolistener::Ref{Function}=Ref{Function}(default_cleanup),
     compiler_options::CompilerOptions=CompilerOptions(),
 )
     if notebook.nbpkg_ctx !== nothing
@@ -554,7 +554,7 @@ function update_nbpkg_core(
             report_to = ["nbpkg_update", old_packages...]
             IOListener(callback=(s -> on_terminal_output(report_to, freeze_loading_spinners(s))))
         end
-        cleanup[] = () -> stoplistening(iolistener)
+        cleanup_iolistener[] = () -> stoplistening(iolistener)
         
         if !isready(pkg_token)
             println(iolistener.buffer, "Waiting for other notebooks to finish Pkg operations...")
@@ -624,7 +624,7 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
     bp = if backup && save
         writebackup(notebook)
     end
-    cleanup = Ref{Function}(_default_cleanup)
+    cleanup_iolistener = Ref{Function}(_default_cleanup)
 
     try
 		pkg_result = withtoken(notebook.executetoken) do
@@ -642,7 +642,7 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
                 notebook; 
                 level, 
                 on_terminal_output=iocallback,
-                cleanup,
+                cleanup_iolistener,
                 compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler),
             )
 		end
@@ -660,7 +660,7 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
             !isnothing(bp) && isfile(bp) && rm(bp)
         end
 	finally
-        cleanup[]()
+        cleanup_iolistener[]()
 		notebook.nbpkg_busy_packages = String[]
         update_nbpkg_cache!(notebook)
 		send_notebook_changes!(ClientRequest(; session, notebook))
