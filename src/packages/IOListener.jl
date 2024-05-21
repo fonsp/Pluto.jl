@@ -14,16 +14,12 @@ end
 
 function trigger(listener::IOListener)
     if isreadable(listener.buffer)
-        @debug "waiting for data"
         newdata = readavailable(listener.buffer)
-        @debug "making string"
         s = String(newdata)
-        @debug "making ansi"
         ANSIEmulation.consume_safe!(
             listener.ansi_state, 
             s
         )
-        @debug "building string" s listener.ansi_state
         new_contents = ANSIEmulation.build_str(listener.ansi_state)
 
         listener.callback(new_contents)
