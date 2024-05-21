@@ -630,7 +630,7 @@ export const CellInput = ({
         }
         const keyMapFold = (/** @type {EditorView} */ cm, new_value) => {
             set_cm_forced_focus(true)
-            pluto_actions.fold_remote_cells([cell_id], new_value).catch(console.warn)
+            pluto_actions.fold_remote_cells([cell_id], new_value)
             return true
         }
 
@@ -1043,7 +1043,6 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
         if (e.key === "Escape") {
             setOpen(false)
         }
-        e.stopPropagation()
     })
 
     return html`
