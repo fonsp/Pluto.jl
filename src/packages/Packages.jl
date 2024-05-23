@@ -111,7 +111,7 @@ function sync_nbpkg_core(
         can_skip = isempty(removed) && isempty(added) && notebook.nbpkg_ctx_instantiated
 
         iolistener = let
-            busy_packages = notebook.nbpkg_ctx_instantiated ? added : new_packages
+            busy_packages = notebook.nbpkg_ctx_instantiated ? union(added, removed) : new_packages
             report_to = ["nbpkg_sync", busy_packages...]
             IOListener(callback=(s -> on_terminal_output(report_to, freeze_loading_spinners(s))))
         end
@@ -204,10 +204,12 @@ function sync_nbpkg_core(
                         mkeys() = Set(filter(!is_stdlib, [m.name for m in values(PkgCompat.dependencies(notebook.nbpkg_ctx))]))
                         old_manifest_keys = mkeys()
 
-                        Pkg.rm(notebook.nbpkg_ctx, [
-                            Pkg.PackageSpec(name=p)
-                            for p in to_remove
-                        ])
+                        with_io_setup(notebook, iolistener) do
+                            Pkg.rm(notebook.nbpkg_ctx, [
+                                Pkg.PackageSpec(name=p)
+                                for p in to_remove
+                            ])
+                        end
 
                         notebook.nbpkg_install_time_ns = nothing # we lose our estimate of install time
                         # We record the manifest before and after, to prevent recommending a reboot when nothing got removed from the manifest (e.g. when removing GR, but leaving Plots), or when only stdlibs got removed.
