@@ -54,3 +54,11 @@ freeze_loading_spinners(s::AbstractString) = _replaceall(s, '◑' => '◐', '◒
 
 _replaceall(s, p) = replace(s, p)
 _replaceall(s, p, ps...) = @static VERSION >= v"1.7" ? replace(s, p, ps...) : _replaceall(replace(s, p), ps...)
+
+phasemessage(iolistener, phase::String) = phasemessage(iolistener.buffer, phase)
+function phasemessage(io::IO, phase::String)
+    ioc = IOContext(io, :color=>true)
+    printstyled(ioc, "\n$phase...\n"; bold=true)
+    printstyled(ioc, "===\n"; color=:light_black)
+end
+

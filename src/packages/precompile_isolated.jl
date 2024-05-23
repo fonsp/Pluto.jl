@@ -36,7 +36,7 @@ function precompile_isolated(
         ))
     catch e
         if e isa ProcessFailedException
-            error("Precompilation failed\n\n$(String(take!(stderr_buffer)))")
+            throw(PrecompilationFailedException("Precompilation failed\n\n$(String(take!(stderr_buffer)))"))
         else
             rethrow(e)
         end
@@ -46,6 +46,10 @@ function precompile_isolated(
     
     # In the future we could allow interrupting the precompilation process (e.g. when the notebook is shut down)
     # by running this code using Malt.jl
+end
+
+struct PrecompilationFailedException <: Exception
+    msg::String
 end
 
 # Create a new IO object that redirects all writes to the given capture IOs. It's like the `tee` linux command. Return a named tuple with the IO object and a function to close it which you should not forget to call.

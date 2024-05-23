@@ -123,14 +123,14 @@ const StatusItem = ({ status_tree, path, my_clock_is_ahead_by, nbpkg, backend_la
     const busy_time = Math.max(local_busy_time, mytime - start - (mystatus.timing === "local" ? 0 : my_clock_is_ahead_by))
 
     useEffect(() => {
-        if (busy) {
+        if (busy || mystatus.success === false) {
             let handle = setTimeout(() => {
                 set_is_open(true)
             }, Math.max(100, 500 - path.length * 200))
 
             return () => clearTimeout(handle)
         }
-    }, [busy])
+    }, [busy || mystatus.success === false])
 
     useEffectWithPrevious(
         ([old_finished]) => {
