@@ -14,7 +14,7 @@ import { NotifyWhenDone } from "./NotifyWhenDone.js"
  * my_clock_is_ahead_by: number,
  * }} props
  */
-export let ProcessTab = ({ status, notebook, backend_launch_logs, my_clock_is_ahead_by }) => {
+export const StatusTab = ({ status, notebook, backend_launch_logs, my_clock_is_ahead_by }) => {
     return html`
         <section>
             <${StatusItem}

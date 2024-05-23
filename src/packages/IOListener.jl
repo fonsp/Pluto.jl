@@ -13,7 +13,7 @@ Base.@kwdef struct IOListener
 end
 
 function trigger(listener::IOListener)
-    if isreadable(listener.buffer)
+    if !eof(listener.buffer) && isreadable(listener.buffer)
         newdata = readavailable(listener.buffer)
         isempty(newdata) && return
         s = String(newdata)

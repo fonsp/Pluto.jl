@@ -5,6 +5,7 @@ import { html, useContext, useEffect, useLayoutEffect, useRef, useState } from "
 import { pluto_syntax_colors } from "./CellInput.js"
 import { highlight } from "./CellOutput.js"
 import { Editor } from "./Editor.js"
+import { PkgTerminalView } from "./PkgTerminalView.js"
 
 const extract_cell_id = (/** @type {string} */ file) => {
     const sep_index = file.indexOf("#==#")
@@ -298,6 +299,26 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                 const erred_upstreams = get_erred_upstreams(pluto_actions.get_notebook(), cell_id)
                 return Object.keys(erred_upstreams).length === 0
             },
+        },
+        {
+            pattern: /^ArgumentError: Package (.*) not found in current path/,
+            display: (/** @type{string} */ x) => {
+                const match = x.match(/^ArgumentError: Package (.*) not found in current path/)
+                const package_name = (match?.[1] ?? "").replaceAll("`", "")
+
+                const pkg_terminal_value = pluto_actions.get_notebook()?.nbpkg?.terminal_outputs?.[package_name]
+
+                return html`<p>The package <strong>${package_name}.jl</strong> could not load because it failed to initialize.</p>
+                    <p>That's not nice! Things you could try:</p>
+                    <ul>
+                        <li>Restart the notebook.</li>
+                        <li>Try a different Julia version.</li>
+                        <li>Contact the developers of ${package_name}.jl about this error.</li>
+                    </ul>
+                    <p>You might find useful information in the package installation log:</p>
+                    <${PkgTerminalView} value=${pkg_terminal_value} />`
+            },
+            show_stacktrace: () => false,
         },
         default_rewriter,
     ]
