@@ -323,7 +323,14 @@ const from_notebook_type = "c_from_notebook completion_module c_Any"
 const writing_variable_name_or_keyword = (/** @type {autocomplete.CompletionContext} */ ctx) => {
     let just_finished_a_keyword = ctx.matchBefore(endswith_keyword_regex)
 
-    let after_keyword = ctx.matchBefore(/(catch|local|module|abstract type|struct|macro|const|for|function|let|do) [@\p{L}\p{Nl}\p{Sc}\d_!]*$/u)
+    // Regex explaination:
+    // 1. a keyword that could be followed by a variable name like `catch ex` where `ex` is a variable name that should not get completed
+    // 2. a space
+    // 3. a sequence of either:
+    // 3a. a variable name character `@\p{L}\p{Nl}\p{Sc}\d_!`. Also allowed is a bracket or a comma, this is to handle multiple vars `const (a,b)`.
+    // 3b. a `, ` comma-space, to treat `const a, b` but not `for a in
+    // 4. a `$` to match the end of the line
+    let after_keyword = ctx.matchBefore(/(catch|local|module|abstract type|struct|macro|const|for|function|let|do) ([@\p{L}\p{Nl}\p{Sc}\d_!,\(\)]|, )*$/u)
 
     let inside_do_argument_expression = ctx.matchBefore(/do [\(\), \p{L}\p{Nl}\p{Sc}\d_!]*$/u)
 
