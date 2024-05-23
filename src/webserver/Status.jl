@@ -77,11 +77,15 @@ report_business_started!(parent::Business, name::Symbol) = get_child(parent, nam
 report_business_planned!(parent::Business, name::Symbol) = get_child(parent, name)
 
 
-report_business!(f::Function, parent::Business, args...) = try
-    report_business_started!(parent, args...)
-    f()
-finally
-    report_business_finished!(parent, args...)
+function report_business!(f::Function, parent::Business, name::Symbol)
+    local success = false
+    try
+        report_business_started!(parent, name)
+        f()
+        success = true
+    finally
+        report_business_finished!(parent, name, success)
+    end
 end
 
 delete_business!(business::Business, name::Symbol) = lock(business.lock) do

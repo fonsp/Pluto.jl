@@ -130,7 +130,7 @@ function sync_nbpkg_core(
                 reg = !PkgCompat._updated_registries_compat[]
                 
                 # Print something in the terminal logs
-                println(iolistener.buffer, "Waiting for $(reg ? "the package registry to update" : "other notebooks to finish Pkg operations")...")
+                phasemessage(iolistener, "Waiting for $(reg ? "the package registry to update" : "other notebooks to finish Pkg operations")")
                 trigger(iolistener) # manual trigger because we did not start listening yet
                 
                 # Create a business item
@@ -225,7 +225,7 @@ function sync_nbpkg_core(
                         Status.report_business_started!(pkg_status, :add)
                         start_time = time_ns()
                         with_io_setup(notebook, iolistener) do
-                            println(iolistener.buffer, "\nAdding packages...")
+                            phasemessage(iolistener, "Adding packages")
                             
                             # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
                             PkgCompat.clear_auto_compat_entries!(notebook.nbpkg_ctx)
@@ -380,10 +380,11 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 		# TODO: send to user
         showerror(stderr, e, bt)
         
-		error_text = sprint(showerror, e, bt)
+        
+		error_text = e isa PrecompilationFailedException ? e.msg : sprint(showerror, e, bt)
 		for p in notebook.nbpkg_busy_packages
             old = get(notebook.nbpkg_terminal_outputs, p, "")
-			notebook.nbpkg_terminal_outputs[p] = old * "\n\n\nPkg error!\n\n" * error_text
+			notebook.nbpkg_terminal_outputs[p] = old * "\n\n\e[1mPkg error!\e[22m\n" * error_text
 		end
 		notebook.nbpkg_busy_packages = String[]
         update_nbpkg_cache!(notebook)
@@ -423,7 +424,7 @@ end
 function _instantiate(notebook::Notebook, iolistener::IOListener)
     start_time = time_ns()
     with_io_setup(notebook, iolistener) do
-        println(iolistener.buffer, "\nInstantiating...")
+        phasemessage(iolistener, "Instantiating")
         @debug "PlutoPkg: Instantiating" notebook.path 
         
         # update registries if this is the first time
@@ -453,7 +454,7 @@ end
 function _precompile(notebook::Notebook, iolistener::IOListener, compiler_options::CompilerOptions)
     start_time = time_ns()
     with_io_setup(notebook, iolistener) do
-        println(iolistener.buffer, "\nPrecompiling...")
+        phasemessage(iolistener, "Precompiling")
         @debug "PlutoPkg: Precompiling" notebook.path 
         
         env_dir = PkgCompat.env_dir(notebook.nbpkg_ctx)
@@ -468,7 +469,7 @@ end
 function _resolve(notebook::Notebook, iolistener::IOListener)
     startlistening(iolistener)
     with_io_setup(notebook, iolistener) do
-        println(iolistener.buffer, "\nResolving...")
+        phasemessage(iolistener, "Resolving")
         @debug "PlutoPkg: Resolving" notebook.path 
         Pkg.resolve(notebook.nbpkg_ctx)
     end
@@ -555,7 +556,7 @@ function update_nbpkg_core(
         cleanup_iolistener[] = () -> stoplistening(iolistener)
         
         if !isready(pkg_token)
-            println(iolistener.buffer, "Waiting for other notebooks to finish Pkg operations...")
+            phasemessage(iolistener, "Waiting for other notebooks to finish Pkg operations")
             trigger(iolistener)
         end
 
@@ -575,6 +576,7 @@ function update_nbpkg_core(
                 end
 
                 with_io_setup(notebook, iolistener) do
+                    phasemessage(iolistener, "Updating packages")
                     # We temporarily clear the "semver-compatible" [deps] entries, because it is difficult to update them after the update 🙈. TODO
                     PkgCompat.clear_auto_compat_entries!(notebook.nbpkg_ctx)
 

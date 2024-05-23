@@ -2095,12 +2095,15 @@ pkg-terminal > .scroller {
     width: 100%;
 }
 
-pkg-terminal pre {
+body pkg-terminal:not(.asdf) pre:not(.asdf) {
     white-space: pre-wrap;
     word-break: break-all;
     font-size: 0.6rem;
     font-family: "Space Mono", monospace;
+    font-variant-ligatures: none;
     margin: 0;
+    color: inherit;
+    background: none;
 }
 
 pkg-terminal .make-me-spin {
