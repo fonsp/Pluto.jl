@@ -811,15 +811,9 @@ patch: ${JSON.stringify(
                                 this.waiting_for_bond_to_trigger_execution = false
                             }
                         }
-                        apply_promise
-                            .then(set_waiting)
-                            .catch((e) => {
-                                set_waiting()
-                                throw e
-                            })
-                            .then(() => {
-                                this.send_queued_bond_changes()
-                            })
+                        apply_promise.finally(set_waiting).then(() => {
+                            this.send_queued_bond_changes()
+                        })
 
                         break
                     default:
