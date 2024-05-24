@@ -1,6 +1,7 @@
 import { Promises } from "../common/SetupCellEnvironment.js"
 import { pack, unpack } from "./MsgPack.js"
 import "./Polyfill.js"
+import { Stack } from "./Stack.js"
 import { with_query_params } from "./URLTools.js"
 
 const reconnect_after_close_delay = 500
@@ -249,6 +250,7 @@ const default_ws_address = () => ws_address_from_base(window.location.href)
  *      dismiss_update_notification: boolean,
  *  },
  *  notebook_exists: boolean,
+ *  message_log: import("./Stack.js").Stack<any>,
  * }}
  */
 
@@ -279,18 +281,21 @@ export const create_pluto_connection = async ({
     ws_address = default_ws_address(),
 }) => {
     let ws_connection = /** @type {WebsocketConnection?} */ (null) // will be defined later i promise
+    const message_log = new Stack(100)
+    // @ts-ignore
+    window.pluto_get_message_log = () => message_log.get()
 
-    /** @type {PlutoConnection} */
     const client = {
-        send: null,
-        session_options: null,
+        // send: null,
+        // session_options: null,
         version_info: {
             julia: "unknown",
             pluto: "unknown",
             dismiss_update_notification: false,
         },
         notebook_exists: true,
-        kill: null,
+        // kill: null,
+        message_log,
     } // same
 
     const client_id = get_unique_short_id()
@@ -303,6 +308,7 @@ export const create_pluto_connection = async ({
         }
         const request_id = get_unique_short_id()
 
+        // This data will be sent:
         const message = {
             type: message_type,
             client_id: client_id,
@@ -310,8 +316,6 @@ export const create_pluto_connection = async ({
             body: body,
             ...metadata,
         }
-
-        // Note: Message to be sent: message
 
         let p = resolvable_promise()
 
@@ -350,6 +354,8 @@ export const create_pluto_connection = async ({
         try {
             ws_connection = await create_ws_connection(String(ws_address), {
                 on_message: (update) => {
+                    message_log.push(update)
+
                     const by_me = update.initiator_id == client_id
                     const request_id = update.request_id
 
@@ -418,5 +424,5 @@ export const create_pluto_connection = async ({
     }
     await connect()
 
-    return client
+    return /** @type {PlutoConnection} */ (client)
 }
