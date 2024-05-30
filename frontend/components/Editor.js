@@ -131,7 +131,6 @@ const first_true_key = (obj) => {
  *  metadata: CellMetaData,
  *  cm_updates: Array<import("./CellInput.js").TextUpdate>
  *  last_run_code: String,
- *  code: String,
  *  start_version: Number,
  * }}
  */
@@ -324,7 +323,7 @@ export class Editor extends Component {
 
         this.state = {
             notebook: /** @type {NotebookData} */ initial_notebook_state,
-            /** @type Map<string,EditorView> */
+            /** @type Map<string,any> */
             cell_collab_plugins: new Map(),
             cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
             desired_doc_query: null,
@@ -417,6 +416,7 @@ export class Editor extends Component {
                     code: code,
                     cm_updates: [],
                     start_version: 0,
+                    last_run_code: "",
                     last_run_version: 0,
                     code_folded: false,
                     metadata: {
@@ -910,12 +910,14 @@ patch: ${JSON.stringify(
             this.client.send("complete", { query: "sq" }, { notebook_id: this.state.notebook.notebook_id })
             this.client.send("complete", { query: "\\sq" }, { notebook_id: this.state.notebook.notebook_id })
 
-            const users = this.actions.get_notebook().users
-            const names = ["Mars", "Earth", "Moon", "Sun"]
-            const colors = ["#ffc09f", "#a0ced9", "#adf7b6", "#fcf5c7"]
-            this.actions.update_notebook((/** @type {NotebookData} */nb) => {
-                nb.users[this.client_id] = { name: names[Object.keys(users).length], color: colors[Object.keys(users).length] }
-            })
+            const users = this.actions.get_notebook()?.users
+            if (users) {
+                const names = ["Mars", "Earth", "Moon", "Sun"]
+                const colors = ["#ffc09f", "#a0ced9", "#adf7b6", "#fcf5c7"]
+                this.actions.update_notebook((/** @type {NotebookData} */nb) => {
+                    nb.users[this.client_id] = { name: names[Object.keys(users).length], color: colors[Object.keys(users).length] }
+                })
+            }
 
             setTimeout(init_feedback, 2 * 1000) // 2 seconds - load feedback a little later for snappier UI
         }
