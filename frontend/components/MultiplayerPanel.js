@@ -170,7 +170,7 @@ const useMousePositionWithScroll = () => {
 const MyCursorSyncer = ({ client_id }) => {
     const { update_notebook } = useContext(PlutoActionsContext)
 
-    const update_mouse_position = useCallback(_.throttle((/** @type{MouseEvent} */event) => {
+    const update_mouse_position = useCallback(_.throttle((/** @type{{ pageX: number, pageY: number }} */event) => {
         update_notebook((/** @type {import("./Editor.js").NotebookData} */ notebook) => {
             if (!(client_id in notebook.users)) return
             notebook.users_mouse_data[client_id] = update_mouse_data(event.pageX, event.pageY)

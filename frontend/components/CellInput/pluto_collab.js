@@ -1,6 +1,5 @@
 import {
     showTooltip,
-    tooltips,
     Facet,
     ChangeSet,
     collab,
@@ -13,7 +12,6 @@ import {
     StateEffect,
     StateField,
     ViewPlugin,
-    ViewUpdate,
 } from "../../imports/CodemirrorPlutoSetup.js"
 import { html } from "../../imports/Preact.js"
 import { ReactWidget } from "./ReactWidget.js"
@@ -46,7 +44,7 @@ const delta_to_specs = (ops) => {
 }
 
 /**
- * @param {Array<ChangeSet>} cs
+ * @param {ChangeSet} cs
  * @returns {Array<Delta>}
  **/
 const changeset_to_delta = (cs) => {
@@ -184,7 +182,7 @@ const CaretField = (client_id, cell_id) =>
             return new_value
         },
         provide: (f) =>
-            EditorView.decorations.compute([f, UsersFacet], (/** @type EditorState */ state) => {
+            EditorView.decorations.compute([f, UsersFacet], (/** @type {import("../Editor.js").EditorState} */ state) => {
                 const value = state.field(f)
                 const decorations = []
 
@@ -308,19 +306,21 @@ export const pluto_collab = (startVersion, { pluto_actions, cell_id, client_id }
         }
     )
 
-    const cursorPlugin = EditorView.updateListener.of((update) => {
-        if (!update.selectionSet) {
-            return
-        }
+    // const cursorPlugin = EditorView.updateListener.of((update) => {
+    //     if (!update.selectionSet) {
+    //         return
+    //     }
 
-        const effect = CaretEffect.of({ selection: update.view.state.selection, clientID: client_id })
-        update.view.dispatch({
-            effects: [effect],
-        })
-    })
+    //     const effect = CaretEffect.of({ selection: update.view.state.selection, clientID: client_id })
+    //     update.view.dispatch({
+    //         effects: [effect],
+    //     })
+    // })
 
     return [
-        collab({ clientID: client_id, startVersion, sharedEffects: (tr) => tr.effects.filter((effect) => effect.is(CaretEffect) || effect.is(RunEffect)) }),
+        collab({ clientID: client_id, startVersion,
+            // sharedEffects: (tr) => tr.effects.filter((effect) => effect.is(CaretEffect) || effect.is(RunEffect)),
+        }),
         plugin,
         // cursorPlugin,
         // tooltips(),

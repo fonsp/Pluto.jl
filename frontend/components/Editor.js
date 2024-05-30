@@ -467,7 +467,7 @@ export class Editor extends Component {
                             ...cell,
                             // Fill the cell with empty code remotely, so it doesn't run unsafe code
                             start_version: 1,
-                            last_run_version: 0,
+                            last_run_code: "",
                             cm_updates: [{ specs: [{ from: 0, insert: cell.code }], document_length: 0, client_id: "slkqjdsql" }],
                             metadata: {
                                 ...DEFAULT_CELL_METADATA,
@@ -507,6 +507,7 @@ export class Editor extends Component {
                         cell_id: uuidv4(),
                         code,
                         last_run_version: 0,
+                        last_run_code: "",
                         start_version: 0,
                         cm_updates: [],
                         code_folded: false,
@@ -720,7 +721,6 @@ export class Editor extends Component {
             },
         }
         this.actions = { ...this.real_actions }
-        window.pluto_actions = this.actions
 
         const apply_notebook_patches = (patches, /** @type {NotebookData?} */ old_state = null, get_reverse_patches = false) =>
             new Promise((resolve) => {

@@ -66,6 +66,7 @@ export const empty_notebook_state = ({ notebook_id }) => ({
     bonds: {},
     nbpkg: null,
     status_tree: null,
+    users: {},
 })
 
 /**
