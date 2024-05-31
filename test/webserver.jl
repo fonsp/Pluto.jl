@@ -116,7 +116,7 @@ end
     
     export_contents = read(download(local_url("notebookexport?id=$(notebook.notebook_id)")), String)
     
-    @test occursin(string(Pluto.PLUTO_VERSION), export_contents)
+    @test occursin(string(Pluto.ERIS_VERSION), export_contents)
     @test occursin("</html>", export_contents)
     
     for notebook in values(🍭.notebooks)

@@ -378,7 +378,7 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 		new_packages = try String.(external_package_names(new_topology)); catch; ["unknown"] end
 		@warn """
 		PlutoPkg: Failed to add/remove packages! Resetting package environment...
-		""" PLUTO_VERSION VERSION old_packages new_packages exception=(e, bt)
+		""" ERIS_VERSION VERSION old_packages new_packages exception=(e, bt)
 		# TODO: send to user
         showerror(stderr, e, bt)
         

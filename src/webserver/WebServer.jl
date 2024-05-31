@@ -313,7 +313,7 @@ function run!(session::ServerSession)
     # Trigger ServerStartEvent with server details
     try_event_call(session, ServerStartEvent(address, port))
 
-    if PLUTO_VERSION >= v"0.17.6" && frontend_directory() == "frontend"
+    if ERIS_VERSION >= v"0.0.1" && frontend_directory() == "frontend"
         @info("It looks like you are developing the Pluto package, using the unbundled frontend...")
     end
 

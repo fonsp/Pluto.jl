@@ -402,7 +402,7 @@ function dependencies(ctx)
 			to reset this notebook's environment.
 
 			Before doing so, consider sending your notebook file to https://github.com/fonsp/Pluto.jl/issues together with the following info:
-			""" Pluto.PLUTO_VERSION VERSION exception=(e,catch_backtrace())
+			""" Eris.ERIS_VERSION VERSION exception=(e,catch_backtrace())
 		end
 
 		Dict()
