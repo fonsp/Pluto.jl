@@ -3,7 +3,7 @@ using Base64
 using HypertextLiteral
 import URIs
 
-const default_binder_url = "https://mybinder.org/v2/gh/fonsp/pluto-on-binder/v$(string(PLUTO_VERSION))"
+const default_binder_url = "https://mybinder.org/v2/gh/fonsp/pluto-on-binder/v$(string(ERIS_VERSION))"
 
 const cdn_version_override = nothing
 # const cdn_version_override = "2a48ae2"
@@ -18,14 +18,14 @@ function cdnified_html(filename::AbstractString;
         version::Union{Nothing,VersionNumber,AbstractString}=nothing, 
         pluto_cdn_root::Union{Nothing,AbstractString}=nothing,
     )
-    should_use_bundled_cdn = version ∈ (nothing, PLUTO_VERSION) && pluto_cdn_root === nothing
+    should_use_bundled_cdn = version ∈ (nothing, ERIS_VERSION) && pluto_cdn_root === nothing
     
     something(
         if should_use_bundled_cdn
             try
                 original = read(project_relative_path("frontend-dist", filename), String)
                 
-                cdn_root = "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@$(string(PLUTO_VERSION))/frontend-dist/"
+                cdn_root = "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@$(string(ERIS_VERSION))/frontend-dist/"
 
                 @debug "Using CDN for Pluto assets:" cdn_root
 
@@ -43,7 +43,7 @@ function cdnified_html(filename::AbstractString;
         let
             original = read(project_relative_path("frontend", filename), String)
 
-            cdn_root = something(pluto_cdn_root, "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@$(something(cdn_version_override, string(something(version, PLUTO_VERSION))))/frontend/")
+            cdn_root = something(pluto_cdn_root, "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@$(something(cdn_version_override, string(something(version, ERIS_VERSION))))/frontend/")
 
             @debug "Using CDN for Pluto assets:" cdn_root
     

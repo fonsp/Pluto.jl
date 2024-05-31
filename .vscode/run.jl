@@ -1,2 +1,2 @@
-import Pluto
-Pluto.run()
+import Eris
+Eris.run()

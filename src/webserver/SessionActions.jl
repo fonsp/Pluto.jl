@@ -1,8 +1,8 @@
 module SessionActions
 
-import ..Pluto: Pluto, Status, ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, cutename, readwrite, update_save_run!, update_nbpkg_cache!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, try_event_call, NewNotebookEvent, OpenNotebookEvent, ShutdownNotebookEvent, @asynclog, ProcessStatus, maybe_convert_path_to_wsl, move_notebook!, throttled
+import ..Eris: Eris, Status, ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_Eris_file_extension, numbered_until_new, cutename, readwrite, update_save_run!, update_nbpkg_cache!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putErisupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, try_event_call, NewNotebookEvent, OpenNotebookEvent, ShutdownNotebookEvent, @asynclog, ProcessStatus, maybe_convert_path_to_wsl, move_notebook!, throttled
 using FileWatching
-import ..Pluto.DownloadCool: download_cool
+import ..Eris.DownloadCool: download_cool
 import HTTP
 
 import UUIDs: UUID, uuid1
@@ -52,7 +52,7 @@ function open(session::ServerSession, path::AbstractString;
 )
     path = maybe_convert_path_to_wsl(path)
     if as_sample
-        new_filename = "sample " * without_pluto_file_extension(basename(path))
+        new_filename = "sample " * without_Eris_file_extension(basename(path))
         new_path = numbered_until_new(joinpath(new_notebooks_directory(), new_filename); suffix=".jl")
         
         readwrite(path, new_path)
@@ -79,13 +79,13 @@ function open(session::ServerSession, path::AbstractString;
         notebook.compiler_options = compiler_options
     end
     if clear_frontmatter
-        Pluto.set_frontmatter!(notebook, nothing)
+        Eris.set_frontmatter!(notebook, nothing)
     end
 
     session.notebooks[notebook.notebook_id] = notebook
     
     if execution_allowed && session.options.evaluation.run_notebook_on_load
-        Pluto._report_business_cells_planned!(notebook)
+        Eris._report_business_cells_planned!(notebook)
     end
     
     if !execution_allowed
@@ -106,9 +106,9 @@ function add(session::ServerSession, notebook::Notebook; run_async::Bool=true)
     session.notebooks[notebook.notebook_id] = notebook
     
     if run_async
-        @asynclog putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
+        @asynclog putErisupdates!(session, clientupdate_notebook_list(session.notebooks))
     else
-        putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
+        putErisupdates!(session, clientupdate_notebook_list(session.notebooks))
     end
     
     
@@ -188,7 +188,7 @@ function add(session::ServerSession, notebook::Notebook; run_async::Bool=true)
     
     notebook.status_tree.update_listener_ref[] = first(throttled(1.0 / 20) do
         # TODO: this throttle should be trailing
-        Pluto.send_notebook_changes!(Pluto.ClientRequest(; session, notebook))
+        Eris.send_notebook_changes!(Eris.ClientRequest(; session, notebook))
     end)
 
     return notebook
@@ -199,7 +199,7 @@ Generate a non-existing new notebook filename, and write `contents` to that file
 
 # Example
 ```julia
-save_upload(some_notebook_data; filename_base="hello") == "~/.julia/pluto_notebooks/hello 5.jl"
+save_upload(some_notebook_data; filename_base="hello") == "~/.julia/Eris_notebooks/hello 5.jl"
 ```
 """
 function save_upload(contents::Union{String,Vector{UInt8}}; filename_base::Union{Nothing,AbstractString}=nothing)
@@ -221,7 +221,7 @@ function new(session::ServerSession; run_async=true, notebook_id::UUID=uuid1())
     notebook = if session.options.compiler.sysimage === nothing
         emptynotebook()
     else
-        Notebook([Cell("import Pkg"), Cell("# This cell disables Pluto's package manager and activates the global environment. Click on ? inside the bubble next to Pkg.activate to learn more.\n# (added automatically because a sysimage is used)\nPkg.activate()"), Cell()])
+        Notebook([Cell("import Pkg"), Cell("# This cell disables Eris's package manager and activates the global environment. Click on ? inside the bubble next to Pkg.activate to learn more.\n# (added automatically because a sysimage is used)\nPkg.activate()"), Cell()])
     end
 
     # Run NewNotebookEvent handler before assigning ID
@@ -246,7 +246,7 @@ function shutdown(session::ServerSession, notebook::Notebook; keep_in_session::B
     if !keep_in_session
         listeners = putnotebookupdates!(session, notebook) # TODO: shutdown message
         delete!(session.notebooks, notebook.notebook_id)
-        putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
+        putErisupdates!(session, clientupdate_notebook_list(session.notebooks))
         for client in listeners
             @async close(client.stream)
         end
@@ -262,7 +262,7 @@ function move(session::ServerSession, notebook::Notebook, newpath::String)
         error("File exists already - you need to delete the old file manually.")
     else
         move_notebook!(notebook, newpath; disable_writing_notebook_files=session.options.server.disable_writing_notebook_files)
-        putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
+        putErisupdates!(session, clientupdate_notebook_list(session.notebooks))
         WorkspaceManager.cd_workspace((session, notebook), newpath)
     end 
 end

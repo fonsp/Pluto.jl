@@ -2,13 +2,13 @@
 Start a notebook server using:
 
 ```julia
-julia> Pluto.run()
+julia> Eris.run()
 ```
 
 Have a look at the FAQ:
 https://github.com/fonsp/Pluto.jl/wiki
 """
-module Pluto
+module Eris
 
 if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@max_methods"))
     @eval Base.Experimental.@max_methods 1
@@ -29,15 +29,15 @@ function project_relative_path(root, xs...)
     root == "frontend-dist" && frontend_dist_exists ? joinpath(FRONTEND_DIST_DIR, xs...) :
     root == "frontend" ? joinpath(FRONTEND_DIR, xs...) :
     root == "sample" ? joinpath(SAMPLE_DIR, xs...) :
-        normpath(joinpath(pkgdir(Pluto), root, xs...))
+        normpath(joinpath(pkgdir(Eris), root, xs...))
 end
 
 import Pkg
 import Scratch
 
 include_dependency("../Project.toml")
-const PLUTO_VERSION = VersionNumber(Pkg.TOML.parsefile(joinpath(ROOT_DIR, "Project.toml"))["version"])
-const PLUTO_VERSION_STR = "v$(string(PLUTO_VERSION))"
+const ERIS_VERSION = VersionNumber(Pkg.TOML.parsefile(joinpath(ROOT_DIR, "Project.toml"))["version"])
+const ERIS_VERSION_STR = "v$(string(ERIS_VERSION))"
 const JULIA_VERSION_STR = "v$(string(VERSION))"
 
 import PlutoDependencyExplorer: PlutoDependencyExplorer, TopologicalOrder, NotebookTopology, ExprAnalysisCache, ImmutableVector, ExpressionExplorerExtras, topological_order, all_cells, disjoint, where_assigned, where_referenced
@@ -92,29 +92,29 @@ export reset_notebook_environment
 export update_notebook_environment
 export activate_notebook_environment
 
-include("./precompile.jl")
+# include("./precompile.jl")
 
 const pluto_boot_environment_path = Ref{String}()
 
 function __init__()
-    pluto_boot_environment_name = "pluto-boot-environment-$(VERSION)-$(PLUTO_VERSION)"
+    pluto_boot_environment_name = "pluto-boot-environment-$(VERSION)-$(ERIS_VERSION)"
     pluto_boot_environment_path[] = Scratch.@get_scratch!(pluto_boot_environment_name)
 
     # Print a welcome banner
-    if (get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") != "0" &&
+    if (get(ENV, "JULIA_ERIS_SHOW_BANNER", "1") != "0" &&
         get(ENV, "CI", "🍄") != "true" && isinteractive())
         # Print the banner only once per version, if there isn't
         # yet a file for this version in banner_shown scratch space.
-        # (Using the Pluto version as the filename enables later
+        # (Using the Eris version as the filename enables later
         # version-specific "what's new" messages.)
-        fn = joinpath(Scratch.@get_scratch!("banner_shown"), PLUTO_VERSION_STR)
+        fn = joinpath(Scratch.@get_scratch!("banner_shown"), ERIS_VERSION_STR)
         if !isfile(fn)
             @info """
 
-              Welcome to Pluto $(PLUTO_VERSION_STR) 🎈
+              Welcome to Eris $(ERIS_VERSION_STR) 🔬
               Start a notebook server using:
 
-            julia> Pluto.run()
+            julia> Eris.run()
 
               Have a look at the FAQ:
               https://github.com/fonsp/Pluto.jl/wiki

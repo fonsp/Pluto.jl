@@ -6,7 +6,7 @@ import REPL
 import Pkg
 import Pkg.Types: VersionRange
 import RegistryInstances
-import ..Pluto
+import ..Eris
 
 const PRESERVE_ALL_INSTALLED = isdefined(Pkg, :PRESERVE_ALL_INSTALLED) ? Pkg.PRESERVE_ALL_INSTALLED : Pkg.PRESERVE_ALL
 

@@ -1,17 +1,17 @@
 using PrecompileTools: PrecompileTools
 
 PrecompileTools.@compile_workload begin
-    nb = Pluto.Notebook([
-        Pluto.Cell("""md"Hello *world*" """)
-        Pluto.Cell("""[f(x)]""")
-        Pluto.Cell("""x = 1""")
-        Pluto.Cell(
+    nb = Eris.Notebook([
+        Eris.Cell("""md"Hello *world*" """)
+        Eris.Cell("""[f(x)]""")
+        Eris.Cell("""x = 1""")
+        Eris.Cell(
             """
             function f(z::Integer)
                 z / 123
             end
             """)
-        Pluto.Cell(
+        Eris.Cell(
             """
             "asdf"
             begin
@@ -31,30 +31,30 @@ PrecompileTools.@compile_workload begin
         )
     ])
     let
-        topology = Pluto.updated_topology(nb.topology, nb, nb.cells)
+        topology = Eris.updated_topology(nb.topology, nb, nb.cells)
         # Our reactive sorting algorithm.
-        Pluto.topological_order(topology, topology.cell_order)
+        Eris.topological_order(topology, topology.cell_order)
     end
 
     # let
     #     io = IOBuffer()
     #     # Notebook file format.
-    #     Pluto.save_notebook(io, nb)
+    #     Eris.save_notebook(io, nb)
     #     seekstart(io)
-    #     Pluto.load_notebook_nobackup(io, "whatever.jl")
+    #     Eris.load_notebook_nobackup(io, "whatever.jl")
     # end
 
     let
-        state1 = Pluto.notebook_to_js(nb)
-        state2 = Pluto.notebook_to_js(nb)
+        state1 = Eris.notebook_to_js(nb)
+        state2 = Eris.notebook_to_js(nb)
         # MsgPack
-        Pluto.unpack(Pluto.pack(state1))
+        Eris.unpack(Eris.pack(state1))
         # State diffing
-        Pluto.Firebasey.diff(state1, state2)
+        Eris.Firebasey.diff(state1, state2)
     end
 
-    s = Pluto.ServerSession(;
-        options=Pluto.Configuration.from_flat_kwargs(
+    s = Eris.ServerSession(;
+        options=Eris.Configuration.from_flat_kwargs(
             disable_writing_notebook_files=true,
             workspace_use_distributed=false,
             auto_reload_from_file=false,

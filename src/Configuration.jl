@@ -12,7 +12,7 @@ module Configuration
 
 using Configurations # https://github.com/Roger-luo/Configurations.jl
 
-import ..Pluto: tamepath
+import ..Eris: tamepath
 
 safepwd() = try
     pwd()

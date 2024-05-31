@@ -1,11 +1,11 @@
 module WorkspaceManager
 import UUIDs: UUID, uuid1
-import ..Pluto
-import ..Pluto: Configuration, Notebook, Cell, ProcessStatus, ServerSession, ExpressionExplorer, pluto_filename, Token, withtoken, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
-import ..Pluto.Status
-import ..Pluto.PkgCompat
+import ..Eris
+import ..Eris: Configuration, Notebook, Cell, ProcessStatus, ServerSession, ExpressionExplorer, pluto_filename, Token, withtoken, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
+import ..Eris.Status
+import ..Eris.PkgCompat
 import ..Configuration: CompilerOptions, _merge_notebook_compiler_options, _convert_to_flags
-import ..Pluto.ExpressionExplorer: FunctionName
+import ..Eris.ExpressionExplorer: FunctionName
 import ..PlutoRunner
 import Malt
 import Malt.Distributed
@@ -34,7 +34,7 @@ const SN = Tuple{ServerSession, Notebook}
 "These expressions get evaluated whenever a new `Workspace` process is created."
 process_preamble() = quote
     Base.exit_on_sigint(false)
-    const pluto_boot_environment_path = $(Pluto.pluto_boot_environment_path[])
+    const pluto_boot_environment_path = $(Eris.pluto_boot_environment_path[])
     include($(project_relative_path(joinpath("src", "runner"), "Loader.jl")))
     ENV["GKSwstype"] = "nul"
     ENV["JULIA_REVISE_WORKER_ONLY"] = "1"
@@ -170,7 +170,7 @@ function start_relaying_self_updates((session, notebook)::SN, run_channel)
             next_run_uuid = take!(run_channel)
 
             cell_to_run = notebook.cells_dict[next_run_uuid]
-            Pluto.run_reactive!(session, notebook, notebook.topology, notebook.topology, Cell[cell_to_run]; user_requested_run=false)
+            Eris.run_reactive!(session, notebook, notebook.topology, notebook.topology, Cell[cell_to_run]; user_requested_run=false)
         catch e
             if !isopen(run_channel)
                 break
@@ -181,8 +181,8 @@ function start_relaying_self_updates((session, notebook)::SN, run_channel)
 end
 
 function start_relaying_logs((session, notebook)::SN, log_channel)
-    update_throttled, flush_throttled = Pluto.throttled(0.1) do
-        Pluto.send_notebook_changes!(Pluto.ClientRequest(; session, notebook))
+    update_throttled, flush_throttled = Eris.throttled(0.1) do
+        Eris.send_notebook_changes!(Eris.ClientRequest(; session, notebook))
     end
 
     while true
@@ -230,7 +230,7 @@ function start_relaying_logs((session, notebook)::SN, log_channel)
             delete!(next_log, "new_published_objects")
 
             push!(display_cell.logs, next_log)
-            Pluto.@asynclog update_throttled()
+            Eris.@asynclog update_throttled()
         catch e
             if !isopen(log_channel)
                 break
@@ -287,7 +287,7 @@ function create_workspaceprocess(WorkerType; compiler_options=CompilerOptions(),
         worker = WorkerType()
         
         if !(isdefined(Main, :PlutoRunner) && Main.PlutoRunner isa Module)
-            # we make PlutoRunner available in Main, right now it's only defined inside this Pluto module.
+            # we make PlutoRunner available in Main, right now it's only defined inside this Eris module.
             Malt.remote_eval_wait(Main, worker, quote
                 PlutoRunner = $(PlutoRunner)
             end)

@@ -2,8 +2,8 @@ module MoreAnalysis
 
 export bound_variable_connections_graph
 
-import ..Pluto
-import ..Pluto: Cell, Notebook, NotebookTopology, ExpressionExplorer, ExpressionExplorerExtras, PlutoDependencyExplorer
+import ..Eris
+import ..Eris: Cell, Notebook, NotebookTopology, ExpressionExplorer, ExpressionExplorerExtras, PlutoDependencyExplorer
 
 
 "Return whether any cell references the given symbol. Used for the @bind mechanism."

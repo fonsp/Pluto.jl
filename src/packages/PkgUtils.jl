@@ -2,9 +2,9 @@ module PkgUtils
 
 import FileWatching
 import Pkg
-import ..Pluto
-import ..Pluto: Notebook, save_notebook, load_notebook, load_notebook_nobackup, withtoken, Token, readwrite, PkgCompat
-import ..Pluto.PkgCompat: project_file, manifest_file
+import ..Eris
+import ..Eris: Notebook, save_notebook, load_notebook, load_notebook_nobackup, withtoken, Token, readwrite, PkgCompat
+import ..Eris.PkgCompat: project_file, manifest_file
 
 using Markdown
 
@@ -14,11 +14,10 @@ ensure_has_nbpkg(notebook::Notebook) = if notebook.nbpkg_ctx === nothing
 
     # TODO: update_save the notebook to init packages and stuff?
     error("""
-    This notebook is not using Pluto's package manager. This means that either:
-    1. The notebook contains Pkg.activate or Pkg.add calls, or
-    2. The notebook was created before Pluto 0.15.
+    This notebook is not using Eris's package manager. 
+    This means that the notebook contains Pkg.activate or Pkg.add calls
 
-    Open the notebook using Pluto to get started.
+    Open the notebook using Eris to get started.
     """)
 else
     for f in [notebook |> project_file, notebook |> manifest_file]
@@ -63,7 +62,7 @@ end
 function write_dir_to_nb(dir::String, notebook::Notebook)
     assert_has_manifest(dir)
 
-    notebook.nbpkg_ctx = Pluto.PkgCompat.create_empty_ctx()
+    notebook.nbpkg_ctx = Eris.PkgCompat.create_empty_ctx()
 
     readwrite(dir |> project_file, notebook |> project_file)
     readwrite(dir |> manifest_file, notebook |> manifest_file)
@@ -84,7 +83,7 @@ reset_notebook_environment(notebook_path::String; keep_project::Bool=false, back
 Remove the embedded `Project.toml` and `Manifest.toml` from a notebook file, modifying the file. If `keep_project` is true, only `Manifest.toml` will be deleted. A backup of the notebook file is created by default.
 """
 function reset_notebook_environment(path::String; kwargs...)
-    Pluto.reset_nbpkg!(
+    Eris.reset_nbpkg!(
         load_notebook_nobackup(path);
         kwargs...
     )
@@ -98,8 +97,8 @@ reset_notebook_environment(notebook_path::String; backup::Bool=true, level::Pkg.
 Update the embedded `Project.toml` and `Manifest.toml` in a notebook file, modifying the file. A [`Pkg.UpgradeLevel`](@ref) can be passed to the `level` keyword argument. A backup file is created by default. 
 """
 function update_notebook_environment(path::String; kwargs...)
-    Pluto.update_nbpkg(
-        Pluto.ServerSession(),
+    Eris.update_nbpkg(
+        Eris.ServerSession(),
         load_notebook_nobackup(path);
         kwargs...
     )
@@ -151,7 +150,7 @@ function activate_notebook_environment(path::String)
     Base.ACTIVE_PROJECT[] = ourpath
 
     # WATCH DIR PROJECT FILE
-    Pluto.@asynclog begin
+    Eris.@asynclog begin
         while Base.ACTIVE_PROJECT[] == ourpath
             FileWatching.watch_file(ourpath |> project_file)
             # @warn "DIR PROJECT UPDATED"
@@ -163,7 +162,7 @@ function activate_notebook_environment(path::String)
     end
 
     # WATCH DIR MANIFEST FILE
-    Pluto.@asynclog begin
+    Eris.@asynclog begin
         while Base.ACTIVE_PROJECT[] == ourpath
             FileWatching.watch_file(ourpath |> manifest_file)
             # @warn "DIR MANIFEST UPDATED"
@@ -175,7 +174,7 @@ function activate_notebook_environment(path::String)
     end
 
     # WATCH NOTEBOOK FILE
-    Pluto.@asynclog begin
+    Eris.@asynclog begin
         while Base.ACTIVE_PROJECT[] == ourpath
             FileWatching.watch_file(path)
             # @warn "NOTEBOOK FILE UPDATED"
@@ -190,7 +189,7 @@ function activate_notebook_environment(path::String)
     end
 
     # CHECK EVERY 5 SECONDS
-    # Pluto.@asynclog begin
+    # Eris.@asynclog begin
     #     while still_needed[]
     #         sleep(5)
     #         maybe_update_nb()
@@ -231,7 +230,7 @@ const activate_notebook = activate_notebook_environment
 function testnb()
     t = tempname()
 
-    readwrite(Pluto.project_relative_path("test","packages","nb.jl"), t)
+    readwrite(Eris.project_relative_path("test","packages","nb.jl"), t)
     t
 end
 
