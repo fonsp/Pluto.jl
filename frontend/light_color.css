@@ -4,10 +4,10 @@
         --out-of-focus-opacity: 0.25;
 
         /* Color scheme */
-        --main-bg-color: white;
+        --main-bg-color: var(--nord-snow-storm-3);
         --rule-color: rgba(0, 0, 0, 0.15);
         --kbd-border-color: #dfdfdf;
-        --header-bg-color: white;
+        --header-bg-color: var(--nord-snow-storm-3);
         --header-border-color: rgba(0, 0, 0, 0.1);
         --ui-button-color: #2a2a2b;
         --cursor-color: black;
@@ -25,9 +25,9 @@
         --light-error-cell-color: rgba(var(--error-color), 0.05);
 
         /*Export styling*/
-        --export-bg-color: rgb(60, 67, 101);
+        --export-bg-color: var(--nord-aurora-red);
         --export-color: rgb(228, 228, 228);
-        --export-card-bg-color: rgba(255, 255, 255, 0.8);
+        --export-card-bg-color: var(--nord-snow-storm-3);
         --export-card-title-color: rgba(0, 0, 0, 0.7);
         --export-card-text-color: rgba(0, 0, 0, 0.5);
         --export-card-shadow-color: #00000029;
@@ -41,9 +41,9 @@
         /*Pluto output styling */
         --pluto-schema-types-color: rgba(0, 0, 0, 0.4);
         --pluto-schema-types-border-color: rgba(0, 0, 0, 0.2);
-        --pluto-output-color: hsl(0, 0%, 25%);
-        --pluto-output-h-color: hsl(0, 0%, 12%);
-        --pluto-output-bg-color: white;
+        --pluto-output-color: white;
+        --pluto-output-h-color: white;
+        --pluto-output-bg-color: var(--nord-snow-storm-3);
         --a-underline: #00000059;
         --blockquote-color: #555;
         --blockquote-bg: #f2f2f2;
@@ -80,6 +80,7 @@
         --pluto-logs-progress-fill: #ffffff;
         --pluto-logs-progress-bg: #e7e7e7;
         --pluto-logs-progress-border: hsl(210deg 16% 74%);
+
         --pluto-logs-info-color: white;
         --pluto-logs-info-accent-color: inherit;
         --pluto-logs-warn-color: rgb(236 234 213);
@@ -145,10 +146,10 @@
         --jlerror-mark-color: black;
 
         /* helpbox */
-        --helpbox-bg-color: white;
+        --helpbox-bg-color: var(--nord-snow-storm-1);
         --helpbox-box-shadow-color: #00000010;
-        --helpbox-header-bg-color: hsl(0deg 0% 92%);
-        --helpbox-header-tab-bg-color: white;
+        --helpbox-header-bg-color: var(--nord-aurora-red);
+        --helpbox-header-tab-bg-color: var(--nord-snow-storm-3);
         --helpbox-header-color: hsl(230, 14%, 11%);
         --helpbox-search-bg-color: #fbfbfb;
         --helpbox-search-border-color: hsl(207deg 24% 87%);
@@ -156,7 +157,8 @@
         --helpbox-text-color: black;
         --code-section-bg-color: whitesmoke;
         --code-section-bg-color: #f3f3f3;
-        --process-item-bg: #f2f2f2;
+
+        --process-item-bg: var(--nord-snow-storm-3);
         --process-busy: #ffcd70;
         --process-finished: hsl(126deg 30% 60%);
         --process-undefined: rgb(151, 151, 151);
@@ -169,7 +171,7 @@
         --footer-atag-color: black;
         --footer-input-border-color: #818181;
         --footer-filepicker-button-color: white;
-        --footer-filepicker-focus-color: #896c6c;
+        --footer-filepicker-focus-color: var(--nord-aurora-red);
         --footnote-border-color: rgba(23, 115, 119, 0.15);
 
         /* undo delete cell*/
@@ -180,7 +182,7 @@
         --cm-editor-li-aria-selected-bg-color: #16659d;
         --cm-editor-li-aria-selected-color: white;
         --cm-editor-li-notexported-color: rgba(0, 0, 0, 0.5);
-        --code-background: hsla(46, 90%, 98%, 1);
+        --code-background: var(--nord-snow-storm-1);
         --cm-code-differs-gutters-color: rgba(214, 172, 35, 0.2);
         --cm-line-numbers-color: #8d86875e;
         --cm-selection-background: hsl(214deg 100% 73% / 48%);
@@ -235,5 +237,30 @@
         --cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa: #3b3700;
         --cm-md-color: #005a9b;
         --cm-md-accent-color: #00a9d1;
+
+        /* Nord Colors: https://www.nordtheme.com/docs/colors-and-palettes */
+        --nord-polar-night-1: hsl(220, 16%, 22%);
+        --nord-polar-night-2: hsl(222, 16%, 28%);
+        --nord-polar-night-3: hsl(220, 17%, 32%);
+        --nord-polar-night-4: hsl(220, 16%, 36%);
+
+        --nord-snow-storm-1: hsl(219, 28%, 88%);
+        --nord-snow-storm-2: hsl(218, 27%, 92%);
+        --nord-snow-storm-3: hsl(218, 27%, 94%);
+
+        --nord-frost-1: hsl(179, 25%, 65%);
+        --nord-frost-2: hsl(193, 43%, 67%);
+        --nord-frost-3: hsl(210, 34%, 63%);
+        --nord-frost-4: hsl(213, 32%, 52%);
+
+        --nord-aurora-red: hsl(354, 42%, 56%); /* hsl(0deg 25% 65%); */
+        --nord-aurora-orange: hsl(14, 51%, 63%);
+        --nord-aurora-yellow: hsl(40, 71%, 73%);
+        --nord-aurora-green: hsl(92, 28%, 65%);
+        --nord-aurora-purple: hsl(311, 20%, 63%);
+
+        /* Eris colors */
+        --uva-theme: hsl(354, 42%, 56%);
+        --jive-sidebar: hsl(207deg 20.74% 70.38%);
     }
 }
