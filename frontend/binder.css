@@ -111,6 +111,7 @@ body.wiggle_binder .edit_or_run > button {
     border: 3px solid hsl(236deg 28% 50% / 46%);
     font-size: 16px;
     /* font-style: italic; */
+    font-family: "Roboto Mono";
     font-family: var(--lato-ui-font-stack);
     letter-spacing: 0.1px;
     color: var(--black);
@@ -126,11 +127,13 @@ body.wiggle_binder .edit_or_run > button {
 .binder_help_text {
     --width: min(85vw, 570px);
     position: fixed;
+    top: 5rem;
     max-height: calc(100vh - 4rem);
     overflow: auto;
     width: var(--width);
     padding: 16px;
     border-radius: 8px;
+    left: calc(50vw - var(--width) / 2);
     background-color: white;
     color: black;
     color-scheme: light;
