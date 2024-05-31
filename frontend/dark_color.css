@@ -2,11 +2,11 @@
     :root {
         --image-filters: invert(1) hue-rotate(180deg) contrast(0.8);
         --out-of-focus-opacity: 0.5;
-        --main-bg-color: hsl(0deg 0% 12%);
+        --main-bg-color: hsl(222, 16%, 28%);
         --rule-color: rgba(255, 255, 255, 0.15);
         --kbd-border-color: #222222;
-        --header-bg-color: hsl(30deg 3% 16%);
-        --header-border-color: transparent;
+        --header-bg-color: var(--main-bg-color); /* hsl(338, 57%, 40%); */
+        --header-border-color: var(--nord-polar-night-1);
         --ui-button-color: rgb(255, 255, 255);
         --cursor-color: white;
 
@@ -24,7 +24,7 @@
         /*Export styling*/
         --export-bg-color: hsl(225deg 17% 18%);
         --export-color: rgb(255 255 255 / 84%);
-        --export-card-bg-color: rgb(73 73 73);
+        --export-card-bg-color: var(--uva-theme);
         --export-card-title-color: rgba(255, 255, 255, 0.85);
         --export-card-text-color: rgb(255 255 255 / 70%);
         --export-card-shadow-color: #0000001c;
@@ -44,7 +44,7 @@
         --pluto-output-bg-color: var(--main-bg-color);
         --a-underline: #ffffff69;
         --blockquote-color: inherit;
-        --blockquote-bg: #2e2e2e;
+        --blockquote-bg: var(--nord-polar-night-4);
         --admonition-title-color: black;
         --jl-message-color: rgb(38 90 32);
         --jl-message-accent-color: rgb(131 191 138);
@@ -72,13 +72,13 @@
         --shoulder-hover-bg-color: rgba(255, 255, 255, 0.05);
 
         /* Logs */
-        --pluto-logs-bg-color: hsl(0deg 0% 17%);
+        --pluto-logs-bg-color: var(--nord-polar-night-4);
         --pluto-logs-key-color: rgba(255, 255, 255, 0.6);
         --pluto-logs-progress-fill: #5f7f5b;
-        --pluto-logs-progress-bg: #3d3d3d;
+        --pluto-logs-progress-bg: var(--nord-polar-night-4);
         --pluto-logs-progress-border: hsl(210deg 35% 72%);
 
-        --pluto-logs-info-color: #484848;
+        --pluto-logs-info-color: var(--uva-theme);
         --pluto-logs-info-accent-color: inherit;
         --pluto-logs-warn-color: rgb(80 76 38);
         --pluto-logs-warn-accent-color: rgb(239 231 135);
@@ -91,15 +91,14 @@
         --nav-h1-text-color: white;
         --nav-filepicker-color: #b6b6b6;
         --nav-filepicker-border-color: #c7c7c7;
-        --nav-process-status-bg-color: rgb(82, 82, 82);
+        --nav-process-status-bg-color: hsl(220, 16%, 22%);
         --nav-process-status-color: var(--pluto-output-h-color);
 
         /*header*/
         --restart-recc-header-color: rgb(44 106 157 / 56%);
-        --restart-recc-accent-color: rgb(44 106 157);
         --restart-req-header-color: rgb(145 66 60 / 56%);
         --dead-process-header-color: rgba(250, 75, 21, 0.473);
-        --loading-header-color: hsl(0deg 0% 20% / 50%);
+        --loading-header-color: hsl(220, 16%, 36%);
         --disconnected-header-color: rgba(255, 169, 114, 0.56);
         --binder-loading-header-color: hsl(51deg 64% 90% / 50%);
 
@@ -125,11 +124,11 @@
         --pkg-popup-buttons-bg-color: var(--input-context-menu-bg-color);
         --black: white;
         --white: black;
-        --pkg-terminal-bg-color: #252627;
+        --pkg-terminal-bg-color: hsl(220, 16%, 36%);
         --pkg-terminal-border-color: #c3c3c388;
 
         /* run area*/
-        --pluto-runarea-bg-color: rgb(43, 43, 43);
+        --pluto-runarea-bg-color: var(--uva-theme);
         --pluto-runarea-span-color: hsl(353, 5%, 64%);
 
         /*drop ruler*/
@@ -138,24 +137,24 @@
         /* jlerror */
         --jlerror-header-color: #d9baba;
         --jlerror-mark-bg-color: rgb(0 0 0 / 18%);
-        --jlerror-a-bg-color: rgba(82, 58, 58, 1);
+        --jlerror-a-bg-color: rgba(82, 58, 58, 0.5);
         --jlerror-a-border-left-color: #704141;
         --jlerror-mark-color: #b1a9a9;
 
         /* helpbox */
-        --helpbox-bg-color: rgb(30 34 31);
+        --helpbox-bg-color: var(--code-background);
         --helpbox-box-shadow-color: #00000017;
-        --helpbox-header-bg-color: #2c3e36;
-        --helpbox-header-tab-bg-color: #554e4e;
+        --helpbox-header-bg-color: var(--uva-theme);
+        --helpbox-header-tab-bg-color: var(--helpbox-bg-color);
         --helpbox-header-color: rgb(255 248 235);
-        --helpbox-search-bg-color: #2c2c2c;
-        --helpbox-search-border-color: #757575;
+        --helpbox-search-bg-color: var(--helpbox-bg-color);
+        --helpbox-search-border-color: rgb(139, 139, 139);
         --helpbox-notfound-search-color: rgb(139, 139, 139);
         --helpbox-text-color: rgb(230, 230, 230);
-        --code-section-bg-color: rgb(44, 44, 44);
+        --code-section-bg-color: var(--nord-polar-night-4);
         --code-section-border-color: #555a64;
 
-        --process-item-bg: #443d44;
+        --process-item-bg: hsl(220, 16%, 36%);
         --process-busy: #ffcd70;
         --process-finished: hsl(126deg 30% 60%);
         --process-undefined: rgb(151, 151, 151);
@@ -219,14 +218,14 @@
         --index-clickable-text-color: rgb(235, 235, 235);
         --index-card-bg: #313131;
         --welcome-mywork-bg: var(--header-bg-color);
-        --welcome-newnotebook-bg: rgb(68 72 102);
-        --welcome-recentnotebook-bg: #3b3b3b;
+        --welcome-newnotebook-bg: var(--export-card-bg-color);
+        --welcome-recentnotebook-bg: var(--nord-polar-night-4);
         --welcome-recentnotebook-border: #6e6e6e;
-        --welcome-open-bg: hsl(233deg 20% 33%);
+        --welcome-open-bg: var(--nord-polar-night-4);
         --welcome-card-author-backdrop: #0000006b;
 
         /* docs binding */
-        --docs-binding-bg: #323431;
+        --docs-binding-bg: var(--nord-polar-night-4);
 
         /* Nesed languages in codemirror! */
         --cm-html-color: #00ab85;
@@ -238,6 +237,31 @@
         --cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa: #ffffea;
         --cm-md-color: #a2c9d5;
         --cm-md-accent-color: #00a9d1;
+
+        /* Nord Colors: https://www.nordtheme.com/docs/colors-and-palettes */
+        --nord-polar-night-1: hsl(220, 16%, 22%);
+        --nord-polar-night-2: hsl(222, 16%, 28%);
+        --nord-polar-night-3: hsl(220, 17%, 32%);
+        --nord-polar-night-4: hsl(220, 16%, 36%);
+
+        --nord-snow-storm-1: hsl(219, 28%, 88%);
+        --nord-snow-storm-2: hsl(218, 27%, 92%);
+        --nord-snow-storm-3: hsl(218, 27%, 94%);
+
+        --nord-frost-1: hsl(179, 25%, 65%);
+        --nord-frost-2: hsl(193, 43%, 67%);
+        --nord-frost-3: hsl(210, 34%, 63%);
+        --nord-frost-4: hsl(213, 32%, 52%);
+
+        --nord-aurora-red: hsl(354, 42%, 56%);
+        --nord-aurora-orange: hsl(14, 51%, 63%);
+        --nord-aurora-yellow: hsl(40, 71%, 73%);
+        --nord-aurora-green: hsl(92, 28%, 65%);
+        --nord-aurora-purple: hsl(311, 20%, 63%);
+
+        /* Eris colors */
+        --uva-theme: hsl(338, 57%, 40%);
+        --jive-sidebar: #ddd;
     }
 
     @media (prefers-contrast: more) {
