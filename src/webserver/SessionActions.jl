@@ -1,6 +1,6 @@
 module SessionActions
 
-import ..Eris: Eris, Status, ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_Eris_file_extension, numbered_until_new, cutename, readwrite, update_save_run!, update_nbpkg_cache!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putErisupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, try_event_call, NewNotebookEvent, OpenNotebookEvent, ShutdownNotebookEvent, @asynclog, ProcessStatus, maybe_convert_path_to_wsl, move_notebook!, throttled
+import ..Eris: Eris, Status, ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, cutename, readwrite, update_save_run!, update_nbpkg_cache!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, try_event_call, NewNotebookEvent, OpenNotebookEvent, ShutdownNotebookEvent, @asynclog, ProcessStatus, maybe_convert_path_to_wsl, move_notebook!, throttled
 using FileWatching
 import ..Eris.DownloadCool: download_cool
 import HTTP
@@ -52,7 +52,7 @@ function open(session::ServerSession, path::AbstractString;
 )
     path = maybe_convert_path_to_wsl(path)
     if as_sample
-        new_filename = "sample " * without_Eris_file_extension(basename(path))
+        new_filename = "sample " * without_pluto_file_extension(basename(path))
         new_path = numbered_until_new(joinpath(new_notebooks_directory(), new_filename); suffix=".jl")
         
         readwrite(path, new_path)
@@ -106,9 +106,9 @@ function add(session::ServerSession, notebook::Notebook; run_async::Bool=true)
     session.notebooks[notebook.notebook_id] = notebook
     
     if run_async
-        @asynclog putErisupdates!(session, clientupdate_notebook_list(session.notebooks))
+        @asynclog putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
     else
-        putErisupdates!(session, clientupdate_notebook_list(session.notebooks))
+        putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
     end
     
     
@@ -246,7 +246,7 @@ function shutdown(session::ServerSession, notebook::Notebook; keep_in_session::B
     if !keep_in_session
         listeners = putnotebookupdates!(session, notebook) # TODO: shutdown message
         delete!(session.notebooks, notebook.notebook_id)
-        putErisupdates!(session, clientupdate_notebook_list(session.notebooks))
+        putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
         for client in listeners
             @async close(client.stream)
         end
@@ -262,7 +262,7 @@ function move(session::ServerSession, notebook::Notebook, newpath::String)
         error("File exists already - you need to delete the old file manually.")
     else
         move_notebook!(notebook, newpath; disable_writing_notebook_files=session.options.server.disable_writing_notebook_files)
-        putErisupdates!(session, clientupdate_notebook_list(session.notebooks))
+        putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
         WorkspaceManager.cd_workspace((session, notebook), newpath)
     end 
 end
