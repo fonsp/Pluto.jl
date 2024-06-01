@@ -668,11 +668,20 @@ nav#at_the_top img#logo-small,
 nav#at_the_top img#logo-big {
     height: 39px;
     margin-bottom: -8px;
+    opacity: 0.5;
     filter: var(--image-filters);
 }
 
 nav#at_the_top img#logo-small {
     display: none;
+}
+
+nav#at_the_top img#logo-small:hover {
+    opacity: 1;
+}
+
+nav#at_the_top img#logo-big:hover {
+    opacity: 1;
 }
 
 @media (max-width: 800px) {

@@ -257,8 +257,8 @@ const first_true_key = (obj) => {
  * }}
  */
 
-const url_logo_big = document.head.querySelector("link[rel='pluto-logo-big']")?.getAttribute("href") ?? ""
-export const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']")?.getAttribute("href") ?? ""
+const url_logo_big = document.head.querySelector("link[rel='eris-logo-home']")?.getAttribute("href") ?? ""
+export const url_logo_small = document.head.querySelector("link[rel='eris-logo-home']")?.getAttribute("href") ?? ""
 
 /**
  * @typedef EditorProps
@@ -1557,7 +1557,7 @@ The notebook file saves every time you run a cell.`
                             <a href=${
                                 this.state.binder_session_url != null ? `${this.state.binder_session_url}?token=${this.state.binder_session_token}` : "./"
                             }>
-                                <h1><img id="logo-big" src=${url_logo_big} alt="Pluto.jl" /><img id="logo-small" src=${url_logo_small} /></h1>
+                                <h1><img id="logo-big" width="25" src=${url_logo_big} alt="Eris.jl" /><img id="logo-small" src=${url_logo_small} /></h1>
                             </a>
                             ${
                                 this.state.extended_components.CustomHeader &&

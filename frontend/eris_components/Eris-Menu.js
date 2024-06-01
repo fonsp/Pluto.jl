@@ -10,9 +10,9 @@
     `
 
     const eyeopen =
-        '<span> <img class="dropButtonIcon" width="20" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/eye-outline.svg"></img> </span>'
+        '<span> <img class="dropButtonIcon" width="25" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/eye-outline.svg"></img> </span>'
     const eyeclosed =
-        '<span> <img class="dropButtonIcon" width="20" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/eye-off-outline.svg"></img> </span>'
+        '<span> <img class="dropButtonIcon" width="25" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/eye-off-outline.svg"></img> </span>'
 
     clickButton2.innerHTML = eyeopen
     clickButton2.style.cssText = `
@@ -23,6 +23,7 @@
       padding: 0.3rem 0.55rem;
       opacity: 0.5;
       background-color: Transparent;
+      filter: invert(1);
     `
 
     clickButton2.title = "Show Code"
