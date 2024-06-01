@@ -60,7 +60,7 @@
       Add button to toggle light and dark mode
     */
 
-    const toggleExport = document.querySelector("#container .export_small_btns .toggle_frontmatter_edit")
+    const toggleExport = document.querySelector("#export .export_small_btns .toggle_frontmatter_edit")
     const toggleTheme = document.createElement("button")
     const toggleThemeIcon = document.createElement("span")
 
