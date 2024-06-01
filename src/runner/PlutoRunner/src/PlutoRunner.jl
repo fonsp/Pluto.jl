@@ -22,6 +22,7 @@ module PlutoRunner
 # import these two so that they can be imported from Main on the worker process if it launches without the stdlibs in its LOAD_PATH
 import Markdown
 import InteractiveUtils
+import JIVECore
 
 using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
@@ -81,7 +82,7 @@ end
 
 "These expressions get evaluated inside every newly create module inside a `Workspace`."
 const workspace_preamble = [
-    :(using Main.PlutoRunner, Main.PlutoRunner.Markdown, Main.PlutoRunner.InteractiveUtils),
+    :(using Main.PlutoRunner, Main.PlutoRunner.Markdown, Main.PlutoRunner.InteractiveUtils, Main.PlutoRunner.JIVECore),
     :(show, showable, showerror, repr, string, print, println), # https://github.com/JuliaLang/julia/issues/18181
 ]
 
