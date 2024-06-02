@@ -571,7 +571,7 @@ export class Editor extends Component {
                     notebook.cell_inputs[id] = {
                         cell_id: id,
                         code,
-                        last_run_version: 0,
+                        last_run_code: "",
                         start_version: 0,
                         cm_updates: [],
                         code_folded: false,
@@ -910,7 +910,9 @@ patch: ${JSON.stringify(
             this.client.send("complete", { query: "sq" }, { notebook_id: this.state.notebook.notebook_id })
             this.client.send("complete", { query: "\\sq" }, { notebook_id: this.state.notebook.notebook_id })
 
-            const users = this.actions.get_notebook()?.users
+            /** @type import("./Editor.js").NotebookData */ // @ts-ignore
+            const nb = this.actions.get_notebook() // @ts-ignore
+            const users = nb?.users
             if (users) {
                 const names = ["Mars", "Earth", "Moon", "Sun"]
                 const colors = ["#ffc09f", "#a0ced9", "#adf7b6", "#fcf5c7"]

@@ -1,5 +1,5 @@
 import _ from "../imports/lodash.js"
-import { html, useEffect, useRef, useContext, useState, useLayoutEffect, useCallback } from "../imports/Preact.js"
+import { html, useEffect, useRef, useContext, useState, useMemo, useLayoutEffect, useCallback } from "../imports/Preact.js"
 import { PerfectCursor } from "../imports/PerfectCursors.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 
@@ -68,8 +68,8 @@ const update_mouse_data = (mouseX, mouseY) => {
  * @returns {Function}
  **/
 const usePerfectCursor = (cb, point) => {
-    /** @type {Array<any>} */
-    const [pc] = useState(() => new PerfectCursor(cb))
+    /** @type {PerfectCursor} */
+    const pc = useMemo(() => new PerfectCursor(cb), [])
 
     useLayoutEffect(() => {
         if (point) pc.addPoint(point)

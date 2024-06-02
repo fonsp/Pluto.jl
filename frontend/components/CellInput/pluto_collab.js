@@ -23,7 +23,7 @@ import { ReactWidget } from "./ReactWidget.js"
 
 /**
  * @param {Array<Delta>} ops
- * @returns {Array<ChangeSet>}
+ * @returns {Array<{ from: number, to?: number, insert?: string }>}
  **/
 const delta_to_specs = (ops) => {
     const specs = []
@@ -182,7 +182,7 @@ const CaretField = (client_id, cell_id) =>
             return new_value
         },
         provide: (f) =>
-            EditorView.decorations.compute([f, UsersFacet], (/** @type {import("../Editor.js").EditorState} */ state) => {
+            EditorView.decorations.compute([f, UsersFacet], (/** @type {import("../../imports/CodemirrorPlutoSetup.js").EditorState} */ state) => {
                 const value = state.field(f)
                 const decorations = []
 
@@ -239,18 +239,20 @@ export const pluto_collab = (startVersion, { pluto_actions, cell_id, client_id }
                 pluto_actions.register_collab_plugin(cell_id, this)
             }
 
-            update(/** @type ViewUpdate */ update) {
+            update(/** @type import("../../imports/CodemirrorPlutoSetup.d.ts").ViewUpdate */ update) {
                 if (update.docChanged) // NOTE: remove this to have cursor sync
                     this.push()
             }
 
             makeUpdate() {
+                /** @type any */
                 const updates = sendableUpdates(this.view.state)
                 const version = getSyncedVersion(this.view.state)
                 return makeUpdates(cell_id, version, updates)
             }
 
             async push() {
+                /** @type any */
                 const updates = sendableUpdates(this.view.state)
                 if (this.pushing || !updates.length) {
                     return
@@ -318,7 +320,8 @@ export const pluto_collab = (startVersion, { pluto_actions, cell_id, client_id }
     // })
 
     return [
-        collab({ clientID: client_id, startVersion,
+        collab({
+            clientID: client_id, startVersion,
             // sharedEffects: (tr) => tr.effects.filter((effect) => effect.is(CaretEffect) || effect.is(RunEffect)),
         }),
         plugin,
