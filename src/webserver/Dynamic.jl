@@ -476,7 +476,7 @@ function push_update_for_cell(cell, version, updates)
 
         cell.code = text
 
-        @info "Cell updates" updates n=length(cell.cm_updates) code=String(text)
+        @debug "Cell updates" updates n=length(cell.cm_updates) code=String(text)
     end
 end
 

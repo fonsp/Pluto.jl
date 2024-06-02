@@ -54,7 +54,7 @@ include("./packages/PkgCompat.jl")
 include("./webserver/Status.jl")
 
 include("./notebook/OperationalTransform.jl")
-const OT = OperationalTransform
+import .OperationalTransform as OT
 
 include("./notebook/Cell.jl")
 include("./notebook/Notebook.jl")

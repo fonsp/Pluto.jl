@@ -10,6 +10,7 @@ struct Update
     client_id::Symbol
     document_length::Int
     ops::Vector{Pinot.Range}
+    # effects::Vector{}
 end
 
 to_dict(u) = Dict{Symbol,Any}(:client_id => u.client_id,
@@ -43,7 +44,7 @@ function rebase(over, updates)
     end
 
     # changes = Pinot.compact(changes)
-    @info "received updates from outdated" skip changes over
+    @debug "received updates from outdated" skip changes over
 
     old_client_updates = @view updates[begin+skip:end]
     client_updates = Update[]
@@ -53,7 +54,7 @@ function rebase(over, updates)
         # if new_length != u.document_length
         #     @warn "ok" new_length u.document_length changes
         # else
-        #     @info "herr" changes u_changes
+        #     @info "ok" changes u_changes
         # end
         changes = Pinot.transform(u.ops, changes, Pinot.Right)
         push!(client_updates, Update(u.client_id, new_length, u_changes))
@@ -63,6 +64,7 @@ function rebase(over, updates)
 end
 
 function apply(text, updates)
+    # mapreduce(u -> u.ops, Pinot.apply, updates; init=text)
     for u in updates
         @assert Unicode.utf16_ncodeunits(text) == u.document_length (Unicode.utf16_ncodeunits(text), text, u.document_length)
         text = Pinot.apply(text, u.ops)
