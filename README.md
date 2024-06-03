@@ -1,6 +1,6 @@
 # Eris
 
-Eris is a Notebook platform for scientific programing in Julia inspired by Jupyter and based on Pluto.jl and Neptune.jl.  Like Neptune.jl, Eris removes the 'reactive' aspect of Pluto (where all cells re-evaluate every time a single cell is evaluated or re-evaluated) because it is mainly intended to be used with projects or applications which are logically sequential or linear in execution/design.
+Eris is a Notebook platform for scientific programing in Julia using the JIVE framework. Eris is inspired by Jupyter and based on Pluto.jl and Neptune.jl.  Like Neptune.jl, Eris removes the 'reactive' aspect of Pluto (where all cells re-evaluate every time a single cell is evaluated or re-evaluated) because it is mainly intended to be used with projects or applications which are logically sequential or linear in execution/design.
 
 Eris notebooks are:
 
