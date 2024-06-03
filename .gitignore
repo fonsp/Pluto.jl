@@ -3,6 +3,7 @@
 *.jl.mem
 build
 Manifest.toml
+*.code-workspace
 
 test/frontend/node_modules
 test/frontend/artifacts/*
