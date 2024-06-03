@@ -255,6 +255,7 @@ function run!(session::ServerSession)
                         @warn "HTTP upgrade failed for unknown reason" exception = (ex, bt)
                     end
                 finally
+                    # if we never wrote a response, then do it now
                     if isopen(http) && !iswritable(http)
                         finish()
                     end
