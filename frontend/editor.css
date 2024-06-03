@@ -2267,7 +2267,7 @@ dropruler {
 pluto-helpbox {
     bottom: 0px;
     right: 20px;
-    position: absolute;
+    position: fixed;
     display: flex;
     flex-direction: column;
     width: calc(100vw - 50px - (700px + 25px + 6px)); /* compat */
