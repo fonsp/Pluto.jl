@@ -19,7 +19,7 @@ Base.@kwdef struct CellOutput
     "Time that the last output was created, used only on the frontend to rerender the output"
     last_run_timestamp::Float64=0
     
-    "Whether `this` inside `<script id=something>` should refer to the previously returned object in HTML output. This is used for fancy animations. true iff a cell runs as a reactive consequence."
+    "Whether `this` inside `<script id=something>` should refer to the previously returned object in HTML output. This is used for fancy animations. true if a cell runs as a reactive consequence."
     persist_js_state::Bool=false
 
     "Whether this cell uses @use_state or @use_effect"
