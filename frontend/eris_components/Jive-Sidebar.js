@@ -264,8 +264,8 @@
     // open button in navbar
     const openButton = document.createElement("button")
     openButton.className = "jv-button-nav jv-large"
-    openButton.title = "Open Sidebar"
-    openButton.innerHTML = '<span> <img src="./img/jive_logo_eye_crop3.png"></img> </span>'
+    openButton.title = "Open JIVE Sidebar"
+    openButton.innerHTML = '<span> <img width="35" src="./img/jive_logo_eye_crop3.png"></img> </span>'
     openButton.style.visibility = "hidden"
     openButton.style.opacity = "1"
     openButton.style.left = "0rem"

@@ -1556,7 +1556,7 @@ The notebook file saves every time you run a cell.`
                             <a href=${
                                 this.state.binder_session_url != null ? `${this.state.binder_session_url}?token=${this.state.binder_session_token}` : "./"
                             }>
-                                <h1><img id="logo-big" width="25" src=${url_logo_big} alt="Eris.jl" /><img id="logo-small" src=${url_logo_small} /></h1>
+                                <h1><img id="logo-big" width="25" src=${url_logo_big} alt="Eris.jl" /><img id="logo-small" src=${url_logo_small} alt="Eris.jl" /></h1>
                             </a>
                             ${
                                 this.state.extended_components.CustomHeader &&

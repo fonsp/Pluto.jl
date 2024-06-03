@@ -61,11 +61,11 @@
         <!-- These scripts add new functionalities to the editor -->
         <script src="./eris_components/Eris-Custom.js" defer></script>
         <script src="./eris_components/Eris-Menu.js" defer></script>
-        <!-- <script src="./eris_components/Jive-Sidebar.js" defer></script> -->
+        <script src="./eris_components/Jive-Sidebar.js" defer></script>
     </head>
 
     <body class="loading no-MαθJax">
-        <div style="display: flex; min-height: 100vh">
+        <div id="frame" class="jv-frame" style="display: flex; min-height: 100vh">
             <pluto-editor class="fullscreen">
                 <progress style="filter: grayscale(1)" class="statefile-fetch-progress delete-me-when-live" max="100"></progress>
             </pluto-editor>
