@@ -85,6 +85,7 @@ const workspace_preamble = [
     :(using Main.PlutoRunner, Main.PlutoRunner.Markdown, Main.PlutoRunner.InteractiveUtils, Main.PlutoRunner.JIVECore),
     :(show, showable, showerror, repr, string, print, println), # https://github.com/JuliaLang/julia/issues/18181
     :(import Main.PlutoRunner.JIVECore.Data.image_data as image_data),
+    :(import Main.PlutoRunner.JIVECore.Data.image_keys as image_keys),
 ]
 
 const PLUTO_INNER_MODULE_NAME = Symbol("#___this_pluto_module_name")
