@@ -15,7 +15,6 @@ import { BottomRightPanel } from "./BottomRightPanel.js"
 import { DropRuler } from "./DropRuler.js"
 import { SelectionArea } from "./SelectionArea.js"
 import { RecentlyDisabledInfo, UndoDelete } from "./UndoDelete.js"
-import { SlideControls } from "./SlideControls.js"
 import { Scroller } from "./Scroller.js"
 import { ExportBanner } from "./ExportBanner.js"
 import { Popup } from "./Popup.js"
@@ -1723,18 +1722,6 @@ The notebook file saves every time you run a cell.`
                             })
                         }}
                     />
-                    <${SlideControls} />
-                    <footer>
-                        <div id="info">
-                            <a href="https://github.com/fonsp/Pluto.jl/wiki" target="_blank">FAQ</a>
-                            <span style="flex: 1"></span>
-                            <form id="feedback" action="#" method="post">
-                                <label for="opinion">🙋 How can we make <a href="https://plutojl.org/" target="_blank">Pluto.jl</a> better?</label>
-                                <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
-                                <button>Send</button>
-                            </form>
-                        </div>
-                    </footer>
                 </${PlutoJSInitializingContext.Provider}>
                 </${PlutoBondsContext.Provider}>
             </${PlutoActionsContext.Provider}>
