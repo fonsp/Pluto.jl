@@ -320,11 +320,6 @@ export const Cell = ({
                 </button>
             </pluto-shoulder>
             <pluto-trafficlight></pluto-trafficlight>
-            ${code_not_trusted_yet
-                ? html`<${SafePreviewOutput} />`
-                : cell_api_ready
-                ? html`<${CellOutput} errored=${errored} ...${output} sanitize_html=${sanitize_html} cell_id=${cell_id} />`
-                : html``}
             <${CellInput}
                 local_code=${cell_input_local?.code ?? code}
                 remote_code=${code}
@@ -355,6 +350,11 @@ export const Cell = ({
                 cm_diagnostics=${cm_diagnostics}
                 onerror=${remount}
             />
+            ${code_not_trusted_yet
+                ? html`<${SafePreviewOutput} />`
+                : cell_api_ready
+                ? html`<${CellOutput} errored=${errored} ...${output} sanitize_html=${sanitize_html} cell_id=${cell_id} />`
+                : html``}
             ${show_logs && cell_api_ready
                 ? html`<${Logs}
                       logs=${Object.values(logs)}
