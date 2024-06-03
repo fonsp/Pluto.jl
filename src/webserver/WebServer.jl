@@ -193,6 +193,7 @@ function run!(session::ServerSession)
             finish() = try
                 HTTP.setstatus(http, 403)
                 HTTP.startwrite(http)
+                write(http, "Forbidden")
                 HTTP.closewrite(http)
             catch e
                 if !(e isa Base.IOError)
