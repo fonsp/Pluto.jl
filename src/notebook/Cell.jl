@@ -41,8 +41,6 @@ Base.@kwdef mutable struct Cell <: PlutoDependencyExplorer.AbstractCell
     last_run_code::String=code
     code_folded::Bool=false
 
-    last_run_version::Int=0
-
     cm_updates::Vector{OT.Update}=OT.Update[]
     cm_token::Token=Token()
 

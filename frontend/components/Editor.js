@@ -417,7 +417,6 @@ export class Editor extends Component {
                     cm_updates: [],
                     start_version: 0,
                     last_run_code: "",
-                    last_run_version: 0,
                     code_folded: false,
                     metadata: {
                         ...DEFAULT_CELL_METADATA,
@@ -506,7 +505,6 @@ export class Editor extends Component {
                     return {
                         cell_id: uuidv4(),
                         code,
-                        last_run_version: 0,
                         last_run_code: "",
                         start_version: 0,
                         cm_updates: [],
