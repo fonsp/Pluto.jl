@@ -466,9 +466,9 @@ export class Editor extends Component {
                         notebook.cell_inputs[cell.cell_id] = {
                             ...cell,
                             // Fill the cell with empty code remotely, so it doesn't run unsafe code
-                            start_version: 1,
+                            start_version: 0,
                             last_run_code: "",
-                            cm_updates: [{ specs: [{ from: 0, insert: cell.code }], document_length: 0, client_id: "slkqjdsql" }],
+                            cm_updates: [],
                             metadata: {
                                 ...DEFAULT_CELL_METADATA,
                             },

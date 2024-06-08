@@ -75,6 +75,7 @@ function Base.convert(::Type{Cell}, cell::Dict)
 	Cell(
         cell_id=UUID(cell["cell_id"]),
         code=cell["code"],
+        last_run_code=cell["last_run_code"],
         code_folded=cell["code_folded"],
         metadata=cell["metadata"],
     )
