@@ -123,7 +123,7 @@
     accItemFileLoadImage.innerHTML = " "
     accItemFileLoadImage.innerText += "Load Image"
     accItemFileLoadImage.onclick = function () {
-        createCellWithCode("img = JIVECore.loadImage()")
+        createCellWithCode("str = JIVECore.Files.loadImageIntoDict() \n image_data[str]")
     }
     const accItemFileImportSequence = document.createElement("a")
     accItemFileImportSequence.href = "#"
