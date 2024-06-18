@@ -65,7 +65,6 @@ const changeset_to_delta = (cs) => {
         }
         current_offset = toA
     }, false)
-    console.log(ops)
     return ops
 }
 
