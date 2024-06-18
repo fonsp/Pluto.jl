@@ -100,8 +100,8 @@ const statusmap = (/** @type {EditorState} */ state, /** @type {LaunchParameters
     binder: launch_params.binder_url != null && state.backend_launch_phase != null,
     code_differs: state.notebook.cell_order.some((cell_id) =>
         // TODO
-        state.notebook.cell_inputs[cell_id].code !== state.notebook.cell_inputs[cell_id].last_run_code ||
-        (state.cell_collab_plugins.has(cell_id) && sendableUpdates(state.cell_collab_plugins.get(cell_id).view.state).length != 0)
+        state.notebook.cell_inputs[cell_id].code !== state.notebook.cell_inputs[cell_id].last_run_code
+        // || (state.cell_collab_plugins.has(cell_id) && sendableUpdates(state.cell_collab_plugins.get(cell_id).view.state).length != 0)
     ),
     recording_waiting_to_start: state.recording_waiting_to_start,
     is_recording: state.is_recording,
