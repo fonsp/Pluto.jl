@@ -6,20 +6,38 @@ module OperationalTransform
 using Pinot: Pinot, Unicode
 using Pinot: Range, retain, delete, insert
 
+# struct SelectionRange
+#     anchor::UInt32
+#     head::UInt32
+# end
+# struct Selection
+#   ranges::Vector{SelectionRange}
+#   main::UInt32
+# end
+
 struct Update
     client_id::Symbol
     document_length::Int
     ops::Vector{Pinot.Range}
-    # effects::Vector{}
+    # effects::Vector{Selection}
 end
 
 to_dict(u) = Dict{Symbol,Any}(:client_id => u.client_id,
                               :document_length => u.document_length,
-                              :ops => Pinot.to_obj(u.ops)[:ops])
+                              :ops => Pinot.to_obj(u.ops)[:ops],
+                              # :effects => map(e ->
+                              #     Dict{Symbol,Any}(:main => e.main, :ranges => map(r -> (; anchor=r.anchor, head=r.head), e.ranges)),
+                              #     u.effects)
+                              #   )
+                              )
 
 from_dict(u) = Update(Symbol(u["client_id"]),
                       u["document_length"],
-                      Pinot.from_obj(u))
+                      Pinot.from_obj(u),
+                      # map(e -> Selection(e["main"],
+                      #                    map(g -> SelectionRange(g["anchor"], g["head"]), e["ranges"])
+                      #    )), u["effects"]
+                      )
 
 function rebase(over, updates)
     isempty(over) && return updates

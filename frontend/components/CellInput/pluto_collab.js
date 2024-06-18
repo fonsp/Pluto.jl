@@ -313,6 +313,7 @@ export const pluto_collab = (startVersion, { pluto_actions, cell_id, client_id }
     //     }
 
     //     const effect = CaretEffect.of({ selection: update.view.state.selection, clientID: client_id })
+    //     console.log({selection: effect.value.selection.toJSON()})
     //     update.view.dispatch({
     //         effects: [effect],
     //     })
