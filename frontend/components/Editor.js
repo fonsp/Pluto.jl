@@ -21,7 +21,7 @@ import { Scroller } from "./Scroller.js"
 import { ExportBanner } from "./ExportBanner.js"
 import { Popup } from "./Popup.js"
 
-import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
+import { slice_utf8 } from "../common/UnicodeTools.js"
 import {
     has_ctrl_or_cmd_pressed,
     ctrl_or_cmd_name,
@@ -46,6 +46,7 @@ import { get_environment } from "../common/Environment.js"
 import { ProcessStatus } from "../common/ProcessStatus.js"
 import { SafePreviewUI } from "./SafePreviewUI.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
+import { sendableUpdates } from "../imports/CodemirrorPlutoSetup.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -99,7 +100,8 @@ const statusmap = (/** @type {EditorState} */ state, /** @type {LaunchParameters
     binder: launch_params.binder_url != null && state.backend_launch_phase != null,
     code_differs: state.notebook.cell_order.some((cell_id) =>
         // TODO
-        state.notebook.cell_inputs[cell_id].code !== state.notebook.cell_inputs[cell_id].last_run_code
+        state.notebook.cell_inputs[cell_id].code !== state.notebook.cell_inputs[cell_id].last_run_code ||
+        (state.cell_collab_plugins.has(cell_id) && sendableUpdates(state.cell_collab_plugins.get(cell_id).view.state).length != 0)
     ),
     recording_waiting_to_start: state.recording_waiting_to_start,
     is_recording: state.is_recording,
@@ -285,6 +287,7 @@ export const url_logo_small = document.head.querySelector("link[rel='pluto-logo-
  * @typedef EditorState
  * @type {{
  * notebook: NotebookData,
+ * cell_collab_plugins: Map<string,any>
  * cell_inputs_local: { [uuid: string]: { code: String } },
  * desired_doc_query: ?String,
  * recently_deleted: ?Array<{ index: number, cell: CellInputData }>,
