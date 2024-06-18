@@ -374,6 +374,7 @@ export class Editor extends Component {
             get_notebook: () => this?.state?.notebook || {},
             send: (message_type, ...args) => this.client.send(message_type, ...args),
             register_collab_plugin: (cell_id, view) => {
+                console.log({ cell_id })
                 this.state.cell_collab_plugins.set(cell_id, view)
             },
             unregister_collab_plugin: (cell_id) => {
@@ -481,16 +482,22 @@ export class Editor extends Component {
                 })
             },
             wrap_remote_cell: async (cell_id, block_start = "begin", block_end = "end") => {
-                const cell = this.state.notebook.cell_inputs[cell_id]
-                const new_code = `${block_start}\n\t${cell.code.replace(/\n/g, "\n\t")}\n${block_end}`
+                if (!this.state.cell_collab_plugins.has(cell_id)) return;
 
-                await this.setStatePromise(
-                    immer((/** @type {EditorState} */ state) => {
-                        state.cell_inputs_local[cell_id] = {
-                            code: new_code,
-                        }
-                    })
-                )
+                const view = this.state.cell_collab_plugins.get(cell_id).view
+                const state = view.state
+                const doc = state.doc
+
+                const changes = [{from: 0, to: 0, insert: block_start + "\n"}]
+
+                let pos = 0
+                for (const line of doc.iterLines()) {
+                    changes.push({from: pos, to: pos, insert: "\t"})
+                    pos += line.length + 1
+                }
+
+                changes.push({from: doc.length, to: doc.length, insert: "\n" + block_end})
+                view.dispatch({ changes })
                 await this.actions.set_and_run_multiple([cell_id])
             },
             split_remote_cell: async (cell_id, boundaries, submit = false) => {
