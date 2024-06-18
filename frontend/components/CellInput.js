@@ -433,18 +433,6 @@ export const CellInput = ({
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
     let users_compartment = useCompartment(newcm_ref, UsersFacet.of(users))
 
-    let on_change_compartment = useCompartment(
-        newcm_ref,
-        // Functions are hard to compare, so I useMemo manually
-        useMemo(() => {
-            return EditorView.updateListener.of((update) => {
-                if (update.docChanged) {
-                    on_change(update.state.doc.toString())
-                }
-            })
-        }, [on_change])
-    )
-
     useEffect(() => {
         if (cm_updates) {
             pluto_actions.sync_updates(cell_id, cm_updates)
@@ -845,8 +833,6 @@ export const CellInput = ({
                         if (!update.docChanged) return
                         update.view.dispatch(setDiagnostics(update.state, []))
                     }),
-
-                    on_change_compartment,
 
                     pluto_collab(start_version, {
                         // push_updates: (data) => pluto_actions.send("push_updates", { ...data, cell_id: cell_id }, { notebook_id }, false),

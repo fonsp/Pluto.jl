@@ -119,7 +119,6 @@ const render_cell_outputs_minimum = 20
 /**
  * @param {{
  *  notebook: import("./Editor.js").NotebookData,
- *  cell_inputs_local: { [uuid: string]: { code: String } },
  *  on_update_doc_query: any,
  *  on_cell_input: any,
  *  on_focus_neighbor: any,
@@ -135,7 +134,6 @@ const render_cell_outputs_minimum = 20
  * */
 export const Notebook = ({
     notebook,
-    cell_inputs_local,
     last_created_cell,
     selected_cells,
     is_initializing,
@@ -206,7 +204,6 @@ export const Notebook = ({
                         }}
                         cell_input=${notebook.cell_inputs[cell_id]}
                         cell_dependencies=${notebook?.cell_dependencies?.[cell_id] ?? {}}
-                        cell_input_local=${cell_inputs_local[cell_id]}
                         notebook_id=${notebook.notebook_id}
                         client_id=${client_id}
                         selected=${selected_cells.includes(cell_id)}

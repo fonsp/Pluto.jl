@@ -288,7 +288,6 @@ export const url_logo_small = document.head.querySelector("link[rel='pluto-logo-
  * @type {{
  * notebook: NotebookData,
  * cell_collab_plugins: Map<string,any>
- * cell_inputs_local: { [uuid: string]: { code: String } },
  * desired_doc_query: ?String,
  * recently_deleted: ?Array<{ index: number, cell: CellInputData }>,
  * last_update_time: number,
@@ -328,7 +327,6 @@ export class Editor extends Component {
             notebook: /** @type {NotebookData} */ initial_notebook_state,
             /** @type Map<string,any> */
             cell_collab_plugins: new Map(),
-            cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ ([]),
             recently_auto_disabled_cells: /** @type {Map<string,[string,string]>} */ ({}),
@@ -390,9 +388,6 @@ export class Editor extends Component {
             set_local_cell: (cell_id, new_val) => {
                 return this.setStatePromise(
                     immer((/** @type {EditorState} */ state) => {
-                        state.cell_inputs_local[cell_id] = {
-                            code: new_val,
-                        }
                         state.selected_cells = []
                     })
                 )
@@ -444,18 +439,10 @@ export class Editor extends Component {
                     index = this.state.notebook.cell_order.length
                 }
 
-                /** Update local_code. Local code doesn't force CM to update it's state
-                 * (the usual flow is keyboard event -> cm -> local_code and not the opposite )
-                 * See ** 1 **
-                 */
                 this.setState(
                     immer((/** @type {EditorState} */ state) => {
                         // Deselect everything first, to clean things up
                         state.selected_cells = []
-
-                        for (let cell of new_cells) {
-                            state.cell_inputs_local[cell.cell_id] = cell
-                        }
                         state.last_created_cell = new_cells[0]?.cell_id
                     })
                 )
@@ -468,7 +455,6 @@ export class Editor extends Component {
                     for (const cell of new_cells) {
                         notebook.cell_inputs[cell.cell_id] = {
                             ...cell,
-                            // Fill the cell with empty code remotely, so it doesn't run unsafe code
                             start_version: 0,
                             last_run_code: "",
                             cm_updates: [],
@@ -525,13 +511,6 @@ export class Editor extends Component {
                     }
                 })
 
-                this.setState(
-                    immer((/** @type {EditorState} */ state) => {
-                        for (let cell of cells_to_add) {
-                            state.cell_inputs_local[cell.cell_id] = cell
-                        }
-                    })
-                )
                 await update_notebook((notebook) => {
                     // delete the old cell
                     delete notebook.cell_inputs[cell_id]
@@ -1710,7 +1689,6 @@ patch: ${JSON.stringify(
                         <${Notebook}
                             notebook=${notebook}
                             client_id=${this.client_id}
-                            cell_inputs_local=${this.state.cell_inputs_local}
                             disable_input=${this.state.disable_ui || !this.state.connected /* && this.state.backend_launch_phase == null*/}
                             last_created_cell=${this.state.last_created_cell}
                             selected_cells=${this.state.selected_cells}

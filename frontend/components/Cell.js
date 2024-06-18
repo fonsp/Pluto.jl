@@ -127,7 +127,6 @@ export const Cell = ({
     // useCallback because pluto_actions.set_doc_query can change value when you go from viewing a static document to connecting (to binder)
     const on_update_doc_query = useCallback((...args) => pluto_actions.set_doc_query(...args), [pluto_actions])
     const on_focus_neighbor = useCallback((...args) => pluto_actions.focus_on_neighbor(...args), [pluto_actions])
-    const on_change = useCallback((val) => pluto_actions.set_local_cell(cell_id, val), [cell_id, pluto_actions])
     const variables = useMemo(() => Object.keys(cell_dependencies?.downstream_cells_map ?? {}), [cell_dependencies])
 
     // We need to unmount & remount when a destructive error occurs.
@@ -240,17 +239,6 @@ export const Cell = ({
             pluto_actions.set_and_run_multiple([cell_id])
         }
     }, [pluto_actions, cell_id])
-    const on_change_cell_input = useCallback(
-        (new_code) => {
-            if (!disable_input_ref.current) {
-                if (code_folded && cm_forced_focus != null) {
-                    pluto_actions.fold_remote_cells([cell_id], false)
-                }
-                on_change(new_code)
-            }
-        },
-        [code_folded, cm_forced_focus, pluto_actions, on_change]
-    )
     const on_add_after = useCallback(() => {
         pluto_actions.add_remote_cell(cell_id, "after")
     }, [pluto_actions, cell_id, selected])
@@ -346,7 +334,6 @@ export const Cell = ({
                 on_submit=${on_submit}
                 on_delete=${on_delete}
                 on_add_after=${on_add_after}
-                on_change=${on_change_cell_input}
                 on_update_doc_query=${on_update_doc_query}
                 on_focus_neighbor=${on_focus_neighbor}
                 on_line_heights=${set_line_heights}
