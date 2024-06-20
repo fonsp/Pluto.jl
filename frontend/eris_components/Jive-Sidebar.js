@@ -1,7 +1,7 @@
 // @ts-nocheck
 /*
-      Add Sidebar
-    */
+    Add Sidebar
+*/
 // add style file
 function addCss(fileName) {
     var head = document.head
@@ -300,38 +300,38 @@ function myAccFunc(idString) {
     }
 }
 
-// // Obtain pluto-cell HTML element
-// function getPlutoCell(el) {
-//     try {
-//         if (el.tagName !== "PLUTO-CELL") {
-//             return getPlutoCell(el.parentElement)
-//         }
-//         return el
-//     } catch (e) {}
-// }
+// Obtain pluto-cell HTML element
+function getPlutoCell(el) {
+    try {
+        if (el.tagName !== "PLUTO-CELL") {
+            return getPlutoCell(el.parentElement)
+        }
+        return el
+    } catch (e) {}
+}
 
-// //   Create a line of code
-// function insertCode(text) {
-//     const divStart = document.createElement("div")
-//     divStart.classList.add("cm-line")
-//     const spanStart = document.createElement("span")
-//     spanStart.classList.add("ͼx")
-//     spanStart.innerText = text
-//     divStart.appendChild(spanStart)
+//   Create a line of code
+function insertCode(text) {
+    const divStart = document.createElement("div")
+    divStart.classList.add("cm-line")
+    const spanStart = document.createElement("span")
+    spanStart.classList.add("ͼx")
+    spanStart.innerText = text
+    divStart.appendChild(spanStart)
 
-//     return divStart
-// }
-// //   Create a new cell with code
-// async function createCellWithCode(textCode) {
-//     const currentCell = getPlutoCell(getSelection().anchorNode)
-//     currentCell.querySelector("button.add_cell.after").click()
-//     await new Promise((r) => setTimeout(r, timeoutValue))
-//     const newCell = currentCell.nextElementSibling
-//     const cellCode = newCell.querySelector("div[role='textbox'].cm-content")
-//     const beginDiv = insertCode(textCode)
-//     cellCode.firstElementChild.before(beginDiv)
-//     await new Promise((r) => setTimeout(r, timeoutValue))
-//     newCell.querySelector("button.foldcode").click()
-//     await new Promise((r) => setTimeout(r, timeoutValue))
-//     newCell.querySelector("button.runcell").click()
-// }
+    return divStart
+}
+//   Create a new cell with code
+async function createCellWithCode(textCode) {
+    const currentCell = getPlutoCell(getSelection().anchorNode)
+    currentCell.querySelector("button.add_cell.after").click()
+    await new Promise((r) => setTimeout(r, timeoutValue))
+    const newCell = currentCell.nextElementSibling
+    const cellCode = newCell.querySelector("div[role='textbox'].cm-content")
+    const beginDiv = insertCode(textCode)
+    cellCode.firstElementChild.before(beginDiv)
+    await new Promise((r) => setTimeout(r, timeoutValue))
+    newCell.querySelector("button.foldcode").click()
+    await new Promise((r) => setTimeout(r, timeoutValue))
+    newCell.querySelector("button.runcell").click()
+}
