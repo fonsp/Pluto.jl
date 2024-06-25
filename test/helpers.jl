@@ -18,6 +18,7 @@ using HTTP
 import Pkg
 import Malt
 import Malt.Distributed
+import Pluto
 
 
 
@@ -32,7 +33,10 @@ function delete_cell!(notebook, cell)
 end
 
 function setcode!(cell, newcode)
-    cell.code = newcode
+    len = Pluto.OT.Unicode.utf16_ncodeunits(cell.code)
+    changes = Pluto.OT.Range[Pluto.OT.insert(newcode), Pluto.OT.delete(cell.code)]
+    push!(cell.cm_updates, Pluto.OT.Update(:anon, len, changes))
+    cell.last_run_code = cell.code = newcode
 end
 
 function noerror(cell; verbose=true)

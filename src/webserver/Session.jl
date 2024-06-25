@@ -11,10 +11,11 @@ mutable struct ClientSession
     connected_notebook::Union{Notebook,Nothing}
     pendingupdates::Channel
     simulated_lag::Float64
+    client_id::Union{String,Nothing}
 end
 
 ClientSession(id::Symbol, stream, simulated_lag=0.0) = let
-    ClientSession(id, stream, nothing, Channel(1024), simulated_lag)
+    ClientSession(id, stream, nothing, Channel(1024), simulated_lag, nothing)
 end
 
 "A combination of _client ID_ and a _request ID_. The front-end generates a unqique ID for every request that it sends. The back-end (the stuff you are currently reading) can respond to a specific request. In that case, the response does not go through the normal message handlers in the front-end, but it flies directly to the place where the message was sent. (It resolves the promise returned by `send(...)`.)"

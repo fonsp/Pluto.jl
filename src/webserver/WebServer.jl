@@ -206,6 +206,7 @@ function run!(session::ServerSession)
                         if HTTP.WebSockets.isclosed(clientstream)
                             return
                         end
+                        local client_id = nothing
                         try
                             for message in clientstream
                                 # This stream contains data received over the WebSocket.
@@ -214,12 +215,15 @@ function run!(session::ServerSession)
                                 local did_read = false
                                 try
                                     parentbody = unpack(message)
-                                    
+                                    if isnothing(client_id)
+                                        client_id = Symbol(parentbody["client_id"])
+                                    end
+
                                     let
                                         lag = session.options.server.simulated_lag
                                         (lag > 0) && sleep(lag * (0.5 + rand())) # sleep(0) would yield to the process manager which we dont want
                                     end
-                                    
+
                                     did_read = true
                                     process_ws_message(session, parentbody, clientstream)
                                 catch ex
@@ -241,6 +245,21 @@ function run!(session::ServerSession)
                             else
                                 bt = stacktrace(catch_backtrace())
                                 @warn "Reading WebSocket client stream failed for unknown reason:" exception = (ex, bt)
+                            end
+                        finally
+                            try
+                                if !isnothing(client_id)
+                                    client = get(session.connected_clients, client_id, nothing)
+                                    if !isnothing(client) && !isnothing(client.connected_notebook) && !isnothing(client.client_id)
+                                        notebook = client.connected_notebook
+                                        pop!(notebook.users_mouse_data, client.client_id, nothing)
+                                        pop!(notebook.users, client.client_id, nothing)
+                                        🙋 = ClientRequest(session, client.connected_notebook, nothing, nothing)
+                                        send_notebook_changes!(🙋)
+                                    end
+                                end
+                            catch err
+                                @error "Something went wrong when disconnecting client" client_id exception=(err,catch_backtrace())
                             end
                         end
                     end
@@ -379,7 +398,7 @@ end
 "All messages sent over the WebSocket get decoded+deserialized and end up here."
 function process_ws_message(session::ServerSession, parentbody::Dict, clientstream)
     client_id = Symbol(parentbody["client_id"])
-    client = get!(session.connected_clients, client_id ) do 
+    client = get!(session.connected_clients, client_id) do
         ClientSession(client_id, clientstream, session.options.server.simulated_lag)
     end
     client.stream = clientstream # it might change when the same client reconnects

@@ -452,8 +452,8 @@ import Pluto.Configuration: Options, EvaluationOptions
 
     @testset "Variable cannot reference its previous value" begin
         notebook = Notebook([
-        Cell("x = 3")
-    ])
+            Cell("x = 3")
+        ])
 
         update_run!(🍭, notebook, notebook.cells[1])
         setcode!(notebook.cells[1], "x = x + 1")

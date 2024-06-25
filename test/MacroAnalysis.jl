@@ -949,8 +949,8 @@ import Memoize: @memoize
         @test :memoized_func ∈ notebook.topology.nodes[cell(5)].funcdefs_without_signatures
         @test cell(6) |> noerror
 
-        cell(3).code = "#=$(cell(3).code)=#"
-        cell(5).code = "#=$(cell(5).code)=#"
+        setcode!(cell(3), "#=$(cell(3).code)=#")
+        setcode!(cell(5), "#=$(cell(5).code)=#")
         
         update_run!(🍭, notebook, notebook.cells)
         

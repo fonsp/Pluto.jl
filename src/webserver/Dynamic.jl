@@ -110,9 +110,14 @@ function notebook_to_js(notebook::Notebook)
         "cell_inputs" => Dict{UUID,Dict{String,Any}}(
             id => Dict{String,Any}(
                 "cell_id" => cell.cell_id,
-                "code" => cell.code,
                 "code_folded" => cell.code_folded,
                 "metadata" => cell.metadata,
+
+                "cm_updates" => FirebaseyUtils.AppendonlyMarker(cell.cm_updates),
+                "code" => cell.code,
+                "last_run_code" => cell.last_run_code,
+
+                "start_version" => FirebaseyUtils.SendOnlyOnceMarker(length(cell.cm_updates)),
             )
         for (id, cell) in notebook.cells_dict),
         "cell_dependencies" => Dict{UUID,Dict{String,Any}}(
@@ -168,6 +173,8 @@ function notebook_to_js(notebook::Notebook)
         end,
         "status_tree" => Status.tojs(notebook.status_tree),
         "cell_execution_order" => cell_id.(collect(topological_order(notebook))),
+        "users" => notebook.users,
+        "users_mouse_data" => notebook.users_mouse_data,
     )
 end
 
@@ -180,7 +187,7 @@ const current_state_for_clients_lock = ReentrantLock()
 """
 Update the local state of all clients connected to this notebook.
 """
-function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, skip_send::Bool=false)
+function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, skip_send::Bool=false, respond_to_request::Bool=true)
     outbox = Set{Tuple{ClientSession,UpdateMessage}}()
     
     lock(current_state_for_clients_lock) do
@@ -200,7 +207,8 @@ function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, sk
                         :patches => patches_as_dicts,
                         :response => is_response ? commentary : nothing
                     )
-                    push!(outbox, (client, UpdateMessage(:notebook_diff, response, 🙋.notebook, nothing, 🙋.initiator)))
+                    initiator = respond_to_request ? 🙋.initiator : Initiator(🙋.initiator.client, :not_a_response)
+                    push!(outbox, (client, UpdateMessage(:notebook_diff, response, 🙋.notebook, nothing, initiator)))
                 end
             end
         end
@@ -232,6 +240,9 @@ struct FileChanged <: Changed end
 struct BondChanged <: Changed
     bond_name::Symbol
     is_first_value::Bool
+end
+struct UserCreated <: Changed
+    client_id::String
 end
 
 # to support push!(x, y...) # with y = []
@@ -292,9 +303,23 @@ const effects_of_changed_state = Dict(
             Firebasey.applypatch!(request.notebook, patch)
             [FileChanged()]
         end
+    ),
+    "users" => Dict(
+        Wildcard() => function(client_id, path...; request::ClientRequest, patch::Firebasey.JSONPatch)
+            Firebasey.applypatch!(request.notebook, patch)
+            if patch isa Firebasey.AddPatch && isempty(path)
+                return [UserCreated(client_id)]
+            end
+            return no_changes
+        end,
+    ),
+    "users_mouse_data" => Dict(
+        Wildcard() => function(client_id, path...; request::ClientRequest, patch::Firebasey.JSONPatch)
+            Firebasey.applypatch!(request.notebook, patch)
+            return no_changes
+        end
     )
 )
-
 
 responses[:update_notebook] = function response_update_notebook(🙋::ClientRequest)
     require_notebook(🙋)
@@ -320,7 +345,7 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
 
         for patch in patches
             (mutator, matches, rest) = trigger_resolver(effects_of_changed_state, patch.path)
-            
+
             current_changes = if isempty(rest) && applicable(mutator, matches...)
                 mutator(matches...; request=🙋, patch)
             else
@@ -352,6 +377,13 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
              save_notebook(🙋.session, notebook)
         end
 
+        let created_user = filter(x -> x isa UserCreated, changes)
+            if !isempty(created_user) && !isnothing(🙋.initiator)
+                created_user = only(created_user)
+                🙋.initiator.client.client_id = created_user.client_id
+            end
+        end
+
         let bond_changes = filter(x -> x isa BondChanged, changes)
             bound_sym_names = Symbol[x.bond_name for x in bond_changes]
             is_first_values = Bool[x.is_first_value for x in bond_changes]
@@ -364,7 +396,7 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
                 initiator=🙋.initiator,
             )
         end
-    
+
         send_notebook_changes!(🙋; commentary=Dict(:update_went_well => :👍))
     catch ex
         @error "Update notebook failed"  🙋.body["updates"] exception=(ex, stacktrace(catch_backtrace()))
@@ -427,6 +459,48 @@ responses[:reset_shared_state] = function response_reset_shared_state(🙋::Clie
     send_notebook_changes!(🙋; commentary=Dict(:from_reset =>  true))
 end
 
+function push_update_for_cell(cell, version, updates)
+    withtoken(cell.cm_token) do
+        current_version = length(cell.cm_updates)
+
+        updates_to_transform = @view cell.cm_updates[version+1:end]
+        updates = OT.rebase(updates_to_transform, updates)
+
+        text = try
+            OT.apply(cell.code, updates)
+        catch err
+            @warn "error" exception=(err, catch_backtrace()) cell.code updates
+            rethrow()
+        end
+        append!(cell.cm_updates, updates)
+
+        cell.code = text
+
+        @debug "Cell updates" updates n=length(cell.cm_updates) code=String(text)
+    end
+end
+
+responses[:push_updates] = function response_push_updates(🙋::ClientRequest)
+    require_notebook(🙋)
+    @sync for cell_updates in 🙋.body["cell_updates"]
+        @async begin
+            cell = let
+                cell_id = UUID(cell_updates["cell_id"])
+                if !haskey(🙋.notebook.cells_dict, cell_id)
+                    # Cell has prob been deleted but client is not yet aware of it?
+                    send_notebook_changes!(🙋; commentary=:👎)
+                    return
+                end
+                🙋.notebook.cells_dict[cell_id]
+            end
+
+            updates = cell_updates["updates"]
+            push_update_for_cell(cell, cell_updates["version"], map(OT.from_dict, updates))
+        end
+    end
+    send_notebook_changes!(🙋)
+end
+
 responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::ClientRequest)
     require_notebook(🙋)
     uuids = UUID.(🙋.body["cells"])
@@ -434,8 +508,16 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
         🙋.notebook.cells_dict[uuid]
     end
 
+    for cell in cells
+        withtoken(cell.cm_token) do
+            cell.last_run_code = cell.code
+        end
+    end
+    send_notebook_changes!(🙋; respond_to_request=false)
+
     if will_run_code(🙋.notebook)
-        foreach(c -> c.queued = true, cells)
+        foreach(c -> c.queued =true, cells)
+
         # run send_notebook_changes! without actually sending it, to update current_state_for_clients for our client with c.queued = true.
         # later, during update_save_run!, the cell will actually run, eventually setting c.queued = false again, which will be sent to the client through a patch update. 
         # We *need* to send *something* to the client, because of https://github.com/fonsp/Pluto.jl/pull/1892, but we also don't want to send unnecessary updates. We can skip sending this update, because update_save_run! will trigger a send_notebook_changes! very very soon.
@@ -448,7 +530,7 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
         )
         putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:run_feedback, response, 🙋.notebook, nothing, 🙋.initiator))
     end
-    
+
     wfp = 🙋.notebook.process_status == ProcessStatus.waiting_for_permission
 
     update_save_run!(🙋.session, 🙋.notebook, cells; 
@@ -489,7 +571,6 @@ without_initiator(🙋::ClientRequest) = ClientRequest(session=🙋.session, not
 responses[:restart_process] = function response_restart_process(🙋::ClientRequest; run_async::Bool=true)
     require_notebook(🙋)
 
-    
     if 🙋.notebook.process_status != ProcessStatus.waiting_to_restart
         🙋.notebook.process_status = ProcessStatus.waiting_to_restart
         🙋.session.options.evaluation.run_notebook_on_load && _report_business_cells_planned!(🙋.notebook)
