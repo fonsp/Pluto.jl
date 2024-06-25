@@ -17,7 +17,6 @@ html {
 }
 
 #title h1 {
-    font-style: italic;
     font-size: 2em;
     letter-spacing: 0.08em;
     font-weight: 500;
@@ -31,7 +30,7 @@ html {
 
 #title h1 img {
     height: 1.2em;
-    width: 4.9em;
+    width: 1.2em;
     margin-bottom: -0.27em;
     /* margin-right: -1.5em; */
     margin-left: 0.1em;
