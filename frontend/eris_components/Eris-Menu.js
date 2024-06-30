@@ -29,17 +29,21 @@
     clickButton2.title = "Show Code"
     clickButton2.className = "clickButton"
     clickButton2.onclick = function () {
-        document.querySelectorAll("pluto-cell:has(pluto-output)").forEach((cell) => {
-            cell.classList.toggle("show_input")
-            cell.classList.toggle("code_folded")
-            if (clickButton2.title == "Show Code") {
+        if (clickButton2.title == "Show Code") {
+            document.querySelectorAll("pluto-cell:has(pluto-output)").forEach((cell) => {
+                cell.classList.add("show_input")
+                cell.classList.remove("code_folded")
                 clickButton2.innerHTML = eyeclosed
                 clickButton2.title = "Hide Code"
-            } else {
+            })
+        } else {
+            document.querySelectorAll("pluto-cell:has(pluto-output)").forEach((cell) => {
+                cell.classList.remove("show_input")
+                cell.classList.add("code_folded")
                 clickButton2.innerHTML = eyeopen
                 clickButton2.title = "Show Code"
-            }
-        })
+            })
+        }
     }
 
     // Add a mouseover event listener
