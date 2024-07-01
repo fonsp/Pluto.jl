@@ -10,7 +10,7 @@ function set_bond_values_reactive(;
         Iterators.filter(zip(bound_sym_names, is_first_values) |> collect) do (bound_sym, is_first_value)
             new_value = notebook.bonds[bound_sym].value
 
-            variable_exists = Pluto.MoreAnalysis.is_assigned_anywhere(notebook, notebook.topology, bound_sym)
+            variable_exists = Eris.MoreAnalysis.is_assigned_anywhere(notebook, notebook.topology, bound_sym)
             if !variable_exists
                 # a bond was set while the cell is in limbo state
                 # we don't need to do anything
