@@ -24,6 +24,7 @@ import Markdown
 import InteractiveUtils
 import JIVECore
 import PlutoPlotly
+import PlutoUI
 
 using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
@@ -83,7 +84,7 @@ end
 
 "These expressions get evaluated inside every newly create module inside a `Workspace`."
 const workspace_preamble = [
-    :(using Main.PlutoRunner, Main.PlutoRunner.Markdown, Main.PlutoRunner.InteractiveUtils, Main.PlutoRunner.JIVECore,  Main.PlutoRunner.PlutoPlotly),
+    :(using Main.PlutoRunner, Main.PlutoRunner.Markdown, Main.PlutoRunner.InteractiveUtils, Main.PlutoRunner.JIVECore,  Main.PlutoRunner.PlutoPlotly, Main.PlutoRunner.PlutoUI),
     :(show, showable, showerror, repr, string, print, println), # https://github.com/JuliaLang/julia/issues/18181
     :(import Main.PlutoRunner.JIVECore.Data.image_data as image_data),
     :(import Main.PlutoRunner.JIVECore.Data.image_keys as image_keys),
