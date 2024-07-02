@@ -26,6 +26,19 @@ frameDiv.style = `
     margin-left: var(--sidebar-width);
     `
 
+/////////////// open button in navbar ////////////////////
+const openButton = document.createElement("button")
+openButton.className = "jv-button-nav jv-large"
+openButton.title = "Open JIVE Sidebar"
+openButton.innerHTML = '<span> <img width="35" src="./img/jive_logo_eye_crop3.png"></img> </span>'
+openButton.style.visibility = "hidden"
+openButton.style.opacity = "1"
+openButton.style.left = "0rem"
+openButton.onclick = w3_open
+
+const navbar = document.querySelector("#at_the_top")
+navbar?.prepend(openButton)
+
 const sideBar = document.createElement("div")
 sideBar.id = "sidebar"
 sideBar.className = "jv-sidebar jv-bar-block jv-collapse-2 jv-light-grey jv-card" // jv-animate-left
@@ -155,7 +168,9 @@ accItemFileReset.href = "#"
 accItemFileReset.className = "jv-bar-item jv-button"
 accItemFileReset.innerHTML = " "
 accItemFileReset.innerText += "Reset Images"
-accItemFileReset.onclick = function () {
+accItemFileReset.onclick = async function () {
+    createMDCellWithUI("", '!!! warning "warning"\n\t All images stored in `image_data` were deleted!')
+    await resolveAfterTimeout(timeoutValue)
     createCellWithCode("empty!(image_data); empty!(image_keys);")
 }
 
@@ -229,19 +244,6 @@ sideBar.appendChild(itemBarAdjust)
 sideBar.appendChild(itemBarProcess)
 sideBar.appendChild(itemBarPlot)
 sideBar.appendChild(itemBarRunCell)
-
-/////////////// open button in navbar ////////////////////
-const openButton = document.createElement("button")
-openButton.className = "jv-button-nav jv-large"
-openButton.title = "Open JIVE Sidebar"
-openButton.innerHTML = '<span> <img width="35" src="./img/jive_logo_eye_crop3.png"></img> </span>'
-openButton.style.visibility = "hidden"
-openButton.style.opacity = "1"
-openButton.style.left = "0rem"
-openButton.onclick = w3_open
-
-const navbar = document.querySelector("#at_the_top")
-navbar?.prepend(openButton)
 
 ////////////////
 // FUNCTIONS //
