@@ -16,6 +16,9 @@ function addCss(fileName) {
 
 addCss("./eris_components/jive.css")
 
+// CONSTANTS
+const timeoutValue = 500
+
 // make space for sidebar
 const frameDiv = document.getElementById("frame")
 // @ts-ignore
@@ -178,8 +181,11 @@ accItemAdjustContrast.href = "#"
 accItemAdjustContrast.className = "jv-bar-item jv-button"
 accItemAdjustContrast.innerHTML = " "
 accItemAdjustContrast.innerText += "Contrast"
-accItemAdjustContrast.onclick = function () {
-    createCellWithCode("imgo = adjust_histogram(img, LinearStretching(dst_minval = 0, dst_maxval = 1))")
+accItemAdjustContrast.onclick = async function () {
+    const x = getVarName("autcontrast")
+    createMDCellWithUI("Autocontrast", `Select input image: $(@bind ${x} PlutoUI.Select(image_keys))`)
+    await resolveAfterTimeout(timeoutValue)
+    createCellWithCode(`JIVECore.Process.autoContrast(image_data[${x}])`)
 }
 const accItemAdjustColor = document.createElement("a")
 accItemAdjustColor.href = "#"
@@ -225,9 +231,6 @@ openButton.onclick = w3_open
 const navbar = document.querySelector("#at_the_top")
 navbar?.prepend(openButton)
 
-// CONSTANTS
-const timeoutValue = 500
-
 ////////////////
 // FUNCTIONS //
 ///////////////
@@ -265,7 +268,14 @@ function myAccFunc(idString) {
             x.previousElementSibling.name + ' <img width="15" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chevron-down.svg"></img>'
     }
 }
-
+// wait
+function resolveAfterTimeout(t) {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            resolve("resolved")
+        }, t)
+    })
+}
 // Obtain pluto-cell HTML element
 function getPlutoCell(el) {
     try {
@@ -275,8 +285,11 @@ function getPlutoCell(el) {
         return el
     } catch (e) {}
 }
-
-//   Create a line of code
+// Create variable name
+function getVarName(prefix) {
+    return prefix + Date.now()
+}
+// Create div with code to insert in a cell
 function insertCode(text) {
     const divStart = document.createElement("div")
     divStart.classList.add("cm-line")
@@ -292,11 +305,31 @@ async function createCellWithCode(textCode) {
     const cellCode = currentCell.querySelector("div[role='textbox'].cm-content")
     const beginDiv = insertCode(textCode)
     cellCode.firstElementChild.before(beginDiv)
-    // await new Promise((r) => setTimeout(r, timeoutValue))
     currentCell.querySelector("button.foldcode").click()
-    // await new Promise((r) => setTimeout(r, timeoutValue))
     currentCell.querySelector("button.runcell").click()
     currentCell.querySelector("button.add_cell.after").click()
-    // await new Promise((r) => setTimeout(r, timeoutValue))
-    const newCell = currentCell.nextElementSibling
+}
+// Create div with Markdown code to insert in a cell
+function insertMD(title, text) {
+    const divStart = document.createElement("div")
+    divStart.classList.add("cm-line")
+    const spanStart = document.createElement("span")
+    spanStart.classList.add("ͼx")
+    startText = 'md"""'
+    titleText = "##### " + title
+    endText = '"""'
+    finalText = startText + "\n" + titleText + "\n" + text + "\n" + endText
+    spanStart.innerText = finalText
+    divStart.appendChild(spanStart)
+    return divStart
+}
+//   Create a new MD cell with PlutoUI code
+async function createMDCellWithUI(title, textCode) {
+    const currentCell = getPlutoCell(getSelection().anchorNode)
+    const cellCode = currentCell.querySelector("div[role='textbox'].cm-content")
+    const beginDiv = insertMD(title, textCode)
+    cellCode.firstElementChild.before(beginDiv)
+    currentCell.querySelector("button.foldcode").click()
+    currentCell.querySelector("button.runcell").click()
+    currentCell.querySelector("button.add_cell.after").click()
 }
