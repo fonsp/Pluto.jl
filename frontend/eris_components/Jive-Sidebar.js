@@ -17,7 +17,7 @@ function addCss(fileName) {
 addCss("./eris_components/jive.css")
 
 // CONSTANTS
-const timeoutValue = 500
+const timeoutValue = 1000
 
 // make space for sidebar
 const frameDiv = document.getElementById("frame")
@@ -139,18 +139,30 @@ accItemFileImportVideo.innerText += "Import Video"
 accItemFileImportVideo.onclick = function () {
     createCellWithCode("JIVECore.Visualize.gif(image_data[JIVECore.Files.loadImageIntoDict()])")
 }
+const accItemFileSaveImage = document.createElement("a")
+accItemFileSaveImage.href = "#"
+accItemFileSaveImage.className = "jv-bar-item jv-button"
+accItemFileSaveImage.innerHTML = " "
+accItemFileSaveImage.innerText += "Save Image"
+accItemFileSaveImage.onclick = async function () {
+    const x = getVarName("save")
+    createMDCellWithUI("Save Image", `Select image to save: $(@bind ${x} PlutoUI.confirm(PlutoUI.Select(image_keys, default=image_keys[end])))`)
+    await resolveAfterTimeout(timeoutValue)
+    createCellWithCode(`JIVECore.Files.saveImage(image_data[${x}])`)
+}
 const accItemFileReset = document.createElement("a")
 accItemFileReset.href = "#"
 accItemFileReset.className = "jv-bar-item jv-button"
 accItemFileReset.innerHTML = " "
 accItemFileReset.innerText += "Reset Images"
-// accItemFileReset.onclick = function () {
-//     createCellWithCode("image_data = Dict();image_data = Dict()")
-// }
+accItemFileReset.onclick = function () {
+    createCellWithCode("empty!(image_data); empty!(image_keys);")
+}
 
 accFile.appendChild(accItemFileLoadImage)
 accFile.appendChild(accItemFileImportSequence)
 accFile.appendChild(accItemFileImportVideo)
+accFile.appendChild(accItemFileSaveImage)
 accFile.appendChild(accItemFileReset)
 itemBarFile.appendChild(accButtonFile)
 itemBarFile.appendChild(accFile)
@@ -182,8 +194,8 @@ accItemAdjustContrast.className = "jv-bar-item jv-button"
 accItemAdjustContrast.innerHTML = " "
 accItemAdjustContrast.innerText += "Contrast"
 accItemAdjustContrast.onclick = async function () {
-    const x = getVarName("autcontrast")
-    createMDCellWithUI("Autocontrast", `Select input image: $(@bind ${x} PlutoUI.Select(image_keys))`)
+    const x = getVarName("autocontrast")
+    createMDCellWithUI("Autocontrast", `Select input image: $(@bind ${x} PlutoUI.Select(image_keys, default=image_keys[end]))`)
     await resolveAfterTimeout(timeoutValue)
     createCellWithCode(`JIVECore.Process.autoContrast(image_data[${x}])`)
 }

@@ -529,12 +529,13 @@ a {
 .jv-bar-block .jv-bar-item {
     width: 100%;
     display: block;
-    padding: 8px 16px;
+    padding: 1px 16px;
     text-align: left;
     border: none;
     white-space: normal;
     float: none;
     outline: 0;
+    font-size: small;
 }
 .jv-bar-block.jv-center .jv-bar-item {
     text-align: center;
