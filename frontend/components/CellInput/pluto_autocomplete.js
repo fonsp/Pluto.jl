@@ -1,6 +1,6 @@
 import _ from "../../imports/lodash.js"
 
-import { EditorView, keymap, autocomplete, syntaxTree, StateField, StateEffect, Transaction } from "../../imports/CodemirrorPlutoSetup.js"
+import { EditorView, EditorState, keymap, autocomplete, syntaxTree, StateField, StateEffect, Transaction } from "../../imports/CodemirrorPlutoSetup.js"
 import { get_selected_doc_from_state } from "./LiveDocsFromCursor.js"
 import { cl } from "../../common/ClassTable.js"
 import { ScopeStateField } from "./scopestate_statefield.js"
@@ -150,10 +150,15 @@ let update_docs_from_autocomplete_selection = (on_update_doc_query) => {
 let match_special_symbol_complete = (/** @type {autocomplete.CompletionContext} */ ctx) => ctx.matchBefore(/\\[\d\w_:]*/)
 /** Are we matching something like `:writing_a_symbo...`? */
 let match_symbol_complete = (/** @type {autocomplete.CompletionContext} */ ctx) => ctx.matchBefore(/\.\:[^\s"'`()\[\].]*/)
-/** Are we matching inside a string */
-function match_string_complete(ctx) {
-    const tree = syntaxTree(ctx.state)
-    const node = tree.resolve(ctx.pos)
+
+/** Are we matching inside a string at given pos?
+ * @param {EditorState} state
+ * @param {number} pos
+ * @returns {boolean}
+ **/
+function match_string_complete(state, pos) {
+    const tree = syntaxTree(state)
+    const node = tree.resolve(pos)
     if (node == null || (node.name !== "TripleString" && node.name !== "String")) {
         return false
     }
@@ -397,30 +402,58 @@ const local_variables_completion = (/** @type {autocomplete.CompletionContext} *
 const special_latex_examples = ["\\sqrt", "\\pi", "\\approx"]
 const special_emoji_examples = ["🐶", "🐱", "🐭", "🐰", "🐼", "🐨", "🐸", "🐔", "🐧"]
 
+/** Apply completion to detail when completion is equal to detail
+ * https://codemirror.net/docs/ref/#autocomplete.Completion.apply
+ * Example:
+ * For latex completions, if inside string only complete to label unless label is already fully typed.
+ * \lamb<tab> -> λ
+ * "\lamb<tab>" -> "\lambda"
+ * "\lambda<tab>" -> "λ"
+ * For emojis, we always complete to detail:
+ * \:cat:<tab> -> 🐱
+ * "\:ca" -> 🐱
+ * @param {EditorView} view
+ * @param {autocomplete.Completion} completion
+ * @param {number} from
+ * @param {number} to
+ * */
+const apply_completion = (view, completion, from, to) => {
+    const currentComp = view.state.sliceDoc(from, to)
+
+    let insert = completion.detail ?? completion.label;
+    const is_emoji = completion.label.startsWith("\\:")
+    if (!is_emoji && currentComp !== completion.label) {
+        const is_inside_string = match_string_complete(view.state, to)
+        if (is_inside_string) {
+            insert = completion.label
+        }
+    }
+
+    view.dispatch({ changes: {from, to, insert}, annotations: autocomplete.pickedCompletion.of(completion), })
+}
+
 const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} */ request_special_symbols) => {
     let found = null
 
     const get_special_symbols = async () => {
         if (found == null) {
-            let data = await request_special_symbols().catch((e) => {
+            const data = await request_special_symbols().catch((e) => {
                 console.warn("Failed to fetch special symbols", e)
                 return null
             })
 
             if (data != null) {
                 const { latex, emoji } = data
-                found = [true, false].map((is_inside_string) =>
-                    [true, false].flatMap((is_emoji) =>
-                        Object.entries(is_emoji ? emoji : latex).map(([label, value]) => {
-                            return {
-                                label,
-                                apply: value != null && (!is_inside_string || is_emoji) ? value : label,
-                                detail: value ?? undefined,
-                                type: "c_special_symbol",
-                                boost: label === "\\in" ? 3 : special_latex_examples.includes(label) ? 2 : special_emoji_examples.includes(value) ? 1 : 0,
-                            }
-                        })
-                    )
+                found = [emoji, latex].flatMap((map) =>
+                    Object.entries(map).map(([label, value]) => {
+                        return {
+                            label,
+                            apply: apply_completion,
+                            detail: value ?? undefined,
+                            type: "c_special_symbol",
+                            boost: label === "\\in" ? 3 : special_latex_examples.includes(label) ? 2 : special_emoji_examples.includes(value) ? 1 : 0,
+                        }
+                    })
                 )
             }
         }
@@ -433,9 +466,7 @@ const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} *
         if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment"]) != null) return null
 
         const result = await get_special_symbols()
-
-        let is_inside_string = match_string_complete(ctx)
-        return await autocomplete.completeFromList(is_inside_string ? result[0] : result[1])(ctx)
+        return await autocomplete.completeFromList(result ?? [])(ctx)
     }
 }
 
