@@ -134,7 +134,7 @@ accItemFileLoadImage.className = "jv-bar-item jv-button"
 accItemFileLoadImage.innerHTML = " "
 accItemFileLoadImage.innerText += "Load Image"
 accItemFileLoadImage.onclick = function () {
-    createCellWithCode("image_data[JIVECore.Files.loadImageIntoDict()]")
+    createCellWithCode("image_data[JIVECore.Files.loadImage!(image_data, image_keys)]")
 }
 const accItemFileImportSequence = document.createElement("a")
 accItemFileImportSequence.href = "#"
@@ -142,7 +142,7 @@ accItemFileImportSequence.className = "jv-bar-item jv-button"
 accItemFileImportSequence.innerHTML = " "
 accItemFileImportSequence.innerText += "Import Sequence"
 accItemFileImportSequence.onclick = function () {
-    createCellWithCode("Images.mosaicview(image_data[JIVECore.Files.loadImageIntoDict()]; fillvalue=0.5, npad=2, ncol=7, rowmajor=true)")
+    createCellWithCode("Images.mosaicview(image_data[JIVECore.Files.loadImage!(image_data, image_keys)]; fillvalue=0.5, npad=2, ncol=7, rowmajor=true)")
 }
 const accItemFileImportVideo = document.createElement("a")
 accItemFileImportVideo.href = "#"
@@ -150,7 +150,7 @@ accItemFileImportVideo.className = "jv-bar-item jv-button"
 accItemFileImportVideo.innerHTML = " "
 accItemFileImportVideo.innerText += "Import Video"
 accItemFileImportVideo.onclick = function () {
-    createCellWithCode("JIVECore.Visualize.gif(image_data[JIVECore.Files.loadImageIntoDict()])")
+    createCellWithCode("JIVECore.Visualize.gif(image_data[JIVECore.Files.loadImage!(image_data, image_keys)])")
 }
 const accItemFileSaveImage = document.createElement("a")
 accItemFileSaveImage.href = "#"
