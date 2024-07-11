@@ -35,7 +35,7 @@ end
 function setcode!(cell, newcode)
     len = Pluto.OT.Unicode.utf16_ncodeunits(cell.code)
     changes = Pluto.OT.Range[Pluto.OT.insert(newcode), Pluto.OT.delete(cell.code)]
-    push!(cell.cm_updates, Pluto.OT.Update(:anon, len, changes))
+    push!(cell.cm_updates, Pluto.OT.Update(:anon, len, changes, OT.Effect[]))
     cell.last_run_code = cell.code = newcode
 end
 
@@ -75,13 +75,13 @@ macro test_notebook_inputs_equal(nbA, nbB, check_paths_equality::Bool=true)
         if $(check_paths_equality)
             @test normpath(nbA.path) == normpath(nbB.path)
         end
-        
+
         @test length(nbA.cells) == length(nbB.cells)
         @test getproperty.(nbA.cells, :cell_id) == getproperty.(nbB.cells, :cell_id)
         @test getproperty.(nbA.cells, :code_folded) == getproperty.(nbB.cells, :code_folded)
         @test getproperty.(nbA.cells, :code) == getproperty.(nbB.cells, :code)
         @test get_metadata_no_default.(nbA.cells) ==  get_metadata_no_default.(nbB.cells)
-        
+
     end |> Base.remove_linenums!
 end
 
@@ -135,10 +135,10 @@ function num_backups_in(dir::AbstractString)
     end
 end
 
-has_embedded_pkgfiles(contents::AbstractString) = 
+has_embedded_pkgfiles(contents::AbstractString) =
     occursin("PROJECT", contents) && occursin("MANIFEST", contents)
 
-has_embedded_pkgfiles(nb::Pluto.Notebook) = 
+has_embedded_pkgfiles(nb::Pluto.Notebook) =
     read(nb.path, String) |> has_embedded_pkgfiles
 
 """
@@ -153,7 +153,7 @@ end
 # We have our own registry for these test! Take a look at https://github.com/JuliaPluto/PlutoPkgTestRegistry#readme for more info about the test packages and their dependencies.
 
 const pluto_test_registry_spec = Pkg.RegistrySpec(;
-    url="https://github.com/JuliaPluto/PlutoPkgTestRegistry", 
+    url="https://github.com/JuliaPluto/PlutoPkgTestRegistry",
     uuid=Base.UUID("96d04d5f-8721-475f-89c4-5ee455d3eda0"),
     name="PlutoPkgTestRegistry",
 )
@@ -166,11 +166,10 @@ mkdir(snapshots_dir)
 function cleanup(session, notebook)
     testset_stack = get(task_local_storage(), :__BASETESTNEXT__, Test.AbstractTestSet[])
     name = replace(join((t.description for t in testset_stack), " – "), r"[\:\?\r\n<>\|\*]" => "-")
-    
+
     path = Pluto.numbered_until_new(joinpath(snapshots_dir, name); suffix=".html", create_file=true)
-    
+
     write(path, Pluto.generate_html(notebook))
-    
+
     WorkspaceManager.unmake_workspace((session, notebook))
 end
-

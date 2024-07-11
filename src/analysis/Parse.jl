@@ -19,7 +19,7 @@ function parse_custom(notebook::Notebook, cell::Cell)::Expr
     # 1.
     raw = if can_insert_filename
         filename = pluto_filename(notebook, cell)
-        ex = Base.parse_input_line(cell.code, filename=filename)
+        ex = Base.parse_input_line(get_code_str(cell), filename=filename)
         if Meta.isexpr(ex, :toplevel)
             # if there is more than one expression:
             if count(a -> !(a isa LineNumberNode), ex.args) > 1
@@ -32,8 +32,8 @@ function parse_custom(notebook::Notebook, cell::Cell)::Expr
         end
     else
         # Meta.parse returns the "extra token..." like we want, but also in cases like "\n\nx = 1\n# comment", so we need to do the multiple expressions check ourselves after all
-        parsed1, next_ind1 = Meta.parse(cell.code, 1, raise=false)
-        parsed2, next_ind2 = Meta.parse(cell.code, next_ind1, raise=false)
+        parsed1, next_ind1 = Meta.parse(get_code_str(cell), 1, raise=false)
+        parsed2, next_ind2 = Meta.parse(get_code_str(cell), next_ind1, raise=false)
 
         if parsed2 === nothing
             # only whitespace or comments after the first expression
@@ -118,15 +118,15 @@ end
 # for expressions that are just values, like :(1) or :(x)
 preprocess_expr(val::Any) = val
 
+get_code_str(cell::Cell) = cell.last_run_code
 
 function updated_topology(old_topology::NotebookTopology{Cell}, notebook::Notebook, updated_cells)
     # NOTE: we take the last run code here
-    get_code_str(cell::Cell) = cell.last_run_code
     get_code_expr(cell::Cell) = parse_custom(notebook, cell)
 
     PlutoDependencyExplorer.updated_topology(
-        old_topology, 
-        notebook.cells, 
+        old_topology,
+        notebook.cells,
         updated_cells;
         get_code_str,
         get_code_expr,
