@@ -6,38 +6,35 @@ module OperationalTransform
 using Pinot: Pinot, Unicode
 using Pinot: Range, retain, delete, insert
 
-# struct SelectionRange
-#     anchor::UInt32
-#     head::UInt32
-# end
-# struct Selection
-#   ranges::Vector{SelectionRange}
-#   main::UInt32
-# end
+struct SelectionRange
+    head::UInt32
+    anchor::UInt32
+end
+
+struct Selection
+    main::UInt32 # zero-based index in `ranges`
+    ranges::Vector{SelectionRange}
+end
+
+const Effect = Selection
 
 struct Update
     client_id::Symbol
     document_length::Int
     ops::Vector{Pinot.Range}
-    # effects::Vector{Selection}
+    effects::Vector{Effect}
 end
 
 to_dict(u) = Dict{Symbol,Any}(:client_id => u.client_id,
                               :document_length => u.document_length,
                               :ops => Pinot.to_obj(u.ops)[:ops],
-                              # :effects => map(e ->
-                              #     Dict{Symbol,Any}(:main => e.main, :ranges => map(r -> (; anchor=r.anchor, head=r.head), e.ranges)),
-                              #     u.effects)
-                              #   )
-                              )
+                              :effects => map(e -> Dict(:main => e.main, :ranges => map(r -> (; head=r.head, anchor=r.anchor), e.ranges)), u.effects))
 
 from_dict(u) = Update(Symbol(u["client_id"]),
                       u["document_length"],
                       Pinot.from_obj(u),
-                      # map(e -> Selection(e["main"],
-                      #                    map(g -> SelectionRange(g["anchor"], g["head"]), e["ranges"])
-                      #    )), u["effects"]
-                      )
+                      haskey(u, "effects") ?  map(e -> Selection(e["main"], map(r -> SelectionRange(r["head"], r["anchor"]), e["ranges"])), u["effects"]) :
+                                              Effect[])
 
 function rebase(over, updates)
     isempty(over) && return updates
@@ -68,14 +65,16 @@ function rebase(over, updates)
     client_updates = Update[]
     for u in old_client_updates
         u_changes = Pinot.transform(changes, u.ops, Pinot.Left)
+
         new_length = Pinot.transform_position(changes, u.document_length)
-        # if new_length != u.document_length
-        #     @warn "ok" new_length u.document_length changes
-        # else
-        #     @info "ok" changes u_changes
-        # end
         changes = Pinot.transform(u.ops, changes, Pinot.Right)
-        push!(client_updates, Update(u.client_id, new_length, u_changes))
+
+        new_effects = map(u.effects) do effect
+            ranges = map(r -> SelectionRange(Pinot.transform_position(changes, r.head), Pinot.transform_position(changes, r.anchor)),
+                                             effect.ranges)
+            Selection(effect.main, ranges)
+        end
+        push!(client_updates, Update(u.client_id, new_length, u_changes, new_effects))
     end
 
     return client_updates

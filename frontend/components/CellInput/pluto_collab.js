@@ -12,6 +12,7 @@ import {
     StateEffect,
     StateField,
     ViewPlugin,
+    Transaction,
 } from "../../imports/CodemirrorPlutoSetup.js"
 import { html } from "../../imports/Preact.js"
 import { ReactWidget } from "./ReactWidget.js"
@@ -87,7 +88,7 @@ function makeUpdates(cell_id, version, fullUpdates) {
 
 const DEBUG_COLLAB = false
 // set to true for cursor sharing (TODO: on the backend)
-const ENABLE_EFFECTS = false
+const ENABLE_EFFECTS = true
 
 /**
  * @typedef CarretEffectValue
@@ -96,8 +97,6 @@ const ENABLE_EFFECTS = false
  *  clientID: string,
  * }}
  */
-
-export const RunEffect = StateEffect.define()
 
 /** @type {any} */
 const CaretEffect = StateEffect.define({
@@ -117,17 +116,27 @@ export const UsersFacet = Facet.define({
     compare: (a, b) => a === b, // <-- TODO: not very performant
 })
 
-/** Shows the name of client on top of its cursor */
+/** Shows the name of client on top of its cursor
+ * @param {string} client_id
+ * @param {string} cell_id
+ * @returns {StateField<import("../../imports/CodemirrorPlutoSetup.js").Tooltip[]>}
+ **/
 const CursorField = (client_id, cell_id) =>
-    StateField.define({
+  StateField.define({
         create: () => [],
+        /**
+         * @param {import("../../imports/CodemirrorPlutoSetup.js").Tooltip[]} tooltips
+         * @param {Transaction} tr
+         **/
         update(tooltips, tr) {
             const users = tr.state.facet(UsersFacet)
             const seen = new Set()
             const newTooltips = tr.effects
                 .filter((effect) => {
                     const clientID = effect.value.clientID
-                    if (!users[clientID]?.focused_cell || users[clientID]?.focused_cell != cell_id) return false
+                    if (effect.is(CaretEffect))
+                      console.log("here", { effect })
+                    // if (!users[clientID]?.focused_cell || users[clientID]?.focused_cell != cell_id) return false
                     if (effect.is(CaretEffect) && clientID != client_id && !seen.has(clientID)) {
                         // TODO: still not in sync with caret
                         seen.add(clientID)
@@ -153,10 +162,18 @@ const CursorField = (client_id, cell_id) =>
         provide: (f) => showTooltip.computeN([f, UsersFacet], (state) => state.field(f)),
     })
 
-/** Shows cursor and selection of user */
+/** Shows cursor and selection of user
+ * @param {string} client_id
+ * @param {string} cell_id
+ * @returns {StateField<{ [user: string] : Selection }>}
+ */
 const CaretField = (client_id, cell_id) =>
     StateField.define({
         create: () => ({}),
+        /**
+         * @param {{ [user: string] : Selection }} value
+         * @param {Transaction} tr
+         **/
         update(value, tr) {
             const users = tr.state.facet(UsersFacet)
             const new_value = {}
@@ -239,7 +256,7 @@ export const pluto_collab = (startVersion, { pluto_actions, cell_id, client_id }
             }
 
             update(/** @type import("../../imports/CodemirrorPlutoSetup.d.ts").ViewUpdate */ update) {
-                if (update.docChanged) // NOTE: remove this to have cursor sync
+                if (ENABLE_EFFECTS || update.docChanged) // NOTE: remove this to have cursor sync
                     this.push()
             }
 
@@ -281,11 +298,15 @@ export const pluto_collab = (startVersion, { pluto_actions, cell_id, client_id }
              * @param {Array<any>} newUpdates
              */
             syncNewUpdates(newUpdates) {
-                const updates = newUpdates.map((u) => ({
-                    changes: ChangeSet.of(delta_to_specs(u.ops), u.document_length, "\n"),
-                    effects:
-                        ENABLE_EFFECTS ?
-                            u.effects.map((selection) => CaretEffect.of({ selection: EditorSelection.fromJSON(selection), clientID: u.client_id })) : undefined,
+                console.log({newUpdates})
+              const updates = newUpdates.map((u) => ({
+                changes: ChangeSet.of(delta_to_specs(u.ops), u.document_length, "\n"),
+                effects:
+                  ENABLE_EFFECTS ?
+                    u.effects.map((selection) => {
+                      console.log("creating caret effect", { selection })
+                      return CaretEffect.of({ selection: EditorSelection.fromJSON(selection), clientID: u.client_id })
+                    }) : undefined,
                     clientID: u.client_id,
                 }))
 
@@ -307,27 +328,26 @@ export const pluto_collab = (startVersion, { pluto_actions, cell_id, client_id }
         }
     )
 
-    // const cursorPlugin = EditorView.updateListener.of((update) => {
-    //     if (!update.selectionSet) {
-    //         return
-    //     }
+    const cursorPlugin = EditorView.updateListener.of((update) => {
+        if (!update.selectionSet) {
+            return
+        }
 
-    //     const effect = CaretEffect.of({ selection: update.view.state.selection, clientID: client_id })
-    //     console.log({selection: effect.value.selection.toJSON()})
-    //     update.view.dispatch({
-    //         effects: [effect],
-    //     })
-    // })
+        const effect = CaretEffect.of({ selection: update.view.state.selection, clientID: client_id })
+        console.log({selection: effect.value.selection.toJSON()})
+        update.view.dispatch({
+            effects: [effect],
+        })
+    })
 
     return [
         collab({
             clientID: client_id, startVersion,
-            // sharedEffects: (tr) => tr.effects.filter((effect) => effect.is(CaretEffect) || effect.is(RunEffect)),
+            sharedEffects: (tr) => tr.effects.filter((effect) => effect.is(CaretEffect)),
         }),
         plugin,
-        // cursorPlugin,
-        // tooltips(),
-        // CaretField(client_id, cell_id),
-        // CursorField(client_id, cell_id),
+        cursorPlugin,
+        CaretField(client_id, cell_id),
+        CursorField(client_id, cell_id),
     ]
 }

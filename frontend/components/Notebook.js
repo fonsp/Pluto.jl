@@ -193,6 +193,7 @@ export const Notebook = ({
                 .map(
                     (cell_id, i) => html`<${CellMemo}
                         key=${cell_id}
+                        users=${notebook.users}
                         cell_result=${notebook.cell_results[cell_id] ?? {
                             cell_id: cell_id,
                             queued: true,
