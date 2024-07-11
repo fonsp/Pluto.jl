@@ -134,17 +134,16 @@ const CursorField = (client_id, cell_id) =>
             const newTooltips = tr.effects
                 .filter((effect) => {
                     const clientID = effect.value.clientID
-                    if (effect.is(CaretEffect))
-                      console.log("here", { effect })
-                    // if (!users[clientID]?.focused_cell || users[clientID]?.focused_cell != cell_id) return false
-                    if (effect.is(CaretEffect) && clientID != client_id && !seen.has(clientID)) {
+                    if (!effect.is(CaretEffect)) return false
+                    if (!users[clientID]?.focused_cell || users[clientID]?.focused_cell != cell_id) return false
+                    if (clientID != client_id && !seen.has(clientID)) {
                         // TODO: still not in sync with caret
                         seen.add(clientID)
                         return true
                     }
                     return false
                 })
-                .map((effect) => ({
+                .map((/** @type {StateEffect<CarretEffectValue>} */effect) => ({
                     pos: effect.value.selection.main.head,
                     hover: true,
                     above: true,
