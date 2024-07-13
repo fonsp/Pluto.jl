@@ -224,9 +224,8 @@ const julia_code_completions_to_cm =
         // console.debug({ definitions })
         // const proposed = new Set()
 
-        let to_complete_onto = to_complete.slice(0, start)
-        let is_field_expression = to_complete_onto.endsWith(".")
-        let is_listing_all_fields_of_a_module = is_field_expression && start === stop
+        const to_complete_onto = to_complete.slice(0, start)
+        const is_field_expression = to_complete_onto.endsWith(".")
 
         return {
             from: start,
@@ -242,7 +241,7 @@ const julia_code_completions_to_cm =
 
             options: [
                 ...results
-                    .filter(([text, _1, _2, is_from_notebook]) => !(is_from_notebook && is_already_a_global(text)))
+                    .filter(([text, _1, _2, is_from_notebook, completion_type]) => (ctx.explicit || completion_type != "path") && !(is_from_notebook && is_already_a_global(text)))
                     .map(([text, value_type, is_exported, is_from_notebook, completion_type, _ignored], i) => {
                         // (quick) fix for identifiers that need to be escaped
                         // Ideally this is done with Meta.isoperator on the julia side

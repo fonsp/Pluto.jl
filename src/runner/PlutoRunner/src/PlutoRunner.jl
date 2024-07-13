@@ -2042,8 +2042,14 @@ function completion_fetcher(query, pos, workspace::Module)
         filter!(is_dict_completion, results)
         sort!(results; by=completion_text)
     else
-        isenough(x) = x ≥ 0
-        filter!(r -> is_kwarg_completion(r) || isenough(score(r)) && !is_path_completion(r), results) # too many candiates otherwise
+        contains_slash = '/' ∈ partial
+        if !contains_slash
+            filter!(!is_path_completion, results)
+        end
+        filter!(
+            r -> is_kwarg_completion(r) || score(r) >= 0,
+            results
+        ) # too many candidates otherwise
     end
 
     exported = completions_exported(results)
