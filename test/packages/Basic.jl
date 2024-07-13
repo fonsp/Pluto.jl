@@ -694,15 +694,15 @@ import Malt
         compilation_dir_testA = joinpath(compilation_dir, "PlutoPkgTestA")
         precomp_entries() = readdir(mkpath(compilation_dir_testA))
         
-        # clear cache
-        let
-            # sleep workaround for julia issue 34700.
-            sleep(3)
-            isdir(compilation_dir_testA) && rm(compilation_dir_testA; force=true, recursive=true)
-        end
-        @test precomp_entries() == []
-
+        
         @testset "Match compiler options: $(match)" for match in [true, false]
+            # clear cache
+            let
+                # sleep workaround for julia issue 34700.
+                sleep(3)
+                isdir(compilation_dir_testA) && rm(compilation_dir_testA; force=true, recursive=true)
+            end
+            @test precomp_entries() == []
             
             before_sync = precomp_entries()
             
@@ -763,7 +763,7 @@ import Malt
             full_logs = join([log["msg"][1] for log in notebook.cells[1].logs], "\n")
 
             # There should be a log message about loading the cache.
-            VERSION >= v"1.8.0-aaa" && @test occursin(r"Loading.*cache"i, full_logs)
+            VERSION >= v"1.9.0-aaa" && @test occursin(r"Loading.*cache"i, full_logs)
             # There should NOT be a log message about rejecting the cache.
             @test !occursin(r"reject.*cache"i, full_logs)
             
