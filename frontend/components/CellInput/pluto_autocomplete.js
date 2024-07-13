@@ -13,34 +13,6 @@ let { autocompletion, completionKeymap, completionStatus, acceptCompletion, sele
 // These should be imported from  @codemirror/autocomplete, but they are not exported.
 const completionState = autocompletion()[1]
 
-/** @type {any} */
-const TabCompletionEffect = StateEffect.define()
-const tabCompletionState = StateField.define({
-    create() {
-        return false
-    },
-
-    update(value, /** @type {Transaction} */ tr) {
-        // Tab was pressed
-        for (let effect of tr.effects) {
-            if (effect.is(TabCompletionEffect)) return true
-        }
-        if (!value) return false
-
-        let previous_selected = autocomplete.selectedCompletion(tr.startState)
-        let current_selected = autocomplete.selectedCompletion(tr.state)
-
-        // Autocomplete window was closed
-        if (previous_selected != null && current_selected == null) {
-            return false
-        }
-        if (previous_selected != null && previous_selected !== current_selected) {
-            return false
-        }
-        return value
-    },
-})
-
 /** @param {EditorView} cm */
 const tab_completion_command = (cm) => {
     // This will return true if the autocomplete select popup is open
@@ -66,9 +38,6 @@ const tab_completion_command = (cm) => {
     // ?([1,2], 3)<TAB> should trigger autocomplete
     if (last_char === ")" && !last_line.includes("?")) return false
 
-    cm.dispatch({
-        effects: TabCompletionEffect.of(10),
-    })
     return autocomplete.startCompletion(cm)
 }
 
@@ -534,7 +503,6 @@ export let pluto_autocomplete = ({ request_autocomplete, request_special_symbols
     }
 
     return [
-        tabCompletionState,
         autocompletion({
             activateOnTyping: ENABLE_CM_AUTOCOMPLETE_ON_TYPE,
             override: [
