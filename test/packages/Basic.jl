@@ -760,14 +760,12 @@ import Malt
             after_run = precomp_entries()
             
 
+            full_logs = join([log["msg"][1] for log in notebook.cells[1].logs], "\n")
+
             # There should be a log message about loading the cache.
-            VERSION >= v"1.8.0-aaa" && @test any(notebook.cells[1].logs) do log
-                occursin(r"Loading.*cache"i, log["msg"][1])
-            end
+            VERSION >= v"1.8.0-aaa" && @test occursin(r"Loading.*cache"i, full_logs)
             # There should NOT be a log message about rejecting the cache.
-            @test !any(notebook.cells[1].logs) do log
-                occursin(r"reject.*cache"i, log["msg"][1])
-            end
+            @test !occursin(r"reject.*cache"i, full_logs)
             
             # Running the import should not have triggered additional precompilation, everything should have been precompiled during Pkg.precompile() (in sync_nbpkg).
             @test after_sync == after_run
