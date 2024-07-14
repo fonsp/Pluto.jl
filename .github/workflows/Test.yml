@@ -45,7 +45,9 @@ jobs:
             - uses: julia-actions/setup-julia@v2
               with:
                   version: ${{ matrix.julia-version }}
-            - uses: julia-actions/cache@v2
+                  arch: ${{ (matrix.julia-version == '1.6') && 'x64' || runner.arch }}
+
+            - uses: julia-actions/cache@v1
 
             # 🚗
             - uses: julia-actions/julia-runtest@v1
