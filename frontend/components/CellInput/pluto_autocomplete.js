@@ -214,7 +214,10 @@ const julia_code_completions_to_cm =
 
             options: [
                 ...results
-                    .filter(([text, _1, _2, is_from_notebook, completion_type]) => (ctx.explicit || completion_type != "path") && !(is_from_notebook && is_already_a_global(text)))
+                    .filter(
+                        ([text, _1, _2, is_from_notebook, completion_type]) =>
+                            (ctx.explicit || completion_type != "path") && !(is_from_notebook && is_already_a_global(text))
+                    )
                     .map(([text, value_type, is_exported, is_from_notebook, completion_type, _ignored], i) => {
                         // (quick) fix for identifiers that need to be escaped
                         // Ideally this is done with Meta.isoperator on the julia side
@@ -392,7 +395,7 @@ const special_emoji_examples = ["🐶", "🐱", "🐭", "🐰", "🐼", "🐨", 
 const apply_completion = (view, completion, from, to) => {
     const currentComp = view.state.sliceDoc(from, to)
 
-    let insert = completion.detail ?? completion.label;
+    let insert = completion.detail ?? completion.label
     const is_emoji = completion.label.startsWith("\\:")
     if (!is_emoji && currentComp !== completion.label) {
         const is_inside_string = match_string_complete(view.state, to)
@@ -401,7 +404,7 @@ const apply_completion = (view, completion, from, to) => {
         }
     }
 
-    view.dispatch({ changes: {from, to, insert}, annotations: autocomplete.pickedCompletion.of(completion), })
+    view.dispatch({ changes: { from, to, insert }, annotations: autocomplete.pickedCompletion.of(completion) })
 }
 
 const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} */ request_special_symbols) => {
