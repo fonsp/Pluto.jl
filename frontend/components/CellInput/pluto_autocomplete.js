@@ -13,34 +13,6 @@ let { autocompletion, completionKeymap, completionStatus, acceptCompletion, sele
 // These should be imported from  @codemirror/autocomplete, but they are not exported.
 const completionState = autocompletion()[1]
 
-/** @type {any} */
-const TabCompletionEffect = StateEffect.define()
-const tabCompletionState = StateField.define({
-    create() {
-        return false
-    },
-
-    update(value, /** @type {Transaction} */ tr) {
-        // Tab was pressed
-        for (let effect of tr.effects) {
-            if (effect.is(TabCompletionEffect)) return true
-        }
-        if (!value) return false
-
-        let previous_selected = autocomplete.selectedCompletion(tr.startState)
-        let current_selected = autocomplete.selectedCompletion(tr.state)
-
-        // Autocomplete window was closed
-        if (previous_selected != null && current_selected == null) {
-            return false
-        }
-        if (previous_selected != null && previous_selected !== current_selected) {
-            return false
-        }
-        return value
-    },
-})
-
 /** @param {EditorView} cm */
 const tab_completion_command = (cm) => {
     // This will return true if the autocomplete select popup is open
@@ -66,9 +38,6 @@ const tab_completion_command = (cm) => {
     // ?([1,2], 3)<TAB> should trigger autocomplete
     if (last_char === ")" && !last_line.includes("?")) return false
 
-    cm.dispatch({
-        effects: TabCompletionEffect.of(10),
-    })
     return autocomplete.startCompletion(cm)
 }
 
@@ -224,9 +193,11 @@ const julia_code_completions_to_cm =
         // console.debug({ definitions })
         // const proposed = new Set()
 
-        let to_complete_onto = to_complete.slice(0, start)
-        let is_field_expression = to_complete_onto.endsWith(".")
-        let is_listing_all_fields_of_a_module = is_field_expression && start === stop
+        const to_complete_onto = to_complete.slice(0, start)
+        const is_field_expression = to_complete_onto.endsWith(".")
+
+        // skip autocomplete's filter if we are completing a ~ path (userexpand)
+        const skip_filter = ctx.matchBefore(/\~[^\s\"]*/) != null
 
         return {
             from: start,
@@ -239,10 +210,14 @@ const julia_code_completions_to_cm =
             validFor,
 
             commitCharacters: julia_commit_characters,
+            filter: !skip_filter,
 
             options: [
                 ...results
-                    .filter(([text, _1, _2, is_from_notebook]) => !(is_from_notebook && is_already_a_global(text)))
+                    .filter(
+                        ([text, _1, _2, is_from_notebook, completion_type]) =>
+                            (ctx.explicit || completion_type != "path") && !(is_from_notebook && is_already_a_global(text))
+                    )
                     .map(([text, value_type, is_exported, is_from_notebook, completion_type, _ignored], i) => {
                         // (quick) fix for identifiers that need to be escaped
                         // Ideally this is done with Meta.isoperator on the julia side
@@ -420,7 +395,7 @@ const special_emoji_examples = ["🐶", "🐱", "🐭", "🐰", "🐼", "🐨", 
 const apply_completion = (view, completion, from, to) => {
     const currentComp = view.state.sliceDoc(from, to)
 
-    let insert = completion.detail ?? completion.label;
+    let insert = completion.detail ?? completion.label
     const is_emoji = completion.label.startsWith("\\:")
     if (!is_emoji && currentComp !== completion.label) {
         const is_inside_string = match_string_complete(view.state, to)
@@ -429,7 +404,7 @@ const apply_completion = (view, completion, from, to) => {
         }
     }
 
-    view.dispatch({ changes: {from, to, insert}, annotations: autocomplete.pickedCompletion.of(completion), })
+    view.dispatch({ changes: { from, to, insert }, annotations: autocomplete.pickedCompletion.of(completion) })
 }
 
 const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} */ request_special_symbols) => {
@@ -535,7 +510,6 @@ export let pluto_autocomplete = ({ request_autocomplete, request_special_symbols
     }
 
     return [
-        tabCompletionState,
         autocompletion({
             activateOnTyping: ENABLE_CM_AUTOCOMPLETE_ON_TYPE,
             override: [

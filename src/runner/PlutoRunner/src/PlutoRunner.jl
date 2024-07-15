@@ -2025,8 +2025,8 @@ function completion_fetcher(query, pos, workspace::Module)
     results, loc, found = FuzzyCompletions.completions(
         query, pos, workspace;
         enable_questionmark_methods=false,
-        enable_expanduser=false,
-        enable_path=false,
+        enable_expanduser=true,
+        enable_path=true,
         enable_methods=false,
         enable_packages=false,
     )
@@ -2034,16 +2034,22 @@ function completion_fetcher(query, pos, workspace::Module)
     if endswith(partial, '.')
         filter!(is_dot_completion, results)
         # we are autocompleting a module, and we want to see its fields alphabetically
-        sort!(results; by=(r -> completion_text(r)))
+        sort!(results; by=completion_text)
     elseif endswith(partial, '/')
         filter!(is_path_completion, results)
-        sort!(results; by=(r -> completion_text(r)))
+        sort!(results; by=completion_text)
     elseif endswith(partial, '[')
         filter!(is_dict_completion, results)
-        sort!(results; by=(r -> completion_text(r)))
+        sort!(results; by=completion_text)
     else
-        isenough(x) = x ≥ 0
-        filter!(r -> is_kwarg_completion(r) || isenough(score(r)) && !is_path_completion(r), results) # too many candiates otherwise
+        contains_slash = '/' ∈ partial
+        if !contains_slash
+            filter!(!is_path_completion, results)
+        end
+        filter!(
+            r -> is_kwarg_completion(r) || score(r) >= 0,
+            results
+        ) # too many candidates otherwise
     end
 
     exported = completions_exported(results)
