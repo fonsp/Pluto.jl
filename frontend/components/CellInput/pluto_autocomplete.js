@@ -196,6 +196,9 @@ const julia_code_completions_to_cm =
         const to_complete_onto = to_complete.slice(0, start)
         const is_field_expression = to_complete_onto.endsWith(".")
 
+        // skip autocomplete's filter if we are completing a ~ path (userexpand)
+        const skip_filter = ctx.matchBefore(/\~[^\s\"]*/) != null
+
         return {
             from: start,
             to: stop,
@@ -207,6 +210,7 @@ const julia_code_completions_to_cm =
             validFor,
 
             commitCharacters: julia_commit_characters,
+            filter: !skip_filter,
 
             options: [
                 ...results
