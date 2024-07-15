@@ -313,6 +313,6 @@ end
         @test isempty(notebook.cells[2].published_objects)
         @test !isempty(notebook.cells[5].published_objects)
         
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
     end
 end

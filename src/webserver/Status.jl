@@ -4,6 +4,7 @@ _default_update_listener() = nothing
 
 Base.@kwdef mutable struct Business
     name::Symbol=:ignored
+    success::Union{Nothing,Bool}=nothing
     started_at::Union{Nothing,Float64}=nothing
     finished_at::Union{Nothing,Float64}=nothing
     subtasks::Dict{Symbol,Business}=Dict{Symbol,Business}()
@@ -15,6 +16,7 @@ end
 
 tojs(b::Business) = Dict{String,Any}(
     "name" => b.name,
+    "success" => b.success,
     "started_at" => b.started_at,
     "finished_at" => b.finished_at,
     "subtasks" => Dict{String,Any}(
@@ -26,6 +28,7 @@ tojs(b::Business) = Dict{String,Any}(
 
 function report_business_started!(business::Business)
     lock(business.lock) do
+        business.success = nothing
         business.started_at = time()
         business.finished_at = nothing
         
@@ -38,7 +41,10 @@ end
 
 
 
-function report_business_finished!(business::Business)
+function report_business_finished!(business::Business, success::Bool=true)
+    if business.success === nothing && business.started_at !== nothing && business.finished_at === nothing
+        business.success = success
+    end
     lock(business.lock) do
         # if it never started, then lets "start" it now
         business.started_at = something(business.started_at, time())
@@ -48,7 +54,7 @@ function report_business_finished!(business::Business)
     
     # also finish all subtasks (this can't be inside the same lock)
     for v in values(business.subtasks)
-        report_business_finished!(v)
+        report_business_finished!(v, success)
     end
     
     business.update_listener_ref[]()
@@ -66,16 +72,20 @@ get_child(parent::Business, name::Symbol) = lock(parent.lock) do
     get!(create_for_child(parent, name), parent.subtasks, name)
 end
 
-report_business_finished!(parent::Business, name::Symbol) = get_child(parent, name) |> report_business_finished!
+report_business_finished!(parent::Business, name::Symbol, success::Bool=true) = report_business_finished!(get_child(parent, name), success)
 report_business_started!(parent::Business, name::Symbol) = get_child(parent, name) |> report_business_started!
 report_business_planned!(parent::Business, name::Symbol) = get_child(parent, name)
 
 
-report_business!(f::Function, parent::Business, args...) = try
-    report_business_started!(parent, args...)
-    f()
-finally
-    report_business_finished!(parent, args...)
+function report_business!(f::Function, parent::Business, name::Symbol)
+    local success = false
+    try
+        report_business_started!(parent, name)
+        f()
+        success = true
+    finally
+        report_business_finished!(parent, name, success)
+    end
 end
 
 delete_business!(business::Business, name::Symbol) = lock(business.lock) do

@@ -300,7 +300,7 @@ import Pluto.Configuration: Options, EvaluationOptions
         @test notebook.cells[4] |> noerror
         @test notebook.cells[1].output.body == "\"double_december = 24\""
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
         🍭.options.evaluation.workspace_use_distributed = false
     end
 

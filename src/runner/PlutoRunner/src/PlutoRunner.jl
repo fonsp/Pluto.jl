@@ -26,7 +26,7 @@ import InteractiveUtils
 using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
 import Base64
-import FuzzyCompletions: FuzzyCompletions, Completion, BslashCompletion, ModuleCompletion, PropertyCompletion, FieldCompletion, PathCompletion, DictCompletion, completions, completion_text, score
+import FuzzyCompletions: FuzzyCompletions, Completion, BslashCompletion, ModuleCompletion, PropertyCompletion, FieldCompletion, PathCompletion, DictCompletion, completion_text, score
 import Base: show, istextmime
 import UUIDs: UUID, uuid4
 import Dates: DateTime
@@ -1928,22 +1928,22 @@ function basic_completion_priority((s, description, exported, from_notebook))
 	end
 end
 
-completed_object_description(x::Function) = "Function"
-completed_object_description(x::Number) = "Number"
-completed_object_description(x::AbstractString) = "String"
-completed_object_description(x::Module) = "Module"
-completed_object_description(x::AbstractArray) = "Array"
-completed_object_description(x::Any) = "Any"
+completion_value_type_inner(x::Function) = :Function
+completion_value_type_inner(x::Number) = :Number
+completion_value_type_inner(x::AbstractString) = :String
+completion_value_type_inner(x::Module) = :Module
+completion_value_type_inner(x::AbstractArray) = :Array
+completion_value_type_inner(x::Any) = :Any
 
 completion_value_type(c::ModuleCompletion) = try
-    completed_object_description(getfield(c.parent, Symbol(c.mod)))
+    completion_value_type_inner(getfield(c.parent, Symbol(c.mod)))::Symbol
 catch
-    nothing
+    :unknown
 end
-completion_value_type(::Completion) = nothing
+completion_value_type(::Completion) = :unknown
 
-completion_detail(::Completion) = nothing
-completion_detail(completion::BslashCompletion) =
+completion_special_symbol_value(::Completion) = nothing
+completion_special_symbol_value(completion::BslashCompletion) =
     haskey(REPL.REPLCompletions.latex_symbols, completion.bslash) ?
         REPL.REPLCompletions.latex_symbols[completion.bslash] :
     haskey(REPL.REPLCompletions.emoji_symbols, completion.bslash) ?
@@ -1985,12 +1985,15 @@ function is_pluto_controlled(m::Module)
 end
 
 function completions_exported(cs::Vector{<:Completion})
-    completed_modules = (c.parent for c in cs if c isa ModuleCompletion)
-    completed_modules_exports = Dict(m => string.(names(m, all=is_pluto_workspace(m), imported=true)) for m in completed_modules)
+    completed_modules = Set{Module}(c.parent for c in cs if c isa ModuleCompletion)
+    completed_modules_exports = Dict(
+		m => Set(names(m, all=is_pluto_workspace(m), imported=true))
+		for m in completed_modules
+	)
 
     map(cs) do c
         if c isa ModuleCompletion
-            c.mod ∈ completed_modules_exports[c.parent]
+            Symbol(c.mod) ∈ completed_modules_exports[c.parent]
         else
             true
         end
@@ -2015,36 +2018,49 @@ completion_type(::FuzzyCompletions.KeywordCompletion) = :keyword
 completion_type(::FuzzyCompletions.PropertyCompletion) = :property
 completion_type(::FuzzyCompletions.Text) = :text
 
-completion_type(::Completion) = nothing
+completion_type(::Completion) = :unknown
 
 "You say Linear, I say Algebra!"
 function completion_fetcher(query, pos, workspace::Module)
-    results, loc, found = completions(query, pos, workspace)
+    results, loc, found = FuzzyCompletions.completions(
+        query, pos, workspace;
+        enable_questionmark_methods=false,
+        enable_expanduser=true,
+        enable_path=true,
+        enable_methods=false,
+        enable_packages=false,
+    )
     partial = query[1:pos]
     if endswith(partial, '.')
         filter!(is_dot_completion, results)
         # we are autocompleting a module, and we want to see its fields alphabetically
-        sort!(results; by=(r -> completion_text(r)))
+        sort!(results; by=completion_text)
     elseif endswith(partial, '/')
         filter!(is_path_completion, results)
-        sort!(results; by=(r -> completion_text(r)))
+        sort!(results; by=completion_text)
     elseif endswith(partial, '[')
         filter!(is_dict_completion, results)
-        sort!(results; by=(r -> completion_text(r)))
+        sort!(results; by=completion_text)
     else
-        isenough(x) = x ≥ 0
-        filter!(r -> isenough(score(r)) && !is_path_completion(r), results) # too many candiates otherwise
+        contains_slash = '/' ∈ partial
+        if !contains_slash
+            filter!(!is_path_completion, results)
+        end
+        filter!(
+            r -> is_kwarg_completion(r) || score(r) >= 0,
+            results
+        ) # too many candidates otherwise
     end
 
     exported = completions_exported(results)
     smooshed_together = map(zip(results, exported)) do (result, rexported)
         (
-            completion_text(result),
-            completion_value_type(result),
-            rexported,
-            completion_from_notebook(result),
-            completion_type(result),
-            completion_detail(result),
+            completion_text(result)::String,
+            completion_value_type(result)::Symbol,
+            rexported::Bool,
+            completion_from_notebook(result)::Bool,
+            completion_type(result)::Symbol,
+            completion_special_symbol_value(result),
         )
     end
 
@@ -2063,11 +2079,14 @@ end
 is_dot_completion(::Union{ModuleCompletion,PropertyCompletion,FieldCompletion}) = true
 is_dot_completion(::Completion)                                                 = false
 
-is_path_completion(::Union{PathCompletion}) = true
-is_path_completion(::Completion)            = false
+is_path_completion(::PathCompletion) = true
+is_path_completion(::Completion)     = false
 
-is_dict_completion(::Union{DictCompletion}) = true
-is_dict_completion(::Completion)            = false
+is_dict_completion(::DictCompletion) = true
+is_dict_completion(::Completion)     = false
+
+is_kwarg_completion(::FuzzyCompletions.KeywordArgumentCompletion) = true
+is_kwarg_completion(::Completion)                                 = false
 
 
 """

@@ -190,9 +190,18 @@ function run!(session::ServerSession)
                 s = session.options.security
                 s.require_secret_for_access || s.require_secret_for_open_links
             end
+            finish() = try
+                HTTP.setstatus(http, 403)
+                HTTP.startwrite(http)
+                write(http, "Forbidden")
+                HTTP.closewrite(http)
+            catch e
+                if !(e isa Base.IOError)
+                    rethrow(e)
+                end
+            end
             if !secret_required || is_authenticated(session, http.message)
                 try
-
                     HTTP.WebSockets.upgrade(http) do clientstream
                         if HTTP.WebSockets.isclosed(clientstream)
                             return
@@ -246,17 +255,14 @@ function run!(session::ServerSession)
                         bt = stacktrace(catch_backtrace())
                         @warn "HTTP upgrade failed for unknown reason" exception = (ex, bt)
                     end
-                end
-            else
-                try
-                    HTTP.setstatus(http, 403)
-                    HTTP.startwrite(http)
-                    HTTP.closewrite(http)
-                catch e
-                    if !(e isa Base.IOError)
-                        rethrow(e)
+                finally
+                    # if we never wrote a response, then do it now
+                    if isopen(http) && !iswritable(http)
+                        finish()
                     end
                 end
+            else
+                finish()
             end
         else
             # then it's a regular HTTP request, not a WS upgrade

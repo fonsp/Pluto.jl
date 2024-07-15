@@ -1,14 +1,18 @@
 ### A Pluto.jl notebook ###
-# v0.19.9
+# v0.19.42
 
 #> [frontmatter]
-#> author_url = "https://github.com/JuliaPluto"
+#> license_url = "https://github.com/JuliaPluto/featured/blob/2a6a9664e5428b37abe4957c1dca0994f4a8b7fd/LICENSES/Unlicense"
 #> image = "https://user-images.githubusercontent.com/6933510/174067690-50c8128d-748b-4f50-8a76-2ce18166642b.png"
 #> order = "3"
+#> title = "Interactivity"
 #> tags = ["basic", "interactivity", "classic"]
-#> author_name = "Pluto.jl"
-#> description = "Slider, buttons, dropdowns and more from PlutoUI.jl!"
 #> license = "Unlicense"
+#> description = "Slider, buttons, dropdowns, and more using PlutoUI.jl!"
+#> 
+#>     [[frontmatter.author]]
+#>     name = "Pluto.jl"
+#>     url = "https://github.com/JuliaPluto"
 
 using Markdown
 using InteractiveUtils
@@ -23,23 +27,10 @@ macro bind(def, element)
     end
 end
 
-# ╔═╡ 071d9ca5-9b42-4583-ad96-a48f93453a0e
-using PlutoUI
-
 # ╔═╡ bc532cd2-c75b-11ea-313f-8b5e771c9227
 md"""# PlutoUI.jl
 
-The [Interactivity sample notebook](./sample/Interactivity.jl) explains how Pluto notebooks can use **`@bind`** to add _interactivity_ to your notebook. It's a simple concept - it uses the same reactivity that you have when editing code, except now you use sliders and buttons, instead of editing code.
-
-However, code like
-
-```julia
-@bind x html"<input type=range min=5 max=15>"
-```
-is hard to memorize, so `PlutoUI` makes it more _Julian_:
-```julia
-@bind x Slider(5:15)
-```
+Pluto notebooks can use **`@bind`** to add _interactivity_ to your notebook. It's a simple concept - it uses the same reactivity that you have when editing code, except now you use sliders and buttons, instead of editing code.
 """
 
 # ╔═╡ 3eff9592-cc63-11ea-2b61-4170d1a7656a
@@ -50,6 +41,15 @@ md"""
 #### To use it in other notebooks
 Simply import the `PlutoUI` package, and Pluto's built-in package manager takes care of the rest!
 """
+
+# ╔═╡ 071d9ca5-9b42-4583-ad96-a48f93453a0e
+using PlutoUI
+
+# ╔═╡ deadce6b-4abc-42b0-9997-07be8637ee94
+TableOfContents()
+
+# ╔═╡ fb6142f6-c765-11ea-29fd-7ff4e823c02b
+space
 
 # ╔═╡ fddb794c-c75c-11ea-1f55-eb9c178424cd
 md"""
@@ -115,6 +115,9 @@ A `NumberField` can be used just like a `Slider`, it just looks different:"
 
 # ╔═╡ 314cb85a-c761-11ea-1cba-b73f84a52be8
 @bind x_different NumberField(0:100, default=20)
+
+# ╔═╡ 3c68b25c-c761-11ea-226a-4f46579a6732
+Resource(dog_url, :width => x * x_different)
 
 # ╔═╡ 104b55ce-cc4f-11ea-1273-092a1717e399
 
@@ -306,6 +309,9 @@ md"The file picker is useful if you want to show off your notebook on a dataset 
 
 The caveat is that large files might take a long time to get processed: everything needs to pass through the browser. If you are using large datasets, a better option is to use `Select` to let the reader pick a filename. You can then read the file using `Base.read(filename, type)`"
 
+# ╔═╡ ebfc61b0-c765-11ea-1d66-cbf1dcdb8bdb
+space
+
 # ╔═╡ 3e5dd7d2-c760-11ea-1dca-6d8720b3558d
 md"# Extras"
 
@@ -344,7 +350,7 @@ md"## DownloadButton"
 
 # ╔═╡ ea00721c-cc4b-11ea-1e82-0b3dbe6a7f1e
 md"""
-The download button is not an **input** element that you can `@bind` to, it's an **output** that you can use to get processed data from your notebook easily. The second argument is the _output filename_.
+The download button is **not an input** element that you can `@bind` to, it's an **output** that you can use to get processed data from your notebook easily. The second argument is the _output filename_.
 """
 
 # ╔═╡ fc12280c-c768-11ea-3ebc-ebcd6b3459c1
@@ -352,6 +358,9 @@ DownloadButton(poem, "poem.txt")
 
 # ╔═╡ 067cbcde-cc4c-11ea-3eed-972dc6d7bb3b
 DownloadButton([0x01, 0x02, 0x03], "secret_data.bin")
+
+# ╔═╡ f69a5d5e-c765-11ea-3fa0-230c6c619730
+space
 
 # ╔═╡ 7da30d97-b28a-4eb9-a2ef-fad599b549d1
 md"""
@@ -386,7 +395,7 @@ md"""
 
 This next high-level component is a bit tricky, but very powerful!
 
-Using `combine`, you can create a single input out of multiple existing ones! In the example below, we create a new input, `wind_speed_input`. Notice that the list of wind directions is *dynamic*: if you add a new direction, a 5th slider will appear!
+Using `combine`, you can create a single input out of multiple existing ones! In the example below, we **create a new input, `wind_speed_input`**. Notice that the list of wind directions is *dynamic*: if you add a new direction, a 5th slider will appear!
 
 """
 
@@ -395,6 +404,15 @@ import PlutoUI: combine
 
 # ╔═╡ a4837897-caae-447a-8db9-7775e7a4d0c8
 
+
+# ╔═╡ f5c421cc-dbdb-459a-9bb4-d648507a87d2
+@bind speeds wind_speed_input(["North", "East", "South", "West"])
+
+# ╔═╡ a4eac824-ba87-473a-b39a-783c4de3f933
+speeds
+
+# ╔═╡ f9052ed8-84cc-4cca-abb2-9363aafc6040
+speeds.North
 
 # ╔═╡ d278189e-6a5b-428a-8c81-ce3d206b042c
 function wind_speed_input(directions::Vector)
@@ -416,21 +434,15 @@ function wind_speed_input(directions::Vector)
 	end
 end
 
-# ╔═╡ f5c421cc-dbdb-459a-9bb4-d648507a87d2
-@bind speeds wind_speed_input(["North", "East", "South", "West"])
-
-# ╔═╡ a4eac824-ba87-473a-b39a-783c4de3f933
-speeds
-
-# ╔═╡ f9052ed8-84cc-4cca-abb2-9363aafc6040
-speeds.North
-
 # ╔═╡ 4ca9c749-08ee-467f-af2c-9b2f13199d72
 md"""
 Use the Live Docs to learn more about `combine` and to see additional examples. 
 
 > 🙋 `combine` is very useful in combination with [HypertextLiteral.jl](https://github.com/MechanicalRabbit/HypertextLiteral.jl), which you can learn using our JavaScript sample notebook. 
 """
+
+# ╔═╡ 0b66c781-ecf2-445e-b2aa-82cb13371e46
+space
 
 # ╔═╡ ad8e9b30-c75d-11ea-1fd0-0b53592135bf
 md"""# Loading resources
@@ -465,9 +477,6 @@ md"Here is a _dog_: ![](https://fonsp.com/img/doggoSmall.jpg)"
 
 # ╔═╡ 6a7e7e54-c75e-11ea-2ea7-ed3da37e9e96
 dog_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Welsh_Springer_Spaniel.jpg/640px-Welsh_Springer_Spaniel.jpg"
-
-# ╔═╡ 3c68b25c-c761-11ea-226a-4f46579a6732
-Resource(dog_url, :width => x * x_different)
 
 # ╔═╡ 9ac7921c-c75e-11ea-30f5-c35e6ee370cb
 t_rex_url = "https://upload.wikimedia.org/wikipedia/commons/transcoded/6/62/Meow.ogg/Meow.ogg.mp3"
@@ -573,6 +582,9 @@ Addressing _local files_ is fragile: if someone else opens the notebook, or if y
 
 Putting images online might be a hassle, but once it works, it will work everywhere! The stateless nature of URLs means that the images will work regardless of how the notebook file is accessed, while keeping a minimal file format."
 
+# ╔═╡ 35523932-cc4f-11ea-0908-2d51c57176b7
+space
+
 # ╔═╡ a245dddc-cc59-11ea-3e1d-1763673ff706
 md"# PlutoUI without Pluto
 
@@ -599,29 +611,14 @@ and you run it without Pluto, then this statement simply assigns `x = 10`.
 # ╔═╡ 0da7bc30-cc64-11ea-1dde-2b7f2dd76036
 md"`Pluto` and `PlutoUI` work independently of each other! In fact, _you_ could write a package with fun input elements, or add `@bind`able values to existing packages."
 
+# ╔═╡ d163f434-cc5a-11ea-19e9-9319ba994efa
+space
+
 # ╔═╡ 512fe760-cc4c-11ea-1c5b-2b32da035aad
 md"# Appendix"
 
 # ╔═╡ 55bcdbf8-cc4c-11ea-1549-87c076a59ff4
 space = html"<br><br><br>"
-
-# ╔═╡ fb6142f6-c765-11ea-29fd-7ff4e823c02b
-space
-
-# ╔═╡ ebfc61b0-c765-11ea-1d66-cbf1dcdb8bdb
-space
-
-# ╔═╡ f69a5d5e-c765-11ea-3fa0-230c6c619730
-space
-
-# ╔═╡ 0b66c781-ecf2-445e-b2aa-82cb13371e46
-space
-
-# ╔═╡ 35523932-cc4f-11ea-0908-2d51c57176b7
-space
-
-# ╔═╡ d163f434-cc5a-11ea-19e9-9319ba994efa
-space
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -629,7 +626,7 @@ PLUTO_PROJECT_TOML_CONTENTS = """
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 
 [compat]
-PlutoUI = "~0.7.39"
+PlutoUI = "~0.7.52"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -638,9 +635,9 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 [[AbstractPlutoDingetjes]]
 deps = ["Pkg"]
-git-tree-sha1 = "8eaf9f1b4921132a4cff3f36a1d9ba923b14a481"
+git-tree-sha1 = "6e1d2a35f2f90a4bc7c2ed98079b2ba09c35b83a"
 uuid = "6e696c72-6542-2067-7265-42206c756150"
-version = "1.1.4"
+version = "1.3.2"
 
 [[ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
@@ -653,48 +650,41 @@ uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
 [[ColorTypes]]
 deps = ["FixedPointNumbers", "Random"]
-git-tree-sha1 = "eb7f0f8307f71fac7c606984ea5fb2817275d6e4"
+git-tree-sha1 = "b10d0b65641d57b8b4d5e234446582de5047050d"
 uuid = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
-version = "0.11.4"
-
-[[CompilerSupportLibraries_jll]]
-deps = ["Artifacts", "Libdl"]
-uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
+version = "0.11.5"
 
 [[Dates]]
 deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 
 [[Downloads]]
-deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
+deps = ["ArgTools", "LibCURL", "NetworkOptions"]
 uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
-
-[[FileWatching]]
-uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
 
 [[FixedPointNumbers]]
 deps = ["Statistics"]
-git-tree-sha1 = "335bfdceacc84c5cdf16aadc768aa5ddfc5383cc"
+git-tree-sha1 = "05882d6995ae5c12bb5f36dd2ed3f61c98cbb172"
 uuid = "53c48c17-4a7d-5ca2-90c5-79b7896eea93"
-version = "0.8.4"
+version = "0.8.5"
 
 [[Hyperscript]]
 deps = ["Test"]
-git-tree-sha1 = "8d511d5b81240fc8e6802386302675bdf47737b9"
+git-tree-sha1 = "179267cfa5e712760cd43dcae385d7ea90cc25a4"
 uuid = "47d2ed2b-36de-50cf-bf87-49c2cf4b8b91"
-version = "0.0.4"
+version = "0.0.5"
 
 [[HypertextLiteral]]
 deps = ["Tricks"]
-git-tree-sha1 = "c47c5fa4c5308f27ccaac35504858d8914e102f9"
+git-tree-sha1 = "7134810b1afce04bbc1045ca1985fbe81ce17653"
 uuid = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
-version = "0.9.4"
+version = "0.9.5"
 
 [[IOCapture]]
 deps = ["Logging", "Random"]
-git-tree-sha1 = "f7be53659ab06ddc986428d3a9dcc95f6fa6705a"
+git-tree-sha1 = "8b72179abc660bfab5e28472e019392b97d0985c"
 uuid = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
-version = "0.2.2"
+version = "0.2.4"
 
 [[InteractiveUtils]]
 deps = ["Markdown"]
@@ -702,9 +692,9 @@ uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 
 [[JSON]]
 deps = ["Dates", "Mmap", "Parsers", "Unicode"]
-git-tree-sha1 = "3c837543ddb02250ef42f4738347454f95079d4e"
+git-tree-sha1 = "31e996f0a15c7b280ba9f76636b3ff9e2ae58c9a"
 uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
-version = "0.21.3"
+version = "0.21.4"
 
 [[LibCURL]]
 deps = ["LibCURL_jll", "MozillaCACerts_jll"]
@@ -726,11 +716,16 @@ uuid = "29816b5a-b9ab-546f-933c-edad1886dfa8"
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 
 [[LinearAlgebra]]
-deps = ["Libdl", "libblastrampoline_jll"]
+deps = ["Libdl"]
 uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [[Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
+
+[[MIMEs]]
+git-tree-sha1 = "65f28ad4b594aebe22157d6fac869786a255b7eb"
+uuid = "6c6e2e6c-3030-632d-7369-2d6c69616d65"
+version = "0.1.4"
 
 [[Markdown]]
 deps = ["Base64"]
@@ -749,25 +744,33 @@ uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
 [[NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 
-[[OpenBLAS_jll]]
-deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
-uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
-
 [[Parsers]]
-deps = ["Dates"]
-git-tree-sha1 = "0044b23da09b5608b4ecacb4e5e6c6332f833a7e"
+deps = ["Dates", "PrecompileTools", "UUIDs"]
+git-tree-sha1 = "8489905bcdbcfac64d1daa51ca07c0d8f0283821"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "2.3.2"
+version = "2.8.1"
 
 [[Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
 [[PlutoUI]]
-deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "UUIDs"]
-git-tree-sha1 = "8d1f54886b9037091edf146b517989fc4a09efec"
+deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "FixedPointNumbers", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "MIMEs", "Markdown", "Random", "Reexport", "URIs", "UUIDs"]
+git-tree-sha1 = "ab55ee1510ad2af0ff674dbcced5e94921f867a9"
 uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-version = "0.7.39"
+version = "0.7.59"
+
+[[PrecompileTools]]
+deps = ["Preferences"]
+git-tree-sha1 = "5aa36f7049a63a1528fe8f7c3f2113413ffd4e1f"
+uuid = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
+version = "1.2.1"
+
+[[Preferences]]
+deps = ["TOML"]
+git-tree-sha1 = "9306f6085165d270f7e3db02af26a400d580f5c6"
+uuid = "21216c6a-2e73-6563-6e65-726566657250"
+version = "1.4.3"
 
 [[Printf]]
 deps = ["Unicode"]
@@ -778,7 +781,7 @@ deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
 uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 
 [[Random]]
-deps = ["SHA", "Serialization"]
+deps = ["Serialization"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [[Reexport]]
@@ -816,9 +819,14 @@ deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [[Tricks]]
-git-tree-sha1 = "6bac775f2d42a611cdfcd1fb217ee719630c4175"
+git-tree-sha1 = "eae1bb484cd63b36999ee58be2de6c178105112f"
 uuid = "410a4b4d-49e4-4fbc-ab6d-cb71b17b3775"
-version = "0.1.6"
+version = "0.1.8"
+
+[[URIs]]
+git-tree-sha1 = "67db6cc7b3821e19ebe75791a9dd19c9b1188f2b"
+uuid = "5c2747f8-b7ea-4ff2-ba2e-563bfd36b1d4"
+version = "1.5.1"
 
 [[UUIDs]]
 deps = ["Random", "SHA"]
@@ -830,10 +838,6 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 [[Zlib_jll]]
 deps = ["Libdl"]
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
-
-[[libblastrampoline_jll]]
-deps = ["Artifacts", "Libdl", "OpenBLAS_jll"]
-uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
 
 [[nghttp2_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -849,6 +853,7 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╟─3eff9592-cc63-11ea-2b61-4170d1a7656a
 # ╟─051f31fc-cc63-11ea-1e2c-0704285ea6a9
 # ╠═071d9ca5-9b42-4583-ad96-a48f93453a0e
+# ╟─deadce6b-4abc-42b0-9997-07be8637ee94
 # ╟─fb6142f6-c765-11ea-29fd-7ff4e823c02b
 # ╟─fddb794c-c75c-11ea-1f55-eb9c178424cd
 # ╟─b819e9a8-c760-11ea-11ee-dd01da663b5c

@@ -65,76 +65,82 @@ function make_workspace((session, notebook)::SN; is_offline_renderer::Bool=false
     end
     
     @debug "Creating workspace process" notebook.path length(notebook.cells)
-    worker = create_workspaceprocess(WorkerType; compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler))
-    
-    Status.report_business_finished!(workspace_business, :create_process)
-    init_status = Status.report_business_started!(workspace_business, :init_process)
-    Status.report_business_started!(init_status, Symbol(1))
-    Status.report_business_planned!(init_status, Symbol(2))
-    Status.report_business_planned!(init_status, Symbol(3))
-    Status.report_business_planned!(init_status, Symbol(4))
+    try
+        worker = create_workspaceprocess(WorkerType; compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler), status=create_status)
+        
+        Status.report_business_finished!(workspace_business, :create_process)
+        init_status = Status.report_business_started!(workspace_business, :init_process)
+        Status.report_business_started!(init_status, Symbol(1))
+        Status.report_business_planned!(init_status, Symbol(2))
+        Status.report_business_planned!(init_status, Symbol(3))
+        Status.report_business_planned!(init_status, Symbol(4))
 
-    let s = session.options.evaluation.workspace_custom_startup_expr
-        s === nothing || Malt.remote_eval_wait(worker, Meta.parseall(s))
-    end
+        let s = session.options.evaluation.workspace_custom_startup_expr
+            s === nothing || Malt.remote_eval_wait(worker, Meta.parseall(s))
+        end
 
-    Malt.remote_eval_wait(worker, quote
-        PlutoRunner.notebook_id[] = $(notebook.notebook_id)
-    end)
+        Malt.remote_eval_wait(worker, quote
+            PlutoRunner.notebook_id[] = $(notebook.notebook_id)
+        end)
 
-    remote_log_channel = Malt.worker_channel(worker, quote
-        channel = Channel{Any}(10)
-        Main.PlutoRunner.setup_plutologger(
-            $(notebook.notebook_id),
+        remote_log_channel = Malt.worker_channel(worker, quote
+            channel = Channel{Any}(10)
+            Main.PlutoRunner.setup_plutologger(
+                $(notebook.notebook_id),
+                channel
+            )
             channel
+        end)
+
+        run_channel = Malt.worker_channel(worker, :(Main.PlutoRunner.run_channel))
+
+        module_name = create_emptyworkspacemodule(worker)
+
+        original_LOAD_PATH, original_ACTIVE_PROJECT = Malt.remote_eval_fetch(worker, :(Base.LOAD_PATH, Base.ACTIVE_PROJECT[]))
+
+        workspace = Workspace(;
+            worker,
+            notebook_id=notebook.notebook_id,
+            remote_log_channel,
+            module_name,
+            original_LOAD_PATH,
+            original_ACTIVE_PROJECT,
+            is_offline_renderer,
         )
-        channel
-    end)
+        
+        
+        Status.report_business_finished!(init_status, Symbol(1))
+        Status.report_business_started!(init_status, Symbol(2))
 
-    run_channel = Malt.worker_channel(worker, :(Main.PlutoRunner.run_channel))
+        @async start_relaying_logs((session, notebook), remote_log_channel)
+        @async start_relaying_self_updates((session, notebook), run_channel)
+        cd_workspace(workspace, notebook.path)
+        
+        Status.report_business_finished!(init_status, Symbol(2))
+        Status.report_business_started!(init_status, Symbol(3))
+        
+        use_nbpkg_environment((session, notebook), workspace)
+        
+        Status.report_business_finished!(init_status, Symbol(3))
+        Status.report_business_started!(init_status, Symbol(4))
+        
+        # TODO: precompile 1+1 with display
+        # sleep(3)
+        eval_format_fetch_in_workspace(workspace, Expr(:toplevel, LineNumberNode(-1), :(1+1)), uuid1(); code_is_effectful=false)
+        
+        Status.report_business_finished!(init_status, Symbol(4))
+        Status.report_business_finished!(workspace_business, :init_process)
+        Status.report_business_finished!(workspace_business)
 
-    module_name = create_emptyworkspacemodule(worker)
-
-    original_LOAD_PATH, original_ACTIVE_PROJECT = Malt.remote_eval_fetch(worker, :(Base.LOAD_PATH, Base.ACTIVE_PROJECT[]))
-
-    workspace = Workspace(;
-        worker,
-        notebook_id=notebook.notebook_id,
-        remote_log_channel,
-        module_name,
-        original_LOAD_PATH,
-        original_ACTIVE_PROJECT,
-        is_offline_renderer,
-    )
-    
-    
-    Status.report_business_finished!(init_status, Symbol(1))
-    Status.report_business_started!(init_status, Symbol(2))
-
-    @async start_relaying_logs((session, notebook), remote_log_channel)
-    @async start_relaying_self_updates((session, notebook), run_channel)
-    cd_workspace(workspace, notebook.path)
-    
-    Status.report_business_finished!(init_status, Symbol(2))
-    Status.report_business_started!(init_status, Symbol(3))
-    
-    use_nbpkg_environment((session, notebook), workspace)
-    
-    Status.report_business_finished!(init_status, Symbol(3))
-    Status.report_business_started!(init_status, Symbol(4))
-    
-    # TODO: precompile 1+1 with display
-    # sleep(3)
-    eval_format_fetch_in_workspace(workspace, Expr(:toplevel, LineNumberNode(-1), :(1+1)), uuid1(); code_is_effectful=false)
-    
-    Status.report_business_finished!(init_status, Symbol(4))
-    Status.report_business_finished!(workspace_business, :init_process)
-    Status.report_business_finished!(workspace_business)
-
-    is_offline_renderer || if notebook.process_status == ProcessStatus.starting
-        notebook.process_status = ProcessStatus.ready
+        is_offline_renderer || if notebook.process_status == ProcessStatus.starting
+            notebook.process_status = ProcessStatus.ready
+        end
+        return workspace
+    catch e
+        Status.report_business_finished!(workspace_business, false)
+        notebook.process_status = ProcessStatus.no_process
+        rethrow(e)
     end
-    return workspace
 end
 
 function use_nbpkg_environment((session, notebook)::SN, workspace=nothing)
@@ -288,13 +294,13 @@ function create_workspaceprocess(WorkerType; compiler_options=CompilerOptions(),
         end
     else
             
-        Status.report_business_started!(status, Symbol(1))
-        Status.report_business_planned!(status, Symbol(2))
+        Status.report_business_started!(status, Symbol("Starting process"))
+        Status.report_business_planned!(status, Symbol("Loading notebook boot environment"))
         
         worker = WorkerType(; exeflags=_convert_to_flags(compiler_options))
             
-        Status.report_business_finished!(status, Symbol(1))
-        Status.report_business_started!(status, Symbol(2))
+        Status.report_business_finished!(status, Symbol("Starting process"))
+        Status.report_business_started!(status, Symbol("Loading notebook boot environment"))
         
         Malt.remote_eval_wait(worker, process_preamble())
     
@@ -678,7 +684,7 @@ function interrupt_workspace(session_notebook::Union{SN,Workspace}; verbose=true
     # TODO: this will also kill "pending" evaluations, and any evaluations started within 100ms of the kill. A global "evaluation count" would fix this.
     # TODO: listen for the final words of the remote process on stdout/stderr: "Force throwing a SIGINT"
     try
-        verbose && @info "Sending interrupt to process $(workspace.worker)"
+        verbose && @info "Sending interrupt to process $(summary(workspace.worker))"
         Malt.interrupt(workspace.worker)
 
         if poll(() -> isready(workspace.dowork_token), 5.0, 5/100)

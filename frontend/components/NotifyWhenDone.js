@@ -1,7 +1,7 @@
 import { html, useEffect, useState } from "../imports/Preact.js"
 
 import { cl } from "../common/ClassTable.js"
-import { is_finished, total_done } from "./ProcessTab.js"
+import { is_finished, total_done } from "./StatusTab.js"
 import { useDelayedTruth } from "./BottomRightPanel.js"
 import { url_logo_small } from "./Editor.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"

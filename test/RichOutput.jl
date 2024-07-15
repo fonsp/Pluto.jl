@@ -189,7 +189,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             @test occursin("102", s)
             @test occursin("103", s)
             
-            WorkspaceManager.unmake_workspace((🍭, notebook))
+            cleanup(🍭, notebook)
             🍭.options.evaluation.workspace_use_distributed = false
         end
 
@@ -322,7 +322,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
 
         # TODO: test lazy loading more rows/cols
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
         🍭.options.evaluation.workspace_use_distributed = false
     end
 

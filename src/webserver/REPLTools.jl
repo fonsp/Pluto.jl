@@ -109,6 +109,16 @@ responses[:complete] = function response_complete(🙋::ClientRequest)
     putclientupdates!(🙋.session, 🙋.initiator, msg)
 end
 
+responses[:complete_symbols] = function response_complete_symbols(🙋::ClientRequest)
+    msg = UpdateMessage(:completion_result, 
+        Dict(
+            :latex => REPL.REPLCompletions.latex_symbols,
+            :emoji => REPL.REPLCompletions.emoji_symbols,
+        ), 🙋.notebook, nothing, 🙋.initiator)
+
+    putclientupdates!(🙋.session, 🙋.initiator, msg)
+end
+
 responses[:docs] = function response_docs(🙋::ClientRequest)
     require_notebook(🙋)
     query = 🙋.body["query"]

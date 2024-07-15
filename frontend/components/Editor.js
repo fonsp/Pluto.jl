@@ -10,7 +10,7 @@ import { serialize_cells, deserialize_cells, detect_deserializer } from "../comm
 
 import { FilePicker } from "./FilePicker.js"
 import { Preamble } from "./Preamble.js"
-import { NotebookMemo as Notebook } from "./Notebook.js"
+import { Notebook } from "./Notebook.js"
 import { BottomRightPanel } from "./BottomRightPanel.js"
 import { DropRuler } from "./DropRuler.js"
 import { SelectionArea } from "./SelectionArea.js"
@@ -145,6 +145,7 @@ const first_true_key = (obj) => {
  * @typedef StatusEntryData
  * @type {{
  *   name: string,
+ *   success?: boolean,
  *   started_at: number?,
  *   finished_at: number?,
  *   timing?: "remote" | "local",
@@ -579,13 +580,10 @@ export class Editor extends Component {
                     }
                 }
             },
-            fold_remote_cells: async (cell_ids, newFolded) => {
-                if (!newFolded && cell_ids.length > 0) {
-                    this.setState({ last_created_cell: cell_ids[cell_ids.length - 1] })
-                }
+            fold_remote_cells: async (cell_ids, new_value) => {
                 await update_notebook((notebook) => {
                     for (let cell_id of cell_ids) {
-                        notebook.cell_inputs[cell_id].code_folded = newFolded
+                        notebook.cell_inputs[cell_id].code_folded = new_value ?? !notebook.cell_inputs[cell_id].code_folded
                     }
                 })
             },
@@ -813,15 +811,9 @@ patch: ${JSON.stringify(
                                 this.waiting_for_bond_to_trigger_execution = false
                             }
                         }
-                        apply_promise
-                            .then(set_waiting)
-                            .catch((e) => {
-                                set_waiting()
-                                throw e
-                            })
-                            .then(() => {
-                                this.send_queued_bond_changes()
-                            })
+                        apply_promise.finally(set_waiting).then(() => {
+                            this.send_queued_bond_changes()
+                        })
 
                         break
                     default:
@@ -1102,6 +1094,9 @@ patch: ${JSON.stringify(
                     ])
                 } finally {
                     this.pending_local_updates--
+                    // this property is used to tell our frontend tests that the updates are done
+                    //@ts-ignore
+                    document.body._update_is_ongoing = this.pending_local_updates > 0
                 }
             })
             last_update_notebook_task = new_task.catch(console.error)
@@ -1187,6 +1182,10 @@ patch: ${JSON.stringify(
         this.run_selected = () => {
             return this.actions.set_and_run_multiple(this.state.selected_cells)
         }
+        this.fold_selected = (new_val) => {
+            if (_.isEmpty(this.state.selected_cells)) return
+            return this.actions.fold_remote_cells(this.state.selected_cells, new_val)
+        }
         this.move_selected = (/** @type {KeyboardEvent} */ e, /** @type {1|-1} */ delta) => {
             if (this.state.selected_cells.length > 0) {
                 const current_indices = this.state.selected_cells.map((id) => this.state.notebook.cell_order.indexOf(id))
@@ -1252,6 +1251,8 @@ patch: ${JSON.stringify(
                     // TODO: let user know that the notebook autosaves
                 }
                 e.preventDefault()
+            } else if (["BracketLeft", "BracketRight"].includes(e.code) && (is_mac_keyboard ? e.altKey && e.metaKey : e.ctrlKey && e.shiftKey)) {
+                this.fold_selected(e.code === "BracketLeft")
             } else if (e.key === "Backspace" || e.key === "Delete") {
                 if (this.delete_selected("Delete")) {
                     e.preventDefault()
@@ -1266,29 +1267,32 @@ patch: ${JSON.stringify(
                 // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
                 // Also pressing "ctrl+shift" on mac causes the key to show up as "/", this madness
                 // I hope we can find a better solution for this later - Dral
+
+                const fold_prefix = is_mac_keyboard ? `⌥${and}⌘` : `Ctrl${and}Shift`
+
                 alert(
-                    `Shortcuts 🎹
+                    `
+⇧${and}Enter:   run cell
+${ctrl_or_cmd_name}${and}Enter:   run cell and add cell below
+${ctrl_or_cmd_name}${and}S:   submit all changes
+Delete or Backspace:   delete empty cell
 
-    ⇧${and}Enter:   run cell
-    ${ctrl_or_cmd_name}${and}Enter:   run cell and add cell below
-    ${ctrl_or_cmd_name}${and}S:   submit all changes
-    Delete or Backspace:   delete empty cell
+PageUp or fn${and}↑:   jump to cell above
+PageDown or fn${and}↓:   jump to cell below
+${alt_or_options_name}${and}↑:   move line/cell up
+${alt_or_options_name}${and}↓:   move line/cell down
 
-    page up or fn${and}↑:   jump to cell above
-    page down or fn${and}↓:   jump to cell below
-    ${alt_or_options_name}${and}↑:   move line/cell up
-    ${alt_or_options_name}${and}↓:   move line/cell down
+${control_name}${and}M:   toggle markdown
+${fold_prefix}${and}[:   hide cell code
+${fold_prefix}${and}]:   show cell code
+${ctrl_or_cmd_name}${and}Q:   interrupt notebook
 
-    
-    Select multiple cells by dragging a selection box from the space between cells.
-    ${ctrl_or_cmd_name}${and}C:   copy selected cells
-    ${ctrl_or_cmd_name}${and}X:   cut selected cells
-    ${ctrl_or_cmd_name}${and}V:   paste selected cells
-    
-    ${control_name}${and}M:   toggle markdown
-    ${ctrl_or_cmd_name}${and}Q:   interrupt notebook
+Select multiple cells by dragging a selection box from the space between cells.
+${ctrl_or_cmd_name}${and}C:   copy selected cells
+${ctrl_or_cmd_name}${and}X:   cut selected cells
+${ctrl_or_cmd_name}${and}V:   paste selected cells
 
-    The notebook file saves every time you run a cell.`
+The notebook file saves every time you run a cell.`
                 )
                 e.preventDefault()
             } else if (e.key === "Escape") {
@@ -1316,10 +1320,14 @@ patch: ${JSON.stringify(
             if (!in_textarea_or_input()) {
                 const serialized = this.serialize_selected()
                 if (serialized) {
-                    navigator.clipboard.writeText(serialized).catch((err) => {
-                        console.error("Error copying cells", e, err)
-                        alert(`Error copying cells: ${err}`)
-                    })
+                    e.preventDefault()
+                    // wait one frame to get transient user activation
+                    requestAnimationFrame(() =>
+                        navigator.clipboard.writeText(serialized).catch((err) => {
+                            console.error("Error copying cells", e, err, navigator.userActivation)
+                            alert(`Error copying cells: ${err?.message ?? err}`)
+                        })
+                    )
                 }
             }
         })
@@ -1413,10 +1421,6 @@ patch: ${JSON.stringify(
         if (old_state?.notebook?.shortpath !== new_state.notebook.shortpath) {
             document.title = "🎈 " + new_state.notebook.shortpath + " — Pluto.jl"
         }
-
-        // this property is used to tell our frontend tests that the updates are done
-        //@ts-ignore
-        document.body._update_is_ongoing = this.pending_local_updates > 0
 
         this.send_queued_bond_changes()
 

@@ -6,12 +6,13 @@ import Logging
 import LoggingExtras
 import .Configuration: CompilerOptions, _merge_notebook_compiler_options, _convert_to_flags
 
-const tiers = [
+const tiers = unique((
+    PkgCompat.PRESERVE_ALL_INSTALLED,
 	Pkg.PRESERVE_ALL,
 	Pkg.PRESERVE_DIRECT,
 	Pkg.PRESERVE_SEMVER,
 	Pkg.PRESERVE_NONE,
-]
+))
 
 const pkg_token = Token()
 
@@ -59,7 +60,7 @@ function sync_nbpkg_core(
     old_topology::NotebookTopology, 
     new_topology::NotebookTopology; 
     on_terminal_output::Function=((args...) -> nothing), 
-    cleanup::Ref{Function}=Ref{Function}(_default_cleanup),
+    cleanup_iolistener::Ref{Function}=Ref{Function}(_default_cleanup),
     lag::Real=0,
     compiler_options::CompilerOptions=CompilerOptions(),
 )
@@ -110,18 +111,18 @@ function sync_nbpkg_core(
         can_skip = isempty(removed) && isempty(added) && notebook.nbpkg_ctx_instantiated
 
         iolistener = let
-            busy_packages = notebook.nbpkg_ctx_instantiated ? added : new_packages
+            busy_packages = notebook.nbpkg_ctx_instantiated ? union(added, removed) : new_packages
             report_to = ["nbpkg_sync", busy_packages...]
             IOListener(callback=(s -> on_terminal_output(report_to, freeze_loading_spinners(s))))
         end
-        cleanup[] = () -> stoplistening(iolistener)
+        cleanup_iolistener[] = () -> stoplistening(iolistener)
 
 
 
         Status.report_business_finished!(pkg_status, :analysis)
         
         # We remember which Pkg.Types.PreserveLevel was used. If it's too low, we will recommend/require a notebook restart later.
-        local used_tier = Pkg.PRESERVE_ALL
+        local used_tier = first(tiers)
         if !can_skip
             # We have a global lock, `pkg_token`, on Pluto-managed Pkg operations, which is shared between all notebooks. If this lock is not ready right now then that means that we are going to wait at the `withtoken(pkg_token)` line below. 
             # We want to report that we are waiting, with a best guess of why.
@@ -129,7 +130,7 @@ function sync_nbpkg_core(
                 reg = !PkgCompat._updated_registries_compat[]
                 
                 # Print something in the terminal logs
-                println(iolistener.buffer, "Waiting for $(reg ? "the package registry to update" : "other notebooks to finish Pkg operations")...")
+                phasemessage(iolistener, "Waiting for $(reg ? "the package registry to update" : "other notebooks to finish Pkg operations")")
                 trigger(iolistener) # manual trigger because we did not start listening yet
                 
                 # Create a business item
@@ -203,10 +204,12 @@ function sync_nbpkg_core(
                         mkeys() = Set(filter(!is_stdlib, [m.name for m in values(PkgCompat.dependencies(notebook.nbpkg_ctx))]))
                         old_manifest_keys = mkeys()
 
-                        Pkg.rm(notebook.nbpkg_ctx, [
-                            Pkg.PackageSpec(name=p)
-                            for p in to_remove
-                        ])
+                        with_io_setup(notebook, iolistener) do
+                            Pkg.rm(notebook.nbpkg_ctx, [
+                                Pkg.PackageSpec(name=p)
+                                for p in to_remove
+                            ])
+                        end
 
                         notebook.nbpkg_install_time_ns = nothing # we lose our estimate of install time
                         # We record the manifest before and after, to prevent recommending a reboot when nothing got removed from the manifest (e.g. when removing GR, but leaving Plots), or when only stdlibs got removed.
@@ -224,18 +227,13 @@ function sync_nbpkg_core(
                         Status.report_business_started!(pkg_status, :add)
                         start_time = time_ns()
                         with_io_setup(notebook, iolistener) do
-                            println(iolistener.buffer, "\nAdding packages...")
+                            phasemessage(iolistener, "Adding packages")
                             
                             # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
                             PkgCompat.clear_auto_compat_entries!(notebook.nbpkg_ctx)
 
                             try
-                                for tier in [
-                                    Pkg.PRESERVE_ALL,
-                                    Pkg.PRESERVE_DIRECT,
-                                    Pkg.PRESERVE_SEMVER,
-                                    Pkg.PRESERVE_NONE,
-                                ]
+                                for tier in tiers
                                     used_tier = tier
 
                                     try
@@ -291,10 +289,10 @@ function sync_nbpkg_core(
                         # changed_versions=Dict{String,Pair}(),
                         restart_recommended=👺 || (
                             (!isempty(to_remove) && old_manifest_keys != new_manifest_keys) ||
-                            used_tier != Pkg.PRESERVE_ALL
+                            used_tier ∉ (Pkg.PRESERVE_ALL, PkgCompat.PRESERVE_ALL_INSTALLED)
                         ),
                         restart_required=👺 || (
-                            used_tier ∈ [Pkg.PRESERVE_SEMVER, Pkg.PRESERVE_NONE]
+                            used_tier ∈ (Pkg.PRESERVE_SEMVER, Pkg.PRESERVE_NONE)
                         ),
                     )
                 end
@@ -305,7 +303,7 @@ function sync_nbpkg_core(
 
     return (
         did_something=👺 || (use_plutopkg_old != use_plutopkg_new),
-        used_tier=Pkg.PRESERVE_ALL,
+        used_tier=PkgCompat.PRESERVE_ALL_INSTALLED,
         # changed_versions=Dict{String,Pair}(),
         restart_recommended=👺 || false,
         restart_required=👺 || false,
@@ -325,7 +323,7 @@ In addition to the steps performed by [`sync_nbpkg_core`](@ref):
 function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topology::NotebookTopology; save::Bool=true, take_token::Bool=true)
     @assert will_run_pkg(notebook)
 
-    cleanup = Ref{Function}(_default_cleanup)
+    cleanup_iolistener = Ref{Function}(_default_cleanup)
 	try
         Status.report_business_started!(notebook.status_tree, :pkg)
         
@@ -348,7 +346,7 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
                 old_topology, 
                 new_topology; 
                 on_terminal_output=iocallback, 
-                cleanup,
+                cleanup_iolistener,
                 lag=session.options.server.simulated_pkg_lag,
                 compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler),
             )
@@ -375,6 +373,7 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 		end
 	catch e
 		bt = catch_backtrace()
+		Status.report_business_finished!(notebook.status_tree, :pkg, false)
 		old_packages = try String.(keys(PkgCompat.project(notebook.nbpkg_ctx).dependencies)); catch; ["unknown"] end
 		new_packages = try String.(external_package_names(new_topology)); catch; ["unknown"] end
 		@warn """
@@ -383,10 +382,11 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 		# TODO: send to user
         showerror(stderr, e, bt)
         
-		error_text = sprint(showerror, e, bt)
+        
+		error_text = e isa PrecompilationFailedException ? e.msg : sprint(showerror, e, bt)
 		for p in notebook.nbpkg_busy_packages
             old = get(notebook.nbpkg_terminal_outputs, p, "")
-			notebook.nbpkg_terminal_outputs[p] = old * "\n\n\nPkg error!\n\n" * error_text
+			notebook.nbpkg_terminal_outputs[p] = old * "\n\n\e[1mPkg error!\e[22m\n" * error_text
 		end
 		notebook.nbpkg_busy_packages = String[]
         update_nbpkg_cache!(notebook)
@@ -402,7 +402,7 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 
 		save && save_notebook(session, notebook)
 	finally
-        cleanup[]()
+        cleanup_iolistener[]()
         Status.report_business_finished!(notebook.status_tree, :pkg)
     end
 end
@@ -426,7 +426,7 @@ end
 function _instantiate(notebook::Notebook, iolistener::IOListener)
     start_time = time_ns()
     with_io_setup(notebook, iolistener) do
-        println(iolistener.buffer, "\nInstantiating...")
+        phasemessage(iolistener, "Instantiating")
         @debug "PlutoPkg: Instantiating" notebook.path 
         
         # update registries if this is the first time
@@ -456,7 +456,7 @@ end
 function _precompile(notebook::Notebook, iolistener::IOListener, compiler_options::CompilerOptions)
     start_time = time_ns()
     with_io_setup(notebook, iolistener) do
-        println(iolistener.buffer, "\nPrecompiling...")
+        phasemessage(iolistener, "Precompiling")
         @debug "PlutoPkg: Precompiling" notebook.path 
         
         env_dir = PkgCompat.env_dir(notebook.nbpkg_ctx)
@@ -471,7 +471,7 @@ end
 function _resolve(notebook::Notebook, iolistener::IOListener)
     startlistening(iolistener)
     with_io_setup(notebook, iolistener) do
-        println(iolistener.buffer, "\nResolving...")
+        phasemessage(iolistener, "Resolving")
         @debug "PlutoPkg: Resolving" notebook.path 
         Pkg.resolve(notebook.nbpkg_ctx)
     end
@@ -542,7 +542,7 @@ function update_nbpkg_core(
     notebook::Notebook; 
     level::Pkg.UpgradeLevel=Pkg.UPLEVEL_MAJOR, 
     on_terminal_output::Function=((args...) -> nothing),
-    cleanup::Ref{Function}=Ref{Function}(default_cleanup),
+    cleanup_iolistener::Ref{Function}=Ref{Function}(default_cleanup),
     compiler_options::CompilerOptions=CompilerOptions(),
 )
     if notebook.nbpkg_ctx !== nothing
@@ -555,13 +555,10 @@ function update_nbpkg_core(
             report_to = ["nbpkg_update", old_packages...]
             IOListener(callback=(s -> on_terminal_output(report_to, freeze_loading_spinners(s))))
         end
-        cleanup[] = () -> stoplistening(iolistener)
-        
-        # We remember which Pkg.Types.PreserveLevel was used. If it's too low, we will recommend/require a notebook restart later.
-        local used_tier = Pkg.PRESERVE_ALL
+        cleanup_iolistener[] = () -> stoplistening(iolistener)
         
         if !isready(pkg_token)
-            println(iolistener.buffer, "Waiting for other notebooks to finish Pkg operations...")
+            phasemessage(iolistener, "Waiting for other notebooks to finish Pkg operations")
             trigger(iolistener)
         end
 
@@ -581,6 +578,7 @@ function update_nbpkg_core(
                 end
 
                 with_io_setup(notebook, iolistener) do
+                    phasemessage(iolistener, "Updating packages")
                     # We temporarily clear the "semver-compatible" [deps] entries, because it is difficult to update them after the update 🙈. TODO
                     PkgCompat.clear_auto_compat_entries!(notebook.nbpkg_ctx)
 
@@ -628,7 +626,7 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
     bp = if backup && save
         writebackup(notebook)
     end
-    cleanup = Ref{Function}(_default_cleanup)
+    cleanup_iolistener = Ref{Function}(_default_cleanup)
 
     try
 		pkg_result = withtoken(notebook.executetoken) do
@@ -646,7 +644,7 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
                 notebook; 
                 level, 
                 on_terminal_output=iocallback,
-                cleanup,
+                cleanup_iolistener,
                 compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler),
             )
 		end
@@ -664,7 +662,7 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
             !isnothing(bp) && isfile(bp) && rm(bp)
         end
 	finally
-        cleanup[]()
+        cleanup_iolistener[]()
 		notebook.nbpkg_busy_packages = String[]
         update_nbpkg_cache!(notebook)
 		send_notebook_changes!(ClientRequest(; session, notebook))

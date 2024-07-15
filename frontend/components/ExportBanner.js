@@ -80,15 +80,6 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
         },
         [print_title]
     )
-    // https://github.com/codemirror/dev/issues/1354
-    useEventListener(
-        window.matchMedia("print"),
-        "change",
-        () => {
-            // window.dispatchEvent(new CustomEvent("beforeprint", { detail: { fake: true } }))
-        },
-        []
-    )
 
     const element_ref = useRef(/** @type {HTMLDialogElement?} */ (null))
 

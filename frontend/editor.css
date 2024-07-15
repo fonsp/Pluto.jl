@@ -7,12 +7,13 @@
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/700.css");
 
 /* @import url("https://fonts.googleapis.com/css?family=Alegreya+Sans:400,400i,500,500i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese"); */
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/400.css");
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/500.css");
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/700.css");
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/400-italic.css");
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/500-italic.css");
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/700-italic.css");
+/* @import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/400.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/500.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/700.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/400-italic.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/500-italic.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/700-italic.css"); */
+@import url("./alegreya.css");
 
 @import url("./juliamono.css");
 @import url("./vollkorn.css");
@@ -36,6 +37,7 @@
     --sans-serif-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
     --lato-ui-font-stack: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, "Apple Color Emoji", "Segoe UI Emoji",
         "Segoe UI Symbol", system-ui, sans-serif;
+    --roboto-mono-font-stack: "Roboto Mono", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", monospace;
     --system-ui-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, "Apple Color Emoji", "Segoe UI Emoji",
         "Segoe UI Symbol", system-ui, sans-serif;
     color-scheme: light dark;
@@ -43,7 +45,7 @@
 
 /* GENERAL PAGE LAYOUT */
 html {
-    font-size: 17px;
+    font-size: 16px;
 }
 
 * {
@@ -74,7 +76,6 @@ main {
     padding-bottom: 4rem;
     padding-left: 25px;
     padding-right: 6px;
-    align-content: center;
     width: 100%;
 }
 
@@ -89,18 +90,12 @@ body:not(.disable_ui) {
 /* | main=25px+700px+6px=731px | pluto-helpbox=350px - 500px | */
 /* min-width: 731px+ */
 
-/* CAN WE HAVE CONTAINER QUERIES PLESSSSS */
-@media screen and (min-width: calc(700px + 25px + 6px)) and (max-width: calc(700px + 25px + 6px + 500px)) {
-    body:not(.disable_ui) pluto-editor.fullscreen main {
-        margin-left: 0px;
-        align-self: flex-start;
-    }
-}
-@media screen and (min-width: calc(700px + 25px + 6px + 500px)) and (max-width: calc(700px + 25px + 6px + 500px + 500px)) {
-    body:not(.disable_ui) pluto-editor.fullscreen main {
-        margin-right: 500px;
-        align-self: flex-end;
-    }
+pluto-editor main {
+    align-self: flex-end;
+    margin-right: max(
+        /* First part: center it */ max(0px, (100% - (700px + 25px + 6px)) / 2),
+        /* Second part: push away from the right to take up all free space */ min((100% - (700px + 25px + 6px)), /* but don't do this more than */ 500px)
+    );
 }
 
 pluto-notebook {
@@ -113,8 +108,8 @@ pluto-notebook {
 /* (can be overriden by custom style) */
 
 pluto-output {
-    font-family: "Alegreya Sans", sans-serif;
-    font-size: 1em;
+    font-family: "Alegreya Sans", "Trebuchet MS", sans-serif;
+    font-size: 14.5px;
     font-weight: 400;
     color: var(--pluto-output-color);
 }
@@ -125,12 +120,13 @@ pluto-output h3,
 pluto-output h4,
 pluto-output h5,
 pluto-output h6 {
-    font-family: "Vollkorn", serif;
+    font-family: "Vollkorn", Palatino, Georgia, serif;
     font-feature-settings: "lnum", "pnum";
     font-weight: 600;
     color: var(--pluto-output-h-color);
     margin-block-start: 1rem;
     margin-block-end: 0rem;
+    line-height: 1.25em;
 }
 
 pluto-output h1,
@@ -190,7 +186,7 @@ pluto-output p {
     margin-block-start: 0px;
     margin-block-end: var(--pluto-cell-spacing);
     word-spacing: 0.053em;
-    line-height: 1.45em;
+    line-height: 1.6em;
 }
 
 /* This allows a linebreak in Markdown using backslash with smaller spacing compared to paragraph in firefox */
@@ -240,7 +236,7 @@ a:hover {
 
 pluto-output code {
     font-family: var(--julia-mono-font-stack);
-    font-size: 0.75em; /* not rem */
+    font-size: 0.9em; /* not rem */
     font-variant-ligatures: none;
 }
 
@@ -271,7 +267,7 @@ pluto-output pre {
     tab-size: 4;
     -moz-tab-size: 4; /* https://bugzilla.mozilla.org/show_bug.cgi?id=737785 */
     font-family: var(--julia-mono-font-stack);
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     font-variant-ligatures: none;
 }
 
@@ -313,12 +309,13 @@ pluto-output div.admonition {
     margin-block-end: 1em;
 }
 pluto-output div.admonition .admonition-title {
-    font-family: "Vollkorn", sans-serif;
+    font-family: "Vollkorn", Palatino, sans-serif;
     font-feature-settings: "lnum", "pnum";
     color: var(--admonition-title-color);
     font-weight: 600;
     margin-block-end: 0px;
     padding-left: 0.3em;
+    font-size: 1.3em;
 }
 pluto-output div.admonition .admonition-title ~ * {
     margin-block-end: 0.5em;
@@ -385,7 +382,7 @@ pluto-output div.footnote p.footnote-title::after {
 }
 pluto-output a.footnote,
 pluto-output div.footnote p.footnote-title {
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--roboto-mono-font-stack);
     font-size: 0.75rem;
     font-weight: 700;
     margin-block-end: 0px;
@@ -521,9 +518,9 @@ header#pluto-nav {
     transform: translateY(0px);
     transition: background-color 0.5s ease-in-out, transform 0.25s cubic-bezier(0.18, 0.89, 0.49, 1.13);
     border-bottom: solid 1px var(--header-border-color);
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--roboto-mono-font-stack);
     font-weight: 400;
-    font-size: 0.75rem;
+    font-size: 0.8rem;
 }
 
 header#pluto-nav.show_export {
@@ -594,17 +591,16 @@ div.export_title {
     /* writing-mode: sideways-lr; */
     writing-mode: vertical-lr;
     transform: rotate(180deg);
-
     margin-top: 10px;
     font-weight: 700;
     font-size: 1rem;
 }
 a.export_card header {
     margin-block: 0px;
-    font-family: "Vollkorn", sans;
+    font-family: "Vollkorn", Palatino, sans-serif;
     /* font-family: system-ui; */
     font-feature-settings: "lnum", "pnum";
-    font-size: 1rem;
+    font-size: 17px;
 }
 a.export_card section {
     color: var(--export-card-text-color);
@@ -1099,7 +1095,7 @@ main > preamble {
     border: 3px solid var(--overlay-button-border);
     border-radius: 12px;
     height: 35px;
-    font-family: "Segoe UI Emoji", "Roboto Mono", monospace;
+    font-family: var(--roboto-mono-font-stack);
     font-size: 0.75rem;
     pointer-events: all;
     /* break-inside: avoid; */
@@ -1355,7 +1351,6 @@ pluto-input .cm-editor {
     border-bottom-right-radius: 4px;
     border: 1px solid var(--normal-cell-color);
     border-left: none;
-    transition: border-color 0.15s ease-in-out;
 
     /* Make sure that scrolling an editor into view gives some breathing room */
     scroll-margin-block: 20vh;
@@ -1406,7 +1401,7 @@ nav#slide_controls > button {
     cursor: pointer;
     /* color: hsl(204, 86%, 35%); */
     color: var(--ui-button-color);
-    font-family: "Segoe UI Emoji", "Roboto Mono", monospace;
+    font-family: var(--roboto-mono-font-stack);
     font-size: 0.75rem;
     z-index: 30;
     /* CodeMirror is 2 */
@@ -1524,7 +1519,6 @@ body:not(.___) pluto-cell.code_folded > pluto-trafficlight {
 @media screen and (any-pointer: fine) {
     body:not(.disable_ui) pluto-cell:hover > pluto-trafficlight {
         background: var(--normal-cell-color);
-        transition: background 0.05s ease-in;
     }
 }
 
@@ -1873,6 +1867,31 @@ pluto-input > .input_context_menu span.icon::after {
     filter: var(--image-filters);
 }
 
+pluto-input > .preview_hidden_code_info {
+    display: none;
+    position: absolute;
+    bottom: -1.1rem;
+    left: 0;
+    right: 0;
+    margin-right: auto;
+    margin-left: auto;
+    height: 1.4rem;
+    width: 19ch;
+    font-style: italic;
+    text-align: center;
+    background: var(--jl-info-color);
+    border-radius: 0.4rem;
+    font-family: var(--system-ui-font-stack);
+    font-size: 0.9rem;
+    z-index: 22;
+    pointer-events: none;
+}
+
+body:not(.process_waiting_for_permission) pluto-cell.code_folded pluto-input > .preview_hidden_code_info,
+pluto-cell.code_folded:focus-within pluto-input > .preview_hidden_code_info {
+    display: block;
+}
+
 /* PKG UI */
 
 pkg-status-mark {
@@ -2053,7 +2072,7 @@ pkg-popup .toggle-terminal {
     font-size: 0.8em;
     margin: 0.5em 0em;
     padding: 0.5em 0.5em;
-    background: var(--pluto-logs-info-color);
+    background: var(--pluto-logs-warn-color);
     border-radius: 0.5em;
 }
 
@@ -2076,12 +2095,15 @@ pkg-terminal > .scroller {
     width: 100%;
 }
 
-pkg-terminal pre {
+body pkg-terminal:not(.asdf) pre:not(.asdf) {
     white-space: pre-wrap;
     word-break: break-all;
     font-size: 0.6rem;
     font-family: "Space Mono", monospace;
+    font-variant-ligatures: none;
     margin: 0;
+    color: inherit;
+    background: none;
 }
 
 pkg-terminal .make-me-spin {
@@ -2143,7 +2165,7 @@ pluto-runarea > span {
     left: 22px;
     width: 45px;
 
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--roboto-mono-font-stack);
     font-size: 0.6em;
     font-style: italic;
     color: var(--pluto-runarea-span-color);
@@ -2267,6 +2289,7 @@ pluto-helpbox > header {
     background-color: var(--helpbox-header-bg-color);
     color: var(--helpbox-header-color);
     font-family: var(--system-ui-font-stack);
+    font-variant-numeric: tabular-nums;
     font-size: 0.9rem;
     --border-radius: 0.4em;
     font-weight: 500;
@@ -2423,6 +2446,7 @@ button.helpbox-tab-key {
     font-weight: inherit;
     font-style: inherit;
     font-size: inherit;
+    font-variant: inherit;
     border-radius: var(--border-radius);
     border: none;
     background: var(--helpbox-header-tab-bg-color);
@@ -2497,7 +2521,7 @@ pluto-helpbox.hidden > section {
 .helpbox-docs {
     font-family: var(--lato-ui-font-stack);
     line-height: 1.5;
-    font-size: 0.9rem;
+    /* font-size: 0.9rem; */
 }
 .helpbox-docs pre,
 .helpbox-docs code,
@@ -2627,6 +2651,9 @@ pl-status.busy {
 pl-status.finished {
     --status-color: var(--process-finished);
 }
+pl-status.failed {
+    --status-color: var(--process-failed);
+}
 
 pl-status.can_open {
     cursor: auto;
@@ -2697,7 +2724,7 @@ pl-status .status-time {
     /* align-self: end; */
     padding-right: 0.5em;
     padding-left: 0.5em;
-    /* font-family: "Roboto Mono", monospace; */
+    /* font-family: var(--roboto-mono-font-stack); */
     opacity: 0.6;
     font-size: 0.7rem;
     font-variant-numeric: tabular-nums;
@@ -2727,6 +2754,9 @@ pl-status .status-time {
 }
 .discrete-progress-bar > div.busy {
     background: var(--process-busy);
+}
+.discrete-progress-bar > div.failed {
+    background: var(--process-failed);
 }
 
 .discrete-progress-bar.mid {
@@ -2795,7 +2825,7 @@ pluto-helpbox.helpbox-process > section {
 footer {
     width: 100%;
     min-height: 3.5rem;
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--roboto-mono-font-stack);
     font-size: 0.75rem;
     background-color: var(--footer-bg-color);
     color: var(--footer-color);
@@ -2888,7 +2918,7 @@ nav#undo_delete {
     margin: 0.75rem;
     padding: 0.5rem;
 
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--roboto-mono-font-stack);
     font-size: 0.75rem;
 
     background-color: var(--white);
@@ -2945,7 +2975,7 @@ pluto-logs-container:not(:empty) {
 }
 
 pluto-logs-container > header {
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--roboto-mono-font-stack);
     font-size: 1.3rem;
     padding: 0.2em;
     padding-bottom: 0;
@@ -2985,7 +3015,7 @@ pluto-logs:not(:first-child):not(:empty) {
 pluto-log-dot {
     /* part 2 */
     /* box-shadow: -2px 0px 1px #00000014; */
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--roboto-mono-font-stack);
     font-size: 0.6rem;
     position: relative;
     display: flex;
@@ -3375,7 +3405,7 @@ pluto-input .cm-editor .cm-scroller,
 .cm-editor .cm-tooltip-autocomplete .cm-completionLabel {
     font-family: var(--julia-mono-font-stack) !important;
     font-variant-ligatures: none;
-    font-size: 0.75rem;
+    font-size: 0.8rem;
 }
 
 pluto-input .cm-editor .cm-content {
@@ -3469,8 +3499,20 @@ pluto-cell.errored .cm-editor .cm-lineNumbers .cm-gutterElement::after {
     color: var(--cm-string-color);
 }
 
+.cm-completionIcon-completion_property::before {
+    color: var(--cm-property-color);
+}
+
 .cm-completionIcon-completion_keyword::before {
     color: var(--cm-keyword-color);
+}
+
+li.completion_keyword_argument .cm-completionLabel {
+    font-style: italic;
+    font-weight: bold;
+}
+.cm-completionIcon-completion_keyword_argument::before {
+    color: var(--cm-number-color);
 }
 
 .cm-completionIcon-c_Any::before,
@@ -3482,6 +3524,9 @@ pluto-popup code.auto_disabled_variable {
 
 .cm-completionIcon-c_Function::before {
     color: var(--cm-function-color);
+}
+.cm-completionIcon-c_Macro::before {
+    color: var(--cm-macro-color);
 }
 
 .cm-completionIcon-c_Array::before {
@@ -3662,4 +3707,33 @@ pluto-cell.hooked_up pluto-output {
     margin-top: 2rem;
     justify-content: flex-end;
     gap: 0.5em;
+}
+
+/*  Styles for markdown copy Button*/
+.markdown-code-block-button {
+    position: relative;
+    cursor: pointer;
+    justify-content: center;
+    align-items: center;
+    display: block;
+    padding: 0;
+    float: right;
+    border: none;
+    background: none;
+}
+
+.markdown-code-block-button::before {
+    content: "";
+    display: block;
+    width: 14px;
+    height: 14px;
+    filter: var(--image-filters);
+}
+
+.markdown-code-block-button::before {
+    background-image: url("https://unpkg.com/ionicons@7.1.0/dist/svg/copy-outline.svg");
+}
+
+.markdown-code-block-copied-code-button::before {
+    background-image: url("https://unpkg.com/ionicons@7.1.0/dist/svg/checkmark-outline.svg");
 }

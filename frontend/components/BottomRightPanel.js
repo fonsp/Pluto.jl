@@ -2,7 +2,7 @@ import { html, useState, useRef, useEffect, useMemo } from "../imports/Preact.js
 import { cl } from "../common/ClassTable.js"
 
 import { LiveDocsTab } from "./LiveDocsTab.js"
-import { is_finished, ProcessTab, total_done, total_tasks, useStatusItem } from "./ProcessTab.js"
+import { is_finished, StatusTab, total_done, total_tasks, useStatusItem } from "./StatusTab.js"
 import { useMyClockIsAheadBy } from "../common/clock sync.js"
 import { BackendLaunchPhase } from "../common/Binder.js"
 import { useEventListener } from "../common/useEventListener.js"
@@ -140,7 +140,7 @@ export let BottomRightPanel = ({
                           sanitize_html=${sanitize_html}
                       />`
                     : open_tab === "process"
-                    ? html`<${ProcessTab}
+                    ? html`<${StatusTab}
                           notebook=${notebook}
                           backend_launch_logs=${backend_launch_logs}
                           my_clock_is_ahead_by=${my_clock_is_ahead_by}

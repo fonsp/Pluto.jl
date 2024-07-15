@@ -8,11 +8,11 @@ import Pkg.Types: VersionRange
 import RegistryInstances
 import ..Pluto
 
-
+const PRESERVE_ALL_INSTALLED = isdefined(Pkg, :PRESERVE_ALL_INSTALLED) ? Pkg.PRESERVE_ALL_INSTALLED : Pkg.PRESERVE_ALL
 
 
 @static if isdefined(Pkg,:REPLMode) && isdefined(Pkg.REPLMode,:complete_remote_package)
-    const REPLMode=Pkg.REPLMode
+    const REPLMode = Pkg.REPLMode
 else
     const REPLMode = Base.get_extension(Pkg, :REPLExt)
 end
@@ -168,7 +168,7 @@ end
 
 # I'm a pirate harrr 🏴‍☠️
 @static if isdefined(Pkg, :can_fancyprint)
-	Pkg.can_fancyprint(io::IOContext{IOBuffer}) = get(io, :sneaky_enable_tty, false) === true
+	Pkg.can_fancyprint(io::Union{IOContext{IOBuffer},IOContext{Base.BufferStream}}) = get(io, :sneaky_enable_tty, false) === true
 end
 
 ###
@@ -349,7 +349,7 @@ end
 
 # ✅ "Public" API using RegistryInstances
 """
-Return all registered versions of the given package. Returns `["stdlib"]` for standard libraries, and a `Vector{VersionNumber}` for registered packages.
+Return all registered versions of the given package. Returns `["stdlib"]` for standard libraries, a `Vector{VersionNumber}` for registered packages, or `["latest"]` if it crashed.
 """
 function package_versions(package_name::AbstractString)::Vector
     if is_stdlib(package_name)
@@ -367,7 +367,7 @@ function package_versions(package_name::AbstractString)::Vector
 						[]
 					end
 				end
-			end
+			end |> sort!
 		catch e
 			@warn "Pkg compat: failed to get installable versions." exception=(e,catch_backtrace())
 			["latest"]

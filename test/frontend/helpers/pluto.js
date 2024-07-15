@@ -134,23 +134,51 @@ export const restartProcess = async (page) => {
     await page.waitForSelector(`#process-status-tab-button.something_is_happening`)
 }
 
+/**
+ * @param {Page} page
+ * @param {boolean} iWantBusiness
+ */
 const waitForPlutoBusy = async (page, iWantBusiness, options) => {
     await page.waitForTimeout(1)
-    await page.waitForFunction(
-        (iWantBusiness) => {
-            let quiet = //@ts-ignore
-                (document?.body?._update_is_ongoing ?? false) === false &&
-                //@ts-ignore
-                (document?.body?._js_init_set?.size ?? 0) === 0 &&
-                document?.body?.classList?.contains("loading") === false &&
-                document?.querySelector(`#process-status-tab-button.something_is_happening`) == null &&
-                document?.querySelector(`pluto-cell.running, pluto-cell.queued, pluto-cell.internal_test_queued`) == null
+    try {
+        await page.waitForFunction(
+            (iWantBusiness) => {
+                const quiet_vals = [
+                    // @ts-ignore
+                    document?.body?._update_is_ongoing,
+                    // @ts-ignore
+                    document?.body?._js_init_set?.size,
+                    document?.body?.classList?.contains("loading"),
+                    document?.querySelector(`#process-status-tab-button.something_is_happening`)?.id,
+                    document?.querySelector(`pluto-cell.running, pluto-cell.queued, pluto-cell.internal_test_queued`)?.id,
+                ]
 
-            return iWantBusiness ? !quiet : quiet
-        },
-        options,
-        iWantBusiness
-    )
+                let quiet =
+                    (quiet_vals[0] ?? false) === false &&
+                    (quiet_vals[1] ?? 0) === 0 &&
+                    quiet_vals[2] === false &&
+                    quiet_vals[3] == null &&
+                    quiet_vals[4] == null
+
+                window["quiet_vals"] = quiet_vals
+
+                return iWantBusiness ? !quiet : quiet
+            },
+            options,
+            iWantBusiness
+        )
+    } catch (e) {
+        console.error(
+            "waitForPlutoBusy failed\n",
+            JSON.parse(
+                await page.evaluate(() => {
+                    return JSON.stringify(window["quiet_vals"])
+                })
+            )
+        )
+
+        throw e
+    }
     await page.waitForTimeout(1)
 }
 
@@ -187,7 +215,7 @@ export const waitForNoUpdateOngoing = async (page, options = {}) => {
     return await page.waitForFunction(
         () =>
             //@ts-ignore
-            document.body?._update_is_ongoing === false,
+            (document.body?._update_is_ongoing ?? false) === false,
         options
     )
 }
@@ -228,6 +256,7 @@ export const runAllChanged = async (page) => {
  * @param {string} text
  */
 export const writeSingleLineInPlutoInput = async (page, plutoInputSelector, text) => {
+    await page.waitForSelector(`${plutoInputSelector} .cm-editor:not(.cm-ssr-fake)`)
     await page.type(`${plutoInputSelector} .cm-content`, text)
     // Wait for CodeMirror to process the input and display the text
     return await page.waitForFunction(
@@ -266,7 +295,7 @@ export const keyboardPressInPlutoInput = async (page, plutoInputSelector, key) =
  * @param {string} plutoInputSelector
  */
 export const clearPlutoInput = async (page, plutoInputSelector) => {
-    await page.waitForSelector(`${plutoInputSelector} .cm-editor`)
+    await page.waitForSelector(`${plutoInputSelector} .cm-editor:not(.cm-ssr-fake)`)
     if ((await page.$(`${plutoInputSelector} .cm-placeholder`)) == null) {
         await page.focus(`${plutoInputSelector} .cm-content`)
         await page.waitForTimeout(500)
@@ -290,7 +319,7 @@ export const manuallyEnterCells = async (page, cells) => {
     for (const cell of cells) {
         const plutoCellId = lastElement(await getCellIds(page))
         plutoCellIds.push(plutoCellId)
-        await page.waitForSelector(`pluto-cell[id="${plutoCellId}"] pluto-input .cm-content`)
+        await page.waitForSelector(`pluto-cell[id="${plutoCellId}"] pluto-input .cm-editor:not(.cm-ssr-fake) .cm-content`)
         await writeSingleLineInPlutoInput(page, `pluto-cell[id="${plutoCellId}"] pluto-input`, cell)
 
         await page.click(`pluto-cell[id="${plutoCellId}"] .add_cell.after`)

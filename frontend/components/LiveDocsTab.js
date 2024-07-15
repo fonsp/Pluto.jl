@@ -47,7 +47,7 @@ export let LiveDocsTab = ({ focus_on_open, desired_doc_query, on_update_doc_quer
             live_doc_search_ref.current.focus({ preventScroll: true })
             live_doc_search_ref.current.select()
         }
-    }, [focus_on_open, live_doc_search_ref.current])
+    }, [focus_on_open])
 
     let fetch_docs = (new_query) => {
         update_state((state) => {

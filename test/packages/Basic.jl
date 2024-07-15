@@ -47,7 +47,7 @@ import Malt
         @test notebook.nbpkg_restart_required_msg === nothing
         @test notebook.nbpkg_ctx_instantiated
         @test notebook.nbpkg_install_time_ns > 0
-        @test notebook.nbpkg_busy_packages |> isempty
+        @test notebook.nbpkg_busy_packages == []
         last_install_time = notebook.nbpkg_install_time_ns
 
         terminals = notebook.nbpkg_terminal_outputs
@@ -79,7 +79,11 @@ import Malt
         @test notebook.nbpkg_restart_required_msg === nothing
         @test notebook.nbpkg_ctx_instantiated
         @test notebook.nbpkg_install_time_ns > last_install_time
-        @test notebook.nbpkg_busy_packages |> isempty
+        @test notebook.nbpkg_terminal_outputs["nbpkg_sync"] != ""
+        @test notebook.nbpkg_terminal_outputs["PlutoPkgTestB"] != ""
+        @test occursin("+ PlutoPkgTestB", notebook.nbpkg_terminal_outputs["PlutoPkgTestB"])
+
+        @test notebook.nbpkg_busy_packages == []
         last_install_time = notebook.nbpkg_install_time_ns
 
         @test haskey(terminals, "PlutoPkgTestB")
@@ -189,6 +193,11 @@ import Malt
         @test notebook.nbpkg_ctx !== nothing
         @test notebook.nbpkg_restart_recommended_msg === nothing
         @test notebook.nbpkg_restart_required_msg === nothing
+        @test notebook.nbpkg_busy_packages == []
+        @test notebook.nbpkg_terminal_outputs["nbpkg_sync"] != ""
+        @test notebook.nbpkg_terminal_outputs["Dates"] != ""
+        @test occursin("- Dates", notebook.nbpkg_terminal_outputs["Dates"])
+        @test occursin("- Dates", notebook.nbpkg_terminal_outputs["nbpkg_sync"])
 
         @test count("Dates", ptoml_contents()) == 0
 
@@ -202,11 +211,16 @@ import Malt
         @test notebook.nbpkg_restart_recommended_msg !== nothing # recommend restart
         @test notebook.nbpkg_restart_required_msg === nothing
         @test notebook.nbpkg_install_time_ns === nothing # removing a package means that we lose our estimate
+        @test notebook.nbpkg_busy_packages == []
+        @test notebook.nbpkg_terminal_outputs["nbpkg_sync"] != ""
+        @test notebook.nbpkg_terminal_outputs["PlutoPkgTestD"] != ""
+        @test occursin("- PlutoPkgTestD", notebook.nbpkg_terminal_outputs["PlutoPkgTestD"])
+        @test occursin("- PlutoPkgTestD", notebook.nbpkg_terminal_outputs["nbpkg_sync"])
 
         @test count("PlutoPkgTestD", ptoml_contents()) == 0
 
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
     end
 
     simple_import_path = joinpath(@__DIR__, "simple_import.jl")
@@ -233,7 +247,7 @@ import Malt
 
         @test notebook.cells[2].output.body == "0.2.2"
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
     end
     
     @testset "Package added by url" begin
@@ -258,7 +272,7 @@ import Malt
 
         @test notebook.cells[2].output.body == "1.0.0"
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
     end
     
     future_notebook = read(joinpath(@__DIR__, "future_nonexisting_version.jl"), String)
@@ -283,7 +297,7 @@ import Malt
 
         @test notebook.cells[2].output.body == "0.3.1"
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
     end
 
 
@@ -337,7 +351,7 @@ import Malt
         @test notebook.nbpkg_restart_required_msg !== nothing
         @test has_embedded_pkgfiles(notebook)
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
     end
     
     pkg_cell_notebook = read(joinpath(@__DIR__, "pkg_cell.jl"), String)
@@ -392,7 +406,7 @@ import Malt
         @test notebook.nbpkg_restart_recommended_msg === nothing
         @test notebook.nbpkg_restart_required_msg === nothing
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
     end
 
     @testset "DrWatson cell" begin
@@ -443,7 +457,7 @@ import Malt
         @test notebook.nbpkg_restart_recommended_msg === nothing
         @test notebook.nbpkg_restart_required_msg === nothing
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
     end
 
     @static if VERSION < v"1.10.0-0" # see https://github.com/fonsp/Pluto.jl/pull/2626#issuecomment-1671244510
@@ -596,7 +610,7 @@ import Malt
 
             @test has_embedded_pkgfiles(notebook)
 
-            WorkspaceManager.unmake_workspace((🍭, notebook))
+            cleanup(🍭, notebook)
         end
 
     end
@@ -649,7 +663,7 @@ import Malt
         wait.(running_tasks)
         empty!(running_tasks)
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
     end
 
     @testset "PlutoRunner Syntax Error" begin
@@ -671,7 +685,7 @@ import Malt
         @test !Pluto.is_just_text(notebook.topology, notebook.cells[2]) # Not a syntax error form
         @test Pluto.is_just_text(notebook.topology, notebook.cells[3])
 
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
     end
 
     @testset "Precompilation" begin
@@ -680,15 +694,15 @@ import Malt
         compilation_dir_testA = joinpath(compilation_dir, "PlutoPkgTestA")
         precomp_entries() = readdir(mkpath(compilation_dir_testA))
         
-        # clear cache
-        let
-            # sleep workaround for julia issue 34700.
-            sleep(3)
-            isdir(compilation_dir_testA) && rm(compilation_dir_testA; force=true, recursive=true)
-        end
-        @test precomp_entries() == []
-
+        
         @testset "Match compiler options: $(match)" for match in [true, false]
+            # clear cache
+            let
+                # sleep workaround for julia issue 34700.
+                sleep(3)
+                isdir(compilation_dir_testA) && rm(compilation_dir_testA; force=true, recursive=true)
+            end
+            @test precomp_entries() == []
             
             before_sync = precomp_entries()
             
@@ -746,19 +760,17 @@ import Malt
             after_run = precomp_entries()
             
 
+            full_logs = join([log["msg"][1] for log in notebook.cells[1].logs], "\n")
+
             # There should be a log message about loading the cache.
-            VERSION >= v"1.8.0-aaa" && @test any(notebook.cells[1].logs) do log
-                occursin(r"Loading.*cache"i, log["msg"][1])
-            end
+            VERSION >= v"1.9.0-aaa" && @test occursin(r"Loading.*cache"i, full_logs)
             # There should NOT be a log message about rejecting the cache.
-            @test !any(notebook.cells[1].logs) do log
-                occursin(r"reject.*cache"i, log["msg"][1])
-            end
+            @test !occursin(r"reject.*cache"i, full_logs)
             
             # Running the import should not have triggered additional precompilation, everything should have been precompiled during Pkg.precompile() (in sync_nbpkg).
             @test after_sync == after_run
             
-            WorkspaceManager.unmake_workspace((🍭, notebook))
+            cleanup(🍭, notebook)
         end
     end
 
@@ -773,7 +785,7 @@ import Malt
         @test isnothing(notebook.nbpkg_ctx)
         @test notebook.cells[2].output.body == sprint(Base.show, LOAD_PATH[begin])
         @test notebook.cells[3].output.body == sprint(Base.show, LOAD_PATH[end])
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+        cleanup(🍭, notebook)
     end
 
     Pkg.Registry.rm(pluto_test_registry_spec)
