@@ -13,10 +13,10 @@
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/400-italic.css");
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/500-italic.css");
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/700-italic.css"); */
-@import url("./alegreya.css");
+@import url("./fonts/alegreya.css");
 
-@import url("./juliamono.css");
-@import url("./vollkorn.css");
+@import url("./fonts/juliamono.css");
+@import url("./fonts/vollkorn.css");
 /* @import url("https://fonts.googleapis.com/css2?family=Lato&display=swap"); */
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/lato@4.4.5/400.css");
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/lato@4.4.5/400-italic.css");

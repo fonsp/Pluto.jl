@@ -1,8 +1,8 @@
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/400.css");
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/400-italic.css");
 
-@import url("vollkorn.css");
-@import url("juliamono.css");
+@import url("./fonts/vollkorn.css");
+@import url("./fonts/juliamono.css");
 
 @import url("light_color.css");
 @import url("dark_color.css");
