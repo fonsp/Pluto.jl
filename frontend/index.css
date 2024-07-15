@@ -4,8 +4,8 @@
 @import url("./fonts/vollkorn.css");
 @import url("./fonts/juliamono.css");
 
-@import url("light_color.css");
-@import url("dark_color.css");
+@import url("./themes/light.css");
+@import url("./themes/dark.css");
 
 @import url("featured-card.css");
 

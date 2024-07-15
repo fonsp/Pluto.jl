@@ -21,8 +21,8 @@
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/lato@4.4.5/400.css");
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/lato@4.4.5/400-italic.css");
 
-@import url("./light_color.css");
-@import url("./dark_color.css");
+@import url("./themes/light.css");
+@import url("./themes/dark.css");
 
 @import url("./featured-card.css");
 
