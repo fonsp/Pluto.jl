@@ -79,10 +79,11 @@ jobs:
 
             process = Pluto.run!(sesh)
 
-            @info "Server started..."
+            @info "Server started"
             sleep(3)
             
-            browser_process = @async run(`${{ steps.setup-firefox.outputs.firefox-path }} -private-window $(url)`)
+            @info "Starting firefox..."
+            browser_process = @async run(`${{ steps.setup-firefox.outputs.firefox-path }} -headless -private-window $(url)`)
 
             begin
               while get_x() == "missing"
