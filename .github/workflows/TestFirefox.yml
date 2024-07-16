@@ -94,15 +94,19 @@ jobs:
             
             @assert browser ∈ ["chrome", "firefox", "safari"]
             
-            browser_process = @async run(
-              if browser == "chrome"
-                `chrome --headless $(url)`
-              elseif browser == "firefox"
-                `firefox -headless -private-window $(url)`
-              else
-                `open -a Safari $(url)`
-              end
-            )
+            browser_process = @async try
+              run(
+                if browser == "chrome"
+                  `chrome --no-first-run $(url)`
+                elseif browser == "firefox"
+                  `firefox -headless -private-window $(url)`
+                else
+                  `open -a Safari $(url)`
+                end
+              )
+            catch e
+              @error "Browser task failed" e
+            end
 
             tstart = time()
 
