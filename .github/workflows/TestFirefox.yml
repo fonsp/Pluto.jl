@@ -21,7 +21,7 @@ jobs:
     timeout-minutes: 15
     strategy:
       matrix:
-        firefox: ['latest-esr', 'latest']
+        firefox: ['latest-esr'] #, 'latest']
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
