@@ -17,10 +17,11 @@ on:
 
 jobs:
   firefox-test:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     timeout-minutes: 15
     strategy:
       matrix:
+        # browser: ['firefox', 'safari']
         firefox: ['latest-esr'] #, 'latest']
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -83,7 +84,10 @@ jobs:
             sleep(3)
             
             @info "Starting firefox..."
-            browser_process = @async run(`${{ steps.setup-firefox.outputs.firefox-path }} -headless -private-window $(url)`)
+            
+            # browser_process = @async run(`${{ steps.setup-firefox.outputs.firefox-path }} -headless -private-window $(url)`)
+            
+            browser_process = @async run(`open -a Safari $(url)`)
             
             tstart = time()
 
