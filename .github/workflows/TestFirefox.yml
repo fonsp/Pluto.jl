@@ -1,4 +1,4 @@
-name: Firefox basic launch test
+name: Browser basic launch test
 
 # same as the frontend tests
 on:
@@ -17,11 +17,12 @@ on:
 
 jobs:
   firefox-test:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     timeout-minutes: 15
     strategy:
       matrix:
-        firefox: ['latest-esr'] #, 'latest']
+        browser: ['firefox', 'safari', 'chrome']
+        
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
@@ -30,20 +31,29 @@ jobs:
       - uses: julia-actions/setup-julia@v1
         with:
             version: "1.6" # our lowest supported version
+            arch: x64
 
       - name: Install Pluto.jl packages
         run: |
             julia --project=$GITHUB_WORKSPACE -e "using Pkg; Pkg.instantiate()"
 
-      - name: Setup firefox
-        id: setup-firefox
+      - id: setup-firefox
         uses: browser-actions/setup-firefox@v1
         with:
-          firefox-version: ${{ matrix.firefox }}
+          firefox-version: 'latest-esr'
 
+      - id: setup-chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: 'latest'
+
+      
       - run: |
-          echo Installed firefox versions: ${{ steps.setup-firefox.outputs.firefox-version }}
           ${{ steps.setup-firefox.outputs.firefox-path }} --version
+
+      
+      - run: |
+          ${{ steps.setup-chrome.outputs.chrome-path }} --version
 
       - run: |
           julia --project=$GITHUB_WORKSPACE -e 'import Pluto
@@ -82,16 +92,33 @@ jobs:
             @info "Server started"
             sleep(3)
             
-            @info "Starting firefox..."
-            browser_process = @async run(`${{ steps.setup-firefox.outputs.firefox-path }} -headless -private-window $(url)`)
             
+            const browser = "${{ matrix.browser }}"
+            @info "Starting browser..." browser
+            
+            @assert browser ∈ ["chrome", "firefox", "safari"]
+            
+            browser_process = @async try
+              run(
+                if browser == "chrome"
+                  `${{ steps.setup-chrome.outputs.chrome-path }} --no-first-run $(url)`
+                elseif browser == "firefox"
+                  `${{ steps.setup-firefox.outputs.firefox-path }} -headless -private-window $(url)`
+                else
+                  `open -a Safari $(url)`
+                end
+              )
+            catch e
+              @error "Browser task failed" e
+            end
+
             tstart = time()
 
             begin
               while get_x() == "missing"
                 @info "Waiting..."
                 sleep(1)
-                if time() - tstart > 30
+                if time() - tstart > 120
                   error("This took too long!")
                 end
               end
