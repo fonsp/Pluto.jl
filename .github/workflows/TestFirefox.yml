@@ -51,6 +51,10 @@ jobs:
       - run: |
           ${{ steps.setup-firefox.outputs.firefox-path }} --version
 
+      
+      - run: |
+          ${{ steps.setup-chrome.outputs.chrome-path }} --version
+
       - run: |
           julia --project=$GITHUB_WORKSPACE -e 'import Pluto
 
@@ -97,9 +101,9 @@ jobs:
             browser_process = @async try
               run(
                 if browser == "chrome"
-                  `chrome --no-first-run $(url)`
+                  `${{ steps.setup-chrome.outputs.chrome-path }} --no-first-run $(url)`
                 elseif browser == "firefox"
-                  `firefox -headless -private-window $(url)`
+                  `${{ steps.setup-firefox.outputs.firefox-path }} -headless -private-window $(url)`
                 else
                   `open -a Safari $(url)`
                 end
