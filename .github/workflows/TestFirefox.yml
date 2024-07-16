@@ -1,4 +1,4 @@
-name: Firefox basic launch test
+name: Browser basic launch test
 
 # same as the frontend tests
 on:
@@ -21,8 +21,8 @@ jobs:
     timeout-minutes: 15
     strategy:
       matrix:
-        # browser: ['firefox', 'safari']
-        firefox: ['latest-esr'] #, 'latest']
+        browser: ['firefox', 'safari', 'chrome']
+        
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
@@ -37,14 +37,18 @@ jobs:
         run: |
             julia --project=$GITHUB_WORKSPACE -e "using Pkg; Pkg.instantiate()"
 
-      - name: Setup firefox
-        id: setup-firefox
+      - id: setup-firefox
         uses: browser-actions/setup-firefox@v1
         with:
-          firefox-version: ${{ matrix.firefox }}
+          firefox-version: 'latest-esr'
 
+      - id: setup-chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: 'latest'
+
+      
       - run: |
-          echo Installed firefox versions: ${{ steps.setup-firefox.outputs.firefox-version }}
           ${{ steps.setup-firefox.outputs.firefox-path }} --version
 
       - run: |
@@ -84,12 +88,22 @@ jobs:
             @info "Server started"
             sleep(3)
             
-            @info "Starting firefox..."
             
-            # browser_process = @async run(`${{ steps.setup-firefox.outputs.firefox-path }} -headless -private-window $(url)`)
+            const browser = "${{ matrix.browser }}"
+            @info "Starting browser..." browser
             
-            browser_process = @async run(`open -a Safari $(url)`)
+            @assert browser ∈ ["chrome", "firefox", "safari"]
             
+            browser_process = @async run(
+              if browser == "chrome"
+                `chrome --headless $(url)`
+              elseif browser == "firefox"
+                `firefox -headless -private-window $(url)`
+              else
+                `open -a Safari $(url)`
+              end
+            )
+
             tstart = time()
 
             begin
