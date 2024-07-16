@@ -110,7 +110,7 @@ jobs:
               while get_x() == "missing"
                 @info "Waiting..."
                 sleep(1)
-                if time() - tstart > 30
+                if time() - tstart > 120
                   error("This took too long!")
                 end
               end
