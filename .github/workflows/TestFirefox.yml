@@ -84,11 +84,16 @@ jobs:
             
             @info "Starting firefox..."
             browser_process = @async run(`${{ steps.setup-firefox.outputs.firefox-path }} -headless -private-window $(url)`)
+            
+            tstart = time()
 
             begin
               while get_x() == "missing"
                 @info "Waiting..."
                 sleep(1)
+                if time() - tstart > 30
+                  error("This took too long!")
+                end
               end
               
               @info "yay it worked!" get_x()
