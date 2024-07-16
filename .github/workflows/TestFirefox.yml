@@ -31,6 +31,7 @@ jobs:
       - uses: julia-actions/setup-julia@v1
         with:
             version: "1.6" # our lowest supported version
+            arch: x64
 
       - name: Install Pluto.jl packages
         run: |
