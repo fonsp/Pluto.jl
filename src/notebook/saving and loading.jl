@@ -1,6 +1,7 @@
 
 
 const _notebook_header = "### A JIVEbook.jl notebook ###"
+const _pluto_notebook_header = "### A Pluto.jl notebook ###"
 const _notebook_metadata_prefix = "#> "
 # We use a creative delimiter to avoid accidental use in code
 # so don't get inspired to suddenly use these in your code!
@@ -158,7 +159,7 @@ save_notebook(notebook::Notebook) = save_notebook(notebook, notebook.path)
 function _notebook_metadata!(@nospecialize(io::IO))
     firstline = String(readline(io))::String
 
-    if firstline != _notebook_header
+    if firstline != _notebook_header || _pluto_notebook_header
         error(
             if occursin("<!DOCTYPE", firstline) || occursin("<html", firstline)
                 """File is an HTML file, not a notebook file. Open the file directly, and click the "Edit or run" button to get the notebook file."""
