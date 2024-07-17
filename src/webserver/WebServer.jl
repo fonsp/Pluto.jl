@@ -280,7 +280,7 @@ function run!(session::ServerSession)
                 # https://github.com/fonsp/Pluto.jl/pull/722
                 HTTP.setheader(http, "Referrer-Policy" => "same-origin")
                 # https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#:~:text=is%202%20minutes.-,14.38%20Server
-                HTTP.setheader(http, "Server" => "Pluto.jl/$(ERIS_VERSION_STR[2:end]) Julia/$(JULIA_VERSION_STR[2:end])")
+                HTTP.setheader(http, "Server" => "Pluto.jl/$(JIVEBOOK_VERSION_STR[2:end]) Julia/$(JULIA_VERSION_STR[2:end])")
                 HTTP.startwrite(http)
                 write(http, request.response.body)
             catch e
@@ -313,7 +313,7 @@ function run!(session::ServerSession)
     # Trigger ServerStartEvent with server details
     try_event_call(session, ServerStartEvent(address, port))
 
-    if ERIS_VERSION >= v"0.0.1" && frontend_directory() == "frontend"
+    if JIVEBOOK_VERSION >= v"0.0.2" && frontend_directory() == "frontend"
         @info("It looks like you are developing the Pluto package, using the unbundled frontend...")
     end
 

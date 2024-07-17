@@ -14,7 +14,7 @@
         head.appendChild(link)
     }
 
-    addCss("./eris_components/jive.css")
+    addCss("./jive_components/jive.css")
 
     // make space for sidebar
     const frameDiv = document.getElementById("frame")

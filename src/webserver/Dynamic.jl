@@ -99,7 +99,7 @@ Firebasey.use_triple_equals_for_arrays[] = true
 
 function notebook_to_js(notebook::Notebook)
     Dict{String,Any}(
-        "pluto_version" => ERIS_VERSION_STR,
+        "pluto_version" => JIVEBOOK_VERSION_STR,
         "notebook_id" => notebook.notebook_id,
         "path" => notebook.path,
         "shortpath" => basename(notebook.path),
@@ -411,7 +411,7 @@ responses[:connect] = function response_connect(🙋::ClientRequest)
         :notebook_exists => (🙋.notebook !== nothing),
         :options => 🙋.session.options,
         :version_info => Dict(
-            :pluto => ERIS_VERSION_STR,
+            :pluto => JIVEBOOK_VERSION_STR,
             :julia => JULIA_VERSION_STR,
             :dismiss_update_notification => 🙋.session.options.server.dismiss_update_notification,
         ),

@@ -14,7 +14,7 @@ function addCss(fileName) {
     head.appendChild(link)
 }
 
-addCss("./eris_components/jive.css")
+addCss("./jive_components/jive.css")
 
 // CONSTANTS
 const timeoutValue = 1000

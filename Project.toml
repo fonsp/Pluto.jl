@@ -1,7 +1,7 @@
-name = "Eris"
+name = "JIVEbook"
 uuid = "1f674130-1f75-11ef-3a7c-430c8081b4f7"
 license = "MIT"
-authors = ["Fons van der Plas <fons@plutojl.org>"]
+authors = ["Biagio Mandracchia <biagio.mandracchia@uva.es>","Pablo Villacorta Aylagas <pablo.villacorta@uva.es>","Fons van der Plas <fons@plutojl.org>"]
 version = "0.0.2"
 
 [deps]

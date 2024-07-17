@@ -1,8 +1,8 @@
 module SessionActions
 
-import ..Eris: Eris, Status, ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, cutename, readwrite, update_save_run!, update_nbpkg_cache!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, try_event_call, NewNotebookEvent, OpenNotebookEvent, ShutdownNotebookEvent, @asynclog, ProcessStatus, maybe_convert_path_to_wsl, move_notebook!, throttled
+import ..JIVEbook: JIVEbook, Status, ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, cutename, readwrite, update_save_run!, update_nbpkg_cache!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, try_event_call, NewNotebookEvent, OpenNotebookEvent, ShutdownNotebookEvent, @asynclog, ProcessStatus, maybe_convert_path_to_wsl, move_notebook!, throttled
 using FileWatching
-import ..Eris.DownloadCool: download_cool
+import ..JIVEbook.DownloadCool: download_cool
 import HTTP
 
 import UUIDs: UUID, uuid1
@@ -79,13 +79,13 @@ function open(session::ServerSession, path::AbstractString;
         notebook.compiler_options = compiler_options
     end
     if clear_frontmatter
-        Eris.set_frontmatter!(notebook, nothing)
+        JIVEbook.set_frontmatter!(notebook, nothing)
     end
 
     session.notebooks[notebook.notebook_id] = notebook
     
     if execution_allowed && session.options.evaluation.run_notebook_on_load
-        Eris._report_business_cells_planned!(notebook)
+        JIVEbook._report_business_cells_planned!(notebook)
     end
     
     if !execution_allowed
@@ -188,7 +188,7 @@ function add(session::ServerSession, notebook::Notebook; run_async::Bool=true)
     
     notebook.status_tree.update_listener_ref[] = first(throttled(1.0 / 20) do
         # TODO: this throttle should be trailing
-        Eris.send_notebook_changes!(Eris.ClientRequest(; session, notebook))
+        JIVEbook.send_notebook_changes!(JIVEbook.ClientRequest(; session, notebook))
     end)
 
     return notebook
@@ -199,7 +199,7 @@ Generate a non-existing new notebook filename, and write `contents` to that file
 
 # Example
 ```julia
-save_upload(some_notebook_data; filename_base="hello") == "~/.julia/Eris_notebooks/hello 5.jl"
+save_upload(some_notebook_data; filename_base="hello") == "~/.julia/jive_notebooks/hello 5.jl"
 ```
 """
 function save_upload(contents::Union{String,Vector{UInt8}}; filename_base::Union{Nothing,AbstractString}=nothing)
@@ -221,7 +221,7 @@ function new(session::ServerSession; run_async=true, notebook_id::UUID=uuid1())
     notebook = if session.options.compiler.sysimage === nothing
         emptynotebook()
     else
-        Notebook([Cell("import Pkg"), Cell("# This cell disables Eris's package manager and activates the global environment. Click on ? inside the bubble next to Pkg.activate to learn more.\n# (added automatically because a sysimage is used)\nPkg.activate()"), Cell()])
+        Notebook([Cell("import Pkg"), Cell("# This cell disables JIVEbook's package manager and activates the global environment. Click on ? inside the bubble next to Pkg.activate to learn more.\n# (added automatically because a sysimage is used)\nPkg.activate()"), Cell()])
     end
 
     # Run NewNotebookEvent handler before assigning ID

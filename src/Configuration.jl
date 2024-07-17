@@ -12,7 +12,7 @@ module Configuration
 
 using Configurations # https://github.com/Roger-luo/Configurations.jl
 
-import ..Eris: tamepath
+import ..JIVEbook: tamepath
 
 safepwd() = try
     pwd()

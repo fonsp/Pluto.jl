@@ -1,2 +1,2 @@
-import Eris
-Eris.run()
+import JIVEbook
+JIVEbook.run()

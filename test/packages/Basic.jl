@@ -482,8 +482,8 @@ import Malt
                 Pkg.add("Distributed") 
 
                 import Pluto
-                @info Pluto.ERIS_VERSION
-                @assert Pluto.ERIS_VERSION == v"0.14.7"
+                @info Pluto.JIVEBOOK_VERSION
+                @assert Pluto.JIVEBOOK_VERSION == v"0.14.7"
             end)
 
             @test Malt.remote_eval_fetch(Main, test_worker, quote

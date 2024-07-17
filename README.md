@@ -1,15 +1,15 @@
-# Eris
+# JIVEbook
 
-Eris is a Notebook platform for scientific programing in Julia using the JIVE framework. Eris is based on Pluto.jl. 
+JIVEbook is a Notebook platform for scientific programing in Julia using the JIVE framework. JIVEbook is based on Pluto.jl. 
 
-Eris notebooks are:
+JIVEbook notebooks are:
 
-- _lightweight_ - Eris is based on the package Pluto. Both are written in pure Julia and is easy to install.
+- _lightweight_ - JIVEbook is based on the package Pluto. Both are written in pure Julia and is easy to install.
 - _simple_ - no hidden workspace state; friendly UI.
 
 
 ## Input
-An Eris notebook is made up of small blocks of Julia code (cells) and together they form a notebook.
+A JIVEbook notebook is made up of small blocks of Julia code (cells) and together they form a notebook.
 
 Notebook cells can contain arbitrary Julia code, and you can use external libraries. There are no code rewrites or wrappers, Neptune just looks at your code once before evaluation.
 
@@ -54,31 +54,31 @@ But for those who want to dive deeper - you can use HTML, JavaScript and CSS to 
 ### Installation
 
 Run Julia, enter `]` to bring up Julia's [package manager](https://docs.julialang.org/en/v1/stdlib/Pkg/),
-and add the Eris package:
+and add the JIVEbook package:
 
 ```julia
 julia> ]
-(v1.7) pkg> add Eris
+(v1.7) pkg> add JIVEbook
 ```
 
 _Press `Ctrl+C` to return to the `julia>` prompt._
 
 ### Usage
 
-To run Eris, run the following commands in your Julia REPL:
+To run JIVEbook, run the following commands in your Julia REPL:
 
 ```julia
-julia> import Eris
-julia> Eris.run()
+julia> import JIVEbook
+julia> JIVEbook.run()
 ```
 
-Eris will open in your browser, and you can get started!
+JIVEbook will open in your browser, and you can get started!
 
 
 
 ## License
 
-Eris.jl is open source and built by gluing together other open source software:
+JIVEbook.jl is open source and built by gluing together other open source software:
 
 -   `Pluto.jl` - [MIT Licensed](https://github.com/fonsp/Pluto.jl/blob/main/LICENSE). 
 -   `Julia` - [license](https://github.com/JuliaLang/julia/blob/master/LICENSE.md)
@@ -91,4 +91,4 @@ Eris.jl is open source and built by gluing together other open source software:
 -   `developit/htm` - [license](https://github.com/developit/htm/blob/master/LICENSE)
 -   `MathJax` - [license](https://github.com/mathjax/MathJax-src/blob/master/LICENSE)
 
-If you want to reference Eris.jl in scientific writing, you can use our DOI: 
+If you want to reference JIVEbook.jl in scientific writing, you can use our DOI: 

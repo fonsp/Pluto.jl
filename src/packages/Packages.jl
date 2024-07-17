@@ -221,7 +221,7 @@ function sync_nbpkg_core(
 
                     
                     # TODO: instead of Pkg.PRESERVE_ALL, we actually want:
-                    # "Pkg.PRESERVE_DIRECT, but preserve exact verisons of Base.loaded_modules"
+                    # "Pkg.PRESERVE_DIRECT, but preserve exact versions of Base.loaded_modules"
                     
                     if !isempty(to_add)
                         Status.report_business_started!(pkg_status, :add)
@@ -378,7 +378,7 @@ function sync_nbpkg(session, notebook, old_topology::NotebookTopology, new_topol
 		new_packages = try String.(external_package_names(new_topology)); catch; ["unknown"] end
 		@warn """
 		PlutoPkg: Failed to add/remove packages! Resetting package environment...
-		""" ERIS_VERSION VERSION old_packages new_packages exception=(e, bt)
+		""" JIVEBOOK_VERSION VERSION old_packages new_packages exception=(e, bt)
 		# TODO: send to user
         showerror(stderr, e, bt)
         

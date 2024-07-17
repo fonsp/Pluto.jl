@@ -4,7 +4,7 @@
 ```bash
 JIVE/
 ├─ JIVECore.jl/
-└─ Eris.jl/
+└─ JIVEbook.jl/
    ├─ ...
    ├─ src/runner/PlutoRunner/
    │  ├─ src/
@@ -12,18 +12,18 @@ JIVE/
    └─ Project.toml
 ```
 2. Open Julia inside JIVE directory
-3. Activate Eris environment and add JIVECore in dev mode:
+3. Activate JIVEbook environment and add JIVECore in dev mode:
 ```julia 
-  (@v1.10) pkg> activate ./Eris.jl
-    Activating project at `~/JIVE/Eris.jl`
+  (@v1.10) pkg> activate ./JIVEbook.jl
+    Activating project at `~/JIVE/JIVEbook.jl`
 
-  (Eris) pkg> dev ./JIVECore.jl/
+  (JIVEbook) pkg> dev ./JIVECore.jl/
 ```
 
 4. Activate PlutoRunner environment and add JIVECore in dev mode:
 ```julia 
-(Eris) pkg> activate ./Eris.jl/src/runner/PlutoRunner/
-  Activating project at `~/JIVE/Eris.jl/src/runner/PlutoRunner`
+(JIVEbook) pkg> activate ./JIVEbook.jl/src/runner/PlutoRunner/
+  Activating project at `~/JIVE/JIVEbook.jl/src/runner/PlutoRunner`
 
 (PlutoRunner) pkg> dev ./JIVECore.jl/
 ```
