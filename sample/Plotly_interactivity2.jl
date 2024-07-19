@@ -23,9 +23,6 @@ using Random
 # ╔═╡ 893b2f38-0577-438f-bc38-2b747f0d51a9
 using ImageCore
 
-# ╔═╡ 353b7dd9-c4cf-4513-8cf8-65f599058222
-using MarkdownLiteral: @markdown
-
 # ╔═╡ b870cc30-11a7-49a6-a280-fc18f7baecba
 Random.seed!(42)
 	
@@ -250,13 +247,14 @@ PlutoPlotly.templates
 
 # ╔═╡ fbc54fcf-c451-4172-841d-0dcdff6eeeba
 # Add image
-function return_plot(r)
+function create_plotly(r)
 aa = image_data[r]
 img_width2, img_height2 = size(aa)
 
 trace2 = heatmap(z=Float32.(Gray.(aa)),colorscale="Greys")
 
 layout2 = Layout(
+		template=templates.seaborn,
     xaxis = attr(showgrid=false, range=(0,img_width2)),
     yaxis = attr(showgrid=false, scaleanchor="x", range=(img_height2, 0)),
     dragmode="drawrect",
@@ -276,21 +274,9 @@ q = plot(trace2,layout2)
 
 end
 
-# ╔═╡ c36d8482-d2bd-4c36-b9ce-aadfe6e0d60e
-md"""
-##### Annotation Tool
----
-
-1. Choose image: $(@bind r Select(image_keys, default=image_keys[end]) ) 
-1. Select Area 
-1. Choose operation: $(@bind s Select([1 => "crop", 2 => "fill", 3 => "plot"]) )
-
----
-
-$(
-@bind obs2 let
-	q = return_plot(r)
-	add_plotly_listener!(q,"plotly_relayout", "
+# ╔═╡ f993b93f-f901-46db-ad21-827a91d910a0
+function create_listener(q)
+add_plotly_listener!(q,"plotly_relayout", "
 		 function(e){
 				console.log(e)
 				if (e.hasOwnProperty('shapes')){
@@ -308,13 +294,34 @@ $(
 				
 		}
 	")
+end
+
+# ╔═╡ c36d8482-d2bd-4c36-b9ce-aadfe6e0d60e
+md"""
+#####
+##### Annotation Tool
+---
+
+1. Choose image: $(@bind r Select(image_keys, default=image_keys[end]) ) 
+1. Select Area 
+1. Choose operation: $(@bind s confirm(Select([1 => "crop", 2 => "fill", 3 => "plot"])) )
+
+---
+
+$(
+@bind obs2 let
+	q = create_plotly(r)
+	create_listener(q)
 	q
 end
 )
 ---
-Apply last operation to the selected images (use Ctrl to select multiple items): 
 
-$(@bind rr confirm(MultiSelect(image_keys)) )
+
+Apply last operation to the selected images (use Ctrl to select multiple items):
+
+$(@bind rr confirm(MultiSelect(image_keys)) )"
+
 """
 
 # ╔═╡ 192dc6eb-82f7-4dde-ad5f-0a77f22fdabb
@@ -323,26 +330,16 @@ obs2
 # ╔═╡ 8866d672-9749-4572-a1dd-b0cea7bbe49e
 s
 
-# ╔═╡ 10bd8970-d536-4ff6-867b-95e6f2eddc5d
-@markdown("""
-<p>
-	The macro <code>@markdown</code> lets you write <a href="https://developer.mozilla.org/docs/Web/HTML">HTML</a> inside Pluto notebooks.
-	<em>Here is an example:</em>
-</p>
-""")
-
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 ImageCore = "a09fc81d-aa75-5fe9-8630-4744c3626534"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
-MarkdownLiteral = "736d6165-7244-6769-4267-6b50796e6954"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [compat]
 ImageCore = "~0.10.1"
 JSON = "~0.21.4"
-MarkdownLiteral = "~0.1.1"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -351,7 +348,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.10.0"
 manifest_format = "2.0"
-project_hash = "471ce2f596ddc7b61574dc71ed2393baf2c2bef9"
+project_hash = "f378d5c84aa402ba1c247b9902700748c1cfff5e"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -394,21 +391,10 @@ git-tree-sha1 = "362a287c3aa50601b0bc359053d5c2468f0e7ce0"
 uuid = "5ae59095-9a9b-59fe-a467-6f913c188581"
 version = "0.12.11"
 
-[[deps.CommonMark]]
-deps = ["Crayons", "JSON", "PrecompileTools", "URIs"]
-git-tree-sha1 = "532c4185d3c9037c0237546d817858b23cf9e071"
-uuid = "a80b9123-70ca-4bc0-993e-6e3bcb318db6"
-version = "0.8.12"
-
 [[deps.CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
 version = "1.0.5+1"
-
-[[deps.Crayons]]
-git-tree-sha1 = "249fe38abf76d48563e2f4556bebd215aa317e15"
-uuid = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
-version = "4.1.1"
 
 [[deps.Dates]]
 deps = ["Printf"]
@@ -419,12 +405,6 @@ deps = ["Statistics"]
 git-tree-sha1 = "05882d6995ae5c12bb5f36dd2ed3f61c98cbb172"
 uuid = "53c48c17-4a7d-5ca2-90c5-79b7896eea93"
 version = "0.8.5"
-
-[[deps.HypertextLiteral]]
-deps = ["Tricks"]
-git-tree-sha1 = "7134810b1afce04bbc1045ca1985fbe81ce17653"
-uuid = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
-version = "0.9.5"
 
 [[deps.ImageCore]]
 deps = ["AbstractFFTs", "ColorVectorSpace", "Colors", "FixedPointNumbers", "MappedArrays", "MosaicViews", "OffsetArrays", "PaddedViews", "PrecompileTools", "Reexport"]
@@ -449,12 +429,6 @@ uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 git-tree-sha1 = "2dab0221fe2b0f2cb6754eaa743cc266339f527e"
 uuid = "dbb5928d-eab1-5f90-85c2-b9b0edb7c900"
 version = "0.4.2"
-
-[[deps.MarkdownLiteral]]
-deps = ["CommonMark", "HypertextLiteral"]
-git-tree-sha1 = "0d3fa2dd374934b62ee16a4721fe68c418b92899"
-uuid = "736d6165-7244-6769-4267-6b50796e6954"
-version = "0.1.1"
 
 [[deps.Mmap]]
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
@@ -563,16 +537,6 @@ git-tree-sha1 = "1feb45f88d133a655e001435632f019a9a1bcdb6"
 uuid = "62fd8b95-f654-4bbd-a8a5-9c27f68ccd50"
 version = "0.1.1"
 
-[[deps.Tricks]]
-git-tree-sha1 = "eae1bb484cd63b36999ee58be2de6c178105112f"
-uuid = "410a4b4d-49e4-4fbc-ab6d-cb71b17b3775"
-version = "0.1.8"
-
-[[deps.URIs]]
-git-tree-sha1 = "67db6cc7b3821e19ebe75791a9dd19c9b1188f2b"
-uuid = "5c2747f8-b7ea-4ff2-ba2e-563bfd36b1d4"
-version = "1.5.1"
-
 [[deps.UUIDs]]
 deps = ["Random", "SHA"]
 uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
@@ -612,10 +576,9 @@ version = "5.8.0+1"
 # ╠═c45d81d8-ebc3-4a49-92a3-9c6e3d6f9b41
 # ╠═a197f528-1dd9-4b72-b631-24d7efb6b27b
 # ╠═fbc54fcf-c451-4172-841d-0dcdff6eeeba
+# ╠═f993b93f-f901-46db-ad21-827a91d910a0
 # ╠═c36d8482-d2bd-4c36-b9ce-aadfe6e0d60e
 # ╠═192dc6eb-82f7-4dde-ad5f-0a77f22fdabb
 # ╠═8866d672-9749-4572-a1dd-b0cea7bbe49e
-# ╠═353b7dd9-c4cf-4513-8cf8-65f599058222
-# ╠═10bd8970-d536-4ff6-867b-95e6f2eddc5d
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
