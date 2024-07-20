@@ -88,7 +88,13 @@ export const Logs = ({ logs, line_heights, set_cm_highlighted_line, sanitize_htm
     `
 }
 
-const Progress = ({ progress }) => {
+const Progress = ({ name, progress }) => {
+    console.log("Progress Name: ", name)
+    return html`<pluto-progress-name class=${name === "" ? "no_name" : null}>${name}</pluto-progress-name>
+        <pluto-progress-bar-container><${ProgressBar} progress=${progress} /></pluto-progress-bar-container>`
+}
+
+const ProgressBar = ({ progress }) => {
     const bar_ref = useRef(/** @type {HTMLElement?} */ (null))
 
     useLayoutEffect(() => {
@@ -136,7 +142,7 @@ const Dot = ({ set_cm_highlighted_line, msg, kwargs, y, level, sanitize_html }) 
         <pluto-log-icon></pluto-log-icon>
         <pluto-log-dot class=${level}
             >${is_progress
-                ? html`<${Progress} progress=${progress} />`
+                ? html`<${Progress} name="${msg[0]}" progress=${progress} />`
                 : is_stdout
                 ? html`<${MoreInfo}
                           body=${html`${"This text was written to the "}
