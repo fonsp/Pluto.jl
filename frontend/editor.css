@@ -2988,12 +2988,33 @@ pluto-logs-container pluto-progress-bars pluto-progress:not(:first-child) {
     margin-top: 10px;
 }
 
+pluto-logs-container pluto-progress-bar-container {
+    overflow: hidden;
+    outline: 3px solid var(--pluto-logs-progress-border);
+    outline-offset: -2px;
+    border-radius: 6px;
+    background: var(--pluto-logs-progress-bg);
+    font-size: 0.7rem;
+    width: 100%;
+}
+
+pluto-logs-container pluto-progress-name {
+    align-self: center;
+    white-space: pre-wrap;
+    font-family: var(--julia-mono-font-stack);
+    font-size: 0.8rem;
+    font-variant-ligatures: none;
+    padding: 0 0.4rem 0 0.1rem;
+}
+pluto-logs-container pluto-progress-name.no_name {
+    padding: 0;
+}
+
 pluto-logs-container pluto-progress-bar {
     --c: var(--pluto-logs-progress-fill);
     padding: 0.3em 0.6em;
     background: linear-gradient(90deg, var(--c), var(--c));
     background-repeat: no-repeat;
-    width: 100%;
     transition: background-size cubic-bezier(0.14, 0.71, 0, 0.99) 0.5s, opacity linear 0.2s;
     display: grid;
     align-items: center;
@@ -3101,18 +3122,12 @@ pluto-log-dot-positioner.Stdout pluto-log-icon::before {
 }
 
 pluto-log-dot.Progress {
-    overflow: hidden;
     padding: 0px;
     flex: 0 1 200px;
     display: flex;
     flex-direction: row;
     align-items: stretch;
     align-self: center;
-    outline: 3px solid var(--pluto-logs-progress-border);
-    outline-offset: -2px;
-    border-radius: 6px;
-    background: var(--pluto-logs-progress-bg);
-    font-size: 0.7rem;
 }
 pluto-log-dot.Stdout {
     --inner: hsl(36deg 20% 37%);
