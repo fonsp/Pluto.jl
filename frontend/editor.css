@@ -2984,10 +2984,6 @@ pluto-logs-container > header {
     /* background: #494949; */
 }
 
-pluto-logs-container pluto-progress-bars pluto-progress:not(:first-child) {
-    margin-top: 10px;
-}
-
 pluto-logs-container pluto-progress-bar-container {
     overflow: hidden;
     outline: 3px solid var(--pluto-logs-progress-border);
