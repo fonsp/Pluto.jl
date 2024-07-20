@@ -3090,6 +3090,9 @@ pluto-log-dot-positioner.Debug {
     --accent-color: var(--pluto-logs-debug-accent-color);
     --icon-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/information-circle-outline.svg");
 }
+pluto-log-dot-positioner.Progress {
+    --icon-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sync-outline.svg");
+}
 pluto-log-dot-positioner.Stdout {
     --icon-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/terminal-outline.svg");
 }
