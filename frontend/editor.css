@@ -2991,11 +2991,10 @@ pluto-logs-container pluto-progress-bar-container {
     border-radius: 6px;
     background: var(--pluto-logs-progress-bg);
     font-size: 0.7rem;
-    width: 100%;
+    flex: 0 1 200px;
 }
 
 pluto-logs-container pluto-progress-name {
-    align-self: center;
     white-space: pre-wrap;
     font-family: var(--julia-mono-font-stack);
     font-size: 0.8rem;
@@ -3119,10 +3118,9 @@ pluto-log-dot-positioner.Stdout pluto-log-icon::before {
 
 pluto-log-dot.Progress {
     padding: 0px;
-    flex: 0 1 200px;
     display: flex;
     flex-direction: row;
-    align-items: stretch;
+    align-items: center;
     align-self: center;
 }
 pluto-log-dot.Stdout {
