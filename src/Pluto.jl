@@ -53,6 +53,9 @@ include("./runner/PlutoRunner/src/PlutoRunner.jl")
 include("./packages/PkgCompat.jl")
 include("./webserver/Status.jl")
 
+include("./notebook/OperationalTransform.jl")
+import .OperationalTransform as OT
+
 include("./notebook/Cell.jl")
 include("./notebook/Notebook.jl")
 include("./notebook/saving and loading.jl")
@@ -76,12 +79,12 @@ include("./evaluation/Run.jl")
 include("./evaluation/RunBonds.jl")
 
 module DownloadCool include("./webserver/data_url.jl") end
-include("./webserver/MsgPack.jl")
 include("./webserver/SessionActions.jl")
 include("./webserver/Static.jl")
 include("./webserver/Authentication.jl")
 include("./webserver/Router.jl")
 include("./webserver/Dynamic.jl")
+include("./webserver/MsgPack.jl")
 include("./webserver/REPLTools.jl")
 include("./webserver/WebServer.jl")
 

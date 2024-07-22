@@ -45,6 +45,7 @@ import {
 import { markdown, html as htmlLang, javascript, sqlLang, python, julia_mixed } from "./CellInput/mixedParsers.js"
 import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
+import { UsersFacet, pluto_collab } from "./CellInput/pluto_collab.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
 import { awesome_line_wrapping, get_start_tabs } from "./CellInput/awesome_line_wrapping.js"
 import { cell_movement_plugin, prevent_holding_a_key_from_doing_things_across_cells } from "./CellInput/cell_movement_plugin.js"
@@ -351,9 +352,26 @@ let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPluto
 }
 
 /**
+ * @typedef UpdateSpec
+ * @type {{
+ *   from: Number,
+ *   to?: Number,
+ *   insert?: String,
+ * }}
+ *
+ * @typedef TextUpdate
+ * @type {{
+ *   client_id: string,
+ *   document_length: Number,
+ *   specs: Array<UpdateSpec>,
+ * }}
+ */
+
+/**
  * @param {{
+ *  code: string,
+ *  cm_updates: Array<TextUpdate>,
  *  local_code: string,
- *  remote_code: string,
  *  scroll_into_view_after_creation: boolean,
  *  cell_dependencies: import("./Editor.js").CellDependencyData,
  *  nbpkg: import("./Editor.js").NotebookPkgData?,
@@ -362,8 +380,11 @@ let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPluto
  * }} props
  */
 export const CellInput = ({
-    local_code,
-    remote_code,
+    cm_updates,
+    code,
+    last_run_code,
+    start_version,
+
     disable_input,
     focus_after_creation,
     cm_forced_focus,
@@ -380,6 +401,8 @@ export const CellInput = ({
     nbpkg,
     cell_id,
     notebook_id,
+    client_id,
+    users,
     any_logs,
     show_logs,
     set_show_logs,
@@ -402,28 +425,21 @@ export const CellInput = ({
     const notebook_id_ref = useRef(notebook_id)
     notebook_id_ref.current = notebook_id
 
-    const newcm_ref = useRef(/** @type {EditorView?} */ (null))
-    const dom_node_ref = useRef(/** @type {HTMLElement?} */ (null))
-    const remote_code_ref = useRef(/** @type {string?} */ (null))
+    const newcm_ref = useRef(/** @type {EditorView?} */(null))
+    const dom_node_ref = useRef(/** @type {HTMLElement?} */(null))
 
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
     let global_definitions_compartment = useCompartment(newcm_ref, GlobalDefinitionsFacet.of(global_definition_locations))
     let highlighted_line_compartment = useCompartment(newcm_ref, HighlightLineFacet.of(cm_highlighted_line))
     let highlighted_range_compartment = useCompartment(newcm_ref, HighlightRangeFacet.of(cm_highlighted_range))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
+    let users_compartment = useCompartment(newcm_ref, UsersFacet.of(users))
 
-    let on_change_compartment = useCompartment(
-        newcm_ref,
-        // Functions are hard to compare, so I useMemo manually
-        useMemo(() => {
-            return EditorView.updateListener.of((update) => {
-                if (update.docChanged) {
-                    on_change(update.state.doc.toString())
-                }
-            })
-        }, [on_change])
-    )
-
+    useEffect(() => {
+        if (cm_updates) {
+            pluto_actions.sync_updates(cell_id, cm_updates)
+        }
+    }, [cm_updates?.length, cell_id])
     const [show_static_fake_state, set_show_static_fake] = useState(!skip_static_fake)
 
     const show_static_fake_excuses_ref = useRef(false)
@@ -476,7 +492,7 @@ export const CellInput = ({
                 await on_add_after()
 
                 const new_value = cm.state.doc.toString()
-                if (new_value !== remote_code_ref.current) {
+                if (new_value !== last_run_code) {
                     on_submit()
                 }
             })
@@ -560,9 +576,9 @@ export const CellInput = ({
                     selection:
                         selection.from === 0
                             ? {
-                                  anchor: selection.from + prefix.length,
-                                  head: selection.to + prefix.length,
-                              }
+                                anchor: selection.from + prefix.length,
+                                head: selection.to + prefix.length,
+                            }
                             : undefined,
                 })
             }
@@ -662,6 +678,7 @@ export const CellInput = ({
             if (!update.view.hasFocus) {
                 return
             }
+            pluto_actions.update_notebook((nb) => nb.users[client_id] && (nb.users[client_id].focused_cell = cell_id))
 
             if (update.docChanged || update.selectionSet) {
                 let state = update.state
@@ -680,7 +697,7 @@ export const CellInput = ({
         const usesDarkTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         const newcm = (newcm_ref.current = new EditorView({
             state: EditorState.create({
-                doc: local_code,
+                doc: code,
                 extensions: [
                     EditorView.theme({}, { dark: usesDarkTheme }),
                     // Compartments coming from react state/props
@@ -689,6 +706,7 @@ export const CellInput = ({
                     highlighted_range_compartment,
                     global_definitions_compartment,
                     editable_compartment,
+                    users_compartment,
                     highlightLinePlugin(),
                     highlightRangePlugin(),
 
@@ -737,6 +755,7 @@ export const CellInput = ({
                             if (!caused_by_window_blur) {
                                 // then it's caused by focusing something other than this cell in the editor.
                                 // in this case, we want to collapse the selection into a single point, for aesthetic reasons.
+                                pluto_actions.update_notebook((nb) => nb.users[client_id] && (nb.users[client_id].focused_cell = null))
                                 setTimeout(() => {
                                     view.dispatch({
                                         selection: {
@@ -767,19 +786,19 @@ export const CellInput = ({
                     indentUnit.of("\t"),
                     ...(ENABLE_CM_MIXED_PARSER
                         ? [
-                              julia_mixed(),
-                              markdown({
-                                  defaultCodeLanguage: julia_mixed(),
-                              }),
-                              htmlLang(), //Provides tag closing!,
-                              javascript(),
-                              python(),
-                              sqlLang,
-                          ]
+                            julia_mixed(),
+                            markdown({
+                                defaultCodeLanguage: julia_mixed(),
+                            }),
+                            htmlLang(), //Provides tag closing!,
+                            javascript(),
+                            python(),
+                            sqlLang,
+                        ]
                         : [
-                              //
-                              julia_andrey(),
-                          ]),
+                            //
+                            julia_andrey(),
+                        ]),
                     go_to_definition_plugin,
                     pluto_autocomplete({
                         request_autocomplete: async ({ text }) => {
@@ -823,7 +842,13 @@ export const CellInput = ({
                         update.view.dispatch(setDiagnostics(update.state, []))
                     }),
 
-                    on_change_compartment,
+                    pluto_collab(start_version, {
+                        // push_updates: (data) => pluto_actions.send("push_updates", { ...data, cell_id: cell_id }, { notebook_id }, false),
+                        // subscribe_to_updates: (cb) => updater.subscribe("updates", cb),
+                        pluto_actions,
+                        cell_id,
+                        client_id,
+                    }),
 
                     // This is my weird-ass extension that checks the AST and shows you where
                     // there're missing nodes.. I'm not sure if it's a good idea to have it
@@ -876,7 +901,7 @@ export const CellInput = ({
         if (lines_wrapper_dom_node) {
             const lines_wrapper_resize_observer = new ResizeObserver(() => {
                 const line_nodes = lines_wrapper_dom_node.children
-                const tops = _.map(line_nodes, (c) => /** @type{HTMLElement} */ (c).offsetTop)
+                const tops = _.map(line_nodes, (c) => /** @type{HTMLElement} */(c).offsetTop)
                 const diffs = tops.slice(1).map((y, i) => y - tops[i])
                 const heights = [...diffs, 15]
                 on_line_heights(heights)
@@ -897,23 +922,23 @@ export const CellInput = ({
         cm.dispatch(setDiagnostics(cm.state, diagnostics))
     }, [cm_diagnostics])
 
-    // Effect to apply "remote_code" to the cell when it changes...
-    // ideally this won't be necessary as we'll have actual multiplayer,
-    // or something to tell the user that the cell is out of sync.
-    useEffect(() => {
-        if (newcm_ref.current == null) return // Not sure when and why this gave an error, but now it doesn't
+    // // Effect to apply "remote_code" to the cell when it changes...
+    // // ideally this won't be necessary as we'll have actual multiplayer,
+    // // or something to tell the user that the cell is out of sync.
+    // useEffect(() => {
+    //     if (newcm_ref.current == null) return // Not sure when and why this gave an error, but now it doesn't
 
-        const current_value = getValue6(newcm_ref.current) ?? ""
-        if (remote_code_ref.current == null && remote_code === "" && current_value !== "") {
-            // this cell is being initialized with empty code, but it already has local code set.
-            // this happens when pasting or dropping cells
-            return
-        }
-        remote_code_ref.current = remote_code
-        if (current_value !== remote_code) {
-            setValue6(newcm_ref.current, remote_code)
-        }
-    }, [remote_code])
+    //     const current_value = getValue6(newcm_ref.current) ?? ""
+    //     if (remote_code_ref.current == null && remote_code === "" && current_value !== "") {
+    //         // this cell is being initialized with empty code, but it already has local code set.
+    //         // this happens when pasting or dropping cells
+    //         return
+    //     }
+    //     remote_code_ref.current = remote_code
+    //     if (current_value !== remote_code) {
+    //         setValue6(newcm_ref.current, remote_code)
+    //     }
+    // }, [remote_code])
 
     useEffect(() => {
         const cm = newcm_ref.current
@@ -967,7 +992,7 @@ export const CellInput = ({
 
     return html`
         <pluto-input ref=${dom_node_ref} class="CodeMirror" translate=${false}>
-            ${show_static_fake ? (show_input ? html`<${StaticCodeMirrorFaker} value=${remote_code} />` : null) : null}
+            ${show_static_fake ? (show_input ? html`<${StaticCodeMirrorFaker} value=${last_run_code} />` : null) : null}
             <${InputContextMenu}
                 on_delete=${on_delete}
                 cell_id=${cell_id}
@@ -990,10 +1015,10 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
     const timeout = useRef(null)
     let pluto_actions = useContext(PlutoActionsContext)
     const [open, setOpenState] = useState(false)
-    const button_ref = useRef(/** @type {HTMLButtonElement?} */ (null))
-    const list_ref = useRef(/** @type {HTMLButtonElement?} */ (null))
+    const button_ref = useRef(/** @type {HTMLButtonElement?} */(null))
+    const list_ref = useRef(/** @type {HTMLButtonElement?} */(null))
 
-    const prevously_focused_element_ref = useRef(/** @type {Element?} */ (null))
+    const prevously_focused_element_ref = useRef(/** @type {Element?} */(null))
     const setOpen = (val) => {
         if (val) {
             prevously_focused_element_ref.current = document.activeElement
@@ -1050,12 +1075,12 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
     return html`
         <button
             onClick=${(e) => {
-                setOpen(!open)
-            }}
+            setOpen(!open)
+        }}
             class=${cl({
-                input_context_menu: true,
-                open,
-            })}
+            input_context_menu: true,
+            open,
+        })}
             title="Actions"
             ref=${button_ref}
         >
@@ -1063,23 +1088,23 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
         </button>
         <div
             class=${cl({
-                input_context_menu: true,
-                open,
-            })}
+            input_context_menu: true,
+            open,
+        })}
             ref=${list_ref}
             onfocusout=${(e) => {
-                const li_focused = list_ref.current?.matches(":focus-within") || list_ref.current?.contains(e.relatedTarget)
+            const li_focused = list_ref.current?.matches(":focus-within") || list_ref.current?.contains(e.relatedTarget)
 
-                if (
-                    !li_focused ||
-                    // or the focus is on the list itself
-                    e.relatedTarget === list_ref.current
-                )
-                    setOpen(false)
-            }}
+            if (
+                !li_focused ||
+                // or the focus is on the list itself
+                e.relatedTarget === list_ref.current
+            )
+                setOpen(false)
+        }}
         >
             ${open
-                ? html`<ul onMouseenter=${mouseenter}>
+            ? html`<ul onMouseenter=${mouseenter}>
                       <${InputContextMenuItem} tag="delete" contents="Delete cell" title="Delete cell" onClick=${on_delete} setOpen=${setOpen} />
 
                       <${InputContextMenuItem}
@@ -1090,35 +1115,35 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
                           setOpen=${setOpen}
                       />
                       ${any_logs
-                          ? html`<${InputContextMenuItem}
+                    ? html`<${InputContextMenuItem}
                                 title=${show_logs ? "Show cell logs" : "Hide cell logs"}
                                 tag=${show_logs ? "hide_logs" : "show_logs"}
                                 contents=${show_logs ? "Hide logs" : "Show logs"}
                                 onClick=${toggle_logs}
                                 setOpen=${setOpen}
                             />`
-                          : null}
+                    : null}
                       ${is_copy_output_supported()
-                          ? html`<${InputContextMenuItem}
+                    ? html`<${InputContextMenuItem}
                                 tag="copy_output"
                                 contents="Copy output"
                                 title="Copy the output of this cell to the clipboard."
                                 onClick=${copy_output}
                                 setOpen=${setOpen}
                             />`
-                          : null}
+                    : null}
 
                       <${InputContextMenuItem}
                           title=${skip_as_script
-                              ? "This cell is currently stored in the notebook file as a Julia comment. Click here to disable."
-                              : "Store this code in the notebook file as a Julia comment. This way, it will not run when the notebook runs as a script outside of Pluto."}
+                    ? "This cell is currently stored in the notebook file as a Julia comment. Click here to disable."
+                    : "Store this code in the notebook file as a Julia comment. This way, it will not run when the notebook runs as a script outside of Pluto."}
                           tag=${skip_as_script ? "run_as_script" : "skip_as_script"}
                           contents=${skip_as_script ? html`<b>Enable in file</b>` : html`Disable in file`}
                           onClick=${toggle_skip_as_script}
                           setOpen=${setOpen}
                       />
                   </ul>`
-                : html``}
+            : html``}
         </div>
     `
 }
@@ -1129,9 +1154,9 @@ const InputContextMenuItem = ({ contents, title, onClick, setOpen, tag }) =>
             tabindex="0"
             title=${title}
             onClick=${(e) => {
-                setOpen(false)
-                onClick(e)
-            }}
+            setOpen(false)
+            onClick(e)
+        }}
             class=${tag}
         >
             <span class=${`${tag} ctx_icon`} />${contents}

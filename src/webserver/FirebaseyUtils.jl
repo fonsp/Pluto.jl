@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.9
+# v0.19.11
 
 using Markdown
 using InteractiveUtils
@@ -157,6 +157,29 @@ end;
 # ╔═╡ 2284ae12-5b8c-4542-81fa-c4d34f2483e7
 # @test length([AppendonlyMarker([1,2,3], 1)...]) == 1
 
+# ╔═╡ 603ba7ff-22a4-4377-af00-5ba630c1393a
+md"""
+# SendOnlyOnceMarker
+
+This field is only sent to the client once at initialization and is then never mutated. The client is then responsible to manage this value using updates from other fields.
+"""
+
+# ╔═╡ bb719092-d4e0-42b3-bca1-782880af18ac
+struct SendOnlyOnceMarker{T}
+	x::T
+end
+
+# ╔═╡ 7549dbd4-74d9-477b-a429-ab5651a07423
+# ╠═╡ skip_as_script = true
+#=╠═╡
+begin
+	s1 = String(rand('a':'z', 100))
+	s2 = String(rand('a':'z', 100))
+	so1 = SendOnlyOnceMarker(s1)
+	so2 = SendOnlyOnceMarker(s2)
+end
+  ╠═╡ =#
+
 # ╔═╡ dc5cd268-9cfb-49bf-87fb-5b7db4fa6e3c
 # ╠═╡ skip_as_script = true
 #=╠═╡
@@ -189,6 +212,11 @@ function Firebasey.diff(a::AppendonlyMarker, b::AppendonlyMarker)
 			Firebasey.AddPatch([index], b.mutable_source[index])
 		end
 	end
+end
+
+# ╔═╡ cda34e93-d139-438f-a13f-029ad251d376
+function Firebasey.diff(::SendOnlyOnceMarker, ::SendOnlyOnceMarker)
+	Firebasey.NoChanges
 end
 
 # ╔═╡ 129dee79-61c0-4524-9bef-388837f035bb
@@ -393,6 +421,16 @@ end
 @track for _ in 1:1000 Firebasey.diff(appendonly_1_large, appendonly_2_large) end
   ╠═╡ =#
 
+# ╔═╡ fde712d5-17ca-4f0f-8767-f7cce5717051
+#=╠═╡
+@track for _ in 1:1000 Firebasey.diff(s1, s2) end
+  ╠═╡ =#
+
+# ╔═╡ 7d55af53-9580-414e-a23d-aeb5298c626b
+#=╠═╡
+@track for _ in 1:1000 Firebasey.diff(so1, so2) end
+  ╠═╡ =#
+
 # ╔═╡ 9862ee48-48a0-4178-8ec4-306792827e17
 #=╠═╡
 @track sleep(0.1)
@@ -419,7 +457,13 @@ end
 # ╟─06492e8d-4500-4efe-80ee-55bf1ee2348c
 # ╠═2284ae12-5b8c-4542-81fa-c4d34f2483e7
 # ╟─8537488d-2ff9-42b7-8bfc-72d43fca713f
-# ╟─37fe8c10-09f0-4f72-8cfd-9ce044c78c13
+# ╠═37fe8c10-09f0-4f72-8cfd-9ce044c78c13
+# ╟─603ba7ff-22a4-4377-af00-5ba630c1393a
+# ╠═bb719092-d4e0-42b3-bca1-782880af18ac
+# ╠═cda34e93-d139-438f-a13f-029ad251d376
+# ╠═7549dbd4-74d9-477b-a429-ab5651a07423
+# ╠═fde712d5-17ca-4f0f-8767-f7cce5717051
+# ╠═7d55af53-9580-414e-a23d-aeb5298c626b
 # ╟─dc5cd268-9cfb-49bf-87fb-5b7db4fa6e3c
 # ╠═0c2f23d8-8e98-47b7-9c4f-5daa70a6c7fb
 # ╠═092c4b11-8b75-446f-b3ad-01fa858daebb

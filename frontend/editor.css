@@ -3554,6 +3554,26 @@ pluto-popup code.auto_disabled_variable {
     }
 }
 
+.cm-tooltip-remoteClientID {
+    font-size: 0.5em;
+}
+
+.cm-editor .cm-remoteSelection {
+    background-color: #ff00aa;
+    opacity: 0.8;
+}
+
+.cm-remoteCaret {
+    display: inline;
+    position: relative;
+    border-left: 1px solid black;
+    border-right: 1px solid black;
+    border-color: #ff00aa;
+    margin-left: -1px;
+    margin-right: -1px;
+    box-sizing: border-box;
+}
+
 .cm-editor .cm-matchingBracket,
 .cm-editor .cm-nonmatchingBracket {
     background-color: unset;
@@ -3707,6 +3727,32 @@ pluto-cell.hooked_up pluto-output {
     margin-top: 2rem;
     justify-content: flex-end;
     gap: 0.5em;
+}
+
+/** NOTE: This will need some actual CSS person to do something about this
+          but this works for now. */
+.pluto-multiplayer {
+    position: fixed;
+    bottom: 0;
+    background-color: gray;
+    border: 5px solid salmon;
+    border-radius: 8px;
+    font-family: "JuliaMono";
+    font-size: 15px;
+    z-index: 1000;
+}
+
+pluto-cursor-list {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+}
+
+.pluto-multiplayer ul {
+    margin: 0;
+    padding: 5px;
+    list-style: none;
 }
 
 /*  Styles for markdown copy Button*/

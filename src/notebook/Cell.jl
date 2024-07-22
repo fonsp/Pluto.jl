@@ -38,16 +38,20 @@ Base.@kwdef mutable struct Cell <: PlutoDependencyExplorer.AbstractCell
     cell_id::UUID=uuid1()
 
     code::String=""
+    last_run_code::String=code
     code_folded::Bool=false
-    
+
+    cm_updates::Vector{OT.Update}=OT.Update[]
+    cm_token::Token=Token()
+
     output::CellOutput=CellOutput()
     queued::Bool=false
     running::Bool=false
 
     published_objects::Dict{String,Any}=Dict{String,Any}()
-    
+
     logs::Vector{Dict{String,Any}}=Vector{Dict{String,Any}}()
-    
+
     errored::Bool=false
     runtime::Union{Nothing,UInt64}=nothing
 
@@ -69,6 +73,7 @@ function Base.convert(::Type{Cell}, cell::Dict)
 	Cell(
         cell_id=UUID(cell["cell_id"]),
         code=cell["code"],
+        last_run_code=cell["last_run_code"],
         code_folded=cell["code_folded"],
         metadata=cell["metadata"],
     )

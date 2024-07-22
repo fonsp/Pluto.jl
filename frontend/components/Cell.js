@@ -104,11 +104,13 @@ const on_jump = (hasBarrier, pluto_actions, cell_id) => () => {
  * }} props
  * */
 export const Cell = ({
-    cell_input: { cell_id, code, code_folded, metadata },
+    cell_input: { cell_id, code, code_folded, metadata, cm_updates, start_version, last_run_code },
     cell_result: { queued, running, runtime, errored, output, logs, published_object_keys, depends_on_disabled_cells, depends_on_skipped_cells },
     cell_dependencies,
     cell_input_local,
     notebook_id,
+    client_id,
+    users,
     selected,
     force_hide_input,
     focus_after_creation,
@@ -125,7 +127,6 @@ export const Cell = ({
     // useCallback because pluto_actions.set_doc_query can change value when you go from viewing a static document to connecting (to binder)
     const on_update_doc_query = useCallback((...args) => pluto_actions.set_doc_query(...args), [pluto_actions])
     const on_focus_neighbor = useCallback((...args) => pluto_actions.focus_on_neighbor(...args), [pluto_actions])
-    const on_change = useCallback((val) => pluto_actions.set_local_cell(cell_id, val), [cell_id, pluto_actions])
     const variables = useMemo(() => Object.keys(cell_dependencies?.downstream_cells_map ?? {}), [cell_dependencies])
 
     // We need to unmount & remount when a destructive error occurs.
@@ -133,11 +134,11 @@ export const Cell = ({
     const [key, setKey] = useState(0)
     const cell_key = useMemo(() => cell_id + key, [cell_id, key])
 
-    const [, resetError] = useErrorBoundary((error) => {
-        console.log(`An error occured in the CodeMirror code, resetting CellInput component. See error below:\n\n${error}\n\n -------------- `)
-        setKey(key + 1)
-        resetError()
-    })
+    // const [, resetError] = useErrorBoundary((error) => {
+    //     console.log(`An error occured in the CodeMirror code, resetting CellInput component. See error below:\n\n${error}\n\n -------------- `)
+    //     setKey(key + 1)
+    //     resetError()
+    // })
 
     const remount = useMemo(() => () => setKey(key + 1))
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
@@ -204,7 +205,9 @@ export const Cell = ({
     // We then toggle animation visibility using opacity. This saves a bunch of repaints.
     const activate_animation = useDebouncedTruth(running || queued || waiting_to_run)
 
-    const class_code_differs = code !== (cell_input_local?.code ?? code)
+    const class_code_differs = useMemo(() => (last_run_code !== code), [code, last_run_code])
+    const class_code_folded = code_folded && cm_forced_focus == null
+
     const no_output_yet = (output?.last_run_timestamp ?? 0) === 0
     const code_not_trusted_yet = process_waiting_for_permission && no_output_yet
 
@@ -236,17 +239,6 @@ export const Cell = ({
             pluto_actions.set_and_run_multiple([cell_id])
         }
     }, [pluto_actions, cell_id])
-    const on_change_cell_input = useCallback(
-        (new_code) => {
-            if (!disable_input_ref.current) {
-                if (code_folded && cm_forced_focus != null) {
-                    pluto_actions.fold_remote_cells([cell_id], false)
-                }
-                on_change(new_code)
-            }
-        },
-        [code_folded, cm_forced_focus, pluto_actions, on_change]
-    )
     const on_add_after = useCallback(() => {
         pluto_actions.add_remote_cell(cell_id, "after")
     }, [pluto_actions, cell_id, selected])
@@ -326,6 +318,10 @@ export const Cell = ({
                 ? html`<${CellOutput} errored=${errored} ...${output} sanitize_html=${sanitize_html} cell_id=${cell_id} />`
                 : html``}
             <${CellInput}
+                cm_updates=${cm_updates}
+                code=${code}
+                start_version=${start_version}
+                last_run_code=${last_run_code}
                 local_code=${cell_input_local?.code ?? code}
                 remote_code=${code}
                 cell_dependencies=${cell_dependencies}
@@ -338,13 +334,14 @@ export const Cell = ({
                 on_submit=${on_submit}
                 on_delete=${on_delete}
                 on_add_after=${on_add_after}
-                on_change=${on_change_cell_input}
                 on_update_doc_query=${on_update_doc_query}
                 on_focus_neighbor=${on_focus_neighbor}
                 on_line_heights=${set_line_heights}
                 nbpkg=${nbpkg}
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
+                client_id=${client_id}
+                users=${users}
                 metadata=${metadata}
                 any_logs=${any_logs}
                 show_logs=${show_logs}

@@ -10,6 +10,7 @@ import { serialize_cells, deserialize_cells, detect_deserializer } from "../comm
 
 import { FilePicker } from "./FilePicker.js"
 import { Preamble } from "./Preamble.js"
+import { MultiplayerPanel } from "./MultiplayerPanel.js"
 import { Notebook } from "./Notebook.js"
 import { BottomRightPanel } from "./BottomRightPanel.js"
 import { DropRuler } from "./DropRuler.js"
@@ -20,7 +21,7 @@ import { Scroller } from "./Scroller.js"
 import { ExportBanner } from "./ExportBanner.js"
 import { Popup } from "./Popup.js"
 
-import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
+import { slice_utf8 } from "../common/UnicodeTools.js"
 import {
     has_ctrl_or_cmd_pressed,
     ctrl_or_cmd_name,
@@ -45,6 +46,7 @@ import { get_environment } from "../common/Environment.js"
 import { ProcessStatus } from "../common/ProcessStatus.js"
 import { SafePreviewUI } from "./SafePreviewUI.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
+import { sendableUpdates } from "../imports/CodemirrorPlutoSetup.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -96,8 +98,10 @@ const statusmap = (/** @type {EditorState} */ state, /** @type {LaunchParameters
     offer_binder: state.backend_launch_phase === BackendLaunchPhase.wait_for_user && launch_params.binder_url != null,
     offer_local: state.backend_launch_phase === BackendLaunchPhase.wait_for_user && launch_params.pluto_server_url != null,
     binder: launch_params.binder_url != null && state.backend_launch_phase != null,
-    code_differs: state.notebook.cell_order.some(
-        (cell_id) => state.cell_inputs_local[cell_id] != null && state.notebook.cell_inputs[cell_id].code !== state.cell_inputs_local[cell_id].code
+    code_differs: state.notebook.cell_order.some((cell_id) =>
+        // TODO
+        state.notebook.cell_inputs[cell_id].code !== state.notebook.cell_inputs[cell_id].last_run_code
+        // || (state.cell_collab_plugins.has(cell_id) && sendableUpdates(state.cell_collab_plugins.get(cell_id).view.state).length != 0)
     ),
     recording_waiting_to_start: state.recording_waiting_to_start,
     is_recording: state.is_recording,
@@ -127,6 +131,9 @@ const first_true_key = (obj) => {
  *  code: string,
  *  code_folded: boolean,
  *  metadata: CellMetaData,
+ *  cm_updates: Array<import("./CellInput.js").TextUpdate>
+ *  last_run_code: String,
+ *  start_version: Number,
  * }}
  */
 
@@ -234,6 +241,11 @@ const first_true_key = (obj) => {
  */
 
 /**
+ * @typedef UserMouseData
+ * @type {{ relative_to_cell: string, relative_x: number, relative_y: number }}
+ **/
+
+/**
  * @typedef NotebookData
  * @type {{
  *  pluto_version?: string,
@@ -244,6 +256,8 @@ const first_true_key = (obj) => {
  *  process_status: string,
  *  last_save_time: number,
  *  last_hot_reload_time: number,
+ *  users: { [client_id: string]: { color: string, name: string } }
+ *  users_mouse_data: { [client_id: string]: UserMouseData }
  *  cell_inputs: { [uuid: string]: CellInputData },
  *  cell_results: { [uuid: string]: CellResultData },
  *  cell_dependencies: { [uuid: string]: CellDependencyData },
@@ -273,7 +287,7 @@ export const url_logo_small = document.head.querySelector("link[rel='pluto-logo-
  * @typedef EditorState
  * @type {{
  * notebook: NotebookData,
- * cell_inputs_local: { [uuid: string]: { code: String } },
+ * cell_collab_plugins: Map<string,any>
  * desired_doc_query: ?String,
  * recently_deleted: ?Array<{ index: number, cell: CellInputData }>,
  * last_update_time: number,
@@ -311,7 +325,8 @@ export class Editor extends Component {
 
         this.state = {
             notebook: /** @type {NotebookData} */ initial_notebook_state,
-            cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
+            /** @type Map<string,any> */
+            cell_collab_plugins: new Map(),
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ ([]),
             recently_auto_disabled_cells: /** @type {Map<string,[string,string]>} */ ({}),
@@ -359,6 +374,13 @@ export class Editor extends Component {
         this.real_actions = {
             get_notebook: () => this?.state?.notebook || {},
             send: (message_type, ...args) => this.client.send(message_type, ...args),
+            register_collab_plugin: (cell_id, view) => {
+                console.log({ cell_id })
+                this.state.cell_collab_plugins.set(cell_id, view)
+            },
+            unregister_collab_plugin: (cell_id) => {
+                this.state.cell_collab_plugins.delete(cell_id)
+            },
             get_published_object: (objectid) => this.state.notebook.published_objects[objectid],
             //@ts-ignore
             update_notebook: (...args) => this.update_notebook(...args),
@@ -366,9 +388,6 @@ export class Editor extends Component {
             set_local_cell: (cell_id, new_val) => {
                 return this.setStatePromise(
                     immer((/** @type {EditorState} */ state) => {
-                        state.cell_inputs_local[cell_id] = {
-                            code: new_val,
-                        }
                         state.selected_cells = []
                     })
                 )
@@ -394,6 +413,9 @@ export class Editor extends Component {
                 let new_cells = new_codes.map((code) => ({
                     cell_id: uuidv4(),
                     code: code,
+                    cm_updates: [],
+                    start_version: 0,
+                    last_run_code: "",
                     code_folded: false,
                     metadata: {
                         ...DEFAULT_CELL_METADATA,
@@ -417,18 +439,10 @@ export class Editor extends Component {
                     index = this.state.notebook.cell_order.length
                 }
 
-                /** Update local_code. Local code doesn't force CM to update it's state
-                 * (the usual flow is keyboard event -> cm -> local_code and not the opposite )
-                 * See ** 1 **
-                 */
                 this.setState(
                     immer((/** @type {EditorState} */ state) => {
                         // Deselect everything first, to clean things up
                         state.selected_cells = []
-
-                        for (let cell of new_cells) {
-                            state.cell_inputs_local[cell.cell_id] = cell
-                        }
                         state.last_created_cell = new_cells[0]?.cell_id
                     })
                 )
@@ -441,8 +455,9 @@ export class Editor extends Component {
                     for (const cell of new_cells) {
                         notebook.cell_inputs[cell.cell_id] = {
                             ...cell,
-                            // Fill the cell with empty code remotely, so it doesn't run unsafe code
-                            code: "",
+                            start_version: 0,
+                            last_run_code: "",
+                            cm_updates: [],
                             metadata: {
                                 ...DEFAULT_CELL_METADATA,
                             },
@@ -456,16 +471,22 @@ export class Editor extends Component {
                 })
             },
             wrap_remote_cell: async (cell_id, block_start = "begin", block_end = "end") => {
-                const cell = this.state.notebook.cell_inputs[cell_id]
-                const new_code = `${block_start}\n\t${cell.code.replace(/\n/g, "\n\t")}\n${block_end}`
+                if (!this.state.cell_collab_plugins.has(cell_id)) return;
 
-                await this.setStatePromise(
-                    immer((/** @type {EditorState} */ state) => {
-                        state.cell_inputs_local[cell_id] = {
-                            code: new_code,
-                        }
-                    })
-                )
+                const view = this.state.cell_collab_plugins.get(cell_id).view
+                const state = view.state
+                const doc = state.doc
+
+                const changes = [{from: 0, to: 0, insert: block_start + "\n"}]
+
+                let pos = 0
+                for (const line of doc.iterLines()) {
+                    changes.push({from: pos, to: pos, insert: "\t"})
+                    pos += line.length + 1
+                }
+
+                changes.push({from: doc.length, to: doc.length, insert: "\n" + block_end})
+                view.dispatch({ changes })
                 await this.actions.set_and_run_multiple([cell_id])
             },
             split_remote_cell: async (cell_id, boundaries, submit = false) => {
@@ -479,7 +500,10 @@ export class Editor extends Component {
                 const cells_to_add = parts.map((code) => {
                     return {
                         cell_id: uuidv4(),
-                        code: code,
+                        code,
+                        last_run_code: "",
+                        start_version: 0,
+                        cm_updates: [],
                         code_folded: false,
                         metadata: {
                             ...DEFAULT_CELL_METADATA,
@@ -487,13 +511,6 @@ export class Editor extends Component {
                     }
                 })
 
-                this.setState(
-                    immer((/** @type {EditorState} */ state) => {
-                        for (let cell of cells_to_add) {
-                            state.cell_inputs_local[cell.cell_id] = cell
-                        }
-                    })
-                )
                 await update_notebook((notebook) => {
                     // delete the old cell
                     delete notebook.cell_inputs[cell_id]
@@ -541,6 +558,9 @@ export class Editor extends Component {
                     notebook.cell_inputs[id] = {
                         cell_id: id,
                         code,
+                        last_run_code: "",
+                        start_version: 0,
+                        cm_updates: [],
                         code_folded: false,
                         metadata: { ...DEFAULT_CELL_METADATA },
                     }
@@ -590,12 +610,13 @@ export class Editor extends Component {
             set_and_run_all_changed_remote_cells: () => {
                 const changed = this.state.notebook.cell_order.filter(
                     (cell_id) =>
-                        this.state.cell_inputs_local[cell_id] != null &&
-                        this.state.notebook.cell_inputs[cell_id].code !== this.state.cell_inputs_local[cell_id]?.code
+                        this.state.notebook.cell_inputs[cell_id].last_run_code !== this.state.notebook.cell_inputs[cell_id].code
                 )
                 this.actions.set_and_run_multiple(changed)
                 return changed.length > 0
             },
+            push_updates: (updates) => this.client.send("push_updates", { cell_updates: [updates] }, { notebook_id: this.state.notebook.notebook_id }, false),
+            sync_updates: (cell_id, updates) => this.state.cell_collab_plugins.get(cell_id)?.sync(updates),
             set_and_run_multiple: async (cell_ids) => {
                 // TODO: this function is called with an empty list sometimes, where?
                 if (cell_ids.length > 0) {
@@ -607,13 +628,18 @@ export class Editor extends Component {
                         })
                     )
 
-                    await update_notebook((notebook) => {
-                        for (let cell_id of cell_ids) {
-                            if (this.state.cell_inputs_local[cell_id]) {
-                                notebook.cell_inputs[cell_id].code = this.state.cell_inputs_local[cell_id].code
-                            }
-                        }
-                    })
+                    const updates = []
+                    for (let cell_id of cell_ids) {
+                        const cell_plugin = this.state.cell_collab_plugins.get(cell_id)
+                        cell_plugin.pushing = true
+                        updates.push(cell_plugin.makeUpdate())
+                    }
+                    await this.client.send("push_updates", { cell_updates: updates, }, { notebook_id: this.state.notebook.notebook_id }, false)
+                    for (let cell_id of cell_ids) {
+                        const cell_plugin = this.state.cell_collab_plugins.get(cell_id)
+                        cell_plugin.pushing = false
+                    }
+
                     // This is a "dirty" trick, as this should actually be stored in some shared request_status => status state
                     // But for now... this is fine 😼
                     await this.setStatePromise(
@@ -865,6 +891,17 @@ patch: ${JSON.stringify(
             this.client.send("complete", { query: "sq" }, { notebook_id: this.state.notebook.notebook_id })
             this.client.send("complete", { query: "\\sq" }, { notebook_id: this.state.notebook.notebook_id })
 
+            /** @type import("./Editor.js").NotebookData */ // @ts-ignore
+            const nb = this.actions.get_notebook() // @ts-ignore
+            const users = nb?.users
+            if (users) {
+                const names = ["Mars", "Earth", "Moon", "Sun"]
+                const colors = ["#ffc09f", "#a0ced9", "#adf7b6", "#fcf5c7"]
+                this.actions.update_notebook((/** @type {NotebookData} */nb) => {
+                    nb.users[this.client_id] = { name: names[Object.keys(users).length], color: colors[Object.keys(users).length] }
+                })
+            }
+
             setTimeout(init_feedback, 2 * 1000) // 2 seconds - load feedback a little later for snappier UI
         }
 
@@ -904,6 +941,7 @@ patch: ${JSON.stringify(
                 ? `./${u}?id=${this.state.notebook.notebook_id}`
                 : `${this.state.binder_session_url}${u}?id=${this.state.notebook.notebook_id}&token=${this.state.binder_session_token}`
 
+        this.client_id = Math.random().toString(36).slice(2)
         /** @type {import('../common/PlutoConnection').PlutoConnection} */
         this.client = /** @type {import('../common/PlutoConnection').PlutoConnection} */ ({})
 
@@ -1362,7 +1400,7 @@ The notebook file saves every time you run a cell.`
 
         window.addEventListener("beforeunload", (event) => {
             const unsaved_cells = this.state.notebook.cell_order.filter(
-                (id) => this.state.cell_inputs_local[id] && this.state.notebook.cell_inputs[id].code !== this.state.cell_inputs_local[id].code
+                (id) => this.state.notebook.cell_inputs[id].last_run_code !== this.state.notebook.cell_inputs[id].code
             )
             const first_unsaved = unsaved_cells[0]
             if (first_unsaved != null) {
@@ -1650,9 +1688,10 @@ The notebook file saves every time you run a cell.`
                             last_hot_reload_time=${notebook.last_hot_reload_time}
                             connected=${this.state.connected}
                         />
+                        <${MultiplayerPanel} users=${notebook.users} client_id=${this.client_id} users_mouse_data=${notebook.users_mouse_data} />
                         <${Notebook}
                             notebook=${notebook}
-                            cell_inputs_local=${this.state.cell_inputs_local}
+                            client_id=${this.client_id}
                             disable_input=${this.state.disable_ui || !this.state.connected /* && this.state.backend_launch_phase == null*/}
                             last_created_cell=${this.state.last_created_cell}
                             selected_cells=${this.state.selected_cells}
@@ -1701,6 +1740,7 @@ The notebook file saves every time you run a cell.`
                         backend_launch_logs=${this.state.backend_launch_logs}
                         notebook=${this.state.notebook}
                         sanitize_html=${status.sanitize_html}
+                        client_id=${this.client_id}
                     />
                     <${Popup} 
                         notebook=${this.state.notebook}

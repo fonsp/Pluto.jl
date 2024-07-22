@@ -29,6 +29,8 @@ const CellMemo = ({
     cell_input,
     cell_input_local,
     notebook_id,
+    client_id,
+    users,
     cell_dependencies,
     selected,
     focus_after_creation,
@@ -37,15 +39,13 @@ const CellMemo = ({
     disable_input,
     sanitize_html = true,
     process_waiting_for_permission,
-    show_logs,
-    set_show_logs,
     nbpkg,
     global_definition_locations,
     is_first_cell,
 }) => {
     const { body, last_run_timestamp, mime, persist_js_state, rootassignee } = cell_result?.output || {}
     const { queued, running, runtime, errored, depends_on_disabled_cells, logs, depends_on_skipped_cells } = cell_result || {}
-    const { cell_id, code, code_folded, metadata } = cell_input || {}
+    const { cell_id, code, code_folded, metadata, cm_updates } = cell_input || {}
     return useMemo(() => {
         return html`
             <${Cell}
@@ -54,6 +54,8 @@ const CellMemo = ({
                 cell_input=${cell_input}
                 cell_input_local=${cell_input_local}
                 notebook_id=${notebook_id}
+                client_id=${client_id}
+                users=${users}
                 selected=${selected}
                 force_hide_input=${force_hide_input}
                 focus_after_creation=${focus_after_creation}
@@ -73,6 +75,7 @@ const CellMemo = ({
         ...Object.values(metadata),
         depends_on_disabled_cells,
         depends_on_skipped_cells,
+        cm_updates?.length,
         queued,
         running,
         runtime,
@@ -87,6 +90,8 @@ const CellMemo = ({
         code_folded,
         cell_input_local,
         notebook_id,
+        client_id,
+        users,
         cell_dependencies,
         selected,
         force_hide_input,
@@ -114,7 +119,6 @@ const render_cell_outputs_minimum = 20
 /**
  * @param {{
  *  notebook: import("./Editor.js").NotebookData,
- *  cell_inputs_local: { [uuid: string]: { code: String } },
  *  on_update_doc_query: any,
  *  on_cell_input: any,
  *  on_focus_neighbor: any,
@@ -125,11 +129,11 @@ const render_cell_outputs_minimum = 20
  *  disable_input: boolean,
  *  process_waiting_for_permission: boolean,
  *  sanitize_html: boolean,
+ *  client_id: string,
  * }} props
  * */
 export const Notebook = ({
     notebook,
-    cell_inputs_local,
     last_created_cell,
     selected_cells,
     is_initializing,
@@ -137,6 +141,7 @@ export const Notebook = ({
     disable_input,
     process_waiting_for_permission,
     sanitize_html = true,
+    client_id,
 }) => {
     let pluto_actions = useContext(PlutoActionsContext)
 
@@ -188,6 +193,7 @@ export const Notebook = ({
                 .map(
                     (cell_id, i) => html`<${CellMemo}
                         key=${cell_id}
+                        users=${notebook.users}
                         cell_result=${notebook.cell_results[cell_id] ?? {
                             cell_id: cell_id,
                             queued: true,
@@ -199,8 +205,8 @@ export const Notebook = ({
                         }}
                         cell_input=${notebook.cell_inputs[cell_id]}
                         cell_dependencies=${notebook?.cell_dependencies?.[cell_id] ?? {}}
-                        cell_input_local=${cell_inputs_local[cell_id]}
                         notebook_id=${notebook.notebook_id}
+                        client_id=${client_id}
                         selected=${selected_cells.includes(cell_id)}
                         focus_after_creation=${last_created_cell === cell_id}
                         force_hide_input=${false}

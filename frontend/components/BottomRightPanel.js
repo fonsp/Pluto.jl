@@ -6,10 +6,11 @@ import { is_finished, StatusTab, total_done, total_tasks, useStatusItem } from "
 import { useMyClockIsAheadBy } from "../common/clock sync.js"
 import { BackendLaunchPhase } from "../common/Binder.js"
 import { useEventListener } from "../common/useEventListener.js"
+import { CollabTab } from "./CollabTab.js"
 
 /**
  * @typedef PanelTabName
- * @type {"docs" | "process" | null}
+ * @type {"docs" | "process" | "collab" | null}
  */
 
 export const open_bottom_right_panel = (/** @type {PanelTabName} */ tab) => window.dispatchEvent(new CustomEvent("open_bottom_right_panel", { detail: tab }))
@@ -17,6 +18,7 @@ export const open_bottom_right_panel = (/** @type {PanelTabName} */ tab) => wind
 /**
  * @param {{
  * notebook: import("./Editor.js").NotebookData,
+ * client_id: string,
  * desired_doc_query: string?,
  * on_update_doc_query: (query: string?) => void,
  * connected: boolean,
@@ -27,6 +29,7 @@ export const open_bottom_right_panel = (/** @type {PanelTabName} */ tab) => wind
  */
 export let BottomRightPanel = ({
     desired_doc_query,
+    client_id,
     on_update_doc_query,
     notebook,
     connected,
@@ -55,6 +58,8 @@ export let BottomRightPanel = ({
         },
         [set_open_tab]
     )
+
+    const showMultiplayerTab = notebook.users && Object.keys(notebook.users).some(user_id => user_id != client_id)
 
     const status = useWithBackendStatus(notebook, backend_launch_phase)
 
@@ -119,6 +124,14 @@ export let BottomRightPanel = ({
                                 : html`Status${" "}<span class="subprogress-counter">(${status_done}/${status_total})</span>`}</span
                         >
                     </button>
+                    <button title="Collaboration"
+                        class=${cl({
+                            "helpbox-tab-key": true,
+                            "active": open_tab === "collab",
+                        })}
+                        onClick=${() => set_open_tab(open_tab === "collab" ? null : "collab")}>
+                        <span class="tabname">Collaboration</span>
+                    </button>
                     ${hidden
                         ? null
                         : html`<button
@@ -146,6 +159,8 @@ export let BottomRightPanel = ({
                           my_clock_is_ahead_by=${my_clock_is_ahead_by}
                           status=${status}
                       />`
+                    : open_tab === "collab"
+                    ? html`<${CollabTab} client_id=${client_id} notebook=${notebook} />`
                     : null}
             </pluto-helpbox>
         </aside>
