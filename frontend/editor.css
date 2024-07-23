@@ -3001,7 +3001,7 @@ pluto-logs-container pluto-progress-name {
     font-variant-ligatures: none;
     padding: 0 0.4rem 0 0.1rem;
 }
-pluto-logs-container pluto-progress-name.no_name {
+pluto-logs-container pluto-progress-name:empty {
     padding: 0;
 }
 
@@ -3105,9 +3105,6 @@ pluto-log-dot-positioner.Debug {
     --bg-color: var(--pluto-logs-debug-color);
     --accent-color: var(--pluto-logs-debug-accent-color);
     --icon-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/information-circle-outline.svg");
-}
-pluto-log-dot-positioner.Progress {
-    --icon-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sync-outline.svg");
 }
 pluto-log-dot-positioner.Stdout {
     --icon-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/terminal-outline.svg");
