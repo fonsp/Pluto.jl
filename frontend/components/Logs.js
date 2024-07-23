@@ -89,8 +89,7 @@ export const Logs = ({ logs, line_heights, set_cm_highlighted_line, sanitize_htm
 }
 
 const Progress = ({ name, progress }) => {
-    console.log("Progress Name: ", name)
-    return html`<pluto-progress-name class=${name === "" ? "no_name" : null}>${name}</pluto-progress-name>
+    return html`<pluto-progress-name>${name}</pluto-progress-name>
         <pluto-progress-bar-container><${ProgressBar} progress=${progress} /></pluto-progress-bar-container>`
 }
 
