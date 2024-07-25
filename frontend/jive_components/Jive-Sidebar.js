@@ -30,7 +30,7 @@ frameDiv.style = `
 const openButton = document.createElement("button")
 openButton.className = "jv-button-nav jv-large"
 openButton.title = "Open JIVE Sidebar"
-openButton.innerHTML = '<span> <img width="35" src="./img/jive_logo_eye_crop3.png"></img> </span>'
+openButton.innerHTML = '<span> <img width="35" src="./img/jive_logo.png"></img> </span>'
 openButton.style.visibility = "hidden"
 openButton.style.opacity = "1"
 openButton.style.left = "0rem"
@@ -59,7 +59,7 @@ closeBtn.onclick = w3_close
 // TITLE
 const titleDiv = document.createElement("div")
 titleDiv.className = "jv-container "
-titleDiv.innerHTML = '<h2> <img width="50"  src="./img/jive_logo_eye_crop3.png"></img>  </h2> <md-block> ##### **jive** v.0.0  \n --- </md-block>'
+titleDiv.innerHTML = '<h2> <img width="50"  src="./img/jive_logo.png"></img>  </h2> <md-block> ###### v.0.0  \n --- </md-block>'
 titleDiv.style.textAlign = "center"
 
 // SEARCH BAR
