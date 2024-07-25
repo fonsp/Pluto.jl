@@ -37,6 +37,7 @@ import Logging
 import REPL
 
 export @bind
+export create_plotly, create_plotly_listener
 
 # This is not a struct to make it easier to pass these objects between processes.
 const MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
@@ -2390,7 +2391,56 @@ end"""
 
 
 
+###
+# PLOTLY
+##
 
+function create_plotly(r)
+    img_width, img_height = size(r)
+    
+    trace = heatmap(z=Float32.(Gray.(r)),colorscale="Greys")
+    
+    layout = Layout(
+            template=templates.seaborn,
+        xaxis = attr(showgrid=false, range=(0,img_width)),
+        yaxis = attr(showgrid=false, scaleanchor="x", range=(img_height, 0)),
+        dragmode="drawrect",
+        newshape=attr(line_color="cyan"),
+        # title_text="Drag to add annotations - use modebar to change drawing tool",
+        modebar_add=[
+            "drawline",
+            "drawopenpath",
+            "drawclosedpath",
+            "drawcircle",
+            "drawrect",
+            "eraseshape"
+        ],
+    )
+    
+    plot(trace,layout)
+    
+end
+
+function create_plotly_listener(q)
+    add_plotly_listener!(q,"plotly_relayout", "
+             function(e){
+                    console.log(e)
+                    if (e.hasOwnProperty('shapes')){
+                            let s = e.shapes
+                          let dt = s[s.length-1]
+                            PLOT.value = {shape: dt.type, x0: dt.x0, x1: dt.x1, y0: dt.y0, y1: dt.y1}
+                            PLOT.dispatchEvent(new CustomEvent('input'))
+                    } else {
+                            console.log(Object.getOwnPropertyNames(e))
+                            let sh = Object.getOwnPropertyNames(e)[0]
+                            let xy = Object.values(e)
+                            PLOT.value = {shape: sh, x0: xy[0], x1: xy[1], y0: xy[2], y1: xy[3]}
+                            PLOT.dispatchEvent(new CustomEvent('input'))
+                    }
+                    
+            }
+        ")
+    end
 
 
 
