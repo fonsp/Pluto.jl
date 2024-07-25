@@ -48,6 +48,11 @@ function save_notebook(io::IO, notebook::Notebook)
     println(io, "")
     println(io, "using Markdown")
     println(io, "using InteractiveUtils")
+    println(io, "using JIVECore")
+    println(io, "using PlutoPlotly, PlutoUI")
+    println(io, "import Main.PlutoRunner.JIVECore.Data.image_data as image_data")
+    println(io, "import Main.PlutoRunner.JIVECore.Data.image_keys as image_keys")
+    
     # Super Advanced Code Analysis™ to add the @bind macro to the saved file if it's used somewhere.
     if any(!must_be_commented_in_file(c) && occursin("@bind", c.code) for c in notebook.cells)
         println(io, "")

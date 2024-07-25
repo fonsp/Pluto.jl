@@ -245,13 +245,15 @@ h = plot(heatmap(z=Float32.(b),colorscale="Greys"),Layout(template=templates.pre
 # ╔═╡ a197f528-1dd9-4b72-b631-24d7efb6b27b
 PlutoPlotly.templates
 
+# ╔═╡ ecb1c939-0167-4014-a0a7-8d5e52d373d5
+
+
 # ╔═╡ fbc54fcf-c451-4172-841d-0dcdff6eeeba
 # Add image
 function create_plotly(r)
-aa = image_data[r]
-img_width2, img_height2 = size(aa)
+img_width2, img_height2 = size(r)
 
-trace2 = heatmap(z=Float32.(Gray.(aa)),colorscale="Greys")
+trace2 = heatmap(z=Float32.(Gray.(r)),colorscale="Greys")
 
 layout2 = Layout(
 		template=templates.seaborn,
@@ -270,7 +272,7 @@ layout2 = Layout(
     ],
 )
 
-q = plot(trace2,layout2)
+plot(trace2,layout2)
 
 end
 
@@ -310,7 +312,7 @@ md"""
 
 $(
 @bind obs2 let
-	q = create_plotly(r)
+	q = create_plotly(image_data[r])
 	create_listener(q)
 	q
 end
@@ -575,6 +577,7 @@ version = "5.8.0+1"
 # ╠═7a0e461b-0f9b-45c9-a795-ece42572e074
 # ╠═c45d81d8-ebc3-4a49-92a3-9c6e3d6f9b41
 # ╠═a197f528-1dd9-4b72-b631-24d7efb6b27b
+# ╠═ecb1c939-0167-4014-a0a7-8d5e52d373d5
 # ╠═fbc54fcf-c451-4172-841d-0dcdff6eeeba
 # ╠═f993b93f-f901-46db-ad21-827a91d910a0
 # ╠═c36d8482-d2bd-4c36-b9ce-aadfe6e0d60e
