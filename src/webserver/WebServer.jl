@@ -171,7 +171,7 @@ function run!(session::ServerSession)
 
     on_shutdown() = @sync begin
         # Triggered by HTTP.jl
-        @info("\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈\n\n")
+        @info("\nClosing JIVEbook... Restart Julia for a fresh session. \n\nHave a nice day! \n\n")
         # TODO: put do_work tokens back 
         @async swallow_exception(() -> close(serversocket), Base.IOError)
         for client in values(session.connected_clients)
