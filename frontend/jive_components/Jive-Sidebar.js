@@ -30,7 +30,7 @@ frameDiv.style = `
 const openButton = document.createElement("button")
 openButton.className = "jv-button-nav jv-large"
 openButton.title = "Open JIVE Sidebar"
-openButton.innerHTML = '<span> <img width="35" src="./img/jive_logo.png"></img> </span>'
+openButton.innerHTML = '<span> <img width="50" src="./img/jive_logo.png"></img> </span>'
 openButton.style.visibility = "hidden"
 openButton.style.opacity = "1"
 openButton.style.left = "0rem"

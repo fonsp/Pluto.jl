@@ -1418,7 +1418,7 @@ The notebook file saves every time you run a cell.`
             update_stored_recent_notebooks(new_state.notebook.path, old_state?.notebook?.path)
         }
         if (old_state?.notebook?.shortpath !== new_state.notebook.shortpath) {
-            document.title = "🎈 " + new_state.notebook.shortpath + " — Pluto.jl"
+            document.title = "📖 " + new_state.notebook.shortpath + " — JIVEbook.jl"
         }
 
         this.send_queued_bond_changes()
