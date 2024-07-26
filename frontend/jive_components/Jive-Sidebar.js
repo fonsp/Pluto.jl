@@ -107,6 +107,7 @@ const itemBarAdjust = document.createElement("div")
 // const itemBarProcess = document.createElement("div")
 // const itemBarPlot = document.createElement("div")
 // const itemBarWindows = document.createElement("div")
+const itemBarEdit = document.createElement("div")
 
 ////////// FILE /////////////
 
@@ -225,14 +226,69 @@ accAdjust.appendChild(accItemAdjustColor)
 itemBarAdjust.appendChild(accButtonAdjust)
 itemBarAdjust.appendChild(accAdjust)
 
-// // RUN CELL
-// const itemBarRunCell = document.createElement("a")
-// // itemBarPlot.href = "#"
-// itemBarRunCell.className = "jv-bar-item jv-button"
-// itemBarRunCell.innerText = "Run Cell"
-// itemBarRunCell.onclick = function () {
-//     getPlutoCell(getSelection().anchorNode).querySelector("button.runcell").click()
-// }
+////////// EDIT /////////////
+
+/// Accordion Open/Close Button
+const accButtonEdit = document.createElement("button")
+accButtonEdit.className = "jv-button jv-block jv-left-align"
+accButtonEdit.name = "Edit"
+accButtonEdit.innerHTML = accButtonEdit.name + ' <img width="15" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chevron-down.svg"></img>'
+accButtonEdit.onclick = function () {
+    myAccFunc(accEdit.id)
+}
+
+/// Container for Accordion Menu Items
+const accEdit = document.createElement("div")
+accEdit.id = "AccEdit"
+accEdit.className = "jv-hide jv-card"
+accEdit.style.boxShadow = "none"
+accEdit.style.margin = "0px 0px 5px 15px"
+
+/// EDIT MENU ITEMS
+const accItemEditAnnotate = document.createElement("a")
+accItemEditAnnotate.href = "#"
+accItemEditAnnotate.className = "jv-bar-item jv-button"
+accItemEditAnnotate.innerHTML = " "
+accItemEditAnnotate.innerText += "Annotate"
+accItemEditAnnotate.onclick = async function () {
+    const a = getVarName("annotate_image")
+    const b = getVarName("annotate_operation")
+    const c = getVarName("annotate_coords")
+    const d = getVarName("annotate_apply")
+    createMDCellWithUI(
+        "Annotate",
+        `---
+
+1. Choose image: $(@bind ${a} Select(image_keys, default=image_keys[end]) ) 
+1. Select Area 
+1. Choose operation: $(@bind ${b} confirm(Select([1 => "crop", 2 => "fill", 3 => "plot"])) )
+
+---
+
+$(
+@bind ${c} let
+    q = create_plotly_visualizer(image_data[${a}], "heatmap")
+    create_plotly_listener(q)
+    q
+end
+)
+---
+
+
+Apply last operation to the selected images (press Ctrl to select multiple items):
+
+$(@bind ${d} confirm(MultiSelect(image_keys)) )"
+`
+    )
+    // await resolveAfterTimeout(timeoutValue)
+    // createCellWithCode(`JIVECore.Process.autoContrast(image_data[${x}])`)
+}
+
+//// add items to menu
+accEdit.appendChild(accItemEditAnnotate)
+// accEdit.appendChild(accItemEdit)
+itemBarEdit.appendChild(accButtonEdit)
+itemBarEdit.appendChild(accEdit)
 
 //////////////// Put menu together ///////////////////
 
@@ -240,10 +296,10 @@ sideBar.appendChild(closeBtn)
 sideBar.appendChild(titleDiv)
 sideBar.appendChild(searchItem)
 sideBar.appendChild(itemBarFile)
+sideBar.appendChild(itemBarEdit)
 sideBar.appendChild(itemBarAdjust)
-sideBar.appendChild(itemBarProcess)
-sideBar.appendChild(itemBarPlot)
-sideBar.appendChild(itemBarRunCell)
+// sideBar.appendChild(itemBarProcess)
+// sideBar.appendChild(itemBarPlot)
 
 ////////////////
 // FUNCTIONS //

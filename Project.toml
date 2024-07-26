@@ -1,7 +1,7 @@
 name = "JIVEbook"
 uuid = "1f674130-1f75-11ef-3a7c-430c8081b4f7"
 license = "MIT"
-authors = ["Biagio Mandracchia <biagio.mandracchia@uva.es>","Pablo Villacorta Aylagas <pablo.villacorta@uva.es>","Fons van der Plas <fons@plutojl.org>"]
+authors = ["Biagio Mandracchia <biagio.mandracchia@uva.es>", "Pablo Villacorta Aylagas <pablo.villacorta@uva.es>", "Fons van der Plas <fons@plutojl.org>"]
 version = "0.0.2"
 
 [deps]
@@ -23,6 +23,7 @@ Malt = "36869731-bdee-424d-aa32-cab38c994e3b"
 Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 MsgPack = "99f44e22-a591-53d1-9472-aa23ef4bd671"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+PlotlyBase = "a03496cd-edff-5a9b-9e67-9cda94a718b5"
 PlutoDependencyExplorer = "72656b73-756c-7461-726b-72656b6b696b"
 PlutoPlotly = "8e989ff0-3d88-8e9f-f020-2b208a939ff0"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"

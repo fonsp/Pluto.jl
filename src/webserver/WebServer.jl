@@ -308,13 +308,13 @@ function run!(session::ServerSession)
     else
         @info("\nGo to $address in your browser to start writing ~ have fun!")
     end
-    @info("\nPress Ctrl+C in this terminal to stop Pluto\n\n")
+    @info("\nPress Ctrl+C in this terminal to stop JIVEbook\n\n")
 
     # Trigger ServerStartEvent with server details
     try_event_call(session, ServerStartEvent(address, port))
 
     if JIVEBOOK_VERSION >= v"0.0.2" && frontend_directory() == "frontend"
-        @info("It looks like you are developing the Pluto package, using the unbundled frontend...")
+        @info("It looks like you are developing the JIVEbook/Pluto package, using the unbundled frontend...")
     end
 
     # Start this in the background, so that the first notebook launch (which will trigger registry update) will be faster

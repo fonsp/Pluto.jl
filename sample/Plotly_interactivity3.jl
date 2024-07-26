@@ -3,6 +3,10 @@
 
 using Markdown
 using InteractiveUtils
+using JIVECore
+using PlutoPlotly, PlutoUI
+import Main.PlutoRunner.JIVECore.Data.image_data as image_data
+import Main.PlutoRunner.JIVECore.Data.image_keys as image_keys
 
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
@@ -277,7 +281,7 @@ plot(trace2,layout2)
 end
 
 # ╔═╡ f993b93f-f901-46db-ad21-827a91d910a0
-function create_listener(q)
+function create_plotly_listener(q)
 add_plotly_listener!(q,"plotly_relayout", "
 		 function(e){
 				console.log(e)
@@ -313,14 +317,14 @@ md"""
 $(
 @bind obs2 let
 	q = create_plotly(image_data[r])
-	create_listener(q)
+	create_plotly_listener(q)
 	q
 end
 )
 ---
 
 
-Apply last operation to the selected images (use Ctrl to select multiple items):
+Apply last operation to the selected images (press Ctrl to select multiple items):
 
 $(@bind rr confirm(MultiSelect(image_keys)) )"
 

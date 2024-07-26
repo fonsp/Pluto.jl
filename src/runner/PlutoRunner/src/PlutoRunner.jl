@@ -25,6 +25,7 @@ import InteractiveUtils
 import JIVECore
 import PlutoPlotly
 import PlutoUI
+import PlotlyBase
 
 using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
@@ -37,7 +38,7 @@ import Logging
 import REPL
 
 export @bind
-export create_plotly, create_plotly_listener
+export create_plotly_visualizer, create_plotly_listener, create_plotly_graph
 
 # This is not a struct to make it easier to pass these objects between processes.
 const MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
@@ -2395,18 +2396,32 @@ end"""
 # PLOTLY
 ##
 
-function create_plotly(r)
+function create_plotly_graph(graph::Union{String,Symbol})
+    graph_symbol = Symbol(graph)
+    graph_functions = Dict(
+        :heatmap => PlotlyBase.heatmap,
+        :scatter => PlotlyBase.scatter,
+    )
+    
+    get(graph_functions, graph_symbol) do
+        error("Unsupported graph type: $graph")
+    end
+end
+
+function create_plotly_visualizer(r, graph::String)
     img_width, img_height = size(r)
     
-    trace = heatmap(z=Float32.(Gray.(r)),colorscale="Greys")
+    plt = create_plotly_graph(graph)
+
+    trace = plt(z=Float32.(JIVECore.Images.ColorTypes.Gray.(r)),colorscale="Greys")
     
-    layout = Layout(
-            template=templates.seaborn,
-        xaxis = attr(showgrid=false, range=(0,img_width)),
-        yaxis = attr(showgrid=false, scaleanchor="x", range=(img_height, 0)),
+    layout = PlotlyBase.Layout(
+        template=PlotlyBase.templates.seaborn,
+        xaxis = PlotlyBase.attr(showgrid=false, range=(0,img_width)),
+        yaxis = PlotlyBase.attr(showgrid=false, scaleanchor="x", range=(img_height, 0)),
         dragmode="drawrect",
-        newshape=attr(line_color="cyan"),
-        # title_text="Drag to add annotations - use modebar to change drawing tool",
+        newshape = PlotlyBase.attr(line_color="cyan"),
+        # # title_text="Drag to add annotations - use modebar to change drawing tool",
         modebar_add=[
             "drawline",
             "drawopenpath",
@@ -2417,12 +2432,12 @@ function create_plotly(r)
         ],
     )
     
-    plot(trace,layout)
+    PlutoPlotly.plot(trace,layout)
     
 end
 
 function create_plotly_listener(q)
-    add_plotly_listener!(q,"plotly_relayout", "
+    PlutoPlotly.add_plotly_listener!(q,"plotly_relayout", "
              function(e){
                     console.log(e)
                     if (e.hasOwnProperty('shapes')){
