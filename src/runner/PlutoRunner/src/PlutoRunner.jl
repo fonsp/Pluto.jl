@@ -2396,6 +2396,35 @@ end"""
 # PLOTLY
 ##
 
+function create_plotly_shape!(shapes_dict::Dict, d::Dict)
+    key = JIVECore.Data.keyCheck(shapes_dict,"1")
+    shapes_dict[key] = d
+end
+
+function modify_plotly_shape!(shapes_dict::Dict, d::Dict)
+    key = split(split(obs2["shape"],"[")[2],"]")[1]
+    d["shape"] = shapes_dict[key]["shape"]
+    shapes_dict[key] = d
+end
+
+function pass_plotly_shape(shapes_dict::Dict, d::Dict)
+    return nothing
+end
+
+function record_plotly_shapes(shape::String)
+    
+    shapes = Dict(
+        "rect" => create_plotly_shape!,
+        "circ" => create_plotly_shape!,
+        "line" => create_plotly_shape!,
+        "shap" => modify_plotly_shape!,
+    )
+    
+    get(shapes, shape[1:4]) do
+        return pass_plotly_shape
+    end
+end
+
 function create_plotly_graph(graph::Union{String,Symbol})
     graph_symbol = Symbol(graph)
     graph_functions = Dict(
@@ -2424,8 +2453,9 @@ function create_plotly_visualizer(r, graph::String)
         # # title_text="Drag to add annotations - use modebar to change drawing tool",
         modebar_add=[
             "drawline",
-            "drawopenpath",
-            "drawclosedpath",
+            # "drawopenpath", # path elements are not supported yet 
+            # "drawclosedpath",
+            "lasso",
             "drawcircle",
             "drawrect",
             "eraseshape"

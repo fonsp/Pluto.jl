@@ -333,8 +333,57 @@ $(@bind rr confirm(MultiSelect(image_keys)) )"
 # ╔═╡ 192dc6eb-82f7-4dde-ad5f-0a77f22fdabb
 obs2
 
+# ╔═╡ 391341a8-706e-4234-977e-66ff25e78033
+a = Dict()
+
+# ╔═╡ a4032867-0a88-45bc-aa11-84513a736655
+JIVECore.Data.keyCheck(a,"1")
+
 # ╔═╡ 8866d672-9749-4572-a1dd-b0cea7bbe49e
 s
+
+# ╔═╡ e1126e1a-141d-4b6f-aa3d-be9b50b356fd
+function pass_plotly_shape(shapes_dict::Dict, d::Dict)
+    return nothing
+end
+
+# ╔═╡ 8eb95696-7c71-4f6a-9d42-19f5b7430049
+
+function create_plotly_shape!(shapes_dict::Dict, d::Dict)
+    key = JIVECore.Data.keyCheck(shapes_dict,"0")
+    shapes_dict[key] = d
+end
+
+# ╔═╡ 4542915a-7f0c-4ee4-be5d-0a97579c4d68
+a
+
+# ╔═╡ 973e3aac-0c98-4a5d-9fcc-02b0fee71a2e
+function modify_plotly_shape!(shapes_dict::Dict, d::Dict)
+    key = split(split(obs2["shape"],"[")[2],"]")[1]
+    d["shape"] = shapes_dict[key]["shape"]
+    shapes_dict[key] = d
+end
+
+# ╔═╡ bc571dfa-0597-4f74-990e-126cf0b1f9b9
+function record_plotly_shapes(shape::String)
+    
+    shapes = Dict(
+        "rect" => create_plotly_shape!,
+        "circ" => create_plotly_shape!,
+        "line" => create_plotly_shape!,
+        "shap" => modify_plotly_shape!,
+    )
+    
+    get(shapes, shape[1:4]) do
+        return pass_plotly_shape
+    end
+end
+
+# ╔═╡ ba15339b-6ebf-4e47-a5ea-ee7150d98dec
+record_plotly_shapes(obs2["shape"])
+
+# ╔═╡ e9d12ff9-0caa-4d60-8921-6347c5a72842
+record_plotly_shapes(obs2["shape"])(a,obs2)
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -586,6 +635,15 @@ version = "5.8.0+1"
 # ╠═f993b93f-f901-46db-ad21-827a91d910a0
 # ╠═c36d8482-d2bd-4c36-b9ce-aadfe6e0d60e
 # ╠═192dc6eb-82f7-4dde-ad5f-0a77f22fdabb
+# ╠═391341a8-706e-4234-977e-66ff25e78033
+# ╠═a4032867-0a88-45bc-aa11-84513a736655
 # ╠═8866d672-9749-4572-a1dd-b0cea7bbe49e
+# ╠═e1126e1a-141d-4b6f-aa3d-be9b50b356fd
+# ╠═8eb95696-7c71-4f6a-9d42-19f5b7430049
+# ╠═4542915a-7f0c-4ee4-be5d-0a97579c4d68
+# ╠═bc571dfa-0597-4f74-990e-126cf0b1f9b9
+# ╠═973e3aac-0c98-4a5d-9fcc-02b0fee71a2e
+# ╠═ba15339b-6ebf-4e47-a5ea-ee7150d98dec
+# ╠═e9d12ff9-0caa-4d60-8921-6347c5a72842
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

@@ -1,10 +1,14 @@
-### A Pluto.jl notebook ###
-# v0.19.38
+### A JIVEbook.jl notebook ###
+# v0.0.2
 
 #> custom_attrs = ["hide-enabled"]
 
 using Markdown
 using InteractiveUtils
+using JIVECore
+using PlutoPlotly, PlutoUI
+import Main.PlutoRunner.JIVECore.Data.image_data as image_data
+import Main.PlutoRunner.JIVECore.Data.image_keys as image_keys
 
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
@@ -526,7 +530,7 @@ PlutoUI = "~0.7.58"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.2"
+julia_version = "1.10.0"
 manifest_format = "2.0"
 project_hash = "b19cebbc09904d344f1a75767d597eb0075f0a44"
 
@@ -561,7 +565,7 @@ version = "0.12.10"
 [[deps.CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
-version = "1.1.0+0"
+version = "1.0.5+1"
 
 [[deps.Dates]]
 deps = ["Printf"]
@@ -683,7 +687,7 @@ version = "1.2.0"
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
 uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
-version = "0.3.23+4"
+version = "0.3.23+2"
 
 [[deps.Parsers]]
 deps = ["Dates", "PrecompileTools", "UUIDs"]
