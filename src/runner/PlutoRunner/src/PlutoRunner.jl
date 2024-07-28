@@ -38,7 +38,7 @@ import Logging
 import REPL
 
 export @bind
-export create_plotly_visualizer, create_plotly_listener, create_plotly_graph
+export create_plotly_visualizer, create_plotly_listener, create_plotly_graph, record_plotly_shapes, pass_plotly_shape, modify_plotly_shape
 
 # This is not a struct to make it easier to pass these objects between processes.
 const MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
@@ -2397,12 +2397,12 @@ end"""
 ##
 
 function create_plotly_shape!(shapes_dict::Dict, d::Dict)
-    key = JIVECore.Data.keyCheck(shapes_dict,"1")
+    key = JIVECore.Data.keyCheck(shapes_dict,"0")
     shapes_dict[key] = d
 end
 
 function modify_plotly_shape!(shapes_dict::Dict, d::Dict)
-    key = split(split(obs2["shape"],"[")[2],"]")[1]
+    key = split(split(d["shape"],"[")[2],"]")[1]
     d["shape"] = shapes_dict[key]["shape"]
     shapes_dict[key] = d
 end
@@ -2449,8 +2449,8 @@ function create_plotly_visualizer(r, graph::String)
         xaxis = PlotlyBase.attr(showgrid=false, range=(0,img_width)),
         yaxis = PlotlyBase.attr(showgrid=false, scaleanchor="x", range=(img_height, 0)),
         dragmode="drawrect",
-        newshape = PlotlyBase.attr(line_color="cyan", line_width=1, opacity=0.5),
-        # # title_text="Drag to add annotations - use modebar to change drawing tool",
+        newshape = PlotlyBase.attr(line_color="cyan", line_width=1.5, opacity=0.5),
+        # title_text="Drag to add annotations - use modebar to change drawing tool",
         modebar_add=[
             "drawline",
             # "drawopenpath", # path elements are not supported yet 

@@ -255,9 +255,12 @@ accItemEditAnnotate.onclick = async function () {
     const b = getVarName("annotate_operation")
     const c = getVarName("annotate_coords")
     const d = getVarName("annotate_apply")
-    createMDCellWithUI(
-        "Annotate",
-        `---
+    const e = getVarName("annotate_plot")
+    const f = getVarName("annotate_shapes")
+    createCellWithCode(`${f} = Dict()
+md"""
+##### Annotate
+---
 
 1. Choose image: $(@bind ${a} Select(image_keys, default=image_keys[end]) ) 
 1. Select Area 
@@ -267,9 +270,9 @@ accItemEditAnnotate.onclick = async function () {
 
 $(
 @bind ${c} let
-    q = create_plotly_visualizer(image_data[${a}], "heatmap")
-    create_plotly_listener(q)
-    q
+    ${e}  = create_plotly_visualizer(image_data[${a}], "heatmap")
+    create_plotly_listener(${e})
+    ${e} 
 end
 )
 ---
@@ -278,10 +281,10 @@ end
 Apply last operation to the selected images (press Ctrl to select multiple items):
 
 $(@bind ${d} confirm(MultiSelect(image_keys)) )"
-`
-    )
-    // await resolveAfterTimeout(timeoutValue)
-    // createCellWithCode(`JIVECore.Process.autoContrast(image_data[${x}])`)
+"""
+`)
+    await resolveAfterTimeout(timeoutValue)
+    createCellWithCode(`record_plotly_shapes(${c}["shape"])(${f},${c});`)
 }
 
 //// add items to menu
