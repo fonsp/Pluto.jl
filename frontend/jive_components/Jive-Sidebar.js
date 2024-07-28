@@ -251,28 +251,28 @@ accItemEditAnnotate.className = "jv-bar-item jv-button"
 accItemEditAnnotate.innerHTML = " "
 accItemEditAnnotate.innerText += "Annotate"
 accItemEditAnnotate.onclick = async function () {
-    const a = getVarName("annotate_image")
-    const b = getVarName("annotate_operation")
-    const c = getVarName("annotate_coords")
-    const d = getVarName("annotate_apply")
-    const e = getVarName("annotate_plot")
-    const f = getVarName("annotate_shapes")
-    createCellWithCode(`${f} = Dict()
+    const img = getVarName("annotate_image")
+    const ops = getVarName("annotate_operation")
+    const coords = getVarName("annotate_coords")
+    const apply = getVarName("annotate_apply")
+    const plot = getVarName("annotate_plot")
+    const shps = getVarName("annotate_shapes")
+    createCellWithCode(`${shps} = Dict()
 md"""
 ##### Annotate
 ---
 
-1. Choose image: $(@bind ${a} Select(image_keys, default=image_keys[end]) ) 
+1. Choose image: $(@bind ${img} Select(image_keys, default=image_keys[end]) ) 
 1. Select Area 
-1. Choose operation: $(@bind ${b} confirm(Select([1 => "crop", 2 => "fill", 3 => "plot"])) )
+1. Choose operation: $(@bind ${ops} confirm(Select([1 => "crop", 2 => "fill", 3 => "plot"])) )
 
 ---
 
 $(
-@bind ${c} let
-    ${e}  = create_plotly_visualizer(image_data[${a}], "heatmap")
-    create_plotly_listener(${e})
-    ${e} 
+@bind ${coords} let
+    ${plot}  = create_plotly_visualizer(image_data[${img}], "heatmap")
+    create_plotly_listener(${plot})
+    ${plot} 
 end
 )
 ---
@@ -280,11 +280,11 @@ end
 
 Apply last operation to the selected images (press Ctrl to select multiple items):
 
-$(@bind ${d} confirm(MultiSelect(image_keys)) )"
+$(@bind ${apply} confirm(MultiSelect(image_keys)) )"
 """
 `)
     await resolveAfterTimeout(timeoutValue)
-    createCellWithCode(`record_plotly_shapes(${c}["shape"])(${f},${c});`)
+    createCellWithCode(`record_plotly_shapes(${coords}["shape"])(${shps},${coords});`)
 }
 
 //// add items to menu
