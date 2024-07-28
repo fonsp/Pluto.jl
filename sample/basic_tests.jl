@@ -20,6 +20,9 @@ macro bind(def, element)
     end
 end
 
+# ╔═╡ 0eaab1c8-38e2-4a49-aa7b-7e2bafc8dfbf
+using HypertextLiteral
+
 # ╔═╡ 72c073fd-5f1b-4af0-901b-aaa901f0f273
 begin
 	using PlutoDevMacros
@@ -29,14 +32,23 @@ begin
 	using Colors
 end
 
+# ╔═╡ 7bd46437-8af0-4a15-87e9-1508869e1600
+ExtendedTableOfContents()
+
 # ╔═╡ 70dc8fa0-cc32-4ebe-af0d-62b5bb3a82ed
+# ╠═╡ disabled = true
+#=╠═╡
 @fromparent begin
 	using ^
 	using >.HypertextLiteral
 end
+  ╠═╡ =#
 
-# ╔═╡ 7bd46437-8af0-4a15-87e9-1508869e1600
-ExtendedTableOfContents()
+# ╔═╡ 2c204720-c2ea-488d-a514-7055f864e304
+
+
+# ╔═╡ 69d174af-2293-4c08-88a6-0ebcc3010248
+
 
 # ╔═╡ acba5003-a456-4c1a-a53f-71a3bec30251
 md"""
@@ -44,7 +56,10 @@ md"""
 """
 
 # ╔═╡ 51a36d49-1dad-4340-8671-a6a63eb367a2
+# ╠═╡ disabled = true
+#=╠═╡
 enable_plutoplotly_offline()
+  ╠═╡ =#
 
 # ╔═╡ c4e4400e-e063-4236-96e5-ca3a60313e37
 md"""
@@ -206,7 +221,7 @@ points = [(rand(),rand()) for _ in 1:10000]
 	)|> PlutoPlot
 	add_plotly_listener!(p, "plotly_relayout", "
 	e => {
-	//console.log(e)
+	console.log(e)
 	let layout = PLOT.layout
 	let asd = {xaxis: layout.xaxis.range, yaxis: layout.yaxis.range}
 	PLOT.value = asd
@@ -236,7 +251,7 @@ md"""
 """
 
 # ╔═╡ c3b1a198-ef19-4a54-9c32-d9ea32a63812
-let
+
 	p = PlutoPlot(Plot(rand(10), Layout(uirevision = 1)))
 	add_plotly_listener!(p, "plotly_relayout", htl_js("""
 function(e) {
@@ -252,28 +267,30 @@ function(e) {
 	
 }
 	"""))
-	@htl "$p"
-end
+@htl"$p"
+
+# ╔═╡ 4aa885d2-f518-48f3-8450-ef196c8e2072
+p
 
 # ╔═╡ e9fc2030-c2f0-48e9-a807-424039e796b2
-let
-	p = PlutoPlot(Plot(rand(10), Layout(uirevision = 1)))
-	add_plotly_listener!(p, "plotly_relayout", htl_js("""
+
+	ppp = PlutoPlot(Plot(rand(10), Layout(uirevision = 1)))
+	add_plotly_listener!(ppp, "plotly_relayout", htl_js("""
 function(e) {
     
 	console.log('listener 1')
 	
 }
 	"""))
-	add_plotly_listener!(p, "plotly_relayout", htl_js("""
+	add_plotly_listener!(ppp, "plotly_relayout", htl_js("""
 function(e) {
     
 	console.log('listener 2')
 	
 }
 	"""))
-	p.plotly_listeners
-end
+	ppp.plotly_listeners
+
 
 # ╔═╡ de101f40-27db-43ea-91ed-238502ceaaf7
 md"""
@@ -515,12 +532,14 @@ PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+HypertextLiteral = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
 PlutoDevMacros = "a0499f29-c39b-4c5c-807c-88074221b949"
 PlutoExtras = "ed5d0301-4775-4676-b788-cf71e66ff8ed"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 
 [compat]
 Colors = "~0.12.10"
+HypertextLiteral = "~0.9.5"
 PlutoDevMacros = "~0.7.2"
 PlutoExtras = "~0.7.12"
 PlutoUI = "~0.7.58"
@@ -532,7 +551,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.10.0"
 manifest_format = "2.0"
-project_hash = "b19cebbc09904d344f1a75767d597eb0075f0a44"
+project_hash = "8cc21b3bb26f10f4f728d185ffb1434703cfa645"
 
 [[deps.AbstractPlutoDingetjes]]
 deps = ["Pkg"]
@@ -825,9 +844,12 @@ version = "17.4.0+2"
 """
 
 # ╔═╡ Cell order:
+# ╠═0eaab1c8-38e2-4a49-aa7b-7e2bafc8dfbf
 # ╠═7bd46437-8af0-4a15-87e9-1508869e1600
 # ╠═72c073fd-5f1b-4af0-901b-aaa901f0f273
 # ╠═70dc8fa0-cc32-4ebe-af0d-62b5bb3a82ed
+# ╠═2c204720-c2ea-488d-a514-7055f864e304
+# ╠═69d174af-2293-4c08-88a6-0ebcc3010248
 # ╟─acba5003-a456-4c1a-a53f-71a3bec30251
 # ╠═51a36d49-1dad-4340-8671-a6a63eb367a2
 # ╟─c4e4400e-e063-4236-96e5-ca3a60313e37
@@ -859,6 +881,7 @@ version = "17.4.0+2"
 # ╠═ea9faecf-ecd7-483b-99ad-ede08ba05383
 # ╟─f8f7b530-1ded-4ce0-a7d9-a8c92afb95c7
 # ╠═c3b1a198-ef19-4a54-9c32-d9ea32a63812
+# ╠═4aa885d2-f518-48f3-8450-ef196c8e2072
 # ╠═e9fc2030-c2f0-48e9-a807-424039e796b2
 # ╟─de101f40-27db-43ea-91ed-238502ceaaf7
 # ╠═6c709fa0-7a53-4554-ab2a-d8181267ec93

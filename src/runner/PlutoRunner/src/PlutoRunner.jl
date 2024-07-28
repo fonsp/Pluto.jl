@@ -2449,7 +2449,7 @@ function create_plotly_visualizer(r, graph::String)
         xaxis = PlotlyBase.attr(showgrid=false, range=(0,img_width)),
         yaxis = PlotlyBase.attr(showgrid=false, scaleanchor="x", range=(img_height, 0)),
         dragmode="drawrect",
-        newshape = PlotlyBase.attr(line_color="cyan", line_width=1.5, opacity=0.5),
+        newshape = PlotlyBase.attr(line_color="cyan", line_width=2, opacity=0.5),
         # title_text="Drag to add annotations - use modebar to change drawing tool",
         modebar_add=[
             "drawline",
