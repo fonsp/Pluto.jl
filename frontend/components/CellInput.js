@@ -461,8 +461,6 @@ export const CellInput = ({
         if (show_static_fake) return
         if (dom_node_ref.current == null) return
 
-        console.log("Rendering cell input", cell_id)
-
         const keyMapSubmit = (/** @type {EditorView} */ cm) => {
             autocomplete.closeCompletion(cm)
             on_submit()
