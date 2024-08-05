@@ -115,20 +115,6 @@ function notebook_to_js(notebook::Notebook)
                 "metadata" => cell.metadata,
             )
         for (id, cell) in notebook.cells_dict),
-        "cell_dependencies" => Dict{UUID,Dict{String,Any}}(
-            id => Dict{String,Any}(
-                "cell_id" => cell.cell_id,
-                "downstream_cells_map" => Dict{String,Vector{UUID}}(
-                    String(s) => cell_id.(r)
-                    for (s, r) in cell.cell_dependencies.downstream_cells_map
-                ),
-                "upstream_cells_map" => Dict{String,Vector{UUID}}(
-                    String(s) => cell_id.(r)
-                    for (s, r) in cell.cell_dependencies.upstream_cells_map
-                ),
-                "precedence_heuristic" => cell.cell_dependencies.precedence_heuristic,
-            )
-        for (id, cell) in notebook.cells_dict),
         "cell_results" => Dict{UUID,Dict{String,Any}}(
             id => Dict{String,Any}(
                 "cell_id" => cell.cell_id,
@@ -167,6 +153,7 @@ function notebook_to_js(notebook::Notebook)
             )
         end,
         "status_tree" => Status.tojs(notebook.status_tree),
+        "cell_dependencies" => notebook._cached_cell_dependencies,
         "cell_execution_order" => cell_id.(collect(notebook._cached_topological_order)),
     )
 end
