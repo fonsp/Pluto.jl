@@ -28,15 +28,17 @@ function throttled(f::Function, timeout::Real)
     end
 
     function schedule()
-        Threads.@spawn begin
-            # if the last runtime was quite long, increase the sleep period to match.
-            sleep(timeout + last_runtime[] * 2)
+        # if the last runtime was quite long, increase the sleep period to match.
+        Timer(timeout + last_runtime[] * 2) do _t
             if run_later[]
                 flush()
+                schedule()
+            else
+                iscoolnow[] = true
             end
-            iscoolnow[] = true
         end
     end
+    # we initialize hot, and start the cooldown period immediately
     schedule()
 
     function throttled_f()
