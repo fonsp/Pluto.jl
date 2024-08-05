@@ -266,7 +266,7 @@ const default_ws_address = () => ws_address_from_base(window.location.href)
  *
  * @param {{
  *  on_unrequested_update: (message: PlutoMessage, by_me: boolean) => void,
- *  on_reconnect: () => boolean,
+ *  on_reconnect: () => Promise<boolean>,
  *  on_connection_status: (connection_status: boolean, hopeless: boolean) => void,
  *  connect_metadata?: Object,
  *  ws_address?: String,
@@ -377,7 +377,7 @@ export const create_pluto_connection = async ({
                     await connect() // reconnect!
 
                     console.log(`Starting state sync`, new Date().toLocaleTimeString())
-                    const accept = on_reconnect()
+                    const accept = await on_reconnect()
                     console.log(`State sync ${accept ? "" : "not "}successful`, new Date().toLocaleTimeString())
                     on_connection_status(accept, false)
                     if (!accept) {
