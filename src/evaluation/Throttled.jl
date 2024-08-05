@@ -13,7 +13,7 @@ This throttle is 'leading' and has some other properties that are specifically d
 Inspired by FluxML
 See: https://github.com/FluxML/Flux.jl/blob/8afedcd6723112ff611555e350a8c84f4e1ad686/src/utils.jl#L662
 """
-function throttled(f::Function, timeout::Real)
+function throttled(f::Function, timeout::Real; runtime_multiplier::Float64=0.0)
     tlock = ReentrantLock()
     iscoolnow = Ref(false)
     run_later = Ref(false)
@@ -29,7 +29,7 @@ function throttled(f::Function, timeout::Real)
 
     function schedule()
         # if the last runtime was quite long, increase the sleep period to match.
-        Timer(timeout + last_runtime[] * 2) do _t
+        Timer(timeout + last_runtime[] * runtime_multiplier) do _t
             if run_later[]
                 flush()
                 schedule()
