@@ -1,3 +1,4 @@
+import Base.Threads
 
 """
 throttled(f::Function, timeout::Real)
@@ -25,8 +26,8 @@ function throttled(f::Function, timeout::Real)
     end
 
     function schedule()
-        @async begin
             sleep(timeout)
+        Threads.@spawn begin
             if run_later[]
                 flush()
             end
