@@ -212,14 +212,17 @@ function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, sk
     try_event_call(🙋.session, FileEditEvent(🙋.notebook))
 end
 
-"Like `deepcopy`, but anything onther than `Dict` gets a shallow (reference) copy."
-function deep_enough_copy(d::Dict{A,B}) where {A, B}
-    Dict{A,B}(
-        k => deep_enough_copy(v)
-        for (k, v) in d
-    )
+"Like `deepcopy`, but anything other than `Dict` gets a shallow (reference) copy."
+@generated function deep_enough_copy(d::Dict)
+	quote
+		out = $d()
+		for (k,v) in d
+			out[k] = deep_enough_copy(v)
+		end
+		out
+	end
 end
-deep_enough_copy(x) = x
+deep_enough_copy(d) = d
 
 """
 A placeholder path. The path elements that it replaced will be given to the function as arguments.
