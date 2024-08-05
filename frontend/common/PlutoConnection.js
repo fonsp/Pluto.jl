@@ -108,6 +108,7 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
 
         const send_encoded = (message) => {
             const encoded = pack(message)
+            if (socket.readyState === WebSocket.CLOSED || socket.readyState === WebSocket.CLOSING) throw new Error("Socket is closed")
             socket.send(encoded)
         }
 
