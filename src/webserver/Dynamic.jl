@@ -167,7 +167,7 @@ function notebook_to_js(notebook::Notebook)
             )
         end,
         "status_tree" => Status.tojs(notebook.status_tree),
-        "cell_execution_order" => cell_id.(collect(topological_order(notebook))),
+        "cell_execution_order" => cell_id.(collect(notebook._cached_topological_order)),
     )
 end
 
