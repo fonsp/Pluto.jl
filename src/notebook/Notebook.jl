@@ -32,6 +32,7 @@ Base.@kwdef mutable struct Notebook
     notebook_id::UUID=uuid1()
     topology::NotebookTopology
     _cached_topological_order::TopologicalOrder
+    _cached_cell_dependencies::Dict{UUID,Dict{String,Any}}=Dict{UUID,Dict{String,Any}}()
     _cached_cell_dependencies_source::Union{Nothing,NotebookTopology}=nothing
 
     # buffer will contain all unfetched updates - must be big enough
@@ -122,7 +123,7 @@ end
 function PlutoDependencyExplorer.topological_order(notebook::Notebook)
     cached = notebook._cached_topological_order
 	if cached === nothing || cached.input_topology !== notebook.topology
-        topological_order(notebook.topology)
+        notebook._cached_topological_order = topological_order(notebook.topology)
 	else
 		cached
 	end

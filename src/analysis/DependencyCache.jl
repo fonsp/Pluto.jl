@@ -47,8 +47,25 @@ function update_dependency_cache!(notebook::Notebook, topology::NotebookTopology
     
     if notebook._cached_cell_dependencies_source !== topology
         notebook._cached_cell_dependencies_source = topology
+        
         for cell in all_cells(topology)
             update_dependency_cache!(cell, topology)
         end
+        
+        notebook._cached_cell_dependencies = Dict{UUID,Dict{String,Any}}(
+            id => Dict{String,Any}(
+                "cell_id" => cell.cell_id,
+                "downstream_cells_map" => Dict{String,Vector{UUID}}(
+                    String(s) => cell_id.(r)
+                    for (s, r) in cell.cell_dependencies.downstream_cells_map
+                ),
+                "upstream_cells_map" => Dict{String,Vector{UUID}}(
+                    String(s) => cell_id.(r)
+                    for (s, r) in cell.cell_dependencies.upstream_cells_map
+                ),
+                "precedence_heuristic" => cell.cell_dependencies.precedence_heuristic,
+            )
+            for (id, cell) in notebook.cells_dict
+        )
     end
 end
