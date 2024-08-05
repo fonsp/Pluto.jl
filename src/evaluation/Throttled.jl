@@ -17,17 +17,19 @@ function throttled(f::Function, timeout::Real)
     tlock = ReentrantLock()
     iscoolnow = Ref(false)
     run_later = Ref(false)
+    last_runtime = Ref(0.0)
 
     function flush()
         lock(tlock) do
             run_later[] = false
-            f()
+            last_runtime[] = @elapsed result = f()
+            result
         end
     end
 
     function schedule()
-            sleep(timeout)
         Threads.@spawn begin
+            sleep(timeout + last_runtime[] * 2)
             if run_later[]
                 flush()
             end
