@@ -117,7 +117,14 @@ function Base.getproperty(notebook::Notebook, property::Symbol)
     end
 end
 
-PlutoDependencyExplorer.topological_order(notebook::Notebook) = topological_order(notebook.topology)
+function PlutoDependencyExplorer.topological_order(notebook::Notebook)
+    cached = notebook._cached_topological_order
+	if cached === nothing || cached.input_topology !== notebook.topology
+        topological_order(notebook.topology)
+	else
+		cached
+	end
+end
 
 function PlutoDependencyExplorer.where_referenced(notebook::Notebook, topology::NotebookTopology, something)
     # can't use @deprecate on an overload
