@@ -31,7 +31,7 @@ Base.@kwdef mutable struct Notebook
     path::String
     notebook_id::UUID=uuid1()
     topology::NotebookTopology
-    _cached_topological_order::Union{Nothing,TopologicalOrder}=nothing
+    _cached_topological_order::TopologicalOrder
     _cached_cell_dependencies_source::Union{Nothing,NotebookTopology}=nothing
 
     # buffer will contain all unfetched updates - must be big enough
@@ -96,10 +96,12 @@ function Notebook(cells::Vector{Cell}, @nospecialize(path::AbstractString), note
         (cell.cell_id, cell)
     end)
     cell_order=map(x -> x.cell_id, cells)
+    topology = _initial_topology(cells_dict, cell_order)
     Notebook(;
         cells_dict,
         cell_order,
-        topology=_initial_topology(cells_dict, cell_order),
+        topology,
+        _cached_topological_order=topological_order(topology),
         path,
         notebook_id
     )
@@ -117,7 +119,14 @@ function Base.getproperty(notebook::Notebook, property::Symbol)
     end
 end
 
-PlutoDependencyExplorer.topological_order(notebook::Notebook) = topological_order(notebook.topology)
+function PlutoDependencyExplorer.topological_order(notebook::Notebook)
+    cached = notebook._cached_topological_order
+	if cached === nothing || cached.input_topology !== notebook.topology
+        topological_order(notebook.topology)
+	else
+		cached
+	end
+end
 
 function PlutoDependencyExplorer.where_referenced(notebook::Notebook, topology::NotebookTopology, something)
     # can't use @deprecate on an overload
