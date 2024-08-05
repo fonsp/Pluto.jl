@@ -29,6 +29,7 @@ function throttled(f::Function, timeout::Real)
 
     function schedule()
         Threads.@spawn begin
+            # if the last runtime was quite long, increase the sleep period to match.
             sleep(timeout + last_runtime[] * 2)
             if run_later[]
                 flush()
