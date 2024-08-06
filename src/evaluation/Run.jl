@@ -125,7 +125,7 @@ function run_reactive_core!(
     # flush_send_notebook_changes_throttled, 
     send_notebook_changes_throttled = Throttled.throttled(1.0 / 20; runtime_multiplier=2.0) do
 		# We will do a state sync now, so that means that we can delay the status_tree state sync loop, see https://github.com/fonsp/Pluto.jl/issues/2978
-		force_throttle_without_run(notebook.status_tree.update_listener_ref[])
+		Throttled.force_throttle_without_run(notebook.status_tree.update_listener_ref[])
 		# State sync:
         send_notebook_changes!(ClientRequest(; session, notebook))
     end
