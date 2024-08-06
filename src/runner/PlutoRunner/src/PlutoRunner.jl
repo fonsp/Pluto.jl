@@ -17,6 +17,10 @@
 # loaded on a runner process, which is something that we might want to change
 # in the future.
 
+# DEVELOPMENT TIP
+# If you are editing this file, you cannot use Revise unfortunately.
+# However! You don't need to restart Pluto to test your changes! You just need to restart the notebook from the Pluto main menu, and the new PlutoRunner.jl will be loaded.
+
 module PlutoRunner
 
 # import these two so that they can be imported from Main on the worker process if it launches without the stdlibs in its LOAD_PATH
