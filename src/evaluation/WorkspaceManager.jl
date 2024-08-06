@@ -181,7 +181,7 @@ function start_relaying_self_updates((session, notebook)::SN, run_channel)
 end
 
 function start_relaying_logs((session, notebook)::SN, log_channel)
-    update_throttled, flush_throttled = Pluto.throttled(0.1) do
+    update_throttled = Pluto.Throttled.throttled(0.1) do
         Pluto.send_notebook_changes!(Pluto.ClientRequest(; session, notebook))
     end
 

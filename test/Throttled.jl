@@ -1,4 +1,5 @@
-import Pluto:throttled
+import Pluto: Throttled
+using Pluto.WorkspaceManager: poll
 
 @testset "Throttled" begin    
     x = Ref(0)
@@ -11,7 +12,7 @@ import Pluto:throttled
     @test x[] == 1
     
     dt = 4 / 100
-    ft, flush = throttled(f, dt)
+    ft = Throttled.throttled(f, dt)
     
     for x in 1:10
     	ft()
@@ -76,9 +77,57 @@ import Pluto:throttled
     ft()
     ft()
     @test x[] == 12
-    flush()
+    flush(ft)
     @test x[] == 13
     sleep(2dt)
     @test x[] == 13
 
+    ####
+    
+    ft()
+    @test poll(2dt, dt/60) do
+        x[] == 14
+    end
+    # immediately fire again, right after the last fire
+    ft()
+    ft()
+    # this should not do anything, because we are still in the cooldown period
+    @test x[] == 14
+    # not even after a little while
+    sleep(0.1dt)
+    @test x[] == 14
+    
+    # but eventually, our call should get queued
+    sleep(dt)
+    @test x[] == 15
+    sleep(2dt)
+    
+    ####
+    x[] = 0
+    Throttled.force_throttle_without_run(ft)
+    @test x[] == 0
+    ft()
+    @test x[] == 0
+    sleep(.1dt)
+    @test x[] == 0
+    sleep(2dt)
+    @test x[] == 1
+    
+    
+    ft()
+    @test x[] == 2
+    sleep(.1dt)
+    ft()
+    Throttled.force_throttle_without_run(ft)
+    @test x[] == 2
+    sleep(2dt)
+    @test x[] == 2
+    
+    
+    ft()
+    @test x[] == 3
+    sleep(2dt)
+    
+    ####
+    
 end
