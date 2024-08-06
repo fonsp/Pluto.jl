@@ -206,6 +206,7 @@ function run!(session::ServerSession)
                         if HTTP.WebSockets.isclosed(clientstream)
                             return
                         end
+                        found_client_id_ref = Ref(Symbol(:none))
                         try
                             for message in clientstream
                                 # This stream contains data received over the WebSocket.
@@ -221,6 +222,9 @@ function run!(session::ServerSession)
                                     end
                                     
                                     did_read = true
+                                    if found_client_id_ref[] === :none
+                                        found_client_id_ref[] = Symbol(parentbody["client_id"])
+                                    end
                                     process_ws_message(session, parentbody, clientstream)
                                 catch ex
                                     if ex isa InterruptException || ex isa HTTP.WebSockets.WebSocketError || ex isa EOFError
@@ -241,6 +245,11 @@ function run!(session::ServerSession)
                             else
                                 bt = stacktrace(catch_backtrace())
                                 @warn "Reading WebSocket client stream failed for unknown reason:" exception = (ex, bt)
+                            end
+                        finally
+                            if haskey(session.connected_clients, found_client_id_ref[])
+                                @debug "Removing client $(found_client_id_ref[]) from connected_clients"
+                                delete!(session.connected_clients, found_client_id_ref[])
                             end
                         end
                     end
@@ -379,7 +388,7 @@ end
 "All messages sent over the WebSocket get decoded+deserialized and end up here."
 function process_ws_message(session::ServerSession, parentbody::Dict, clientstream)
     client_id = Symbol(parentbody["client_id"])
-    client = get!(session.connected_clients, client_id ) do 
+    client = get!(session.connected_clients, client_id) do 
         ClientSession(client_id, clientstream, session.options.server.simulated_lag)
     end
     client.stream = clientstream # it might change when the same client reconnects

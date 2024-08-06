@@ -63,10 +63,11 @@ This throttle is 'leading' and has some other properties that are specifically d
 Inspired by FluxML
 See: https://github.com/FluxML/Flux.jl/blob/8afedcd6723112ff611555e350a8c84f4e1ad686/src/utils.jl#L662
 """
-function throttled(f::Function, timeout::Real)
+function throttled(f::Function, timeout::Real; runtime_multiplier::Float64=0.0)
     tlock = ReentrantLock()
     iscoolnow = Ref(false)
     run_later = Ref(false)
+    last_runtime = Ref(0.0)
 
     tf = ThrottledFunction(f, timeout, runtime_multiplier, tlock, iscoolnow, run_later, last_runtime)
     

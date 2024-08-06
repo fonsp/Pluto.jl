@@ -20,8 +20,13 @@ using Pluto.WorkspaceManager: poll
     # we have an initial cooldown period in which f should not fire...
     # ...so x is still 1...
     @test x[] == 1
-    sleep(2dt)
+    sleep(1.5dt)
     # ...but after a delay, the call should go through.
+    @test x[] == 2
+    
+    # Let's wait for the cooldown period to end
+    sleep(dt)
+    # nothing should have changed
     @test x[] == 2
 
     # sleep(0) ## ASYNC MAGIC :(

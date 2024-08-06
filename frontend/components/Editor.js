@@ -861,7 +861,6 @@ patch: ${JSON.stringify(
                 backend_launch_phase: this.state.backend_launch_phase == null ? null : BackendLaunchPhase.ready,
             })
 
-            // TODO Do this from julia itself
             this.client.send("complete", { query: "sq" }, { notebook_id: this.state.notebook.notebook_id })
             this.client.send("complete", { query: "\\sq" }, { notebook_id: this.state.notebook.notebook_id })
 
@@ -893,8 +892,17 @@ patch: ${JSON.stringify(
             }
         }
 
-        const on_reconnect = () => {
+        const on_reconnect = async () => {
             console.warn("Reconnected! Checking states")
+
+            await this.client.send(
+                "reset_shared_state",
+                {},
+                {
+                    notebook_id: this.state.notebook.notebook_id,
+                },
+                false
+            )
 
             return true
         }
