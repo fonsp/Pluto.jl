@@ -1,4 +1,4 @@
-import { julia_andrey, NodeProp, syntaxTree, Text } from "../../imports/CodemirrorPlutoSetup.js"
+import { julia, NodeProp, syntaxTree, Text } from "../../imports/CodemirrorPlutoSetup.js"
 import lodash from "../../imports/lodash.js"
 
 // @ts-ignore
@@ -9,7 +9,7 @@ import ManyKeysWeakMap from "https://esm.sh/many-keys-weakmap@1.0.0?pin=v113&tar
  * @returns {SyntaxNode}
  */
 export let julia_to_ast = (julia_code) => {
-    return /** @type {any} */ (julia_andrey().language.parser.parse(julia_code).topNode.firstChild)
+    return /** @type {any} */ (julia().language.parser.parse(julia_code).topNode.firstChild)
 }
 
 // When you get errors while creating the templates (stuff related to substitutions),

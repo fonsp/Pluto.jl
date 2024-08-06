@@ -43,7 +43,7 @@ import {
 } from "../imports/CodemirrorPlutoSetup.js"
 
 import { markdown, html as htmlLang, javascript, sqlLang, python, julia_mixed } from "./CellInput/mixedParsers.js"
-import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
+import { julia } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
 import { awesome_line_wrapping, get_start_tabs } from "./CellInput/awesome_line_wrapping.js"
@@ -142,7 +142,7 @@ export const pluto_syntax_colors = HighlightStyle.define(
     ],
     {
         all: { color: `var(--cm-editor-text-color)` },
-        scope: julia_andrey().language,
+        scope: julia().language,
     }
 )
 
@@ -776,7 +776,7 @@ export const CellInput = ({
                           ]
                         : [
                               //
-                              julia_andrey(),
+                              julia(),
                           ]),
                     go_to_definition_plugin,
                     pluto_autocomplete({

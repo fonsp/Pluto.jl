@@ -12,7 +12,7 @@ import {
     sql,
     javascript,
     python,
-    julia_andrey,
+    julia,
     parseCode,
 } from "../../imports/CodemirrorPlutoSetup.js"
 
@@ -166,10 +166,10 @@ const juliaWrapper = parseMixed((node, input) => {
 })
 
 const julia_mixed = (config) => {
-    const julia = julia_andrey(config)
+    const julia_simple = julia(config)
     // @ts-ignore
-    julia.language.parser = julia.language.parser.configure({ wrap: juliaWrapper })
-    return julia
+    julia_simple.language.parser = julia_simple.language.parser.configure({ wrap: juliaWrapper })
+    return julia_simple
 }
 
 export { julia_mixed, sqlLang, pythonLanguage, javascript, htmlLanguage, javascriptLanguage, python, markdown, html }
