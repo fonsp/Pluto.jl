@@ -186,7 +186,7 @@ function add(session::ServerSession, notebook::Notebook; run_async::Bool=true)
         end
     end
     
-    notebook.status_tree.update_listener_ref[] = first(throttled(1.0 / 20) do
+    notebook.status_tree.update_listener_ref[] = first(throttled(1.0 / 5; runtime_multiplier=2.0) do
         # TODO: this throttle should be trailing
         Pluto.send_notebook_changes!(Pluto.ClientRequest(; session, notebook))
     end)
