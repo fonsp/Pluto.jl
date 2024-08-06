@@ -94,52 +94,31 @@ window.PLUTO_TOGGLE_CM_AUTOCOMPLETE_ON_TYPE = (val = !ENABLE_CM_AUTOCOMPLETE_ON_
     window.location.reload()
 }
 
-export const pluto_syntax_colors = HighlightStyle.define(
-    [
-        /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
-        // Symbol
-        // { tag: tags.controlKeyword, color: "var(--cm-keyword-color)", fontWeight: 700 },
+const common_style_tags = [
+    { tag: tags.comment,        color: "var(--cm-comment-color)", fontStyle: "italic", filter: "none" },
+    { tag: tags.keyword,        color: "var(--cm-keyword-color)" },
+    { tag: tags.variableName,   color: "var(--cm-var-color)", fontWeight: 700 },
+    { tag: tags.typeName,       color: "var(--cm-type-color)", fontStyle: "italic" },
+    { tag: tags.typeOperator,   color: "var(--cm-type-color)", fontStyle: "italic" },
+    { tag: tags.tagName,        color: "var(--cm-tag-color)" }, // JS
+    { tag: tags.propertyName,   color: "var(--cm-property-color)" },
+    // TODO: tags.labelName
+    { tag: tags.macroName,      color: "var(--cm-macro-color)", fontWeight: 700 },
+    { tag: tags.string,         color: "var(--cm-string-color)" },
+    // TODO: tags.character
+    { tag: tags.number,         color: "var(--cm-number-color)" },
+    { tag: tags.bool,           color: "var(--cm-builtin-color)", fontWeight: 700 },
+    // TODO: tags.escape
+    // TODO: tags.self, tags.null
+    { tag: tags.atom,           color: "var(--cm-atom-color)" },
+    { tag: tags.unit,           color: "var(--cm-tag-color)" }, // TODO: Remove
+    // TODO? tags.operator
+    { tag: tags.bracket,        color: "var(--cm-bracket-color)" },
+    { tag: tags.special(tags.brace), color: "var(--cm-macro-color)", fontWeight: 700 }, // interp
+]
 
-        { tag: tags.propertyName, color: "var(--cm-property-color)" },
-        { tag: tags.unit, color: "var(--cm-tag-color)" },
-        { tag: tags.literal, color: "var(--cm-builtin-color)", fontWeight: 700 },
-        { tag: tags.macroName, color: "var(--cm-macro-color)", fontWeight: 700 },
-
-        // I (ab)use `special(brace)` for interpolations.
-        // lang-javascript does the same so I figure it is "best practice" 😅
-        { tag: tags.special(tags.brace), color: "var(--cm-macro-color)", fontWeight: 700 },
-
-        // `nothing` I guess... Any others?
-        {
-            tag: tags.standard(tags.variableName),
-            color: "var(--cm-builtin-color)",
-            fontWeight: 700,
-        },
-
-        { tag: tags.bool, color: "var(--cm-builtin-color)", fontWeight: 700 },
-
-        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
-        { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
-        { tag: tags.atom, color: "var(--cm-atom-color)" },
-        { tag: tags.number, color: "var(--cm-number-color)" },
-        // { tag: tags.property, color: "#48b685" },
-        // { tag: tags.attribute, color: "#48b685" },
-        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
-        { tag: tags.string, color: "var(--cm-string-color)" },
-        { tag: tags.variableName, color: "var(--cm-var-color)", fontWeight: 700 },
-        // { tag: tags.variable2, color: "#06b6ef" },
-        { tag: tags.typeName, color: "var(--cm-type-color)", fontStyle: "italic" },
-        { tag: tags.typeOperator, color: "var(--cm-type-color)", fontStyle: "italic" },
-        { tag: tags.bracket, color: "var(--cm-bracket-color)" },
-        { tag: tags.brace, color: "var(--cm-bracket-color)" },
-        { tag: tags.tagName, color: "var(--cm-tag-color)" },
-        { tag: tags.link, color: "var(--cm-link-color)" },
-        {
-            tag: tags.invalid,
-            color: "var(--cm-error-color)",
-            background: "var(--cm-error-bg-color)",
-        },
-    ],
+export const pluto_syntax_colors_julia = HighlightStyle.define(
+    common_style_tags,
     {
         all: { color: `var(--cm-editor-text-color)` },
         scope: julia_andrey().language,
@@ -147,102 +126,18 @@ export const pluto_syntax_colors = HighlightStyle.define(
 )
 
 export const pluto_syntax_colors_javascript = HighlightStyle.define(
-    [
-        // SAME AS JULIA:
-        { tag: tags.propertyName, color: "var(--cm-property-color)" },
-        { tag: tags.unit, color: "var(--cm-tag-color)" },
-        { tag: tags.literal, color: "var(--cm-builtin-color)", fontWeight: 700 },
-        { tag: tags.macroName, color: "var(--cm-macro-color)", fontWeight: 700 },
-
-        // `nothing` I guess... Any others?
-        {
-            tag: tags.standard(tags.variableName),
-            color: "var(--cm-builtin-color)",
-            fontWeight: 700,
-        },
-
-        { tag: tags.bool, color: "var(--cm-builtin-color)", fontWeight: 700 },
-
-        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
-        { tag: tags.atom, color: "var(--cm-atom-color)" },
-        { tag: tags.number, color: "var(--cm-number-color)" },
-        // { tag: tags.property, color: "#48b685" },
-        // { tag: tags.attribute, color: "#48b685" },
-        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
-        { tag: tags.string, color: "var(--cm-string-color)" },
-        { tag: tags.variableName, color: "var(--cm-var-color)", fontWeight: 700 },
-        // { tag: tags.variable2, color: "#06b6ef" },
-        { tag: tags.typeName, color: "var(--cm-type-color)", fontStyle: "italic" },
-        { tag: tags.typeOperator, color: "var(--cm-type-color)", fontStyle: "italic" },
-        { tag: tags.bracket, color: "var(--cm-bracket-color)" },
-        { tag: tags.brace, color: "var(--cm-bracket-color)" },
-        { tag: tags.tagName, color: "var(--cm-tag-color)" },
-        { tag: tags.link, color: "var(--cm-link-color)" },
-        {
-            tag: tags.invalid,
-            color: "var(--cm-error-color)",
-            background: "var(--cm-error-bg-color)",
-        },
-
-        // JAVASCRIPT SPECIFIC
-        { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic", filter: "none" },
-    ],
+    common_style_tags,
     {
+        all: { color: `var(--cm-editor-text-color)`, filter: `contrast(0.5)` },
         scope: javascriptLanguage,
-        all: {
-            color: `var(--cm-editor-text-color)`,
-            filter: `contrast(0.5)`,
-        },
     }
 )
 
 export const pluto_syntax_colors_python = HighlightStyle.define(
-    [
-        // SAME AS JULIA:
-        { tag: tags.propertyName, color: "var(--cm-property-color)" },
-        { tag: tags.unit, color: "var(--cm-tag-color)" },
-        { tag: tags.literal, color: "var(--cm-builtin-color)", fontWeight: 700 },
-        { tag: tags.macroName, color: "var(--cm-macro-color)", fontWeight: 700 },
-
-        // `nothing` I guess... Any others?
-        {
-            tag: tags.standard(tags.variableName),
-            color: "var(--cm-builtin-color)",
-            fontWeight: 700,
-        },
-
-        { tag: tags.bool, color: "var(--cm-builtin-color)", fontWeight: 700 },
-
-        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
-        { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
-        { tag: tags.atom, color: "var(--cm-atom-color)" },
-        { tag: tags.number, color: "var(--cm-number-color)" },
-        // { tag: tags.property, color: "#48b685" },
-        // { tag: tags.attribute, color: "#48b685" },
-        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
-        { tag: tags.string, color: "var(--cm-string-color)" },
-        { tag: tags.variableName, color: "var(--cm-var-color)", fontWeight: 700 },
-        // { tag: tags.variable2, color: "#06b6ef" },
-        { tag: tags.typeName, color: "var(--cm-type-color)", fontStyle: "italic" },
-        { tag: tags.typeOperator, color: "var(--cm-type-color)", fontStyle: "italic" },
-        { tag: tags.bracket, color: "var(--cm-bracket-color)" },
-        { tag: tags.brace, color: "var(--cm-bracket-color)" },
-        { tag: tags.tagName, color: "var(--cm-tag-color)" },
-        { tag: tags.link, color: "var(--cm-link-color)" },
-        {
-            tag: tags.invalid,
-            color: "var(--cm-error-color)",
-            background: "var(--cm-error-bg-color)",
-        },
-
-        // PYTHON SPECIFIC
-    ],
+    common_style_tags,
     {
+        all: { color: `var(--cm-editor-text-color)`, filter: `contrast(0.5)` },
         scope: pythonLanguage,
-        all: {
-            color: "var(--cm-editor-text-color)",
-            filter: `contrast(0.5)`,
-        },
     }
 )
 
@@ -699,7 +594,7 @@ export const CellInput = ({
 
                     pkgBubblePlugin({ pluto_actions, notebook_id_ref }),
                     ScopeStateField,
-                    syntaxHighlighting(pluto_syntax_colors),
+                    syntaxHighlighting(pluto_syntax_colors_julia),
                     syntaxHighlighting(pluto_syntax_colors_html),
                     syntaxHighlighting(pluto_syntax_colors_markdown),
                     syntaxHighlighting(pluto_syntax_colors_javascript),

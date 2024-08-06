@@ -21,7 +21,7 @@ import register from "../imports/PreactCustomElement.js"
 
 import { EditorState, EditorView, defaultHighlightStyle, syntaxHighlighting } from "../imports/CodemirrorPlutoSetup.js"
 
-import { pluto_syntax_colors, ENABLE_CM_MIXED_PARSER } from "./CellInput.js"
+import { pluto_syntax_colors_julia, ENABLE_CM_MIXED_PARSER } from "./CellInput.js"
 
 import hljs from "../imports/highlightjs.js"
 import { julia_mixed } from "./CellInput/mixedParsers.js"
@@ -676,7 +676,7 @@ export let highlight = (code_element, language) => {
                         .replace(/Main.workspace#(\d+)/, 'Main.var"workspace#$1"'),
 
                     extensions: [
-                        syntaxHighlighting(pluto_syntax_colors),
+                        syntaxHighlighting(pluto_syntax_colors_julia),
                         syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
                         EditorState.tabSize.of(4),
                         // TODO Other languages possibly?
