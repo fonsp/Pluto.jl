@@ -91,6 +91,8 @@ function force_throttle_without_run(tf::ThrottledFunction)
 	end
 end
 
+force_throttle_without_run(::Function) = nothing
+
 
 """
     simple_leading_throttle(f, delay::Real)
