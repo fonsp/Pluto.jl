@@ -414,7 +414,7 @@ end
 
 responses[:reset_shared_state] = function response_reset_shared_state(🙋::ClientRequest)
     delete!(current_state_for_clients, 🙋.initiator.client)
-    send_notebook_changes!(🙋; commentary=Dict(:from_reset =>  true))
+    send_notebook_changes!(🙋; commentary=Dict(:from_reset => true))
 end
 
 responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::ClientRequest)

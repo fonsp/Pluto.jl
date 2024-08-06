@@ -1,4 +1,4 @@
-import Pluto:throttled
+import Pluto: Throttled
 using Pluto.WorkspaceManager: poll
 
 @testset "Throttled" begin    
@@ -12,7 +12,7 @@ using Pluto.WorkspaceManager: poll
     @test x[] == 1
     
     dt = 4 / 100
-    ft, flush = throttled(f, dt)
+    ft = Throttled.throttled(f, dt)
     
     for x in 1:10
     	ft()
@@ -82,7 +82,7 @@ using Pluto.WorkspaceManager: poll
     ft()
     ft()
     @test x[] == 12
-    flush()
+    flush(ft)
     @test x[] == 13
     sleep(2dt)
     @test x[] == 13
@@ -108,6 +108,31 @@ using Pluto.WorkspaceManager: poll
     sleep(2dt)
     
     ####
+    x[] = 0
+    Throttled.force_throttle_without_run(ft)
+    @test x[] == 0
+    ft()
+    @test x[] == 0
+    sleep(.1dt)
+    @test x[] == 0
+    sleep(2dt)
+    @test x[] == 1
     
+    
+    ft()
+    @test x[] == 2
+    sleep(.1dt)
+    ft()
+    Throttled.force_throttle_without_run(ft)
+    @test x[] == 2
+    sleep(2dt)
+    @test x[] == 2
+    
+    
+    ft()
+    @test x[] == 3
+    sleep(2dt)
+    
+    ####
     
 end

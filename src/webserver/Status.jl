@@ -8,7 +8,7 @@ Base.@kwdef mutable struct Business
     started_at::Union{Nothing,Float64}=nothing
     finished_at::Union{Nothing,Float64}=nothing
     subtasks::Dict{Symbol,Business}=Dict{Symbol,Business}()
-    update_listener_ref::Ref{Function}=Ref{Function}(_default_update_listener)
+    update_listener_ref::Ref{Any}=Ref{Any}(_default_update_listener)
     lock::Threads.SpinLock=Threads.SpinLock()
 end
 

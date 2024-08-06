@@ -1,5 +1,6 @@
 import REPL: ends_with_semicolon
 import .Configuration
+import .Throttled
 import ExpressionExplorer: is_joined_funcname
 
 """
@@ -119,10 +120,13 @@ function run_reactive_core!(
 
 	# Save the notebook. In most cases, this is the only time that we save the notebook, so any state changes that influence the file contents (like `depends_on_disabled_cells`) should be behind this point. (More saves might happen if a macro expansion or package using happens.)
 	save && save_notebook(session, notebook)
-
+	
     # Send intermediate updates to the clients at most 20 times / second during a reactive run. (The effective speed of a slider is still unbounded, because the last update is not throttled.)
     # flush_send_notebook_changes_throttled, 
-    send_notebook_changes_throttled, flush_notebook_changes = throttled(1.0 / 20; runtime_multiplier=2.0) do
+    send_notebook_changes_throttled = Throttled.throttled(1.0 / 20; runtime_multiplier=2.0) do
+		# We will do a state sync now, so that means that we can delay the status_tree state sync loop, see https://github.com/fonsp/Pluto.jl/issues/2978
+		Throttled.force_throttle_without_run(notebook.status_tree.update_listener_ref[])
+		# State sync:
         send_notebook_changes!(ClientRequest(; session, notebook))
     end
     send_notebook_changes_throttled()
@@ -229,8 +233,8 @@ function run_reactive_core!(
     end
 
     notebook.wants_to_interrupt = false
-    flush_notebook_changes()
 	Status.report_business_finished!(run_status)
+    flush(send_notebook_changes_throttled)
     return new_order
 end
 
