@@ -226,6 +226,26 @@ function activate_notebook_environment(path::String)
 
 end
 
+
+function activate_notebook_environment(f::Function, path::String)
+    notebook = load_notebook(path)
+
+    ensure_has_nbpkg(notebook)
+
+    ourpath = joinpath(mktempdir(), basename(path))
+    mkpath(ourpath)
+    write_nb_to_dir(notebook, ourpath)
+
+    result = Pkg.activate(f, ourpath)
+
+    if !nb_and_dir_environments_equal(notebook, ourpath)
+        write_dir_to_nb(ourpath, notebook)
+        @info "Saved notebook package environment ✓"
+    end
+
+    result
+end
+
 const activate_notebook = activate_notebook_environment
 
 function testnb()
