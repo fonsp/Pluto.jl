@@ -278,7 +278,7 @@ is_stdlib(package_name::AbstractString) = package_name ∈ _stdlibs()
 
 
 # Initial fill of registry cache
-function    __init__()
+function __init__()
     refresh_registry_cache()
     global global_ctx=PkgContext()
 end

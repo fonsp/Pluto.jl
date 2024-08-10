@@ -161,7 +161,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     const default_rewriter = {
         pattern: /.?/,
-        display: (/** @type{string} */ x) => x.split("\n").map((line) => html`<p>${line}</p>`),
+        display: (/** @type{string} */ x) => _.dropRightWhile(x.split("\n"), (s) => s === "").map((line) => html`<p>${line === "" ? html`<br />` : line}</p>`),
     }
     const rewriters = [
         {
