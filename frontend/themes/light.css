@@ -23,6 +23,7 @@
         --error-cell-color: rgba(var(--error-color), 0.7);
         --bright-error-cell-color: rgb(var(--error-color));
         --light-error-cell-color: rgba(var(--error-color), 0.05);
+        --stale-cell-color: #ffba53;
 
         /*Export styling*/
         --export-bg-color: rgb(60, 67, 101);
@@ -45,6 +46,7 @@
         --pluto-output-color: hsl(0, 0%, 25%);
         --pluto-output-h-color: hsl(0, 0%, 12%);
         --pluto-output-bg-color: white;
+        --pluto-stale-output-bg-color: #ffeed5;
         --a-underline: #00000059;
         --blockquote-color: #555;
         --blockquote-bg: #f2f2f2;
@@ -191,36 +193,36 @@
 
         /* code highlighting */
         --cm-color-editor-text: #41323f;
-        --cm-color-comment:     #e96ba8;
-        --cm-color-atom:        #815ba4;
-        --cm-color-number:      #815ba4;
-        --cm-color-property:    #b67a48;
-        --cm-color-keyword:     #ef6155;
-        --cm-color-string:      #da5616;
-        --cm-color-var:         #5668a4;
-        --cm-color-var2:        #37768a;
-        --cm-color-macro:       #5c8c5f;
-        --cm-color-builtin:     #5e7ad3;
-        --cm-color-function:    #cc80ac;
-        --cm-color-type:        hsl(170deg 7% 56%);
-        --cm-color-bracket:     #41323f;
-        --cm-color-tag:         #ef6155;
-        --cm-color-link:        #815ba4;
-        --cm-color-error-bg:    #ef6155;
-        --cm-color-error:       #f7f7f7;
+        --cm-color-comment: #e96ba8;
+        --cm-color-atom: #815ba4;
+        --cm-color-number: #815ba4;
+        --cm-color-property: #b67a48;
+        --cm-color-keyword: #ef6155;
+        --cm-color-string: #da5616;
+        --cm-color-var: #5668a4;
+        --cm-color-var2: #37768a;
+        --cm-color-macro: #5c8c5f;
+        --cm-color-builtin: #5e7ad3;
+        --cm-color-function: #cc80ac;
+        --cm-color-type: hsl(170deg 7% 56%);
+        --cm-color-bracket: #41323f;
+        --cm-color-tag: #ef6155;
+        --cm-color-link: #815ba4;
+        --cm-color-error-bg: #ef6155;
+        --cm-color-error: #f7f7f7;
         --cm-color-matchingBracket: black;
         --cm-color-matchingBracket-bg: #1b4bbb21;
         --cm-color-placeholder-text: rgba(0, 0, 0, 0.2);
         --cm-color-clickable-underline: #ced2ef;
 
         /* Mixed parsers */
-        --cm-color-html:        #48b685;
+        --cm-color-html: #48b685;
         --cm-color-html-accent: #00ab85;
-        --cm-color-css:         #876800;
-        --cm-color-css-accent:  #696200;
+        --cm-color-css: #876800;
+        --cm-color-css-accent: #696200;
         --cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa: #3b3700;
-        --cm-color-md:          #005a9b;
-        --cm-color-md-accent:   #00a9d1;
+        --cm-color-md: #005a9b;
+        --cm-color-md-accent: #00a9d1;
 
         /*autocomplete menu*/
         --autocomplete-menu-bg-color: white;
