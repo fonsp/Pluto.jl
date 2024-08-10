@@ -7,6 +7,7 @@ import { ScopeStateField } from "./scopestate_statefield.js"
 import { open_bottom_right_panel } from "../BottomRightPanel.js"
 import { ENABLE_CM_AUTOCOMPLETE_ON_TYPE } from "../CellInput.js"
 import { GlobalDefinitionsFacet } from "./go_to_definition_plugin.js"
+import { STRING_NODE_NAMES } from "./mixedParsers.js"
 
 let { autocompletion, completionKeymap, completionStatus, acceptCompletion, selectedCompletion } = autocomplete
 
@@ -128,7 +129,7 @@ const match_symbol_complete = (/** @type {autocomplete.CompletionContext} */ ctx
 function match_string_complete(state, pos) {
     const tree = syntaxTree(state)
     const node = tree.resolve(pos)
-    if (node == null || (node.name !== "TripleString" && node.name !== "String")) {
+    if (node == null || !STRING_NODE_NAMES.has(node.name)) {
         return false
     }
     return true
@@ -166,7 +167,7 @@ const julia_code_completions_to_cm =
     (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (/** @type {autocomplete.CompletionContext} */ ctx) => {
         if (match_special_symbol_complete(ctx)) return null
         if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
-        if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment", "String", "TripleString"]) != null) return null
+        if (!ctx.explicit && ctx.tokenBefore(["IntegerLiteral", "FloatLiteral", "LineComment", "BlockComment", ...STRING_NODE_NAMES]) != null) return null
 
         let to_complete = /** @type {String} */ (ctx.state.sliceDoc(0, ctx.pos))
 
@@ -270,13 +271,12 @@ const julia_code_completions_to_cm =
 const complete_anyword = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
     if (match_special_symbol_complete(ctx)) return null
     if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
-    if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment", "String", "TripleString"]) != null) return null
+    if (!ctx.explicit && ctx.tokenBefore(["IntegerLiteral", "FloatLiteral", "LineComment", "BlockComment", ...STRING_NODE_NAMES]) != null) return null
 
     const results_from_cm = await autocomplete.completeAnyWord(ctx)
     if (results_from_cm === null) return null
 
-    const last_token = ctx.tokenBefore(["Identifier", "Number"])
-    if (last_token == null || last_token.type?.name === "Number") return null
+    if (ctx.tokenBefore(["Identifier", "IntegerLiteral", "FloatLiteral"])) return null
 
     return {
         from: results_from_cm.from,
@@ -321,7 +321,7 @@ const writing_variable_name_or_keyword = (/** @type {autocomplete.CompletionCont
 const global_variables_completion = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
     if (match_special_symbol_complete(ctx)) return null
     if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
-    if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment", "String", "TripleString"]) != null) return null
+    if (!ctx.explicit && ctx.tokenBefore(["IntegerLiteral", "FloatLiteral", "LineComment", "BlockComment", ...STRING_NODE_NAMES]) != null) return null
 
     const globals = ctx.state.facet(GlobalDefinitionsFacet)
 
@@ -438,7 +438,7 @@ const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} *
     return async (/** @type {autocomplete.CompletionContext} */ ctx) => {
         if (!match_special_symbol_complete(ctx)) return null
         if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
-        if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment"]) != null) return null
+        if (!ctx.explicit && ctx.tokenBefore(["IntegerLiteral", "FloatLiteral", "LineComment", "BlockComment"]) != null) return null
 
         const result = await get_special_symbols()
         return await autocomplete.completeFromList(result ?? [])(ctx)

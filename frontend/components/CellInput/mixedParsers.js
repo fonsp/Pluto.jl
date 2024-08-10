@@ -80,14 +80,7 @@ const overlayHack = (overlay, input) => {
     })
 }
 
-const STRING_NODE_NAMES = new Set([
-    "TripleString",
-    "String",
-    "CommandString",
-    "TripleStringWithoutInterpolation",
-    "StringWithoutInterpolation",
-    "CommandStringWithoutInterpolation",
-])
+export const STRING_NODE_NAMES = new Set(["StringLiteral", "CommandLiteral", "NsStringLiteral", "NsCommandLiteral"])
 
 const juliaWrapper = parseMixed((node, input) => {
     if (!STRING_NODE_NAMES.has(node.type.name)) {

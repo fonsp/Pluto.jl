@@ -39,7 +39,7 @@ function find_import_statements({ doc, tree, from, to }) {
                 quotelevel++
             }
             // `$(...)` when inside quote
-            if (cursor.name === "InterpolationExpression") {
+            if (cursor.name === "InterpExpression") {
                 quotelevel--
             }
             if (quotelevel !== 0) return
@@ -160,7 +160,7 @@ function find_import_statements({ doc, tree, from, to }) {
             if (cursor.name === "QuoteExpression" || cursor.name === "QuoteStatement") {
                 quotelevel--
             }
-            if (cursor.name === "InterpolationExpression") {
+            if (cursor.name === "InterpExpression") {
                 quotelevel++
             }
         },

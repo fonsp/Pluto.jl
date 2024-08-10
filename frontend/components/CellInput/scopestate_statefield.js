@@ -49,7 +49,7 @@ let merge_scope_state = (a, b) => {
 /** @param {TreeCursor} cursor */
 let search_for_interpolations = function* (cursor) {
     for (let child of child_cursors(cursor)) {
-        if (child.name === "InterpolationExpression") {
+        if (child.name === "InterpExpression") {
             yield cursor
         } else if (child.name === "QuoteExpression" || child.name === "QuoteStatement") {
             for (let child_child of search_for_interpolations(child)) {
@@ -470,36 +470,37 @@ export let explore_variable_usage = (
         // Doing these checks in front seems to speed things up a bit.
         if (
             cursor.type.is("keyword") ||
-            cursor.name === "SourceFile" ||
-            cursor.name === "BooleanLiteral" ||
-            cursor.name === "Character" ||
+            cursor.name === "Program" ||
+            cursor.name === "BoolLiteral" ||
+            cursor.name === "CharLiteral" ||
             cursor.name === "String" ||
-            cursor.name === "Number" ||
+            cursor.name === "IntegerLiteral" ||
+            cursor.name === "FloatLiteral" ||
             cursor.name === "Comment" ||
             cursor.name === "BinaryExpression" ||
             cursor.name === "Operator" ||
             cursor.name === "MacroArgumentList" ||
             cursor.name === "ReturnStatement" ||
-            cursor.name === "BareTupleExpression" ||
-            cursor.name === "ParenthesizedExpression" ||
+            cursor.name === "OpenTuple" ||
+            cursor.name === "ParenExpression" ||
             cursor.name === "Type" ||
-            cursor.name === "InterpolationExpression" ||
+            cursor.name === "InterpExpression" ||
             cursor.name === "SpreadExpression" ||
             cursor.name === "CompoundExpression" ||
             cursor.name === "ParameterizedIdentifier" ||
-            cursor.name === "TypeArgumentList" ||
+            cursor.name === "BraceExpression" ||
             cursor.name === "TernaryExpression" ||
             cursor.name === "Coefficient" ||
             cursor.name === "TripleString" ||
             cursor.name === "RangeExpression" ||
-            cursor.name === "SubscriptExpression" ||
+            cursor.name === "IndexExpression" ||
             cursor.name === "UnaryExpression" ||
             cursor.name === "ConstStatement" ||
             cursor.name === "GlobalStatement" ||
             cursor.name === "ContinueStatement" ||
             cursor.name === "MatrixExpression" ||
             cursor.name === "MatrixRow" ||
-            cursor.name === "ArrayExpression"
+            cursor.name === "VectorExpression"
         ) {
             for (let subcursor of child_cursors(cursor)) {
                 scopestate = explore_variable_usage(subcursor, doc, scopestate, verbose)
