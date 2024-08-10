@@ -1,4 +1,4 @@
-import { julia_andrey, NodeProp, syntaxTree, Text } from "../../imports/CodemirrorPlutoSetup.js"
+import { julia, NodeProp, syntaxTree, Text } from "../../imports/CodemirrorPlutoSetup.js"
 import lodash from "../../imports/lodash.js"
 
 // @ts-ignore
@@ -9,7 +9,7 @@ import ManyKeysWeakMap from "https://esm.sh/many-keys-weakmap@1.0.0?pin=v113&tar
  * @returns {SyntaxNode}
  */
 export let julia_to_ast = (julia_code) => {
-    return /** @type {any} */ (julia_andrey().language.parser.parse(julia_code).topNode.firstChild)
+    return /** @type {any} */ (julia().language.parser.parse(julia_code).topNode.firstChild)
 }
 
 // When you get errors while creating the templates (stuff related to substitutions),
@@ -261,7 +261,7 @@ export let match_template = (haystack_cursor, template, matches, verbose = false
                         // Skip comments
                         // TODO This is, I think, one of the few julia-only things right now.....
                         // .... Any sane way to factor this out?
-                        while (haystack_cursor.name === "Comment" || haystack_cursor.name === "BlockComment") {
+                        while (haystack_cursor.name === "LineComment" || haystack_cursor.name === "BlockComment") {
                             if (!haystack_cursor.nextSibling()) break
                         }
 
@@ -466,7 +466,11 @@ export let to_template = function* (julia_code_object) {
                     }
                 })
             if (unused_substitutions.length > 0) {
-                throw new Error(`Some substitutions not applied, this means it couldn't be matched to a AST position: ${JSON.stringify(unused_substitutions)}`)
+                throw new Error(
+                    `Some substitutions not applied, this means it couldn't be matched to a AST position.\n\nUnused substitutions: ${JSON.stringify(
+                        unused_substitutions
+                    )}\n`
+                )
             }
             return result
         } else if (typeof julia_code_object === "function") {
@@ -837,7 +841,7 @@ export const t = /** @type {const} */ ({
         yield "69"
         return {
             pattern: function Number(haystack, matches, verbose = false) {
-                return haystack != null && narrow_name(haystack) === "Number"
+                return haystack != null && (narrow_name(haystack) === "IntegerLiteral" || narrow_name(haystack) === "FloatLiteral")
             },
         }
     },
@@ -846,9 +850,7 @@ export const t = /** @type {const} */ ({
         yield `"A113"`
         return {
             pattern: function String(haystack, matches, verbose = false) {
-                return (
-                    haystack != null && (narrow_name(haystack) === "StringWithoutInterpolation" || narrow_name(haystack) === "TripleStringWithoutInterpolation")
-                )
+                return haystack != null && (narrow_name(haystack) === "StringLiteral" || narrow_name(haystack) === "NsStringLiteral")
             },
         }
     },
