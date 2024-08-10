@@ -11,11 +11,11 @@ using Pluto.WorkspaceManager: poll
     # f was not throttled
     @test x[] == 1
     
-    dt = 4 / 100
-    ft = Throttled.throttled(f, dt)
+    dt = 8 / 100
+    tf = Throttled.throttled(f, dt)
     
     for x in 1:10
-    	ft()
+    	tf()
     end
     # we have an initial cooldown period in which f should not fire...
     # ...so x is still 1...
@@ -25,7 +25,7 @@ using Pluto.WorkspaceManager: poll
     @test x[] == 2
     
     # Let's wait for the cooldown period to end
-    sleep(dt)
+    sleep(2dt)
     # nothing should have changed
     @test x[] == 2
 
@@ -35,7 +35,7 @@ using Pluto.WorkspaceManager: poll
     # and the cooldown period for the first throttled calls is over
 
     for x in 1:10
-    	ft()
+    	tf()
     end
     # we want to send plots to the user as soon as they are available,
     # so no leading timeout
@@ -46,7 +46,7 @@ using Pluto.WorkspaceManager: poll
     
     
     for x in 1:5
-    	ft()
+    	tf()
     	sleep(1.5dt)
     end
     @test x[] == 9
@@ -57,14 +57,14 @@ using Pluto.WorkspaceManager: poll
     ###
     
     # "call 1"
-    ft()
+    tf()
     # no leading timeout, immediately set to 10
     @test x[] == 10
     
     sleep(.5dt)
     
     # "call 2"
-    ft()
+    tf()
     # throttled
     @test x[] == 10
     
@@ -79,23 +79,23 @@ using Pluto.WorkspaceManager: poll
     
     ###
     
-    ft()
-    ft()
+    tf()
+    tf()
     @test x[] == 12
-    flush(ft)
+    flush(tf)
     @test x[] == 13
     sleep(2dt)
     @test x[] == 13
 
     ####
     
-    ft()
+    tf()
     @test poll(2dt, dt/60) do
         x[] == 14
     end
     # immediately fire again, right after the last fire
-    ft()
-    ft()
+    tf()
+    tf()
     # this should not do anything, because we are still in the cooldown period
     @test x[] == 14
     # not even after a little while
@@ -103,33 +103,47 @@ using Pluto.WorkspaceManager: poll
     @test x[] == 14
     
     # but eventually, our call should get queued
-    sleep(dt)
-    @test x[] == 15
     sleep(2dt)
+    @test x[] == 15
     
     ####
+    
     x[] = 0
-    Throttled.force_throttle_without_run(ft)
+    
+    
+    @test tf.iscoolnow[]
+    @test !tf.run_later[]
+    
+    Throttled.force_throttle_without_run(tf)
+    
+    @test !tf.iscoolnow[]
+    @test !tf.run_later[]
+    
     @test x[] == 0
-    ft()
+    tf()
+    
+    @test !tf.iscoolnow[]
+    @test tf.run_later[]
+    
     @test x[] == 0
     sleep(.1dt)
     @test x[] == 0
     sleep(2dt)
     @test x[] == 1
     
-    
-    ft()
+    @test tf.iscoolnow[]
+    @test !tf.run_later[]
+    tf()
     @test x[] == 2
     sleep(.1dt)
-    ft()
-    Throttled.force_throttle_without_run(ft)
+    tf()
+    Throttled.force_throttle_without_run(tf)
     @test x[] == 2
     sleep(2dt)
     @test x[] == 2
     
     
-    ft()
+    tf()
     @test x[] == 3
     sleep(2dt)
     

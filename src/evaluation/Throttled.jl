@@ -83,7 +83,6 @@ Given a throttled function, skip any pending run if hot (but let the cooldown pe
 Argument should be the first function returned by `throttled`.
 """
 function force_throttle_without_run(tf::ThrottledFunction)
-    # (we can access variables from the function closure hihi)
 	tf.run_later[] = false
 	if tf.iscoolnow[]
 		tf.iscoolnow[] = false
