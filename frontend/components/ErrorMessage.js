@@ -1,10 +1,9 @@
 import { cl } from "../common/ClassTable.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
-import { EditorState, EditorView, julia_andrey, lineNumbers, syntaxHighlighting } from "../imports/CodemirrorPlutoSetup.js"
 import { html, useContext, useEffect, useLayoutEffect, useRef, useState } from "../imports/Preact.js"
 import { highlight } from "./CellOutput.js"
-import { Editor } from "./Editor.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
+import _ from "../imports/lodash.js"
 
 const extract_cell_id = (/** @type {string} */ file) => {
     const sep_index = file.indexOf("#==#")
