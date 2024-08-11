@@ -172,10 +172,7 @@ Update the local state of all clients connected to this notebook.
 function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, skip_send::Bool=false, should_lock::Bool=true)
     outbox = Set{Tuple{ClientSession,UpdateMessage}}()
     
-    @debug "y1" should_lock
-    
     (should_lock ? Base.acquire : dontacquire)(current_state_for_clients_lock) do
-    @debug "y2" should_lock
         notebook_dict = notebook_to_js(🙋.notebook)
         for (_, client) in 🙋.session.connected_clients
             if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == 🙋.notebook.notebook_id
@@ -296,9 +293,7 @@ const effects_of_changed_state = Dict(
 responses[:update_notebook] = function response_update_notebook(🙋::ClientRequest)
     require_notebook(🙋)
     try
-        @debug "x1"
         Base.acquire(current_state_for_clients_lock)
-        @debug "x2"
         notebook = 🙋.notebook
         patches = (Base.convert(Firebasey.JSONPatch, update) for update in 🙋.body["updates"])
 
@@ -312,13 +307,11 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
         if !haskey(current_state_for_clients, 🙋.initiator.client)
             throw(ErrorException("Updating without having a first version of the notebook??"))
         end
-        @debug "x2a"
 
         # TODO Immutable ??
         for patch in patches
             Firebasey.applypatch!(current_state_for_clients[🙋.initiator.client], patch)
         end
-        @debug "x2b"
 
         changes = Set{Changed}()
 
@@ -333,7 +326,6 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
 
             union!(changes, current_changes)
         end
-        @debug "x2c"
 
         # We put a flag to check whether any patch changes the skip_as_script metadata. This is to eventually trigger a notebook updated if no reactive_run is part of this update
         skip_as_script_changed = any(patches) do patch
@@ -346,7 +338,6 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
             end
         end
 
-        @debug "x2d"
         # If CodeChanged ∈ changes, then the client will also send a request like run_multiple_cells, which will trigger a file save _before_ running the cells.
         # In the future, we should get rid of that request, and save the file here. For now, we don't save the file here, to prevent unnecessary file IO.
         # (You can put a log in save_notebook to track how often the file is saved)
@@ -357,7 +348,6 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
             end  
             save_notebook(🙋.session, notebook)
         end
-        @debug "x2e"
 
         let bond_changes = filter(x -> x isa BondChanged, changes)
             bound_sym_names = Symbol[x.bond_name for x in bond_changes]
@@ -373,7 +363,6 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
         end
     
         send_notebook_changes!(🙋; commentary=Dict(:update_went_well => :👍), should_lock=false)
-        @debug "x2g"
     catch ex
         @error "Update notebook failed"  🙋.body["updates"] exception=(ex, stacktrace(catch_backtrace()))
         response = Dict(
@@ -383,7 +372,6 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
         )
         send_notebook_changes!(🙋; commentary=response, should_lock=false)
     finally
-        @debug "x3"
         Base.release(current_state_for_clients_lock)
     end
 end
