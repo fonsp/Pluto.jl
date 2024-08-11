@@ -141,79 +141,56 @@ export const pluto_syntax_colors_python = HighlightStyle.define(
     }
 )
 
-export const pluto_syntax_colors_css = HighlightStyle.define(
-    [
-        { tag: tags.propertyName, color: "var(--cm-css-accent-color)", fontWeight: 700 },
-        { tag: tags.variableName, color: "var(--cm-css-accent-color)", fontWeight: 700 },
-        { tag: tags.definitionOperator, color: "var(--cm-css-color)" },
-        { tag: tags.keyword, color: "var(--cm-css-color)" },
-        { tag: tags.modifier, color: "var(--cm-css-accent-color)" },
-        { tag: tags.punctuation, opacity: 0.5 },
-        { tag: tags.literal, color: "var(--cm-css-color)" },
-        // { tag: tags.unit, color: "var(--cm-css-accent-color)" },
-        { tag: tags.tagName, color: "var(--cm-css-color)", fontWeight: 700 },
-        { tag: tags.className, color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)" },
-        { tag: tags.constant(tags.className), color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)" },
+export const pluto_syntax_colors_css = HighlightStyle.define([
+    { tag: tags.comment,            color: "var(--cm-comment-color)", fontStyle: "italic" },
+    { tag: tags.variableName,       color: "var(--cm-css-accent-color)", fontWeight: 700 },
+    { tag: tags.propertyName,       color: "var(--cm-css-accent-color)", fontWeight: 700 },
+    { tag: tags.tagName,            color: "var(--cm-css-color)", fontWeight: 700 },
+    //{ tag: tags.className,          color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)" },
+    //{ tag: tags.constant(tags.className), color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)" },
+    { tag: tags.definitionOperator, color: "var(--cm-css-color)" },
+    { tag: tags.keyword,            color: "var(--cm-css-color)" },
+    { tag: tags.modifier,           color: "var(--cm-css-accent-color)" },
+    { tag: tags.literal,            color: "var(--cm-css-color)" },
+    // { tag: tags.unit,              color: "var(--cm-css-accent-color)" },
+    { tag: tags.punctuation,        opacity: 0.5 },
+], {
+    scope: cssLanguage,
+    all: { color: "var(--cm-css-color)" },
+})
 
-        // Comment from julia
-        { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
-    ],
-    {
-        scope: cssLanguage,
-        all: { color: "var(--cm-css-color)" },
-    }
-)
+export const pluto_syntax_colors_html = HighlightStyle.define([
+    { tag: tags.comment,        color: "var(--cm-comment-color)", fontStyle: "italic" },
+    { tag: tags.content,        color: "var(--cm-html-color)", fontWeight: 400 },
+    { tag: tags.tagName,        color: "var(--cm-html-accent-color)", fontWeight: 600 },
+    { tag: tags.documentMeta,   color: "var(--cm-html-accent-color)" },
+    { tag: tags.attributeName,  color: "var(--cm-html-accent-color)", fontWeight: 600 },
+    { tag: tags.attributeValue, color: "var(--cm-html-accent-color)" },
+    { tag: tags.angleBracket,   color: "var(--cm-html-accent-color)", fontWeight: 600, opacity: 0.7 },
+], {
+    all: { color: "var(--cm-html-color)" },
+    scope: htmlLanguage,
+})
 
-export const pluto_syntax_colors_html = HighlightStyle.define(
-    [
-        { tag: tags.tagName, color: "var(--cm-html-accent-color)", fontWeight: 600 },
-        { tag: tags.attributeName, color: "var(--cm-html-accent-color)", fontWeight: 600 },
-        { tag: tags.attributeValue, color: "var(--cm-html-accent-color)" },
-        { tag: tags.angleBracket, color: "var(--cm-html-accent-color)", fontWeight: 600, opacity: 0.7 },
-        { tag: tags.content, color: "var(--cm-html-color)", fontWeight: 400 },
-        { tag: tags.documentMeta, color: "var(--cm-html-accent-color)" },
-        { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
-    ],
-    {
-        scope: htmlLanguage,
-        all: {
-            color: "var(--cm-html-color)",
-        },
-    }
-)
+// https://github.com/lezer-parser/markdown/blob/d4de2b03180ced4610bad9cef0ad3a805c43b63a/src/markdown.ts#L1890
+export const pluto_syntax_colors_markdown = HighlightStyle.define([
+    { tag: tags.comment,    color: "var(--cm-comment-color)", fontStyle: "italic" },
+    { tag: tags.content,    color: "var(--cm-md-color)" },
+    { tag: tags.heading,    color: "var(--cm-md-color)", fontWeight: 700 },
+    // TODO? tags.list
+    { tag: tags.quote,      color: "var(--cm-md-color)" },
+    { tag: tags.emphasis,   fontStyle: "italic" },
+    { tag: tags.strong,     fontWeight: "bolder" },
+    { tag: tags.link,       textDecoration: "underline" },
+    { tag: tags.url,        color: "var(--cm-md-color)", textDecoration: "none" },
+    { tag: tags.monospace,  color: "var(--cm-md-accent-color)" },
 
-// https://github.com/codemirror/lang-markdown/blob/main/src/markdown.ts
-export const pluto_syntax_colors_markdown = HighlightStyle.define(
-    [
-        { tag: tags.content, color: "var(--cm-md-color)" },
-        { tag: tags.quote, color: "var(--cm-md-color)" },
-        { tag: tags.link, textDecoration: "underline" },
-        { tag: tags.url, color: "var(--cm-md-color)", textDecoration: "none" },
-        { tag: tags.emphasis, fontStyle: "italic" },
-        { tag: tags.strong, fontWeight: "bolder" },
-
-        { tag: tags.heading, color: "var(--cm-md-color)", fontWeight: 700 },
-        {
-            tag: tags.comment,
-            color: "var(--cm-comment-color)",
-            fontStyle: "italic",
-        },
-        {
-            // These are all the things you won't see in the result:
-            // `-` bullet points, the `#` for headers, the `>` with quoteblocks.
-            tag: tags.processingInstruction,
-            color: "var(--cm-md-accent-color) !important",
-            opacity: "0.5",
-        },
-        { tag: tags.monospace, color: "var(--cm-md-accent-color)" },
-    ],
-    {
-        scope: markdownLanguage,
-        all: {
-            color: "var(--cm-md-color)",
-        },
-    }
-)
+    // Marks: `-` for lists, `#` for headers, etc.
+    { tag: tags.processingInstruction, color: "var(--cm-md-accent-color) !important", opacity: "0.5" },
+], {
+    all: { color: "var(--cm-md-color)" },
+    scope: markdownLanguage,
+})
 
 const getValue6 = (/** @type {EditorView} */ cm) => cm.state.doc.toString()
 const setValue6 = (/** @type {EditorView} */ cm, value) =>
