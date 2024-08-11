@@ -166,6 +166,19 @@ const current_state_for_clients_lock = Base.Semaphore(1)
 
 dontacquire(f::Function, z) = f()
 
+get_e_1(x) = try
+    join(x["status_tree"]["subtasks"]["run"]["subtasks"]["evaluate"]["subtasks"] |> keys, ", ")
+catch
+    "empty"
+end
+
+interesting_patches(patches) = filter(patch -> ["status_tree", "subtasks", "run", "subtasks", "evaluate", "subtasks"] ⊆ patch.path, patches)
+
+
+
+const update_counter = Ref(0)
+
+
 """
 Update the local state of all clients connected to this notebook.
 """
@@ -177,17 +190,28 @@ function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, sk
         for (_, client) in 🙋.session.connected_clients
             if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == 🙋.notebook.notebook_id
                 current_dict = get(current_state_for_clients, client, :empty)
+                
+                counter = update_counter[] += 1
+                
                 patches = Firebasey.diff(current_dict, notebook_dict)
                 patches_as_dicts = Firebasey._convert(Vector{Dict}, patches)
                 current_state_for_clients[client] = deep_enough_copy(notebook_dict)
 
+                let ip = interesting_patches(patches)
+                    if !isempty(ip)
+                        @debug "snc" get_e_1(current_dict) get_e_1(notebook_dict) ip counter
+                    end
+                end
+                
+                
                 # Make sure we do send a confirmation to the client who made the request, even without changes
                 is_response = 🙋.initiator !== nothing && client == 🙋.initiator.client
 
                 if !skip_send && (!isempty(patches) || is_response)
                     response = Dict(
-                        :before_status => current_dict isa Symbol ? :empty : current_dict["status_tree"],
-                        :after_status => notebook_dict["status_tree"],
+                        :counter => counter,
+                        :before_status => get_e_1(current_dict),
+                        :after_status => get_e_1(notebook_dict),
                         :patches => patches_as_dicts,
                         :response => is_response ? commentary : nothing
                     )
@@ -298,9 +322,7 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
         patches = (Base.convert(Firebasey.JSONPatch, update) for update in 🙋.body["updates"])
 
         if length(patches) == 0
-            @debug "x2zzzzz"
             send_notebook_changes!(🙋; should_lock=false)
-            @debug "x2zzzzz 777"
             return nothing
         end
 
@@ -309,9 +331,12 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
         end
 
         # TODO Immutable ??
+        # b = get_e_1(current_state_for_clients[🙋.initiator.client])
         for patch in patches
             Firebasey.applypatch!(current_state_for_clients[🙋.initiator.client], patch)
         end
+        # a = get_e_1(current_state_for_clients[🙋.initiator.client])
+        # @debug "un" b a
 
         changes = Set{Changed}()
 
@@ -437,10 +462,24 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
 
     if will_run_code(🙋.notebook)
         foreach(c -> c.queued = true, cells)
-        # run send_notebook_changes! without actually sending it, to update current_state_for_clients for our client with c.queued = true.
+        # update current_state_for_clients for our client with c.queued = true.
         # later, during update_save_run!, the cell will actually run, eventually setting c.queued = false again, which will be sent to the client through a patch update. 
-        # We *need* to send *something* to the client, because of https://github.com/fonsp/Pluto.jl/pull/1892, but we also don't want to send unnecessary updates. We can skip sending this update, because update_save_run! will trigger a send_notebook_changes! very very soon.
-        send_notebook_changes!(🙋; skip_send=true)
+        # This guarantees that something will be sent.
+        # We *need* to send *something* to the client, because of https://github.com/fonsp/Pluto.jl/pull/1892, but we also don't want to send unnecessary updates. We can skip sending this update with send_notebook_changes!, because update_save_run! will trigger a send_notebook_changes! very very soon.
+        # send_notebook_changes!(🙋; skip_send=true)
+        
+        for (_, client) in 🙋.session.connected_clients
+            if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == 🙋.notebook.notebook_id
+                if haskey(current_state_for_clients, client)
+                    results = current_state_for_clients[client]["cell_results"]
+                    for c in cells
+                        if haskey(results, cell.cell_id)
+                            results[cell.cell_id]["queued"] = true
+                        end
+                    end
+                end
+            end
+        end
     end
     
     function on_auto_solve_multiple_defs(disabled_cells_dict)
