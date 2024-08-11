@@ -2,6 +2,8 @@
     :root {
         --image-filters: invert(1) hue-rotate(180deg) contrast(0.8);
         --out-of-focus-opacity: 0.5;
+
+        /* Color scheme */
         --main-bg-color: hsl(0deg 0% 12%);
         --rule-color: rgba(255, 255, 255, 0.15);
         --kbd-border-color: #222222;
@@ -12,6 +14,7 @@
 
         /* Cells */
         --normal-cell: 100, 100, 100;
+        /* --code-differs */
         --error-color: 255, 125, 125;
         --normal-cell-color: rgba(var(--normal-cell), 0.2);
         --dark-normal-cell-color: rgba(var(--normal-cell), 0.4);
@@ -56,6 +59,7 @@
         --jl-danger-accent-color: rgb(255, 117, 98);
         --jl-debug-color: hsl(288deg 33% 27%);
         --jl-debug-accent-color: hsl(283deg 59% 69%);
+        /* --footnote-border-color */
         --table-border-color: rgba(255, 255, 255, 0.2);
         --table-bg-hover-color: rgba(193, 192, 235, 0.15);
         --pluto-tree-color: rgb(209 207 207 / 61%);
@@ -77,7 +81,6 @@
         --pluto-logs-progress-fill: #5f7f5b;
         --pluto-logs-progress-bg: #3d3d3d;
         --pluto-logs-progress-border: hsl(210deg 35% 72%);
-
         --pluto-logs-info-color: #484848;
         --pluto-logs-info-accent-color: inherit;
         --pluto-logs-warn-color: rgb(80 76 38);
@@ -106,6 +109,7 @@
         /*loading bar*/
         --loading-grad-color-1: #a9d4f1;
         --loading-grad-color-2: #d0d4d7;
+
         /*saveall container*/
         --overlay-button-bg: #2c2c2c;
         --overlay-button-border: #9e9e9e70;
@@ -154,7 +158,6 @@
         --helpbox-text-color: rgb(230, 230, 230);
         --code-section-bg-color: rgb(44, 44, 44);
         --code-section-border-color: #555a64;
-
         --process-item-bg: #443d44;
         --process-busy: #ffcd70;
         --process-finished: hsl(126deg 30% 60%);
@@ -217,6 +220,7 @@
         --index-text-color: rgb(199, 199, 199);
         --index-light-text-color: rgb(199, 199, 199);
         --index-clickable-text-color: rgb(235, 235, 235);
+        --docs-binding-bg: #323431;
         --index-card-bg: #313131;
         --welcome-mywork-bg: var(--header-bg-color);
         --welcome-newnotebook-bg: rgb(68 72 102);
@@ -225,16 +229,11 @@
         --welcome-open-bg: hsl(233deg 20% 33%);
         --welcome-card-author-backdrop: #0000006b;
 
-        /* docs binding */
-        --docs-binding-bg: #323431;
-
-        /* Nesed languages in codemirror! */
+        /* Mixed parsers */
         --cm-html-color: #00ab85;
         --cm-html-accent-color: #00e7b4;
         --cm-css-color: #ebd073;
         --cm-css-accent-color: #fffed2;
-        /* This is basically --cm-css-accent-color, but because the CSS plugin shows some characters in plain white,
-            this is made also a liiiitle lighter so it doesn't stand out too much against the white prefix */
         --cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa: #ffffea;
         --cm-md-color: #a2c9d5;
         --cm-md-accent-color: #00a9d1;

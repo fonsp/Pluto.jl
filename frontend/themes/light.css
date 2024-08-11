@@ -11,11 +11,11 @@
         --header-border-color: rgba(0, 0, 0, 0.1);
         --ui-button-color: #2a2a2b;
         --cursor-color: black;
+
+        /* Cells */
         --normal-cell: 0, 0, 0;
         --code-differs: 160, 130, 28;
         --error-color: 240, 168, 168;
-
-        /*Cells*/
         --normal-cell-color: rgba(var(--normal-cell), 0.1);
         --dark-normal-cell-color: rgba(var(--normal-cell), 0.2);
         --selected-cell-color: rgba(40, 78, 189, 0.4);
@@ -41,6 +41,7 @@
         /*Pluto output styling */
         --pluto-schema-types-color: rgba(0, 0, 0, 0.4);
         --pluto-schema-types-border-color: rgba(0, 0, 0, 0.2);
+        /* --pluto-dim-output-color */
         --pluto-output-color: hsl(0, 0%, 25%);
         --pluto-output-h-color: hsl(0, 0%, 12%);
         --pluto-output-bg-color: white;
@@ -113,6 +114,7 @@
         --overlay-button-bg: #ffffff;
         --overlay-button-border: hsl(0 4% 91% / 1);
         --overlay-button-border-save: #f3f2f2;
+        /* --overlay-button-color */
 
         /*input_context_menu*/
         --input-context-menu-border-color: rgba(0, 0, 0, 0.1);
@@ -155,7 +157,7 @@
         --helpbox-notfound-search-color: rgb(139, 139, 139);
         --helpbox-text-color: black;
         --code-section-bg-color: whitesmoke;
-        --code-section-bg-color: #f3f3f3;
+        --code-section-bg-color: #f3f3f3; /* TODO: Should this be `-border-color`? */
         --process-item-bg: #f2f2f2;
         --process-busy: #ffcd70;
         --process-finished: hsl(126deg 30% 60%);
@@ -196,8 +198,8 @@
         --cm-keyword-color: #ef6155;
         --cm-string-color: #da5616;
         --cm-var-color: #5668a4;
-        --cm-macro-color: #5c8c5f;
         --cm-var2-color: #37768a;
+        --cm-macro-color: #5c8c5f;
         --cm-builtin-color: #5e7ad3;
         --cm-function-color: #cc80ac;
         --cm-type-color: hsl(170deg 7% 56%);
@@ -227,7 +229,7 @@
         --welcome-open-bg: #fbfbfb;
         --welcome-card-author-backdrop: #ffffffb0;
 
-        /* HTML in codemirror! */
+        /* Mixed parsers */
         --cm-html-color: #48b685;
         --cm-html-accent-color: #00ab85;
         --cm-css-color: #876800;
