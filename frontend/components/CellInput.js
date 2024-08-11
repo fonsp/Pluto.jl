@@ -95,32 +95,32 @@ window.PLUTO_TOGGLE_CM_AUTOCOMPLETE_ON_TYPE = (val = !ENABLE_CM_AUTOCOMPLETE_ON_
 }
 
 const common_style_tags = [
-    { tag: tags.comment,        color: "var(--cm-comment-color)", fontStyle: "italic", filter: "none" },
-    { tag: tags.keyword,        color: "var(--cm-keyword-color)" },
-    { tag: tags.variableName,   color: "var(--cm-var-color)", fontWeight: 700 },
-    { tag: tags.typeName,       color: "var(--cm-type-color)", fontStyle: "italic" },
-    { tag: tags.typeOperator,   color: "var(--cm-type-color)", fontStyle: "italic" },
-    { tag: tags.tagName,        color: "var(--cm-tag-color)" }, // JS
-    { tag: tags.propertyName,   color: "var(--cm-property-color)" },
+    { tag: tags.comment,        color: "var(--cm-color-comment)", fontStyle: "italic", filter: "none" },
+    { tag: tags.keyword,        color: "var(--cm-color-keyword)" },
+    { tag: tags.variableName,   color: "var(--cm-color-var)", fontWeight: 700 },
+    { tag: tags.typeName,       color: "var(--cm-color-type)", fontStyle: "italic" },
+    { tag: tags.typeOperator,   color: "var(--cm-color-type)", fontStyle: "italic" },
+    { tag: tags.tagName,        color: "var(--cm-color-tag)" }, // JS
+    { tag: tags.propertyName,   color: "var(--cm-color-property)" },
     // TODO: tags.labelName
-    { tag: tags.macroName,      color: "var(--cm-macro-color)", fontWeight: 700 },
-    { tag: tags.string,         color: "var(--cm-string-color)" },
+    { tag: tags.macroName,      color: "var(--cm-color-macro)", fontWeight: 700 },
+    { tag: tags.string,         color: "var(--cm-color-string)" },
     // TODO: tags.character
-    { tag: tags.number,         color: "var(--cm-number-color)" },
-    { tag: tags.bool,           color: "var(--cm-builtin-color)", fontWeight: 700 },
+    { tag: tags.number,         color: "var(--cm-color-number)" },
+    { tag: tags.bool,           color: "var(--cm-color-builtin)", fontWeight: 700 },
     // TODO: tags.escape
     // TODO: tags.self, tags.null
-    { tag: tags.atom,           color: "var(--cm-atom-color)" },
-    { tag: tags.unit,           color: "var(--cm-tag-color)" }, // TODO: Remove
+    { tag: tags.atom,           color: "var(--cm-color-atom)" },
+    { tag: tags.unit,           color: "var(--cm-color-tag)" }, // TODO: Remove
     // TODO? tags.operator
-    { tag: tags.bracket,        color: "var(--cm-bracket-color)" },
-    { tag: tags.special(tags.brace), color: "var(--cm-macro-color)", fontWeight: 700 }, // interp
+    { tag: tags.bracket,        color: "var(--cm-color-bracket)" },
+    { tag: tags.special(tags.brace), color: "var(--cm-color-macro)", fontWeight: 700 }, // interp
 ]
 
 export const pluto_syntax_colors_julia = HighlightStyle.define(
     common_style_tags,
     {
-        all: { color: `var(--cm-editor-text-color)` },
+        all: { color: `var(--cm-color-editor-text)` },
         scope: julia_andrey().language,
     }
 )
@@ -128,7 +128,7 @@ export const pluto_syntax_colors_julia = HighlightStyle.define(
 export const pluto_syntax_colors_javascript = HighlightStyle.define(
     common_style_tags,
     {
-        all: { color: `var(--cm-editor-text-color)`, filter: `contrast(0.5)` },
+        all: { color: `var(--cm-color-editor-text)`, filter: `contrast(0.5)` },
         scope: javascriptLanguage,
     }
 )
@@ -136,59 +136,59 @@ export const pluto_syntax_colors_javascript = HighlightStyle.define(
 export const pluto_syntax_colors_python = HighlightStyle.define(
     common_style_tags,
     {
-        all: { color: `var(--cm-editor-text-color)`, filter: `contrast(0.5)` },
+        all: { color: `var(--cm-color-editor-text)`, filter: `contrast(0.5)` },
         scope: pythonLanguage,
     }
 )
 
 export const pluto_syntax_colors_css = HighlightStyle.define([
-    { tag: tags.comment,            color: "var(--cm-comment-color)", fontStyle: "italic" },
-    { tag: tags.variableName,       color: "var(--cm-css-accent-color)", fontWeight: 700 },
-    { tag: tags.propertyName,       color: "var(--cm-css-accent-color)", fontWeight: 700 },
-    { tag: tags.tagName,            color: "var(--cm-css-color)", fontWeight: 700 },
+    { tag: tags.comment,            color: "var(--cm-color-comment)", fontStyle: "italic" },
+    { tag: tags.variableName,       color: "var(--cm-color-css-accent)", fontWeight: 700 },
+    { tag: tags.propertyName,       color: "var(--cm-color-css-accent)", fontWeight: 700 },
+    { tag: tags.tagName,            color: "var(--cm-color-css)", fontWeight: 700 },
     //{ tag: tags.className,          color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)" },
     //{ tag: tags.constant(tags.className), color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)" },
-    { tag: tags.definitionOperator, color: "var(--cm-css-color)" },
-    { tag: tags.keyword,            color: "var(--cm-css-color)" },
-    { tag: tags.modifier,           color: "var(--cm-css-accent-color)" },
-    { tag: tags.literal,            color: "var(--cm-css-color)" },
-    // { tag: tags.unit,              color: "var(--cm-css-accent-color)" },
+    { tag: tags.definitionOperator, color: "var(--cm-color-css)" },
+    { tag: tags.keyword,            color: "var(--cm-color-css)" },
+    { tag: tags.modifier,           color: "var(--cm-color-css-accent)" },
+    { tag: tags.literal,            color: "var(--cm-color-css)" },
+    // { tag: tags.unit,              color: "var(--cm-color-css-accent)" },
     { tag: tags.punctuation,        opacity: 0.5 },
 ], {
     scope: cssLanguage,
-    all: { color: "var(--cm-css-color)" },
+    all: { color: "var(--cm-color-css)" },
 })
 
 export const pluto_syntax_colors_html = HighlightStyle.define([
-    { tag: tags.comment,        color: "var(--cm-comment-color)", fontStyle: "italic" },
-    { tag: tags.content,        color: "var(--cm-html-color)", fontWeight: 400 },
-    { tag: tags.tagName,        color: "var(--cm-html-accent-color)", fontWeight: 600 },
-    { tag: tags.documentMeta,   color: "var(--cm-html-accent-color)" },
-    { tag: tags.attributeName,  color: "var(--cm-html-accent-color)", fontWeight: 600 },
-    { tag: tags.attributeValue, color: "var(--cm-html-accent-color)" },
-    { tag: tags.angleBracket,   color: "var(--cm-html-accent-color)", fontWeight: 600, opacity: 0.7 },
+    { tag: tags.comment,        color: "var(--cm-color-comment)", fontStyle: "italic" },
+    { tag: tags.content,        color: "var(--cm-color-html)", fontWeight: 400 },
+    { tag: tags.tagName,        color: "var(--cm-color-html-accent)", fontWeight: 600 },
+    { tag: tags.documentMeta,   color: "var(--cm-color-html-accent)" },
+    { tag: tags.attributeName,  color: "var(--cm-color-html-accent)", fontWeight: 600 },
+    { tag: tags.attributeValue, color: "var(--cm-color-html-accent)" },
+    { tag: tags.angleBracket,   color: "var(--cm-color-html-accent)", fontWeight: 600, opacity: 0.7 },
 ], {
-    all: { color: "var(--cm-html-color)" },
+    all: { color: "var(--cm-color-html)" },
     scope: htmlLanguage,
 })
 
 // https://github.com/lezer-parser/markdown/blob/d4de2b03180ced4610bad9cef0ad3a805c43b63a/src/markdown.ts#L1890
 export const pluto_syntax_colors_markdown = HighlightStyle.define([
-    { tag: tags.comment,    color: "var(--cm-comment-color)", fontStyle: "italic" },
-    { tag: tags.content,    color: "var(--cm-md-color)" },
-    { tag: tags.heading,    color: "var(--cm-md-color)", fontWeight: 700 },
+    { tag: tags.comment,    color: "var(--cm-color-comment)", fontStyle: "italic" },
+    { tag: tags.content,    color: "var(--cm-color-md)" },
+    { tag: tags.heading,    color: "var(--cm-color-md)", fontWeight: 700 },
     // TODO? tags.list
-    { tag: tags.quote,      color: "var(--cm-md-color)" },
+    { tag: tags.quote,      color: "var(--cm-color-md)" },
     { tag: tags.emphasis,   fontStyle: "italic" },
     { tag: tags.strong,     fontWeight: "bolder" },
     { tag: tags.link,       textDecoration: "underline" },
-    { tag: tags.url,        color: "var(--cm-md-color)", textDecoration: "none" },
-    { tag: tags.monospace,  color: "var(--cm-md-accent-color)" },
+    { tag: tags.url,        color: "var(--cm-color-md)", textDecoration: "none" },
+    { tag: tags.monospace,  color: "var(--cm-color-md-accent)" },
 
     // Marks: `-` for lists, `#` for headers, etc.
-    { tag: tags.processingInstruction, color: "var(--cm-md-accent-color) !important", opacity: "0.5" },
+    { tag: tags.processingInstruction, color: "var(--cm-color-md-accent) !important", opacity: "0.5" },
 ], {
-    all: { color: "var(--cm-md-color)" },
+    all: { color: "var(--cm-color-md)" },
     scope: markdownLanguage,
 })
 

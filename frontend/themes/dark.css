@@ -178,40 +178,49 @@
         --undo-delete-box-shadow-color: rgba(213, 213, 214, 0.2);
 
         /*codemirror hints*/
-        --cm-editor-tooltip-border-color: rgba(0, 0, 0, 0.2);
-        --cm-editor-li-aria-selected-bg-color: #3271e7;
-        --cm-editor-li-aria-selected-color: white;
-        --cm-editor-li-notexported-color: rgba(255, 255, 255, 0.5);
+        --cm-color-editor-tooltip-border: rgba(0, 0, 0, 0.2);
+        --cm-color-editor-li-aria-selected-bg: #3271e7;
+        --cm-color-editor-li-aria-selected: white;
+        --cm-color-editor-li-notexported: rgba(255, 255, 255, 0.5);
         --code-background: hsl(222deg 16% 19%);
-        --cm-code-differs-gutters-color: rgb(235 213 28 / 11%);
-        --cm-line-numbers-color: #8d86875e;
+        --cm-color-code-differs-gutters: rgb(235 213 28 / 11%);
+        --cm-color-line-numbers: #8d86875e;
         --cm-selection-background: hsl(215deg 64% 59% / 48%);
         --cm-selection-background-blurred: hsl(215deg 0% 59% / 48%);
         --cm-highlighted: #cbceb629;
 
         /* code highlighting */
-        --cm-editor-text-color: #ffe9fc;
-        --cm-comment-color: #e96ba8;
-        --cm-atom-color: hsl(8deg 72% 62%);
-        --cm-number-color: hsl(271deg 45% 64%);
-        --cm-property-color: #f99b15;
-        --cm-keyword-color: #ff7a6f;
-        --cm-string-color: hsl(20deg 69% 59%);
-        --cm-var-color: #afb7d3;
-        --cm-var2-color: #06b6ef;
-        --cm-macro-color: #82b38b;
-        --cm-builtin-color: #5e7ad3;
-        --cm-function-color: #f99b15;
-        --cm-type-color: hsl(51deg 32% 44%);
-        --cm-bracket-color: #a2a273;
-        --cm-tag-color: #ef6155;
-        --cm-link-color: #815ba4;
-        --cm-error-bg-color: #ef6155;
-        --cm-error-color: #f7f7f7;
-        --cm-matchingBracket-color: white;
-        --cm-matchingBracket-bg-color: #c58c237a;
-        --cm-placeholder-text-color: rgb(255 255 255 / 20%);
-        --cm-clickable-underline: #5d5f70;
+        --cm-color-editor-text: #ffe9fc;
+        --cm-color-comment:     #e96ba8;
+        --cm-color-atom:        hsl(8deg 72% 62%);
+        --cm-color-number:      hsl(271deg 45% 64%);
+        --cm-color-property:    #f99b15;
+        --cm-color-keyword:     #ff7a6f;
+        --cm-color-string:      hsl(20deg 69% 59%);
+        --cm-color-var:         #afb7d3;
+        --cm-color-var2:        #06b6ef;
+        --cm-color-macro:       #82b38b;
+        --cm-color-builtin:     #5e7ad3;
+        --cm-color-function:    #f99b15;
+        --cm-color-type:        hsl(51deg 32% 44%);
+        --cm-color-bracket:     #a2a273;
+        --cm-color-tag:         #ef6155;
+        --cm-color-link:        #815ba4;
+        --cm-color-error-bg:    #ef6155;
+        --cm-color-error:       #f7f7f7;
+        --cm-color-matchingBracket: white;
+        --cm-color-matchingBracket-bg: #c58c237a;
+        --cm-color-placeholder-text: rgb(255 255 255 / 20%);
+        --cm-color-clickable-underline: #5d5f70;
+
+        /* Mixed parsers */
+        --cm-color-html:        #00ab85;
+        --cm-color-html-accent: #00e7b4;
+        --cm-color-css:         #ebd073;
+        --cm-color-css-accent:  #fffed2;
+        --cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa: #ffffea;
+        --cm-color-md:          #a2c9d5;
+        --cm-color-md-accent:   #00a9d1;
 
         /*autocomplete menu*/
         --autocomplete-menu-bg-color: var(--input-context-menu-bg-color);
@@ -228,20 +237,11 @@
         --welcome-recentnotebook-border: #6e6e6e;
         --welcome-open-bg: hsl(233deg 20% 33%);
         --welcome-card-author-backdrop: #0000006b;
-
-        /* Mixed parsers */
-        --cm-html-color: #00ab85;
-        --cm-html-accent-color: #00e7b4;
-        --cm-css-color: #ebd073;
-        --cm-css-accent-color: #fffed2;
-        --cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa: #ffffea;
-        --cm-md-color: #a2c9d5;
-        --cm-md-accent-color: #00a9d1;
     }
 
     @media (prefers-contrast: more) {
         :root {
-            --cm-line-numbers-color: #b3b3b3;
+            --cm-color-line-numbers: #b3b3b3;
         }
     }
     body:not(.disable_ui):not(.more-specificity) {

@@ -29,7 +29,7 @@ import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
 import { SafePreviewSanitizeMessage } from "./SafePreviewUI.js"
 
 const prettyAssignee = (assignee) =>
-    assignee && assignee.startsWith("const ") ? html`<span style="color: var(--cm-keyword-color)">const</span> ${assignee.slice(6)}` : assignee
+    assignee && assignee.startsWith("const ") ? html`<span style="color: var(--cm-color-keyword)">const</span> ${assignee.slice(6)}` : assignee
 
 export class CellOutput extends Component {
     constructor() {

@@ -160,7 +160,7 @@ pluto-filepicker button:disabled {
 }
 
 .cm-editor .cm-tooltip {
-    border: 1px solid var(--cm-editor-tooltip-border-color);
+    border: 1px solid var(--cm-color-editor-tooltip-border);
     box-shadow: 3px 3px 4px rgb(0 0 0 / 20%);
     border-radius: 4px;
 }
@@ -190,8 +190,8 @@ pluto-filepicker button:disabled {
 }
 
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] {
-    color: var(--cm-editor-li-aria-selected-color);
-    background: var(--cm-editor-li-aria-selected-bg-color);
+    color: var(--cm-color-editor-li-aria-selected);
+    background: var(--cm-color-editor-li-aria-selected-bg);
 }
 
 .cm-editor .cm-completionIcon {

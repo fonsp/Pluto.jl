@@ -333,7 +333,7 @@ jlerror li.from_this_notebook .classical-frame {
 jlerror li a.frame-line-preview {
     display: block;
     text-decoration: none;
-    border: 3px solid var(--cm-clickable-underline);
+    border: 3px solid var(--cm-color-clickable-underline);
     --br: 0.6em;
     border-radius: var(--br);
     --crop: -0.5em;
@@ -368,7 +368,7 @@ jlerror li .frame-line-preview pre > code:not(.frame-line) {
 }
 jlerror li .frame-line-preview pre > code::before {
     content: var(--before-content);
-    color: var(--cm-line-numbers-color);
+    color: var(--cm-color-line-numbers);
     margin-right: 0.7em;
     width: 2ch;
     display: inline-block;
