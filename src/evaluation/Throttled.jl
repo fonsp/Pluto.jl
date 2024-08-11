@@ -11,6 +11,7 @@ struct ThrottledFunction
     iscoolnow::Ref{Bool}
     run_later::Ref{Bool}
     last_runtime::Ref{Float64}
+    run_threaded::Bool
 end
 
 "Run the function now"
@@ -22,13 +23,24 @@ function Base.flush(tf::ThrottledFunction)
     end
 end
 
+function _trigger(tf::ThrottledFunction)
+    if tf.run_threaded
+        Threads.@spawn begin
+            flush(tf)
+            schedule(tf)
+        end
+    else
+        flush(tf)
+        schedule(tf)
+    end
+end
+
 "Start the cooldown period. If at the end, a run_later[] is set, then we run the function and schedule the next cooldown period."
 function schedule(tf::ThrottledFunction)
     # if the last runtime was quite long, increase the sleep period to match.
     Timer(tf.timeout + tf.last_runtime[] * tf.runtime_multiplier) do _t
         if tf.run_later[]
-            flush(tf)
-            schedule(tf)
+            _trigger(tf)
         else
             tf.iscoolnow[] = true
         end
@@ -38,8 +50,7 @@ end
 function (tf::ThrottledFunction)()
     if tf.iscoolnow[]
         tf.iscoolnow[] = false
-        flush(tf)
-        schedule(tf)
+        _trigger(tf)
     else
         tf.run_later[] = true
     end
@@ -63,13 +74,13 @@ This throttle is 'leading' and has some other properties that are specifically d
 Inspired by FluxML
 See: https://github.com/FluxML/Flux.jl/blob/8afedcd6723112ff611555e350a8c84f4e1ad686/src/utils.jl#L662
 """
-function throttled(f::Function, timeout::Real; runtime_multiplier::Float64=0.0)
+function throttled(f::Function, timeout::Real; runtime_multiplier::Float64=0.0, run_threaded::Bool=false)
     tlock = ReentrantLock()
     iscoolnow = Ref(false)
     run_later = Ref(false)
     last_runtime = Ref(0.0)
 
-    tf = ThrottledFunction(f, timeout, runtime_multiplier, tlock, iscoolnow, run_later, last_runtime)
+    tf = ThrottledFunction(f, timeout, runtime_multiplier, tlock, iscoolnow, run_later, last_runtime, run_threaded)
     
     # we initialize hot, and start the cooldown period immediately
     schedule(tf)

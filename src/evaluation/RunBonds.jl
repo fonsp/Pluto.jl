@@ -33,7 +33,7 @@ function set_bond_values_reactive(;
     )::Vector{Symbol}
 
     if isempty(syms_to_set) || !will_run_code(notebook)
-        send_notebook_changes!(ClientRequest(; session, notebook, initiator))
+        send_notebook_changes!(ClientRequest(; session, notebook, initiator); should_lock=false)
         return TopologicalOrder(notebook.topology, Cell[], Dict{Cell,PlutoDependencyExplorer.ReactivityError}())
     end
 

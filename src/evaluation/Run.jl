@@ -123,7 +123,7 @@ function run_reactive_core!(
 	
     # Send intermediate updates to the clients at most 20 times / second during a reactive run. (The effective speed of a slider is still unbounded, because the last update is not throttled.)
     # flush_send_notebook_changes_throttled, 
-    send_notebook_changes_throttled = Throttled.throttled(1.0 / 20; runtime_multiplier=2.0) do
+    send_notebook_changes_throttled = Throttled.throttled(1.0 / 20; runtime_multiplier=2.0, run_threaded=false) do
 		# We will do a state sync now, so that means that we can delay the status_tree state sync loop, see https://github.com/fonsp/Pluto.jl/issues/2978
 		Throttled.force_throttle_without_run(notebook.status_tree.update_listener_ref[])
 		# State sync:
