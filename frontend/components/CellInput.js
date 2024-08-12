@@ -480,7 +480,7 @@ export const CellInput = ({
                 pluto_actions.move_remote_cells([cell_id], pluto_actions.get_notebook().cell_order.indexOf(cell_id) + (direction === -1 ? -1 : 2))
 
                 // workaround for https://github.com/preactjs/preact/issues/4235
-                // but the crollintoview behaviour is nice, also when the preact issue is fixed.
+                // but the scrollIntoView behaviour is nice, also when the preact issue is fixed.
                 requestIdleCallback(() => {
                     cm.dispatch({
                         // TODO: remove me after fix
