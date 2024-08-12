@@ -5,7 +5,7 @@ import _ from "../imports/lodash.js"
 import "https://cdn.jsdelivr.net/gh/fonsp/rebel-tag-input@1.0.6/lib/rebel-tag-input.mjs"
 
 //@ts-ignore
-import { produce } from "../imports/immer.js"
+import immer from "../imports/immer.js"
 import { useDialog } from "../common/useDialog.js"
 import { FeaturedCard } from "./welcome/FeaturedCard.js"
 import { useEventListener } from "../common/useEventListener.js"
@@ -26,7 +26,7 @@ export const FrontMatterInput = ({ filename, remote_frontmatter, set_remote_fron
 
     const fm_setter = (key) => (value) =>
         set_frontmatter(
-            produce((fm) => {
+            immer((fm) => {
                 _.set(fm, key, value)
             })
         )
@@ -83,7 +83,7 @@ export const FrontMatterInput = ({ filename, remote_frontmatter, set_remote_fron
                             onClick=${() => {
                                 //  TODO
                                 set_frontmatter(
-                                    produce((fm) => {
+                                    immer((fm) => {
                                         _.unset(fm, path)
                                     })
                                 )
@@ -99,7 +99,7 @@ export const FrontMatterInput = ({ filename, remote_frontmatter, set_remote_fron
                     const fieldname = prompt("Field name:")
                     if (fieldname) {
                         set_frontmatter(
-                            produce((fm) => {
+                            immer((fm) => {
                                 _.set(fm, `${base_path}${fieldname}`, null)
                             })
                         )

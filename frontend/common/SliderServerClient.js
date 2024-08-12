@@ -1,7 +1,7 @@
 import { trailingslash } from "./Binder.js"
 import { plutohash_arraybuffer, debounced_promises, base64url_arraybuffer } from "./PlutoHash.js"
 import { pack, unpack } from "./MsgPack.js"
-import { produce } from "../imports/immer.js"
+import immer from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
 const assert_response_ok = (/** @type {Response} */ r) => (r.ok ? r : Promise.reject(r))
@@ -41,7 +41,7 @@ export const nothing_actions = ({ actions }) =>
 
 export const slider_server_actions = ({ setStatePromise, launch_params, actions, get_original_state, get_current_state, apply_notebook_patches }) => {
     setStatePromise(
-        produce((state) => {
+        immer((state) => {
             state.slider_server.connecting = true
         })
     )
@@ -62,7 +62,7 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
     bond_connections.then((x) => {
         console.log("Bond connections:", x)
         setStatePromise(
-            produce((state) => {
+            immer((state) => {
                 state.slider_server.connecting = false
                 state.slider_server.interactive = Object.keys(x).length > 0
             })
@@ -85,7 +85,7 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
 
         const update_cells_running = async (running) =>
             await setStatePromise(
-                produce((state) => {
+                immer((state) => {
                     running_cells.forEach((cell_id) => (state.notebook.cell_results[cell_id][starts.has(cell_id) ? "running" : "queued"] = running))
                 })
             )
@@ -128,7 +128,7 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
 
                 await apply_notebook_patches(
                     patches,
-                    produce((state) => {
+                    immer((state) => {
                         const original = get_original_state()
                         ids_of_cells_that_ran.forEach((id) => {
                             state.cell_results[id] = original.cell_results[id]
@@ -148,7 +148,7 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
         ...nothing_actions({ actions }),
         set_bond: async (symbol, value) => {
             setStatePromise(
-                produce((state) => {
+                immer((state) => {
                     state.notebook.bonds[symbol] = { value: value }
                 })
             )
