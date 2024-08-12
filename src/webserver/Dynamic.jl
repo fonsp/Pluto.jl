@@ -166,16 +166,6 @@ const current_state_for_clients_lock = Base.Semaphore(1)
 
 dontacquire(f::Function, z) = f()
 
-get_e_1(x) = try
-    join(x["status_tree"]["subtasks"]["run"]["subtasks"]["evaluate"]["subtasks"] |> keys, ", ")
-catch
-    "empty"
-end
-
-interesting_patches(patches) = filter(patch -> ["status_tree", "subtasks", "run", "subtasks", "evaluate", "subtasks"] ⊆ patch.path, patches)
-
-
-
 const update_counter = Ref(0)
 
 
@@ -197,12 +187,6 @@ function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, sk
                 patches_as_dicts = Firebasey._convert(Vector{Dict}, patches)
                 current_state_for_clients[client] = deep_enough_copy(notebook_dict)
 
-                let ip = interesting_patches(patches)
-                    if !isempty(ip)
-                        @debug "snc" get_e_1(current_dict) get_e_1(notebook_dict) ip counter
-                    end
-                end
-                
                 
                 # Make sure we do send a confirmation to the client who made the request, even without changes
                 is_response = 🙋.initiator !== nothing && client == 🙋.initiator.client
@@ -210,8 +194,6 @@ function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, sk
                 if !skip_send && (!isempty(patches) || is_response)
                     response = Dict(
                         :counter => counter,
-                        :before_status => get_e_1(current_dict),
-                        :after_status => get_e_1(notebook_dict),
                         :patches => patches_as_dicts,
                         :response => is_response ? commentary : nothing
                     )
@@ -331,12 +313,9 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
         end
 
         # TODO Immutable ??
-        # b = get_e_1(current_state_for_clients[🙋.initiator.client])
         for patch in patches
             Firebasey.applypatch!(current_state_for_clients[🙋.initiator.client], patch)
         end
-        # a = get_e_1(current_state_for_clients[🙋.initiator.client])
-        # @debug "un" b a
 
         changes = Set{Changed}()
 
@@ -465,7 +444,7 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
         # update current_state_for_clients for our client with c.queued = true.
         # later, during update_save_run!, the cell will actually run, eventually setting c.queued = false again, which will be sent to the client through a patch update. 
         # This guarantees that something will be sent.
-        # We *need* to send *something* to the client, because of https://github.com/fonsp/Pluto.jl/pull/1892, but we also don't want to send unnecessary updates. We can skip sending this update with send_notebook_changes!, because update_save_run! will trigger a send_notebook_changes! very very soon.
+        # We *need* to send *something* to the client, because of https://g ithub.com/fonsp/Pluto.jl/pull/1892, but we also don't want to send unnecessary updates. We can skip sending this update with send_notebook_changes!, because update_save_run! will trigger a send_notebook_changes! very very soon.
         # send_notebook_changes!(🙋; skip_send=true)
         
         for (_, client) in 🙋.session.connected_clients
