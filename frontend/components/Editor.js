@@ -805,7 +805,9 @@ patch: ${JSON.stringify(
                         const set_waiting = () => {
                             let from_update = message?.response?.update_went_well != null
                             let is_just_acknowledgement = from_update && message.patches.length === 0
-                            // console.log("Received patches!", message.patches, message.response, is_just_acknowledgement)
+                            let is_relevant_for_bonds = message.patches.some(({ path }) => path.length === 0 || path[0] !== "status_tree")
+
+                            // console.debug("Received patches!", is_just_acknowledgement, is_relevant_for_bonds, message.patches, message.response)
 
                             if (!is_just_acknowledgement) {
                                 this.waiting_for_bond_to_trigger_execution = false
