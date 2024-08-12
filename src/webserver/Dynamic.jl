@@ -172,26 +172,24 @@ const update_counter = Ref(0)
 """
 Update the local state of all clients connected to this notebook.
 """
-function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, skip_send::Bool=false, should_lock::Bool=true)
+function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, should_lock::Bool=true)
     outbox = Set{Tuple{ClientSession,UpdateMessage}}()
     
-    (should_lock ? Base.acquire : dontacquire)(current_state_for_clients_lock) do
+    Base.acquire(current_state_for_clients_lock) do
         notebook_dict = notebook_to_js(🙋.notebook)
+        counter = update_counter[] += 1
+
         for (_, client) in 🙋.session.connected_clients
             if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == 🙋.notebook.notebook_id
                 current_dict = get(current_state_for_clients, client, :empty)
-                
-                counter = update_counter[] += 1
-                
                 patches = Firebasey.diff(current_dict, notebook_dict)
                 patches_as_dicts = Firebasey._convert(Vector{Dict}, patches)
                 current_state_for_clients[client] = deep_enough_copy(notebook_dict)
-
                 
                 # Make sure we do send a confirmation to the client who made the request, even without changes
                 is_response = 🙋.initiator !== nothing && client == 🙋.initiator.client
 
-                if !skip_send && (!isempty(patches) || is_response)
+                if !isempty(patches) || is_response
                     response = Dict(
                         :counter => counter,
                         :patches => patches_as_dicts,
@@ -299,7 +297,7 @@ const effects_of_changed_state = Dict(
 responses[:update_notebook] = function response_update_notebook(🙋::ClientRequest)
     require_notebook(🙋)
     try
-        Base.acquire(current_state_for_clients_lock)
+        # Base.acquire(current_state_for_clients_lock)
         notebook = 🙋.notebook
         patches = (Base.convert(Firebasey.JSONPatch, update) for update in 🙋.body["updates"])
 
@@ -376,7 +374,7 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
         )
         send_notebook_changes!(🙋; commentary=response, should_lock=false)
     finally
-        Base.release(current_state_for_clients_lock)
+        # Base.release(current_state_for_clients_lock)
     end
 end
 
@@ -445,7 +443,6 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
         # later, during update_save_run!, the cell will actually run, eventually setting c.queued = false again, which will be sent to the client through a patch update. 
         # This guarantees that something will be sent.
         # We *need* to send *something* to the client, because of https://g ithub.com/fonsp/Pluto.jl/pull/1892, but we also don't want to send unnecessary updates. We can skip sending this update with send_notebook_changes!, because update_save_run! will trigger a send_notebook_changes! very very soon.
-        # send_notebook_changes!(🙋; skip_send=true)
         
         for (_, client) in 🙋.session.connected_clients
             if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == 🙋.notebook.notebook_id
