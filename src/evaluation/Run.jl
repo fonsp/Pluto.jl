@@ -57,6 +57,9 @@ function run_reactive_core!(
 	
     old_workspace_name, _ = WorkspaceManager.bump_workspace_module((session, notebook))
 	
+	# A state sync will come soon from this function, so let's delay anything coming from the status_tree listener, see https://github.com/fonsp/Pluto.jl/issues/2978
+	Throttled.force_throttle_without_run(notebook.status_tree.update_listener_ref[])
+	
 	run_status = Status.report_business_started!(notebook.status_tree, :run)
 	Status.report_business_started!(run_status, :resolve_topology)
 	cell_status = Status.report_business_planned!(run_status, :evaluate)
