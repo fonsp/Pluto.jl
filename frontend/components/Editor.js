@@ -699,10 +699,6 @@ export class Editor extends Component {
                                 //     throw new Error(`Error: [Immer] minified error nr: 15 '${patches?.[0]?.path?.join("/")}'    .`)
                                 // }
 
-                                window.immer = immer
-                                window.applyPatches = applyPatches
-                                window.produceWithPatches = produceWithPatches
-
                                 if (get_reverse_patches) {
                                     ;[new_notebook, _copy_of_patches, reverse_of_patches] = produceWithPatches(old_state ?? state.notebook, (state) => {
                                         applyPatches(state, patches)
@@ -715,7 +711,6 @@ export class Editor extends Component {
                                 /** @type {String} Example: `"a.b[2].c"` */
                                 const failing_path = String(exception).match(".*'(.*)'.*")?.[1].replace(/\//gi, ".") ?? exception
                                 const path_value = _.get(this.state.notebook, failing_path, "Not Found")
-
                                 console.log(String(exception).match(".*'(.*)'.*")?.[1].replace(/\//gi, ".") ?? exception, failing_path, typeof failing_path)
                                 const ignore = should_ignore_patch_error(failing_path)
 
@@ -738,8 +733,7 @@ all patches: ${JSON.stringify(patches, null, 1)}
                                 let parts = failing_path.split(".")
                                 for (let i = 0; i < parts.length; i++) {
                                     let path = parts.slice(0, i).join(".")
-                                    let value = _.get(this.state.notebook, path, "Not Found")
-                                    console.log(path, value)
+                                    console.log(path, _.get(this.state.notebook, path, "Not Found"))
                                 }
 
                                 if (ignore) {

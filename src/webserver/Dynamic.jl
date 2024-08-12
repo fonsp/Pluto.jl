@@ -162,22 +162,18 @@ end
 For each connected client, we keep a copy of their current state. This way we know exactly which updates to send when the server-side state changes.
 """
 const current_state_for_clients = WeakKeyDict{ClientSession,Any}()
-const current_state_for_clients_lock = Base.Semaphore(1)
-
-dontacquire(f::Function, z) = f()
-
-const update_counter = Ref(0)
-
+const current_state_for_clients_lock = ReentrantLock()
+const update_counter_for_debugging = Ref(0)
 
 """
 Update the local state of all clients connected to this notebook.
 """
-function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, should_lock::Bool=true)
+function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing)
     outbox = Set{Tuple{ClientSession,UpdateMessage}}()
     
-    Base.acquire(current_state_for_clients_lock) do
+    lock(current_state_for_clients_lock) do
         notebook_dict = notebook_to_js(🙋.notebook)
-        counter = update_counter[] += 1
+        counter = update_counter_for_debugging[] += 1
 
         for (_, client) in 🙋.session.connected_clients
             if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == 🙋.notebook.notebook_id
@@ -185,7 +181,7 @@ function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, sh
                 patches = Firebasey.diff(current_dict, notebook_dict)
                 patches_as_dicts = Firebasey._convert(Vector{Dict}, patches)
                 current_state_for_clients[client] = deep_enough_copy(notebook_dict)
-                
+
                 # Make sure we do send a confirmation to the client who made the request, even without changes
                 is_response = 🙋.initiator !== nothing && client == 🙋.initiator.client
 
@@ -248,18 +244,6 @@ const effects_of_changed_state = Dict(
 
         @info "Process status set by client" newstatus
     end,
-    # "execution_allowed" => function(; request::ClientRequest, patch::Firebasey.ReplacePatch)
-    #     Firebasey.applypatch!(request.notebook, patch)
-    #     newstatus = patch.value
-
-    #     @info "execution_allowed set by client" newstatus
-    #     if newstatus
-    #         @info "lets run some cells!"
-    #         update_save_run!(request.session, request.notebook, notebook.cells; 
-    #             run_async=true, save=true
-    #         )
-    #     end
-    # end,
     "in_temp_dir" => function(; _...) no_changes end,
     "cell_inputs" => Dict(
         Wildcard() => function(cell_id, rest...; request::ClientRequest, patch::Firebasey.JSONPatch)
@@ -297,12 +281,11 @@ const effects_of_changed_state = Dict(
 responses[:update_notebook] = function response_update_notebook(🙋::ClientRequest)
     require_notebook(🙋)
     try
-        # Base.acquire(current_state_for_clients_lock)
         notebook = 🙋.notebook
         patches = (Base.convert(Firebasey.JSONPatch, update) for update in 🙋.body["updates"])
 
         if length(patches) == 0
-            send_notebook_changes!(🙋; should_lock=false)
+            send_notebook_changes!(🙋)
             return nothing
         end
 
@@ -364,7 +347,7 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
             )
         end
     
-        send_notebook_changes!(🙋; commentary=Dict(:update_went_well => :👍), should_lock=false)
+        send_notebook_changes!(🙋; commentary=Dict(:update_went_well => :👍))
     catch ex
         @error "Update notebook failed"  🙋.body["updates"] exception=(ex, stacktrace(catch_backtrace()))
         response = Dict(
@@ -372,9 +355,7 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
             :why_not => sprint(showerror, ex),
             :should_i_tell_the_user => ex isa SessionActions.UserError,
         )
-        send_notebook_changes!(🙋; commentary=response, should_lock=false)
-    finally
-        # Base.release(current_state_for_clients_lock)
+        send_notebook_changes!(🙋; commentary=response)
     end
 end
 
@@ -430,6 +411,29 @@ responses[:reset_shared_state] = function response_reset_shared_state(🙋::Clie
     end
 end
 
+"""
+This is a little hack to solve https://github.com/fonsp/Pluto.jl/pull/1892
+
+This function updates current_state_for_clients for our client with cell.queued = true.
+
+Later, during update_save_run!, the cell will actually run, eventually setting cell.queued = false again, which will be sent to the client through a patch update. 
+This guarantees that something will be sent.
+
+We *need* to send *something* to the client, because of https://github.com/fonsp/Pluto.jl/pull/1892, but we also don't want to send unnecessary updates. We can do this instead of a regular call to `send_notebook_changes!`, because update_save_run! will trigger a send_notebook_changes! call very very soon.
+"""
+function _set_cells_to_queued_in_local_state(client, notebook, cells)
+    if haskey(current_state_for_clients, client)
+        results = current_state_for_clients[client]["cell_results"]
+        for cell in cells
+            if haskey(results, cell.cell_id)
+                old = results[cell.cell_id]["queued"]
+                results[cell.cell_id]["queued"] = true
+                @debug "Setting val!" cell.cell_id old
+            end
+        end
+    end
+end
+
 responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::ClientRequest)
     require_notebook(🙋)
     uuids = UUID.(🙋.body["cells"])
@@ -438,23 +442,9 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
     end
 
     if will_run_code(🙋.notebook)
-        foreach(c -> c.queued = true, cells)
-        # update current_state_for_clients for our client with c.queued = true.
-        # later, during update_save_run!, the cell will actually run, eventually setting c.queued = false again, which will be sent to the client through a patch update. 
-        # This guarantees that something will be sent.
-        # We *need* to send *something* to the client, because of https://g ithub.com/fonsp/Pluto.jl/pull/1892, but we also don't want to send unnecessary updates. We can skip sending this update with send_notebook_changes!, because update_save_run! will trigger a send_notebook_changes! very very soon.
-        
-        for (_, client) in 🙋.session.connected_clients
-            if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == 🙋.notebook.notebook_id
-                if haskey(current_state_for_clients, client)
-                    results = current_state_for_clients[client]["cell_results"]
-                    for c in cells
-                        if haskey(results, cell.cell_id)
-                            results[cell.cell_id]["queued"] = true
-                        end
-                    end
-                end
-            end
+        foreach(cell -> cell.queued = true, cells)
+        if 🙋.initiator.client !== nothing
+            _set_cells_to_queued_in_local_state(🙋.initiator.client, 🙋.notebook, cells)
         end
     end
     
