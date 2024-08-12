@@ -1581,9 +1581,9 @@ The notebook file saves every time you run a cell.`
                                           value=${notebook.in_temp_dir ? "" : notebook.path}
                                           on_submit=${this.submit_file_change}
                                           on_desktop_submit=${this.desktop_submit_file_change}
+                                          clear_on_blur=${true}
                                           suggest_new_file=${{
                                               base: this.client.session_options?.server?.notebook_path_suggestion ?? "",
-                                              name: notebook.shortpath,
                                           }}
                                           placeholder="Save notebook..."
                                           button_label=${notebook.in_temp_dir ? "Choose" : "Move"}
