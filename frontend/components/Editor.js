@@ -1,6 +1,6 @@
 import { html, Component } from "../imports/Preact.js"
 import * as preact from "../imports/Preact.js"
-import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
+import { produce, applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
 import { empty_notebook_state, set_disable_ui_css } from "../editor.js"
@@ -20,7 +20,7 @@ import { Scroller } from "./Scroller.js"
 import { ExportBanner } from "./ExportBanner.js"
 import { Popup } from "./Popup.js"
 
-import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
+import { slice_utf8 } from "../common/UnicodeTools.js"
 import {
     has_ctrl_or_cmd_pressed,
     ctrl_or_cmd_name,
@@ -365,7 +365,7 @@ export class Editor extends Component {
             set_doc_query: (query) => this.setState({ desired_doc_query: query }),
             set_local_cell: (cell_id, new_val) => {
                 return this.setStatePromise(
-                    immer((/** @type {EditorState} */ state) => {
+                    produce((/** @type {EditorState} */ state) => {
                         state.cell_inputs_local[cell_id] = {
                             code: new_val,
                         }
@@ -422,7 +422,7 @@ export class Editor extends Component {
                  * See ** 1 **
                  */
                 this.setState(
-                    immer((/** @type {EditorState} */ state) => {
+                    produce((/** @type {EditorState} */ state) => {
                         // Deselect everything first, to clean things up
                         state.selected_cells = []
 
@@ -460,7 +460,7 @@ export class Editor extends Component {
                 const new_code = `${block_start}\n\t${cell.code.replace(/\n/g, "\n\t")}\n${block_end}`
 
                 await this.setStatePromise(
-                    immer((/** @type {EditorState} */ state) => {
+                    produce((/** @type {EditorState} */ state) => {
                         state.cell_inputs_local[cell_id] = {
                             code: new_code,
                         }
@@ -488,7 +488,7 @@ export class Editor extends Component {
                 })
 
                 this.setState(
-                    immer((/** @type {EditorState} */ state) => {
+                    produce((/** @type {EditorState} */ state) => {
                         for (let cell of cells_to_add) {
                             state.cell_inputs_local[cell.cell_id] = cell
                         }
@@ -617,7 +617,7 @@ export class Editor extends Component {
                     // This is a "dirty" trick, as this should actually be stored in some shared request_status => status state
                     // But for now... this is fine 😼
                     await this.setStatePromise(
-                        immer((/** @type {EditorState} */ state) => {
+                        produce((/** @type {EditorState} */ state) => {
                             for (let cell_id of cell_ids) {
                                 if (state.notebook.cell_results[cell_id] != null) {
                                     state.notebook.cell_results[cell_id].queued = this.is_process_ready()
@@ -691,7 +691,7 @@ export class Editor extends Component {
                     let _copy_of_patches,
                         reverse_of_patches = []
                     this.setState(
-                        immer((/** @type {EditorState} */ state) => {
+                        produce((/** @type {EditorState} */ state) => {
                             let new_notebook
                             try {
                                 // To test this, uncomment the lines below:
@@ -1170,7 +1170,7 @@ patch: ${JSON.stringify(
             window.plutoDesktop?.ipcRenderer.once("PLUTO-MOVE-NOTEBOOK", async (/** @type {string?} */ loc) => {
                 if (!!loc)
                     await this.setStatePromise(
-                        immer((/** @type {EditorState} */ state) => {
+                        produce((/** @type {EditorState} */ state) => {
                             state.notebook.in_temp_dir = false
                             state.notebook.path = loc
                         })
@@ -1640,7 +1640,7 @@ The notebook file saves every time you run a cell.`
                         apply_notebook_patches=${this.apply_notebook_patches}
                         reset_notebook_state=${() =>
                             this.setStatePromise(
-                                immer((/** @type {EditorState} */ state) => {
+                                produce((/** @type {EditorState} */ state) => {
                                     state.notebook = this.props.initial_notebook_state
                                 })
                             )}
