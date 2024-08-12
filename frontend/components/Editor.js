@@ -816,7 +816,7 @@ all patches: ${JSON.stringify(patches, null, 1)}
 
                             // console.debug("Received patches!", is_just_acknowledgement, is_relevant_for_bonds, message.patches, message.response)
 
-                            if (!is_just_acknowledgement) {
+                            if (!is_just_acknowledgement && is_relevant_for_bonds) {
                                 this.waiting_for_bond_to_trigger_execution = false
                             }
                         }
@@ -1028,7 +1028,9 @@ all patches: ${JSON.stringify(patches, null, 1)}
                 if (deps.upstream_cells_map.hasOwnProperty(sym)) {
                     // and the cell is not disabled
                     const running_disabled = this.state.notebook.cell_inputs[cell_id].metadata.disabled
-                    return !running_disabled
+                    // or indirectly disabled
+                    const indirectly_disabled = this.state.notebook.cell_results[cell_id].depends_on_disabled_cells
+                    return !(running_disabled || indirectly_disabled)
                 }
             })
 
