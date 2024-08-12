@@ -106,6 +106,19 @@ export const FilePicker = ({ value, suggest_new_file, button_label, placeholder,
         return true
     }
 
+    const onBlur = (e) => {
+        const still_in_focus = base.current?.matches(":focus-within") || base.current?.contains(e.relatedTarget)
+        if (still_in_focus) return
+        const current_cm = cm.current
+        if (current_cm == null) return
+        if (clear_on_blur)
+            requestAnimationFrame(() => {
+                if (!current_cm.hasFocus) {
+                    set_cm_value(current_cm, forced_value.current, true)
+                }
+            })
+    }
+
     const request_path_completions = () => {
         const current_cm = cm.current
         if (current_cm == null) return
@@ -136,14 +149,6 @@ export const FilePicker = ({ value, suggest_new_file, button_label, placeholder,
                                 }
                             }, 0)
                             return true
-                        },
-                        blur: (event, cm) => {
-                            if (clear_on_blur)
-                                requestAnimationFrame(() => {
-                                    if (!cm.hasFocus) {
-                                        set_cm_value(cm, forced_value.current, true)
-                                    }
-                                })
                         },
                     }),
                     EditorView.updateListener.of((update) => {
@@ -215,21 +220,6 @@ export const FilePicker = ({ value, suggest_new_file, button_label, placeholder,
                             run: keyMapSubmit,
                         },
                         {
-                            key: "Escape",
-                            run: (cm) => {
-                                assert_not_null(close_autocomplete_command).run(cm)
-                                cm.dispatch({
-                                    changes: { from: 0, to: cm.state.doc.length, insert: forced_value.current },
-                                    selection: EditorSelection.cursor(value.length),
-                                    effects: EditorView.scrollIntoView(forced_value.current.length),
-                                })
-                                // @ts-ignore
-                                document.activeElement.blur()
-                                return true
-                            },
-                            preventDefault: true,
-                        },
-                        {
                             key: "Tab",
                             run: (cm) => {
                                 // If there is autocomplete open, accept that
@@ -282,7 +272,7 @@ export const FilePicker = ({ value, suggest_new_file, button_label, placeholder,
               </div>
           </div>`
         : html`
-              <pluto-filepicker ref=${base}>
+              <pluto-filepicker ref=${base} onfocusout=${onBlur}>
                   <button onClick=${onSubmit} disabled=${is_button_disabled}>${button_label}</button>
               </pluto-filepicker>
           `
