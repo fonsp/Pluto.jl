@@ -13,16 +13,16 @@
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/400-italic.css");
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/500-italic.css");
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/700-italic.css"); */
-@import url("./alegreya.css");
+@import url("./fonts/alegreya.css");
 
-@import url("./juliamono.css");
-@import url("./vollkorn.css");
+@import url("./fonts/juliamono.css");
+@import url("./fonts/vollkorn.css");
 /* @import url("https://fonts.googleapis.com/css2?family=Lato&display=swap"); */
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/lato@4.4.5/400.css");
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/lato@4.4.5/400-italic.css");
 
-@import url("./light_color.css");
-@import url("./dark_color.css");
+@import url("./themes/light.css");
+@import url("./themes/dark.css");
 
 @import url("./featured-card.css");
 
@@ -3280,7 +3280,7 @@ button.floating_back_button {
 /* CODEMIRROR HINTS */
 
 .cm-editor .cm-tooltip {
-    border: 1px solid var(--cm-editor-tooltip-border-color);
+    border: 1px solid var(--cm-color-editor-tooltip-border);
     box-shadow: 3px 3px 4px rgb(0 0 0 / 20%);
     border-radius: 4px;
 }
@@ -3315,8 +3315,8 @@ pluto-input .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
 }
 
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] {
-    color: var(--cm-editor-li-aria-selected-color);
-    background: var(--cm-editor-li-aria-selected-bg-color);
+    color: var(--cm-color-editor-li-aria-selected);
+    background: var(--cm-color-editor-li-aria-selected-bg);
 }
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionLabel {
     border-color: transparent;
@@ -3330,7 +3330,7 @@ pluto-input .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
 }
 
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete li.c_notexported {
-    color: var(--cm-editor-li-notexported-color);
+    color: var(--cm-color-editor-li-notexported);
 }
 
 .cm-editor .cm-completionIcon {
@@ -3367,7 +3367,7 @@ Based on "Paraíso (Light)" by Jan T. Sott:
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete li.c_from_notebook .cm-completionLabel {
     font-weight: bold;
     text-decoration: underline;
-    text-decoration-color: var(--cm-clickable-underline);
+    text-decoration-color: var(--cm-color-clickable-underline);
     text-decoration-thickness: 3px;
     text-decoration-skip-ink: none;
 }
@@ -3430,7 +3430,7 @@ pluto-input .cm-editor .cm-content {
 
 .cm-editor {
     background: var(--code-background);
-    color: var(--cm-editor-text-color);
+    color: var(--cm-color-editor-text);
 }
 .cm-editor.cm-focused:not(.__) {
     outline: unset;
@@ -3450,7 +3450,7 @@ pluto-input .cm-editor .cm-content {
 
 pluto-cell.code_differs .cm-editor .cm-gutters {
     /* background: hsla(46, 70%, 88%, 1); */
-    background-color: var(--cm-code-differs-gutters-color);
+    background-color: var(--cm-color-code-differs-gutters);
 }
 
 /* We show a small dot instead of line number, until you hover. */
@@ -3460,13 +3460,13 @@ pluto-cell.code_differs .cm-editor .cm-gutters {
 .cm-editor .cm-lineNumbers .cm-gutterElement::after {
     content: "⋅";
     font-size: 0.75rem;
-    color: var(--cm-line-numbers-color);
+    color: var(--cm-color-line-numbers);
     position: absolute;
     right: 3px;
     pointer-events: none;
 }
 .cm-editor .cm-lineNumbers .cm-gutterElement:hover {
-    color: var(--cm-line-numbers-color);
+    color: var(--cm-color-line-numbers);
 }
 .cm-editor .cm-lineNumbers .cm-gutterElement:hover::after {
     color: transparent;
@@ -3475,7 +3475,7 @@ pluto-cell.code_differs .cm-editor .cm-gutters {
 /* Disabling this feature in two cases: */
 /* Case 1: The cell input is in focus */
 /* pluto-input:focus-within .cm-editor .cm-lineNumbers .cm-gutterElement {
-    color: var(--cm-line-numbers-color);
+    color: var(--cm-color-line-numbers);
 }
 pluto-input:focus-within .cm-editor .cm-lineNumbers .cm-gutterElement::after {
     color: transparent;
@@ -3483,7 +3483,7 @@ pluto-input:focus-within .cm-editor .cm-lineNumbers .cm-gutterElement::after {
  */
 
 pluto-cell.errored .cm-editor .cm-lineNumbers .cm-gutterElement {
-    color: var(--cm-line-numbers-color);
+    color: var(--cm-color-line-numbers);
 }
 pluto-cell.errored .cm-editor .cm-lineNumbers .cm-gutterElement::after {
     color: transparent;
@@ -3491,7 +3491,7 @@ pluto-cell.errored .cm-editor .cm-lineNumbers .cm-gutterElement::after {
 /* Case 2: Print */
 @media print {
     .cm-editor .cm-lineNumbers .cm-gutterElement {
-        color: var(--cm-line-numbers-color) !important;
+        color: var(--cm-color-line-numbers) !important;
     }
     .cm-editor .cm-lineNumbers .cm-gutterElement::after {
         color: transparent !important;
@@ -3499,21 +3499,21 @@ pluto-cell.errored .cm-editor .cm-lineNumbers .cm-gutterElement::after {
 }
 
 .cm-completionIcon-c_Number::before {
-    color: var(--cm-number-color);
+    color: var(--cm-color-number);
 }
 
 .cm-completionIcon-c_String::before,
 .cm-completionIcon-completion_path::before,
 .cm-completionIcon-completion_dict::before {
-    color: var(--cm-string-color);
+    color: var(--cm-color-string);
 }
 
 .cm-completionIcon-completion_property::before {
-    color: var(--cm-property-color);
+    color: var(--cm-color-property);
 }
 
 .cm-completionIcon-completion_keyword::before {
-    color: var(--cm-keyword-color);
+    color: var(--cm-color-keyword);
 }
 
 li.completion_keyword_argument .cm-completionLabel {
@@ -3521,30 +3521,30 @@ li.completion_keyword_argument .cm-completionLabel {
     font-weight: bold;
 }
 .cm-completionIcon-completion_keyword_argument::before {
-    color: var(--cm-number-color);
+    color: var(--cm-color-number);
 }
 
 .cm-completionIcon-c_Any::before,
 pluto-output > assignee,
 pluto-popup code.auto_disabled_variable {
-    color: var(--cm-var-color) !important;
+    color: var(--cm-color-var) !important;
     font-weight: 700;
 }
 
 .cm-completionIcon-c_Function::before {
-    color: var(--cm-function-color);
+    color: var(--cm-color-function);
 }
 .cm-completionIcon-c_Macro::before {
-    color: var(--cm-macro-color);
+    color: var(--cm-color-macro);
 }
 
 .cm-completionIcon-c_Array::before {
-    color: var(--cm-bracket-color);
+    color: var(--cm-color-bracket);
 }
 
 .cm-completionIcon-c_package::before,
 .cm-completionIcon-c_Module::before {
-    color: var(--cm-link-color);
+    color: var(--cm-color-link);
 }
 
 .cm-editor .cm-activeLine {
@@ -3569,14 +3569,14 @@ pluto-popup code.auto_disabled_variable {
     color: unset;
 }
 pluto-input:focus-within .cm-editor .cm-matchingBracket {
-    color: var(--cm-matchingBracket-color) !important;
+    color: var(--cm-color-matchingBracket) !important;
     font-weight: 700;
-    background-color: var(--cm-matchingBracket-bg-color);
+    background-color: var(--cm-color-matchingBracket-bg);
     border-radius: 2px;
 }
 
 .cm-editor .cm-placeholder {
-    color: var(--cm-placeholder-text-color);
+    color: var(--cm-color-placeholder-text);
     font-style: italic;
 }
 

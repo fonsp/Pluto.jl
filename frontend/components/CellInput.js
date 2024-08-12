@@ -94,231 +94,103 @@ window.PLUTO_TOGGLE_CM_AUTOCOMPLETE_ON_TYPE = (val = !ENABLE_CM_AUTOCOMPLETE_ON_
     window.location.reload()
 }
 
-export const pluto_syntax_colors = HighlightStyle.define(
-    [
-        /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
-        // Symbol
-        // { tag: tags.controlKeyword, color: "var(--cm-keyword-color)", fontWeight: 700 },
+const common_style_tags = [
+    { tag: tags.comment,        color: "var(--cm-color-comment)", fontStyle: "italic", filter: "none" },
+    { tag: tags.keyword,        color: "var(--cm-color-keyword)" },
+    { tag: tags.variableName,   color: "var(--cm-color-var)", fontWeight: 700 },
+    { tag: tags.typeName,       color: "var(--cm-color-type)", fontStyle: "italic" },
+    { tag: tags.typeOperator,   color: "var(--cm-color-type)", fontStyle: "italic" },
+    { tag: tags.tagName,        color: "var(--cm-color-tag)" }, // JS
+    { tag: tags.propertyName,   color: "var(--cm-color-property)" },
+    // TODO: tags.labelName
+    { tag: tags.macroName,      color: "var(--cm-color-macro)", fontWeight: 700 },
+    { tag: tags.string,         color: "var(--cm-color-string)" },
+    // TODO: tags.character
+    { tag: tags.number,         color: "var(--cm-color-number)" },
+    { tag: tags.bool,           color: "var(--cm-color-builtin)", fontWeight: 700 },
+    // TODO: tags.escape
+    // TODO: tags.self, tags.null
+    { tag: tags.atom,           color: "var(--cm-color-atom)" },
+    { tag: tags.unit,           color: "var(--cm-color-tag)" }, // TODO: Remove
+    // TODO? tags.operator
+    { tag: tags.bracket,        color: "var(--cm-color-bracket)" },
+    { tag: tags.special(tags.brace), color: "var(--cm-color-macro)", fontWeight: 700 }, // interp
+]
 
-        { tag: tags.propertyName, color: "var(--cm-property-color)" },
-        { tag: tags.unit, color: "var(--cm-tag-color)" },
-        { tag: tags.literal, color: "var(--cm-builtin-color)", fontWeight: 700 },
-        { tag: tags.macroName, color: "var(--cm-macro-color)", fontWeight: 700 },
-
-        // I (ab)use `special(brace)` for interpolations.
-        // lang-javascript does the same so I figure it is "best practice" 😅
-        { tag: tags.special(tags.brace), color: "var(--cm-macro-color)", fontWeight: 700 },
-
-        // `nothing` I guess... Any others?
-        {
-            tag: tags.standard(tags.variableName),
-            color: "var(--cm-builtin-color)",
-            fontWeight: 700,
-        },
-
-        { tag: tags.bool, color: "var(--cm-builtin-color)", fontWeight: 700 },
-
-        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
-        { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
-        { tag: tags.atom, color: "var(--cm-atom-color)" },
-        { tag: tags.number, color: "var(--cm-number-color)" },
-        // { tag: tags.property, color: "#48b685" },
-        // { tag: tags.attribute, color: "#48b685" },
-        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
-        { tag: tags.string, color: "var(--cm-string-color)" },
-        { tag: tags.variableName, color: "var(--cm-var-color)", fontWeight: 700 },
-        // { tag: tags.variable2, color: "#06b6ef" },
-        { tag: tags.typeName, color: "var(--cm-type-color)", fontStyle: "italic" },
-        { tag: tags.typeOperator, color: "var(--cm-type-color)", fontStyle: "italic" },
-        { tag: tags.bracket, color: "var(--cm-bracket-color)" },
-        { tag: tags.brace, color: "var(--cm-bracket-color)" },
-        { tag: tags.tagName, color: "var(--cm-tag-color)" },
-        { tag: tags.link, color: "var(--cm-link-color)" },
-        {
-            tag: tags.invalid,
-            color: "var(--cm-error-color)",
-            background: "var(--cm-error-bg-color)",
-        },
-    ],
+export const pluto_syntax_colors_julia = HighlightStyle.define(
+    common_style_tags,
     {
-        all: { color: `var(--cm-editor-text-color)` },
+        all: { color: `var(--cm-color-editor-text)` },
         scope: julia_andrey().language,
     }
 )
 
 export const pluto_syntax_colors_javascript = HighlightStyle.define(
-    [
-        // SAME AS JULIA:
-        { tag: tags.propertyName, color: "var(--cm-property-color)" },
-        { tag: tags.unit, color: "var(--cm-tag-color)" },
-        { tag: tags.literal, color: "var(--cm-builtin-color)", fontWeight: 700 },
-        { tag: tags.macroName, color: "var(--cm-macro-color)", fontWeight: 700 },
-
-        // `nothing` I guess... Any others?
-        {
-            tag: tags.standard(tags.variableName),
-            color: "var(--cm-builtin-color)",
-            fontWeight: 700,
-        },
-
-        { tag: tags.bool, color: "var(--cm-builtin-color)", fontWeight: 700 },
-
-        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
-        { tag: tags.atom, color: "var(--cm-atom-color)" },
-        { tag: tags.number, color: "var(--cm-number-color)" },
-        // { tag: tags.property, color: "#48b685" },
-        // { tag: tags.attribute, color: "#48b685" },
-        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
-        { tag: tags.string, color: "var(--cm-string-color)" },
-        { tag: tags.variableName, color: "var(--cm-var-color)", fontWeight: 700 },
-        // { tag: tags.variable2, color: "#06b6ef" },
-        { tag: tags.typeName, color: "var(--cm-type-color)", fontStyle: "italic" },
-        { tag: tags.typeOperator, color: "var(--cm-type-color)", fontStyle: "italic" },
-        { tag: tags.bracket, color: "var(--cm-bracket-color)" },
-        { tag: tags.brace, color: "var(--cm-bracket-color)" },
-        { tag: tags.tagName, color: "var(--cm-tag-color)" },
-        { tag: tags.link, color: "var(--cm-link-color)" },
-        {
-            tag: tags.invalid,
-            color: "var(--cm-error-color)",
-            background: "var(--cm-error-bg-color)",
-        },
-
-        // JAVASCRIPT SPECIFIC
-        { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic", filter: "none" },
-    ],
+    common_style_tags,
     {
+        all: { color: `var(--cm-color-editor-text)`, filter: `contrast(0.5)` },
         scope: javascriptLanguage,
-        all: {
-            color: `var(--cm-editor-text-color)`,
-            filter: `contrast(0.5)`,
-        },
     }
 )
 
 export const pluto_syntax_colors_python = HighlightStyle.define(
-    [
-        // SAME AS JULIA:
-        { tag: tags.propertyName, color: "var(--cm-property-color)" },
-        { tag: tags.unit, color: "var(--cm-tag-color)" },
-        { tag: tags.literal, color: "var(--cm-builtin-color)", fontWeight: 700 },
-        { tag: tags.macroName, color: "var(--cm-macro-color)", fontWeight: 700 },
-
-        // `nothing` I guess... Any others?
-        {
-            tag: tags.standard(tags.variableName),
-            color: "var(--cm-builtin-color)",
-            fontWeight: 700,
-        },
-
-        { tag: tags.bool, color: "var(--cm-builtin-color)", fontWeight: 700 },
-
-        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
-        { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
-        { tag: tags.atom, color: "var(--cm-atom-color)" },
-        { tag: tags.number, color: "var(--cm-number-color)" },
-        // { tag: tags.property, color: "#48b685" },
-        // { tag: tags.attribute, color: "#48b685" },
-        { tag: tags.keyword, color: "var(--cm-keyword-color)" },
-        { tag: tags.string, color: "var(--cm-string-color)" },
-        { tag: tags.variableName, color: "var(--cm-var-color)", fontWeight: 700 },
-        // { tag: tags.variable2, color: "#06b6ef" },
-        { tag: tags.typeName, color: "var(--cm-type-color)", fontStyle: "italic" },
-        { tag: tags.typeOperator, color: "var(--cm-type-color)", fontStyle: "italic" },
-        { tag: tags.bracket, color: "var(--cm-bracket-color)" },
-        { tag: tags.brace, color: "var(--cm-bracket-color)" },
-        { tag: tags.tagName, color: "var(--cm-tag-color)" },
-        { tag: tags.link, color: "var(--cm-link-color)" },
-        {
-            tag: tags.invalid,
-            color: "var(--cm-error-color)",
-            background: "var(--cm-error-bg-color)",
-        },
-
-        // PYTHON SPECIFIC
-    ],
+    common_style_tags,
     {
+        all: { color: `var(--cm-color-editor-text)`, filter: `contrast(0.5)` },
         scope: pythonLanguage,
-        all: {
-            color: "var(--cm-editor-text-color)",
-            filter: `contrast(0.5)`,
-        },
     }
 )
 
-export const pluto_syntax_colors_css = HighlightStyle.define(
-    [
-        { tag: tags.propertyName, color: "var(--cm-css-accent-color)", fontWeight: 700 },
-        { tag: tags.variableName, color: "var(--cm-css-accent-color)", fontWeight: 700 },
-        { tag: tags.definitionOperator, color: "var(--cm-css-color)" },
-        { tag: tags.keyword, color: "var(--cm-css-color)" },
-        { tag: tags.modifier, color: "var(--cm-css-accent-color)" },
-        { tag: tags.punctuation, opacity: 0.5 },
-        { tag: tags.literal, color: "var(--cm-css-color)" },
-        // { tag: tags.unit, color: "var(--cm-css-accent-color)" },
-        { tag: tags.tagName, color: "var(--cm-css-color)", fontWeight: 700 },
-        { tag: tags.className, color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)" },
-        { tag: tags.constant(tags.className), color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)" },
+export const pluto_syntax_colors_css = HighlightStyle.define([
+    { tag: tags.comment,            color: "var(--cm-color-comment)", fontStyle: "italic" },
+    { tag: tags.variableName,       color: "var(--cm-color-css-accent)", fontWeight: 700 },
+    { tag: tags.propertyName,       color: "var(--cm-color-css-accent)", fontWeight: 700 },
+    { tag: tags.tagName,            color: "var(--cm-color-css)", fontWeight: 700 },
+    //{ tag: tags.className,          color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)" },
+    //{ tag: tags.constant(tags.className), color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)" },
+    { tag: tags.definitionOperator, color: "var(--cm-color-css)" },
+    { tag: tags.keyword,            color: "var(--cm-color-css)" },
+    { tag: tags.modifier,           color: "var(--cm-color-css-accent)" },
+    { tag: tags.literal,            color: "var(--cm-color-css)" },
+    // { tag: tags.unit,              color: "var(--cm-color-css-accent)" },
+    { tag: tags.punctuation,        opacity: 0.5 },
+], {
+    scope: cssLanguage,
+    all: { color: "var(--cm-color-css)" },
+})
 
-        // Comment from julia
-        { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
-    ],
-    {
-        scope: cssLanguage,
-        all: { color: "var(--cm-css-color)" },
-    }
-)
+export const pluto_syntax_colors_html = HighlightStyle.define([
+    { tag: tags.comment,        color: "var(--cm-color-comment)", fontStyle: "italic" },
+    { tag: tags.content,        color: "var(--cm-color-html)", fontWeight: 400 },
+    { tag: tags.tagName,        color: "var(--cm-color-html-accent)", fontWeight: 600 },
+    { tag: tags.documentMeta,   color: "var(--cm-color-html-accent)" },
+    { tag: tags.attributeName,  color: "var(--cm-color-html-accent)", fontWeight: 600 },
+    { tag: tags.attributeValue, color: "var(--cm-color-html-accent)" },
+    { tag: tags.angleBracket,   color: "var(--cm-color-html-accent)", fontWeight: 600, opacity: 0.7 },
+], {
+    all: { color: "var(--cm-color-html)" },
+    scope: htmlLanguage,
+})
 
-export const pluto_syntax_colors_html = HighlightStyle.define(
-    [
-        { tag: tags.tagName, color: "var(--cm-html-accent-color)", fontWeight: 600 },
-        { tag: tags.attributeName, color: "var(--cm-html-accent-color)", fontWeight: 600 },
-        { tag: tags.attributeValue, color: "var(--cm-html-accent-color)" },
-        { tag: tags.angleBracket, color: "var(--cm-html-accent-color)", fontWeight: 600, opacity: 0.7 },
-        { tag: tags.content, color: "var(--cm-html-color)", fontWeight: 400 },
-        { tag: tags.documentMeta, color: "var(--cm-html-accent-color)" },
-        { tag: tags.comment, color: "var(--cm-comment-color)", fontStyle: "italic" },
-    ],
-    {
-        scope: htmlLanguage,
-        all: {
-            color: "var(--cm-html-color)",
-        },
-    }
-)
+// https://github.com/lezer-parser/markdown/blob/d4de2b03180ced4610bad9cef0ad3a805c43b63a/src/markdown.ts#L1890
+export const pluto_syntax_colors_markdown = HighlightStyle.define([
+    { tag: tags.comment,    color: "var(--cm-color-comment)", fontStyle: "italic" },
+    { tag: tags.content,    color: "var(--cm-color-md)" },
+    { tag: tags.heading,    color: "var(--cm-color-md)", fontWeight: 700 },
+    // TODO? tags.list
+    { tag: tags.quote,      color: "var(--cm-color-md)" },
+    { tag: tags.emphasis,   fontStyle: "italic" },
+    { tag: tags.strong,     fontWeight: "bolder" },
+    { tag: tags.link,       textDecoration: "underline" },
+    { tag: tags.url,        color: "var(--cm-color-md)", textDecoration: "none" },
+    { tag: tags.monospace,  color: "var(--cm-color-md-accent)" },
 
-// https://github.com/codemirror/lang-markdown/blob/main/src/markdown.ts
-export const pluto_syntax_colors_markdown = HighlightStyle.define(
-    [
-        { tag: tags.content, color: "var(--cm-md-color)" },
-        { tag: tags.quote, color: "var(--cm-md-color)" },
-        { tag: tags.link, textDecoration: "underline" },
-        { tag: tags.url, color: "var(--cm-md-color)", textDecoration: "none" },
-        { tag: tags.emphasis, fontStyle: "italic" },
-        { tag: tags.strong, fontWeight: "bolder" },
-
-        { tag: tags.heading, color: "var(--cm-md-color)", fontWeight: 700 },
-        {
-            tag: tags.comment,
-            color: "var(--cm-comment-color)",
-            fontStyle: "italic",
-        },
-        {
-            // These are all the things you won't see in the result:
-            // `-` bullet points, the `#` for headers, the `>` with quoteblocks.
-            tag: tags.processingInstruction,
-            color: "var(--cm-md-accent-color) !important",
-            opacity: "0.5",
-        },
-        { tag: tags.monospace, color: "var(--cm-md-accent-color)" },
-    ],
-    {
-        scope: markdownLanguage,
-        all: {
-            color: "var(--cm-md-color)",
-        },
-    }
-)
+    // Marks: `-` for lists, `#` for headers, etc.
+    { tag: tags.processingInstruction, color: "var(--cm-color-md-accent) !important", opacity: "0.5" },
+], {
+    all: { color: "var(--cm-color-md)" },
+    scope: markdownLanguage,
+})
 
 const getValue6 = (/** @type {EditorView} */ cm) => cm.state.doc.toString()
 const setValue6 = (/** @type {EditorView} */ cm, value) =>
@@ -608,7 +480,7 @@ export const CellInput = ({
                 pluto_actions.move_remote_cells([cell_id], pluto_actions.get_notebook().cell_order.indexOf(cell_id) + (direction === -1 ? -1 : 2))
 
                 // workaround for https://github.com/preactjs/preact/issues/4235
-                // but the crollintoview behaviour is nice, also when the preact issue is fixed.
+                // but the scrollIntoView behaviour is nice, also when the preact issue is fixed.
                 requestIdleCallback(() => {
                     cm.dispatch({
                         // TODO: remove me after fix
@@ -699,7 +571,7 @@ export const CellInput = ({
 
                     pkgBubblePlugin({ pluto_actions, notebook_id_ref }),
                     ScopeStateField,
-                    syntaxHighlighting(pluto_syntax_colors),
+                    syntaxHighlighting(pluto_syntax_colors_julia),
                     syntaxHighlighting(pluto_syntax_colors_html),
                     syntaxHighlighting(pluto_syntax_colors_markdown),
                     syntaxHighlighting(pluto_syntax_colors_javascript),

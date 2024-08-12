@@ -2,6 +2,8 @@
     :root {
         --image-filters: invert(1) hue-rotate(180deg) contrast(0.8);
         --out-of-focus-opacity: 0.5;
+
+        /* Color scheme */
         --main-bg-color: hsl(0deg 0% 12%);
         --rule-color: rgba(255, 255, 255, 0.15);
         --kbd-border-color: #222222;
@@ -12,6 +14,7 @@
 
         /* Cells */
         --normal-cell: 100, 100, 100;
+        /* --code-differs */
         --error-color: 255, 125, 125;
         --normal-cell-color: rgba(var(--normal-cell), 0.2);
         --dark-normal-cell-color: rgba(var(--normal-cell), 0.4);
@@ -56,6 +59,7 @@
         --jl-danger-accent-color: rgb(255, 117, 98);
         --jl-debug-color: hsl(288deg 33% 27%);
         --jl-debug-accent-color: hsl(283deg 59% 69%);
+        /* --footnote-border-color */
         --table-border-color: rgba(255, 255, 255, 0.2);
         --table-bg-hover-color: rgba(193, 192, 235, 0.15);
         --pluto-tree-color: rgb(209 207 207 / 61%);
@@ -77,7 +81,6 @@
         --pluto-logs-progress-fill: #5f7f5b;
         --pluto-logs-progress-bg: #3d3d3d;
         --pluto-logs-progress-border: hsl(210deg 35% 72%);
-
         --pluto-logs-info-color: #484848;
         --pluto-logs-info-accent-color: inherit;
         --pluto-logs-warn-color: rgb(80 76 38);
@@ -106,6 +109,7 @@
         /*loading bar*/
         --loading-grad-color-1: #a9d4f1;
         --loading-grad-color-2: #d0d4d7;
+
         /*saveall container*/
         --overlay-button-bg: #2c2c2c;
         --overlay-button-border: #9e9e9e70;
@@ -154,7 +158,6 @@
         --helpbox-text-color: rgb(230, 230, 230);
         --code-section-bg-color: rgb(44, 44, 44);
         --code-section-border-color: #555a64;
-
         --process-item-bg: #443d44;
         --process-busy: #ffcd70;
         --process-finished: hsl(126deg 30% 60%);
@@ -175,40 +178,49 @@
         --undo-delete-box-shadow-color: rgba(213, 213, 214, 0.2);
 
         /*codemirror hints*/
-        --cm-editor-tooltip-border-color: rgba(0, 0, 0, 0.2);
-        --cm-editor-li-aria-selected-bg-color: #3271e7;
-        --cm-editor-li-aria-selected-color: white;
-        --cm-editor-li-notexported-color: rgba(255, 255, 255, 0.5);
+        --cm-color-editor-tooltip-border: rgba(0, 0, 0, 0.2);
+        --cm-color-editor-li-aria-selected-bg: #3271e7;
+        --cm-color-editor-li-aria-selected: white;
+        --cm-color-editor-li-notexported: rgba(255, 255, 255, 0.5);
         --code-background: hsl(222deg 16% 19%);
-        --cm-code-differs-gutters-color: rgb(235 213 28 / 11%);
-        --cm-line-numbers-color: #8d86875e;
+        --cm-color-code-differs-gutters: rgb(235 213 28 / 11%);
+        --cm-color-line-numbers: #8d86875e;
         --cm-selection-background: hsl(215deg 64% 59% / 48%);
         --cm-selection-background-blurred: hsl(215deg 0% 59% / 48%);
         --cm-highlighted: #cbceb629;
 
         /* code highlighting */
-        --cm-editor-text-color: #ffe9fc;
-        --cm-comment-color: #e96ba8;
-        --cm-atom-color: hsl(8deg 72% 62%);
-        --cm-number-color: hsl(271deg 45% 64%);
-        --cm-property-color: #f99b15;
-        --cm-keyword-color: #ff7a6f;
-        --cm-string-color: hsl(20deg 69% 59%);
-        --cm-var-color: #afb7d3;
-        --cm-var2-color: #06b6ef;
-        --cm-macro-color: #82b38b;
-        --cm-builtin-color: #5e7ad3;
-        --cm-function-color: #f99b15;
-        --cm-type-color: hsl(51deg 32% 44%);
-        --cm-bracket-color: #a2a273;
-        --cm-tag-color: #ef6155;
-        --cm-link-color: #815ba4;
-        --cm-error-bg-color: #ef6155;
-        --cm-error-color: #f7f7f7;
-        --cm-matchingBracket-color: white;
-        --cm-matchingBracket-bg-color: #c58c237a;
-        --cm-placeholder-text-color: rgb(255 255 255 / 20%);
-        --cm-clickable-underline: #5d5f70;
+        --cm-color-editor-text: #ffe9fc;
+        --cm-color-comment:     #e96ba8;
+        --cm-color-atom:        hsl(8deg 72% 62%);
+        --cm-color-number:      hsl(271deg 45% 64%);
+        --cm-color-property:    #f99b15;
+        --cm-color-keyword:     #ff7a6f;
+        --cm-color-string:      hsl(20deg 69% 59%);
+        --cm-color-var:         #afb7d3;
+        --cm-color-var2:        #06b6ef;
+        --cm-color-macro:       #82b38b;
+        --cm-color-builtin:     #5e7ad3;
+        --cm-color-function:    #f99b15;
+        --cm-color-type:        hsl(51deg 32% 44%);
+        --cm-color-bracket:     #a2a273;
+        --cm-color-tag:         #ef6155;
+        --cm-color-link:        #815ba4;
+        --cm-color-error-bg:    #ef6155;
+        --cm-color-error:       #f7f7f7;
+        --cm-color-matchingBracket: white;
+        --cm-color-matchingBracket-bg: #c58c237a;
+        --cm-color-placeholder-text: rgb(255 255 255 / 20%);
+        --cm-color-clickable-underline: #5d5f70;
+
+        /* Mixed parsers */
+        --cm-color-html:        #00ab85;
+        --cm-color-html-accent: #00e7b4;
+        --cm-color-css:         #ebd073;
+        --cm-color-css-accent:  #fffed2;
+        --cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa: #ffffea;
+        --cm-color-md:          #a2c9d5;
+        --cm-color-md-accent:   #00a9d1;
 
         /*autocomplete menu*/
         --autocomplete-menu-bg-color: var(--input-context-menu-bg-color);
@@ -217,6 +229,7 @@
         --index-text-color: rgb(199, 199, 199);
         --index-light-text-color: rgb(199, 199, 199);
         --index-clickable-text-color: rgb(235, 235, 235);
+        --docs-binding-bg: #323431;
         --index-card-bg: #313131;
         --welcome-mywork-bg: var(--header-bg-color);
         --welcome-newnotebook-bg: rgb(68 72 102);
@@ -224,25 +237,11 @@
         --welcome-recentnotebook-border: #6e6e6e;
         --welcome-open-bg: hsl(233deg 20% 33%);
         --welcome-card-author-backdrop: #0000006b;
-
-        /* docs binding */
-        --docs-binding-bg: #323431;
-
-        /* Nesed languages in codemirror! */
-        --cm-html-color: #00ab85;
-        --cm-html-accent-color: #00e7b4;
-        --cm-css-color: #ebd073;
-        --cm-css-accent-color: #fffed2;
-        /* This is basically --cm-css-accent-color, but because the CSS plugin shows some characters in plain white,
-            this is made also a liiiitle lighter so it doesn't stand out too much against the white prefix */
-        --cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa: #ffffea;
-        --cm-md-color: #a2c9d5;
-        --cm-md-accent-color: #00a9d1;
     }
 
     @media (prefers-contrast: more) {
         :root {
-            --cm-line-numbers-color: #b3b3b3;
+            --cm-color-line-numbers: #b3b3b3;
         }
     }
     body:not(.disable_ui):not(.more-specificity) {

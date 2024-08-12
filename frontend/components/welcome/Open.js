@@ -43,18 +43,20 @@ export const Open = ({ client, connected, CustomPicker, show_samples, on_start_n
                 value=""
                 on_submit=${on_open_path}
                 on_desktop_submit=${desktop_on_open_path}
+                clear_on_blur=${false}
                 button_label=${window.plutoDesktop ? "Open File" : "Open"}
                 placeholder=${picker.placeholder}
             />
-            ${window.plutoDesktop &&
-            html`<${FilePicker}
-                key=${picker.placeholder}
-                client=${client}
-                value=""
-                on_desktop_submit=${desktop_on_open_url}
-                button_label="Open from URL"
-                placeholder=${picker.placeholder}
-            />`}
+            ${window.plutoDesktop != null
+                ? html`<${FilePicker}
+                      key=${picker.placeholder}
+                      client=${client}
+                      value=""
+                      on_desktop_submit=${desktop_on_open_url}
+                      button_label="Open from URL"
+                      placeholder=${picker.placeholder}
+                  />`
+                : null}
         </div>`
 }
 
