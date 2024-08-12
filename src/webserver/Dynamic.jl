@@ -443,7 +443,7 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
 
     if will_run_code(🙋.notebook)
         foreach(cell -> cell.queued = true, cells)
-        if 🙋.initiator.client !== nothing
+        if 🙋.initiator !== nothing
             _set_cells_to_queued_in_local_state(🙋.initiator.client, 🙋.notebook, cells)
         end
     end
