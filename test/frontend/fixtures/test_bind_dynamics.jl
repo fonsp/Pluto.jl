@@ -15,7 +15,7 @@ macro bind(def, element)
 end
 
 # ╔═╡ a0fe4e4d-eee5-4420-bd58-3f12749a9ed1
-@bind reset_xs html"<input id=resetxs type=button value=reset_xs>"
+@bind reset_xs html"<input id=reset_xs_button type=button value=reset_xs>"
 
 # ╔═╡ 58db6bd4-58a6-11ef-3795-fd6e57eceb68
 @bind x html"""<div>
@@ -46,7 +46,7 @@ btn.onclick = () => {
 	go()
 }
 </script>
-<button id=startx>Start</button>
+<button id=add_x_button>Start</button>
 </div>"""
 
 # ╔═╡ 8568c646-0233-4a95-8332-2351e9c56027
@@ -86,6 +86,6 @@ end
 # ╟─58db6bd4-58a6-11ef-3795-fd6e57eceb68
 # ╟─8568c646-0233-4a95-8332-2351e9c56027
 # ╠═8a20fa4a-ac02-4a37-a54e-e4224628db66
-# ╠═29f1d840-574e-463c-87d3-4b938e123493
 # ╟─3155b6e0-8e19-4583-b2ab-4ab2db1f10b9
 # ╠═029e1d1c-bf42-4e2c-a141-1e2eecc0800d
+# ╠═29f1d840-574e-463c-87d3-4b938e123493
