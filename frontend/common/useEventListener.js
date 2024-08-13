@@ -13,8 +13,11 @@ export const useEventListener = (
 ) => {
     let handler_cached = useCallback(handler, deps)
     useEffect(() => {
-        /** @type {EventListenerAddable} */
-        const useme = element != null && "current" in element ? element.current : element
+        const e = element
+        const useme =
+            e == null || e instanceof Document || e instanceof HTMLElement || e instanceof Window || e instanceof EventSource || e instanceof MediaQueryList
+                ? e
+                : e.current
 
         if (useme == null) return
         useme.addEventListener(event_name, handler_cached)
