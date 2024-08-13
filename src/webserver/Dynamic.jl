@@ -195,12 +195,12 @@ function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing)
                 end
             end
         end
-
-        for (client, msg) in outbox
-            putclientupdates!(client, msg)
-        end
-        try_event_call(🙋.session, FileEditEvent(🙋.notebook))
     end
+
+    for (client, msg) in outbox
+        putclientupdates!(client, msg)
+    end
+    try_event_call(🙋.session, FileEditEvent(🙋.notebook))
 end
 
 "Like `deepcopy`, but anything other than `Dict` gets a shallow (reference) copy."
