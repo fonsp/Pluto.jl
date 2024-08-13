@@ -35,8 +35,11 @@ export const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state, saniti
 
 const More = ({ on_click_more }) => {
     const [loading, set_loading] = useState(false)
+    const element_ref = useRef(/** @type {HTMLElement?} */ (null))
+    useKeyboardClickable(element_ref)
 
     return html`<pluto-tree-more
+        ref=${element_ref}
         tabindex="0"
         role="button"
         class=${loading ? "loading" : ""}
