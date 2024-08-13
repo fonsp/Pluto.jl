@@ -297,6 +297,10 @@ export const url_logo_small = document.head.querySelector("link[rel='pluto-logo-
  * extended_components: any,
  * is_recording: boolean,
  * recording_waiting_to_start: boolean,
+ * slider_server: {
+ * connecting: boolean,
+ * interactive: boolean,
+ * },
  * }}
  */
 

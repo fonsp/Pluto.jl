@@ -39,9 +39,19 @@ export const nothing_actions = ({ actions }) =>
         ])
     )
 
+/**
+ * @param {{
+ * setStatePromise: any,
+ * launch_params: import("../components/Editor.js").LaunchParameters,
+ * actions: any,
+ * get_original_state: () => import("../components/Editor.js").NotebookData,
+ * get_current_state: () => import("../components/Editor.js").NotebookData,
+ * apply_notebook_patches: (patches: import("../imports/immer.js").Patch[], old_state?: import("../components/Editor.js").NotebookData?, get_reverse_patches?: boolean) => Promise<any>,
+ * }} props
+ */
 export const slider_server_actions = ({ setStatePromise, launch_params, actions, get_original_state, get_current_state, apply_notebook_patches }) => {
     setStatePromise(
-        produce((state) => {
+        produce((/** @type {import("../components/Editor.js").EditorState} */ state) => {
             state.slider_server.connecting = true
         })
     )
@@ -62,7 +72,7 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
     bond_connections.then((x) => {
         console.log("Bond connections:", x)
         setStatePromise(
-            produce((state) => {
+            produce((/** @type {import("../components/Editor.js").EditorState} */ state) => {
                 state.slider_server.connecting = false
                 state.slider_server.interactive = Object.keys(x).length > 0
             })
@@ -85,7 +95,7 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
 
         const update_cells_running = async (running) =>
             await setStatePromise(
-                produce((state) => {
+                produce((/** @type {import("../components/Editor.js").EditorState} */ state) => {
                     running_cells.forEach((cell_id) => (state.notebook.cell_results[cell_id][starts.has(cell_id) ? "running" : "queued"] = running))
                 })
             )
@@ -128,12 +138,12 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
 
                 await apply_notebook_patches(
                     patches,
-                    produce((state) => {
+                    produce(get_current_state(), (state) => {
                         const original = get_original_state()
                         ids_of_cells_that_ran.forEach((id) => {
                             state.cell_results[id] = original.cell_results[id]
                         })
-                    })(get_current_state())
+                    })
                 )
             } catch (e) {
                 console.error(unpacked, e)
@@ -148,7 +158,7 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
         ...nothing_actions({ actions }),
         set_bond: async (symbol, value) => {
             setStatePromise(
-                produce((state) => {
+                produce((/** @type {import("../components/Editor.js").EditorState} */ state) => {
                     state.notebook.bonds[symbol] = { value: value }
                 })
             )
