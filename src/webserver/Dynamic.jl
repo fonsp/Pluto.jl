@@ -411,29 +411,6 @@ responses[:reset_shared_state] = function response_reset_shared_state(🙋::Clie
     end
 end
 
-"""
-This is a little hack to solve https://github.com/fonsp/Pluto.jl/pull/1892
-
-This function updates current_state_for_clients for our client with cell.queued = true.
-
-Later, during update_save_run!, the cell will actually run, eventually setting cell.queued = false again, which will be sent to the client through a patch update. 
-This guarantees that something will be sent.
-
-We *need* to send *something* to the client, because of https://github.com/fonsp/Pluto.jl/pull/1892, but we also don't want to send unnecessary updates. We can do this instead of a regular call to `send_notebook_changes!`, because update_save_run! will trigger a send_notebook_changes! call very very soon.
-"""
-function _set_cells_to_queued_in_local_state(client, notebook, cells)
-    if haskey(current_state_for_clients, client)
-        results = current_state_for_clients[client]["cell_results"]
-        for cell in cells
-            if haskey(results, cell.cell_id)
-                old = results[cell.cell_id]["queued"]
-                results[cell.cell_id]["queued"] = true
-                @debug "Setting val!" cell.cell_id old
-            end
-        end
-    end
-end
-
 responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::ClientRequest)
     require_notebook(🙋)
     uuids = UUID.(🙋.body["cells"])
@@ -443,9 +420,6 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
 
     if will_run_code(🙋.notebook)
         foreach(cell -> cell.queued = true, cells)
-        if 🙋.initiator !== nothing
-            _set_cells_to_queued_in_local_state(🙋.initiator.client, 🙋.notebook, cells)
-        end
     end
     
     function on_auto_solve_multiple_defs(disabled_cells_dict)
