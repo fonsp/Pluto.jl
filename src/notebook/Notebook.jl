@@ -79,7 +79,7 @@ function _report_business_cells_planned!(notebook::Notebook)
     Status.report_business_planned!(run_status, :resolve_topology)
     cell_status = Status.report_business_planned!(run_status, :evaluate)
     for (i,c) in enumerate(notebook.cells)
-        c.running = true
+        c.running = false
         c.queued = true
         Status.report_business_planned!(cell_status, Symbol(i))
     end

@@ -25,7 +25,7 @@ using Pluto.WorkspaceManager: poll
     @test x[] == 2
     
     # Let's wait for the cooldown period to end
-    sleep(2dt)
+    sleep(3dt)
     # nothing should have changed
     @test x[] == 2
 
@@ -41,7 +41,7 @@ using Pluto.WorkspaceManager: poll
     # so no leading timeout
     @test x[] == 3
     # the 2nd until 10th calls were still queued
-    sleep(2dt)
+    sleep(3dt)
     @test x[] == 4
     
     
@@ -50,7 +50,7 @@ using Pluto.WorkspaceManager: poll
     	sleep(1.5dt)
     end
     @test x[] == 9
-    sleep(2dt)
+    sleep(3dt)
     @test x[] == 9
     
     
@@ -74,7 +74,7 @@ using Pluto.WorkspaceManager: poll
     @test x[] == 11
     
     
-    sleep(2dt)
+    sleep(3dt)
     @test x[] == 11
     
     ###
@@ -84,13 +84,13 @@ using Pluto.WorkspaceManager: poll
     @test x[] == 12
     flush(tf)
     @test x[] == 13
-    sleep(2dt)
+    sleep(3dt)
     @test x[] == 13
 
     ####
     
     tf()
-    @test poll(2dt, dt/60) do
+    @test poll(3dt, dt/60) do
         x[] == 14
     end
     # immediately fire again, right after the last fire
@@ -103,7 +103,7 @@ using Pluto.WorkspaceManager: poll
     @test x[] == 14
     
     # but eventually, our call should get queued
-    sleep(2dt)
+    sleep(3dt)
     @test x[] == 15
     
     ####
@@ -128,7 +128,7 @@ using Pluto.WorkspaceManager: poll
     @test x[] == 0
     sleep(.1dt)
     @test x[] == 0
-    sleep(2dt)
+    sleep(3dt)
     @test x[] == 1
     
     @test tf.iscoolnow[]
@@ -139,13 +139,13 @@ using Pluto.WorkspaceManager: poll
     tf()
     Throttled.force_throttle_without_run(tf)
     @test x[] == 2
-    sleep(2dt)
+    sleep(3dt)
     @test x[] == 2
     
     
     tf()
     @test x[] == 3
-    sleep(2dt)
+    sleep(3dt)
     
     ####
     

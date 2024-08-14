@@ -95,102 +95,102 @@ window.PLUTO_TOGGLE_CM_AUTOCOMPLETE_ON_TYPE = (val = !ENABLE_CM_AUTOCOMPLETE_ON_
 }
 
 const common_style_tags = [
-    { tag: tags.comment,        color: "var(--cm-color-comment)", fontStyle: "italic", filter: "none" },
-    { tag: tags.keyword,        color: "var(--cm-color-keyword)" },
-    { tag: tags.variableName,   color: "var(--cm-color-var)", fontWeight: 700 },
-    { tag: tags.typeName,       color: "var(--cm-color-type)", fontStyle: "italic" },
-    { tag: tags.typeOperator,   color: "var(--cm-color-type)", fontStyle: "italic" },
-    { tag: tags.tagName,        color: "var(--cm-color-tag)" }, // JS
-    { tag: tags.propertyName,   color: "var(--cm-color-property)" },
+    { tag: tags.comment, color: "var(--cm-color-comment)", fontStyle: "italic", filter: "none" },
+    { tag: tags.keyword, color: "var(--cm-color-keyword)" },
+    { tag: tags.variableName, color: "var(--cm-color-var)", fontWeight: 700 },
+    { tag: tags.typeName, color: "var(--cm-color-type)", fontStyle: "italic" },
+    { tag: tags.typeOperator, color: "var(--cm-color-type)", fontStyle: "italic" },
+    { tag: tags.tagName, color: "var(--cm-color-tag)" }, // JS
+    { tag: tags.propertyName, color: "var(--cm-color-property)" },
     // TODO: tags.labelName
-    { tag: tags.macroName,      color: "var(--cm-color-macro)", fontWeight: 700 },
-    { tag: tags.string,         color: "var(--cm-color-string)" },
+    { tag: tags.macroName, color: "var(--cm-color-macro)", fontWeight: 700 },
+    { tag: tags.string, color: "var(--cm-color-string)" },
     // TODO: tags.character
-    { tag: tags.number,         color: "var(--cm-color-number)" },
-    { tag: tags.bool,           color: "var(--cm-color-builtin)", fontWeight: 700 },
+    { tag: tags.number, color: "var(--cm-color-number)" },
+    { tag: tags.bool, color: "var(--cm-color-builtin)", fontWeight: 700 },
     // TODO: tags.escape
     // TODO: tags.self, tags.null
-    { tag: tags.atom,           color: "var(--cm-color-atom)" },
-    { tag: tags.unit,           color: "var(--cm-color-tag)" }, // TODO: Remove
+    { tag: tags.atom, color: "var(--cm-color-atom)" },
+    { tag: tags.unit, color: "var(--cm-color-tag)" }, // TODO: Remove
     // TODO? tags.operator
-    { tag: tags.bracket,        color: "var(--cm-color-bracket)" },
+    { tag: tags.bracket, color: "var(--cm-color-bracket)" },
     { tag: tags.special(tags.brace), color: "var(--cm-color-macro)", fontWeight: 700 }, // interp
 ]
 
-export const pluto_syntax_colors_julia = HighlightStyle.define(
-    common_style_tags,
-    {
-        all: { color: `var(--cm-color-editor-text)` },
-        scope: julia_andrey().language,
-    }
-)
-
-export const pluto_syntax_colors_javascript = HighlightStyle.define(
-    common_style_tags,
-    {
-        all: { color: `var(--cm-color-editor-text)`, filter: `contrast(0.5)` },
-        scope: javascriptLanguage,
-    }
-)
-
-export const pluto_syntax_colors_python = HighlightStyle.define(
-    common_style_tags,
-    {
-        all: { color: `var(--cm-color-editor-text)`, filter: `contrast(0.5)` },
-        scope: pythonLanguage,
-    }
-)
-
-export const pluto_syntax_colors_css = HighlightStyle.define([
-    { tag: tags.comment,            color: "var(--cm-color-comment)", fontStyle: "italic" },
-    { tag: tags.variableName,       color: "var(--cm-color-css-accent)", fontWeight: 700 },
-    { tag: tags.propertyName,       color: "var(--cm-color-css-accent)", fontWeight: 700 },
-    { tag: tags.tagName,            color: "var(--cm-color-css)", fontWeight: 700 },
-    //{ tag: tags.className,          color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)" },
-    //{ tag: tags.constant(tags.className), color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)" },
-    { tag: tags.definitionOperator, color: "var(--cm-color-css)" },
-    { tag: tags.keyword,            color: "var(--cm-color-css)" },
-    { tag: tags.modifier,           color: "var(--cm-color-css-accent)" },
-    { tag: tags.literal,            color: "var(--cm-color-css)" },
-    // { tag: tags.unit,              color: "var(--cm-color-css-accent)" },
-    { tag: tags.punctuation,        opacity: 0.5 },
-], {
-    scope: cssLanguage,
-    all: { color: "var(--cm-color-css)" },
+export const pluto_syntax_colors_julia = HighlightStyle.define(common_style_tags, {
+    all: { color: `var(--cm-color-editor-text)` },
+    scope: julia_andrey().language,
 })
 
-export const pluto_syntax_colors_html = HighlightStyle.define([
-    { tag: tags.comment,        color: "var(--cm-color-comment)", fontStyle: "italic" },
-    { tag: tags.content,        color: "var(--cm-color-html)", fontWeight: 400 },
-    { tag: tags.tagName,        color: "var(--cm-color-html-accent)", fontWeight: 600 },
-    { tag: tags.documentMeta,   color: "var(--cm-color-html-accent)" },
-    { tag: tags.attributeName,  color: "var(--cm-color-html-accent)", fontWeight: 600 },
-    { tag: tags.attributeValue, color: "var(--cm-color-html-accent)" },
-    { tag: tags.angleBracket,   color: "var(--cm-color-html-accent)", fontWeight: 600, opacity: 0.7 },
-], {
-    all: { color: "var(--cm-color-html)" },
-    scope: htmlLanguage,
+export const pluto_syntax_colors_javascript = HighlightStyle.define(common_style_tags, {
+    all: { color: `var(--cm-color-editor-text)`, filter: `contrast(0.5)` },
+    scope: javascriptLanguage,
 })
+
+export const pluto_syntax_colors_python = HighlightStyle.define(common_style_tags, {
+    all: { color: `var(--cm-color-editor-text)`, filter: `contrast(0.5)` },
+    scope: pythonLanguage,
+})
+
+export const pluto_syntax_colors_css = HighlightStyle.define(
+    [
+        { tag: tags.comment, color: "var(--cm-color-comment)", fontStyle: "italic" },
+        { tag: tags.variableName, color: "var(--cm-color-css-accent)", fontWeight: 700 },
+        { tag: tags.propertyName, color: "var(--cm-color-css-accent)", fontWeight: 700 },
+        { tag: tags.tagName, color: "var(--cm-color-css)", fontWeight: 700 },
+        //{ tag: tags.className,          color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)" },
+        //{ tag: tags.constant(tags.className), color: "var(--cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa)" },
+        { tag: tags.definitionOperator, color: "var(--cm-color-css)" },
+        { tag: tags.keyword, color: "var(--cm-color-css)" },
+        { tag: tags.modifier, color: "var(--cm-color-css-accent)" },
+        { tag: tags.literal, color: "var(--cm-color-css)" },
+        // { tag: tags.unit,              color: "var(--cm-color-css-accent)" },
+        { tag: tags.punctuation, opacity: 0.5 },
+    ],
+    {
+        scope: cssLanguage,
+        all: { color: "var(--cm-color-css)" },
+    }
+)
+
+export const pluto_syntax_colors_html = HighlightStyle.define(
+    [
+        { tag: tags.comment, color: "var(--cm-color-comment)", fontStyle: "italic" },
+        { tag: tags.content, color: "var(--cm-color-html)", fontWeight: 400 },
+        { tag: tags.tagName, color: "var(--cm-color-html-accent)", fontWeight: 600 },
+        { tag: tags.documentMeta, color: "var(--cm-color-html-accent)" },
+        { tag: tags.attributeName, color: "var(--cm-color-html-accent)", fontWeight: 600 },
+        { tag: tags.attributeValue, color: "var(--cm-color-html-accent)" },
+        { tag: tags.angleBracket, color: "var(--cm-color-html-accent)", fontWeight: 600, opacity: 0.7 },
+    ],
+    {
+        all: { color: "var(--cm-color-html)" },
+        scope: htmlLanguage,
+    }
+)
 
 // https://github.com/lezer-parser/markdown/blob/d4de2b03180ced4610bad9cef0ad3a805c43b63a/src/markdown.ts#L1890
-export const pluto_syntax_colors_markdown = HighlightStyle.define([
-    { tag: tags.comment,    color: "var(--cm-color-comment)", fontStyle: "italic" },
-    { tag: tags.content,    color: "var(--cm-color-md)" },
-    { tag: tags.heading,    color: "var(--cm-color-md)", fontWeight: 700 },
-    // TODO? tags.list
-    { tag: tags.quote,      color: "var(--cm-color-md)" },
-    { tag: tags.emphasis,   fontStyle: "italic" },
-    { tag: tags.strong,     fontWeight: "bolder" },
-    { tag: tags.link,       textDecoration: "underline" },
-    { tag: tags.url,        color: "var(--cm-color-md)", textDecoration: "none" },
-    { tag: tags.monospace,  color: "var(--cm-color-md-accent)" },
+export const pluto_syntax_colors_markdown = HighlightStyle.define(
+    [
+        { tag: tags.comment, color: "var(--cm-color-comment)", fontStyle: "italic" },
+        { tag: tags.content, color: "var(--cm-color-md)" },
+        { tag: tags.heading, color: "var(--cm-color-md)", fontWeight: 700 },
+        // TODO? tags.list
+        { tag: tags.quote, color: "var(--cm-color-md)" },
+        { tag: tags.emphasis, fontStyle: "italic" },
+        { tag: tags.strong, fontWeight: "bolder" },
+        { tag: tags.link, textDecoration: "underline" },
+        { tag: tags.url, color: "var(--cm-color-md)", textDecoration: "none" },
+        { tag: tags.monospace, color: "var(--cm-color-md-accent)" },
 
-    // Marks: `-` for lists, `#` for headers, etc.
-    { tag: tags.processingInstruction, color: "var(--cm-color-md-accent) !important", opacity: "0.5" },
-], {
-    all: { color: "var(--cm-color-md)" },
-    scope: markdownLanguage,
-})
+        // Marks: `-` for lists, `#` for headers, etc.
+        { tag: tags.processingInstruction, color: "var(--cm-color-md-accent) !important", opacity: "0.5" },
+    ],
+    {
+        all: { color: "var(--cm-color-md)" },
+        scope: markdownLanguage,
+    }
+)
 
 const getValue6 = (/** @type {EditorView} */ cm) => cm.state.doc.toString()
 const setValue6 = (/** @type {EditorView} */ cm, value) =>
@@ -911,11 +911,16 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, skip_as_script, runnin
             })
     }
 
-    useEventListener(window, "keydown", (/** @type {KeyboardEvent} */ e) => {
-        if (e.key === "Escape") {
-            setOpen(false)
-        }
-    })
+    useEventListener(
+        window,
+        "keydown",
+        (/** @type {KeyboardEvent} */ e) => {
+            if (e.key === "Escape") {
+                setOpen(false)
+            }
+        },
+        []
+    )
 
     return html`
         <button

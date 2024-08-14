@@ -97,13 +97,16 @@ export const ExportBanner = ({ notebook_id, print_title, open, onClose, notebook
         }
     }, [open, element_ref.current])
 
+    const onCloseRef = useRef(onClose)
+    onCloseRef.current = onClose
+
     useEventListener(
         element_ref.current,
         "focusout",
         () => {
-            if (!element_ref.current?.matches(":focus-within")) onClose()
+            if (!element_ref.current?.matches(":focus-within")) onCloseRef.current()
         },
-        [onClose]
+        []
     )
 
     return html`
