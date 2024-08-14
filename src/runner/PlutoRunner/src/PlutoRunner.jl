@@ -1007,10 +1007,17 @@ const default_iocontext = IOContext(devnull,
     :pluto_with_js_link => (io, callback, on_cancellation) -> core_with_js_link(io, callback, on_cancellation),
 )
 
+# `stdout` mimics a TTY, the only relevant property is :color
 const default_stdout_iocontext = IOContext(devnull, 
-    :color => true, 
-    :limit => true, 
-    :displaysize => (18, 75), 
+    :color => true,
+    :is_pluto => false,
+)
+
+# `display` sees a richer context like in the REPL, see #2727
+const default_display_iocontext = IOContext(devnull,
+    :color => true,
+    :limit => true,
+    :displaysize => (18, 75),
     :is_pluto => false,
 )
 
@@ -2792,8 +2799,8 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     # Redirect both the `stdout` and `stderr` streams to a single `Pipe` object.
     pipe = Pipe()
     Base.link_pipe!(pipe; reader_supports_async = true, writer_supports_async = true)
-    pe_stdout = pipe.in
-    pe_stderr = pipe.in
+    pe_stdout = IOContext(pipe.in, default_stdout_iocontext)
+    pe_stderr = IOContext(pipe.in, default_stdout_iocontext)
     redirect_stdout(pe_stdout)
     redirect_stderr(pe_stderr)
 
@@ -2826,7 +2833,7 @@ function with_io_to_logs(f::Function; enabled::Bool=true, loglevel::Logging.LogL
     end
 
     # To make the `display` function work.
-    redirect_display = TextDisplay(IOContext(pe_stdout, default_stdout_iocontext))
+    redirect_display = TextDisplay(IOContext(pe_stdout, default_display_iocontext))
     pushdisplay(redirect_display)
 
     # Run the function `f`, capturing all output that it might have generated.
