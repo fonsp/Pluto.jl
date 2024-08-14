@@ -412,14 +412,9 @@ responses[:reset_shared_state] = function response_reset_shared_state(🙋::Clie
 end
 
 """
-This is a little hack to solve https://github.com/fonsp/Pluto.jl/pull/1892
+This function updates current_state_for_clients for our client with `cell.queued = true`. We do the same on the client side, where we set the cell's result to `queued = true` immediately in that client's local state. Search for `😼` in the frontend code.
 
-This function updates current_state_for_clients for our client with cell.queued = true.
-
-Later, during update_save_run!, the cell will actually run, eventually setting cell.queued = false again, which will be sent to the client through a patch update. 
-This guarantees that something will be sent.
-
-We *need* to send *something* to the client, because of https://github.com/fonsp/Pluto.jl/pull/1892, but we also don't want to send unnecessary updates. We can do this instead of a regular call to `send_notebook_changes!`, because update_save_run! will trigger a send_notebook_changes! call very very soon.
+This is also kinda related to https://github.com/fonsp/Pluto.jl/pull/1892 but not really, see https://github.com/fonsp/Pluto.jl/pull/2989. I actually think this does not make a differency anymore, see https://github.com/fonsp/Pluto.jl/pull/2999.
 """
 function _set_cells_to_queued_in_local_state(client, notebook, cells)
     if haskey(current_state_for_clients, client)
