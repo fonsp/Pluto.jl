@@ -36,7 +36,7 @@ function cdnified_html(filename::AbstractString;
                     URIs.resolvereference(cdn_root, url) |> string
                 end
             catch e
-                @warn "Could not use bundled CDN version of $(filename). You should only see this message if you are using a fork of Pluto." exception=(e,catch_backtrace()) maxlog=1
+                get(ENV, "JULIA_PLUTO_IGNORE_CDN_BUNDLE_WARNING", "false") == "true" || @warn "Could not use bundled CDN version of $(filename). You should only see this message if you are using a fork of Pluto." exception=(e,catch_backtrace()) maxlog=1
                 nothing
             end
         end,
