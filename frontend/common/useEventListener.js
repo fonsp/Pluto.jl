@@ -16,7 +16,7 @@ export const useEventListener = (
         const e = element
         const useme =
             e == null || e instanceof Document || e instanceof HTMLElement || e instanceof Window || e instanceof EventSource || e instanceof MediaQueryList
-                ? e
+                ? /** @type {EventListenerAddable} */ (e)
                 : e.current
 
         if (useme == null) return
