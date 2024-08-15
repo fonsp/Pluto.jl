@@ -479,7 +479,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
 let run = (f) => f()
 
 /**
- * Support declarative shadowroot 😼
+ * Support declarative shadowroot 😺
  * https://web.dev/declarative-shadow-dom/
  * The polyfill they mention on the page is nice and all, but we need more.
  * For one, we need the polyfill anyway as we're adding html using innerHTML (just like we need to run the scripts ourselves)

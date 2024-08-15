@@ -163,15 +163,18 @@ For each connected client, we keep a copy of their current state. This way we kn
 """
 const current_state_for_clients = WeakKeyDict{ClientSession,Any}()
 const current_state_for_clients_lock = ReentrantLock()
+const update_counter_for_debugging = Ref(0)
 
 """
 Update the local state of all clients connected to this notebook.
 """
-function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, skip_send::Bool=false)
+function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing)
     outbox = Set{Tuple{ClientSession,UpdateMessage}}()
     
     lock(current_state_for_clients_lock) do
         notebook_dict = notebook_to_js(🙋.notebook)
+        counter = update_counter_for_debugging[] += 1
+
         for (_, client) in 🙋.session.connected_clients
             if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == 🙋.notebook.notebook_id
                 current_dict = get(current_state_for_clients, client, :empty)
@@ -182,8 +185,9 @@ function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, sk
                 # Make sure we do send a confirmation to the client who made the request, even without changes
                 is_response = 🙋.initiator !== nothing && client == 🙋.initiator.client
 
-                if !skip_send && (!isempty(patches) || is_response)
+                if !isempty(patches) || is_response
                     response = Dict(
+                        :counter => counter,
                         :patches => patches_as_dicts,
                         :response => is_response ? commentary : nothing
                     )
@@ -192,7 +196,7 @@ function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, sk
             end
         end
     end
-    
+
     for (client, msg) in outbox
         putclientupdates!(client, msg)
     end
@@ -240,18 +244,6 @@ const effects_of_changed_state = Dict(
 
         @info "Process status set by client" newstatus
     end,
-    # "execution_allowed" => function(; request::ClientRequest, patch::Firebasey.ReplacePatch)
-    #     Firebasey.applypatch!(request.notebook, patch)
-    #     newstatus = patch.value
-
-    #     @info "execution_allowed set by client" newstatus
-    #     if newstatus
-    #         @info "lets run some cells!"
-    #         update_save_run!(request.session, request.notebook, notebook.cells; 
-    #             run_async=true, save=true
-    #         )
-    #     end
-    # end,
     "in_temp_dir" => function(; _...) no_changes end,
     "cell_inputs" => Dict(
         Wildcard() => function(cell_id, rest...; request::ClientRequest, patch::Firebasey.JSONPatch)
@@ -339,7 +331,7 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
                 # If skip_as_script has changed but no cell run is happening we want to update the notebook dependency here before saving the file
                 update_skipped_cells_dependency!(notebook)
             end  
-             save_notebook(🙋.session, notebook)
+            save_notebook(🙋.session, notebook)
         end
 
         let bond_changes = filter(x -> x isa BondChanged, changes)
@@ -427,11 +419,7 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
     end
 
     if will_run_code(🙋.notebook)
-        foreach(c -> c.queued = true, cells)
-        # run send_notebook_changes! without actually sending it, to update current_state_for_clients for our client with c.queued = true.
-        # later, during update_save_run!, the cell will actually run, eventually setting c.queued = false again, which will be sent to the client through a patch update. 
-        # We *need* to send *something* to the client, because of https://github.com/fonsp/Pluto.jl/pull/1892, but we also don't want to send unnecessary updates. We can skip sending this update, because update_save_run! will trigger a send_notebook_changes! very very soon.
-        send_notebook_changes!(🙋; skip_send=true)
+        foreach(cell -> cell.queued = true, cells)
     end
     
     function on_auto_solve_multiple_defs(disabled_cells_dict)
