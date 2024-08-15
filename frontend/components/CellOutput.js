@@ -137,7 +137,7 @@ export let PlutoImage = ({ body, mime }) => {
  * body: any,
  * cell_id: string,
  * persist_js_state: boolean | string,
- * last_run_timestamp: number,
+ * last_run_timestamp: number?,
  * sanitize_html?: boolean | string,
  * }} args
  */
