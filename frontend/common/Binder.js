@@ -1,4 +1,4 @@
-import { produce } from "../imports/immer.js"
+import immer from "../imports/immer.js"
 import { timeout_promise, ws_address_from_base } from "./PlutoConnection.js"
 import { with_query_params } from "./URLTools.js"
 
@@ -95,7 +95,7 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
         // view stats on https://stats.plutojl.org/
         count_stat(`binder-start`)
         await setStatePromise(
-            produce((/** @type {import("../components/Editor.js").EditorState} */ state) => {
+            immer((/** @type {import("../components/Editor.js").EditorState} */ state) => {
                 state.backend_launch_phase = BackendLaunchPhase.requesting
                 state.disable_ui = false
                 // Clear the Status of the process that generated the HTML
@@ -107,7 +107,7 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
         const { binder_session_url, binder_session_token } = await request_binder(launch_params.binder_url.replace("mybinder.org/v2/", "mybinder.org/build/"), {
             on_log: (logs) =>
                 setStatePromise(
-                    produce((/** @type {import("../components/Editor.js").EditorState} */ state) => {
+                    immer((/** @type {import("../components/Editor.js").EditorState} */ state) => {
                         state.backend_launch_logs = logs
                     })
                 ),
@@ -122,7 +122,7 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
         }
 
         await setStatePromise(
-            produce((/** @type {import("../components/Editor.js").EditorState} */ state) => {
+            immer((/** @type {import("../components/Editor.js").EditorState} */ state) => {
                 state.backend_launch_phase = BackendLaunchPhase.created
                 state.binder_session_url = binder_session_url
                 state.binder_session_token = binder_session_token
@@ -133,7 +133,7 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
         await fetch(with_token(binder_session_url))
 
         await setStatePromise(
-            produce((/** @type {import("../components/Editor.js").EditorState} */ state) => {
+            immer((/** @type {import("../components/Editor.js").EditorState} */ state) => {
                 state.backend_launch_phase = BackendLaunchPhase.responded
             })
         )
@@ -197,7 +197,7 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
         console.info("notebook_id:", new_notebook_id)
 
         await setStatePromise(
-            produce((/** @type {import("../components/Editor.js").EditorState} */ state) => {
+            immer((/** @type {import("../components/Editor.js").EditorState} */ state) => {
                 state.notebook.notebook_id = new_notebook_id
                 state.backend_launch_phase = BackendLaunchPhase.notebook_running
                 state.refresh_target = edit_url

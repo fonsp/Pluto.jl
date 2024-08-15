@@ -1,15 +1,15 @@
-import { html, useMemo } from "../../imports/Preact.js"
+import { html, useMemo, useEffect } from "../../imports/Preact.js"
 import * as preact from "../../imports/Preact.js"
 import { RunLocalButton, BinderButton } from "../EditOrRunButton.js"
 import { start_local } from "../../common/RunLocal.js"
 import { BackendLaunchPhase, start_binder } from "../../common/Binder.js"
-import { produce } from "../../imports/immer.js"
+import immer, { applyPatches, produceWithPatches } from "../../imports/immer.js"
 
 export const EditorLaunchBackendButton = ({ editor, launch_params, status }) => {
     try {
         const EnvRun = useMemo(
             // @ts-ignore
-            () => window?.pluto_injected_environment?.environment?.({ client: editor.client, editor, imports: { immer: produce, preact } })?.custom_run_or_edit,
+            () => window?.pluto_injected_environment?.environment?.({ client: editor.client, editor, imports: { immer, preact } })?.custom_run_or_edit,
             [editor.client, editor]
         )
         // @ts-ignore
