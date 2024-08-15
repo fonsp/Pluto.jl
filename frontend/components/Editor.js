@@ -729,9 +729,16 @@ patch: ${JSON.stringify(
                                         null,
                                         1
                                     )}
+all patches: ${JSON.stringify(patches, null, 1)}
 #######################**************************########################`,
                                     exception
                                 )
+
+                                let parts = failing_path.split(".")
+                                for (let i = 0; i < parts.length; i++) {
+                                    let path = parts.slice(0, i).join(".")
+                                    console.log(path, _.get(this.state.notebook, path, "Not Found"))
+                                }
 
                                 if (ignore) {
                                     console.info("Safe to ignore this patch failure...")
