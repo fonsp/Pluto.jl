@@ -194,11 +194,12 @@ const EmptyRows = ({ colspan = 999 }) => html`<tr class="empty">
     </td>
 </tr>`
 
-export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
+export const TableView = ({ mime, body, cell_id, persist_js_state, sanitize_html }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     const node_ref = useRef(null)
 
-    const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${persist_js_state} />`
+    const mimepair_output = (pair) =>
+        html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${persist_js_state} sanitize_html=${sanitize_html} />`
     const more = (dim) => html`<${More}
         on_click_more=${() => {
             actions_show_more({
