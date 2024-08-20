@@ -2,9 +2,11 @@ module PlutoRunner
 
 export @bind
 
-# import these two so that they can be imported from Main on the worker process if it launches without the stdlibs in its LOAD_PATH
-import Markdown
-import InteractiveUtils
+# using these two for two reasons:
+# - something related to package loading (original text for 4 years ago: "so that they can be imported from Main on the worker process if it launches without the stdlibs in its LOAD_PATH")
+# - static macro expansion (`maybe_macroexpand_pluto`) happens in this module, and expects these to be using-ed.
+using Markdown
+using InteractiveUtils
 
 
 # shared things between files:
