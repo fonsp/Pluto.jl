@@ -1,11 +1,15 @@
 module PlutoRunner
 
+export @bind
+
 # import these two so that they can be imported from Main on the worker process if it launches without the stdlibs in its LOAD_PATH
 import Markdown
 import InteractiveUtils
+
+
+# shared things between files:
 using UUIDs
 
-export @bind
 
 const ObjectID = typeof(objectid("hello computer"))
 
@@ -33,16 +37,13 @@ const cell_published_objects = Dict{UUID,Dict{String,Any}}()
 const cell_registered_bond_names = Dict{UUID,Set{Symbol}}()
 const cell_expanded_exprs = Dict{UUID,CachedMacroExpansion}()
 
-
-
-###
-# WORKSPACE MANAGER
-###
-
 """
 `PlutoRunner.notebook_id[]` gives you the notebook ID used to identify a session.
 """
 const notebook_id = Ref{UUID}(UUID(0))
+
+
+
 
 include("./evaluation/workspace.jl")
 include("./evaluation/return.jl")
@@ -53,14 +54,9 @@ include("./evaluation/deleting globals.jl")
 
 
 include("./display/format_output.jl")
-
-
 include("./display/IOContext.jl")
-
 include("./display/syntax error.jl")
 include("./display/Exception.jl")
-
-
 include("./display/mime dance.jl")
 include("./display/tree viewer.jl")
 
