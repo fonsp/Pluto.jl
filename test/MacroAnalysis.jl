@@ -661,7 +661,11 @@ import Memoize: @memoize
             begin
                 import Pkg
                 Pkg.activate(mktempdir())
-                Pkg.add(Pkg.PackageSpec(name="Symbolics", version="5.5.1"))
+                Pkg.add([
+                    Pkg.PackageSpec(name="Symbolics", version="5.5.1"),
+                    # to avoid https://github.com/JuliaObjects/ConstructionBase.jl/issues/92
+                    Pkg.PackageSpec(name="ConstructionBase", version="1.5.6"),
+                ])
                 import Symbolics: @variables
             end
             """),
