@@ -89,7 +89,7 @@ function create_bond(element, defines::Symbol, cell_id::UUID)
 end
 
 function Base.show(io::IO, m::MIME"text/html", bond::Bond)
-    withtag(io, :bond, :def => bond.defines, :unique_id => bond.unique_id) do
+    Markdown.withtag(io, :bond, :def => bond.defines, :unique_id => bond.unique_id) do
         show(io, m, bond.element)
     end
 end
