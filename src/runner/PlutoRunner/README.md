@@ -10,12 +10,7 @@ The package environment that this file is loaded with is the NotebookProcessProj
 
 # SOME EXTRA NOTES
 
-1. The entire PlutoRunner should be a single file.
-2. Restrict the communication between this PlutoRunner and the Pluto server to only use *Base Julia types*, like `String`, `Dict`, `NamedTuple`, etc. 
-
-These restriction are there to allow flexibility in the way that this file is
-loaded on a runner process, which is something that we might want to change
-in the future.
+Restrict the communication between PlutoRunner and the Pluto server to only use *Base Julia types*, like `String`, `Dict`, `NamedTuple`, etc.
 
 # DEVELOPMENT TIP
 If you are editing this file, you cannot use Revise unfortunately.
