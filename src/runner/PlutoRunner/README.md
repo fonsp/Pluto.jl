@@ -13,5 +13,5 @@ The package environment that this file is loaded with is the NotebookProcessProj
 Restrict the communication between PlutoRunner and the Pluto server to only use *Base Julia types*, like `String`, `Dict`, `NamedTuple`, etc.
 
 # DEVELOPMENT TIP
-If you are editing this file, you cannot use Revise unfortunately.
+If you are editing PlutoRunner, you cannot use Revise unfortunately.
 However! You don't need to restart Pluto to test your changes! You just need to restart the notebook from the Pluto main menu, and the new PlutoRunner.jl will be loaded.
