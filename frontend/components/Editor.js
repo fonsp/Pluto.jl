@@ -788,6 +788,15 @@ all patches: ${JSON.stringify(patches, null, 1)}
 
         this.apply_notebook_patches = apply_notebook_patches
         // these are update message that are _not_ a response to a `send(*, *, {create_promise: true})`
+        this.last_update_counter = -1
+        const check_update_counter = (new_val) => {
+            if (new_val <= this.last_update_counter) {
+                console.error("State update out of order", new_val, this.last_update_counter)
+                alert("Oopsie!! please refresh your browser and everything will be alright!")
+            }
+            this.last_update_counter = new_val
+        }
+
         const on_update = (update, by_me) => {
             if (this.state.notebook.notebook_id === update.notebook_id) {
                 const show_debugs = launch_params.binder_url != null
@@ -795,6 +804,7 @@ all patches: ${JSON.stringify(patches, null, 1)}
                 const message = update.message
                 switch (update.type) {
                     case "notebook_diff":
+                        check_update_counter(message?.counter)
                         let apply_promise = Promise.resolve()
                         if (message?.response?.from_reset) {
                             console.log("Trying to reset state after failure")

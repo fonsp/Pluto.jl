@@ -165,6 +165,10 @@ const current_state_for_clients = WeakKeyDict{ClientSession,Any}()
 const current_state_for_clients_lock = ReentrantLock()
 const update_counter_for_debugging = Ref(0)
 
+const update_counter_for_clients_1 = WeakKeyDict{ClientSession,Any}()
+const update_counter_for_clients_2 = WeakKeyDict{ClientSession,Any}()
+const update_counter_for_clients_3 = WeakKeyDict{ClientSession,Any}()
+
 """
 Update the local state of all clients connected to this notebook.
 """
@@ -195,12 +199,12 @@ function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing)
                 end
             end
         end
-    end
 
-    for (client, msg) in outbox
-        putclientupdates!(client, msg)
+        for (client, msg) in outbox
+            putclientupdates!(client, msg)
+        end
+        try_event_call(🙋.session, FileEditEvent(🙋.notebook))
     end
-    try_event_call(🙋.session, FileEditEvent(🙋.notebook))
 end
 
 "Like `deepcopy`, but anything other than `Dict` gets a shallow (reference) copy."
