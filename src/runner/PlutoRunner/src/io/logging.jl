@@ -1,7 +1,21 @@
 import Logging
 
-const original_stdout = stdout
-const original_stderr = stderr
+const original_stderr = Ref{IO}()
+
+function redirect_original_stderr(io)
+    original_stderr[] = io
+    return nothing
+end
+
+function redirect_original_stderr(f::Function, io)
+    old_stderr = original_stderr[]
+    redirect_original_stderr(io)
+    try
+        return f()
+    finally
+        redirect_original_stderr(old_stderr)
+    end
+end
 
 const old_logger = Ref{Union{Logging.AbstractLogger,Nothing}}(nothing)
 
@@ -113,8 +127,9 @@ function Logging.handle_message(pl::PlutoCellLogger, level, msg, _module, group,
         yield()
 
     catch e
-        println(original_stderr, "Failed to relay log from PlutoRunner")
-        showerror(original_stderr, e, stacktrace(catch_backtrace()))
+        Logging.with_logger(Logging.ConsoleLogger(original_stderr[])) do
+            @error "Failed to relay log from PlutoRunner" exception=(e, catch_backtrace())
+        end
 
         nothing
     end

@@ -66,6 +66,14 @@ using Pluto.WorkspaceManager: poll
         "show(stdout, collect(1:500))", # 24
         "show(stdout, \"text/plain\", collect(1:500))", # 25
         "display(collect(1:500))", # 26
+
+        "struct StructThatErrorsOnPrinting end", # 27
+        """
+        Base.print(::IO, ::StructThatErrorsOnPrinting) = error("Can't print this")
+        """, # 28
+        """
+        @info "" _id=StructThatErrorsOnPrinting()
+        """, # 29
     ]))
 
     @testset "Stdout" begin
@@ -201,4 +209,57 @@ using Pluto.WorkspaceManager: poll
     end
 
     cleanup(🍭, notebook)
+
+    @testset "Logging error fallback" begin
+        # This testset needs a separate server session to capture the process stderr (which
+        # is different from the notebook stderr)
+        🍍 = ServerSession()
+
+        msg = if true
+            # Alternative 1: use a remote worker and capture stderr using redirect_stderr.
+            # The reason we cannot use the same session as above is that a Malt.Worker's
+            # stderr is bound to the local stderr when the worker is instantiated, which
+            # happens at the first call to update_run! with a given session and notebook.
+            # Since update_run! has been called several times above, the existing worker's
+            # stderr is already bound to the local TTY, and redirect_stderr won't change
+            # that. We need a new session such that we can instantiate a new worker within
+            # the redirect_stderr block. (An alternative would be to move this testset to
+            # the top of the file such that it gets the first call to update_run!, but it
+            # seems like a bad idea to have tests that may pass or fail depending on the
+            # order of the testsets.)
+            #
+            # This argument is specific to Malt. Distributed relays stderr differently.
+            🍍.options.evaluation.workspace_use_distributed = true
+
+            pipe = Pipe()
+            redirect_stderr(pipe) do
+                update_run!(🍍, notebook, notebook.cells[27:29])
+            end
+            t = Threads.@spawn read(pipe, String)
+            close(pipe)
+            fetch(t)
+        else
+            # Alternative 2: use a local worker and capture stderr using
+            # PlutoRunner.redirect_original_stderr. This avoids the complications due to
+            # stderr relaying between processes and Malt implementation details, but
+            # requires using a bespoke redirection function from PlutoRunner rather than
+            # Base.redirect_stderr.
+            🍍.options.evaluation.workspace_use_distributed = false
+
+            io = IOBuffer()
+            PlutoRunner.redirect_original_stderr(io) do
+                update_run!(🍍, notebook, notebook.cells[27:29])
+            end
+            msg_ = String(take!(io))
+            close(io)
+            msg_
+        end
+
+        @test notebook.cells[27] |> noerror
+        @test notebook.cells[28] |> noerror
+        @test notebook.cells[29] |> noerror
+        @test occursin("Failed to relay log from PlutoRunner", msg)
+
+        cleanup(🍍, notebook)
+    end
 end
