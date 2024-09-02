@@ -1053,4 +1053,40 @@ import Pluto.Configuration: Options, EvaluationOptions
             @test startswith(notebook.cells[2].output.body[:msg], "syntax:")
         end
     end
+
+    @testset "using .LocalModule" begin
+        notebook = Notebook(Cell.([
+            """
+            begin
+                @eval module LocalModule
+                    const x = :exported
+                    export x
+                end
+                using .LocalModule
+            end
+            """,
+            "x"
+        ]))
+        update_run!(🍭, notebook, notebook.cells)
+        @test notebook.cells[1] |> noerror
+        @test notebook.cells[2] |> noerror
+
+        output_2 = notebook.cells[2].output.body
+        @test contains(output_2, "exported")
+
+        setcode!(
+            notebook.cells[1],
+            """
+            begin
+                @eval module LocalModule
+                    const x = :not_exported
+                end
+                using .LocalModule
+            end
+            """,
+        )
+
+        update_run!(🍭, notebook, [notebook.cells[1]])
+        @test expecterror(UndefVarError(:x), notebook.cells[end])
+    end
 end
