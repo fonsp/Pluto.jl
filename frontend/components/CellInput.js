@@ -98,18 +98,17 @@ const common_style_tags = [
     { tag: tags.comment, color: "var(--cm-color-comment)", fontStyle: "italic", filter: "none" },
     { tag: tags.keyword, color: "var(--cm-color-keyword)" },
     { tag: tags.variableName, color: "var(--cm-color-variable)", fontWeight: 700 },
-    { tag: tags.typeName, color: "var(--cm-color-type)", fontStyle: "italic" },
-    { tag: tags.typeOperator, color: "var(--cm-color-type)", fontStyle: "italic" },
+    { tag: tags.typeName, filter: "var(--cm-filter-type)" },
     { tag: tags.tagName, color: "var(--cm-color-tag)" }, // JS
     { tag: tags.propertyName, color: "var(--cm-color-symbol)", fontWeight: 700 },
     // TODO: tags.labelName
     { tag: tags.macroName, color: "var(--cm-color-macro)", fontWeight: 700 },
     { tag: tags.string, color: "var(--cm-color-string)" },
+    { tag: tags.special(tags.string), color: "var(--cm-color-command)" },
     { tag: tags.character, color: "var(--cm-color-literal)" },
     { tag: tags.literal, color: "var(--cm-color-literal)" },
     // TODO: tags.self, tags.null
     { tag: tags.atom, color: "var(--cm-color-symbol)" },
-    { tag: tags.unit, color: "var(--cm-color-tag)" }, // TODO: Remove
     // TODO? tags.operator
     { tag: tags.bracket, color: "var(--cm-color-bracket)" },
     { tag: tags.special(tags.brace), color: "var(--cm-color-macro)", fontWeight: 700 }, // interp
