@@ -217,11 +217,14 @@ using Pluto.WorkspaceManager: poll
         🍍.options.evaluation.workspace_use_distributed = false
 
         io = IOBuffer()
-        PlutoRunner.redirect_original_stderr(io) do
-            update_run!(🍍, notebook, notebook.cells[27:29])
-        end
+        old_stderr = PlutoRunner.original_stderr[]
+        PlutoRunner.original_stderr[] = io
+        
+        update_run!(🍍, notebook, notebook.cells[27:29])
+        
         msg = String(take!(io))
         close(io)
+        PlutoRunner.original_stderr[] = old_stderr
 
         @test notebook.cells[27] |> noerror
         @test notebook.cells[28] |> noerror

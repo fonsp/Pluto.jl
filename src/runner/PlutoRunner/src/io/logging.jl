@@ -2,21 +2,6 @@ import Logging
 
 const original_stderr = Ref{IO}()
 
-function redirect_original_stderr(io)
-    original_stderr[] = io
-    return nothing
-end
-
-function redirect_original_stderr(f::Function, io)
-    old_stderr = original_stderr[]
-    redirect_original_stderr(io)
-    try
-        return f()
-    finally
-        redirect_original_stderr(old_stderr)
-    end
-end
-
 const old_logger = Ref{Union{Logging.AbstractLogger,Nothing}}(nothing)
 
 struct PlutoCellLogger <: Logging.AbstractLogger

@@ -76,6 +76,8 @@ include("./io/logging.jl")
 include("./io/stdout.jl")
 include("./precompile.jl")
 
-__init__() = redirect_original_stderr(stderr)
+function __init__()
+    original_stderr[] = stderr
+end
 
 end
