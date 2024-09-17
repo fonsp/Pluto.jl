@@ -447,6 +447,7 @@ table.pluto-table tbody th:first-child {
     background-color: var(--main-bg-color);
     position: sticky;
     left: -10px; /* padding-left of pluto-output*/
+    white-space: nowrap;
 }
 
 table.pluto-table .pluto-tree-more-td {

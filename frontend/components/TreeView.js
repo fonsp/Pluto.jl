@@ -85,9 +85,6 @@ const useKeyboardClickable = (element_ref) => {
 
 const prefix = ({ prefix, prefix_short }) => {
     const element_ref = useRef(/** @type {HTMLElement?} */ (null))
-    useEffect(() => {
-        console.log(element_ref.current)
-    }, [])
     useKeyboardClickable(element_ref)
     return html`<pluto-tree-prefix role="button" tabindex="0" ref=${element_ref}
         ><span class="long">${prefix}</span><span class="short">${prefix_short}</span></pluto-tree-prefix
