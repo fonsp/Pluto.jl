@@ -3464,6 +3464,8 @@ pluto-cell.code_differs .cm-editor .cm-gutters {
     position: absolute;
     right: 3px;
     pointer-events: none;
+    font-family: Arial;
+    transform: scale(1.8);
 }
 .cm-editor .cm-lineNumbers .cm-gutterElement:hover {
     color: var(--cm-color-line-numbers);
