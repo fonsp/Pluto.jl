@@ -594,7 +594,7 @@ export const CellInput = ({
                     rectangularSelection({
                         eventFilter: (e) => e.altKey && e.shiftKey && e.button == 0,
                     }),
-                    highlightSelectionMatches({ minSelectionLength: 2 }),
+                    highlightSelectionMatches({ minSelectionLength: 2, wholeWords: true }),
                     bracketMatching(),
                     docs_updater,
                     tab_help_plugin,
