@@ -67,13 +67,15 @@ function format_output(val::CapturedException; context=default_iocontext)
         pretty = map(stack_relevant) do s
             method = method_from_frame(s)
             
+            local url = local repo_url = local repo_type = local sp = nothing
             if method isa Method
-                url = BrowserMacrosLite.method_url(method)
-                repo_url = BrowserMacrosLite._repo_url(url)
-                repo_type = BrowserMacrosLite.repotype(method)
-                sp = source_package(method)
-            else
-                url = repo_url = repo_type = sp = nothing
+                try
+                    url = BrowserMacrosLite.method_url(method)
+                    repo_url = BrowserMacrosLite._repo_url(url)
+                    repo_type = BrowserMacrosLite.repotype(method)
+                    sp = source_package(method)
+                catch e
+                end
             end
 
             Dict(
