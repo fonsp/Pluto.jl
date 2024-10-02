@@ -341,31 +341,31 @@ pluto-output div.admonition.hint {
     background: var(--jl-info-color);
     border: 5px solid var(--jl-info-accent-color);
 }
-pluto-output div.admonition.note .admonition-title,
-pluto-output div.admonition.info .admonition-title,
-pluto-output div.admonition.hint .admonition-title {
+pluto-output div.admonition.note > .admonition-title,
+pluto-output div.admonition.info > .admonition-title,
+pluto-output div.admonition.hint > .admonition-title {
     background: var(--jl-info-accent-color);
 }
 pluto-output div.admonition.warning {
     background: var(--jl-warn-color);
     border: 5px solid var(--jl-warn-accent-color);
 }
-pluto-output div.admonition.warning .admonition-title {
+pluto-output div.admonition.warning > .admonition-title {
     background: var(--jl-warn-accent-color);
 }
 pluto-output div.admonition.danger {
     background: var(--jl-danger-color);
     border: 5px solid var(--jl-danger-accent-color);
 }
-pluto-output div.admonition.danger .admonition-title {
+pluto-output div.admonition.danger > .admonition-title {
     background: var(--jl-danger-accent-color);
 }
 
-pluto-output div.admonition.hint .admonition-title ~ * {
+pluto-output div.admonition.hint > .admonition-title ~ * {
     filter: blur(0.25em);
 }
-pluto-output div.admonition.hint:hover .admonition-title ~ *,
-pluto-output div.admonition.hint:focus-within .admonition-title ~ * {
+pluto-output div.admonition.hint:hover > .admonition-title ~ *,
+pluto-output div.admonition.hint:focus-within > .admonition-title ~ * {
     filter: blur(0em);
 }
 
