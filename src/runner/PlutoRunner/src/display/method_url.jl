@@ -32,7 +32,7 @@ module BrowserMacrosLite
 
 using Base: UUID, PkgId, load_path, url
 using Pkg.Types: manifestfile_path, read_manifest
-using Pkg.Registry: reachable_registries
+using Pkg
 using Pkg.Operations: find_urls
 
 ismatching(r::Regex, s) = !isnothing(match(r, s))
@@ -98,7 +98,7 @@ function _version(id::PkgId)
 end
 
 function _url(id::PkgId)
-    urls = find_urls(reachable_registries(), id.uuid)
+    urls = find_urls(Pkg.Registry.reachable_registries(), id.uuid)
     isempty(urls) && error("Could not find module $id in reachable registries.")
     return first(splitext(first(urls))) # strip ".git" ending
 end
