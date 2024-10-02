@@ -592,6 +592,7 @@ function update_nbpkg_core(
                 end
 
 
+                PkgCompat.refresh_registry_cache()
                 🐧 = !PkgCompat.is_original(notebook.nbpkg_ctx)
                 should_instantiate_again = !notebook.nbpkg_ctx_instantiated || 🐧
                 
