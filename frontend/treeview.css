@@ -299,6 +299,10 @@ jlerror > section .classical-frame > mark {
     font-family: var(--julia-mono-font-stack);
     font-variant-ligatures: none;
 }
+
+jlerror > section .classical-frame > mark > strong {
+    color: var(--black);
+}
 jlerror > section .classical-frame > em > a[href] {
     background: var(--jlerror-a-bg-color);
     border-radius: 4px;

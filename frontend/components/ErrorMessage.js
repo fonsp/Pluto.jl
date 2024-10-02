@@ -37,13 +37,16 @@ const StackFrameFilename = ({ frame, cell_id }) => {
                 e.preventDefault()
             }}
         >
-            ${frame_cell_id == cell_id ? "This cell" : "Other cell"}: line ${frame.line}
+            ${frame_cell_id == cell_id ? "This\xa0cell" : "Other\xa0cell"}: line ${frame.line}
         </a>`
         return html`<em>${a}</em>`
     } else {
-        return html`<em title=${frame.path}
-            ><a class="remote-url" href=${frame?.url?.startsWith?.("https") ? frame.url : null}>${frame.file}:${frame.line}</a></em
-        >`
+        const text =
+            frame.source_package != null && frame.source_package_type === "external"
+                ? html`<strong>${frame.source_package}</strong>.jl / ${frame.file}`
+                : frame.file
+        const href = frame?.url?.startsWith?.("https") ? frame.url : null
+        return html`<em title=${frame.path}><a class="remote-url" href=${href}>${text}:${frame.line}${href == null ? null : `\xa0⬏`}</a></em>`
     }
 }
 
@@ -99,6 +102,7 @@ const JuliaHighlightedLine = ({ code, frameLine, i }) => {
     useLayoutEffect(() => {
         if (code_ref.current) {
             code_ref.current.innerText = code
+            delete code_ref.current.dataset.highlighted
             highlight(code_ref.current, "julia")
         }
     }, [code_ref.current, code])

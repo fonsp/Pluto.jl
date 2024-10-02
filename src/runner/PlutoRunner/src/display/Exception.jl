@@ -1,4 +1,6 @@
 
+import .BrowserMacrosLite
+
 "Downstream packages can set this to false to obtain unprettified stack traces."
 const PRETTY_STACKTRACES = Ref(true)
 
@@ -14,14 +16,28 @@ end
 
 frame_is_from_usercode(frame::Base.StackTraces.StackFrame) = occursin("#==#", String(frame.file))
 
-function frame_url(frame::Base.StackTraces.StackFrame)
+function method_from_frame(frame::Base.StackTraces.StackFrame)
     if frame.linfo isa Core.MethodInstance
-        Base.url(frame.linfo.def)
+        frame.linfo.def
     elseif frame.linfo isa Method
-        Base.url(frame.linfo)
+        frame.linfo
     else
         nothing
     end
+end
+
+function source_package(frame::Base.StackTraces.StackFrame)
+    if frame.linfo isa Core.MethodInstance
+        frame.linfo.def
+    elseif frame.linfo isa Method
+        frame.linfo
+    else
+        nothing
+    end |> source_package
+end
+
+function source_package(x)
+    BrowserMacrosLite.rootmodule(x)
 end
 
 function format_output(val::CapturedException; context=default_iocontext)
@@ -49,6 +65,19 @@ function format_output(val::CapturedException; context=default_iocontext)
         stack_relevant = stack[1:something(limit, end)]
 
         pretty = map(stack_relevant) do s
+            method = method_from_frame(s)
+            
+            local url = local repo_url = local repo_type = local sp = nothing
+            if method isa Method
+                try
+                    url = BrowserMacrosLite.method_url(method)
+                    repo_url = BrowserMacrosLite._repo_url(url)
+                    repo_type = BrowserMacrosLite.repotype(method)
+                    sp = source_package(method)
+                catch e
+                end
+            end
+
             Dict(
                 :call => pretty_stackcall(s, s.linfo),
                 :inlined => s.inlined,
@@ -56,8 +85,11 @@ function format_output(val::CapturedException; context=default_iocontext)
                 :file => basename(String(s.file)),
                 :path => String(s.file),
                 :line => s.line,
-                :url => frame_url(s),
                 :linfo_type => string(typeof(s.linfo)),
+                :url => url,
+                :repo_url => repo_url,
+                :source_package => string(sp),
+                :source_package_type => repo_type,
             )
         end
     else

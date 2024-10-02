@@ -142,8 +142,8 @@
         /* jlerror */
         --jlerror-header-color: #d9baba;
         --jlerror-mark-bg-color: rgb(0 0 0 / 18%);
-        --jlerror-a-bg-color: rgba(82, 58, 58, 1);
-        --jlerror-a-border-left-color: #704141;
+        --jlerror-a-bg-color: hsl(65.82deg 17.14% 27.45%);
+        --jlerror-a-border-left-color: hsl(66 27% 35% / 1);
         --jlerror-mark-color: #b1a9a9;
 
         /* helpbox */
