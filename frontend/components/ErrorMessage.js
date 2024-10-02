@@ -37,17 +37,21 @@ const StackFrameFilename = ({ frame, cell_id }) => {
                 e.preventDefault()
             }}
         >
-            ${frame_cell_id == cell_id ? "This cell" : "Other cell"}: line ${frame.line}
+            ${frame_cell_id == cell_id ? "This\xa0cell" : "Other\xa0cell"}: line ${frame.line}
         </a>`
         return html`<em>${a}</em>`
     } else {
-        return html`<em title=${frame.path}
-            ><a class="remote-url" href=${frame?.url?.startsWith?.("https") ? frame.url : null}>${frame.file}:${frame.line}</a></em
-        >`
+        const sp = frame.source_package
+        const origin = ["Main", "Core", "Base"].includes(sp) ? "julia" : sp
+
+        const text = sp != null ? html`<strong>${origin}</strong> → ${frame.file}` : frame.file
+
+        const href = frame?.url?.startsWith?.("https") ? frame.url : null
+        return html`<em title=${frame.path}><a class="remote-url" href=${href}>${text}:${frame.line}</a></em>`
     }
 }
 
-const at = html`<span> @ </span>`
+const at = html`<span> from </span>`
 
 const ignore_funccall = (frame) => frame.call === "top-level scope"
 const ignore_location = (frame) => frame.file === "none"
@@ -59,10 +63,29 @@ const Funccall = ({ frame }) => {
 
     let inner =
         bracket_index != -1
-            ? html`<strong>${frame.call.substr(0, bracket_index)}</strong>${frame.call.substr(bracket_index)}`
+            ? html`<strong>${frame.call.substr(0, bracket_index)}</strong><${ClickToExpandIfLong} text=${frame.call.substr(bracket_index)} />`
             : html`<strong>${frame.call}</strong>`
 
     return html`<mark>${inner}</mark>${at}`
+}
+
+const ClickToExpandIfLong = ({ text }) => {
+    let [expanded, set_expanded] = useState(false)
+
+    useEffect(() => {
+        set_expanded(false)
+    }, [text])
+
+    const collaped_text = html`${text.slice(0, 250)}<a
+            href="#"
+            onClick=${(e) => {
+                e.preventDefault()
+                set_expanded(true)
+            }}
+            >...more...</a
+        >${text.slice(-1)}`
+
+    return html`<span> ${expanded ? text : text.length < 300 ? text : collaped_text} </span>`
 }
 
 const LinePreview = ({ frame, num_context_lines = 2 }) => {
@@ -99,6 +122,7 @@ const JuliaHighlightedLine = ({ code, frameLine, i }) => {
     useLayoutEffect(() => {
         if (code_ref.current) {
             code_ref.current.innerText = code
+            delete code_ref.current.dataset.highlighted
             highlight(code_ref.current, "julia")
         }
     }, [code_ref.current, code])
