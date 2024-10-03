@@ -1,6 +1,6 @@
 import { cl } from "../common/ClassTable.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
-import { html, useContext, useEffect, useLayoutEffect, useRef, useState } from "../imports/Preact.js"
+import { html, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "../imports/Preact.js"
 import { highlight } from "./CellOutput.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
 import _ from "../imports/lodash.js"
@@ -205,10 +205,7 @@ export const ParseError = ({ cell_id, diagnostics }) => {
                             >
                                 <div class="classical-frame">
                                     ${message}
-                                    <div class="frame-source">
-                                        ${at}
-                                        <${StackFrameFilename} frame=${{ file: "#==#" + cell_id, line }} cell_id=${cell_id} />
-                                    </div>
+                                    <div class="frame-source">${at}<${StackFrameFilename} frame=${{ file: "#==#" + cell_id, line }} cell_id=${cell_id} /></div>
                                 </div>
                             </li>`
                     )}
@@ -423,6 +420,11 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
     )
 
     return html`<jlerror>
+        <div class="error-header">
+            <secret-h1>Error message</secret-h1>
+            <!-- <p>This message was included with the error:</p> -->
+        </div>
+
         <header>${matched_rewriter.display(msg)}</header>
         ${stacktrace.length == 0 || !(matched_rewriter.show_stacktrace?.() ?? true)
             ? null
@@ -443,8 +445,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                               <div class="classical-frame">
                                   <${Funccall} frame=${frame} />
                                   <div class="frame-source">
-                                      ${at}
-                                      <${StackFrameFilename} frame=${frame} cell_id=${cell_id} />
+                                      ${at}<${StackFrameFilename} frame=${frame} cell_id=${cell_id} />
                                       <${DocLink} frame=${frame} />
                                   </div>
                               </div>
@@ -465,7 +466,39 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                           : null}
                   </ol>
               </section>`}
+        <${Motivation} stacktrace=${stacktrace} />
     </jlerror>`
+}
+
+const motivational_words = [
+    //
+    "Don't panic!",
+    "Keep calm, you got this!",
+    "Silly computer!",
+    "Silly computer!",
+    "Probably not your fault!",
+    "Try asking on Julia Discourse!",
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+]
+
+const Motivation = ({ stacktrace }) => {
+    const msg = useMemo(() => {
+        return motivational_words[Math.floor(Math.random() * motivational_words.length)]
+    }, [stacktrace])
+
+    return msg == null ? null : html`<div class="dont-panic">${msg}</div>`
 }
 
 const get_erred_upstreams = (
