@@ -28,15 +28,17 @@ const focus_line = (cell_id, line) =>
 const DocLink = ({ frame }) => {
     let pluto_actions = useContext(PlutoActionsContext)
 
+    if (extract_cell_id(frame.file)) return null
     if (frame.parent_module == null) return null
     if (ignore_funccall(frame)) return null
 
-    const nb = pluto_actions.get_notebook()
+    const funcname = frame.call.split("(")[0]
+    if (funcname === "") return null
 
+    const nb = pluto_actions.get_notebook()
     const pkg_name = frame.source_package
     const builtin = ["Main", "Core", "Base"].includes(pkg_name)
     const installed = nb?.nbpkg?.installed_versions?.[frame.source_package] != null
-
     if (!builtin && nb?.nbpkg != null && !installed) return null
 
     return html`  <span
@@ -46,7 +48,7 @@ const DocLink = ({ frame }) => {
                 onClick=${(e) => {
                     e.preventDefault()
                     open_bottom_right_panel("docs")
-                    pluto_actions.set_doc_query(`${frame.parent_module}.${frame.call.split("(")[0]}`)
+                    pluto_actions.set_doc_query(`${frame.parent_module}.${funcname}`)
                 }}
                 >docs</a
             ></span
