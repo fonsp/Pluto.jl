@@ -296,6 +296,10 @@ jlerror > section > ol > li {
 jlerror > section > ol > li:not(.important):not(:hover) {
     opacity: 0.5;
 }
+
+jlerror > section > ol > li:not(.important)::marker {
+    font-weight: 100;
+}
 jlerror > section > ol > li.from_this_notebook {
     --bg: var(--jl-info-acccolor);
     background: var(--bg);

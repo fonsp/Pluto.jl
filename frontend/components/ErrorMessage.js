@@ -224,6 +224,11 @@ const frame_is_important_heuristic = (frame, frame_index, limited_stacktrace, fr
         return false
     }
 
+    if (funcname.includes("throw")) return false
+
+    // too sciency
+    if (frame.inlined) return false
+
     if (params == null) {
         // no type signature... must be some function call that got optimized away or something special
         // probably not directly relevant
@@ -419,9 +424,11 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
         (frame) => !(ignore_location(frame) && ignore_funccall(frame))
     )
 
+    const first_package = get_first_package(limited_stacktrace)
+
     return html`<jlerror>
         <div class="error-header">
-            <secret-h1>Error message</secret-h1>
+            <secret-h1>Error message${first_package == null ? null : ` from ${first_package}`}</secret-h1>
             <!-- <p>This message was included with the error:</p> -->
         </div>
 
@@ -470,6 +477,16 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
     </jlerror>`
 }
 
+const get_first_package = (limited_stacktrace) => {
+    for (let [i, frame] of limited_stacktrace.entries()) {
+        const frame_cell_id = extract_cell_id(frame.file)
+        if (frame_cell_id) return undefined
+
+        const important = frame_is_important_heuristic(frame, i, limited_stacktrace, frame_cell_id)
+        if (!important) continue
+
+        if (frame.source_package) return frame.source_package
+    }
 const motivational_words = [
     //
     "Don't panic!",
