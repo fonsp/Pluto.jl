@@ -489,6 +489,9 @@ const motivational_words = [
     "¯\\_(ツ)_/¯",
     "Oh no! 🙀",
     "this suckz 💣",
+    "Be patient :)",
+    // Errors horen erbij
+    // Ook de pros krijgen errors
     ...Array(30).fill(null),
 ]
 
