@@ -473,6 +473,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                           : null}
                   </ol>
               </section>`}
+        <${Motivation} stacktrace=${stacktrace} />
     </jlerror>`
 }
 
@@ -486,6 +487,46 @@ const get_first_package = (limited_stacktrace) => {
 
         if (frame.source_package) return frame.source_package
     }
+const motivational_words = [
+    //
+    "Don't panic!",
+    "Keep calm, you got this!",
+    "You got this!",
+    "Silly computer!",
+    "Silly computer!",
+    "beep boop CRASH 🤖",
+    "computer bad, you GREAT!",
+    "Probably not your fault!",
+    "Try asking on Julia Discourse!",
+    "uhmmmmmm??!",
+    "Maybe time for a break? ☕️",
+    "Everything is going to be okay!",
+    "Computers are hard!",
+    "C'est la vie !",
+    "¯\\_(ツ)_/¯",
+    "Oh no! 🙀",
+    "this suckz 💣",
+    "Be patient :)",
+    // Errors horen erbij
+    // Ook de pros krijgen errors
+    ...Array(30).fill(null),
+]
+
+const Motivation = ({ stacktrace }) => {
+    const msg = useMemo(() => {
+        return motivational_words[Math.floor(Math.random() * motivational_words.length)]
+    }, [stacktrace])
+
+    return msg == null
+        ? null
+        : html`<div
+              class="dont-panic"
+              onClick=${(e) => {
+                  window.open("https://discourse.julialang.org/", "_blank")?.focus()
+              }}
+          >
+              ${msg}
+          </div>`
 }
 
 const get_erred_upstreams = (
