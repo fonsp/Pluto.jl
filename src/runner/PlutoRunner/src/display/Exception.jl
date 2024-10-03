@@ -14,15 +14,26 @@ end
 
 frame_is_from_usercode(frame::Base.StackTraces.StackFrame) = occursin("#==#", String(frame.file))
 
-function frame_url(frame::Base.StackTraces.StackFrame)
+function method_from_frame(frame::Base.StackTraces.StackFrame)
     if frame.linfo isa Core.MethodInstance
-        Base.url(frame.linfo.def)
+        frame.linfo.def
     elseif frame.linfo isa Method
-        Base.url(frame.linfo)
+        frame.linfo
     else
         nothing
     end
 end
+
+frame_url(m::Method) = Base.url(m)
+frame_url(::Any) = nothing
+
+function source_package(m::Union{Method,Module})
+    @static if VERSION >= v"1.9"
+        next = parentmodule(m)
+        next === m ? m : source_package(next)
+    end
+end
+source_package(::Any) = nothing
 
 function format_output(val::CapturedException; context=default_iocontext)
     if has_julia_syntax && val.ex isa PrettySyntaxError
@@ -49,6 +60,9 @@ function format_output(val::CapturedException; context=default_iocontext)
         stack_relevant = stack[1:something(limit, end)]
 
         pretty = map(stack_relevant) do s
+            method = method_from_frame(s)
+            sp = source_package(method)
+
             Dict(
                 :call => pretty_stackcall(s, s.linfo),
                 :inlined => s.inlined,
@@ -56,8 +70,9 @@ function format_output(val::CapturedException; context=default_iocontext)
                 :file => basename(String(s.file)),
                 :path => String(s.file),
                 :line => s.line,
-                :url => frame_url(s),
                 :linfo_type => string(typeof(s.linfo)),
+                :url => frame_url(method),
+                :source_package => sp === nothing ? nothing : string(sp),
             )
         end
     else

@@ -299,13 +299,19 @@ jlerror > section .classical-frame > mark {
     font-family: var(--julia-mono-font-stack);
     font-variant-ligatures: none;
 }
-jlerror > section .classical-frame > em > a[href] {
+jlerror > section .classical-frame > mark > strong {
+    color: var(--black);
+}
+jlerror > section .classical-frame > em > a {
     background: var(--jlerror-a-bg-color);
     border-radius: 4px;
     padding: 1px 7px;
     text-decoration: none;
     border-left: 3px solid var(--jlerror-a-border-left-color);
     /* font-family: var(--system-ui-font-stack); */
+}
+jlerror > section .classical-frame > em > a:not([href]) {
+    filter: grayscale(1);
 }
 jlerror > section .classical-frame > em > a[href].remote-url {
     filter: hue-rotate(160deg);
