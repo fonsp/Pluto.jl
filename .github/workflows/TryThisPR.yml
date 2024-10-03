@@ -9,15 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/github-script@v5
+      - uses: nefrob/pr-description@v1.1.2
         with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `
+            content: |
+              
               ## Try this Pull Request!
               Open Julia and type:
               \`\`\`jl
@@ -26,5 +21,5 @@ jobs:
               julia> Pkg.add(url="${context.payload.pull_request.head.repo.html_url}", rev="${context.payload.pull_request.head.ref}")
               julia> using ${context.payload.repository.name.replace(/\.jl$/,"")}
               \`\`\`
-              `
-            })
+            regex: "jkhsdkjhasdfkjhawkejfbawkehfkajshdfkjahsdf"
+            token: ${{ secrets.GITHUB_TOKEN }}
