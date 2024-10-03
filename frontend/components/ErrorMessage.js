@@ -499,7 +499,7 @@ const Motivation = ({ stacktrace }) => {
     const msg = useMemo(() => {
         return motivational_words[Math.floor(Math.random() * motivational_words.length)]
     }, [stacktrace])
-
+    sdf
     return msg == null
         ? null
         : html`<div
