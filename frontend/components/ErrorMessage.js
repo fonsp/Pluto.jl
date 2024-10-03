@@ -1,6 +1,6 @@
 import { cl } from "../common/ClassTable.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
-import { html, useContext, useEffect, useLayoutEffect, useRef, useState } from "../imports/Preact.js"
+import { html, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "../imports/Preact.js"
 import { highlight } from "./CellOutput.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
 import _ from "../imports/lodash.js"
@@ -205,10 +205,7 @@ export const ParseError = ({ cell_id, diagnostics }) => {
                             >
                                 <div class="classical-frame">
                                     ${message}
-                                    <div class="frame-source">
-                                        ${at}
-                                        <${StackFrameFilename} frame=${{ file: "#==#" + cell_id, line }} cell_id=${cell_id} />
-                                    </div>
+                                    <div class="frame-source">${at}<${StackFrameFilename} frame=${{ file: "#==#" + cell_id, line }} cell_id=${cell_id} /></div>
                                 </div>
                             </li>`
                     )}
@@ -226,6 +223,11 @@ const frame_is_important_heuristic = (frame, frame_index, limited_stacktrace, fr
     if (["_collect", "collect_similar", "iterate", "error", "macro expansion"].includes(funcname)) {
         return false
     }
+
+    if (funcname.includes("throw")) return false
+
+    // too sciency
+    if (frame.inlined) return false
 
     if (params == null) {
         // no type signature... must be some function call that got optimized away or something special
@@ -422,7 +424,14 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
         (frame) => !(ignore_location(frame) && ignore_funccall(frame))
     )
 
+    const first_package = get_first_package(limited_stacktrace)
+
     return html`<jlerror>
+        <div class="error-header">
+            <secret-h1>Error message${first_package == null ? null : ` from ${first_package}`}</secret-h1>
+            <!-- <p>This message was included with the error:</p> -->
+        </div>
+
         <header>${matched_rewriter.display(msg)}</header>
         ${stacktrace.length == 0 || !(matched_rewriter.show_stacktrace?.() ?? true)
             ? null
@@ -443,8 +452,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                               <div class="classical-frame">
                                   <${Funccall} frame=${frame} />
                                   <div class="frame-source">
-                                      ${at}
-                                      <${StackFrameFilename} frame=${frame} cell_id=${cell_id} />
+                                      ${at}<${StackFrameFilename} frame=${frame} cell_id=${cell_id} />
                                       <${DocLink} frame=${frame} />
                                   </div>
                               </div>
@@ -466,6 +474,18 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                   </ol>
               </section>`}
     </jlerror>`
+}
+
+const get_first_package = (limited_stacktrace) => {
+    for (let [i, frame] of limited_stacktrace.entries()) {
+        const frame_cell_id = extract_cell_id(frame.file)
+        if (frame_cell_id) return undefined
+
+        const important = frame_is_important_heuristic(frame, i, limited_stacktrace, frame_cell_id)
+        if (!important) continue
+
+        if (frame.source_package) return frame.source_package
+    }
 }
 
 const get_erred_upstreams = (
