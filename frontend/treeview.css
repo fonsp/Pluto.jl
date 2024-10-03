@@ -267,10 +267,14 @@ jlerror > header > p {
 jlerror > header > p:first-child {
     font-weight: bold;
 }
-jlerror .stacktrace-header {
+jlerror .stacktrace-header,
+jlerror .error-header {
     font-family: var(--system-ui-font-stack);
 }
-jlerror .stacktrace-header > secret-h1 {
+jlerror .error-header {
+    margin-block-end: 1em;
+}
+jlerror secret-h1 {
     font-size: 1.9rem;
     font-weight: 700;
 }
@@ -336,6 +340,9 @@ jlerror > section .frame-source > span {
     opacity: 0.4;
     padding: 0px 0.2em;
 }
+jlerror > section .doclink {
+    user-select: none;
+}
 
 jlerror li::marker {
     background: red;
@@ -399,6 +406,24 @@ jlerror li .frame-line-preview pre > code:first-of-type:not(.frame-line) {
 }
 jlerror li .frame-line-preview pre > code:last-of-type:not(.frame-line) {
     margin-bottom: var(--crop);
+}
+
+jlerror .dont-panic {
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 0.5em;
+    background: var(--pluto-logs-debug-color);
+    color: var(--black);
+    border-radius: 0.2em;
+    font-family: var(--system-ui-font-stack);
+    font-size: 1.2rem;
+    font-weight: 700;
+    transform: rotate(6deg);
+}
+
+body.disable_ui jlerror .dont-panic {
+    display: none;
 }
 
 table.pluto-table {
