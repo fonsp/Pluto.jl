@@ -480,7 +480,7 @@ const get_erred_upstreams = (
         referenced_variables.forEach((key) => {
             if (!visited_edges.includes(key)) {
                 visited_edges.push(key)
-                const cells_that_define_this_variable = notebook.cell_dependencies[cell_id]?.upstream_cells_map[key]
+                const cells_that_define_this_variable = notebook.cell_dependencies[cell_id]?.upstrsdfeam_cells_map[key]
 
                 cells_that_define_this_variable.forEach((upstream_cell_id) => {
                     let upstream_errored_cells = get_erred_upstreams(notebook, upstream_cell_id, visited_edges) ?? {}
