@@ -285,11 +285,18 @@ jlerror > section > ol {
     /* transform-origin: top; */
     /* perspective-origin: top; */
 }
+jlerror > section > ol > li {
+    margin-block-end: 1em;
+}
+
+jlerror > section > ol > li:not(.important):not(:hover) {
+    opacity: 0.5;
+}
 jlerror > section > ol > li.from_this_notebook {
     --bg: var(--jl-info-acccolor);
     background: var(--bg);
     outline: 3px solid var(--bg);
-    padding: 0.4em 0.2em;
+    padding: 0.4em 0em;
     border-radius: 0.6em;
 }
 jlerror > section .classical-frame > mark {
@@ -302,7 +309,13 @@ jlerror > section .classical-frame > mark {
 jlerror > section .classical-frame > mark > strong {
     color: var(--black);
 }
-jlerror > section .classical-frame > em > a {
+jlerror > section .frame-source {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    /* justify-content: flex-end; */
+}
+jlerror > section .frame-source > a {
     background: var(--jlerror-a-bg-color);
     border-radius: 4px;
     padding: 1px 7px;
@@ -310,16 +323,16 @@ jlerror > section .classical-frame > em > a {
     border-left: 3px solid var(--jlerror-a-border-left-color);
     /* font-family: var(--system-ui-font-stack); */
 }
-jlerror > section .classical-frame > em > a:not([href]) {
+jlerror > section .frame-source > a:not([href]) {
     filter: grayscale(1);
 }
-jlerror > section .classical-frame > em > a[href].remote-url {
+jlerror > section .frame-source > a[href].remote-url {
     filter: hue-rotate(160deg);
 }
-jlerror > section li.from_this_notebook:not(.from_this_cell) .classical-frame > em > a[href] {
+jlerror > section li.from_this_notebook:not(.from_this_cell) .frame-source > a[href] {
     filter: hue-rotate(50deg);
 }
-jlerror > section .classical-frame > span {
+jlerror > section .frame-source > span {
     opacity: 0.4;
     padding: 0px 0.2em;
 }

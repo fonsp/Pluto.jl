@@ -4,6 +4,7 @@ import { html, useContext, useEffect, useLayoutEffect, useRef, useState } from "
 import { highlight } from "./CellOutput.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
 import _ from "../imports/lodash.js"
+import { open_bottom_right_panel } from "./BottomRightPanel.js"
 
 const extract_cell_id = (/** @type {string} */ file) => {
     const sep_index = file.indexOf("#==#")
@@ -24,12 +25,40 @@ const focus_line = (cell_id, line) =>
         })
     )
 
+const DocLink = ({ frame }) => {
+    let pluto_actions = useContext(PlutoActionsContext)
+
+    if (frame.parent_module == null) return null
+    if (ignore_funccall(frame)) return null
+
+    const nb = pluto_actions.get_notebook()
+
+    const pkg_name = frame.source_package
+    const builtin = ["Main", "Core", "Base"].includes(pkg_name)
+    const installed = nb?.nbpkg?.installed_versions?.[frame.source_package] != null
+
+    if (!builtin && nb?.nbpkg != null && !installed) return null
+
+    return html`  <span
+            ><a
+                href="#"
+                class="doclink"
+                onClick=${(e) => {
+                    e.preventDefault()
+                    open_bottom_right_panel("docs")
+                    pluto_actions.set_doc_query(`${frame.parent_module}.${frame.call.split("(")[0]}`)
+                }}
+                >docs</a
+            ></span
+        >`
+}
+
 const StackFrameFilename = ({ frame, cell_id }) => {
     if (ignore_location(frame)) return null
 
     const frame_cell_id = extract_cell_id(frame.file)
     if (frame_cell_id != null) {
-        const a = html`<a
+        return html`<a
             internal-file=${frame.file}
             href=${`#${frame_cell_id}`}
             onclick=${(e) => {
@@ -37,17 +66,18 @@ const StackFrameFilename = ({ frame, cell_id }) => {
                 e.preventDefault()
             }}
         >
-            ${frame_cell_id == cell_id ? "This\xa0cell" : "Other\xa0cell"}: line ${frame.line}
+            ${frame_cell_id == cell_id ? "This\xa0cell" : "Other\xa0cell"}: <em>line ${frame.line}</em>
         </a>`
-        return html`<em>${a}</em>`
     } else {
         const sp = frame.source_package
         const origin = ["Main", "Core", "Base"].includes(sp) ? "julia" : sp
 
-        const text = sp != null ? html`<strong>${origin}</strong> → ${frame.file}` : frame.file
+        const file_line = html`<em>${frame.file}:${frame.line}</em>`
+
+        const text = sp != null ? html`<strong>${origin}</strong> → ${file_line}` : file_line
 
         const href = frame?.url?.startsWith?.("https") ? frame.url : null
-        return html`<em title=${frame.path}><a class="remote-url" href=${href}>${text}:${frame.line}</a></em>`
+        return html`<a title=${frame.path} class="remote-url" href=${href}>${text}</a>`
     }
 }
 
@@ -66,8 +96,11 @@ const Funccall = ({ frame }) => {
             ? html`<strong>${frame.call.substr(0, bracket_index)}</strong><${ClickToExpandIfLong} text=${frame.call.substr(bracket_index)} />`
             : html`<strong>${frame.call}</strong>`
 
-    return html`<mark>${inner}</mark>${at}`
+    return html`<mark>${inner}</mark>`
 }
+
+const LIMIT_LONG = 200,
+    LIMIT_PREVIEW = 100
 
 const ClickToExpandIfLong = ({ text }) => {
     let [expanded, set_expanded] = useState(false)
@@ -76,16 +109,16 @@ const ClickToExpandIfLong = ({ text }) => {
         set_expanded(false)
     }, [text])
 
-    const collaped_text = html`${text.slice(0, 250)}<a
+    const collaped_text = html`${text.slice(0, LIMIT_PREVIEW)}<a
             href="#"
             onClick=${(e) => {
                 e.preventDefault()
                 set_expanded(true)
             }}
-            >...more...</a
+            >...Show more...</a
         >${text.slice(-1)}`
 
-    return html`<span> ${expanded ? text : text.length < 300 ? text : collaped_text} </span>`
+    return html`<span>${expanded ? text : text.length < LIMIT_LONG ? text : collaped_text}</span>`
 }
 
 const LinePreview = ({ frame, num_context_lines = 2 }) => {
@@ -161,7 +194,7 @@ export const ParseError = ({ cell_id, diagnostics }) => {
                     ${diagnostics.map(
                         ({ message, from, to, line }) =>
                             html`<li
-                                class="from_this_notebook from_this_cell"
+                                class="from_this_notebook from_this_cell important"
                                 onmouseenter=${() =>
                                     // NOTE: this could be moved move to `StackFrameFilename`
                                     window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from, to } }))}
@@ -169,7 +202,11 @@ export const ParseError = ({ cell_id, diagnostics }) => {
                                     window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from: null, to: null } }))}
                             >
                                 <div class="classical-frame">
-                                    ${message}${at}<${StackFrameFilename} frame=${{ file: "#==#" + cell_id, line }} cell_id=${cell_id} />
+                                    ${message}
+                                    <div class="frame-source">
+                                        ${at}
+                                        <${StackFrameFilename} frame=${{ file: "#==#" + cell_id, line }} cell_id=${cell_id} />
+                                    </div>
                                 </div>
                             </li>`
                     )}
@@ -177,6 +214,29 @@ export const ParseError = ({ cell_id, diagnostics }) => {
             </section>
         </jlerror>
     `
+}
+
+const frame_is_important_heuristic = (frame, frame_index, limited_stacktrace, frame_cell_id) => {
+    if (frame_cell_id != null) return true
+
+    const [funcname, params] = frame.call.split("(", 2)
+
+    if (["_collect", "collect_similar", "iterate", "error", "macro expansion"].includes(funcname)) {
+        return false
+    }
+
+    if (params == null) {
+        // no type signature... must be some function call that got optimized away or something special
+        // probably not directly relevant
+        return false
+    }
+
+    if ((funcname.match(/#/g) ?? "").length >= 2) {
+        // anonymous function: #plot#142
+        return false
+    }
+
+    return true
 }
 
 export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
@@ -371,20 +431,26 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                   </div>
 
                   <ol>
-                      ${limited_stacktrace.map((frame) => {
+                      ${limited_stacktrace.map((frame, frame_index) => {
                           const frame_cell_id = extract_cell_id(frame.file)
                           const from_this_notebook = frame_cell_id != null
                           const from_this_cell = cell_id === frame_cell_id
-                          return html`<li class=${cl({ from_this_notebook, from_this_cell })}>
+                          const important = frame_is_important_heuristic(frame, frame_index, limited_stacktrace, frame_cell_id)
+
+                          return html`<li class=${cl({ from_this_notebook, from_this_cell, important })}>
                               <div class="classical-frame">
                                   <${Funccall} frame=${frame} />
-                                  <${StackFrameFilename} frame=${frame} cell_id=${cell_id} />
+                                  <div class="frame-source">
+                                      ${at}
+                                      <${StackFrameFilename} frame=${frame} cell_id=${cell_id} />
+                                      <${DocLink} frame=${frame} />
+                                  </div>
                               </div>
                               ${from_this_notebook ? html`<${LinePreview} frame=${frame} num_context_lines=${from_this_cell ? 1 : 2} />` : null}
                           </li>`
                       })}
                       ${limited
-                          ? html`<li>
+                          ? html`<li class="important">
                                 <a
                                     href="#"
                                     onClick=${(e) => {

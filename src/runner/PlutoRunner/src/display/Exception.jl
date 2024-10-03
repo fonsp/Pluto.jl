@@ -62,6 +62,7 @@ function format_output(val::CapturedException; context=default_iocontext)
         pretty = map(stack_relevant) do s
             method = method_from_frame(s)
             sp = source_package(method)
+            pm = method isa Method ? parentmodule(method) : nothing
 
             Dict(
                 :call => pretty_stackcall(s, s.linfo),
@@ -73,6 +74,7 @@ function format_output(val::CapturedException; context=default_iocontext)
                 :linfo_type => string(typeof(s.linfo)),
                 :url => frame_url(method),
                 :source_package => sp === nothing ? nothing : string(sp),
+                :parent_module => pm === nothing ? nothing : string(pm),
             )
         end
     else
