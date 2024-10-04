@@ -65,7 +65,7 @@ function format_output(val::CapturedException; context=default_iocontext)
             pm = VERSION >= v"1.9" && method isa Method ? parentmodule(method) : nothing
 
             Dict(
-                :call => pretty_stackcall(s, s.linfo),
+                :call => replace(pretty_stackcall(s, s.linfo), r"Main\.var\"workspace#\d+\"\." => ""),
                 :inlined => s.inlined,
                 :from_c => s.from_c,
                 :file => basename(String(s.file)),
