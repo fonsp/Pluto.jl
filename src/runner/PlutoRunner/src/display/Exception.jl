@@ -127,7 +127,7 @@ end
 "Because even showerror can error... 👀"
 function try_showerror(io::IO, e, args...)
     try
-        showerror(io, e, args...)
+        showerror(IOContext(io, :color => true), e, args...)
     catch show_ex
         print(io, "\nFailed to show error:\n\n")
         try_showerror(io, show_ex, stacktrace(catch_backtrace()))
