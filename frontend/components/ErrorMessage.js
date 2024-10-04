@@ -487,6 +487,8 @@ const get_first_package = (limited_stacktrace) => {
 
         if (frame.source_package) return frame.source_package
     }
+}
+
 const motivational_words = [
     //
     "Don't panic!",
