@@ -5,6 +5,7 @@ import { highlight } from "./CellOutput.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
 import _ from "../imports/lodash.js"
 import { open_bottom_right_panel } from "./BottomRightPanel.js"
+import AnsiUp from "../imports/AnsiUp.js"
 
 const extract_cell_id = (/** @type {string} */ file) => {
     const sep_index = file.indexOf("#==#")
@@ -279,11 +280,22 @@ const frame_is_important_heuristic = (frame, frame_index, limited_stacktrace, fr
     return true
 }
 
+const AnsiUpLine = (/** @type {{value: string}} */ { value }) => {
+    const node_ref = useRef(/** @type {HTMLElement?} */ (null))
+
+    useEffect(() => {
+        if (!node_ref.current) return
+        node_ref.current.innerHTML = new AnsiUp().ansi_to_html(value)
+    }, [node_ref.current, value])
+
+    return value === "" ? html`<p><br /></p>` : html`<p ref=${node_ref}></p>`
+}
+
 export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     const default_rewriter = {
         pattern: /.?/,
-        display: (/** @type{string} */ x) => _.dropRightWhile(x.split("\n"), (s) => s === "").map((line) => html`<p>${line === "" ? html`<br />` : line}</p>`),
+        display: (/** @type{string} */ x) => _.dropRightWhile(x.split("\n"), (s) => s === "").map((line) => html`<${AnsiUpLine} value=${line} />`),
     }
     const rewriters = [
         {
