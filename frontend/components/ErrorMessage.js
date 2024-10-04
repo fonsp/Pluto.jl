@@ -89,38 +89,47 @@ const ignore_funccall = (frame) => frame.call === "top-level scope"
 const ignore_location = (frame) => frame.file === "none"
 
 const Funccall = ({ frame }) => {
-    if (ignore_funccall(frame)) return null
-
-    const bracket_index = frame.call.indexOf("(")
-
-    let inner =
-        bracket_index != -1
-            ? html`<strong>${frame.call.substr(0, bracket_index)}</strong><${ClickToExpandIfLong} text=${frame.call.substr(bracket_index)} />`
-            : html`<strong>${frame.call}</strong>`
-
-    return html`<mark>${inner}</mark>`
-}
-
-const LIMIT_LONG = 200,
-    LIMIT_PREVIEW = 100
-
-const ClickToExpandIfLong = ({ text }) => {
-    let [expanded, set_expanded] = useState(false)
-
+    let [expanded_state, set_expanded] = useState(false)
     useEffect(() => {
         set_expanded(false)
-    }, [text])
+    }, [frame])
 
-    const collaped_text = html`${text.slice(0, LIMIT_PREVIEW)}<a
-            href="#"
-            onClick=${(e) => {
-                e.preventDefault()
-                set_expanded(true)
-            }}
-            >...Show more...</a
-        >${text.slice(-1)}`
+    const silly_to_hide = (frame.call_short.match(/…/g) ?? "").length <= 1 && frame.call.length < frame.call_short.length + 7
 
-    return html`<span>${expanded ? text : text.length < LIMIT_LONG ? text : collaped_text}</span>`
+    const expanded = expanded_state || (frame.call === frame.call_short && frame.func === frame.call.split("(", 2)[0]) || silly_to_hide
+
+    if (ignore_funccall(frame)) return null
+
+    const call = expanded ? frame.call : frame.call_short
+
+    const bracket_index = call.indexOf("(")
+    const funcname = expanded ? call.split("(", 2)[0] : frame.func
+
+    // if function name is #12 or #15#16 then it is an anonymous function
+
+    const funcname_display = funcname.match(/^#\d+(#\d+)?$/)
+        ? html`<abbr title="A (mini-)function that is defined without the 'function' keyword, but using -> or 'do'.">anonymous function</abbr>`
+        : funcname
+    console.log(funcname, funcname.match(/^#\d+(#\d+)?$/), funcname_display)
+
+    let inner = bracket_index != -1 ? html`<strong>${funcname_display}</strong>${call.substr(bracket_index)}` : html`<strong>${funcname_display}</strong>`
+
+    const id = useMemo(() => Math.random().toString(36).substring(7), [frame])
+
+    return html`<mark id=${id}>${inner}</mark> ${!expanded
+            ? html`<a
+                  aria-expanded=${expanded}
+                  aria-controls=${id}
+                  title="Display the complete type information of this function call"
+                  role="button"
+                  href="#"
+                  onClick=${(e) => {
+                      e.preventDefault()
+                      set_expanded(true)
+                  }}
+                  >...show types...</a
+              >`
+            : null}`
 }
 
 const LinePreview = ({ frame, num_context_lines = 2 }) => {
