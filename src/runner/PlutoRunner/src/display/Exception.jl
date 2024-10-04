@@ -60,12 +60,16 @@ function format_output(val::CapturedException; context=default_iocontext)
         stack_relevant = stack[1:something(limit, end)]
 
         pretty = map(stack_relevant) do s
+            func = s.func === nothing ? nothing : s.func isa Symbol ? String(s.func) : repr(s.func)
             method = method_from_frame(s)
             sp = source_package(method)
             pm = VERSION >= v"1.9" && method isa Method ? parentmodule(method) : nothing
+            call = replace(pretty_stackcall(s, s.linfo), r"Main\.var\"workspace#\d+\"\." => "")
 
             Dict(
-                :call => replace(pretty_stackcall(s, s.linfo), r"Main\.var\"workspace#\d+\"\." => ""),
+                :call => call,
+                :call_short => type_depth_limit(call, 0),
+                :func => func,
                 :inlined => s.inlined,
                 :from_c => s.from_c,
                 :file => basename(String(s.file)),
@@ -121,6 +125,16 @@ end
 
 function pretty_stackcall(frame::Base.StackFrame, linfo::Module)
     sprint(Base.show, linfo)
+end
+
+
+function type_depth_limit(call::String, n::Int)
+    !occursin("{" , call) && return call
+    @static if isdefined(Base, :type_depth_limit) && hasmethod(Base.type_depth_limit, Tuple{String, Int})
+        Base.type_depth_limit(call, n)
+    else
+        call
+    end
 end
 
 

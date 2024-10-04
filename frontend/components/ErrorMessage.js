@@ -32,7 +32,7 @@ const DocLink = ({ frame }) => {
     if (frame.parent_module == null) return null
     if (ignore_funccall(frame)) return null
 
-    const funcname = frame.call.split("(")[0]
+    const funcname = frame.func
     if (funcname === "") return null
 
     const nb = pluto_actions.get_notebook()
@@ -88,39 +88,62 @@ const at = html`<span> from </span>`
 const ignore_funccall = (frame) => frame.call === "top-level scope"
 const ignore_location = (frame) => frame.file === "none"
 
-const Funccall = ({ frame }) => {
-    if (ignore_funccall(frame)) return null
-
-    const bracket_index = frame.call.indexOf("(")
-
-    let inner =
-        bracket_index != -1
-            ? html`<strong>${frame.call.substr(0, bracket_index)}</strong><${ClickToExpandIfLong} text=${frame.call.substr(bracket_index)} />`
-            : html`<strong>${frame.call}</strong>`
-
-    return html`<mark>${inner}</mark>`
+const funcname_args = (call) => {
+    const anon_match = call.indexOf(")(")
+    if (anon_match != -1) {
+        return [call.substring(0, anon_match + 1), call.substring(anon_match + 1)]
+    } else {
+        const bracket_index = call.indexOf("(")
+        if (bracket_index != -1) {
+            return [call.substring(0, bracket_index), call.substring(bracket_index)]
+        } else {
+            return [call, ""]
+        }
+    }
 }
 
-const LIMIT_LONG = 200,
-    LIMIT_PREVIEW = 100
-
-const ClickToExpandIfLong = ({ text }) => {
-    let [expanded, set_expanded] = useState(false)
-
+const Funccall = ({ frame }) => {
+    let [expanded_state, set_expanded] = useState(false)
     useEffect(() => {
         set_expanded(false)
-    }, [text])
+    }, [frame])
 
-    const collaped_text = html`${text.slice(0, LIMIT_PREVIEW)}<a
-            href="#"
-            onClick=${(e) => {
-                e.preventDefault()
-                set_expanded(true)
-            }}
-            >...Show more...</a
-        >${text.slice(-1)}`
+    const silly_to_hide = (frame.call_short.match(/…/g) ?? "").length <= 1 && frame.call.length < frame.call_short.length + 7
 
-    return html`<span>${expanded ? text : text.length < LIMIT_LONG ? text : collaped_text}</span>`
+    const expanded = expanded_state || (frame.call === frame.call_short && frame.func === funcname_args(frame.call)[0]) || silly_to_hide
+
+    if (ignore_funccall(frame)) return null
+
+    const call = expanded ? frame.call : frame.call_short
+
+    const call_funcname_args = funcname_args(call)
+    const funcname = expanded ? call_funcname_args[0] : frame.func
+
+    // if function name is #12 or #15#16 then it is an anonymous function
+
+    const funcname_display = funcname.match(/^#\d+(#\d+)?$/)
+        ? html`<abbr title="A (mini-)function that is defined without the 'function' keyword, but using -> or 'do'.">anonymous function</abbr>`
+        : funcname
+    console.log(funcname, funcname.match(/^#\d+(#\d+)?$/), funcname_display)
+
+    let inner = html`<strong>${funcname_display}</strong><${HighlightCallArgumentNames} code=${call_funcname_args[1]} />`
+
+    const id = useMemo(() => Math.random().toString(36).substring(7), [frame])
+
+    return html`<mark id=${id}>${inner}</mark> ${!expanded
+            ? html`<a
+                  aria-expanded=${expanded}
+                  aria-controls=${id}
+                  title="Display the complete type information of this function call"
+                  role="button"
+                  href="#"
+                  onClick=${(e) => {
+                      e.preventDefault()
+                      set_expanded(true)
+                  }}
+                  >...show types...</a
+              >`
+            : null}`
 }
 
 const LinePreview = ({ frame, num_context_lines = 2 }) => {
@@ -172,6 +195,19 @@ const JuliaHighlightedLine = ({ code, frameLine, i }) => {
     ></code>`
 }
 
+const HighlightCallArgumentNames = ({ code }) => {
+    const code_ref = useRef(/** @type {HTMLPreElement?} */ (null))
+    useLayoutEffect(() => {
+        if (code_ref.current) {
+            const html = code.replaceAll(/([^():{},; ]*)::/g, "<span class='argument_name'>$1</span>::")
+
+            code_ref.current.innerHTML = html
+        }
+    }, [code_ref.current, code])
+
+    return html`<s-span ref=${code_ref} class="language-julia"></s-span>`
+}
+
 const insert_commas_and_and = (/** @type {any[]} */ xs) => xs.flatMap((x, i) => (i === xs.length - 1 ? [x] : i === xs.length - 2 ? [x, " and "] : [x, ", "]))
 
 export const ParseError = ({ cell_id, diagnostics }) => {
@@ -218,7 +254,7 @@ export const ParseError = ({ cell_id, diagnostics }) => {
 const frame_is_important_heuristic = (frame, frame_index, limited_stacktrace, frame_cell_id) => {
     if (frame_cell_id != null) return true
 
-    const [funcname, params] = frame.call.split("(", 2)
+    const [funcname, params] = funcname_args(frame.call)
 
     if (["_collect", "collect_similar", "iterate", "error", "macro expansion"].includes(funcname)) {
         return false

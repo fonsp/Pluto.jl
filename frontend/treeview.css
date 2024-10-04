@@ -317,6 +317,14 @@ jlerror > section .classical-frame > mark {
 jlerror > section .classical-frame > mark > strong {
     color: var(--black);
 }
+jlerror > section .classical-frame s-span {
+    /* color: var(--cm-color-type); */
+}
+jlerror > section .classical-frame s-span .argument_name {
+    color: var(--jlerror-mark-color);
+    color: var(--cm-color-var);
+    color: var(--cm-color-type);
+}
 jlerror > section .frame-source {
     display: flex;
     flex-direction: row;
