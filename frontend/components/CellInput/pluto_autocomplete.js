@@ -404,7 +404,10 @@ const apply_completion = (view, completion, from, to) => {
         }
     }
 
-    view.dispatch({ changes: { from, to, insert }, annotations: autocomplete.pickedCompletion.of(completion) })
+    view.dispatch({
+        ...autocomplete.insertCompletionText(view.state, insert, from, to),
+        annotations: autocomplete.pickedCompletion.of(completion),
+    })
 }
 
 const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} */ request_special_symbols) => {
