@@ -581,6 +581,12 @@ function update_nbpkg_core(
                     phasemessage(iolistener, "Updating packages")
                     # We temporarily clear the "semver-compatible" [deps] entries, because it is difficult to update them after the update 🙈. TODO
                     PkgCompat.clear_auto_compat_entries!(notebook.nbpkg_ctx)
+		
+		    @static isdefined(Pkg, :upgrade_manifest) && try
+                        Pkg.upgrade_manifest()
+                    catch
+                    end
+
 
                     try
                         ###
