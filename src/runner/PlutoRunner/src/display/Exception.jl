@@ -34,7 +34,7 @@ end
 source_package(::Any) = nothing
 
 function format_output(val::CapturedException; context=default_iocontext)
-    if has_julia_syntax && val.ex isa PrettySyntaxError
+    if val.ex isa PrettySyntaxError
         dict = convert_parse_error_to_dict(val.ex.ex.detail)
         return dict, MIME"application/vnd.pluto.parseerror+object"()
     end

@@ -7,7 +7,7 @@ import LoggingExtras
 import .Configuration: CompilerOptions, _merge_notebook_compiler_options, _convert_to_flags
 
 const tiers = unique((
-    PkgCompat.PRESERVE_ALL_INSTALLED,
+    Pkg.PRESERVE_ALL_INSTALLED,
 	Pkg.PRESERVE_ALL,
 	Pkg.PRESERVE_DIRECT,
 	Pkg.PRESERVE_SEMVER,
@@ -289,7 +289,7 @@ function sync_nbpkg_core(
                         # changed_versions=Dict{String,Pair}(),
                         restart_recommended=👺 || (
                             (!isempty(to_remove) && old_manifest_keys != new_manifest_keys) ||
-                            used_tier ∉ (Pkg.PRESERVE_ALL, PkgCompat.PRESERVE_ALL_INSTALLED)
+                            used_tier ∉ (Pkg.PRESERVE_ALL, Pkg.PRESERVE_ALL_INSTALLED)
                         ),
                         restart_required=👺 || (
                             used_tier ∈ (Pkg.PRESERVE_SEMVER, Pkg.PRESERVE_NONE)
@@ -303,7 +303,7 @@ function sync_nbpkg_core(
 
     return (
         did_something=👺 || (use_plutopkg_old != use_plutopkg_new),
-        used_tier=PkgCompat.PRESERVE_ALL_INSTALLED,
+        used_tier=Pkg.PRESERVE_ALL_INSTALLED,
         # changed_versions=Dict{String,Pair}(),
         restart_recommended=👺 || false,
         restart_required=👺 || false,
