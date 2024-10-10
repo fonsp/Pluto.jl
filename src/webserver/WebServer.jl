@@ -145,7 +145,7 @@ function run!(session::ServerSession)
         @info "Loading..."
     end
 
-    if VERSION < v"1.6.2"
+    if VERSION < v"1.10.0"
         @warn("\nPluto is running on an old version of Julia ($(VERSION)) that is no longer supported. Visit https://julialang.org/downloads/ for more information about upgrading Julia.")
     end
 
