@@ -606,11 +606,6 @@ function move_vars(
     )
 end
 
-# TODO: delete me
-@deprecate(
-    delete_vars(args...; kwargs...),
-    move_vars(args...; kwargs...)
-)
 
 """
 ```julia
