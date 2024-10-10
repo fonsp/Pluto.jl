@@ -333,17 +333,6 @@ function _registry_entries(package_name::AbstractString, registries::Vector=_par
 	end
 end
 
-# (🐸 "Public API", but using PkgContext)
-function _package_versions_from_path(registry_entry_fullpath::AbstractString)::Vector{VersionNumber}
-	# compat
-    vd = @static if hasmethod(Pkg.Operations.load_versions, (String,))
-        Pkg.Operations.load_versions(registry_entry_fullpath)
-    else
-        Pkg.Operations.load_versions(PkgContext(), registry_entry_fullpath)
-    end
-	vd |> keys |> collect
-end
-
 # ✅ "Public" API using RegistryInstances
 """
 Return all registered versions of the given package. Returns `["stdlib"]` for standard libraries, a `Vector{VersionNumber}` for registered packages, or `["latest"]` if it crashed.
