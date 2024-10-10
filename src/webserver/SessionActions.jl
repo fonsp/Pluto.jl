@@ -213,10 +213,6 @@ end
 
 "Create a new empty notebook inside `session::ServerSession`. Returns the `Notebook`."
 function new(session::ServerSession; run_async=true, notebook_id::UUID=uuid1())
-    if session.options.server.init_with_file_viewer
-        @error "DEPRECATED: init_with_file_viewer has been removed."
-    end
-    
     notebook = if session.options.compiler.sysimage === nothing
         emptynotebook()
     else
