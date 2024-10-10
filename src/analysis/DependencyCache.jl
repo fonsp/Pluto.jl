@@ -13,7 +13,6 @@ function downstream_cells_map(cell::Cell, topology::NotebookTopology)::Dict{Symb
         for sym in defined_symbols
     )
 end
-@deprecate downstream_cells_map(cell::Cell, notebook::Notebook) downstream_cells_map(cell, notebook.topology)
 
 _is_anon_function_name(s::Symbol) = startswith(String(s), "__ExprExpl_anon__")
 
