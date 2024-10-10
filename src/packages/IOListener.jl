@@ -50,10 +50,7 @@ function stoplistening(listener::IOListener)
     end
 end
 
-freeze_loading_spinners(s::AbstractString) = _replaceall(s, '◑' => '◐', '◒' => '◐', '◓' => '◐')
-
-_replaceall(s, p) = replace(s, p)
-_replaceall(s, p, ps...) = @static VERSION >= v"1.7" ? replace(s, p, ps...) : _replaceall(replace(s, p), ps...)
+freeze_loading_spinners(s::AbstractString) = replace(s, '◑' => '◐', '◒' => '◐', '◓' => '◐')
 
 phasemessage(iolistener, phase::String) = phasemessage(iolistener.buffer, phase)
 function phasemessage(io::IO, phase::String)

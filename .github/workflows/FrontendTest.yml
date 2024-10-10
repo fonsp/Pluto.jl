@@ -26,9 +26,9 @@ jobs:
             - uses: actions/checkout@v4
 
             # Makes thes `julia` command available
-            - uses: julia-actions/setup-julia@v1
+            - uses: julia-actions/setup-julia@v2
               with:
-                  version: "1.6" # our lowest supported version
+                  version: "1.10" # our lowest supported version
 
             - name: Install Pluto.jl packages
               run: |

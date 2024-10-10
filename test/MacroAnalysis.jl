@@ -311,7 +311,7 @@ import Memoize: @memoize
         @test notebook.cells[begin] |> noerror
         @test notebook.cells[end].errored
 
-        @test expecterror(UndefVarError(Symbol("@m")), notebook.cells[end]; strict=VERSION >= v"1.7")
+        @test expecterror(UndefVarError(Symbol("@m")), notebook.cells[end]; strict=true)
         cleanup(🍭, notebook)
     end
 
@@ -633,7 +633,7 @@ import Memoize: @memoize
         update_run!(🍭, notebook, cell(2))
 
         @test cell(2).errored == true
-        @test expecterror(UndefVarError(Symbol("@dateformat_str")), cell(2); strict=VERSION >= v"1.7")
+        @test expecterror(UndefVarError(Symbol("@dateformat_str")), cell(2); strict=true)
 
         update_run!(🍭, notebook, notebook.cells)
 
