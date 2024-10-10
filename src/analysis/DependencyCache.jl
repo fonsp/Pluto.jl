@@ -29,7 +29,6 @@ function upstream_cells_map(cell::Cell, topology::NotebookTopology)::Dict{Symbol
         for sym in referenced_symbols
     )
 end
-@deprecate upstream_cells_map(cell::Cell, notebook::Notebook) upstream_cells_map(cell, notebook.topology)
 
 "Fills cell dependency information for display in the GUI"
 function update_dependency_cache!(cell::Cell, topology::NotebookTopology)
