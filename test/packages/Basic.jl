@@ -715,9 +715,7 @@ import Malt
                 # │   cache file:      use_pkgimages = true, debug_level = 1, check_bounds = 1, inline = true, opt_level = 2
                 # └ @ Base loading.jl:2668
                 flip = !match
-                if VERSION >= v"1.9.0-aaa"
-                    🍭.options.compiler.pkgimages = (flip ⊻ Base.JLOptions().use_pkgimages == 1) ? "yes" : "no"
-                end
+                🍭.options.compiler.pkgimages = (flip ⊻ Base.JLOptions().use_pkgimages == 1) ? "yes" : "no"
                 🍭.options.compiler.check_bounds = (flip ⊻ Base.JLOptions().check_bounds == 1) ? "yes" : "no"
                 🍭.options.compiler.inline = (flip ⊻ Base.JLOptions().can_inline == 1) ? "yes" : "no"
                 🍭.options.compiler.optimize = match ? Base.JLOptions().opt_level : 3 - Base.JLOptions().opt_level
@@ -739,11 +737,8 @@ import Malt
             # syncing should have called Pkg.precompile(), which should have generated new precompile caches. 
             # If `match == false`, then this is the second run, and the precompile caches should be different. 
             # These new caches use the same filename (weird...), EXCEPT when the pkgimages flag changed, then you get a new filename.
-            if match == true || VERSION >= v"1.9.0-aaa"
-                @test before_sync != after_sync
-                @test length(before_sync) < length(after_sync)
-            end
-            
+            @test before_sync != after_sync
+            @test length(before_sync) < length(after_sync)
             
             
             # Now actually run the import.
@@ -763,7 +758,7 @@ import Malt
             full_logs = join([log["msg"][1] for log in notebook.cells[1].logs], "\n")
 
             # There should be a log message about loading the cache.
-            VERSION >= v"1.9.0-aaa" && @test occursin(r"Loading.*cache"i, full_logs)
+            @test occursin(r"Loading.*cache"i, full_logs)
             # There should NOT be a log message about rejecting the cache.
             @test !occursin(r"reject.*cache"i, full_logs)
             

@@ -28,10 +28,8 @@ frame_url(m::Method) = Base.url(m)
 frame_url(::Any) = nothing
 
 function source_package(m::Union{Method,Module})
-    @static if VERSION >= v"1.9"
-        next = parentmodule(m)
-        next === m ? m : source_package(next)
-    end
+    next = parentmodule(m)
+    next === m ? m : source_package(next)
 end
 source_package(::Any) = nothing
 
@@ -63,7 +61,7 @@ function format_output(val::CapturedException; context=default_iocontext)
             func = s.func === nothing ? nothing : s.func isa Symbol ? String(s.func) : repr(s.func)
             method = method_from_frame(s)
             sp = source_package(method)
-            pm = VERSION >= v"1.9" && method isa Method ? parentmodule(method) : nothing
+            pm = method isa Method ? parentmodule(method) : nothing
             call = replace(pretty_stackcall(s, s.linfo), r"Main\.var\"workspace#\d+\"\." => "")
 
             Dict(

@@ -1029,29 +1029,20 @@ import Pluto.Configuration: Options, EvaluationOptions
         update_run!(🍭, notebook, notebook.cells)
         @test Pluto.is_just_text(notebook.topology, notebook.cells[1])
         @test Pluto.is_just_text(notebook.topology, notebook.cells[2])
-        @static if VERSION >= v"1.10.0-DEV.1548" # ~JuliaSyntax PR Pluto.jl#2526 julia#46372
-            @test notebook.cells[1].errored
-            @test notebook.cells[2].errored
-            @test notebook.cells[3].errored
+        @test notebook.cells[1].errored
+        @test notebook.cells[2].errored
+        @test notebook.cells[3].errored
 
-            @test haskey(notebook.cells[1].output.body, :source)
-            @test haskey(notebook.cells[1].output.body, :diagnostics)
+        @test haskey(notebook.cells[1].output.body, :source)
+        @test haskey(notebook.cells[1].output.body, :diagnostics)
 
-            @test haskey(notebook.cells[2].output.body, :source)
-            @test haskey(notebook.cells[2].output.body, :diagnostics)
+        @test haskey(notebook.cells[2].output.body, :source)
+        @test haskey(notebook.cells[2].output.body, :diagnostics)
 
-            # not literal syntax error
-            @test haskey(notebook.cells[3].output.body, :msg)
-            @test !haskey(notebook.cells[3].output.body, :source)
-            @test !haskey(notebook.cells[3].output.body, :diagnostics)
-        else
-            @test !occursinerror("(incomplete ", notebook.cells[1])
-            @test !occursinerror("(incomplete ", notebook.cells[2])
-
-            @show notebook.cells[1].output.body
-            @test startswith(notebook.cells[1].output.body[:msg], "syntax:")
-            @test startswith(notebook.cells[2].output.body[:msg], "syntax:")
-        end
+        # not literal syntax error
+        @test haskey(notebook.cells[3].output.body, :msg)
+        @test !haskey(notebook.cells[3].output.body, :source)
+        @test !haskey(notebook.cells[3].output.body, :diagnostics)
     end
 
     @testset "using .LocalModule" begin
