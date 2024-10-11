@@ -1,6 +1,7 @@
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import _ from "../imports/lodash.js"
 import { html, useEffect, useState } from "../imports/Preact.js"
+import { open_icon } from "./Popup.js"
 
 export const nbpkg_fingerprint = (nbpkg) => (nbpkg == null ? [null] : Object.entries(nbpkg).flat())
 
@@ -50,6 +51,8 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
     const nbpkg_waiting_for_permission = nbpkg?.waiting_for_permission ?? false
     const busy = !nbpkg_waiting_for_permission && ((nbpkg?.busy_packages ?? []).includes(package_name) || !(nbpkg?.instantiated ?? true))
 
+    const package_name_pretty = html`<a class="package-name" href=${package_url}><b>${package_name}</b></a> `
+
     if (is_disable_pkg) {
         const f_name = package_name
         status = "disable_pkg"
@@ -59,22 +62,25 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
         if (chosen_version == null || chosen_version === "stdlib") {
             status = "installed"
             hint_raw = `${package_name} is part of Julia's pre-installed 'standard library'.`
-            hint = html`<b>${package_name}</b> is part of Julia's pre-installed <em>standard library</em>.`
+            hint = html`${package_name_pretty} is part of Julia's pre-installed <em>standard library</em>.`
         } else {
             if (nbpkg_waiting_for_permission) {
                 status = "will_be_installed"
                 hint_raw = `${package_name} (v${_.last(available_versions)}) will be installed when you run this notebook.`
-                hint = html`<header><b>${package_name}</b> <pkg-version>v${_.last(available_versions)}</pkg-version></header>
+                hint = html`<header>${package_name_pretty} <pkg-version>v${_.last(available_versions)}</pkg-version></header>
                     will be installed when you run this notebook.`
             } else if (busy) {
                 status = "busy"
                 hint_raw = `${package_name} (v${chosen_version}) is installing...`
-                hint = html`<header><b>${package_name}</b> <pkg-version>v${chosen_version}</pkg-version></header>
+                hint = html`<header>${package_name_pretty} <pkg-version>v${chosen_version}</pkg-version></header>
                     is installing...`
             } else {
                 status = "installed"
                 hint_raw = `${package_name} (v${chosen_version}) is installed in the notebook.`
-                hint = html`<header><b>${package_name}</b> <pkg-version>v${chosen_version}</pkg-version></header>
+                hint = html`<header>
+                        ${package_name_pretty}
+                        <pkg-version>v${chosen_version}</pkg-version>
+                    </header>
                     is installed in the notebook.`
                 offer_update = can_update(chosen_version, available_versions)
             }
@@ -89,7 +95,7 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
             } else {
                 status = "will_be_installed"
                 hint_raw = `${package_name} (v${_.last(available_versions)}) will be installed in the notebook when you run this cell.`
-                hint = html`<header><b>${package_name}</b> <pkg-version>v${_.last(available_versions)}</pkg-version></header>
+                hint = html`<header>${package_name_pretty} <pkg-version>v${_.last(available_versions)}</pkg-version></header>
                     will be installed in the notebook when you run this cell.`
             }
         }
