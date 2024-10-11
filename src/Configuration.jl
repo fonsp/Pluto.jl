@@ -52,7 +52,6 @@ const AUTO_RELOAD_FROM_FILE_DEFAULT = false
 const AUTO_RELOAD_FROM_FILE_COOLDOWN_DEFAULT = 0.4
 const AUTO_RELOAD_FROM_FILE_IGNORE_PKG_DEFAULT = false
 const NOTEBOOK_DEFAULT = nothing
-const INIT_WITH_FILE_VIEWER_DEFAULT = false
 const SIMULATED_LAG_DEFAULT = 0.0
 const SIMULATED_PKG_LAG_DEFAULT = 0.0
 const INJECTED_JAVASCRIPT_DATA_URL_DEFAULT = "data:text/javascript;base64,"
@@ -77,7 +76,6 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 - `auto_reload_from_file_cooldown::Real = $AUTO_RELOAD_FROM_FILE_COOLDOWN_DEFAULT` Experimental, will be removed
 - `auto_reload_from_file_ignore_pkg::Bool = $AUTO_RELOAD_FROM_FILE_IGNORE_PKG_DEFAULT` Experimental flag, will be removed
 - `notebook::Union{Nothing,String} = $NOTEBOOK_DEFAULT` Optional path of notebook to launch at start
-- `init_with_file_viewer::Bool = $INIT_WITH_FILE_VIEWER_DEFAULT`
 - `simulated_lag::Real=$SIMULATED_LAG_DEFAULT` (internal) Extra lag to add to our server responses. Will be multiplied by `0.5 + rand()`.
 - `simulated_pkg_lag::Real=$SIMULATED_PKG_LAG_DEFAULT` (internal) Extra lag to add to operations done by Pluto's package manager. Will be multiplied by `0.5 + rand()`.
 - `injected_javascript_data_url::String = "$INJECTED_JAVASCRIPT_DATA_URL_DEFAULT"` (internal) Optional javascript injectables to the front-end. Can be used to customize the editor, but this API is not meant for general use yet.
@@ -100,7 +98,6 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
     auto_reload_from_file_cooldown::Real = AUTO_RELOAD_FROM_FILE_COOLDOWN_DEFAULT
     auto_reload_from_file_ignore_pkg::Bool = AUTO_RELOAD_FROM_FILE_IGNORE_PKG_DEFAULT
     notebook::Union{Nothing,String,Vector{<:String}} = NOTEBOOK_DEFAULT
-    init_with_file_viewer::Bool = INIT_WITH_FILE_VIEWER_DEFAULT
     simulated_lag::Real = SIMULATED_LAG_DEFAULT
     simulated_pkg_lag::Real = SIMULATED_PKG_LAG_DEFAULT
     injected_javascript_data_url::String = INJECTED_JAVASCRIPT_DATA_URL_DEFAULT
@@ -293,7 +290,6 @@ function from_flat_kwargs(;
         auto_reload_from_file_cooldown::Real = AUTO_RELOAD_FROM_FILE_COOLDOWN_DEFAULT,
         auto_reload_from_file_ignore_pkg::Bool = AUTO_RELOAD_FROM_FILE_IGNORE_PKG_DEFAULT,
         notebook::Union{Nothing,String,Vector{<:String}} = NOTEBOOK_DEFAULT,
-        init_with_file_viewer::Bool = INIT_WITH_FILE_VIEWER_DEFAULT,
         simulated_lag::Real = SIMULATED_LAG_DEFAULT,
         simulated_pkg_lag::Real = SIMULATED_PKG_LAG_DEFAULT,
         injected_javascript_data_url::String = INJECTED_JAVASCRIPT_DATA_URL_DEFAULT,
@@ -342,7 +338,6 @@ function from_flat_kwargs(;
         auto_reload_from_file_cooldown,
         auto_reload_from_file_ignore_pkg,
         notebook,
-        init_with_file_viewer,
         simulated_lag,
         simulated_pkg_lag,
         injected_javascript_data_url,
