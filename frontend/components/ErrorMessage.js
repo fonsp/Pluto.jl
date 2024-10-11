@@ -401,7 +401,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
             display: () => default_rewriter.display("Error"),
         },
         {
-            pattern: /^UndefVarError: (.*) not defined\.?$/,
+            pattern: /^UndefVarError: (.*) not defined/,
             display: (/** @type{string} */ x) => {
                 const notebook = /** @type{import("./Editor.js").NotebookData?} */ (pluto_actions.get_notebook())
                 const erred_upstreams = get_erred_upstreams(notebook, cell_id)
