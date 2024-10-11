@@ -2523,9 +2523,9 @@ pluto-helpbox.hidden > section {
 body > pluto-helpbox {
     position: static;
     width: auto;
-    height: auto;
+    height: 100vmax;
 }
-body > pluto-helpbox > header > button.helpbox-popout {
+body > pluto-helpbox > header > button:is(.helpbox-close, .helpbox-popout) {
     display: none;
 }
 
