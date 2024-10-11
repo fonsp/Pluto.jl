@@ -1,7 +1,4 @@
 
-const has_julia_syntax = isdefined(Base, :JuliaSyntax) && fieldcount(Base.Meta.ParseError) == 2
-
-
 # @codemirror/lint has only three levels
 function convert_julia_syntax_level(level)
     level == :error   ? "error" :
@@ -171,7 +168,7 @@ function throw_syntax_error(@nospecialize(syntax_err))
     syntax_err isa String && (syntax_err = "syntax: $syntax_err")
     syntax_err isa Exception || (syntax_err = ErrorException(syntax_err))
 
-    if has_julia_syntax && syntax_err isa Base.Meta.ParseError && syntax_err.detail isa Base.JuliaSyntax.ParseError
+    if syntax_err isa Base.Meta.ParseError && syntax_err.detail isa Base.JuliaSyntax.ParseError
         syntax_err = PrettySyntaxError(syntax_err)
     end
 
