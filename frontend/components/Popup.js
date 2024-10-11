@@ -15,6 +15,7 @@ import { useEventListener } from "../common/useEventListener.js"
 export const arrow_up_circle_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-up-circle-outline.svg", import.meta.url)
 export const document_text_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-text-outline.svg", import.meta.url)
 export const help_circle_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/help-circle-outline.svg", import.meta.url)
+export const library_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/open-outline.svg", import.meta.url)
 
 /**
  * @typedef PkgPopupDetails
@@ -180,7 +181,8 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event, disable_input })
             set_pkg_status(null)
         } else if (recent_event?.type === "nbpkg") {
             ;(pluto_actions.get_avaible_versions({ package_name: recent_event.package_name, notebook_id: notebook.notebook_id }) ?? Promise.resolve([])).then(
-                (versions) => {
+                ({ versions, url }) => {
+                    console.log({ url })
                     if (still_valid) {
                         set_pkg_status(
                             package_status({
@@ -188,6 +190,7 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event, disable_input })
                                 package_name: recent_event.package_name,
                                 is_disable_pkg: recent_event.is_disable_pkg,
                                 available_versions: versions,
+                                package_url: url,
                             })
                         )
                     }
@@ -275,6 +278,7 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event, disable_input })
                 }}
                 ><img alt="📄" src=${document_text_icon} width="17"
             /></a>
+            <a class="popup-docs" target="_blank" title="Open documentation" href=${pkg_status?.package_url}><img alt="❔" src=${library_icon} width="17" /></a>
             <a class="help" target="_blank" title="Go to help page" href="https://plutojl.org/pkg/"><img alt="❔" src=${help_circle_icon} width="17" /></a>
         </div>
         <${PkgTerminalView} value=${terminal_value ?? "Loading..."} />

@@ -23,6 +23,7 @@ const can_update = (installed, available) => {
  * @property {string} hint_raw
  * @property {string[]?} available_versions
  * @property {string?} chosen_version
+ * @property {string?} package_url
  * @property {boolean} busy
  * @property {boolean} offer_update
  */
@@ -30,17 +31,21 @@ const can_update = (installed, available) => {
 /**
  * @param {{
  *  package_name: string,
+ *  package_url?: string,
  *  is_disable_pkg: boolean,
- *  available_versions: string[]?,
+ *  available_versions?: string[],
  *  nbpkg: import("./Editor.js").NotebookPkgData?,
  * }} props
  * @returns {PackageStatus}
  */
-export const package_status = ({ nbpkg, package_name, available_versions, is_disable_pkg }) => {
+export const package_status = ({ nbpkg, package_name, available_versions, is_disable_pkg, package_url }) => {
     let status = "error"
     let hint_raw = "error"
     let hint = html`error`
     let offer_update = false
+
+    package_url = package_url ?? `https://juliahub.com/ui/Packages/General/${package_name}`
+
     const chosen_version = nbpkg?.installed_versions[package_name] ?? null
     const nbpkg_waiting_for_permission = nbpkg?.waiting_for_permission ?? false
     const busy = !nbpkg_waiting_for_permission && ((nbpkg?.busy_packages ?? []).includes(package_name) || !(nbpkg?.instantiated ?? true))
@@ -90,7 +95,7 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
         }
     }
 
-    return { status, hint, hint_raw, available_versions, chosen_version, busy, offer_update }
+    return { status, hint, hint_raw, available_versions: available_versions ?? null, chosen_version, busy, offer_update, package_url }
 }
 
 /**
@@ -103,20 +108,20 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
  * }} props
  */
 export const PkgStatusMark = ({ package_name, pluto_actions, notebook_id, nbpkg }) => {
-    const [available_versions, set_available_versions] = useState(/** @type {string[]?} */ (null))
+    const [available_versions_msg, set_available_versions_msg] = useState(/** @type {{ versions?: string[], package_url?: string }?} */ (null))
+    const [package_url, set_package_url] = useState(/** @type {string[]?} */ (null))
 
     useEffect(() => {
         let available_version_promise = pluto_actions.get_avaible_versions({ package_name, notebook_id }) ?? Promise.resolve([])
-        available_version_promise.then((available_versions) => {
-            set_available_versions(available_versions)
-        })
+        available_version_promise.then(set_available_versions_msg)
     }, [package_name])
 
     const { status, hint_raw } = package_status({
         nbpkg: nbpkg,
         package_name: package_name,
         is_disable_pkg: false,
-        available_versions,
+        available_versions: available_versions_msg?.versions,
+        package_url: available_versions_msg?.package_url,
     })
 
     return html`
@@ -154,7 +159,6 @@ export const PkgActivateMark = ({ package_name }) => {
         nbpkg: null,
         package_name: package_name,
         is_disable_pkg: true,
-        available_versions: null,
     })
 
     return html`

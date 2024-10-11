@@ -557,8 +557,10 @@ end
 responses[:nbpkg_available_versions] = function response_nbpkg_available_versions(🙋::ClientRequest)
     # require_notebook(🙋)
     all_versions = PkgCompat.package_versions(🙋.body["package_name"])
+    url = PkgCompat.package_url(🙋.body["package_name"])
     putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🍕, Dict(
         :versions => string.(all_versions),
+        :url => url,
     ), nothing, nothing, 🙋.initiator))
 end
 
