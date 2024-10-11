@@ -2047,6 +2047,14 @@ pkg-popup .pkg-buttons {
     flex-direction: row;
 }
 
+.ionicon {
+    filter: var(--image-filters);
+}
+
+.package-name .ionicon {
+    margin-bottom: -0.1ch;
+}
+
 a.stdout-info img,
 pkg-popup .pkg-buttons img {
     filter: var(--image-filters);
