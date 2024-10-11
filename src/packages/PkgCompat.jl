@@ -361,23 +361,25 @@ function package_versions(package_name::AbstractString)::Vector
     end
 end
 
+# ✅ "Public" API using RegistryInstances
+"""
+Return the URL of the package's documentation (if possible) or homepage. Returns `nothing` if the package was not found.
+"""
 function package_url(package_name::AbstractString)::Union{String,Nothing}
     if is_stdlib(package_name)
 		"https://docs.julialang.org/en/v1/stdlib/$(package_name)/"
     else
 		try
 			for reg in _parsed_registries[]
-				uuids_with_name = RegistryInstances.uuids_from_name(reg, package_name)
-				for u in uuids_with_name
+				for u in RegistryInstances.uuids_from_name(reg, package_name)
 					pkg = get(reg, u, nothing)
 					if pkg !== nothing
-						info = RegistryInstances.registry_info(pkg)
-						return info.repo
+						return RegistryInstances.registry_info(pkg).repo
 					end
 				end
 			end
 		catch e
-			@warn "Pkg compat: failed to get installable versions." exception=(e,catch_backtrace())
+			@warn "Pkg compat: failed to get package URL." exception=(e,catch_backtrace())
 		end
     end
 end

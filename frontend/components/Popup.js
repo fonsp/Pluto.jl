@@ -182,7 +182,6 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event, disable_input })
         } else if (recent_event?.type === "nbpkg") {
             ;(pluto_actions.get_avaible_versions({ package_name: recent_event.package_name, notebook_id: notebook.notebook_id }) ?? Promise.resolve([])).then(
                 ({ versions, url }) => {
-                    console.log({ url })
                     if (still_valid) {
                         set_pkg_status(
                             package_status({
