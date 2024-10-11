@@ -8,9 +8,6 @@ import Pkg.Types: VersionRange
 import RegistryInstances
 import ..Pluto
 
-const PRESERVE_ALL_INSTALLED = isdefined(Pkg, :PRESERVE_ALL_INSTALLED) ? Pkg.PRESERVE_ALL_INSTALLED : Pkg.PRESERVE_ALL
-
-
 @static if isdefined(Pkg,:REPLMode) && isdefined(Pkg.REPLMode,:complete_remote_package)
     const REPLMode = Pkg.REPLMode
 else
@@ -60,9 +57,7 @@ I tried to only use public API, except:
 ###
 
 
-const PkgContext = if isdefined(Pkg, :Context)
-	Pkg.Context
-elseif isdefined(Pkg, :Types) && isdefined(Pkg.Types, :Context)
+const PkgContext = if isdefined(Pkg, :Types) && isdefined(Pkg.Types, :Context)
 	Pkg.Types.Context
 elseif isdefined(Pkg, :API) && isdefined(Pkg.API, :Context)
 	Pkg.API.Context
@@ -338,17 +333,6 @@ function _registry_entries(package_name::AbstractString, registries::Vector=_par
 	end
 end
 
-# (🐸 "Public API", but using PkgContext)
-function _package_versions_from_path(registry_entry_fullpath::AbstractString)::Vector{VersionNumber}
-	# compat
-    vd = @static if isdefined(Pkg, :Operations) && isdefined(Pkg.Operations, :load_versions) && hasmethod(Pkg.Operations.load_versions, (String,))
-        Pkg.Operations.load_versions(registry_entry_fullpath)
-    else
-        Pkg.Operations.load_versions(PkgContext(), registry_entry_fullpath)
-    end
-	vd |> keys |> collect
-end
-
 # ✅ "Public" API using RegistryInstances
 """
 Return all registered versions of the given package. Returns `["stdlib"]` for standard libraries, a `Vector{VersionNumber}` for registered packages, or `["latest"]` if it crashed.
@@ -472,7 +456,7 @@ end
 # ✅ Internal API with fallback
 "Update the project hash in the manifest file (https://github.com/JuliaLang/Pkg.jl/pull/2815)"
 function _update_project_hash!(ctx::PkgContext)
-	VERSION >= v"1.8.0" && isfile(manifest_file(ctx)) && try
+	isfile(manifest_file(ctx)) && try
 		Pkg.Operations.record_project_hash(ctx.env)
 		Pkg.Types.write_manifest(ctx.env)
 	catch e

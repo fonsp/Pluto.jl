@@ -128,12 +128,6 @@ function delete_method_doc(m::Method)
 end
 
 
-if VERSION < v"1.7.0-0"
-    @eval macro atomic(ex)
-        esc(ex)
-    end
-end
-
 """
 Delete all methods of `f` that were defined in this notebook, and leave the ones defined in other packages, base, etc. ✂
 
