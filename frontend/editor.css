@@ -2459,6 +2459,10 @@ button.helpbox-tab-key {
     /* overflow: hidden; */
 }
 
+button.helpbox-tab-key.helpbox-process {
+    margin-right: auto;
+}
+
 button.helpbox-process.busy {
     outline: 6px solid var(--process-busy);
 }
@@ -2485,7 +2489,7 @@ button.active.helpbox-tab-key {
     animation: none;
 }
 
-pluto-helpbox > header > button.helpbox-close {
+pluto-helpbox > header > button:is(.helpbox-close, .helpbox-popout) {
     border: none;
     background: none;
     cursor: pointer;
@@ -2493,10 +2497,9 @@ pluto-helpbox > header > button.helpbox-close {
     /* for bigger hitbox */
     margin: -15px;
     border: 15px solid transparent;
-    margin-left: auto;
 }
 
-pluto-helpbox > header > button.helpbox-close > span {
+pluto-helpbox > header > button:is(.helpbox-close, .helpbox-popout) > span {
     display: block;
     content: " " !important;
     background-size: 1em 1em;
@@ -2505,11 +2508,24 @@ pluto-helpbox > header > button.helpbox-close > span {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chevron-down-outline.svg");
     filter: var(--image-filters);
 }
+pluto-helpbox > header > button.helpbox-popout > span {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/open-outline.svg");
+}
 pluto-helpbox.hidden {
     height: initial;
     width: auto;
 }
 pluto-helpbox.hidden > section {
+    display: none;
+}
+
+/* pop out */
+body > pluto-helpbox {
+    position: static;
+    width: auto;
+    height: auto;
+}
+body > pluto-helpbox > header > button.helpbox-popout {
     display: none;
 }
 
