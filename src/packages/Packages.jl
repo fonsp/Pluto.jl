@@ -237,10 +237,12 @@ function sync_nbpkg_core(
                                     used_tier = tier
 
                                     try
-                                        Pkg.add(notebook.nbpkg_ctx, [
-                                            Pkg.PackageSpec(name=p)
-                                            for p in to_add
-                                        ]; preserve=used_tier)
+                                        withenv("JULIA_PKG_PRECOMPILE_AUTO" => 0) do
+                                            Pkg.add(notebook.nbpkg_ctx, [
+                                                Pkg.PackageSpec(name=p)
+                                                for p in to_add
+                                            ]; preserve=used_tier)
+                                        end
 
                                         break
                                     catch e
@@ -581,10 +583,12 @@ function update_nbpkg_core(
                     phasemessage(iolistener, "Updating packages")
                     # We temporarily clear the "semver-compatible" [deps] entries, because it is difficult to update them after the update 🙈. TODO
                     PkgCompat.clear_auto_compat_entries!(notebook.nbpkg_ctx)
-
+                    
                     try
                         ###
-                        Pkg.update(notebook.nbpkg_ctx; level=level)
+                        withenv("JULIA_PKG_PRECOMPILE_AUTO" => 0) do
+                            Pkg.update(notebook.nbpkg_ctx; level=level)
+                        end
                         ###
                     finally
                         PkgCompat.write_auto_compat_entries!(notebook.nbpkg_ctx)
