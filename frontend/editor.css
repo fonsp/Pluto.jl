@@ -2551,7 +2551,8 @@ body > pluto-helpbox > header > button:is(.helpbox-close, .helpbox-popout) {
 .helpbox-docs code,
 .helpbox-docs .cm-line {
     /* from https://docs.julialang.org/en/v1/assets/themes/documenter-light.css */
-    font-family: "Roboto Mono", "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", "DejaVu Sans Mono", monospace;
+    font-family: "JuliaMono", "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", "DejaVu Sans Mono", monospace;
+    font-variant-ligatures: none;
     font-size: 0.95em;
     line-height: initial;
 }
