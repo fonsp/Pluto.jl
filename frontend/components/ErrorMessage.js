@@ -288,7 +288,10 @@ const AnsiUpLine = (/** @type {{value: string}} */ { value }) => {
         node_ref.current.innerHTML = new AnsiUp().ansi_to_html(value)
     }, [node_ref.current, value])
 
-    return value === "" ? html`<p><br /></p>` : html`<p ref=${node_ref}></p>`
+    // placeholder while waiting for AnsiUp to render, to prevent layout flash
+    const without_ansi_chars = value.replace(/\u001b\[[0-9;]*m/g, "")
+
+    return value === "" ? html`<p><br /></p>` : html`<p ref=${node_ref}>${without_ansi_chars}</p>`
 }
 
 export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
@@ -559,7 +562,7 @@ const motivational_words = [
     "Be patient :)",
     // Errors horen erbij
     // Ook de pros krijgen errors
-    ...Array(30).fill(null),
+    ...Array(100).fill(null),
 ]
 
 const Motivation = ({ stacktrace }) => {
