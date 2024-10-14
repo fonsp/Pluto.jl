@@ -115,9 +115,9 @@ let update_docs_from_autocomplete_selection = (on_update_doc_query) => {
 }
 
 /** Are we matching something like `\lambd...`? */
-const match_special_symbol_complete = (/** @type {autocomplete.CompletionContext} */ ctx) => ctx.matchBefore(/\\[\d\w_\^:]*/)
-/** Are we matching something like `:writing_a_symbo...`? */
-const match_symbol_complete = (/** @type {autocomplete.CompletionContext} */ ctx) => ctx.matchBefore(/\.\:[^\s"'`()\[\].]*/)
+const match_latex_symbol_complete = (/** @type {autocomplete.CompletionContext} */ ctx) => ctx.matchBefore(/\\[\d\w_\^:]*/)
+/** Are we matching something like `Base.:writing_a_symbo...`? */
+const match_operator_symbol_complete = (/** @type {autocomplete.CompletionContext} */ ctx) => ctx.matchBefore(/\.\:[^\s"'`()\[\]\{\}\.\,=]*/)
 
 /** Are we matching inside a string at given pos?
  * @param {EditorState} state
@@ -172,15 +172,15 @@ const julia_code_completions_to_cm =
     (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) =>
     /** @returns {Promise<autocomplete.CompletionResult?>} */
     async (/** @type {autocomplete.CompletionContext} */ ctx) => {
-        if (match_special_symbol_complete(ctx)) return null
+        if (match_latex_symbol_complete(ctx)) return null
         if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
-        if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment", "String", "TripleString"]) != null) return null
+        if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment", "String", "TripleString", "Symbol"]) != null) return null
 
         let to_complete = /** @type {String} */ (ctx.state.sliceDoc(0, ctx.pos))
 
         // Another rough hack... If it detects a `.:`, we want to cut out the `:` so we get all results from julia,
         // but then codemirror will put the `:` back in filtering
-        let is_symbol_completion = match_symbol_complete(ctx)
+        let is_symbol_completion = match_operator_symbol_complete(ctx)
         if (is_symbol_completion) {
             to_complete = to_complete.slice(0, is_symbol_completion.from + 1) + to_complete.slice(is_symbol_completion.from + 2)
         }
@@ -272,9 +272,9 @@ const julia_code_completions_to_cm =
     }
 
 const complete_anyword = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
-    if (match_special_symbol_complete(ctx)) return null
+    if (match_latex_symbol_complete(ctx)) return null
     if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
-    if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment", "String", "TripleString"]) != null) return null
+    if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment", "String", "TripleString", "Symbol"]) != null) return null
 
     const results_from_cm = await autocomplete.completeAnyWord(ctx)
     if (results_from_cm === null) return null
@@ -329,9 +329,9 @@ const global_variables_completion =
     (/** @type {() => { [uuid: String]: String[]}} */ request_unsubmitted_global_definitions, cell_id) =>
     /** @returns {Promise<autocomplete.CompletionResult?>} */
     async (/** @type {autocomplete.CompletionContext} */ ctx) => {
-        if (match_special_symbol_complete(ctx)) return null
+        if (match_latex_symbol_complete(ctx)) return null
         if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
-        if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment", "String", "TripleString"]) != null) return null
+        if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment", "String", "TripleString", "Symbol"]) != null) return null
 
         // see `is_wc_cat_id_start` in Julia's source for a complete list
         const there_is_a_dot_before = ctx.matchBefore(/\.[\p{L}\p{Nl}\p{Sc}\d_!]*$/u)
@@ -460,7 +460,7 @@ const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} *
     }
 
     return async (/** @type {autocomplete.CompletionContext} */ ctx) => {
-        if (!match_special_symbol_complete(ctx)) return null
+        if (!match_latex_symbol_complete(ctx)) return null
         if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
         if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment"]) != null) return null
 
