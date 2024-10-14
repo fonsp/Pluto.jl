@@ -320,7 +320,8 @@ const writing_variable_name_or_keyword = (/** @type {autocomplete.CompletionCont
     let inside_do_argument_expression = ctx.matchBefore(/do [\(\), \p{L}\p{Nl}\p{Sc}\d_!]*$/u)
 
     let node = syntaxTree(ctx.state).resolve(ctx.pos, -1)
-    let inside_assigment_lhs = node?.name === "Identifier" && node.parent?.name === "AssignmentExpression" && node.nextSibling != null
+    let node2 = node?.parent?.name === "BareTupleExpression" ? node?.parent : node
+    let inside_assigment_lhs = node?.name === "Identifier" && node2?.parent?.name === "AssignmentExpression" && node2?.nextSibling != null
 
     return just_finished_a_keyword || after_keyword || inside_do_argument_expression || inside_assigment_lhs
 }
