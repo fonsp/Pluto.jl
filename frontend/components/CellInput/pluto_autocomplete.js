@@ -170,7 +170,9 @@ const validFor = (text) => {
 
 /** Use the completion results from the Julia server to create CM completion objects. */
 const julia_code_completions_to_cm =
-    (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) => async (/** @type {autocomplete.CompletionContext} */ ctx) => {
+    (/** @type {PlutoRequestAutocomplete} */ request_autocomplete) =>
+    /** @returns {Promise<autocomplete.CompletionResult?>} */
+    async (/** @type {autocomplete.CompletionContext} */ ctx) => {
         if (match_special_symbol_complete(ctx)) return null
         if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
         if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment", "String", "TripleString"]) != null) return null
@@ -185,7 +187,6 @@ const julia_code_completions_to_cm =
         }
 
         const globals = ctx.state.facet(GlobalDefinitionsFacet)
-        console.log(globals)
         const is_already_a_global = (text) => text != null && Object.keys(globals).includes(text)
 
         let found = await request_autocomplete({ text: to_complete })
@@ -324,36 +325,49 @@ const writing_variable_name_or_keyword = (/** @type {autocomplete.CompletionCont
     return just_finished_a_keyword || after_keyword || inside_do_argument_expression || inside_assigment_lhs
 }
 
-/** @returns {Promise<autocomplete.CompletionResult?>} */
-const global_variables_completion = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
-    if (match_special_symbol_complete(ctx)) return null
-    if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
-    if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment", "String", "TripleString"]) != null) return null
+const global_variables_completion =
+    (/** @type {() => { [uuid: String]: String[]}} */ request_unsubmitted_global_definitions, cell_id) =>
+    /** @returns {Promise<autocomplete.CompletionResult?>} */
+    async (/** @type {autocomplete.CompletionContext} */ ctx) => {
+        if (match_special_symbol_complete(ctx)) return null
+        if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
+        if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment", "String", "TripleString"]) != null) return null
 
-    const globals = ctx.state.facet(GlobalDefinitionsFacet)
+        // see `is_wc_cat_id_start` in Julia's source for a complete list
+        const there_is_a_dot_before = ctx.matchBefore(/\.[\p{L}\p{Nl}\p{Sc}\d_!]*$/u)
+        if (there_is_a_dot_before) return null
 
-    // see `is_wc_cat_id_start` in Julia's source for a complete list
-    const there_is_a_dot_before = ctx.matchBefore(/\.[\p{L}\p{Nl}\p{Sc}\d_!]*$/u)
-    if (there_is_a_dot_before) return null
+        const globals = ctx.state.facet(GlobalDefinitionsFacet)
+        const local_globals = request_unsubmitted_global_definitions()
 
-    const from_cm = await autocomplete.completeFromList(
-        Object.keys(globals).map((label) => {
-            return {
-                label,
-                apply: label,
-                type: from_notebook_type,
-                section: section_regular,
-            }
-        })
-    )(ctx)
-    return from_cm == null
-        ? null
-        : {
-              ...from_cm,
-              validFor,
-              commitCharacters: julia_commit_characters(ctx),
-          }
-}
+        const possibles = _.union(
+            // Globals that are not redefined locally
+            Object.entries(globals)
+                .filter(([_, cell_id]) => local_globals[cell_id] == null)
+                .map(([name]) => name),
+            // Globals that are redefined locally in other cells
+            ...Object.values(_.omit(local_globals, cell_id))
+        )
+
+        const from_cm = await autocomplete.completeFromList(
+            possibles.map((label) => {
+                return {
+                    label,
+                    apply: label,
+                    type: from_notebook_type,
+                    section: section_regular,
+                    // boost: 1,
+                }
+            })
+        )(ctx)
+        return from_cm == null
+            ? null
+            : {
+                  ...from_cm,
+                  validFor,
+                  commitCharacters: julia_commit_characters(ctx),
+              }
+    }
 
 const local_variables_completion = (/** @type {autocomplete.CompletionContext} */ ctx) => {
     let scopestate = ctx.state.field(ScopeStateField)
@@ -497,8 +511,10 @@ const continue_completing_path = EditorView.updateListener.of((update) => {
  * @param {PlutoRequestAutocomplete} props.request_autocomplete
  * @param {() => Promise<SpecialSymbols?>} props.request_special_symbols
  * @param {(query: string) => void} props.on_update_doc_query
+ * @param {() => { [uuid: string] : String[]}} props.request_unsubmitted_global_definitions
+ * @param {string} props.cell_id
  */
-export let pluto_autocomplete = ({ request_autocomplete, request_special_symbols, on_update_doc_query }) => {
+export let pluto_autocomplete = ({ request_autocomplete, request_special_symbols, on_update_doc_query, request_unsubmitted_global_definitions, cell_id }) => {
     let last_query = null
     let last_result = null
     /**
@@ -523,7 +539,7 @@ export let pluto_autocomplete = ({ request_autocomplete, request_special_symbols
         autocompletion({
             activateOnTyping: ENABLE_CM_AUTOCOMPLETE_ON_TYPE,
             override: [
-                global_variables_completion,
+                global_variables_completion(request_unsubmitted_global_definitions, cell_id),
                 special_symbols_completion(request_special_symbols),
                 julia_code_completions_to_cm(memoize_last_request_autocomplete),
                 complete_anyword,

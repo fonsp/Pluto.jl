@@ -67,6 +67,7 @@ let get_variable_marks = (state, { scopestate, global_definitions }) => {
 const filter_non_null = (xs) => /** @type {Array<T>} */ (xs.filter((x) => x != null))
 
 /**
+ * Key: variable name, value: cell id.
  * @type {Facet<{ [variable_name: string]: string }, { [variable_name: string]: string }>}
  */
 export const GlobalDefinitionsFacet = Facet.define({

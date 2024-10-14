@@ -274,6 +274,7 @@ export const url_logo_small = document.head.querySelector("link[rel='pluto-logo-
  * @type {{
  * notebook: NotebookData,
  * cell_inputs_local: { [uuid: string]: { code: String } },
+ * unsumbitted_global_definitions: { [uuid: string]: String[] }
  * desired_doc_query: ?String,
  * recently_deleted: ?Array<{ index: number, cell: CellInputData }>,
  * recently_auto_disabled_cells: Record<string,[string,string]>,
@@ -315,6 +316,7 @@ export class Editor extends Component {
         this.state = {
             notebook: initial_notebook_state,
             cell_inputs_local: {},
+            unsumbitted_global_definitions: {},
             desired_doc_query: null,
             recently_deleted: [],
             recently_auto_disabled_cells: {},
@@ -376,6 +378,14 @@ export class Editor extends Component {
                     })
                 )
             },
+            set_unsubmitted_global_definitions: (cell_id, new_val) => {
+                return this.setStatePromise(
+                    immer((/** @type {EditorState} */ state) => {
+                        state.unsumbitted_global_definitions[cell_id] = new_val
+                    })
+                )
+            },
+            get_unsubmitted_global_definitions: () => _.pick(this.state.unsumbitted_global_definitions, this.state.notebook.cell_order),
             focus_on_neighbor: (cell_id, delta, line = delta === -1 ? Infinity : -1, ch = 0) => {
                 const i = this.state.notebook.cell_order.indexOf(cell_id)
                 const new_i = i + delta
@@ -564,15 +574,20 @@ export class Editor extends Component {
                             this.actions.interrupt_remote(cell_ids[0])
                         }
                     } else {
-                        this.setState({
-                            recently_deleted: cell_ids.map((cell_id) => {
-                                return {
-                                    index: this.state.notebook.cell_order.indexOf(cell_id),
-                                    cell: this.state.notebook.cell_inputs[cell_id],
+                        this.setState(
+                            immer((/** @type {EditorState} */ state) => {
+                                state.recently_deleted = cell_ids.map((cell_id) => {
+                                    return {
+                                        index: this.state.notebook.cell_order.indexOf(cell_id),
+                                        cell: this.state.notebook.cell_inputs[cell_id],
+                                    }
+                                })
+                                state.selected_cells = []
+                                for (let c of cell_ids) {
+                                    delete state.unsumbitted_global_definitions[c]
                                 }
-                            }),
-                            selected_cells: [],
-                        })
+                            })
+                        )
                         await update_notebook((notebook) => {
                             for (let cell_id of cell_ids) {
                                 delete notebook.cell_inputs[cell_id]
@@ -617,11 +632,12 @@ export class Editor extends Component {
                             }
                         }
                     })
-                    // This is a "dirty" trick, as this should actually be stored in some shared request_status => status state
-                    // But for now... this is fine 😼
                     await this.setStatePromise(
                         immer((/** @type {EditorState} */ state) => {
                             for (let cell_id of cell_ids) {
+                                delete state.unsumbitted_global_definitions[cell_id]
+                                // This is a "dirty" trick, as this should actually be stored in some shared request_status => status state
+                                // But for now... this is fine 😼
                                 if (state.notebook.cell_results[cell_id] != null) {
                                     state.notebook.cell_results[cell_id].queued = this.is_process_ready()
                                 } else {

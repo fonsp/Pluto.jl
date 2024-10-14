@@ -547,6 +547,17 @@ export const CellInput = ({
             }
         })
 
+        const unsubmitted_globals_updater = EditorView.updateListener.of((update) => {
+            if (update.docChanged) {
+                const before = [...update.startState.field(ScopeStateField).definitions.keys()]
+                const after = [...update.state.field(ScopeStateField).definitions.keys()]
+
+                if (!_.isEqual(before, after)) {
+                    pluto_actions.set_unsubmitted_global_definitions(cell_id, after)
+                }
+            }
+        })
+
         const usesDarkTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
         const newcm = (newcm_ref.current = new EditorView({
             state: EditorState.create({
@@ -597,6 +608,7 @@ export const CellInput = ({
                     highlightSelectionMatches({ minSelectionLength: 2, wholeWords: true }),
                     bracketMatching(),
                     docs_updater,
+                    unsubmitted_globals_updater,
                     tab_help_plugin,
                     // Remove selection on blur
                     EditorView.domEventHandlers({
@@ -668,6 +680,8 @@ export const CellInput = ({
                         },
                         request_special_symbols: () => pluto_actions.send("complete_symbols").then(({ message }) => message),
                         on_update_doc_query: on_update_doc_query,
+                        request_unsubmitted_global_definitions: () => pluto_actions.get_unsubmitted_global_definitions(),
+                        cell_id,
                     }),
 
                     // I put plutoKeyMaps separately because I want make sure we have
