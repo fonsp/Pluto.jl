@@ -151,7 +151,14 @@ const section_operators = {
 
 const field_rank_heuristic = (text, is_exported) => is_exported * 3 + (/^\p{Ll}/u.test(text) ? 2 : /^\p{Lu}/u.test(text) ? 1 : 0)
 
-const julia_commit_characters = [".", ",", "(", "[", "{"]
+const julia_commit_characters = (/** @type {autocomplete.CompletionContext} */ ctx) => {
+    // const output = [".", "[", "{"]
+
+    // if (ctx.matchBefore(/\(.*/)) output.push(",")
+
+    // only the dot ".", which is handled by complete_and_also_type
+    return undefined
+}
 const endswith_keyword_regex =
     /^(.*\s)?(baremodule|begin|break|catch|const|continue|do|else|elseif|end|export|false|finally|for|function|global|if|import|let|local|macro|module|quote|return|struct|true|try|using|while)$/
 
@@ -178,6 +185,7 @@ const julia_code_completions_to_cm =
         }
 
         const globals = ctx.state.facet(GlobalDefinitionsFacet)
+        console.log(globals)
         const is_already_a_global = (text) => text != null && Object.keys(globals).includes(text)
 
         let found = await request_autocomplete({ text: to_complete })
@@ -188,10 +196,6 @@ const julia_code_completions_to_cm =
             // If this is a symbol completion thing, we need to add the `:` back in by moving the end a bit furher
             stop = stop + 1
         }
-
-        // const definitions = ctx.state.field(ScopeStateField).definitions
-        // console.debug({ definitions })
-        // const proposed = new Set()
 
         const to_complete_onto = to_complete.slice(0, start)
         const is_field_expression = to_complete_onto.endsWith(".")
@@ -209,7 +213,7 @@ const julia_code_completions_to_cm =
             // validFor: /[\p{L}\p{Nl}\p{Sc}\d_!]*$/u,
             validFor,
 
-            commitCharacters: julia_commit_characters,
+            commitCharacters: julia_commit_characters(ctx),
             filter: !skip_filter,
 
             options: [
@@ -280,7 +284,7 @@ const complete_anyword = async (/** @type {autocomplete.CompletionContext} */ ct
 
     return {
         from: results_from_cm.from,
-        commitCharacters: julia_commit_characters,
+        commitCharacters: julia_commit_characters(ctx),
 
         options: results_from_cm.options.map(({ label }, i) => ({
             // See https://github.com/codemirror/codemirror.next/issues/788 about `type: null`
@@ -344,7 +348,7 @@ const global_variables_completion = async (/** @type {autocomplete.CompletionCon
         : {
               ...from_cm,
               validFor,
-              commitCharacters: julia_commit_characters,
+              commitCharacters: julia_commit_characters(ctx),
           }
 }
 
@@ -359,7 +363,7 @@ const local_variables_completion = (/** @type {autocomplete.CompletionContext} *
     return {
         from,
         to,
-        commitCharacters: julia_commit_characters,
+        commitCharacters: julia_commit_characters(ctx),
         options: scopestate.locals
             .filter(
                 ({ validity, name }) =>
