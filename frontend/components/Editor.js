@@ -276,6 +276,7 @@ export const url_logo_small = document.head.querySelector("link[rel='pluto-logo-
  * cell_inputs_local: { [uuid: string]: { code: String } },
  * desired_doc_query: ?String,
  * recently_deleted: ?Array<{ index: number, cell: CellInputData }>,
+ * recently_auto_disabled_cells: Record<string,[string,string]>,
  * last_update_time: number,
  * disable_ui: boolean,
  * static_preview: boolean,
@@ -297,6 +298,7 @@ export const url_logo_small = document.head.querySelector("link[rel='pluto-logo-
  * extended_components: any,
  * is_recording: boolean,
  * recording_waiting_to_start: boolean,
+ * slider_server: { connecting: boolean, interactive: boolean },
  * }}
  */
 
@@ -309,12 +311,13 @@ export class Editor extends Component {
 
         const { launch_params, initial_notebook_state } = this.props
 
+        /** @type {EditorState} */
         this.state = {
-            notebook: /** @type {NotebookData} */ initial_notebook_state,
-            cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
+            notebook: initial_notebook_state,
+            cell_inputs_local: {},
             desired_doc_query: null,
-            recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ ([]),
-            recently_auto_disabled_cells: /** @type {Map<string,[string,string]>} */ ({}),
+            recently_deleted: [],
+            recently_auto_disabled_cells: {},
             last_update_time: 0,
 
             disable_ui: launch_params.disable_ui,
@@ -338,7 +341,7 @@ export class Editor extends Component {
             export_menu_open: false,
 
             last_created_cell: null,
-            selected_cells: /** @type {string[]} */ ([]),
+            selected_cells: [],
 
             extended_components: {
                 CustomHeader: null,
@@ -1699,9 +1702,7 @@ The notebook file saves every time you run a cell.`
                         ${
                             this.state.disable_ui ||
                             html`<${SelectionArea}
-                                actions=${this.actions}
                                 cell_order=${this.state.notebook.cell_order}
-                                selected_cell_ids=${this.state.selected_cell_ids}
                                 set_scroller=${(enabled) => {
                                     this.setState({ scroller: enabled })
                                 }}
@@ -1742,13 +1743,15 @@ The notebook file saves every time you run a cell.`
                     <${UndoDelete}
                         recently_deleted=${this.state.recently_deleted}
                         on_click=${() => {
+                            const rd = this.state.recently_deleted
+                            if (rd == null) return
                             this.update_notebook((notebook) => {
-                                for (let { index, cell } of this.state.recently_deleted) {
+                                for (let { index, cell } of rd) {
                                     notebook.cell_inputs[cell.cell_id] = cell
                                     notebook.cell_order = [...notebook.cell_order.slice(0, index), cell.cell_id, ...notebook.cell_order.slice(index, Infinity)]
                                 }
                             }).then(() => {
-                                this.actions.set_and_run_multiple(this.state.recently_deleted.map(({ cell }) => cell.cell_id))
+                                this.actions.set_and_run_multiple(rd.map(({ cell }) => cell.cell_id))
                             })
                         }}
                     />
