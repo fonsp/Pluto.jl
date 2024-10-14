@@ -84,10 +84,9 @@ let update_docs_from_autocomplete_selection = (on_update_doc_query) => {
         let text_to_apply = selected_option.completion.apply ?? selected_option.completion.label
         if (typeof text_to_apply !== "string") return
 
-        // Option.source is now the source, we find to find the corresponding ActiveResult
-        // https://github.com/codemirror/autocomplete/commit/6d9f24115e9357dc31bc265cd3da7ce2287fdcbd
+        // Option.source is now the source, we find to find the corresponding ActiveResult (internal type)
         const active_result = update.view.state.field(completionState).active.find((a) => a.source == selected_option.source)
-        if (!active_result?.from) return // not an ActiveResult instance
+        if (active_result?.hasResult?.() !== true) return // not an ActiveResult instance
 
         const from = active_result.from,
             to = Math.min(active_result.to, update.state.doc.length)
