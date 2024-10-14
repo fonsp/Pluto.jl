@@ -469,21 +469,6 @@ const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} *
     }
 }
 
-const continue_completing_path = EditorView.updateListener.of((update) => {
-    for (let transaction of update.transactions) {
-        let picked_completion = transaction.annotation(autocomplete.pickedCompletion)
-        if (picked_completion) {
-            if (
-                typeof picked_completion.apply === "string" &&
-                picked_completion.apply.endsWith("/") &&
-                picked_completion.type?.match(/(^| )completion_path( |$)/)
-            ) {
-                autocomplete.startCompletion(update.view)
-            }
-        }
-    }
-})
-
 /**
  *
  * @typedef PlutoAutocompleteResult
@@ -550,8 +535,6 @@ export let pluto_autocomplete = ({ request_autocomplete, request_special_symbols
             maxRenderedOptions: 512, // fons's magic number
             optionClass: (c) => c.type ?? "",
         }),
-
-        // continue_completing_path,
 
         update_docs_from_autocomplete_selection(on_update_doc_query),
 
