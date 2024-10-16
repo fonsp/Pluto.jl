@@ -365,15 +365,16 @@ export const CellInput = ({
                 return true
             }
 
-            // TODO Multicursor?
-            let selection = cm.state.selection.main
-            if (!selection.empty) {
+            const anySelect = cm.state.selection.ranges.some(r => !r.empty)
+            if (anySelect) {
                 return indentMore(cm)
             } else {
-                cm.dispatch({
-                    changes: { from: selection.from, to: selection.to, insert: "\t" },
-                    selection: EditorSelection.cursor(selection.from + 1),
-                })
+               cm.dispatch(
+                   cm.state.changeByRange(selection => ({
+                        range: EditorSelection.cursor(selection.from + 1),
+                        changes: { from: selection.from, to: selection.to, insert: "\t" },
+                    }))
+                )
                 return true
             }
         }
