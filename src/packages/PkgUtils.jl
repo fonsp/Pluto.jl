@@ -106,7 +106,7 @@ function update_notebook_environment(path::String; kwargs...)
 end
 
 
-function activate_notebook_environment(path::String)
+function activate_notebook_environment(path::String; show_help::Bool=true)
     notebook_ref = Ref(load_notebook(path))
 
     ensure_has_nbpkg(notebook_ref[])
@@ -199,30 +199,31 @@ function activate_notebook_environment(path::String)
     #     end
     # end
 
-    println()
-    """
-    
-    > Notebook environment activated!
+    if show_help
+        println()
+        """
+        
+        > Notebook environment activated!
 
-    ## Step 1.
-    _Press `]` to open the Pkg REPL._
-    
-    The notebook environment is currently active.
-    
-    ## Step 2. 
-    The notebook file and your REPL environment are now synced. This means that:
-    1. Any changes you make in the REPL environment will be written to the notebook file. For example, you can `pkg> update` or `pkg> add SomePackage`, and the notebook file will update.
-    2. Whenever the notebook file changes, the REPL environment will be updated from the notebook file.
+        ## Step 1.
+        _Press `]` to open the Pkg REPL._
+        
+        The notebook environment is currently active.
+        
+        ## Step 2. 
+        The notebook file and your REPL environment are now synced. This means that:
+        1. Any changes you make in the REPL environment will be written to the notebook file. For example, you can `pkg> update` or `pkg> add SomePackage`, and the notebook file will update.
+        2. Whenever the notebook file changes, the REPL environment will be updated from the notebook file.
 
-    ## Step 3.
-    When you are done, you can exit the notebook environment by deactivating it:
+        ## Step 3.
+        When you are done, you can exit the notebook environment by deactivating it:
 
-    ```
-    pkg> activate
-    ```
-    """ |> Markdown.parse |> display
-    println()
-
+        ```
+        pkg> activate
+        ```
+        """ |> Markdown.parse |> display
+        println()
+    end
 
 end
 
