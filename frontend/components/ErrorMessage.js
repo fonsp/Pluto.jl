@@ -370,13 +370,14 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                 }),
         },
         {
-            pattern: /Multiple definitions for (.*)\./,
+            pattern: /Multiple definitions for (.*)/,
             display: (/** @type{string} */ x) =>
                 x.split("\n").map((line) => {
-                    const match = line.match(/Multiple definitions for (.*)\./)
+                    const match = line.match(/Multiple definitions for (.*)/)
 
                     if (match) {
-                        let syms_string = match[1]
+                        // replace: remove final dot
+                        let syms_string = match[1].replace(/\.$/, "")
                         let syms = syms_string.split(/, | and /)
 
                         let symbol_links = syms.map((what) => {
