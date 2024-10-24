@@ -266,6 +266,7 @@ jlerror > header > p {
 }
 jlerror > header > p:first-child {
     font-weight: bold;
+    margin-block-start: 0;
 }
 jlerror .stacktrace-header,
 jlerror .error-header {
