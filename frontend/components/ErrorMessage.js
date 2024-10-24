@@ -283,15 +283,18 @@ const frame_is_important_heuristic = (frame, frame_index, limited_stacktrace, fr
 const AnsiUpLine = (/** @type {{value: string}} */ { value }) => {
     const node_ref = useRef(/** @type {HTMLElement?} */ (null))
 
-    useEffect(() => {
+    const did_ansi_up = useRef(false)
+
+    useLayoutEffect(() => {
         if (!node_ref.current) return
         node_ref.current.innerHTML = new AnsiUp().ansi_to_html(value)
+        did_ansi_up.current = true
     }, [node_ref.current, value])
 
     // placeholder while waiting for AnsiUp to render, to prevent layout flash
     const without_ansi_chars = value.replace(/\u001b\[[0-9;]*m/g, "")
 
-    return value === "" ? html`<p><br /></p>` : html`<p ref=${node_ref}>${without_ansi_chars}</p>`
+    return value === "" ? html`<p><br /></p>` : html`<p ref=${node_ref}>${did_ansi_up.current ? null : without_ansi_chars}</p>`
 }
 
 export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
@@ -541,6 +544,7 @@ const get_first_package = (limited_stacktrace) => {
     }
 }
 
+const motivational_word_probability = 0.1
 const motivational_words = [
     //
     "Don't panic!",
@@ -561,14 +565,11 @@ const motivational_words = [
     "Oh no! 🙀",
     "this suckz 💣",
     "Be patient :)",
-    // Errors horen erbij
-    // Ook de pros krijgen errors
-    ...Array(100).fill(null),
 ]
 
 const Motivation = ({ stacktrace }) => {
     const msg = useMemo(() => {
-        return motivational_words[Math.floor(Math.random() * motivational_words.length)]
+        return Math.random() < motivational_word_probability ? motivational_words[Math.floor(Math.random() * motivational_words.length)] : null
     }, [stacktrace])
 
     return msg == null
