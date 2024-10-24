@@ -105,7 +105,19 @@ const on_jump = (hasBarrier, pluto_actions, cell_id) => () => {
  * */
 export const Cell = ({
     cell_input: { cell_id, code, code_folded, metadata },
-    cell_result: { queued, running, runtime, errored, output, logs, published_object_keys, depends_on_disabled_cells, depends_on_skipped_cells },
+    cell_result: {
+        queued,
+        running,
+        runtime,
+        errored,
+        output,
+        logs,
+        published_object_keys,
+        depends_on_disabled_cells,
+        depends_on_skipped_cells,
+        stale,
+        depends_on_stale_cells,
+    },
     cell_dependencies,
     cell_input_local,
     notebook_id,
@@ -294,8 +306,10 @@ export const Cell = ({
                 code_folded,
                 skip_as_script,
                 running_disabled,
+                stale,
                 depends_on_disabled_cells,
                 depends_on_skipped_cells,
+                depends_on_stale_cells,
                 show_input,
                 shrunk: Object.values(logs).length > 0,
                 hooked_up: output?.has_pluto_hook_features ?? false,
@@ -315,9 +329,42 @@ export const Cell = ({
                 <span></span>
             </button>
             <pluto-shoulder draggable="true" title="Drag to move cell">
-                <button onClick=${on_code_fold} class="foldcode" title="Show/hide code">
-                    <span></span>
-                </button>
+                <div>
+                    <button onClick=${on_code_fold} class="foldcode" title="Show/hide code">
+                        <span></span>
+                    </button>
+                    ${stale
+                        ? html`<button
+                              class="stale_cell_marker"
+                              title=${`This cell’s output is stale. Click to know more!`}
+                              onClick=${(e) => {
+                                  open_pluto_popup({
+                                      type: "info",
+                                      source_element: e.target,
+                                      body: html`This cell’s outputs is wrapped in a PlutoRunner.Stale object. This freezes all the cells that depend on this
+                                      one.`,
+                                  })
+                              }}
+                          >
+                              <span></span>
+                          </button>`
+                        : depends_on_stale_cells
+                        ? html`<button
+                              class="depends_on_stale_cells_marker"
+                              title=${`This cell depends on stale cells. Click to know more!`}
+                              onClick=${(e) => {
+                                  open_pluto_popup({
+                                      type: "info",
+                                      source_element: e.target,
+                                      body: html`This cell depends on a cell whose outputs is wrapped in a PlutoRunner.Stale object. This freezes all the cells
+                                      that depend on it, including this one.`,
+                                  })
+                              }}
+                          >
+                              <span></span>
+                          </button>`
+                        : null}
+                </div>
             </pluto-shoulder>
             <pluto-trafficlight></pluto-trafficlight>
             ${code_not_trusted_yet
