@@ -47,6 +47,12 @@ const integrations = Integration[
         end,
     ),
     Integration(
+        id = Base.PkgId(UUID("0703355e-b756-11e9-17c0-8b28908087d0"), "DimensionalData"),
+        code = quote
+            pluto_showable(::MIME"application/vnd.pluto.tree+object", ::DimensionalData.DimArray) = false
+        end,
+    ),
+    Integration(
         id = Base.PkgId(UUID("bd369af6-aec1-5ad0-b16a-f7cc5008161c"), "Tables"),
         code = quote
             function maptruncated(f::Function, xs, filler, limit; truncate=true)
