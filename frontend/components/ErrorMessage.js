@@ -125,7 +125,6 @@ const Funccall = ({ frame }) => {
     const funcname_display = funcname.match(/^#\d+(#\d+)?$/)
         ? html`<abbr title="A (mini-)function that is defined without the 'function' keyword, but using -> or 'do'.">anonymous function</abbr>`
         : funcname
-    console.log(funcname, funcname.match(/^#\d+(#\d+)?$/), funcname_display)
 
     let inner = html`<strong>${funcname_display}</strong><${HighlightCallArgumentNames} code=${call_funcname_args[1]} />`
 
