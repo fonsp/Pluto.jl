@@ -133,7 +133,7 @@ end
 
 """
 Will be inserted in saved notebooks that use the @bind macro, make sure that they still contain legal syntax when executed as a vanilla Julia script. Overloading `Base.get` for custom UI objects gives bound variables a sensible value.
-Also turns off JuliaFormatter formatting to avoid issueswith the formatter trying to change code that the user does not control. See https://domluna.github.io/JuliaFormatter.jl/stable/#Turn-off/on-formatting
+Also turns off JuliaFormatter formatting to avoid issues with the formatter trying to change code that the user does not control. See https://domluna.github.io/JuliaFormatter.jl/stable/#Turn-off/on-formatting
 """
 const fake_bind = """macro bind(def, element)
     #! format: off
