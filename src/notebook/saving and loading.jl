@@ -50,10 +50,8 @@ function save_notebook(io::IO, notebook::Notebook)
     # Super Advanced Code Analysis™ to add the @bind macro to the saved file if it's used somewhere.
     if any(!must_be_commented_in_file(c) && occursin("@bind", c.code) for c in notebook.cells)
         println(io, "")
-        println(io, "#! format: off") # Turn off formatting. See https://domluna.github.io/JuliaFormatter.jl/stable/#Turn-off/on-formatting
         println(io, "# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).")
         println(io, PlutoRunner.fake_bind)
-        println(io, "#! format: on") # Turn formatting back on.
     end
     println(io)
 
@@ -93,6 +91,7 @@ function save_notebook(io::IO, notebook::Notebook)
         end
     end
 
+    println(io, "#! format: off") # Turn off formatting for the rest of the document.
 
     using_plutopkg = notebook.nbpkg_ctx !== nothing
 
