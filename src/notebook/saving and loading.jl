@@ -91,7 +91,6 @@ function save_notebook(io::IO, notebook::Notebook)
         end
     end
 
-    println(io, "#! format: off") # Turn off formatting for the rest of the document.
 
     using_plutopkg = notebook.nbpkg_ctx !== nothing
 
