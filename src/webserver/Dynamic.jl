@@ -243,11 +243,6 @@ const effects_of_changed_state = Dict(
         SessionActions.move(request.session, request.notebook, patch.value)
         return no_changes
     end,
-    "process_status" => function(; request::ClientRequest, patch::Firebasey.ReplacePatch)
-        newstatus = patch.value
-
-        @info "Process status set by client" newstatus
-    end,
     "in_temp_dir" => function(; _...) no_changes end,
     "cell_inputs" => Dict(
         Wildcard() => function(cell_id, rest...; request::ClientRequest, patch::Firebasey.JSONPatch)
