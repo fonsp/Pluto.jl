@@ -304,6 +304,7 @@ function create_workspaceprocess(WorkerType; compiler_options=CompilerOptions(),
         
         Malt.remote_eval_wait(worker, process_preamble())
     
+        panic_timer = Timer(t -> @error("Starting worker process: while-true-wait loop took too long to start."), 10)
         # so that we NEVER break the workspace with an interrupt 🤕
         Malt.remote_eval(worker, quote
             while true
@@ -312,6 +313,7 @@ function create_workspaceprocess(WorkerType; compiler_options=CompilerOptions(),
                 catch end
             end
         end)
+        close(panic_timer)
     end
     
     Status.report_business_finished!(status)
