@@ -51,18 +51,9 @@ let open_docs_if_autocomplete_is_open_command = (cm) => {
     return false
 }
 
-/** @param {EditorView} cm */
-let complete_and_also_type = (cm) => {
-    // Possibly autocomplete
-    acceptCompletion(cm)
-    // And then do nothing, in the hopes that codemirror will add whatever we typed
-    return false
-}
-
 const pluto_autocomplete_keymap = [
     { key: "Tab", run: tab_completion_command },
     { key: "?", run: open_docs_if_autocomplete_is_open_command },
-    { key: ".", run: complete_and_also_type },
 ]
 
 /**
@@ -151,12 +142,7 @@ const section_operators = {
 const field_rank_heuristic = (text, is_exported) => is_exported * 3 + (/^\p{Ll}/u.test(text) ? 2 : /^\p{Lu}/u.test(text) ? 1 : 0)
 
 const julia_commit_characters = (/** @type {autocomplete.CompletionContext} */ ctx) => {
-    // const output = [".", "[", "{"]
-
-    // if (ctx.matchBefore(/\(.*/)) output.push(",")
-
-    // only the dot ".", which is handled by complete_and_also_type
-    return undefined
+    return ["."]
 }
 const endswith_keyword_regex =
     /^(.*\s)?(baremodule|begin|break|catch|const|continue|do|else|elseif|end|export|false|finally|for|function|global|if|import|let|local|macro|module|quote|return|struct|true|try|using|while)$/
@@ -245,6 +231,7 @@ const julia_code_completions_to_cm =
                             boost:
                                 completion_type === "keyword_argument" ? 7 : is_field_expression ? field_rank_heuristic(text_to_apply, is_exported) : undefined,
                             // boost: 50 - i / results.length,
+                            commitCharacters: completion_type === "keyword_argument" || value_type === "Macro" ? [] : undefined,
                         }
                     }),
                 // This is a small thing that I really want:
