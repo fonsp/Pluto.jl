@@ -571,16 +571,7 @@ const Motivation = ({ stacktrace }) => {
         return Math.random() < motivational_word_probability ? motivational_words[Math.floor(Math.random() * motivational_words.length)] : null
     }, [stacktrace])
 
-    return msg == null
-        ? null
-        : html`<div
-              class="dont-panic"
-              onClick=${(e) => {
-                  window.open("https://discourse.julialang.org/", "_blank")?.focus()
-              }}
-          >
-              ${msg}
-          </div>`
+    return msg == null ? null : html`<div class="dont-panic">${msg}</div>`
 }
 
 const get_erred_upstreams = (
