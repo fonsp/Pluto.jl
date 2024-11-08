@@ -8,14 +8,12 @@ import { useDebouncedTruth } from "./RunArea.js"
 import { time_estimate, usePackageTimingData } from "../common/InstallTimeEstimate.js"
 import { pretty_long_time } from "./EditOrRunButton.js"
 import { useEventListener } from "../common/useEventListener.js"
+import { get_included_external_source } from "../common/external_source.js"
 
-// This funny thing is a way to tell parcel to bundle these files..
-// Eventually I'll write a plugin that is able to parse html`...`, but this is it for now.
-// https://parceljs.org/languages/javascript/#url-dependencies
-export const arrow_up_circle_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-up-circle-outline.svg", import.meta.url)
-export const document_text_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-text-outline.svg", import.meta.url)
-export const help_circle_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/help-circle-outline.svg", import.meta.url)
-export const open_icon = new URL("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/open-outline.svg", import.meta.url)
+export const arrow_up_circle_icon = get_included_external_source("arrow_up_circle_icon")?.href
+export const document_text_icon = get_included_external_source("document_text_icon")?.href
+export const help_circle_icon = get_included_external_source("help_circle_icon")?.href
+export const open_icon = get_included_external_source("open_icon")?.href
 
 /**
  * @typedef PkgPopupDetails

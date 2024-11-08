@@ -1,3 +1,5 @@
+@charset "UTF-8";
+
 @import url("https://cdn.jsdelivr.net/npm/dialog-polyfill@0.5.6/dist/dialog-polyfill.css");
 
 /* @import url("https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i,500,700&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext"); */
@@ -3765,9 +3767,9 @@ pluto-cell.hooked_up pluto-output {
 }
 
 .markdown-code-block-button::before {
-    background-image: url("https://unpkg.com/ionicons@7.1.0/dist/svg/copy-outline.svg");
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/copy-outline.svg");
 }
 
 .markdown-code-block-copied-code-button::before {
-    background-image: url("https://unpkg.com/ionicons@7.1.0/dist/svg/checkmark-outline.svg");
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/checkmark-outline.svg");
 }
