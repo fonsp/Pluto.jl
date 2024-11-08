@@ -15,8 +15,8 @@ end
 
 cdnified_editor_html(; kwargs...) = cdnified_html("editor.html"; kwargs...)
 
-function file2base64dataurl(path::AbstractString)
-    string("data:", mime_from_path(path), ";base64,", base64encode(read(path)))
+function data2base64dataurl(mime, data)
+    string("data:", mime, ";base64,", base64encode(data))
 end
 
 function cdnified_html(filename::AbstractString;
@@ -26,7 +26,7 @@ function cdnified_html(filename::AbstractString;
     )
     should_use_bundled_cdn = version ∈ (nothing, PLUTO_VERSION) && pluto_cdn_root === nothing
     
-    something(
+    @something(
         if should_use_bundled_cdn
             try
                 original = read(project_relative_path(distdir, filename), String)
@@ -35,14 +35,27 @@ function cdnified_html(filename::AbstractString;
 
                 @debug "Using CDN for Pluto assets:" cdn_root
 
-                replace_with_cdn(original) do url
+                replace_with_cdn(html_source_pattern, original) do url
                     @info "$url"
                     contains(string(url), "escape_txt_for_html") && return url
                     # Because parcel creates filenames with a hash in them, we can check if the file exists locally to make sure that everything is in order.
-                    @assert isfile(project_relative_path(distdir, url)) "Could not find the file $(project_relative_path(distdir, url)) locally, that's a bad sign."
+                    path = project_relative_path(distdir, url)
+                    @assert isfile(path) "Could not find the file $(path) locally, that's a bad sign."
                     @info "let's see it $url, $should_use_bundled_cdn "
                     if base64assets
-                        return file2base64dataurl(project_relative_path(distdir, url))
+                        data = read(path, String)
+                        # early exit! TODO do we need this huh
+                        return data2base64dataurl(
+                            mime_from_path(path),
+                            endswith(url, ".css") ? 
+                            replace_with_cdn(css_source_pattern, data) do css_inner_url
+                                path = project_relative_path(distdir, css_inner_url)
+                                @assert isfile(path) "Could not find the file $(path) locally, that's a bad sign."
+                                @info "CDNifying inside CSS" css_inner_url
+                                URIs.resolvereference(cdn_root, css_inner_url) |> string
+                            end :
+                            data
+                        )
                     end
                     URIs.resolvereference(cdn_root, url) |> string
                 end
@@ -60,7 +73,7 @@ function cdnified_html(filename::AbstractString;
             if base64assets
                 @warn("Trying to use bundled assets for $filename. It's impossible to base64 include Pluto in unbundled mode. If you _really_ need this contact us.")
             end
-            replace_with_cdn(original) do url
+            replace_with_cdn(html_source_pattern, original) do url
                 URIs.resolvereference(cdn_root, url) |> string
             end
         end
@@ -229,9 +242,10 @@ replace_substring(s::String, sub::SubString, newval::AbstractString) = *(
 
 const dont_cdnify = ("new","open","shutdown","move","notebooklist","notebookfile","statefile","notebookexport","notebookupload")
 
-const source_pattern = r"\s(?:src|href)=\"(.+?)\""
+const html_source_pattern = r"\s(?:src|href)=\"(.+?)\""
+const css_source_pattern = r"url\((\"?[\w-]*\.[0-9a-f]{8}\.[\w]*\"?)\)"
 
-function replace_with_cdn(cdnify::Function, s::String, idx::Integer=1)
+function replace_with_cdn(cdnify::Function, source_pattern::Regex, s::String, idx::Integer=1)
 	next_match = match(source_pattern, s, idx)
 	if next_match === nothing
 		s
@@ -239,13 +253,14 @@ function replace_with_cdn(cdnify::Function, s::String, idx::Integer=1)
 		url = only(next_match.captures)
 		if occursin("//", url) || url ∈ dont_cdnify || occursin("data:", url)
 			# skip this one
-			replace_with_cdn(cdnify, s, nextind(s, next_match.offset))
+			replace_with_cdn(cdnify, source_pattern, s, nextind(s, next_match.offset))
 		else
-			replace_with_cdn(cdnify, replace_substring(
+            new = cdnify(url)
+			replace_with_cdn(cdnify, source_pattern, replace_substring(
 				s,
 				url,
 				cdnify(url)
-			))
+			), nextind(s, next_match.offset) + length(new))
 		end
 	end
 end
