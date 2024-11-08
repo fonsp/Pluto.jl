@@ -8,7 +8,6 @@
     "scripts": {
         "start": "cd ../frontend && parcel --dist-dir ../frontend-dist --config ../frontend-bundler/.parcelrc editor.html index.html error.jl.html",
         "build": "cd ../frontend && parcel build --no-source-maps --public-url . --dist-dir ../frontend-dist --config ../frontend-bundler/.parcelrc editor.html index.html error.jl.html && node ../frontend-bundler/add_sri.js ../frontend-dist/editor.html",
-        "build-static": "cd ../frontend && parcel build --no-source-maps --public-url . --dist-dir ../frontend-dist-static --config ../frontend-bundler/.parcelrc-static editor.html",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "author": "",
@@ -27,8 +26,6 @@
     "devDependencies": {
         "@parcel/optimizer-blob-url": "^2.11.0",
         "@parcel/optimizer-data-url": "^2.11.0",
-        "@parcel/transformer-inline": "^2.11.0",
-        "@parcel/transformer-inline-string": "^2.11.0",
         "@plutojl/posthtml-crossorigin": "^1.0.0",
         "@types/node": "^22",
         "posthtml": "^0.16.6",
