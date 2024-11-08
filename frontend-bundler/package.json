@@ -20,6 +20,10 @@
         "parcel-reporter-bundle-manifest": "^1.0.0",
         "parcel-resolver-like-a-browser": "file:../frontend-bundler/parcel-resolver-like-a-browser"
     },
+    "engines": {
+        "node": ">=22 <23",
+        "npm": ">=10 <11"
+    },
     "devDependencies": {
         "@parcel/optimizer-blob-url": "^2.11.0",
         "@parcel/optimizer-data-url": "^2.11.0",
