@@ -60,7 +60,12 @@ jobs:
               working-directory: frontend-bundler
               run: |
                 (npm run build) || (npm run build) || (npm run build)
-                
+                                
+            - name: List generated files
+              working-directory: frontend-dist
+              run: |
+                ls -lha
+
             - name: Check for corrupt files
               working-directory: frontend-dist
               run: |
