@@ -1,6 +1,5 @@
 let { Resolver } = require("@parcel/plugin")
 let path = require("path")
-let fetch = require("node-fetch")
 let fs = require("fs/promises")
 let { mkdirp } = require("mkdirp")
 let { URL } = require("url")
