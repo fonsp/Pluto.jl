@@ -3401,13 +3401,13 @@ body.disable_ui [data-pluto-variable],
 body.disable_ui [data-cell-variable] {
     cursor: pointer;
 }
-body:not(.disable_ui) [data-ctrl-down="true"][data-pluto-variable],
-body:not(.disable_ui) [data-ctrl-down="true"][data-cell-variable] {
+body:not(.disable_ui) [data-ctrl-down="true"] [data-pluto-variable],
+body:not(.disable_ui) [data-ctrl-down="true"] [data-cell-variable] {
     text-decoration-color: #d177e6;
     cursor: pointer;
 }
-body:not(.disable_ui) [data-ctrl-down="true"][data-pluto-variable]:hover,
-body:not(.disable_ui) [data-ctrl-down="true"][data-pluto-variable]:hover * {
+body:not(.disable_ui) [data-ctrl-down="true"] [data-pluto-variable]:hover,
+body:not(.disable_ui) [data-ctrl-down="true"] [data-pluto-variable]:hover * {
     /* This basically `color: #af5bc3`, but it works for emoji too!! */
     color: transparent !important;
     text-shadow: 0 0 #af5bc3;
@@ -3418,10 +3418,17 @@ body:not(.disable_ui) [data-ctrl-down="true"][data-pluto-variable]:hover * {
     /* Can give this cool styles later as well, but not for now nahhh */
     text-decoration: none;
 }
-[data-ctrl-down="true"][data-cell-variable]:hover * {
+[data-ctrl-down="true"] [data-cell-variable]:hover * {
     /* This basically `color: #af5bc3`, but it works for emoji too!! */
     color: transparent !important;
     text-shadow: 0 0 #af5bc3;
+}
+
+[data-ctrl-down="true"] [data-magic-number] {
+    cursor: ns-resize;
+    outline: 2px solid pink;
+    outline-offset: 1px;
+    border-radius: 3px;
 }
 
 .cm-tooltip.cm-tooltip-autocomplete {
