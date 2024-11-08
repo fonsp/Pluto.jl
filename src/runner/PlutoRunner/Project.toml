@@ -19,5 +19,5 @@ UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 [compat]
 # these compat entries should match those for the same packages in Project.toml of Pluto.jl itself.
-FuzzyCompletions = "=0.5.4"
+FuzzyCompletions = "=0.5.5"
 PrecompileTools = "=1.2.1"

@@ -181,7 +181,7 @@ function start_relaying_self_updates((session, notebook)::SN, run_channel)
 end
 
 function start_relaying_logs((session, notebook)::SN, log_channel)
-    update_throttled, flush_throttled = Pluto.throttled(0.1) do
+    update_throttled = Pluto.Throttled.throttled(0.1) do
         Pluto.send_notebook_changes!(Pluto.ClientRequest(; session, notebook))
     end
 
@@ -523,8 +523,10 @@ function macroexpand_in_workspace(session_notebook::SN, macrocall, cell_id, modu
             # We have to be careful here, for example a thrown `MethodError()` will contain the called method and arguments.
             # which normally would be very useful for debugging, but we can't serialize it!
             # So we make sure we only serialize the exception we know about, and string-ify the others.
-            if (error isa LoadError && error.error isa UndefVarError) || error isa UndefVarError
-                (false, error)
+            if error isa UndefVarError
+                (false, UndefVarError(error.var))
+            elseif error isa LoadError && error.error isa UndefVarError
+                (false, UndefVarError(error.error.var))
             else
                 (false, ErrorException(sprint(showerror, error)))
             end
@@ -604,11 +606,6 @@ function move_vars(
     )
 end
 
-# TODO: delete me
-@deprecate(
-    delete_vars(args...; kwargs...),
-    move_vars(args...; kwargs...)
-)
 
 """
 ```julia
@@ -684,7 +681,7 @@ function interrupt_workspace(session_notebook::Union{SN,Workspace}; verbose=true
     # TODO: this will also kill "pending" evaluations, and any evaluations started within 100ms of the kill. A global "evaluation count" would fix this.
     # TODO: listen for the final words of the remote process on stdout/stderr: "Force throwing a SIGINT"
     try
-        verbose && @info "Sending interrupt to process $(workspace.worker)"
+        verbose && @info "Sending interrupt to process $(summary(workspace.worker))"
         Malt.interrupt(workspace.worker)
 
         if poll(() -> isready(workspace.dowork_token), 5.0, 5/100)

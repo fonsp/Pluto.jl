@@ -164,7 +164,10 @@ const waitForPlutoBusy = async (page, iWantBusiness, options) => {
 
                 return iWantBusiness ? !quiet : quiet
             },
-            options,
+            {
+                timeout: 60000,
+                ...options,
+            },
             iWantBusiness
         )
     } catch (e) {

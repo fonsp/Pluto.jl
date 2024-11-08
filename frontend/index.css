@@ -3,11 +3,11 @@
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/400.css");
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/400-italic.css");
 
-@import url("vollkorn.css");
-@import url("juliamono.css");
+@import url("./fonts/vollkorn.css");
+@import url("./fonts/juliamono.css");
 
-@import url("light_color.css");
-@import url("dark_color.css");
+@import url("./themes/light.css");
+@import url("./themes/dark.css");
 
 @import url("featured-card.css");
 
@@ -162,7 +162,7 @@ pluto-filepicker button:disabled {
 }
 
 .cm-editor .cm-tooltip {
-    border: 1px solid var(--cm-editor-tooltip-border-color);
+    border: 1px solid var(--cm-color-editor-tooltip-border);
     box-shadow: 3px 3px 4px rgb(0 0 0 / 20%);
     border-radius: 4px;
 }
@@ -192,8 +192,8 @@ pluto-filepicker button:disabled {
 }
 
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] {
-    color: var(--cm-editor-li-aria-selected-color);
-    background: var(--cm-editor-li-aria-selected-bg-color);
+    color: var(--cm-color-editor-li-aria-selected);
+    background: var(--cm-color-editor-li-aria-selected-bg);
 }
 
 .cm-editor .cm-completionIcon {

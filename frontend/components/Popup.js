@@ -13,6 +13,7 @@ import { get_included_external_source } from "../common/external_source.js"
 export const arrow_up_circle_icon = get_included_external_source("arrow_up_circle_icon")?.href
 export const document_text_icon = get_included_external_source("document_text_icon")?.href
 export const help_circle_icon = get_included_external_source("help_circle_icon")?.href
+export const open_icon = get_included_external_source("open_icon")?.href
 
 /**
  * @typedef PkgPopupDetails
@@ -91,12 +92,12 @@ export const Popup = ({ notebook, disable_input }) => {
     const element_focused_before_popup = useRef(/** @type {any} */ (null))
     useLayoutEffect(() => {
         if (recent_event != null) {
-            console.log(recent_event)
             if (recent_event.should_focus === true) {
-                console.log(element_ref.current?.querySelector("a") ?? element_ref.current)
                 requestAnimationFrame(() => {
                     element_focused_before_popup.current = document.activeElement
-                    ;(element_ref.current?.querySelector("a") ?? element_ref.current)?.focus?.()
+                    const el = element_ref.current?.querySelector("a") ?? element_ref.current
+                    // console.debug("restoring focus to", el)
+                    el?.focus?.()
                 })
             } else {
                 element_focused_before_popup.current = null
@@ -116,6 +117,8 @@ export const Popup = ({ notebook, disable_input }) => {
         (e) => {
             if (recent_event_ref.current != null && recent_event_ref.current.should_focus === true) {
                 if (element_ref.current?.matches(":focus-within")) return
+                if (element_ref.current?.contains(e.relatedTarget)) return
+
                 if (
                     recent_source_element_ref.current != null &&
                     (recent_source_element_ref.current.contains(e.relatedTarget) || recent_source_element_ref.current.matches(":focus-within"))
@@ -176,7 +179,7 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event, disable_input })
             set_pkg_status(null)
         } else if (recent_event?.type === "nbpkg") {
             ;(pluto_actions.get_avaible_versions({ package_name: recent_event.package_name, notebook_id: notebook.notebook_id }) ?? Promise.resolve([])).then(
-                (versions) => {
+                ({ versions, url }) => {
                     if (still_valid) {
                         set_pkg_status(
                             package_status({
@@ -184,6 +187,7 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event, disable_input })
                                 package_name: recent_event.package_name,
                                 is_disable_pkg: recent_event.is_disable_pkg,
                                 available_versions: versions,
+                                package_url: url,
                             })
                         )
                     }
@@ -196,11 +200,12 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event, disable_input })
     }, [recent_event, ...nbpkg_fingerprint_without_terminal(notebook.nbpkg)])
 
     // hide popup when nbpkg is switched on/off
+    const valid = recent_event.is_disable_pkg || (notebook.nbpkg?.enabled ?? true)
     useEffect(() => {
-        if (!(notebook.nbpkg?.enabled ?? true)) {
+        if (!valid) {
             clear_recent_event()
         }
-    }, [notebook.nbpkg?.enabled ?? true])
+    }, [valid])
 
     const [showterminal, set_showterminal] = useState(false)
 

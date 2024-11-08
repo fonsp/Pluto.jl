@@ -67,12 +67,6 @@ binder-spinner {
     background: #fffdf7;
     box-shadow: 0px 0px 20px 0px #ffffff;
     cursor: pointer;
-    font-size: 14px;
-    font-style: italic;
-    font-family: "Roboto Mono";
-    letter-spacing: -0.2px;
-    color: #0000009c;
-    white-space: nowrap;
     display: block;
 }
 
@@ -117,7 +111,6 @@ body.wiggle_binder .edit_or_run > button {
     border: 3px solid hsl(236deg 28% 50% / 46%);
     font-size: 16px;
     /* font-style: italic; */
-    font-family: "Roboto Mono";
     font-family: var(--lato-ui-font-stack);
     letter-spacing: 0.1px;
     color: var(--black);

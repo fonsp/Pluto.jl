@@ -19,6 +19,7 @@ concurrency:
 jobs:
     trigger:
         runs-on: ubuntu-latest
+        timeout-minutes: 20
         steps:
             - uses: actions/checkout@v4
               # We use that PAT token instead of GITHUB_TOKEN because we are triggering another github action on the 'release' event.

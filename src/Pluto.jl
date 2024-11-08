@@ -123,6 +123,16 @@ function __init__()
             # create empty file to indicate that we've shown the banner
             write(fn, "");
         end
+
+        bad_depots = filter(d -> !isabspath(expanduser(d)), DEPOT_PATH)
+        if !isempty(bad_depots)
+            @error """Pluto: The provided depot path is not an absolute path. Pluto will not be able to run correctly.
+            
+            Did you recently change the DEPOT path setting? Change your setting to use an absolute path.
+            
+            Do you not know what this means? Please get in touch! https://github.com/fonsp/Pluto.jl/issues
+            """ bad_depots DEPOT_PATH
+        end
     end
 end
 

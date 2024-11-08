@@ -1,9 +1,18 @@
 import puppeteer from "puppeteer"
-import { saveScreenshot, createPage, paste } from "../helpers/common"
-import { createNewNotebook, getPlutoUrl, runAllChanged, setupPlutoBrowser, shutdownCurrentNotebook, waitForPlutoToCalmDown } from "../helpers/pluto"
+import { saveScreenshot, createPage, paste, waitForContentToBecome, waitForContent } from "../helpers/common"
+import {
+    createNewNotebook,
+    getPlutoUrl,
+    importNotebook,
+    runAllChanged,
+    setupPlutoBrowser,
+    shutdownCurrentNotebook,
+    waitForCellOutput,
+    waitForPlutoToCalmDown,
+} from "../helpers/pluto"
 
 // https://github.com/fonsp/Pluto.jl/issues/928
-describe("Bonds should run once when refreshing page", () => {
+describe("@bind", () => {
     /**
      * Launch a shared browser instance for all tests.
      * I don't use jest-puppeteer because it takes away a lot of control and works buggy for me,
@@ -77,5 +86,56 @@ numberoftimes = Ref(0)
             return document.querySelector("pluto-cell:nth-of-type(5) pluto-output")?.textContent
         })
         expect(output_after_reload).toBe(output_after_running_bonds)
+    })
+
+    it("should ignore intermediate bond values while the notebook is running", async () => {
+        const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+        const chill = async () => {
+            await wait(300)
+            await waitForPlutoToCalmDown(page)
+            await wait(1500)
+            await waitForPlutoToCalmDown(page)
+        }
+
+        await importNotebook(page, "test_bind_dynamics.jl")
+        await chill()
+        await chill()
+
+        const id = `029e1d1c-bf42-4e2c-a141-1e2eecc0800d`
+        const output_selector = `pluto-cell[id="${id}"] pluto-output`
+
+        //page.click is stupid
+        const click = async (sel) => {
+            await page.waitForSelector(sel)
+            await page.evaluate((sel) => document.querySelector(sel).click(), sel)
+        }
+
+        const reset = async () => {
+            await click(`#reset_xs_button`)
+            await wait(300)
+            await waitForPlutoToCalmDown(page)
+            await waitForContentToBecome(page, output_selector, "")
+            await wait(300)
+            await waitForPlutoToCalmDown(page)
+            await waitForContentToBecome(page, output_selector, "")
+            await wait(300)
+        }
+
+        const start = async () => {
+            await click(`#add_x_button`)
+            await chill()
+
+            return await waitForContent(page, output_selector)
+        }
+
+        await reset()
+        await start()
+
+        await chill()
+
+        await reset()
+        const val = await start()
+        expect(val).toBe("1,done")
     })
 })

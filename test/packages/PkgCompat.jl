@@ -32,6 +32,12 @@ import Pkg
         
     end
     
+    @testset "URL" begin
+        @test PkgCompat.package_url("HTTP") == "https://github.com/JuliaWeb/HTTP.jl.git"
+        @test PkgCompat.package_url("HefefTTP") === nothing
+        @test PkgCompat.package_url("Downloads") == "https://docs.julialang.org/en/v1/stdlib/Downloads/"
+    end
+    
     @testset "Registry queries" begin
         Pkg.Registry.add(pluto_test_registry_spec)
         PkgCompat.refresh_registry_cache()

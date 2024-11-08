@@ -163,7 +163,11 @@ export const Notebook = ({
     let global_definition_locations = useMemo(
         () =>
             Object.fromEntries(
-                Object.values(notebook?.cell_dependencies ?? {}).flatMap((x) => Object.keys(x.downstream_cells_map).map((variable) => [variable, x.cell_id]))
+                Object.values(notebook?.cell_dependencies ?? {}).flatMap((x) =>
+                    Object.keys(x.downstream_cells_map)
+                        .filter((variable) => !variable.includes("."))
+                        .map((variable) => [variable, x.cell_id])
+                )
             ),
         [notebook?.cell_dependencies]
     )
@@ -214,7 +218,13 @@ export const Notebook = ({
                     />`
                 )}
             ${cell_outputs_delayed && notebook.cell_order.length >= render_cell_outputs_minimum
-                ? html`<div style="font-family: system-ui; font-style: italic; text-align: center; padding: 5rem 1rem;">Loading more cells...</div>`
+                ? html`<div
+                      style="font-family: system-ui; font-style: italic; text-align: center; padding: 5rem 1rem; margin-bottom: ${(notebook.cell_order.length -
+                          render_cell_outputs_minimum) *
+                      10}rem;"
+                  >
+                      Loading more cells...
+                  </div>`
                 : null}
         </pluto-notebook>
     `

@@ -1,15 +1,18 @@
 import { cl } from "../common/ClassTable.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
-import { EditorState, EditorView, julia_andrey, lineNumbers, syntaxHighlighting } from "../imports/CodemirrorPlutoSetup.js"
-import { html, useContext, useEffect, useLayoutEffect, useRef, useState } from "../imports/Preact.js"
-import { pluto_syntax_colors } from "./CellInput.js"
+import { html, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "../imports/Preact.js"
 import { highlight } from "./CellOutput.js"
-import { Editor } from "./Editor.js"
+import { PkgTerminalView } from "./PkgTerminalView.js"
+import _ from "../imports/lodash.js"
+import { open_bottom_right_panel } from "./BottomRightPanel.js"
+import AnsiUp from "../imports/AnsiUp.js"
 
 const extract_cell_id = (/** @type {string} */ file) => {
-    const sep_index = file.indexOf("#==#")
+    if (file.includes("#@#==#")) return null
+    const sep = "#==#"
+    const sep_index = file.indexOf(sep)
     if (sep_index != -1) {
-        return file.substring(sep_index + 4, sep_index + 4 + 36)
+        return file.substring(sep_index + sep.length, sep_index + sep.length + 36)
     } else {
         return null
     }
@@ -25,45 +28,125 @@ const focus_line = (cell_id, line) =>
         })
     )
 
+const DocLink = ({ frame }) => {
+    let pluto_actions = useContext(PlutoActionsContext)
+
+    if (extract_cell_id(frame.file)) return null
+    if (frame.parent_module == null) return null
+    if (ignore_funccall(frame)) return null
+
+    const funcname = frame.func
+    if (funcname === "") return null
+
+    const nb = pluto_actions.get_notebook()
+    const pkg_name = frame.source_package
+    const builtin = ["Main", "Core", "Base"].includes(pkg_name)
+    const installed = nb?.nbpkg?.installed_versions?.[frame.source_package] != null
+    if (!builtin && nb?.nbpkg != null && !installed) return null
+
+    return html`  <span
+            ><a
+                href="#"
+                class="doclink"
+                onClick=${(e) => {
+                    e.preventDefault()
+                    open_bottom_right_panel("docs")
+                    pluto_actions.set_doc_query(`${frame.parent_module}.${funcname}`)
+                }}
+                >docs</a
+            ></span
+        >`
+}
+
 const StackFrameFilename = ({ frame, cell_id }) => {
     if (ignore_location(frame)) return null
 
     const frame_cell_id = extract_cell_id(frame.file)
+    const line = frame.line
     if (frame_cell_id != null) {
-        const a = html`<a
+        return html`<a
             internal-file=${frame.file}
             href=${`#${frame_cell_id}`}
             onclick=${(e) => {
-                focus_line(frame_cell_id, frame.line - 1)
+                focus_line(frame_cell_id, line == null ? null : line - 1)
                 e.preventDefault()
             }}
         >
-            ${frame_cell_id == cell_id ? "This cell" : "Other cell"}: line ${frame.line}
+            ${frame_cell_id == cell_id ? "This\xa0cell" : "Other\xa0cell"}${line == null ? null : html`: <em>line ${line}</em>`}
         </a>`
-        return html`<em>${a}</em>`
     } else {
-        return html`<em title=${frame.path}
-            ><a class="remote-url" href=${frame?.url?.startsWith?.("https") ? frame.url : null}>${frame.file}:${frame.line}</a></em
-        >`
+        const sp = frame.source_package
+        const origin = ["Main", "Core", "Base"].includes(sp) ? "julia" : sp
+
+        const file_line = html`<em>${frame.file.replace(/#@#==#.*/, "")}:${frame.line}</em>`
+
+        const text = sp != null ? html`<strong>${origin}</strong> → ${file_line}` : file_line
+
+        const href = frame?.url?.startsWith?.("https") ? frame.url : null
+        return html`<a title=${frame.path} class="remote-url" href=${href}>${text}</a>`
     }
 }
 
-const at = html`<span> @ </span>`
+const at = html`<span> from </span>`
 
 const ignore_funccall = (frame) => frame.call === "top-level scope"
 const ignore_location = (frame) => frame.file === "none"
 
+const funcname_args = (call) => {
+    const anon_match = call.indexOf(")(")
+    if (anon_match != -1) {
+        return [call.substring(0, anon_match + 1), call.substring(anon_match + 1)]
+    } else {
+        const bracket_index = call.indexOf("(")
+        if (bracket_index != -1) {
+            return [call.substring(0, bracket_index), call.substring(bracket_index)]
+        } else {
+            return [call, ""]
+        }
+    }
+}
+
 const Funccall = ({ frame }) => {
+    let [expanded_state, set_expanded] = useState(false)
+    useEffect(() => {
+        set_expanded(false)
+    }, [frame])
+
+    const silly_to_hide = (frame.call_short.match(/…/g) ?? "").length <= 1 && frame.call.length < frame.call_short.length + 7
+
+    const expanded = expanded_state || (frame.call === frame.call_short && frame.func === funcname_args(frame.call)[0]) || silly_to_hide
+
     if (ignore_funccall(frame)) return null
 
-    const bracket_index = frame.call.indexOf("(")
+    const call = expanded ? frame.call : frame.call_short
 
-    let inner =
-        bracket_index != -1
-            ? html`<strong>${frame.call.substr(0, bracket_index)}</strong>${frame.call.substr(bracket_index)}`
-            : html`<strong>${frame.call}</strong>`
+    const call_funcname_args = funcname_args(call)
+    const funcname = expanded ? call_funcname_args[0] : frame.func
 
-    return html`<mark>${inner}</mark>${at}`
+    // if function name is #12 or #15#16 then it is an anonymous function
+
+    const funcname_display = funcname.match(/^#\d+(#\d+)?$/)
+        ? html`<abbr title="A (mini-)function that is defined without the 'function' keyword, but using -> or 'do'.">anonymous function</abbr>`
+        : funcname
+
+    let inner = html`<strong>${funcname_display}</strong><${HighlightCallArgumentNames} code=${call_funcname_args[1]} />`
+
+    const id = useMemo(() => Math.random().toString(36).substring(7), [frame])
+
+    return html`<mark id=${id}>${inner}</mark> ${!expanded
+            ? html`<a
+                  aria-expanded=${expanded}
+                  aria-controls=${id}
+                  title="Display the complete type information of this function call"
+                  role="button"
+                  href="#"
+                  onClick=${(e) => {
+                      e.preventDefault()
+                      set_expanded(true)
+                  }}
+                  >...show types...</a
+              >`
+            : null}`
 }
 
 const LinePreview = ({ frame, num_context_lines = 2 }) => {
@@ -100,6 +183,7 @@ const JuliaHighlightedLine = ({ code, frameLine, i }) => {
     useLayoutEffect(() => {
         if (code_ref.current) {
             code_ref.current.innerText = code
+            delete code_ref.current.dataset.highlighted
             highlight(code_ref.current, "julia")
         }
     }, [code_ref.current, code])
@@ -112,6 +196,19 @@ const JuliaHighlightedLine = ({ code, frameLine, i }) => {
             "frame-line": frameLine,
         })}
     ></code>`
+}
+
+const HighlightCallArgumentNames = ({ code }) => {
+    const code_ref = useRef(/** @type {HTMLPreElement?} */ (null))
+    useLayoutEffect(() => {
+        if (code_ref.current) {
+            const html = code.replaceAll(/([^():{},; ]*)::/g, "<span class='argument_name'>$1</span>::")
+
+            code_ref.current.innerHTML = html
+        }
+    }, [code_ref.current, code])
+
+    return html`<s-span ref=${code_ref} class="language-julia"></s-span>`
 }
 
 const insert_commas_and_and = (/** @type {any[]} */ xs) => xs.flatMap((x, i) => (i === xs.length - 1 ? [x] : i === xs.length - 2 ? [x, " and "] : [x, ", "]))
@@ -138,7 +235,7 @@ export const ParseError = ({ cell_id, diagnostics }) => {
                     ${diagnostics.map(
                         ({ message, from, to, line }) =>
                             html`<li
-                                class="from_this_notebook from_this_cell"
+                                class="from_this_notebook from_this_cell important"
                                 onmouseenter=${() =>
                                     // NOTE: this could be moved move to `StackFrameFilename`
                                     window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from, to } }))}
@@ -146,7 +243,8 @@ export const ParseError = ({ cell_id, diagnostics }) => {
                                     window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from: null, to: null } }))}
                             >
                                 <div class="classical-frame">
-                                    ${message}${at}<${StackFrameFilename} frame=${{ file: "#==#" + cell_id, line }} cell_id=${cell_id} />
+                                    ${message}
+                                    <div class="frame-source">${at}<${StackFrameFilename} frame=${{ file: "#==#" + cell_id, line }} cell_id=${cell_id} /></div>
                                 </div>
                             </li>`
                     )}
@@ -156,11 +254,56 @@ export const ParseError = ({ cell_id, diagnostics }) => {
     `
 }
 
+const frame_is_important_heuristic = (frame, frame_index, limited_stacktrace, frame_cell_id) => {
+    if (frame_cell_id != null) return true
+
+    const [funcname, params] = funcname_args(frame.call)
+
+    if (["_collect", "collect_similar", "iterate", "error", "macro expansion"].includes(funcname)) {
+        return false
+    }
+
+    if (funcname.includes("throw")) return false
+
+    // too sciency
+    if (frame.inlined) return false
+
+    if (params == null) {
+        // no type signature... must be some function call that got optimized away or something special
+        // probably not directly relevant
+        return false
+    }
+
+    if ((funcname.match(/#/g) ?? "").length >= 2) {
+        // anonymous function: #plot#142
+        return false
+    }
+
+    return true
+}
+
+const AnsiUpLine = (/** @type {{value: string}} */ { value }) => {
+    const node_ref = useRef(/** @type {HTMLElement?} */ (null))
+
+    const did_ansi_up = useRef(false)
+
+    useLayoutEffect(() => {
+        if (!node_ref.current) return
+        node_ref.current.innerHTML = new AnsiUp().ansi_to_html(value)
+        did_ansi_up.current = true
+    }, [node_ref.current, value])
+
+    // placeholder while waiting for AnsiUp to render, to prevent layout flash
+    const without_ansi_chars = value.replace(/\u001b\[[0-9;]*m/g, "")
+
+    return value === "" ? html`<p><br /></p>` : html`<p ref=${node_ref}>${did_ansi_up.current ? null : without_ansi_chars}</p>`
+}
+
 export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     const default_rewriter = {
         pattern: /.?/,
-        display: (/** @type{string} */ x) => x.split("\n").map((line) => html`<p>${line}</p>`),
+        display: (/** @type{string} */ x) => _.dropRightWhile(x.split("\n"), (s) => s === "").map((line) => html`<${AnsiUpLine} value=${line} />`),
     }
     const rewriters = [
         {
@@ -232,13 +375,14 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                 }),
         },
         {
-            pattern: /Multiple definitions for (.*)\./,
+            pattern: /Multiple definitions for (.*)/,
             display: (/** @type{string} */ x) =>
                 x.split("\n").map((line) => {
-                    const match = line.match(/Multiple definitions for (.*)\./)
+                    const match = line.match(/Multiple definitions for (.*)/)
 
                     if (match) {
-                        let syms_string = match[1]
+                        // replace: remove final dot
+                        let syms_string = match[1].replace(/\.$/, "")
                         let syms = syms_string.split(/, | and /)
 
                         let symbol_links = syms.map((what) => {
@@ -266,7 +410,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
             display: () => default_rewriter.display("Error"),
         },
         {
-            pattern: /^UndefVarError: (.*) not defined\.?$/,
+            pattern: /^UndefVarError: (.*) not defined/,
             display: (/** @type{string} */ x) => {
                 const notebook = /** @type{import("./Editor.js").NotebookData?} */ (pluto_actions.get_notebook())
                 const erred_upstreams = get_erred_upstreams(notebook, cell_id)
@@ -299,6 +443,26 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                 return Object.keys(erred_upstreams).length === 0
             },
         },
+        {
+            pattern: /^ArgumentError: Package (.*) not found in current path/,
+            display: (/** @type{string} */ x) => {
+                const match = x.match(/^ArgumentError: Package (.*) not found in current path/)
+                const package_name = (match?.[1] ?? "").replaceAll("`", "")
+
+                const pkg_terminal_value = pluto_actions.get_notebook()?.nbpkg?.terminal_outputs?.[package_name]
+
+                return html`<p>The package <strong>${package_name}.jl</strong> could not load because it failed to initialize.</p>
+                    <p>That's not nice! Things you could try:</p>
+                    <ul>
+                        <li>Restart the notebook.</li>
+                        <li>Try a different Julia version.</li>
+                        <li>Contact the developers of ${package_name}.jl about this error.</li>
+                    </ul>
+                    <p>You might find useful information in the package installation log:</p>
+                    <${PkgTerminalView} value=${pkg_terminal_value} />`
+            },
+            show_stacktrace: () => false,
+        },
         default_rewriter,
     ]
 
@@ -317,7 +481,14 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
         (frame) => !(ignore_location(frame) && ignore_funccall(frame))
     )
 
+    const first_package = get_first_package(limited_stacktrace)
+
     return html`<jlerror>
+        <div class="error-header">
+            <secret-h1>Error message${first_package == null ? null : ` from ${first_package}`}</secret-h1>
+            <!-- <p>This message was included with the error:</p> -->
+        </div>
+
         <header>${matched_rewriter.display(msg)}</header>
         ${stacktrace.length == 0 || !(matched_rewriter.show_stacktrace?.() ?? true)
             ? null
@@ -328,20 +499,25 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                   </div>
 
                   <ol>
-                      ${limited_stacktrace.map((frame) => {
+                      ${limited_stacktrace.map((frame, frame_index) => {
                           const frame_cell_id = extract_cell_id(frame.file)
                           const from_this_notebook = frame_cell_id != null
                           const from_this_cell = cell_id === frame_cell_id
-                          return html`<li class=${cl({ from_this_notebook, from_this_cell })}>
+                          const important = frame_is_important_heuristic(frame, frame_index, limited_stacktrace, frame_cell_id)
+
+                          return html`<li class=${cl({ from_this_notebook, from_this_cell, important })}>
                               <div class="classical-frame">
                                   <${Funccall} frame=${frame} />
-                                  <${StackFrameFilename} frame=${frame} cell_id=${cell_id} />
+                                  <div class="frame-source">
+                                      ${at}<${StackFrameFilename} frame=${frame} cell_id=${cell_id} />
+                                      <${DocLink} frame=${frame} />
+                                  </div>
                               </div>
                               ${from_this_notebook ? html`<${LinePreview} frame=${frame} num_context_lines=${from_this_cell ? 1 : 2} />` : null}
                           </li>`
                       })}
                       ${limited
-                          ? html`<li>
+                          ? html`<li class="important">
                                 <a
                                     href="#"
                                     onClick=${(e) => {
@@ -354,7 +530,51 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                           : null}
                   </ol>
               </section>`}
+        <${Motivation} stacktrace=${stacktrace} />
     </jlerror>`
+}
+
+const get_first_package = (limited_stacktrace) => {
+    for (let [i, frame] of limited_stacktrace.entries()) {
+        const frame_cell_id = extract_cell_id(frame.file)
+        if (frame_cell_id) return undefined
+
+        const important = frame_is_important_heuristic(frame, i, limited_stacktrace, frame_cell_id)
+        if (!important) continue
+
+        if (frame.source_package) return frame.source_package
+    }
+}
+
+const motivational_word_probability = 0.1
+const motivational_words = [
+    //
+    "Don't panic!",
+    "Keep calm, you got this!",
+    "You got this!",
+    "Silly computer!",
+    "Silly computer!",
+    "beep boop CRASH 🤖",
+    "computer bad, you GREAT!",
+    "Probably not your fault!",
+    "Try asking on Julia Discourse!",
+    "uhmmmmmm??!",
+    "Maybe time for a break? ☕️",
+    "Everything is going to be okay!",
+    "Computers are hard!",
+    "C'est la vie !",
+    "¯\\_(ツ)_/¯",
+    "Oh no! 🙀",
+    "this suckz 💣",
+    "Be patient :)",
+]
+
+const Motivation = ({ stacktrace }) => {
+    const msg = useMemo(() => {
+        return Math.random() < motivational_word_probability ? motivational_words[Math.floor(Math.random() * motivational_words.length)] : null
+    }, [stacktrace])
+
+    return msg == null ? null : html`<div class="dont-panic">${msg}</div>`
 }
 
 const get_erred_upstreams = (

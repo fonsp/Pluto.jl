@@ -32,7 +32,7 @@ const truthy = (x) => x === "" || x === "true"
 const falsey = (x) => x === "false"
 
 const from_attribute = (element, name) => {
-    const val = element.getAttribute(name)
+    const val = element.getAttribute(name) ?? element.getAttribute(name.replaceAll("_", "-"))
     if (name === "disable_ui") {
         return truthy(val) ? true : falsey(val) ? false : null
     } else if (name === "isolated_cell_id") {

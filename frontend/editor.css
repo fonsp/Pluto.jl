@@ -9,21 +9,22 @@
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/700.css");
 
 /* @import url("https://fonts.googleapis.com/css?family=Alegreya+Sans:400,400i,500,500i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese"); */
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/400.css");
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/500.css");
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/700.css");
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/400-italic.css");
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/500-italic.css");
-@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/700-italic.css");
+/* @import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/400.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/500.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/700.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/400-italic.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/500-italic.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@5.0.12/700-italic.css"); */
+@import url("./fonts/alegreya.css");
 
-@import url("./juliamono.css");
-@import url("./vollkorn.css");
+@import url("./fonts/juliamono.css");
+@import url("./fonts/vollkorn.css");
 /* @import url("https://fonts.googleapis.com/css2?family=Lato&display=swap"); */
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/lato@4.4.5/400.css");
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/lato@4.4.5/400-italic.css");
 
-@import url("./light_color.css");
-@import url("./dark_color.css");
+@import url("./themes/light.css");
+@import url("./themes/dark.css");
 
 @import url("./featured-card.css");
 
@@ -38,6 +39,7 @@
     --sans-serif-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
     --lato-ui-font-stack: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, "Apple Color Emoji", "Segoe UI Emoji",
         "Segoe UI Symbol", system-ui, sans-serif;
+    --roboto-mono-font-stack: "Roboto Mono", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", monospace;
     --system-ui-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Cantarell, "Apple Color Emoji", "Segoe UI Emoji",
         "Segoe UI Symbol", system-ui, sans-serif;
     color-scheme: light dark;
@@ -45,7 +47,7 @@
 
 /* GENERAL PAGE LAYOUT */
 html {
-    font-size: 17px;
+    font-size: 16px;
 }
 
 * {
@@ -90,18 +92,12 @@ body:not(.disable_ui) {
 /* | main=25px+700px+6px=731px | pluto-helpbox=350px - 500px | */
 /* min-width: 731px+ */
 
-/* CAN WE HAVE CONTAINER QUERIES PLESSSSS */
-@media screen and (min-width: calc(700px + 25px + 6px)) and (max-width: calc(700px + 25px + 6px + 500px)) {
-    body:not(.disable_ui) pluto-editor.fullscreen main {
-        margin-left: 0px;
-        align-self: flex-start;
-    }
-}
-@media screen and (min-width: calc(700px + 25px + 6px + 500px)) and (max-width: calc(700px + 25px + 6px + 500px + 500px)) {
-    body:not(.disable_ui) pluto-editor.fullscreen main {
-        margin-right: 500px;
-        align-self: flex-end;
-    }
+pluto-editor main {
+    align-self: flex-end;
+    margin-right: max(
+        /* First part: center it */ max(0px, (100% - (700px + 25px + 6px)) / 2),
+        /* Second part: push away from the right to take up all free space */ min((100% - (700px + 25px + 6px)), /* but don't do this more than */ 500px)
+    );
 }
 
 pluto-notebook {
@@ -115,7 +111,7 @@ pluto-notebook {
 
 pluto-output {
     font-family: "Alegreya Sans", "Trebuchet MS", sans-serif;
-    font-size: 1em;
+    font-size: 14.5px;
     font-weight: 400;
     color: var(--pluto-output-color);
 }
@@ -126,12 +122,13 @@ pluto-output h3,
 pluto-output h4,
 pluto-output h5,
 pluto-output h6 {
-    font-family: "Vollkorn", Palatino, serif;
+    font-family: "Vollkorn", Palatino, Georgia, serif;
     font-feature-settings: "lnum", "pnum";
     font-weight: 600;
     color: var(--pluto-output-h-color);
     margin-block-start: 1rem;
     margin-block-end: 0rem;
+    line-height: 1.25em;
 }
 
 pluto-output h1,
@@ -191,7 +188,7 @@ pluto-output p {
     margin-block-start: 0px;
     margin-block-end: var(--pluto-cell-spacing);
     word-spacing: 0.053em;
-    line-height: 1.45em;
+    line-height: 1.6em;
 }
 
 /* This allows a linebreak in Markdown using backslash with smaller spacing compared to paragraph in firefox */
@@ -241,7 +238,7 @@ a:hover {
 
 pluto-output code {
     font-family: var(--julia-mono-font-stack);
-    font-size: 0.75em; /* not rem */
+    font-size: 0.9em; /* not rem */
     font-variant-ligatures: none;
 }
 
@@ -272,7 +269,7 @@ pluto-output pre {
     tab-size: 4;
     -moz-tab-size: 4; /* https://bugzilla.mozilla.org/show_bug.cgi?id=737785 */
     font-family: var(--julia-mono-font-stack);
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     font-variant-ligatures: none;
 }
 
@@ -320,6 +317,7 @@ pluto-output div.admonition .admonition-title {
     font-weight: 600;
     margin-block-end: 0px;
     padding-left: 0.3em;
+    font-size: 1.3em;
 }
 pluto-output div.admonition .admonition-title ~ * {
     margin-block-end: 0.5em;
@@ -345,31 +343,31 @@ pluto-output div.admonition.hint {
     background: var(--jl-info-color);
     border: 5px solid var(--jl-info-accent-color);
 }
-pluto-output div.admonition.note .admonition-title,
-pluto-output div.admonition.info .admonition-title,
-pluto-output div.admonition.hint .admonition-title {
+pluto-output div.admonition.note > .admonition-title,
+pluto-output div.admonition.info > .admonition-title,
+pluto-output div.admonition.hint > .admonition-title {
     background: var(--jl-info-accent-color);
 }
 pluto-output div.admonition.warning {
     background: var(--jl-warn-color);
     border: 5px solid var(--jl-warn-accent-color);
 }
-pluto-output div.admonition.warning .admonition-title {
+pluto-output div.admonition.warning > .admonition-title {
     background: var(--jl-warn-accent-color);
 }
 pluto-output div.admonition.danger {
     background: var(--jl-danger-color);
     border: 5px solid var(--jl-danger-accent-color);
 }
-pluto-output div.admonition.danger .admonition-title {
+pluto-output div.admonition.danger > .admonition-title {
     background: var(--jl-danger-accent-color);
 }
 
-pluto-output div.admonition.hint .admonition-title ~ * {
+pluto-output div.admonition.hint > .admonition-title ~ * {
     filter: blur(0.25em);
 }
-pluto-output div.admonition.hint:hover .admonition-title ~ *,
-pluto-output div.admonition.hint:focus-within .admonition-title ~ * {
+pluto-output div.admonition.hint:hover > .admonition-title ~ *,
+pluto-output div.admonition.hint:focus-within > .admonition-title ~ * {
     filter: blur(0em);
 }
 
@@ -386,7 +384,7 @@ pluto-output div.footnote p.footnote-title::after {
 }
 pluto-output a.footnote,
 pluto-output div.footnote p.footnote-title {
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--roboto-mono-font-stack);
     font-size: 0.75rem;
     font-weight: 700;
     margin-block-end: 0px;
@@ -522,9 +520,9 @@ header#pluto-nav {
     transform: translateY(0px);
     transition: background-color 0.5s ease-in-out, transform 0.25s cubic-bezier(0.18, 0.89, 0.49, 1.13);
     border-bottom: solid 1px var(--header-border-color);
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--roboto-mono-font-stack);
     font-weight: 400;
-    font-size: 0.75rem;
+    font-size: 0.8rem;
 }
 
 header#pluto-nav.show_export {
@@ -595,7 +593,6 @@ div.export_title {
     /* writing-mode: sideways-lr; */
     writing-mode: vertical-lr;
     transform: rotate(180deg);
-
     margin-top: 10px;
     font-weight: 700;
     font-size: 1rem;
@@ -605,7 +602,7 @@ a.export_card header {
     font-family: "Vollkorn", Palatino, sans-serif;
     /* font-family: system-ui; */
     font-feature-settings: "lnum", "pnum";
-    font-size: 1rem;
+    font-size: 17px;
 }
 a.export_card section {
     color: var(--export-card-text-color);
@@ -1100,7 +1097,7 @@ main > preamble {
     border: 3px solid var(--overlay-button-border);
     border-radius: 12px;
     height: 35px;
-    font-family: "Segoe UI Emoji", "Roboto Mono", monospace;
+    font-family: var(--roboto-mono-font-stack);
     font-size: 0.75rem;
     pointer-events: all;
     /* break-inside: avoid; */
@@ -1406,7 +1403,7 @@ nav#slide_controls > button {
     cursor: pointer;
     /* color: hsl(204, 86%, 35%); */
     color: var(--ui-button-color);
-    font-family: "Segoe UI Emoji", "Roboto Mono", monospace;
+    font-family: var(--roboto-mono-font-stack);
     font-size: 0.75rem;
     z-index: 30;
     /* CodeMirror is 2 */
@@ -1872,6 +1869,31 @@ pluto-input > .input_context_menu span.icon::after {
     filter: var(--image-filters);
 }
 
+pluto-input > .preview_hidden_code_info {
+    display: none;
+    position: absolute;
+    bottom: -1.1rem;
+    left: 0;
+    right: 0;
+    margin-right: auto;
+    margin-left: auto;
+    height: 1.4rem;
+    width: 19ch;
+    font-style: italic;
+    text-align: center;
+    background: var(--jl-info-color);
+    border-radius: 0.4rem;
+    font-family: var(--system-ui-font-stack);
+    font-size: 0.9rem;
+    z-index: 22;
+    pointer-events: none;
+}
+
+body:not(.process_waiting_for_permission) pluto-cell.code_folded pluto-input > .preview_hidden_code_info,
+pluto-cell.code_folded:focus-within pluto-input > .preview_hidden_code_info {
+    display: block;
+}
+
 /* PKG UI */
 
 pkg-status-mark {
@@ -2027,6 +2049,14 @@ pkg-popup .pkg-buttons {
     flex-direction: row;
 }
 
+.ionicon {
+    filter: var(--image-filters);
+}
+
+.package-name .ionicon {
+    margin-bottom: -0.1ch;
+}
+
 a.stdout-info img,
 pkg-popup .pkg-buttons img {
     filter: var(--image-filters);
@@ -2052,7 +2082,7 @@ pkg-popup .toggle-terminal {
     font-size: 0.8em;
     margin: 0.5em 0em;
     padding: 0.5em 0.5em;
-    background: var(--pluto-logs-info-color);
+    background: var(--pluto-logs-warn-color);
     border-radius: 0.5em;
 }
 
@@ -2075,12 +2105,15 @@ pkg-terminal > .scroller {
     width: 100%;
 }
 
-pkg-terminal pre {
+body pkg-terminal:not(.asdf) pre:not(.asdf) {
     white-space: pre-wrap;
     word-break: break-all;
     font-size: 0.6rem;
     font-family: "Space Mono", monospace;
+    font-variant-ligatures: none;
     margin: 0;
+    color: inherit;
+    background: none;
 }
 
 pkg-terminal .make-me-spin {
@@ -2142,7 +2175,7 @@ pluto-runarea > span {
     left: 22px;
     width: 45px;
 
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--roboto-mono-font-stack);
     font-size: 0.6em;
     font-style: italic;
     color: var(--pluto-runarea-span-color);
@@ -2266,6 +2299,7 @@ pluto-helpbox > header {
     background-color: var(--helpbox-header-bg-color);
     color: var(--helpbox-header-color);
     font-family: var(--system-ui-font-stack);
+    font-variant-numeric: tabular-nums;
     font-size: 0.9rem;
     --border-radius: 0.4em;
     font-weight: 500;
@@ -2422,6 +2456,7 @@ button.helpbox-tab-key {
     font-weight: inherit;
     font-style: inherit;
     font-size: inherit;
+    font-variant: inherit;
     border-radius: var(--border-radius);
     border: none;
     background: var(--helpbox-header-tab-bg-color);
@@ -2432,6 +2467,10 @@ button.helpbox-tab-key {
     /* flex: 1 1 auto; */
     /* z-index: 1; */
     /* overflow: hidden; */
+}
+
+button.helpbox-tab-key.helpbox-process {
+    margin-right: auto;
 }
 
 button.helpbox-process.busy {
@@ -2460,7 +2499,7 @@ button.active.helpbox-tab-key {
     animation: none;
 }
 
-pluto-helpbox > header > button.helpbox-close {
+pluto-helpbox > header > button:is(.helpbox-close, .helpbox-popout) {
     border: none;
     background: none;
     cursor: pointer;
@@ -2468,10 +2507,9 @@ pluto-helpbox > header > button.helpbox-close {
     /* for bigger hitbox */
     margin: -15px;
     border: 15px solid transparent;
-    margin-left: auto;
 }
 
-pluto-helpbox > header > button.helpbox-close > span {
+pluto-helpbox > header > button:is(.helpbox-close, .helpbox-popout) > span {
     display: block;
     content: " " !important;
     background-size: 1em 1em;
@@ -2480,11 +2518,24 @@ pluto-helpbox > header > button.helpbox-close > span {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chevron-down-outline.svg");
     filter: var(--image-filters);
 }
+pluto-helpbox > header > button.helpbox-popout > span {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/open-outline.svg");
+}
 pluto-helpbox.hidden {
     height: initial;
     width: auto;
 }
 pluto-helpbox.hidden > section {
+    display: none;
+}
+
+/* pop out */
+body > pluto-helpbox {
+    position: static;
+    width: auto;
+    height: 100vmax;
+}
+body > pluto-helpbox > header > button:is(.helpbox-close, .helpbox-popout) {
     display: none;
 }
 
@@ -2496,13 +2547,14 @@ pluto-helpbox.hidden > section {
 .helpbox-docs {
     font-family: var(--lato-ui-font-stack);
     line-height: 1.5;
-    font-size: 0.9rem;
+    /* font-size: 0.9rem; */
 }
 .helpbox-docs pre,
 .helpbox-docs code,
 .helpbox-docs .cm-line {
     /* from https://docs.julialang.org/en/v1/assets/themes/documenter-light.css */
-    font-family: "Roboto Mono", "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", "DejaVu Sans Mono", monospace;
+    font-family: var(--julia-mono-font-stack);
+    font-variant-ligatures: none;
     font-size: 0.95em;
     line-height: initial;
 }
@@ -2699,7 +2751,7 @@ pl-status .status-time {
     /* align-self: end; */
     padding-right: 0.5em;
     padding-left: 0.5em;
-    /* font-family: "Roboto Mono", monospace; */
+    /* font-family: var(--roboto-mono-font-stack); */
     opacity: 0.6;
     font-size: 0.7rem;
     font-variant-numeric: tabular-nums;
@@ -2800,7 +2852,7 @@ pluto-helpbox.helpbox-process > section {
 footer {
     width: 100%;
     min-height: 3.5rem;
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--roboto-mono-font-stack);
     font-size: 0.75rem;
     background-color: var(--footer-bg-color);
     color: var(--footer-color);
@@ -2893,7 +2945,7 @@ nav#undo_delete {
     margin: 0.75rem;
     padding: 0.5rem;
 
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--roboto-mono-font-stack);
     font-size: 0.75rem;
 
     background-color: var(--white);
@@ -2950,7 +3002,7 @@ pluto-logs-container:not(:empty) {
 }
 
 pluto-logs-container > header {
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--roboto-mono-font-stack);
     font-size: 1.3rem;
     padding: 0.2em;
     padding-bottom: 0;
@@ -2959,8 +3011,25 @@ pluto-logs-container > header {
     /* background: #494949; */
 }
 
-pluto-logs-container pluto-progress-bars pluto-progress:not(:first-child) {
-    margin-top: 10px;
+pluto-logs-container pluto-progress-bar-container {
+    overflow: hidden;
+    outline: 3px solid var(--pluto-logs-progress-border);
+    outline-offset: -2px;
+    border-radius: 6px;
+    background: var(--pluto-logs-progress-bg);
+    font-size: 0.7rem;
+    flex: 0 1 200px;
+}
+
+pluto-logs-container pluto-progress-name {
+    white-space: pre-wrap;
+    font-family: var(--julia-mono-font-stack);
+    font-size: 0.8rem;
+    font-variant-ligatures: none;
+    padding: 0 0.4rem 0 0.1rem;
+}
+pluto-logs-container pluto-progress-name:empty {
+    padding: 0;
 }
 
 pluto-logs-container pluto-progress-bar {
@@ -2968,7 +3037,6 @@ pluto-logs-container pluto-progress-bar {
     padding: 0.3em 0.6em;
     background: linear-gradient(90deg, var(--c), var(--c));
     background-repeat: no-repeat;
-    width: 100%;
     transition: background-size cubic-bezier(0.14, 0.71, 0, 0.99) 0.5s, opacity linear 0.2s;
     display: grid;
     align-items: center;
@@ -2990,7 +3058,7 @@ pluto-logs:not(:first-child):not(:empty) {
 pluto-log-dot {
     /* part 2 */
     /* box-shadow: -2px 0px 1px #00000014; */
-    font-family: "Roboto Mono", monospace;
+    font-family: var(--roboto-mono-font-stack);
     font-size: 0.6rem;
     position: relative;
     display: flex;
@@ -3073,18 +3141,11 @@ pluto-log-dot-positioner.Stdout pluto-log-icon::before {
 }
 
 pluto-log-dot.Progress {
-    overflow: hidden;
     padding: 0px;
-    flex: 0 1 200px;
     display: flex;
     flex-direction: row;
-    align-items: stretch;
+    align-items: center;
     align-self: center;
-    outline: 3px solid var(--pluto-logs-progress-border);
-    outline-offset: -2px;
-    border-radius: 6px;
-    background: var(--pluto-logs-progress-bg);
-    font-size: 0.7rem;
 }
 pluto-log-dot.Stdout {
     --inner: hsl(36deg 20% 37%);
@@ -3246,7 +3307,7 @@ button.floating_back_button {
 /* CODEMIRROR HINTS */
 
 .cm-editor .cm-tooltip {
-    border: 1px solid var(--cm-editor-tooltip-border-color);
+    border: 1px solid var(--cm-color-editor-tooltip-border);
     box-shadow: 3px 3px 4px rgb(0 0 0 / 20%);
     border-radius: 4px;
 }
@@ -3281,8 +3342,8 @@ pluto-input .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
 }
 
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] {
-    color: var(--cm-editor-li-aria-selected-color);
-    background: var(--cm-editor-li-aria-selected-bg-color);
+    color: var(--cm-color-editor-li-aria-selected);
+    background: var(--cm-color-editor-li-aria-selected-bg);
 }
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionLabel {
     border-color: transparent;
@@ -3296,7 +3357,7 @@ pluto-input .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
 }
 
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete li.c_notexported {
-    color: var(--cm-editor-li-notexported-color);
+    color: var(--cm-color-editor-li-notexported);
 }
 
 .cm-editor .cm-completionIcon {
@@ -3333,7 +3394,7 @@ Based on "Paraíso (Light)" by Jan T. Sott:
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete li.c_from_notebook .cm-completionLabel {
     font-weight: bold;
     text-decoration: underline;
-    text-decoration-color: var(--cm-clickable-underline);
+    text-decoration-color: var(--cm-color-clickable-underline);
     text-decoration-thickness: 3px;
     text-decoration-skip-ink: none;
 }
@@ -3380,7 +3441,7 @@ pluto-input .cm-editor .cm-scroller,
 .cm-editor .cm-tooltip-autocomplete .cm-completionLabel {
     font-family: var(--julia-mono-font-stack) !important;
     font-variant-ligatures: none;
-    font-size: 0.75rem;
+    font-size: 0.8rem;
 }
 
 pluto-input .cm-editor .cm-content {
@@ -3396,7 +3457,7 @@ pluto-input .cm-editor .cm-content {
 
 .cm-editor {
     background: var(--code-background);
-    color: var(--cm-editor-text-color);
+    color: var(--cm-color-editor-text);
 }
 .cm-editor.cm-focused:not(.__) {
     outline: unset;
@@ -3416,7 +3477,7 @@ pluto-input .cm-editor .cm-content {
 
 pluto-cell.code_differs .cm-editor .cm-gutters {
     /* background: hsla(46, 70%, 88%, 1); */
-    background-color: var(--cm-code-differs-gutters-color);
+    background-color: var(--cm-color-code-differs-gutters);
 }
 
 /* We show a small dot instead of line number, until you hover. */
@@ -3426,13 +3487,13 @@ pluto-cell.code_differs .cm-editor .cm-gutters {
 .cm-editor .cm-lineNumbers .cm-gutterElement::after {
     content: "⋅";
     font-size: 0.75rem;
-    color: var(--cm-line-numbers-color);
+    color: var(--cm-color-line-numbers);
     position: absolute;
     right: 3px;
     pointer-events: none;
 }
 .cm-editor .cm-lineNumbers .cm-gutterElement:hover {
-    color: var(--cm-line-numbers-color);
+    color: var(--cm-color-line-numbers);
 }
 .cm-editor .cm-lineNumbers .cm-gutterElement:hover::after {
     color: transparent;
@@ -3441,7 +3502,7 @@ pluto-cell.code_differs .cm-editor .cm-gutters {
 /* Disabling this feature in two cases: */
 /* Case 1: The cell input is in focus */
 /* pluto-input:focus-within .cm-editor .cm-lineNumbers .cm-gutterElement {
-    color: var(--cm-line-numbers-color);
+    color: var(--cm-color-line-numbers);
 }
 pluto-input:focus-within .cm-editor .cm-lineNumbers .cm-gutterElement::after {
     color: transparent;
@@ -3449,7 +3510,7 @@ pluto-input:focus-within .cm-editor .cm-lineNumbers .cm-gutterElement::after {
  */
 
 pluto-cell.errored .cm-editor .cm-lineNumbers .cm-gutterElement {
-    color: var(--cm-line-numbers-color);
+    color: var(--cm-color-line-numbers);
 }
 pluto-cell.errored .cm-editor .cm-lineNumbers .cm-gutterElement::after {
     color: transparent;
@@ -3457,7 +3518,7 @@ pluto-cell.errored .cm-editor .cm-lineNumbers .cm-gutterElement::after {
 /* Case 2: Print */
 @media print {
     .cm-editor .cm-lineNumbers .cm-gutterElement {
-        color: var(--cm-line-numbers-color) !important;
+        color: var(--cm-color-line-numbers) !important;
     }
     .cm-editor .cm-lineNumbers .cm-gutterElement::after {
         color: transparent !important;
@@ -3465,21 +3526,21 @@ pluto-cell.errored .cm-editor .cm-lineNumbers .cm-gutterElement::after {
 }
 
 .cm-completionIcon-c_Number::before {
-    color: var(--cm-number-color);
+    color: var(--cm-color-number);
 }
 
 .cm-completionIcon-c_String::before,
 .cm-completionIcon-completion_path::before,
 .cm-completionIcon-completion_dict::before {
-    color: var(--cm-string-color);
+    color: var(--cm-color-string);
 }
 
 .cm-completionIcon-completion_property::before {
-    color: var(--cm-property-color);
+    color: var(--cm-color-property);
 }
 
 .cm-completionIcon-completion_keyword::before {
-    color: var(--cm-keyword-color);
+    color: var(--cm-color-keyword);
 }
 
 li.completion_keyword_argument .cm-completionLabel {
@@ -3487,30 +3548,30 @@ li.completion_keyword_argument .cm-completionLabel {
     font-weight: bold;
 }
 .cm-completionIcon-completion_keyword_argument::before {
-    color: var(--cm-number-color);
+    color: var(--cm-color-number);
 }
 
 .cm-completionIcon-c_Any::before,
 pluto-output > assignee,
 pluto-popup code.auto_disabled_variable {
-    color: var(--cm-var-color) !important;
+    color: var(--cm-color-var) !important;
     font-weight: 700;
 }
 
 .cm-completionIcon-c_Function::before {
-    color: var(--cm-function-color);
+    color: var(--cm-color-function);
 }
 .cm-completionIcon-c_Macro::before {
-    color: var(--cm-macro-color);
+    color: var(--cm-color-macro);
 }
 
 .cm-completionIcon-c_Array::before {
-    color: var(--cm-bracket-color);
+    color: var(--cm-color-bracket);
 }
 
 .cm-completionIcon-c_package::before,
 .cm-completionIcon-c_Module::before {
-    color: var(--cm-link-color);
+    color: var(--cm-color-link);
 }
 
 .cm-editor .cm-activeLine {
@@ -3535,14 +3596,14 @@ pluto-popup code.auto_disabled_variable {
     color: unset;
 }
 pluto-input:focus-within .cm-editor .cm-matchingBracket {
-    color: var(--cm-matchingBracket-color) !important;
+    color: var(--cm-color-matchingBracket) !important;
     font-weight: 700;
-    background-color: var(--cm-matchingBracket-bg-color);
+    background-color: var(--cm-color-matchingBracket-bg);
     border-radius: 2px;
 }
 
 .cm-editor .cm-placeholder {
-    color: var(--cm-placeholder-text-color);
+    color: var(--cm-color-placeholder-text);
     font-style: italic;
 }
 

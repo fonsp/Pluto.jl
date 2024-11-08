@@ -2,7 +2,7 @@ import { html, useState, useRef, useEffect, useMemo } from "../imports/Preact.js
 import { cl } from "../common/ClassTable.js"
 
 import { LiveDocsTab } from "./LiveDocsTab.js"
-import { is_finished, ProcessTab, total_done, total_tasks, useStatusItem } from "./ProcessTab.js"
+import { is_finished, StatusTab, total_done, total_tasks, useStatusItem } from "./StatusTab.js"
 import { useMyClockIsAheadBy } from "../common/clock sync.js"
 import { BackendLaunchPhase } from "../common/Binder.js"
 import { useEventListener } from "../common/useEventListener.js"
@@ -78,6 +78,35 @@ export let BottomRightPanel = ({
 
     const my_clock_is_ahead_by = useMyClockIsAheadBy({ connected })
 
+    const on_popout_click = async () => {
+        // Open a Picture-in-Picture window, see https://developer.chrome.com/docs/web-platform/document-picture-in-picture/
+        // @ts-ignore
+        const pip_window = await documentPictureInPicture.requestWindow()
+
+        // Copy style sheets
+        ;[...document.styleSheets].forEach((styleSheet) => {
+            try {
+                const style = document.createElement("style")
+                style.textContent = [...styleSheet.cssRules].map((rule) => rule.cssText).join("")
+                pip_window.document.head.appendChild(style)
+            } catch (e) {
+                const link = document.createElement("link")
+                link.rel = "stylesheet"
+                link.type = styleSheet.type
+                // @ts-ignore
+                link.media = styleSheet.media
+                // @ts-ignore
+                link.href = styleSheet.href
+                pip_window.document.head.appendChild(link)
+            }
+        })
+        pip_window.document.body.append(container_ref.current.firstElementChild)
+        pip_window.addEventListener("pagehide", (event) => {
+            const pipPlayer = event.target.querySelector("pluto-helpbox")
+            container_ref.current.append(pipPlayer)
+        })
+    }
+
     return html`
         <aside id="helpbox-wrapper" ref=${container_ref}>
             <pluto-helpbox class=${cl({ hidden, [`helpbox-${open_tab ?? hidden}`]: true })}>
@@ -119,17 +148,23 @@ export let BottomRightPanel = ({
                                 : html`Status${" "}<span class="subprogress-counter">(${status_done}/${status_total})</span>`}</span
                         >
                     </button>
+
                     ${hidden
                         ? null
-                        : html`<button
-                              class="helpbox-close"
-                              title="Close panel"
-                              onClick=${() => {
-                                  set_open_tab(null)
-                              }}
-                          >
-                              <span></span>
-                          </button>`}
+                        : html` ${"documentPictureInPicture" in window
+                                  ? html`<button class="helpbox-popout" title="Pop out panel" onClick=${on_popout_click}>
+                                        <span></span>
+                                    </button>`
+                                  : null}
+                              <button
+                                  class="helpbox-close"
+                                  title="Close panel"
+                                  onClick=${() => {
+                                      set_open_tab(null)
+                                  }}
+                              >
+                                  <span></span>
+                              </button>`}
                 </header>
                 ${open_tab === "docs"
                     ? html`<${LiveDocsTab}
@@ -140,7 +175,7 @@ export let BottomRightPanel = ({
                           sanitize_html=${sanitize_html}
                       />`
                     : open_tab === "process"
-                    ? html`<${ProcessTab}
+                    ? html`<${StatusTab}
                           notebook=${notebook}
                           backend_launch_logs=${backend_launch_logs}
                           my_clock_is_ahead_by=${my_clock_is_ahead_by}
