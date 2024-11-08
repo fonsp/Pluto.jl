@@ -699,6 +699,24 @@ export class Editor extends Component {
                 const { message } = await this.client.send("nbpkg_available_versions", { package_name: package_name }, { notebook_id: notebook_id })
                 return message
             },
+            disable_safe_preview: async (maybe_confirm = false, notebook_state_mutator = (_) => {}) => {
+                const warn_about_untrusted_code = this.client.session_options?.security?.warn_about_untrusted_code ?? true
+                let source = this.state.notebook.metadata?.risky_file_source
+
+                if (
+                    !warn_about_untrusted_code ||
+                    !maybe_confirm ||
+                    source == null ||
+                    confirm(`⚠️ Danger! Are you sure that you trust this file? \n\n${source}\n\nA malicious notebook can steal passwords and data.`)
+                ) {
+                    await this.update_notebook((notebook) => {
+                        delete notebook.metadata.risky_file_source
+                        notebook_state_mutator(notebook)
+                    })
+                } else {
+                    throw new Error("User did not confirm disabling safe preview")
+                }
+            },
         }
         this.actions = { ...this.real_actions }
 
@@ -1531,28 +1549,19 @@ The notebook file saves every time you run a cell.`
             `
         }
 
-        const warn_about_untrusted_code = this.client.session_options?.security?.warn_about_untrusted_code ?? true
-
         const restart = async (maybe_confirm = false) => {
-            let source = notebook.metadata?.risky_file_source
-            if (
-                !warn_about_untrusted_code ||
-                !maybe_confirm ||
-                source == null ||
-                confirm(`⚠️ Danger! Are you sure that you trust this file? \n\n${source}\n\nA malicious notebook can steal passwords and data.`)
-            ) {
-                await this.actions.update_notebook((notebook) => {
-                    delete notebook.metadata.risky_file_source
-                })
-                await this.client.send(
-                    "restart_process",
-                    {},
-                    {
-                        notebook_id: notebook.notebook_id,
-                    }
-                )
-            }
+            await this.actions.disable_safe_preview(maybe_confirm)
+            // (the call above will throw if no permission is given)
+            await this.client.send(
+                "restart_process",
+                {},
+                {
+                    notebook_id: notebook.notebook_id,
+                }
+            )
         }
+
+        const warn_about_untrusted_code = this.client.session_options?.security?.warn_about_untrusted_code ?? true
 
         const restart_button = (text, maybe_confirm = false) =>
             html`<a href="#" id="restart-process-button" onClick=${() => restart(maybe_confirm)}>${text}</a>`

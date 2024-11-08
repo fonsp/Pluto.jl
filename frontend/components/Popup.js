@@ -8,6 +8,7 @@ import { useDebouncedTruth } from "./RunArea.js"
 import { time_estimate, usePackageTimingData } from "../common/InstallTimeEstimate.js"
 import { pretty_long_time } from "./EditOrRunButton.js"
 import { useEventListener } from "../common/useEventListener.js"
+import { ProcessStatus } from "../common/ProcessStatus.js"
 
 // This funny thing is a way to tell parcel to bundle these files..
 // Eventually I'll write a plugin that is able to parse html`...`, but this is it for now.
@@ -244,7 +245,7 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event, disable_input })
               </div>`
             : null}
         <div class="pkg-buttons">
-            ${recent_event?.is_disable_pkg || disable_input || notebook.nbpkg?.waiting_for_permission
+            ${recent_event?.is_disable_pkg || disable_input
                 ? null
                 : html`<a
                       class="pkg-update"
@@ -252,16 +253,22 @@ const PkgPopup = ({ notebook, recent_event, clear_recent_event, disable_input })
                       title="Update packages"
                       style=${!!showupdate ? "" : "opacity: .4;"}
                       href="#"
-                      onClick=${(e) => {
-                          if (busy) {
+                      onClick=${async (e) => {
+                          e.preventDefault()
+                          const safe_preview = notebook.nbpkg?.waiting_for_permission
+                          if (busy && !safe_preview) {
                               alert("Pkg is currently busy with other packages... come back later!")
                           } else {
                               if (confirm("Would you like to check for updates and install them? A backup of the notebook file will be created.")) {
+                                  if (safe_preview) {
+                                      await pluto_actions.disable_safe_preview(true, (notebook) => {
+                                          notebook.process_status = ProcessStatus.no_process
+                                      })
+                                  }
                                   console.warn("Pkg.updating!")
-                                  pluto_actions.send("pkg_update", {}, { notebook_id: notebook.notebook_id })
+                                  await pluto_actions.send("pkg_update", {}, { notebook_id: notebook.notebook_id })
                               }
                           }
-                          e.preventDefault()
                       }}
                       ><img alt="⬆️" src=${arrow_up_circle_icon} width="17"
                   /></a>`}
