@@ -8,9 +8,11 @@ import { open_bottom_right_panel } from "./BottomRightPanel.js"
 import AnsiUp from "../imports/AnsiUp.js"
 
 const extract_cell_id = (/** @type {string} */ file) => {
-    const sep_index = file.indexOf("#==#")
+    if (file.includes("#@#==#")) return null
+    const sep = "#==#"
+    const sep_index = file.indexOf(sep)
     if (sep_index != -1) {
-        return file.substring(sep_index + 4, sep_index + 4 + 36)
+        return file.substring(sep_index + sep.length, sep_index + sep.length + 36)
     } else {
         return null
     }
@@ -60,22 +62,23 @@ const StackFrameFilename = ({ frame, cell_id }) => {
     if (ignore_location(frame)) return null
 
     const frame_cell_id = extract_cell_id(frame.file)
+    const line = frame.line
     if (frame_cell_id != null) {
         return html`<a
             internal-file=${frame.file}
             href=${`#${frame_cell_id}`}
             onclick=${(e) => {
-                focus_line(frame_cell_id, frame.line - 1)
+                focus_line(frame_cell_id, line == null ? null : line - 1)
                 e.preventDefault()
             }}
         >
-            ${frame_cell_id == cell_id ? "This\xa0cell" : "Other\xa0cell"}: <em>line ${frame.line}</em>
+            ${frame_cell_id == cell_id ? "This\xa0cell" : "Other\xa0cell"}${line == null ? null : html`: <em>line ${line}</em>`}
         </a>`
     } else {
         const sp = frame.source_package
         const origin = ["Main", "Core", "Base"].includes(sp) ? "julia" : sp
 
-        const file_line = html`<em>${frame.file}:${frame.line}</em>`
+        const file_line = html`<em>${frame.file.replace(/#@#==#.*/, "")}:${frame.line}</em>`
 
         const text = sp != null ? html`<strong>${origin}</strong> → ${file_line}` : file_line
 
