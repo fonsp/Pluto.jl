@@ -245,22 +245,24 @@ const dont_cdnify = ("new","open","shutdown","move","notebooklist","notebookfile
 const html_source_pattern = r"\s(?:src|href)=\"(.+?)\""
 const css_source_pattern = r"url\((\"?[\w-]*\.[0-9a-f]{8}\.[\w]*\"?)\)"
 
-function replace_with_cdn(cdnify::Function, source_pattern::Regex, s::String, idx::Integer=1)
-	next_match = match(source_pattern, s, idx)
+function replace_with_cdn(cdnify::Function, source_pattern::Regex, str::String, idx::Integer=1)
+	next_match = match(source_pattern, str, idx)
 	if next_match === nothing
-		s
+		str
 	else
 		url = only(next_match.captures)
 		if occursin("//", url) || url ∈ dont_cdnify || occursin("data:", url)
 			# skip this one
-			replace_with_cdn(cdnify, source_pattern, s, nextind(s, next_match.offset))
+			replace_with_cdn(cdnify, source_pattern, 
+                str, 
+                nextind(str, next_match.offset)
+            )
 		else
             new = cdnify(url)
-			replace_with_cdn(cdnify, source_pattern, replace_substring(
-				s,
-				url,
-				cdnify(url)
-			), nextind(s, next_match.offset) + length(new))
+			replace_with_cdn(cdnify, source_pattern, 
+                replace_substring(str, url, new), 
+                nextind(str, next_match.offset) + length(new)
+            )
 		end
 	end
 end
