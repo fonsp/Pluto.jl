@@ -85,16 +85,16 @@ module.exports = new Resolver({
                     }
                     // Can't directly use the value from the request, as parcel really wants a string,
                     // and converting binary assets into strings and then passing them doesn't work 🤷‍♀️.
-                    let buffer = await response.buffer()
+                    let buffer = await response.arrayBuffer()
 
-                    const response_length = buffer.length
+                    const response_length = buffer.byteLength
 
                     if (response_length === 0) {
                         throw new Error(`${specifier} returned an empty reponse.`)
                     }
 
                     await mkdirp(folder)
-                    const write_result = await fs.writeFile(fullpath, buffer)
+                    const write_result = await fs.writeFile(fullpath, Buffer.from(buffer))
 
                     // Verify that the file was written correctly:
                     if (write_result !== undefined || (await fs.readFile(fullpath)).length !== response_length) {
