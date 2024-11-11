@@ -9,7 +9,7 @@ import REPL
 ###
 
 function format_path_completion(completion)
-    replace(replace(completion_text(completion), "\\ " => " "), "\\\\" => "\\")
+    replace(completion_text(completion), "\\ " => " ", "\\\\" => "\\")
 end
 
 responses[:completepath] = function response_completepath(🙋::ClientRequest)
