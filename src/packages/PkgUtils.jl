@@ -116,10 +116,13 @@ has_notebook_environment(path::String) = has_notebook_environment(load_notebook_
 function has_notebook_environment(notebook::Notebook)
     ctx = notebook.nbpkg_ctx
     ctx === nothing && return false
-    (project_file(ctx) |> isfile || manifest_file(ctx) |> isfile) && return true
+    # if one of the two files is not empty:
+    if !isempty(PkgCompat.read_project_file(ctx)) || !isempty(PkgCompat.read_manifest_file(ctx))
+        return true
+    end
     
     # fallback, when nbpkg is defined buy there are no files: check if the notebook would use one (i.e. that Pkg.activate is not used).
-    topology = updated_topology(notebook.topology, notebook, cells)
+    topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
     return Pluto.use_plutopkg(topology)
 end
 
@@ -157,7 +160,7 @@ function activate_notebook_environment(path::String; show_help::Bool=true)
                 if !nb_and_dir_environments_equal(notebook_ref[], ourpath)
                     write_dir_to_nb(ourpath, notebook_ref[])
                     println()
-                    @info "Saved notebook package environment ✓"
+                    @info "Notebook file updated ✓"
                     println()
                 end
             end
@@ -170,7 +173,7 @@ function activate_notebook_environment(path::String; show_help::Bool=true)
                 if !nb_and_dir_environments_equal(notebook_ref[], ourpath)
                     write_nb_to_dir(notebook_ref[], ourpath)
                     println()
-                    @info "New notebook package environment written to directory ✓"
+                    @info "REPL environment updated from notebook ✓"
                     println()
                 end
             end
@@ -307,7 +310,7 @@ const activate_notebook = activate_notebook_environment
 function testnb(name="simple_stdlib_import.jl")
     t = tempname()
 
-    readwrite(Pluto.project_relative_path("test","packages","simple_stdlib_import.jl"), t)
+    readwrite(Pluto.project_relative_path("test", "packages", name), t)
     t
 end
 
