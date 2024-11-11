@@ -49,6 +49,7 @@ function cdnified_html(filename::AbstractString;
                             mime_from_path(path),
                             endswith(url, ".css") ? 
                             replace_with_cdn(css_source_pattern, data) do css_inner_url
+                                css_inner_url = replace(css_inner_url, r"^\"" => "", r"\"$" => "") # remove quotes
                                 path = project_relative_path(distdir, css_inner_url)
                                 @assert isfile(path) "Could not find the file $(path) locally, that's a bad sign."
                                 @info "CDNifying inside CSS" css_inner_url
@@ -164,7 +165,6 @@ end
 
 function replace_at_least_once(s, pair)
     from, to = pair
-    @info "replacing once at least once" s from to
     @assert occursin(from, s)
     replace(s, pair)
 end
