@@ -10,15 +10,13 @@ using Markdown
 
 export activate_notebook
 
-ensure_has_nbpkg(notebook::Notebook) = if notebook.nbpkg_ctx === nothing
+ensure_has_nbpkg(notebook::Notebook) = if !will_use_pluto_pkg(notebook)
 
     # TODO: update_save the notebook to init packages and stuff?
     error("""
-    This notebook is not using Pluto's package manager. This means that either:
-    1. The notebook contains Pkg.activate or Pkg.add calls, or
-    2. The notebook was created before Pluto 0.15.
+    This notebook is not using Pluto's package manager. This means that the notebook contains Pkg.activate or Pkg.add call.
 
-    Open the notebook using Pluto to get started.
+    Open the notebook using Pluto to see what's up.
     """)
 else
     for f in [notebook |> project_file, notebook |> manifest_file]
@@ -107,21 +105,21 @@ end
 
 """
 ```julia
-has_notebook_environment(notebook_path::String)::Bool
+will_use_pluto_pkg(notebook_path::String)::Bool
 ```
 
-Does the notebook file contain an embedded `Project.toml` and `Manifest.toml`?
+Will this notebook use the Pluto package manager? `false` means that the notebook contains `Pkg.activate` or another deactivator.
 """
-has_notebook_environment(path::String) = has_notebook_environment(load_notebook_nobackup(path))
-function has_notebook_environment(notebook::Notebook)
+will_use_pluto_pkg(path::String) = will_use_pluto_pkg(load_notebook_nobackup(path))
+function will_use_pluto_pkg(notebook::Notebook)
     ctx = notebook.nbpkg_ctx
-    ctx === nothing && return false
     # if one of the two files is not empty:
-    if !isempty(PkgCompat.read_project_file(ctx)) || !isempty(PkgCompat.read_manifest_file(ctx))
+    if ctx !== nothing && !isempty(PkgCompat.read_project_file(ctx)) || !isempty(PkgCompat.read_manifest_file(ctx))
         return true
     end
     
-    # fallback, when nbpkg is defined buy there are no files: check if the notebook would use one (i.e. that Pkg.activate is not used).
+    # otherwise, check for Pkg.activate:
+    # when nbpkg_ctx is defined but the files are empty: check if the notebook would use one (i.e. that Pkg.activate is not used).
     topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
     return Pluto.use_plutopkg(topology)
 end

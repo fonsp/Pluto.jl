@@ -137,13 +137,13 @@ without_pluto_version(s) = replace(s, r"# v.*" => "")
     
     
     
-    @testset "has_notebook_environment" begin
+    @testset "will_use_pluto_pkg" begin
         file = Pluto.PkgUtils.testnb()
         before = read(file, String)
-        @assert :has_notebook_environment in names(Pluto)
+        @assert :will_use_pluto_pkg in names(Pluto)
         
         ###
-        @test Pluto.has_notebook_environment(file)
+        @test Pluto.will_use_pluto_pkg(file)
         
         
         after = read(file, String)
@@ -151,9 +151,7 @@ without_pluto_version(s) = replace(s, r"# v.*" => "")
         
         
         file2 = Pluto.PkgUtils.testnb("pkg_cell.jl")
-        
-        @info "huh" Pluto.load_notebook_nobackup(file2).nbpkg_ctx
-        @test !Pluto.has_notebook_environment(file2)
+        @test !Pluto.will_use_pluto_pkg(file2)
     end
 end
 
