@@ -31,7 +31,8 @@ Base.@kwdef mutable struct Notebook
     path::String
     notebook_id::UUID=uuid1()
     topology::NotebookTopology
-    _cached_topological_order::Union{Nothing,TopologicalOrder}=nothing
+    _cached_topological_order::TopologicalOrder
+    _cached_cell_dependencies::Dict{UUID,Dict{String,Any}}=Dict{UUID,Dict{String,Any}}()
     _cached_cell_dependencies_source::Union{Nothing,NotebookTopology}=nothing
 
     # buffer will contain all unfetched updates - must be big enough
@@ -78,7 +79,7 @@ function _report_business_cells_planned!(notebook::Notebook)
     Status.report_business_planned!(run_status, :resolve_topology)
     cell_status = Status.report_business_planned!(run_status, :evaluate)
     for (i,c) in enumerate(notebook.cells)
-        c.running = true
+        c.running = false
         c.queued = true
         Status.report_business_planned!(cell_status, Symbol(i))
     end
@@ -96,10 +97,12 @@ function Notebook(cells::Vector{Cell}, @nospecialize(path::AbstractString), note
         (cell.cell_id, cell)
     end)
     cell_order=map(x -> x.cell_id, cells)
+    topology = _initial_topology(cells_dict, cell_order)
     Notebook(;
         cells_dict,
         cell_order,
-        topology=_initial_topology(cells_dict, cell_order),
+        topology,
+        _cached_topological_order=topological_order(topology),
         path,
         notebook_id
     )
@@ -117,17 +120,13 @@ function Base.getproperty(notebook::Notebook, property::Symbol)
     end
 end
 
-PlutoDependencyExplorer.topological_order(notebook::Notebook) = topological_order(notebook.topology)
-
-function PlutoDependencyExplorer.where_referenced(notebook::Notebook, topology::NotebookTopology, something)
-    # can't use @deprecate on an overload
-    @warn "Deprecated, drop the notebook argument"
-    PlutoDependencyExplorer.where_referenced(topology, something)
-end
-function PlutoDependencyExplorer.where_assigned(notebook::Notebook, topology::NotebookTopology, something)
-    # can't use @deprecate on an overload
-    @warn "Deprecated, drop the notebook argument"
-    PlutoDependencyExplorer.where_assigned(topology, something)
+function PlutoDependencyExplorer.topological_order(notebook::Notebook)
+    cached = notebook._cached_topological_order
+	if cached === nothing || cached.input_topology !== notebook.topology
+        notebook._cached_topological_order = topological_order(notebook.topology)
+	else
+		cached
+	end
 end
 
 emptynotebook(args...) = Notebook([Cell()], args...)

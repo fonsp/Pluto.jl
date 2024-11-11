@@ -37,7 +37,7 @@ end
 
 function noerror(cell; verbose=true)
     if cell.errored && verbose
-        @show cell.output.body
+        @show cell.output.body cell.logs
     end
     !cell.errored
 end
@@ -51,7 +51,7 @@ function expecterror(err, cell; strict=true)
     msg = sprint(showerror, err)
 
     # UndefVarError(:x, #undef)
-    if err isa UndefVarError && !isdefined(err, :scope) && VERSION > v"1.10"
+    if err isa UndefVarError && !isdefined(err, :scope) && VERSION >= v"1.11"
         strict = false
         msg = first(split(msg, '\n'; limit=2))
     end

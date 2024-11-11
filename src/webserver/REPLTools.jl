@@ -9,7 +9,7 @@ import REPL
 ###
 
 function format_path_completion(completion)
-    replace(replace(completion_text(completion), "\\ " => " "), "\\\\" => "\\")
+    replace(completion_text(completion), "\\ " => " ", "\\\\" => "\\")
 end
 
 responses[:completepath] = function response_completepath(🙋::ClientRequest)
@@ -105,6 +105,16 @@ responses[:complete] = function response_complete(🙋::ClientRequest)
             :stop => stop_utf8 - 1, # idem
             :results => results
             ), 🙋.notebook, nothing, 🙋.initiator)
+
+    putclientupdates!(🙋.session, 🙋.initiator, msg)
+end
+
+responses[:complete_symbols] = function response_complete_symbols(🙋::ClientRequest)
+    msg = UpdateMessage(:completion_result, 
+        Dict(
+            :latex => REPL.REPLCompletions.latex_symbols,
+            :emoji => REPL.REPLCompletions.emoji_symbols,
+        ), 🙋.notebook, nothing, 🙋.initiator)
 
     putclientupdates!(🙋.session, 🙋.initiator, msg)
 end

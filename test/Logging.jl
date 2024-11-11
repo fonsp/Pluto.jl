@@ -59,6 +59,21 @@ using Pluto.WorkspaceManager: poll
         end
         """,
         "StructWithCustomShowThatLogs()", # 21
+        """
+        printstyled(stdout, "hello", color=:red)
+        """, # 22
+        "show(collect(1:500))", # 23
+        "show(stdout, collect(1:500))", # 24
+        "show(stdout, \"text/plain\", collect(1:500))", # 25
+        "display(collect(1:500))", # 26
+
+        "struct StructThatErrorsOnPrinting end", # 27
+        """
+        Base.print(::IO, ::StructThatErrorsOnPrinting) = error("Can't print this")
+        """, # 28
+        """
+        @info "" _id=StructThatErrorsOnPrinting()
+        """, # 29
     ]))
 
     @testset "Stdout" begin
@@ -123,6 +138,33 @@ using Pluto.WorkspaceManager: poll
         end
     end
 
+    @testset "ANSI Color Output" begin
+        update_run!(🍭, notebook, notebook.cells[22])
+        msg = only(notebook.cells[22].logs)["msg"][1]
+
+        @test startswith(msg, Base.text_colors[:red])
+        @test endswith(msg, Base.text_colors[:default])
+    end
+    
+    @testset "show(...) and display(...) behavior" begin
+        update_run!(🍭, notebook, notebook.cells[23:25])
+
+        msgs_show = [only(cell.logs)["msg"][1] for cell in notebook.cells[23:25]]
+
+        # `show` should show a middle element of the big array
+        for msg in msgs_show
+            @test contains(msg, "1") && contains(msg, "500")
+            @test contains(msg, "250")
+        end
+
+        update_run!(🍭, notebook, notebook.cells[26])
+        msg_display = only(notebook.cells[26].logs)["msg"][1]
+
+        # `display` should not display the middle element of the big array
+        @test contains(msg_display, "1") && contains(msg_display, "500")
+        @test !contains(msg_display, "250")
+    end
+
     @testset "Logging respects maxlog" begin
         @testset "Single log" begin
             
@@ -167,4 +209,28 @@ using Pluto.WorkspaceManager: poll
     end
 
     cleanup(🍭, notebook)
+
+    @testset "Logging error fallback" begin
+        # This testset needs to use a local worker to capture the worker stderr (which is
+        # different from the notebook stderr)
+        🍍 = ServerSession()
+        🍍.options.evaluation.workspace_use_distributed = false
+
+        io = IOBuffer()
+        old_stderr = PlutoRunner.original_stderr[]
+        PlutoRunner.original_stderr[] = io
+        
+        update_run!(🍍, notebook, notebook.cells[27:29])
+        
+        msg = String(take!(io))
+        close(io)
+        PlutoRunner.original_stderr[] = old_stderr
+
+        @test notebook.cells[27] |> noerror
+        @test notebook.cells[28] |> noerror
+        @test notebook.cells[29] |> noerror
+        @test occursin("Failed to relay log from PlutoRunner", msg)
+
+        cleanup(🍍, notebook)
+    end
 end

@@ -6,14 +6,15 @@ Note that only direct dependents are given here, not indirect dependents.
 """
 function downstream_cells_map(cell::Cell, topology::NotebookTopology)::Dict{Symbol,Vector{Cell}}
     defined_symbols = let node = topology.nodes[cell]
-        node.definitions ∪ node.funcdefs_without_signatures
+        node.definitions ∪ Iterators.filter(!_is_anon_function_name, node.funcdefs_without_signatures)
     end
     return Dict{Symbol,Vector{Cell}}(
         sym => PlutoDependencyExplorer.where_referenced(topology, Set([sym]))
         for sym in defined_symbols
     )
 end
-@deprecate downstream_cells_map(cell::Cell, notebook::Notebook) downstream_cells_map(cell, notebook.topology)
+
+_is_anon_function_name(s::Symbol) = startswith(String(s), "__ExprExpl_anon__")
 
 """
 Gets a dictionary of all symbols and the respective cells on which the given cell depends.
@@ -28,7 +29,6 @@ function upstream_cells_map(cell::Cell, topology::NotebookTopology)::Dict{Symbol
         for sym in referenced_symbols
     )
 end
-@deprecate upstream_cells_map(cell::Cell, notebook::Notebook) upstream_cells_map(cell, notebook.topology)
 
 "Fills cell dependency information for display in the GUI"
 function update_dependency_cache!(cell::Cell, topology::NotebookTopology)
@@ -45,8 +45,25 @@ function update_dependency_cache!(notebook::Notebook, topology::NotebookTopology
     
     if notebook._cached_cell_dependencies_source !== topology
         notebook._cached_cell_dependencies_source = topology
+        
         for cell in all_cells(topology)
             update_dependency_cache!(cell, topology)
         end
+        
+        notebook._cached_cell_dependencies = Dict{UUID,Dict{String,Any}}(
+            id => Dict{String,Any}(
+                "cell_id" => cell.cell_id,
+                "downstream_cells_map" => Dict{String,Vector{UUID}}(
+                    String(s) => cell_id.(r)
+                    for (s, r) in cell.cell_dependencies.downstream_cells_map
+                ),
+                "upstream_cells_map" => Dict{String,Vector{UUID}}(
+                    String(s) => cell_id.(r)
+                    for (s, r) in cell.cell_dependencies.upstream_cells_map
+                ),
+                "precedence_heuristic" => cell.cell_dependencies.precedence_heuristic,
+            )
+            for (id, cell) in notebook.cells_dict
+        )
     end
 end

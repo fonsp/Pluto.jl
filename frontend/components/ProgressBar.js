@@ -74,13 +74,20 @@ export const ProgressBar = ({ notebook, backend_launch_phase, status }) => {
         `}
         onClick=${(e) => {
             if (!binder_loading) {
-                const running_cell = Object.values(notebook.cell_results).find((c) => c.running) ?? Object.values(notebook.cell_results).find((c) => c.queued)
-                if (running_cell) {
-                    scroll_cell_into_view(running_cell.cell_id)
-                }
+                scroll_to_busy_cell(notebook)
             }
         }}
         aria-hidden="true"
         title=${title}
     ></loading-bar>`
+}
+
+export const scroll_to_busy_cell = (notebook) => {
+    const running_cell_id =
+        notebook == null
+            ? (document.querySelector("pluto-cell.running") ?? document.querySelector("pluto-cell.queued"))?.id
+            : (Object.values(notebook.cell_results).find((c) => c.running) ?? Object.values(notebook.cell_results).find((c) => c.queued))?.cell_id
+    if (running_cell_id) {
+        scroll_cell_into_view(running_cell_id)
+    }
 }

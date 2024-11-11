@@ -32,7 +32,7 @@ Have a look at our [JuliaCon 2020 presentation](https://youtu.be/IAF8DjrQSSk?t=1
 function save_notebook(io::IO, notebook::Notebook)
     println(io, _notebook_header)
     println(io, "# ", PLUTO_VERSION_STR)
-    
+
     # Notebook metadata
     let nb_metadata_toml = strip(sprint(TOML.print, get_metadata_no_default(notebook)))
         if !isempty(nb_metadata_toml)
@@ -56,7 +56,7 @@ function save_notebook(io::IO, notebook::Notebook)
     println(io)
 
     cells_ordered = collect(topological_order(notebook))
-    
+
     # NOTE: the notebook topological is cached on every update_dependency! call
     # ....  so it is possible that a cell was added/removed since this last update.
     # ....  in this case, it will not contain that cell since it is build from its
@@ -91,13 +91,13 @@ function save_notebook(io::IO, notebook::Notebook)
         end
     end
 
-    
+
     using_plutopkg = notebook.nbpkg_ctx !== nothing
-    
+
     write_package = if using_plutopkg
         ptoml_contents = PkgCompat.read_project_file(notebook)
         mtoml_contents = PkgCompat.read_manifest_file(notebook)
-        
+
         !isempty(strip(ptoml_contents))
     else
         false
@@ -109,14 +109,14 @@ function save_notebook(io::IO, notebook::Notebook)
         write(io, ptoml_contents)
         print(io, "\"\"\"")
         print(io, _cell_suffix)
-        
+
         println(io, _cell_id_delimiter, string(_mtoml_cell_id))
         print(io, "PLUTO_MANIFEST_TOML_CONTENTS = \"\"\"\n")
         write(io, mtoml_contents)
         print(io, "\"\"\"")
         print(io, _cell_suffix)
     end
-    
+
 
     println(io, _cell_id_delimiter, "Cell order:")
     for c in notebook.cells
@@ -137,7 +137,7 @@ function write_buffered(fn::Function, path)
     file_content = sprint(fn)
     write(path, file_content)
 end
-    
+
 function save_notebook(notebook::Notebook, path::String)
     # @warn "Saving to file!!" exception=(ErrorException(""), backtrace())
     notebook.last_save_time = time()
@@ -319,13 +319,15 @@ function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::Abstr
     appeared_cells_dict = filter(collected_cells) do (k, v)
         k ∈ appeared_order
     end
+    topology = _initial_topology(appeared_cells_dict, appeared_order)
 
     Notebook(;
         cells_dict=appeared_cells_dict,
         cell_order=appeared_order,
-        topology=_initial_topology(appeared_cells_dict, appeared_order),
-        path=path,
-        nbpkg_ctx=nbpkg_ctx,
+        topology,
+        _cached_topological_order=topological_order(topology),
+        path,
+        nbpkg_ctx,
         nbpkg_installed_versions_cache=nbpkg_cache(nbpkg_ctx),
         metadata=notebook_metadata,
     )

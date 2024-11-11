@@ -24,11 +24,15 @@ on:
         branches-ignore:
             - release
 
+env:
+    JULIA_PLUTO_IGNORE_CDN_BUNDLE_WARNING: true
 
 jobs:
     test:
         name: ${{ matrix.package.repo }}
         runs-on: ${{ matrix.os }}
+        timeout-minutes: 15
+
         strategy:
             fail-fast: false
             matrix:

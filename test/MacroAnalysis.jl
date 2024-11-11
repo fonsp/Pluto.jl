@@ -200,7 +200,6 @@ import Memoize: @memoize
 
         # Checks that no fancy type is part of the serialized expression
         @test Set([Nothing, Symbol, QuoteNode]) == types
-        cleanup(🍭, notebook)
     end
 
     @testset "Macrodef cells not root of run" begin
@@ -312,7 +311,7 @@ import Memoize: @memoize
         @test notebook.cells[begin] |> noerror
         @test notebook.cells[end].errored
 
-        @test expecterror(UndefVarError(Symbol("@m")), notebook.cells[end]; strict=VERSION >= v"1.7")
+        @test expecterror(UndefVarError(Symbol("@m")), notebook.cells[end]; strict=true)
         cleanup(🍭, notebook)
     end
 
@@ -634,7 +633,7 @@ import Memoize: @memoize
         update_run!(🍭, notebook, cell(2))
 
         @test cell(2).errored == true
-        @test expecterror(UndefVarError(Symbol("@dateformat_str")), cell(2); strict=VERSION >= v"1.7")
+        @test expecterror(UndefVarError(Symbol("@dateformat_str")), cell(2); strict=true)
 
         update_run!(🍭, notebook, notebook.cells)
 
@@ -662,7 +661,11 @@ import Memoize: @memoize
             begin
                 import Pkg
                 Pkg.activate(mktempdir())
-                Pkg.add(Pkg.PackageSpec(name="Symbolics", version="5.5.1"))
+                Pkg.add([
+                    Pkg.PackageSpec(name="Symbolics", version="5.5.1"),
+                    # to avoid https://github.com/JuliaObjects/ConstructionBase.jl/issues/92
+                    Pkg.PackageSpec(name="ConstructionBase", version="1.5.6"),
+                ])
                 import Symbolics: @variables
             end
             """),

@@ -1,4 +1,5 @@
-export let is_mac_keyboard = /Mac/.test(navigator.platform)
+// @ts-ignore
+export let is_mac_keyboard = /Mac/i.test(navigator.userAgentData?.platform ?? navigator.platform)
 
 export let control_name = is_mac_keyboard ? "⌃" : "Ctrl"
 export let ctrl_or_cmd_name = is_mac_keyboard ? "⌘" : "Ctrl"

@@ -1029,28 +1029,55 @@ import Pluto.Configuration: Options, EvaluationOptions
         update_run!(🍭, notebook, notebook.cells)
         @test Pluto.is_just_text(notebook.topology, notebook.cells[1])
         @test Pluto.is_just_text(notebook.topology, notebook.cells[2])
-        @static if VERSION >= v"1.10.0-DEV.1548" # ~JuliaSyntax PR Pluto.jl#2526 julia#46372
-            @test notebook.cells[1].errored
-            @test notebook.cells[2].errored
-            @test notebook.cells[3].errored
+        @test notebook.cells[1].errored
+        @test notebook.cells[2].errored
+        @test notebook.cells[3].errored
 
-            @test haskey(notebook.cells[1].output.body, :source)
-            @test haskey(notebook.cells[1].output.body, :diagnostics)
+        @test haskey(notebook.cells[1].output.body, :source)
+        @test haskey(notebook.cells[1].output.body, :diagnostics)
 
-            @test haskey(notebook.cells[2].output.body, :source)
-            @test haskey(notebook.cells[2].output.body, :diagnostics)
+        @test haskey(notebook.cells[2].output.body, :source)
+        @test haskey(notebook.cells[2].output.body, :diagnostics)
 
-            # not literal syntax error
-            @test haskey(notebook.cells[3].output.body, :msg)
-            @test !haskey(notebook.cells[3].output.body, :source)
-            @test !haskey(notebook.cells[3].output.body, :diagnostics)
-        else
-            @test !occursinerror("(incomplete ", notebook.cells[1])
-            @test !occursinerror("(incomplete ", notebook.cells[2])
+        # not literal syntax error
+        @test haskey(notebook.cells[3].output.body, :msg)
+        @test !haskey(notebook.cells[3].output.body, :source)
+        @test !haskey(notebook.cells[3].output.body, :diagnostics)
+    end
 
-            @show notebook.cells[1].output.body
-            @test startswith(notebook.cells[1].output.body[:msg], "syntax:")
-            @test startswith(notebook.cells[2].output.body[:msg], "syntax:")
-        end
+    @testset "using .LocalModule" begin
+        notebook = Notebook(Cell.([
+            """
+            begin
+                @eval module LocalModule
+                    const x = :exported
+                    export x
+                end
+                using .LocalModule
+            end
+            """,
+            "x"
+        ]))
+        update_run!(🍭, notebook, notebook.cells)
+        @test notebook.cells[1] |> noerror
+        @test notebook.cells[2] |> noerror
+
+        output_2 = notebook.cells[2].output.body
+        @test contains(output_2, "exported")
+
+        setcode!(
+            notebook.cells[1],
+            """
+            begin
+                @eval module LocalModule
+                    const x = :not_exported
+                end
+                using .LocalModule
+            end
+            """,
+        )
+
+        update_run!(🍭, notebook, [notebook.cells[1]])
+        @test expecterror(UndefVarError(:x), notebook.cells[end])
     end
 end

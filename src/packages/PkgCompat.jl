@@ -8,9 +8,6 @@ import Pkg.Types: VersionRange
 import RegistryInstances
 import ..Pluto
 
-
-
-
 @static if isdefined(Pkg,:REPLMode) && isdefined(Pkg.REPLMode,:complete_remote_package)
     const REPLMode = Pkg.REPLMode
 else
@@ -60,9 +57,7 @@ I tried to only use public API, except:
 ###
 
 
-const PkgContext = if isdefined(Pkg, :Context)
-	Pkg.Context
-elseif isdefined(Pkg, :Types) && isdefined(Pkg.Types, :Context)
+const PkgContext = if isdefined(Pkg, :Types) && isdefined(Pkg.Types, :Context)
 	Pkg.Types.Context
 elseif isdefined(Pkg, :API) && isdefined(Pkg.API, :Context)
 	Pkg.API.Context
@@ -168,7 +163,12 @@ end
 
 # I'm a pirate harrr 🏴‍☠️
 @static if isdefined(Pkg, :can_fancyprint)
-	Pkg.can_fancyprint(io::IOContext{IOBuffer}) = get(io, :sneaky_enable_tty, false) === true
+	Pkg.can_fancyprint(io::Union{IOContext{IOBuffer},IOContext{Base.BufferStream}}) = 
+		get(io, :sneaky_enable_tty, false) === true
+end
+@static if isdefined(Base, :Precompilation) && isdefined(Base.Precompilation, :can_fancyprint)
+	Base.Precompilation.can_fancyprint(io::Union{IOContext{IOBuffer},IOContext{Base.BufferStream}}) = 
+		get(io, :sneaky_enable_tty, false) === true
 end
 
 ###
@@ -278,7 +278,7 @@ is_stdlib(package_name::AbstractString) = package_name ∈ _stdlibs()
 
 
 # Initial fill of registry cache
-function    __init__()
+function __init__()
     refresh_registry_cache()
     global global_ctx=PkgContext()
 end
@@ -299,7 +299,9 @@ end
 function _registered_package_completions(partial_name::AbstractString)::Vector{String}
 	# compat
 	try
-		@static if hasmethod(REPLMode.complete_remote_package, (String,))
+		@static if hasmethod(REPLMode.complete_remote_package, (String,), (:hint,))
+			REPLMode.complete_remote_package(partial_name; hint=false)
+		elseif hasmethod(REPLMode.complete_remote_package, (String,))
 			REPLMode.complete_remote_package(partial_name)
 		else
 			REPLMode.complete_remote_package(partial_name, 1, length(partial_name))[1]
@@ -336,20 +338,9 @@ function _registry_entries(package_name::AbstractString, registries::Vector=_par
 	end
 end
 
-# (🐸 "Public API", but using PkgContext)
-function _package_versions_from_path(registry_entry_fullpath::AbstractString)::Vector{VersionNumber}
-	# compat
-    vd = @static if isdefined(Pkg, :Operations) && isdefined(Pkg.Operations, :load_versions) && hasmethod(Pkg.Operations.load_versions, (String,))
-        Pkg.Operations.load_versions(registry_entry_fullpath)
-    else
-        Pkg.Operations.load_versions(PkgContext(), registry_entry_fullpath)
-    end
-	vd |> keys |> collect
-end
-
 # ✅ "Public" API using RegistryInstances
 """
-Return all registered versions of the given package. Returns `["stdlib"]` for standard libraries, and a `Vector{VersionNumber}` for registered packages.
+Return all registered versions of the given package. Returns `["stdlib"]` for standard libraries, a `Vector{VersionNumber}` for registered packages, or `["latest"]` if it crashed.
 """
 function package_versions(package_name::AbstractString)::Vector
     if is_stdlib(package_name)
@@ -367,10 +358,33 @@ function package_versions(package_name::AbstractString)::Vector
 						[]
 					end
 				end
-			end
+			end |> sort!
 		catch e
 			@warn "Pkg compat: failed to get installable versions." exception=(e,catch_backtrace())
 			["latest"]
+		end
+    end
+end
+
+# ✅ "Public" API using RegistryInstances
+"""
+Return the URL of the package's documentation (if possible) or homepage. Returns `nothing` if the package was not found.
+"""
+function package_url(package_name::AbstractString)::Union{String,Nothing}
+    if is_stdlib(package_name)
+		"https://docs.julialang.org/en/v1/stdlib/$(package_name)/"
+    else
+		try
+			for reg in _parsed_registries[]
+				for u in RegistryInstances.uuids_from_name(reg, package_name)
+					pkg = get(reg, u, nothing)
+					if pkg !== nothing
+						return RegistryInstances.registry_info(pkg).repo
+					end
+				end
+			end
+		catch e
+			@warn "Pkg compat: failed to get package URL." exception=(e,catch_backtrace())
 		end
     end
 end
@@ -470,7 +484,7 @@ end
 # ✅ Internal API with fallback
 "Update the project hash in the manifest file (https://github.com/JuliaLang/Pkg.jl/pull/2815)"
 function _update_project_hash!(ctx::PkgContext)
-	VERSION >= v"1.8.0" && isfile(manifest_file(ctx)) && try
+	isfile(manifest_file(ctx)) && try
 		Pkg.Operations.record_project_hash(ctx.env)
 		Pkg.Types.write_manifest(ctx.env)
 	catch e

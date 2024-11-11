@@ -13,7 +13,7 @@ jobs:
         strategy:
             matrix:
                 # We test quite a lot of versions because we do some OS and version specific things unfortunately
-                julia-version: ["1.6", "1.7"]
+                julia-version: ["lts", "1"]
                 os: [windows-latest, ubuntu-latest]
 
         steps:
@@ -21,7 +21,7 @@ jobs:
             - uses: actions/checkout@v4
 
             # Makes thes `julia` command available
-            - uses: julia-actions/setup-julia@v1
+            - uses: julia-actions/setup-julia@v2
               with:
                   version: ${{ matrix.julia-version }}
 

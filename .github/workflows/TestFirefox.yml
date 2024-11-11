@@ -1,0 +1,130 @@
+name: Browser basic launch test
+
+# same as the frontend tests
+on:
+    push:
+        paths-ignore:
+            - "**.md"
+        branches:
+            - main
+            - release
+    pull_request:
+        paths-ignore:
+            - "**.md"
+        branches-ignore:
+            - release
+
+
+jobs:
+  firefox-test:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        browser: ['firefox', 'safari', 'chrome']
+        
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v4
+
+      # Makes thes `julia` command available
+      - uses: julia-actions/setup-julia@v2
+        with:
+            version: "1.10" # our lowest supported version
+            arch: x64
+
+      - name: Install Pluto.jl packages
+        run: |
+            julia --project=$GITHUB_WORKSPACE -e "using Pkg; Pkg.instantiate()"
+
+      - id: setup-firefox
+        uses: browser-actions/setup-firefox@v1
+        with:
+          firefox-version: 'latest-esr'
+
+      - id: setup-chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: 'latest'
+
+      
+      - run: |
+          ${{ steps.setup-firefox.outputs.firefox-path }} --version
+
+      
+      - run: |
+          ${{ steps.setup-chrome.outputs.chrome-path }} --version
+
+      - run: |
+          julia --project=$GITHUB_WORKSPACE -e 'import Pluto
+
+            nb = Pluto.Notebook([
+              Pluto.Cell("Text(x)"),
+              Pluto.Cell("""
+            @bind x html"\""
+            <script>
+            currentScript.value = "hello from " + navigator.userAgent
+            currentScript.dispatchEvent(new CustomEvent("input"))
+            </script>
+            "\""
+              """)
+            ])
+
+            sesh = Pluto.ServerSession()
+
+            Pluto.SessionActions.add(sesh, nb)
+
+            @info "Running notebook..."
+            Pluto.update_save_run!(sesh, nb, nb.cells; run_async=false)
+            @info "Running notebook done"
+
+
+            get_x() = nb.cells[1].output.body
+
+            @info "Value before" get_x()
+
+            sesh.options.server.port = 1235
+
+            url = "http://localhost:$(sesh.options.server.port)/edit?secret=$(sesh.secret)&id=$(nb.notebook_id)"
+
+            process = Pluto.run!(sesh)
+
+            @info "Server started"
+            sleep(3)
+            
+            
+            const browser = "${{ matrix.browser }}"
+            @info "Starting browser..." browser
+            
+            @assert browser ∈ ["chrome", "firefox", "safari"]
+            
+            browser_process = @async try
+              run(
+                if browser == "chrome"
+                  `${{ steps.setup-chrome.outputs.chrome-path }} --no-first-run $(url)`
+                elseif browser == "firefox"
+                  `${{ steps.setup-firefox.outputs.firefox-path }} -headless -private-window $(url)`
+                else
+                  `open -a Safari $(url)`
+                end
+              )
+            catch e
+              @error "Browser task failed" e
+            end
+
+            tstart = time()
+
+            begin
+              while get_x() == "missing"
+                @info "Waiting..."
+                sleep(1)
+                if time() - tstart > 120
+                  error("This took too long!")
+                end
+              end
+              
+              @info "yay it worked!" get_x()
+            end'
+
+
+

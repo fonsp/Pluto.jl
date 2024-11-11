@@ -68,7 +68,7 @@ export const Welcome = ({ launch_params }) => {
         const client_promise = create_pluto_connection({
             on_unrequested_update: on_update,
             on_connection_status: on_connection_status,
-            on_reconnect: () => true,
+            on_reconnect: async () => true,
             ws_address: launch_params.pluto_server_url ? ws_address_from_base(launch_params.pluto_server_url) : undefined,
         })
         client_promise.then(async (client) => {

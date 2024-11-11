@@ -244,8 +244,7 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                 if (
                     cursor.name === "Identifier" &&
                     parent.name === "ArgumentList" &&
-                    (parent.parent.parent.name === "FunctionAssignmentExpression" ||
-                        parent.parent.name === "FunctionDefinition")
+                    (parent.parent.parent.name === "FunctionAssignmentExpression" || parent.parent.name === "FunctionDefinition")
                 ) {
                     continue
                 }
@@ -297,7 +296,6 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
 
                 if (VALID_DOCS_TYPES.includes(cursor.name) || keywords_that_have_docs_and_are_cool.includes(cursor.name)) {
                     if (!is_docs_searchable(cursor)) {
-                        console.log("NOT DOCS SEARCHABLE")
                         return undefined
                     }
 

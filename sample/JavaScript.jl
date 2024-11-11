@@ -1,13 +1,17 @@
 ### A Pluto.jl notebook ###
-# v0.19.9
+# v0.19.41
 
 #> [frontmatter]
-#> author_url = "https://github.com/JuliaPluto"
+#> license_url = "https://github.com/JuliaPluto/featured/blob/2a6a9664e5428b37abe4957c1dca0994f4a8b7fd/LICENSES/Unlicense"
 #> image = "https://upload.wikimedia.org/wikipedia/commons/9/99/Unofficial_JavaScript_logo_2.svg"
+#> order = "3"
 #> tags = ["javascript", "web", "classic"]
-#> author_name = "Pluto.jl"
-#> description = "Use HTML, CSS and JavaScript to make your own interactive visualizations!"
 #> license = "Unlicense"
+#> description = "Use HTML, CSS and JavaScript to make your own interactive visualizations!"
+#> 
+#>     [[frontmatter.author]]
+#>     name = "Pluto.jl"
+#>     url = "https://github.com/JuliaPluto"
 
 using Markdown
 using InteractiveUtils
@@ -40,43 +44,8 @@ md"""
 
 This document assumes that you have used HTML, CSS and JavaScript before in another context. If you know Julia, and you want to add these web languages to your skill set, we encourage you to do so! It will be useful knowledge, also outside of Pluto.
 
+If you're new to all this, Pluto's featured notebooks also include more basic notebooks on using HTML and CSS!
 """
-
-# ╔═╡ 28ae1424-67dc-4b76-a172-1185cc76cb59
-@htl("""
-
-<article class="learning">
-	<h4>
-		Learning HTML and CSS
-	</h4>
-	<p>
-		It is easy to learn HTML and CSS because they are not 'programming languages' like Julia and JavaScript, they are <em>markup languages</em>: there are no loops, functions or arrays, you only <em>declare</em> how your document is structured (HTML) and what that structure looks like on a 2D color display (CSS).
-	</p>
-	<p>
-		As an example, this is what this cell looks like, written in HTML and CSS:
-	</p>
-</article>
-
-
-<style>
-
-	article.learning {
-		background: #f996a84f;
-		padding: 1em;
-		border-radius: 5px;
-	}
-
-	article.learning h4::before {
-		content: "☝️";
-	}
-
-	article.learning p::first-letter {
-		font-size: 1.5em;
-		font-family: cursive;
-	}
-
-</style>
-""")
 
 # ╔═╡ ea39c63f-7466-4015-a66c-08bd9c716343
 md"""
@@ -108,7 +77,7 @@ TableOfContents()
 md"""
 # Essentials
 
-## Using HTML, CSS and JavaScript
+## Using HTML and JavaScript
 
 To use web languages inside Pluto, we recommend the small package [`HypertextLiteral.jl`](https://github.com/MechanicalRabbit/HypertextLiteral.jl), which provides an `@htl` macro.
 
@@ -120,11 +89,11 @@ You wrap `@htl` around a string expression to mark it as an *HTML literal*, as w
 
 # ╔═╡ 858745a9-cd59-43a6-a296-803515518e57
 md"""
-### CSS and JavaScript
+### Adding JavaScript to a cell
 
-You can use CSS and JavaScript by including it inside HTML, just like you do when writing a web page.
+You can use JavaScript by including it inside HTML, just like you do when writing a web page.
 
-For example, here we use `<script>` to include some JavaScript, and `<style>` to include CSS.
+For example, here we use `<script>` to include some JavaScript.
 """
 
 # ╔═╡ 21a9e3e6-92f4-475d-9c8e-21e15c09336b
@@ -139,15 +108,6 @@ Hello!
 currentScript.previousElementSibling.innerText = "Hello from JavaScript!"
 
 </script>
-
-<style>
-.blue-background {
-	padding: .5em;
-	background: lightblue;
-	color: black;
-}
-</style>
-
 """)
 
 # ╔═╡ 4a3398be-ee86-45f3-ac8b-f627a38c00b8
@@ -466,7 +426,7 @@ Just like when writing a browser app, there are two ways to import JS dependenci
 
 ### Loading method 1: ES6 imports
 
-We recommend that you use an [**ES6 import**](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules) if the library supports it. (If it does not, you might be able to still get it using [esm.sh](https://esm.sh) or [skypack.dev](https://www.skypack.dev)!)
+We recommend that you use an [**ES6 import**](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules) if the library supports it. (If it does not, you might be able to still get it using [esm.sh](https://esm.sh)!)
 
 
 ##### Awkward note about syntax
@@ -758,7 +718,7 @@ state = Dict(
 md"""
 ## Embedding Julia data directly into JavaScript!
 
-You can use `Main.PlutoRunner.publish_to_js` to embed data directly into JavaScript, using Pluto's built-in, optimized data transfer. See [the Pull Request](https://github.com/fonsp/Pluto.jl/pull/1124) for more info.
+You can use `AbstractPlutoDingetjes.Display.published_to_js` to embed data directly into JavaScript, using Pluto's built-in, optimized data transfer. See [the documentation](https://plutojl.org/en/docs/abstractplutodingetjes/#published_to_js) for more info.
 
 Example usage:
 
@@ -774,7 +734,7 @@ let
 	@htl(\"\"\"
 	<script>
 		
-	const d = $(Main.PlutoRunner.publish_to_js(d))
+	const d = $(AbstractPlutoDingetjes.Display.published_to_js(d))
 	console.log(d)
 	
 	</script>
@@ -783,8 +743,6 @@ end
 ```
 
 In this example, the `const d` is populated from a hook into Pluto's data transfer. For large amounts of typed vector data (e.g. `Vector{UInt8}` or `Vector{Float64}`), this is *much* more efficient than interpolating the data directly with HypertextLiteral using `$(d)`, which would use a JSON-like string serialization.
-
-**Note:** this API is still *experimental*, and might change in the future.
 """
 
 # ╔═╡ da7091f5-8ba2-498b-aa8d-bbf3b4505b81
@@ -799,60 +757,6 @@ details(x, summary="Show more") = @htl("""
 		$(x)
 	</details>
 	""")
-
-# ╔═╡ 93abe0dc-f041-475f-9ef7-d8ee4408414b
-details(md"""
-	```htmlmixed
-	
-	<article class="learning">
-		<h4>
-			Learning HTML and CSS
-		</h4>
-		<p>
-			It is easy to learn HTML and CSS because they are not 'programming languages' like Julia and JavaScript, they are <em>markup languages</em>: there are no loops, functions or arrays, you only <em>declare</em> how your document is structured (HTML) and what that structure looks like on a 2D color display (CSS).
-		</p>
-		<p>
-			As an example, this is what this cell looks like, written in HTML and CSS:
-		</p>
-	</article>
-
-
-	<style>
-
-		article.learning {
-			background: #fde6ea4c;
-			padding: 1em;
-			border-radius: 5px;
-		}
-
-		article.learning h4::before {
-			content: "☝️";
-		}
-
-		article.learning p::first-letter {
-			font-size: 1.5em;
-			font-family: cursive;
-		}
-
-	</style>
-	```
-	""", "Show with syntax highlighting")
-
-# ╔═╡ d12b98df-8c3f-4620-ba3c-2f3dadac521b
-details(md"""
-	```htmlmixed
-	<script>
-
-	// interpolate the data 🐸
-	const data = $(simple_data)
-
-	const span = document.createElement("span")
-	span.innerText = data.msg.repeat(data.times)
-	
-	return span
-	</script>
-	```
-	""", "Show with syntax highlighting")
 
 # ╔═╡ 94561cb1-2325-49b6-8b22-943923fdd91b
 details(md"""
@@ -1109,12 +1013,13 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 [[AbstractPlutoDingetjes]]
 deps = ["Pkg"]
-git-tree-sha1 = "8eaf9f1b4921132a4cff3f36a1d9ba923b14a481"
+git-tree-sha1 = "793501dcd3fa7ce8d375a2c878dca2296232686e"
 uuid = "6e696c72-6542-2067-7265-42206c756150"
-version = "1.1.4"
+version = "1.2.2"
 
 [[ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
+version = "1.1.1"
 
 [[Artifacts]]
 uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
@@ -1131,6 +1036,7 @@ version = "0.11.4"
 [[CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
+version = "1.0.5+1"
 
 [[Dates]]
 deps = ["Printf"]
@@ -1139,6 +1045,7 @@ uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 [[Downloads]]
 deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
 uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
+version = "1.6.0"
 
 [[FileWatching]]
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
@@ -1157,15 +1064,15 @@ version = "0.0.4"
 
 [[HypertextLiteral]]
 deps = ["Tricks"]
-git-tree-sha1 = "c47c5fa4c5308f27ccaac35504858d8914e102f9"
+git-tree-sha1 = "7134810b1afce04bbc1045ca1985fbe81ce17653"
 uuid = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
-version = "0.9.4"
+version = "0.9.5"
 
 [[IOCapture]]
 deps = ["Logging", "Random"]
-git-tree-sha1 = "f7be53659ab06ddc986428d3a9dcc95f6fa6705a"
+git-tree-sha1 = "d75853a0bdbfb1ac815478bacd89cd27b550ace6"
 uuid = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
-version = "0.2.2"
+version = "0.2.3"
 
 [[InteractiveUtils]]
 deps = ["Markdown"]
@@ -1173,35 +1080,48 @@ uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 
 [[JSON]]
 deps = ["Dates", "Mmap", "Parsers", "Unicode"]
-git-tree-sha1 = "3c837543ddb02250ef42f4738347454f95079d4e"
+git-tree-sha1 = "31e996f0a15c7b280ba9f76636b3ff9e2ae58c9a"
 uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
-version = "0.21.3"
+version = "0.21.4"
 
 [[LibCURL]]
 deps = ["LibCURL_jll", "MozillaCACerts_jll"]
 uuid = "b27032c2-a3e7-50c8-80cd-2d36dbcbfd21"
+version = "0.6.4"
 
 [[LibCURL_jll]]
 deps = ["Artifacts", "LibSSH2_jll", "Libdl", "MbedTLS_jll", "Zlib_jll", "nghttp2_jll"]
 uuid = "deac9b47-8bc7-5906-a0fe-35ac56dc84c0"
+version = "8.4.0+0"
 
 [[LibGit2]]
-deps = ["Base64", "NetworkOptions", "Printf", "SHA"]
+deps = ["Base64", "LibGit2_jll", "NetworkOptions", "Printf", "SHA"]
 uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
+
+[[LibGit2_jll]]
+deps = ["Artifacts", "LibSSH2_jll", "Libdl", "MbedTLS_jll"]
+uuid = "e37daf67-58a4-590a-8e99-b0245dd2ffc5"
+version = "1.6.4+0"
 
 [[LibSSH2_jll]]
 deps = ["Artifacts", "Libdl", "MbedTLS_jll"]
 uuid = "29816b5a-b9ab-546f-933c-edad1886dfa8"
+version = "1.11.0+1"
 
 [[Libdl]]
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 
 [[LinearAlgebra]]
-deps = ["Libdl", "libblastrampoline_jll"]
+deps = ["Libdl", "OpenBLAS_jll", "libblastrampoline_jll"]
 uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [[Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
+
+[[MIMEs]]
+git-tree-sha1 = "65f28ad4b594aebe22157d6fac869786a255b7eb"
+uuid = "6c6e2e6c-3030-632d-7369-2d6c69616d65"
+version = "0.1.4"
 
 [[Markdown]]
 deps = ["Base64"]
@@ -1210,35 +1130,52 @@ uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
 [[MbedTLS_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
+version = "2.28.2+1"
 
 [[Mmap]]
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
+version = "2023.1.10"
 
 [[NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
+version = "1.2.0"
 
 [[OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
 uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
+version = "0.3.23+2"
 
 [[Parsers]]
-deps = ["Dates"]
-git-tree-sha1 = "0044b23da09b5608b4ecacb4e5e6c6332f833a7e"
+deps = ["Dates", "PrecompileTools", "UUIDs"]
+git-tree-sha1 = "8489905bcdbcfac64d1daa51ca07c0d8f0283821"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "2.3.2"
+version = "2.8.1"
 
 [[Pkg]]
-deps = ["Artifacts", "Dates", "Downloads", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
+deps = ["Artifacts", "Dates", "Downloads", "FileWatching", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+version = "1.10.0"
 
 [[PlutoUI]]
-deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "UUIDs"]
-git-tree-sha1 = "8d1f54886b9037091edf146b517989fc4a09efec"
+deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "FixedPointNumbers", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "MIMEs", "Markdown", "Random", "Reexport", "URIs", "UUIDs"]
+git-tree-sha1 = "bd7c69c7f7173097e7b5e1be07cee2b8b7447f51"
 uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-version = "0.7.39"
+version = "0.7.54"
+
+[[PrecompileTools]]
+deps = ["Preferences"]
+git-tree-sha1 = "03b4c25b43cb84cee5c90aa9b5ea0a78fd848d2f"
+uuid = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
+version = "1.2.0"
+
+[[Preferences]]
+deps = ["TOML"]
+git-tree-sha1 = "00805cd429dcb4870060ff49ef443486c262e38e"
+uuid = "21216c6a-2e73-6563-6e65-726566657250"
+version = "1.4.1"
 
 [[Printf]]
 deps = ["Unicode"]
@@ -1249,7 +1186,7 @@ deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
 uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 
 [[Random]]
-deps = ["SHA", "Serialization"]
+deps = ["SHA"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [[Reexport]]
@@ -1259,6 +1196,7 @@ version = "1.2.2"
 
 [[SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
+version = "0.7.0"
 
 [[Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
@@ -1267,29 +1205,43 @@ uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
 
 [[SparseArrays]]
-deps = ["LinearAlgebra", "Random"]
+deps = ["Libdl", "LinearAlgebra", "Random", "Serialization", "SuiteSparse_jll"]
 uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+version = "1.10.0"
 
 [[Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
 uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+version = "1.10.0"
+
+[[SuiteSparse_jll]]
+deps = ["Artifacts", "Libdl", "libblastrampoline_jll"]
+uuid = "bea87d4a-7f5b-5778-9afe-8cc45184846c"
+version = "7.2.1+1"
 
 [[TOML]]
 deps = ["Dates"]
 uuid = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
+version = "1.0.3"
 
 [[Tar]]
 deps = ["ArgTools", "SHA"]
 uuid = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
+version = "1.10.0"
 
 [[Test]]
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [[Tricks]]
-git-tree-sha1 = "6bac775f2d42a611cdfcd1fb217ee719630c4175"
+git-tree-sha1 = "eae1bb484cd63b36999ee58be2de6c178105112f"
 uuid = "410a4b4d-49e4-4fbc-ab6d-cb71b17b3775"
-version = "0.1.6"
+version = "0.1.8"
+
+[[URIs]]
+git-tree-sha1 = "67db6cc7b3821e19ebe75791a9dd19c9b1188f2b"
+uuid = "5c2747f8-b7ea-4ff2-ba2e-563bfd36b1d4"
+version = "1.5.1"
 
 [[UUIDs]]
 deps = ["Random", "SHA"]
@@ -1301,26 +1253,28 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 [[Zlib_jll]]
 deps = ["Libdl"]
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
+version = "1.2.13+1"
 
 [[libblastrampoline_jll]]
-deps = ["Artifacts", "Libdl", "OpenBLAS_jll"]
+deps = ["Artifacts", "Libdl"]
 uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
+version = "5.8.0+1"
 
 [[nghttp2_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850ede-7688-5339-a07c-302acd2aaf8d"
+version = "1.52.0+1"
 
 [[p7zip_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
+version = "17.4.0+2"
 """
 
 # ╔═╡ Cell order:
 # ╟─97914842-76d2-11eb-0c48-a7eedca870fb
 # ╠═571613a1-6b4b-496d-9a68-aac3f6a83a4b
 # ╟─168e13f7-2ff2-4207-be56-e57755041d36
-# ╠═28ae1424-67dc-4b76-a172-1185cc76cb59
-# ╟─93abe0dc-f041-475f-9ef7-d8ee4408414b
 # ╟─ea39c63f-7466-4015-a66c-08bd9c716343
 # ╟─8b082f9a-073e-4112-9422-4087850fc89e
 # ╟─d70a3a02-ef3a-450f-bf5a-4a0d7f6262e2
@@ -1346,7 +1300,6 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 # ╟─7afbf8ef-e91c-45b9-bf22-24201cbb4828
 # ╠═b226da72-9512-4d14-8582-2f7787c25028
 # ╠═a6fd1f7b-a8fc-420d-a8bb-9f549842ad3e
-# ╟─d12b98df-8c3f-4620-ba3c-2f3dadac521b
 # ╟─965f3660-6ec4-4a86-a2a2-c167dbe9315f
 # ╠═01ce31a9-6856-4ee7-8bce-7ce635167457
 # ╠═00d97588-d591-4dad-9f7d-223c237deefd

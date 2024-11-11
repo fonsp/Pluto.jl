@@ -6,7 +6,7 @@ import _ from "../imports/lodash.js"
 
 const assert_response_ok = (/** @type {Response} */ r) => (r.ok ? r : Promise.reject(r))
 
-const actions_to_keep = ["get_published_object"]
+const actions_to_keep = ["get_published_object", "get_notebook"]
 
 const get_start = (graph, v) => Object.values(graph).find((node) => Object.keys(node.downstream_cells_map).includes(v))?.cell_id
 const get_starts = (graph, vars) => new Set([...vars].map((v) => get_start(graph, v)))
