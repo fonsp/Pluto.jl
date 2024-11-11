@@ -81,7 +81,7 @@ nb_and_dir_environments_equal(notebook_path::String, dir::String) = nb_and_dir_e
 reset_notebook_environment(notebook_path::String; keep_project::Bool=false, backup::Bool=true)
 ```
 
-Remove the embedded `Project.toml` and `Manifest.toml` from a notebook file, modifying the file. If `keep_project` is true, only `Manifest.toml` will be deleted. A backup of the notebook file is created by default.
+Remove the embedded `Project.toml` and `Manifest.toml` from a notebook file, modifying the notebook file. If `keep_project` is true, only `Manifest.toml` will be deleted. A backup of the notebook file is created by default.
 """
 function reset_notebook_environment(path::String; kwargs...)
     Pluto.reset_nbpkg!(
@@ -92,10 +92,10 @@ end
 
 """
 ```julia
-reset_notebook_environment(notebook_path::String; backup::Bool=true, level::Pkg.UpgradeLevel=Pkg.UPLEVEL_MAJOR)
+update_notebook_environment(notebook_path::String; backup::Bool=true, level::Pkg.UpgradeLevel=Pkg.UPLEVEL_MAJOR)
 ```
 
-Update the embedded `Project.toml` and `Manifest.toml` in a notebook file, modifying the file. A [`Pkg.UpgradeLevel`](@ref) can be passed to the `level` keyword argument. A backup file is created by default. 
+Call `Pkg.update` in the package environment embedded in a notebook file, modifying the notebook file. A [`Pkg.UpgradeLevel`](@ref) can be passed to the `level` keyword argument. A backup file is created by default. 
 """
 function update_notebook_environment(path::String; kwargs...)
     Pluto.update_nbpkg(
@@ -105,11 +105,34 @@ function update_notebook_environment(path::String; kwargs...)
     )
 end
 
+"""
+```julia
+has_notebook_environment(notebook_path::String)::Bool
+```
+
+Does the notebook file contain an embedded `Project.toml` and `Manifest.toml`?
+"""
 has_notebook_environment(path::String) = has_notebook_environment(load_notebook(path))
 has_notebook_environment(notebook::Notebook) = notebook.nbpkg_ctx !== nothing
 
+"""
+```julia
+activate_notebook_environment(notebook_path::String; show_help::Bool=true)::Nothing
+```
+
+Activate the package environment embedded in a notebook file, for interactive use. This will allow you to use the Pkg REPL and Pkg commands to modify the environment, and any changes you make will be automatically saved in the notebook file.
+
+More help will be displayed if `show_help` is `true`.
+
+Limitations:
+- Shut down the notebook before using this functionality.
+- Non-interactive use is limited, use the functional form instead, or insert `sleep` calls after modifying the environment.
+
+!!! info
+    This functionality works using file watching. A dummy repository contains a copy of the embedded tomls and gets activated, and the notebook file is updated when the dummy repository changes.
+"""
 function activate_notebook_environment(path::String; show_help::Bool=true)
-    notebook_ref = Ref(load_notebook(path))
+    notebook_ref = Ref(load_notebook_nobackup(path))
 
     ensure_has_nbpkg(notebook_ref[])
 
@@ -226,7 +249,37 @@ function activate_notebook_environment(path::String; show_help::Bool=true)
         """ |> Markdown.parse |> display
         println()
     end
+    
+    nothing
+end
 
+
+
+"""
+```julia
+activate_notebook_environment(f::Function, notebook_path::String)::Nothing
+```
+
+Activate the package environment embedded in a notebook file, for use inside scripts. Inside your function `f`, you can use Pkg commands to modify the environment, and any changes you make will be automatically saved in the notebook file after your function finishes.
+
+!!! warning
+    This function uses the private method `Pkg.activate(f::Function, path::String)`. This API might not be available in future Julia versions. 🤷
+"""
+function activate_notebook_environment(f::Function, path::String)
+    notebook = load_notebook_nobackup(path)
+    ensure_has_nbpkg(notebook)
+    
+    ourpath = joinpath(mktempdir(), basename(path))
+    mkpath(ourpath)
+    write_nb_to_dir(notebook, ourpath)
+    
+    Pkg.activate(f, ourpath)
+    
+    if !nb_and_dir_environments_equal(notebook, ourpath)
+        write_dir_to_nb(ourpath, notebook)
+    end
+    
+    nothing
 end
 
 const activate_notebook = activate_notebook_environment
