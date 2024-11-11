@@ -32,7 +32,30 @@ jobs:
 
             - name: Install Pluto.jl packages
               run: |
-                  julia --project=$GITHUB_WORKSPACE -e "using Pkg; Pkg.instantiate()"
+                  julia --project=$GITHUB_WORKSPACE -e '
+                  using Pkg
+                  Pkg.instantiate()
+                  
+                  # run all the notebooks once to get the package environments ready
+                  import Pluto
+                  nbs = readdir(joinpath("test", "frontend", "fixtures"); join=true)
+                  
+                  for n in nbs
+                    try
+                      @info "running" n
+                      try
+                        Pluto.activate_notebook_environment(n; show_help=false)
+                      catch
+                        Pkg.activate()
+                      end
+                      Pkg.instantiate()
+                      Pkg.precompile()
+                      include(n)
+                      Pkg.instantiate()
+                      Pkg.precompile()
+                    catch
+                    end
+                  end'
 
             - uses: actions/setup-node@v4
               with:
