@@ -38,6 +38,7 @@ verify_no_running_processes()
 # tests that don't start new processes:
 @timeit_include("ReloadFromFile.jl")
 @timeit_include("packages/PkgCompat.jl")
+@timeit_include("packages/PkgUtils.jl")
 @timeit_include("MethodSignatures.jl")
 @timeit_include("MoreAnalysis.jl")
 @timeit_include("is_just_text.jl")

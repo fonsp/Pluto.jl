@@ -112,8 +112,16 @@ has_notebook_environment(notebook_path::String)::Bool
 
 Does the notebook file contain an embedded `Project.toml` and `Manifest.toml`?
 """
-has_notebook_environment(path::String) = has_notebook_environment(load_notebook(path))
-has_notebook_environment(notebook::Notebook) = notebook.nbpkg_ctx !== nothing
+has_notebook_environment(path::String) = has_notebook_environment(load_notebook_nobackup(path))
+function has_notebook_environment(notebook::Notebook)
+    ctx = notebook.nbpkg_ctx
+    ctx === nothing && return false
+    (project_file(ctx) |> isfile || manifest_file(ctx) |> isfile) && return true
+    
+    # fallback, when nbpkg is defined buy there are no files: check if the notebook would use one (i.e. that Pkg.activate is not used).
+    topology = updated_topology(notebook.topology, notebook, cells)
+    return Pluto.use_plutopkg(topology)
+end
 
 """
 ```julia
@@ -257,10 +265,22 @@ end
 
 """
 ```julia
-activate_notebook_environment(f::Function, notebook_path::String)::Nothing
+activate_notebook_environment(f::Function, notebook_path::String)
 ```
 
-Activate the package environment embedded in a notebook file, for use inside scripts. Inside your function `f`, you can use Pkg commands to modify the environment, and any changes you make will be automatically saved in the notebook file after your function finishes.
+Temporarily activate the package environment embedded in a notebook file, for use inside scripts. Inside your function `f`, you can use Pkg commands to modify the environment, and any changes you make will be automatically saved in the notebook file after your function finishes. Not thread-safe.
+
+This method is best for scripts that update notebook files. For interactive use, the method `activate_notebook_environment(notebook_path::String)` is recommended.
+
+# Example
+
+```julia
+Pluto.activate_notebook_environment("notebook.jl") do
+    Pkg.add("Example")
+end
+
+# Now the file "notebook.jl" was updated!
+```
 
 !!! warning
     This function uses the private method `Pkg.activate(f::Function, path::String)`. This API might not be available in future Julia versions. 🤷
@@ -273,21 +293,21 @@ function activate_notebook_environment(f::Function, path::String)
     mkpath(ourpath)
     write_nb_to_dir(notebook, ourpath)
     
-    Pkg.activate(f, ourpath)
+    result = Pkg.activate(f, ourpath)
     
     if !nb_and_dir_environments_equal(notebook, ourpath)
         write_dir_to_nb(ourpath, notebook)
     end
     
-    nothing
+    result
 end
 
 const activate_notebook = activate_notebook_environment
 
-function testnb()
+function testnb(name="simple_stdlib_import.jl")
     t = tempname()
 
-    readwrite(Pluto.project_relative_path("test","packages","nb.jl"), t)
+    readwrite(Pluto.project_relative_path("test","packages","simple_stdlib_import.jl"), t)
     t
 end
 
