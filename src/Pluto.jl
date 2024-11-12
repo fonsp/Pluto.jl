@@ -88,9 +88,11 @@ include("./webserver/WebServer.jl")
 const reset_notebook_environment = PkgUtils.reset_notebook_environment
 const update_notebook_environment = PkgUtils.update_notebook_environment
 const activate_notebook_environment = PkgUtils.activate_notebook_environment
+const will_use_pluto_pkg = PkgUtils.will_use_pluto_pkg
 export reset_notebook_environment
 export update_notebook_environment
 export activate_notebook_environment
+export will_use_pluto_pkg
 
 include("./precompile.jl")
 
