@@ -35,11 +35,6 @@ function use_plutopkg(topology::NotebookTopology)
     end
 end
 
-function external_package_names(topology::NotebookTopology)::Set{Symbol}
-    union!(Set{Symbol}(), external_package_names.(c.module_usings_imports for c in values(topology.codes))...)
-end
-
-
 PkgCompat.project_file(notebook::Notebook) = PkgCompat.project_file(PkgCompat.env_dir(notebook.nbpkg_ctx))
 PkgCompat.manifest_file(notebook::Notebook) = PkgCompat.manifest_file(PkgCompat.env_dir(notebook.nbpkg_ctx))
 
@@ -283,7 +278,7 @@ function sync_nbpkg_core(
                     stoplistening(iolistener)
                     Status.report_business_finished!(pkg_status)
 
-                    return (
+                    return (;
                         did_something=👺 || (
                             should_instantiate_initially || should_instantiate_again || (use_plutopkg_old != use_plutopkg_new)
                         ),
