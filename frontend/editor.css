@@ -3672,13 +3672,16 @@ pluto-cell.hooked_up pluto-output {
     gap: 0.3em 1em;
 }
 
-.pluto-frontmatter {
+.pluto-modal {
     font-family: var(--system-ui-font-stack);
     width: min(31rem, 90vw);
     color: var(--export-color);
     background: var(--export-bg-color);
     border-radius: 1em;
     padding: 1em 1.5em;
+}
+.pluto-project_toml {
+    width: min(45rem, 90vw);
 }
 
 .pluto-frontmatter .card-preview {
@@ -3743,6 +3746,10 @@ pluto-cell.hooked_up pluto-output {
     margin-top: 2rem;
     justify-content: flex-end;
     gap: 0.5em;
+}
+
+.pluto-project_toml .cm-editor {
+    font-family: var(--julia-mono-font-stack);
 }
 
 /*  Styles for markdown copy Button*/

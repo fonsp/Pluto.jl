@@ -115,7 +115,7 @@ export const FrontMatterInput = ({ filename, remote_frontmatter, set_remote_fron
         `
     }
 
-    return html`<dialog ref=${dialog_ref} class="pluto-frontmatter">
+    return html`<dialog ref=${dialog_ref} class="pluto-modal pluto-frontmatter">
         <h1>Frontmatter</h1>
         <p>
             If you are publishing this notebook on the web, you can set the parameters below to provide HTML metadata. This is useful for search engines and

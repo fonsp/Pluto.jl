@@ -132,6 +132,10 @@ export const pluto_syntax_colors_python = HighlightStyle.define(common_style_tag
     scope: pythonLanguage,
 })
 
+export const pluto_syntax_color_any = HighlightStyle.define(common_style_tags, {
+    all: { color: `var(--cm-color-editor-text)` },
+})
+
 export const pluto_syntax_colors_css = HighlightStyle.define(
     [
         { tag: tags.comment, color: "var(--cm-color-comment)", fontStyle: "italic" },
@@ -365,12 +369,12 @@ export const CellInput = ({
                 return true
             }
 
-            const anySelect = cm.state.selection.ranges.some(r => !r.empty)
+            const anySelect = cm.state.selection.ranges.some((r) => !r.empty)
             if (anySelect) {
                 return indentMore(cm)
             } else {
-               cm.dispatch(
-                   cm.state.changeByRange(selection => ({
+                cm.dispatch(
+                    cm.state.changeByRange((selection) => ({
                         range: EditorSelection.cursor(selection.from + 1),
                         changes: { from: selection.from, to: selection.to, insert: "\t" },
                     }))

@@ -46,6 +46,7 @@ import { ProcessStatus } from "../common/ProcessStatus.js"
 import { SafePreviewUI } from "./SafePreviewUI.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
 import { get_included_external_source } from "../common/external_source.js"
+import { ProjectTomlEditor } from "./ProjectTomlEditor.js"
 
 // This is imported asynchronously - uncomment for development
 // import environment from "../common/Environment.js"
@@ -1686,6 +1687,13 @@ The notebook file saves every time you run a cell.`
                     <${FrontMatterInput}
                         filename=${notebook.shortpath}
                         remote_frontmatter=${notebook.metadata?.frontmatter} 
+                        set_remote_frontmatter=${(newval) =>
+                            this.actions.update_notebook((nb) => {
+                                nb.metadata["frontmatter"] = newval
+                            })} 
+                    />
+                    <${ProjectTomlEditor}
+                        notebook=${notebook}
                         set_remote_frontmatter=${(newval) =>
                             this.actions.update_notebook((nb) => {
                                 nb.metadata["frontmatter"] = newval
