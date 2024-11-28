@@ -36,7 +36,7 @@ import Pkg
 import Scratch
 
 include_dependency("../Project.toml")
-const PLUTO_VERSION = VersionNumber(Pkg.TOML.parsefile(joinpath(ROOT_DIR, "Project.toml"))["version"])
+const PLUTO_VERSION = pkgversion(@__MODULE__)
 const PLUTO_VERSION_STR = "v$(string(PLUTO_VERSION))"
 const JULIA_VERSION_STR = "v$(string(VERSION))"
 
