@@ -485,9 +485,16 @@ function with_auto_fixes(f::Function, notebook::Notebook)
         @info "Operation failed. Updating registries and trying again..." exception=e
         
         PkgCompat.update_registries(; force=true)
+        
+        # TODO: check for resolver errors around stdlibs and fix them by doing `up Statistics`
+        
+        
+        
+        
         try
             f()
         catch e
+            # this is identical to Pkg.update, right?
             @warn "Operation failed. Removing Manifest and trying again..." exception=e
             
             reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)

@@ -427,7 +427,6 @@ function _set_cells_to_queued_in_local_state(client, notebook, cells)
             if haskey(results, cell.cell_id)
                 old = results[cell.cell_id]["queued"]
                 results[cell.cell_id]["queued"] = true
-                @debug "Setting val!" cell.cell_id old
             end
         end
     end
