@@ -38,6 +38,9 @@ abstract type SpecialPlutoExprValue end
 struct GiveMeCellID <: SpecialPlutoExprValue end
 struct GiveMeRerunCellFunction <: SpecialPlutoExprValue end
 struct GiveMeRegisterCleanupFunction <: SpecialPlutoExprValue end
+struct Stale
+    out
+end
 
 
 # TODO: clear key when a cell is deleted furever

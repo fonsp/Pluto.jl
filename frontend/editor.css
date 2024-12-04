@@ -1255,6 +1255,11 @@ pluto-display > div {
     display: none;
 }
 
+/* STALE CELLS */
+pluto-cell.stale > pluto-output {
+    background: var(--pluto-stale-output-bg-color);
+}
+
 /* DISABLED CELLS */
 
 pluto-cell.depends_on_disabled_cells > pluto-output,
@@ -1392,7 +1397,7 @@ button.floating_back_button,
 pluto-cell > button,
 pluto-input > button,
 pluto-runarea > button,
-pluto-shoulder > button,
+pluto-shoulder > div > button,
 nav#slide_controls > button {
     position: absolute;
     margin: 0px;
@@ -1422,7 +1427,6 @@ pluto-shoulder {
     --invisible-border: calc(0.5 * var(--pluto-cell-spacing));
     --shoulder-width: calc(28px + var(--invisible-border));
     --border-radius: calc(5px + var(--invisible-border));
-
     left: calc(0px - var(--shoulder-width));
     width: var(--shoulder-width);
     border-radius: var(--border-radius) 0px 0px var(--border-radius);
@@ -1436,6 +1440,7 @@ pluto-shoulder {
     bottom: calc(0px - var(--invisible-border));
     border: var(--invisible-border) solid rgba(0, 0, 0, 0);
     border-right: none;
+    overflow: clip;
 }
 pluto-editor.fullscreen pluto-shoulder {
     --shoulder-width: 2000px;
@@ -1446,29 +1451,41 @@ pluto-shoulder:hover {
     background-clip: padding-box;
 }
 
-pluto-shoulder > button {
+pluto-shoulder > div {
     flex: 0 0 auto;
     position: sticky;
     top: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+pluto-shoulder > div > button {
+    position: static;
     padding: 4px 5px 4px 10px;
 }
 
-pluto-cell:focus-within > pluto-shoulder > button {
+pluto-cell:focus-within > pluto-shoulder > div > button {
     /* we use padding instead of 4px extra margin to move the eye to the left so that the hitbox becomes grows - you want to be able to double click the button */
     padding-right: 9px;
 }
 
-/* pluto-cell.code_folded.inline-output > pluto-shoulder > button {
+/* pluto-cell.code_folded.inline-output > pluto-shoulder > div > button {
     margin-top: 3px;
 } */
 
-pluto-shoulder > button > span::after {
+pluto-shoulder > div > button.foldcode > span::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/eye-outline.svg");
     filter: var(--image-filters);
 }
 
-pluto-cell.code_folded > pluto-shoulder > button > span::after {
+pluto-cell.code_folded > pluto-shoulder > div > button.foldcode > span::after {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/eye-off-outline.svg");
+    filter: var(--image-filters);
+}
+
+pluto-shoulder > div > button.stale_cell_marker > span::after,
+pluto-shoulder > div > button.depends_on_stale_cells_marker > span::after {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/warning-outline.svg");
     filter: var(--image-filters);
 }
 
@@ -1550,6 +1567,14 @@ body:not(.___) pluto-cell.errored > pluto-trafficlight {
     background-clip: padding-box;
 }
 
+/* stale cells */
+body:not(.___) pluto-cell.stale > pluto-trafficlight,
+body:not(.___) pluto-cell.depends_on_stale_cells > pluto-trafficlight {
+    background: var(--stale-cell-color);
+    border-left-color: var(--stale-cell-color);
+    background-clip: padding-box;
+}
+
 body:not(.___) pluto-cell.queued > pluto-trafficlight::after {
     background: repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0) 8px, var(--normal-cell-color) 8px, var(--normal-cell-color) 16px);
     background-clip: padding-box;
@@ -1626,7 +1651,7 @@ pluto-input > button > span {
     pluto-cell > button,
     pluto-input > button,
     pluto-runarea > button,
-    pluto-shoulder > button,
+    pluto-shoulder > div > button,
     pluto-cell > pluto-runarea {
         opacity: 0;
         /* to make it feel smooth: */
@@ -1640,8 +1665,8 @@ pluto-input > button > span {
     pluto-cell:hover > pluto-input > button,
     pluto-cell:focus-within > pluto-input > button,
     pluto-cell > pluto-runarea > button,
-    pluto-cell:hover > pluto-shoulder > button,
-    pluto-cell:focus-within > pluto-shoulder > button {
+    pluto-cell:hover > pluto-shoulder > div > button,
+    pluto-cell:focus-within > pluto-shoulder > div > button {
         opacity: 0.6;
         transition: opacity 0.25s ease-in-out;
     }
@@ -1652,7 +1677,7 @@ pluto-input > button > span {
     pluto-cell > button:hover,
     pluto-cell > pluto-input > button:hover,
     pluto-cell > pluto-runarea > button:hover,
-    pluto-cell > pluto-shoulder > button:hover,
+    pluto-cell > pluto-shoulder > div > button:hover,
     pluto-cell:hover > pluto-runarea {
         opacity: 1;
         /* to make it feel snappy: */
@@ -1663,7 +1688,7 @@ pluto-input > button > span {
 @media screen and (pointer: coarse) {
     pluto-cell > button.add_cell,
     pluto-input > button,
-    pluto-shoulder > button {
+    pluto-shoulder > div > button {
         opacity: 0.25;
         transition: opacity 0.25s ease-in-out;
     }
@@ -1678,14 +1703,14 @@ pluto-input > button > span {
     pluto-cell:focus-within > button.add_cell,
     pluto-cell:focus-within > pluto-input > button,
     pluto-cell:focus-within > pluto-runarea,
-    pluto-cell:focus-within > pluto-shoulder > button {
+    pluto-cell:focus-within > pluto-shoulder > div > button {
         opacity: 0.6;
         transition: opacity 0.25s ease-in-out;
     }
     pluto-cell > pluto-input > button:focus-within,
     pluto-cell > button:focus-within,
     pluto-cell > pluto-input > button:focus-within pluto-cell > pluto-runarea > button:focus-within,
-    pluto-cell > pluto-shoulder > button:focus-within,
+    pluto-cell > pluto-shoulder > div > button:focus-within,
     pluto-cell > pluto-runarea {
         opacity: 1;
         /* to make it feel snappy: */
@@ -1696,7 +1721,7 @@ pluto-input > button > span {
 pluto-cell > button > span::after,
 pluto-input > button > span::after,
 pluto-runarea > button > span::after,
-pluto-shoulder > button > span::after {
+pluto-shoulder > div > button > span::after {
     display: block;
     content: " " !important;
     background-size: 17px 17px;
