@@ -119,7 +119,7 @@ const first_true_key = (obj) => {
  * @type {{
  *    disabled: boolean,
  *    show_logs: boolean,
- *    skip_as_script: boolean
+ *    skip_as_script: boolean,
  *  }}
  *
  * @typedef CellInputData
@@ -161,12 +161,14 @@ const first_true_key = (obj) => {
  *  queued: boolean,
  *  running: boolean,
  *  errored: boolean,
+ *  stale: boolean,
  *  runtime: number?,
  *  downstream_cells_map: { string: [string]},
  *  upstream_cells_map: { string: [string]},
  *  precedence_heuristic: number?,
  *  depends_on_disabled_cells: boolean,
  *  depends_on_skipped_cells: boolean,
+ *  depends_on_stale_cells: boolean,
  *  output: {
  *      body: string,
  *      persist_js_state: boolean,

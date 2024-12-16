@@ -75,6 +75,8 @@ function run_reactive_core!(
     # find (indirectly) skipped-as-script cells and update their status
     update_skipped_cells_dependency!(notebook, new_topology)
 
+	update_stale_cell_dependents!(notebook, new_topology)
+
     removed_cells = setdiff(all_cells(old_topology), all_cells(new_topology))
     roots = vcat(roots, removed_cells)
 
@@ -182,22 +184,29 @@ function run_reactive_core!(
 
         if (skip = any_interrupted || notebook.wants_to_interrupt || !will_run_code(notebook))
             relay_reactivity_error!(cell, InterruptException())
-        else
-            run = run_single!(
-                (session, notebook), cell,
-                new_topology.nodes[cell], new_topology.codes[cell];
-                user_requested_run = (user_requested_run && cell ∈ roots),
-                capture_stdout = session.options.evaluation.capture_stdout,
-            )
-            any_interrupted |= run.interrupted
-
-            # Support one bond defining another when setting both simultaneously in PlutoSliderServer
-            # https://github.com/fonsp/Pluto.jl/issues/1695
-
-            # set the redefined bound variables to their original value from the request
-            defs = notebook.topology.nodes[cell].definitions
-            set_bond_value_pairs!(session, notebook, Iterators.filter(((sym,val),) -> sym ∈ defs, bond_value_pairs))
-        end
+		elseif !(skip = cell.depends_on_stale_cells)
+			was_stale = cell.stale
+		
+			run = run_single!(
+				(session, notebook), cell,
+				new_topology.nodes[cell], new_topology.codes[cell];
+				user_requested_run=(user_requested_run && cell ∈ roots),
+				capture_stdout=session.options.evaluation.capture_stdout,
+			)
+			any_interrupted |= run.interrupted
+		
+			# Support one bond defining another when setting both simultaneously in PlutoSliderServer
+			# https://github.com/fonsp/Pluto.jl/issues/1695
+		
+			# set the redefined bound variables to their original value from the request
+			defs = notebook.topology.nodes[cell].definitions
+			set_bond_value_pairs!(session, notebook, Iterators.filter(((sym, val),) -> sym ∈ defs, bond_value_pairs))
+			
+			# stale status changed
+			if was_stale != run.stale
+				update_stale_cell_dependents!(notebook, new_topology)
+			end
+		end
 
         cell.running = false
 		Status.report_business_finished!(cell_status, Symbol(i), !skip && !run.errored)
@@ -331,7 +340,8 @@ function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache; persist_js_
 		end
 		new_published
 	end
-	
+
+	cell.stale = run.stale
 	cell.runtime = run.runtime
 	cell.errored = run.errored
 	cell.running = cell.queued = false
@@ -340,7 +350,8 @@ end
 function clear_output!(cell::Cell)
 	cell.output = CellOutput()
 	cell.published_objects = Dict{String,Any}()
-	
+
+	cell.stale = false
 	cell.runtime = nothing
 	cell.errored = false
 	cell.running = cell.queued = false
@@ -661,5 +672,40 @@ function update_disabled_cells_dependency!(notebook::Notebook, topology::Noteboo
     end
     for cell in indirectly_disabled
         cell.depends_on_disabled_cells = true
+    end
+end
+
+"""
+Find all runnable cells that depend on stale cells. This does not include the
+stale cells themselves unless they themselves depend on stale cells.
+"""
+function find_stale_cell_dependents(notebook::Notebook, topology::NotebookTopology=notebook.topology)::Set{Cell}
+    stack = collect(filter(stale, notebook.cells))
+    dependents = Set{Cell}()
+    # depth-first search
+    while !isempty(stack)
+        cell = pop!(stack)
+
+        cell_dependents = where_referenced(topology, cell)
+
+        new_dependents = setdiff(cell_dependents, dependents)
+        union!(dependents, new_dependents)
+        append!(stack, new_dependents)
+    end
+
+    dependents
+end
+
+"""
+Updates `depends_on_stale_cells` for the cells in the notebook. This does not include the
+stale cells themselves unless they themselves depend on stale cells.
+"""
+function update_stale_cell_dependents!(notebook::Notebook, topology::NotebookTopology=notebook.topology)
+    for cell in notebook.cells
+        cell.depends_on_stale_cells = false
+    end
+
+    for cell in find_stale_cell_dependents(notebook, topology)
+        cell.depends_on_stale_cells = true
     end
 end
