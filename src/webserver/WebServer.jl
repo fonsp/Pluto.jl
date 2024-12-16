@@ -145,9 +145,7 @@ function run!(session::ServerSession)
         @info "Loading..."
     end
 
-    if VERSION < v"1.10.0"
-        @warn("\nPluto is running on an old version of Julia ($(VERSION)) that is no longer supported. Visit https://julialang.org/downloads/ for more information about upgrading Julia.")
-    end
+    warn_julia_compat()
 
     pluto_router = http_router_for(session)
     store_session_middleware = create_session_context_middleware(session)
