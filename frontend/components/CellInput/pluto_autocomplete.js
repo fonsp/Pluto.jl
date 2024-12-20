@@ -60,6 +60,8 @@ const pluto_autocomplete_keymap = [
  * @param {(query: string) => void} on_update_doc_query
  */
 let update_docs_from_autocomplete_selection = (on_update_doc_query) => {
+    let last_query = null
+
     return EditorView.updateListener.of((update) => {
         // But we can use `selectedCompletion` to better check if the autocomplete is open
         // (for some reason `autocompletion_state?.open != null` isn't enough anymore?)
@@ -100,7 +102,10 @@ let update_docs_from_autocomplete_selection = (on_update_doc_query) => {
         // So we can use `get_selected_doc_from_state` on our virtual state
         let docs_string = get_selected_doc_from_state(result_transaction.state)
         if (docs_string != null) {
-            on_update_doc_query(docs_string)
+            if (last_query != docs_string) {
+                last_query = docs_string
+                on_update_doc_query(docs_string)
+            }
         }
     })
 }
