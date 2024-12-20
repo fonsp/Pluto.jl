@@ -339,8 +339,7 @@ function get_workspace(session_notebook::SN; allow_creation::Bool=true)::Union{N
         end
     end
 
-    isnothing(task) && return nothing
-    fetch(task)
+    isnothing(task) ? nothing : fetch(task)
 end
 get_workspace(workspace::Workspace; kwargs...)::Workspace = workspace
 
