@@ -1,15 +1,14 @@
-declare global {
+ declare global {
     /**
-     * This namespace is meant for [PlutoDesktop](https://github.com/JuliaPluto/PlutoDesktop)
-     * related types and interfaces.
+     * This namespace is designed for [PlutoDesktop](https://github.com/JuliaPluto/PlutoDesktop)
+     * related types and interfaces, facilitating native app integration.
      */
     namespace Desktop {
         /**
-         * This enum has to be in sync with the enum "PlutoExport"
-         * defined in PlutoDesktop/{branch:master}/types/enums.ts
+         * Enum for export types. Ensure this is in sync with "PlutoExport"
+         * defined in `PlutoDesktop/{branch:master}/types/enums.ts`.
          *
-         * @note Unfortunately enums can't be exported from .d.ts files.
-         * Inorder to use this, just map integers to the enum values
+         * @note Enums cannot be directly exported from `.d.ts` files. Use the integer mappings:
          * - PlutoExport.FILE -> **0**
          * - PlutoExport.HTML -> **1**
          * - PlutoExport.STATE -> **2**
@@ -23,33 +22,70 @@ declare global {
         }
 
         /**
-         * This type has to be in sync with the interface "Window"
-         * defined in PlutoDesktop/{branch:master}/src/renderer/preload.d.ts
+         * Type definition for PlutoDesktop functionalities.
+         * Ensure sync with "Window" interface in `PlutoDesktop/{branch:master}/src/renderer/preload.d.ts`.
          */
-        type PlutoDesktop = {
+        interface PlutoDesktop {
             ipcRenderer: {
-                sendMessage(channel: String, args: unknown[]): void
-                on(channel: string, func: (...args: unknown[]) => void): (() => void) | undefined
-                once(channel: string, func: (...args: unknown[]) => void): void
-            }
+                /**
+                 * Sends a message to the main process via a specific channel.
+                 * @param channel The name of the channel.
+                 * @param args Arguments to send with the message.
+                 */
+                sendMessage(channel: string, args: unknown[]): void;
+
+                /**
+                 * Registers a listener for a specific channel.
+                 * @param channel The name of the channel.
+                 * @param func The callback to invoke when the event occurs.
+                 * @returns A function to remove the listener or `undefined` if registration fails.
+                 */
+                on(channel: string, func: (...args: unknown[]) => void): (() => void) | undefined;
+
+                /**
+                 * Registers a one-time listener for a specific channel.
+                 * @param channel The name of the channel.
+                 * @param func The callback to invoke when the event occurs.
+                 */
+                once(channel: string, func: (...args: unknown[]) => void): void;
+            };
+
             fileSystem: {
                 /**
-                 * @param type [default = 'new'] whether you want to open a new notebook
-                 * open a notebook from a path or from a url
-                 * @param pathOrURL location to the file, not needed if opening a new file,
-                 * opens that notebook. If false and no path is there, opens the file selector.
-                 * If true, opens a new blank notebook.
+                 * Opens a notebook.
+                 * @param type The type of operation: "url" | "path" | "new". Defaults to "new".
+                 * @param pathOrURL The location of the file or URL to open. Optional for "new".
                  */
-                openNotebook(type?: "url" | "path" | "new", pathOrURL?: string): void
-                shutdownNotebook(id?: string): void
-                moveNotebook(id?: string): void
-                exportNotebook(id: string, type: PlutoExport): void
-            }
+                openNotebook(type?: "url" | "path" | "new", pathOrURL?: string): void;
+
+                /**
+                 * Shuts down a notebook by its ID.
+                 * @param id The ID of the notebook to shut down.
+                 */
+                shutdownNotebook(id?: string): void;
+
+                /**
+                 * Moves a notebook to a new location.
+                 * @param id The ID of the notebook to move.
+                 */
+                moveNotebook(id?: string): void;
+
+                /**
+                 * Exports a notebook.
+                 * @param id The ID of the notebook to export.
+                 * @param type The export type as defined in `PlutoExport`.
+                 */
+                exportNotebook(id: string, type: PlutoExport): void;
+            };
         }
     }
+
+    /**
+     * Extends the Window interface for native app integration.
+     */
     interface Window {
-        plutoDesktop?: Desktop.PlutoDesktop
+        plutoDesktop?: Desktop.PlutoDesktop;
     }
 }
 
-export {}
+export {};
