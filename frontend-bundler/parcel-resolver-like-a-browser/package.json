@@ -1,18 +1,41 @@
-{
+ {
     "name": "parcel-resolver-like-a-browser",
     "version": "1.0.0",
-    "description": "",
+    "description": "A custom Parcel resolver that mimics browser-like behavior for resolving modules and URLs.",
     "main": "https-resolver.js",
     "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "lint": "eslint .",
+        "format": "prettier --write ."
     },
     "engines": {
         "parcel": "2.x"
     },
-    "author": "",
+    "author": "Your Name <your.email@example.com>",
     "license": "ISC",
     "dependencies": {
         "@parcel/node-resolver-core": "^3.3.0",
-        "@parcel/plugin": "^2.0.0"
-    }
+        "@parcel/plugin": "^2.0.0",
+        "mkdirp": "^1.0.4"
+    },
+    "devDependencies": {
+        "eslint": "^8.0.0",
+        "prettier": "^3.0.0"
+    },
+    "keywords": [
+        "parcel",
+        "resolver",
+        "plugin",
+        "browser-like",
+        "frontend",
+        "bundler"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/yourusername/parcel-resolver-like-a-browser.git"
+    },
+    "bugs": {
+        "url": "https://github.com/yourusername/parcel-resolver-like-a-browser/issues"
+    },
+    "homepage": "https://github.com/yourusername/parcel-resolver-like-a-browser#readme"
 }
