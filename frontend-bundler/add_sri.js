@@ -1,37 +1,47 @@
-// Go through all the CSS/JS imports in an HTML file, and add SRI attributes. More info here:
-// https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity#examples
+ const path = require("path");
+const fs = require("fs/promises");
+const posthtml = require("posthtml");
+const posthtmlSri = require("posthtml-sri");
+const posthtmlCrossorigin = require("@plutojl/posthtml-crossorigin");
 
-// I really really tried to do this using a parcel plugin but it's "not possible". So right now this is just a separate script that you run with the html filenames as arguments.
-
-let path = require("path")
-let fs = require("fs/promises")
-let posthtml = require("posthtml")
-let posthtmlSri = require("posthtml-sri")
-let posthtmlCrossorigin = require("@plutojl/posthtml-crossorigin")
-
-let f = async () => {
-    // Read file given as command line arugment
-    for (let i = 2; i < process.argv.length; i++) {
-        let file = process.argv[i]
-        let contents = await fs.readFile(file, "utf8")
-
-        const plugins = [
-            posthtmlSri({
-                algorithms: ["sha384"],
-                basePath: path.dirname(file),
-            }),
-            posthtmlCrossorigin({
-                value: () => "anonymous",
-            }),
-        ]
-
-        const result = await posthtml(plugins).process(contents)
-        // console.log(result)
-
-        // Write to file
-        await fs.writeFile(file, result.html)
-        console.log("✅ SRI added to ", file)
+// Main function to process HTML files
+const processHtmlFiles = async () => {
+    // Check if arguments are provided
+    if (process.argv.length < 3) {
+        console.error("❌ Please provide at least one HTML file as an argument.");
+        process.exit(1);
     }
-}
 
-f()
+    for (let i = 2; i < process.argv.length; i++) {
+        const file = process.argv[i];
+
+        try {
+            console.log(`🔄 Processing: ${file}`);
+            // Read the HTML file
+            const contents = await fs.readFile(file, "utf8");
+
+            // Configure plugins for SRI and crossorigin attributes
+            const plugins = [
+                posthtmlSri({
+                    algorithms: ["sha384"], // Recommended SRI algorithm
+                    basePath: path.dirname(file),
+                }),
+                posthtmlCrossorigin({
+                    value: () => "anonymous", // Set crossorigin="anonymous"
+                }),
+            ];
+
+            // Process the file using PostHTML and plugins
+            const result = await posthtml(plugins).process(contents);
+
+            // Write the modified HTML back to the file
+            await fs.writeFile(file, result.html, "utf8");
+            console.log(`✅ SRI and crossorigin added to: ${file}`);
+        } catch (error) {
+            console.error(`❌ Error processing ${file}:`, error.message);
+        }
+    }
+};
+
+// Execute the function
+processHtmlFiles();
