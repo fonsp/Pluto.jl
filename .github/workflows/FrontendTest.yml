@@ -38,27 +38,10 @@ jobs:
               with:
                   node-version: "18.x"
 
-            - name: Install Chrome dependencies
-              run: |
-                  sudo apt-get update
-                  # See https://crbug.com/795759
-                  sudo apt-get install -yq libgconf-2-4
-                  # Install latest chrome dev package, which installs the necessary libs to
-                  # make the bundled version of Chromium that Puppeteer installs work.
-                  sudo apt-get install -y wget --no-install-recommends
-                  wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-                  sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
-                  sudo apt-get update
-                  sudo apt-get install -y google-chrome-stable --no-install-recommends
-                  sudo rm -rf /var/lib/apt/lists/*
-
             - name: Install dependencies
               working-directory: ./test/frontend
               run: |
                   npm install
-              env:
-                  PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
-                  PUPPETEER_EXECUTABLE_PATH: "/usr/bin/google-chrome-stable"
 
             - name: Run tests
               working-directory: ./test/frontend
@@ -80,8 +63,6 @@ jobs:
               env:
                   PLUTO_PORT: 1235
                   PLUTO_TEST_OFFLINE: ${{ github.ref_name == 'release' }}
-                  PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
-                  PUPPETEER_EXECUTABLE_PATH: "/usr/bin/google-chrome-stable"
 
             - uses: actions/upload-artifact@v4
               if: failure()
