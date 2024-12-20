@@ -43,6 +43,7 @@ Base.@kwdef mutable struct Cell <: PlutoDependencyExplorer.AbstractCell
     output::CellOutput=CellOutput()
     queued::Bool=false
     running::Bool=false
+    stale::Bool=false
 
     published_objects::Dict{String,Any}=Dict{String,Any}()
     
@@ -56,6 +57,7 @@ Base.@kwdef mutable struct Cell <: PlutoDependencyExplorer.AbstractCell
 
     depends_on_disabled_cells::Bool=false
     depends_on_skipped_cells::Bool=false
+    depends_on_stale_cells::Bool=false
 
     metadata::Dict{String,Any}=copy(DEFAULT_CELL_METADATA)
 end
@@ -84,3 +86,4 @@ end
 can_show_logs(c::Cell) = get(c.metadata, METADATA_SHOW_LOGS_KEY, DEFAULT_CELL_METADATA[METADATA_SHOW_LOGS_KEY])
 is_skipped_as_script(c::Cell) = get(c.metadata, METADATA_SKIP_AS_SCRIPT_KEY, DEFAULT_CELL_METADATA[METADATA_SKIP_AS_SCRIPT_KEY])
 must_be_commented_in_file(c::Cell) = is_disabled(c) || is_skipped_as_script(c) || c.depends_on_disabled_cells || c.depends_on_skipped_cells
+stale(c::Cell) = c.stale

@@ -46,6 +46,7 @@ verify_no_running_processes()
 @timeit_include("DependencyCache.jl")
 @timeit_include("Throttled.jl")
 @timeit_include("cell_disabling.jl")
+@timeit_include("stale_cells.jl")
 
 verify_no_running_processes()
 

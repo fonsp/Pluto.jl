@@ -23,6 +23,7 @@
         --error-cell-color: rgba(var(--error-color), 0.6);
         --bright-error-cell-color: rgba(var(--error-color), 0.9);
         --light-error-cell-color: rgba(var(--error-color), 0);
+        --stale-cell-color: #b86f00;
 
         /*Export styling*/
         --export-bg-color: hsl(225deg 17% 18%);
@@ -45,6 +46,7 @@
         --pluto-output-color: hsl(0deg 0% 77%);
         --pluto-output-h-color: hsl(0, 0%, 90%);
         --pluto-output-bg-color: var(--main-bg-color);
+        --pluto-stale-output-bg-color: #332300;
         --a-underline: #ffffff69;
         --blockquote-color: inherit;
         --blockquote-bg: #2e2e2e;
