@@ -1,5 +1,8 @@
 import UUIDs: UUID, uuid1
 
+# Hello! 👋 Check out the `Cell` struct.
+
+
 const METADATA_DISABLED_KEY = "disabled"
 const METADATA_SHOW_LOGS_KEY = "show_logs"
 const METADATA_SKIP_AS_SCRIPT_KEY = "skip_as_script"
