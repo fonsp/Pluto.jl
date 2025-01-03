@@ -73,6 +73,7 @@ let go_through_quoted_expression_looking_for_interpolations = function* (cursor)
  * @param {(subsitution: import("./lezer_template.js").Templatable) => import("./lezer_template.js").Matcher} template_fn
  */
 let make_beautiful_matcher = (template_fn) => {
+    /** @param {TreeCursor | SyntaxNode | null} cursor */
     return function match(cursor, verbose = false) {
         if (cursor == null) {
             /** @type {(...args: Parameters<jl>) => any} */
