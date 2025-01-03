@@ -37,7 +37,7 @@ end
 
 function noerror(cell; verbose=true)
     if cell.errored && verbose
-        @show cell.output.body
+        @show cell.output.body cell.logs
     end
     !cell.errored
 end

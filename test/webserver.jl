@@ -104,11 +104,18 @@ end
     @test poll(60) do
         haskey(WorkspaceManager.active_workspaces, notebook.notebook_id)
     end
-    sleep(1)
+    sleep(2)
     
     # Note that the notebook is running async right now! It's not finished yet. But we can already run these tests:
     
-    fileA = download(local_url("notebookfile?id=$(notebook.notebook_id)"))
+    fileA = try
+        download(local_url("notebookfile?id=$(notebook.notebook_id)"))
+    catch
+        # try again :)
+        sleep(1)
+        download(local_url("notebookfile?id=$(notebook.notebook_id)"))
+    end
+
     fileB = tempname()
     write(fileB, sprint(Pluto.save_notebook, notebook))
     

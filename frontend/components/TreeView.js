@@ -1,7 +1,8 @@
-import { html, useRef, useState, useContext } from "../imports/Preact.js"
+import { html, useRef, useState, useContext, useEffect } from "../imports/Preact.js"
 
 import { OutputBody, PlutoImage } from "./CellOutput.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
+import { useEventListener } from "../common/useEventListener.js"
 
 // this is different from OutputBody because:
 // it does not wrap in <div>. We want to do that in OutputBody for reasons that I forgot (feel free to try and remove it), but we dont want it here
@@ -34,8 +35,13 @@ export const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state, saniti
 
 const More = ({ on_click_more }) => {
     const [loading, set_loading] = useState(false)
+    const element_ref = useRef(/** @type {HTMLElement?} */ (null))
+    useKeyboardClickable(element_ref)
 
     return html`<pluto-tree-more
+        ref=${element_ref}
+        tabindex="0"
+        role="button"
         class=${loading ? "loading" : ""}
         onclick=${(e) => {
             if (!loading) {
@@ -48,8 +54,45 @@ const More = ({ on_click_more }) => {
     >`
 }
 
-const prefix = ({ prefix, prefix_short }) =>
-    html`<pluto-tree-prefix><span class="long">${prefix}</span><span class="short">${prefix_short}</span></pluto-tree-prefix>`
+const useKeyboardClickable = (element_ref) => {
+    useEventListener(
+        element_ref,
+        "keydown",
+        (e) => {
+            if (e.key === " ") {
+                e.preventDefault()
+            }
+            if (e.key === "Enter") {
+                e.preventDefault()
+                element_ref.current.click()
+            }
+        },
+        []
+    )
+
+    useEventListener(
+        element_ref,
+        "keyup",
+        (e) => {
+            if (e.key === " ") {
+                e.preventDefault()
+                element_ref.current.click()
+            }
+        },
+        []
+    )
+}
+
+const prefix = ({ prefix, prefix_short }) => {
+    const element_ref = useRef(/** @type {HTMLElement?} */ (null))
+    useEffect(() => {
+        console.log(element_ref.current)
+    }, [])
+    useKeyboardClickable(element_ref)
+    return html`<pluto-tree-prefix role="button" tabindex="0" ref=${element_ref}
+        ><span class="long">${prefix}</span><span class="short">${prefix_short}</span></pluto-tree-prefix
+    >`
+}
 
 const actions_show_more = ({ pluto_actions, cell_id, node_ref, objectid, dim }) => {
     const actions = pluto_actions ?? node_ref.current.closest("pluto-cell")._internal_pluto_actions
@@ -59,6 +102,7 @@ const actions_show_more = ({ pluto_actions, cell_id, node_ref, objectid, dim }) 
 export const TreeView = ({ mime, body, cell_id, persist_js_state, sanitize_html = true }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     const node_ref = useRef(/** @type {HTMLElement?} */ (null))
+
     const onclick = (e) => {
         // TODO: this could be reactified but no rush
         let self = node_ref.current
@@ -103,28 +147,28 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state, sanitize_html 
         case "Array":
         case "Set":
         case "Tuple":
-            inner = html`${prefix(body)}<pluto-tree-items class=${body.type}
+            inner = html`<${prefix} prefix=${body.prefix} prefix_short=${body.prefix_short} /><pluto-tree-items class=${body.type}
                     >${body.elements.map((r) =>
                         r === "more" ? more : html`<p-r>${body.type === "Set" ? "" : html`<p-k>${r[0]}</p-k>`}<p-v>${mimepair_output(r[1])}</p-v></p-r>`
                     )}</pluto-tree-items
                 >`
             break
         case "Dict":
-            inner = html`${prefix(body)}<pluto-tree-items class=${body.type}
+            inner = html`<${prefix} prefix=${body.prefix} prefix_short=${body.prefix_short} /><pluto-tree-items class=${body.type}
                     >${body.elements.map((r) =>
                         r === "more" ? more : html`<p-r><p-k>${mimepair_output(r[0])}</p-k><p-v>${mimepair_output(r[1])}</p-v></p-r>`
                     )}</pluto-tree-items
                 >`
             break
         case "NamedTuple":
-            inner = html`${prefix(body)}<pluto-tree-items class=${body.type}
+            inner = html`<${prefix} prefix=${body.prefix} prefix_short=${body.prefix_short} /><pluto-tree-items class=${body.type}
                     >${body.elements.map((r) =>
                         r === "more" ? more : html`<p-r><p-k>${r[0]}</p-k><p-v>${mimepair_output(r[1])}</p-v></p-r>`
                     )}</pluto-tree-items
                 >`
             break
         case "struct":
-            inner = html`${prefix(body)}<pluto-tree-items class=${body.type}
+            inner = html`<${prefix} prefix=${body.prefix} prefix_short=${body.prefix_short} /><pluto-tree-items class=${body.type}
                     >${body.elements.map((r) => html`<p-r><p-k>${r[0]}</p-k><p-v>${mimepair_output(r[1])}</p-v></p-r>`)}</pluto-tree-items
                 >`
             break
@@ -150,11 +194,12 @@ const EmptyRows = ({ colspan = 999 }) => html`<tr class="empty">
     </td>
 </tr>`
 
-export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
+export const TableView = ({ mime, body, cell_id, persist_js_state, sanitize_html }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     const node_ref = useRef(null)
 
-    const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${persist_js_state} />`
+    const mimepair_output = (pair) =>
+        html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${persist_js_state} sanitize_html=${sanitize_html} />`
     const more = (dim) => html`<${More}
         on_click_more=${() => {
             actions_show_more({

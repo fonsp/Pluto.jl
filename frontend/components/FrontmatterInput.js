@@ -37,12 +37,16 @@ export const FrontMatterInput = ({ filename, remote_frontmatter, set_remote_fron
         set_frontmatter(remote_frontmatter ?? {})
         close()
     }
+
+    const set_remote_frontmatter_ref = useRef(set_remote_frontmatter)
+    set_remote_frontmatter_ref.current = set_remote_frontmatter
+
     const submit = useCallback(() => {
-        set_remote_frontmatter(clean_data(frontmatter) ?? {}).then(() =>
-            alert("Frontmatter synchronized ✔\n\nThese parameters will be used in future exports.")
-        )
+        set_remote_frontmatter_ref
+            .current(clean_data(frontmatter) ?? {})
+            .then(() => alert("Frontmatter synchronized ✔\n\nThese parameters will be used in future exports."))
         close()
-    }, [clean_data, set_remote_frontmatter, frontmatter, close])
+    }, [clean_data, frontmatter, close])
 
     useEventListener(window, "open pluto frontmatter", open)
 
@@ -52,7 +56,7 @@ export const FrontMatterInput = ({ filename, remote_frontmatter, set_remote_fron
         (e) => {
             if (dialog_ref.current != null) if (dialog_ref.current.contains(e.target)) if (e.key === "Enter" && has_ctrl_or_cmd_pressed(e)) submit()
         },
-        [dialog_ref, submit]
+        [submit]
     )
 
     const frontmatter_with_defaults = {

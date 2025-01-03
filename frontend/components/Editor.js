@@ -725,9 +725,16 @@ patch: ${JSON.stringify(
                                         null,
                                         1
                                     )}
+all patches: ${JSON.stringify(patches, null, 1)}
 #######################**************************########################`,
                                     exception
                                 )
+
+                                let parts = failing_path.split(".")
+                                for (let i = 0; i < parts.length; i++) {
+                                    let path = parts.slice(0, i).join(".")
+                                    console.log(path, _.get(this.state.notebook, path, "Not Found"))
+                                }
 
                                 if (ignore) {
                                     console.info("Safe to ignore this patch failure...")
@@ -781,6 +788,15 @@ patch: ${JSON.stringify(
 
         this.apply_notebook_patches = apply_notebook_patches
         // these are update message that are _not_ a response to a `send(*, *, {create_promise: true})`
+        this.last_update_counter = -1
+        const check_update_counter = (new_val) => {
+            if (new_val <= this.last_update_counter) {
+                console.error("State update out of order", new_val, this.last_update_counter)
+                alert("Oopsie!! please refresh your browser and everything will be alright!")
+            }
+            this.last_update_counter = new_val
+        }
+
         const on_update = (update, by_me) => {
             if (this.state.notebook.notebook_id === update.notebook_id) {
                 const show_debugs = launch_params.binder_url != null
@@ -788,6 +804,7 @@ patch: ${JSON.stringify(
                 const message = update.message
                 switch (update.type) {
                     case "notebook_diff":
+                        check_update_counter(message?.counter)
                         let apply_promise = Promise.resolve()
                         if (message?.response?.from_reset) {
                             console.log("Trying to reset state after failure")
@@ -805,14 +822,16 @@ patch: ${JSON.stringify(
                         const set_waiting = () => {
                             let from_update = message?.response?.update_went_well != null
                             let is_just_acknowledgement = from_update && message.patches.length === 0
-                            // console.log("Received patches!", message.patches, message.response, is_just_acknowledgement)
+                            let is_relevant_for_bonds = message.patches.some(({ path }) => path.length === 0 || path[0] !== "status_tree")
 
-                            if (!is_just_acknowledgement) {
+                            // console.debug("Received patches!", is_just_acknowledgement, is_relevant_for_bonds, message.patches, message.response)
+
+                            if (!is_just_acknowledgement && is_relevant_for_bonds) {
                                 this.waiting_for_bond_to_trigger_execution = false
                             }
                         }
                         apply_promise.finally(set_waiting).then(() => {
-                            this.send_queued_bond_changes()
+                            this.maybe_send_queued_bond_changes()
                         })
 
                         break
@@ -861,7 +880,6 @@ patch: ${JSON.stringify(
                 backend_launch_phase: this.state.backend_launch_phase == null ? null : BackendLaunchPhase.ready,
             })
 
-            // TODO Do this from julia itself
             this.client.send("complete", { query: "sq" }, { notebook_id: this.state.notebook.notebook_id })
             this.client.send("complete", { query: "\\sq" }, { notebook_id: this.state.notebook.notebook_id })
 
@@ -893,8 +911,17 @@ patch: ${JSON.stringify(
             }
         }
 
-        const on_reconnect = () => {
+        const on_reconnect = async () => {
             console.warn("Reconnected! Checking states")
+
+            await this.client.send(
+                "reset_shared_state",
+                {},
+                {
+                    notebook_id: this.state.notebook.notebook_id,
+                },
+                false
+            )
 
             return true
         }
@@ -963,18 +990,18 @@ patch: ${JSON.stringify(
 
         // Not completely happy with this yet, but it will do for now - DRAL
         /** Patches that are being delayed until all cells have finished running. */
-        this.bonds_changes_to_apply_when_done = []
-        this.send_queued_bond_changes = () => {
-            if (this.notebook_is_idle() && this.bonds_changes_to_apply_when_done.length !== 0) {
-                // console.log("Applying queued bond changes!", this.bonds_changes_to_apply_when_done)
-                let bonds_patches = this.bonds_changes_to_apply_when_done
-                this.bonds_changes_to_apply_when_done = []
+        this.bond_changes_to_apply_when_done = []
+        this.maybe_send_queued_bond_changes = () => {
+            if (this.notebook_is_idle() && this.bond_changes_to_apply_when_done.length !== 0) {
+                // console.log("Applying queued bond changes!", this.bond_changes_to_apply_when_done)
+                let bonds_patches = this.bond_changes_to_apply_when_done
+                this.bond_changes_to_apply_when_done = []
                 this.update_notebook((notebook) => {
                     applyPatches(notebook, bonds_patches)
                 })
             }
         }
-        /** Whether we just set a bond value which will trigger a cell to run, but we are still waiting for the server to process the bond value (and run the cell). During this time, we won't send new bond values. See https://github.com/fonsp/Pluto.jl/issues/1891 for more info. */
+        /** This tracks whether we just set a bond value which will trigger a cell to run, but we are still waiting for the server to process the bond value (and run the cell). During this time, we won't send new bond values. See https://github.com/fonsp/Pluto.jl/issues/1891 for more info. */
         this.waiting_for_bond_to_trigger_execution = false
         /** Number of local updates that have not yet been applied to the server's state. */
         this.pending_local_updates = 0
@@ -984,7 +1011,7 @@ patch: ${JSON.stringify(
          */
         this.js_init_set = new SetWithEmptyCallback(() => {
             // console.info("All scripts finished!")
-            this.send_queued_bond_changes()
+            this.maybe_send_queued_bond_changes()
         })
 
         // @ts-ignore This is for tests
@@ -1011,7 +1038,9 @@ patch: ${JSON.stringify(
                 if (deps.upstream_cells_map.hasOwnProperty(sym)) {
                     // and the cell is not disabled
                     const running_disabled = this.state.notebook.cell_inputs[cell_id].metadata.disabled
-                    return !running_disabled
+                    // or indirectly disabled
+                    const indirectly_disabled = this.state.notebook.cell_results[cell_id].depends_on_disabled_cells
+                    return !(running_disabled || indirectly_disabled)
                 }
             })
 
@@ -1052,7 +1081,7 @@ patch: ${JSON.stringify(
                 let is_idle = this.notebook_is_idle()
                 let changes_involving_bonds = changes.filter((x) => x.path[0] === "bonds")
                 if (!is_idle) {
-                    this.bonds_changes_to_apply_when_done = [...this.bonds_changes_to_apply_when_done, ...changes_involving_bonds]
+                    this.bond_changes_to_apply_when_done = [...this.bond_changes_to_apply_when_done, ...changes_involving_bonds]
                     changes = changes.filter((x) => x.path[0] !== "bonds")
                 }
 
@@ -1422,7 +1451,7 @@ The notebook file saves every time you run a cell.`
             document.title = "🎈 " + new_state.notebook.shortpath + " — Pluto.jl"
         }
 
-        this.send_queued_bond_changes()
+        this.maybe_send_queued_bond_changes()
 
         if (old_state.backend_launch_phase !== this.state.backend_launch_phase && this.state.backend_launch_phase != null) {
             const phase = Object.entries(BackendLaunchPhase).find(([k, v]) => v == this.state.backend_launch_phase)?.[0]
@@ -1573,9 +1602,9 @@ The notebook file saves every time you run a cell.`
                                           value=${notebook.in_temp_dir ? "" : notebook.path}
                                           on_submit=${this.submit_file_change}
                                           on_desktop_submit=${this.desktop_submit_file_change}
+                                          clear_on_blur=${true}
                                           suggest_new_file=${{
                                               base: this.client.session_options?.server?.notebook_path_suggestion ?? "",
-                                              name: notebook.shortpath,
                                           }}
                                           placeholder="Save notebook..."
                                           button_label=${notebook.in_temp_dir ? "Choose" : "Move"}

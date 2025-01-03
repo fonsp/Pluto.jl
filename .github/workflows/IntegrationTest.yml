@@ -24,6 +24,8 @@ on:
         branches-ignore:
             - release
 
+env:
+    JULIA_PLUTO_IGNORE_CDN_BUNDLE_WARNING: true
 
 jobs:
     test:

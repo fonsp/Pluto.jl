@@ -1,11 +1,9 @@
 import { cl } from "../common/ClassTable.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
-import { EditorState, EditorView, julia, lineNumbers, syntaxHighlighting } from "../imports/CodemirrorPlutoSetup.js"
 import { html, useContext, useEffect, useLayoutEffect, useRef, useState } from "../imports/Preact.js"
-import { pluto_syntax_colors } from "./CellInput.js"
 import { highlight } from "./CellOutput.js"
-import { Editor } from "./Editor.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
+import _ from "../imports/lodash.js"
 
 const extract_cell_id = (/** @type {string} */ file) => {
     const sep_index = file.indexOf("#==#")
@@ -161,7 +159,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
     let pluto_actions = useContext(PlutoActionsContext)
     const default_rewriter = {
         pattern: /.?/,
-        display: (/** @type{string} */ x) => x.split("\n").map((line) => html`<p>${line}</p>`),
+        display: (/** @type{string} */ x) => _.dropRightWhile(x.split("\n"), (s) => s === "").map((line) => html`<p>${line === "" ? html`<br />` : line}</p>`),
     }
     const rewriters = [
         {

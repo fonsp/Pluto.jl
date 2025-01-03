@@ -21,7 +21,7 @@ import register from "../imports/PreactCustomElement.js"
 
 import { EditorState, EditorView, defaultHighlightStyle, syntaxHighlighting } from "../imports/CodemirrorPlutoSetup.js"
 
-import { pluto_syntax_colors, ENABLE_CM_MIXED_PARSER } from "./CellInput.js"
+import { pluto_syntax_colors_julia, ENABLE_CM_MIXED_PARSER } from "./CellInput.js"
 
 import hljs from "../imports/highlightjs.js"
 import { julia_mixed } from "./CellInput/mixedParsers.js"
@@ -29,7 +29,7 @@ import { julia } from "../imports/CodemirrorPlutoSetup.js"
 import { SafePreviewSanitizeMessage } from "./SafePreviewUI.js"
 
 const prettyAssignee = (assignee) =>
-    assignee && assignee.startsWith("const ") ? html`<span style="color: var(--cm-keyword-color)">const</span> ${assignee.slice(6)}` : assignee
+    assignee && assignee.startsWith("const ") ? html`<span style="color: var(--cm-color-keyword)">const</span> ${assignee.slice(6)}` : assignee
 
 export class CellOutput extends Component {
     constructor() {
@@ -137,7 +137,7 @@ export let PlutoImage = ({ body, mime }) => {
  * body: any,
  * cell_id: string,
  * persist_js_state: boolean | string,
- * last_run_timestamp: number,
+ * last_run_timestamp: number?,
  * sanitize_html?: boolean | string,
  * }} args
  */
@@ -479,7 +479,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
 let run = (f) => f()
 
 /**
- * Support declarative shadowroot 😼
+ * Support declarative shadowroot 😺
  * https://web.dev/declarative-shadow-dom/
  * The polyfill they mention on the page is nice and all, but we need more.
  * For one, we need the polyfill anyway as we're adding html using innerHTML (just like we need to run the scripts ourselves)
@@ -676,7 +676,7 @@ export let highlight = (code_element, language) => {
                         .replace(/Main.workspace#(\d+)/, 'Main.var"workspace#$1"'),
 
                     extensions: [
-                        syntaxHighlighting(pluto_syntax_colors),
+                        syntaxHighlighting(pluto_syntax_colors_julia),
                         syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
                         EditorState.tabSize.of(4),
                         // TODO Other languages possibly?

@@ -59,6 +59,13 @@ using Pluto.WorkspaceManager: poll
         end
         """,
         "StructWithCustomShowThatLogs()", # 21
+        """
+        printstyled(stdout, "hello", color=:red)
+        """, # 22
+        "show(collect(1:500))", # 23
+        "show(stdout, collect(1:500))", # 24
+        "show(stdout, \"text/plain\", collect(1:500))", # 25
+        "display(collect(1:500))", # 26
     ]))
 
     @testset "Stdout" begin
@@ -121,6 +128,33 @@ using Pluto.WorkspaceManager: poll
         @test poll(5, 1/60) do
             length(notebook.cells[21].logs) == 2
         end
+    end
+
+    @testset "ANSI Color Output" begin
+        update_run!(🍭, notebook, notebook.cells[22])
+        msg = only(notebook.cells[22].logs)["msg"][1]
+
+        @test startswith(msg, Base.text_colors[:red])
+        @test endswith(msg, Base.text_colors[:default])
+    end
+    
+    @testset "show(...) and display(...) behavior" begin
+        update_run!(🍭, notebook, notebook.cells[23:25])
+
+        msgs_show = [only(cell.logs)["msg"][1] for cell in notebook.cells[23:25]]
+
+        # `show` should show a middle element of the big array
+        for msg in msgs_show
+            @test contains(msg, "1") && contains(msg, "500")
+            @test contains(msg, "250")
+        end
+
+        update_run!(🍭, notebook, notebook.cells[26])
+        msg_display = only(notebook.cells[26].logs)["msg"][1]
+
+        # `display` should not display the middle element of the big array
+        @test contains(msg_display, "1") && contains(msg_display, "500")
+        @test !contains(msg_display, "250")
     end
 
     @testset "Logging respects maxlog" begin
