@@ -210,7 +210,7 @@ declare class ChangeDesc {
     Map this description, which should start with the same document
     as `other`, over another set of changes, so that it can be
     applied after it. When `before` is true, map as if the changes
-    in `other` happened before the ones in `this`.
+    in `this` happened before the ones in `other`.
     */
     mapDesc(other: ChangeDesc, before?: boolean): ChangeDesc;
     /**
@@ -1408,6 +1408,13 @@ interface RangeComparator<T extends RangeValue> {
     Notification for a changed (or inserted, or deleted) point range.
     */
     comparePoint(from: number, to: number, pointA: T | null, pointB: T | null): void;
+    /**
+    Notification for a changed boundary between ranges. For example,
+    if the same span is covered by two partial ranges before and one
+    bigger range after, this is called at the point where the ranges
+    used to be split.
+    */
+    boundChange?(pos: number): void;
 }
 /**
 Methods used when iterating over the spans created by a set of
@@ -2105,6 +2112,13 @@ declare class ViewUpdate {
     */
     get viewportChanged(): boolean;
     /**
+    Returns true when
+    [`viewportChanged`](https://codemirror.net/6/docs/ref/#view.ViewUpdate.viewportChanged) is true
+    and the viewport change is not just the result of mapping it in
+    response to document changes.
+    */
+    get viewportMoved(): boolean;
+    /**
     Indicates whether the height of a block element in the editor
     changed in this update.
     */
@@ -2451,7 +2465,7 @@ declare class EditorView {
     /**
     Find the line block around the given document position. A line
     block is a range delimited on both sides by either a
-    non-[hidden](https://codemirror.net/6/docs/ref/#view.Decoration^replace) line breaks, or the
+    non-[hidden](https://codemirror.net/6/docs/ref/#view.Decoration^replace) line break, or the
     start/end of the document. It will usually just hold a line of
     text, but may be broken into multiple textblocks by block
     widgets.
@@ -2727,6 +2741,15 @@ declare class EditorView {
     dispatching the custom behavior as a separate transaction.
     */
     static inputHandler: Facet<(view: EditorView, from: number, to: number, text: string, insert: () => Transaction) => boolean, readonly ((view: EditorView, from: number, to: number, text: string, insert: () => Transaction) => boolean)[]>;
+    /**
+    Functions provided in this facet will be used to transform text
+    pasted or dropped into the editor.
+    */
+    static clipboardInputFilter: Facet<(text: string, state: EditorState) => string, readonly ((text: string, state: EditorState) => string)[]>;
+    /**
+    Transform text copied or dragged from the editor.
+    */
+    static clipboardOutputFilter: Facet<(text: string, state: EditorState) => string, readonly ((text: string, state: EditorState) => string)[]>;
     /**
     Scroll handlers can override how things are scrolled into view.
     If they return `true`, no further handling happens for the
@@ -3129,7 +3152,7 @@ declare function highlightActiveLine(): Extension;
 Extension that enables a placeholder—a piece of example content
 to show when the editor is empty.
 */
-declare function placeholder(content: string | HTMLElement): Extension;
+declare function placeholder(content: string | HTMLElement | ((view: EditorView) => HTMLElement)): Extension;
 
 /**
 Helper class used to make it easier to maintain decorations on
@@ -3289,6 +3312,12 @@ interface Tooltip {
     to position `pos`.
     */
     arrow?: boolean;
+    /**
+    By default, tooltips are hidden when their position is outside
+    of the visible editor content. Set this to false to turn that
+    off.
+    */
+    clip?: boolean;
 }
 /**
 Describes the way a tooltip is displayed.
@@ -4467,7 +4496,7 @@ declare class TreeCursor implements SyntaxNodeRef {
     */
     next(enter?: boolean): boolean;
     /**
-    Move to the next node in a last-to-first pre-order traveral. A
+    Move to the next node in a last-to-first pre-order traversal. A
     node is followed by its last child or, if it has none, its
     previous sibling or the previous sibling of the first parent
     node that has one.
@@ -4860,6 +4889,7 @@ declare class Tag {
     this one itself and sorted in order of decreasing specificity.
     */
     readonly set: Tag[];
+    toString(): string;
     /**
     Define a new tag. If `parent` is given, the tag is treated as a
     sub-tag of that parent, and
@@ -4867,6 +4897,7 @@ declare class Tag {
     this tag will try to fall back to the parent tag (or grandparent
     tag, etc).
     */
+    static define(name?: string, parent?: Tag): Tag;
     static define(parent?: Tag): Tag;
     /**
     Define a tag _modifier_, which is a function that, given a tag,
@@ -4880,7 +4911,7 @@ declare class Tag {
     example `m1(m2(m3(t1)))` is a subtype of `m1(m2(t1))`,
     `m1(m3(t1)`, and so on.
     */
-    static defineModifier(): (tag: Tag) => Tag;
+    static defineModifier(name?: string): (tag: Tag) => Tag;
 }
 /**
 A highlighter defines a mapping from highlighting tags and
@@ -5181,7 +5212,7 @@ declare const tags: {
     */
     heading6: Tag;
     /**
-    A prose separator (such as a horizontal rule).
+    A prose [content](#highlight.tags.content) separator (such as a horizontal rule).
     */
     contentSeparator: Tag;
     /**
@@ -5622,7 +5653,7 @@ declare class HighlightStyle implements Highlighter {
     */
     readonly module: StyleModule | null;
     readonly style: (tags: readonly Tag[]) => string | null;
-    readonly scope: ((type: NodeType) => boolean) | undefined;
+    readonly scope?: (type: NodeType) => boolean;
     private constructor();
     /**
     Create a highlighter style that associates the given styles to
@@ -6362,7 +6393,7 @@ declare function autocompletion(config?: CompletionConfig): Extension;
 /**
 Basic keybindings for autocompletion.
 
- - Ctrl-Space: [`startCompletion`](https://codemirror.net/6/docs/ref/#autocomplete.startCompletion)
+ - Ctrl-Space (and Alt-\` on macOS): [`startCompletion`](https://codemirror.net/6/docs/ref/#autocomplete.startCompletion)
  - Escape: [`closeCompletion`](https://codemirror.net/6/docs/ref/#autocomplete.closeCompletion)
  - ArrowDown: [`moveCompletionSelection`](https://codemirror.net/6/docs/ref/#autocomplete.moveCompletionSelection)`(true)`
  - ArrowUp: [`moveCompletionSelection`](https://codemirror.net/6/docs/ref/#autocomplete.moveCompletionSelection)`(false)`
@@ -6879,6 +6910,13 @@ declare function markdown(config?: {
     disable this.
     */
     completeHTMLTags?: boolean;
+    /**
+    By default, HTML tags in the document are handled by the [HTML
+    language](https://github.com/codemirror/lang-html) package with
+    tag matching turned off. You can pass in an alternative language
+    configuration here if you want.
+    */
+    htmlTagLanguage?: LanguageSupport;
 }): LanguageSupport;
 
 /**
@@ -7143,6 +7181,10 @@ interface SQLConfig {
     When set to true, keyword completions will be upper-case.
     */
     upperCaseKeywords?: boolean;
+    /**
+    Can be used to customize the completions generated for keywords.
+    */
+    keywordCompletion?: (label: string, type: string) => Completion;
 }
 /**
 SQL language support for the given SQL dialect, with keyword
