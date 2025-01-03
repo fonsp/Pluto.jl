@@ -334,13 +334,12 @@ function get_workspace(session_notebook::SN; allow_creation::Bool=true)::Union{N
         get(active_workspaces, notebook.notebook_id, nothing)
     else
         get!(active_workspaces, notebook.notebook_id) do
-            Task(() -> make_workspace(session_notebook))
+            🌸 = Pluto.@asynclog make_workspace(session_notebook)
+            yield(); 🌸
         end
     end
 
-    isnothing(task) && return nothing
-    istaskstarted(task) || schedule(task)
-    fetch(task)
+    isnothing(task) ? nothing : fetch(task)
 end
 get_workspace(workspace::Workspace; kwargs...)::Workspace = workspace
 
@@ -606,11 +605,6 @@ function move_vars(
     )
 end
 
-# TODO: delete me
-@deprecate(
-    delete_vars(args...; kwargs...),
-    move_vars(args...; kwargs...)
-)
 
 """
 ```julia

@@ -7,7 +7,7 @@ import LoggingExtras
 import .Configuration: CompilerOptions, _merge_notebook_compiler_options, _convert_to_flags
 
 const tiers = unique((
-    PkgCompat.PRESERVE_ALL_INSTALLED,
+    Pkg.PRESERVE_ALL_INSTALLED,
 	Pkg.PRESERVE_ALL,
 	Pkg.PRESERVE_DIRECT,
 	Pkg.PRESERVE_SEMVER,
@@ -34,11 +34,6 @@ function use_plutopkg(topology::NotebookTopology)
         Symbol("DrWatson.quickactivate") ∈ node.references
     end
 end
-
-function external_package_names(topology::NotebookTopology)::Set{Symbol}
-    union!(Set{Symbol}(), external_package_names.(c.module_usings_imports for c in values(topology.codes))...)
-end
-
 
 PkgCompat.project_file(notebook::Notebook) = PkgCompat.project_file(PkgCompat.env_dir(notebook.nbpkg_ctx))
 PkgCompat.manifest_file(notebook::Notebook) = PkgCompat.manifest_file(PkgCompat.env_dir(notebook.nbpkg_ctx))
@@ -237,10 +232,12 @@ function sync_nbpkg_core(
                                     used_tier = tier
 
                                     try
-                                        Pkg.add(notebook.nbpkg_ctx, [
-                                            Pkg.PackageSpec(name=p)
-                                            for p in to_add
-                                        ]; preserve=used_tier)
+                                        withenv("JULIA_PKG_PRECOMPILE_AUTO" => 0) do
+                                            Pkg.add(notebook.nbpkg_ctx, [
+                                                Pkg.PackageSpec(name=p)
+                                                for p in to_add
+                                            ]; preserve=used_tier)
+                                        end
 
                                         break
                                     catch e
@@ -281,7 +278,7 @@ function sync_nbpkg_core(
                     stoplistening(iolistener)
                     Status.report_business_finished!(pkg_status)
 
-                    return (
+                    return (;
                         did_something=👺 || (
                             should_instantiate_initially || should_instantiate_again || (use_plutopkg_old != use_plutopkg_new)
                         ),
@@ -289,7 +286,7 @@ function sync_nbpkg_core(
                         # changed_versions=Dict{String,Pair}(),
                         restart_recommended=👺 || (
                             (!isempty(to_remove) && old_manifest_keys != new_manifest_keys) ||
-                            used_tier ∉ (Pkg.PRESERVE_ALL, PkgCompat.PRESERVE_ALL_INSTALLED)
+                            used_tier ∉ (Pkg.PRESERVE_ALL, Pkg.PRESERVE_ALL_INSTALLED)
                         ),
                         restart_required=👺 || (
                             used_tier ∈ (Pkg.PRESERVE_SEMVER, Pkg.PRESERVE_NONE)
@@ -303,7 +300,7 @@ function sync_nbpkg_core(
 
     return (
         did_something=👺 || (use_plutopkg_old != use_plutopkg_new),
-        used_tier=PkgCompat.PRESERVE_ALL_INSTALLED,
+        used_tier=Pkg.PRESERVE_ALL_INSTALLED,
         # changed_versions=Dict{String,Pair}(),
         restart_recommended=👺 || false,
         restart_required=👺 || false,
@@ -581,10 +578,12 @@ function update_nbpkg_core(
                     phasemessage(iolistener, "Updating packages")
                     # We temporarily clear the "semver-compatible" [deps] entries, because it is difficult to update them after the update 🙈. TODO
                     PkgCompat.clear_auto_compat_entries!(notebook.nbpkg_ctx)
-
+                    
                     try
                         ###
-                        Pkg.update(notebook.nbpkg_ctx; level=level)
+                        withenv("JULIA_PKG_PRECOMPILE_AUTO" => 0) do
+                            Pkg.update(notebook.nbpkg_ctx; level=level)
+                        end
                         ###
                     finally
                         PkgCompat.write_auto_compat_entries!(notebook.nbpkg_ctx)

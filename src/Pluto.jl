@@ -88,13 +88,37 @@ include("./webserver/WebServer.jl")
 const reset_notebook_environment = PkgUtils.reset_notebook_environment
 const update_notebook_environment = PkgUtils.update_notebook_environment
 const activate_notebook_environment = PkgUtils.activate_notebook_environment
+const will_use_pluto_pkg = PkgUtils.will_use_pluto_pkg
 export reset_notebook_environment
 export update_notebook_environment
 export activate_notebook_environment
+export will_use_pluto_pkg
 
 include("./precompile.jl")
 
 const pluto_boot_environment_path = Ref{String}()
+
+function warn_julia_compat()
+    if VERSION > v"1.11.9999"
+        @warn("\nPluto ($(PLUTO_VERSION)) is running on a new version of Julia ($(VERSION)).\n\n$(
+            # if using a regular Julia version, then that means that the new Julia version has been released and we released a new Pluto version that supports it, but the user is still using an old Pluto version.
+            VERSION.prerelease === () && VERSION.build === () ?
+            "You need to update Pluto to use this Julia version, see https://plutojl.org/en/docs/update/ to learn more." :
+            # if using a build/prerelease, then the user is using a future Julia version that we don't support yet.
+            "This (preview) version of Julia might not be fully supported by Pluto yet. Please check back later or use an older version of Julia."
+        )")
+    end
+    
+    bad_depots = filter(d -> !isabspath(expanduser(d)), DEPOT_PATH)
+    if !isempty(bad_depots)
+        @error """Pluto: The provided depot path is not an absolute path. Pluto will not be able to run correctly.
+        
+        Did you recently change the DEPOT path setting? Change your setting to use an absolute path.
+        
+        Do you not know what this means? Please get in touch! https://github.com/fonsp/Pluto.jl/issues
+        """ bad_depots DEPOT_PATH
+    end
+end
 
 function __init__()
     pluto_boot_environment_name = "pluto-boot-environment-$(VERSION)-$(PLUTO_VERSION)"
@@ -123,17 +147,9 @@ function __init__()
             # create empty file to indicate that we've shown the banner
             write(fn, "");
         end
-
-        bad_depots = filter(d -> !isabspath(expanduser(d)), DEPOT_PATH)
-        if !isempty(bad_depots)
-            @error """Pluto: The provided depot path is not an absolute path. Pluto will not be able to run correctly.
-            
-            Did you recently change the DEPOT path setting? Change your setting to use an absolute path.
-            
-            Do you not know what this means? Please get in touch! https://github.com/fonsp/Pluto.jl/issues
-            """ bad_depots DEPOT_PATH
-        end
     end
+    
+    warn_julia_compat()
 end
 
 end

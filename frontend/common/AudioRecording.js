@@ -1,10 +1,13 @@
 // @ts-ignore
-import vmsg from "https://cdn.jsdelivr.net/npm/vmsg@0.4.0/vmsg.js"
+import vmsg from "https://cdn.jsdelivr.net/npm/vmsg@0.4.0/vmsg.js" // when modifying, also modify the version number in all other files.
+import { get_included_external_source } from "./external_source.js"
 
-export const create_recorder = async () => {
-    const recorder = new vmsg.Recorder({
-        wasmURL: new URL("https://unpkg.com/vmsg@0.4.0/vmsg.wasm", import.meta.url),
-    })
+const create_recorder_mp3 = async () => {
+    const wasmURL = get_included_external_source("vmsg-wasm")?.href
+
+    if (!wasmURL) throw new Error("wasmURL not found")
+
+    const recorder = new vmsg.Recorder({ wasmURL })
 
     return {
         start: async () => {
@@ -20,8 +23,18 @@ export const create_recorder = async () => {
     }
 }
 
+export const create_recorder = () => {
+    try {
+        return create_recorder_mp3()
+    } catch (e) {
+        console.error("Failed to create mp3 recorder", e)
+    }
+
+    return create_recorder_native()
+}
+
 // really nice but it can only record to audio/ogg or sometihng, nothing that works across all browsers
-export const create_recorder_native = async () => {
+const create_recorder_native = async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
 
     let chunks = []

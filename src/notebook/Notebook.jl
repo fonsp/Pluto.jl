@@ -129,17 +129,6 @@ function PlutoDependencyExplorer.topological_order(notebook::Notebook)
 	end
 end
 
-function PlutoDependencyExplorer.where_referenced(notebook::Notebook, topology::NotebookTopology, something)
-    # can't use @deprecate on an overload
-    @warn "Deprecated, drop the notebook argument"
-    PlutoDependencyExplorer.where_referenced(topology, something)
-end
-function PlutoDependencyExplorer.where_assigned(notebook::Notebook, topology::NotebookTopology, something)
-    # can't use @deprecate on an overload
-    @warn "Deprecated, drop the notebook argument"
-    PlutoDependencyExplorer.where_assigned(topology, something)
-end
-
 emptynotebook(args...) = Notebook([Cell()], args...)
 
 function sample_notebook(name::String)

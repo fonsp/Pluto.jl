@@ -50,12 +50,13 @@ function error_response(
     template = read(project_relative_path(frontend_directory(), "error.jl.html"), String)
 
     body_title = body == "" ? "" : "Error message:"
-    filled_in = replace(replace(replace(replace(replace(template, 
-        "\$STYLE" => """<style>$(read(project_relative_path("frontend", "error.css"), String))</style>"""), 
-        "\$TITLE" => title), 
-        "\$ADVICE" => advice), 
-        "\$BODYTITLE" => body_title), 
-        "\$BODY" => htmlesc(body))
+    filled_in = replace(template, 
+        "\$STYLE" => """<style>$(read(project_relative_path("frontend", "error.css"), String))</style>""",
+        "\$TITLE" => title,
+        "\$ADVICE" => advice,
+        "\$BODYTITLE" => body_title,
+        "\$BODY" => htmlesc(body),
+    )
 
     response = HTTP.Response(status_code, filled_in)
     HTTP.setheader(response, "Content-Type" => MIMEs.contenttype_from_mime(MIME"text/html"()))

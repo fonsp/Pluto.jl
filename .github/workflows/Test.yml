@@ -34,7 +34,7 @@ jobs:
             fail-fast: false
             matrix:
                 # We test quite a lot of versions because we do some OS and version specific things unfortunately
-                julia-version: ["1.6", "1.10", "1.11"] #, "nightly"] # "~1.12.0-0"]
+                julia-version: ["1.10", "1.11"] #, "nightly"] # "~1.12.0-0"]
                 os: [ubuntu-latest, macOS-latest, windows-latest]
 
         steps:
@@ -45,9 +45,9 @@ jobs:
             - uses: julia-actions/setup-julia@v2
               with:
                   version: ${{ matrix.julia-version }}
-                  arch: ${{ (matrix.julia-version == '1.6') && 'x64' || runner.arch }}
+                  arch: ${{ runner.arch }}
 
-            - uses: julia-actions/cache@v1
+            - uses: julia-actions/cache@v2
 
             # 🚗
             - uses: julia-actions/julia-runtest@v1

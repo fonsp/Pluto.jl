@@ -69,15 +69,14 @@ function is_pluto_controlled(m::Module)
 end
 
 function completions_exported(cs::Vector{<:Completion})
-    completed_modules = Set{Module}(c.parent for c in cs if c isa ModuleCompletion)
-    completed_modules_exports = Dict(
-		m => Set(names(m, all=is_pluto_workspace(m), imported=true))
-		for m in completed_modules
-	)
-
     map(cs) do c
         if c isa ModuleCompletion
-            Symbol(c.mod) ∈ completed_modules_exports[c.parent]
+            sym = Symbol(c.mod)
+            @static if isdefined(Base, :ispublic)
+                Base.ispublic(c.parent, sym)
+            else
+                Base.isexported(c.parent, sym)
+            end
         else
             true
         end

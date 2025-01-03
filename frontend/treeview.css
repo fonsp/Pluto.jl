@@ -1,3 +1,5 @@
+@charset "UTF-8";
+
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/400.css");
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/400-italic.css");
 @import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/700.css");
@@ -266,6 +268,7 @@ jlerror > header > p {
 }
 jlerror > header > p:first-child {
     font-weight: bold;
+    margin-block-start: 0;
 }
 jlerror .stacktrace-header,
 jlerror .error-header {
@@ -435,6 +438,10 @@ jlerror .dont-panic {
 }
 
 body.disable_ui jlerror .dont-panic {
+    display: none;
+}
+
+pluto-logs jlerror .dont-panic {
     display: none;
 }
 

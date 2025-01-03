@@ -1,3 +1,11 @@
+"""
+!!! danger "Danger zone"
+	Hello! Nice to see that you are interested in how Pluto works!
+
+	Be careful when using `PlutoRunner` for your project, nothing in this module is public API, and things might suddenly break in a future Pluto version.
+
+	Instead, try to use AbstractPlutoDingetjes.jl and PlutoHooks.jl to achieve your goal – this is our public API.
+"""
 module PlutoRunner
 
 export @bind

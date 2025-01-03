@@ -8,9 +8,11 @@ import { open_bottom_right_panel } from "./BottomRightPanel.js"
 import AnsiUp from "../imports/AnsiUp.js"
 
 const extract_cell_id = (/** @type {string} */ file) => {
-    const sep_index = file.indexOf("#==#")
+    if (file.includes("#@#==#")) return null
+    const sep = "#==#"
+    const sep_index = file.indexOf(sep)
     if (sep_index != -1) {
-        return file.substring(sep_index + 4, sep_index + 4 + 36)
+        return file.substring(sep_index + sep.length, sep_index + sep.length + 36)
     } else {
         return null
     }
@@ -60,22 +62,23 @@ const StackFrameFilename = ({ frame, cell_id }) => {
     if (ignore_location(frame)) return null
 
     const frame_cell_id = extract_cell_id(frame.file)
+    const line = frame.line
     if (frame_cell_id != null) {
         return html`<a
             internal-file=${frame.file}
             href=${`#${frame_cell_id}`}
             onclick=${(e) => {
-                focus_line(frame_cell_id, frame.line - 1)
+                focus_line(frame_cell_id, line == null ? null : line - 1)
                 e.preventDefault()
             }}
         >
-            ${frame_cell_id == cell_id ? "This\xa0cell" : "Other\xa0cell"}: <em>line ${frame.line}</em>
+            ${frame_cell_id == cell_id ? "This\xa0cell" : "Other\xa0cell"}${line == null ? null : html`: <em>line ${line}</em>`}
         </a>`
     } else {
         const sp = frame.source_package
         const origin = ["Main", "Core", "Base"].includes(sp) ? "julia" : sp
 
-        const file_line = html`<em>${frame.file}:${frame.line}</em>`
+        const file_line = html`<em>${frame.file.replace(/#@#==#.*/, "")}:${frame.line}</em>`
 
         const text = sp != null ? html`<strong>${origin}</strong> → ${file_line}` : file_line
 
@@ -125,7 +128,6 @@ const Funccall = ({ frame }) => {
     const funcname_display = funcname.match(/^#\d+(#\d+)?$/)
         ? html`<abbr title="A (mini-)function that is defined without the 'function' keyword, but using -> or 'do'.">anonymous function</abbr>`
         : funcname
-    console.log(funcname, funcname.match(/^#\d+(#\d+)?$/), funcname_display)
 
     let inner = html`<strong>${funcname_display}</strong><${HighlightCallArgumentNames} code=${call_funcname_args[1]} />`
 
@@ -283,12 +285,18 @@ const frame_is_important_heuristic = (frame, frame_index, limited_stacktrace, fr
 const AnsiUpLine = (/** @type {{value: string}} */ { value }) => {
     const node_ref = useRef(/** @type {HTMLElement?} */ (null))
 
-    useEffect(() => {
+    const did_ansi_up = useRef(false)
+
+    useLayoutEffect(() => {
         if (!node_ref.current) return
         node_ref.current.innerHTML = new AnsiUp().ansi_to_html(value)
+        did_ansi_up.current = true
     }, [node_ref.current, value])
 
-    return value === "" ? html`<p><br /></p>` : html`<p ref=${node_ref}></p>`
+    // placeholder while waiting for AnsiUp to render, to prevent layout flash
+    const without_ansi_chars = value.replace(/\u001b\[[0-9;]*m/g, "")
+
+    return value === "" ? html`<p><br /></p>` : html`<p ref=${node_ref}>${did_ansi_up.current ? null : without_ansi_chars}</p>`
 }
 
 export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
@@ -367,13 +375,14 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                 }),
         },
         {
-            pattern: /Multiple definitions for (.*)\./,
+            pattern: /Multiple definitions for (.*)/,
             display: (/** @type{string} */ x) =>
                 x.split("\n").map((line) => {
-                    const match = line.match(/Multiple definitions for (.*)\./)
+                    const match = line.match(/Multiple definitions for (.*)/)
 
                     if (match) {
-                        let syms_string = match[1]
+                        // replace: remove final dot
+                        let syms_string = match[1].replace(/\.$/, "")
                         let syms = syms_string.split(/, | and /)
 
                         let symbol_links = syms.map((what) => {
@@ -401,7 +410,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
             display: () => default_rewriter.display("Error"),
         },
         {
-            pattern: /^UndefVarError: (.*) not defined\.?$/,
+            pattern: /^UndefVarError: (.*) not defined/,
             display: (/** @type{string} */ x) => {
                 const notebook = /** @type{import("./Editor.js").NotebookData?} */ (pluto_actions.get_notebook())
                 const erred_upstreams = get_erred_upstreams(notebook, cell_id)
@@ -537,6 +546,7 @@ const get_first_package = (limited_stacktrace) => {
     }
 }
 
+const motivational_word_probability = 0.1
 const motivational_words = [
     //
     "Don't panic!",
@@ -557,26 +567,14 @@ const motivational_words = [
     "Oh no! 🙀",
     "this suckz 💣",
     "Be patient :)",
-    // Errors horen erbij
-    // Ook de pros krijgen errors
-    ...Array(30).fill(null),
 ]
 
 const Motivation = ({ stacktrace }) => {
     const msg = useMemo(() => {
-        return motivational_words[Math.floor(Math.random() * motivational_words.length)]
+        return Math.random() < motivational_word_probability ? motivational_words[Math.floor(Math.random() * motivational_words.length)] : null
     }, [stacktrace])
 
-    return msg == null
-        ? null
-        : html`<div
-              class="dont-panic"
-              onClick=${(e) => {
-                  window.open("https://discourse.julialang.org/", "_blank")?.focus()
-              }}
-          >
-              ${msg}
-          </div>`
+    return msg == null ? null : html`<div class="dont-panic">${msg}</div>`
 }
 
 const get_erred_upstreams = (

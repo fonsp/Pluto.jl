@@ -12,6 +12,8 @@ pluto-input > button,
 pluto-shoulder,
 footer,
 pluto-runarea,
+jlerror .doclink,
+.dont-panic,
 #helpbox-wrapper {
     display: none !important;
 }
@@ -28,7 +30,6 @@ pluto-runarea,
     .MJX_ToolTip,
     .MJX_HoverRegion,
     .MJX_LiveRegion,
-    .dont-panic,
     nav#undo_delete {
         display: none !important;
     }

@@ -5,6 +5,7 @@ import { prettytime, useMillisSinceTruthy } from "./RunArea.js"
 import { DiscreteProgressBar } from "./DiscreteProgressBar.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
 import { NotifyWhenDone } from "./NotifyWhenDone.js"
+import { scroll_to_busy_cell } from "./ProgressBar.js"
 
 /**
  * @param {{
@@ -172,7 +173,9 @@ const StatusItem = ({ status_tree, path, my_clock_is_ahead_by, nbpkg, backend_la
 
         let failed_indices = kids.reduce((acc, x, i) => (x.success === false ? [...acc, i] : acc), [])
 
-        return html`<${DiscreteProgressBar} busy=${busy} done=${done} total=${total} failed_indices=${failed_indices} />`
+        const onClick = mystatus.name === "evaluate" ? () => scroll_to_busy_cell() : undefined
+
+        return html`<${DiscreteProgressBar} busy=${busy} done=${done} total=${total} failed_indices=${failed_indices} onClick=${onClick} />`
     }
 
     const inner = is_open

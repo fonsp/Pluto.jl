@@ -16,13 +16,12 @@ function precompile_isolated(
     @static if isdefined(Pkg, :can_fancyprint)
         Pkg.can_fancyprint(io::IO) = true
     end
+    @static if isdefined(Base, :Precompilation) && isdefined(Base.Precompilation, :can_fancyprint)
+        Base.Precompilation.can_fancyprint(io::IO) = true
+    end
     
     Pkg.activate($(repr(environment)); io=out_stream)
-    if VERSION >= v"1.8.0" # https://github.com/JuliaLang/Pkg.jl/pull/2816
-        Pkg.precompile(; already_instantiated=true, io=out_stream)
-    else
-        Pkg.precompile(; io=out_stream)
-    end
+    Pkg.precompile(; already_instantiated=true, io=out_stream)
     """
 
     cmd = `$(Base.julia_cmd()[1]) $(flags) -e $(code)`

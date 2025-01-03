@@ -10,7 +10,7 @@ function transform_bond_value(s::Symbol, value_from_js)
     catch e
         @error "🚨 AbstractPlutoDingetjes: Bond value transformation errored." exception=(e, catch_backtrace())
         (;
-            message=Text("🚨 AbstractPlutoDingetjes: Bond value transformation errored."), 
+            message=Text("🚨 AbstractPlutoDingetjes: Bond value transformation errored."),
             exception=Text(
                 sprint(showerror, e, stacktrace(catch_backtrace()))
             ),
@@ -35,16 +35,16 @@ function possible_bond_values(s::Symbol; get_length::Bool=false)
         :InfinitePossibilities
     elseif (possible_values isa AbstractPlutoDingetjes.Bonds.NotGiven)
         # error("Bond \"$s\" did not specify its possible values with `AbstractPlutoDingetjes.Bond.possible_values()`. Try using PlutoUI for the `@bind` values.")
-        
+
         # If you change this, change it everywhere in this file.
         :NotGiven
     else
-        get_length ? 
+        get_length ?
             try
                 length(possible_values)
             catch
                 length(make_serializable(possible_values))
-            end : 
+            end :
             make_serializable(possible_values)
     end
 end
@@ -118,7 +118,7 @@ x^2
 The first cell will show a slider as the cell's output, ranging from 0 until 100.
 The second cell will show the square of `x`, and is updated in real-time as the slider is moved.
 """
-macro bind(def, element)    
+macro bind(def, element)
 	if def isa Symbol
 		quote
 			$(load_integrations_if_needed)()
@@ -133,13 +133,16 @@ end
 
 """
 Will be inserted in saved notebooks that use the @bind macro, make sure that they still contain legal syntax when executed as a vanilla Julia script. Overloading `Base.get` for custom UI objects gives bound variables a sensible value.
+Also turns off JuliaFormatter formatting to avoid issues with the formatter trying to change code that the user does not control. See https://domluna.github.io/JuliaFormatter.jl/stable/#Turn-off/on-formatting
 """
 const fake_bind = """macro bind(def, element)
+    #! format: off
     quote
         local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = \$(esc(element))
         global \$(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
     end
+    #! format: on
 end"""
 
