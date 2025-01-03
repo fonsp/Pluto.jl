@@ -3,7 +3,7 @@ import { EditorView, syntaxTree, Decoration, ViewUpdate, ViewPlugin, Facet, Edit
 import { PkgStatusMark, PkgActivateMark } from "../PkgStatusMark.js"
 import { html } from "../../imports/Preact.js"
 import { ReactWidget } from "./ReactWidget.js"
-import { create_specific_template_maker, iterate_with_cursor, jl, jl_dynamic, narrow, t, template } from "./lezer_template.js"
+import { iterate_with_cursor } from "./lezer_template.js"
 
 /**
  * @typedef PkgstatusmarkWidgetProps
@@ -50,7 +50,7 @@ function find_import_statements({ state, from, to }) {
             if (node.name === "import") currently_using_or_import = "import"
             if (node.name === "using") currently_using_or_import = "using"
 
-            console.group("exploring", node.name, doc.sliceString(node.from, node.to), node)
+            // console.group("exploring", node.name, doc.sliceString(node.from, node.to), node)
 
             if (node.name === "CallExpression" || node.name === "MacrocallExpression") {
                 let callee = node.node.firstChild
