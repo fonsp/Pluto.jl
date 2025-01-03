@@ -23,7 +23,7 @@ const TEMPLATE_CREATION_VERBOSE = false
  *
  * @type {"SPEED" | "VALIDITY"}
  */
-const PERFORMANCE_MODE = /** @type {any} */ ("SPEED")
+const PERFORMANCE_MODE = /** @type {any} */ ("VALIDITY")
 
 const IS_IN_VALIDATION_MODE = PERFORMANCE_MODE === "VALIDITY"
 
@@ -386,7 +386,7 @@ let substitutions_to_template = (ast, substitutions) => {
     }
 }
 
-let node_to_explorable = (cursor) => {
+export let node_to_explorable = (cursor) => {
     if ("cursor" in cursor) {
         cursor = cursor.cursor()
     }
@@ -494,6 +494,7 @@ export let jl_dynamic = weak_memo((template, ...substitutions) => {
 
 /** @type {WeakMap<TemplateStringsArray, { input: Array<Templatable>, result: JuliaCodeObject }>} */
 let template_cache = new WeakMap()
+
 /**
  * @param {TemplateStringsArray} template
  * @param {Array<Templatable>} substitutions
@@ -564,6 +565,9 @@ export let template = weak_memo1((julia_code_object) => {
     })
 })
 
+/**
+ *
+ */
 export let as_string = weak_memo1((/** @type {JuliaCodeObject} */ julia_code_object) => {
     let template_generator = to_template(julia_code_object)
     let julia_to_parse = intermediate_value(template_generator.next())
@@ -1059,6 +1063,8 @@ export function iterate_with_cursor({ tree, enter, leave, from = 0, to = tree.le
 ///////////////////////////////////
 
 /**
+ * Return `iterater_result.value` if `iterater_result.done` is `false`, otherwise throw an error.
+ *
  * Not sure why typescript doesn't infer the `Generator<T>` when I ask !iterater_result.done...
  * Maybe it will bite me later 🤷‍♀️
  *

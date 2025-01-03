@@ -43,13 +43,17 @@ export let test_scopestate = (input, expected) => {
 }
 
 /**
+ * Compute the scopestate for the code. Variable names are used to create the expected scope: a variable called `global_something_2` is expected to be a global usage, etc.
+ *
  * @param {JuliaCodeObject} code
  */
 export function test_implicit(code) {
     let expected_scopestate = { defined: [], local_used: [], global_used: [] }
 
+    console.log(as_string(code))
+
     for (let variable of as_string(code).matchAll(/(macro_)?(global|local|defined)(_[a-z0-9_]+)?/g)) {
-        let [variable_name, is_macro, usage_type] = variable
+        let [variable_name, is_macro, usage_type, number] = variable
 
         if (is_macro != null) {
             variable_name = `@${variable_name}`
@@ -64,6 +68,8 @@ export function test_implicit(code) {
             expected_scopestate.defined.push(variable_name)
         }
     }
+
+    console.log(expected_scopestate)
 
     return test_scopestate(code, expected_scopestate)
 }
