@@ -142,8 +142,8 @@
         /* jlerror */
         --jlerror-header-color: #d9baba;
         --jlerror-mark-bg-color: rgb(0 0 0 / 18%);
-        --jlerror-a-bg-color: rgba(82, 58, 58, 1);
-        --jlerror-a-border-left-color: #704141;
+        --jlerror-a-bg-color: hsl(65.82deg 17.14% 27.45%);
+        --jlerror-a-border-left-color: hsl(66 27% 35% / 1);
         --jlerror-mark-color: #b1a9a9;
 
         /* helpbox */
@@ -191,36 +191,36 @@
 
         /* code highlighting */
         --cm-color-editor-text: #ffe9fc;
-        --cm-color-comment:     #e96ba8;
-        --cm-color-atom:        hsl(8deg 72% 62%);
-        --cm-color-number:      hsl(271deg 45% 64%);
-        --cm-color-property:    #f99b15;
-        --cm-color-keyword:     #ff7a6f;
-        --cm-color-string:      hsl(20deg 69% 59%);
-        --cm-color-var:         #afb7d3;
-        --cm-color-var2:        #06b6ef;
-        --cm-color-macro:       #82b38b;
-        --cm-color-builtin:     #5e7ad3;
-        --cm-color-function:    #f99b15;
-        --cm-color-type:        hsl(51deg 32% 44%);
-        --cm-color-bracket:     #a2a273;
-        --cm-color-tag:         #ef6155;
-        --cm-color-link:        #815ba4;
-        --cm-color-error-bg:    #ef6155;
-        --cm-color-error:       #f7f7f7;
+        --cm-color-comment: #e96ba8;
+        --cm-color-atom: hsl(8deg 72% 62%);
+        --cm-color-number: hsl(271deg 45% 64%);
+        --cm-color-property: #f99b15;
+        --cm-color-keyword: #ff7a6f;
+        --cm-color-string: hsl(20deg 69% 59%);
+        --cm-color-var: #afb7d3;
+        --cm-color-var2: #06b6ef;
+        --cm-color-macro: #82b38b;
+        --cm-color-builtin: #5e7ad3;
+        --cm-color-function: #f99b15;
+        --cm-color-type: hsl(51deg 32% 44%);
+        --cm-color-bracket: #a2a273;
+        --cm-color-tag: #ef6155;
+        --cm-color-link: #815ba4;
+        --cm-color-error-bg: #ef6155;
+        --cm-color-error: #f7f7f7;
         --cm-color-matchingBracket: white;
         --cm-color-matchingBracket-bg: #c58c237a;
         --cm-color-placeholder-text: rgb(255 255 255 / 20%);
         --cm-color-clickable-underline: #5d5f70;
 
         /* Mixed parsers */
-        --cm-color-html:        #00ab85;
+        --cm-color-html: #00ab85;
         --cm-color-html-accent: #00e7b4;
-        --cm-color-css:         #ebd073;
-        --cm-color-css-accent:  #fffed2;
+        --cm-color-css: #ebd073;
+        --cm-color-css-accent: #fffed2;
         --cm-css-why-doesnt-codemirror-highlight-all-the-text-aaa: #ffffea;
-        --cm-color-md:          #a2c9d5;
-        --cm-color-md-accent:   #00a9d1;
+        --cm-color-md: #a2c9d5;
+        --cm-color-md-accent: #00a9d1;
 
         /*autocomplete menu*/
         --autocomplete-menu-bg-color: var(--input-context-menu-bg-color);

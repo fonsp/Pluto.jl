@@ -14,15 +14,26 @@ end
 
 frame_is_from_usercode(frame::Base.StackTraces.StackFrame) = occursin("#==#", String(frame.file))
 
-function frame_url(frame::Base.StackTraces.StackFrame)
+function method_from_frame(frame::Base.StackTraces.StackFrame)
     if frame.linfo isa Core.MethodInstance
-        Base.url(frame.linfo.def)
+        frame.linfo.def
     elseif frame.linfo isa Method
-        Base.url(frame.linfo)
+        frame.linfo
     else
         nothing
     end
 end
+
+frame_url(m::Method) = Base.url(m)
+frame_url(::Any) = nothing
+
+function source_package(m::Union{Method,Module})
+    @static if VERSION >= v"1.9"
+        next = parentmodule(m)
+        next === m ? m : source_package(next)
+    end
+end
+source_package(::Any) = nothing
 
 function format_output(val::CapturedException; context=default_iocontext)
     if has_julia_syntax && val.ex isa PrettySyntaxError
@@ -49,15 +60,25 @@ function format_output(val::CapturedException; context=default_iocontext)
         stack_relevant = stack[1:something(limit, end)]
 
         pretty = map(stack_relevant) do s
+            func = s.func === nothing ? nothing : s.func isa Symbol ? String(s.func) : repr(s.func)
+            method = method_from_frame(s)
+            sp = source_package(method)
+            pm = VERSION >= v"1.9" && method isa Method ? parentmodule(method) : nothing
+            call = replace(pretty_stackcall(s, s.linfo), r"Main\.var\"workspace#\d+\"\." => "")
+
             Dict(
-                :call => pretty_stackcall(s, s.linfo),
+                :call => call,
+                :call_short => type_depth_limit(call, 0),
+                :func => func,
                 :inlined => s.inlined,
                 :from_c => s.from_c,
                 :file => basename(String(s.file)),
                 :path => String(s.file),
                 :line => s.line,
-                :url => frame_url(s),
                 :linfo_type => string(typeof(s.linfo)),
+                :url => frame_url(method),
+                :source_package => sp === nothing ? nothing : string(sp),
+                :parent_module => pm === nothing ? nothing : string(pm),
             )
         end
     else
@@ -107,10 +128,20 @@ function pretty_stackcall(frame::Base.StackFrame, linfo::Module)
 end
 
 
+function type_depth_limit(call::String, n::Int)
+    !occursin("{" , call) && return call
+    @static if isdefined(Base, :type_depth_limit) && hasmethod(Base.type_depth_limit, Tuple{String, Int})
+        Base.type_depth_limit(call, n)
+    else
+        call
+    end
+end
+
+
 "Because even showerror can error... 👀"
 function try_showerror(io::IO, e, args...)
     try
-        showerror(io, e, args...)
+        showerror(IOContext(io, :color => true), e, args...)
     catch show_ex
         print(io, "\nFailed to show error:\n\n")
         try_showerror(io, show_ex, stacktrace(catch_backtrace()))

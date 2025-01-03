@@ -87,7 +87,7 @@ function move_vars(
                 catch ex
                     if !(ex isa UndefVarError)
                         @warn "Failed to move variable $(symbol) to new workspace:"
-                        showerror(original_stderr, ex, stacktrace(catch_backtrace()))
+                        showerror(original_stderr[], ex, stacktrace(catch_backtrace()))
                     end
                 end
             end
@@ -198,7 +198,7 @@ function try_delete_toplevel_methods(workspace::Module, (cell_id, name_parts)::T
             (val isa Function) && delete_toplevel_methods(val, cell_id)
         catch ex
             @warn "Failed to delete methods for $(name_parts)"
-            showerror(original_stderr, ex, stacktrace(catch_backtrace()))
+            showerror(original_stderr[], ex, stacktrace(catch_backtrace()))
             false
         end
     catch

@@ -28,6 +28,7 @@ pluto-runarea,
     .MJX_ToolTip,
     .MJX_HoverRegion,
     .MJX_LiveRegion,
+    .dont-panic,
     nav#undo_delete {
         display: none !important;
     }

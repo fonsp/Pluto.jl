@@ -55,6 +55,7 @@ include("./evaluation/run_expression.jl")
 include("./evaluation/deleting globals.jl")
 
 
+include("./display/LaTeX.jl")
 include("./display/format_output.jl")
 include("./display/IOContext.jl")
 include("./display/syntax error.jl")
@@ -75,5 +76,9 @@ include("./js/jslink.jl")
 include("./io/logging.jl")
 include("./io/stdout.jl")
 include("./precompile.jl")
+
+function __init__()
+    original_stderr[] = stderr
+end
 
 end

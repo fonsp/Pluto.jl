@@ -267,10 +267,14 @@ jlerror > header > p {
 jlerror > header > p:first-child {
     font-weight: bold;
 }
-jlerror .stacktrace-header {
+jlerror .stacktrace-header,
+jlerror .error-header {
     font-family: var(--system-ui-font-stack);
 }
-jlerror .stacktrace-header > secret-h1 {
+jlerror .error-header {
+    margin-block-end: 1em;
+}
+jlerror secret-h1 {
     font-size: 1.9rem;
     font-weight: 700;
 }
@@ -285,11 +289,22 @@ jlerror > section > ol {
     /* transform-origin: top; */
     /* perspective-origin: top; */
 }
+jlerror > section > ol > li {
+    margin-block-end: 1em;
+}
+
+jlerror > section > ol > li:not(.important):not(:hover) {
+    opacity: 0.5;
+}
+
+jlerror > section > ol > li:not(.important)::marker {
+    font-weight: 100;
+}
 jlerror > section > ol > li.from_this_notebook {
     --bg: var(--jl-info-acccolor);
     background: var(--bg);
     outline: 3px solid var(--bg);
-    padding: 0.4em 0.2em;
+    padding: 0.4em 0em;
     border-radius: 0.6em;
 }
 jlerror > section .classical-frame > mark {
@@ -299,7 +314,24 @@ jlerror > section .classical-frame > mark {
     font-family: var(--julia-mono-font-stack);
     font-variant-ligatures: none;
 }
-jlerror > section .classical-frame > em > a[href] {
+jlerror > section .classical-frame > mark > strong {
+    color: var(--black);
+}
+jlerror > section .classical-frame s-span {
+    /* color: var(--cm-color-type); */
+}
+jlerror > section .classical-frame s-span .argument_name {
+    color: var(--jlerror-mark-color);
+    color: var(--cm-color-var);
+    color: var(--cm-color-type);
+}
+jlerror > section .frame-source {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    /* justify-content: flex-end; */
+}
+jlerror > section .frame-source > a {
     background: var(--jlerror-a-bg-color);
     border-radius: 4px;
     padding: 1px 7px;
@@ -307,15 +339,21 @@ jlerror > section .classical-frame > em > a[href] {
     border-left: 3px solid var(--jlerror-a-border-left-color);
     /* font-family: var(--system-ui-font-stack); */
 }
-jlerror > section .classical-frame > em > a[href].remote-url {
+jlerror > section .frame-source > a:not([href]) {
+    filter: grayscale(1);
+}
+jlerror > section .frame-source > a[href].remote-url {
     filter: hue-rotate(160deg);
 }
-jlerror > section li.from_this_notebook:not(.from_this_cell) .classical-frame > em > a[href] {
+jlerror > section li.from_this_notebook:not(.from_this_cell) .frame-source > a[href] {
     filter: hue-rotate(50deg);
 }
-jlerror > section .classical-frame > span {
+jlerror > section .frame-source > span {
     opacity: 0.4;
     padding: 0px 0.2em;
+}
+jlerror > section .doclink {
+    user-select: none;
 }
 
 jlerror li::marker {
@@ -380,6 +418,24 @@ jlerror li .frame-line-preview pre > code:first-of-type:not(.frame-line) {
 }
 jlerror li .frame-line-preview pre > code:last-of-type:not(.frame-line) {
     margin-bottom: var(--crop);
+}
+
+jlerror .dont-panic {
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 0.5em;
+    background: var(--pluto-logs-debug-color);
+    color: var(--black);
+    border-radius: 0.2em;
+    font-family: var(--system-ui-font-stack);
+    font-size: 1.2rem;
+    font-weight: 700;
+    transform: rotate(6deg);
+}
+
+body.disable_ui jlerror .dont-panic {
+    display: none;
 }
 
 table.pluto-table {
@@ -447,6 +503,7 @@ table.pluto-table tbody th:first-child {
     background-color: var(--main-bg-color);
     position: sticky;
     left: -10px; /* padding-left of pluto-output*/
+    white-space: nowrap;
 }
 
 table.pluto-table .pluto-tree-more-td {

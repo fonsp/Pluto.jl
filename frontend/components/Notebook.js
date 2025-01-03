@@ -163,7 +163,11 @@ export const Notebook = ({
     let global_definition_locations = useMemo(
         () =>
             Object.fromEntries(
-                Object.values(notebook?.cell_dependencies ?? {}).flatMap((x) => Object.keys(x.downstream_cells_map).map((variable) => [variable, x.cell_id]))
+                Object.values(notebook?.cell_dependencies ?? {}).flatMap((x) =>
+                    Object.keys(x.downstream_cells_map)
+                        .filter((variable) => !variable.includes("."))
+                        .map((variable) => [variable, x.cell_id])
+                )
             ),
         [notebook?.cell_dependencies]
     )
