@@ -66,7 +66,7 @@ const does_this_create_scope = (/** @type {TreeCursor} */ cursor) => {
 const explore_assignment_lhs = (root_cursor) => {
     let found = []
     root_cursor.iterate((cursor) => {
-        if (cursor.name === "Identifier" || cursor.name === "MacroIdentifier") {
+        if (cursor.name === "Identifier" || cursor.name === "MacroIdentifier" || cursor.name === "Operator") {
             found.push(r(cursor))
         }
         if (cursor.name === "IndexExpression" || cursor.name === "FieldExpression") {
@@ -100,6 +100,21 @@ const cursor_not_moved_checker = (cursor) => {
     }
 }
 
+const i_am_nth_child = (cursor) => {
+    const map = new NodeWeakMap()
+    map.cursorSet(cursor, "here")
+    if (!cursor.parent()) throw new Error("Cannot be toplevel")
+    cursor.firstChild()
+    let i = 0
+    while (map.cursorGet(cursor) !== "here") {
+        i++
+        if (!cursor.nextSibling()) {
+            throw new Error("Could not find my way back")
+        }
+    }
+    return i
+}
+
 /**
  * @param {TreeCursor} cursor
  * @returns {Range[]}
@@ -110,7 +125,8 @@ const explore_funcdef_arguments = (cursor, { enter, leave }) => {
     const position_validation = cursor_not_moved_checker(cursor)
     const position_resetter = back_to_parent_resetter(cursor)
 
-    cursor.firstChild() // should be in the TupleExpression now
+    if (!cursor.firstChild()) throw new Error(`Expected to go into function definition argument expression, stuck at ${cursor.name}`)
+    // should be in the TupleExpression now
 
     // @ts-ignore
     VERBOSE && console.assert(cursor.name === "TupleExpression" || cursor, name === "Arguments", cursor.name)
@@ -121,7 +137,7 @@ const explore_funcdef_arguments = (cursor, { enter, leave }) => {
             cursor.firstChild() // go into kwarg arguments
         }
 
-        if (cursor.name === "Identifier") {
+        if (cursor.name === "Identifier" || cursor.name === "Operator") {
             found.push(r(cursor))
         } else if (cursor.name === "KwArg") {
             let went_in = cursor.firstChild()
@@ -197,7 +213,7 @@ export let explore_variable_usage = (tree, doc, _scopestate, verbose = VERBOSE) 
             local_scope_stack.push(r(cursor))
         }
 
-        if (cursor.name === "Identifier" || cursor.name === "MacroIdentifier") {
+        if (cursor.name === "Identifier" || cursor.name === "MacroIdentifier" || cursor.name === "Operator") {
             const name = doc.sliceString(cursor.from, cursor.to)
             usages.push({
                 name: name,
@@ -208,21 +224,29 @@ export let explore_variable_usage = (tree, doc, _scopestate, verbose = VERBOSE) 
                 definition: find_local_definition(locals, name, cursor) ?? null,
             })
         } else if (cursor.name === "Assignment" || cursor.name === "KwArg") {
+            const pos_resetter = back_to_parent_resetter(cursor)
             let succes = cursor.firstChild()
             if (succes) {
-                explore_assignment_lhs(cursor).forEach(register_variable)
-                return false
+                if (cursor.name === "CallExpression") {
+                    pos_resetter()
+                } else {
+                    explore_assignment_lhs(cursor).forEach(register_variable)
+                    // don't reset position, we want to continue exploring the other children of the Assignment
+                    return false
+                }
             }
         } else if (cursor.name === "Field") {
             return false
         } else if (cursor.name === "CallExpression") {
-            if (cursor.matchContext(["FunctionDefinition", "Signature"]) || cursor.matchContext(["Assignment"])) {
+            if (cursor.matchContext(["FunctionDefinition", "Signature"]) || (cursor.matchContext(["Assignment"]) && i_am_nth_child(cursor) === 0)) {
+                console.log("asdfdsafadfs")
+
                 const pos_resetter = back_to_parent_resetter(cursor)
 
                 cursor.firstChild() // CallExpression now
                 cursor.firstChild()
                 // @ts-ignore
-                if (cursor.name === "Identifier") {
+                if (cursor.name === "Identifier" || cursor.name === "Operator") {
                     verbose && console.log("found function name", doc.sliceString(cursor.from, cursor.to))
 
                     const last_scoper = local_scope_stack.pop()
