@@ -44,6 +44,7 @@ export {
     indentUnit,
     combineConfig,
     NodeProp,
+    NodeWeakMap,
     autocomplete,
     html,
     htmlLanguage,
@@ -64,4 +65,4 @@ export {
     linter,
     setDiagnostics,
     //@ts-ignore
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@f01836f/dist/index.es.min.js"
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@d17bc01/dist/index.es.min.js"
