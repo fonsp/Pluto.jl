@@ -40,7 +40,7 @@ const find_local_definition = (locals, name, cursor) => {
     }
 }
 
-const HardScopeNames = new Set(["WhileStatement", "ForStatement", "LetStatement", "FunctionDefinition", "MacroDefinition"])
+const HardScopeNames = new Set(["WhileStatement", "ForStatement", "TryStatement", "LetStatement", "FunctionDefinition", "MacroDefinition"])
 
 const does_this_create_scope = (/** @type {TreeCursor} */ cursor) => {
     if (HardScopeNames.has(cursor.name)) return true
@@ -60,10 +60,13 @@ const does_this_create_scope = (/** @type {TreeCursor} */ cursor) => {
 }
 
 /**
+ * Look into the left-hand side of an Assigment expression and find all ranges where variables are defined.
+ * E.g. `a, (b,c) = something` will return ranges for a, b, c.
  * @param {TreeCursor} root_cursor
  * @returns {Range[]}
  */
 const explore_assignment_lhs = (root_cursor) => {
+    const a = cursor_not_moved_checker(root_cursor)
     let found = []
     root_cursor.iterate((cursor) => {
         if (cursor.name === "Identifier" || cursor.name === "MacroIdentifier" || cursor.name === "Operator") {
@@ -74,14 +77,22 @@ const explore_assignment_lhs = (root_cursor) => {
             return false
         }
     })
+    a()
     return found
 }
 
+/**
+ * Remember the position where this is called, and return a function that will move into parents until we are are back at that position.
+ *
+ * You can use this before exploring children of a cursor, and then go back when you are done.
+ */
 const back_to_parent_resetter = (/** @type {TreeCursor} */ cursor) => {
     const map = new NodeWeakMap()
     map.cursorSet(cursor, "here")
     return () => {
-        while (map.cursorGet(cursor) !== "here" && cursor.parent()) {}
+        while (map.cursorGet(cursor) !== "here") {
+            if (!cursor.parent()) throw new Error("Could not find my back to the original parent!")
+        }
     }
 }
 
@@ -200,7 +211,10 @@ export let explore_variable_usage = (tree, doc, _scopestate, verbose = VERBOSE) 
             }
         }
 
-        if (return_false_immediately.cursorGet(cursor)) return false
+        if (return_false_immediately.cursorGet(cursor)) {
+            if (verbose) console.groupEnd()
+            return false
+        }
 
         const register_variable = (range) => {
             const name = doc.sliceString(range.from, range.to)
@@ -227,8 +241,9 @@ export let explore_variable_usage = (tree, doc, _scopestate, verbose = VERBOSE) 
                 },
                 definition: find_local_definition(locals, name, cursor) ?? null,
             })
-        } else if (cursor.name === "Assignment" || cursor.name === "KwArg" || cursor.name === "ForBinding") {
+        } else if (cursor.name === "Assignment" || cursor.name === "KwArg" || cursor.name === "ForBinding" || cursor.name === "CatchClause") {
             if (cursor.firstChild()) {
+                if (cursor.name === "catch") cursor.nextSibling()
                 // CallExpression means function definition `f(x) = x`, this is handled elsewhere
                 if (cursor.name !== "CallExpression") {
                     explore_assignment_lhs(cursor).forEach(register_variable)
@@ -238,11 +253,10 @@ export let explore_variable_usage = (tree, doc, _scopestate, verbose = VERBOSE) 
                 cursor.parent()
             }
         } else if (cursor.name === "Field") {
+            if (verbose) console.groupEnd()
             return false
         } else if (cursor.name === "CallExpression") {
             if (cursor.matchContext(["FunctionDefinition", "Signature"]) || (cursor.matchContext(["Assignment"]) && i_am_nth_child(cursor) === 0)) {
-                console.log("asdfdsafadfs")
-
                 const pos_resetter = back_to_parent_resetter(cursor)
 
                 cursor.firstChild() // CallExpression now
@@ -265,6 +279,7 @@ export let explore_variable_usage = (tree, doc, _scopestate, verbose = VERBOSE) 
 
                 verbose && console.log("end of FunctionDefinition, currently at ", cursor.node)
 
+                verbose && console.groupEnd()
                 return false
             }
         }
