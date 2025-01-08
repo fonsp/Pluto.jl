@@ -40,7 +40,7 @@ const find_local_definition = (locals, name, cursor) => {
     }
 }
 
-const HardScopeNames = new Set(["WhileStatement", "ForStatement", "TryStatement", "LetStatement", "FunctionDefinition", "MacroDefinition"])
+const HardScopeNames = new Set(["WhileStatement", "ForStatement", "TryStatement", "LetStatement", "FunctionDefinition", "MacroDefinition", "DoClause"])
 
 const does_this_create_scope = (/** @type {TreeCursor} */ cursor) => {
     if (HardScopeNames.has(cursor.name)) return true
@@ -211,7 +211,12 @@ export let explore_variable_usage = (tree, doc, _scopestate, verbose = VERBOSE) 
             }
         }
 
-        if (return_false_immediately.cursorGet(cursor)) {
+        if (
+            return_false_immediately.cursorGet(cursor) ||
+            cursor.name === "ModuleDefinition" ||
+            cursor.name === "QuoteStatement" ||
+            cursor.name === "QuoteExpression"
+        ) {
             if (verbose) console.groupEnd()
             return false
         }
@@ -252,6 +257,10 @@ export let explore_variable_usage = (tree, doc, _scopestate, verbose = VERBOSE) 
                 }
                 cursor.parent()
             }
+        } else if (cursor.name === "Parameters") {
+            explore_assignment_lhs(cursor).forEach(register_variable)
+            if (verbose) console.groupEnd()
+            return false
         } else if (cursor.name === "Field") {
             if (verbose) console.groupEnd()
             return false
@@ -263,7 +272,7 @@ export let explore_variable_usage = (tree, doc, _scopestate, verbose = VERBOSE) 
                 cursor.firstChild()
                 // @ts-ignore
                 if (cursor.name === "Identifier" || cursor.name === "Operator") {
-                    verbose && console.log("found function name", doc.sliceString(cursor.from, cursor.to))
+                    if (verbose) console.log("found function name", doc.sliceString(cursor.from, cursor.to))
 
                     const last_scoper = local_scope_stack.pop()
                     register_variable(r(cursor))
@@ -271,15 +280,15 @@ export let explore_variable_usage = (tree, doc, _scopestate, verbose = VERBOSE) 
 
                     cursor.nextSibling()
                 }
-                verbose && console.log("expl funcdef ", doc.sliceString(cursor.from, cursor.to))
+                if (verbose) console.log("expl funcdef ", doc.sliceString(cursor.from, cursor.to))
                 explore_funcdef_arguments(cursor, { enter, leave }).forEach(register_variable)
-                verbose && console.log("expl funcdef ", doc.sliceString(cursor.from, cursor.to))
+                if (verbose) console.log("expl funcdef ", doc.sliceString(cursor.from, cursor.to))
 
                 pos_resetter()
 
-                verbose && console.log("end of FunctionDefinition, currently at ", cursor.node)
+                if (verbose) console.log("end of FunctionDefinition, currently at ", cursor.node)
 
-                verbose && console.groupEnd()
+                if (verbose) console.groupEnd()
                 return false
             }
         }
@@ -295,12 +304,19 @@ export let explore_variable_usage = (tree, doc, _scopestate, verbose = VERBOSE) 
         }
     }
 
-    tree.iterate(enter, leave)
+    const debugged_enter = (cursor) => {
+        const a = cursor_not_moved_checker(cursor)
+        const result = enter(cursor)
+        a()
+        return result
+    }
+
+    tree.iterate(verbose ? debugged_enter : enter, leave)
+
+    if (local_scope_stack.length > 0) throw new Error(`Some scopes were not leaved... ${JSON.stringify(local_scope_stack)}`)
 
     const output = { usages, definitions, locals }
-
-    verbose && console.log(output)
-
+    if (verbose) console.log(output)
     return output
 }
 
