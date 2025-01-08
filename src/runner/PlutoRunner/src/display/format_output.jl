@@ -14,7 +14,8 @@ const table_column_display_limit_increase = 30
 const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 
 # This is not a struct to make it easier to pass these objects between processes.
-const FormattedCellResult = NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
+const FormattedCellResult = NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features, :stale),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool,Bool}}
+
 
 function formatted_result_of(
     notebook_id::UUID, 
@@ -39,6 +40,7 @@ function formatted_result_of(
     has_pluto_hook_features = haskey(cell_expanded_exprs, cell_id) && cell_expanded_exprs[cell_id].has_pluto_hook_features
     ans = cell_results[cell_id]
     errored = ans isa CapturedException
+    stale = ans isa Stale
 
     output_formatted = if (!ends_with_semicolon || errored)
         with_logger_and_io_to_logs(get_cell_logger(notebook_id, cell_id); capture_stdout) do
@@ -70,6 +72,7 @@ function formatted_result_of(
         runtime = get(cell_runtimes, cell_id, nothing),
         published_objects,
         has_pluto_hook_features,
+        stale,
     )
 end
 
@@ -102,6 +105,7 @@ format_output(@nospecialize(x); context=default_iocontext) = format_output_defau
 
 format_output(::Nothing; context=default_iocontext) = ("", MIME"text/plain"())
 
+format_output((;out)::Stale; context=default_iocontext) = format_output(out; context)
 
 
 function format_output(binding::Base.Docs.Binding; context=default_iocontext)

@@ -124,9 +124,11 @@ function notebook_to_js(notebook::Notebook)
                 "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,
+                "stale" => cell.stale,
                 "runtime" => cell.runtime,
                 "logs" => FirebaseyUtils.AppendonlyMarker(cell.logs),
                 "depends_on_skipped_cells" => cell.depends_on_skipped_cells,
+                "depends_on_stale_cells" => cell.depends_on_stale_cells,
             )
         for (id, cell) in notebook.cells_dict),
         "cell_order" => notebook.cell_order,
