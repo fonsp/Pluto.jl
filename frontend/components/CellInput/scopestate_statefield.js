@@ -182,6 +182,8 @@ export let explore_variable_usage = (tree, doc, _scopestate, verbose = VERBOSE) 
     const locals = /** @type {Array<{ definition: Range, validity: Range, name: string }>} */ ([])
     const usages = /** @type {Array<{ usage: Range, definition: Range | null, name: string }>} */ ([])
 
+    const return_false_immediately = new NodeWeakMap()
+
     let enter, leave
 
     enter = (/** @type {TreeCursor} */ cursor) => {
@@ -197,6 +199,8 @@ export let explore_variable_usage = (tree, doc, _scopestate, verbose = VERBOSE) 
                 console.groupEnd()
             }
         }
+
+        if (return_false_immediately.cursorGet(cursor)) return false
 
         const register_variable = (range) => {
             const name = doc.sliceString(range.from, range.to)
@@ -223,17 +227,15 @@ export let explore_variable_usage = (tree, doc, _scopestate, verbose = VERBOSE) 
                 },
                 definition: find_local_definition(locals, name, cursor) ?? null,
             })
-        } else if (cursor.name === "Assignment" || cursor.name === "KwArg") {
-            const pos_resetter = back_to_parent_resetter(cursor)
-            let succes = cursor.firstChild()
-            if (succes) {
-                if (cursor.name === "CallExpression") {
-                    pos_resetter()
-                } else {
+        } else if (cursor.name === "Assignment" || cursor.name === "KwArg" || cursor.name === "ForBinding") {
+            if (cursor.firstChild()) {
+                // CallExpression means function definition `f(x) = x`, this is handled elsewhere
+                if (cursor.name !== "CallExpression") {
                     explore_assignment_lhs(cursor).forEach(register_variable)
-                    // don't reset position, we want to continue exploring the other children of the Assignment
-                    return false
+                    // mark this one as finished
+                    return_false_immediately.cursorSet(cursor, true)
                 }
+                cursor.parent()
             }
         } else if (cursor.name === "Field") {
             return false
