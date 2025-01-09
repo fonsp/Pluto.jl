@@ -83,27 +83,42 @@ const overlayHack = (overlay, input) => {
 export const STRING_NODE_NAMES = new Set(["StringLiteral", "CommandLiteral", "NsStringLiteral", "NsCommandLiteral"])
 
 const juliaWrapper = parseMixed((node, input) => {
-    if (!STRING_NODE_NAMES.has(node.type.name)) {
+    // TODO: only get .node once
+    if (node.name !== "NsStringLiteral" && node.name !== "StringLiteral") {
         return null
     }
 
-    let is_tripple_string = node.name === "TripleString" || node.name === "TripleStringWithoutInterpolation"
+    const first_string_delim = node.node.getChild('"""') ?? node.node.getChild('"')
+    if (first_string_delim == null) return null
+    const last_string_delim = node.node.lastChild
+    if (last_string_delim == null) return null
 
-    const offset = is_tripple_string ? 3 : 1
-    const string_content_from = node.from + offset
-    const string_content_to = Math.min(node.to - offset, input.length)
+    const offset = first_string_delim.to - first_string_delim.from
+    console.log({ first_string_delim, last_string_delim, offset })
+    const string_content_from = first_string_delim.to
+    const string_content_to = Math.min(last_string_delim.from, input.length)
 
     if (string_content_from >= string_content_to) {
         return null
     }
 
-    // Looking for tag OR MacroIdentifier
-    const tagNode = node.node?.prevSibling || node.node?.parent?.prevSibling
-    if (tagNode == null || (tagNode.name !== "MacroIdentifier" && tagNode.name !== "Prefix")) {
-        // If you can't find a tag node, something is broken in the julia syntax,
-        // so parse it as Julia. Probably wrong interpolation!
-        return null
+    let tagNode
+    if (node.name === "NsStringLiteral") {
+        tagNode = node.node.firstChild
+        // if (tagNode) tag = input.read(tagNode.from, tagNode.to)
+    } else {
+        // must be a string, let's search for the parent `@htl`.
+        const start = node.node
+        const p1 = start.parent
+        if (p1 != null && p1.name === "Arguments") {
+            const p2 = p1.parent
+            if (p2 != null && p2.name === "MacrocallExpression") {
+                tagNode = p2.getChild("MacroIdentifier")
+            }
+        }
     }
+
+    if (tagNode == null) return null
 
     const is_macro = tagNode.name === "MacroIdentifier"
 
@@ -129,7 +144,7 @@ const juliaWrapper = parseMixed((node, input) => {
         let child = node.node.firstChild.cursor()
 
         do {
-            if (last_content_start !== child.from) {
+            if (last_content_start < child.from) {
                 overlay.push({ from: last_content_start, to: child.from })
             }
             last_content_start = child.to
