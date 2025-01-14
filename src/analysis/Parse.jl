@@ -119,6 +119,24 @@ end
 preprocess_expr(val::Any) = val
 
 
+"""
+Does this `String` contain a single expression? If this function returns `false`, then Pluto will show a "multiple expressions in one cell" error in the editor.
+
+!!! compat "Pluto 0.20.5"
+    This function is new in Pluto 0.20.5.
+
+"""
+function is_single_expression(s::String)
+    n = Pluto.Notebook([Pluto.Cell(s)])
+    e = parse_custom(n, n.cells[1])
+    bad = Meta.isexpr(e, :toplevel, 2) && Meta.isexpr(e.args[2], :call, 2) && e.args[2].args[1] == :(PlutoRunner.throw_syntax_error) && e.args[2].args[2] isa String && startswith(e.args[2].args[2], "extra token after end of expression")
+    
+    
+    return !bad
+end
+
+
+
 function updated_topology(old_topology::NotebookTopology{Cell}, notebook::Notebook, updated_cells)
     get_code_str(cell::Cell) = cell.code
     get_code_expr(cell::Cell) = parse_custom(notebook, cell)
