@@ -40,7 +40,16 @@ const find_local_definition = (locals, name, cursor) => {
     }
 }
 
-const HardScopeNames = new Set(["WhileStatement", "ForStatement", "TryStatement", "LetStatement", "FunctionDefinition", "MacroDefinition", "DoClause"])
+const HardScopeNames = new Set([
+    "WhileStatement",
+    "ForStatement",
+    "TryStatement",
+    "LetStatement",
+    "FunctionDefinition",
+    "MacroDefinition",
+    "DoClause",
+    "Generator",
+])
 
 const does_this_create_scope = (/** @type {TreeCursor} */ cursor) => {
     if (HardScopeNames.has(cursor.name)) return true
