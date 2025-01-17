@@ -259,8 +259,10 @@ export let explore_variable_usage = (tree, doc, _scopestate, verbose = VERBOSE) 
             })
         } else if (cursor.name === "Assignment" || cursor.name === "KwArg" || cursor.name === "ForBinding" || cursor.name === "CatchClause") {
             if (cursor.firstChild()) {
+                // @ts-ignore
                 if (cursor.name === "catch") cursor.nextSibling()
                 // CallExpression means function definition `f(x) = x`, this is handled elsewhere
+                // @ts-ignore
                 if (cursor.name !== "CallExpression") {
                     explore_assignment_lhs(cursor).forEach(register_variable)
                     // mark this one as finished
