@@ -52,6 +52,9 @@ end
     x = a : b:c
 end
 
+# ╔═╡ f248e96a-4050-4888-940b-f38158c102fe
+
+
 # ╔═╡ daba5486-8d5e-4fce-959b-251e821e5dea
 # https://github.com/fonsp/Pluto.jl/issues/2639
 let x = 1 end
@@ -355,6 +358,7 @@ end
 # ╠═bf834c19-3d0d-4989-9ba3-ef7cb77f9a00
 # ╠═3da33f9d-1240-4522-9463-8772b0c2539a
 # ╠═c88fe37a-c2e6-46f1-b92b-98737437a741
+# ╠═f248e96a-4050-4888-940b-f38158c102fe
 # ╠═daba5486-8d5e-4fce-959b-251e821e5dea
 # ╠═287dd3c7-33e6-482d-9639-d502fcff9234
 # ╠═6db1e583-54f2-4d8f-9181-a7913345c7fd

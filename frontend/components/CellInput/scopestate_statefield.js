@@ -304,6 +304,30 @@ export let explore_variable_usage = (tree, doc, _scopestate, verbose = VERBOSE) 
                 if (verbose) console.groupEnd()
                 return false
             }
+        } else if (cursor.name === "Generator") {
+            // This is: (f(x) for x in xs) or [f(x) for x in xs]
+            const savior = back_to_parent_resetter(cursor)
+
+            // We do a Generator in two steps:
+            // First we explore all the ForBindings (where locals get defined), and then we go into the first child (where those locals are used).
+
+            // 1. The for bindings `x in xs`
+            if (cursor.firstChild()) {
+                // Note that we skip the first child here, which is what we want! That's the iterated expression that we leave for the end.
+                while (cursor.nextSibling()) {
+                    cursor.iterate(enter, leave)
+                }
+                savior()
+            }
+            // 2. The iterated expression `f(x)`
+            if (cursor.firstChild()) {
+                cursor.iterate(enter, leave)
+                savior()
+            }
+
+            // k thx byeee
+            leave(cursor)
+            return false
         }
     }
 
