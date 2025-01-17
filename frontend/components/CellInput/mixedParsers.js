@@ -12,7 +12,7 @@ import {
     sql,
     javascript,
     python,
-    julia_andrey,
+    julia,
     parseCode,
 } from "../../imports/CodemirrorPlutoSetup.js"
 
@@ -80,37 +80,45 @@ const overlayHack = (overlay, input) => {
     })
 }
 
-const STRING_NODE_NAMES = new Set([
-    "TripleString",
-    "String",
-    "CommandString",
-    "TripleStringWithoutInterpolation",
-    "StringWithoutInterpolation",
-    "CommandStringWithoutInterpolation",
-])
+export const STRING_NODE_NAMES = new Set(["StringLiteral", "CommandLiteral", "NsStringLiteral", "NsCommandLiteral"])
 
-const juliaWrapper = parseMixed((node, input) => {
-    if (!STRING_NODE_NAMES.has(node.type.name)) {
+const juliaWrapper = parseMixed((cursor, input) => {
+    if (cursor.name !== "NsStringLiteral" && cursor.name !== "StringLiteral") {
         return null
     }
 
-    let is_tripple_string = node.name === "TripleString" || node.name === "TripleStringWithoutInterpolation"
+    const node = cursor.node
+    const first_string_delim = node.getChild('"""') ?? node.getChild('"')
+    if (first_string_delim == null) return null
+    const last_string_delim = node.lastChild
+    if (last_string_delim == null) return null
 
-    const offset = is_tripple_string ? 3 : 1
-    const string_content_from = node.from + offset
-    const string_content_to = Math.min(node.to - offset, input.length)
+    // const offset = first_string_delim.to - first_string_delim.from
+    // console.log({ first_string_delim, last_string_delim, offset })
+    const string_content_from = first_string_delim.to
+    const string_content_to = Math.min(last_string_delim.from, input.length)
 
     if (string_content_from >= string_content_to) {
         return null
     }
 
-    // Looking for tag OR MacroIdentifier
-    const tagNode = node.node?.prevSibling || node.node?.parent?.prevSibling
-    if (tagNode == null || (tagNode.name !== "MacroIdentifier" && tagNode.name !== "Prefix")) {
-        // If you can't find a tag node, something is broken in the julia syntax,
-        // so parse it as Julia. Probably wrong interpolation!
-        return null
+    let tagNode
+    if (cursor.name === "NsStringLiteral") {
+        tagNode = node.firstChild
+        // if (tagNode) tag = input.read(tagNode.from, tagNode.to)
+    } else {
+        // must be a string, let's search for the parent `@htl`.
+        const start = node
+        const p1 = start.parent
+        if (p1 != null && p1.name === "Arguments") {
+            const p2 = p1.parent
+            if (p2 != null && p2.name === "MacrocallExpression") {
+                tagNode = p2.getChild("MacroIdentifier")
+            }
+        }
     }
+
+    if (tagNode == null) return null
 
     const is_macro = tagNode.name === "MacroIdentifier"
 
@@ -131,12 +139,12 @@ const juliaWrapper = parseMixed((node, input) => {
     }
 
     let overlay = []
-    if (node.node.firstChild != null) {
+    if (node.firstChild != null) {
         let last_content_start = string_content_from
-        let child = node.node.firstChild.cursor()
+        let child = node.firstChild.cursor()
 
         do {
-            if (last_content_start !== child.from) {
+            if (last_content_start < child.from) {
                 overlay.push({ from: last_content_start, to: child.from })
             }
             last_content_start = child.to
@@ -166,10 +174,10 @@ const juliaWrapper = parseMixed((node, input) => {
 })
 
 const julia_mixed = (config) => {
-    const julia = julia_andrey(config)
+    const julia_simple = julia(config)
     // @ts-ignore
-    julia.language.parser = julia.language.parser.configure({ wrap: juliaWrapper })
-    return julia
+    julia_simple.language.parser = julia_simple.language.parser.configure({ wrap: juliaWrapper })
+    return julia_simple
 }
 
 export { julia_mixed, sqlLang, pythonLanguage, javascript, htmlLanguage, javascriptLanguage, python, markdown, html }

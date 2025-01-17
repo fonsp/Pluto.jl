@@ -7,6 +7,7 @@ import { ScopeStateField } from "./scopestate_statefield.js"
 import { open_bottom_right_panel } from "../BottomRightPanel.js"
 import { ENABLE_CM_AUTOCOMPLETE_ON_TYPE } from "../CellInput.js"
 import { GlobalDefinitionsFacet } from "./go_to_definition_plugin.js"
+import { STRING_NODE_NAMES } from "./mixedParsers.js"
 
 let { autocompletion, completionKeymap, completionStatus, acceptCompletion, selectedCompletion } = autocomplete
 
@@ -123,7 +124,7 @@ const match_operator_symbol_complete = (/** @type {autocomplete.CompletionContex
 function match_string_complete(state, pos) {
     const tree = syntaxTree(state)
     const node = tree.resolve(pos)
-    if (node == null || (node.name !== "TripleString" && node.name !== "String")) {
+    if (node == null || !STRING_NODE_NAMES.has(node.name)) {
         return false
     }
     return true
@@ -165,7 +166,8 @@ const julia_code_completions_to_cm =
     async (/** @type {autocomplete.CompletionContext} */ ctx) => {
         if (match_latex_symbol_complete(ctx)) return null
         if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
-        if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment", "String", "TripleString", "Symbol"]) != null) return null
+        if (!ctx.explicit && ctx.tokenBefore(["IntegerLiteral", "FloatLiteral", "LineComment", "BlockComment", "Symbol", ...STRING_NODE_NAMES]) != null)
+            return null
 
         let to_complete = /** @type {String} */ (ctx.state.sliceDoc(0, ctx.pos))
 
@@ -266,13 +268,12 @@ const julia_code_completions_to_cm =
 const complete_anyword = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
     if (match_latex_symbol_complete(ctx)) return null
     if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
-    if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment", "String", "TripleString", "Symbol"]) != null) return null
+    if (!ctx.explicit && ctx.tokenBefore(["IntegerLiteral", "FloatLiteral", "LineComment", "BlockComment", "Symbol", ...STRING_NODE_NAMES]) != null) return null
 
     const results_from_cm = await autocomplete.completeAnyWord(ctx)
     if (results_from_cm === null) return null
 
-    const last_token = ctx.tokenBefore(["Identifier", "Number"])
-    if (last_token == null || last_token.type?.name === "Number") return null
+    if (ctx.tokenBefore(["Identifier", "IntegerLiteral", "FloatLiteral"])) return null
 
     return {
         from: results_from_cm.from,
@@ -298,6 +299,7 @@ const from_notebook_type = "c_from_notebook completion_module c_Any"
  */
 const writing_variable_name_or_keyword = (/** @type {autocomplete.CompletionContext} */ ctx) => {
     let just_finished_a_keyword = ctx.matchBefore(endswith_keyword_regex)
+    if (just_finished_a_keyword) return true
 
     // Regex explaination:
     // 1. a keyword that could be followed by a variable name like `catch ex` where `ex` is a variable name that should not get completed
@@ -307,14 +309,21 @@ const writing_variable_name_or_keyword = (/** @type {autocomplete.CompletionCont
     // 3b. a `, ` comma-space, to treat `const a, b` but not `for a in
     // 4. a `$` to match the end of the line
     let after_keyword = ctx.matchBefore(/(catch|local|module|abstract type|struct|macro|const|for|function|let|do) ([@\p{L}\p{Nl}\p{Sc}\d_!,\(\)]|, )*$/u)
+    if (after_keyword) return true
 
     let inside_do_argument_expression = ctx.matchBefore(/do [\(\), \p{L}\p{Nl}\p{Sc}\d_!]*$/u)
+    if (inside_do_argument_expression) return true
 
     let node = syntaxTree(ctx.state).resolve(ctx.pos, -1)
-    let node2 = node?.parent?.name === "BareTupleExpression" ? node?.parent : node
-    let inside_assigment_lhs = node?.name === "Identifier" && node2?.parent?.name === "AssignmentExpression" && node2?.nextSibling != null
+    let npn = node?.parent?.name
+    if (node?.name === "Identifier" && npn === "KeywordArguments") return true
 
-    return just_finished_a_keyword || after_keyword || inside_do_argument_expression || inside_assigment_lhs
+    let node2 = npn === "OpenTuple" || npn === "TupleExpression" ? node?.parent : node
+    let n2pn = node2?.parent?.name
+    let inside_assigment_lhs = node?.name === "Identifier" && (n2pn === "Assignment" || n2pn === "KwArg") && node2?.nextSibling != null
+
+    if (inside_assigment_lhs) return true
+    return false
 }
 
 const global_variables_completion =
@@ -323,7 +332,8 @@ const global_variables_completion =
     async (/** @type {autocomplete.CompletionContext} */ ctx) => {
         if (match_latex_symbol_complete(ctx)) return null
         if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
-        if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment", "String", "TripleString", "Symbol"]) != null) return null
+        if (!ctx.explicit && ctx.tokenBefore(["IntegerLiteral", "FloatLiteral", "LineComment", "BlockComment", "Symbol", ...STRING_NODE_NAMES]) != null)
+            return null
 
         // see `is_wc_cat_id_start` in Julia's source for a complete list
         const there_is_a_dot_before = ctx.matchBefore(/\.[\p{L}\p{Nl}\p{Sc}\d_!]*$/u)
@@ -454,7 +464,7 @@ const special_symbols_completion = (/** @type {() => Promise<SpecialSymbols?>} *
     return async (/** @type {autocomplete.CompletionContext} */ ctx) => {
         if (!match_latex_symbol_complete(ctx)) return null
         if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
-        if (!ctx.explicit && ctx.tokenBefore(["Number", "Comment"]) != null) return null
+        if (!ctx.explicit && ctx.tokenBefore(["IntegerLiteral", "FloatLiteral", "LineComment", "BlockComment"]) != null) return null
 
         const result = await get_special_symbols()
         return await autocomplete.completeFromList(result ?? [])(ctx)

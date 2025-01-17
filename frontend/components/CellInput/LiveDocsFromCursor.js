@@ -2,7 +2,7 @@ import { EditorState, syntaxTree } from "../../imports/CodemirrorPlutoSetup.js"
 import { ScopeStateField } from "./scopestate_statefield.js"
 
 let get_root_variable_from_expression = (cursor) => {
-    if (cursor.name === "SubscriptExpression") {
+    if (cursor.name === "IndexExpression") {
         cursor.firstChild()
         return get_root_variable_from_expression(cursor)
     }
@@ -20,12 +20,13 @@ let get_root_variable_from_expression = (cursor) => {
 let VALID_DOCS_TYPES = [
     "Identifier",
     "FieldExpression",
-    "SubscriptExpression",
+    "IndexExpression",
     "MacroFieldExpression",
     "MacroIdentifier",
     "Operator",
-    "Definition",
-    "ParameterizedIdentifier",
+    "TypeHead",
+    "Signature",
+    "ParametrizedExpression",
 ]
 let keywords_that_have_docs_and_are_cool = [
     "import",
@@ -49,12 +50,12 @@ let is_docs_searchable = (/** @type {import("../../imports/CodemirrorPlutoSetup.
     } else if (VALID_DOCS_TYPES.includes(cursor.name)) {
         if (cursor.firstChild()) {
             do {
-                // Numbers themselves can't be docs searched, but using numbers inside SubscriptExpression can be.
-                if (cursor.name === "Number") {
+                // Numbers themselves can't be docs searched, but using numbers inside IndexExpression can be.
+                if (cursor.name === "IntegerLiteral" || cursor.name === "FloatLiteral") {
                     continue
                 }
                 // This is for the VERY specific case like `Vector{Int}(1,2,3,4) which I want to yield `Vector{Int}`
-                if (cursor.name === "TypeArgumentList") {
+                if (cursor.name === "BraceExpression") {
                     continue
                 }
                 if (cursor.name === "FieldName" || cursor.name === "MacroName" || cursor.name === "MacroFieldName") {
@@ -129,7 +130,7 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                     // - Struct name is useless: you are looking at the definition
                     // - Properties are just named, not in the workspace or anything
                     // Only thing we do want, are types and the right hand side of `=`'s.
-                    if (parents.includes("AssignmentExpression") && parents.indexOf("AssignmentExpression") < index_of_struct_in_parents) {
+                    if (parents.includes("binding") && parents.indexOf("binding") < index_of_struct_in_parents) {
                         // We're inside a `... = ...` inside the struct
                     } else if (parents.includes("TypedExpression") && parents.indexOf("TypedExpression") < index_of_struct_in_parents) {
                         // We're inside a `x::X` inside the struct
@@ -229,7 +230,7 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                 }
 
                 // `a = 1` would yield `=`, `a += 1` would yield `+=`
-                if (cursor.name === "AssignmentExpression") {
+                if (cursor.name === "binding") {
                     let end_of_first = cursor.node.firstChild.to
                     let beginning_of_last = cursor.node.lastChild.from
                     return state.doc.sliceString(end_of_first, beginning_of_last).trim()
@@ -320,7 +321,7 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                     return undefined
                 }
                 // If we are expanding to an AssigmentExpression, we DONT want to show `=`
-                if (parent.name === "AssignmentExpression") {
+                if (parent.name === "binding") {
                     return undefined
                 }
             } finally {

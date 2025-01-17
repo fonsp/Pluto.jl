@@ -43,7 +43,7 @@ import {
 } from "../imports/CodemirrorPlutoSetup.js"
 
 import { markdown, html as htmlLang, javascript, sqlLang, python, julia_mixed } from "./CellInput/mixedParsers.js"
-import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
+import { julia } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
 import { awesome_line_wrapping, get_start_tabs } from "./CellInput/awesome_line_wrapping.js"
@@ -119,7 +119,7 @@ const common_style_tags = [
 
 export const pluto_syntax_colors_julia = HighlightStyle.define(common_style_tags, {
     all: { color: `var(--cm-color-editor-text)` },
-    scope: julia_andrey().language,
+    scope: julia().language,
 })
 
 export const pluto_syntax_colors_javascript = HighlightStyle.define(common_style_tags, {
@@ -365,12 +365,12 @@ export const CellInput = ({
                 return true
             }
 
-            const anySelect = cm.state.selection.ranges.some(r => !r.empty)
+            const anySelect = cm.state.selection.ranges.some((r) => !r.empty)
             if (anySelect) {
                 return indentMore(cm)
             } else {
-               cm.dispatch(
-                   cm.state.changeByRange(selection => ({
+                cm.dispatch(
+                    cm.state.changeByRange((selection) => ({
                         range: EditorSelection.cursor(selection.from + 1),
                         changes: { from: selection.from, to: selection.to, insert: "\t" },
                     }))
@@ -661,7 +661,7 @@ export const CellInput = ({
                           ]
                         : [
                               //
-                              julia_andrey(),
+                              julia(),
                           ]),
                     go_to_definition_plugin,
                     pluto_autocomplete({
