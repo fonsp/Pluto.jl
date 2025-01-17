@@ -258,7 +258,9 @@ function move(session::ServerSession, notebook::Notebook, newpath::String)
     else
         move_notebook!(notebook, newpath; disable_writing_notebook_files=session.options.server.disable_writing_notebook_files)
         putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
-        WorkspaceManager.cd_workspace((session, notebook), newpath)
+        let workspace = WorkspaceManager.get_workspace((session, notebook); allow_creation=false)
+            isnothing(workspace) || WorkspaceManager.cd_workspace(workspace, newpath)
+        end
     end 
 end
 
