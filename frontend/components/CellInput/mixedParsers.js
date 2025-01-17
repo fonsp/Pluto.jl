@@ -82,7 +82,73 @@ const overlayHack = (overlay, input) => {
 
 export const STRING_NODE_NAMES = new Set(["StringLiteral", "CommandLiteral", "NsStringLiteral", "NsCommandLiteral"])
 
+const which_parser_for_this_node = (node, input) => {
+    if (node.name !== "NsStringLiteral" && node.name !== "StringLiteral") {
+        return null
+    }
+
+    const first_string_delim = node.node.getChild('"""') ?? node.node.getChild('"')
+    if (first_string_delim == null) return null
+    const last_string_delim = node.node.lastChild
+    if (last_string_delim == null) return null
+
+    const offset = first_string_delim.to - first_string_delim.from
+    console.log({ first_string_delim, last_string_delim, offset })
+    const string_content_from = first_string_delim.to
+    const string_content_to = Math.min(last_string_delim.from, input.length)
+
+    if (string_content_from >= string_content_to) {
+        return null
+    }
+
+    let tagNode
+    if (node.name === "NsStringLiteral") {
+        tagNode = node.node.firstChild
+        // if (tagNode) tag = input.read(tagNode.from, tagNode.to)
+    } else {
+        // must be a string, let's search for the parent `@htl`.
+        const start = node.node
+        const p1 = start.parent
+        if (p1 != null && p1.name === "Arguments") {
+            const p2 = p1.parent
+            if (p2 != null && p2.name === "MacrocallExpression") {
+                tagNode = p2.getChild("MacroIdentifier")
+            }
+        }
+    }
+
+    if (tagNode == null) return null
+
+    const is_macro = tagNode.name === "MacroIdentifier"
+
+    const tag = input.read(tagNode.from, tagNode.to)
+    let parser = null
+    if (tag === "@htl" || tag === "html") {
+        parser = htmlParser
+    } else if (MD_TAGS.includes(tag)) {
+        parser = mdParserExt
+    } else if (tag === "@javascript" || tag === "@js" || tag === "js" || tag === "javascript") {
+        parser = javascriptLanguage.parser
+    } else if (tag === "py" || tag === "pyr" || tag === "python" || tag === "@python") {
+        parser = pythonParser
+    } else if (tag === "sql") {
+        parser = postgresParser
+    } else {
+        return null
+    }
+
+    return parser
+}
+
 const juliaWrapper = parseMixed((node, input) => {
+    if (!STRING_NODE_NAMES.has(node.type.name))
+        return node.type.isTop
+            ? {
+                  parser: htmlParser,
+                  overlay: (node) => which_parser_for_this_node(node, input) === htmlParser,
+              }
+            : null
+
     // TODO: only get .node once
     if (node.name !== "NsStringLiteral" && node.name !== "StringLiteral") {
         return null
@@ -137,6 +203,16 @@ const juliaWrapper = parseMixed((node, input) => {
     } else {
         return null
     }
+
+    // let new_overlay = (node) => {
+    //     console.log("asked for ", node.node, input.read(node.from, node.to))
+
+    //     return false
+    // }
+
+    return { parser }
+    return { parser, overlay: new_overlay }
+    return { parser, overlay: [{ from: string_content_from, to: string_content_to }] }
 
     let overlay = []
     if (node.node.firstChild != null) {
