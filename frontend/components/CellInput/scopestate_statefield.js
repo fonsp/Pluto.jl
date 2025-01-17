@@ -215,7 +215,8 @@ export let explore_variable_usage = (tree, doc, _scopestate, verbose = VERBOSE) 
             return_false_immediately.cursorGet(cursor) ||
             cursor.name === "ModuleDefinition" ||
             cursor.name === "QuoteStatement" ||
-            cursor.name === "QuoteExpression"
+            cursor.name === "QuoteExpression" ||
+            cursor.name === "ImportStatement"
         ) {
             if (verbose) console.groupEnd()
             return false
