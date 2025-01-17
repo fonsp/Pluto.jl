@@ -298,7 +298,6 @@ export function matchBrackets(state, pos, dir, config = {}) {
 }
 
 function matchPlainBrackets(state, pos, dir, tree, tokenType, maxScanDistance, brackets) {
-    console.log("trying to match", pos, dir, tokenType, maxScanDistance, brackets)
     let startCh = dir < 0 ? state.sliceDoc(pos - 1, pos) : state.sliceDoc(pos, pos + 1)
     let bracket = brackets.indexOf(startCh)
     if (bracket < 0 || (bracket % 2 == 0) != dir > 0) return null
@@ -306,7 +305,6 @@ function matchPlainBrackets(state, pos, dir, tree, tokenType, maxScanDistance, b
     let iter = state.doc.iterRange(pos, dir > 0 ? state.doc.length : 0),
         depth = 0
     for (let distance = 0; !iter.next().done && distance <= maxScanDistance; ) {
-        console.log("matching", distance, pos, dir, tokenType, maxScanDistance, brackets)
         let text = iter.value
         if (dir < 0) distance += text.length
         let basePos = pos + distance * dir
@@ -317,7 +315,6 @@ function matchPlainBrackets(state, pos, dir, tree, tokenType, maxScanDistance, b
                 depth++
             } else if (depth == 1) {
                 // Closing
-                console.log("zomgg")
                 if (found >> 1 == bracket >> 1) {
                     return [startToken, { from: basePos + pos, to: basePos + pos + 1 }]
                 } else {
@@ -329,7 +326,6 @@ function matchPlainBrackets(state, pos, dir, tree, tokenType, maxScanDistance, b
         }
         if (dir > 0) distance += text.length
     }
-    console.log(iter.done, startToken)
     return iter.done ? [startToken] : null
 }
 
