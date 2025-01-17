@@ -137,6 +137,9 @@ begin
 	a, b = 123, 33
 end
 
+# ╔═╡ e45548dc-cf3c-4ddd-be78-e2776380f172
+(zzz,zzz2) = [a,a]
+
 # ╔═╡ c93f0182-3e16-4ff5-a612-5cd2e70d249f
 (
 	a + b
@@ -159,9 +162,6 @@ try
 catch a
 	a
 end
-
-# ╔═╡ 62b805db-2028-40b0-b412-4c91d15ad338
-c = d = e = f= g =h=i=j=k=l=m=n=o=p=q=r=9
 
 # ╔═╡ b57da300-58b5-498b-9798-c565dbb74026
 f(g((args...; kwarg1=dict[index], karg2=kwarg2) -> X))
@@ -335,6 +335,14 @@ md"""
 
 """)
 
+# ╔═╡ 62b805db-2028-40b0-b412-4c91d15ad338
+c = d = e = f= g =h=i=j=k=l=m=n=o=p=q=r=9
+
+# ╔═╡ 5b62306f-c730-42f0-85dd-8692ca8b50fa
+function f(by, y; by=213, beeyt)
+		sdf
+end
+
 # ╔═╡ a35574d7-c7eb-4ffa-b8ef-5e8aef7aa3e9
 begin
 	function ff(a, b=2; c=2, d)
@@ -352,6 +360,8 @@ end
 # ╔═╡ Cell order:
 # ╟─d0ee4518-406a-4628-ac4a-30d5fa11f5a7
 # ╠═e746ef9c-47c1-4d5d-bce1-4616f25ff586
+# ╠═e45548dc-cf3c-4ddd-be78-e2776380f172
+# ╠═5b62306f-c730-42f0-85dd-8692ca8b50fa
 # ╠═b57da300-58b5-498b-9798-c565dbb74026
 # ╠═69acb688-3726-4252-b7e2-f496181d2aa6
 # ╠═5666ac41-9e8d-40fc-89be-e2a6c1637da5

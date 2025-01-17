@@ -82,19 +82,19 @@ const overlayHack = (overlay, input) => {
 
 export const STRING_NODE_NAMES = new Set(["StringLiteral", "CommandLiteral", "NsStringLiteral", "NsCommandLiteral"])
 
-const juliaWrapper = parseMixed((node, input) => {
-    // TODO: only get .node once
-    if (node.name !== "NsStringLiteral" && node.name !== "StringLiteral") {
+const juliaWrapper = parseMixed((cursor, input) => {
+    if (cursor.name !== "NsStringLiteral" && cursor.name !== "StringLiteral") {
         return null
     }
 
-    const first_string_delim = node.node.getChild('"""') ?? node.node.getChild('"')
+    const node = cursor.node
+    const first_string_delim = node.getChild('"""') ?? node.getChild('"')
     if (first_string_delim == null) return null
-    const last_string_delim = node.node.lastChild
+    const last_string_delim = node.lastChild
     if (last_string_delim == null) return null
 
-    const offset = first_string_delim.to - first_string_delim.from
-    console.log({ first_string_delim, last_string_delim, offset })
+    // const offset = first_string_delim.to - first_string_delim.from
+    // console.log({ first_string_delim, last_string_delim, offset })
     const string_content_from = first_string_delim.to
     const string_content_to = Math.min(last_string_delim.from, input.length)
 
@@ -103,12 +103,12 @@ const juliaWrapper = parseMixed((node, input) => {
     }
 
     let tagNode
-    if (node.name === "NsStringLiteral") {
-        tagNode = node.node.firstChild
+    if (cursor.name === "NsStringLiteral") {
+        tagNode = node.firstChild
         // if (tagNode) tag = input.read(tagNode.from, tagNode.to)
     } else {
         // must be a string, let's search for the parent `@htl`.
-        const start = node.node
+        const start = node
         const p1 = start.parent
         if (p1 != null && p1.name === "Arguments") {
             const p2 = p1.parent
@@ -139,9 +139,9 @@ const juliaWrapper = parseMixed((node, input) => {
     }
 
     let overlay = []
-    if (node.node.firstChild != null) {
+    if (node.firstChild != null) {
         let last_content_start = string_content_from
-        let child = node.node.firstChild.cursor()
+        let child = node.firstChild.cursor()
 
         do {
             if (last_content_start < child.from) {

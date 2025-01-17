@@ -365,12 +365,12 @@ export const CellInput = ({
                 return true
             }
 
-            const anySelect = cm.state.selection.ranges.some(r => !r.empty)
+            const anySelect = cm.state.selection.ranges.some((r) => !r.empty)
             if (anySelect) {
                 return indentMore(cm)
             } else {
-               cm.dispatch(
-                   cm.state.changeByRange(selection => ({
+                cm.dispatch(
+                    cm.state.changeByRange((selection) => ({
                         range: EditorSelection.cursor(selection.from + 1),
                         changes: { from: selection.from, to: selection.to, insert: "\t" },
                     }))

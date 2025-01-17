@@ -299,6 +299,7 @@ const from_notebook_type = "c_from_notebook completion_module c_Any"
  */
 const writing_variable_name_or_keyword = (/** @type {autocomplete.CompletionContext} */ ctx) => {
     let just_finished_a_keyword = ctx.matchBefore(endswith_keyword_regex)
+    if (just_finished_a_keyword) return true
 
     // Regex explaination:
     // 1. a keyword that could be followed by a variable name like `catch ex` where `ex` is a variable name that should not get completed
@@ -308,16 +309,21 @@ const writing_variable_name_or_keyword = (/** @type {autocomplete.CompletionCont
     // 3b. a `, ` comma-space, to treat `const a, b` but not `for a in
     // 4. a `$` to match the end of the line
     let after_keyword = ctx.matchBefore(/(catch|local|module|abstract type|struct|macro|const|for|function|let|do) ([@\p{L}\p{Nl}\p{Sc}\d_!,\(\)]|, )*$/u)
+    if (after_keyword) return true
 
     let inside_do_argument_expression = ctx.matchBefore(/do [\(\), \p{L}\p{Nl}\p{Sc}\d_!]*$/u)
+    if (inside_do_argument_expression) return true
 
     let node = syntaxTree(ctx.state).resolve(ctx.pos, -1)
-    // TODO: BareTupleExpression
-    let node2 = node?.parent?.name === "BareTupleExpression" ? node?.parent : node
-    // TODO: AssignmentExpression
-    let inside_assigment_lhs = node?.name === "Identifier" && node2?.parent?.name === "AssignmentExpression" && node2?.nextSibling != null
+    let npn = node?.parent?.name
+    if (node?.name === "Identifier" && npn === "KeywordArguments") return true
 
-    return just_finished_a_keyword || after_keyword || inside_do_argument_expression || inside_assigment_lhs
+    let node2 = npn === "OpenTuple" || npn === "TupleExpression" ? node?.parent : node
+    let n2pn = node2?.parent?.name
+    let inside_assigment_lhs = node?.name === "Identifier" && (n2pn === "Assignment" || n2pn === "KwArg") && node2?.nextSibling != null
+
+    if (inside_assigment_lhs) return true
+    return false
 }
 
 const global_variables_completion =
