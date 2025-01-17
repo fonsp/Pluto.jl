@@ -65,4 +65,4 @@ export {
     linter,
     setDiagnostics,
     //@ts-ignore
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@d17bc01/dist/index.es.min.js"
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@35aa48a/dist/index.es.min.js"

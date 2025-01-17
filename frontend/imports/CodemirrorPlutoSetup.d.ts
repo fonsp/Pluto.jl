@@ -99,6 +99,9 @@ declare abstract class Text implements Iterable<string> {
     objects that it is made up of. For leaf nodes, this holds null.
     */
     abstract readonly children: readonly Text[] | null;
+    /**
+    @hide
+    */
     [Symbol.iterator]: () => Iterator<string>;
     /**
     Create a `Text` instance for the given array of lines.
@@ -6806,6 +6809,7 @@ declare class BlockContext implements PartialParse {
     get depth(): number;
     parentType(depth?: number): NodeType;
     nextLine(): boolean;
+    peekLine(): string;
     private moveRangeI;
     private lineChunkAt;
     prevLineEnd(): number;
