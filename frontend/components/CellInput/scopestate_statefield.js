@@ -216,6 +216,7 @@ export let explore_variable_usage = (tree, doc, _scopestate, verbose = VERBOSE) 
             cursor.name === "ModuleDefinition" ||
             cursor.name === "QuoteStatement" ||
             cursor.name === "QuoteExpression" ||
+            cursor.name === "MacroIdentifier" ||
             cursor.name === "ImportStatement"
         ) {
             if (verbose) console.groupEnd()
