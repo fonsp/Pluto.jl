@@ -475,34 +475,57 @@ function _resolve(notebook::Notebook, iolistener::IOListener)
 end
 
 
+struct AutoFix
+    fix::Function
+    name::String
+end
+
+
+
+const auto_fixes = [
+    AutoFix("Updating registries") do notebook
+        PkgCompat.update_registries(; force=true)
+    end,
+    AutoFix("Removing Manifest") do notebook
+        reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
+        notebook.nbpkg_ctx_instantiated = false
+    end,
+    AutoFix("Removing sourcesssss") do notebook
+        # reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
+        # PkgCompat.clear_compat_entries!(notebook.nbpkg_ctx)
+        # notebook.nbpkg_ctx_instantiated = false
+    end,
+    AutoFix("Removing Project compat entries and Manifest") do notebook
+        reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
+        PkgCompat.clear_compat_entries!(notebook.nbpkg_ctx)
+        notebook.nbpkg_ctx_instantiated = false
+    end,
+]
+
+
+
+
+
+
+
 """
 Run `f` (e.g. `Pkg.instantiate`) on the notebook's package environment. Keep trying more and more invasive strategies to fix problems until the operation succeeds.
 """
-function with_auto_fixes(f::Function, notebook::Notebook)
-    try
-        f()
-    catch e
-        @info "Operation failed. Updating registries and trying again..." exception=e
-        
-        PkgCompat.update_registries(; force=true)
+function with_auto_fixes(f::Function, notebook::Notebook, index::Int=1)
+    
+    if index > length(auto_fixes)
+        return f()
+    else
         try
             f()
         catch e
-            @warn "Operation failed. Removing Manifest and trying again..." exception=e
+            fix = auto_fixes[index]
+            exception = index < length(auto_fixes) ? e : (e, catch_backtrace())
             
-            reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
-            notebook.nbpkg_ctx_instantiated = false
-            try
-                f()
-            catch e
-                @warn "Operation failed. Removing Project compat entries and Manifest and trying again..." exception=(e, catch_backtrace())
-                
-                reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
-                PkgCompat.clear_compat_entries!(notebook.nbpkg_ctx)
-                notebook.nbpkg_ctx_instantiated = false
-                
-                f()
-            end
+            @info "Operation failed. $(fix.name) and trying again..." exception
+            
+            fix.fix(notebook)
+            with_auto_fixes(f, notebook, index + 1)
         end
     end
 end
