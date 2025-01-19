@@ -192,12 +192,11 @@
         /* code highlighting */
         --cm-color-editor-text: #ffe9fc;
         --cm-color-comment: #e96ba8;
-        --cm-color-atom: hsl(8deg 72% 62%);
-        --cm-color-number: hsl(271deg 45% 64%);
-        --cm-color-property: #f99b15;
+        --cm-color-symbol: #f99b15;
+        --cm-color-literal: hsl(271deg 45% 64%);
         --cm-color-keyword: #ff7a6f;
         --cm-color-string: hsl(20deg 69% 59%);
-        --cm-color-var: #afb7d3;
+        --cm-color-variable: #afb7d3;
         --cm-color-var2: #06b6ef;
         --cm-color-macro: #82b38b;
         --cm-color-builtin: #5e7ad3;

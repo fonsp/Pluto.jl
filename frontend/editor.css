@@ -3526,7 +3526,7 @@ pluto-cell.errored .cm-editor .cm-lineNumbers .cm-gutterElement::after {
 }
 
 .cm-completionIcon-c_Number::before {
-    color: var(--cm-color-number);
+    color: var(--cm-color-literal);
 }
 
 .cm-completionIcon-c_String::before,
@@ -3536,7 +3536,7 @@ pluto-cell.errored .cm-editor .cm-lineNumbers .cm-gutterElement::after {
 }
 
 .cm-completionIcon-completion_property::before {
-    color: var(--cm-color-property);
+    color: var(--cm-color-symbol);
 }
 
 .cm-completionIcon-completion_keyword::before {
@@ -3548,13 +3548,13 @@ li.completion_keyword_argument .cm-completionLabel {
     font-weight: bold;
 }
 .cm-completionIcon-completion_keyword_argument::before {
-    color: var(--cm-color-number);
+    color: var(--cm-color-literal);
 }
 
 .cm-completionIcon-c_Any::before,
 pluto-output > assignee,
 pluto-popup code.auto_disabled_variable {
-    color: var(--cm-color-var) !important;
+    color: var(--cm-color-variable) !important;
     font-weight: 700;
 }
 
