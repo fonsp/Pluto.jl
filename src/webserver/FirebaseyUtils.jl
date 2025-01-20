@@ -45,7 +45,11 @@ begin
 			(String(name) => getfield(a, name), i + 1)
 		end
 	end
-
+	function Base.show(io::IO, t::ImmutableMarker)
+		print(io, typeof(t), "(")
+		show(io, t.source)
+		print(io, ")")
+	end
 end
 
 # ╔═╡ 55975e53-f70f-4b70-96d2-b144f74e7cde
