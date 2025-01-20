@@ -2,6 +2,7 @@ import REPL: ends_with_semicolon
 import .Configuration
 import .Throttled
 import ExpressionExplorer: is_joined_funcname
+import UUIDs: UUID
 
 """
 Run given cells and all the cells that depend on them, based on the topology information before and after the changes.
@@ -507,9 +508,6 @@ function cells_to_disable_to_resolve_multiple_defs(old::NotebookTopology, new::N
 		
 		if length(fellow_assigners_new) > length(fellow_assigners_old)
 			other_definers = setdiff(fellow_assigners_new, (cell,))
-			
-			@debug "Solving multiple defs" cell.cell_id cell_id.(other_definers) disjoint(cells, other_definers)
-
 			# we want cell to be the only element of cells that defines this varialbe, i.e. all other definers must have been created previously
 			if disjoint(cells, other_definers)
 				# all fellow cells (including the current cell) should meet some criteria:

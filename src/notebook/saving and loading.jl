@@ -1,4 +1,5 @@
-
+import TOML
+import UUIDs: UUID
 
 const _notebook_header = "### A Pluto.jl notebook ###"
 const _notebook_metadata_prefix = "#> "
@@ -43,7 +44,8 @@ function save_notebook(io::IO, notebook::Notebook)
         end
     end
 
-    # Anything between the version string and the first UUID delimiter will be ignored by the notebook loader.
+    # (Anything between the version string and the first UUID delimiter will be ignored by the notebook loader.)
+    # We insert these two imports because they are also imported by default in the Pluto session. You might use these packages in your code, so we add the imports to the file, so the file can run as a script.
     println(io, "")
     println(io, "using Markdown")
     println(io, "using InteractiveUtils")
@@ -78,15 +80,18 @@ function save_notebook(io::IO, notebook::Notebook)
                 end
             end
         end
+        
+        # Do one little string replacement to make it impossible to use the Pluto cell delimiter inside of actual cell code. If this would happen, then the notebook file cannot load correctly. So we just remove it from your code (sorry!)
+        current_code = replace(c.code, _cell_id_delimiter => "# ")
 
         if must_be_commented_in_file(c)
             print(io, _disabled_prefix)
-            print(io, replace(c.code, _cell_id_delimiter => "# "))
+            print(io, current_code)
             print(io, _disabled_suffix)
             print(io, _cell_suffix)
         else
             # write the cell code and prevent collisions with the cell delimiter
-            print(io, replace(c.code, _cell_id_delimiter => "# "))
+            print(io, current_code)
             print(io, _cell_suffix)
         end
     end
@@ -155,7 +160,7 @@ save_notebook(notebook::Notebook) = save_notebook(notebook, notebook.path)
 # LOADING
 ###
 
-function _notebook_metadata!(@nospecialize(io::IO))
+function _read_notebook_metadata!(@nospecialize(io::IO))
     firstline = String(readline(io))::String
 
     if firstline != _notebook_header
@@ -192,7 +197,7 @@ function _notebook_metadata!(@nospecialize(io::IO))
     return notebook_metadata
 end
 
-function _notebook_collected_cells!(@nospecialize(io::IO))
+function _read_notebook_collected_cells!(@nospecialize(io::IO))
     collected_cells = Dict{UUID,Cell}()
     while !eof(io)
         cell_id_str = String(readline(io))
@@ -239,7 +244,7 @@ function _notebook_collected_cells!(@nospecialize(io::IO))
     return collected_cells
 end
 
-function _notebook_cell_order!(@nospecialize(io::IO), collected_cells)
+function _read_notebook_cell_order!(@nospecialize(io::IO), collected_cells)
     cell_order = UUID[]
     while !eof(io)
         cell_id_str = String(readline(io))
@@ -259,7 +264,7 @@ function _notebook_cell_order!(@nospecialize(io::IO), collected_cells)
     return cell_order
 end
 
-function _notebook_nbpkg_ctx(cell_order::Vector{UUID}, collected_cells::Dict{Base.UUID, Cell})
+function _read_notebook_nbpkg_ctx(cell_order::Vector{UUID}, collected_cells::Dict{Base.UUID, Cell})
     read_package =
         _ptoml_cell_id ∈ cell_order &&
         _mtoml_cell_id ∈ cell_order &&
@@ -295,7 +300,7 @@ function _notebook_nbpkg_ctx(cell_order::Vector{UUID}, collected_cells::Dict{Bas
     return nbpkg_ctx
 end
 
-function _notebook_appeared_order!(cell_order::Vector{UUID}, collected_cells::Dict{Base.UUID, Cell})
+function _read_notebook_appeared_order!(cell_order::Vector{UUID}, collected_cells::Dict{Base.UUID, Cell})
     setdiff!(
         union!(
             # don't include cells that only appear in the order, but no code was given
@@ -310,12 +315,12 @@ end
 
 "Load a notebook without saving it or creating a backup; returns a `Notebook`. REMEMBER TO CHANGE THE NOTEBOOK PATH after loading it to prevent it from autosaving and overwriting the original file."
 function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::AbstractString))::Notebook
-    notebook_metadata = _notebook_metadata!(io)
+    notebook_metadata = _read_notebook_metadata!(io)
+    collected_cells = _read_notebook_collected_cells!(io)
+    cell_order = _read_notebook_cell_order!(io, collected_cells)
+    nbpkg_ctx = _read_notebook_nbpkg_ctx(cell_order, collected_cells)
+    appeared_order = _read_notebook_appeared_order!(cell_order, collected_cells)
 
-    collected_cells = _notebook_collected_cells!(io)
-    cell_order = _notebook_cell_order!(io, collected_cells)
-    nbpkg_ctx = _notebook_nbpkg_ctx(cell_order, collected_cells)
-    appeared_order = _notebook_appeared_order!(cell_order, collected_cells)
     appeared_cells_dict = filter(collected_cells) do (k, v)
         k ∈ appeared_order
     end
@@ -336,16 +341,14 @@ end
 # UTILS
 
 function load_notebook_nobackup(path::String)::Notebook
-    local loaded
     open(path, "r") do io
-        loaded = load_notebook_nobackup(io, path)
+        load_notebook_nobackup(io, path)
     end
-    loaded
 end
 
 # BACKUPS
 
-"Create a backup of the given file, load the file as a .jl Pluto notebook, save the loaded notebook, compare the two files, and delete the backup of the newly saved file is equal to the backup."
+"Create a backup of the given file, load the file as a .jl Pluto notebook, save the loaded notebook, compare the two files, and delete the backup of the newly saved file is mostly equal to the backup."
 function load_notebook(path::String; disable_writing_notebook_files::Bool=false)::Notebook
     backup_path = backup_filename(path)
     # local backup_num = 1

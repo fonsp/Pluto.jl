@@ -1,4 +1,4 @@
-# The goal of this file is to import PlutoRunner into Main. 
+# The goal of this file is to import PlutoRunner into Main, on the process of the notebook (created by Malt.jl).
 # 
 # This is difficult because PlutoRunner uses standard libraries and packages that are not necessarily available in the standard environment. 
 # 
