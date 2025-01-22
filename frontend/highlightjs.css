@@ -43,10 +43,10 @@ code.hljs {
 .hljs-template-variable,
 .hljs-type,
 .hljs-variable {
-    color: var(--cm-color-var);
+    color: var(--cm-color-variable);
 }
 .hljs-number {
-    color: var(--cm-color-number);
+    color: var(--cm-color-literal);
 }
 .hljs-bullet,
 .hljs-link,
