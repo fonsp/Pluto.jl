@@ -133,11 +133,12 @@ end
 
 """
 Will be inserted in saved notebooks that use the @bind macro, make sure that they still contain legal syntax when executed as a vanilla Julia script. Overloading `Base.get` for custom UI objects gives bound variables a sensible value.
-Also turns off JuliaFormatter formatting to avoid issues with the formatter trying to change code that the user does not control. See https://domluna.github.io/JuliaFormatter.jl/stable/#Turn-off/on-formatting
+Also turns off Runic and JuliaFormatter formatting to avoid issues with the formatter trying to change code that the user does not control. See https://domluna.github.io/JuliaFormatter.jl/stable/#Turn-off/on-formatting or https://github.com/fredrikekre/Runic.jl?tab=readme-ov-file#toggle-formatting
 """
-const fake_bind = """macro bind(def, element)
+const fake_bind = """
+macro bind(def, element)
     #! format: off
-    quote
+    return quote
         local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = \$(esc(element))
         global \$(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
