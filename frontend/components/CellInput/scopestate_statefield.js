@@ -226,7 +226,8 @@ export let explore_variable_usage = (tree, doc, _scopestate, verbose = VERBOSE) 
             cursor.name === "QuoteStatement" ||
             cursor.name === "QuoteExpression" ||
             cursor.name === "MacroIdentifier" ||
-            cursor.name === "ImportStatement"
+            cursor.name === "ImportStatement" ||
+            cursor.name === "UsingStatement"
         ) {
             if (verbose) console.groupEnd()
             return false

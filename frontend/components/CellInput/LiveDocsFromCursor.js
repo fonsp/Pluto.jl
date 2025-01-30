@@ -19,6 +19,7 @@ let get_root_variable_from_expression = (cursor) => {
 
 let VALID_DOCS_TYPES = [
     "Identifier",
+    "Field",
     "FieldExpression",
     "IndexExpression",
     "MacroFieldExpression",
@@ -42,6 +43,7 @@ let keywords_that_have_docs_and_are_cool = [
     "baremodule",
     "if",
     "let",
+    ".",
 ]
 
 let is_docs_searchable = (/** @type {import("../../imports/CodemirrorPlutoSetup.js").TreeCursor} */ cursor) => {
@@ -126,6 +128,7 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
 
                 let index_of_struct_in_parents = parents.indexOf("StructDefinition")
                 if (index_of_struct_in_parents !== -1) {
+                    verbose && console.log(`in a struct?`)
                     // If we're in a struct, we basically barely want to search the docs:
                     // - Struct name is useless: you are looking at the definition
                     // - Properties are just named, not in the workspace or anything
@@ -174,8 +177,9 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                 if (
                     (cursor.name === "Operator" || cursor.name === "⚠" || cursor.name === "Identifier") &&
                     parent.name === "QuoteExpression" &&
-                    parent.parent.name === "FieldExpression"
+                    parent.parent?.name === "FieldExpression"
                 ) {
+                    verbose && console.log("Quirky symbol in a quote expression")
                     // TODO Needs a fix added to is_docs_searchable, but this works fine for now
                     return state.sliceDoc(parent.parent.from, parent.parent.to)
                 }
@@ -216,6 +220,7 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                 // So we make sure we don't move to the left (`to` stays the same) and then possibly expand
                 if (parent.to === cursor.to) {
                     if (VALID_DOCS_TYPES.includes(cursor.name) && VALID_DOCS_TYPES.includes(parent.name)) {
+                        verbose && console.log("Expanding identifier")
                         continue
                     }
                 }
@@ -297,6 +302,7 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
 
                 if (VALID_DOCS_TYPES.includes(cursor.name) || keywords_that_have_docs_and_are_cool.includes(cursor.name)) {
                     if (!is_docs_searchable(cursor)) {
+                        verbose && console.log("Not searchable aaa")
                         return undefined
                     }
 

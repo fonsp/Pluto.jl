@@ -81,7 +81,7 @@ function find_import_statements({ state, from, to }) {
             if (node.name === "ImportPath") {
                 const item = {
                     type: "package",
-                    name: doc.sliceString(node.from, node.to),
+                    name: doc.sliceString(node.from, node.to).split(".")[0],
                     from: node.from,
                     to: node.to,
                 }
