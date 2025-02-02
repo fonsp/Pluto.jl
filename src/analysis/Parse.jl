@@ -1,3 +1,5 @@
+# This is how we go from a String of cell code to a Julia `Expr` that can be executed.
+
 import ExpressionExplorer
 import Markdown
 
