@@ -1,5 +1,5 @@
 import Base64
-
+import UUIDs: UUID
 
 const registered_bond_elements = Dict{Symbol, Any}()
 

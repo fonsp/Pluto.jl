@@ -94,6 +94,8 @@ function prefetch_statefile_html(statefile_js::AbstractString)
 end
 
 """
+This function takes the `editor.html` file from Pluto's source code, and uses string replacements to insert custom data. By inserting a statefile (and more), you can create an HTML file that will display a notebook when opened: this is how the Static HTML export works.
+
 See [PlutoSliderServer.jl](https://github.com/JuliaPluto/PlutoSliderServer.jl) if you are interested in exporting notebooks programatically.
 """
 function generate_html(;

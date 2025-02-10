@@ -1,3 +1,11 @@
+"""
+This module contains the "Status" system from Pluto, which you can see in the bottom right in the Pluto editor. It's used to track what is currently happening, for how long. (E.g. "Notebook startup > Julia process starting".)
+
+The Status system is hierachical: a status item can have multiple subtasks. E.g. the "Package manager" status can have subtask "instantiate" and "precompile". In the UI, these are sections that you can fold out.
+
+!!! warning
+    This module is not public API of Pluto.
+"""
 module Status
 
 _default_update_listener() = nothing
