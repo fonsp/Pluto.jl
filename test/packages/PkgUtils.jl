@@ -1,7 +1,5 @@
 
-
-
-
+using Pluto.WorkspaceManager: WorkspaceManager, poll
 using Pluto
 
 
@@ -31,14 +29,16 @@ without_pluto_version(s) = replace(s, r"# v.*" => "")
         @test sort(collect(keys(Pkg.project().dependencies))) == ["Artifacts", "Dates"]
         
         
-        ### EXIT, activate another env and wait for our previous changes to get picked up
+        ### EXIT, activate another env
         Base.ACTIVE_PROJECT[] = ap_before
-        sleep(5)
         
         
         ###
         # get embedded project.toml from notebook:
-        @test occursin("Artifacts", Pluto.PkgCompat.read_project_file(Pluto.load_notebook_nobackup(file)))
+        # (poll to wait for our previous changes to get picked up)
+        @test poll(60, 1/4) do
+            occursin("Artifacts", Pluto.PkgCompat.read_project_file(Pluto.load_notebook_nobackup(file)))
+        end
         
         after = without_pluto_version(read(file, String))
         @test before != after
