@@ -86,11 +86,9 @@ begin
 	"""
 	struct AppendonlyMarker{T} <: AbstractVector{T}
 		mutable_source::Vector{T}
-		length_at_time_of_creation::Int
+		length_at_time_of_creation::Int64
 	end
-	AppendonlyMarker(arr::Vector) = let L = length(arr)
-		AppendonlyMarker(arr, L)
-	end
+	AppendonlyMarker(arr::Vector) = AppendonlyMarker(arr, length(arr))
 	
 	# We use a view here to ensure that if the source array got appended after creation, those newer elements are not accessible.
 	_contents(a::AppendonlyMarker) = view(a.mutable_source, 1:a.length_at_time_of_creation)
