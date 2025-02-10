@@ -85,10 +85,13 @@ begin
 	It was made specifically for logs: Logs are always appended, OR the whole log stream is reset. AppendonlyMarker is like SubArray (a view into another array) except we agree to only ever append to the source array. This way, firebase can just look at the index and diff based on that.
 	"""
 	struct AppendonlyMarker{T} <: AbstractVector{T}
-		mutable_source::Vector{T}
+		# mutable_source::Vector{T}
+		mutable_source::SubArray{T,1,Vector{T},Tuple{UnitRange{Int64}},true}
 		length_at_time_of_creation::Int
 	end
-	AppendonlyMarker(arr) = AppendonlyMarker(arr, length(arr))
+	AppendonlyMarker(arr::Vector) = let L = length(arr)
+		AppendonlyMarker(view(arr, 1:L), L)
+	end
 	
 	# Poor mans vector-proxy
 	# I think this is enough for Pluto to show, and for msgpack to pack
