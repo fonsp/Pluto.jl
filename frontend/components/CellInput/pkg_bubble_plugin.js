@@ -1,9 +1,9 @@
 import _ from "../../imports/lodash.js"
-import { EditorView, syntaxTree, Decoration, ViewUpdate, ViewPlugin, Facet } from "../../imports/CodemirrorPlutoSetup.js"
+import { EditorView, syntaxTree, Decoration, ViewUpdate, ViewPlugin, Facet, EditorState } from "../../imports/CodemirrorPlutoSetup.js"
 import { PkgStatusMark, PkgActivateMark } from "../PkgStatusMark.js"
 import { html } from "../../imports/Preact.js"
 import { ReactWidget } from "./ReactWidget.js"
-import { create_specific_template_maker, iterate_with_cursor, jl, jl_dynamic, narrow, t, template } from "./lezer_template.js"
+import { iterate_with_cursor } from "./lezer_template.js"
 
 /**
  * @typedef PkgstatusmarkWidgetProps
@@ -23,145 +23,78 @@ export const pkg_disablers = [
     "@quickactivate",
 ]
 
-function find_import_statements({ doc, tree, from, to }) {
-    // This quotelevel stuff is waaaay overengineered and precise...
-    // but I love making stuff like this SO LET ME OKAY
-    let quotelevel = 0
+/**
+ * @param {object} a
+ * @param {EditorState} a.state
+ * @param {Number} a.from
+ * @param {Number} a.to
+ */
+function find_import_statements({ state, from, to }) {
+    const doc = state.doc
+    const tree = syntaxTree(state)
+
     let things_to_return = []
+
+    let currently_using_or_import = "import"
+    let currently_selected_import = false
 
     iterate_with_cursor({
         tree,
         from,
         to,
-        enter: (cursor) => {
-            // `quote ... end` or `:(...)`
-            if (cursor.name === "QuoteExpression" || cursor.name === "QuoteStatement") {
-                quotelevel++
-            }
-            // `$(...)` when inside quote
-            if (cursor.name === "InterpolationExpression") {
-                quotelevel--
-            }
-            if (quotelevel !== 0) return
+        enter: (node) => {
+            let go_to_parent_afterwards = null
 
-            // Check for Pkg.activate() and friends
-            if (cursor.name === "CallExpression" || cursor.name === "MacroExpression") {
-                let node = cursor.node
-                let callee = node.firstChild
-                let callee_name = doc.sliceString(callee.from, callee.to)
+            if (node.name === "QuoteExpression" || node.name === "FunctionDefinition") return false
 
-                if (pkg_disablers.includes(callee_name)) {
-                    things_to_return.push({
-                        type: "package_disabler",
-                        name: callee_name,
-                        from: cursor.to,
-                        to: cursor.to,
-                    })
-                }
+            if (node.name === "import") currently_using_or_import = "import"
+            if (node.name === "using") currently_using_or_import = "using"
 
-                return
-            }
+            // console.group("exploring", node.name, doc.sliceString(node.from, node.to), node)
 
-            let import_specifier_template = create_specific_template_maker((x) => jl_dynamic`import A, ${x}`)
-            // Because the templates can't really do recursive stuff, we need JavaScript™️!
-            let unwrap_scoped_import = (specifier) => {
-                let match = null
-                if ((match = import_specifier_template(jl`${t.as("package")}.${t.any}`).match(specifier))) {
-                    return unwrap_scoped_import(match.package)
-                } else if ((match = import_specifier_template(jl`.${t.maybe(t.any)}`).match(specifier))) {
-                    // Still trash!
-                    return null
-                } else if ((match = import_specifier_template(jl`${t.Identifier}`).match(specifier))) {
-                    return specifier
-                } else {
-                    console.warn("Unknown nested import specifier: " + specifier.toString())
-                }
-            }
+            if (node.name === "CallExpression" || node.name === "MacrocallExpression") {
+                let callee = node.node.firstChild
+                if (callee) {
+                    let callee_name = doc.sliceString(callee.from, callee.to)
 
-            let match = null
-            if (
-                // These templates might look funky... and they are!
-                // But they are necessary to force the matching to match as specific as possible.
-                // With just `import ${t.many("specifiers")}` it will match `import A, B, C`, but
-                //    it will do so by giving back [`A, B, C`] as one big specifier!
-                (match = template(jl`import ${t.as("specifier")}: ${t.many()}`).match(cursor)) ??
-                (match = template(jl`import ${t.as("specifier")}, ${t.many("specifiers")}`).match(cursor)) ??
-                (match = template(jl`using ${t.as("specifier")}: ${t.many()}`).match(cursor)) ??
-                (match = template(jl`using ${t.as("specifier")}, ${t.many("specifiers")}`).match(cursor))
-            ) {
-                let { specifier, specifiers = [] } = match
-
-                if (specifier) {
-                    specifiers = [{ node: specifier }, ...specifiers]
-                }
-
-                for (let { node: specifier } of specifiers) {
-                    specifier = narrow(specifier)
-
-                    let match = null
-                    if ((match = import_specifier_template(jl`${t.as("package")} as ${t.maybe(t.any)}`).match(specifier))) {
-                        let node = unwrap_scoped_import(match.package)
-                        if (node) {
-                            things_to_return.push({
-                                type: "package",
-                                name: doc.sliceString(node.from, node.to),
-                                from: node.to,
-                                to: node.to,
-                            })
-                        }
-                    } else if ((match = import_specifier_template(jl`${t.as("package")}.${t.any}`).match(specifier))) {
-                        let node = unwrap_scoped_import(match.package)
-                        if (node) {
-                            things_to_return.push({
-                                type: "package",
-                                name: doc.sliceString(node.from, node.to),
-                                from: node.to,
-                                to: node.to,
-                            })
-                        }
-                    } else if ((match = import_specifier_template(jl`.${t.as("scoped")}`).match(specifier))) {
-                        // Trash!
-                    } else if ((match = import_specifier_template(jl`${t.as("package")}`).match(specifier))) {
-                        let node = unwrap_scoped_import(match.package)
-                        if (node) {
-                            things_to_return.push({
-                                type: "package",
-                                name: doc.sliceString(node.from, node.to),
-                                from: node.to,
-                                to: node.to,
-                            })
-                        }
-                    } else {
-                        console.warn("Unknown import specifier: " + specifier.toString())
+                    if (pkg_disablers.includes(callee_name)) {
+                        things_to_return.push({
+                            type: "package_disabler",
+                            name: callee_name,
+                            from: node.from,
+                            to: node.to,
+                        })
                     }
                 }
-
-                match = null
-                if ((match = template(jl`using ${t.as("specifier")}, ${t.many("specifiers")}`).match(cursor))) {
-                    let { specifier } = match
-                    if (specifier) {
-                        if (doc.sliceString(specifier.to, specifier.to + 1) === "\n" || doc.sliceString(specifier.to, specifier.to + 1) === "") {
-                            things_to_return.push({
-                                type: "implicit_using",
-                                name: doc.sliceString(specifier.from, specifier.to),
-                                from: specifier.to,
-                                to: specifier.to,
-                            })
-                        }
-                    }
-                }
-
                 return false
-            } else if (cursor.name === "ImportStatement") {
-                throw new Error("What")
             }
-        },
-        leave: (cursor) => {
-            if (cursor.name === "QuoteExpression" || cursor.name === "QuoteStatement") {
-                quotelevel--
+
+            if (node.name === "ImportStatement") {
+                currently_selected_import = false
             }
-            if (cursor.name === "InterpolationExpression") {
-                quotelevel++
+            if (node.name === "SelectedImport") {
+                currently_selected_import = true
+                node.firstChild()
+                go_to_parent_afterwards = true
+            }
+
+            if (node.name === "ImportPath") {
+                const item = {
+                    type: "package",
+                    name: doc.sliceString(node.from, node.to).split(".")[0],
+                    from: node.from,
+                    to: node.to,
+                }
+
+                things_to_return.push(item)
+
+                // This is just for show... might delete it later
+                if (currently_using_or_import === "using" && !currently_selected_import) things_to_return.push({ ...item, type: "implicit_using" })
+            }
+
+            if (go_to_parent_afterwards) {
+                node.parent()
+                return false
             }
         },
     })
@@ -179,8 +112,7 @@ function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg }) {
     let widgets = view.visibleRanges
         .flatMap(({ from, to }) => {
             let things_to_mark = find_import_statements({
-                doc: view.state.doc,
-                tree: syntaxTree(view.state),
+                state: view.state,
                 from: from,
                 to: to,
             })
@@ -240,7 +172,7 @@ function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg }) {
 }
 
 /**
- * @type {Facet<import("../Editor.js").NotebookPkgData?>}
+ * @type {Facet<import("../Editor.js").NotebookPkgData?, import("../Editor.js").NotebookPkgData?>}
  */
 export const NotebookpackagesFacet = Facet.define({
     combine: (values) => values[0],
@@ -277,6 +209,7 @@ export const pkgBubblePlugin = ({ pluto_actions, notebook_id_ref }) =>
             }
         },
         {
+            // @ts-ignore
             decorations: (v) => v.decorations,
         }
     )

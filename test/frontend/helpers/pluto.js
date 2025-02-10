@@ -64,7 +64,7 @@ export const shutdownCurrentNotebook = async (page) => {
 export const setupPlutoBrowser = async () => {
     const browser = await puppeteer.launch({
         headless: process.env.HEADLESS !== "false",
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        args: ["--no-sandbox"],
         devtools: false,
     })
 
