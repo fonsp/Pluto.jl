@@ -85,21 +85,21 @@ begin
 	It was made specifically for logs: Logs are always appended, OR the whole log stream is reset. AppendonlyMarker is like SubArray (a view into another array) except we agree to only ever append to the source array. This way, firebase can just look at the index and diff based on that.
 	"""
 	struct AppendonlyMarker{T} <: AbstractVector{T}
-		# mutable_source::Vector{T}
-		mutable_source::SubArray{T,1,Vector{T},Tuple{UnitRange{Int64}},true}
+		mutable_source::Vector{T}
 		length_at_time_of_creation::Int
 	end
 	AppendonlyMarker(arr::Vector) = let L = length(arr)
-		AppendonlyMarker(view(arr, 1:L), L)
+		AppendonlyMarker(arr, L)
 	end
+	
+	# We use a view here to ensure that if the source array got appended after creation, those newer elements are not accessible.
+	_contents(a::AppendonlyMarker) = view(a.mutable_source, 1:a.length_at_time_of_creation)
 	
 	# Poor mans vector-proxy
 	# I think this is enough for Pluto to show, and for msgpack to pack
-	function Base.size(arr::AppendonlyMarker)
-		return (arr.length_at_time_of_creation,)
-	end
-	Base.getindex(arr::AppendonlyMarker, index::Int) = arr.mutable_source[index]
-	Base.iterate(arr::AppendonlyMarker, args...) = Base.iterate(arr.mutable_source, args...)
+	Base.size(arr::AppendonlyMarker) = Base.size(_contents(arr))
+	Base.getindex(arr::AppendonlyMarker, index::Int) = Base.getindex(_contents(arr), index)
+	Base.iterate(arr::AppendonlyMarker, args...) = Base.iterate(_contents(arr), args...)
 end
 
 # ╔═╡ ef7032d1-a666-48a6-a56e-df175f5ed832
