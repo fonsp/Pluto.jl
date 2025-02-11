@@ -712,4 +712,11 @@ function interrupt_workspace(session_notebook::Union{SN,Workspace}; verbose=true
     end
 end
 
+function gc_worker(session_notebook::SN)
+    workspace = get_workspace(session_notebook)
+    if isdefined(Malt, :requestgc)
+        Malt.requestgc(workspace.worker)
+    end
+end
+
 end

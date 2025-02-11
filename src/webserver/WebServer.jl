@@ -1,9 +1,10 @@
 import MsgPack
 import UUIDs: UUID
 import HTTP
+import GCUtils: setup_gc
+
 import Sockets
 import .PkgCompat
-import .GCUtils: setup_gc
 
 function open_in_default_browser(url::AbstractString)::Bool
     try
@@ -169,7 +170,7 @@ function run!(session::ServerSession)
     local port, serversocket = port_serversocket(hostIP, favourite_port, port_hint)
 
     # Manual GC for the server process
-    after_http, cleanup, rest = setup_gc()
+    after_http, cleanup, rest = setup_gc(360)
 
     on_shutdown() = @sync begin
         # Triggered by HTTP.jl
@@ -183,6 +184,7 @@ function run!(session::ServerSession)
         for nb in values(session.notebooks)
             @asynclog SessionActions.shutdown(session, nb; keep_in_session=false, async=false, verbose=false)
         end
+        cleanup()
     end
 
     server = HTTP.listen!(hostIP, port; stream=true, server=serversocket, on_shutdown, verbose=-1) do http::HTTP.Stream
