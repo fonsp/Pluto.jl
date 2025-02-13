@@ -7,6 +7,7 @@ import Pkg
 import Pkg.Types: VersionRange
 import RegistryInstances
 import ..Pluto
+import Scratch
 
 @static if isdefined(Pkg,:REPLMode) && isdefined(Pkg.REPLMode,:complete_remote_package)
     const REPLMode = Pkg.REPLMode
@@ -85,8 +86,14 @@ else
     create_empty_ctx()
 end
 
+
+
+
+make_temp_dir_in_scratch() = Scratch.@get_scratch!("nb_env_$(String(rand('a':'z', 16)))")
+
+
 # 🐸 "Public API", but using PkgContext
-create_empty_ctx()::PkgContext = load_ctx!(PkgContext(), mktempdir())
+create_empty_ctx()::PkgContext = load_ctx!(PkgContext(), make_temp_dir_in_scratch())
 
 # ⚠️ Internal API with fallback
 function load_ctx!(original::PkgContext)
