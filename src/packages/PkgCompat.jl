@@ -200,7 +200,12 @@ end
 # ✅ Public API
 function update_registries(; force::Bool=false)
 	if force || !_updated_registries_compat[]
-		Pkg.Registry.update()
+		try
+			Pkg.Registry.update()
+		catch
+			# sometimes it just fails but we dont want Pluto to be too sensitive to that
+			Pkg.Registry.update()
+		end
 		try
 			refresh_registry_cache()
 		catch
