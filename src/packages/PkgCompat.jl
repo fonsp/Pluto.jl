@@ -200,7 +200,12 @@ end
 # ✅ Public API
 function update_registries(; force::Bool=false)
 	if force || !_updated_registries_compat[]
-		Pkg.Registry.update()
+		try
+			Pkg.Registry.update()
+		catch
+			# sometimes it just fails but we dont want Pluto to be too sensitive to that
+			Pkg.Registry.update()
+		end
 		try
 			refresh_registry_cache()
 		catch
@@ -442,9 +447,10 @@ end
 ###
 
 
-_project_key_order = ["name", "uuid", "keywords", "license", "desc", "deps", "compat"]
+const _project_key_order = ["name", "uuid", "keywords", "license", "desc", "deps", "weakdeps", "sources", "extensions", "compat"]
 project_key_order(key::String) =
     something(findfirst(x -> x == key, _project_key_order), length(_project_key_order) + 1)
+
 
 # ✅ Public API
 function _modify_compat!(f!::Function, ctx::PkgContext)::PkgContext

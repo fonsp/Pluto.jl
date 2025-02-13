@@ -46,13 +46,22 @@ function _find_bound_variables!(found::Set{Symbol}, expr::Any) end
 
 
 "Return the given cells, and all cells that depend on them (recursively)."
-function downstream_recursive(notebook::Notebook, topology::NotebookTopology, from::Union{Vector{Cell},Set{Cell}})::Set{Cell}
+function downstream_recursive(
+    notebook::Notebook,
+    topology::NotebookTopology,
+    from::Union{Vector{Cell},Set{Cell}},
+)::Set{Cell}
     found = Set{Cell}(copy(from))
     _downstream_recursive!(found, notebook, topology, from)
     found
 end
 
-function _downstream_recursive!(found::Set{Cell}, notebook::Notebook, topology::NotebookTopology, from::Vector{Cell})::Nothing
+function _downstream_recursive!(
+    found::Set{Cell},
+    notebook::Notebook,
+    topology::NotebookTopology,
+    from::Vector{Cell},
+)::Nothing
     for cell in from
         one_down = PlutoDependencyExplorer.where_referenced(topology, cell)
         for next in one_down
@@ -68,13 +77,22 @@ end
 
 
 "Return all cells that are depended upon by any of the given cells."
-function upstream_recursive(notebook::Notebook, topology::NotebookTopology, from::Union{Vector{Cell},Set{Cell}})::Set{Cell}
+function upstream_recursive(
+    notebook::Notebook,
+    topology::NotebookTopology,
+    from::Union{Vector{Cell},Set{Cell}},
+)::Set{Cell}
     found = Set{Cell}(copy(from))
     _upstream_recursive!(found, notebook, topology, from)
     found
 end
 
-function _upstream_recursive!(found::Set{Cell}, notebook::Notebook, topology::NotebookTopology, from::Vector{Cell})::Nothing
+function _upstream_recursive!(
+    found::Set{Cell},
+    notebook::Notebook,
+    topology::NotebookTopology,
+    from::Vector{Cell},
+)::Nothing
     for cell in from
         references = topology.nodes[cell].references
         for upstream in PlutoDependencyExplorer.where_assigned(topology, references)

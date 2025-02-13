@@ -1,8 +1,8 @@
-import { EditorView, syntaxTree, syntaxTreeAvailable } from "../../imports/CodemirrorPlutoSetup.js"
+import { EditorView, syntaxTree, syntaxTreeAvailable, Text } from "../../imports/CodemirrorPlutoSetup.js"
 import { iterate_with_cursor } from "./lezer_template.js"
 
 /**
- * @param {any} doc
+ * @param {Text} doc
  * @param {ReturnType<typeof syntaxTree>} tree
  */
 let find_error_nodes = (doc, tree) => {
