@@ -703,10 +703,12 @@ import Malt
             
             is_broken_idk_why = Sys.iswindows() && v"1.11.0-aa" <= VERSION < v"1.12" && !match
 
-            # There should be a log message about loading the cache.
-            @test occursin(r"Loading.*cache"i, full_logs) broken=is_broken_idk_why
-            # There should NOT be a log message about rejecting the cache.
-            @test !occursin(r"reject.*cache"i, full_logs) broken=is_broken_idk_why
+            if !is_broken_idk_why
+                # There should be a log message about loading the cache.
+                @test occursin(r"Loading.*cache"i, full_logs)
+                # There should NOT be a log message about rejecting the cache.
+                @test !occursin(r"reject.*cache"i, full_logs)
+            end
             
             # Running the import should not have triggered additional precompilation, everything should have been precompiled during Pkg.precompile() (in sync_nbpkg).
             @test after_sync == after_run
