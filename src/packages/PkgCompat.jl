@@ -261,7 +261,7 @@ end
 ###
 
 # (✅ Public API)
-_stdlibs_found = readdir(Sys.STDLIB)
+_stdlibs_found = sort(readdir(Sys.STDLIB))
 _stdlibs() = _stdlibs_found
 
 # ⚠️ Internal API with fallback
