@@ -25,7 +25,7 @@ import { pluto_syntax_colors_julia, ENABLE_CM_MIXED_PARSER } from "./CellInput.j
 
 import hljs from "../imports/highlightjs.js"
 import { julia_mixed } from "./CellInput/mixedParsers.js"
-import { julia_andrey } from "../imports/CodemirrorPlutoSetup.js"
+import { julia } from "../imports/CodemirrorPlutoSetup.js"
 import { SafePreviewSanitizeMessage } from "./SafePreviewUI.js"
 
 const prettyAssignee = (assignee) =>
@@ -680,7 +680,7 @@ export let highlight = (code_element, language) => {
                         syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
                         EditorState.tabSize.of(4),
                         // TODO Other languages possibly?
-                        ...(language === "julia" ? [ENABLE_CM_MIXED_PARSER ? julia_mixed() : julia_andrey()] : []),
+                        ...(language === "julia" ? [ENABLE_CM_MIXED_PARSER ? julia_mixed() : julia()] : []),
                         EditorView.lineWrapping,
                         EditorView.editable.of(false),
                     ].filter((x) => x != null),

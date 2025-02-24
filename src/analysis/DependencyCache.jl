@@ -1,3 +1,5 @@
+import UUIDs: UUID
+
 """
 Gets a dictionary of all symbols and the respective cells which are dependent on the given cell.
 
