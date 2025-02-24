@@ -93,7 +93,13 @@ const statusmap = (/** @type {EditorState} */ state, /** @type {LaunchParameters
     nbpkg_restart_recommended: state.notebook.nbpkg?.restart_recommended_msg != null,
     nbpkg_disabled: state.notebook.nbpkg?.enabled === false || state.notebook.nbpkg?.waiting_for_permission_but_probably_disabled === true,
     static_preview: state.static_preview,
-    bonds_disabled: !(state.connected || state.initializing || launch_params.slider_server_url != null),
+    bonds_disabled: !(
+        state.initializing ||
+        // connected to regular pluto server
+        state.connected ||
+        // connected to slider server
+        (launch_params.slider_server_url != null && (state.slider_server?.connecting || state.slider_server?.interactive))
+    ),
     offer_binder: state.backend_launch_phase === BackendLaunchPhase.wait_for_user && launch_params.binder_url != null,
     offer_local: state.backend_launch_phase === BackendLaunchPhase.wait_for_user && launch_params.pluto_server_url != null,
     binder: launch_params.binder_url != null && state.backend_launch_phase != null,
