@@ -217,15 +217,28 @@ export const Notebook = ({
                         is_first_cell=${i === 0}
                     />`
                 )}
-            ${cell_outputs_delayed && notebook.cell_order.length >= render_cell_outputs_minimum
-                ? html`<div
-                      style="font-family: system-ui; font-style: italic; text-align: center; padding: 5rem 1rem; margin-bottom: ${(notebook.cell_order.length -
-                          render_cell_outputs_minimum) *
-                      10}rem;"
-                  >
-                      Loading more cells...
-                  </div>`
-                : null}
+            ${
+                // Waiting for the last deleted cell to be recovered...
+                notebook.cell_order.length === 0 ||
+                // Waiting for all cells to be displayed...
+                (cell_outputs_delayed && notebook.cell_order.length >= render_cell_outputs_minimum)
+                    ? html`<div
+                          style="
+                        font-family: system-ui;
+                        font-style: italic;
+                        padding: 0.3rem 1rem;
+                        margin: 1rem 0rem;
+                        border-radius: .3rem;
+                        background: var(--blockquote-bg);
+                        opacity: 0.6;
+                        animation: fadeintext .2s 1.5s linear;
+                        animation-fill-mode: both;
+                        margin-bottom: ${Math.max(0, (notebook.cell_order.length - render_cell_outputs_minimum) * 10)}rem;"
+                      >
+                          Loading cells...
+                      </div>`
+                    : null
+            }
         </pluto-notebook>
     `
 }

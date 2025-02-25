@@ -1238,6 +1238,15 @@ pluto-output:not(.rich_output) > div > pre {
     filter: grayscale(1);
 }
 
+@keyframes fadeintext {
+    from {
+        color: transparent;
+    }
+    to {
+        color: inherit;
+    }
+}
+
 /* as embedded display: */
 
 pluto-display {
