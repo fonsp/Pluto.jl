@@ -273,8 +273,6 @@ const complete_anyword = async (/** @type {autocomplete.CompletionContext} */ ct
     const results_from_cm = await autocomplete.completeAnyWord(ctx)
     if (results_from_cm === null) return null
 
-    if (ctx.tokenBefore(["Identifier", "IntegerLiteral", "FloatLiteral"])) return null
-
     return {
         from: results_from_cm.from,
         commitCharacters: julia_commit_characters(ctx),
@@ -373,11 +371,10 @@ const global_variables_completion =
 
 const local_variables_completion = (/** @type {autocomplete.CompletionContext} */ ctx) => {
     let scopestate = ctx.state.field(ScopeStateField)
-    let unicode = ctx.tokenBefore(["Identifier"])
+    let identifier = ctx.tokenBefore(["Identifier"])
+    if (identifier == null) return null
 
-    if (unicode === null) return null
-
-    let { from, to, text } = unicode
+    let { from, to, text } = identifier
 
     return {
         from,
@@ -386,7 +383,9 @@ const local_variables_completion = (/** @type {autocomplete.CompletionContext} *
         options: scopestate.locals
             .filter(
                 ({ validity, name }) =>
-                    name.startsWith(text) /** <- NOTE: A smarter matching strategy can be used here */ && from > validity.from && to <= validity.to
+                    name.startsWith(text) /** <- NOTE: A smarter matching strategy can be used here, like completeFromList */ &&
+                    from > validity.from &&
+                    to <= validity.to
             )
             .map(({ name }, i) => ({
                 // See https://github.com/codemirror/codemirror.next/issues/788 about `type: null`
@@ -529,9 +528,9 @@ export let pluto_autocomplete = ({ request_autocomplete, request_special_symbols
                 global_variables_completion(request_unsubmitted_global_definitions, cell_id),
                 special_symbols_completion(request_special_symbols),
                 julia_code_completions_to_cm(memoize_last_request_autocomplete),
-                complete_anyword,
+                // complete_anyword,
                 // TODO: Disabled because of performance problems, see https://github.com/fonsp/Pluto.jl/pull/1925. Remove `complete_anyword` once fixed. See https://github.com/fonsp/Pluto.jl/pull/2013
-                // local_variables_completion,
+                local_variables_completion,
             ],
             defaultKeymap: false, // We add these manually later, so we can override them if necessary
             maxRenderedOptions: 512, // fons's magic number
