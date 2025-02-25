@@ -2953,14 +2953,11 @@ nav#undo_delete {
     left: 0px;
     margin: 0.75rem;
     padding: 0.5rem;
-
-    font-family: var(--roboto-mono-font-stack);
-    font-size: 0.75rem;
-
-    background-color: var(--white);
-    border-radius: 3px;
+    font-family: var(--system-ui-font-stack);
+    font-size: .8rem;
+    background-color: var(--helpbox-header-tab-bg-color);
+    border-radius: 8px;
     color: var(--black);
-
     box-shadow: 00px 00px 10px 2px var(--undo-delete-box-shadow-color);
     opacity: 1;
     transition: 0.2s linear box-shadow, 0.2s ease-out margin-bottom, 0.05s linear opacity;
