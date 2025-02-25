@@ -369,32 +369,31 @@ const global_variables_completion =
               }
     }
 
-const local_variables_completion = (/** @type {autocomplete.CompletionContext} */ ctx) => {
+const local_variables_completion = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
     let scopestate = ctx.state.field(ScopeStateField)
     let identifier = ctx.tokenBefore(["Identifier"])
     if (identifier == null) return null
 
-    let { from, to, text } = identifier
+    let { from, to } = identifier
 
-    return {
-        from,
-        to,
-        commitCharacters: julia_commit_characters(ctx),
-        options: scopestate.locals
-            .filter(
-                ({ validity, name }) =>
-                    name.startsWith(text) /** <- NOTE: A smarter matching strategy can be used here, like completeFromList */ &&
-                    from > validity.from &&
-                    to <= validity.to
-            )
-            .map(({ name }, i) => ({
-                // See https://github.com/codemirror/codemirror.next/issues/788 about `type: null`
-                label: name,
-                apply: name,
-                type: undefined,
-                boost: 99 - i,
-            })),
-    }
+    const possibles = scopestate.locals
+        .filter(({ validity }) => from > validity.from && to <= validity.to)
+        .map(({ name }, i) => ({
+            // See https://github.com/codemirror/codemirror.next/issues/788 about `type: null`
+            label: name,
+            apply: name,
+            type: undefined,
+            boost: 99 - i,
+        }))
+
+    const from_cm = await autocomplete.completeFromList(possibles)(ctx)
+    return from_cm == null
+        ? null
+        : {
+              ...from_cm,
+              validFor,
+              commitCharacters: julia_commit_characters(ctx),
+          }
 }
 const special_latex_examples = ["\\sqrt", "\\pi", "\\approx"]
 const special_emoji_examples = ["🐶", "🐱", "🐭", "🐰", "🐼", "🐨", "🐸", "🐔", "🐧"]
