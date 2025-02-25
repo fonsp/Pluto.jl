@@ -314,11 +314,11 @@ function _read_notebook_appeared_order!(cell_order::Vector{UUID}, collected_cell
 end
 
 "Load a notebook without saving it or creating a backup; returns a `Notebook`. REMEMBER TO CHANGE THE NOTEBOOK PATH after loading it to prevent it from autosaving and overwriting the original file."
-function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::AbstractString))::Notebook
+function load_notebook_nobackup(@nospecialize(io::IO), @nospecialize(path::AbstractString); skip_nbpkg::Bool=false)::Notebook
     notebook_metadata = _read_notebook_metadata!(io)
     collected_cells = _read_notebook_collected_cells!(io)
     cell_order = _read_notebook_cell_order!(io, collected_cells)
-    nbpkg_ctx = _read_notebook_nbpkg_ctx(cell_order, collected_cells)
+    nbpkg_ctx = skip_nbpkg ? nothing : _read_notebook_nbpkg_ctx(cell_order, collected_cells)
     appeared_order = _read_notebook_appeared_order!(cell_order, collected_cells)
 
     appeared_cells_dict = filter(collected_cells) do (k, v)
@@ -340,9 +340,9 @@ end
 
 # UTILS
 
-function load_notebook_nobackup(path::String)::Notebook
+function load_notebook_nobackup(path::String; kwargs...)::Notebook
     open(path, "r") do io
-        load_notebook_nobackup(io, path)
+        load_notebook_nobackup(io, path; kwargs...)
     end
 end
 
