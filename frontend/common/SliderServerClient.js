@@ -69,6 +69,15 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
         )
     })
 
+    bond_connections.catch((x) => {
+        setStatePromise(
+            immer((state) => {
+                state.slider_server.connecting = false
+                state.slider_server.interactive = false
+            })
+        )
+    })
+
     const mybonds = {}
     const bonds_to_set = {
         current: new Set(),

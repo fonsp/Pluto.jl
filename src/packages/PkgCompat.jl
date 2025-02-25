@@ -200,7 +200,12 @@ end
 # ✅ Public API
 function update_registries(; force::Bool=false)
 	if force || !_updated_registries_compat[]
-		Pkg.Registry.update()
+		try
+			Pkg.Registry.update()
+		catch
+			# sometimes it just fails but we dont want Pluto to be too sensitive to that
+			Pkg.Registry.update()
+		end
 		try
 			refresh_registry_cache()
 		catch
@@ -255,22 +260,9 @@ end
 # Standard Libraries
 ###
 
-# (⚠️ Internal API with fallback)
-_stdlibs() = try
-	stdlibs = values(Pkg.Types.stdlibs())
-	T = eltype(stdlibs)
-	if T == String
-		stdlibs
-	elseif T <: Tuple{String,Any}
-		first.(stdlibs)
-	else
-		error()
-	end
-catch e
-	@warn "Pkg compat: failed to load standard libraries." exception=(e,catch_backtrace())
-
-	String["ArgTools", "Artifacts", "Base64", "CRC32c", "CompilerSupportLibraries_jll", "Dates", "DelimitedFiles", "Distributed", "Downloads", "FileWatching", "Future", "GMP_jll", "InteractiveUtils", "LLD_jll", "LLVMLibUnwind_jll", "LazyArtifacts", "LibCURL", "LibCURL_jll", "LibGit2", "LibGit2_jll", "LibOSXUnwind_jll", "LibSSH2_jll", "LibUV_jll", "LibUnwind_jll", "Libdl", "LinearAlgebra", "Logging", "MPFR_jll", "Markdown", "MbedTLS_jll", "Mmap", "MozillaCACerts_jll", "NetworkOptions", "OpenBLAS_jll", "OpenLibm_jll", "PCRE2_jll", "Pkg", "Printf", "Profile", "REPL", "Random", "SHA", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "SuiteSparse", "SuiteSparse_jll", "TOML", "Tar", "Test", "UUIDs", "Unicode", "Zlib_jll", "dSFMT_jll", "libLLVM_jll", "libblastrampoline_jll", "nghttp2_jll", "p7zip_jll"]
-end
+# (✅ Public API)
+_stdlibs_found = sort(readdir(Sys.STDLIB))
+_stdlibs() = _stdlibs_found
 
 # ⚠️ Internal API with fallback
 is_stdlib(package_name::AbstractString) = package_name ∈ _stdlibs()

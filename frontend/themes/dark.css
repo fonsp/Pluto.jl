@@ -175,7 +175,7 @@
         --footnote-border-color: rgba(114, 225, 231, 0.15);
 
         /* undo delete cell*/
-        --undo-delete-box-shadow-color: rgba(213, 213, 214, 0.2);
+        --undo-delete-box-shadow-color: rgb(0 0 0 / 6%);
 
         /*codemirror hints*/
         --cm-color-editor-tooltip-border: rgba(0, 0, 0, 0.2);
