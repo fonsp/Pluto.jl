@@ -140,6 +140,8 @@ const i_am_nth_child = (cursor) => {
  * @returns {Range[]}
  */
 const explore_funcdef_arguments = (cursor, { enter, leave }) => {
+    VERBOSE && console.assert(cursor.name === "TupleExpression" || cursor.name === "Arguments", cursor.name)
+
     let found = []
 
     const position_validation = cursor_not_moved_checker(cursor)
@@ -148,26 +150,36 @@ const explore_funcdef_arguments = (cursor, { enter, leave }) => {
     if (!cursor.firstChild()) throw new Error(`Expected to go into function definition argument expression, stuck at ${cursor.name}`)
     // should be in the TupleExpression now
 
-    // @ts-ignore
-    VERBOSE && console.assert(cursor.name === "TupleExpression" || cursor, name === "Arguments", cursor.name)
-
     cursor.firstChild()
-    do {
-        if (cursor.name === "KeywordArguments") {
-            cursor.firstChild() // go into kwarg arguments
-        }
 
+    const explore_argument = () => {
         if (cursor.name === "Identifier" || cursor.name === "Operator") {
             found.push(r(cursor))
         } else if (cursor.name === "KwArg") {
             let went_in = cursor.firstChild()
-            found.push(r(cursor))
-            // cursor.nextSibling()
+            explore_argument()
+            cursor.nextSibling()
             // find stuff used here
-            // cursor.iterate(enter, leave)
+            cursor.iterate(enter, leave)
+
+            if (went_in) cursor.parent()
+        } else if (cursor.name === "BinaryExpression") {
+            let went_in = cursor.firstChild()
+            explore_argument()
+            cursor.nextSibling()
+            cursor.nextSibling()
+            // find stuff used here
+            cursor.iterate(enter, leave)
 
             if (went_in) cursor.parent()
         }
+    }
+
+    do {
+        if (cursor.name === "KeywordArguments") {
+            cursor.firstChild() // go into kwarg arguments
+        }
+        explore_argument()
     } while (cursor.nextSibling())
 
     position_resetter()
