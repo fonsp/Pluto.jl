@@ -22,22 +22,15 @@ export const UndoDelete = ({ recently_deleted, on_click }) => {
     let text = recently_deleted == null ? "" : recently_deleted.length === 1 ? "Cell deleted" : `${recently_deleted.length} cells deleted`
 
     return html`
-        <nav
-            id="undo_delete"
-            inert=${hidden}
-            class=${cl({
-                hidden: hidden,
-            })}
-        >
+        <nav id="undo_delete" inert=${hidden} class=${cl({ hidden })}>
             ${text} (<a
                 href="#"
                 onClick=${(e) => {
                     e.preventDefault()
                     set_hidden(true)
-
                     on_click()
                 }}
-                >UNDO</a
+                ><strong>UNDO</strong></a
             >)
         </nav>
     `
