@@ -1,8 +1,12 @@
-### A Pluto.jl notebook ###
-# v0.14.0
+### A JIVEbook.jl notebook ###
+# v0.0.2
 
 using Markdown
 using InteractiveUtils
+using JIVECore
+using PlutoPlotly, PlutoUI
+import Main.PlutoRunner.JIVECore.Data.image_data as image_data
+import Main.PlutoRunner.JIVECore.Data.image_keys as image_keys
 
 # ╔═╡ b2d786ec-7f73-11ea-1a0c-f38d7b6bbc1e
 md"""
