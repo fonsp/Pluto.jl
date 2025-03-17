@@ -99,27 +99,51 @@ This function takes the `editor.html` file from Pluto's source code, and uses st
 See [PlutoSliderServer.jl](https://github.com/JuliaPluto/PlutoSliderServer.jl) if you are interested in exporting notebooks programatically.
 """
 function generate_html(;
-        version::Union{Nothing,VersionNumber,AbstractString}=nothing, 
+        version::Union{Nothing,VersionNumber,AbstractString}=nothing,
         pluto_cdn_root::Union{Nothing,AbstractString}=nothing,
-        
-        notebookfile_js::AbstractString="undefined", 
-        statefile_js::AbstractString="undefined", 
-        
-        slider_server_url_js::AbstractString="undefined", 
+
+        notebookfile_js::AbstractString="undefined",
+        statefile_js::AbstractString="undefined",
+
+        slider_server_url_js::AbstractString="undefined",
         binder_url_js::AbstractString=repr(default_binder_url),
-        
-        disable_ui::Bool=true, 
+
+        disable_ui::Bool=true,
         preamble_html_js::AbstractString="undefined",
-        notebook_id_js::AbstractString="undefined", 
+        notebook_id_js::AbstractString="undefined",
         isolated_cell_ids_js::AbstractString="undefined",
 
         header_html::AbstractString="",
+        presentation::Bool = false,
     )::String
 
     cdnified = cdnified_editor_html(; version, pluto_cdn_root)
-    
+
     length(statefile_js) > 32000000 && @error "Statefile embedded in HTML is very large. The file can be opened with Chrome and Safari, but probably not with Firefox. If you are using PlutoSliderServer to generate this file, then we recommend the setting `baked_statefile=false`. If you are not using PlutoSliderServer, then consider reducing the size of figures and output in the notebook." length(statefile_js)
-    
+
+    if presentation
+        present = """
+// See https://stackoverflow.com/questions/55046523/run-js-function-after-all-scripts-on-page-are-fully-loaded
+function delay() {
+    setTimeout(function() {
+        present()
+    }, 200);
+}
+
+if (document.readyState == 'complete') {
+    delay();
+} else {
+    document.onreadystatechange = function () {
+        if (document.readyState === "complete") {
+            delay();
+        }
+    }
+}
+        """
+    else
+        present = ""
+    end
+
     parameters = """
     <script data-pluto-file="launch-parameters">
     window.pluto_notebook_id = $(notebook_id_js);
@@ -130,11 +154,11 @@ function generate_html(;
     window.pluto_binder_url = $(binder_url_js);
     window.pluto_statefile = $(statefile_js);
     window.pluto_preamble_html = $(preamble_html_js);
-    </script>
+    $present</script>
     """
-    
+
     preload = prefetch_statefile_html(statefile_js)
-    
+
     inserted_html(cdnified; meta=header_html, parameters, preload)
 end
 
