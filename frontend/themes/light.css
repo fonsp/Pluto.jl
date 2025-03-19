@@ -201,15 +201,10 @@
         --cm-color-literal:     oklch(45%  60% 330deg);
         --cm-filter-type:       brightness(150%) saturate(50%);
 
-        /* The colors below are not used in CellInput.js */
-        --cm-color-var2:        #37768a;
         --cm-color-builtin:     #5e7ad3;
         --cm-color-function:    #cc80ac;
-        --cm-color-bracket:     #41323f;
-        --cm-color-tag:         #ef6155;
         --cm-color-link:        #815ba4;
-        --cm-color-error-bg:    #ef6155;
-        --cm-color-error:       #f7f7f7;
+        --cm-color-bracket:     #41323f;
         --cm-color-matchingBracket: black;
         --cm-color-matchingBracket-bg: #1b4bbb21;
         --cm-color-placeholder-text: rgba(0, 0, 0, 0.2);
