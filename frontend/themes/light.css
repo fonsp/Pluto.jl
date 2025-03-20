@@ -190,24 +190,21 @@
         --cm-highlighted: #cbceb668;
 
         /* code highlighting */
-        --cm-color-editor-text: #41323f;
-        --cm-color-comment:     #e96ba8;
-        --cm-color-atom:        #815ba4;
-        --cm-color-number:      #815ba4;
-        --cm-color-property:    #b67a48;
-        --cm-color-keyword:     #ef6155;
-        --cm-color-string:      #da5616;
-        --cm-color-var:         #5668a4;
-        --cm-color-var2:        #37768a;
-        --cm-color-macro:       #5c8c5f;
+        --cm-color-editor-text: oklch(30%   0%   0deg);
+        --cm-color-comment:     oklch(45%  60%   0deg);
+        --cm-color-keyword:     oklch(45%  80%  30deg);
+        --cm-color-symbol:      oklch(45%  80%  90deg);
+        --cm-color-command:     oklch(35% 100% 120deg);
+        --cm-color-macro:       oklch(45%  80% 150deg);
+        --cm-color-string:      oklch(35% 100% 180deg);
+        --cm-color-variable:    oklch(45%  40% 270deg);
+        --cm-color-literal:     oklch(45%  60% 330deg);
+        --cm-filter-type:       brightness(150%) saturate(50%);
+
         --cm-color-builtin:     #5e7ad3;
         --cm-color-function:    #cc80ac;
-        --cm-color-type:        hsl(170deg 7% 56%);
-        --cm-color-bracket:     #41323f;
-        --cm-color-tag:         #ef6155;
         --cm-color-link:        #815ba4;
-        --cm-color-error-bg:    #ef6155;
-        --cm-color-error:       #f7f7f7;
+        --cm-color-bracket:     #41323f;
         --cm-color-matchingBracket: black;
         --cm-color-matchingBracket-bg: #1b4bbb21;
         --cm-color-placeholder-text: rgba(0, 0, 0, 0.2);

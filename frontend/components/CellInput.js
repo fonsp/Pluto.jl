@@ -96,25 +96,22 @@ window.PLUTO_TOGGLE_CM_AUTOCOMPLETE_ON_TYPE = (val = !ENABLE_CM_AUTOCOMPLETE_ON_
 
 const common_style_tags = [
     { tag: tags.comment, color: "var(--cm-color-comment)", fontStyle: "italic", filter: "none" },
-    { tag: tags.keyword, color: "var(--cm-color-keyword)" },
-    { tag: tags.variableName, color: "var(--cm-color-var)", fontWeight: 700 },
-    { tag: tags.typeName, color: "var(--cm-color-type)", fontStyle: "italic" },
-    { tag: tags.typeOperator, color: "var(--cm-color-type)", fontStyle: "italic" },
-    { tag: tags.tagName, color: "var(--cm-color-tag)" }, // JS
-    { tag: tags.propertyName, color: "var(--cm-color-property)" },
-    // TODO: tags.labelName
+    { tag: tags.variableName, color: "var(--cm-color-variable)", fontWeight: 700 },
+    { tag: tags.propertyName, color: "var(--cm-color-symbol)", fontWeight: 700 },
     { tag: tags.macroName, color: "var(--cm-color-macro)", fontWeight: 700 },
+    { tag: tags.typeName, filter: "var(--cm-filter-type)", fontWeight: "lighter" },
+    { tag: tags.atom, color: "var(--cm-color-symbol)" },
     { tag: tags.string, color: "var(--cm-color-string)" },
-    // TODO: tags.character
-    { tag: tags.number, color: "var(--cm-color-number)" },
-    { tag: tags.bool, color: "var(--cm-color-builtin)", fontWeight: 700 },
-    // TODO: tags.escape
-    // TODO: tags.self, tags.null
-    { tag: tags.atom, color: "var(--cm-color-atom)" },
-    { tag: tags.unit, color: "var(--cm-color-tag)" }, // TODO: Remove
-    // TODO? tags.operator
+    { tag: tags.special(tags.string), color: "var(--cm-color-command)" },
+    { tag: tags.character, color: "var(--cm-color-literal)" },
+    { tag: tags.literal, color: "var(--cm-color-literal)" },
+    { tag: tags.keyword, color: "var(--cm-color-keyword)" },
+    // TODO: normal operators
+    { tag: tags.definitionOperator, color: "var(--cm-color-keyword)" },
+    { tag: tags.logicOperator, color: "var(--cm-color-keyword)" },
+    { tag: tags.controlOperator, color: "var(--cm-color-keyword)" },
     { tag: tags.bracket, color: "var(--cm-color-bracket)" },
-    { tag: tags.special(tags.brace), color: "var(--cm-color-macro)", fontWeight: 700 }, // interp
+    // TODO: tags.self, tags.null
 ]
 
 export const pluto_syntax_colors_julia = HighlightStyle.define(common_style_tags, {
