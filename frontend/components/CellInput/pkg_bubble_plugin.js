@@ -18,6 +18,7 @@ export const pkg_disablers = [
     "Pkg.API.develop",
     "Pkg.add",
     "Pkg.API.add",
+    "TestEnv.activate",
     // https://juliadynamics.github.io/DrWatson.jl/dev/project/#DrWatson.quickactivate
     "quickactivate",
     "@quickactivate",

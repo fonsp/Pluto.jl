@@ -27,6 +27,7 @@ function use_plutopkg(topology::NotebookTopology)
         Symbol("Pkg.API.develop") ∈ node.references ||
         Symbol("Pkg.add") ∈ node.references ||
         Symbol("Pkg.API.add") ∈ node.references ||
+        Symbol("TestEnv.activate") ∈ node.references ||
         # https://juliadynamics.github.io/DrWatson.jl/dev/project/#DrWatson.quickactivate
         Symbol("quickactivate") ∈ node.references ||
         Symbol("@quickactivate") ∈ node.references ||
