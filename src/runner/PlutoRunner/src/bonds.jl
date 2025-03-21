@@ -89,6 +89,7 @@ function create_bond(element, defines::Symbol, cell_id::UUID)
 end
 
 function Base.show(io::IO, m::MIME"text/html", bond::Bond)
+    # The attribute unique_id has no direct purpose. The only purpose is to force a re-render when it changes. It changes when the @bind expression re-runs (not just on macroexpand).
     Markdown.withtag(io, :bond, :def => bond.defines, :unique_id => bond.unique_id) do
         show(io, m, bond.element)
     end
