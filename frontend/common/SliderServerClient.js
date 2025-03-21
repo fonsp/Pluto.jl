@@ -105,10 +105,10 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
         await update_cells_running(true)
 
         const explicit_bond_names = bonds_to_set.current
-        if (bonds_to_set.current.size > 0) {
-            const to_send = new Set(bonds_to_set.current)
-            bonds_to_set.current.forEach((varname) => (graph[varname] ?? []).forEach((x) => to_send.add(x)))
-            console.debug("Requesting bonds", bonds_to_set.current, to_send)
+        if (explicit_bond_names.size > 0) {
+            const to_send = new Set(explicit_bond_names)
+            explicit_bond_names.forEach((varname) => (graph[varname] ?? []).forEach((x) => to_send.add(x)))
+
             bonds_to_set.current = new Set()
 
             const mybonds_filtered = Object.fromEntries(
@@ -117,6 +117,8 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
                     ([k, v]) => k
                 )
             )
+
+            console.debug("Requesting bonds", explicit_bond_names, to_send, mybonds_filtered)
 
             const packed = pack(mybonds_filtered)
 
