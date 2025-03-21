@@ -195,6 +195,7 @@ function run_reactive_core!(
             # Support one bond defining another when setting both simultaneously in PlutoSliderServer
             # https://github.com/fonsp/Pluto.jl/issues/1695
 
+			# TODO: is this still correct?
             # set the redefined bound variables to their original value from the request
             defs = notebook.topology.nodes[cell].definitions
             set_bond_value_pairs!(session, notebook, Iterators.filter(((sym,val),) -> sym ∈ defs, bond_value_pairs))
