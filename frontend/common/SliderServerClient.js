@@ -11,7 +11,7 @@ const actions_to_keep = ["get_published_object", "get_notebook"]
 const get_start = (graph, v) => Object.values(graph).find((node) => Object.keys(node.downstream_cells_map).includes(v))?.cell_id
 const get_starts = (graph, vars) => new Set([...vars].map((v) => get_start(graph, v)))
 const recursive_dependencies = (graph, starts) => {
-    const deps = new Set(starts)
+    const deps = new Set()
     const ends = [...starts]
     while (ends.length > 0) {
         const node = ends.splice(0, 1)[0]
@@ -92,15 +92,19 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
         const starts = get_starts(dep_graph, bonds_to_set.current)
         const running_cells = [...recursive_dependencies(dep_graph, starts)]
 
+        console.log("tree", starts, running_cells)
+
         const update_cells_running = async (running) =>
             await setStatePromise(
                 immer((state) => {
-                    running_cells.forEach((cell_id) => (state.notebook.cell_results[cell_id][starts.has(cell_id) ? "running" : "queued"] = running))
+                    running_cells.forEach((cell_id) => (state.notebook.cell_results[cell_id]["queued"] = running))
+                    starts.forEach((cell_id) => (state.notebook.cell_results[cell_id]["running"] = running))
                 })
             )
 
         await update_cells_running(true)
 
+        const explicit_bond_names = bonds_to_set.current
         if (bonds_to_set.current.size > 0) {
             const to_send = new Set(bonds_to_set.current)
             bonds_to_set.current.forEach((varname) => (graph[varname] ?? []).forEach((x) => to_send.add(x)))
@@ -123,8 +127,15 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
                 const force_post = get_current_state().metadata["sliderserver_force_post"] ?? false
                 const use_get = !force_post && url.length + (packed.length * 4) / 3 + 20 < 8000
 
+                const request_url = new URL(url + (await base64url_arraybuffer(packed)), window.location.href)
+                // TODO: when?
+                // TODO: bond hierachy graph? or just see if there are multiple
+                if (true) {
+                    request_url.searchParams.set("explicit", await base64url_arraybuffer(pack(Array.from(explicit_bond_names))))
+                }
+
                 const response = use_get
-                    ? await fetch(url + (await base64url_arraybuffer(packed)), {
+                    ? await fetch(request_url, {
                           method: "GET",
                       }).then(assert_response_ok)
                     : await fetch(url, {
@@ -133,10 +144,39 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
                       }).then(assert_response_ok)
 
                 unpacked = unpack(new Uint8Array(await response.arrayBuffer()))
-                const { patches, ids_of_cells_that_ran } = unpacked
+                console.debug("Received state", unpacked)
+                const { patches, ids_of_cells_that_ran, stages } = unpacked
+
+                // Filter patches
+                // When the run was staged, only update if we believe that the cell should be updated...
+                const patches_filtered = patches.filter(({ path }) => {
+                    // const patches_filtered = stages.length < 2 ? patches : patches.filter(({ path }) => {
+                    if (path.length > 2 && path[0] === "cell_results") {
+                        const id = path[1]
+                        return !starts.has(id)
+                    }
+                    return true
+                })
+
+                // const patches_filtered = patches
+                console.error({ patches, patches_filtered })
 
                 await apply_notebook_patches(
-                    patches,
+                    patches_filtered,
+                    // We can just apply the patches as-is, but for complete correctness we have to take into account that these patches are not generated:
+                    // NOT: diff(current_state_of_this_browser, what_it_should_be)
+                    // but
+                    // YES: diff(original_statefile_state, what_it_should_be)
+                    //
+                    // And because of previous bond interactions, our current state will have drifted from the original_statefile_state.
+                    //
+                    // Luckily immer lets us deal with this perfectly by letting us provide a custom "old" state.
+                    // For the old state, we will use:
+                    //   the current state of this browser (we dont want to change too much)
+                    //   but all cells that will be affected by this run:
+                    //      the statefile state
+                    //
+                    // Crazy!!
                     immer((state) => {
                         const original = get_original_state()
                         ids_of_cells_that_ran.forEach((id) => {
@@ -169,3 +209,74 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
         },
     }
 }
+
+/*
+
+
+Also send which bonds you set intentionally
+
+AAA
+10, 20
+->
+11, 20
+
+moet geven
+11, 11
+
+
+BBBB
+11, 11
+-> 
+11, 20
+moet geven
+11, 20
+
+
+dus afhankelijkheid van geschiedenis
+
+of van setter?
+
+
+
+AAAAA
+10
+->
+11
+
+(haal andere bonds uit original_state)
+
+
+BBBB
+standaard
+
+
+ga ervan uit dat we alleen interesse hebben in de laatste stage
+
+
+
+
+
+
+of mss query param!!!!!
+
+?explicit=jjaf0s9j0933f9j3f9j3f
+
+
+
+hoe?
+
+
+
+
+
+aanpassen:
+- [x] in julia: cell met bond afhankelijk van expliciet? dan niet nieuwe bond value gebruiken
+- [x] en die stages kan je eigenlijk skippen
+- [ ] bond patches wel sturen als ze overlappen met wat de user stuurde (want die worder verwijderd en das nodig)
+- [x] frontend: alleen patches afhankelijk van expliciet
+- [ ] figure out what the old state thing is all about and fix it
+
+
+
+
+*/
