@@ -172,7 +172,7 @@ const MoreInfo = (/** @type{{body: import("../imports/Preact.js").ReactElement}}
             })
             e.preventDefault()
         }}
-        ><img alt="❔" src=${help_circle_icon} width="17"
+        ><img alt="❔" src=${help_circle_icon}
     /></a>`
 }
 
