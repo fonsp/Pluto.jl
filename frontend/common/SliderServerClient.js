@@ -24,6 +24,7 @@ const recursive_dependencies = (graph, starts) => {
     }
     return deps
 }
+const disjoint = (a, b) => !_.some([...a], (x) => b.has(x))
 
 export const nothing_actions = ({ actions }) =>
     Object.fromEntries(
@@ -88,16 +89,38 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
         const graph = await bond_connections
 
         const explicit_bond_names = bonds_to_set.current
+        bonds_to_set.current = new Set()
 
-        //
-        // PART 1: Compute dependencies and update cell running statuses
-        //
+        ///
+        // PART 1: Compute dependencies
+        ///
         const dep_graph = get_current_state().cell_dependencies
         /** Cells the define an explicit bond */
         const starts = get_starts(dep_graph, explicit_bond_names)
         const cells_depending_on_explicits = [...recursive_dependencies(dep_graph, starts)]
 
         console.log("tree", starts, cells_depending_on_explicits)
+
+        const to_send = new Set(explicit_bond_names)
+        explicit_bond_names.forEach((varname) => (graph[varname] ?? []).forEach((x) => to_send.add(x)))
+
+        // Take only the bonds we need, and sort the based on variable name
+        const mybonds_filtered = Object.fromEntries(
+            _.sortBy(
+                Object.entries(mybonds).filter(([k, v]) => to_send.has(k)),
+                ([k, v]) => k
+            )
+        )
+
+        const need_to_send_explicits = (() => {
+            const _to_send_starts = get_starts(dep_graph, to_send)
+            const _depends_on_to_send = recursive_dependencies(dep_graph, _to_send_starts)
+            return !disjoint(_to_send_starts, _depends_on_to_send)
+        })()
+
+        ///
+        // PART: Update visual cell running status
+        ///
 
         const update_cells_running = async (running) =>
             await setStatePromise(
@@ -109,46 +132,36 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
 
         await update_cells_running(true)
 
-        //
-        // PART 2: Make the request to PSS
-        //
+        ///
+        // PART: Make the request to PSS
+        ///
 
         if (explicit_bond_names.size > 0) {
-            const to_send = new Set(explicit_bond_names)
-            explicit_bond_names.forEach((varname) => (graph[varname] ?? []).forEach((x) => to_send.add(x)))
-
-            bonds_to_set.current = new Set()
-
-            const mybonds_filtered = Object.fromEntries(
-                _.sortBy(
-                    Object.entries(mybonds).filter(([k, v]) => to_send.has(k)),
-                    ([k, v]) => k
-                )
-            )
-
             console.debug("Requesting bonds", explicit_bond_names, to_send, mybonds_filtered)
 
             const packed = pack(mybonds_filtered)
-
-            const url = base + "staterequest/" + hash + "/"
+            const packed_explicits = pack(Array.from(explicit_bond_names))
 
             let unpacked = null
             try {
-                const force_post = get_current_state().metadata["sliderserver_force_post"] ?? false
-                const use_get = !force_post && url.length + (packed.length * 4) / 3 + 20 < 8000
+                const url = base + "staterequest/" + hash + "/"
 
-                const request_url = new URL(url + (await base64url_arraybuffer(packed)), window.location.href)
-                // TODO: when?
-                // TODO: bond hierachy graph? or just see if there are multiple
-                if (true) {
-                    request_url.searchParams.set("explicit", await base64url_arraybuffer(pack(Array.from(explicit_bond_names))))
+                let add_explicits = async (url) => {
+                    let u = new URL(url, window.location.href)
+                    // We can skip this if all bonds are explicit:
+                    if (need_to_send_explicits)
+                        if (!_.isEqual(explicit_bond_names, to_send)) u.searchParams.set("explicit", await base64url_arraybuffer(packed_explicits))
+                    return u
                 }
 
+                const force_post = get_current_state().metadata["sliderserver_force_post"] ?? false
+                const use_get = !force_post && url.length + (packed.length * 4 + packed_explicits.length * 4) / 3 + 20 + 12 < 8000
+
                 const response = use_get
-                    ? await fetch(request_url, {
+                    ? await fetch(await add_explicits(url + (await base64url_arraybuffer(packed))), {
                           method: "GET",
                       }).then(assert_response_ok)
-                    : await fetch(url, {
+                    : await fetch(await add_explicits(url), {
                           method: "POST",
                           body: packed,
                       }).then(assert_response_ok)
@@ -157,24 +170,8 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
                 console.debug("Received state", unpacked)
                 const { patches } = unpacked
 
-                // Filter patches
-                // When the run was staged, only update if we believe that the cell should be updated...
-                // const patches_filtered = patches.filter(({ path }) => {
-                //     // const patches_filtered = stages.length < 2 ? patches : patches.filter(({ path }) => {
-                //     if (path.length > 2 && path[0] === "cell_results") {
-                //         const id = path[1]
-                //         return !starts.has(id)
-                //     }
-                //     return true
-                // })
-
-                const patches_filtered = patches
-
-                // const patches_filtered = patches
-                console.error({ patches, patches_filtered })
-
                 await apply_notebook_patches(
-                    patches_filtered,
+                    patches,
                     // We can just apply the patches as-is, but for complete correctness we have to take into account that these patches are not generated:
                     // NOT: diff(current_state_of_this_browser, what_it_should_be)
                     // but
@@ -192,7 +189,6 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
                     immer((state) => {
                         const original = get_original_state()
                         cells_depending_on_explicits.forEach((id) => {
-                            // if (!starts.has(id))
                             state.cell_results[id] = original.cell_results[id]
                         })
                     })(get_current_state())
