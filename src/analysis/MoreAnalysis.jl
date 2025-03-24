@@ -7,18 +7,21 @@ import ..Pluto: Cell, Notebook, NotebookTopology, ExpressionExplorer, Expression
 
 
 "Return whether any cell references the given symbol. Used for the @bind mechanism."
-function is_referenced_anywhere(notebook::Notebook, topology::NotebookTopology, sym::Symbol)::Bool
-	any(notebook.cells) do cell
+function is_referenced_anywhere(topology::NotebookTopology, sym::Symbol)::Bool
+	any(all_cells(topology)) do cell
 		sym ∈ topology.nodes[cell].references
 	end
 end
+@deprecate is_referenced_anywhere(notebook::Notebook, topology::NotebookTopology, sym::Symbol) is_referenced_anywhere(topology, sym)
 
 "Return whether any cell defines the given symbol. Used for the @bind mechanism."
-function is_assigned_anywhere(notebook::Notebook, topology::NotebookTopology, sym::Symbol)::Bool
-	any(notebook.cells) do cell
+function is_assigned_anywhere(topology::NotebookTopology, sym::Symbol)::Bool
+	any(all_cells(topology)) do cell
 		sym ∈ topology.nodes[cell].definitions
 	end
 end
+@deprecate is_assigned_anywhere(notebook::Notebook, topology::NotebookTopology, sym::Symbol) is_assigned_anywhere(topology, sym)
+
 
 "Find all subexpressions of the form `@bind symbol something`, and extract the `symbol`s."
 function find_bound_variables(expr)
@@ -47,18 +50,24 @@ function _find_bound_variables!(found::Set{Symbol}, expr::Any) end
 
 "Return the given cells, and all cells that depend on them (recursively)."
 function downstream_recursive(
-    notebook::Notebook,
     topology::NotebookTopology,
     from::Union{Vector{Cell},Set{Cell}},
 )::Set{Cell}
     found = Set{Cell}(copy(from))
-    _downstream_recursive!(found, notebook, topology, from)
+    _downstream_recursive!(found, topology, from)
     found
 end
+@deprecate downstream_recursive(
+    notebook::Notebook,
+    topology::NotebookTopology,
+    from::Union{Vector{Cell},Set{Cell}},
+) downstream_recursive(
+    topology,
+    from,
+)
 
 function _downstream_recursive!(
     found::Set{Cell},
-    notebook::Notebook,
     topology::NotebookTopology,
     from::Vector{Cell},
 )::Nothing
@@ -67,7 +76,7 @@ function _downstream_recursive!(
         for next in one_down
             if next ∉ found
                 push!(found, next)
-                _downstream_recursive!(found, notebook, topology, Cell[next])
+                _downstream_recursive!(found, topology, Cell[next])
             end
         end
     end
@@ -78,18 +87,24 @@ end
 
 "Return all cells that are depended upon by any of the given cells."
 function upstream_recursive(
-    notebook::Notebook,
     topology::NotebookTopology,
     from::Union{Vector{Cell},Set{Cell}},
 )::Set{Cell}
     found = Set{Cell}(copy(from))
-    _upstream_recursive!(found, notebook, topology, from)
+    _upstream_recursive!(found, topology, from)
     found
 end
+@deprecate upstream_recursive(
+    notebook::Notebook,
+    topology::NotebookTopology,
+    from::Union{Vector{Cell},Set{Cell}},
+) upstream_recursive(
+    topology,
+    from,
+)
 
 function _upstream_recursive!(
     found::Set{Cell},
-    notebook::Notebook,
     topology::NotebookTopology,
     from::Vector{Cell},
 )::Nothing
@@ -98,34 +113,34 @@ function _upstream_recursive!(
         for upstream in PlutoDependencyExplorer.where_assigned(topology, references)
             if upstream ∉ found
                 push!(found, upstream)
-                _upstream_recursive!(found, notebook, topology, Cell[upstream])
+                _upstream_recursive!(found, topology, Cell[upstream])
             end
         end
     end
 end
 
 "All cells that can affect the outcome of changing the given variable."
-function codependents(notebook::Notebook, topology::NotebookTopology, var::Symbol)::Set{Cell}
-    assigned_in = filter(notebook.cells) do cell
+function codependents(topology::NotebookTopology, var::Symbol)::Set{Cell}
+    assigned_in = filter(all_cells(topology)) do cell
         var ∈ topology.nodes[cell].definitions
     end
     
-    downstream = collect(downstream_recursive(notebook, topology, assigned_in))
+    downstream = collect(downstream_recursive(topology, assigned_in))
 
-    downupstream = upstream_recursive(notebook, topology, downstream)
+    downupstream = upstream_recursive(topology, downstream)
 end
+@deprecate codependents(notebook::Notebook, topology::NotebookTopology, var::Symbol) codependents(topology, var)
 
 "Return a `Dict{Symbol,Vector{Symbol}}` where the _keys_ are the bound variables of the notebook.
 
 For each key (a bound symbol), the value is the list of (other) bound variables whose values need to be known to compute the result of setting the bond."
-function bound_variable_connections_graph(notebook::Notebook)::Dict{Symbol,Vector{Symbol}}
-    topology = notebook.topology
-    bound_variables = union(map(notebook.cells) do cell
+function bound_variable_connections_graph(topology::NotebookTopology)::Dict{Symbol,Vector{Symbol}}
+    bound_variables = union(map(all_cells(topology)) do cell
         find_bound_variables(topology.codes[cell].parsedcode)
     end...)
     Dict{Symbol,Vector{Symbol}}(
         var => let
-            cells = codependents(notebook, topology, var)
+            cells = codependents(topology, var)
             defined_there = union!(Set{Symbol}(), (topology.nodes[c].definitions for c in cells)...)
             # Set([var]) ∪ 
             collect((defined_there ∩ bound_variables))
@@ -133,4 +148,15 @@ function bound_variable_connections_graph(notebook::Notebook)::Dict{Symbol,Vecto
         for var in bound_variables
     )
 end
+@deprecate bound_variable_connections_graph(notebook::Notebook) bound_variable_connections_graph(notebook.topology)
+
+
+
+
+
+
+
+
+
+
 end
