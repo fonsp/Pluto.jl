@@ -281,4 +281,25 @@ aanpassen:
 
 
 
+
+
+---------------
+
+MAANDAG
+
+
+de stages zijn niet nodig omdat we set_bond_value_pairs! hebben!
+
+maar het is wel nodig om last(topological_orders) te kunnen doen.
+
+(hoe is dit dan afhanekiljk van explicits?)
+(kan dit niet in de frontend?)
+
+
+
+
+
+
+
+
 */
