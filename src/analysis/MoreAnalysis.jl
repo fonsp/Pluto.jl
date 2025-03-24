@@ -51,7 +51,7 @@ function downstream_recursive(
     topology::NotebookTopology,
     from::Union{Vector{Cell},Set{Cell}},
 )::Set{Cell}
-    found = Set{Cell}(copy(from))
+    found = Set{Cell}(empty(from))
     _downstream_recursive!(found, notebook, topology, from)
     found
 end
@@ -82,7 +82,7 @@ function upstream_recursive(
     topology::NotebookTopology,
     from::Union{Vector{Cell},Set{Cell}},
 )::Set{Cell}
-    found = Set{Cell}(copy(from))
+    found = Set{Cell}(empty(from))
     _upstream_recursive!(found, notebook, topology, from)
     found
 end
@@ -110,9 +110,9 @@ function codependents(notebook::Notebook, topology::NotebookTopology, var::Symbo
         var ∈ topology.nodes[cell].definitions
     end
     
-    downstream = collect(downstream_recursive(notebook, topology, assigned_in))
+    downstream = collect(union!(downstream_recursive(notebook, topology, assigned_in), assigned_in))
 
-    downupstream = upstream_recursive(notebook, topology, downstream)
+    downupstream = union!(upstream_recursive(notebook, topology, downstream), assigned_in)
 end
 
 "Return a `Dict{Symbol,Vector{Symbol}}` where the _keys_ are the bound variables of the notebook.
