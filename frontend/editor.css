@@ -2069,6 +2069,7 @@ pkg-popup .pkg-buttons {
 a.stdout-info img,
 pkg-popup .pkg-buttons img {
     filter: var(--image-filters);
+    width: 17px;
 }
 
 a.stdout-info,
@@ -2954,7 +2955,7 @@ nav#undo_delete {
     margin: 0.75rem;
     padding: 0.5rem;
     font-family: var(--system-ui-font-stack);
-    font-size: .8rem;
+    font-size: 0.8rem;
     background-color: var(--helpbox-header-tab-bg-color);
     border-radius: 8px;
     color: var(--black);
