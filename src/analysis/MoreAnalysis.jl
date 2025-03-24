@@ -54,7 +54,7 @@ function downstream_recursive(
     topology::NotebookTopology,
     from::Union{Vector{Cell},Set{Cell}},
 )::Set{Cell}
-    found = Set{Cell}(copy(from))
+    found = Set{Cell}(empty(from))
     _downstream_recursive!(found, topology, from)
     found
 end
@@ -91,7 +91,7 @@ function upstream_recursive(
     topology::NotebookTopology,
     from::Union{Vector{Cell},Set{Cell}},
 )::Set{Cell}
-    found = Set{Cell}(copy(from))
+    found = Set{Cell}(empty(from))
     _upstream_recursive!(found, topology, from)
     found
 end
@@ -126,9 +126,9 @@ function codependents(topology::NotebookTopology, var::Symbol)::Set{Cell}
         var ∈ topology.nodes[cell].definitions
     end
     
-    downstream = collect(downstream_recursive(topology, assigned_in))
+    downstream = collect(union!(downstream_recursive(topology, assigned_in), assigned_in))
 
-    downupstream = upstream_recursive(topology, downstream)
+    downupstream = union!(upstream_recursive(topology, downstream), assigned_in)
 end
 @deprecate codependents(notebook::Notebook, topology::NotebookTopology, var::Symbol) codependents(topology, var)
 
