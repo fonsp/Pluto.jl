@@ -87,24 +87,32 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
         const hash = await notebookfile_hash
         const graph = await bond_connections
 
-        // compute dependencies and update cell running statuses
-        const dep_graph = get_current_state().cell_dependencies
-        const starts = get_starts(dep_graph, bonds_to_set.current)
-        const running_cells = [...recursive_dependencies(dep_graph, starts)]
+        const explicit_bond_names = bonds_to_set.current
 
-        console.log("tree", starts, running_cells)
+        //
+        // PART 1: Compute dependencies and update cell running statuses
+        //
+        const dep_graph = get_current_state().cell_dependencies
+        /** Cells the define an explicit bond */
+        const starts = get_starts(dep_graph, explicit_bond_names)
+        const cells_depending_on_explicits = [...recursive_dependencies(dep_graph, starts)]
+
+        console.log("tree", starts, cells_depending_on_explicits)
 
         const update_cells_running = async (running) =>
             await setStatePromise(
                 immer((state) => {
-                    running_cells.forEach((cell_id) => (state.notebook.cell_results[cell_id]["queued"] = running))
+                    cells_depending_on_explicits.forEach((cell_id) => (state.notebook.cell_results[cell_id]["queued"] = running))
                     starts.forEach((cell_id) => (state.notebook.cell_results[cell_id]["running"] = running))
                 })
             )
 
         await update_cells_running(true)
 
-        const explicit_bond_names = bonds_to_set.current
+        //
+        // PART 2: Make the request to PSS
+        //
+
         if (explicit_bond_names.size > 0) {
             const to_send = new Set(explicit_bond_names)
             explicit_bond_names.forEach((varname) => (graph[varname] ?? []).forEach((x) => to_send.add(x)))
@@ -147,18 +155,20 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
 
                 unpacked = unpack(new Uint8Array(await response.arrayBuffer()))
                 console.debug("Received state", unpacked)
-                const { patches, ids_of_cells_that_ran, stages } = unpacked
+                const { patches } = unpacked
 
                 // Filter patches
                 // When the run was staged, only update if we believe that the cell should be updated...
-                const patches_filtered = patches.filter(({ path }) => {
-                    // const patches_filtered = stages.length < 2 ? patches : patches.filter(({ path }) => {
-                    if (path.length > 2 && path[0] === "cell_results") {
-                        const id = path[1]
-                        return !starts.has(id)
-                    }
-                    return true
-                })
+                // const patches_filtered = patches.filter(({ path }) => {
+                //     // const patches_filtered = stages.length < 2 ? patches : patches.filter(({ path }) => {
+                //     if (path.length > 2 && path[0] === "cell_results") {
+                //         const id = path[1]
+                //         return !starts.has(id)
+                //     }
+                //     return true
+                // })
+
+                const patches_filtered = patches
 
                 // const patches_filtered = patches
                 console.error({ patches, patches_filtered })
@@ -181,7 +191,8 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
                     // Crazy!!
                     immer((state) => {
                         const original = get_original_state()
-                        ids_of_cells_that_ran.forEach((id) => {
+                        cells_depending_on_explicits.forEach((id) => {
+                            // if (!starts.has(id))
                             state.cell_results[id] = original.cell_results[id]
                         })
                     })(get_current_state())
@@ -295,6 +306,10 @@ maar het is wel nodig om last(topological_orders) te kunnen doen.
 (hoe is dit dan afhanekiljk van explicits?)
 (kan dit niet in de frontend?)
 
+
+Stuur:
+- ran
+- ran bc of explicit
 
 
 
