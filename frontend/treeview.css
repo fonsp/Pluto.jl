@@ -325,7 +325,7 @@ jlerror > section .classical-frame s-span {
 }
 jlerror > section .classical-frame s-span .argument_name {
     color: var(--jlerror-mark-color);
-    color: var(--cm-color-var);
+    color: var(--cm-color-variable);
     color: var(--cm-color-type);
 }
 jlerror > section .frame-source {
