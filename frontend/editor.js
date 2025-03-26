@@ -184,6 +184,8 @@ class PlutoEditorComponent extends HTMLElement {
     }
 
     connectedCallback() {
+        if (this.hasAttribute("skip-custom-element")) return
+
         /** Web components only support text attributes. We deserialize into js here */
         const new_launch_params = Object.fromEntries(Object.entries(launch_params).map(([k, v]) => [k, from_attribute(this, k) ?? v]))
         console.log("Launch parameters: ", new_launch_params)
