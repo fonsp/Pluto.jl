@@ -8,9 +8,17 @@ const assert_response_ok = (/** @type {Response} */ r) => (r.ok ? r : Promise.re
 
 const actions_to_keep = ["get_published_object", "get_notebook"]
 
-const get_start = (graph, v) => Object.values(graph).find((node) => Object.keys(node.downstream_cells_map).includes(v))?.cell_id
-const get_starts = (graph, vars) => new Set([...vars].map((v) => get_start(graph, v)))
-const recursive_dependencies = (graph, starts) => {
+const where_referenced = (/** @type {import("../components/Editor.js").CellDependencyGraph} */ graph, /** @type {Set<string> | string[]} */ vars) => {
+    const all_cells = Object.keys(graph)
+    return all_cells.filter((cell_id) => _.some([...vars], (v) => Object.keys(graph[cell_id].upstream_cells_map).includes(v)))
+}
+
+const where_assigned = (/** @type {import("../components/Editor.js").CellDependencyGraph} */ graph, /** @type {Set<string> | string[]} */ vars) => {
+    const all_cells = Object.keys(graph)
+    return all_cells.filter((cell_id) => _.some([...vars], (v) => Object.keys(graph[cell_id].downstream_cells_map).includes(v)))
+}
+
+const recursive_dependencies = (/** @type {import("../components/Editor.js").CellDependencyGraph} */ graph, starts) => {
     const deps = new Set()
     const ends = [...starts]
     while (ends.length > 0) {
@@ -24,6 +32,7 @@ const recursive_dependencies = (graph, starts) => {
     }
     return deps
 }
+
 const disjoint = (a, b) => !_.some([...a], (x) => b.has(x))
 
 export const nothing_actions = ({ actions }) =>
@@ -95,11 +104,12 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
         // PART 1: Compute dependencies
         ///
         const dep_graph = get_current_state().cell_dependencies
-        /** Cells the define an explicit bond */
-        const starts = get_starts(dep_graph, explicit_bond_names)
-        const cells_depending_on_explicits = [...recursive_dependencies(dep_graph, starts)]
+        /** Cells that define an explicit bond */
+        const starts = where_assigned(dep_graph, explicit_bond_names)
 
-        console.log("tree", starts, cells_depending_on_explicits)
+        const first_layer = where_referenced(dep_graph, explicit_bond_names)
+        const next_layers = [...recursive_dependencies(dep_graph, first_layer)]
+        const cells_depending_on_explicits = _.uniq([...first_layer, ...next_layers])
 
         const to_send = new Set(explicit_bond_names)
         explicit_bond_names.forEach((varname) => (graph[varname] ?? []).forEach((x) => to_send.add(x)))
@@ -113,7 +123,7 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
         )
 
         const need_to_send_explicits = (() => {
-            const _to_send_starts = get_starts(dep_graph, to_send)
+            const _to_send_starts = where_assigned(dep_graph, to_send)
             const _depends_on_to_send = recursive_dependencies(dep_graph, _to_send_starts)
             return !disjoint(_to_send_starts, _depends_on_to_send)
         })()
@@ -137,7 +147,7 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
         ///
 
         if (explicit_bond_names.size > 0) {
-            console.debug("Requesting bonds", explicit_bond_names, to_send, mybonds_filtered)
+            console.debug("Requesting bonds", { explicit_bond_names, to_send, mybonds_filtered, need_to_send_explicits })
 
             const packed = pack(mybonds_filtered)
             const packed_explicits = pack(Array.from(explicit_bond_names))
@@ -188,6 +198,7 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
                     // Crazy!!
                     immer((state) => {
                         const original = get_original_state()
+
                         cells_depending_on_explicits.forEach((id) => {
                             state.cell_results[id] = original.cell_results[id]
                         })
