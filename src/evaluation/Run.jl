@@ -83,7 +83,7 @@ function run_reactive_core!(
     new_topology = PlutoDependencyExplorer.exclude_roots(new_topology, removed_cells)
 
     # find (indirectly) deactivated cells and update their status
-    indirectly_deactivated = collect(topological_order(new_topology, collect(new_topology.disabled_cells); allow_multiple_defs=true, skip_at_partial_multiple_defs=true))
+    indirectly_deactivated = collect(topological_order_cached(new_topology, collect(new_topology.disabled_cells); allow_multiple_defs=true, skip_at_partial_multiple_defs=true))
 
     for cell in indirectly_deactivated
         cell.running = false
@@ -95,7 +95,7 @@ function run_reactive_core!(
 
     # save the old topological order - we'll delete variables assigned from its
     # and re-evalutate its cells unless the cells have already run previously in the reactive run
-    old_order = topological_order(old_topology, roots)
+    old_order = topological_order_cached(old_topology, roots)
 
     old_runnable = setdiff(old_order.runnable, already_run, indirectly_deactivated)
     to_delete_vars = union!(Set{Symbol}(), defined_variables(old_topology, old_runnable)...)
@@ -104,7 +104,7 @@ function run_reactive_core!(
 
     new_roots = setdiff(union(roots, keys(old_order.errable)), indirectly_deactivated)
     # get the new topological order
-    new_order = topological_order(new_topology, new_roots)
+    new_order = topological_order_cached(new_topology, new_roots)
     new_runnable = setdiff(new_order.runnable, already_run)
     to_run = setdiff!(union(new_runnable, old_runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
 
@@ -642,7 +642,7 @@ end
 
 function update_skipped_cells_dependency!(notebook::Notebook, topology::NotebookTopology=notebook.topology)
     skipped_cells = filter(is_skipped_as_script, notebook.cells)
-    indirectly_skipped = collect(topological_order(topology, skipped_cells))
+    indirectly_skipped = collect(topological_order_cached(topology, skipped_cells))
     for cell in notebook.cells
         cell.depends_on_skipped_cells = false
     end
@@ -653,11 +653,27 @@ end
 
 function update_disabled_cells_dependency!(notebook::Notebook, topology::NotebookTopology=notebook.topology)
     disabled_cells = filter(is_disabled, notebook.cells)
-    indirectly_disabled = collect(topological_order(topology, disabled_cells))
+    indirectly_disabled = collect(topological_order_cached(topology, disabled_cells))
     for cell in notebook.cells
         cell.depends_on_disabled_cells = false
     end
     for cell in indirectly_disabled
         cell.depends_on_disabled_cells = true
     end
+end
+
+
+using LRUCache
+
+const thecache = LRU{UInt64, TopologicalOrder{Cell}}(; maxsize = 10)
+function topological_order_cached(topology::NotebookTopology, roots::AbstractVector{Cell}; kwargs...)
+	
+	# return	topological_order(topology, roots; kwargs...)
+	# @info "Called with" objectid(topology) hash([c.cell_id for c in roots]) [c.cell_id for c in roots] exception=(ErrorException("asd"),backtrace())
+	
+	h = hash((objectid(topology), [c.cell_id for c in roots], kwargs))
+	get!(thecache, h) do
+		@warn "cache miss"
+		topological_order(topology, roots; kwargs...)
+	end
 end
