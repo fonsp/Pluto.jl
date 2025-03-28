@@ -79,7 +79,7 @@ FileEditEvent(notebook::Notebook) = begin
     file_contents = sprint() do io
         # TODO: https://github.com/fonsp/Pluto.jl/pull/1729: serialize_temp flag
         # to only get local changes; the workspace edit of the notebook!
-        save_notebook(io, notebook #=; serialize_temp=true =#)
+        # save_notebook(io, notebook #=; serialize_temp=true =#)
     end
     FileEditEvent(notebook, file_contents, notebook.path)
 end
