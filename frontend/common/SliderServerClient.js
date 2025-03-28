@@ -156,6 +156,7 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
             try {
                 const url = base + "staterequest/" + hash + "/"
 
+                // https://github.com/fonsp/Pluto.jl/pull/3158
                 let add_explicits = async (url) => {
                     let u = new URL(url, window.location.href)
                     // We can skip this if all bonds are explicit:
@@ -229,99 +230,3 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
         },
     }
 }
-
-/*
-
-
-Also send which bonds you set intentionally
-
-AAA
-10, 20
-->
-11, 20
-
-moet geven
-11, 11
-
-
-BBBB
-11, 11
--> 
-11, 20
-moet geven
-11, 20
-
-
-dus afhankelijkheid van geschiedenis
-
-of van setter?
-
-
-
-AAAAA
-10
-->
-11
-
-(haal andere bonds uit original_state)
-
-
-BBBB
-standaard
-
-
-ga ervan uit dat we alleen interesse hebben in de laatste stage
-
-
-
-
-
-
-of mss query param!!!!!
-
-?explicit=jjaf0s9j0933f9j3f9j3f
-
-
-
-hoe?
-
-
-
-
-
-aanpassen:
-- [x] in julia: cell met bond afhankelijk van expliciet? dan niet nieuwe bond value gebruiken
-- [x] en die stages kan je eigenlijk skippen
-- [ ] bond patches wel sturen als ze overlappen met wat de user stuurde (want die worder verwijderd en das nodig)
-- [x] frontend: alleen patches afhankelijk van expliciet
-- [ ] figure out what the old state thing is all about and fix it
-
-
-
-
-
-
----------------
-
-MAANDAG
-
-
-de stages zijn niet nodig omdat we set_bond_value_pairs! hebben!
-
-maar het is wel nodig om last(topological_orders) te kunnen doen.
-
-(hoe is dit dan afhanekiljk van explicits?)
-(kan dit niet in de frontend?)
-
-
-Stuur:
-- ran
-- ran bc of explicit
-
-
-
-
-
-
-
-*/
