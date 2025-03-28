@@ -168,8 +168,8 @@ const first_true_key = (obj) => {
  *  running: boolean,
  *  errored: boolean,
  *  runtime: number?,
- *  downstream_cells_map: { string: [string]},
- *  upstream_cells_map: { string: [string]},
+ *  downstream_cells_map: { [variable: string]: [string]},
+ *  upstream_cells_map: { [variable: string]: [string]},
  *  precedence_heuristic: number?,
  *  depends_on_disabled_cells: boolean,
  *  depends_on_skipped_cells: boolean,
@@ -189,9 +189,14 @@ const first_true_key = (obj) => {
 /**
  * @typedef CellDependencyData
  * @property {string} cell_id
- * @property {Map<string, Array<string>>} downstream_cells_map A map where the keys are the variables *defined* by this cell, and a value is the list of cell IDs that reference a variable.
- * @property {Map<string, Array<string>>} upstream_cells_map A map where the keys are the variables *referenced* by this cell, and a value is the list of cell IDs that define a variable.
+ * @property {Record<string, Array<string>>} downstream_cells_map A map where the keys are the variables *defined* by this cell, and a value is the list of cell IDs that reference a variable.
+ * @property {Record<string, Array<string>>} upstream_cells_map A map where the keys are the variables *referenced* by this cell, and a value is the list of cell IDs that define a variable.
  * @property {number} precedence_heuristic
+ */
+
+/**
+ * @typedef CellDependencyGraph
+ * @type {{ [uuid: string]: CellDependencyData }}
  */
 
 /**
@@ -253,7 +258,7 @@ const first_true_key = (obj) => {
  *  last_hot_reload_time: number,
  *  cell_inputs: { [uuid: string]: CellInputData },
  *  cell_results: { [uuid: string]: CellResultData },
- *  cell_dependencies: { [uuid: string]: CellDependencyData },
+ *  cell_dependencies: CellDependencyGraph,
  *  cell_order: Array<string>,
  *  cell_execution_order: Array<string>,
  *  published_objects: { [objectid: string]: any},

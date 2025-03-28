@@ -8,10 +8,18 @@ const assert_response_ok = (/** @type {Response} */ r) => (r.ok ? r : Promise.re
 
 const actions_to_keep = ["get_published_object", "get_notebook"]
 
-const get_start = (graph, v) => Object.values(graph).find((node) => Object.keys(node.downstream_cells_map).includes(v))?.cell_id
-const get_starts = (graph, vars) => new Set([...vars].map((v) => get_start(graph, v)))
-const recursive_dependencies = (graph, starts) => {
-    const deps = new Set(starts)
+const where_referenced = (/** @type {import("../components/Editor.js").CellDependencyGraph} */ graph, /** @type {Set<string> | string[]} */ vars) => {
+    const all_cells = Object.keys(graph)
+    return all_cells.filter((cell_id) => _.some([...vars], (v) => Object.keys(graph[cell_id].upstream_cells_map).includes(v)))
+}
+
+const where_assigned = (/** @type {import("../components/Editor.js").CellDependencyGraph} */ graph, /** @type {Set<string> | string[]} */ vars) => {
+    const all_cells = Object.keys(graph)
+    return all_cells.filter((cell_id) => _.some([...vars], (v) => Object.keys(graph[cell_id].downstream_cells_map).includes(v)))
+}
+
+const recursive_dependencies = (/** @type {import("../components/Editor.js").CellDependencyGraph} */ graph, starts) => {
+    const deps = new Set()
     const ends = [...starts]
     while (ends.length > 0) {
         const node = ends.splice(0, 1)[0]
@@ -24,6 +32,8 @@ const recursive_dependencies = (graph, starts) => {
     }
     return deps
 }
+
+const disjoint = (a, b) => !_.some([...a], (x) => b.has(x))
 
 export const nothing_actions = ({ actions }) =>
     Object.fromEntries(
@@ -87,59 +97,110 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
         const hash = await notebookfile_hash
         const graph = await bond_connections
 
-        // compute dependencies and update cell running statuses
+        const explicit_bond_names = bonds_to_set.current
+        bonds_to_set.current = new Set()
+
+        ///
+        // PART 1: Compute dependencies
+        ///
         const dep_graph = get_current_state().cell_dependencies
-        const starts = get_starts(dep_graph, bonds_to_set.current)
-        const running_cells = [...recursive_dependencies(dep_graph, starts)]
+        /** Cells that define an explicit bond */
+        const starts = where_assigned(dep_graph, explicit_bond_names)
+
+        const first_layer = where_referenced(dep_graph, explicit_bond_names)
+        const next_layers = [...recursive_dependencies(dep_graph, first_layer)]
+        const cells_depending_on_explicits = _.uniq([...first_layer, ...next_layers])
+
+        const to_send = new Set(explicit_bond_names)
+        explicit_bond_names.forEach((varname) => (graph[varname] ?? []).forEach((x) => to_send.add(x)))
+
+        // Take only the bonds we need, and sort the based on variable name
+        const mybonds_filtered = Object.fromEntries(
+            _.sortBy(
+                Object.entries(mybonds).filter(([k, v]) => to_send.has(k)),
+                ([k, v]) => k
+            )
+        )
+
+        const need_to_send_explicits = (() => {
+            const _to_send_starts = where_assigned(dep_graph, to_send)
+            const _depends_on_to_send = recursive_dependencies(dep_graph, _to_send_starts)
+            return !disjoint(_to_send_starts, _depends_on_to_send)
+        })()
+
+        ///
+        // PART: Update visual cell running status
+        ///
 
         const update_cells_running = async (running) =>
             await setStatePromise(
                 immer((state) => {
-                    running_cells.forEach((cell_id) => (state.notebook.cell_results[cell_id][starts.has(cell_id) ? "running" : "queued"] = running))
+                    cells_depending_on_explicits.forEach((cell_id) => (state.notebook.cell_results[cell_id]["queued"] = running))
+                    starts.forEach((cell_id) => (state.notebook.cell_results[cell_id]["running"] = running))
                 })
             )
 
         await update_cells_running(true)
 
-        if (bonds_to_set.current.size > 0) {
-            const to_send = new Set(bonds_to_set.current)
-            bonds_to_set.current.forEach((varname) => (graph[varname] ?? []).forEach((x) => to_send.add(x)))
-            console.debug("Requesting bonds", bonds_to_set.current, to_send)
-            bonds_to_set.current = new Set()
+        ///
+        // PART: Make the request to PSS
+        ///
 
-            const mybonds_filtered = Object.fromEntries(
-                _.sortBy(
-                    Object.entries(mybonds).filter(([k, v]) => to_send.has(k)),
-                    ([k, v]) => k
-                )
-            )
+        if (explicit_bond_names.size > 0) {
+            console.debug("Requesting bonds", { explicit_bond_names, to_send, mybonds_filtered, need_to_send_explicits })
 
             const packed = pack(mybonds_filtered)
-
-            const url = base + "staterequest/" + hash + "/"
+            const packed_explicits = pack(Array.from(explicit_bond_names))
 
             let unpacked = null
             try {
+                const url = base + "staterequest/" + hash + "/"
+
+                // https://github.com/fonsp/Pluto.jl/pull/3158
+                let add_explicits = async (url) => {
+                    let u = new URL(url, window.location.href)
+                    // We can skip this if all bonds are explicit:
+                    if (need_to_send_explicits)
+                        if (!_.isEqual(explicit_bond_names, to_send)) u.searchParams.set("explicit", await base64url_arraybuffer(packed_explicits))
+                    return u
+                }
+
                 const force_post = get_current_state().metadata["sliderserver_force_post"] ?? false
-                const use_get = !force_post && url.length + (packed.length * 4) / 3 + 20 < 8000
+                const use_get = !force_post && url.length + (packed.length * 4 + packed_explicits.length * 4) / 3 + 20 + 12 < 8000
 
                 const response = use_get
-                    ? await fetch(url + (await base64url_arraybuffer(packed)), {
+                    ? await fetch(await add_explicits(url + (await base64url_arraybuffer(packed))), {
                           method: "GET",
                       }).then(assert_response_ok)
-                    : await fetch(url, {
+                    : await fetch(await add_explicits(url), {
                           method: "POST",
                           body: packed,
                       }).then(assert_response_ok)
 
                 unpacked = unpack(new Uint8Array(await response.arrayBuffer()))
-                const { patches, ids_of_cells_that_ran } = unpacked
+                console.debug("Received state", unpacked)
+                const { patches } = unpacked
 
                 await apply_notebook_patches(
                     patches,
+                    // We can just apply the patches as-is, but for complete correctness we have to take into account that these patches are not generated:
+                    // NOT: diff(current_state_of_this_browser, what_it_should_be)
+                    // but
+                    // YES: diff(original_statefile_state, what_it_should_be)
+                    //
+                    // And because of previous bond interactions, our current state will have drifted from the original_statefile_state.
+                    //
+                    // Luckily immer lets us deal with this perfectly by letting us provide a custom "old" state.
+                    // For the old state, we will use:
+                    //   the current state of this browser (we dont want to change too much)
+                    //   but all cells that will be affected by this run:
+                    //      the statefile state
+                    //
+                    // Crazy!!
                     immer((state) => {
                         const original = get_original_state()
-                        ids_of_cells_that_ran.forEach((id) => {
+
+                        cells_depending_on_explicits.forEach((id) => {
                             state.cell_results[id] = original.cell_results[id]
                         })
                     })(get_current_state())
