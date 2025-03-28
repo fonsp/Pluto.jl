@@ -206,7 +206,7 @@ function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing)
                 putclientupdates!(client, msg)
             end
         end
-        try_event_call(🙋.session, FileEditEvent(🙋.notebook))
+        try_event_call(🙋.session, StateChangeEvent(🙋.notebook))
     end
 end
 
