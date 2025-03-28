@@ -203,7 +203,7 @@ function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing)
         for (client, msg) in outbox
             putclientupdates!(client, msg)
         end
-        try_event_call(🙋.session, FileEditEvent(🙋.notebook))
+        try_event_call(🙋.session, StateChangeEvent(🙋.notebook))
     end
 end
 
