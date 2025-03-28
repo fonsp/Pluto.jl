@@ -663,17 +663,19 @@ function update_disabled_cells_dependency!(notebook::Notebook, topology::Noteboo
 end
 
 
-using LRUCache
+import LRUCache
 
-const thecache = LRU{UInt64, TopologicalOrder{Cell}}(; maxsize = 10)
+const _cache_for_topological_order = LRUCache.LRU{UInt, TopologicalOrder{Cell}}(; maxsize = 10)
+
 function topological_order_cached(topology::NotebookTopology, roots::AbstractVector{Cell}; kwargs...)
-	
-	# return	topological_order(topology, roots; kwargs...)
-	# @info "Called with" objectid(topology) hash([c.cell_id for c in roots]) [c.cell_id for c in roots] exception=(ErrorException("asd"),backtrace())
-	
-	h = hash((objectid(topology), [c.cell_id for c in roots], kwargs))
-	get!(thecache, h) do
-		@warn "cache miss"
+	h = hash((
+		# the `topology` object is designed to be `===` the same if the cell inputs dont change. So we should use objectid here
+		objectid(topology), 
+		# we don't just hash `roots` directly because thats quite a lot of work
+		objectid.(roots),
+		# we hash the kwargs
+		kwargs))
+	get!(_cache_for_topological_order, h) do
 		topological_order(topology, roots; kwargs...)
 	end
 end
