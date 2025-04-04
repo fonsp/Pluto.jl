@@ -36,7 +36,7 @@ export const prewarmPluto = async (browser) => {
     let page = await createPage(browser)
 
     await browser.defaultBrowserContext().overridePermissions(getPlutoUrl(), ["clipboard-read", "clipboard-write"])
-    await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
+    await gotoPlutoMainMenu(page)
     await createNewNotebook(page)
     const cellInputSelector = "pluto-input .cm-content"
     await page.waitForSelector(cellInputSelector, { visible: true })
@@ -71,6 +71,14 @@ export const setupPlutoBrowser = async () => {
     await prewarmPluto(browser)
 
     return browser
+}
+
+/**
+ * @param {Page} page
+ */
+export const gotoPlutoMainMenu = async (page) => {
+    await page.goto(getPlutoUrl(), { waitUntil: "domcontentloaded" })
+    await page.waitForFunction(() => document.querySelector(`.not_yet_ready`) == null)
 }
 
 /**

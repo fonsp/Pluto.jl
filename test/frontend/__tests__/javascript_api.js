@@ -8,6 +8,7 @@ import {
     setupPlutoBrowser,
     waitForPlutoToCalmDown,
     runAllChanged,
+    gotoPlutoMainMenu,
 } from "../helpers/pluto"
 
 describe("JavaScript API", () => {
@@ -25,7 +26,7 @@ describe("JavaScript API", () => {
     })
     beforeEach(async () => {
         page = await createPage(browser)
-        await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
+        await gotoPlutoMainMenu(page)
         await createNewNotebook(page)
     })
     afterEach(async () => {

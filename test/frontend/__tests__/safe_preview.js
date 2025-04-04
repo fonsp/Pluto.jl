@@ -13,6 +13,7 @@ import {
     runAllChanged,
     openPathOrURLNotebook,
     getAllCellOutputs,
+    gotoPlutoMainMenu,
 } from "../helpers/pluto"
 
 describe("safe_preview", () => {
@@ -30,7 +31,7 @@ describe("safe_preview", () => {
     })
     beforeEach(async () => {
         page = await createPage(browser)
-        await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
+        await gotoPlutoMainMenu(page)
     })
     afterEach(async () => {
         await saveScreenshot(page)
@@ -128,7 +129,7 @@ Hello
         let path = await page.evaluate(() => window.editor_state.notebook.path.replaceAll("\\", "\\\\"))
         let shutdown = async () => {
             await shutdownCurrentNotebook(page)
-            await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
+            await gotoPlutoMainMenu(page)
             // Wait for it to be shut down
             await page.waitForSelector(`li.recent a[title="${path}"]`)
         }
