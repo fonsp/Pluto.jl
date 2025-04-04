@@ -1,8 +1,45 @@
-/* This CSS file will be loaded when you print the notebook (@media print), or when the disable_ui frontend parameter is set (in a static HTML export). */
+/* The following needs to be DUPLICATED, once for disable_ui (can also happen on the web) and once for printing (but disable_ui might not be set) */
 
-main {
+pluto-editor.disable_ui > main {
     margin-top: 20px;
     cursor: auto;
+}
+
+pluto-editor.disable_ui header#pluto-nav,
+pluto-editor.disable_ui preamble > button,
+pluto-editor.disable_ui pluto-cell > button,
+pluto-editor.disable_ui pluto-input > button,
+pluto-editor.disable_ui pluto-shoulder,
+pluto-editor.disable_ui pluto-shoulder,
+pluto-editor.disable_ui footer,
+pluto-editor.disable_ui pluto-runarea,
+pluto-editor.disable_ui jlerror .doclink,
+pluto-editor.disable_ui .dont-panic,
+pluto-editor.disable_ui #helpbox-wrapper {
+    display: none !important;
+}
+
+/* AND NOW THE SAME AGAIN FOR PRINT */
+
+@media print {
+    pluto-editor > main {
+        margin-top: 20px;
+        cursor: auto;
+    }
+
+    pluto-editor header#pluto-nav,
+    pluto-editor preamble > button,
+    pluto-editor pluto-cell > button,
+    pluto-editor pluto-input > button,
+    pluto-editor pluto-shoulder,
+    pluto-editor pluto-shoulder,
+    pluto-editor footer,
+    pluto-editor pluto-runarea,
+    pluto-editor jlerror .doclink,
+    pluto-editor .dont-panic,
+    pluto-editor #helpbox-wrapper {
+        display: none !important;
+    }
 }
 
 /* These next rules only apply to @media print, i.e. the PDF export. We want to hide these items in the PDF, but not in a static HTML. */
@@ -20,8 +57,10 @@ main {
     nav#undo_delete {
         display: none !important;
     }
-    main {
+    body:not(.___) pluto-editor:not(._____) > main {
         padding-bottom: 0;
+        padding-left: 6px;
+        padding-right: 6px;
     }
     pluto-input .cm-editor {
         border-left: 1px solid var(--normal-cell-color);

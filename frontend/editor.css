@@ -28,6 +28,8 @@
 
 @import url("./featured-card.css");
 
+@import url("./hide-ui.css");
+
 /* VARIABLES */
 
 :root {
@@ -104,22 +106,6 @@ pluto-editor main {
 pluto-notebook {
     display: block;
     background: var(--main-bg-color);
-}
-
-/* HIDING UI WITH disable_ui */
-
-pluto-editor.disable_ui header#pluto-nav,
-pluto-editor.disable_ui preamble > button,
-pluto-editor.disable_ui pluto-cell > button,
-pluto-editor.disable_ui pluto-input > button,
-pluto-editor.disable_ui pluto-shoulder,
-pluto-editor.disable_ui pluto-shoulder,
-pluto-editor.disable_ui footer,
-pluto-editor.disable_ui pluto-runarea,
-pluto-editor.disable_ui jlerror .doclink,
-pluto-editor.disable_ui .dont-panic,
-pluto-editor.disable_ui #helpbox-wrapper {
-    display: none !important;
 }
 
 /* STANDARD HTML ELEMENTS */
@@ -3789,6 +3775,7 @@ pluto-cell.hooked_up > pluto-output {
 
 .markdown-code-block-button::before {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/copy-outline.svg");
+    background-size: 100% 100%;
 }
 
 .markdown-code-block-copied-code-button::before {
