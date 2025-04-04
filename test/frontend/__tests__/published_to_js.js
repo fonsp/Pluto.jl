@@ -1,6 +1,6 @@
 import puppeteer from "puppeteer"
 import { saveScreenshot, createPage } from "../helpers/common"
-import { importNotebook, getPlutoUrl, shutdownCurrentNotebook, setupPlutoBrowser } from "../helpers/pluto"
+import { importNotebook, getPlutoUrl, shutdownCurrentNotebook, setupPlutoBrowser, gotoPlutoMainMenu } from "../helpers/pluto"
 
 describe("published_to_js", () => {
     /**
@@ -17,7 +17,7 @@ describe("published_to_js", () => {
     })
     beforeEach(async () => {
         page = await createPage(browser)
-        await page.goto(getPlutoUrl(), { waitUntil: "domcontentloaded" })
+        await gotoPlutoMainMenu(page)
     })
     afterEach(async () => {
         await saveScreenshot(page)

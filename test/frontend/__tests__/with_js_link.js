@@ -10,6 +10,7 @@ import {
     writeSingleLineInPlutoInput,
     runAllChanged,
     waitForPlutoToCalmDown,
+    gotoPlutoMainMenu,
 } from "../helpers/pluto"
 
 describe("with_js_link", () => {
@@ -25,7 +26,7 @@ describe("with_js_link", () => {
     beforeAll(async () => {
         browser = await setupPlutoBrowser()
         page = await createPage(browser)
-        await page.goto(getPlutoUrl(), { waitUntil: "domcontentloaded" })
+        await gotoPlutoMainMenu(page)
 
         await importNotebook(page, "with_js_link.jl", { timeout: 120 * 1000 })
     })

@@ -4,6 +4,7 @@ import {
     createNewNotebook,
     getCellIds,
     getPlutoUrl,
+    gotoPlutoMainMenu,
     importNotebook,
     manuallyEnterCells,
     runAllChanged,
@@ -28,7 +29,7 @@ describe("slideControls", () => {
     })
     beforeEach(async () => {
         page = await createPage(browser)
-        await page.goto(getPlutoUrl(), { waitUntil: "domcontentloaded" })
+        await gotoPlutoMainMenu(page)
     })
     afterEach(async () => {
         await saveScreenshot(page)
