@@ -98,6 +98,7 @@ pluto-editor main {
         /* First part: center it */ max(0px, (100% - (700px + 25px + 6px)) / 2),
         /* Second part: push away from the right to take up all free space */ min((100% - (700px + 25px + 6px)), /* but don't do this more than */ 500px)
     );
+    position: relative;
 }
 
 pluto-notebook {
@@ -1910,8 +1911,8 @@ pluto-input > .preview_hidden_code_info {
     pointer-events: none;
 }
 
-pluto-editor:not(.process_waiting_for_permission) pluto-cell.code_folded pluto-input > .preview_hidden_code_info,
-pluto-cell.code_folded:focus-within pluto-input > .preview_hidden_code_info {
+pluto-editor:not(.process_waiting_for_permission) pluto-cell.code_folded > pluto-input > .preview_hidden_code_info,
+pluto-cell.code_folded:focus-within > pluto-input > .preview_hidden_code_info {
     display: block;
 }
 
@@ -2269,6 +2270,7 @@ dropruler {
     height: 4px;
     margin-top: calc(-2px - 0.5 * var(--pluto-cell-spacing));
     background: var(--dropruler-bg-color);
+    transition: top 0.05s;
 }
 
 /* LIVE DOCS */
@@ -3494,7 +3496,7 @@ pluto-input .cm-editor .cm-content {
     /* height: auto; */
 }
 
-pluto-cell.code_differs .cm-editor .cm-gutters {
+pluto-cell.code_differs > pluto-input > .cm-editor .cm-gutters {
     /* background: hsla(46, 70%, 88%, 1); */
     background-color: var(--cm-color-code-differs-gutters);
 }
@@ -3528,10 +3530,10 @@ pluto-input:focus-within .cm-editor .cm-lineNumbers .cm-gutterElement::after {
 }
  */
 
-pluto-cell.errored .cm-editor .cm-lineNumbers .cm-gutterElement {
+pluto-cell.errored > pluto-input > .cm-editor .cm-lineNumbers .cm-gutterElement {
     color: var(--cm-color-line-numbers);
 }
-pluto-cell.errored .cm-editor .cm-lineNumbers .cm-gutterElement::after {
+pluto-cell.errored > pluto-input > .cm-editor .cm-lineNumbers .cm-gutterElement::after {
     color: transparent;
 }
 /* Case 2: Print */
@@ -3657,11 +3659,11 @@ pluto-cell.hooked_up {
     --pluto-cell-force-color: #00b9ff7a;
 }
 
-pluto-cell.hooked_up pluto-trafficlight {
+pluto-cell.hooked_up > pluto-trafficlight {
     background-color: var(--pluto-cell-force-color) !important;
 }
 
-pluto-cell.hooked_up pluto-input .cm-editor {
+pluto-cell.hooked_up > pluto-input .cm-editor {
     border-color: var(--pluto-cell-force-color);
     border-width: 2px;
     border-left: none;
@@ -3673,11 +3675,11 @@ pluto-cell.hooked_up > pluto-runarea {
     background-color: var(--pluto-cell-force-color);
 }
 
-pluto-cell.hooked_up pluto-runarea > span {
+pluto-cell.hooked_up > pluto-runarea > span {
     color: #0000004f;
 }
 
-pluto-cell.hooked_up pluto-output {
+pluto-cell.hooked_up > pluto-output {
     border-right: solid 2px;
     border-top: solid 2px;
     border-top-right-radius: 4px;

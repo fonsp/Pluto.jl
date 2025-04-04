@@ -1262,7 +1262,7 @@ all patches: ${JSON.stringify(patches, null, 1)}
             }
         }
 
-        this.serialize_selected = (cell_id = null) => {
+        this.serialize_selected = (/** @type {string?} */ cell_id = null) => {
             const cells_to_serialize = cell_id == null || this.state.selected_cells.includes(cell_id) ? this.state.selected_cells : [cell_id]
             if (cells_to_serialize.length) {
                 return serialize_cells(cells_to_serialize.map((id) => this.state.notebook.cell_inputs[id]))
@@ -1727,31 +1727,32 @@ The notebook file saves every time you run a cell.`
                             selected_cells=${this.state.selected_cells}
                             set_scroller=${(enabled) => this.setState({ scroller: enabled })}
                             serialize_selected=${this.serialize_selected}
+                            pluto_editor_element=${this.props.pluto_editor_element}
                         />
-                        ${
-                            this.state.disable_ui ||
-                            html`<${SelectionArea}
-                                cell_order=${this.state.notebook.cell_order}
-                                set_scroller=${(enabled) => {
-                                    this.setState({ scroller: enabled })
-                                }}
-                                on_selection=${(selected_cell_ids) => {
-                                    // @ts-ignore
-                                    if (
-                                        selected_cell_ids.length !== this.state.selected_cells.length ||
-                                        _.difference(selected_cell_ids, this.state.selected_cells).length !== 0
-                                    ) {
-                                        this.setState({
-                                            selected_cells: selected_cell_ids,
-                                        })
-                                    }
-                                }}
-                            />`
-                        }
                         <${NonCellOutput} 
                             notebook_id=${this.state.notebook.notebook_id} 
                             environment_component=${this.state.extended_components.NonCellOutputComponents} />
                     </${Main}>
+                    ${
+                        this.state.disable_ui ||
+                        html`<${SelectionArea}
+                            cell_order=${this.state.notebook.cell_order}
+                            set_scroller=${(enabled) => {
+                                this.setState({ scroller: enabled })
+                            }}
+                            on_selection=${(selected_cell_ids) => {
+                                // @ts-ignore
+                                if (
+                                    selected_cell_ids.length !== this.state.selected_cells.length ||
+                                    _.difference(selected_cell_ids, this.state.selected_cells).length !== 0
+                                ) {
+                                    this.setState({
+                                        selected_cells: selected_cell_ids,
+                                    })
+                                }
+                            }}
+                        />`
+                    }
                     <${BottomRightPanel}
                         desired_doc_query=${this.state.desired_doc_query}
                         on_update_doc_query=${this.actions.set_doc_query}
