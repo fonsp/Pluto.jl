@@ -30,6 +30,8 @@ jobs:
               with:
                   version: "1.10" # our lowest supported version
 
+            - uses: julia-actions/cache@v2
+
             - name: Install Pluto.jl packages
               run: |
                   julia --project=$GITHUB_WORKSPACE -e "using Pkg; Pkg.instantiate()"

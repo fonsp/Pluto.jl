@@ -13,6 +13,7 @@ import {
     manuallyEnterCells,
     runAllChanged,
     clearPlutoInput,
+    gotoPlutoMainMenu,
 } from "../helpers/pluto"
 
 describe("PlutoNewNotebook", () => {
@@ -30,7 +31,7 @@ describe("PlutoNewNotebook", () => {
     })
     beforeEach(async () => {
         page = await createPage(browser)
-        await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
+        await gotoPlutoMainMenu(page)
         await createNewNotebook(page)
     })
     afterEach(async () => {
