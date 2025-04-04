@@ -18,9 +18,11 @@ const set_attribute_if_needed = (element, attr, value) => {
         element.setAttribute(attr, value)
     }
 }
-export const set_disable_ui_css = (val) => {
-    document.body.classList.toggle("disable_ui", val)
-    set_attribute_if_needed(document.head.querySelector("link[data-pluto-file='hide-ui']"), "media", val ? "all" : "print")
+export const set_disable_ui_css = (/** @type {boolean} */ val, /** @type {HTMLElement} */ element) => {
+    element.classList.toggle("disable_ui", val)
+    // if we are not a notebook embedded in a notebook:
+    if (element.parentElement?.closest("pluto-editor") == null)
+        set_attribute_if_needed(document.head.querySelector("link[data-pluto-file='hide-ui']"), "media", val ? "all" : "print")
 }
 
 /////////////
@@ -104,9 +106,10 @@ const get_statefile =
  *
  * @param {{
  *  launch_params: import("./components/Editor.js").LaunchParameters,
+ *  pluto_editor_element: HTMLElement,
  * }} props
  */
-const EditorLoader = ({ launch_params }) => {
+const EditorLoader = ({ launch_params, pluto_editor_element }) => {
     const { statefile, statefile_integrity } = launch_params
     const static_preview = statefile != null
 
@@ -140,7 +143,7 @@ const EditorLoader = ({ launch_params }) => {
     }, [ready_for_editor, static_preview, statefile])
 
     useEffect(() => {
-        set_disable_ui_css(launch_params.disable_ui)
+        set_disable_ui_css(launch_params.disable_ui, pluto_editor_element)
     }, [launch_params.disable_ui])
 
     const preamble_element = launch_params.preamble_html
@@ -150,7 +153,12 @@ const EditorLoader = ({ launch_params }) => {
     return error_banner != null
         ? error_banner
         : ready_for_editor
-        ? html`<${Editor} initial_notebook_state=${initial_notebook_state_ref.current} launch_params=${launch_params} preamble_element=${preamble_element} />`
+        ? html`<${Editor}
+              initial_notebook_state=${initial_notebook_state_ref.current}
+              launch_params=${launch_params}
+              preamble_element=${preamble_element}
+              pluto_editor_element=${pluto_editor_element}
+          />`
         : // todo: show preamble html
           html`
               ${preamble_element}
@@ -191,7 +199,7 @@ class PlutoEditorComponent extends HTMLElement {
         console.log("Launch parameters: ", new_launch_params)
 
         document.querySelector(".delete-me-when-live")?.remove()
-        render(html`<${EditorLoader} launch_params=${new_launch_params} />`, this)
+        render(html`<${EditorLoader} launch_params=${new_launch_params} pluto_editor_element=${this} />`, this)
     }
 }
 customElements.define("pluto-editor", PlutoEditorComponent)

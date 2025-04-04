@@ -278,6 +278,7 @@ export const url_logo_small = get_included_external_source("pluto-logo-small")?.
  * launch_params: LaunchParameters,
  * initial_notebook_state: NotebookData,
  * preamble_element: preact.ReactElement?,
+ * pluto_editor_element: HTMLElement,
  * }}
  */
 
@@ -975,7 +976,7 @@ all patches: ${JSON.stringify(patches, null, 1)}
             }).then(on_establish_connection)
 
         this.on_disable_ui = () => {
-            set_disable_ui_css(this.state.disable_ui)
+            set_disable_ui_css(this.state.disable_ui, props.pluto_editor_element)
 
             // Pluto has three modes of operation:
             // 1. (normal) Connected to a Pluto notebook.
@@ -1508,7 +1509,7 @@ The notebook file saves every time you run a cell.`
         this.cached_status = statusmap(new_state, this.props.launch_params)
 
         Object.entries(this.cached_status).forEach(([k, v]) => {
-            document.body.classList.toggle(k, v === true)
+            new_props.pluto_editor_element.classList.toggle(k, v === true)
         })
     }
 

@@ -81,11 +81,11 @@ main {
     width: 100%;
 }
 
-body:not(.disable_ui) main {
+pluto-editor:not(.disable_ui) > main {
     padding-bottom: 16rem;
 }
 
-body:not(.disable_ui) {
+body:has(pluto-editor:not(.disable_ui)) {
     overscroll-behavior: contain;
 }
 
@@ -103,6 +103,22 @@ pluto-editor main {
 pluto-notebook {
     display: block;
     background: var(--main-bg-color);
+}
+
+/* HIDING UI WITH disable_ui */
+
+pluto-editor.disable_ui header#pluto-nav,
+pluto-editor.disable_ui preamble > button,
+pluto-editor.disable_ui pluto-cell > button,
+pluto-editor.disable_ui pluto-input > button,
+pluto-editor.disable_ui pluto-shoulder,
+pluto-editor.disable_ui pluto-shoulder,
+pluto-editor.disable_ui footer,
+pluto-editor.disable_ui pluto-runarea,
+pluto-editor.disable_ui jlerror .doclink,
+pluto-editor.disable_ui .dont-panic,
+pluto-editor.disable_ui #helpbox-wrapper {
+    display: none !important;
 }
 
 /* STANDARD HTML ELEMENTS */
@@ -835,10 +851,10 @@ nav#at_the_top:after {
     }
 }
 
-body.binder header#pluto-nav > nav#at_the_top > pluto-filepicker > * {
+pluto-editor.binder > header#pluto-nav > nav#at_the_top > pluto-filepicker > * {
     display: none;
 }
-body.binder header#pluto-nav > nav#at_the_top > pluto-filepicker > a {
+pluto-editor.binder > header#pluto-nav > nav#at_the_top > pluto-filepicker > a {
     display: block;
     font-size: 16px;
     font-family: var(--julia-mono-font-stack);
@@ -846,37 +862,37 @@ body.binder header#pluto-nav > nav#at_the_top > pluto-filepicker > a {
     text-decoration: none;
 }
 
-body.nbpkg_restart_recommended header#pluto-nav,
-body.nbpkg_restart_required header#pluto-nav,
-body.binder.loading header#pluto-nav,
-body.process_waiting_for_permission header#pluto-nav,
-body.process_dead header#pluto-nav,
-body.disconnected header#pluto-nav {
+pluto-editor.nbpkg_restart_recommended > header#pluto-nav,
+pluto-editor.nbpkg_restart_required > header#pluto-nav,
+pluto-editor.binder.loading > header#pluto-nav,
+pluto-editor.process_waiting_for_permission > header#pluto-nav,
+pluto-editor.process_dead > header#pluto-nav,
+pluto-editor.disconnected > header#pluto-nav {
     position: sticky;
     top: 0;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
 }
 
-body.nbpkg_restart_recommended header#pluto-nav {
+pluto-editor.nbpkg_restart_recommended > header#pluto-nav {
     background-color: var(--restart-recc-header-color);
 }
-body.nbpkg_restart_required header#pluto-nav {
+pluto-editor.nbpkg_restart_required > header#pluto-nav {
     background-color: var(--restart-req-header-color);
 }
-body.process_dead header#pluto-nav {
+pluto-editor.process_dead > header#pluto-nav {
     background-color: var(--dead-process-header-color);
 }
-body.process_waiting_for_permission header#pluto-nav {
+pluto-editor.process_waiting_for_permission > header#pluto-nav {
     background-color: var(--restart-recc-header-color);
 }
-body.loading header#pluto-nav {
+pluto-editor.loading > header#pluto-nav {
     background-color: var(--loading-header-color);
 }
-body.disconnected header#pluto-nav {
+pluto-editor.disconnected > header#pluto-nav {
     background-color: var(--disconnected-header-color);
 }
-body.binder.loading header#pluto-nav {
+pluto-editor.binder.loading > header#pluto-nav {
     background-color: var(--binder-loading-header-color);
 }
 
@@ -903,8 +919,8 @@ nav#at_the_top > #process_status:empty {
     border: 5px solid #d1d9e4;
     border-radius: 6px; */
     --w: min(80vw, 300px);
-    position: fixed;
-    left: calc(50vw - 0.5 * var(--w));
+    position: absolute;
+    left: calc(50% - 0.5 * var(--w));
     top: 0;
     z-index: 300000;
     /* box-sizing: content-box; */
@@ -961,15 +977,15 @@ body.binder.loading #binder_spinners {
     box-sizing: border-box;
 }
 
-body.process_waiting_for_permission .outline-frame.safe-preview {
+pluto-editor.process_waiting_for_permission > .outline-frame.safe-preview {
     border-bottom: 12px solid var(--restart-recc-header-color);
 }
 
-body.recording_waiting_to_start .outline-frame.recording {
+pluto-editor.recording_waiting_to_start > .outline-frame.recording {
     border: 12px solid #be6f6fba;
 }
-body.is_recording .outline-frame.recording {
-    border: 12px solid #dc3535ba;
+pluto-editor.is_recording > .outline-frame.recording {
+    border: 12px solid #645e5eba;
 }
 .outline-frame.playback {
     opacity: 1;
@@ -980,8 +996,8 @@ body.is_recording .outline-frame.recording {
     box-shadow: inset 0px 0px 20px 20px #919bff2b;
 }
 
-body.recording_waiting_to_start header#pluto-nav,
-body.is_recording header#pluto-nav {
+pluto-editor.recording_waiting_to_start > header#pluto-nav,
+pluto-editor.is_recording > header#pluto-nav {
     display: none;
 }
 
@@ -1522,18 +1538,18 @@ pluto-cell.activate_animation pluto-trafficlight::after {
 }
 
 /* in ascending order of severity: */
-/* we need the :not(.___) to fix our CSS selector specificity when `body.disable_ui` */
-body:not(.___) pluto-cell.code_folded > pluto-trafficlight {
+/* we need the :not(.___) to fix our CSS selector specificity when `pluto-editor.disable_ui` */
+pluto-editor:not(.___) pluto-cell.code_folded > pluto-trafficlight {
     background: none;
 }
 
 @media screen and (any-pointer: fine) {
-    body:not(.disable_ui) pluto-cell:hover > pluto-trafficlight {
+    pluto-editor:not(.disable_ui) pluto-cell:hover > pluto-trafficlight {
         background: var(--normal-cell-color);
     }
 }
 
-body:not(.___) pluto-cell:focus-within > pluto-trafficlight {
+pluto-editor:not(.___) pluto-cell:focus-within > pluto-trafficlight {
     border-left-width: 4px;
     border-left-style: solid;
     margin-left: -4px;
@@ -1541,25 +1557,25 @@ body:not(.___) pluto-cell:focus-within > pluto-trafficlight {
     background-color: var(--normal-cell-color);
 }
 
-body:not(.___) pluto-cell.selected > pluto-trafficlight {
+pluto-editor:not(.___) pluto-cell.selected > pluto-trafficlight {
     background: var(--selected-cell-color);
     border-left-color: var(--selected-cell-color);
     background-clip: padding-box;
 }
 
-body:not(.___) pluto-cell.code_differs > pluto-trafficlight {
+pluto-editor:not(.___) pluto-cell.code_differs > pluto-trafficlight {
     background: var(--code-differs-cell-color);
     border-left-color: var(--code-differs-cell-color);
     background-clip: padding-box;
 }
 
-body:not(.___) pluto-cell.errored > pluto-trafficlight {
+pluto-editor:not(.___) pluto-cell.errored > pluto-trafficlight {
     background: var(--error-cell-color);
     border-left-color: var(--error-cell-color);
     background-clip: padding-box;
 }
 
-body:not(.___) pluto-cell.queued > pluto-trafficlight::after {
+pluto-editor:not(.___) pluto-cell.queued > pluto-trafficlight::after {
     background: repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0) 8px, var(--normal-cell-color) 8px, var(--normal-cell-color) 16px);
     background-clip: padding-box;
     /* [1]
@@ -1575,7 +1591,7 @@ body:not(.___) pluto-cell.queued > pluto-trafficlight::after {
     animation-duration: 20s;
 }
 
-body:not(.___) pluto-cell.running > pluto-trafficlight::after {
+pluto-editor:not(.___) pluto-cell.running > pluto-trafficlight::after {
     background: repeating-linear-gradient(
         -45deg,
         var(--normal-cell-color),
@@ -1588,7 +1604,7 @@ body:not(.___) pluto-cell.running > pluto-trafficlight::after {
     background-size: 4px var(--patternHeight);
 }
 
-body:not(.___) pluto-cell.queued.errored > pluto-trafficlight::after {
+pluto-editor:not(.___) pluto-cell.queued.errored > pluto-trafficlight::after {
     background: repeating-linear-gradient(
         -45deg,
         var(--light-error-cell-color),
@@ -1601,7 +1617,7 @@ body:not(.___) pluto-cell.queued.errored > pluto-trafficlight::after {
     background-size: 4px var(--patternHeight); /* 16 * sqrt(2) */
 }
 
-body:not(.___) pluto-cell.running.errored > pluto-trafficlight::after {
+pluto-editor:not(.___) pluto-cell.running.errored > pluto-trafficlight::after {
     background: repeating-linear-gradient(
         -45deg,
         var(--light-error-cell-color),
@@ -1911,7 +1927,7 @@ pkg-status-mark {
     margin: 0px 0.6em 0px 0.2em;
     display: inline-block;
 }
-body.nbpkg_disabled pkg-status-mark:not(.disable_pkg) {
+pluto-editor.nbpkg_disabled pkg-status-mark:not(.disable_pkg) {
     display: none;
 }
 
@@ -3406,17 +3422,17 @@ Based on "Paraíso (Light)" by Jan T. Sott:
     text-decoration-skip-ink: none;
 }
 
-body.disable_ui [data-pluto-variable],
-body.disable_ui [data-cell-variable] {
+pluto-editor.disable_ui [data-pluto-variable],
+pluto-editor.disable_ui [data-cell-variable] {
     cursor: pointer;
 }
-body:not(.disable_ui) [data-ctrl-down="true"][data-pluto-variable],
-body:not(.disable_ui) [data-ctrl-down="true"][data-cell-variable] {
+pluto-editor:not(.disable_ui) [data-ctrl-down="true"][data-pluto-variable],
+pluto-editor:not(.disable_ui) [data-ctrl-down="true"][data-cell-variable] {
     text-decoration-color: #d177e6;
     cursor: pointer;
 }
-body:not(.disable_ui) [data-ctrl-down="true"][data-pluto-variable]:hover,
-body:not(.disable_ui) [data-ctrl-down="true"][data-pluto-variable]:hover * {
+pluto-editor:not(.disable_ui) [data-ctrl-down="true"][data-pluto-variable]:hover,
+pluto-editor:not(.disable_ui) [data-ctrl-down="true"][data-pluto-variable]:hover * {
     /* This basically `color: #af5bc3`, but it works for emoji too!! */
     color: transparent !important;
     text-shadow: 0 0 #af5bc3;
