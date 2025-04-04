@@ -24,7 +24,7 @@ export class DropRuler extends Component {
         this.pointer_position = { pageX: 0, pageY: 0 }
         this.precompute_cell_edges = () => {
             /** @type {Array<HTMLElement>} */
-            const cell_nodes = Array.from(document.querySelectorAll("pluto-notebook > pluto-cell"))
+            const cell_nodes = Array.from(this.props.pluto_editor_element.querySelectorAll(":scope > main > pluto-notebook > pluto-cell"))
             this.cell_edges = cell_nodes.map((el) => el.offsetTop)
             this.cell_edges.push(last(cell_nodes).offsetTop + last(cell_nodes).scrollHeight)
         }
