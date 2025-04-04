@@ -17,7 +17,7 @@ describe("published_to_js", () => {
     })
     beforeEach(async () => {
         page = await createPage(browser)
-        await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
+        await page.goto(getPlutoUrl(), { waitUntil: "domcontentloaded" })
     })
     afterEach(async () => {
         await saveScreenshot(page)

@@ -24,7 +24,7 @@ describe("wind_directions", () => {
     beforeAll(async () => {
         browser = await setupPlutoBrowser()
         page = await createPage(browser)
-        await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
+        await page.goto(getPlutoUrl(), { waitUntil: "domcontentloaded" })
 
         await importNotebook(page, "wind_directions.jl", { permissionToRunCode: true, timeout: 180 * 1000 })
         await page.waitForTimeout(1000)

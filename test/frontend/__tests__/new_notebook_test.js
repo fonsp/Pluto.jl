@@ -30,7 +30,7 @@ describe("PlutoNewNotebook", () => {
     })
     beforeEach(async () => {
         page = await createPage(browser)
-        await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
+        await page.goto(getPlutoUrl(), { waitUntil: "domcontentloaded" })
         await createNewNotebook(page)
     })
     afterEach(async () => {

@@ -25,7 +25,7 @@ describe("with_js_link", () => {
     beforeAll(async () => {
         browser = await setupPlutoBrowser()
         page = await createPage(browser)
-        await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
+        await page.goto(getPlutoUrl(), { waitUntil: "domcontentloaded" })
 
         await importNotebook(page, "with_js_link.jl", { timeout: 120 * 1000 })
     })
