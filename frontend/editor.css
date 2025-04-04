@@ -637,7 +637,7 @@ dialog#export .export_small_btns {
     top: 0em;
     background: var(--export-bg-color);
 }
-body.static_preview button.toggle_export {
+pluto-editor.static_preview button.toggle_export {
     display: none;
 }
 
@@ -952,7 +952,7 @@ loading-bar.slow {
     }
 }
 
-body.binder.loading #binder_spinners {
+pluto-editor.binder.loading #binder_spinners {
     opacity: 0.25;
 }
 
@@ -1177,10 +1177,6 @@ main > preamble span.saved-icon::after,
 #saveall-container:hover .only-on-hover {
     display: inline;
 }
-
-/* body:not(.code_differs) > main > preamble #saveall-container {
-    display: none;
-} */
 
 /* CELL */
 
@@ -1914,7 +1910,7 @@ pluto-input > .preview_hidden_code_info {
     pointer-events: none;
 }
 
-body:not(.process_waiting_for_permission) pluto-cell.code_folded pluto-input > .preview_hidden_code_info,
+pluto-editor:not(.process_waiting_for_permission) pluto-cell.code_folded pluto-input > .preview_hidden_code_info,
 pluto-cell.code_folded:focus-within pluto-input > .preview_hidden_code_info {
     display: block;
 }
