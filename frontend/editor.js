@@ -20,10 +20,10 @@ const set_attribute_if_needed = (element, attr, value) => {
 }
 export const set_disable_ui_css = (/** @type {boolean} */ val, /** @type {HTMLElement} */ element) => {
     element.classList.toggle("disable_ui", val)
-    // if we are not a notebook embedded in a notebook:
-    if (element.parentElement?.closest("pluto-editor") == null)
+    if (!is_editor_embedded_inside_editor(element))
         set_attribute_if_needed(document.head.querySelector("link[data-pluto-file='hide-ui']"), "media", val ? "all" : "print")
 }
+export const is_editor_embedded_inside_editor = (/** @type {HTMLElement} */ element) => element.parentElement?.closest("pluto-editor") != null
 
 /////////////
 // the rest:
