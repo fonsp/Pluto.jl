@@ -1339,9 +1339,11 @@ Delete or Backspace:   delete empty cell
 
 PageUp or fn${and}↑:   jump to cell above
 PageDown or fn${and}↓:   jump to cell below
+${control_name}${and}click:   jump to definition
 ${alt_or_options_name}${and}↑:   move line/cell up
 ${alt_or_options_name}${and}↓:   move line/cell down
 
+${control_name}${and}/:   toggle comment
 ${control_name}${and}M:   toggle markdown
 ${fold_prefix}${and}[:   hide cell code
 ${fold_prefix}${and}]:   show cell code
