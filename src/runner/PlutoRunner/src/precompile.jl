@@ -2,6 +2,7 @@ using PrecompileTools: PrecompileTools
 using UUIDs: uuid1
 
 const __TEST_NOTEBOOK_ID = uuid1()
+const __precompile_test_workspace = VERSION < v"1.12.0-aaa" ? Module() : Main
 
 PrecompileTools.@compile_workload begin
     let
@@ -13,10 +14,9 @@ PrecompileTools.@compile_workload begin
     end
     expr = Expr(:toplevel, :(1 + 1))
     cell_id = uuid1()
-    workspace = Module()
-    PlutoRunner.run_expression(workspace, expr, __TEST_NOTEBOOK_ID, cell_id, nothing);
+    PlutoRunner.run_expression(__precompile_test_workspace, expr, __TEST_NOTEBOOK_ID, cell_id, nothing);
     PlutoRunner.formatted_result_of(__TEST_NOTEBOOK_ID, cell_id,
-                                    false, String[], nothing, workspace; capture_stdout=true)
+                                    false, String[], nothing, __precompile_test_workspace; capture_stdout=true)
     foreach(("sq", "\\sq", "Base.a", "sqrt(", "sum(x; dim")) do s
         PlutoRunner.completion_fetcher(s, ncodeunits(s), Main)
     end
