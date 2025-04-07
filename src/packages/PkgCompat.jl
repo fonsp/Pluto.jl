@@ -261,11 +261,17 @@ end
 ###
 
 # (✅ Public API)
+# You need to regenerate this list for every new Julia version. Just do sort(union(Pluto._stdlibs_including_former_stdlibs, Pluto._stdlibs_found)) |> repr |> clipboaard
+const _stdlibs_including_former_stdlibs = ["ArgTools", "Artifacts", "Base64", "CRC32c", "CompilerSupportLibraries_jll", "Dates", "DelimitedFiles", "Distributed", "Downloads", "FileWatching", "Future", "GMP_jll", "InteractiveUtils", "JuliaSyntaxHighlighting", "LLD_jll", "LLVMLibUnwind_jll", "LazyArtifacts", "LibCURL", "LibCURL_jll", "LibGit2", "LibGit2_jll", "LibOSXUnwind_jll", "LibSSH2_jll", "LibUV_jll", "LibUnwind_jll", "Libdl", "LinearAlgebra", "Logging", "MPFR_jll", "Markdown", "MbedTLS_jll", "Mmap", "MozillaCACerts_jll", "NetworkOptions", "OpenBLAS_jll", "OpenLibm_jll", "OpenSSL_jll", "PCRE2_jll", "Pkg", "Printf", "Profile", "REPL", "Random", "SHA", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "StyledStrings", "SuiteSparse", "SuiteSparse_jll", "TOML", "Tar", "Test", "UUIDs", "Unicode", "Zlib_jll", "dSFMT_jll", "libLLVM_jll", "libblastrampoline_jll", "nghttp2_jll", "p7zip_jll"]
 _stdlibs_found = sort(readdir(Sys.STDLIB))
-_stdlibs() = _stdlibs_found
+_stdlibs(; include_former::Bool=true) = if include_former
+	sort(union(_stdlibs_including_former_stdlibs, _stdlibs_found))
+else
+	_stdlibs_found
+end
 
 # ⚠️ Internal API with fallback
-is_stdlib(package_name::AbstractString) = package_name ∈ _stdlibs()
+is_stdlib(package_name::AbstractString; kwargs...) = package_name ∈ _stdlibs(; kwargs...)
 
 
 
@@ -335,7 +341,7 @@ end
 Return all registered versions of the given package. Returns `["stdlib"]` for standard libraries, a `Vector{VersionNumber}` for registered packages, or `["latest"]` if it crashed.
 """
 function package_versions(package_name::AbstractString)::Vector
-    if is_stdlib(package_name)
+    if is_stdlib(package_name; include_former=true)
         ["stdlib"]
     else
 		try
@@ -363,7 +369,7 @@ end
 Return the URL of the package's documentation (if possible) or homepage. Returns `nothing` if the package was not found.
 """
 function package_url(package_name::AbstractString)::Union{String,Nothing}
-    if is_stdlib(package_name)
+    if is_stdlib(package_name; include_former=false)
 		"https://docs.julialang.org/en/v1/stdlib/$(package_name)/"
     else
 		try
@@ -387,7 +393,7 @@ package_exists(package_name::AbstractString)::Bool =
     package_versions(package_name) |> !isempty
 
 # 🐸 "Public API", but using PkgContext
-function dependencies(ctx)
+function dependencies(ctx; throw::Bool=false)
 	try
 		# ctx.env.manifest
 		@static if hasmethod(Pkg.dependencies, (PkgContext,))
@@ -396,6 +402,7 @@ function dependencies(ctx)
 			Pkg.dependencies(ctx.env)
 		end
 	catch e
+		throw && rethrow()
 		if !any(occursin(sprint(showerror, e)), (
 			r"expected.*exist.*manifest",
 			r"no method.*project_rel_path.*Nothing\)", # https://github.com/JuliaLang/Pkg.jl/issues/3404
@@ -434,7 +441,7 @@ _get_manifest_entry(ctx::PkgContext, package_name::AbstractString) =
 Find a package in the manifest given its name, and return its installed version. Return `"stdlib"` for a standard library, and `nothing` if not found.
 """
 function get_manifest_version(ctx::PkgContext, package_name::AbstractString)
-    if is_stdlib(package_name)
+    if is_stdlib(package_name; include_former=true)
         "stdlib"
     else
         entry = _get_manifest_entry(ctx, package_name)
@@ -499,7 +506,7 @@ function write_auto_compat_entries!(ctx::PkgContext)::PkgContext
 		for p in keys(project(ctx).dependencies)
 			if !haskey(compat, p)
 				m_version = get_manifest_version(ctx, p)
-				if m_version !== nothing && !is_stdlib(p)
+				if m_version !== nothing && !is_stdlib(p; include_former=true)
 					compat[p] = "~" * string(VersionNumber(m_version.major, m_version.minor, m_version.patch))  # drop build number
 				end
 			end
@@ -530,7 +537,7 @@ function clear_auto_compat_entries!(ctx::PkgContext)::PkgContext
 		_modify_compat!(ctx) do compat
 			for p in keys(compat)
 				m_version = get_manifest_version(ctx, p)
-				if m_version !== nothing && !is_stdlib(p)
+				if m_version !== nothing && !is_stdlib(p; include_former=true)
 					if compat[p] == "~" * string(m_version)
 						delete!(compat, p)
 					end
@@ -550,7 +557,7 @@ function clear_stdlib_compat_entries!(ctx::PkgContext)::PkgContext
 	if isfile(project_file(ctx))
 		_modify_compat!(ctx) do compat
 			for p in keys(compat)
-				if is_stdlib(p)
+				if is_stdlib(p; include_former=true)
 					@info "Removing compat entry for stdlib" p
 					delete!(compat, p)
 				end
