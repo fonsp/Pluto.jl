@@ -5,6 +5,7 @@ import .PkgCompat: select, is_stdlib
 import Logging
 import LoggingExtras
 import .Configuration: CompilerOptions, _merge_notebook_compiler_options, _convert_to_flags
+import GracefulPkg
 
 const tiers = unique((
     Pkg.PRESERVE_ALL_INSTALLED,
@@ -480,39 +481,8 @@ end
 Run `f` (e.g. `Pkg.instantiate`) on the notebook's package environment. Keep trying more and more invasive strategies to fix problems until the operation succeeds.
 """
 function with_auto_fixes(f::Function, notebook::Notebook)
-    try
-        f()
-    catch e
-        @info "Operation failed. Updating registries and trying again..." exception=e
-        
-        PkgCompat.update_registries(; force=true)
-        
-        # TODO: check for resolver errors around stdlibs and fix them by doing `up Statistics`
-        
-        
-        
-        
-        try
-            f()
-        catch e
-            # this is identical to Pkg.update, right?
-            @warn "Operation failed. Removing Manifest and trying again..." exception=e
-            
-            reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
-            notebook.nbpkg_ctx_instantiated = false
-            try
-                f()
-            catch e
-                @warn "Operation failed. Removing Project compat entries and Manifest and trying again..." exception=(e, catch_backtrace())
-                
-                reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
-                PkgCompat.clear_compat_entries!(notebook.nbpkg_ctx)
-                notebook.nbpkg_ctx_instantiated = false
-                
-                f()
-            end
-        end
-    end
+    env_dir = PkgCompat.env_dir(notebook.nbpkg_ctx)
+    GracefulPkg.gracefully(f; env_dir)
 end
 
 """
