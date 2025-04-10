@@ -175,8 +175,8 @@ describe("with_js_link", () => {
 
         // We clicked twice, but sometimes it only registers one click for some reason. I don't care, so let's check for either.
         let prefix = await Promise.race([
-            waitForContentToBecome(page, "#checkme", "hello!clickyay KRATJE"),
-            waitForContentToBecome(page, "#checkme", "hello!clickclickyay KRATJEyay KRATJE"),
+            waitForContentToBecome(page, "#checkme", "hello!clickyay FRIETJE"),
+            waitForContentToBecome(page, "#checkme", "hello!clickclickyay FRIETJEyay FRIETJE"),
         ])
 
         const yolotriggerid = "8782cc14-eb1a-48a8-a114-2f71f77be275"
