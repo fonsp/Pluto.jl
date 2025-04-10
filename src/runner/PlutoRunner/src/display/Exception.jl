@@ -104,11 +104,10 @@ function pretty_stackcall(frame::Base.StackFrame, linfo::Core.CodeInfo)
     "top-level scope"
 end
 
-function pretty_stackcall(frame::Base.StackFrame, linfo::Core.MethodInstance)
+function pretty_stackcall(frame::Base.StackFrame, linfo::Union{Core.MethodInstance, Core.CodeInstance})
     if linfo.def isa Method
         @static if isdefined(Base.StackTraces, :show_spec_linfo) && hasmethod(Base.StackTraces.show_spec_linfo, Tuple{IO, Base.StackFrame})
             sprint(Base.StackTraces.show_spec_linfo, frame; context=:backtrace => true)
-
         else
             split(string(frame), " at ") |> first
         end
