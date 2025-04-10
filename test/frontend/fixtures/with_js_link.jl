@@ -344,7 +344,7 @@ end
 @bind yolotrigger CounterButton()
 
 # ╔═╡ e5df2451-f4b9-4511-b25f-1a5e463f3eb2
-name = yolotrigger > 0 ? "krat" : "kratje"
+name = yolotrigger > 0 ? "friet" : "frietje"
 
 # ╔═╡ 3c5c1325-ad3e-4c54-8d29-c17939bb8529
 function useme(x)
