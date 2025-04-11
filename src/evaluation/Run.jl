@@ -32,6 +32,7 @@ function run_reactive!(
         )
     end
     try_event_call(session, NotebookExecutionDoneEvent(notebook, user_requested_run))
+	WorkspaceManager.gc_worker((session, notebook))
 	return topological_order
 end
 
@@ -487,6 +488,7 @@ function update_save_run!(
             session,
             NotebookExecutionDoneEvent(notebook, get(kwargs, :user_requested_run, true))
         )
+		WorkspaceManager.gc_worker((session, notebook))
 		topological_order
     end
 end
