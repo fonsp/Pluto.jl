@@ -302,7 +302,7 @@ loading-bar {
     display: none;
 }
 
-body.loading loading-bar {
+pluto-editor.loading > loading-bar {
     animation: 16s ease-in-out load;
     display: block;
 }
