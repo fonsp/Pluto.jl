@@ -485,11 +485,15 @@ function with_auto_fixes(f::Function, notebook::Notebook)
     
     is_first = Ref(true)
     report = GracefulPkg.gracefully(; env_dir, throw=false) do
-        is_first[] || PkgCompat.load_ctx!(notebook.nbpkg_ctx, env_dir)
-        
-        f()
-        
-        is_first[] = false
+        try
+            if !is_first[]
+                PkgCompat.load_ctx!(notebook.nbpkg_ctx, env_dir)
+            end
+
+            f()
+        finally
+            is_first[] = false
+        end
     end
 
     steps = report.strategy_reports
@@ -498,7 +502,7 @@ function with_auto_fixes(f::Function, notebook::Notebook)
         notebook.nbpkg_ctx_instantiated = false
     end
     
-    if GracefulPkg.is_success(report)
+    if !GracefulPkg.is_success(report)
         throw(GracefulPkg.NothingWorked(report))
     end
 end
