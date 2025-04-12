@@ -27,7 +27,7 @@ include("helpers.jl")
 
 @timeit_include("compiletimes.jl")
 verify_no_running_processes()
-if true || get(ENV, "PLUTO_TEST_ONLY_COMPILETIMES", nothing) == "true"
+if get(ENV, "PLUTO_TEST_ONLY_COMPILETIMES", nothing) == "true"
     print_timeroutput()
     exit(0)
 end
@@ -75,5 +75,4 @@ verify_no_running_processes()
 
 print_timeroutput()
 @timeit_include("ExpressionExplorer.jl")
-
 
