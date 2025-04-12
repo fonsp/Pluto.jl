@@ -184,8 +184,6 @@ function sync_nbpkg_core(
                         Status.report_business!(pkg_status, :resolve) do
                             with_auto_fixes(notebook) do
                                 _resolve(notebook, iolistener)
-                                # this call should work
-                                PkgCompat.dependencies(notebook.nbpkg_ctx; throw=true)
                             end
                         end
                     end
