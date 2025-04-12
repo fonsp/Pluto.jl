@@ -482,7 +482,25 @@ Run `f` (e.g. `Pkg.instantiate`) on the notebook's package environment. Keep try
 """
 function with_auto_fixes(f::Function, notebook::Notebook)
     env_dir = PkgCompat.env_dir(notebook.nbpkg_ctx)
-    GracefulPkg.gracefully(f; env_dir)
+    
+    is_first = Ref(true)
+    report = GracefulPkg.gracefully(; env_dir, throw=false) do
+        is_first[] || PkgCompat.load_ctx!(notebook.nbpkg_ctx, env_dir)
+        
+        f()
+        
+        is_first[] = false
+    end
+
+    steps = report.strategy_reports
+    
+    if any(x -> x.strategy isa GracefulPkg.StrategyLoosenCompat, steps)
+        notebook.nbpkg_ctx_instantiated = false
+    end
+    
+    if GracefulPkg.is_success(report)
+        throw(GracefulPkg.NothingWorked(report))
+    end
 end
 
 """
