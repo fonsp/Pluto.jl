@@ -167,25 +167,15 @@ function sync_nbpkg_core(
                         
                         should_precompile_later = true
                         
-                        # First, we instantiate. This will:
-                        # - Verify that the Manifest can be parsed and is in the correct format (important for compat across Julia versions). If not, we will fix it by deleting the Manifest.
-                        # - If no Manifest exists, resolve the environment and create one.
-                        # - Start downloading all registered packages, artifacts.
-                        # - Start downloading all unregistered packages, which are added through a URL. This also makes the Project.tomls of those packages available.
-                        # - Precompile all packages.                    
-                        Status.report_business!(pkg_status, :instantiate1) do
-                            with_auto_fixes(notebook) do
-                                _instantiate(notebook, iolistener)
-                            end
-                        end
-                        
-                        # Second, we resolve. This will:
-                        # - Verify that the Manifest contains a correct dependency tree (e.g. all versions exists in a registry). If not, we will fix it using `with_auto_fixes`
-                        # - If we are tracking local packages by path (] dev), their Project.tomls are reparsed and everything is updated.
+                        # Resolve the package environment, with GracefulPkg.jl to solve any issues
                         Status.report_business!(pkg_status, :resolve) do
                             with_auto_fixes(notebook) do
                                 _resolve(notebook, iolistener)
                             end
+                        end
+                        
+                        Status.report_business!(pkg_status, :instantiate1) do
+                            _instantiate(notebook, iolistener)
                         end
                     end
                     
@@ -484,6 +474,7 @@ function with_auto_fixes(f::Function, notebook::Notebook)
     env_dir = PkgCompat.env_dir(notebook.nbpkg_ctx)
     
     is_first = Ref(true)
+    # TODO dont use the remove Project strat
     report = GracefulPkg.gracefully(; env_dir, throw=false) do
         try
             if !is_first[]
@@ -566,12 +557,9 @@ function update_nbpkg_core(
 
                 if !notebook.nbpkg_ctx_instantiated
                     with_auto_fixes(notebook) do
-                        _instantiate(notebook, iolistener)
-                    end
-                
-                    with_auto_fixes(notebook) do
                         _resolve(notebook, iolistener)
                     end
+                    _instantiate(notebook, iolistener)
                 end
 
                 with_io_setup(notebook, iolistener) do
