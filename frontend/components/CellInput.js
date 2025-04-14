@@ -61,6 +61,7 @@ import { LastFocusWasForcedEffect, tab_help_plugin } from "./CellInput/tab_help_
 import { useEventListener } from "../common/useEventListener.js"
 import { moveLineDown } from "../imports/CodemirrorPlutoSetup.js"
 import { is_mac_keyboard } from "../common/KeyboardShortcuts.js"
+import { checkboxPlugin } from "./CellInput/number_dragger_plugin.js"
 
 export const ENABLE_CM_MIXED_PARSER = window.localStorage.getItem("ENABLE_CM_MIXED_PARSER") === "true"
 export const ENABLE_CM_SPELLCHECK = window.localStorage.getItem("ENABLE_CM_SPELLCHECK") === "true"
@@ -698,6 +699,12 @@ export const CellInput = ({
 
                     EditorView.lineWrapping,
                     awesome_line_wrapping,
+
+                    checkboxPlugin({
+                        run_cell: () => {
+                            on_submit()
+                        },
+                    }),
 
                     // Reset diagnostics on change
                     EditorView.updateListener.of((update) => {
