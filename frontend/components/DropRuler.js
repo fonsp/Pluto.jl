@@ -34,7 +34,6 @@ export class DropRuler extends Component {
                 ((this.props.pluto_editor_element.querySelector("main") ?? this.props.pluto_editor_element).getBoundingClientRect().top +
                     document.documentElement.scrollTop)
 
-            console.log({ pageY, editorY })
             const distances = this.cell_edges.map((p) => Math.abs(p - editorY - 8)) // 8 is the magic computer number: https://en.wikipedia.org/wiki/8
             return argmin(distances)
         }
@@ -55,9 +54,11 @@ export class DropRuler extends Component {
             if (event_not_for_me(e)) return
             if (!e.dataTransfer) return
             let target = /** @type {Element} */ (e.target)
-            if (target.matches("pluto-shoulder")) {
-                this.dropee = target.parentElement
-                e.dataTransfer.setData("text/pluto-cell", this.props.serialize_selected(this.dropee?.id))
+            let pe = target.parentElement
+            if (target.matches("pluto-shoulder") && pe != null) {
+                this.dropee = pe
+                let data = this.props.serialize_selected(pe.id)
+                if (data) e.dataTransfer.setData("text/pluto-cell", data)
                 this.dropped = false
                 this.precompute_cell_edges()
 
@@ -155,7 +156,6 @@ export class DropRuler extends Component {
     }
 
     render() {
-        console.log({ ce: this.cell_edges })
         const styles = this.state.drag_target
             ? {
                   display: "block",
