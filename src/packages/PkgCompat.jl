@@ -292,7 +292,9 @@ function _registered_package_completions(partial_name::AbstractString)::Vector{S
 	# compat
 	try
 		@static if isdefined(REPLMode, :complete_remote_package!) && hasmethod(REPLMode.complete_remote_package!, (String,String), (:hint,))
-			REPLMode.complete_remote_package!(String[], partial_name; hint=false)
+			val = String[]
+			REPLMode.complete_remote_package!(val, partial_name; hint=false)
+			val
 		elseif isdefined(REPLMode, :complete_remote_package) && hasmethod(REPLMode.complete_remote_package, (String,), (:hint,))
 			REPLMode.complete_remote_package(partial_name; hint=false)
 		elseif isdefined(REPLMode, :complete_remote_package) && hasmethod(REPLMode.complete_remote_package, (String,))
