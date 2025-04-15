@@ -437,7 +437,7 @@ jlerror .dont-panic {
     transform: rotate(6deg);
 }
 
-body.disable_ui jlerror .dont-panic {
+pluto-editor.disable_ui jlerror .dont-panic {
     display: none;
 }
 

@@ -400,6 +400,7 @@ function dependencies(ctx)
 		end
 	catch e
 		if !any(occursin(sprint(showerror, e)), (
+			"could not find source path for", # https://github.com/fonsp/Pluto.jl/issues/3176
 			r"expected.*exist.*manifest",
 			r"no method.*project_rel_path.*Nothing\)", # https://github.com/JuliaLang/Pkg.jl/issues/3404
 		))
