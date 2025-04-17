@@ -3,7 +3,7 @@ import * as preact from "../imports/Preact.js"
 import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
-import { empty_notebook_state, set_disable_ui_css } from "../editor.js"
+import { empty_notebook_state, is_editor_embedded_inside_editor, set_disable_ui_css } from "../editor.js"
 import { create_pluto_connection, ws_address_from_base } from "../common/PlutoConnection.js"
 import { init_feedback } from "../common/Feedback.js"
 import { serialize_cells, deserialize_cells, detect_deserializer } from "../common/Serialization.js"
@@ -278,6 +278,7 @@ export const url_logo_small = get_included_external_source("pluto-logo-small")?.
  * launch_params: LaunchParameters,
  * initial_notebook_state: NotebookData,
  * preamble_element: preact.ReactElement?,
+ * pluto_editor_element: HTMLElement,
  * }}
  */
 
@@ -975,7 +976,7 @@ all patches: ${JSON.stringify(patches, null, 1)}
             }).then(on_establish_connection)
 
         this.on_disable_ui = () => {
-            set_disable_ui_css(this.state.disable_ui)
+            set_disable_ui_css(this.state.disable_ui, props.pluto_editor_element)
 
             // Pluto has three modes of operation:
             // 1. (normal) Connected to a Pluto notebook.
@@ -1261,7 +1262,7 @@ all patches: ${JSON.stringify(patches, null, 1)}
             }
         }
 
-        this.serialize_selected = (cell_id = null) => {
+        this.serialize_selected = (/** @type {string?} */ cell_id = null) => {
             const cells_to_serialize = cell_id == null || this.state.selected_cells.includes(cell_id) ? this.state.selected_cells : [cell_id]
             if (cells_to_serialize.length) {
                 return serialize_cells(cells_to_serialize.map((id) => this.state.notebook.cell_inputs[id]))
@@ -1469,7 +1470,7 @@ The notebook file saves every time you run a cell.`
         }
     }
 
-    componentDidUpdate(old_props, old_state) {
+    componentDidUpdate(/** @type {EditorProps} */ old_props, /** @type {EditorState} */ old_state) {
         //@ts-ignore
         window.editor_state = this.state
         //@ts-ignore
@@ -1481,7 +1482,7 @@ The notebook file saves every time you run a cell.`
             update_stored_recent_notebooks(new_state.notebook.path, old_state?.notebook?.path)
         }
         if (old_state?.notebook?.shortpath !== new_state.notebook.shortpath) {
-            document.title = "🎈 " + new_state.notebook.shortpath + " — Pluto.jl"
+            if (!is_editor_embedded_inside_editor(old_props.pluto_editor_element)) document.title = "🎈 " + new_state.notebook.shortpath + " — Pluto.jl"
         }
 
         this.maybe_send_queued_bond_changes()
@@ -1510,7 +1511,7 @@ The notebook file saves every time you run a cell.`
         this.cached_status = statusmap(new_state, this.props.launch_params)
 
         Object.entries(this.cached_status).forEach(([k, v]) => {
-            document.body.classList.toggle(k, v === true)
+            new_props.pluto_editor_element.classList.toggle(k, v === true)
         })
     }
 
@@ -1728,31 +1729,32 @@ The notebook file saves every time you run a cell.`
                             selected_cells=${this.state.selected_cells}
                             set_scroller=${(enabled) => this.setState({ scroller: enabled })}
                             serialize_selected=${this.serialize_selected}
+                            pluto_editor_element=${this.props.pluto_editor_element}
                         />
-                        ${
-                            this.state.disable_ui ||
-                            html`<${SelectionArea}
-                                cell_order=${this.state.notebook.cell_order}
-                                set_scroller=${(enabled) => {
-                                    this.setState({ scroller: enabled })
-                                }}
-                                on_selection=${(selected_cell_ids) => {
-                                    // @ts-ignore
-                                    if (
-                                        selected_cell_ids.length !== this.state.selected_cells.length ||
-                                        _.difference(selected_cell_ids, this.state.selected_cells).length !== 0
-                                    ) {
-                                        this.setState({
-                                            selected_cells: selected_cell_ids,
-                                        })
-                                    }
-                                }}
-                            />`
-                        }
                         <${NonCellOutput} 
                             notebook_id=${this.state.notebook.notebook_id} 
                             environment_component=${this.state.extended_components.NonCellOutputComponents} />
                     </${Main}>
+                    ${
+                        this.state.disable_ui ||
+                        html`<${SelectionArea}
+                            cell_order=${this.state.notebook.cell_order}
+                            set_scroller=${(enabled) => {
+                                this.setState({ scroller: enabled })
+                            }}
+                            on_selection=${(selected_cell_ids) => {
+                                // @ts-ignore
+                                if (
+                                    selected_cell_ids.length !== this.state.selected_cells.length ||
+                                    _.difference(selected_cell_ids, this.state.selected_cells).length !== 0
+                                ) {
+                                    this.setState({
+                                        selected_cells: selected_cell_ids,
+                                    })
+                                }
+                            }}
+                        />`
+                    }
                     <${BottomRightPanel}
                         desired_doc_query=${this.state.desired_doc_query}
                         on_update_doc_query=${this.actions.set_doc_query}
@@ -1807,7 +1809,7 @@ The notebook file saves every time you run a cell.`
 /* LOCALSTORAGE NOTEBOOKS LIST */
 
 // TODO This is now stored locally, lets store it somewhere central 😈
-export const update_stored_recent_notebooks = (recent_path, also_delete = undefined) => {
+export const update_stored_recent_notebooks = (recent_path, /** @type {string | undefined} */ also_delete = undefined) => {
     if (recent_path != null && recent_path !== default_path) {
         const stored_string = localStorage.getItem("recent notebooks")
         const stored_list = stored_string != null ? JSON.parse(stored_string) : []

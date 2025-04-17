@@ -291,11 +291,16 @@ end
 function _registered_package_completions(partial_name::AbstractString)::Vector{String}
 	# compat
 	try
-		@static if hasmethod(REPLMode.complete_remote_package, (String,), (:hint,))
+		@static if isdefined(REPLMode, :complete_remote_package!) && hasmethod(REPLMode.complete_remote_package!, (String,String), (:hint,))
+			val = String[]
+			REPLMode.complete_remote_package!(val, partial_name; hint=false)
+			val
+		elseif isdefined(REPLMode, :complete_remote_package) && hasmethod(REPLMode.complete_remote_package, (String,), (:hint,))
 			REPLMode.complete_remote_package(partial_name; hint=false)
-		elseif hasmethod(REPLMode.complete_remote_package, (String,))
+		elseif isdefined(REPLMode, :complete_remote_package) && hasmethod(REPLMode.complete_remote_package, (String,))
 			REPLMode.complete_remote_package(partial_name)
 		else
+			# this might error and go to the catch block, which is fine
 			REPLMode.complete_remote_package(partial_name, 1, length(partial_name))[1]
 		end
 	catch e
@@ -397,6 +402,7 @@ function dependencies(ctx)
 		end
 	catch e
 		if !any(occursin(sprint(showerror, e)), (
+			"could not find source path for", # https://github.com/fonsp/Pluto.jl/issues/3176
 			r"expected.*exist.*manifest",
 			r"no method.*project_rel_path.*Nothing\)", # https://github.com/JuliaLang/Pkg.jl/issues/3404
 		))

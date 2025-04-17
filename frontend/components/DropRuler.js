@@ -1,21 +1,40 @@
 import { html, Component } from "../imports/Preact.js"
 import _ from "../imports/lodash.js"
 
+/**
+ * @typedef DropRulerProps
+ * @type {{
+ *   actions: any,
+ *   selected_cells: string[],
+ *   set_scroller: (enabled: any) => void
+ *   serialize_selected: (id: string) => string | undefined,
+ *   pluto_editor_element: HTMLElement,
+ * }}
+ */
+
+/**
+ * @augments Component<DropRulerProps,any>
+ */
 export class DropRuler extends Component {
-    constructor() {
-        super()
+    constructor(/** @type {DropRulerProps} */ props) {
+        super(props)
         this.dropee = null
         this.dropped = null
         this.cell_edges = []
         this.pointer_position = { pageX: 0, pageY: 0 }
         this.precompute_cell_edges = () => {
             /** @type {Array<HTMLElement>} */
-            const cell_nodes = Array.from(document.querySelectorAll("pluto-notebook > pluto-cell"))
+            const cell_nodes = Array.from(this.props.pluto_editor_element.querySelectorAll(":scope > main > pluto-notebook > pluto-cell"))
             this.cell_edges = cell_nodes.map((el) => el.offsetTop)
             this.cell_edges.push(last(cell_nodes).offsetTop + last(cell_nodes).scrollHeight)
         }
         this.getDropIndexOf = ({ pageX, pageY }) => {
-            const distances = this.cell_edges.map((p) => Math.abs(p - pageY - 8)) // 8 is the magic computer number: https://en.wikipedia.org/wiki/8
+            const editorY =
+                pageY -
+                ((this.props.pluto_editor_element.querySelector("main") ?? this.props.pluto_editor_element).getBoundingClientRect().top +
+                    document.documentElement.scrollTop)
+
+            const distances = this.cell_edges.map((p) => Math.abs(p - editorY - 8)) // 8 is the magic computer number: https://en.wikipedia.org/wiki/8
             return argmin(distances)
         }
 
@@ -27,12 +46,19 @@ export class DropRuler extends Component {
     }
 
     componentDidMount() {
+        const event_not_for_me = (/** @type {MouseEvent} */ e) => {
+            return (e.target instanceof Element ? e.target.closest("pluto-editor") : null) !== this.props.pluto_editor_element
+        }
+
         document.addEventListener("dragstart", (e) => {
+            if (event_not_for_me(e)) return
             if (!e.dataTransfer) return
             let target = /** @type {Element} */ (e.target)
-            if (target.matches("pluto-shoulder")) {
-                this.dropee = target.parentElement
-                e.dataTransfer.setData("text/pluto-cell", this.props.serialize_selected(this.dropee?.id))
+            let pe = target.parentElement
+            if (target.matches("pluto-shoulder") && pe != null) {
+                this.dropee = pe
+                let data = this.props.serialize_selected(pe.id)
+                if (data) e.dataTransfer.setData("text/pluto-cell", data)
                 this.dropped = false
                 this.precompute_cell_edges()
 
@@ -51,6 +77,7 @@ export class DropRuler extends Component {
             }
         })
         document.addEventListener("dragenter", (e) => {
+            if (event_not_for_me(e)) return
             if (!e.dataTransfer) return
             if (e.dataTransfer.types[0] !== "text/pluto-cell") return
             if (!this.state.drag_target) this.precompute_cell_edges()
@@ -59,6 +86,7 @@ export class DropRuler extends Component {
             e.preventDefault()
         })
         document.addEventListener("dragleave", (e) => {
+            if (event_not_for_me(e)) return
             if (!e.dataTransfer) return
             if (e.dataTransfer.types[0] !== "text/pluto-cell") return
             if (e.target === this.lastenter) {
@@ -72,10 +100,11 @@ export class DropRuler extends Component {
                     drop_index: this.getDropIndexOf(this.pointer_position),
                 })
             },
-            300,
+            100,
             { leading: false, trailing: true }
         )
         document.addEventListener("dragover", (e) => {
+            if (event_not_for_me(e)) return
             if (!e.dataTransfer) return
             // Called continuously during drag
             if (e.dataTransfer.types[0] !== "text/pluto-cell") return
@@ -91,6 +120,7 @@ export class DropRuler extends Component {
             e.preventDefault()
         })
         document.addEventListener("dragend", (e) => {
+            if (event_not_for_me(e)) return
             // Called after drag, also when dropped outside of the browser or when ESC is pressed
             update_drop_index_throttled.flush()
             this.setState({
@@ -100,6 +130,7 @@ export class DropRuler extends Component {
             this.props.set_scroller({ up: false, down: false })
         })
         document.addEventListener("drop", (e) => {
+            if (event_not_for_me(e)) return
             if (!e.dataTransfer) return
             // Guaranteed to fire before the 'dragend' event
             // Ignore files

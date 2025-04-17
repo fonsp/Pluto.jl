@@ -47,7 +47,8 @@ describe("safe_preview", () => {
     const expect_safe_preview = async (/** @type {puppeteer.Page} */ page) => {
         await waitForPlutoToCalmDown(page)
         expect(await page.evaluate(() => window.I_DID_SOMETHING_DANGEROUS)).toBeUndefined()
-        expect(await page.evaluate(() => [...document.body.classList])).toContain("process_waiting_for_permission")
+        await page.waitForSelector("pluto-editor.process_waiting_for_permission")
+        expect(await page.evaluate(() => [...document.querySelector("pluto-editor").classList])).toContain("process_waiting_for_permission")
         expect(await page.evaluate(() => document.querySelector("a#restart-process-button"))).not.toBeNull()
         expect(await page.evaluate(() => document.querySelector(".safe-preview-info"))).not.toBeNull()
     }
