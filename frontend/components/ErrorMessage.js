@@ -446,6 +446,8 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
         {
             pattern: /^ArgumentError: Package (.*) not found in current path/,
             display: (/** @type{string} */ x) => {
+                if (pluto_actions.get_notebook().nbpkg?.enabled === false) return default_rewriter.display(x)
+
                 const match = x.match(/^ArgumentError: Package (.*) not found in current path/)
                 const package_name = (match?.[1] ?? "").replaceAll("`", "")
 
@@ -458,8 +460,10 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                         <li>Try a different Julia version.</li>
                         <li>Contact the developers of ${package_name}.jl about this error.</li>
                     </ul>
-                    <p>You might find useful information in the package installation log:</p>
-                    <${PkgTerminalView} value=${pkg_terminal_value} />`
+                    ${pkg_terminal_value == null
+                        ? null
+                        : html` <p>You might find useful information in the package installation log:</p>
+                              <${PkgTerminalView} value=${pkg_terminal_value} />`} `
             },
             show_stacktrace: () => false,
         },
