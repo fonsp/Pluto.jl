@@ -21,7 +21,6 @@ catch e
     homedir()
 end
 
-const prof = Ref{Bool}(false)
 
 # Using a ref to avoid fixing the pwd() output during the compilation phase. We don't want this value to be baked into the sysimage, because it depends on the `pwd()`. We do want to cache it, because the pwd might change while Pluto is running.
 const pwd_ref = Ref{String}()
@@ -38,7 +37,6 @@ end
 
 function __init__()
     pwd_ref[] = safepwd()
-    prof[] = get(ENV, "PLUTO_PROFESSIONAL", "") |> length > 0
 end
 
 
@@ -108,7 +106,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
     simulated_pkg_lag::Real = SIMULATED_PKG_LAG_DEFAULT
     injected_javascript_data_url::String = INJECTED_JAVASCRIPT_DATA_URL_DEFAULT
     on_event::Function = ON_EVENT_DEFAULT
-    dismiss_motivational_quotes::Bool = DISMISS_MOTIVATIONAL_QUOTES || prof[]
+    dismiss_motivational_quotes::Bool = DISMISS_MOTIVATIONAL_QUOTES
 end
 
 const REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT = true
@@ -301,7 +299,7 @@ function from_flat_kwargs(;
         simulated_pkg_lag::Real = SIMULATED_PKG_LAG_DEFAULT,
         injected_javascript_data_url::String = INJECTED_JAVASCRIPT_DATA_URL_DEFAULT,
         on_event::Function = ON_EVENT_DEFAULT,
-        dismiss_motivational_quotes::Bool = DISMISS_MOTIVATIONAL_QUOTES || prof[],
+        dismiss_motivational_quotes::Bool = DISMISS_MOTIVATIONAL_QUOTES,
 
         require_secret_for_open_links::Bool = REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT,
         require_secret_for_access::Bool = REQUIRE_SECRET_FOR_ACCESS_DEFAULT,
