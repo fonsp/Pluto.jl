@@ -1,6 +1,6 @@
 import { cl } from "../common/ClassTable.js"
-import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { html, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "../imports/Preact.js"
+import { PlutoActionsContext, PlutoClientContext } from "../common/PlutoContext.js"
 import { highlight } from "./CellOutput.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
 import _ from "../imports/lodash.js"
@@ -300,7 +300,10 @@ const AnsiUpLine = (/** @type {{value: string}} */ { value }) => {
 }
 
 export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
+    let pluto_client = useContext(PlutoClientContext)
     let pluto_actions = useContext(PlutoActionsContext)
+
+    console.log({ pluto_actions, pluto_client })
     const default_rewriter = {
         pattern: /.?/,
         display: (/** @type{string} */ x) => _.dropRightWhile(x.split("\n"), (s) => s === "").map((line) => html`<${AnsiUpLine} value=${line} />`),
@@ -534,7 +537,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                           : null}
                   </ol>
               </section>`}
-        <${Motivation} stacktrace=${stacktrace} />
+        ${!pluto_client?.version_info?.dismiss_motivational_quotes ? html`<${Motivation} stacktrace=${stacktrace} />` : null}
     </jlerror>`
 }
 
@@ -550,7 +553,7 @@ const get_first_package = (limited_stacktrace) => {
     }
 }
 
-const motivational_word_probability = 0.1
+const motivational_word_probability = 1
 const motivational_words = [
     //
     "Don't panic!",

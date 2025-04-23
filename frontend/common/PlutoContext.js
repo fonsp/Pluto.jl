@@ -1,6 +1,7 @@
 import { createContext } from "../imports/Preact.js"
 
 export let PlutoActionsContext = createContext()
+export let PlutoClientContext = createContext()
 // export let PlutoActionsContext = createContext(/** @type {Record<string,Function?>?} */ (null))
 export let PlutoBondsContext = createContext(/** @type {import("../components/Editor.js").BondValuesDict?} */ (null))
 export let PlutoJSInitializingContext = createContext(/** @type {SetWithEmptyCallback<HTMLElement>?} */ (null))

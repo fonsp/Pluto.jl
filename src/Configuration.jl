@@ -21,6 +21,8 @@ catch e
     homedir()
 end
 
+const prof = Ref{Bool}(false)
+
 # Using a ref to avoid fixing the pwd() output during the compilation phase. We don't want this value to be baked into the sysimage, because it depends on the `pwd()`. We do want to cache it, because the pwd might change while Pluto is running.
 const pwd_ref = Ref{String}()
 function notebook_path_suggestion()
@@ -36,7 +38,9 @@ end
 
 function __init__()
     pwd_ref[] = safepwd()
+    prof[] = get(ENV, "PLUTO_PROFESSIONAL", "") |> length > 0
 end
+
 
 const ROOT_URL_DEFAULT = nothing
 const BASE_URL_DEFAULT = "/"
@@ -45,6 +49,7 @@ const PORT_DEFAULT = nothing
 const PORT_HINT_DEFAULT = 1234
 const LAUNCH_BROWSER_DEFAULT = true
 const DISMISS_UPDATE_NOTIFICATION_DEFAULT = false
+const DISMISS_MOTIVATIONAL_QUOTES = false
 const SHOW_FILE_SYSTEM_DEFAULT = true
 const ENABLE_PACKAGE_AUTHOR_FEATURES_DEFAULT = true
 const DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT = false
@@ -82,6 +87,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 - `on_event::Function = $ON_EVENT_DEFAULT`
 - `root_url::Union{Nothing,String} = $ROOT_URL_DEFAULT` This setting is used to specify the root URL of the Pluto server, but this setting is *only* used to customize the launch message (*"Go to http://localhost:1234/ in your browser"*). You can probably ignore this and use `base_url` instead.
 - `base_url::String = "$BASE_URL_DEFAULT"` This (advanced) setting is used to specify a subpath at which the Pluto server will run, it should be a path starting and ending with a '/'. E.g. with `base_url = "/hello/world/"`, the server will run at `http://localhost:1234/hello/world/`, and you edit a notebook at `http://localhost:1234/hello/world/edit?id=...`.
+- `dismiss_motivational_quotes::Bool = $DISMISS_MOTIVATIONAL_QUOTES` If `true`, the motivational quotes won't be shown. Also settable by ENV["PLUTO_PROFESSIONAL"] = true
 """
 @option mutable struct ServerOptions
     root_url::Union{Nothing,String} = ROOT_URL_DEFAULT
@@ -102,6 +108,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
     simulated_pkg_lag::Real = SIMULATED_PKG_LAG_DEFAULT
     injected_javascript_data_url::String = INJECTED_JAVASCRIPT_DATA_URL_DEFAULT
     on_event::Function = ON_EVENT_DEFAULT
+    dismiss_motivational_quotes::Bool = DISMISS_MOTIVATIONAL_QUOTES || prof[]
 end
 
 const REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT = true
@@ -294,6 +301,7 @@ function from_flat_kwargs(;
         simulated_pkg_lag::Real = SIMULATED_PKG_LAG_DEFAULT,
         injected_javascript_data_url::String = INJECTED_JAVASCRIPT_DATA_URL_DEFAULT,
         on_event::Function = ON_EVENT_DEFAULT,
+        dismiss_motivational_quotes::Bool = DISMISS_MOTIVATIONAL_QUOTES || prof[],
 
         require_secret_for_open_links::Bool = REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT,
         require_secret_for_access::Bool = REQUIRE_SECRET_FOR_ACCESS_DEFAULT,
@@ -342,6 +350,7 @@ function from_flat_kwargs(;
         simulated_pkg_lag,
         injected_javascript_data_url,
         on_event,
+        dismiss_motivational_quotes,
     )
     security = SecurityOptions(;
         require_secret_for_open_links,
