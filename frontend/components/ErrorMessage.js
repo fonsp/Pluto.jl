@@ -303,7 +303,6 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
     let pluto_client = useContext(PlutoClientContext)
     let pluto_actions = useContext(PlutoActionsContext)
 
-    console.log({ pluto_actions, pluto_client })
     const default_rewriter = {
         pattern: /.?/,
         display: (/** @type{string} */ x) => _.dropRightWhile(x.split("\n"), (s) => s === "").map((line) => html`<${AnsiUpLine} value=${line} />`),
@@ -559,8 +558,8 @@ const motivational_words = [
     "Don't panic!",
     "Keep calm, you got this!",
     "You got this!",
-    "Silly computer!",
-    "Silly computer!",
+    "Goofy computer!",
+    "This one is on the computer!",
     "beep boop CRASH 🤖",
     "computer bad, you GREAT!",
     "Probably not your fault!",
@@ -572,7 +571,7 @@ const motivational_words = [
     "C'est la vie !",
     "¯\\_(ツ)_/¯",
     "Oh no! 🙀",
-    "this suckz 💣",
+    "oopsie 💣",
     "Be patient :)",
 ]
 
