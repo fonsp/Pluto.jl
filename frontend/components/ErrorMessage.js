@@ -552,7 +552,7 @@ const get_first_package = (limited_stacktrace) => {
     }
 }
 
-const motivational_word_probability = 1
+const motivational_word_probability = 0.1
 const motivational_words = [
     //
     "Don't panic!",
