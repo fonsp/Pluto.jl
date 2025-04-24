@@ -1,8 +1,40 @@
 import { html, useContext, useRef, useState } from "../imports/Preact.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { cl } from "../common/ClassTable.js"
+import { open_pluto_popup } from "../common/open_pluto_popup.js"
 
 const ai_server_url = "https://pluto-simple-llm-features.deno.dev"
+
+const AIPermissionPrompt = ({ onAccept, onDecline }) => {
+    const [askNextTime, setAskNextTime] = useState(true)
+
+    const handleAccept = () => {
+        if (!askNextTime) {
+            localStorage.setItem("pluto_ai_permission", "granted")
+        }
+        onAccept()
+    }
+
+    const handleDecline = () => {
+        onDecline()
+    }
+
+    return html`
+        <div class="ai-permission-prompt">
+            <h3>Use AI to fix syntax errors?</h3>
+            <p>Pluto will send code from this cell to our AI service to help fix syntax errors. Afterwards, you need to confirm before running the cell.</p>
+            <p>Submitted code can be used (anonymously) to improve the AI service.</p>
+            <label class="ask-next-time">
+                <input type="checkbox" checked=${askNextTime} onChange=${(e) => setAskNextTime(e.target.checked)} />
+                Ask next time
+            </label>
+            <div class="button-group">
+                <button onClick=${handleDecline} class="decline">No</button>
+                <button onClick=${handleAccept} class="accept">Yes</button>
+            </div>
+        </div>
+    `
+}
 
 export const FixWithAIButton = ({ cell_id, diagnostics }) => {
     const pluto_actions = useContext(PlutoActionsContext)
@@ -10,6 +42,31 @@ export const FixWithAIButton = ({ cell_id, diagnostics }) => {
     const [buttonState, setButtonState] = useState("initial") // "initial" | "loading" | "success"
 
     const handleFixWithAI = async () => {
+        // Check if we have permission stored
+        const storedPermission = localStorage.getItem("pluto_ai_permission")
+
+        if (storedPermission !== "granted") {
+            // Show permission prompt
+            open_pluto_popup({
+                type: "info",
+                source_element: node_ref.current,
+                body: html`<${AIPermissionPrompt}
+                    onAccept=${async () => {
+                        window.dispatchEvent(new CustomEvent("close pluto popup"))
+                        await performFix()
+                    }}
+                    onDecline=${() => {
+                        window.dispatchEvent(new CustomEvent("close pluto popup"))
+                    }}
+                />`,
+            })
+            return
+        }
+
+        await performFix()
+    }
+
+    const performFix = async () => {
         try {
             setButtonState("loading")
 
@@ -54,7 +111,12 @@ export const FixWithAIButton = ({ cell_id, diagnostics }) => {
         } catch (error) {
             console.error("Error fixing syntax:", error)
             setButtonState("initial")
-            // TODO: Show error to user in UI
+            // Show error to user in UI
+            open_pluto_popup({
+                type: "warn",
+                source_element: node_ref.current,
+                body: html`<p>Failed to fix syntax error: ${error.message}</p>`,
+            })
         }
     }
 

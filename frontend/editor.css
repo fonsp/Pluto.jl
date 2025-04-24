@@ -3795,12 +3795,12 @@ button.fix-with-ai {
     padding: 4px 12px;
     border-radius: 6px;
     border: none;
-    color: var(--pluto-output-h-color);
+    color: var(--black);
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: linear-gradient(135deg, rgba(65, 105, 225, 0.2), rgba(147, 112, 219, 0.2));
+    background: linear-gradient(135deg, rgba(65, 105, 225, 0.4), rgba(147, 112, 219, 0.4));
     margin-left: 8px;
     transition: background 0.3s ease;
 }
@@ -3808,8 +3808,8 @@ button.fix-with-ai {
 button.fix-with-ai::before {
     content: "";
     display: inline-block;
-    width: 1em;
-    height: 1em;
+    width: 1.2em;
+    height: 1.2em;
     background-size: contain;
     filter: var(--image-filters);
     transition: background-image 0.3s ease;
@@ -3833,7 +3833,7 @@ button.fix-with-ai-loading::before {
 
 /* Success state */
 button.fix-with-ai-success {
-    background: rgba(127, 127, 127, 0.1);
+    background: rgba(150, 150, 150, 0.15);
 }
 
 button.fix-with-ai-success::before {
@@ -3847,4 +3847,44 @@ button.fix-with-ai-success::before {
     to {
         transform: rotate(360deg);
     }
+}
+
+.ai-permission-prompt {
+    padding: .2em;
+}
+
+.ai-permission-prompt h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+/* 
+.ai-permission-prompt p {
+    margin-bottom: 1.5rem;
+    line-height: 1.4;
+} */
+
+.ai-permission-prompt .ask-next-time {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1em;
+}
+
+.ai-permission-prompt .button-group {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.ai-permission-prompt button {
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    border: 1px solid var(--pluto-output-color);
+    background: var(--white);
+    color: var(--black)
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.ai-permission-prompt button.accept {
+    background: var(--black);
+    color: var(--white);
 }
