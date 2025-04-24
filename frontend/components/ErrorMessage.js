@@ -6,6 +6,7 @@ import { PkgTerminalView } from "./PkgTerminalView.js"
 import _ from "../imports/lodash.js"
 import { open_bottom_right_panel } from "./BottomRightPanel.js"
 import AnsiUp from "../imports/AnsiUp.js"
+import { FixWithAIButton } from "./FixWithAIButton.js"
 
 const extract_cell_id = (/** @type {string} */ file) => {
     if (file.includes("#@#==#")) return null
@@ -80,14 +81,14 @@ const StackFrameFilename = ({ frame, cell_id }) => {
 
         const file_line = html`<em>${frame.file.replace(/#@#==#.*/, "")}:${frame.line}</em>`
 
-        const text = sp != null ? html`<strong>${origin}</strong> → ${file_line}` : file_line
+        const text = sp != null ? html`<strong>${origin}</strong> → ${file_line}` : file_line
 
         const href = frame?.url?.startsWith?.("https") ? frame.url : null
         return html`<a title=${frame.path} class="remote-url" href=${href}>${text}</a>`
     }
 }
 
-const at = html`<span> from </span>`
+const at = html`<span> from </span>`
 
 const ignore_funccall = (frame) => frame.call === "top-level scope"
 const ignore_location = (frame) => frame.file === "none"
@@ -226,19 +227,25 @@ export const ParseError = ({ cell_id, diagnostics }) => {
         return () => window.dispatchEvent(new CustomEvent("cell_diagnostics", { detail: { cell_id, diagnostics: [] } }))
     }, [diagnostics])
 
+    // Combine all diagnostic messages into a single error message
+    const error_message = diagnostics.map((d) => d.message).join("\n")
+
     return html`
-        <jlerror>
-            <header><p>Syntax error</p></header>
+        <jlerror class="syntax-error">
+            <header>
+                <p>Syntax error</p>
+                <${FixWithAIButton} cell_id=${cell_id} error_message=${error_message} />
+            </header>
             <section>
-                <div class="stacktrace-header"><secret-h1>Syntax errors</secret-h1></div>
+                <div class="stacktrace-header">
+                    <secret-h1>Syntax errors</secret-h1>
+                </div>
                 <ol>
                     ${diagnostics.map(
                         ({ message, from, to, line }) =>
                             html`<li
                                 class="from_this_notebook from_this_cell important"
-                                onmouseenter=${() =>
-                                    // NOTE: this could be moved move to `StackFrameFilename`
-                                    window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from, to } }))}
+                                onmouseenter=${() => window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from, to } }))}
                                 onmouseleave=${() =>
                                     window.dispatchEvent(new CustomEvent("cell_highlight_range", { detail: { cell_id, from: null, to: null } }))}
                             >

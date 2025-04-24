@@ -3781,3 +3781,36 @@ pluto-cell.hooked_up > pluto-output {
 .markdown-code-block-copied-code-button::before {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/checkmark-outline.svg");
 }
+
+jlerror.syntax-error > header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+button.fix-with-ai {
+    font-family: var(--system-ui-font-stack);
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 4px 12px;
+    border-radius: 6px;
+    border: none;
+    color: var(--pluto-output-h-color);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, rgba(65, 105, 225, 0.2), rgba(147, 112, 219, 0.2));
+    /* transition: background-color 0.2s ease; */
+    margin-left: 8px;
+}
+
+button.fix-with-ai::before {
+    content: "";
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sparkles.svg");
+    background-size: contain;
+    filter: var(--image-filters);
+}
