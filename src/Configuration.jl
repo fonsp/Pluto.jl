@@ -11,6 +11,7 @@ Note that Pluto is designed to be _zero-configuration_, and most users should no
 module Configuration
 
 using Configurations # https://github.com/Roger-luo/Configurations.jl
+using Pkg: TOML
 
 import ..Pluto: tamepath
 
@@ -280,108 +281,66 @@ Collection of all settings that configure a Pluto session.
     compiler::CompilerOptions = CompilerOptions()
 end
 
-function from_flat_kwargs(;
-        root_url::Union{Nothing,String} = ROOT_URL_DEFAULT,
-        base_url::String = BASE_URL_DEFAULT,
-        host::String = HOST_DEFAULT,
-        port::Union{Nothing,Integer} = PORT_DEFAULT,
-        port_hint::Integer = PORT_HINT_DEFAULT,
-        launch_browser::Bool = LAUNCH_BROWSER_DEFAULT,
-        dismiss_update_notification::Bool = DISMISS_UPDATE_NOTIFICATION_DEFAULT,
-        dismiss_motivational_quotes::Bool = DISMISS_MOTIVATIONAL_QUOTES,
-        show_file_system::Bool = SHOW_FILE_SYSTEM_DEFAULT,
-        notebook_path_suggestion::String = notebook_path_suggestion(),
-        disable_writing_notebook_files::Bool = DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT,
-        auto_reload_from_file::Bool = AUTO_RELOAD_FROM_FILE_DEFAULT,
-        auto_reload_from_file_cooldown::Real = AUTO_RELOAD_FROM_FILE_COOLDOWN_DEFAULT,
-        auto_reload_from_file_ignore_pkg::Bool = AUTO_RELOAD_FROM_FILE_IGNORE_PKG_DEFAULT,
-        notebook::Union{Nothing,String,Vector{<:String}} = NOTEBOOK_DEFAULT,
-        simulated_lag::Real = SIMULATED_LAG_DEFAULT,
-        simulated_pkg_lag::Real = SIMULATED_PKG_LAG_DEFAULT,
-        injected_javascript_data_url::String = INJECTED_JAVASCRIPT_DATA_URL_DEFAULT,
-        on_event::Function = ON_EVENT_DEFAULT,
+@option struct PlutoOptions
+    Pluto:: Options = Options
+end
 
-        require_secret_for_open_links::Bool = REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT,
-        require_secret_for_access::Bool = REQUIRE_SECRET_FOR_ACCESS_DEFAULT,
-        warn_about_untrusted_code::Bool = WARN_ABOUT_UNTRUSTED_CODE_DEFAULT,
+pluto_file_settings() = try
+    plutorc = joinpath(homedir(), ".plutorc")
+    if isfile(plutorc)
+        isassigned(pwd_ref) && @info "Using options from ~/.plutorc"
+        return TOML.tryparsefile(plutorc)["Pluto"]
+    else
+        Dict()
+    end
+catch e;
+    if isassigned(pwd_ref)
+        @warn "EXception " (e, catch_backtrace())
+        @warn """Invalid ~/.plutorc
+        
+        Start with this template:
 
-        run_notebook_on_load::Bool = RUN_NOTEBOOK_ON_LOAD_DEFAULT,
-        workspace_use_distributed::Bool = WORKSPACE_USE_DISTRIBUTED_DEFAULT,
-        workspace_use_distributed_stdlib::Union{Bool,Nothing} = WORKSPACE_USE_DISTRIBUTED_STDLIB_DEFAULT,
-        lazy_workspace_creation::Bool = LAZY_WORKSPACE_CREATION_DEFAULT,
-        capture_stdout::Bool = CAPTURE_STDOUT_DEFAULT,
-        workspace_custom_startup_expr::Union{Nothing,String} = WORKSPACE_CUSTOM_STARTUP_EXPR_DEFAULT,
+        [Pluto.server]
+        host = "localhost"
+        port = 12345
+        launch_browser = false
+        dismiss_motivational_quotes = true
 
-        compile::Union{Nothing,String} = COMPILE_DEFAULT,
-        pkgimages::Union{Nothing,String} = PKGIMAGES_DEFAULT,
-        compiled_modules::Union{Nothing,String} = COMPILED_MODULES_DEFAULT,
-        sysimage::Union{Nothing,String} = SYSIMAGE_DEFAULT,
-        sysimage_native_code::Union{Nothing,String} = SYSIMAGE_NATIVE_CODE_DEFAULT,
-        banner::Union{Nothing,String} = BANNER_DEFAULT,
-        depwarn::Union{Nothing,String} = DEPWARN_DEFAULT,
-        optimize::Union{Nothing,Int} = OPTIMIZE_DEFAULT,
-        min_optlevel::Union{Nothing,Int} = MIN_OPTLEVEL_DEFAULT,
-        inline::Union{Nothing,String} = INLINE_DEFAULT,
-        check_bounds::Union{Nothing,String} = CHECK_BOUNDS_DEFAULT,
-        math_mode::Union{Nothing,String} = MATH_MODE_DEFAULT,
-        heap_size_hint::Union{Nothing,String} = HEAP_SIZE_HINT_DEFAULT,
-        startup_file::Union{Nothing,String} = STARTUP_FILE_DEFAULT,
-        history_file::Union{Nothing,String} = HISTORY_FILE_DEFAULT,
-        threads::Union{Nothing,String,Int} = default_number_of_threads(),
-    )
-    server = ServerOptions(;
-        root_url,
-        base_url,
-        host,
-        port,
-        port_hint,
-        launch_browser,
-        dismiss_update_notification,
-        dismiss_motivational_quotes,
-        show_file_system,
-        notebook_path_suggestion,
-        disable_writing_notebook_files,
-        auto_reload_from_file,
-        auto_reload_from_file_cooldown,
-        auto_reload_from_file_ignore_pkg,
-        notebook,
-        simulated_lag,
-        simulated_pkg_lag,
-        injected_javascript_data_url,
-        on_event,
-    )
-    security = SecurityOptions(;
-        require_secret_for_open_links,
-        require_secret_for_access,
-        warn_about_untrusted_code,
-    )
-    evaluation = EvaluationOptions(;
-        run_notebook_on_load,
-        workspace_use_distributed,
-        workspace_use_distributed_stdlib,
-        lazy_workspace_creation,
-        capture_stdout,
-        workspace_custom_startup_expr,
-    )
-    compiler = CompilerOptions(;
-        compile,
-        pkgimages,
-        compiled_modules,
-        sysimage,
-        sysimage_native_code,
-        banner,
-        depwarn,
-        optimize,
-        min_optlevel,
-        inline,
-        check_bounds,
-        math_mode,
-        heap_size_hint,
-        startup_file,
-        history_file,
-        threads,
-    )
-    return Options(; server, security, evaluation, compiler)
+        [Pluto.compiler]
+        pkgimages = "no"
+
+        [Pluto.evaluation]
+        run_notebook_on_load = true
+        capture_stdout = true
+        
+        [Pluto.security]
+        require_secret_for_open_links = true
+        require_secret_for_access = true
+        warn_about_untrusted_code = true
+
+        """
+    end
+    Dict()
+end
+
+pick_fields(t, d::AbstractDict) = [Symbol(k[1])=>k[2] for k in d if Symbol(k[1]) in fieldnames(t)]
+
+merge_pick_fields(t, kwargs, d, key::String) = begin 
+    kw = pick_fields(t, merge(get(d, key, Dict()), kwargs))
+    return Configurations.from_kwargs(t; kw...)
+end
+
+function from_flat_kwargs(;kwargs...)
+
+    plutoSettings = pluto_file_settings()
+
+    server = merge_pick_fields(ServerOptions, kwargs, plutoSettings, "server")
+    security = merge_pick_fields(SecurityOptions, kwargs, plutoSettings, "security")
+    evaluation = merge_pick_fields(EvaluationOptions, kwargs, plutoSettings, "evaluation")
+    compiler = merge_pick_fields(CompilerOptions, kwargs, plutoSettings, "compiler")
+
+    options = Options(; server, security, evaluation, compiler)
+    return options
 end
 
 function _merge_notebook_compiler_options(notebook, options::CompilerOptions)::CompilerOptions
