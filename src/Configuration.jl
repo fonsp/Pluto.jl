@@ -323,10 +323,10 @@ catch e;
     Dict()
 end
 
-pick_fields(t, d::AbstractDict) = [Symbol(k[1])=>k[2] for k in d if Symbol(k[1]) in fieldnames(t)]
+pick_fields(t, d::Vector) = Dict(Symbol(k[1])=>k[2] for k in d if Symbol(k[1]) in fieldnames(t))
 
 merge_pick_fields(t, kwargs, d, key::String) = begin 
-    kw = pick_fields(t, merge(get(d, key, Dict()), kwargs))
+    kw = pick_fields(t, [get(d, key, Dict())..., kwargs...])
     return Configurations.from_kwargs(t; kw...)
 end
 
