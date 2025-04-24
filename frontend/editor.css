@@ -3850,7 +3850,7 @@ button.fix-with-ai-success::before {
 }
 
 .ai-permission-prompt {
-    padding: .2em;
+    padding: 0.2em;
 }
 
 .ai-permission-prompt h3 {
@@ -3879,7 +3879,7 @@ button.fix-with-ai-success::before {
     border-radius: 4px;
     border: 1px solid var(--pluto-output-color);
     background: var(--white);
-    color: var(--black)
+    color: var(--black);
     cursor: pointer;
     font-size: 0.9rem;
 }
