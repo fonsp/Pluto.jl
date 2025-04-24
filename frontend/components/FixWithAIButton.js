@@ -43,9 +43,9 @@ const AIPermissionPrompt = ({ onAccept, onDecline }) => {
                 <input type="checkbox" checked=${dontAskAgain} onChange=${(e) => setDontAskAgain(e.target.checked)} />
                 Don't ask again
             </label>
-            <div class="button-group">
-                <button onClick=${handleDecline} class="decline">No</button>
-                <button onClick=${handleAccept} class="accept">Yes</button>
+            <div class="button-group" role="group">
+                <button onClick=${handleDecline} class="decline" title="Decline AI syntax fix and close">No</button>
+                <button onClick=${handleAccept} class="accept" title="Accept AI syntax fix and close">Yes</button>
             </div>
         </div>
     `
@@ -56,6 +56,11 @@ export const FixWithAIButton = ({ cell_id, diagnostics }) => {
     const node_ref = useRef(/** @type {HTMLElement?} */ (null))
     const [buttonState, setButtonState] = useState("initial") // "initial" | "loading" | "success"
     const [showButton, setShowButton] = useState(false)
+
+    // Reset whenever a prop changes
+    useEffect(() => {
+        setButtonState("initial")
+    }, [cell_id, diagnostics])
 
     // Check server availability when component mounts
     useEffect(() => {
@@ -160,6 +165,9 @@ export const FixWithAIButton = ({ cell_id, diagnostics }) => {
         })}
         onClick=${buttonState === "success" ? handleRunCell : handleFixWithAI}
         title=${buttonState === "success" ? "Run the fixed cell" : "Attempt to fix this syntax error using an LLM service"}
+        aria-busy=${buttonState === "loading"}
+        aria-live="polite"
+        disabled=${buttonState === "loading"}
     >
         ${buttonState === "success" ? "Run cell" : buttonState === "loading" ? "Loading..." : "Fix with AI"}
     </button>`
