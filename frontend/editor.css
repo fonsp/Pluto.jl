@@ -3823,7 +3823,6 @@ button.fix-with-ai::before {
 /* Loading state */
 button.fix-with-ai-loading {
     background: linear-gradient(135deg, rgba(65, 105, 225, 0.1), rgba(147, 112, 219, 0.1));
-    cursor: wait;
 }
 
 button.fix-with-ai-loading::before {
@@ -3865,7 +3864,7 @@ button.fix-with-ai-success::before {
 
 .ai-permission-prompt .ask-next-time {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.5ch;
     margin-bottom: 1em;
 }
 

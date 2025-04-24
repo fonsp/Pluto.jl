@@ -1,9 +1,24 @@
-import { html, useContext, useRef, useState } from "../imports/Preact.js"
+import { html, useContext, useRef, useState, useEffect } from "../imports/Preact.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { cl } from "../common/ClassTable.js"
 import { open_pluto_popup } from "../common/open_pluto_popup.js"
 
 const ai_server_url = "https://pluto-simple-llm-features.deno.dev"
+const endpoint_url = `${ai_server_url}/fix-syntax-error-v1`
+
+// Server availability state management
+let serverAvailabilityPromise = null
+
+const checkServerAvailability = async () => {
+    if (serverAvailabilityPromise === null) {
+        serverAvailabilityPromise = fetch(endpoint_url, {
+            method: "GET",
+        })
+            .then((response) => response.ok)
+            .catch(() => false)
+    }
+    return serverAvailabilityPromise
+}
 
 const AIPermissionPrompt = ({ onAccept, onDecline }) => {
     const [dontAskAgain, setDontAskAgain] = useState(false)
@@ -22,7 +37,7 @@ const AIPermissionPrompt = ({ onAccept, onDecline }) => {
     return html`
         <div class="ai-permission-prompt">
             <h3>Use AI to fix syntax errors?</h3>
-            <p>Pluto will send code from this cell to a commericial LLM service to help fix syntax errors. Updated code will not run without confirmation.</p>
+            <p>Pluto will send code from this cell to a commericial LLM service to fix syntax errors. Updated code will not run without confirmation.</p>
             <p>Submitted code can be used (anonymously) by Pluto developers to improve the AI service.</p>
             <label class="ask-next-time">
                 <input type="checkbox" checked=${dontAskAgain} onChange=${(e) => setDontAskAgain(e.target.checked)} />
@@ -40,6 +55,19 @@ export const FixWithAIButton = ({ cell_id, diagnostics }) => {
     const pluto_actions = useContext(PlutoActionsContext)
     const node_ref = useRef(/** @type {HTMLElement?} */ (null))
     const [buttonState, setButtonState] = useState("initial") // "initial" | "loading" | "success"
+    const [showButton, setShowButton] = useState(false)
+
+    // Check server availability when component mounts
+    useEffect(() => {
+        checkServerAvailability().then((available) => {
+            setShowButton(available)
+        })
+    }, [])
+
+    // Don't render anything if server is not available
+    if (!showButton) {
+        return null
+    }
 
     const handleFixWithAI = async () => {
         // Check if we have permission stored
@@ -81,7 +109,7 @@ export const FixWithAIButton = ({ cell_id, diagnostics }) => {
             // Combine all diagnostic messages into a single error message
             const error_message = diagnostics.map((d) => d.message).join("\n")
 
-            const response = await fetch(`${ai_server_url}/fix-syntax-error`, {
+            const response = await fetch(endpoint_url, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -131,7 +159,7 @@ export const FixWithAIButton = ({ cell_id, diagnostics }) => {
             [`fix-with-ai-${buttonState}`]: true,
         })}
         onClick=${buttonState === "success" ? handleRunCell : handleFixWithAI}
-        title=${buttonState === "success" ? "Run the fixed cell" : "Attempt to fix this syntax error using AI"}
+        title=${buttonState === "success" ? "Run the fixed cell" : "Attempt to fix this syntax error using an LLM service"}
     >
         ${buttonState === "success" ? "Run cell" : buttonState === "loading" ? "Loading..." : "Fix with AI"}
     </button>`
