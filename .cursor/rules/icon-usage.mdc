@@ -1,0 +1,106 @@
+---
+description: When adding new UI elements
+globs: 
+alwaysApply: false
+---
+# Icon Usage Guide
+
+This guide explains how to implement icons consistently across the frontend codebase.
+
+## HTML Structure
+
+Icons should be implemented using empty `<span>` elements within their parent containers:
+
+```html
+<button class="your-button-class">
+    <span></span>
+</button>
+```
+
+## Implementation Methods
+
+### 1. Background Image Method
+Used primarily for button icons. Reference example in [frontend/components/ExportBanner.js](mdc:Pluto.jl/frontend/components/ExportBanner.js):
+
+```css
+button.toggle_presentation span {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/easel-outline.svg");
+    filter: invert(1);
+}
+```
+
+### 2. Pseudo-element Method
+Used for decorative icons or indicators. Reference example in [frontend/editor.css](mdc:Pluto.jl/frontend/editor.css):
+
+```css
+.notify-when-done label::before {
+    content: "";
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/notifications-outline.svg");
+    background-size: contain;
+    filter: var(--image-filters);
+}
+```
+
+## Icon Source
+
+- Use Ionicons from CDN: `https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/`
+- Always pin to version 5.5.1 for consistency
+- Use SVG format exclusively
+
+## Styling Guidelines
+
+1. Size and Units
+   - Use `em` units for icon sizes
+   - Default size should be `1em`
+   - Use `background-size: contain` for proper scaling
+
+2. Theming
+   - Use CSS variables for filters: `var(--image-filters)`
+   - For light icons on dark backgrounds: `filter: invert(1)`
+   - Consider dark/light mode compatibility
+
+3. Positioning
+   - Use margin adjustments sparingly and only for fine-tuning
+   - Prefer flexbox/grid for general layout
+   - Use `background-position` for precise control
+
+## Best Practices
+
+1. Semantic HTML
+   - Use `<button>` for interactive elements
+   - Keep `<span>` elements empty in HTML
+   - Add appropriate ARIA labels when needed
+
+2. Class Naming
+   - Use descriptive class names indicating purpose
+   - Follow existing patterns in [frontend/editor.css](mdc:Pluto.jl/frontend/editor.css)
+   - Example: `toggle_presentation`, `notify-when-done`
+
+3. Accessibility
+   - Ensure sufficient contrast
+   - Provide text alternatives where needed
+   - Consider reduced motion preferences
+
+4. Performance
+   - Use CDN for consistent caching
+   - Optimize SVG files
+   - Avoid icon font libraries
+
+## Common Pitfalls
+
+1. DO NOT:
+   - Add content to icon `<span>` elements
+   - Define the icon in JavaScript or import from an icon library
+   - Use inline styles for icons
+   - Mix different icon libraries
+   - Use PNG/JPG for icons
+   - Hardcode colors without using CSS variables
+
+2. DO:
+   - Keep icon implementation in CSS
+   - Use consistent sizing patterns
+   - Follow existing component patterns
+   - Test icons in both light/dark themes

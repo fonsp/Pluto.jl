@@ -280,6 +280,7 @@ jlerror .error-header {
 jlerror secret-h1 {
     font-size: 1.9rem;
     font-weight: 700;
+    color: var(--pluto-output-h-color);
 }
 jlerror > section {
     border-block-start: 3px dashed var(--pkg-terminal-border-color);
