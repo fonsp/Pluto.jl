@@ -288,6 +288,7 @@ function from_flat_kwargs(;
         port_hint::Integer = PORT_HINT_DEFAULT,
         launch_browser::Bool = LAUNCH_BROWSER_DEFAULT,
         dismiss_update_notification::Bool = DISMISS_UPDATE_NOTIFICATION_DEFAULT,
+        dismiss_motivational_quotes::Bool = DISMISS_MOTIVATIONAL_QUOTES,
         show_file_system::Bool = SHOW_FILE_SYSTEM_DEFAULT,
         notebook_path_suggestion::String = notebook_path_suggestion(),
         disable_writing_notebook_files::Bool = DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT,
@@ -299,7 +300,6 @@ function from_flat_kwargs(;
         simulated_pkg_lag::Real = SIMULATED_PKG_LAG_DEFAULT,
         injected_javascript_data_url::String = INJECTED_JAVASCRIPT_DATA_URL_DEFAULT,
         on_event::Function = ON_EVENT_DEFAULT,
-        dismiss_motivational_quotes::Bool = DISMISS_MOTIVATIONAL_QUOTES,
 
         require_secret_for_open_links::Bool = REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT,
         require_secret_for_access::Bool = REQUIRE_SECRET_FOR_ACCESS_DEFAULT,
@@ -337,6 +337,7 @@ function from_flat_kwargs(;
         port_hint,
         launch_browser,
         dismiss_update_notification,
+        dismiss_motivational_quotes,
         show_file_system,
         notebook_path_suggestion,
         disable_writing_notebook_files,
@@ -348,7 +349,6 @@ function from_flat_kwargs(;
         simulated_pkg_lag,
         injected_javascript_data_url,
         on_event,
-        dismiss_motivational_quotes,
     )
     security = SecurityOptions(;
         require_secret_for_open_links,
