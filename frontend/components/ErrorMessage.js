@@ -1,6 +1,6 @@
 import { cl } from "../common/ClassTable.js"
 import { html, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "../imports/Preact.js"
-import { PlutoActionsContext, PlutoClientContext } from "../common/PlutoContext.js"
+import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { highlight } from "./CellOutput.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
 import _ from "../imports/lodash.js"
@@ -300,7 +300,6 @@ const AnsiUpLine = (/** @type {{value: string}} */ { value }) => {
 }
 
 export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
-    let pluto_client = useContext(PlutoClientContext)
     let pluto_actions = useContext(PlutoActionsContext)
 
     const default_rewriter = {
@@ -536,7 +535,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                           : null}
                   </ol>
               </section>`}
-        ${!pluto_client?.version_info?.dismiss_motivational_quotes ? html`<${Motivation} stacktrace=${stacktrace} />` : null}
+        ${pluto_actions.get_version_info?.()?.dismiss_motivational_quotes !== true ? html`<${Motivation} stacktrace=${stacktrace} />` : null}
     </jlerror>`
 }
 

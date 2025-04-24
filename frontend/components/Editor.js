@@ -30,7 +30,7 @@ import {
     control_name,
     alt_or_options_name,
 } from "../common/KeyboardShortcuts.js"
-import { PlutoActionsContext, PlutoBondsContext, PlutoJSInitializingContext, SetWithEmptyCallback, PlutoClientContext } from "../common/PlutoContext.js"
+import { PlutoActionsContext, PlutoBondsContext, PlutoJSInitializingContext, SetWithEmptyCallback } from "../common/PlutoContext.js"
 import { BackendLaunchPhase, count_stat } from "../common/Binder.js"
 import { setup_mathjax } from "../common/SetupMathJax.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
@@ -375,7 +375,8 @@ export class Editor extends Component {
 
         // these are things that can be done to the local notebook
         this.real_actions = {
-            get_notebook: () => this?.state?.notebook || {},
+            get_notebook: () => this?.state?.notebook ?? {},
+            get_version_info: () => this.client.version_info,
             send: (message_type, ...args) => this.client.send(message_type, ...args),
             get_published_object: (objectid) => this.state.notebook.published_objects[objectid],
             //@ts-ignore
@@ -1523,7 +1524,7 @@ The notebook file saves every time you run a cell.`
         const statusval = first_true_key(status)
 
         if (status.isolated_cell_view) {
-            return html`<${PlutoClientContext.Provider} value=${this.client}>
+            return html`
                 <${PlutoActionsContext.Provider} value=${this.actions}>
                     <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                         <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
@@ -1543,7 +1544,6 @@ The notebook file saves every time you run a cell.`
                         </${PlutoJSInitializingContext.Provider}>
                     </${PlutoBondsContext.Provider}>
                 </${PlutoActionsContext.Provider}>
-            </${PlutoClientContext.Provider}>
             `
         }
         const warn_about_untrusted_code = this.client.session_options?.security?.warn_about_untrusted_code ?? true
@@ -1574,7 +1574,6 @@ The notebook file saves every time you run a cell.`
 
         return html`
             ${this.state.disable_ui === false && html`<${HijackExternalLinksToOpenInNewTab} />`}
-            <${PlutoClientContext.Provider} value=${this.client}>
             <${PlutoActionsContext.Provider} value=${this.actions}>
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                     <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
@@ -1802,7 +1801,6 @@ The notebook file saves every time you run a cell.`
                 </${PlutoJSInitializingContext.Provider}>
                 </${PlutoBondsContext.Provider}>
             </${PlutoActionsContext.Provider}>
-        </${PlutoClientContext.Provider}>
         `
     }
 }

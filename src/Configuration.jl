@@ -72,6 +72,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 - `port_hint::Integer = $PORT_HINT_DEFAULT` If the other setting `port` is not specified, then this setting (`port_hint`) will be used as the starting point in finding an available port to run the server on. 
 - `launch_browser::Bool = $LAUNCH_BROWSER_DEFAULT`
 - `dismiss_update_notification::Bool = $DISMISS_UPDATE_NOTIFICATION_DEFAULT` If `false`, the Pluto frontend will check the Pluto.jl github releases for any new recommended updates, and show a notification if there are any. If `true`, this is disabled.
+- `dismiss_motivational_quotes::Bool = $DISMISS_MOTIVATIONAL_QUOTES` If `true`, motivational quotes on error messages won't be shown.
 - `show_file_system::Bool = $SHOW_FILE_SYSTEM_DEFAULT`
 - `notebook_path_suggestion::String = notebook_path_suggestion()`
 - `disable_writing_notebook_files::Bool = $DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT`
@@ -85,7 +86,6 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 - `on_event::Function = $ON_EVENT_DEFAULT`
 - `root_url::Union{Nothing,String} = $ROOT_URL_DEFAULT` This setting is used to specify the root URL of the Pluto server, but this setting is *only* used to customize the launch message (*"Go to http://localhost:1234/ in your browser"*). You can probably ignore this and use `base_url` instead.
 - `base_url::String = "$BASE_URL_DEFAULT"` This (advanced) setting is used to specify a subpath at which the Pluto server will run, it should be a path starting and ending with a '/'. E.g. with `base_url = "/hello/world/"`, the server will run at `http://localhost:1234/hello/world/`, and you edit a notebook at `http://localhost:1234/hello/world/edit?id=...`.
-- `dismiss_motivational_quotes::Bool = $DISMISS_MOTIVATIONAL_QUOTES` If `true`, the motivational quotes won't be shown. Also settable by ENV["PLUTO_PROFESSIONAL"] = true
 """
 @option mutable struct ServerOptions
     root_url::Union{Nothing,String} = ROOT_URL_DEFAULT
@@ -95,6 +95,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
     port_hint::Integer = PORT_HINT_DEFAULT
     launch_browser::Bool = LAUNCH_BROWSER_DEFAULT
     dismiss_update_notification::Bool = DISMISS_UPDATE_NOTIFICATION_DEFAULT
+    dismiss_motivational_quotes::Bool = DISMISS_MOTIVATIONAL_QUOTES
     show_file_system::Bool = SHOW_FILE_SYSTEM_DEFAULT
     notebook_path_suggestion::String = notebook_path_suggestion()
     disable_writing_notebook_files::Bool = DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT
@@ -106,7 +107,6 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
     simulated_pkg_lag::Real = SIMULATED_PKG_LAG_DEFAULT
     injected_javascript_data_url::String = INJECTED_JAVASCRIPT_DATA_URL_DEFAULT
     on_event::Function = ON_EVENT_DEFAULT
-    dismiss_motivational_quotes::Bool = DISMISS_MOTIVATIONAL_QUOTES
 end
 
 const REQUIRE_SECRET_FOR_OPEN_LINKS_DEFAULT = true

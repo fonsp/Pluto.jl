@@ -294,7 +294,7 @@ export const create_pluto_connection = async ({
             julia: "unknown",
             pluto: "unknown",
             dismiss_update_notification: false,
-            dismiss_movivational_quotes: false,
+            dismiss_motivational_quotes: false,
         },
         notebook_exists: true,
         // kill: null,
