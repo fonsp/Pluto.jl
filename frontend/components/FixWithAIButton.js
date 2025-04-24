@@ -1,8 +1,11 @@
-import { html, useContext } from "../imports/Preact.js"
+import { html, useContext, useRef } from "../imports/Preact.js"
 import { PlutoActionsContext } from "../common/PlutoContext.js"
+
+const ai_server_url = "https://pluto-simple-llm-features.deno.dev"
 
 export const FixWithAIButton = ({ cell_id, diagnostics }) => {
     const pluto_actions = useContext(PlutoActionsContext)
+    const node_ref = useRef(/** @type {HTMLElement?} */ (null))
 
     const handleFixWithAI = async () => {
         try {
@@ -17,7 +20,7 @@ export const FixWithAIButton = ({ cell_id, diagnostics }) => {
             // Combine all diagnostic messages into a single error message
             const error_message = diagnostics.map((d) => d.message).join("\n")
 
-            const response = await fetch("http://localhost:8000/fix-syntax-error", {
+            const response = await fetch(`${ai_server_url}/fix-syntax-error`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -35,20 +38,19 @@ export const FixWithAIButton = ({ cell_id, diagnostics }) => {
 
             const { fixed_code } = await response.json()
 
-            // Dispatch an event to update the cell's code
-            window.dispatchEvent(
-                new CustomEvent("set_cell_code", {
-                    detail: {
-                        cell_id,
-                        code: fixed_code,
-                    },
-                })
-            )
+            console.debug("fixed_code", fixed_code)
+
+            // Update the cell's local code without running it
+            const cm = node_ref.current?.closest("pluto-cell")?.querySelector("pluto-input > .cm-editor")
+            if (cm) {
+                // @ts-ignore
+                cm.CodeMirror.setValue(fixed_code)
+            }
         } catch (error) {
             console.error("Error fixing syntax:", error)
             // TODO: Show error to user in UI
         }
     }
 
-    return html` <button class="fix-with-ai" onClick=${handleFixWithAI} title="Attempt to fix this syntax error using AI">Fix with AI</button> `
+    return html`<button ref=${node_ref} class="fix-with-ai" onClick=${handleFixWithAI} title="Attempt to fix this syntax error using AI">Fix with AI</button> `
 }

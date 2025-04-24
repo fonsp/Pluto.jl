@@ -227,14 +227,11 @@ export const ParseError = ({ cell_id, diagnostics }) => {
         return () => window.dispatchEvent(new CustomEvent("cell_diagnostics", { detail: { cell_id, diagnostics: [] } }))
     }, [diagnostics])
 
-    // Combine all diagnostic messages into a single error message
-    const error_message = diagnostics.map((d) => d.message).join("\n")
-
     return html`
         <jlerror class="syntax-error">
             <header>
                 <p>Syntax error</p>
-                <${FixWithAIButton} cell_id=${cell_id} error_message=${error_message} />
+                <${FixWithAIButton} cell_id=${cell_id} diagnostics=${diagnostics} />
             </header>
             <section>
                 <div class="stacktrace-header">
