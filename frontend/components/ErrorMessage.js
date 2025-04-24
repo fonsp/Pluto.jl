@@ -8,6 +8,8 @@ import { open_bottom_right_panel } from "./BottomRightPanel.js"
 import AnsiUp from "../imports/AnsiUp.js"
 import { FixWithAIButton } from "./FixWithAIButton.js"
 
+const nbsp = "\u00A0"
+
 const extract_cell_id = (/** @type {string} */ file) => {
     if (file.includes("#@#==#")) return null
     const sep = "#==#"
@@ -45,7 +47,7 @@ const DocLink = ({ frame }) => {
     const installed = nb?.nbpkg?.installed_versions?.[frame.source_package] != null
     if (!builtin && nb?.nbpkg != null && !installed) return null
 
-    return html`  <span
+    return html` ${nbsp}<span
             ><a
                 href="#"
                 class="doclink"
@@ -73,7 +75,7 @@ const StackFrameFilename = ({ frame, cell_id }) => {
                 e.preventDefault()
             }}
         >
-            ${frame_cell_id == cell_id ? "This\xa0cell" : "Other\xa0cell"}${line == null ? null : html`: <em>line ${line}</em>`}
+            ${frame_cell_id == cell_id ? "This\xa0cell" : "Other\xa0cell"}${line == null ? null : html`:${nbsp}<em>line${nbsp}${line}</em>`}
         </a>`
     } else {
         const sp = frame.source_package
@@ -81,14 +83,14 @@ const StackFrameFilename = ({ frame, cell_id }) => {
 
         const file_line = html`<em>${frame.file.replace(/#@#==#.*/, "")}:${frame.line}</em>`
 
-        const text = sp != null ? html`<strong>${origin}</strong> → ${file_line}` : file_line
+        const text = sp != null ? html`<strong>${origin}</strong>${nbsp}→${nbsp}${file_line}` : file_line
 
         const href = frame?.url?.startsWith?.("https") ? frame.url : null
         return html`<a title=${frame.path} class="remote-url" href=${href}>${text}</a>`
     }
 }
 
-const at = html`<span> from </span>`
+const at = html`<span> from${nbsp}</span>`
 
 const ignore_funccall = (frame) => frame.call === "top-level scope"
 const ignore_location = (frame) => frame.file === "none"
