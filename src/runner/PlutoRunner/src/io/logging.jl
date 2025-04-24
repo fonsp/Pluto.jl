@@ -64,7 +64,7 @@ end
 
 const BuiltinInts = @static isdefined(Core, :BuiltinInts) ? Core.BuiltinInts : Union{Bool, Int32, Int64, UInt32, UInt64, UInt8, Int128, Int16, Int8, UInt128, UInt16}
 
-Logging.min_enabled_level(::PlutoCellLogger) = min(Logging.Debug, stdout_log_level)
+Logging.min_enabled_level(::PlutoCellLogger) = min(Logging.Info, stdout_log_level)
 Logging.catch_exceptions(::PlutoCellLogger) = false
 function Logging.handle_message(pl::PlutoCellLogger, level, msg, _module, group, id, file, line; kwargs...)
     # println("receiving msg from ", _module, " ", group, " ", id, " ", msg, " ", level, " ", line, " ", file)
