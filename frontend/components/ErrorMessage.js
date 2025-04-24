@@ -1,6 +1,6 @@
 import { cl } from "../common/ClassTable.js"
-import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { html, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "../imports/Preact.js"
+import { PlutoActionsContext } from "../common/PlutoContext.js"
 import { highlight } from "./CellOutput.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
 import _ from "../imports/lodash.js"
@@ -305,6 +305,7 @@ const AnsiUpLine = (/** @type {{value: string}} */ { value }) => {
 
 export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
     let pluto_actions = useContext(PlutoActionsContext)
+
     const default_rewriter = {
         pattern: /.?/,
         display: (/** @type{string} */ x) => _.dropRightWhile(x.split("\n"), (s) => s === "").map((line) => html`<${AnsiUpLine} value=${line} />`),
@@ -538,7 +539,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
                           : null}
                   </ol>
               </section>`}
-        <${Motivation} stacktrace=${stacktrace} />
+        ${pluto_actions.get_version_info?.()?.dismiss_motivational_quotes !== true ? html`<${Motivation} stacktrace=${stacktrace} />` : null}
     </jlerror>`
 }
 
@@ -560,8 +561,8 @@ const motivational_words = [
     "Don't panic!",
     "Keep calm, you got this!",
     "You got this!",
-    "Silly computer!",
-    "Silly computer!",
+    "Goofy computer!",
+    "This one is on the computer!",
     "beep boop CRASH 🤖",
     "computer bad, you GREAT!",
     "Probably not your fault!",
@@ -573,7 +574,7 @@ const motivational_words = [
     "C'est la vie !",
     "¯\\_(ツ)_/¯",
     "Oh no! 🙀",
-    "this suckz 💣",
+    "oopsie 💣",
     "Be patient :)",
 ]
 

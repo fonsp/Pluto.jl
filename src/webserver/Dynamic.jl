@@ -403,6 +403,7 @@ responses[:connect] = function response_connect(🙋::ClientRequest)
             :pluto => PLUTO_VERSION_STR,
             :julia => JULIA_VERSION_STR,
             :dismiss_update_notification => 🙋.session.options.server.dismiss_update_notification,
+            :dismiss_motivational_quotes => 🙋.session.options.server.dismiss_motivational_quotes,
         ),
     ), nothing, nothing, 🙋.initiator))
 end
