@@ -3801,8 +3801,8 @@ button.fix-with-ai {
     align-items: center;
     gap: 6px;
     background: linear-gradient(135deg, rgba(65, 105, 225, 0.2), rgba(147, 112, 219, 0.2));
-    /* transition: background-color 0.2s ease; */
     margin-left: 8px;
+    transition: background 0.3s ease;
 }
 
 button.fix-with-ai::before {
@@ -3810,7 +3810,41 @@ button.fix-with-ai::before {
     display: inline-block;
     width: 1em;
     height: 1em;
-    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sparkles.svg");
     background-size: contain;
     filter: var(--image-filters);
+    transition: background-image 0.3s ease;
+}
+
+/* Initial state */
+button.fix-with-ai::before {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sparkles.svg");
+}
+
+/* Loading state */
+button.fix-with-ai-loading {
+    background: linear-gradient(135deg, rgba(65, 105, 225, 0.1), rgba(147, 112, 219, 0.1));
+    cursor: wait;
+}
+
+button.fix-with-ai-loading::before {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sync-outline.svg");
+    animation: spin 1s linear infinite;
+}
+
+/* Success state */
+button.fix-with-ai-success {
+    background: rgba(127, 127, 127, 0.1);
+}
+
+button.fix-with-ai-success::before {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg");
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
 }
