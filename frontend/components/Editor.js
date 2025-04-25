@@ -376,7 +376,7 @@ export class Editor extends Component {
         // these are things that can be done to the local notebook
         this.real_actions = {
             get_notebook: () => this?.state?.notebook ?? {},
-            get_version_info: () => this.client.version_info,
+            get_session_options: () => this.client.session_options,
             send: (message_type, ...args) => this.client.send(message_type, ...args),
             get_published_object: (objectid) => this.state.notebook.published_objects[objectid],
             //@ts-ignore

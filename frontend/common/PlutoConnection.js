@@ -249,7 +249,6 @@ const default_ws_address = () => ws_address_from_base(window.location.href)
  *      julia: string,
  *      pluto: string,
  *      dismiss_update_notification: boolean,
- *      dismiss_motivational_quotes: boolean,
  *  },
  *  notebook_exists: boolean,
  *  message_log: import("./Stack.js").Stack<any>,
@@ -294,7 +293,6 @@ export const create_pluto_connection = async ({
             julia: "unknown",
             pluto: "unknown",
             dismiss_update_notification: false,
-            dismiss_motivational_quotes: false,
         },
         notebook_exists: true,
         // kill: null,
@@ -396,7 +394,7 @@ export const create_pluto_connection = async ({
             client.kill = () => {
                 if (ws_connection) ws_connection.socket.close()
             }
-            client.session_options = u.message.options
+            client.session_options = u.message.session_options
             client.version_info = u.message.version_info
             client.notebook_exists = u.message.notebook_exists
 

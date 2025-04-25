@@ -398,12 +398,11 @@ end
 responses[:connect] = function response_connect(🙋::ClientRequest)
     putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:👋, Dict(
         :notebook_exists => (🙋.notebook !== nothing),
-        :options => 🙋.session.options,
+        :session_options => 🙋.session.options,
         :version_info => Dict(
             :pluto => PLUTO_VERSION_STR,
             :julia => JULIA_VERSION_STR,
             :dismiss_update_notification => 🙋.session.options.server.dismiss_update_notification,
-            :dismiss_motivational_quotes => 🙋.session.options.server.dismiss_motivational_quotes,
         ),
     ), nothing, nothing, 🙋.initiator))
 end
