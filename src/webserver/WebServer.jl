@@ -1,6 +1,8 @@
 import MsgPack
 import UUIDs: UUID
 import HTTP
+import GCUtils: setup_gc
+
 import Sockets
 import .PkgCompat
 
@@ -167,6 +169,9 @@ function run!(session::ServerSession)
 
     local port, serversocket = port_serversocket(hostIP, favourite_port, port_hint)
 
+    # Manual GC for the server process
+    after_http, cleanup, rest = setup_gc(360)
+
     on_shutdown() = @sync begin
         # Triggered by HTTP.jl
         @info("\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈\n\n")
@@ -179,6 +184,7 @@ function run!(session::ServerSession)
         for nb in values(session.notebooks)
             @asynclog SessionActions.shutdown(session, nb; keep_in_session=false, async=false, verbose=false)
         end
+        cleanup()
     end
 
     server = HTTP.listen!(hostIP, port; stream=true, server=serversocket, on_shutdown, verbose=-1) do http::HTTP.Stream
@@ -311,6 +317,7 @@ function run!(session::ServerSession)
                 end
             end
         end
+        after_http()
     end
 
     server_running() =
