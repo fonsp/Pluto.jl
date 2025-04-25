@@ -394,7 +394,7 @@ export const create_pluto_connection = async ({
             client.kill = () => {
                 if (ws_connection) ws_connection.socket.close()
             }
-            client.session_options = u.message.options
+            client.session_options = u.message.session_options
             client.version_info = u.message.version_info
             client.notebook_exists = u.message.notebook_exists
 

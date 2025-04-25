@@ -375,7 +375,8 @@ export class Editor extends Component {
 
         // these are things that can be done to the local notebook
         this.real_actions = {
-            get_notebook: () => this?.state?.notebook || {},
+            get_notebook: () => this?.state?.notebook ?? {},
+            get_session_options: () => this.client.session_options,
             send: (message_type, ...args) => this.client.send(message_type, ...args),
             get_published_object: (objectid) => this.state.notebook.published_objects[objectid],
             //@ts-ignore
@@ -1545,7 +1546,6 @@ The notebook file saves every time you run a cell.`
                 </${PlutoActionsContext.Provider}>
             `
         }
-
         const warn_about_untrusted_code = this.client.session_options?.security?.warn_about_untrusted_code ?? true
 
         const restart = async (maybe_confirm = false) => {
@@ -1574,7 +1574,6 @@ The notebook file saves every time you run a cell.`
 
         return html`
             ${this.state.disable_ui === false && html`<${HijackExternalLinksToOpenInNewTab} />`}
-            
             <${PlutoActionsContext.Provider} value=${this.actions}>
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                     <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>

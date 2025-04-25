@@ -3781,3 +3781,93 @@ pluto-cell.hooked_up > pluto-output {
 .markdown-code-block-copied-code-button::before {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/checkmark-outline.svg");
 }
+
+jlerror.syntax-error > header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+button.fix-with-ai {
+    font-family: var(--system-ui-font-stack);
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 4px 12px;
+    border-radius: 6px;
+    border: none;
+    color: var(--black);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: linear-gradient(135deg, rgba(65, 105, 225, 0.4), rgba(147, 112, 219, 0.4));
+    margin-left: 8px;
+    transition: background 0.3s ease;
+}
+
+button.fix-with-ai::before {
+    content: "";
+    display: inline-block;
+    width: 1.2em;
+    height: 1.2em;
+    background-size: contain;
+    filter: var(--image-filters);
+    transition: background-image 0.3s ease;
+}
+
+button.fix-with-ai::before {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sparkles.svg");
+}
+button.fix-with-ai-loading {
+    background: linear-gradient(135deg, rgba(65, 105, 225, 0.1), rgba(147, 112, 219, 0.1));
+}
+button.fix-with-ai-loading::before {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sync-outline.svg");
+    animation: identifier-spin 1s linear infinite;
+}
+button.fix-with-ai-success {
+    background: rgba(150, 150, 150, 0.15);
+}
+button.fix-with-ai-success::before {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg");
+}
+
+.ai-permission-prompt {
+    padding: 0.2em;
+}
+
+.ai-permission-prompt h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+/* 
+.ai-permission-prompt p {
+    margin-bottom: 1.5rem;
+    line-height: 1.4;
+} */
+
+.ai-permission-prompt .ask-next-time {
+    display: flex;
+    gap: 0.5ch;
+    margin-bottom: 1em;
+}
+
+.ai-permission-prompt .button-group {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.ai-permission-prompt button {
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    border: 1px solid var(--pluto-output-color);
+    background: var(--white);
+    color: var(--black);
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.ai-permission-prompt button.accept {
+    background: var(--black);
+    color: var(--white);
+}

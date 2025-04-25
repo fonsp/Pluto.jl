@@ -21,6 +21,7 @@ catch e
     homedir()
 end
 
+
 # Using a ref to avoid fixing the pwd() output during the compilation phase. We don't want this value to be baked into the sysimage, because it depends on the `pwd()`. We do want to cache it, because the pwd might change while Pluto is running.
 const pwd_ref = Ref{String}()
 function notebook_path_suggestion()
@@ -38,6 +39,7 @@ function __init__()
     pwd_ref[] = safepwd()
 end
 
+
 const ROOT_URL_DEFAULT = nothing
 const BASE_URL_DEFAULT = "/"
 const HOST_DEFAULT = "127.0.0.1"
@@ -45,8 +47,9 @@ const PORT_DEFAULT = nothing
 const PORT_HINT_DEFAULT = 1234
 const LAUNCH_BROWSER_DEFAULT = true
 const DISMISS_UPDATE_NOTIFICATION_DEFAULT = false
+const DISMISS_MOTIVATIONAL_QUOTES = false
 const SHOW_FILE_SYSTEM_DEFAULT = true
-const ENABLE_PACKAGE_AUTHOR_FEATURES_DEFAULT = true
+const ENABLE_AI_EDITOR_FEATURES_DEFAULT = true
 const DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT = false
 const AUTO_RELOAD_FROM_FILE_DEFAULT = false
 const AUTO_RELOAD_FROM_FILE_COOLDOWN_DEFAULT = 0.4
@@ -69,7 +72,9 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 - `port_hint::Integer = $PORT_HINT_DEFAULT` If the other setting `port` is not specified, then this setting (`port_hint`) will be used as the starting point in finding an available port to run the server on. 
 - `launch_browser::Bool = $LAUNCH_BROWSER_DEFAULT`
 - `dismiss_update_notification::Bool = $DISMISS_UPDATE_NOTIFICATION_DEFAULT` If `false`, the Pluto frontend will check the Pluto.jl github releases for any new recommended updates, and show a notification if there are any. If `true`, this is disabled.
+- `dismiss_motivational_quotes::Bool = $DISMISS_MOTIVATIONAL_QUOTES` If `true`, motivational quotes on error messages won't be shown.
 - `show_file_system::Bool = $SHOW_FILE_SYSTEM_DEFAULT`
+- `enable_ai_editor_features::Bool = $ENABLE_AI_EDITOR_FEATURES_DEFAULT` Enable or disable LLM-powered editor features
 - `notebook_path_suggestion::String = notebook_path_suggestion()`
 - `disable_writing_notebook_files::Bool = $DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT`
 - `auto_reload_from_file::Bool = $AUTO_RELOAD_FROM_FILE_DEFAULT` Watch notebook files for outside changes and update running notebook state automatically
@@ -91,7 +96,9 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
     port_hint::Integer = PORT_HINT_DEFAULT
     launch_browser::Bool = LAUNCH_BROWSER_DEFAULT
     dismiss_update_notification::Bool = DISMISS_UPDATE_NOTIFICATION_DEFAULT
+    dismiss_motivational_quotes::Bool = DISMISS_MOTIVATIONAL_QUOTES
     show_file_system::Bool = SHOW_FILE_SYSTEM_DEFAULT
+    enable_ai_editor_features::Bool = ENABLE_AI_EDITOR_FEATURES_DEFAULT
     notebook_path_suggestion::String = notebook_path_suggestion()
     disable_writing_notebook_files::Bool = DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT
     auto_reload_from_file::Bool = AUTO_RELOAD_FROM_FILE_DEFAULT
@@ -283,7 +290,9 @@ function from_flat_kwargs(;
         port_hint::Integer = PORT_HINT_DEFAULT,
         launch_browser::Bool = LAUNCH_BROWSER_DEFAULT,
         dismiss_update_notification::Bool = DISMISS_UPDATE_NOTIFICATION_DEFAULT,
+        dismiss_motivational_quotes::Bool = DISMISS_MOTIVATIONAL_QUOTES,
         show_file_system::Bool = SHOW_FILE_SYSTEM_DEFAULT,
+        enable_ai_editor_features::Bool = ENABLE_AI_EDITOR_FEATURES_DEFAULT,
         notebook_path_suggestion::String = notebook_path_suggestion(),
         disable_writing_notebook_files::Bool = DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT,
         auto_reload_from_file::Bool = AUTO_RELOAD_FROM_FILE_DEFAULT,
@@ -331,7 +340,9 @@ function from_flat_kwargs(;
         port_hint,
         launch_browser,
         dismiss_update_notification,
+        dismiss_motivational_quotes,
         show_file_system,
+        enable_ai_editor_features,
         notebook_path_suggestion,
         disable_writing_notebook_files,
         auto_reload_from_file,

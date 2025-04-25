@@ -34,6 +34,12 @@ function create_range_decorations(view) {
         return Decoration.set([])
     }
 
+    // Check if range is within document bounds
+    const docLength = view.state.doc.length
+    if (from > docLength || to > docLength) {
+        return Decoration.set([])
+    }
+
     return Decoration.set([highlighted_range.range(from, to)])
 }
 
@@ -81,7 +87,6 @@ export const highlightLinePlugin = () =>
             decorations: (v) => v.decorations,
         }
     )
-
 
 export const highlightRangePlugin = () =>
     ViewPlugin.fromClass(
