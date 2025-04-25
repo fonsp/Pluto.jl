@@ -167,7 +167,7 @@ function sync_nbpkg_core(
                         
                         should_precompile_later = true
                         
-                        # Resolve the package environment, with GracefulPkg.jl to solve any issues
+                        # Resolve the package environment, using GracefulPkg.jl to solve any issues
                         Status.report_business!(pkg_status, :resolve) do
                             with_auto_fixes(notebook) do
                                 _resolve(notebook, iolistener)
@@ -467,7 +467,7 @@ function _resolve(notebook::Notebook, iolistener::IOListener)
 end
 
 
-const gracefulpkg_strats = filter(GracefulPkg.DEFAULT_STRATEGIES) do strat
+const gracefulpkg_strats = filter!(collect(GracefulPkg.DEFAULT_STRATEGIES)) do strat
     !(strat isa GracefulPkg.StrategyRemoveProject)
 end
 
