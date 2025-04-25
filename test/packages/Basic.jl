@@ -639,7 +639,7 @@ import Malt
         compilation_dir = joinpath(DEPOT_PATH[1], "compiled", "v$(VERSION.major).$(VERSION.minor)")
         @assert isdir(compilation_dir)
         compilation_dir_testA = joinpath(compilation_dir, "PlutoPkgTestA")
-        precomp_entries() = readdir(mkpath(compilation_dir_testA))
+        precomp_entries() = isdir(compilation_dir_testA) ? readdir(compilation_dir_testA) : String[]
         
         
         @testset "Match compiler options: $(match)" for match in [true, false]
