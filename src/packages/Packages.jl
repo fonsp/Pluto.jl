@@ -467,6 +467,11 @@ function _resolve(notebook::Notebook, iolistener::IOListener)
 end
 
 
+const gracefulpkg_strats = filter(GracefulPkg.DEFAULT_STRATEGIES) do strat
+    !(strat isa GracefulPkg.StrategyRemoveProject)
+end
+
+
 """
 Run `f` (e.g. `Pkg.instantiate`) on the notebook's package environment. Keep trying more and more invasive strategies to fix problems until the operation succeeds.
 """
@@ -474,8 +479,7 @@ function with_auto_fixes(f::Function, notebook::Notebook)
     env_dir = PkgCompat.env_dir(notebook.nbpkg_ctx)
     
     is_first = Ref(true)
-    # TODO dont use the remove Project strat
-    report = GracefulPkg.gracefully(; env_dir, throw=false) do
+    report = GracefulPkg.gracefully(; env_dir, throw=false, strategies=gracefulpkg_strats) do
         try
             if !is_first[]
                 PkgCompat.load_ctx!(notebook.nbpkg_ctx, env_dir)
