@@ -295,9 +295,9 @@ pluto_file_settings() = try
     end
 catch e;
     if isassigned(pwd_ref)
-        @warn "EXception " (e, catch_backtrace())
+        @warn "Exception " (e, catch_backtrace())
         @warn """Invalid ~/.plutorc
-        
+
         Start with this template:
 
         [Pluto.server]
@@ -312,7 +312,7 @@ catch e;
         [Pluto.evaluation]
         run_notebook_on_load = true
         capture_stdout = true
-        
+
         [Pluto.security]
         require_secret_for_open_links = true
         require_secret_for_access = true
@@ -322,22 +322,21 @@ catch e;
     end
     Dict()
 end
+serverfields = fieldnames(ServerOptions)
+securityfields = fieldnames(SecurityOptions)
+evaluationfields = fieldnames(EvaluationOptions)
+compilerfields = fieldnames(CompilerOptions)
 
-pick_fields(t, d::Vector) = Dict(Symbol(k[1])=>k[2] for k in d if Symbol(k[1]) in fieldnames(t))
-
-merge_pick_fields(t, kwargs, d, key::String) = begin 
-    kw = pick_fields(t, [get(d, key, Dict())..., kwargs...])
-    return Configurations.from_kwargs(t; kw...)
-end
+pick_fields(fns, d::Vector) = Dict(Symbol(k[1])=>k[2] for k in d if Symbol(k[1]) in fns)
 
 function from_flat_kwargs(;kwargs...)
 
     plutoSettings = pluto_file_settings()
 
-    server = merge_pick_fields(ServerOptions, kwargs, plutoSettings, "server")
-    security = merge_pick_fields(SecurityOptions, kwargs, plutoSettings, "security")
-    evaluation = merge_pick_fields(EvaluationOptions, kwargs, plutoSettings, "evaluation")
-    compiler = merge_pick_fields(CompilerOptions, kwargs, plutoSettings, "compiler")
+    server = ServerOptions(;pick_fields(serverfields, [kwargs..., get(plutoSettings,"server", Dict())...])...)
+    security = SecurityOptions(;pick_fields(securityfields, [kwargs..., get(plutoSettings,"security", Dict())...])...)
+    evaluation = EvaluationOptions(;pick_fields(evaluationfields, [kwargs..., get(plutoSettings,"evaluation", Dict())...])...)
+    compiler = CompilerOptions(;pick_fields(compilerfields, [kwargs..., get(plutoSettings,"compiler", Dict())...])...)
 
     options = Options(; server, security, evaluation, compiler)
     return options
