@@ -134,7 +134,12 @@ add_runtimes(::Nothing, ::UInt64) = nothing
 add_runtimes(a::UInt64, b::UInt64) = a+b
 
 contains_macrocall(expr::Expr) = if expr.head == :macrocall
-    true
+    if VERSION >= v"1.12.0-aaa" && length(expr.args) >= 1 && expr.args[1] == :(Base.var"@__doc__")
+        # special case to support https://github.com/JuliaLang/julia/pull/53515
+        false
+    else
+        true
+    end
 elseif expr.head == :module
     # Modules don't get expanded, sadly, so we don't touch it
     false
