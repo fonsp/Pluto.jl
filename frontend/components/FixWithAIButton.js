@@ -53,6 +53,8 @@ const AIPermissionPrompt = ({ onAccept, onDecline }) => {
 
 export const FixWithAIButton = ({ cell_id, diagnostics }) => {
     const pluto_actions = useContext(PlutoActionsContext)
+    if (pluto_actions.get_session_options?.()?.server?.enable_ai_editor_features === false) return null
+
     const node_ref = useRef(/** @type {HTMLElement?} */ (null))
     const [buttonState, setButtonState] = useState("initial") // "initial" | "loading" | "success"
     const [showButton, setShowButton] = useState(false)

@@ -49,7 +49,7 @@ const LAUNCH_BROWSER_DEFAULT = true
 const DISMISS_UPDATE_NOTIFICATION_DEFAULT = false
 const DISMISS_MOTIVATIONAL_QUOTES = false
 const SHOW_FILE_SYSTEM_DEFAULT = true
-const ENABLE_PACKAGE_AUTHOR_FEATURES_DEFAULT = true
+const ENABLE_AI_EDITOR_FEATURES_DEFAULT = true
 const DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT = false
 const AUTO_RELOAD_FROM_FILE_DEFAULT = false
 const AUTO_RELOAD_FROM_FILE_COOLDOWN_DEFAULT = 0.4
@@ -74,6 +74,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 - `dismiss_update_notification::Bool = $DISMISS_UPDATE_NOTIFICATION_DEFAULT` If `false`, the Pluto frontend will check the Pluto.jl github releases for any new recommended updates, and show a notification if there are any. If `true`, this is disabled.
 - `dismiss_motivational_quotes::Bool = $DISMISS_MOTIVATIONAL_QUOTES` If `true`, motivational quotes on error messages won't be shown.
 - `show_file_system::Bool = $SHOW_FILE_SYSTEM_DEFAULT`
+- `enable_ai_editor_features::Bool = $ENABLE_AI_EDITOR_FEATURES_DEFAULT` Enable or disable LLM-powered editor features
 - `notebook_path_suggestion::String = notebook_path_suggestion()`
 - `disable_writing_notebook_files::Bool = $DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT`
 - `auto_reload_from_file::Bool = $AUTO_RELOAD_FROM_FILE_DEFAULT` Watch notebook files for outside changes and update running notebook state automatically
@@ -97,6 +98,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
     dismiss_update_notification::Bool = DISMISS_UPDATE_NOTIFICATION_DEFAULT
     dismiss_motivational_quotes::Bool = DISMISS_MOTIVATIONAL_QUOTES
     show_file_system::Bool = SHOW_FILE_SYSTEM_DEFAULT
+    enable_ai_editor_features::Bool = ENABLE_AI_EDITOR_FEATURES_DEFAULT
     notebook_path_suggestion::String = notebook_path_suggestion()
     disable_writing_notebook_files::Bool = DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT
     auto_reload_from_file::Bool = AUTO_RELOAD_FROM_FILE_DEFAULT
@@ -290,6 +292,7 @@ function from_flat_kwargs(;
         dismiss_update_notification::Bool = DISMISS_UPDATE_NOTIFICATION_DEFAULT,
         dismiss_motivational_quotes::Bool = DISMISS_MOTIVATIONAL_QUOTES,
         show_file_system::Bool = SHOW_FILE_SYSTEM_DEFAULT,
+        enable_ai_editor_features::Bool = ENABLE_AI_EDITOR_FEATURES_DEFAULT,
         notebook_path_suggestion::String = notebook_path_suggestion(),
         disable_writing_notebook_files::Bool = DISABLE_WRITING_NOTEBOOK_FILES_DEFAULT,
         auto_reload_from_file::Bool = AUTO_RELOAD_FROM_FILE_DEFAULT,
@@ -339,6 +342,7 @@ function from_flat_kwargs(;
         dismiss_update_notification,
         dismiss_motivational_quotes,
         show_file_system,
+        enable_ai_editor_features,
         notebook_path_suggestion,
         disable_writing_notebook_files,
         auto_reload_from_file,
