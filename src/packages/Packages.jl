@@ -5,6 +5,7 @@ import .PkgCompat: select, is_stdlib
 import Logging
 import LoggingExtras
 import .Configuration: CompilerOptions, _merge_notebook_compiler_options, _convert_to_flags
+import GracefulPkg
 
 const tiers = unique((
     Pkg.PRESERVE_ALL_INSTALLED,
@@ -166,25 +167,15 @@ function sync_nbpkg_core(
                         
                         should_precompile_later = true
                         
-                        # First, we instantiate. This will:
-                        # - Verify that the Manifest can be parsed and is in the correct format (important for compat across Julia versions). If not, we will fix it by deleting the Manifest.
-                        # - If no Manifest exists, resolve the environment and create one.
-                        # - Start downloading all registered packages, artifacts.
-                        # - Start downloading all unregistered packages, which are added through a URL. This also makes the Project.tomls of those packages available.
-                        # - Precompile all packages.                    
-                        Status.report_business!(pkg_status, :instantiate1) do
-                            with_auto_fixes(notebook) do
-                                _instantiate(notebook, iolistener)
-                            end
-                        end
-                        
-                        # Second, we resolve. This will:
-                        # - Verify that the Manifest contains a correct dependency tree (e.g. all versions exists in a registry). If not, we will fix it using `with_auto_fixes`
-                        # - If we are tracking local packages by path (] dev), their Project.tomls are reparsed and everything is updated.
+                        # Resolve the package environment, using GracefulPkg.jl to solve any issues
                         Status.report_business!(pkg_status, :resolve) do
                             with_auto_fixes(notebook) do
                                 _resolve(notebook, iolistener)
                             end
+                        end
+                        
+                        Status.report_business!(pkg_status, :instantiate1) do
+                            _instantiate(notebook, iolistener)
                         end
                     end
                     
@@ -476,42 +467,38 @@ function _resolve(notebook::Notebook, iolistener::IOListener)
 end
 
 
+const gracefulpkg_strats = filter!(collect(GracefulPkg.DEFAULT_STRATEGIES)) do strat
+    !(strat isa GracefulPkg.StrategyRemoveProject)
+end
+
+
 """
 Run `f` (e.g. `Pkg.instantiate`) on the notebook's package environment. Keep trying more and more invasive strategies to fix problems until the operation succeeds.
 """
 function with_auto_fixes(f::Function, notebook::Notebook)
-    try
-        f()
-    catch e
-        @info "Operation failed. Updating registries and trying again..." exception=e
-        
-        PkgCompat.update_registries(; force=true)
-        
-        # TODO: check for resolver errors around stdlibs and fix them by doing `up Statistics`
-        
-        
-        
-        
+    env_dir = PkgCompat.env_dir(notebook.nbpkg_ctx)
+    
+    is_first = Ref(true)
+    report = GracefulPkg.gracefully(; env_dir, throw=false, strategies=gracefulpkg_strats) do
         try
-            f()
-        catch e
-            # this is identical to Pkg.update, right?
-            @warn "Operation failed. Removing Manifest and trying again..." exception=e
-            
-            reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
-            notebook.nbpkg_ctx_instantiated = false
-            try
-                f()
-            catch e
-                @warn "Operation failed. Removing Project compat entries and Manifest and trying again..." exception=(e, catch_backtrace())
-                
-                reset_nbpkg!(notebook; keep_project=true, save=false, backup=false)
-                PkgCompat.clear_compat_entries!(notebook.nbpkg_ctx)
-                notebook.nbpkg_ctx_instantiated = false
-                
-                f()
+            if !is_first[]
+                PkgCompat.load_ctx!(notebook.nbpkg_ctx, env_dir)
             end
+
+            f()
+        finally
+            is_first[] = false
         end
+    end
+
+    steps = report.strategy_reports
+    
+    if any(x -> x.strategy isa GracefulPkg.StrategyLoosenCompat, steps)
+        notebook.nbpkg_ctx_instantiated = false
+    end
+    
+    if !GracefulPkg.is_success(report)
+        throw(GracefulPkg.NothingWorked(report))
     end
 end
 
@@ -574,12 +561,9 @@ function update_nbpkg_core(
 
                 if !notebook.nbpkg_ctx_instantiated
                     with_auto_fixes(notebook) do
-                        _instantiate(notebook, iolistener)
-                    end
-                
-                    with_auto_fixes(notebook) do
                         _resolve(notebook, iolistener)
                     end
+                    _instantiate(notebook, iolistener)
                 end
 
                 with_io_setup(notebook, iolistener) do
