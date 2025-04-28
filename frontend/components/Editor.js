@@ -681,7 +681,7 @@ export class Editor extends Component {
                     notebook.bonds[name] = new_bond
                 })
             },
-            reshow_cell: (cell_id, objectid, dim) => {
+            reshow_cell: (cell_id, objectid, dim) =>
                 this.client.send(
                     "reshow_cell",
                     {
@@ -691,8 +691,7 @@ export class Editor extends Component {
                     },
                     { notebook_id: this.state.notebook.notebook_id },
                     false
-                )
-            },
+                ),
             request_js_link_response: (cell_id, link_id, input) => {
                 return this.client
                     .send(
