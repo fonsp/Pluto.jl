@@ -1,4 +1,3 @@
-import FuzzyCompletions: complete_path, completion_text, score
 import Malt
 import .PkgCompat: package_completions
 using Markdown

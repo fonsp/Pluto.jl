@@ -1,5 +1,6 @@
-import REPL
-import FuzzyCompletions: FuzzyCompletions, Completion, BslashCompletion, ModuleCompletion, PropertyCompletion, FieldCompletion, PathCompletion, DictCompletion, completion_text, score
+import REPL: REPL, REPLCompletions
+import REPL.REPLCompletions: Completion, BslashCompletion, ModuleCompletion, PropertyCompletion, FieldCompletion, PathCompletion, DictCompletion, completion_text
+
 
 function basic_completion_priority((s, description, exported, from_notebook))
 	c = first(s)
@@ -28,10 +29,10 @@ completion_value_type(::Completion) = :unknown
 
 completion_special_symbol_value(::Completion) = nothing
 completion_special_symbol_value(completion::BslashCompletion) =
-    haskey(REPL.REPLCompletions.latex_symbols, completion.bslash) ?
-        REPL.REPLCompletions.latex_symbols[completion.bslash] :
-    haskey(REPL.REPLCompletions.emoji_symbols, completion.bslash) ?
-        REPL.REPLCompletions.emoji_symbols[completion.bslash] :
+    haskey(REPLCompletions.latex_symbols, completion.bslash) ?
+        REPLCompletions.latex_symbols[completion.bslash] :
+    haskey(REPLCompletions.emoji_symbols, completion.bslash) ?
+        REPLCompletions.emoji_symbols[completion.bslash] :
         nothing
 
 function is_pluto_workspace(m::Module)
@@ -90,30 +91,31 @@ completion_from_notebook(c::ModuleCompletion) =
     !startswith(c.mod, "#")
 completion_from_notebook(c::Completion) = false
 
-completion_type(::FuzzyCompletions.PathCompletion) = :path
-completion_type(::FuzzyCompletions.DictCompletion) = :dict
-completion_type(::FuzzyCompletions.MethodCompletion) = :method
-completion_type(::FuzzyCompletions.ModuleCompletion) = :module
-completion_type(::FuzzyCompletions.BslashCompletion) = :bslash
-completion_type(::FuzzyCompletions.FieldCompletion) = :field
-completion_type(::FuzzyCompletions.KeywordArgumentCompletion) = :keyword_argument
-completion_type(::FuzzyCompletions.KeywordCompletion) = :keyword
-completion_type(::FuzzyCompletions.PropertyCompletion) = :property
-completion_type(::FuzzyCompletions.Text) = :text
+completion_type(::REPLCompletions.PathCompletion) = :path
+completion_type(::REPLCompletions.DictCompletion) = :dict
+completion_type(::REPLCompletions.MethodCompletion) = :method
+completion_type(::REPLCompletions.ModuleCompletion) = :module
+completion_type(::REPLCompletions.BslashCompletion) = :bslash
+completion_type(::REPLCompletions.FieldCompletion) = :field
+completion_type(::REPLCompletions.KeywordArgumentCompletion) = :keyword_argument
+completion_type(::REPLCompletions.KeywordCompletion) = :keyword
+completion_type(::REPLCompletions.PropertyCompletion) = :property
+completion_type(::REPLCompletions.Text) = :text
 
 completion_type(::Completion) = :unknown
 
 "You say Linear, I say Algebra!"
 function completion_fetcher(query, pos, workspace::Module)
-    results, loc, found = FuzzyCompletions.completions(
+    results, loc, found = REPLCompletions.completions(
         query, pos, workspace;
-        enable_questionmark_methods=false,
-        enable_expanduser=true,
-        enable_path=true,
-        enable_methods=false,
-        enable_packages=false,
+        # enable_questionmark_methods=false,
+        # enable_expanduser=true,
+        # enable_path=true,
+        # enable_methods=false,
+        # enable_packages=false,
     )
     partial = query[1:pos]
+    @info "Completions" query partial results
     if endswith(partial, '.')
         filter!(is_dot_completion, results)
         # we are autocompleting a module, and we want to see its fields alphabetically
@@ -130,7 +132,7 @@ function completion_fetcher(query, pos, workspace::Module)
             filter!(!is_path_completion, results)
         end
         filter!(
-            r -> is_kwarg_completion(r) || score(r) >= 0,
+            r -> is_kwarg_completion(r) || true,# || score(r) >= 0,
             results
         ) # too many candidates otherwise
     end
@@ -147,13 +149,13 @@ function completion_fetcher(query, pos, workspace::Module)
         )
     end
 
-    p = if endswith(query, '.')
-        sortperm(smooshed_together; alg=MergeSort, by=basic_completion_priority)
-    else
-        # we give 3 extra score points to exported fields
-        scores = score.(results)
-        sortperm(scores .+ 3.0 * exported; alg=MergeSort, rev=true)
-    end
+    p = sortperm(smooshed_together; alg=MergeSort, by=basic_completion_priority)
+    # p = if endswith(query, '.')
+    # else
+    #     # we give 3 extra score points to exported fields
+    #     scores = score.(results)
+    #     sortperm(scores .+ 3.0 * exported; alg=MergeSort, rev=true)
+    # end
 
     permute!(smooshed_together, p)
     (smooshed_together, loc, found)
@@ -168,5 +170,5 @@ is_path_completion(::Completion)     = false
 is_dict_completion(::DictCompletion) = true
 is_dict_completion(::Completion)     = false
 
-is_kwarg_completion(::FuzzyCompletions.KeywordArgumentCompletion) = true
+is_kwarg_completion(::REPLCompletions.KeywordArgumentCompletion) = true
 is_kwarg_completion(::Completion)                                 = false

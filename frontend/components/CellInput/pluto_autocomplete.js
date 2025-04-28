@@ -176,6 +176,22 @@ const julia_code_completions_to_cm =
         let is_symbol_completion = match_operator_symbol_complete(ctx)
         if (is_symbol_completion) {
             to_complete = to_complete.slice(0, is_symbol_completion.from + 1) + to_complete.slice(is_symbol_completion.from + 2)
+        } else {
+            // Generalized logic: send up to and including the last non-variable character
+            // (not matching /[\p{L}\p{Nl}\p{Sc}\d_!]/u)
+            const lastNonVarChar = (() => {
+                for (let i = to_complete.length - 1; i >= 0; --i) {
+                    if (!/^[\p{L}\p{Nl}\p{Sc}\d_!]$/u.test(to_complete[i])) {
+                        return i
+                    }
+                }
+                return -1
+            })()
+            if (lastNonVarChar !== -1) {
+                to_complete = to_complete.slice(0, lastNonVarChar + 1)
+            } else {
+                to_complete = ""
+            }
         }
 
         const globals = ctx.state.facet(GlobalDefinitionsFacet)
@@ -196,9 +212,9 @@ const julia_code_completions_to_cm =
         // skip autocomplete's filter if we are completing a ~ path (userexpand)
         const skip_filter = ctx.matchBefore(/\~[^\s\"]*/) != null
 
-        return {
+        const result = {
             from: start,
-            to: stop,
+            to: ctx.pos,
 
             // This tells codemirror to not query this function again as long as the string matches the regex.
 
@@ -263,6 +279,7 @@ const julia_code_completions_to_cm =
                     }),
             ],
         }
+        return result
     }
 
 const complete_anyword = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
