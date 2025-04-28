@@ -710,6 +710,7 @@ import Malt
             full_logs = join([log["msg"][1] for log in notebook.cells[1].logs], "\n")
             
             is_broken_idk_why = Sys.iswindows() && v"1.11.0-aaa" <= VERSION < v"1.12.0-aaa" && !match
+            is_broken_idk_why |= VERSION ?= v"12.0-aaa" && !match
 
             if !is_broken_idk_why
                 # There should be a log message about loading the cache.
