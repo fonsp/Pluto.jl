@@ -35,6 +35,17 @@ const recursive_dependencies = (/** @type {import("../components/Editor.js").Cel
 
 const disjoint = (a, b) => !_.some([...a], (x) => b.has(x))
 
+export const is_noop_action = (action) => action?.__is_noop_action === true
+
+const create_noop_action = (name) => {
+    const fn = (...args) => {
+        console.info("Ignoring action", name, { args })
+    }
+
+    fn.__is_noop_action = true
+    return fn
+}
+
 export const nothing_actions = ({ actions }) =>
     Object.fromEntries(
         Object.entries(actions).map(([k, v]) => [
@@ -43,9 +54,7 @@ export const nothing_actions = ({ actions }) =>
                 ? // the original action
                   v
                 : // a no-op action
-                  (...args) => {
-                      console.info("Ignoring action", k, { args })
-                  },
+                  create_noop_action(k),
         ])
     )
 

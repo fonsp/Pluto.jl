@@ -1777,10 +1777,9 @@ pluto-input > .input_context_menu li {
     flex-direction: column;
 }
 pluto-input > .input_context_menu li button {
-    font-family: "Roboto Mono", system-ui;
-    font-size: 0.8rem;
+    font-family: var(--system-ui-font-stack);
+    font-size: 0.9rem;
     margin-block-end: 0px;
-    letter-spacing: -0.02em;
     color: var(--input-context-menu-li-color);
     position: relative;
     padding: 8px;
@@ -1790,7 +1789,6 @@ pluto-input > .input_context_menu li button {
     justify-content: flex-start;
     border-radius: 2px;
     cursor: pointer;
-
     background: none;
     border: none;
 }

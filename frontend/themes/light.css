@@ -121,7 +121,7 @@
         --input-context-menu-bg-color: white;
         --input-context-menu-soon-color: #55555544;
         --input-context-menu-hover-bg-color: rgba(0, 0, 0, 0.1);
-        --input-context-menu-li-color: #6b6a6a;
+        --input-context-menu-li-color: #1e1e1e;
 
         /*Pkg status*/
         --pkg-popup-bg: white;
@@ -200,7 +200,6 @@
         --cm-color-variable:    oklch(45%  40% 270deg);
         --cm-color-literal:     oklch(45%  60% 330deg);
         --cm-filter-type:       brightness(150%) saturate(50%);
-
         --cm-color-builtin:     #5e7ad3;
         --cm-color-function:    #cc80ac;
         --cm-color-link:        #815ba4;
