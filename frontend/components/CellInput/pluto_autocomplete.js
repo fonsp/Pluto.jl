@@ -165,6 +165,7 @@ const julia_code_completions_to_cm =
     /** @returns {Promise<autocomplete.CompletionResult?>} */
     async (/** @type {autocomplete.CompletionContext} */ ctx) => {
         if (match_latex_symbol_complete(ctx)) return null
+        if (!ctx.explicit && ctx.matchBefore(/[ =]$/)) return null
         if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
         if (!ctx.explicit && ctx.tokenBefore(["IntegerLiteral", "FloatLiteral", "LineComment", "BlockComment", "Symbol", ...STRING_NODE_NAMES]) != null)
             return null
@@ -179,16 +180,9 @@ const julia_code_completions_to_cm =
         } else {
             // Generalized logic: send up to and including the last non-variable character
             // (not matching /[\p{L}\p{Nl}\p{Sc}\d_!]/u)
-            const lastNonVarChar = (() => {
-                for (let i = to_complete.length - 1; i >= 0; --i) {
-                    if (!/^[\p{L}\p{Nl}\p{Sc}\d_!]$/u.test(to_complete[i])) {
-                        return i
-                    }
-                }
-                return -1
-            })()
-            if (lastNonVarChar !== -1) {
-                to_complete = to_complete.slice(0, lastNonVarChar + 1)
+            const match = to_complete.match(/[\p{L}\p{Nl}\p{Sc}\d_!]*$/u)
+            if (match && match[0].length < to_complete.length) {
+                to_complete = to_complete.slice(0, to_complete.length - match[0].length)
             } else {
                 to_complete = ""
             }
@@ -197,6 +191,7 @@ const julia_code_completions_to_cm =
         const globals = ctx.state.facet(GlobalDefinitionsFacet)
         const is_already_a_global = (text) => text != null && Object.keys(globals).includes(text)
 
+        console.debug("to_complete", to_complete)
         let found = await request_autocomplete({ text: to_complete })
         if (!found) return null
         let { start, stop, results } = found
@@ -279,6 +274,8 @@ const julia_code_completions_to_cm =
                     }),
             ],
         }
+
+        console.debug("result", result)
         return result
     }
 
@@ -345,10 +342,16 @@ const global_variables_completion =
     (/** @type {() => { [uuid: String]: String[]}} */ request_unsubmitted_global_definitions, cell_id) =>
     /** @returns {Promise<autocomplete.CompletionResult?>} */
     async (/** @type {autocomplete.CompletionContext} */ ctx) => {
+        console
         if (match_latex_symbol_complete(ctx)) return null
         if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
-        if (!ctx.explicit && ctx.tokenBefore(["IntegerLiteral", "FloatLiteral", "LineComment", "BlockComment", "Symbol", ...STRING_NODE_NAMES]) != null)
-            return null
+        if (ctx.tokenBefore(["IntegerLiteral", "FloatLiteral", "LineComment", "BlockComment", "Symbol"]) != null) return null
+        if (ctx.tokenBefore([...STRING_NODE_NAMES]) != null) {
+            // don't complete inside a string, unless the user is doing string interpolation.
+            if (ctx.matchBefore(/\$[(\p{L}\p{Nl}\p{Sc}\d_!]$/u) == null) {
+                return null
+            }
+        }
 
         // see `is_wc_cat_id_start` in Julia's source for a complete list
         const there_is_a_dot_before = ctx.matchBefore(/\.[\p{L}\p{Nl}\p{Sc}\d_!]*$/u)
@@ -385,6 +388,54 @@ const global_variables_completion =
                   commitCharacters: julia_commit_characters(ctx),
               }
     }
+
+const sorted_keywords = [
+    "abstract type",
+    "baremodule",
+    "begin",
+    "break",
+    "catch",
+    "ccall",
+    "const",
+    "continue",
+    "do",
+    "else",
+    "elseif",
+    "end",
+    "export",
+    "finally",
+    "for",
+    "function",
+    "global",
+    "if",
+    "import",
+    "let",
+    "local",
+    "macro",
+    "module",
+    "mutable struct",
+    "primitive type",
+    "quote",
+    "return",
+    "struct",
+    "try",
+    "using",
+    "while",
+]
+const keyword_completions = sorted_keywords.map((label) => ({
+    label,
+    apply: label,
+    type: "completion_keyword",
+    section: section_regular,
+}))
+const keyword_completions_generator = autocomplete.completeFromList(keyword_completions)
+
+const complete_keyword = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
+    if (match_latex_symbol_complete(ctx)) return null
+    if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
+    if (ctx.tokenBefore(["IntegerLiteral", "FloatLiteral", "LineComment", "BlockComment", "Symbol", ...STRING_NODE_NAMES]) != null) return null
+    return await keyword_completions_generator(ctx)
+}
 
 const local_variables_completion = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
     let scopestate = ctx.state.field(ScopeStateField)
@@ -544,6 +595,7 @@ export let pluto_autocomplete = ({ request_autocomplete, request_special_symbols
                 global_variables_completion(request_unsubmitted_global_definitions, cell_id),
                 special_symbols_completion(request_special_symbols),
                 julia_code_completions_to_cm(memoize_last_request_autocomplete),
+                complete_keyword,
                 // complete_anyword,
                 // TODO: Disabled because of performance problems, see https://github.com/fonsp/Pluto.jl/pull/1925. Remove `complete_anyword` once fixed. See https://github.com/fonsp/Pluto.jl/pull/2013
                 local_variables_completion,
