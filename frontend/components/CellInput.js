@@ -671,7 +671,6 @@ export const CellInput = ({
 
                             let { message } = response
 
-                            console.log(`autocomplete response for "${query}"`, message)
                             return {
                                 start: utf8index_to_ut16index(query_full ?? query, message.start),
                                 stop: utf8index_to_ut16index(query_full ?? query, message.stop),

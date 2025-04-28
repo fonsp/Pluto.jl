@@ -189,7 +189,6 @@ const julia_code_completions_to_cm =
         const globals = ctx.state.facet(GlobalDefinitionsFacet)
         const is_already_a_global = (text) => text != null && Object.keys(globals).includes(text)
 
-        console.debug("to_complete", to_complete)
         let found = await request_autocomplete({ query: to_complete, query_full: to_complete_full })
         if (!found) return null
         let { start, stop, results, too_long } = found
@@ -272,7 +271,6 @@ const julia_code_completions_to_cm =
             ],
         }
 
-        console.debug("result", result)
         return result
     }
 
