@@ -28,12 +28,11 @@ end
 completion_value_type(::Completion) = :unknown
 
 completion_special_symbol_value(::Completion) = nothing
-completion_special_symbol_value(completion::BslashCompletion) =
-    haskey(REPLCompletions.latex_symbols, completion.bslash) ?
-        REPLCompletions.latex_symbols[completion.bslash] :
-    haskey(REPLCompletions.emoji_symbols, completion.bslash) ?
-        REPLCompletions.emoji_symbols[completion.bslash] :
-        nothing
+function completion_special_symbol_value(completion::BslashCompletion)
+    s = @static hasfield(BslashCompletion, :bslash) ? completion.bslash : completion.completion
+    symbol_dict = startswith(s, "\\:") ? REPLCompletions.emoji_symbols : REPLCompletions.latex_symbols
+    get(symbol_dict, s, nothing)
+end
 
 function is_pluto_workspace(m::Module)
     isdefined(m, PLUTO_INNER_MODULE_NAME) &&
@@ -115,17 +114,22 @@ end
 
 
 "You say Linear, I say Algebra!"
-function completion_fetcher(query, pos, workspace::Module)
+function completion_fetcher(query::String, query_full::String, workspace::Module)
     results, loc, found = REPLCompletions.completions(
-        query, pos, workspace;
-        # enable_questionmark_methods=false,
-        # enable_expanduser=true,
-        # enable_path=true,
-        # enable_methods=false,
-        # enable_packages=false,
+        query, lastindex(query), workspace
     )
-    partial = query[1:pos]
-    @info "Completions" query partial results
+
+    if (too_long = length(results) > 2000)
+        results, loc, found = REPLCompletions.completions(
+            query_full, lastindex(query_full), workspace
+        )
+        if (too_long = length(results) > 2000)
+            results = results[1:2000]
+        end
+    end
+
+    partial = query
+
     if endswith(partial, '.')
         filter!(is_dot_completion, results)
         # we are autocompleting a module, and we want to see its fields alphabetically
@@ -161,19 +165,8 @@ function completion_fetcher(query, pos, workspace::Module)
         )
     end
 
-    
-    
-
-    p = sortperm(smooshed_together; alg=MergeSort, by=basic_completion_priority)
-    # p = if endswith(query, '.')
-    # else
-    #     # we give 3 extra score points to exported fields
-    #     scores = score.(results)
-    #     sortperm(scores .+ 3.0 * exported; alg=MergeSort, rev=true)
-    # end
-
-    permute!(smooshed_together, p)
-    (smooshed_together, loc, found)
+    sort!(smooshed_together; alg=MergeSort, by=basic_completion_priority)
+    (smooshed_together, loc, found, too_long)
 end
 
 is_dot_completion(::Union{ModuleCompletion,PropertyCompletion,FieldCompletion}) = true

@@ -70,12 +70,13 @@ end
 responses[:complete] = function response_complete(🙋::ClientRequest)
     try require_notebook(🙋) catch; return; end
     query = 🙋.body["query"]
+    query_full = get(🙋.body, "query_full", query)
     pos = lastindex(query) # the query is cut at the cursor position by the front-end, so the cursor position is just the last legal index
 
-    results, loc, found = if package_name_to_complete(query) !== nothing
+    results, loc, found, too_long = if package_name_to_complete(query) !== nothing
         p = package_name_to_complete(query)
         cs = package_completions(p) |> sort
-        [(c,"package",true) for c in cs], (nextind(query, pos-length(p)):pos), true
+        [(c,"package",true) for c in cs], (nextind(query, pos-length(p)):pos), true, false
     else
         workspace = WorkspaceManager.get_workspace((🙋.session, 🙋.notebook); allow_creation=false)
         
@@ -85,13 +86,13 @@ responses[:complete] = function response_complete(🙋::ClientRequest)
             Malt.remote_eval_fetch(workspace.worker, quote
                 PlutoRunner.completion_fetcher(
                     $query,
-                    $pos,
+                    $query_full,
                     getfield(Main, $(QuoteNode(workspace.module_name))),
                 )
             end)
         else
             # We can at least autocomplete general julia things:
-            PlutoRunner.completion_fetcher(query, pos, Main)
+            PlutoRunner.completion_fetcher(query, query_full, Main)
         end
     end
 
@@ -102,7 +103,8 @@ responses[:complete] = function response_complete(🙋::ClientRequest)
         Dict(
             :start => start_utf8 - 1, # 1-based index (julia) to 0-based index (js)
             :stop => stop_utf8 - 1, # idem
-            :results => results
+            :results => results,
+            :too_long => too_long
             ), 🙋.notebook, nothing, 🙋.initiator)
 
     putclientupdates!(🙋.session, 🙋.initiator, msg)
