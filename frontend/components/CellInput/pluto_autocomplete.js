@@ -364,25 +364,32 @@ const global_variables_completion =
             ...Object.values(_.omit(local_globals, cell_id))
         )
 
-        const from_cm = await autocomplete.completeFromList(
-            possibles.map((label) => {
-                return {
-                    label,
-                    apply: label,
-                    type: from_notebook_type,
-                    section: section_regular,
-                    // boost: 1,
-                }
-            })
+        return await make_it_julian(
+            autocomplete.completeFromList(
+                possibles.map((label) => {
+                    return {
+                        label,
+                        apply: label,
+                        type: from_notebook_type,
+                        section: section_regular,
+                        // boost: 1,
+                    }
+                })
+            )
         )(ctx)
-        return from_cm == null
-            ? null
-            : {
-                  ...from_cm,
-                  validFor,
-                  commitCharacters: julia_commit_characters(ctx),
-              }
     }
+
+/** @returns {autocomplete.CompletionSource} */
+const make_it_julian = (/** @type {autocomplete.CompletionSource} */ source) => (/** @type {autocomplete.CompletionContext} */ ctx) => {
+    const c = source(ctx)
+    return c == null
+        ? null
+        : {
+              ...c,
+              validFor,
+              commitCharacters: julia_commit_characters(ctx),
+          }
+}
 
 // Get this list with
 // import REPL; REPL.REPLCompletions.sorted_keywords ∪ REPL.REPLCompletions.sorted_keyvals |> repr |> clipboard
@@ -433,7 +440,7 @@ const keyword_completions = sorted_keywords.map((label) => ({
     type: "completion_keyword",
     section: section_regular,
 }))
-const keyword_completions_generator = autocomplete.completeFromList(keyword_completions)
+const keyword_completions_generator = make_it_julian(autocomplete.completeFromList(keyword_completions))
 
 const complete_keyword = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
     if (ctx.matchBefore(/[a-z]$/) == null) return null
@@ -460,14 +467,7 @@ const local_variables_completion = async (/** @type {autocomplete.CompletionCont
             boost: 99 - i,
         }))
 
-    const from_cm = await autocomplete.completeFromList(possibles)(ctx)
-    return from_cm == null
-        ? null
-        : {
-              ...from_cm,
-              validFor,
-              commitCharacters: julia_commit_characters(ctx),
-          }
+    return await make_it_julian(autocomplete.completeFromList(possibles))(ctx)
 }
 const special_latex_examples = ["\\sqrt", "\\pi", "\\approx"]
 const special_emoji_examples = ["🐶", "🐱", "🐭", "🐰", "🐼", "🐨", "🐸", "🐔", "🐧"]
