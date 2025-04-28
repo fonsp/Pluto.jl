@@ -18,6 +18,6 @@ PrecompileTools.@compile_workload begin
     PlutoRunner.formatted_result_of(__TEST_NOTEBOOK_ID, cell_id,
                                     false, String[], nothing, __precompile_test_workspace; capture_stdout=true)
     foreach(("sq", "\\sq", "Base.a", "sqrt(", "sum(x; dim")) do s
-        PlutoRunner.completion_fetcher(s, ncodeunits(s), Main)
+        PlutoRunner.completion_fetcher(s, s, Main)
     end
 end

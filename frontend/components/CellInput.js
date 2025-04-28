@@ -662,18 +662,20 @@ export const CellInput = ({
                           ]),
                     go_to_definition_plugin,
                     pluto_autocomplete({
-                        request_autocomplete: async ({ text }) => {
+                        request_autocomplete: async ({ query, query_full }) => {
                             let response = await timeout_promise(
-                                pluto_actions.send("complete", { query: text }, { notebook_id: notebook_id_ref.current }),
+                                pluto_actions.send("complete", { query, query_full }, { notebook_id: notebook_id_ref.current }),
                                 5000
                             ).catch(console.warn)
                             if (!response) return null
 
                             let { message } = response
+
                             return {
-                                start: utf8index_to_ut16index(text, message.start),
-                                stop: utf8index_to_ut16index(text, message.stop),
+                                start: utf8index_to_ut16index(query_full ?? query, message.start),
+                                stop: utf8index_to_ut16index(query_full ?? query, message.stop),
                                 results: message.results,
+                                too_long: message.too_long,
                             }
                         },
                         request_special_symbols: () => pluto_actions.send("complete_symbols").then(({ message }) => message),
