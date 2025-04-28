@@ -112,6 +112,7 @@ function completion_contents(c::Completion)
     end
 end
 
+is_method_completions_results(results) = length(results) >= 1 && results[1] isa REPLCompletions.MethodCompletion
 
 "You say Linear, I say Algebra!"
 function completion_fetcher(query::String, query_full::String, workspace::Module)
@@ -119,36 +120,51 @@ function completion_fetcher(query::String, query_full::String, workspace::Module
         query, lastindex(query), workspace
     )
 
-    if (too_long = length(results) > 2000)
+    ## METHODS & KWARGS
+    if query != query_full && is_method_completions_results(results)
+        # We are doing autocomplete inside a method call.
+        # But because query != query_full, we know that we are actually typing something extra
+        
+        # Try if the full query gives a different result.
         results, loc, found = REPLCompletions.completions(
             query_full, lastindex(query_full), workspace
         )
-        if (too_long = length(results) > 2000)
-            results = results[1:2000]
+
+        # If they give a keywordargument completion, then we should use that.
+        if !any(r -> r isa REPLCompletions.KeywordArgumentCompletion, results)
+            # Otherwise, we are just completing a function argument. So let's just complete the empty string.
+            results, loc, found = REPLCompletions.completions("", 0, workspace)
+            # loc is wrong, because the empty string has a different offset.
+            loc = (ncodeunits(query)+1):ncodeunits(query_full)
         end
     end
 
-    partial = query
+    ## TOO MANY RESULTS
+    if length(results) > 2000 && query != query_full
+        results, loc, found = REPLCompletions.completions(
+            query_full, lastindex(query_full), workspace
+        )
+    end
+    if (too_long = length(results) > 2000)
+        results = results[1:2000]
+    end
 
-    if endswith(partial, '.')
+    ## SPECIAL ENDINGS
+    if endswith(query, '.')
         filter!(is_dot_completion, results)
         # we are autocompleting a module, and we want to see its fields alphabetically
         sort!(results; by=completion_contents)
-    elseif endswith(partial, '/')
+    elseif endswith(query, '/')
         filter!(is_path_completion, results)
         sort!(results; by=completion_contents)
-    elseif endswith(partial, '[')
+    elseif endswith(query, '[')
         filter!(is_dict_completion, results)
         sort!(results; by=completion_contents)
     else
-        contains_slash = '/' ∈ partial
+        contains_slash = '/' ∈ query
         if !contains_slash
             filter!(!is_path_completion, results)
         end
-        filter!(
-            r -> is_kwarg_completion(r) || true,# || score(r) >= 0,
-            results
-        ) # too many candidates otherwise
     end
     # Add this if you are seeing keyword completions twice in results
     # filter!(!is_keyword_completion, results)

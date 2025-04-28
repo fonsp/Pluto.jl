@@ -337,7 +337,7 @@ const global_variables_completion =
     (/** @type {() => { [uuid: String]: String[]}} */ request_unsubmitted_global_definitions, cell_id) =>
     /** @returns {Promise<autocomplete.CompletionResult?>} */
     async (/** @type {autocomplete.CompletionContext} */ ctx) => {
-        console
+        if (ctx.matchBefore(/[(\p{L}\p{Nl}\p{Sc}\d_!]$/u) == null) return null
         if (match_latex_symbol_complete(ctx)) return null
         if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
         if (ctx.tokenBefore(["IntegerLiteral", "FloatLiteral", "LineComment", "BlockComment", "Symbol"]) != null) return null
@@ -436,6 +436,7 @@ const keyword_completions = sorted_keywords.map((label) => ({
 const keyword_completions_generator = autocomplete.completeFromList(keyword_completions)
 
 const complete_keyword = async (/** @type {autocomplete.CompletionContext} */ ctx) => {
+    if (ctx.matchBefore(/[a-z]$/) == null) return null
     if (match_latex_symbol_complete(ctx)) return null
     if (!ctx.explicit && writing_variable_name_or_keyword(ctx)) return null
     if (ctx.tokenBefore(["IntegerLiteral", "FloatLiteral", "LineComment", "BlockComment", "Symbol", ...STRING_NODE_NAMES]) != null) return null
