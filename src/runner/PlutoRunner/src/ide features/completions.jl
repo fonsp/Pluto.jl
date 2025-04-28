@@ -1,5 +1,5 @@
 import REPL: REPL, REPLCompletions
-import REPL.REPLCompletions: Completion, BslashCompletion, ModuleCompletion, PropertyCompletion, FieldCompletion, PathCompletion, DictCompletion, completion_text
+import REPL.REPLCompletions: Completion, BslashCompletion, ModuleCompletion, PropertyCompletion, FieldCompletion, PathCompletion, DictCompletion
 
 
 function basic_completion_priority((s, description, exported, from_notebook))
@@ -101,8 +101,18 @@ completion_type(::REPLCompletions.KeywordArgumentCompletion) = :keyword_argument
 completion_type(::REPLCompletions.KeywordCompletion) = :keyword
 completion_type(::REPLCompletions.PropertyCompletion) = :property
 completion_type(::REPLCompletions.Text) = :text
-
 completion_type(::Completion) = :unknown
+
+
+
+function completion_contents(c::Completion)
+    @static if isdefined(REPLCompletions, :named_completion)
+        REPLCompletions.named_completion(c).completion
+    else
+        REPLCompletions.completion_text(c)
+    end
+end
+
 
 "You say Linear, I say Algebra!"
 function completion_fetcher(query, pos, workspace::Module)
@@ -119,13 +129,13 @@ function completion_fetcher(query, pos, workspace::Module)
     if endswith(partial, '.')
         filter!(is_dot_completion, results)
         # we are autocompleting a module, and we want to see its fields alphabetically
-        sort!(results; by=completion_text)
+        sort!(results; by=completion_contents)
     elseif endswith(partial, '/')
         filter!(is_path_completion, results)
-        sort!(results; by=completion_text)
+        sort!(results; by=completion_contents)
     elseif endswith(partial, '[')
         filter!(is_dict_completion, results)
-        sort!(results; by=completion_text)
+        sort!(results; by=completion_contents)
     else
         contains_slash = '/' ∈ partial
         if !contains_slash
@@ -136,11 +146,13 @@ function completion_fetcher(query, pos, workspace::Module)
             results
         ) # too many candidates otherwise
     end
+    # Add this if you are seeing keyword completions twice in results
+    # filter!(!is_keyword_completion, results)
 
     exported = completions_exported(results)
     smooshed_together = map(zip(results, exported)) do (result, rexported)
         (
-            completion_text(result)::String,
+            completion_contents(result)::String,
             completion_value_type(result)::Symbol,
             rexported::Bool,
             completion_from_notebook(result)::Bool,
@@ -148,6 +160,9 @@ function completion_fetcher(query, pos, workspace::Module)
             completion_special_symbol_value(result),
         )
     end
+
+    
+    
 
     p = sortperm(smooshed_together; alg=MergeSort, by=basic_completion_priority)
     # p = if endswith(query, '.')
@@ -172,3 +187,7 @@ is_dict_completion(::Completion)     = false
 
 is_kwarg_completion(::REPLCompletions.KeywordArgumentCompletion) = true
 is_kwarg_completion(::Completion)                                 = false
+
+is_keyword_completion(::REPLCompletions.KeywordCompletion) = true
+is_keyword_completion(::Completion) = false
+
