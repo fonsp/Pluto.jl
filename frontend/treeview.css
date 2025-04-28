@@ -177,6 +177,10 @@ pluto-tree-more {
     white-space: nowrap;
 }
 
+pluto-tree-more.disabled {
+    cursor: not-allowed;
+}
+
 pluto-tree-more::before {
     margin-left: 0.2em;
     margin-right: 0.5em;
