@@ -18,4 +18,4 @@ UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 [compat]
 # these compat entries should match those for the same packages in Project.toml of Pluto.jl itself.
-PrecompileTools = "=1.2.1"
+PrecompileTools = "~1.2, ~1.3"
