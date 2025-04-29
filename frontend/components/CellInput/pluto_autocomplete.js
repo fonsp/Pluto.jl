@@ -190,6 +190,8 @@ const julia_code_completions_to_cm =
         const is_already_a_global = (text) => text != null && Object.keys(globals).includes(text)
 
         let found = await request_autocomplete({ query: to_complete, query_full: to_complete_full })
+
+        console.log("received autocomplete results", found)
         if (!found) return null
         let { start, stop, results, too_long } = found
 
@@ -220,7 +222,9 @@ const julia_code_completions_to_cm =
                 ...results
                     .filter(
                         ([text, _1, _2, is_from_notebook, completion_type]) =>
-                            (ctx.explicit || completion_type != "path") && !(is_from_notebook && is_already_a_global(text))
+                            (ctx.explicit || completion_type != "path") &&
+                            (ctx.explicit || completion_type != "method") &&
+                            !(is_from_notebook && is_already_a_global(text))
                     )
                     .map(([text, value_type, is_exported, is_from_notebook, completion_type, _ignored], i) => {
                         // (quick) fix for identifiers that need to be escaped
@@ -270,6 +274,8 @@ const julia_code_completions_to_cm =
                     }),
             ],
         }
+
+        console.log("cm completion result", result)
 
         return result
     }
