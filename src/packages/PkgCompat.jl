@@ -7,6 +7,7 @@ import Pkg
 import Pkg.Types: VersionRange
 import RegistryInstances
 import ..Pluto
+import GracefulPkg
 
 @static if isdefined(Pkg,:REPLMode) && isdefined(Pkg.REPLMode, :complete_remote_package)
     const REPLMode = Pkg.REPLMode
@@ -260,12 +261,8 @@ end
 # Standard Libraries
 ###
 
-# (✅ Public API)
-_stdlibs_found = sort(readdir(Sys.STDLIB))
-_stdlibs() = _stdlibs_found
-
-# ⚠️ Internal API with fallback
-is_stdlib(package_name::AbstractString) = package_name ∈ _stdlibs()
+# ✅ Public API
+is_stdlib(package_name::String) = package_name ∈ GracefulPkg.stdlibs_past_present_future
 
 
 
@@ -282,7 +279,7 @@ end
 # ⚠️ Internal API with fallback
 function package_completions(partial_name::AbstractString)::Vector{String}
 	String[
-		filter(s -> startswith(s, partial_name), collect(_stdlibs()));
+		filter(s -> startswith(s, partial_name), GracefulPkg.stdlibs_past_present_future);
 		_registered_package_completions(partial_name)
 	]
 end
