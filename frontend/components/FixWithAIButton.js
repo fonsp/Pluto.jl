@@ -11,11 +11,27 @@ let serverAvailabilityPromise = null
 
 const checkServerAvailability = async () => {
     if (serverAvailabilityPromise === null) {
-        serverAvailabilityPromise = fetch(endpoint_url, {
-            method: "GET",
-        })
-            .then((response) => response.ok)
-            .catch(() => false)
+        serverAvailabilityPromise = Promise.all([
+            // Check our AI endpoint
+            fetch(endpoint_url, {
+                method: "GET",
+            })
+                .then((response) => response.ok)
+                .catch(() => {
+                    console.warn("AI features disabled: Unable to access Pluto AI server. This may be due to network restrictions.")
+                    return false
+                }),
+            // Check if ChatGPT domain is accessible. If not, then the uni has blocked the domain (probably) and we want to disable AI features.
+            fetch("https://chat.openai.com/favicon.ico", {
+                method: "HEAD",
+                mode: "no-cors",
+            })
+                .then(() => true)
+                .catch(() => {
+                    console.warn("AI features disabled: Unable to access ChatGPT domain. This may be due to network restrictions.")
+                    return false
+                }),
+        ]).then(([endpointAvailable, chatGPTAvailable]) => endpointAvailable && chatGPTAvailable)
     }
     return serverAvailabilityPromise
 }
