@@ -1859,6 +1859,10 @@ pluto-input > .input_context_menu li button {
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/copy-outline.svg");
 }
 
+.ctx_icon.ask_ai {
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chatbubble-ellipses-outline.svg");
+}
+
 pluto-input > button.input_context_menu {
     /* top: 3px; */
     /* left: -26px; */
