@@ -957,7 +957,9 @@ const InputContextMenu = ({
     const ask_ai = () => {
         open_pluto_popup({
             type: "info",
-            source_element: button_ref.current,
+            big: true,
+            css_class: "ai-context",
+            // source_element: button_ref.current,
             body: html`<${AIContext} cell_id=${cell_id} current_code=${get_current_code()} />`,
         })
     }

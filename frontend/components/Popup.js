@@ -20,6 +20,7 @@ export const open_icon = get_included_external_source("open_icon")?.href
  * @property {"nbpkg"} type
  * @property {HTMLElement} [source_element]
  * @property {Boolean} [big]
+ * @property {string} [css_class]
  * @property {Boolean} [should_focus] Should the popup receive keyboard focus after opening? Rule of thumb: yes if the popup opens on a click, no if it opens spontaneously.
  * @property {string} package_name
  * @property {boolean} is_disable_pkg
@@ -30,6 +31,7 @@ export const open_icon = get_included_external_source("open_icon")?.href
  * @property {"info" | "warn"} type
  * @property {import("../imports/Preact.js").ReactElement} body
  * @property {HTMLElement?} [source_element]
+ * @property {string} [css_class]
  * @property {Boolean} [big]
  * @property {Boolean} [should_focus] Should the popup receive keyboard focus after opening? Rule of thumb: yes if the popup opens on a click, no if it opens spontaneously.
  */
@@ -138,6 +140,7 @@ export const Popup = ({ notebook, disable_input }) => {
                 visible: recent_event != null,
                 [type ?? ""]: type != null,
                 big: recent_event?.big === true,
+                [recent_event?.css_class ?? ""]: recent_event?.css_class != null,
             })}
             style="${pos_ref.current}"
             ref=${element_ref}
